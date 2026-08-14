@@ -45,7 +45,7 @@ from pages.generate_agent_modal_page import GenerateAgentModalPage
 
 logger = logging.getLogger("elitea.tests.chat.build_with_ai")
 
-pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.agents, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.agents, pytest.mark.regression, pytest.mark.new]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)

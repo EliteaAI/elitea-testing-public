@@ -119,7 +119,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger("elitea.tests.chat")
 
-pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 # ---------------------------------------------------------------------------
 # Gate exclusion — mechanical marker for the orchestrator (grep this file for

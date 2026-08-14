@@ -92,7 +92,7 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 logger = logging.getLogger("elitea.tests.chat")
 
-pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.regression, pytest.mark.new]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)

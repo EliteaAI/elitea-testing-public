@@ -21,8 +21,8 @@ on:
         options: ['1', '2', '3', '4', '5', '6', '7', '8', '9']
         default: '9'
       markers:
-        description: 'Pytest markers'
-        default: ''
+        description: 'Pytest markers (default excludes new tests; use "new" for new only, "all" for all tests)'
+        default: 'not new'
       ref:
         description: 'Git branch/tag/SHA'
         type: string
@@ -44,7 +44,7 @@ jobs:
       suite: ${{ inputs.suite || 'all' }}
       custom_suites: ${{ inputs.custom_suites || '' }}
       parallel_jobs: ${{ inputs.parallel_jobs || '9' }}
-      markers: ${{ inputs.markers || '' }}
+      markers: ${{ inputs.markers || 'not new' }}
       ref: ${{ inputs.ref || 'aqa/main-stage2' }}
       publish_to_tms: ${{ inputs.publish_to_tms }}
       tms_report_suffix: ${{ inputs.tms_report_suffix || '' }}

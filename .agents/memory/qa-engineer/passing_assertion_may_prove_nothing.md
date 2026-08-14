@@ -1,6 +1,6 @@
 ---
 name: Assertion honesty — an assertion can pass without proving its claim
-description: "There is an expect() at this step" is not "this step fails when the product is broken." Nine shapes where a real assertion is present and still vacuous, and the one question that catches all of them.
+description: "There is an expect() at this step" is not "this step fails when the product is broken." Ten shapes where a real assertion is present and still vacuous, and the one question that catches all of them.
 type: feedback
 ---
 
@@ -11,7 +11,7 @@ different value?** If both branches of the failure mode produce the same
 observable, the assertion is vacuous — an Important finding even though the
 per-step-assertion gate is literally satisfied.
 
-## The eight shapes and their remedies
+## The ten shapes and their remedies
 
 1. **Wrong comparison target.** A positional/bounding-box check can be
    non-tautological (fails when inverted) and still compare against a
@@ -72,8 +72,19 @@ per-step-assertion gate is literally satisfied.
    to the equality check downstream — the two questions ("is the original
    right" vs "did the copy preserve it") are both real and neither implies
    the other.
+10. **Sibling-signal substitution.** A "content switched" claim gets proven by
+    (a) the OLD content's absence + (b) an unrelated sibling element's state
+    change, instead of (c) the NEW content's own presence — when a testid for
+    (c) already exists and was simply not reached for. (a)+(b) can both hold
+    while (c) is false if (b)'s data source isn't causally coupled to (c)'s —
+    e.g. two sibling sub-trees under the same parent, fed by *different*
+    hook state, so one can render while the other silently fails/empties.
+    Read the actual component source the AFS's own reasoning cites (not just
+    the AFS's prose) to check whether the substituted signal and the claimed
+    observable really share a data source, or merely share a mount/unmount
+    boundary.
 
-## Seen 8×
+## Seen 10×
 
 - PR #698/ELITEA-2132 R3 — bbox check proved Folders-vs-Conversations layout separation, never folder insertion order; an append-instead-of-prepend regression would pass.
 - PR #696/ELITEA-2114 — `delete-confirm-title` (built to route around #694, text live-verified in the AFS) asserted visible-only.
@@ -83,6 +94,8 @@ per-step-assertion gate is literally satisfied.
 - PR #682/ELITEA-2090 — GA3's race fixed to polling; GA1's bare `is_disabled()` on the same button safe only via `click_create_conversation()`'s internal 1 s sleep.
 - PR #1230/ELITEA-2363 — Step 4 filters captured `public_applications` requests down to `query=="story"` before asserting `len()==1`; a broken debounce firing one request per keystroke would still leave exactly one entry with the final query value, so the "single debounced request" claim (the AFS's own Axis-2 addition) goes unverified. Same PR, Step 1: `get_visible_agent_card_names()` read right after `navigate()` (which only waits on `page_heading`, not the bulk applications fetch) — the identical async-render race the implementer had *just* fixed for `clear_search()` (steps 5/6 use `wait_for_agent_card_count[_not]`), left unfixed on the baseline read those two steps compare against.
 - PR #1335/ELITEA-2012 — `test_pipeline_import_via_file.py` step 1 captures `original_yaml`'s LLM-node `transition` purely to diff against the imported copy at step 7 (`imported_llm_node["transition"] == original_llm_node["transition"]`); the AFS Coverage Map names "canvas node wiring" as asserted AT step 1, but no absolute check (`== "END"`) exists — a creation-time wiring regression would round-trip identically and stay invisible.
+- ELITEA-2370 R3 (`tests/2370-catalog-tabs`) — Step 8 ("main content switches to Skills content") proven only via agent-card absence + the RIGHT-PANEL filter-chip prefix flipping to skill-scoped; `CatalogBody.jsx` shows the chip rail is fed by `allCategories`/`categoryNames` while the main-content grid is fed by the separate `groupedItems` — a failed/empty skills fetch would leave the grid on its "No skills found" empty state while chips still count correctly. A pre-existing `skill-card-{id}` testid (`SkillCard.jsx:48`, already on `automation/testids`) — the direct analog of the `AGENT_CARD_PREFIX`/`wait_for_any_agent_card()` pair used to prove the symmetric Step 5 claim — sat unused.
+- PR #1467/ELITEA-2599 — `test_skill_unpublish_republish_lifecycle.py::test_unpublish_republish_lifecycle` Step 3 asserts `publish_skill`'s response `source_version_id` (the newly-cloned Published version's id) is `!= skill_id` (the top-level SKILL id from `skill_api.create_skill()`, a different id namespace entirely). The AFS's own claim is narrower and different: the clone id must differ from the *original draft VERSION's* id (AFS: "draft `1679` → published clone `1680`"). Skill id vs. version id are unrelated fields — a broken publish that republished the draft version IN PLACE (reusing the draft's own version id, the actual regression this check exists to catch) would still satisfy `source_version_id != skill_id` trivially, since neither side of that comparison is the draft version id. The right reference value is fetched exactly this way one file over: `skill_api.get_skill(skill_id)["version_details"]["id"]` (`test_skill_fork_end_to_end.py`'s `source_version_id` capture, ELITEA-2602/2603) — that sibling spec had already solved the "get the draft's own version id" problem and this PR didn't reach for it.
 
 See also: positional_assertion_wrong_comparison_target_survives_invert_sanity_check.md ·
 purpose_built_handle_asserted_visible_not_text_elitea2114.md ·

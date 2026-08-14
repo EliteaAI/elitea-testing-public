@@ -12,17 +12,17 @@ on:
         options: [all, agents, admin, artifacts, chat, pipelines, skills, smoke, support_assistant, toolkits, voice]
         default: all
       custom_suites:
-        description: 'Custom suites (comma-separated)'
+        description: 'Custom suites (comma-separated). Default: 10 baseline suites. Use "all" to discover all suites.'
         type: string
-        default: ''
+        default: 'admin,agents,artifacts,chat,pipelines,skills,smoke,support_assistant,toolkits,voice'
       parallel_jobs:
         description: 'Number of parallel runners (1-9)'
         type: choice
         options: ['1', '2', '3', '4', '5', '6', '7', '8', '9']
         default: '9'
       markers:
-        description: 'Pytest markers'
-        default: ''
+        description: 'Pytest markers (default excludes new tests; use "new" for new only, "all" for all tests)'
+        default: 'not new'
       ref:
         description: 'Git branch/tag/SHA'
         type: string
@@ -42,9 +42,9 @@ jobs:
     with:
       environment: dev
       suite: ${{ inputs.suite || 'all' }}
-      custom_suites: ${{ inputs.custom_suites || '' }}
+      custom_suites: ${{ inputs.custom_suites || 'admin,agents,artifacts,chat,pipelines,skills,smoke,support_assistant,toolkits,voice' }}
       parallel_jobs: ${{ inputs.parallel_jobs || '9' }}
-      markers: ${{ inputs.markers || '' }}
+      markers: ${{ inputs.markers || 'not new' }}
       ref: ${{ inputs.ref || 'main' }}
       publish_to_tms: ${{ github.event_name == 'schedule' || inputs.publish_to_tms }}
       tms_report_suffix: ${{ github.event_name == 'schedule' && 'scheduled' || inputs.tms_report_suffix || '' }}

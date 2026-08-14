@@ -68,4 +68,5 @@ upload_path_dialog_split_prefix_vs_input_and_backspace_workaround_false.md ·
 mui_tooltip_aria_label_wrapper_differs_from_click_target_testid.md ·
 mui_radio_testid_on_label_is_checked_works.md ·
 ../qa-engineer/mui_checkbox_testid_lands_on_root_not_input.md ·
-mui_v7_switch_inputprops_silently_dropped.md
+mui_v7_switch_inputprops_silently_dropped.md ·
+mui_slider_input_needs_slotprops_input_testid.md

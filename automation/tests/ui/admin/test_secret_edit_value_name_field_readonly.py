@@ -35,7 +35,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 ORIGINAL_VALUE = "original-value-123"
 ROW_WAIT_TIMEOUT = 15_000

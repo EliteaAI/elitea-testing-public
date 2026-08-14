@@ -8,6 +8,7 @@
 > into their richest survivor, demoted surface lookups to disk-only, promoted 5
 > preventive entries. No entry file was deleted — everything stays greppable.
 > `(N×)` = how many separate sessions hit it.
+- [Autonomous skill invocation needs a nudge](autonomous_skill_invocation_nudge.md) — attach alone won't do it
 
 - [Project briefing](project_briefing.md) — your slot, the six-phase loop, the ≤2-rerun budget, the Run Report
 - [Verify feature branch first](verify_feature_branch_before_first_commit.md) — `git branch --show-current` before any commit; dispatch starts you ON the trunk (5×)
@@ -16,7 +17,9 @@
 - [PROVENANCE needs both refs + git status](afs_on_main_provenance_claim_needs_two_ref_grep.md) — grep origin/main AND origin/automation/testids (6×)
 - [AFS Priority vs pytest.mark](afs_priority_vs_pytest_mark_preflight_check.md) — grep Priority vs @pytest.mark.pN before handoff, incl. module-inherited (8×)
 - [Verify your own delivery](verify_your_own_delivery_before_handoff.md) — exit code/stdout lie; run all three greps against the batch trunk (12×)
+- [Fix round: diff-check each named finding](fix_round_must_diff_check_each_named_finding.md) — grep the round's own commit per finding before calling it done, don't rely on memory
 - [Mechanical greps diff the batch trunk](mechanical_greps_diff_against_batch_trunk_not_origin_base.md) — origin/automation/base lags it; diffing base fakes both results
+- [Triple-dot diff hides uncommitted work](triple_dot_diff_hides_uncommitted_changes_when_head_equals_base.md) — `ref...` is empty if HEAD==ref; use `git diff ref` (two-dot) for the self-check grep
 - [Console side-channel checks](console_side_channel_checks.md) — dual listener, registered pre-step-1, filter proven to fire (5×)
 - [Waits & races](never_assume_a_transition_settled.md) — networkidle/capture-list/Enter-send/cold-nav all lie; name the signal (8×)
 - [is_visible(timeout=) does not poll](locator_is_visible_timeout_kwarg_does_not_poll.md) — one-shot read; use .wait_for(state="visible")
@@ -25,6 +28,7 @@
 - [An assertion can prove the wrong fact](assertion_proves_the_wrong_fact.md) — invert-check is necessary, not sufficient; isolate every OR-gate (5×)
 - [Shared-state cleanup must soft-assert](cleanup_verification_on_shared_state_must_soft_assert.md) — logger.error-only lets failed cleanup pollute the baseline
 - [MUI testid lands on the wrapper](testid_lands_on_mui_wrapper_not_input.md) — relocate via inputProps/slotProps at source; never chain .locator("input") (11×)
+- [Declared improvisation needs AFS sweep](declared_improvisation_needs_afs_sweep_not_just_pr_narration.md) — PR-body narration alone leaves the AFS document stale; amend Concrete Handles + Hints too
 - [MUI icon auto-testid is dev-build-only](mui_icon_auto_testid_is_dev_build_only_never_locate_on_it.md) — green on localhost, absent in every deployed env
 - [New testid must not share a prefix selector](component_level_testid_must_not_share_a_prefix_selector.md) — grep `^=` in the page object before naming
 - [#579 exceptions are narrow](custom_handle_testid_prop_not_579_exception.md) — CustomHandle/SingleSelect are app-owned; only ReactFlow/CodeMirror internals qualify
@@ -37,6 +41,22 @@
 - [reasoning_effort on API-created agents](reasoning_effort_none_breaks_embedded_chat.md) — "none" is save/reload-only; any chat-sending test needs another value
 - [Page-object API calls need Bearer fallback](page_object_api_delete_needs_bearer_fallback_on_localhost.md) — self.page.request has no cookies on localhost
 - [Name fields cap at 32 chars](pipeline_agent_name_field_32char_silent_truncation.md) — silent truncation on agent-name-input, blocks Approve on Build-with-AI (3×)
+- [Shared save testid, create vs edit](shared_save_testid_create_vs_edit_navigation_false_pass.md) — create-flow save-and-wait-for-nav helper false-passes on an edit form (no nav)
 - [Entity-card list pages](search_highlight_breaks_exact_text_locator.md) — read entity-card-name + .text_content(); scope per-card via .filter(has=…) (3×)
 - [Killed runs orphan test data](killed_background_run_orphans_test_data.md) — backgrounded/SIGKILLed pytest skips finally:; filter by name+id, not id alone
 - [Resume dispatch: trust disk](resume_dispatch_trust_disk_not_prior_session_notes.md) — a prior session's "completed" note can describe uncommitted code; grep first
+- [Positive-existence wait can't assert negative transition](positive_existence_wait_cant_assert_negative_transition.md) — `not is_X()` right after a click races; use `expect().to_have_attribute()` instead
+- [Assert at the AFS step, not deferred](assert_at_the_afs_step_not_deferred.md) — verify step N's result inside step N's own allure.step, not step N+1 (rejected 2×)
+- [Dead-code guard needs class scoping](dead_code_locator_guard_needs_class_scoping.md) — bare class-name substring still false-passes; require real import/instantiation
+- ["Pre-existing" testid, 0-element timeout](icon_picker_close_button_testid_prop_mismatch.md) — suspect a wrapper prop-name mismatch, not timing
+- [Dirty trunk from an interrupted prior unit](dirty_trunk_from_interrupted_prior_unit_quarantine_dont_absorb.md) — quarantine onto its OWN branch first; never absorb or clean
+- [Icon picker Uploaded gallery can get stuck](skill_icon_uploaded_gallery_order.md) — infinite-scroll loader breaks after mutation+page>0 (#1459); don't build on data-selected there
+- [verify_on_detail_page races SPA route](verify_on_detail_page_races_spa_route_push.md) — call wait_for_page_load() first, always, after any save/nav
+- [Publish button loses testid on rejection](publish_wizard_step_advances_before_request_resolves_kills_testid.md) — step→PUBLISHING fires before the request resolves
+- [Publish AI gate flags "reply X" instructions](skill_publish_ai_gate_rejects_blanket_reply_instructions.md) — 422/FAIL prompt-injection heuristic; use bounded task-specific text
+- [Popper select_menuitem substring collision](popper_select_menuitem_substring_collision_attaches_wrong_item.md) — attach-by-name .filter(has_text=).first silently attaches the wrong entity if one seeded name is a substring of another
+- [gate-case.mjs timeout/tail trap](gate_case_timeout_and_tail_piping_loses_verdict.md) — size --timeout to real runtime, never `| tail -N`; junit.xml is ground truth if verdict is lost
+- [Skill icon-upload-before-tag-save race](skill_publish_wizard_implementer_quirks.md) — icon PUT can revert an unsaved tag; save tag FIRST, then upload icon
+- [Edit-with-AI wizard step numbering is positional](edit_with_ai_wizard_step_numbering_is_positional.md) — General/Instructions can be skipped; never hardcode "3. Summary"
+- [Nested agent accordion always has wrapper chip](nested_agent_accordion_always_has_wrapper_chip.md) — never assert to_have_count(0) on it; filter to "Skill: " prefix instead
+- [Testid-only policy scope = our own app](testid_only_policy_scope_is_our_own_app_source.md) — third-party redirect destinations use ordinary role locators; declare it

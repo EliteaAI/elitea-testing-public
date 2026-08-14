@@ -555,6 +555,35 @@ class AgentFormPage(BasePage):
 
         logger.info("Saved and navigation completed")
 
+    @action("Save (capturing the raw PUT response)")
+    def save_and_capture_response(self, timeout: int = 15000):
+        """Click Save and return the raw PUT ``.../application/...``
+        Response, WITHOUT waiting for success or navigation.
+
+        Additive sibling of :meth:`save_and_wait` / :meth:`click_save` —
+        those assume the save SUCCEEDS (they only wait for network idle,
+        discarding the response). Callers asserting a REJECTED save on a
+        locked/published version (ELITEA-2614 — the server returns 400
+        with an ``error`` field naming the exact version id) need the
+        response itself, not just an idle-network heuristic.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The matched Playwright ``Response`` for the
+            ``PUT .../elitea_core/application/prompt_lib/...`` call.
+        """
+        logger.info("Clicking Save (capturing response)")
+        with self.page.expect_response(
+            lambda r: "/elitea_core/application/prompt_lib/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as save_info:
+            self.save_button.evaluate("el => el.click()")
+        response = save_info.value
+        logger.info("Save response captured — status=%d", response.status)
+        return response
+
     # ------------------------------------------------------------------
     # Field update helpers
     # ------------------------------------------------------------------
@@ -562,8 +591,42 @@ class AgentFormPage(BasePage):
     def update_text_field(self, field_name: str, value: str, wait_for_validation: bool = True):
         """Update text field with React-compatible pattern.
 
-        Uses click + select all + type to trigger React onChange.
-        Waits for validation if requested.
+        Uses click + select all + type (INSTANT, no inter-keystroke delay) to
+        trigger React onChange, then defensively verifies the field actually
+        holds ``value`` and retries once if not.
+
+        Why instant typing, not a `press_sequentially(..., delay=N)` like
+        `fill_form()` uses for the CREATE form: these fields (Name/
+        Description/Instructions/Welcome message on the DETAIL/edit page) are
+        wrapped by the shared `StyledInputEnhancer`/`InputBase` component
+        (``src/[fsd]/shared/ui/input/InputBase.jsx``), which defaults
+        ``enableAutoBlur=True`` and drives it via ``useAutoBlur()``
+        (``src/hooks/useAutoBlur.jsx``) — a hook that, on every keystroke,
+        (re)starts a **10ms** timer that BLURS THEN REFOCUSES the field when
+        it fires. Typing with ANY per-keystroke delay ≥ ~10ms (confirmed live
+        at `delay=20`, matching `fill_form`'s own delay) lets that timer fire
+        BETWEEN keystrokes, so the field blurs+refocuses repeatedly WHILE
+        still receiving keystrokes — confirmed live to produce a real "Warning:
+        Maximum update depth exceeded" React loop warning on Save
+        (`test_import_agent_recreates_skills_with_new_ids.py`'s console-error
+        assertion caught it 2/2 runs at delay=20, 0/1 at instant-typing).
+        Typing instantly keeps every real keystroke gap under that 10ms
+        window in the overwhelming majority of cases, so the timer only ever
+        fires once, after typing fully stops (the intended, safe path).
+
+        Instant typing still leaves a NARROW residual race: on rare occasions
+        (observed live, ELITEA-2614 — 1 of 3 runs) a slow tick of the browser/
+        IPC event loop lets the 10ms timer fire mid-typing anyway, and the
+        resulting blur+refocus interacts with the DOM's in-flight keystrokes
+        to leave the field holding a corrupted value (part of the OLD text's
+        tail duplicated back in — e.g. "...test's publish-immutability test
+        UNLOCKED" instead of "...test UNLOCKED" when replacing a ~62-char
+        Description with a ~71-char string). Because that race is real but
+        rare and NOT eliminated by typing speed alone, the fix closes it with
+        a defensive verify: read the field back immediately after typing, and
+        if it doesn't match `value` (the rare race fired), re-select-all and
+        retype once — a hard failure only if the SECOND attempt is also wrong,
+        which would indicate something other than this specific timing race.
 
         Args:
             field_name: Field to update ("name", "description", "instructions")
@@ -581,9 +644,26 @@ class AgentFormPage(BasePage):
             raise ValueError(f"Unknown field: {field_name}. Must be one of {list(field_map.keys())}")
 
         field = field_map[field_name]
-        field.click()
-        field.press("ControlOrMeta+a")  # Works on both macOS (Cmd+A) and Windows/Linux (Ctrl+A)
-        field.type(value)
+
+        def _type_value() -> None:
+            field.click()
+            field.press("ControlOrMeta+a")  # Works on both macOS (Cmd+A) and Windows/Linux (Ctrl+A)
+            field.type(value)  # INSTANT (no delay) — see docstring: a real delay trips the 10ms auto-blur race
+
+        _type_value()
+
+        if field.input_value() != value:
+            logger.warning(
+                "%s field value mismatch after typing (auto-blur race) — retrying once: "
+                "expected %r, got %r",
+                field_name, value, field.input_value(),
+            )
+            _type_value()
+            actual = field.input_value()
+            assert actual == value, (
+                f"{field_name} field still shows a corrupted value after a retry "
+                f"(auto-blur race not the cause): expected {value!r}, got {actual!r}"
+            )
 
         if wait_for_validation:
             self.wait_for_form_validation()

@@ -63,9 +63,9 @@ on:
           - '9'
         default: '9'
       markers:
-        description: 'Pytest markers (e.g., p0, smoke, "p0 or p1")'
+        description: 'Pytest markers (default excludes new tests; use "new" for new only, "all" for all tests)'
         required: false
-        default: ''
+        default: 'not new'
       ref:
         description: 'Git ref (branch, tag, SHA). Leave empty for default.'
         required: false
@@ -109,10 +109,10 @@ on:
         type: string
         default: '9'
       markers:
-        description: 'Pytest markers'
+        description: 'Pytest markers (default excludes new tests; use "new" for new only, "all" for all tests)'
         required: false
         type: string
-        default: ''
+        default: 'not new'
       ref:
         description: 'Git ref (branch, tag, SHA)'
         required: false
@@ -475,7 +475,8 @@ jobs:
           PYTEST_CMD="$PYTEST_CMD $TEST_PATHS"
 
           MARKERS="${{ inputs.markers }}"
-          if [ -n "$MARKERS" ]; then
+          # "all" means no marker filtering (run all tests)
+          if [ -n "$MARKERS" ] && [ "$MARKERS" != "all" ]; then
             PYTEST_CMD="$PYTEST_CMD -m \"$MARKERS\""
           fi
 

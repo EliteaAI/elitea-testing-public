@@ -15,6 +15,41 @@
 - Agent Hub (Catalog) page freshly navigated to.
 - **An agent card is already liked by the current user** (count ≥ 1, `data-liked="true"`).
 
+**Declared improvisation (implementer, ELITEA-2355, per `.agents/role-overrides.md`
+§ Declared-improvisation protocol) — "already liked" is NOT reliable ambient
+state, dynamic setup is required.** Re-verified live during implementation
+(`localhost:5173/elitea-catalog`, `${TEST_USER}`): the initially-rendered card
+grid showed 0 of 23 rendered like buttons with `data-liked="true"`, and
+clicking the `catalog-agent-category-filter-chip-my-liked` rail chip (the
+"My Liked" filter) rendered **0 agent cards** — i.e. the current user's liked
+set is genuinely empty at the start of this run. This is expected, not a
+fluke: ELITEA-2354's own test (`test_agent_hub_like_agent_from_list_view.py`)
+mandatorily unlikes its target in a `finally` cleanup block specifically so it
+never leaves shared like-state polluted for sibling cases — so a fresh
+environment reliably has **zero** agents liked by `${TEST_USER}` after that
+case's own test run, precisely defeating this case's stated precondition as an
+*ambient* fact.
+
+**Implementer's choice: dynamic setup, not a hard-fail on missing precondition.**
+The test performs a small setup step (not one of the case's own 6 numbered
+steps) BEFORE Step 1: dynamically discover any agent the current user has not
+yet liked (reusing `AgentHubPage.find_unliked_application()`, already proven
+by ELITEA-2365) and like it via the existing `click_like_button()` action.
+This produces the case's stated precondition (≥1 liked agent) without
+hardcoding which agent. The case's own Step 1 (fresh navigate) and Step 2
+(dynamic discovery via `data-liked="true"`, per the case text's own
+instruction not to hardcode a specific agent) then proceed exactly as
+written — Step 2 will discover the agent the setup step just liked, because
+(confirmed live) nothing else in the current environment carries
+`data-liked="true"`. Net effect on shared product data: the setup step likes
+one previously-unliked agent, and the case's own Step 3 unlikes that same
+agent — so the run's own steps return the shared like-count baseline to
+exactly where they found it (no separate cleanup block needed, and Step 6's
+persisted-unliked-state assertion is unaffected by this setup — see § Cleanup,
+unchanged). A defensive `finally`-block cleanup unlike still guards the case
+where Step 3 itself never runs (e.g. an earlier step fails) — see the test
+file's own cleanup discipline, mirroring ELITEA-2354's established pattern.
+
 ## Test Data
 
 ### reuse-existing
@@ -95,9 +130,7 @@ None — all 6 case steps were reached and observed live.
 ## Automation Hints
 - Framework: Playwright + pytest (this project), Playwright MCP tools used this dispatch.
 - **Testid/state discovery is complete** — no additional EliteaUI work needed. Both `catalog-agent-like-button-{id}` and `data-liked` are ready for automation.
-- Extend `AgentHubPage` if needed with:
-  - `find_liked_agent_card()` — dynamically search for an agent with `data-testid^="catalog-agent-like-button-"` where `data-liked="true"`, return its application ID so the test can locate it later (after refresh).
-  - `get_unlike_button(application_id)` — reads the like-button's testid for the given ID.
-  - `is_agent_liked(application_id)` — returns boolean based on `data-liked` attribute.
-  - `get_like_count(application_id)` — reads the like-button's text content as an int.
-- Reuse from ELITEA-2354: cleanup is OPPOSITE — ELITEA-2354 re-likes at end (cleanup), this case leaves it unliked (the test's own assertion is the final state).
+- **Implemented (this dispatch) — additive, no existing method bodies modified:**
+  - `AgentHubPage.find_first_liked_application_id(timeout)` — dynamically scans `LIKED_LIKE_BUTTON_PREFIX` (`[data-testid^="catalog-agent-like-button-"][data-liked="true"]`) for the first rendered liked card, returns its application id (parsed from the testid suffix) or `None`.
+  - `AgentHubPage.get_like_button/get_like_count/wait_for_like_count/is_agent_liked/click_like_button` all gained an opt-in keyword-only `first: bool = False` param (default preserves existing callers unchanged) — scopes to `.first` to collapse duplicate renders of the SAME agent card across multiple category sections (Trending + a category rail both render the identical testid — confirmed live, ELITEA-2358's Step 6a; this is Attempt 1's strict-mode-violation root cause, now handled at the abstraction layer instead of ad hoc per test).
+- Reuse from ELITEA-2354: cleanup is OPPOSITE — ELITEA-2354 re-likes at end (cleanup), this case leaves it unliked (the test's own assertion is the final state). See § Preconditions' declared-improvisation note for how this case's dynamic "like" setup step nets out to the same zero-net-mutation outcome.

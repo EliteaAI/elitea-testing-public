@@ -111,7 +111,7 @@ from pages.agent_form_page import AgentFormPage
 from pages.agents_list_page import AgentsListPage
 from playwright.sync_api import expect
 
-pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.mcp]
+pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.mcp, pytest.mark.new]
 
 UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
@@ -207,6 +207,22 @@ class TestNestedAgentWithMcpToolOutput:
             if msg.type == "error" and not _is_known_554_toolkits_404(msg)
             else None,
         )
+
+        # Check if the persistent sub-agent fixture exists via API before UI navigation.
+        # This test requires a pre-existing agent with an MCP toolkit attached — skip
+        # if the fixture is missing (e.g. different environment, data reset).
+        try:
+            sub_agent_data = agent_api.get_agent(SUB_AGENT_ID)
+            if not sub_agent_data or sub_agent_data.get("name") != SUB_AGENT_NAME:
+                pytest.skip(
+                    f"Persistent sub-agent fixture {SUB_AGENT_ID} ({SUB_AGENT_NAME!r}) "
+                    f"not found — this test requires pre-existing test data"
+                )
+        except Exception as e:
+            pytest.skip(
+                f"Persistent sub-agent fixture {SUB_AGENT_ID} not accessible: {e} — "
+                f"this test requires pre-existing test data"
+            )
 
         try:
             with allure.step(

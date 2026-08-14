@@ -56,7 +56,7 @@ from pages.admin_users_page import AdminUsersPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p3, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p3, pytest.mark.regression, pytest.mark.new]
 
 INVALID_EMAILS = ("notanemail", "user@")
 # Pre-selected in the dialog so the disabled-button assertions isolate the

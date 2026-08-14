@@ -722,6 +722,31 @@ class ChatPage(BasePage):
         )
     )
 
+    # Composer chip's own avatar <img>, scoped inside switch_participant_button
+    # (ELITEA-2362). imgTestId added to AgentEditorPanel.jsx's EntityIcon call —
+    # same scoped-static-testid idiom as PARTICIPANT_AVATAR/chat-participant-avatar
+    # (ELITEA-2361), but a DIFFERENT physical element (composer chip, not the
+    # Participants-panel row).
+    CHAT_SWITCH_PARTICIPANT_AVATAR = '[data-testid="chat-switch-participant-avatar"]'
+
+    # ------------------------------------------------------------------
+    # Composer agent/pipeline settings button (ELITEA-2362)
+    # ------------------------------------------------------------------
+    # Sibling control to switch_participant_button and chat_version_selector_trigger
+    # inside the same ButtonGroup (AgentEditorPanel.jsx). The testid itself already
+    # existed on automation/testids (same rework that added
+    # chat-version-selector-trigger) but had never been wired into ChatPage until
+    # this case's Test Outline step referenced it (canon #511).
+    chat_participant_settings_button = LocatorDescriptor(
+        testid="chat-participant-settings-button",
+        description=(
+            "Composer's agent/pipeline settings icon button (SettingIcon), "
+            "shown alongside switch_participant_button and "
+            "chat_version_selector_trigger inside the same ButtonGroup. "
+            "Opens the agent/pipeline settings canvas in-place."
+        ),
+    )
+
     mention_skill_list = LocatorDescriptor(
         testid="skill-mention-list",
         description="Container for the '~mention' skill autocomplete popper's item list"
@@ -838,6 +863,15 @@ class ChatPage(BasePage):
     # row's dynamic testid, same pattern as PARTICIPANT_REMOVE_BUTTON above
     # (ELITEA-2085 addition).
     PARTICIPANT_WARNING_ICON = '[data-testid="chat-participant-warning-icon"]'
+
+    # Participant's avatar <img> (EntityIcon -> EliteAImage.jsx, alt="elitea")
+    # inside the EXPANDED PARTICIPANTS panel row — static testid, scoped via
+    # the row's own dynamic testid, same pattern as PARTICIPANT_REMOVE_BUTTON
+    # above (ELITEA-2361 addition; wired only on ParticipantItem.jsx's normal
+    # non-error card branch — canon #511 scope discipline, the misconfigured/
+    # attention-card branch's own EntityIcon call is a different, unexercised
+    # code path).
+    PARTICIPANT_AVATAR = '[data-testid="chat-participant-avatar"]'
 
     # ------------------------------------------------------------------
     # Users participant type (ELITEA-2095) — independent of the Agent/
@@ -3924,6 +3958,18 @@ class ChatPage(BasePage):
         row.first.wait_for(state="visible", timeout=timeout)
         return row.first
 
+    def get_participant_avatar(self, participant_row, timeout: int = 10000):
+        """Return the avatar ``<img>`` Locator scoped inside *participant_row*
+        (an EXPANDED PARTICIPANTS panel row from
+        :meth:`get_participant_row_by_name`) — testid-based
+        (``PARTICIPANT_AVATAR``, ELITEA-2361), same scoped-static-testid idiom
+        as :meth:`open_agent_participant_settings`'s use of
+        ``PARTICIPANT_EDIT_VIEW_BUTTON``.
+        """
+        avatar = participant_row.locator(self.PARTICIPANT_AVATAR)
+        avatar.wait_for(state="visible", timeout=timeout)
+        return avatar
+
     @action("Open agent participant settings (View settings / Edit agent)")
     def open_agent_participant_settings(self, participant_name: str, timeout: int = 10000):
         """Hover the participant row matching *participant_name* in the
@@ -5104,6 +5150,22 @@ class ChatPage(BasePage):
             text, agent_name, found,
         )
         return found
+
+    def get_switch_participant_avatar(self, timeout: int = 10000):
+        """Return the avatar ``<img>`` Locator scoped inside
+        ``switch_participant_button`` (the composer's own agent-chip avatar,
+        ELITEA-2362) — testid-based (``CHAT_SWITCH_PARTICIPANT_AVATAR``),
+        same scoped-static-testid idiom as :meth:`get_participant_avatar`'s
+        use of ``PARTICIPANT_AVATAR`` inside a Participants-panel row, but a
+        DIFFERENT physical element (composer chip, not the panel row).
+
+        Call after the composer's chip is visible (e.g. after
+        :meth:`is_agent_participant_in_composer` returns True, or after
+        waiting on ``switch_participant_button`` directly).
+        """
+        avatar = self.switch_participant_button.locator(self.CHAT_SWITCH_PARTICIPANT_AVATAR)
+        avatar.wait_for(state="visible", timeout=timeout)
+        return avatar
 
     def is_switch_agent_button_visible(self, timeout: int = 3000) -> bool:
         """Return True if the active-participant composer button currently exists.

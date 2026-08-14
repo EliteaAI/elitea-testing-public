@@ -110,6 +110,39 @@ method's return type doesn't fit a new caller's need, add a same-name-family
 sibling accessor rather than widening/changing the existing method's
 contract.
 
+## Confirmed a third time — ELITEA-2361 fix-only pass (commit 39686d78), plus a new sub-lesson
+
+Third independent occurrence of the filter idiom itself (module-level
+`_is_known_<ISSUE>_<shape>(msg)`, match on BOTH `msg.text` and
+`(msg.location or {}).get("url", "")`, filter at assertion time via list
+comprehension) — this time for a genuinely NEW known-noisy resource
+(elitea-testing-public#1434: an intermittent Google Fonts CDN 404 for a
+Montserrat `.woff2`, app-wide via `index.html`'s `<link>` tag, not tied to
+any specific feature). Reproduced via the same temp-debug-print technique:
+1 hit in 6 fresh re-runs of the target spec.
+
+**New sub-lesson: a known-noisy resource can trip MORE THAN ONE side-channel
+in the same test — filter all of them, not just the one that happened to
+fail in the observed run.** This test also carried an independent
+`page.on("response", ...)` → `failed_responses: list[int]` side-channel
+(status-only, no URL — the same shape used identically across at least 3
+sibling spec files in this batch family, e.g.
+`test_agent_hub_start_conversation_creates_new_chat.py`). The SAME font 404
+that logs a console error also surfaces there as a bare `404` int with no
+URL to filter by. Fixing only the console-error assertion (the one that
+happened to fail in the gate) would have left the network-status assertion
+still exposed to the exact same flake — just relocated it to a different
+line, not fixed it. Changed `failed_responses` to
+`list[tuple[status, url]]` LOCALLY in the one file being fixed (a test
+file's own inline `page.on(...)` listener has no external callers, so this
+is not a shared-caller-file edit — no additive-only constraint applies) and
+added a second filter, `_is_known_<ISSUE>_<shape>_response(status, url)`,
+mirroring the console-message one but keyed on the (status, url) tuple
+`page.on("response", ...)` actually gives you. **When root-causing an
+intermittent red, grep the test for every side-channel assertion sourced
+from the SAME underlying resource/event before declaring the fix
+complete** — not just the one line named in the failure message.
+
 ### Sanity-checking a new assertion isn't tautological — cheap, worth doing on every "add a missing assertion" fix
 
 Before counting the fix as done, temporarily inverted the new comparison
@@ -121,3 +154,20 @@ wired to something real, not silently short-circuited by a bad boolean or an
 always-true guard) — the exact class of bug the review findings in this file
 exist to catch in the first place, so it's worth catching in your own new
 code before shipping it.
+
+## Confirmed a fourth time — ELITEA-2353 fix-only pass (commit d1e7b7d4)
+
+Same #1434 Montserrat-font-404 signature, this time on
+`test_agent_hub_filter_multiple_categories.py`'s Step 7 console-error
+assertion (no network-response side-channel in this test, so only the
+console-message filter was needed — unlike the ELITEA-2361 case above).
+Took 11 fresh re-runs before it fired (1/12 total) — noticeably noisier to
+reproduce than the earlier 1/6 occurrence; don't give up after only 3-6
+clean runs when chasing this specific known defect, budget more attempts.
+Copied `_is_known_1434_montserrat_font_404` verbatim into the new file
+(same repo convention as `_is_known_554_toolkits_404` etc. — one filter
+function per spec file, not a shared cross-file import) rather than
+factoring it into a shared helper module; four independent copies now exist
+across the suite for this one issue. Worth flagging to the lead as a
+tech-debt candidate (extract to a shared `known_defects.py`/similar) if a
+5th copy appears.

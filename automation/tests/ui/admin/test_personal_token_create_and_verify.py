@@ -44,7 +44,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 EXPECTED_WARNING_TEXT = "This token will only be shown once, so make sure to copy and save it."
 EXPECTED_TOAST_TEXT = "The token has been copied to the clipboard."

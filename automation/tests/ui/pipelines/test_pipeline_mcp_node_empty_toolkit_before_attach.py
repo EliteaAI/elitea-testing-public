@@ -22,7 +22,7 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p3, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p3, pytest.mark.regression, pytest.mark.new]
 
 UI_ELEMENT_TIMEOUT = 10_000
 SAVE_RESPONSE_TIMEOUT = 15_000

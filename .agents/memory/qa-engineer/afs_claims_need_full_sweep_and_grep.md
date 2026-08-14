@@ -76,6 +76,18 @@ Nothing in an AFS is true because it is written down. Two mechanical duties:
   correctly `on-main`, so this wasn't a wholesale skip of the check, just one
   stale/wrong row slipping through — same lesson as #1294: verify EVERY row,
   not a sample.
+- PR #1471/ELITEA-2614 — Concrete Handles table has NO PROVENANCE column at
+  all (only "testid" + "Confirmed live this run?"), a step back from #1323's
+  wrong-value-in-the-column failure — it never asks the on-main-vs-testids-
+  only question in the first place. Same recurring testid: `agent-add-agent-
+  button` (still not on main, still from ce74cd40/ELITEA-1887) plus its new
+  sibling `agent-add-pipeline-button` (same story, same introducing PR),
+  plus 4 brand-new tooltip-wrapper testids, ALL genuinely testids-only
+  awaiting human promotion. Not implementer-blocking (implementer correctly
+  treats "on automation/testids" as sufficient to build against, per the
+  pipeline's actual design) but the closure record's promotability row
+  depends on this table and will have to re-derive it from scratch instead
+  of inheriting it.
 - PR #1328/ELITEA-2047 — Coverage Map step-6 row's "Asserted where" cell listed
   "run-in-progress header" among the pause signals covered, mirroring the AFS's
   own Step 6 "Verify" bullet (chat header shows a "Run is in progress" spinner +

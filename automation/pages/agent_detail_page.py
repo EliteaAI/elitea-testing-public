@@ -90,8 +90,13 @@ class AgentDetailPage(AgentFormPage):
     # testid also starts with the `version-option-` prefix but lives on a
     # nested non-option child <svg>, not the option MenuItem itself. Purely
     # testid-keyed (no role/CSS-structure dependency).
+    # VERSION_OPTION_ANY: matches version dropdown option items. Excludes:
+    # - version-option-pin-icon (nested pin icon inside option)
+    # - version-option-set-default-* items (action menu items for "Set as default")
     VERSION_OPTION_ANY = (
-        '[data-testid^="version-option-"]:not([data-testid="version-option-pin-icon"])'
+        '[data-testid^="version-option-"]'
+        ':not([data-testid="version-option-pin-icon"])'
+        ':not([data-testid^="version-option-set-default-"])'
     )
 
     # --- Variables section (ELITEA-1884 testid-only rework — added via
@@ -127,6 +132,25 @@ class AgentDetailPage(AgentFormPage):
     # ELITEA-1887, pushed to automation/testids commit ce74cd40. See
     # open_agent_picker() below.
     add_agent_button = LocatorDescriptor(testid="agent-add-agent-button")
+    # "+ Pipeline" add button (ToolMenu.jsx) — opens a popper listing
+    # project pipelines that could be attached as sub-agent tools. Added
+    # ELITEA-2614 — pre-existing testid on the live app, simply never had a
+    # page-object field before this dispatch.
+    add_pipeline_button = LocatorDescriptor(testid="agent-add-pipeline-button")
+    # Tooltip wrappers for the 4 Tools "+ X" add buttons above — added via
+    # `add-data-testid` in the ELITEA-2614 testid-only rework
+    # (EliteaAI/EliteaUI@2d05a7f1 on `automation/testids`), mirroring the
+    # pre-existing `agent_add_skill_button_tooltip` pattern (SkillMenu.jsx).
+    # MUI's `Tooltip` clones its `title` onto `aria-label` on its IMMEDIATE
+    # child — here the wrapping `<Box component="span">`, NOT the nested
+    # `BaseBtn` that carries the button's own testid above — so a separate
+    # testid on the wrapper is the only testid-only way to read the
+    # tooltip text (`lockedTooltip` / the "Save the ... first" ternary in
+    # `ToolMenu.jsx`). See get_add_toolkit_button_tooltip() etc. below.
+    add_toolkit_button_tooltip = LocatorDescriptor(testid="agent-add-toolkit-button-tooltip")
+    add_mcp_button_tooltip = LocatorDescriptor(testid="agent-add-mcp-button-tooltip")
+    add_agent_button_tooltip = LocatorDescriptor(testid="agent-add-agent-button-tooltip")
+    add_pipeline_button_tooltip = LocatorDescriptor(testid="agent-add-pipeline-button-tooltip")
     toolkit_card = LocatorDescriptor(testid="agent-toolkit-card")
     toolkit_delete_button = LocatorDescriptor(testid="agent-toolkit-delete-button")
     toolkit_search_input = LocatorDescriptor(testid="toolkit-search-input")
@@ -218,7 +242,21 @@ class AgentDetailPage(AgentFormPage):
     # constants): scoped within a single skill's card (resolved via
     # `_skill_card()`), so no per-skill dynamic suffix is needed.
     SKILL_CARD_REMOVE_BUTTON_SELECTOR = '[data-testid="skill-card-remove-button"]'
+    # Attached-skill SkillCard's custom-icon <img> (ELITEA-2605 — new testid,
+    # EliteaAI/EliteaUI@ccc8c001). Same-element-conditional-pair shape as
+    # SKILL_MENU_ITEM_ICON_IMG_SELECTOR above — only the `EliteAImage`
+    # (custom-icon) branch is tagged, the default `SkillIcon` glyph is not.
+    # Scope via ``_skill_card(skill_name).locator(...)``, never page-wide
+    # (the testid repeats once per attached-skill card).
+    SKILL_CARD_ICON_IMG_SELECTOR = '[data-testid="skill-card-icon-img"]'
     SKILL_MENTION_ITEM_SELECTOR = '[data-testid="skill-mention-item-{}"]'
+    # `~`-mention popper row's custom-icon <img> (ELITEA-2605 — new testid,
+    # EliteaAI/EliteaUI@ccc8c001, `MentionSkillList.jsx`). Same
+    # same-element-conditional-pair shape as SKILL_MENU_ITEM_ICON_IMG_SELECTOR
+    # / SKILL_CARD_ICON_IMG_SELECTOR above — only the `EliteAImage`
+    # (custom-icon) branch is tagged. Scope via ``.locator()`` off an
+    # already name-filtered row from :meth:`get_chat_mention_item`.
+    SKILL_MENTION_ITEM_ICON_IMG_SELECTOR = '[data-testid="skill-mention-item-icon-img"]'
     # Version-selector testids (ELITEA-1789 testid-only rework — added via
     # add-data-testid to SkillVersionSelector.jsx; see EliteaUI draft PR #545).
     SKILL_VERSION_TRIGGER_SELECTOR = '[data-testid="skill-version-selector-trigger-{}"]'
@@ -230,6 +268,24 @@ class AgentDetailPage(AgentFormPage):
     # MenuItems while their Menu is closed, so only one card's menu items
     # are ever in the DOM at a time.
     SKILL_VERSION_OPTION_ANY_SELECTOR = '[data-testid^="skill-version-option-"]'
+
+    # Shared UnifiedDropdown row testid (SkillMenu.jsx attach popper, same
+    # component `Popper.select_menuitem_by_testid` in components/mui.py
+    # already targets by raw string) — promoted to a class-level constant
+    # here so :meth:`open_skill_menu`/:meth:`get_skill_menu_item` (ELITEA-2605)
+    # don't repeat the literal. NOT unique per row (repeats once per
+    # dropdown item, same as every other `UnifiedDropdown` consumer) —
+    # callers must filter by text/name.
+    TOOLKIT_MENU_ITEM_SELECTOR = '[data-testid="toolkit-menu-item"]'
+    # SkillMenu dropdown row's custom-icon <img> (ELITEA-2605 — new testid,
+    # EliteaAI/EliteaUI@ccc8c001). Same-element-conditional-pair shape: only
+    # the custom-icon (`EliteAImage`) branch carries this testid, the
+    # default `SkillIcon` glyph branch is untagged (`.agents/testing.md` §
+    # Locator policy, "only the used branch is named"). Scope with
+    # ``.locator()`` off an already name-filtered row from
+    # :meth:`get_skill_menu_item` — never page-wide (the testid repeats
+    # once per row).
+    SKILL_MENU_ITEM_ICON_IMG_SELECTOR = '[data-testid="skill-menu-item-icon-img"]'
 
     # --- Sensitive action authorization ---
     sensitive_action_panel = LocatorDescriptor(testid="sensitive-action-panel")
@@ -507,6 +563,33 @@ class AgentDetailPage(AgentFormPage):
                      "(disabled while the AI publish_validate gate reports "
                      "any Critical issue; canPublish = status !== 'FAIL')",
     )
+    publish_error_alert = LocatorDescriptor(
+        testid="publish-wizard-error-alert",
+        description="Publish wizard — inline error Alert (Validation step), "
+                     "renders a rejected publish's error message (agent "
+                     "entity: validation_failed — 'modified since "
+                     "validation'). Pre-existing testid, added by "
+                     "ELITEA-2597's implementer on the shared "
+                     "PublishWizardModal.jsx component "
+                     "(EliteaAI/EliteaUI@2dafb537, automation/testids); "
+                     "confirmed live (ELITEA-2601) to render unmodified for "
+                     "the Agent flow — no new testid needed, exposed here "
+                     "only because AgentDetailPage never wired it before.",
+    )
+    publish_terms_content = LocatorDescriptor(
+        testid="agent-publish-terms-content",
+        description=(
+            "Publish wizard, Preparation step — the scrollable Publishing "
+            "Terms disclosure text box (PublishingTerms.jsx/TermsContent.jsx, "
+            "ELITEA-2600). Contains the platform's documented guarantee that "
+            "attached Skills/sub-agents are embedded, not stripped, and are "
+            "never independently catalog-listed. Added via add-data-testid "
+            "on the shared component's only call site (PreparationStep.jsx), "
+            "following that call site's existing agent-publish-* naming even "
+            "though the component is entityLabel-shared with the skill-"
+            "publish wizard (same pre-existing precedent as its siblings)."
+        ),
+    )
     # Dynamic (runtime-parameterized) testid for the Publish wizard's
     # Category dropdown options — same shared `select-option-{value}` family
     # (SingleSelectMenuItem.jsx) as FORK_PROJECT_OPTION above, keyed here by
@@ -599,6 +682,32 @@ class AgentDetailPage(AgentFormPage):
         super(AgentDetailPage, self).navigate(f"/agents/all/{agent_id}?viewMode=owner")
         self.wait_for_page_load()
         logger.info("Navigated to agent %d and page loaded", agent_id)
+
+    @action("Navigate to agent's Configuration tab (second-tab-safe)")
+    def navigate_to_configuration_tab(self, agent_id: int):
+        """Navigate directly to the agent's Configuration/Skills panel.
+
+        ELITEA-2601 gotcha, confirmed live: opening a SECOND browser tab on
+        a bare ``/agents/all/{id}`` URL (even with ``?viewMode=owner``)
+        lands on the Chat tab, not the Configuration/Skills panel — the
+        ``destTab=configuration`` query param is REQUIRED to land there
+        directly. Added as a sibling of :meth:`navigate` (not a change to
+        it) because that method's existing behaviour has real callers
+        across the suite that already reach Configuration reliably in a
+        SINGLE-tab flow (the default-active-tab difference only manifests
+        for a genuinely fresh second tab/page).
+
+        Args:
+            agent_id: The numeric agent ID.
+        """
+        super(AgentDetailPage, self).navigate(
+            f"/agents/all/{agent_id}?destTab=configuration&viewMode=owner"
+        )
+        self.wait_for_page_load()
+        logger.info(
+            "Navigated to agent %d Configuration tab (second-tab-safe) and page loaded",
+            agent_id,
+        )
 
     # ------------------------------------------------------------------
     # Wait helpers
@@ -2046,6 +2155,49 @@ class AgentDetailPage(AgentFormPage):
             )
         logger.info("Skill '%s' attached to agent (counter: %r -> %r)", skill_name, counter_before, counter_after)
 
+    @action("Open the '+ Skill' attach dropdown (read-only)")
+    def open_skill_menu(self, timeout: int = 10000) -> Locator:
+        """Open the Skills-section "+ Skill" attach dropdown (SkillMenu.jsx)
+        and return the MuiPopper Locator, WITHOUT selecting any item.
+
+        Read-only companion to :meth:`attach_skill` (which opens + selects +
+        attaches in one call, ELITEA-1735) — added for ELITEA-2605, which
+        needs to inspect a candidate row (its custom-icon `<img>`) BEFORE
+        deciding whether to select it. Does not change attachment state;
+        callers that only inspect should close the popper afterward (e.g.
+        ``page.keyboard.press("Escape")``) rather than clicking a row, or
+        call :meth:`attach_skill` separately (which re-opens its own popper
+        fresh) to actually attach.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator for the open MuiPopper-root.
+        """
+        logger.info("Opening '+ Skill' dropdown (read-only)")
+        self.ensure_skills_section_visible(timeout=timeout)
+        self.agent_add_skill_button.wait_for(state="visible", timeout=timeout)
+        self.agent_add_skill_button.click(force=True)
+        return Popper.wait_for(self.page, timeout=timeout)
+
+    def get_skill_menu_item(self, popper: Locator, skill_name: str, timeout: int = 5000) -> Locator:
+        """Return the SkillMenu dropdown row Locator for an exact skill name.
+
+        LOCATOR: :attr:`TOOLKIT_MENU_ITEM_SELECTOR`, filtered by name text
+        (same shared-row testid :meth:`attach_skill` selects via
+        ``Popper.select_menuitem_by_testid`` — not unique per row, so this
+        must stay scoped to *popper* and filtered by *skill_name*).
+
+        Args:
+            popper: The open MuiPopper Locator (from :meth:`open_skill_menu`).
+            skill_name: Exact name of the skill row to locate.
+            timeout: Maximum wait time in milliseconds.
+        """
+        row = popper.locator(self.TOOLKIT_MENU_ITEM_SELECTOR).filter(has_text=skill_name).first
+        row.wait_for(state="visible", timeout=timeout)
+        return row
+
     @action("Open Create New Skill from Agent")
     def open_create_new_skill(self, timeout: int = 10000):
         """Open the "+ Skill" dropdown and click "Create new".
@@ -2152,6 +2304,60 @@ class AgentDetailPage(AgentFormPage):
         except Exception:
             return None
 
+    def _get_tool_add_button_tooltip(self, wrapper: Locator, timeout: int) -> str | None:
+        """Shared implementation for the 4 Tools "+ X" button tooltip getters.
+
+        Args:
+            wrapper: The button's Tooltip-wrapper `LocatorDescriptor` field
+                (e.g. :attr:`add_toolkit_button_tooltip`).
+            timeout: Maximum wait time in milliseconds.
+        """
+        try:
+            wrapper.wait_for(state="visible", timeout=timeout)
+            return wrapper.get_attribute("aria-label")
+        except Exception:
+            return None
+
+    def get_add_toolkit_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ Toolkit" button's tooltip text (`lockedTooltip`
+        when the version is locked, or the "Save first" hint when unsaved).
+
+        See :attr:`add_toolkit_button_tooltip`'s docstring for why the
+        wrapper (not the button) carries the `aria-label`. Returns None if
+        the wrapper never appears within the timeout.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return self._get_tool_add_button_tooltip(self.add_toolkit_button_tooltip, timeout)
+
+    def get_add_mcp_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ MCP" button's tooltip text — see
+        :meth:`get_add_toolkit_button_tooltip`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return self._get_tool_add_button_tooltip(self.add_mcp_button_tooltip, timeout)
+
+    def get_add_agent_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ Agent" button's tooltip text — see
+        :meth:`get_add_toolkit_button_tooltip`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return self._get_tool_add_button_tooltip(self.add_agent_button_tooltip, timeout)
+
+    def get_add_pipeline_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ Pipeline" button's tooltip text — see
+        :meth:`get_add_toolkit_button_tooltip`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return self._get_tool_add_button_tooltip(self.add_pipeline_button_tooltip, timeout)
+
     def _skills_section_content(self):
         """Return a locator scoped to the Skills accordion's content container.
 
@@ -2217,6 +2423,29 @@ class AgentDetailPage(AgentFormPage):
         ).filter(has_text=skill_name).first
         card.wait_for(state="visible", timeout=timeout)
         return card
+
+    def get_skill_card_icon_src(self, skill_name: str, timeout: int = 5000) -> str:
+        """Return an attached skill's SkillCard custom-icon `<img>` src, or
+        `""` if the card shows the default (non-custom) glyph instead.
+
+        LOCATOR: :attr:`SKILL_CARD_ICON_IMG_SELECTOR`, scoped to the card
+        resolved by :meth:`_skill_card` (ELITEA-2605). Mirrors
+        ``SkillFormPage.get_form_icon_src()``'s "absence = default icon"
+        convention — the `EliteAImage` `<img>` only renders when
+        `skill.icon_meta.url` is set; the default `SkillIcon` SVG glyph
+        renders instead (no `<img>`, no src) otherwise.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        icon_img = card.locator(self.SKILL_CARD_ICON_IMG_SELECTOR)
+        try:
+            icon_img.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return ""
+        return icon_img.get_attribute("src") or ""
 
     def _get_skill_id_from_card(self, card: Locator) -> str:
         """Extract the skill_id embedded in a card's `skill-card-{skill_id}` testid.
@@ -2354,6 +2583,140 @@ class AgentDetailPage(AgentFormPage):
     def close_versions_menu(self):
         """Close the open Versions menu by pressing Escape."""
         self.page.keyboard.press("Escape")
+
+    def get_skill_version_selector_trigger(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Return the version-selector trigger Locator for a skill's card.
+
+        LOCATOR: `skill-version-selector-trigger-{skill_id}`
+        (`SKILL_VERSION_TRIGGER_SELECTOR`), scoped off :meth:`_skill_card`
+        — same handle :meth:`open_skill_version_selector` clicks, exposed
+        directly for callers (ELITEA-2614) that need to inspect the
+        trigger itself (e.g. its `aria-label`) rather than open the menu.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        skill_id = self._get_skill_id_from_card(card)
+        return card.locator(self.SKILL_VERSION_TRIGGER_SELECTOR.format(skill_id))
+
+    @action("Select a skill's version from the Versions menu")
+    def select_skill_version(self, skill_name: str, version_name: str, timeout: int = 10000):
+        """Open a skill card's version selector and click a specific version option.
+
+        LOCATOR: reuses :meth:`open_skill_version_selector`'s skill_id
+        resolution + trigger click to open the "Versions" menu, then clicks
+        the target entry via ``SKILL_VERSION_OPTION_SELECTOR`` — the
+        template constant already defined at class level (ELITEA-1789
+        testid-only rework), never previously called from a public method
+        (ELITEA-1789's own case only ever had one saved version, so
+        selecting a non-base option was never exercised — ELITEA-2610 is
+        the first caller). Selecting a version is an immediate API-level
+        auto-save (PATCH .../skill/prompt_lib/{project}/{skill_id} -> 201),
+        mirroring :meth:`attach_skill`'s counter-polling pattern: rather
+        than trust networkidle alone, poll the trigger's own text until it
+        reflects *version_name* before returning, so callers can safely
+        send the next chat message right after this call.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            version_name: Exact version name to select (e.g. "casual", "base").
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting version %r for skill %r", version_name, skill_name)
+        self.open_skill_version_selector(skill_name, timeout=timeout)
+
+        option = self.page.locator(self.SKILL_VERSION_OPTION_SELECTOR.format(version_name))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+
+        card = self._skill_card(skill_name, timeout=timeout)
+        skill_id = self._get_skill_id_from_card(card)
+        trigger = card.locator(self.SKILL_VERSION_TRIGGER_SELECTOR.format(skill_id))
+
+        deadline = time.time() + timeout / 1000
+        current = ""
+        while time.time() < deadline:
+            current = (trigger.text_content() or "").strip()
+            if current == version_name:
+                break
+            self.page.wait_for_timeout(300)
+
+        if current != version_name:
+            logger.warning(
+                "Version trigger did not update to %r within timeout (still %r)",
+                version_name, current,
+            )
+        logger.info("Skill %r version selector now shows %r", skill_name, current)
+
+    @action("Attempt to open a skill's version selector (locked version — expect no-op)")
+    def attempt_open_skill_version_selector(self, skill_name: str, timeout: int = 5000) -> bool:
+        """Click a skill card's version-selector trigger and report whether
+        the Versions menu actually opened.
+
+        On a locked (published/embedded) agent version,
+        `SkillVersionSelector.jsx`'s trigger has `onClick={isUpdating ||
+        disabled ? undefined : handleOpen}` — clicking a `Box` with no
+        `onClick` handler is a legal Playwright click that simply does
+        nothing (source-confirmed, ELITEA-2614). Distinguishes an
+        intentional "attempt and observe no-op" from
+        :meth:`open_skill_version_selector`, which asserts the menu DOES
+        open and would just time out here without telling the caller
+        whether the click itself was refused or merely slow.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds for the trigger
+                itself; the post-click menu check uses a short fixed
+                window (menus that DO open render near-instantly).
+
+        Returns:
+            True if the Versions menu opened after the click, False if it
+            stayed closed (the expected outcome on a locked version).
+        """
+        trigger = self.get_skill_version_selector_trigger(skill_name, timeout=timeout)
+        trigger.wait_for(state="visible", timeout=timeout)
+        trigger.click()
+        return self.is_versions_menu_open(skill_name, timeout=1500)
+
+    @action("Hover a skill's card to reveal its hover-only action buttons")
+    def hover_skill_card(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Hover a skill's card and return its Locator, revealing the
+        hover-only "remove skill" / "open in new tab" icon buttons
+        (`SkillCard.jsx`'s `actionButton` style flips `display:none` ->
+        `flex` only on the card's `:hover` CSS rule).
+
+        Extracted from :meth:`remove_skill`'s hover-prep steps for callers
+        (ELITEA-2614) that need to ASSERT on the revealed buttons
+        (disabled state, `aria-label`) without actually removing anything.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds for the card itself.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        card.scroll_into_view_if_needed()
+        card.hover()
+        self.page.wait_for_timeout(500)  # hover-reveal CSS transition
+        return card
+
+    def get_skill_card_remove_button(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Return the "remove skill" icon button Locator for a skill's card.
+
+        LOCATOR: `SKILL_CARD_REMOVE_BUTTON_SELECTOR`, scoped off
+        :meth:`_skill_card` (same handle :meth:`remove_skill` clicks).
+        DOM-attribute reads (`get_attribute("aria-label")`,
+        `is_disabled()`) work regardless of the card's hover state; callers
+        that need real VISIBILITY should call :meth:`hover_skill_card`
+        first.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        return card.locator(self.SKILL_CARD_REMOVE_BUTTON_SELECTOR)
 
     def is_remove_skill_button_visible(self, skill_name: str, timeout: int = 5000) -> bool:
         """Point-in-time check: is the "remove skill" icon button currently
@@ -2586,6 +2949,30 @@ class AgentDetailPage(AgentFormPage):
         """
         return self._embedded_chat_messages().count()
 
+    def get_last_message_tool_chip_texts(self, timeout: int = 10000) -> list[str]:
+        """Return the text of every ``chat-answer-tool-chip`` in the LAST
+        embedded-chat message, scoped to that message only (ELITEA-2610).
+
+        Distinct from :meth:`get_nested_agent_tool_chip_texts`, which is
+        scoped INSIDE a nested sub-agent's own accordion details (a parent
+        agent invoking another agent as a tool). This reader is for the
+        TOP-LEVEL case — an agent invoking a skill directly, no nested
+        sub-agent involved — and scopes to the last ``chat-message-item``
+        so that across multiple turns in one conversation, only the most
+        recent turn's chip(s) are read, never an earlier turn's.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for at least one
+                chip to appear in the last message.
+
+        Returns:
+            List of chip text strings (e.g. ``["Skill: my-skill-name"]``).
+        """
+        last_msg = self._embedded_chat_messages().last
+        chips = last_msg.locator(self.CHAT_ANSWER_TOOL_CHIP_SELECTOR)
+        chips.first.wait_for(state="visible", timeout=timeout)
+        return [(chips.nth(i).text_content() or "").strip() for i in range(chips.count())]
+
     def get_chat_starter_tiles(self):
         """Return the Locator matching ALL rendered embedded-chat conversation
         starter tiles (ELITEA-1886) — use ``.count()`` to verify the configured
@@ -2711,6 +3098,50 @@ class AgentDetailPage(AgentFormPage):
         self.chat_send_button.wait_for(state="visible", timeout=timeout)
         self.chat_send_button.click()
         logger.info("Mention message sent (~%s)", skill_name)
+
+    @action("Type ~ in embedded chat")
+    def type_tilde_in_chat(self, timeout: int = 10000) -> Locator:
+        """Type "~" in the embedded chat message input and wait for the
+        "Mention skill" popper to appear, WITHOUT selecting any item.
+
+        Read-only counterpart to :meth:`send_chat_message_with_mention`
+        (ELITEA-2605) — that method types "~", selects a row, appends a
+        prompt, and sends in one call; this method stops right after the
+        popper opens, so a caller can inspect a row (e.g. its custom-icon
+        `<img>`) before deciding whether to select it. Mirrors
+        :meth:`type_tilde_in_instructions`'s read-only shape for the
+        Instructions-field mention entry point.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator scoped to the open ``skill_mention_list`` popper.
+        """
+        logger.info("Typing ~ in embedded chat to open mention popper")
+        self.chat_message_input.wait_for(state="visible", timeout=timeout)
+        self.chat_message_input.click()
+        self.chat_message_input.press_sequentially("~", delay=50)
+        self.skill_mention_list.wait_for(state="visible", timeout=timeout)
+        return self.skill_mention_list
+
+    def get_chat_mention_item(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Return the embedded-chat "~"-mention popper row Locator for an
+        exact skill name.
+
+        LOCATOR: :attr:`SKILL_MENTION_ITEM_SELECTOR`, scoped to the open
+        ``skill_mention_list`` popper (call after :meth:`type_tilde_in_chat`).
+
+        Args:
+            skill_name: Exact name of the attached skill to look for.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.skill_mention_list.wait_for(state="visible", timeout=timeout)
+        row = self.skill_mention_list.locator(
+            self.SKILL_MENTION_ITEM_SELECTOR.format(skill_name)
+        ).first
+        row.wait_for(state="visible", timeout=timeout)
+        return row
 
     # ------------------------------------------------------------------
     # LLM model selector (embedded chat panel, ELITEA-1881)
@@ -3703,6 +4134,118 @@ class AgentDetailPage(AgentFormPage):
         self.wait_for_network(timeout=timeout)
         logger.info("Publish confirmed — status=%d", status)
         return status
+
+    @action("Continue from Publish wizard Preparation step, capturing the raw response")
+    def click_publish_continue_and_capture_response(self, timeout: int = 15000):
+        """Click "Continue" and wait for the ``publish_validate`` response,
+        returning the raw Playwright ``Response`` (not just the status).
+
+        Additive sibling of :meth:`click_publish_continue` — that method's
+        ``int``-only return is an established contract with real callers
+        (``test_agent_publish_unpublish_version.py``,
+        ``test_agent_version_selector_order.py``); this method exists
+        because callers that need the response BODY (``critical_issues[]``/
+        ``warnings[]``/``recommendations[]`` — each entry carrying
+        ``field``/``context``/``issue``/``fix``, per
+        ``ValidationResult.jsx``'s ``buildPlainText()``) cannot get it from
+        an ``int``. Mirrors ``SkillDetailPage.click_publish_continue()``'s
+        own ``Response``-returning shape (ELITEA-2597), added here for the
+        AGENT entity (ELITEA-2601 — per-skill validation-issue attribution
+        assertions need the ``context: "skill: <name>"`` field, which only
+        the response body carries).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The matched Playwright ``Response`` for the
+            ``publish_validate`` call.
+        """
+        logger.info("Clicking Publish wizard Continue (capturing response)")
+        with self.page.expect_response(
+            lambda r: "publish_validate" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as validate_info:
+            self.publish_continue_button.click()
+        response = validate_info.value
+        self.publish_confirm_button.wait_for(state="visible", timeout=timeout)
+        logger.info("publish_validate responded status=%d", response.status)
+        return response
+
+    def is_publish_confirm_enabled(self) -> bool:
+        """Return whether the Validation step's "Publish" button is enabled.
+
+        Mirrors ``SkillDetailPage.is_publish_confirm_enabled()`` — added
+        here for the AGENT entity (ELITEA-2601), which previously only had
+        ``is_publish_continue_enabled()`` for the Preparation step.
+        """
+        return self.publish_confirm_button.is_enabled()
+
+    @action("Confirm Publish, capturing the raw response")
+    def confirm_publish_and_capture_response(self, timeout: int = 15000):
+        """Click the Validation step's "Publish" button and wait for the
+        ``publish`` request to resolve, returning the raw Playwright
+        ``Response`` (not just the status).
+
+        Additive sibling of :meth:`confirm_publish` — same reconciliation
+        rationale as :meth:`click_publish_continue_and_capture_response`
+        above: ``confirm_publish()`` is an established ``int``-returning
+        contract with real callers, so a ``Response``-returning override
+        would silently shadow it. Callers that need the response BODY's
+        ``error``/``msg`` fields (e.g. distinguishing the AGENT entity's
+        ``validation_failed`` "modified since validation" rejection,
+        ELITEA-2601) use this method instead. Mirrors
+        ``SkillDetailPage.confirm_publish_and_capture_response()``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The matched Playwright ``Response`` for the ``publish`` call.
+        """
+        logger.info("Confirming Publish (capturing response)")
+        with self.page.expect_response(
+            lambda r: "/publish/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as publish_info:
+            self.publish_confirm_button.click()
+        response = publish_info.value
+        logger.info("Publish confirmed — status=%d", response.status)
+        return response
+
+    def get_publish_error_message(self, timeout: int = 5000) -> str:
+        """Return the Publish wizard's inline error Alert text.
+
+        LOCATOR: ``publish-wizard-error-alert`` (pre-existing, shared with
+        the Skill flow — see the ``publish_error_alert`` field docstring).
+        Renders the SAME ``msg`` text the ``publish`` response body
+        carries, inline in the Validation step, once a rejected publish
+        attempt (e.g. a stale ``validation_failed`` token) lands.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.publish_error_alert.wait_for(state="visible", timeout=timeout)
+        return (self.publish_error_alert.text_content() or "").strip()
+
+    @action("Close Publish wizard via Escape")
+    def close_publish_wizard(self, timeout: int = 5000):
+        """Close the Publish wizard dialog by pressing Escape.
+
+        Mirrors ``SkillDetailPage.close_publish_wizard()`` — added here for
+        the AGENT entity (ELITEA-2601). Escape calls the SAME ``onClose``
+        handler as the (untestid'd) "Cancel" button, and both re-opening
+        and closing reset the shared wizard's state, so re-opening after
+        this always starts a fresh Preparation step (confirmed live,
+        ELITEA-2601, matching the Skill flow's already-documented shape).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog to hide.
+        """
+        logger.info("Closing Publish wizard via Escape")
+        self.page.keyboard.press("Escape")
+        self.publish_confirm_button.wait_for(state="hidden", timeout=timeout)
+        logger.info("Publish wizard closed")
 
     @action("Select a version by name from the VERSION dropdown")
     def select_version_by_name(

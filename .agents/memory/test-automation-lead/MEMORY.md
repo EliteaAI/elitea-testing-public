@@ -24,7 +24,7 @@
 - [Review-round rulings](review_round_rulings.md) — full re-check each round; verdict recorded; R2 cap by signature
 - [Testid-usage extraction scope](testid_usage_scope.md) — grep all of automation/; trace the test's own call chain
 - [AFS gate rulings](afs_gate_rulings.md) — the AFS itself can be wrong: locators, provenance, status header
-- [No-edit guardrail is repo-agnostic](no_edit_guardrail_repo_agnostic.md) — 5× violated; conflicts are dispatched, always
+- [No-edit guardrail is repo-agnostic](no_edit_guardrail_repo_agnostic.md) — 6× violated; ANY merge's conflicts are dispatched, always
 - [Workflow outcomes aren't ground truth](gate_red_at_1_run_lead_confirms_sanctioned_red_before_landing.md) — gh pr view + git log every unit (8×)
 - [Gate stalls: 4 shapes, 4 recoveries](workflow_gate_hard_failure_vs_soft_stall_different_recovery.md) — hard-fail resumes; not-run you run (7×)
 - [Landing is manual](batch_workflow_never_opens_trunk_to_base_pr.md) — push local refs, open trunk→base PR, verify report.json landed (12×)
@@ -34,3 +34,8 @@
 - [Gate red moving between tests](gate_red_recurring_on_different_tests_check_tracker_before_diagnosing.md) — same signature = shared cause, grep tracker
 - [Unshallow siblings before every sync](sibling_clones_can_go_shallow_check_before_sync.md) — shallow clones lie about ahead/behind
 - [--collect-only prints a tree, not node-ids](pytest_collect_only_renders_tree_not_flat_ids.md) — derive ids from source; zsh won't split $VAR
+- [Montserrat font 404 is known-noisy](known_noisy_resource_montserrat_font_404.md) — app-wide CDN flake; caught 4× only by lead's own gate; filter idiom exists
+- [Cherry-pick clean units off a broken trunk](cherry_pick_clean_units_off_broken_trunk.md) — one bad unit doesn't sink the whole batch; land the rest alone
+- [2 Workflow hard-fails on one batch = switch to direct dispatch](workflow_combined_route_unreliable_switch_to_direct_dispatch.md) — combined-route + retry clusters unreliable
+- ["blocked"+StructuredOutput note = near-certain false report](report_case_outcome_can_falsely_say_blocked_for_an_already_merged_case.md) — verify git, expect it actually merged (2×)
+- [NEVER call build_index for a routine back-write](build_index_regression_must_be_reverted_not_carried.md) — colliding ids make it destructive; surgical-edit by `path` (2×)

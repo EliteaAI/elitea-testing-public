@@ -273,6 +273,105 @@ outlaws state-value-switched testids on the same live element.)
   shows non-testid workarounds, prefer adding the testid; the workaround is only
   for elements that fail the stop+flag test).
 
+## Fidelity policy — the observable must be produced by the system (AUTHORITATIVE)
+
+_Companion to § Locator policy. That section governs **how** a test finds a thing;
+this one governs **whether what it observes is real**. Like the locator policy, it
+OVERRIDES any skill's defaults or examples. Seeded 2026-08-14 after the
+response-mocking drift audit — full incident report in the bundle repo:
+`sdlc-skills/bundles/test-automation/incidents/2026-08-14-response-mocking-drift.md`._
+
+**The rule.** An assertion is evidence only if the value it reads was **produced by
+the system under test**, reached through the same path a real consumer would
+trigger. Anything the test authors, injects, forces, or short-circuits between the
+trigger and the observable is a **substitution**.
+
+Substitutions are not exotic and the list is open-ended. Known shapes:
+
+| Shape | Example |
+|---|---|
+| Fabricated response | `page.route(...)` + `route.fulfill()` returning a hand-written body |
+| Injected / forced app state | `page.evaluate()` writing a store or DOM value the product should compute |
+| Wrong-interface precondition | seeding via API what the case says the user creates in the UI |
+| Replaced module or client | `monkeypatch`, stubbed API client, fake transport |
+| Bypassed subject | reusing `auth_state` in a case whose subject IS the login flow |
+
+**The two-tier test — travel vs conclude.** Same principle as the team's *"Reuse to
+travel and to know — never to conclude"*, applied to substitution:
+
+- **Transit substitution** — used ONLY to *reach* the step under test; the case's own
+  observable is still produced by the system. **Allowed**, and must be declared: an
+  AFS **§ Fidelity Declaration** row plus one docstring line naming what was
+  substituted and why.
+- **Terminal substitution** — the case's observable is read off the substituted
+  thing. **Forbidden**, however well justified, unless the case text itself asks
+  (below). A test in this shape proves the test's own payload, not the product.
+
+**The one unconditional exception: the case asks.** When the TMS case text requests
+simulation — *"trigger or simulate a generation failure"*, *"simulate a network
+interruption"*, *"with the service unavailable"* — simulation **is** the subject and
+terminal substitution is correct. Quote the case line in the AFS and the docstring.
+Absent such a line, the case did not ask, and no amount of reasoning supplies it.
+
+**Timing control is NOT substitution.** Delaying a *real* response via `page.route()`
+so a transient state (spinner, skeleton, progress) becomes observable leaves the
+product as the producer of every asserted value. Legitimate, and in active honest use
+(`tests/ui/artifacts/test_artifacts_download_*_zip.py`). This section is not a ban on
+`page.route` — it is a ban on **fabricating what the case came to observe**.
+
+**When the observable cannot be produced honestly, that is a decision, not a puzzle.**
+If the case's expected state cannot be reached against the real system (the product
+never emits it, the data cannot be built, the boundary is unreachable), do NOT
+engineer around it. Stop and route it: AFS `blocked` with § Blocked Steps naming
+exactly what could not be produced → lead → a `question` card for a human. A case
+that cannot be automated faithfully is a decision about scope or about the case
+text — never an implementation detail the analyst or implementer settles alone.
+
+### How to test a NONDETERMINISTIC producer without substituting it
+
+The usual argument for a fabricated response is *"the producer is nondeterministic
+(an LLM, a ranking service, a clock), so I cannot know the values to assert."* That is
+a false dilemma — it skips the third option:
+
+> **Capture the real response and assert the UI against it. The response is the
+> oracle, not a payload you wrote.**
+
+The assertion is then fully deterministic (always satisfiable) while every value still
+comes from the product. The helpers already exist:
+
+```python
+# pages/generate_entity_modal_page_base.py — live, not mocked
+response = modal.click_generate_and_wait_for_response(timeout=LIVE_GENERATE_RESPONSE_TIMEOUT)
+assert response.status == 200
+body = response.json()
+assert body["name"]                                  # the producer produced something
+assert modal.get_review_name() == body["name"]       # the UI carried it through faithfully
+```
+
+Worked precedent in-repo: ELITEA-1909/1911 in `tests/ui/agents/test_agent_build_with_ai.py`
+already run this way, in the same file as the mocked ones.
+
+The three moves this unlocks:
+
+| Instead of | Assert |
+|---|---|
+| `field == HAND_WRITTEN_PAYLOAD["field"]` (a tautology) | `field == response_body["field"]` — a real check that the UI neither dropped nor mangled the data |
+| a fabricated boundary the product never emits | the **invariant**: `rendered_count == len(body["items"])` **and** `rendered_count <= LIMIT` — this catches a real violation in the wild, which a mocked boundary never can |
+| exact strings you chose | shape and constraints: non-empty, within limits, correct types, correct correlation |
+
+**Cost, stated honestly:** a live call costs seconds (10–30 s here) where a mock costs
+milliseconds, and that is real pressure against the N×-green gate below. Accept it —
+wait on the network event, never on a sleep, and flake risk stays low. If a producer
+is so slow or unstable that the honest test is unusable, that is a finding to route
+(`blocked` → lead), not a licence to fabricate.
+
+**Why this is load-bearing.** A substituted test is *more* deterministic than an
+honest one, so it clears the N×-green merge gate more easily (§ Merge gate) —
+selection pressure runs **toward** substitution unless a rule pushes back. And on
+merge it back-writes `execution_type: automated` to the TMS, so the coverage number
+claims a scenario nobody verified. Both failure modes are silent; neither shows up
+as a red test.
+
 ## Test data strategy
 
 - Config/env via `automation/config.py` (pydantic-settings): `.env.test` file BEATS

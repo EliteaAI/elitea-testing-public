@@ -20,7 +20,7 @@ from pages.project_context_page import ProjectContextPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p1, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p1, pytest.mark.regression, pytest.mark.new]
 
 MAX_CHARS = 2500
 EXPECTED_LIMIT_TEXT = "0 characters left. You have reached the maximum character limit."

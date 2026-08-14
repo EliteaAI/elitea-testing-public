@@ -1,0 +1,546 @@
+{
+  "batch": "skills-remaining-w1",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-skills-remaining-w1",
+  "gate": {
+    "verdict": "incomplete",
+    "runs": 0,
+    "seconds": [],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2428",
+      "outcome": "blocked",
+      "note": "attempted and still failing: Remove or fix the unreferenced entity_card_icon LocatorDescriptor field in automation/pages/skills_list_page.py after 1 fix round(s): Fix or justify SkillsListPage.table_view_button — currently an unreferenced LocatorDescriptor field on this diff's executed path (locator-policy 'referenced = called on the executed path' rule, canon ",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Card.jsx's hover-description tooltip (StyledTooltip title JSX, name+description Typography nodes) has zero data-testid on either node — not filed as a tracker bug (this is exactly the kind of finding the AFS's testid-gap contract routes to the implementer per role-overrides.md, not a product defect). Implementer should add data-testid=\"entity-card-description-tooltip\" to the description Typography… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_skills-card-view-fields_ELITEA-2428.md"
+        },
+        {
+          "kind": "note",
+          "note": "entity-card-icon / entity-card-icon-img exist on EliteaAI/EliteaUI automation/testids only (added for ELITEA-1899), not yet on main — awaiting human cherry-pick. SkillsListPage has no page-object field for them yet (only AgentsListPage does, same shared Card.jsx component) — implementer work is plumbing only, no add-data-testid round-trip needed."
+        },
+        {
+          "kind": "note",
+          "note": "Skills page's view-toggle buttons (Card view / Table view) carry agent-*-prefixed testids (agent-card-view-button, agent-table-view-button) because the shared ViewToggle.jsx component hardcodes those as default prop values and Skills.jsx:70 renders <ViewToggle /> with no override. Confirmed functionally correct on the Skills page via source (both testids present on main) — same non-defect naming q… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Dispatch named intake folder skills-remaining-w1 which does not exist under .agents/automation/ — the real case snapshot lives under skills-remaining (no -w1 suffix). Worked around by using the sibling folder; flagging for the orchestrator in case other cases in this wave hit the same path mismatch."
+        },
+        {
+          "kind": "note",
+          "note": "AFS's Concrete Handles/Automation Hints for the card icon field contained a live-verification gap: it instructed mirroring AgentsListPage.get_card_icon_src() 'verbatim', but that method waits on the entity-card-icon-img inner <img> testid, which per EntityIcon.jsx only mounts once a CUSTOM icon has been selected. This case's own Test Data (a skill created fresh via the UI form) never sets a custom… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1440"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — dead/unreferenced LocatorDescriptor field: `entity_card_icon` (testid `entity-card-icon`) is added to SkillsListPage per the AFS's Amendment note, but nothing in this PR ever calls `self.entity_card_icon` — neither the test file nor `card_icon_locator()` (which instead uses a separately-declared `CARD_ICON_SELECTOR = '[data-testid=\"entity-card-icon\"]'` string constant chained off `card… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skills_list_page.py:157-160"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else triangulates cleanly. Case snapshot (`.agents/automation/skills-remaining/cases/ELITEA-2428.md`, the dispatched `-w1` folder doesn't exist — correctly flagged by the analyst as a dispatch-slug drift, not a missing case) <-> AFS (`test-specs/skills/l2_skills-card-view-fields_ELITEA-2428.md`) <-> diff all agree. Coverage Map: all 3 case steps + the 4 decomposed sub-observables (icon/… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer's blocking finding fixed: unreferenced entity_card_icon LocatorDescriptor field removed (automation/pages/skills_list_page.py); added automation/tests/unit/test_skills_list_page_locator_inventory.py as a regression guard, verified it catches the exact defect (red pre-fix / green post-fix).",
+          "ref": "automation/pages/skills_list_page.py:157"
+        },
+        {
+          "kind": "note",
+          "note": "Mid-task git hazard avoided, no work lost: `git stash push -- <tracked> <brand-new-untracked>` aborts silently (no stash created) when a pathspec is untracked; a following `git stash pop` then popped an unrelated foreign stash (`tests/2009-pipeline-code-node-configuration` WIP) causing a merge conflict on an unrelated memory file. Recovered with `git checkout HEAD -- <file>` (discards the unwanted… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — new dead-code LocatorDescriptor: automation/pages/skills_list_page.py table_view_button (added ~line 141, same commit that introduced the now-fixed entity_card_icon dead field) is defined but never called anywhere on this PR's executed path — not in SkillsListPage's own methods, not in automation/tests/ui/skills/test_skill_card_view_fields.py. The AFS's own Concrete Handles table (test… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skills_list_page.py:141"
+        },
+        {
+          "kind": "defect",
+          "note": "Important — the new regression guard (automation/tests/unit/test_skills_list_page_locator_inventory.py) added in fix round 1 to catch exactly the unreferenced-LocatorDescriptor-field class of bug has a scoping flaw that lets table_view_button through: test_skills_list_page_has_no_unreferenced_locator_descriptor_fields() extracts field NAMES from skills_list_page.py but then greps for '\\.{field}\\b'… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/unit/test_skills_list_page_locator_inventory.py:47"
+        },
+        {
+          "kind": "defect",
+          "note": "Nit/doc-fidelity — AFS drift not amended in the fix-round-1 commit (fd8fee25 touches only skills_list_page.py + the new unit test, not the AFS). test-specs/skills/l2_skills-card-view-fields_ELITEA-2428.md:174-181 ('Corrected implementation: SkillsListPage gets only the outer entity_card_icon field ...') and the Automation Hints at :227-230 ('Add entity_card_icon + get_card_icon_src(name) to Skills… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_skills-card-view-fields_ELITEA-2428.md:174"
+        },
+        {
+          "kind": "note",
+          "note": "Prior round-1 blocking finding (unreferenced entity_card_icon field) is genuinely fixed: the field is gone from skills_list_page.py, CARD_ICON_SELECTOR + card_icon_locator() is the sole compliant locating path, and the mechanical locator-policy grep on the diff shows 0 non-compliant hits (2 hits: 1 comment, 1 compliant `.locator(self.CARD_ICON_SELECTOR)` off a class-level `[data-testid=` constant)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/skills/l2_skills-card-view-fields_ELITEA-2428.md",
+      "branch": "tests/ELITEA-2428-skills-card-view-fields",
+      "pr": 1440
+    },
+    {
+      "id": "ELITEA-2429",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-skills-remaining-w1, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Pre-existing dead LocatorDescriptor: SkillsListPage.page_header (testid=\"skills-page-header\") pointed at a testid that did not exist anywhere in EliteaUI src (main or automation/testids) — Skills.jsx's <StickyTabs> call never passed a titleTestId prop, unlike Applications.jsx (Agents), which passes titleTestId=\"agents-page-header\" to the same shared StickyTabs.jsx component. First test to actually… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Case dispatch path in the prompt (.agents/automation/skills-remaining-w1/cases/ELITEA-2429.md) does not match the actual on-disk case-snapshot directory (.agents/automation/skills-remaining/cases/ELITEA-2429.md, no -w1 suffix). Read from the correct actual path; batch trunk name (tests/batch-skills-remaining-w1) and surface_key (skills-remaining-w1) still matched the dispatch, so proceeded without… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for non-testid locators run on full diff (automation/pages/ + automation/tests/): `git diff origin/tests/batch-skills-remaining-w1...origin/tests/ELITEA-2429-skill-editor-back-button -- automation/pages/ automation/tests/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'`… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Testid provenance verified with fresh `git fetch origin` in ../EliteaUI: `back-button` (BackButton.jsx:120) and `entity-card-name` (Card.jsx:208) present on origin/main; the new fix `skills-page-header` (EliteaUI@b29c9b03) confirmed pushed to origin/automation/testids but not yet on origin/main — correctly not claimed as promoted in the PR body."
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case snapshot .agents/automation/skills-remaining/cases/ELITEA-2429.md ↔ AFS test-specs/skills/l2_skill-editor-back-button-returns-to-skills-list_ELITEA-2429.md ↔ diff. Every Coverage-Map Axis-1 row has a matching real assertion in test_skill_back_navigation.py; Axis-2 additions (negative /chat check, list-reintegrity check, console-error check) are grounded, not scope creep."
+        },
+        {
+          "kind": "note",
+          "note": "Page-object diffs (skill_detail_page.py, skills_list_page.py) are purely additive — `git diff ... -- automation/pages/ | grep -E '^-[^-]'` returns empty; no existing method body touched. No duplicate-method violation despite back_button/click_back_button existing on both AgentDetailPage and SkillDetailPage (unrelated classes, same established mirror pattern as verify_dashboard_header_visible on bo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Case Step 2 (click Back) carries no explicit `assert` in its allure block, but the case text itself splits vague action (Step 2) from the specific named observable (Step 3); list_page.wait_for_page_load() inside Step 2 still performs a hard-raising wait_for_url regex check, so it is not a silent bare action. Judged non-blocking, consistent with the sibling ELITEA-1869 test's intent even though tha… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Minor non-blocking naming inconsistency: PR body cites case source as .agents/automation/skills-remaining/cases/ELITEA-2429.md (no -w1 suffix) while the batch trunk is tests/batch-skills-remaining-w1 — harmless, not a diff defect."
+        }
+      ],
+      "afs": "test-specs/skills/l2_skill-editor-back-button-returns-to-skills-list_ELITEA-2429.md",
+      "branch": "tests/ELITEA-2429-skill-editor-back-button",
+      "pr": 1441
+    },
+    {
+      "id": "ELITEA-2430",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-skills-remaining-w1, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "No testid gaps for ELITEA-2430 — every element the case touches (Name/Description/Instructions fields, Save button, list-card name) already had a stable data-testid wired on SkillFormPage/SkillsListPage. No add-data-testid round-trip needed."
+        },
+        {
+          "kind": "note",
+          "note": "Added one additive page-object method: SkillFormPage.set_name() (mirrors the existing set_description() reliable clear-then-fill pattern: click + select_text() + Backspace + type). fill_form()'s internal _fill_text_input() (Ctrl+A + type) does not reliably clear an already-populated field back to empty — needed for the case's step 6 (clear both Name and Description). No existing method body touche… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_form_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Live exploration surfaced per-field MUI helper text (\"Name is required\" / \"Description is required\") that renders but carries no data-testid in CreateSkillForm.jsx. Out of scope for this case — it only asserts the Save button's enabled/disabled state, not the helper text — so no testid was requested and no new gap was flagged.",
+          "ref": "test-specs/skills/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing ruff I001 (unsorted import block) exists on both touched files (skill_form_page.py, test_skill_management.py) predating this change — confirmed by isolated-linting the trunk's copy of each file before editing. Not introduced by this PR; left alone per additive-only discipline rather than reordering imports in a shared, multi-caller file."
+        },
+        {
+          "kind": "note",
+          "note": "Wave-dispatch case-snapshot path gotcha recurred on a new campaign: dispatch named `.agents/automation/skills-remaining-w1/cases/ELITEA-2430.md`, actual path is `.agents/automation/skills-remaining/cases/ELITEA-2430.md` (no -w1 suffix on the campaign-level dir). Same pattern previously logged for pipelines-remaining; existing memory entry updated in place rather than duplicated.",
+          "ref": ".agents/memory/test-automation-engineer/wave_dispatch_case_snapshot_dir_has_no_wave_suffix.md"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation complete: TMS case ELITEA-2430 (.agents/automation/skills-remaining/cases/ELITEA-2430.md) -> AFS (test-specs/skills/l3_skill-creation-mandatory-fields-validation_ELITEA-2430.md) -> PR #1442 diff. AFS is a faithful translation of the case (all 10 steps + expected results mapped, Coverage Map complete, no dropped elements). Every Coverage-Map 'asserted' row has a real assertion at the … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the diff (automation/pages/, automation/tests/) for get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page.locator|.locator( -> 0 hits (empty). Command: git diff origin/tests/batch-skills-remaining-w1...origin/tests/ELITEA-2430-skill-mandatory-fields-validation -- automation/pages/ automation/tests/ | grep … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Additive-only check on automation/ files: git diff ... | grep -nE '^-[^-]' -> 0 hits. Only pre-existing tracked code touched is the new set_name() method (LocatorDescriptor field name_input_field, mirrors the already-proven set_description() clear-then-fill pattern using Locator.select_text()+Backspace) and the new test class — no existing method body or assertion was altered."
+        },
+        {
+          "kind": "note",
+          "note": "Test-data, markers (p3+skills, matching the file's module-level pytestmark and sibling TestCreateSkill's own convention of no explicit 'regression' marker), cleanup (manual try/finally via the pre-existing skill_api fixture from automation/fixtures/api_fixtures.py, per api-patterns.md rather than replicating the file's inline clean_skill fixture), and allure.issue/allure.step usage all match estab… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking observation: AFS lists 'No console errors, no unexpected network failures' under Expected Results but the new test adds no console-message capture/assertion. This matches the sibling TestCreateSkill test in the same file (also no console check) and the TMS case has no explicit console-error step, so it is not a regression introduced by this PR and not a masking concern — flagging only… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/skills/l3_skill-creation-mandatory-fields-validation_ELITEA-2430.md",
+      "branch": "tests/ELITEA-2430-skill-mandatory-fields-validation",
+      "pr": 1442
+    },
+    {
+      "id": "ELITEA-2431",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-skills-remaining-w1, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Case snapshot dispatch path (.agents/automation/skills-remaining-w1/cases/ELITEA-2431.md) does not exist -- the actual campaign uses a shared cases dir without the wave suffix (.agents/automation/skills-remaining/cases/ELITEA-2431.md, per the campaign card .agents/automation/campaigns/skills-remaining.md). Found and used the correct file; flagging in case other w1 dispatches hit the same path mism… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Discovered (source-level, EliteaUI src) that the Skill edit form's Save button reuses the SAME data-testid as the create form's Save button but drives a completely different hook (PUT + stay-on-page vs POST + navigate-to-detail). A generic create-flow save helper reused on an edit form would silently false-pass without ever waiting for the save to land. Worth checking whether Agent/Pipeline detail… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "automation/tests/ui/skills/test_skill_management.py:325 (TestEditSkill::test_edit_name_description_instructions_persist, Step 3) — the AFS's own Test Steps § step 3 Verify text says the edit-Save must confirm 'the page stays on the same detail URL (no navigation, unlike the create-flow Save)'. This is exactly the behavior `SkillDetailPage.save_edits()` (automation/pages/skill_detail_page.py:726) w… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_management.py:325"
+        },
+        {
+          "kind": "note",
+          "note": "automation/tests/ui/skills/test_skill_management.py:272 — new TestEditSkill carries @pytest.mark.p3 + @pytest.mark.skills but no @pytest.mark.regression, per .agents/testing.md's 'priority + feature + regression' convention. Not blocking: TestSkillMandatoryFieldsValidation (ELITEA-2430), already merged onto this same batch trunk, has the identical gap, so this mirrors an already-accepted sibling p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical testid-only grep run per role-overrides.md § Reviewer slot: `git diff origin/tests/batch-skills-remaining-w1...tests/ELITEA-2431-skill-edit-persistence -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 0 hits (no matches). Clean."
+        },
+        {
+          "kind": "note",
+          "note": "Diff base note: `origin/automation/base` is far behind this unit's actual parent (the diff against it pulls in three prior merged cases from this batch, ELITEA-2428/2429/2430). The correct comparison base is the batch trunk `origin/tests/batch-skills-remaining-w1` (merge-base e5099dc9, which is the analyst's own AFS commit for ELITEA-2431) — that diff isolates exactly this unit's implementer work:… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation (case snapshot .agents/automation/skills-remaining/cases/ELITEA-2431.md ↔ AFS test-specs/skills/l3_skill-edit-name-description-instructions_ELITEA-2431.md ↔ diff): the raw TMS case is generic boilerplate ('Action completes without error', 'Control responds; expected next state is shown'); the AFS faithfully elaborates it via live exploration (concrete field values, the PUT endpoint +… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed live: version_toast_message (the 'Skill saved' toast) is an app-wide portal toast, not scoped to the skill detail page — it cannot by itself distinguish 'saved and stayed put' from 'saved and also navigated away'. Any future edit-flow save method on another entity (Agents/Pipelines, per the pre-existing shared_save_testid memory note) should pair its toast/PUT wait with an explicit pre/p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_detail_page.py:save_edits"
+        },
+        {
+          "kind": "note",
+          "note": "Fix round 1 fully resolves the prior blocking finding: SkillDetailPage.save_edits() now captures page.url immediately before the Save click and asserts it is unchanged after the toast + network-idle wait, with a descriptive failure message naming both URLs. This is the correct place for the assertion (inside the abstraction-layer method, per page-object convention) and it's the only mechanism that… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_detail_page.py:773-778"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Coverage Map row 3 and Automation Hints were amended in the same PR to record the added pre/post page.url assertion, matching the code change exactly.",
+          "ref": "test-specs/skills/l3_skill-edit-name-description-instructions_ELITEA-2431.md:64"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case snapshot (.agents/automation/skills-remaining/cases/ELITEA-2431.md) <-> AFS <-> diff: all 5 case steps map 1:1 to Coverage Map rows, each disposed 'asserted', each with a real per-step expect() in TestEditSkill.test_edit_name_description_instructions_persist. No dropped steps, no scope creep beyond the AFS's stated Axis-2 (none claimed).",
+          "ref": "automation/tests/ui/skills/test_skill_management.py:265"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for non-testid locators on the full diff (base tests/batch-skills-remaining-w1 -> tests/ELITEA-2431-skill-edit-persistence) returned 0 hits: `git diff origin/tests/batch-skills-remaining-w1...origin/tests/ELITEA-2431-skill-edit-persistence | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.loca… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_detail_page.py:769"
+        },
+        {
+          "kind": "note",
+          "note": "Both implementer and reviewer memory entries for this fix round are present and committed on the PR branch (test-automation-engineer/shared_save_testid_create_vs_edit_navigation_false_pass.md updated with a 'Round-2 gap' section; qa-engineer/app_wide_toast_masks_save_navigation_regression.md documents the original finding) — durable knowledge landed, not just narrated in the PR body.",
+          "ref": ".agents/memory/test-automation-engineer/shared_save_testid_create_vs_edit_navigation_false_pass.md:44"
+        }
+      ],
+      "afs": "test-specs/skills/l3_skill-edit-name-description-instructions_ELITEA-2431.md",
+      "branch": "tests/ELITEA-2431-skill-edit-persistence",
+      "pr": 1443
+    },
+    {
+      "id": "ELITEA-2432",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-skills-remaining-w1, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Testid gap fix: CreateSkillForm.jsx's Instructions Edit/Preview toggle (TabGroupButton/modeButtons) and the rendered-preview container had no data-testid. Fix is caller-side only — modeButtons array entries gained buttonProps:{'data-testid':...}, consumed by TabButtonItem.jsx's existing {...item.buttonProps} spread — no change to the shared toggle components. Pushed to automation/testids, EliteaAI… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@b6e1c7c9"
+        },
+        {
+          "kind": "note",
+          "note": "Two live automation-technique gotchas found and fixed while building (not product defects): (1) this editor's CodeMirror markdown mode auto-continues an unordered list on Enter, so page.keyboard.type() corrupts multi-line list Markdown (\"- Item one\\n- Item two\" -> \"- Item one\\n- - Item two\"); fixed with a new SkillFormPage.fill_instructions_markdown() using keyboard.insert_text() instead. (2) get_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation: TMS case ELITEA-2432 (.agents/automation/skills-remaining/cases/ELITEA-2432.md — snapshot lives under 'skills-remaining', not 'skills-remaining-w1' as the dispatch path stated) ↔ AFS (test-specs/skills/l3_skill-instructions-markdown-edit-preview-toggle_ELITEA-2432.md) ↔ diff (automation/pages/skill_form_page.py, automation/tests/ui/skills/test_skill_management.py::TestSkillInstructi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Locator/testid discipline verified live, not just claimed: fetched EliteaUI origin/automation/testids and grepped all three new testids (skill-instructions-edit-mode-button, skill-instructions-preview-mode-button, skill-instructions-preview-content) — all present at CreateSkillForm.jsx, wired via caller-supplied buttonProps/data-testid, not baked into the shared TabButtonItem/TabGroupButton compon… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS was amended in the same PR to reflect two implementation-time CodeMirror discoveries (keyboard.type() list-continuation corruption; text_content() dropping line breaks on multi-line content) and the resulting test-data change (dropped the blank-line paragraph break). Both are automation-technique findings, not product defects — confirmed live and reasoned soundly (Preview rendering unaffected … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "automation/pages/skill_form_page.py: new click_edit_mode(timeout=5000) and click_preview_mode(timeout=5000) declare a timeout parameter that is never read in either body (both use a fixed wait_for_timeout(200) regardless of the argument) — dead/misleading parameter. Not exercised with a non-default value by this test, so it doesn't affect this PR's correctness, but a future caller passing timeout=… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "New page-object methods (fill_instructions_markdown, click_edit_mode, click_preview_mode) use page.wait_for_timeout() sleeps, which conventions.md's Hard Don'ts lists as forbidden ('No sleep/waitForTimeout — framework waits only'). This mirrors the pre-existing, unmodified fill_instructions() method exactly (same wait_for_timeout(200)/(100)/(300) shape) rather than introducing a new pattern, so it… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/skills/l3_skill-instructions-markdown-edit-preview-toggle_ELITEA-2432.md",
+      "branch": "tests/ELITEA-2432-skill-instructions-markdown-toggle",
+      "pr": 1444
+    },
+    {
+      "id": "ELITEA-2433",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-skills-remaining-w1, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "CLARIFICATION filed: EliteaAI/elitea-testing-public#1445 -- ELITEA-2433's case text specifies tag \"regression-v1\", but the live Skill Tags field rejects hyphens (NormalTagNameInputRegExp/NormalSingleTagNameInputRegExp in EliteaUI/src/common/constants.js are \\w+comma+whitespace only). Confirmed live: typing it and pressing Enter silently drops the value, zero network calls. Not a product bug -- del… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1445"
+        },
+        {
+          "kind": "note",
+          "note": "Testid gap (implementer work, not stop+flag): the committed-tag chip's delete icon has no data-testid. AutoCompleteDropDown.jsx's renderValue() already supports a chipDeleteTestId prop (function or string, same pattern as the existing chipTestId/getOptionTestId), but CreateSkillForm.jsx's <TagEditor> call site never passes it. One-line fix: chipDeleteTestId={option => `skill-tag-chip-delete-${opti… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_add-save-remove-skill-tag_ELITEA-2433.md"
+        },
+        {
+          "kind": "note",
+          "note": "Verified live (direct A/B click comparison) that a tag chip's onDelete fires ONLY on the delete-icon child element -- clicking the chip's label/body does nothing (tag stays, Save stays disabled). Caught this by re-testing before writing it into the shared _surface.md digest; my first draft had wrongly claimed the whole chip was a delete target based on one ambiguous earlier interaction.",
+          "ref": "test-specs/skills/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Case-snapshot folder-name drift (same as a prior unit in this batch, ELITEA-2428): dispatch said `.agents/automation/skills-remaining-w1/cases/`, actual path is `.agents/automation/skills-remaining/cases/` (no -w1 suffix). Snapshots were found and used; flagging again in case the orchestrator wants to fix the dispatch-prompt template once for the whole remaining batch."
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2434 AFS Step 5 assumed the Skill list card renders ALL of a skill's tags as chips. Live/source-side (CardTagSection.jsx, MAX_NUMBER_TAGS_SHOWN=2) proves a card caps at 2 rendered chips + a \"+N\" overflow badge — case-text drift, not a defect (the detail-page get_tags() check already proves full server-side persistence). Amended in the AFS + implemented the overflow-aware assertion; not file… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_multiple-tags-persist-on-creation-and-edit_ELITEA-2434.md"
+        },
+        {
+          "kind": "note",
+          "note": "New reusable page-object helper for future skill-tag work: SkillFormPage.remove_tag(tag_name) (clicks the chip's delete-icon testid) and SkillsListPage.get_card_tag_overflow_text(skill_name). Any future case asserting a card's tag chips for a skill/agent/pipeline with >2 tags should use the overflow-aware pattern, not get_card_tags() alone — same class of truncation already documented for the Agen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_form_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Dispatch's case-snapshot path (.agents/automation/skills-remaining-w1/cases/) did not exist; actual path is .agents/automation/skills-remaining/cases/ (no -w1 suffix). Found via find and used successfully — flagging in case the dispatch-prompt template has a stale path for this wave."
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2433 AFS Axis-2 explicitly claims: \"step 5 also asserts the page-header Tags filter panel drops back to 'No tags to display' (confirmed live) as a second, independent signal that the tag is gone project-wide, not just off one card.\" Grep of test_skill_tag_add_remove.py (and skill_detail_page.py / skills_list_page.py) shows zero code implementing this — Step 5 asserts only `card_tags_after =… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_tag_add_remove.py:105-109 (Step 5) vs test-specs/skills/l3_add-save-remove-skill-tag_ELITEA-2433.md Axis-2 bullet 3"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2434's Coverage Map row 2 (\"Save the Skill\") states: \"step 2: POST 201, tags in payload, redirect to detail page — asserted.\" grep -n \"201\\|status\" automation/tests/ui/skills/test_skill_multiple_tags_persist.py returns exactly one hit — the PUT's `assert response.status == 200` in Step 4. `save_and_wait_for_navigation_capturing_payload()` returns only the captured JSON body (no Response/sta… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_form_page.py:446-483 save_and_wait_for_navigation_capturing_payload() vs test-specs/skills/l3_multiple-tags-persist-on-creation-and-edit_ELITEA-2434.md Coverage Map row 2"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: ELITEA-2434 Step 5's card assertion (test_skill_multiple_tags_persist.py:~130-141) checks `card_tags <= {tag1..tag4}` (subset, non-empty) + overflow text == \"+2\" — a reasonably strong combined proxy, but doesn't literally assert `len(card_tags) == 2` the way the AFS text says (\"returns exactly the 2 rendered chips\"). Would tighten but not worth blocking given the overflow cros… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: test-specs/skills/_surface.md's new Tags section still reads \"Test files: ... test_skill_tag_multiple.py (ELITEA-2434) — pending implementation\" — the actual shipped file is test_skill_multiple_tags_persist.py; digest wasn't updated post-implementation. Cosmetic drift in a handle-cache file, could send a future analyst grepping for the wrong filename."
+        },
+        {
+          "kind": "note",
+          "note": "Everything else triangulated clean. Mechanical raw-locator grep on the case's own diff (`git diff 25cbb9d6...tests/ELITEA-2433-2434-skill-tag-add-remove-persist -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(')`) returned exactly 2 hits: `self.page.lo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Root cause of both findings was the same pattern: the AFS's Coverage Map narrated an assertion that the implementer intended to add but the helper/testid it depended on was never actually finished — a testid that was never requested (Tags-panel empty state) and a capture helper missing one of its two listeners (status). Full row-by-row Coverage Map sweep (not just the named rows) confirmed no furt… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1446"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep on the full diff (git diff tests/batch-skills-remaining-w1...tests/ELITEA-2433-2434-skill-tag-add-remove-persist | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') returned exactly 2 hits: automation/pages/skill_form_page.py:126 `self.page.locator(self.SKILL_TAG_CHIP_DELE… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified live: testid `tags-panel-empty-state` (Categories.jsx) present on origin/automation/testids (EliteaAI/EliteaUI@97f73ba6) after a fresh `git fetch origin` in ../EliteaUI, NOT yet on origin/main — expected, awaiting the human cherry-pick per project promotion policy. Dynamic testid `skill-tag-chip-delete-{name}` also confirmed present on automation/testids (CreateSkillForm.jsx's chipDeleteT… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Both fix-round changes are real, verified fixes, not cosmetic: (1) ELITEA-2433 — a genuine new testid + SkillsListPage.is_tags_panel_empty() wired into test step 5, matching the AFS's pre-existing (unchanged) Axis-2 claim. (2) ELITEA-2434 — save_and_wait_for_navigation_capturing_payload() now pairs the pre-existing page.route() body-capture with a page.expect_response() wrapper on the same click t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Re-triangulated case snapshot (.agents/automation/skills-remaining/cases/) ↔ AFS ↔ diff for both ELITEA-2433 and ELITEA-2434: every Axis-1 row maps to a real assertion in the diff or in pre-existing reused page-object methods (SkillDetailPage.save_edits()'s toast+no-navigation assert predates this PR, from ELITEA-2431, and was correctly reused rather than reimplemented). Axis-2 additions (fresh-re… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/skills/l3_add-save-remove-skill-tag_ELITEA-2433.md",
+      "branch": "tests/ELITEA-2433-2434-skill-tag-add-remove-persist",
+      "pr": 1446
+    },
+    {
+      "id": "ELITEA-2434",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-skills-remaining-w1, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "CLARIFICATION filed: EliteaAI/elitea-testing-public#1445 -- ELITEA-2433's case text specifies tag \"regression-v1\", but the live Skill Tags field rejects hyphens (NormalTagNameInputRegExp/NormalSingleTagNameInputRegExp in EliteaUI/src/common/constants.js are \\w+comma+whitespace only). Confirmed live: typing it and pressing Enter silently drops the value, zero network calls. Not a product bug -- del… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1445"
+        },
+        {
+          "kind": "note",
+          "note": "Testid gap (implementer work, not stop+flag): the committed-tag chip's delete icon has no data-testid. AutoCompleteDropDown.jsx's renderValue() already supports a chipDeleteTestId prop (function or string, same pattern as the existing chipTestId/getOptionTestId), but CreateSkillForm.jsx's <TagEditor> call site never passes it. One-line fix: chipDeleteTestId={option => `skill-tag-chip-delete-${opti… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_add-save-remove-skill-tag_ELITEA-2433.md"
+        },
+        {
+          "kind": "note",
+          "note": "Verified live (direct A/B click comparison) that a tag chip's onDelete fires ONLY on the delete-icon child element -- clicking the chip's label/body does nothing (tag stays, Save stays disabled). Caught this by re-testing before writing it into the shared _surface.md digest; my first draft had wrongly claimed the whole chip was a delete target based on one ambiguous earlier interaction.",
+          "ref": "test-specs/skills/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Case-snapshot folder-name drift (same as a prior unit in this batch, ELITEA-2428): dispatch said `.agents/automation/skills-remaining-w1/cases/`, actual path is `.agents/automation/skills-remaining/cases/` (no -w1 suffix). Snapshots were found and used; flagging again in case the orchestrator wants to fix the dispatch-prompt template once for the whole remaining batch."
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2434 AFS Step 5 assumed the Skill list card renders ALL of a skill's tags as chips. Live/source-side (CardTagSection.jsx, MAX_NUMBER_TAGS_SHOWN=2) proves a card caps at 2 rendered chips + a \"+N\" overflow badge — case-text drift, not a defect (the detail-page get_tags() check already proves full server-side persistence). Amended in the AFS + implemented the overflow-aware assertion; not file… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_multiple-tags-persist-on-creation-and-edit_ELITEA-2434.md"
+        },
+        {
+          "kind": "note",
+          "note": "New reusable page-object helper for future skill-tag work: SkillFormPage.remove_tag(tag_name) (clicks the chip's delete-icon testid) and SkillsListPage.get_card_tag_overflow_text(skill_name). Any future case asserting a card's tag chips for a skill/agent/pipeline with >2 tags should use the overflow-aware pattern, not get_card_tags() alone — same class of truncation already documented for the Agen… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_form_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Dispatch's case-snapshot path (.agents/automation/skills-remaining-w1/cases/) did not exist; actual path is .agents/automation/skills-remaining/cases/ (no -w1 suffix). Found via find and used successfully — flagging in case the dispatch-prompt template has a stale path for this wave."
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2433 AFS Axis-2 explicitly claims: \"step 5 also asserts the page-header Tags filter panel drops back to 'No tags to display' (confirmed live) as a second, independent signal that the tag is gone project-wide, not just off one card.\" Grep of test_skill_tag_add_remove.py (and skill_detail_page.py / skills_list_page.py) shows zero code implementing this — Step 5 asserts only `card_tags_after =… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_tag_add_remove.py:105-109 (Step 5) vs test-specs/skills/l3_add-save-remove-skill-tag_ELITEA-2433.md Axis-2 bullet 3"
+        },
+        {
+          "kind": "defect",
+          "note": "ELITEA-2434's Coverage Map row 2 (\"Save the Skill\") states: \"step 2: POST 201, tags in payload, redirect to detail page — asserted.\" grep -n \"201\\|status\" automation/tests/ui/skills/test_skill_multiple_tags_persist.py returns exactly one hit — the PUT's `assert response.status == 200` in Step 4. `save_and_wait_for_navigation_capturing_payload()` returns only the captured JSON body (no Response/sta… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_form_page.py:446-483 save_and_wait_for_navigation_capturing_payload() vs test-specs/skills/l3_multiple-tags-persist-on-creation-and-edit_ELITEA-2434.md Coverage Map row 2"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: ELITEA-2434 Step 5's card assertion (test_skill_multiple_tags_persist.py:~130-141) checks `card_tags <= {tag1..tag4}` (subset, non-empty) + overflow text == \"+2\" — a reasonably strong combined proxy, but doesn't literally assert `len(card_tags) == 2` the way the AFS text says (\"returns exactly the 2 rendered chips\"). Would tighten but not worth blocking given the overflow cros… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Minor, non-blocking: test-specs/skills/_surface.md's new Tags section still reads \"Test files: ... test_skill_tag_multiple.py (ELITEA-2434) — pending implementation\" — the actual shipped file is test_skill_multiple_tags_persist.py; digest wasn't updated post-implementation. Cosmetic drift in a handle-cache file, could send a future analyst grepping for the wrong filename."
+        },
+        {
+          "kind": "note",
+          "note": "Everything else triangulated clean. Mechanical raw-locator grep on the case's own diff (`git diff 25cbb9d6...tests/ELITEA-2433-2434-skill-tag-add-remove-persist -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(')`) returned exactly 2 hits: `self.page.lo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Root cause of both findings was the same pattern: the AFS's Coverage Map narrated an assertion that the implementer intended to add but the helper/testid it depended on was never actually finished — a testid that was never requested (Tags-panel empty state) and a capture helper missing one of its two listeners (status). Full row-by-row Coverage Map sweep (not just the named rows) confirmed no furt… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1446"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep on the full diff (git diff tests/batch-skills-remaining-w1...tests/ELITEA-2433-2434-skill-tag-add-remove-persist | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') returned exactly 2 hits: automation/pages/skill_form_page.py:126 `self.page.locator(self.SKILL_TAG_CHIP_DELE… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified live: testid `tags-panel-empty-state` (Categories.jsx) present on origin/automation/testids (EliteaAI/EliteaUI@97f73ba6) after a fresh `git fetch origin` in ../EliteaUI, NOT yet on origin/main — expected, awaiting the human cherry-pick per project promotion policy. Dynamic testid `skill-tag-chip-delete-{name}` also confirmed present on automation/testids (CreateSkillForm.jsx's chipDeleteT… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Both fix-round changes are real, verified fixes, not cosmetic: (1) ELITEA-2433 — a genuine new testid + SkillsListPage.is_tags_panel_empty() wired into test step 5, matching the AFS's pre-existing (unchanged) Axis-2 claim. (2) ELITEA-2434 — save_and_wait_for_navigation_capturing_payload() now pairs the pre-existing page.route() body-capture with a page.expect_response() wrapper on the same click t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Re-triangulated case snapshot (.agents/automation/skills-remaining/cases/) ↔ AFS ↔ diff for both ELITEA-2433 and ELITEA-2434: every Axis-1 row maps to a real assertion in the diff or in pre-existing reused page-object methods (SkillDetailPage.save_edits()'s toast+no-navigation assert predates this PR, from ELITEA-2431, and was correctly reused rather than reimplemented). Axis-2 additions (fresh-re… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/skills/l3_multiple-tags-persist-on-creation-and-edit_ELITEA-2434.md",
+      "branch": "tests/ELITEA-2433-2434-skill-tag-add-remove-persist",
+      "pr": 1446
+    },
+    {
+      "id": "ELITEA-2436",
+      "outcome": "merged-ungated",
+      "note": "gate CUT OFF mid-run; merged on the trunk but unproven — resume the gate on tests/batch-skills-remaining-w1, then WRITE THE VERDICT BACK into this report",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1447 — ELITEA-2436 step 2 says 'Select a standard model (e.g., gpt5-mini) and adjust the reasoning slider', but gpt-5-mini is not a reasoning-capable model on this platform (confirmed live + in code, LLMSettings.jsx:119) so it renders a Creativity slider instead, never a Reasoning slider. Reverse-masking guard applied — not a product defect. This is a sibling o… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1447"
+        },
+        {
+          "kind": "note",
+          "note": "add-data-testid gap (implementer work, not filed as a defect): model-settings-creativity-slider has no testid on CreativitySlider.jsx, unlike its ReasoningSlider sibling which already got testId prop-threading through the shared DiscreteSlider.jsx during ELITEA-1880. In-scope for this case since step 2 exercises the Creativity-slider branch for gpt-5-mini."
+        },
+        {
+          "kind": "note",
+          "note": "New finding since ELITEA-1880's analysis: model-settings-apply-button now has a live testid (it explicitly did not at ELITEA-1880 analysis time per agent_detail_page.py's comment block 'Apply button intentionally has NO testid here... do not add unless a future case needs it'). Someone added it since; no LocatorDescriptor field references it yet on AgentDetailPage or SkillDetailPage — implementer … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "This MCP build's browser_click 'target' param is a raw CSS/text-locator selector string, not accessible-name text and not reliably a snapshot [ref=eN] — burned several failed calls before discovering this. Broadened the existing qa-engineer memory entry (previously scoped to 'canvas pages only') since the identical symptom reproduced on a fully static MUI dialog page with no socket churn.",
+          "ref": ".agents/memory/qa-engineer/playwright_mcp_snapshot_refs_go_stale_fast_on_pipeline_canvas.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS step 3's exact-literal 'Say OK' -> 'OK' expectation does not reproduce reliably: the reused fixture skill (elitea-1735-skill-underscore) applies its own space->underscore instruction unconditionally in the Skill test panel (no V2 trigger-match gate at this level, unlike agent chat), so the LLM's literal-vs-instruction-following interpretation is genuinely non-deterministic (observed 'OK' durin… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_llm-model-settings-configurable_ELITEA-2436.md"
+        },
+        {
+          "kind": "note",
+          "note": "Declared improvisation: AFS asked only for a wrapper testid on CreativitySlider (sufficient for a presence check, mirroring ReasoningSlider's precedent). This case's step 2 must actually move the slider to prove Apply enables, and MUI's <Slider> renders its interactive <input type=range> as a node the wrapper testid never reaches. Threaded a NEW inputTestId prop through DiscreteSlider.jsx -> MUI s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI src/[fsd]/shared/ui/slider/DiscreteSlider.jsx"
+        },
+        {
+          "kind": "note",
+          "note": "Already-filed Clarification issue #1447 (step 2's 'reasoning slider' wording for gpt-5-mini) predates my dispatch (filed by the analyst) - linked via allure.link in the shipped test, no new filing needed."
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING — AFS Concrete Handles table not amended for the implementer's 2nd testid. The shipped implementation adds a second testid, `model-settings-creativity-slider-input` (EliteaUI@42c7e3eb, threaded via a new `inputTestId` prop on shared `DiscreteSlider.jsx`, wired at `CreativitySlider.jsx`), beyond the single wrapper testid (`model-settings-creativity-slider`, @95bd8d06) the AFS's Co… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_llm-model-settings-configurable_ELITEA-2436.md:291"
+        },
+        {
+          "kind": "defect",
+          "note": "NON-BLOCKING (fallback path, not exercised on the happy path today). `_get_or_create_test_skill()`'s fallback builds a skill name of `FALLBACK_SKILL_NAME_PREFIX` (\"elitea-2436-model-settings\", 26 chars) + \"-\" + `uuid.uuid4().hex[:8]` (8 chars) = 35 characters, exceeding the 32-char max `SkillAPI.create_skill()`'s own docstring documents (automation/api/client.py:1427-1443, sourced from the live UI… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_test_panel_llm_model_settings.py:129"
+        },
+        {
+          "kind": "note",
+          "note": "PR #1448's Summary bullet cites only EliteaAI/EliteaUI@95bd8d06 for the creativity-slider testid work, omitting @42c7e3eb (adds the `inputTestId` prop to shared DiscreteSlider.jsx + wires it in CreativitySlider.jsx) — both are confirmed pushed to origin/automation/testids (git merge-base --is-ancestor verified for both). Not a functional problem; flagging so the orchestrator's eventual closure rec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Wrote a preventive memory entry (.agents/memory/test-automation-engineer/declared_improvisation_needs_afs_sweep_not_just_pr_narration.md, indexed): a declared improvisation narrated in the PR body is not the same as amending the AFS document — the Concrete Handles table and Automation Hints section need the sweep too, or the fact is only reachable via git-log archaeology of the PR, not from the AF… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2436"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding fully addressed: AFS Concrete Handles table now has a dedicated row for `model-settings-creativity-slider-input` (EliteaUI@42c7e3eb) documenting the declared-improvisation reasoning (wrapper testid alone couldn't reach MUI's internal <input type=range>), and Automation Hints was rewritten to list both testids added on CreativitySlider.jsx (95bd8d06, 42c7e3eb) plus r… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_llm-model-settings-configurable_ELITEA-2436.md"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the full diff (55c13376..6eb1ccbd): all 3 code-side `.locator(` hits (skill_detail_page.py open_model_selector/select_llm_model, plus the test's reasoning-level-mark loop) resolve to UPPER_CASE class constants (`MODEL_SELECTOR_OPTION_ANY_SELECTOR`, `MODEL_SELECTOR_OPTION`, `MODEL_SETTINGS_REASONING_LEVEL`) whose class-level definitions are `[data-testid=...]` template st… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Full triangulation vs the case snapshot (.agents/automation/skills-remaining/cases/ELITEA-2436.md — note: dispatch cited a non-existent `skills-remaining-w1` path, actual snapshot lives at `skills-remaining/cases/`, consistent with the known no-wave-suffix pattern in qa-engineer memory) confirms all 4 case steps have real per-step assertions matching the Coverage Map exactly, including the amended… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_test_panel_llm_model_settings.py"
+        },
+        {
+          "kind": "question",
+          "note": "Non-blocking robustness note (new ground, not a prior finding): step 2's slider assertion `value_after == value_before + 1` assumes the Creativity slider's default position for gpt-5-mini is never already at the max discrete position (5/High) — if it were, ArrowRight would no-op and the assertion would fail. The analyst's live run observed a default of 3 (Medium) for this specific model, and the m… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_test_panel_llm_model_settings.py"
+        }
+      ],
+      "afs": "test-specs/skills/l3_llm-model-settings-configurable_ELITEA-2436.md",
+      "branch": "tests/ELITEA-2436-skill-llm-model-settings",
+      "pr": 1448
+    }
+  ],
+  "totals": {
+    "blocked": 1,
+    "merged-ungated": 7
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

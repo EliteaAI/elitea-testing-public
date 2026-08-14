@@ -77,3 +77,140 @@ not just "overlay closed"). Full reasoning: ELITEA-2227 AFS § Automation Hints.
   (seen in passing during this session: its `keepExploring` includes
   `{label: 'Sidebar Interactive Tour', tourId: 'sidebar'}`, so the two tours
   cross-link each other's completion screens).
+
+## Resolved/added during ELITEA-2220/2221/2222/2223/2224 implementation (2026-08-14)
+
+These 5 cases cover the OTHER resource-card links (Documentation, Release Notes,
+Video Library, Tutorials) — not the Interactive Tours card, which ELITEA-2227
+already covers. `src/[fsd]/pages/resources/index.jsx` renders link testids the
+SAME way for every card (`RESOURCE_CARD_CONFIGS.map` → `links.map`), so
+everything below composes with the tour-link inventory above under the SAME
+`help-center-tour-link-{slug}` naming.
+
+- **Fixed a real testid collision**: the Video Library card's and the
+  Tutorials card's "More..." links both slugify to `help-center-tour-link-more`
+  (bare-title slugify has no card-awareness) — `page.locator(...)` matched 2
+  elements page-wide. Fixed on `automation/testids` by adding a
+  `testidCategory` field to each `RESOURCE_CARD_CONFIGS` entry and prefixing
+  ONLY the generic "More..." title's slug with it:
+  `help-center-tour-link-video-library-more` /
+  `help-center-tour-link-tutorials-more`. Every other card's link testids
+  (including ELITEA-2227's `sidebar-interactive-tour` / `chat-interactive-tour`)
+  are byte-identical — verify via
+  `document.querySelectorAll('[data-testid^="help-center-tour-link-"]')` and
+  check for duplicate values before trusting a bare-title-slug testid on this
+  page. If a future card is added with another generic CTA title, check for
+  this collision class again.
+- **Full live-confirmed link inventory** (all resolve to real `href`s, backend
+  CMS-driven via `useGetResourcesConfigQuery`, confirmed 2026-08-14):
+  - Documentation: `getting-started` → `docs.elitea.ai/getting-started/chat-quick-start`;
+    `how-to-guides` → `.../how-tos/chat-conversations/how-to-use-chat-functionality`;
+    `integrations` → `.../integrations/mcp/create-and-use-server-stdio`;
+    `migration-update` → `.../support/faqs`. All load correctly.
+  - Release Notes: `release-2-0-2-latest` → `.../release-notes/rn-2-0-2` —
+    **404, known defect `EliteaAI/elitea-testing-public#1492`** (docs site's
+    actual latest is `rn-2-0-5`; the resources CMS "latest" config is stale).
+    `release-2-0-1` / `release-2-0-0` / `release-2-0-0b2` all load correctly
+    (archived releases unaffected).
+  - Video Library: 4 named video links → `videoportal.epam.com/video/dYo2peva#t=<offset>`
+    (not explored further — out of scope for this session's cases);
+    `video-library-more` → `videoportal.epam.com/channel/DdYPoMVa2X/videos` —
+    **requires EPAM corporate SSO** (`access.epam.com`), no credentials exist
+    anywhere in this project. Any future case touching Video Library's channel
+    content is blocked the same way ELITEA-2223 was — don't re-discover this,
+    treat it as a standing environment limitation.
+  - Tutorials: `course-ai-based-elitea-platform` → `learn.epam.com/catalog/...`
+    (not explored — EPAM internal LMS, likely the same SSO wall if content
+    verification is ever needed); `how-to-create-an-agent` →
+    `docs.elitea.ai/archive/create-agent`, loads correctly;
+    `how-to-create-a-pipeline` → `docs.elitea.ai/how-tos/pipelines/overview`
+    (not explored further); `tutorials-more` → `docs.elitea.ai/` (the general
+    docs homepage, NOT a dedicated tutorials-list page — case-text drift,
+    filed as a CLARIFICATION reasoning in the AFS, not a bug).
+- **Third-party destination pages are NOT subject to the testid-only locator
+  policy** — that policy governs only our own `EliteaUI`/`elitea_assistant`
+  source. Assertions against `docs.elitea.ai` / `videoportal.epam.com` use
+  ordinary Playwright role/title locators (e.g.
+  `new_page.get_by_role("navigation", name="Pages")` on the docs site).
+
+## Resolved/added during ELITEA-2225 implementation (2026-08-14)
+
+- **New surface within the already-mapped page**: `ResourceVersionInfo.jsx`
+  (top-right of the Help Center header) — the version label + info-icon
+  tooltip + copy-to-clipboard, previously only named in this digest's
+  Feature location list, never explored. Data source:
+  `useGetResourcesConfigQuery` (version/date) + `useGetSystemInfoQuery`
+  (the 6 component versions: elitea_core, admin, notifications,
+  configurations, sdk_plugin, indexer_worker) — both resolved by the time the
+  header renders, no loading-state race observed live.
+- **4 new testids added**, all direct attributes on existing JSX nodes (zero
+  new DOM, confirmed via the Step 5.5 greps): `help-center-version-label`,
+  `help-center-version-info-icon`, `help-center-version-info-tooltip`,
+  `help-center-version-info-copy-button`. `EliteaAI/EliteaUI@bc82bc32` on
+  `automation/testids`; NOT yet on `main` (human cherry-pick pending).
+- **Interaction mode is HOVER, not click** — the case text says "Click the
+  'i' icon" but the live `<Tooltip>` (MUI default trigger) opens on hover;
+  no separate click handler exists. Not a defect (a click also works, since
+  hover fires first) — automated as `hover()` per the interaction-discovery
+  ladder; see the AFS Axis 2 note for the full reasoning. **Reusable finding
+  for any future Help Center tooltip work**: don't assume click-to-open on
+  MUI `Tooltip` instances here.
+- **Reused the app-wide `toast-alert`/`toast-message` testids** (pre-existing,
+  `src/components/Toast.jsx`) rather than adding new ones — same
+  per-page-object-field declaration precedent as `AgentDetailPage`/`ChatPage`.
+  Toast text confirmed live: "The version information has been copied to the
+  clipboard."
+- **Clipboard read-back works out of the box**: `conftest.py`'s `context`
+  fixture already grants `clipboard-read`/`clipboard-write` globally — no
+  per-test permission setup needed. Copied text format confirmed from source:
+  `Version: X.Y.Z (DD-Mon-YYYY)\n<component>: <version>\n...` (one line per
+  plugin, `—` em-dash fallback for a missing version — not hit live,
+  all 6 components had real version strings).
+
+## Resolved/added during ELITEA-2226/2228/2229/2230 implementation (2026-08-14)
+
+Four cases targeting the SAME already-merged covering spec
+(`automation/tests/ui/help_center/test_help_center_sidebar_tour.py`,
+`TestHelpCenterSidebarTour`, from ELITEA-2227) — all `extend-existing`, all
+confirmed live with **zero defects and zero drift** from the covering AFS's
+documented behavior. Zero new testids needed — every handle already exists
+from ELITEA-2227's implementation. Each case adds ONE new test method to the
+existing class (additive-only):
+
+- **ELITEA-2226** (tour starts on link click, initial-state proof): confirmed
+  live the exact step-1 description text (`textContent` concatenates the two
+  `<p>` tags with NO space —
+  `"...server status.Green mark points..."` / `"\nRed mark points..."`) and
+  that Skip/Back(disabled)/Next are all visible together at step 1 — the
+  covering spec only asserts this trio together at step 17, not step 1.
+- **ELITEA-2228** (restart after completion): confirmed live the tour has
+  literally no "seen" memory — completing fully (Finish→Done) and re-clicking
+  the same Help Center link opens a genuinely fresh instance at 1/17 with Back
+  disabled, identical to a first-ever launch. This empirically confirms
+  ELITEA-2227's own AFS precondition note ("tour always replays from step 1
+  ... regardless of whether it was seen before") for the specific
+  after-completion case, which that AFS had only reasoned about, not executed.
+- **ELITEA-2229** (Skip terminates tour, priority high/l1): confirmed live
+  Skip closes the dialog AND spotlight immediately with NO completion modal
+  (unlike Finish), and the app is fully interactive afterward — proved by
+  clicking a real sidebar item ("Chats") and observing a clean navigation to
+  `/chat` (not `/app/chat` — that 404 quirk is specific to the CMS-served
+  Help Center link's href, NOT to normal in-app sidebar navigation, which
+  correctly uses `APP_PREFIX=""` on localhost). Required ONE new action
+  method, `InteractiveTourCard.click_skip()` (the `skip_button` locator
+  already existed) — pure addition, no existing method touched.
+- **ELITEA-2230** (Back returns to step 1): confirmed live Back's `disabled`
+  state is driven by the CURRENT step index, not a one-time "was step 1"
+  flag — navigating 1→2→(Back)→1 correctly re-disables Back and restores the
+  exact step-1 title/description/counter. The covering spec's own Back
+  exercise (its Step 7) only goes 3→2, never all the way back to the
+  boundary — this was a genuine untested edge (now confirmed correct, not a
+  defect).
+- **Priority/marker mismatch note (ELITEA-2229 only)**: the covering spec's
+  file-level `pytestmark` is `p2`; ELITEA-2229's own case priority is `high`
+  (l1). pytest marker-stacking has no clean "override, don't add" mechanism
+  for a single method inside a shared-`pytestmark` file, so the AFS declares
+  keeping the file's `p2` for this test rather than producing a test that
+  carries both `p1` and `p2` — see that AFS's Automation Hints for the full
+  reasoning. Future tour-case implementers hitting the same tension should
+  reuse this reasoning rather than re-litigating it.

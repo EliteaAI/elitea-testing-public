@@ -31,7 +31,7 @@ from config import settings
 from pages.agent_detail_page import AgentDetailPage
 from pages.agents_list_page import AgentsListPage
 
-pytestmark = [pytest.mark.ui, pytest.mark.agents]
+pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)

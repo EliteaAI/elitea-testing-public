@@ -4,7 +4,13 @@ description: dispatch names <campaign>-w<N>/cases/, actual file is at <campaign>
 type: feedback
 ---
 
-## Pattern (recurred 3x this campaign: ELITEA-2043, ELITEA-2053, ELITEA-2066)
+## Pattern (recurred 4x across campaigns: pipelines-remaining ELITEA-2043/2053/2066; skills-remaining ELITEA-2430)
+
+Also confirmed on the `skills-remaining` campaign (dispatch named
+`.agents/automation/skills-remaining-w1/cases/ELITEA-2430.md`, actual path
+`.agents/automation/skills-remaining/cases/ELITEA-2430.md` — same pattern,
+different campaign). Same fix: strip the `-w<N>` suffix and check the
+campaign-level dir before escalating.
 
 A combined analyst+implementer dispatch for the `pipelines-remaining` campaign
 names the case snapshot path as

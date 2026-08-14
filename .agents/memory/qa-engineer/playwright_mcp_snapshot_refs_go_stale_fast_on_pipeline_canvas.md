@@ -45,3 +45,22 @@ Any page with a live/animating canvas or frequent socket-driven re-renders
 (pipeline Flow view, chat with streaming responses) — prefer
 testid/CSS/text `target` strings over snapshot refs from the first
 interaction, don't wait to hit the stale-ref error first.
+
+## Update 2026-08-11 (ELITEA-2436, Skill test panel — NOT a canvas page)
+
+Reproduced the identical failure mode on a completely static MUI dialog
+page (no ReactFlow, no socket churn) — so the "live canvas" root cause
+above is only ONE trigger, not the whole story. On this MCP build,
+`browser_click`'s `target` param is effectively **always** parsed as a raw
+CSS selector (or a `text="..."`/`role=...` Playwright locator string) —
+NOT free-text accessible-name matching, and NOT reliably a snapshot
+`[ref=eN]` either (passing a fresh ref as `target` silently "does not match
+any elements"; passing bare unquoted text like `content-reviewer` is parsed
+as a CSS tag-name selector and also fails). Passing an unescaped literal
+containing `"` characters throws a CSS-parse error ("Unsupported token").
+**Skip the trial-and-error: go straight to a CSS attribute selector**
+(`target='[data-testid="model-settings-button"]'`,
+`target='[aria-label="model settings menu"]'`) as the FIRST attempt on any
+`browser_click`/`browser_type`, on any page, not just canvases — the `ref`
+param this tool also accepts appears to be vestigial/unused for matching
+purposes in this build.

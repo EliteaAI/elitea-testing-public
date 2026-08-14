@@ -45,7 +45,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.settings, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.settings, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 UI_ELEMENT_TIMEOUT = 10_000
 CONFIGURATIONS_URL_SUBSTRING = "/configurations/"
