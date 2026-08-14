@@ -1,12 +1,12 @@
 ---
 case_id: ELITEA-2231
 title: "Onboarding — Welcome to Elitea page is displayed on first login with Sure lets go button and no project loading yet"
-priority: 3
+priority: 2
 module: onboarding
 status: ready-for-automation
 analyst: qa-engineer
 analysis_date: 2026-08-14
-afs_path: test-specs/onboarding/l3_onboarding-welcome-page_ELITEA-2231.md
+afs_path: test-specs/onboarding/l2_onboarding-welcome-page_ELITEA-2231.md
 test_path: automation/tests/ui/onboarding/test_onboarding_welcome.py
 page_object: automation/pages/onboarding_page.py
 batch: onboarding-w1
@@ -55,7 +55,7 @@ reasoning rather than treating it as a violation.
 **Confirmed structure (lead ruling D2)**:
 - Test file: `automation/tests/ui/onboarding/test_onboarding_welcome.py`
 - Page object: `automation/pages/onboarding_page.py`
-- Markers: `p3`, `onboarding` (new feature marker — register in `automation/pytest.ini`), `regression`
+- Markers: `p2`, `onboarding` (new feature marker — register in `automation/pytest.ini`), `regression`
 - Registering `onboarding` in `pytest.ini` is in scope for this case.
 
 ---
