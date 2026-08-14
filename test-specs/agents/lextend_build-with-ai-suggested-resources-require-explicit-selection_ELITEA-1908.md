@@ -22,6 +22,52 @@
 > [#1399](https://github.com/EliteaAI/elitea-testing-public/issues/1399) (skills); full
 > chain in `sdlc-skills/bundles/test-automation/incidents/2026-08-14-response-mocking-drift.md`.
 
+> 🚧 **BLOCKED — 2026-08-14 rework attempt (issue #1298), mock intentionally kept.**
+> The implementer attempted the live rewrite this banner asks for — drop
+> `mock_generate_success(SUGGESTED_RESOURCES_DRAFT_PAYLOAD)`, use
+> `modal.click_generate_and_wait_for_response()`, and derive step 1's
+> section-visibility checks, step 2's per-item unchecked assertions, and
+> step 5's per-item absence assertions dynamically from whichever
+> `suggested_*` arrays the live response body actually populates (this
+> case's real subject — "whichever categories WERE suggested, none gets
+> attached without selection" — survives even with only 1-2 categories
+> populated instead of all 4).
+>
+> The rewrite ran against this environment's ACTUAL test project (399, per
+> `ELITEA_PROJECT_ID` in `.env.test` — this AFS's own § Preconditions explored
+> against project 400 instead and found the same zero-suggestion gap there).
+> **3 consecutive live `click_generate_and_wait_for_response()` calls for
+> `SUGGESTED_RESOURCES_PROMPT_TEXT`("An agent that queries GitHub and runs
+> Jira updates") each returned all five `suggested_*` arrays EMPTY** —
+> `suggested_toolkits: [], suggested_mcp: [], suggested_pipelines: [],
+> suggested_agents: [], suggested_skills: []`. A fully empty response
+> degenerates this case into ELITEA-1914's already-covered scenario and
+> exercises none of ELITEA-1908's distinguishing "combined across
+> categories" contract.
+>
+> Per the rework brief's explicit instruction ("if the live call surfaces
+> ZERO categories at all... try more than once with the same prompt before
+> concluding... return this case as blocked rather than force a green with a
+> prompt engineered to fabricate multi-category suggestions — that would
+> just reintroduce a different-shaped fabrication"), the live rewrite was
+> **NOT applied**;
+> `automation/tests/ui/agents/test_agent_build_with_ai.py`'s
+> `test_zero_selection_across_categories_attaches_nothing` is back to its
+> original, byte-identical mocked implementation (confirmed via diff against
+> `automation/base` — only the docstring/comments were updated to record
+> this finding). This AFS's underlying fidelity issue (mocking a case whose
+> text never asked for simulation) therefore remains **UNRESOLVED** — routed
+> to a human for a scope decision: either (a) explicitly authorize the mock
+> via a Fidelity Declaration (this environment's project 399 may simply not
+> have resources configured to reliably trigger a live multi-category
+> suggestion for any prompt), or (b) fund a live-fixture approach analogous
+> to ELITEA-1909/1911's (seed toolkits/agents/pipelines/MCPs the suggestion
+> engine can reliably surface together — cost/determinism tradeoffs apply).
+> See the implementer's Run Report on branch `tests/1908-1913-mixed-rework`
+> for the full evidence (all 3 live-attempt outcomes). This mirrors
+> ELITEA-1910's identical live-suggestion-nondeterminism finding in the same
+> file/batch.
+
 ## Metadata
 - **TMS ID**: ELITEA-1908
 - **Linked Story**: none

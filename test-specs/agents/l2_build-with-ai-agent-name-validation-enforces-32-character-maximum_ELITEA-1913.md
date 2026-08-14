@@ -1,26 +1,18 @@
 # Test Case: Build with AI — agent name validation enforces 32-character maximum
 
-> ⚠️ **UNDER REVIEW — 2026-08-14 fidelity audit. Do NOT reuse this AFS as a pattern.**
->
-> This spec directs the implementer to **substitute the system under test** (mocking
-> the generate-draft response) for a TMS case whose text never asks for simulation.
-> Classification: **MIXED** — steps 2-3 (validation on manual input) are a real observable; step 1's `get_review_name() == draft["name"]` is a tautology. Re-classified 2026-08-14 — the first banner said TERMINAL, which over-stated it.
->
-> **Rework by class:** `TERMINAL` → rewrite against the live flow (the test currently
-> proves nothing about the case's subject). `MIXED` → drop the tautological assertions
-> and prefer a live draft; the rest of the coverage is sound. `TRANSIT` → cheapest —
-> swap the mock for a live generate, or keep it and declare it per
-> `.agents/testing.md` § Fidelity policy.
->
-> Justifications of the form "the same sanctioned-mocking technique this file already
-> uses" or "not a good use of fixture-creation effort" are **not valid authorities**:
-> nothing sanctions response mocking, and cost is never a reason to substitute. See
-> `.agents/role-overrides.md` § Every role — precedent is not authority.
->
-> **`extend-existing` must not inherit this design.** Rework tracked on
-> [#1298](https://github.com/EliteaAI/elitea-testing-public/issues/1298) (agents) and
-> [#1399](https://github.com/EliteaAI/elitea-testing-public/issues/1399) (skills); full
-> chain in `sdlc-skills/bundles/test-automation/incidents/2026-08-14-response-mocking-drift.md`.
+> ✅ **Reworked 2026-08-14 (fidelity rework, issue #1298).** The implementer replaced
+> `modal.mock_generate_success(draft)` with a LIVE `modal.click_generate_and_wait_for_response()`
+> call for step 1's draft generation — the pre-population assertion now compares
+> `modal.get_review_name()` against `response.json()["name"]`, the real generate-draft
+> response body, not the hand-authored `draft["name"]` tautology. Steps 2-6 (real
+> keystrokes typed by the test, live client-side `validateAgentDraft()` validation) were
+> already fully real and are unchanged. The test ran green locally against the real
+> backend (project 399). See
+> `automation/tests/ui/agents/test_agent_build_with_ai.py` (`TestAgentBuildWithAIReviewNameValidation.test_review_name_validation_enforces_32_character_maximum`)
+> and the implementer's Run Report on branch `tests/1908-1913-mixed-rework` for the
+> live-run evidence. `FIELD_POPULATION_DRAFT_PAYLOAD` is no longer referenced by this
+> test but is still used by ELITEA-1912 (`test_edited_fields_persist_after_approve`,
+> separate unit) — not deleted here.
 
 ## Metadata
 - **TMS ID**: ELITEA-1913
