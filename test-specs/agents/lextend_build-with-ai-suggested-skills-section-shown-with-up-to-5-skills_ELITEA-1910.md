@@ -22,6 +22,39 @@
 > [#1399](https://github.com/EliteaAI/elitea-testing-public/issues/1399) (skills); full
 > chain in `sdlc-skills/bundles/test-automation/incidents/2026-08-14-response-mocking-drift.md`.
 
+> 🚧 **BLOCKED — 2026-08-14 rework attempt (issue #1298), mock intentionally kept.**
+> The implementer attempted the live rewrite this banner asks for — drop
+> `mock_generate_success(SUGGESTED_SKILLS_CAP_PROBE_PAYLOAD)`, use
+> `modal.click_generate_and_wait_for_response()`, and replace the hardcoded
+> "count <= 5" check with the invariant `rendered_count == min(suggested_count, 5)`
+> against the live `suggested_skills` count. It initially looked viable: **3
+> consecutive live runs** against project 399 for
+> `SUGGESTED_SKILLS_CAP_PROMPT_TEXT` each returned a non-empty `suggested_skills`
+> (count 3). A **4th live run of the exact same prompt returned an EMPTY
+> `suggested_skills`** — across 6 total live attempts, 5 were non-empty and 1
+> was empty. This is genuine LLM-suggestion nondeterminism, not a fluke or a
+> setup mistake — exactly the risk this AFS's own § Preconditions predicted
+> when it chose mocking for this case in the first place ("live-inventory
+> suggestion counts are LLM-relevance-driven and not reliably controllable").
+>
+> Per the rework brief's explicit instruction ("if the live call does not
+> return any suggested_skills for a reasonable prompt, this step (and 5/6
+> below) cannot be honestly rewritten live — stop and return this half as
+> blocked, do not fabricate a workaround"), the live rewrite was **reverted**;
+> `automation/tests/ui/agents/test_agent_build_with_ai.py`'s
+> `test_suggested_skills_section_capped_at_5_skills` is back to its original,
+> byte-identical mocked implementation (confirmed via diff against
+> `automation/base`). This AFS's underlying fidelity issue (mocking a case
+> whose text never asked for simulation) therefore remains **UNRESOLVED** —
+> routed to a human for a scope decision: either (a) explicitly authorize the
+> mock via a Fidelity Declaration (the case's cap behavior may simply be
+> untestable live without a controllable Skill-suggestion count), or (b) fund
+> a live-Skill-fixture approach analogous to ELITEA-1911's (seed >5 real
+> Skills so the suggestion engine has enough to work with — cost/determinism
+> tradeoffs apply, see this AFS's own § Preconditions reasoning). See the
+> implementer's Run Report on branch `tests/1906-1910-terminal-live-rework`
+> for the full evidence (all 6 live-attempt outcomes).
+
 ## Metadata
 - **TMS ID**: ELITEA-1910
 - **Linked Story**: none
