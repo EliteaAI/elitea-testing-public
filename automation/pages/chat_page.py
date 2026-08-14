@@ -3601,6 +3601,53 @@ class ChatPage(BasePage):
         self.page.wait_for_timeout(100)  # Wait for clear to complete
         self.conversation_name_input.press_sequentially(name, delay=30)
 
+    @action("Clear conversation name in inline editor")
+    def clear_conversation_name(self) -> None:
+        """Clear the inline conversation-name editor's value.
+
+        Isolated from ``set_conversation_name()``/``paste_conversation_name()``
+        so a caller can assert the empty intermediate state as its own step
+        (AFS ELITEA-2104 step 2 — "Clear the input" is its own verified case
+        step, distinct from the paste that follows it). Assumes the editor
+        is already open and ``conversation_name_input`` is visible/focused
+        (e.g. right after ``click_conversation_menu_item("rename")``).
+        """
+        logger.info("Clearing conversation name")
+        self.conversation_name_input.click()
+        self.page.wait_for_timeout(100)  # Wait for focus
+        self.conversation_name_input.clear()
+
+    @action("Paste conversation name in inline editor via real clipboard paste")
+    def paste_conversation_name(self, text: str) -> None:
+        """Paste *text* into the inline conversation-name editor via a REAL clipboard paste.
+
+        Mirrors ``ProjectContextPage.set_editor_content_via_paste()``
+        (``automation/pages/project_context_page.py:90-124``) — the
+        project's established honest-paste idiom: stages *text* on the real
+        OS/browser clipboard via ``navigator.clipboard.writeText()``, then
+        dispatches a genuine ``Control+V``/``Meta+V`` keypress. This is NOT
+        a DOM injection — the paste itself is a real browser paste event
+        routed through ``ConversationItem.jsx``'s own
+        ``onChange={onChangeConversationName}`` handler (no separate
+        ``onPaste`` handler exists, source-confirmed in AFS ELITEA-2104),
+        identical to a user's ``Ctrl+V``. ``clipboard-read``/
+        ``clipboard-write`` permissions are already granted suite-wide
+        (``conftest.py``). Assumes the editor is already open, focused, and
+        (per the case's own step ordering) already cleared via
+        ``clear_conversation_name()``.
+
+        Args:
+            text: Clipboard content to paste.
+        """
+        logger.info("Pasting conversation name (%d chars)", len(text))
+        self.page.evaluate("(text) => navigator.clipboard.writeText(text)", text)
+        paste_shortcut = (
+            "Meta+V"
+            if self.page.evaluate("() => navigator.platform.includes('Mac')")
+            else "Control+V"
+        )
+        self.page.keyboard.press(paste_shortcut)
+
     def is_conversation_pinned(self, conversation_id: str | int, timeout: int = 5000) -> bool:
         """Return True if *conversation_id*'s sidebar item carries ``data-pinned="true"``.
 
