@@ -2,8 +2,10 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2111,
-2026-08-15 (supersedes nothing below — new section, other sections unchanged;
+a time; last confirmed by: test-automation-engineer (combined analyst+
+implementer), ELITEA-2115/2116/2117/2456, 2026-08-15 (supersedes nothing
+below — new section, other sections unchanged; previous confirmer:
+qa-engineer analyst, ELITEA-2111, 2026-08-15;
 previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
@@ -1311,3 +1313,94 @@ Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
   conversation inside the same expanded folder flips `data-active` from
   the first item to the second in the same accessibility-snapshot read,
   no reload/flicker needed.
+
+## Conversation deletion — folder-preserved, last-conversation empty state,
+## modal styling/dismissal, and a project-400 sandbox discovery (ELITEA-2115/2116/2117/2456)
+
+- **Project 400 ("UI Testing") is a genuinely empty sandbox project — use it
+  for any case needing a clean/isolated conversation-count precondition.**
+  Confirmed live via `ConversationAPI(browser_cookies=[], project_id="400")
+  .list_conversations()` → `total: 0`, both before and after this session
+  (temp data cleaned up). Distinct from the shared Team project (471, "Review
+  attached documents" id 420 — repeatedly reused/restored by other analyses,
+  documented above) and the default Private project (399, which already
+  carries 4 non-`autotest_`-named manual/leftover conversations — origin
+  unconfirmed, NOT safe to assume disposable). Bearer-token auth
+  (`ConversationAPI(browser_cookies=[], project_id="400")`, no cookies) works
+  fine against it — same auth mechanism already documented for the
+  project-mismatch trap above, just pass `project_id` explicitly. **Any case
+  needing "exactly N conversations" / "no folders" / a clean starting count
+  should use project 400**, not attempt to temporarily empty a shared
+  project.
+- **Deleting a conversation INSIDE A FOLDER never touches the folder itself**
+  (no `DELETE .../folder/...` call fires) — live-confirmed (ELITEA-2115). The
+  folder renders its existing `chat-folder-empty-state` testid
+  (`get_folder_empty_state_text()`) with live text **"No conversations
+  added"** once its last conversation is gone. Folders on project 400
+  rendered expanded-by-default with a single seeded conversation — don't
+  assume this generally; call `expand_folder()` defensively for
+  multi-folder scenarios.
+- **A folder-scoped conversation's context menu has "Pin on top" DISABLED**
+  (already documented above under § Pin conversation — reconfirmed here for
+  the delete-specific menu enumeration: live 8-item set for a folder-scoped
+  conversation on project 400 is Rename, Move to, Playback, Duplicate, Make
+  public, Share, Pin on top (disabled), Delete).
+- **`findNextConversation()` (`useDeleteConversation.js`) is scope-aware, not
+  project-wide** — for an UNGROUPED (non-folder) conversation being deleted,
+  it searches ONLY the project's other ungrouped conversations (the
+  `conversations` Redux slice), never folder-nested ones. This means the
+  "last remaining conversation" welcome-state branch triggers whenever zero
+  OTHER ungrouped conversations exist, even if folders with conversations are
+  still present elsewhere in the sidebar — worth knowing if a future case
+  wants a narrower/faster way to reach the empty-state branch without a
+  genuinely empty project (not exploited by ELITEA-2117's own AFS, which uses
+  the honestly-simpler fully-empty-project route via project 400, but
+  documented here for the next analyst who needs this branch).
+- **CONFIRMED DEFECT, filed EliteaAI/elitea-testing-public#1523**: deleting
+  the LAST remaining conversation in a project (the `dummyConversation`
+  fallback branch of `onDeleteConversation`) correctly updates ALL visible
+  UI state (empty sidebar, welcome greeting `chat-new-conversation-greeting`,
+  active input) but **never updates the browser URL** — `page.url` stays at
+  `/chat/{deleted_id}?name={deleted_name}` until a hard reload (which then
+  correctly shows a "Conversation not found" dialog and resets cleanly). Root
+  cause: the `else` branch in `onDeleteConversation` calls only
+  `setActiveConversation(dummyConversation)`, never a router/`navigate()`
+  call — contrast with the "next conversation exists" branch, which DOES
+  correctly call `onSelectConversation()` (and does update the URL,
+  confirmed working by the already-merged ELITEA-2114 test). Two delayed
+  (~1.5s) console 400s also fire from stale background refetches against the
+  dead id (`GET .../conversation/prompt_lib/{project}/{id}?...` and
+  `GET .../select_conversation/prompt_lib/{project}/{id}`) — expected/
+  consistent with the stale-URL root cause, not a second defect.
+- **The sidebar's `"Still no conversations created."` empty-state text ONLY
+  appears after a page reload/fresh mount** — within the SAME SPA session
+  right after deleting the last conversation, the sidebar list region simply
+  renders with zero items and no date-group headings (no explicit
+  "empty" text node at all). Don't assert the reload-only text string as a
+  same-session observable; assert item-count == 0 + no group headers instead
+  (exactly what ELITEA-2117's AFS step 6 does).
+- **Delete-confirmation dialog button styling, live-confirmed via
+  `getComputedStyle`** (ELITEA-2116): Cancel button
+  (`delete-confirm-cancel-button`) carries MUI classes
+  `MuiButton-eliteaSecondary`/`MuiButton-colorSecondary`, computed
+  `background-color: rgba(255,255,255,0.1)`. Delete button
+  (`delete-confirm-button`) carries `MuiButton-eliteaAlarm`/
+  `MuiButton-colorAlarm`, computed `background-color: rgb(215,22,22)` (a
+  genuine red) — both buttons' semantic-role styling (secondary vs.
+  destructive) is real and computed-style-assertable, not just class-name
+  string matching.
+- **Delete-confirmation dialog dismisses correctly via BOTH Escape and an
+  outside/backdrop click** — live-confirmed (ELITEA-2116), neither dismissal
+  fires the underlying `DELETE` network call, and the conversation remains
+  untouched in the sidebar either way.
+- **Outside-click technique gotcha**: MUI's `Dialog` renders a
+  `MuiDialog-container` that visually spans the whole viewport and
+  intercepts direct-locator clicks anywhere in it (Playwright reports
+  `<div class="MuiDialog-container...">...intercepts pointer events` if you
+  try `.click()` on `.MuiBackdrop-root` directly — the container paints
+  above the backdrop). The correct honest technique is a **coordinate-based**
+  `page.mouse.click(x, y)` at a point provably outside the dialog Paper's
+  bounding box (e.g. viewport top-left corner `(5, 5)`) — a real Playwright
+  mouse event, not a `page.evaluate()`/JS-dispatched substitution, and it
+  correctly lands on `MuiDialog-container` (which still wraps/triggers MUI's
+  `onClose(reason: 'backdropClick')`).
