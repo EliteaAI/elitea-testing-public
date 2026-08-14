@@ -159,3 +159,20 @@ None.
 - Wait strategy: `hover()` + `wait_for(state="visible")` on the tooltip (MUI mounts the
   Tooltip content on hover — no fixed delay), `wait_for(state="visible")` on the toast,
   `page.wait_for_function()` polling the clipboard for non-empty — no `sleep`.
+
+**Amendment (2026-08-14, fix round 1 — reviewer finding, declared improvisation per
+`.agents/role-overrides.md` § Declared-improvisation protocol):** Steps 4/5/9 as
+written above list the exact version numbers "live-confirmed" during analysis
+(`elitea_core: 0.673`, etc.). These are live backend deploy metadata
+(`systemInfo.plugins`), not stable entity properties — pinning them as literal
+expected values in the test would false-red on the next routine service release,
+unrelated to any regression in this feature. The implementation instead asserts:
+Step 5 checks FORMAT (`name: <semver-like digits>`) rather than the exact digits,
+capturing whatever version each component reports at run time; Step 9 checks that
+the clipboard reproduces those SAME run-time-observed values (tooltip-vs-clipboard
+fidelity), rather than re-asserting the analysis-time literals. This preserves the
+case's real intent — "the copied text matches what the tooltip showed" — without
+freezing a value that is guaranteed to drift. See
+`.agents/memory/qa-engineer/version_number_literals_are_flaky_assertions.md` for the
+reviewer's full reasoning. Component NAMES (the 6-item enumeration) remain literal —
+those are stable app config, not deploy metadata.
