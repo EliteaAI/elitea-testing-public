@@ -2,10 +2,42 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2101/2102, 2026-08-14
+a time; last confirmed by: qa-engineer analyst, ELITEA-2103/2104, 2026-08-14
 (supersedes nothing below — new section, other sections unchanged; previous
-confirmer: ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091,
-2026-08-14; ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+confirmer: ELITEA-2101/2102, 2026-08-14; ELITEA-2100, 2026-08-14; ELITEA-2099,
+2026-08-14; ELITEA-2091, 2026-08-14; ELITEA-2458, 2026-08-07;
+ELITEA-2086/2087/2088, 2026-08-03).
+
+## Conversation-rename overflow — truncation itself, TYPE + PASTE both confirmed identical (ELITEA-2103/2104)
+- Closes the gap ELITEA-2101/2102's AFS flagged ("51+/overflow/paste-truncation …
+  that's ELITEA-2103/2104's territory"). Both live-confirmed this session against
+  the shared "Review attached documents" conversation (id 420), each restored
+  immediately after:
+  - **Type 51 chars** (`press_sequentially`, real per-keystroke events): input ends
+    at exactly 50 chars (`"A"*50`), 51st keystroke silently dropped. Confirm button
+    `data-disabled="false"`. Save → `PUT .../conversation/prompt_lib/471/420` → `200`.
+  - **Paste 60 chars** (real `navigator.clipboard.writeText()` + `Control+V`/`Meta+V`
+    keypress — NOT a DOM-injected value): input ends at exactly 50 chars, same
+    left-slice result. Same confirm-enabled + `PUT` 200 behavior.
+  - **Why both land identically**: `ConversationItem.jsx` wires only
+    `onChange={onChangeConversationName}` on the input — no separate `onPaste`
+    handler exists (grep-confirmed) — so a paste's resulting native `input`/`change`
+    event is caught by the exact same `slice(0, MAX_CONVERSATION_LENGTH)` logic as
+    typing.
+  - No error toast on either the truncation itself or the subsequent save; only
+    console noise across both runs was the pre-existing `secrets/secrets/default`
+    403 (3 occurrences total this session — 1 per save + 1 ambient).
+  - No case-text drift, no defect — both ELITEA-2103 and ELITEA-2104 automate
+    exactly as written. Family-AFS call: kept SEPARATE (not merged with each other
+    or with 2101/2102) — type vs paste is a genuine interaction-technique
+    difference (`test-case-analysis` § Execute: "differ in steps → separate AFS"),
+    even though the underlying assertion/mechanism is identical.
+  - Paste idiom precedent: `automation/pages/project_context_page.py`'s
+    `set_editor_content_via_paste()` — reuse that pattern (real clipboard write +
+    real keyboard paste shortcut) for any future paste-testing on this surface;
+    never inject the pasted value via `fill()`/`page.evaluate()` directly into an
+    input's DOM value — that would substitute the test for the browser's own paste
+    event and stop proving the product's truncation handler at all.
 
 ## Conversation-rename length boundary — MAX_CONVERSATION_LENGTH source-confirmed (ELITEA-2101/2102)
 - **`MAX_CONVERSATION_LENGTH = 50`** (`EliteaUI/src/common/constants.js:74`).
