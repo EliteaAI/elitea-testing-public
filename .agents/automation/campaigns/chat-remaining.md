@@ -68,3 +68,11 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 ## Waves landed
 
 (none yet — updated as each wave closes)
+
+## In-flight run state (context-fragile — recorded immediately per doctrine)
+
+- **wave-01** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w01`,
+  base=`origin/automation/base`, cluster `[2096,2097,2098]` (open-existing-conversation
+  location variants — one live session, 3 distinct rows), 2091+2093 solo units.
+  Task ID `wua0aya8c`, Run ID `wf_8995986f-87e`. Transcript dir:
+  `.../8efc46b8.../subagents/workflows/wf_8995986f-87e`.
