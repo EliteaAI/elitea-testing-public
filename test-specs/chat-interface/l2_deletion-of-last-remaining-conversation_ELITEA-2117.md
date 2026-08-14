@@ -94,8 +94,19 @@ other step is a hard assertion.**
      attribute) in the welcome state.
 9. Verify no error banners or toast messages are present.
    - **Verify**: no `[data-testid="toast-message"]` visible; no new console
-     errors beyond the pre-existing unrelated `secrets/secrets/default` 403
-     noise (same exclusion filter as ELITEA-2114's test).
+     errors beyond (a) the pre-existing unrelated `secrets/secrets/default`
+     403 noise (same exclusion filter as ELITEA-2114's test), and (b) the two
+     delayed ~1.5s 400s that are a DIRECT, deterministic CONSEQUENCE of Known
+     defect #1523 itself (discovered during implementation — amending this
+     step in-PR per the Phase 2 amend rule): `GET
+     .../conversation/prompt_lib/400/{id}?...` and `GET
+     .../select_conversation/prompt_lib/400/{id}`, both 400, caused by the
+     SAME stale-URL root cause re-triggering background refetches against the
+     now-deleted id. These are excluded by a dedicated filter
+     (`_is_known_stale_url_400`, scoped to project 400's own URLs) so this
+     step stays a genuine "no OTHER/unexpected error" check rather than
+     double-counting the same linked defect as two separate findings — a
+     truly new/unrelated error still fails this check.
 10. Verify the page URL no longer references the deleted conversation.
     - **`expect.soft()`, `# Known defect: #1523`** — live-confirmed
       this DOES NOT happen within the same SPA session: `page.url` remains
