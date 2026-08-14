@@ -162,3 +162,21 @@ push from another unit.
 genuinely does not stick.** Until it does, budget for the recovery: it is
 knowable and mechanical (this entry is the runbook), just expensive
 (~6 extra git/gh commands + one wasted PR-create attempt).
+
+## Recurred a 6th time (2026-08-14/15, ELITEA-2101/2102) — clean recovery, never pushed dirty
+
+Same root mistake: dispatch prompt said the tree starts on
+`tests/batch-chat-remaining-w02`, read `git status`/`git log` first (branch
+name visible in output) but did not gate on it — went straight to
+`git add`/`git commit` on the trunk after writing the parametrized test.
+Caught it myself right after the commit, before any push: `git branch
+<feature> HEAD` to snapshot the work, `git checkout <trunk> && git reset
+--hard origin/<trunk>` to snap the local trunk back to the unpolluted
+`origin` tip (trunk was never pushed dirty — `git reset --hard` here is safe
+because it only discards the LOCAL trunk ref's extra commit, `origin` never
+saw it), then `git checkout <feature-branch>` and pushed/PR'd from there.
+Zero force-pushes, zero trunk pollution. **6 occurrences confirm the
+"read the branch name, don't act on it" gap survives explicit prior
+documentation — the only reliable fix is treating branch verification as a
+blocking gate before the FIRST git-write command of a session, not a
+read to skim.**
