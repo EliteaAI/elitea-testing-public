@@ -2,7 +2,7 @@
 
 ## Metadata
 - **TMS ID**: ELITEA-2230
-- **Linked Story**: EliteaAI/elitea-testing-public#734
+- **Linked Story**: none found — no `[Automate][ELITEA-<id>]` tracker card exists for this case ID (verified via real-time gh issue list, limit 1000, at implementation time); the sibling case ELITEA-2227 has one (#734, CLOSED, case-specific — not a shared story for this cluster)
 - **Priority**: l2 (case priority: medium)
 - **Environment Explored**: local (`http://localhost:5173`, `automation/testids` build)
 - **User set**: `${TEST_USER}` — via the `auth_state` fixture
