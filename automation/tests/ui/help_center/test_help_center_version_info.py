@@ -13,6 +13,20 @@ the case says "Click the 'i' (info) icon"; the live ``ResourceVersionInfo.jsx``
 tooltip (a bare MUI ``Tooltip``, no click-only wiring) opens on HOVER. The
 test drives it via ``hover()`` as the code-confirmed intended trigger.
 
+Version-literal flakiness fix (2026-08-14, reviewer finding — see
+``.agents/memory/qa-engineer/version_number_literals_are_flaky_assertions.md``):
+the 6 component names (``elitea_core``, ``admin``, ...) are stable and stay
+hardcoded, but their version NUMBERS are live backend deploy metadata
+(``systemInfo.plugins``) that legitimately changes on the next service bump —
+pinning exact literals ("0.673", "0.77", ...) would false-red on a routine
+release unrelated to this feature. Instead the test asserts FORMAT (each
+component shows a semver-like ``name: X.Y[.Z...]`` value) and reads the
+ACTUAL versions the tooltip renders at run time, then checks the copied
+clipboard text is a faithful reproduction of that same tooltip content — the
+case's real intent per the AFS ("the copied text matches what the tooltip
+showed"), without freezing any version literal captured during analysis into
+the test file.
+
 Markers:
     - ui: requires browser
     - help_center: Help Center tests
@@ -32,16 +46,22 @@ logger = logging.getLogger(__name__)
 
 pytestmark = [pytest.mark.ui, pytest.mark.help_center, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
-# Live-confirmed component list + versions (source: DEV backend's systemInfo.plugins,
-# 2026-08-14 exploration) — the exact 6 components the case text enumerates.
-EXPECTED_COMPONENT_VERSIONS = {
-    "elitea_core": "0.673",
-    "admin": "0.77",
-    "notifications": "0.21",
-    "configurations": "0.160",
-    "sdk_plugin": "0.9.13",
-    "indexer_worker": "0.854",
-}
+# The exact 6 components the case text enumerates — component NAMES are stable
+# (app config), unlike their version numbers, which are live backend deploy
+# metadata and are intentionally NOT hardcoded here (see module docstring).
+EXPECTED_COMPONENTS = [
+    "elitea_core",
+    "admin",
+    "notifications",
+    "configurations",
+    "sdk_plugin",
+    "indexer_worker",
+]
+
+# Semver-like version format the backend renders (`ResourceVersionInfo.jsx`:
+# `${plugin.name}: ${plugin.version}`) — e.g. "0.673", "0.9.13". Presence +
+# format only; the actual digits are read live per component (Step 5).
+VERSION_FORMAT = r"\d+(?:\.\d+)+"
 
 EXPECTED_TOAST_TEXT = "The version information has been copied to the clipboard."
 
@@ -68,27 +88,37 @@ class TestHelpCenterVersionInfo:
             expect(help_center.version_info_tooltip).to_be_visible()
 
         with allure.step(
-            "Step 4 — Verify the tooltip shows all 6 expected components: "
-            + ", ".join(EXPECTED_COMPONENT_VERSIONS)
+            "Step 4 — Verify the tooltip shows all 6 expected components: " + ", ".join(EXPECTED_COMPONENTS)
         ):
             tooltip_text = help_center.version_info_tooltip.text_content() or ""
-            for component in EXPECTED_COMPONENT_VERSIONS:
+            for component in EXPECTED_COMPONENTS:
                 assert component in tooltip_text, (
                     f"Expected component '{component}' to appear in the tooltip, "
                     f"got: {tooltip_text!r}"
                 )
 
-        with allure.step("Step 5 — Verify each component shows its version number"):
+        with allure.step("Step 5 — Verify each component shows a version number in the live-served format"):
             # The name/value are two adjacent inline Typography spans with no text
             # node between them, so DOM text_content() concatenates them with no
             # space ("elitea_core:0.673") even though a flex `gap` renders one
             # visually — allow zero-or-more whitespace between the colon and the
             # version rather than asserting the CSS-rendered gap as literal text.
-            for component, version in EXPECTED_COMPONENT_VERSIONS.items():
-                pattern = re.compile(rf"{re.escape(component)}:\s*{re.escape(version)}")
-                assert pattern.search(tooltip_text), (
-                    f"Expected '{component}: {version}' in the tooltip text, got: {tooltip_text!r}"
+            #
+            # Assert FORMAT, not a pinned literal (2026-08-14 reviewer finding):
+            # these are live backend deploy versions that legitimately change on
+            # the next service release. Capture the ACTUAL version each component
+            # reports right now so Step 9 can verify the clipboard faithfully
+            # reproduces THIS run's tooltip content, not a value frozen at
+            # analysis time.
+            observed_versions: dict[str, str] = {}
+            for component in EXPECTED_COMPONENTS:
+                pattern = re.compile(rf"{re.escape(component)}:\s*({VERSION_FORMAT})")
+                match = pattern.search(tooltip_text)
+                assert match, (
+                    f"Expected '{component}: <version>' in semver-like format "
+                    f"(e.g. '0.673') in the tooltip text, got: {tooltip_text!r}"
                 )
+                observed_versions[component] = match.group(1)
 
         with allure.step("Step 6 — Verify the copy button is present at the bottom of the tooltip"):
             expect(help_center.version_info_copy_button).to_be_visible()
@@ -98,14 +128,20 @@ class TestHelpCenterVersionInfo:
             expect(help_center.toast_message).to_have_text(EXPECTED_TOAST_TEXT)
 
         with allure.step(
-            "Step 9 — Verify the clipboard contains the version line and all 6 component "
-            "version details (the honest automated equivalent of 'paste into a text editor')"
+            "Step 9 — Verify the clipboard contains the version line and faithfully reproduces "
+            "the same component versions the tooltip displayed (the honest automated equivalent "
+            "of 'paste into a text editor')"
         ):
             assert clipboard_text.startswith("Version:"), (
                 f"Expected clipboard text to start with 'Version:', got: {clipboard_text!r}"
             )
-            for component, version in EXPECTED_COMPONENT_VERSIONS.items():
+            # Fidelity check against THIS run's observed tooltip values (Step 5), not a
+            # pinned literal — a stale/wrong clipboard write is still caught (the copy
+            # would silently diverge from what was just displayed), while a routine
+            # backend version bump between analysis and run time is not a false red.
+            for component, version in observed_versions.items():
                 expected_line = f"{component}: {version}"
                 assert expected_line in clipboard_text, (
-                    f"Expected '{expected_line}' in the clipboard content, got: {clipboard_text!r}"
+                    f"Expected '{expected_line}' (as shown in the tooltip) in the clipboard "
+                    f"content, got: {clipboard_text!r}"
                 )
