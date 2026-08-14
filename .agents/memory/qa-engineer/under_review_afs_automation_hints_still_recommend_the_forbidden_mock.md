@@ -43,3 +43,14 @@ Automation Hints — is the operative instruction) — but worth a sweep pass if
 the #1298/#1399 audit closes out AFS files individually, since the same
 paragraph shape likely recurs in the agents-side AFS files under the same
 audit.
+
+**Confirmed recurring (PR #1503, ELITEA-1994/1995/1996/1998 review, same
+2026-08-14 audit):** same three AFS files' sibling set
+(`l2_build-with-ai-description-instructions-character-limits_ELITEA-1994.md`,
+`l2_build-with-ai-back-to-prompt-returns-to-input-step-preserves-text_ELITEA-1996.md`,
+`l2_build-with-ai-cancel-from-review-step-does-not-create-a-skill_ELITEA-1998.md`)
+still carry the banner + unedited mock-recommending Automation Hints even
+after the fix landed in code. The brief (`transit-1994-1995-1996-1998.md`)
+never asked for an AFS edit, so this stays non-blocking, but a dedicated
+sweep pass across all `test-specs/` files carrying this banner is now worth
+scheduling rather than catching it PR-by-PR.
