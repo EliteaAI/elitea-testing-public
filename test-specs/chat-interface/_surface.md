@@ -1080,3 +1080,58 @@ Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
   invocation in isolation (no concurrent MCP session): clean green, no
   code change needed. Don't drive live exploration and a pytest run
   concurrently against the same dev-token identity.
+
+## Date-group bucketing (Today/This Week/Older) is SERVER-computed, not client (ELITEA-2096/2097, blocked)
+- **Cannot be reproduced via client-side clock mocking.** Confirmed via
+  source read: `conversationList.api.js`'s `foldersList`/`conversationsList`
+  queries both send `grouped: true` as a query param to the server (lines
+  47-91) — the server buckets by real `created_at`, the client never runs
+  its own `isToday`/`isThisWeek` date math. `page.clock` (or any client-time
+  trick) has zero effect on which bucket a conversation renders in.
+- **The API cannot backdate a conversation.** `ConversationUpdate`'s
+  OpenAPI schema (`GET /shared/openapi/?plugins=elitea_core&all=true` on
+  `dev.elitea.ai`) has no timestamp field at all — only `name`,
+  `is_private`, `folder_id`, `attachment_participant_id`, `instructions`,
+  `is_hidden`, `meta`. Same for `ConversationCreate` (no `created_at`
+  override). There is currently no honest way to seed a This-Week/Older
+  conversation in a live test run.
+- **The environment currently has zero non-today conversations** in
+  either accessible project (Private/399, Elitea Testing Team/471) —
+  every existing chat AFS in this feature area (ELITEA-2091/2095, this
+  session's ELITEA-2098) deletes its own seeded conversations in
+  `finally`, so nothing survives to age into a later bucket.
+  `DEFAULT_EXPANDED_GROUP = 'today'` (`conversationList.constants.js:9`)
+  — This Week/Older ARE collapsed by default, matching both case texts.
+  ELITEA-2096/ELITEA-2097 are `blocked` for this reason — see
+  `test-specs/chat-interface/l3_open-existing-conversation-this-week-older-sections_ELITEA-2096.md`.
+  A future analyst re-probing this: check first whether the ongoing
+  127-case chat-remaining campaign has organically left any conversation
+  aged past today (nothing was DESIGNED to survive, but a crashed/aborted
+  run's seed might have).
+
+## Folder seeding via API + delete-endpoint gotcha (ELITEA-2098, confirmed live)
+- **Folder create**: `POST /elitea_core/folder/prompt_lib/{project_id}`
+  `{"name": "..."}` → 201, `{id, name, owner_id, position, meta}`. Despite
+  `FolderCreate`'s OpenAPI schema listing `owner_id` as required, the
+  server fills it from auth — same pattern as `ConversationCreate`'s
+  `author_id`.
+- **Move a conversation into a folder**: `PUT /elitea_core/conversation/
+  prompt_lib/{project_id}/{conversation_id}` `{"folder_id": N}` → 200,
+  instant, no propagation delay. No `automation/api/client.py` helper
+  exists for either call yet (`ConversationAPI` has no folder methods) —
+  implementer may want to add one rather than hand-rolling `requests`
+  calls.
+- **Conversation DELETE needs the SINGULAR endpoint** — confirmed live
+  this session: `DELETE /elitea_core/conversations/prompt_lib/{pid}/{id}`
+  (plural) returns **404**; `DELETE /elitea_core/conversation/prompt_lib/
+  {pid}/{id}` (singular) returns 204. `ConversationAPI.delete_conversation()`'s
+  own docstring already documents this correctly — but
+  `automation/CLAUDE.md`'s "API Quirks" table claims the OPPOSITE
+  ("Exception: Conversation delete uses plural path"), which is stale/wrong.
+  Flagged as a doc-accuracy note for the lead, not a test defect (nothing
+  in the test suite itself relies on the wrong claim).
+- **`is_conversation_active()` / `data-active` correctly moves between
+  rows on same-folder navigation** — live-confirmed: clicking a second
+  conversation inside the same expanded folder flips `data-active` from
+  the first item to the second in the same accessibility-snapshot read,
+  no reload/flicker needed.
