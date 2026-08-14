@@ -17,6 +17,7 @@
 - [PROVENANCE needs both refs + git status](afs_on_main_provenance_claim_needs_two_ref_grep.md) — grep origin/main AND origin/automation/testids (6×)
 - [AFS Priority vs pytest.mark](afs_priority_vs_pytest_mark_preflight_check.md) — grep Priority vs @pytest.mark.pN before handoff, incl. module-inherited (8×)
 - [Verify your own delivery](verify_your_own_delivery_before_handoff.md) — exit code/stdout lie; run all three greps against the batch trunk (12×)
+- [Fix round: diff-check each named finding](fix_round_must_diff_check_each_named_finding.md) — grep the round's own commit per finding before calling it done, don't rely on memory
 - [Mechanical greps diff the batch trunk](mechanical_greps_diff_against_batch_trunk_not_origin_base.md) — origin/automation/base lags it; diffing base fakes both results
 - [Triple-dot diff hides uncommitted work](triple_dot_diff_hides_uncommitted_changes_when_head_equals_base.md) — `ref...` is empty if HEAD==ref; use `git diff ref` (two-dot) for the self-check grep
 - [Console side-channel checks](console_side_channel_checks.md) — dual listener, registered pre-step-1, filter proven to fire (5×)
@@ -58,3 +59,4 @@
 - [Skill icon-upload-before-tag-save race](skill_publish_wizard_implementer_quirks.md) — icon PUT can revert an unsaved tag; save tag FIRST, then upload icon
 - [Edit-with-AI wizard step numbering is positional](edit_with_ai_wizard_step_numbering_is_positional.md) — General/Instructions can be skipped; never hardcode "3. Summary"
 - [Nested agent accordion always has wrapper chip](nested_agent_accordion_always_has_wrapper_chip.md) — never assert to_have_count(0) on it; filter to "Skill: " prefix instead
+- [Testid-only policy scope = our own app](testid_only_policy_scope_is_our_own_app_source.md) — third-party redirect destinations use ordinary role locators; declare it
