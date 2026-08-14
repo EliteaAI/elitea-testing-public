@@ -29,7 +29,11 @@ Welcome Message, and Conversation-starter fields are all pre-populated with
 the generated draft's values AND remain editable before agent creation — the
 first test in this file to read the Welcome Message / Chat-starter fields at
 all (their `data-testid`s were added for this case; see the AFS Concrete
-Handles).
+Handles). Rewritten 2026-08-14 (fidelity rework, issue #1298): the test now
+drives a LIVE `click_generate_and_wait_for_response()` call (no
+`mock_generate_success()`) and asserts every review-form field against the
+real response body — the response is the oracle, per
+`.agents/testing.md` § Fidelity policy, not a hand-authored payload.
 
 Covers ELITEA-1914: extends ELITEA-1909/1911's create+navigate coverage to
 the ungated, no-resource-selection path — approving a plain draft (no
@@ -59,6 +63,22 @@ still show correct name/description/unselected-by-default at a larger item
 count, while soft-asserting the card-count cap itself, a live-verified,
 deterministic product defect (all 7 items render uncapped) filed as
 EliteaAI/elitea-testing-public#1317.
+
+2026-08-14 fidelity rework (issue #1298) — BLOCKED, mock intentionally kept.
+A live rewrite (drop the mock, use `click_generate_and_wait_for_response()`,
+assert an invariant against the live `suggested_skills` count instead of a
+hardcoded 7) was attempted and initially looked viable — 3 consecutive live
+runs against project 399 for the case's own prompt returned a non-empty
+`suggested_skills` (count 3 each time). A 4th live run for the SAME prompt
+returned an EMPTY `suggested_skills` (6 total live attempts: 5 non-empty, 1
+empty) — genuine LLM-suggestion nondeterminism, exactly the risk the AFS's
+own Preconditions predicted when it chose mocking for this case. Per the
+rework brief's explicit instruction ("if the live call does not return any
+suggested_skills for a reasonable prompt... stop and return this half as
+blocked, do not fabricate a workaround"), the live rewrite was reverted; the
+fidelity issue for this test is unresolved and routed to a human for a scope
+decision. See the AFS and the implementer's Run Report on branch
+tests/1906-1910-terminal-live-rework for the full evidence.
 
 Covers ELITEA-1913: the review form's Name field (`generate-agent-review-
 name-input`) enforces MAX_NAME_LENGTH=32 via client-side JS validation
@@ -298,6 +318,20 @@ SUGGESTED_SKILLS_CAP_PROMPT_TEXT = (
 # Other suggested_* arrays are left empty (same narrowing technique
 # FIELD_POPULATION_DRAFT_PAYLOAD uses below) to keep the DOM surface focused
 # on the Skills section this case cares about.
+#
+# 2026-08-14 fidelity rework (issue #1298): a LIVE rewrite was attempted and
+# initially looked viable (3 consecutive live runs against project 399
+# returned suggested_skills with count=3), but a 4th live run for the exact
+# same prompt returned an EMPTY suggested_skills — genuine LLM-suggestion
+# nondeterminism, not a fluke (confirmed across 6 total live attempts: 5
+# non-empty, 1 empty). Per the rework brief's explicit instruction ("if the
+# live call does not return any suggested_skills for a reasonable prompt,
+# this step cannot be honestly rewritten live — stop and return this half as
+# blocked, do not fabricate a workaround"), the live rewrite was REVERTED and
+# this mock restored. See the AFS banner and the implementer's Run Report on
+# branch tests/1906-1910-terminal-live-rework for the full evidence — this
+# nondeterminism is exactly what the analyst's Preconditions predicted when
+# they chose mocking for this case in the first place.
 #
 # Per the AFS's live-verified finding (Known Defects Found #1, filed as
 # EliteaAI/elitea-testing-public#1317): ResourceSuggestions.jsx renders every
@@ -719,6 +753,17 @@ class TestAgentBuildWithAISuggestedResources:
         defect (all 7 items render, not capped at 5), filed as
         EliteaAI/elitea-testing-public#1317. See AFS:
         test-specs/agents/lextend_build-with-ai-suggested-skills-section-shown-with-up-to-5-skills_ELITEA-1910.md
+
+        BLOCKED for the 2026-08-14 fidelity rework (issue #1298): a live
+        rewrite was attempted (see git history on branch
+        tests/1906-1910-terminal-live-rework) and initially looked viable,
+        but a live generate-draft call for this exact prompt returned an
+        EMPTY `suggested_skills` on 1 of 6 attempts — genuine LLM-suggestion
+        nondeterminism (not fabricable, not a fluke). Per the rework brief's
+        explicit instruction, the live rewrite was reverted and this mock
+        restored; the fidelity issue for this test remains OPEN and routed
+        back to a human for a scope decision (declared-mock authorization,
+        or a live-Skill-fixture approach like ELITEA-1911's).
         """
         list_page = AgentsListPage(page)
         modal = GenerateAgentModalPage(page)
@@ -1488,7 +1533,6 @@ class TestAgentBuildWithAIDraftFieldPopulation:
         clicked."""
         list_page = AgentsListPage(page)
         modal = GenerateAgentModalPage(page)
-        draft = FIELD_POPULATION_DRAFT_PAYLOAD
 
         # ------------------------------------------------------------------
         # Step 1 — Open the GenerateAgentModal
@@ -1514,19 +1558,30 @@ class TestAgentBuildWithAIDraftFieldPopulation:
             )
 
         # ------------------------------------------------------------------
-        # Step 3 — Click "Generate Draft"; loading state shown while the
-        # (artificially delayed) mocked request is in flight
+        # Step 3 — Click "Generate Draft"; wait for the LIVE (real,
+        # unmocked) generate-draft response — the response body is the
+        # oracle for every field this case checks, per
+        # .agents/testing.md § Fidelity policy
         # ------------------------------------------------------------------
-        with allure.step('Step 3 — Click "Generate Draft"; verify the loading state is shown'):
-            modal.mock_generate_success(draft)
+        with allure.step('Step 3 — Click "Generate Draft"; verify the live response'):
+            response = modal.click_generate_and_wait_for_response(timeout=LIVE_GENERATE_RESPONSE_TIMEOUT)
 
-            with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
-                modal.generate_button.click()
-                modal.wait_for_loading_visible(timeout=LOADING_STATE_TIMEOUT)
-
-            response = response_info.value
             assert response.status == 200, (
-                f"Expected the mocked generate-draft request to succeed, got {response.status}"
+                f"Expected the generate-draft request to succeed, got {response.status}"
+            )
+            body = response.json()
+
+            # The invariant a mock could never violate: the generator
+            # actually produced something for every field this case
+            # asserts, not just "some string".
+            assert body["name"], "Live generate-draft response should include a non-empty name"
+            assert body["description"], "Live generate-draft response should include a non-empty description"
+            assert body["instructions"], "Live generate-draft response should include non-empty instructions"
+            assert body["welcome_message"], (
+                "Live generate-draft response should include a non-empty welcome message"
+            )
+            assert body["conversation_starters"], (
+                "Live generate-draft response should include at least one conversation starter"
             )
 
         # ------------------------------------------------------------------
@@ -1540,7 +1595,7 @@ class TestAgentBuildWithAIDraftFieldPopulation:
         # Step 5 — Review form pre-populated with Name
         # ------------------------------------------------------------------
         with allure.step("Step 5 — Verify the review-form Name field is pre-populated"):
-            assert modal.get_review_name() == draft["name"], (
+            assert modal.get_review_name() == body["name"], (
                 "Review-form Name field should be pre-populated with the generated draft's name"
             )
 
@@ -1548,7 +1603,7 @@ class TestAgentBuildWithAIDraftFieldPopulation:
         # Step 6 — Review form pre-populated with Description
         # ------------------------------------------------------------------
         with allure.step("Step 6 — Verify the review-form Description field is pre-populated"):
-            assert modal.get_review_description() == draft["description"], (
+            assert modal.get_review_description() == body["description"], (
                 "Review-form Description field should be pre-populated with the generated draft's description"
             )
 
@@ -1556,7 +1611,7 @@ class TestAgentBuildWithAIDraftFieldPopulation:
         # Step 7 — Review form pre-populated with Instructions
         # ------------------------------------------------------------------
         with allure.step("Step 7 — Verify the review-form Instructions field is pre-populated"):
-            assert modal.get_review_instructions() == draft["instructions"], (
+            assert modal.get_review_instructions() == body["instructions"], (
                 "Review-form Instructions field should be pre-populated with the generated draft's instructions"
             )
 
@@ -1564,7 +1619,7 @@ class TestAgentBuildWithAIDraftFieldPopulation:
         # Step 8 — Review form pre-populated with Welcome Message
         # ------------------------------------------------------------------
         with allure.step("Step 8 — Verify the review-form Welcome Message field is pre-populated"):
-            assert modal.get_review_welcome_message() == draft["welcome_message"], (
+            assert modal.get_review_welcome_message() == body["welcome_message"], (
                 "Review-form Welcome Message field should be pre-populated with the generated draft's welcome message"
             )
 
@@ -1575,7 +1630,7 @@ class TestAgentBuildWithAIDraftFieldPopulation:
             assert modal.review_starters_header.is_visible(), (
                 'The "Chat starters:" section header should be visible when conversation_starters is non-empty'
             )
-            for i, starter_text in enumerate(draft["conversation_starters"]):
+            for i, starter_text in enumerate(body["conversation_starters"]):
                 assert modal.get_review_starter_value(i) == starter_text, (
                     f"Chat-starter input #{i} should be pre-populated with the generated draft's "
                     f"conversation_starters[{i}]"
@@ -1589,35 +1644,35 @@ class TestAgentBuildWithAIDraftFieldPopulation:
             # a plain click()+fill() React-correct here — the same pattern
             # fill_prompt() already relies on for the prompt textarea; no
             # press_sequentially() workaround needed (see AFS Automation Hints).
-            edited_name = f"{draft['name']} [edited]"
+            edited_name = f"{body['name']} [edited]"
             modal.review_name_input.click()
             modal.review_name_input.fill(edited_name)
             assert modal.get_review_name() == edited_name, (
                 "Name field should reflect the newly typed text — proves it is genuinely editable"
             )
 
-            edited_description = f"{draft['description']} [edited]"
+            edited_description = f"{body['description']} [edited]"
             modal.review_description_input.click()
             modal.review_description_input.fill(edited_description)
             assert modal.get_review_description() == edited_description, (
                 "Description field should reflect the newly typed text — proves it is genuinely editable"
             )
 
-            edited_instructions = f"{draft['instructions']} [edited]"
+            edited_instructions = f"{body['instructions']} [edited]"
             modal.review_instructions_input.click()
             modal.review_instructions_input.fill(edited_instructions)
             assert modal.get_review_instructions() == edited_instructions, (
                 "Instructions field should reflect the newly typed text — proves it is genuinely editable"
             )
 
-            edited_welcome_message = f"{draft['welcome_message']} [edited]"
+            edited_welcome_message = f"{body['welcome_message']} [edited]"
             modal.review_welcome_message_input.click()
             modal.review_welcome_message_input.fill(edited_welcome_message)
             assert modal.get_review_welcome_message() == edited_welcome_message, (
                 "Welcome Message field should reflect the newly typed text — proves it is genuinely editable"
             )
 
-            edited_starter = f"{draft['conversation_starters'][0]} [edited]"
+            edited_starter = f"{body['conversation_starters'][0]} [edited]"
             first_starter = modal.get_review_starter(0)
             first_starter.click()
             first_starter.fill(edited_starter)
