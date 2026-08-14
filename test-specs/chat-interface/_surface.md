@@ -2,11 +2,35 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2105/2106/2107/2108/2109,
+a time; last confirmed by: qa-engineer analyst, ELITEA-2111,
 2026-08-15 (supersedes nothing below — new section, other sections unchanged;
-previous confirmer: ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
+previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
+ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+
+## Conversation-rename tooltip content — CLOSES the gap, EXTENDS not duplicates
+## the ELITEA-2110/2112/2113 family (ELITEA-2111, combined analyst+implementer)
+- ELITEA-2111's entire 5-step case ("hover inactive checkmark → exact tooltip
+  text → checkmark stays inactive → recover to valid → tooltip disappears,
+  checkmark active") is verbatim-equivalent to assertions the ELITEA-2110/
+  2112/2113 family's merged test (`test_conversation_rename_invalid_chars_and_recovery.py`,
+  on this batch trunk) ALREADY makes: ELITEA-2110's row for tooltip-appears +
+  exact-text-match + inactive-checkmark, ELITEA-2113's Shape B for the explicit
+  "tooltip element count 0" + active-checkmark recovery assertion. Live
+  re-confirmed this session with the case's own literal data hint (`$ % @`
+  characters, not the existing row's `HI Chat$$%`) — same result, same
+  mechanism (ONE static `ConversationNameWarningMessage` for any regex-failure
+  reason, source- and now doubly live-confirmed).
+- Extended (not duplicated): one new `pytest.param` row on the existing
+  parametrized Shape-A test using this case's own invalid-char data, plus a
+  coverage-tag-only `@allure.issue` addition to the existing Shape-B (2113)
+  test for step 5 — no new assertion code needed there, its existing
+  `data-disabled == "false"` + `get_conversation_name_confirm_tooltip_text()
+  == ""` check already IS step 5.
+- No case-text drift: the case's quoted tooltip string matches
+  `ConversationNameWarningMessage` byte-for-byte (verified via DOM
+  `textContent` read, not just source grep).
 
 ## Conversation-rename checkmark active/inactive threshold — CLOSES ELITEA-2099's
 ## own forecast, source-only confirmation (ELITEA-2105/2106/2107/2108/2109)
