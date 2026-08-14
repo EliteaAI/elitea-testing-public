@@ -3,39 +3,68 @@ case_id: ELITEA-2231
 title: "Onboarding — Welcome to Elitea page is displayed on first login with Sure lets go button and no project loading yet"
 priority: 3
 module: onboarding
-status: needs-escalation
+status: ready-for-automation
 analyst: qa-engineer
 analysis_date: 2026-08-14
 afs_path: test-specs/onboarding/l3_onboarding-welcome-page_ELITEA-2231.md
-intended_test_path: automation/tests/ui/onboarding/test_onboarding_welcome.py  # recommendation — lead confirms
-intended_page_object: automation/pages/onboarding_page.py  # recommendation — lead confirms
+test_path: automation/tests/ui/onboarding/test_onboarding_welcome.py
+page_object: automation/pages/onboarding_page.py
 batch: onboarding-w1
 ---
 
 # AFS — ELITEA-2231: Onboarding Welcome Page (First Login)
 
-## Summary
+## Status: `ready-for-automation`
 
-**Status: `needs-escalation`**
+### Classification note — declared improvisation
 
-The Welcome screen requires `user.personal_project_id = null` in Redux state, which
-means the user must not yet have a personal project provisioned by the backend. The
-current test setup (`VITE_DEV_TOKEN` / `auth_state` bypass) uses a user who is long
-past onboarding — `personal_project_id` is set. Navigating directly to `/onboarding`
-with this user renders the OnboardingTour slide deck (not the Welcome component),
-and the sidebar IS visible. The first-login Welcome state is not reachable locally
-without a framework-architecture decision from the lead.
+**Mechanism**: The first-login Welcome state is reached by intercepting
+`**/social/author/` (the `authorDetails` RTK Query endpoint,
+`src/api/social.js:5,122`), fetching the real backend response via
+`route.fetch()`, and re-fulfilling it with `personal_project_id: null` while
+leaving all other fields byte-identical. All other fields (user name, email,
+id, etc.) are real backend values.
 
-**The lead must choose between the two options laid out in § Escalation Options
-before this case can advance to implementation.**
+**Why this is the right mechanism**: Option A (dedicated fresh-user credential
+with reset) was rejected — `automation/routines/setup_test_users.py` targets
+deployed envs only, reads `personal_project_id` from `GET /api/v2/auth/user`
+(`:102-113`), and errors when the user has none (`:319`). The suite's own user
+tooling assumes the post-onboarding state; a reset mechanism does not exist.
+Option B (route interception) was chosen.
+
+**Sanctioned precedent**: Response stubbing via `page.route()` /
+`route.fulfill()` is already in production in `generate_entity_modal_page_base.py:100-144`
+(`mock_generate_failure()` / `mock_generate_success()`) — including
+`route.fulfill(status=…, content_type=…, body=…)` inside a page-object base
+class with the route pattern as an `UPPER_CASE` class-level constant. 23 total
+`\.route\(|fulfill` hits across `automation/**/*.py`.
+
+**New application of sanctioned mechanism** (the declared improvisation per
+`.agents/role-overrides.md` § Declared-improvisation protocol): prior uses
+control timing or force an error state. This use establishes an
+auth/onboarding **precondition** — a new shape. Precedent exists, but this
+specific application is novel. Declaring it here so the reviewer verifies the
+reasoning rather than treating it as a violation.
+
+**Coverage boundary** (must appear verbatim in the test docstring):
+> This test does NOT verify that the backend genuinely returns
+> `personal_project_id: null` for a brand-new user. That is a separate
+> API-level case. The assertion scope is the Welcome UI rendering when Redux
+> state carries `personal_project_id: null`.
+
+**Confirmed structure (lead ruling D2)**:
+- Test file: `automation/tests/ui/onboarding/test_onboarding_welcome.py`
+- Page object: `automation/pages/onboarding_page.py`
+- Markers: `p3`, `onboarding` (new feature marker — register in `automation/pytest.ini`), `regression`
+- Registering `onboarding` in `pytest.ini` is in scope for this case.
 
 ---
 
 ## Greenfield area
 
 No existing coverage. No `automation/tests/ui/onboarding/` package, no
-`automation/pages/onboarding_page.py`, no prior AFS. Confirmed by lead intake.
-Intended paths are **recommendations** — the lead confirms the structure.
+`automation/pages/onboarding_page.py`. Both paths are confirmed by the lead.
+The implementer creates the package (`__init__.py`) and the page object.
 
 ---
 
@@ -43,78 +72,111 @@ Intended paths are **recommendations** — the lead confirms the structure.
 
 | Credential | Env-var key | Notes |
 |---|---|---|
-| Fresh-user (DOES NOT EXIST YET) | `ONBOARDING_USER_EMAIL` / `ONBOARDING_USER_PASSWORD` | Needed for Option A — see § Escalation Options |
-| Existing dev-token user | `VITE_DEV_TOKEN` (in `EliteaUI/.env`) | Current `auth_state` user — NOT usable for this case |
+| Dev-token user (mocked) | `VITE_DEV_TOKEN` (in `EliteaUI/.env`) | `auth_state` bypass; user identity from real backend response; `personal_project_id` is mutated to `null` by the route mock |
+
+No new credential is needed. The existing `auth_state` / `VITE_DEV_TOKEN` user
+is reused. The user's real `name` field from the intercepted response provides
+the greeting assertion value — the test must read it from the response, never
+hardcode "Test Bot".
 
 ---
 
 ## Preconditions
 
-- User has authenticated for the **first time** — backend has not yet provisioned
-  `personal_project_id` for this user.
-- `sessionStorage.getItem('onboarding_state')` is `null` or empty (user has not
-  previously clicked "Sure, let's go!" in this browser session).
-- User `id` is set (authenticated via Keycloak).
+1. **Route mock installed BEFORE the first navigation** (`page.route(...)` call
+   comes before `page.goto('http://localhost:5173/')`), so the very first
+   `authorDetails` call from `ProtectedRoutes.jsx`'s `getUserDetails()` is
+   already intercepted.
+2. **`sessionStorage.getItem('onboarding_state')` is absent or not `'true'`**
+   (`Onboarding.jsx:36`). A fresh browser context (`browser.new_context()`)
+   guarantees this — the test must NOT reuse a context that previously clicked
+   "Sure, let's go!". Assert this at the start of the Welcome step rather than
+   assume it.
+3. **Navigate to the app root `/`** (`http://localhost:5173/`), not directly to
+   `/onboarding`. Landing on `/onboarding` must be **observed as the product's
+   own routing decision** (`IndexRoute.jsx:15` checks `!user.personal_project_id`
+   and navigates to `RouteDefinitions.Onboarding`). Navigating directly to
+   `/onboarding` would bypass the gate under test.
+4. Wait for URL to become `**/onboarding` before asserting (the redirect is
+   asynchronous — `IndexRoute` renders only after `getUserDetails()` resolves
+   and Redux state updates).
+
+**Scope boundary**: this case asserts the **pre-click** Welcome state only. The
+test must NOT click "Sure, let's go!" — that action and its consequences belong
+to ELITEA-2232. The test ends after asserting all Welcome-screen elements and
+confirming no provisioning UI is active.
 
 ---
 
 ## Test Data Inventory
 
-**Stable existing data (no setup needed):**
-- Static UI copy: "Welcome to Elitea!", "Hello, [Username]!", body/secondary text,
-  "Sure, let's go!" button — all hardcoded in `Welcome.jsx`.
+**Stable existing data (no setup/teardown needed):**
+- Static UI copy: all text strings are hardcoded in `Welcome.jsx` (title, body,
+  secondary text, button label).
+- Logo and welcome illustration: SVG asset `logo.svg` and PNG asset
+  `chat-welcome.png`, served statically.
 
 **Test-generated / per-run data:**
-- Fresh user account with `personal_project_id = null` — either a dedicated
-  credential (Option A) or an API-intercepted mock response (Option B).
+- User identity from the intercepted `authorDetails` response. The test reads
+  `user.name` from the mocked response to build the expected greeting string.
+  Do not hardcode the name — the test user's display name is "Test Bot"
+  (observed live 2026-08-14), but this may change.
 
 **Data to clean up:**
-- If Option A: the onboarding state must be reset after each test run so the user
-  can go through the Welcome flow again. Reset mechanism is TBD (no known API
-  endpoint observed; requires lead/backend investigation).
-- If Option B (API mock): no persistent state change; mock is session-scoped.
+- Route mock on `**/social/author/` — call `page.unroute(...)` in test teardown
+  (or scope the mock to the test via `page.route()` which auto-expires at
+  context close).
+- No persistent state is created (the user never advances past the Welcome screen).
+- `sessionStorage` is clean at the Welcome step; no key is set by the test.
 
 ---
 
 ## Step-by-Step Observations
 
-All steps were analysed against source code and a live browser observation on
-`http://localhost:5173/onboarding` with the `VITE_DEV_TOKEN` user (past onboarding).
-The Welcome screen was NOT observed live — the evidence below is source-code-grounded.
+Live observation performed 2026-08-14 using Playwright MCP with route mock
+installed on `**/social/author/` (real response + `personal_project_id: null`).
+App navigated from root; routed itself to `/onboarding`. No console errors.
 
-### Step 1 — First login with new user account
+Evidence screenshots:
+- `test-results/screenshots/ELITEA-2231-step-01-onboarding-current-state.png`
+  — baseline: current VITE_DEV_TOKEN user at `/onboarding` WITHOUT mock;
+  shows OnboardingTour + sidebar (Welcome screen NOT reachable without mock)
+- `test-results/screenshots/ELITEA-2231-step-02-welcome-screen-live.png`
+  — WITH mock active; Welcome screen renders correctly; sidebar absent
 
-**Gate mechanism** (`IndexRoute.jsx:15`):
+### Step 1 — Navigate from root; product routes to `/onboarding`
+
+**Gate** (`IndexRoute.jsx:15`):
 ```jsx
 if (!user.personal_project_id)
   return <Navigate to={RouteDefinitions.Onboarding} replace />;
 ```
-When `user.personal_project_id` is falsy after `getUserDetails()` API response,
-React Router navigates to `/onboarding`. With the current `VITE_DEV_TOKEN` user,
-`personal_project_id` IS set → redirect goes to `/chat`, not `/onboarding`.
+With route mock setting `personal_project_id: null`, Redux state has
+`personal_project_id: null` after the first `getUserDetails()` call →
+`IndexRoute` navigates to `/onboarding`.
 
-**Evidence screenshot**: `test-results/screenshots/ELITEA-2231-step-01-onboarding-current-state.png`
-— shows the app with the current user navigating to `/onboarding`: the OnboardingTour
-slide deck is rendered (not Welcome), sidebar IS present. Confirms the DEV_TOKEN user
-is past onboarding.
+**Live result**: Root navigation → URL became `http://localhost:5173/onboarding`.
+Network: `GET /api/v2/social/author/` → 200 OK (mocked).
 
-### Step 2 — Full-screen welcome page with ELITEA logo top-centre
+### Step 2 — Full-screen welcome page with ELITEA logo at top centre
 
-**Source** (`Onboarding.jsx:129-148`):
-```jsx
-<Box sx={styles.page}>       {/* full-screen container */}
-  <Box sx={styles.body}>
-    <Box sx={styles.logo}>
-      <Logo />                {/* SVG logo, top-centre */}
-    </Box>
-    <Box sx={styles.gradientBorder}>
-      <Box sx={styles.mainPanel}>
-        {!showTour && !user.personal_project_id && user.id && (
-          <Welcome name={user.name || user.email} onShowTour={handleShowTour} />
-        )}
-```
-The `styles.page` sets `width: 100%, height: 100vh` — full screen. Logo is rendered
-above the main panel at top-centre.
+**Layout** (`Onboarding.jsx:135-143`):
+- `<Box sx={styles.page}>` — `width:100%, height:100vh` — full screen
+- `<Box sx={styles.logo}><Logo /></Box>` — Elitea wordmark SVG **above** the card
+
+**Distinction between two images**:
+- The `<Logo />` SVG (`Onboarding.jsx:142`) is the Elitea brand wordmark at the
+  very top of the page. It renders as an inline SVG with no `role="img"` or
+  `alt` — it does NOT appear as an `img` element in the accessibility tree.
+  Needs `testid needed: onboarding-page-logo` on its container
+  `<Box sx={styles.logo}>`.
+- The `img "Elitea"` visible in the accessibility snapshot is the
+  `WelcomeImage` (`chat-welcome.png`, `Welcome.jsx:13-18`,
+  `alt="Elitea"`) — a welcome illustration **inside the card**, not the
+  brand logo.
+
+**Live result**: Full-screen layout confirmed (screenshot). Logo SVG confirmed
+present by source and screenshot — not in accessibility tree (no testid yet).
 
 ### Step 3 — Title "Welcome to Elitea!"
 
@@ -125,115 +187,105 @@ above the main panel at top-centre.
 </Typography>
 ```
 
+**Live result** (accessibility snapshot): `generic [ref=e25]: Welcome to Elitea!`
+— exact string confirmed.
+
 ### Step 4 — Card with greeting "Hello, [Username]!"
 
-**Source** (`Welcome.jsx:29-34`):
+**Source** (`Welcome.jsx:29-34`, `Onboarding.jsx:154`):
 ```jsx
-<Typography variant="bodyMedium" component="div" sx={styles.message}>
-  {`Hello, ${name}!`}
-</Typography>
+<Welcome name={user.name || user.email} onShowTour={handleShowTour} />
+// → {`Hello, ${name}!`}
 ```
-`name` prop = `user.name || user.email` (passed from `Onboarding.jsx:154`).
+
+**Live result**: `generic [ref=e29]: Hello, Test Bot!` — "Test Bot" is the real
+`user.name` from the intercepted response. The assertion must read the expected
+name from the response / a configured identity, never a hardcoded literal.
 
 ### Step 5 — Card body text
 
 **Source** (`Welcome.jsx:36-43`):
-```jsx
-<Typography variant="bodyMedium" component="div" sx={styles.message}>
-  We&apos;re setting up your personal workspace — it&apos;ll be ready in about
-  5 minutes. While we work our magic, take a quick tour through our onboarding slides!
-</Typography>
 ```
-Exact text: "We're setting up your personal workspace — it'll be ready in about 5
-minutes. While we work our magic, take a quick tour through our onboarding slides!"
+"We're setting up your personal workspace — it'll be ready in about 5 minutes.
+While we work our magic, take a quick tour through our onboarding slides!"
+```
+
+**Live result**: `generic [ref=e30]: We're setting up your personal workspace…`
+— exact match confirmed.
 
 ### Step 6 — Secondary text
 
 **Source** (`Welcome.jsx:44-49`):
-```jsx
-<Typography variant="bodyMedium" component="div" sx={styles.message}>
-  Ready to explore Elitea&apos;s smart tools and tips?
-</Typography>
 ```
-Exact text: "Ready to explore Elitea's smart tools and tips?"
+"Ready to explore Elitea's smart tools and tips?"
+```
+
+**Live result**: `generic [ref=e31]: Ready to explore Elitea's smart tools and tips?`
+— exact match confirmed.
 
 ### Step 7 — "Sure, let's go!" button
 
 **Source** (`Welcome.jsx:51-58`):
 ```jsx
-<Button.BaseBtn
-  variant="elitea"
-  color="primary"
-  sx={styles.button}
-  onClick={onShowTour}
->
-  Sure, let&apos;s go!
+<Button.BaseBtn variant="elitea" color="primary" onClick={onShowTour}>
+  Sure, let's go!
 </Button.BaseBtn>
 ```
-Button text: "Sure, let's go!" — calls `handleShowTour` from `Onboarding.jsx`.
 
-### Step 8 — No sidebar navigation visible
+**Live result**: `button "Sure, let's go!" [ref=e32]` — confirmed present and
+clickable. NOT clicked in this test (belongs to ELITEA-2232).
+
+### Step 8 — No sidebar navigation; no project dropdown
 
 **Source** (`MainSidebar.jsx:42`):
 ```jsx
 if (isOnboardingPage && !user.personal_project_id) return null;
 ```
-When on `/onboarding` AND `user.personal_project_id` is falsy, `MainSidebar` returns
-`null` — sidebar is completely absent from the DOM. This is a definitive code-grounded
-assertion: sidebar element (nav `aria-label="side-bar"`) will not be present.
+When `isOnboardingPage && !user.personal_project_id`, the entire sidebar
+(`<Box component="nav" aria-label="side-bar">`) is NOT rendered.
 
-**Live confirmation**: With the current `VITE_DEV_TOKEN` user (who has
-`personal_project_id` set), the sidebar IS present at `/onboarding` — consistent with
-the `MainSidebar.jsx:42` condition (falsy check fails → sidebar renders).
+**Live result** (accessibility snapshot WITHOUT mock): sidebar present,
+`navigation "side-bar"` visible, `sidebar-toggle` button present.
+**WITH mock active**: accessibility snapshot shows NO `navigation` element,
+NO `sidebar-toggle`, NO `project-selector-trigger` — sidebar is completely
+absent from the DOM.
 
-**Assertion shape**: `expect(locator("nav[aria-label='side-bar']")).to_have_count(0)`
-using the `sidebar-nav` testid once added. This is a first-class absence assertion
-per canon ruling #511-extension.
+**Assertion targets (absence)**:
+- `sidebar-toggle` testid → `to_have_count(0)` — confirms no sidebar at all
+- `project-selector-trigger` testid → `to_have_count(0)` — confirms no project
+  dropdown specifically (case step 8 names it explicitly)
 
-### Step 9 — Project provisioning has NOT yet started
+### Step 9 — Personal/private project NOT yet loading
 
-**Source analysis** (`Onboarding.jsx:65-87`):
+**Source** (`Onboarding.jsx:65-87` and `167`):
+The progress footer and polling only start AFTER `handleShowTour()` is called
+(button click sets `showTour = true`). At the Welcome state:
 ```jsx
-const handleShowTour = useCallback(() => {
-  sessionStorage.setItem(ONBOARDING_STORAGE_KEY, 'true');
-  if (!user.personal_project_id) {
-    progressIntervalIdRef.current = setInterval(() => { /* progress */ }, 1000);
-    queryStatusIntervalIdRef.current = setInterval(async () => {
-      const result = await getUserDetails().unwrap();
-      if (result.personal_project_id) { /* handle ready */ }
-    }, 5000);
-  }
-  setShowTour(true);
-}, [...]);
+{showTour && !thePrivateProjectIsReady && (
+  <Box sx={styles.footer}>...</Box>  // only visible post-click
+)}
 ```
-The polling interval (`queryStatusIntervalIdRef`, every 5 seconds calling
-`getUserDetails()`) is started ONLY when `handleShowTour` is called (user clicks
-"Sure, let's go!"). Before that click, no polling interval runs within `Onboarding.jsx`.
 
-**Background activity from `ProtectedRoutes.jsx`**: Note that `ProtectedRoutes.jsx`
-has its own timer (`PERSONAL_SPACE_PERIOD_FOR_NEW_USER = 5 * 60 * 1000` = 5 minutes,
-`ProtectedRoutes.jsx:157-163`) that calls `getUserDetails()` once after 5 minutes
-when `!user.personal_project_id`. This runs in the background regardless of the
-Welcome screen state — but it is NOT provisioning; it checks for provisioning
-completion. The backend provisioning trigger is separate.
+**Live result**:
+- No `LinearProgress` / "Configuring Personal project..." text visible in
+  snapshot or screenshot
+- `sessionStorage.getItem('onboarding_state') === null` (confirmed via
+  `page.evaluate()`, 2026-08-14)
+- No `showTour=true` state → no polling interval started within Onboarding.jsx
 
-**Observable for step 9** (what is UI-assertable before the button click):
-1. The linear progress bar footer is NOT visible:
-   `Onboarding.jsx:167`: `{showTour && !thePrivateProjectIsReady && <Box sx={styles.footer}>...}` —
-   only renders when `showTour = true`, which is only true after button click.
-2. "Configuring Personal project..." text NOT visible — same condition.
-3. `sessionStorage.getItem('onboarding_state')` is `null` — not yet set.
+**Observation window**: these assertions are made immediately at the Welcome
+state, before any user interaction. The 5-minute `ProtectedRoutes.jsx` timer
+(`PERSONAL_SPACE_PERIOD_FOR_NEW_USER = 5 * 60 * 1000`) is outside the test's
+execution window and is not assertable.
 
-**Observation window**: These assertions can be made immediately upon page load (at the
-Welcome screen step, before any interaction). The 5-minute ProtectedRoutes timer is
-not observable as a UI state change during the test's execution window.
-
-**Step 9 caveat — case text vs. code**: The case states "provisioning does not begin
-until the user clicks 'Sure, let's go!'". The UI code does NOT make any "start
-provisioning" API call on button click — it only begins polling `getUserDetails()` to
-detect when the backend has finished provisioning. The backend provisioning trigger is
-not visible in the UI source code. The automatable assertion is: no progress/polling
-UI state is shown, not that the backend has not started provisioning.
+**Case text note (clarification, NOT a product defect)**: The case says
+"provisioning does not begin until the user clicks 'Sure, let's go!'". Code
+shows the button click only starts client-side POLLING — no "start provisioning"
+API call is made. The backend provisioning trigger is not visible in UI source.
+The automatable assertion is the absence of the progress UI, not a backend-state
+check. The case text describes the UX intent (the user's action gates the
+loading UX) accurately from a product perspective.
+PENDING — clarification issue not filed (local-only run).
 
 ---
 
@@ -241,146 +293,125 @@ UI state is shown, not that the backend has not started provisioning.
 
 ### Axis 1 — Every original case element
 
-| # | Case element | Expected | Disposition | Assertion notes |
-|---|---|---|---|---|
-| 1 | First login with new user | Authenticated, lands on onboarding page | **blocked — unreachable locally** | `IndexRoute.jsx:15` gates on `!user.personal_project_id`; current `VITE_DEV_TOKEN` user has it set |
-| 2 | Full-screen welcome page, ELITEA logo top-centre | Condition holds | Ready (pending reachability) | `Onboarding.jsx:129-140` — logo SVG above main panel; `styles.page: height:100vh` |
-| 3 | Title "Welcome to Elitea!" | Condition holds | Ready (pending reachability) | `Welcome.jsx:19-25` — `Typography` with exact string |
-| 4 | Card: "Hello, [Username]!" | Condition holds | Ready (pending reachability) | `Welcome.jsx:29-34` — `{Hello, ${name}!}` with user.name or user.email |
-| 5 | Card body text (workspace setup) | Condition holds | Ready (pending reachability) | `Welcome.jsx:36-43` — exact string verified |
-| 6 | Secondary text "Ready to explore…?" | Condition holds | Ready (pending reachability) | `Welcome.jsx:44-49` — exact string verified |
-| 7 | "Sure, let's go!" button | Condition holds | Ready (pending reachability) | `Welcome.jsx:51-58` — Button.BaseBtn |
-| 8 | No sidebar navigation visible | Condition holds | Ready (pending reachability) | `MainSidebar.jsx:42` — returns `null` when `isOnboardingPage && !user.personal_project_id`; absence assertion on sidebar nav |
-| 9 | Personal/private project NOT yet loading | Condition holds | Ready (pending reachability) | Observable: no linear progress footer (`Onboarding.jsx:167`), no polling started; see step 9 notes above |
+| # | Case element | Expected | Source | Observation | Disposition |
+|---|---|---|---|---|---|
+| 1 | Navigate to app root; product routes to `/onboarding` | Authenticated, lands on `/onboarding` | `IndexRoute.jsx:15` — `if (!user.personal_project_id) → Navigate(/onboarding)` | URL changed to `/onboarding` after root navigation with mock active | **covered** |
+| 2 | Full-screen welcome page with ELITEA logo top-centre | Condition holds | `Onboarding.jsx:135-143` — `styles.page: height:100vh`; `<Box sx={styles.logo}><Logo /></Box>` above card | Logo SVG present (screenshot); full-screen layout confirmed; logo NOT in a11y tree (no testid yet) | **covered** (testid needed: `onboarding-page-logo`) |
+| 3 | Title "Welcome to Elitea!" | Exact text | `Welcome.jsx:19-25` | `generic: Welcome to Elitea!` confirmed live | **covered** (testid needed: `onboarding-welcome-title`) |
+| 4 | Card: "Hello, [Username]!" with real user name | Greeting with user's display name | `Welcome.jsx:29-34`; `Onboarding.jsx:154` — `user.name \|\| user.email` | `generic: Hello, Test Bot!` — name from real intercepted response | **covered** (testid needed: `onboarding-welcome-greeting`; assertion reads name from response) |
+| 5 | Body text: workspace setup copy | Exact text | `Welcome.jsx:36-43` | `generic: We're setting up your personal workspace…` — exact match | **covered** (testid needed: `onboarding-welcome-body-text`) |
+| 6 | Secondary text: "Ready to explore…?" | Exact text | `Welcome.jsx:44-49` | `generic: Ready to explore Elitea's smart tools and tips?` — exact match | **covered** (testid needed: `onboarding-welcome-secondary-text`) |
+| 7 | "Sure, let's go!" button visible | Button present | `Welcome.jsx:51-58` | `button "Sure, let's go!"` confirmed live | **covered** (testid needed: `onboarding-welcome-get-started-button`; NOT clicked in this test) |
+| 8 | No sidebar navigation; no project dropdown | Both absent | `MainSidebar.jsx:42` — returns `null` when `isOnboardingPage && !user.personal_project_id` | Confirmed: `sidebar-toggle` absent, `project-selector-trigger` absent in live snapshot | **covered** (absence assertions on existing testids — no new testids needed) |
+| 9 | Personal/private project NOT yet loading | No progress UI; no polling started | `Onboarding.jsx:167` — footer only when `showTour && !thePrivateProjectIsReady`; `sessionStorage` empty | Progress footer absent; `sessionStorage.onboarding_state = null` confirmed | **covered** (testid needed: `onboarding-progress-footer` for absence assertion; sessionStorage check) |
 
 ### Axis 2 — Assertions beyond the case
 
 | Observable | Reason |
 |---|---|
-| No console errors on the Welcome page | Defensive check for JS/API errors |
-| `sessionStorage.getItem('onboarding_state')` is null at Welcome screen | Confirms polling/tour-start state is clean |
+| No console errors on Welcome page | Defensive; route mock must not introduce JS errors |
+| `sessionStorage.getItem('onboarding_state') === null` | Asserts clean state rather than assuming it; the test explicitly verifies before proceeding |
+| `img "Elitea"` (welcome illustration, `alt="Elitea"`) visible inside card | The WelcomeImage is part of the card layout; confirms the correct component variant is rendered |
 
 ---
 
 ## Handles Reference
 
-All handles are **`needs-adding`** — zero testids exist anywhere in the onboarding
-feature (confirmed by `git grep` on both `origin/main` and `origin/automation/testids`).
-
-PROVENANCE verification command (run 2026-08-14):
+PROVENANCE verification run 2026-08-14:
 ```bash
-cd ../EliteaUI && git fetch origin  # fresh fetch performed above
-git grep -iE "(data-testid|testid[[:space:]]*[:=])" origin/main -- src/ 2>/dev/null | grep -i "onboard\|welcome-page\|welcome-to-elitea" | head -20
-git grep -iE "(data-testid|testid[[:space:]]*[:=])" origin/automation/testids -- src/ 2>/dev/null | grep -i "onboard\|welcome-page\|welcome-to-elitea" | head -20
+cd ../EliteaUI && git fetch origin  # (fetch performed above — branch states were live)
+FILTER='(data-testid|testid[[:space:]]*[:=])'
+for t in sidebar-toggle project-selector-trigger; do
+  printf "%-42s main:%-4s testids:%s\n" "$t" \
+    "$(git grep -- "$t" origin/main -- src/ 2>/dev/null | grep -qiE "$FILTER" && echo YES || echo no)" \
+    "$(git grep -- "$t" origin/automation/testids -- src/ 2>/dev/null | grep -qiE "$FILTER" && echo YES || echo no)"
+done
 ```
-Result on both: **0 hits** for onboarding/welcome-page testids. (Note: hits for
-`welcome-message` are for the agent WelcomeMessage component — unrelated.)
+**Output**:
+```
+sidebar-toggle                             main:YES  testids:YES
+project-selector-trigger                  main:YES  testids:YES
+```
+Raw hits:
+```
+origin/main:src/[fsd]/widgets/sidebar-root/ui/SidebarBody.jsx:            data-testid="sidebar-toggle"
+origin/main:src/[fsd]/widgets/sidebar-root/ui/SidebarProjectSelect.jsx:        data-testid="project-selector-trigger"
+```
 
-| Handle | Element | Source file:line | Proposed testid | PROVENANCE |
+Onboarding components (Welcome.jsx, Onboarding.jsx) — 0 testids on either
+branch (confirmed by git grep with the same filter — 0 hits for `onboard` or
+`welcome-page` on both `origin/main` and `origin/automation/testids`).
+
+| Handle | Element | Source file:line | Testid | PROVENANCE |
 |---|---|---|---|---|
-| Onboarding page outer wrapper | `<Box sx={styles.page}>` | `Onboarding.jsx:135` | `testid needed: onboarding-page-container` | needs-adding |
-| Logo image | `<Box sx={styles.logo}><Logo /></Box>` | `Onboarding.jsx:140-143` | `testid needed: onboarding-logo` | needs-adding |
-| Welcome component root | `<Welcome ...>` / `<Box sx={styles.container}>` | `Welcome.jsx:12` | `testid needed: onboarding-welcome-card` | needs-adding |
+| Page outer container | `<Box sx={styles.page}>` | `Onboarding.jsx:135` | `testid needed: onboarding-page-container` | needs-adding |
+| Logo container (Elitea wordmark SVG) | `<Box sx={styles.logo}><Logo /></Box>` | `Onboarding.jsx:140-143` | `testid needed: onboarding-page-logo` | needs-adding |
+| Welcome card root | `<Box sx={styles.container}>` in Welcome | `Welcome.jsx:12` | `testid needed: onboarding-welcome-card` | needs-adding |
+| Welcome illustration image | `<Box component="img" alt="Elitea">` | `Welcome.jsx:13-18` | `testid needed: onboarding-welcome-illustration` | needs-adding |
 | Title "Welcome to Elitea!" | `<Typography>Welcome to Elitea!</Typography>` | `Welcome.jsx:19-25` | `testid needed: onboarding-welcome-title` | needs-adding |
-| Greeting text "Hello, [name]!" | First `<Typography>` in card body | `Welcome.jsx:29-34` | `testid needed: onboarding-welcome-greeting` | needs-adding |
+| Greeting "Hello, [name]!" | First `<Typography>` in card body | `Welcome.jsx:29-34` | `testid needed: onboarding-welcome-greeting` | needs-adding |
 | Body text (workspace setup) | Second `<Typography>` in card body | `Welcome.jsx:36-43` | `testid needed: onboarding-welcome-body-text` | needs-adding |
 | Secondary text "Ready to explore…" | Third `<Typography>` in card body | `Welcome.jsx:44-49` | `testid needed: onboarding-welcome-secondary-text` | needs-adding |
 | "Sure, let's go!" button | `<Button.BaseBtn onClick={onShowTour}>` | `Welcome.jsx:51-58` | `testid needed: onboarding-welcome-get-started-button` | needs-adding |
-| Sidebar nav (absence assertion) | `<Box component="nav" aria-label="side-bar">` | `MainSidebar.jsx:44-47` | Check existing testid for sidebar nav | needs-adding (or check existing) |
-| Progress footer (absence assertion) | `<Box sx={styles.footer}>` | `Onboarding.jsx:167` | `testid needed: onboarding-progress-footer` | needs-adding |
+| Sidebar toggle (absence assertion for step 8) | `data-testid="sidebar-toggle"` in `SidebarBody.jsx:221` | `src/[fsd]/widgets/sidebar-root/ui/SidebarBody.jsx:221` | `sidebar-toggle` | **on-main ✓** |
+| Project dropdown trigger (absence assertion for step 8) | `data-testid="project-selector-trigger"` in `SidebarProjectSelect.jsx` | `src/[fsd]/widgets/sidebar-root/ui/SidebarProjectSelect.jsx:94` | `project-selector-trigger` | **on-main ✓** |
+| Progress footer (absence assertion for step 9) | `<Box sx={styles.footer}>` | `Onboarding.jsx:167-177` | `testid needed: onboarding-progress-footer` | needs-adding |
 
-**Handle count summary: 0 on `main`, 0 on `automation/testids`, 10 `needs-adding`.**
+**Handle count summary**: 2 `on-main ✓` (step 8 absence assertions — existing testids, no new adds needed), 0 `on-automation/testids only`, 10 `needs-adding`.
 
-Note on the sidebar testid: the sidebar nav element (`<Box component="nav" aria-label="side-bar">`) may already have a testid — check `automation/pages/base_page.py` or `MainSidebar.jsx` for an existing testid before adding a new one. The key assertion for step 8 is an absence assertion on whatever stable testid identifies the sidebar.
+### Route mock handle (page-object class constant)
+
+```python
+# In OnboardingPage class (automation/pages/onboarding_page.py):
+AUTHOR_DETAILS_ROUTE = '**/social/author/'   # matches GET /api/v2/social/author/
+```
+
+Pattern follows `generate_entity_modal_page_base.py:45` (`GENERATE_DRAFT_ROUTE`).
+Method: `mock_fresh_user_state(self)` — fetch real response, set
+`personal_project_id = None`, re-fulfill. Returns the real `user` dict so
+the test can read `user['name']` for the greeting assertion.
+Cleanup method: `clear_author_details_mock(self)` (calls `page.unroute(...)`).
 
 ---
 
-## Escalation Options
+## Options Considered
 
-The lead must choose one approach before dispatching the implementer.
+### Option A — Dedicated fresh-user credential + reset mechanism
 
-### Option A — Dedicated fresh-user onboarding account (Recommended)
+Rejected on evidence. `automation/routines/setup_test_users.py` targets
+deployed envs only (`ENV_URLS` = STAGE2/STAGE3/DEV/NEXT), reads
+`personal_project_id` from `GET /api/v2/auth/user` at `:102-113`, and errors
+when the user has none (`:319`). The suite's user tooling assumes the
+post-onboarding state. No reset mechanism exists in the backend or suite. Would
+require new backend capability — scoped to a future effort if needed.
 
-**What it requires:**
-1. A new user account on the DEV backend whose `personal_project_id` is `null` at
-   the start of each test run (or whose onboarding state can be reset).
-2. New env vars in `.env.test`: `ONBOARDING_USER_EMAIL`, `ONBOARDING_USER_PASSWORD`.
-3. Keycloak login (not `auth_state`): test must navigate to Keycloak and log in with
-   the fresh user. The existing `auth` fixture in `conftest.py` already handles
-   Keycloak login (`input[name="username"]`); this test would use it instead of
-   `auth_state`.
-4. **Reset mechanism** (critical): After a test run, the user is past onboarding.
-   Options:
-   - Admin API to delete/reset `personal_project_id` for the test user (needs
-     investigation — check if `/api/v2/social/author/` PATCH endpoint supports
-     resetting this field, or if a Keycloak admin API can delete/recreate the user).
-   - Pre-provisioned "pool" of fresh users, with a new account per run (expensive).
-   - A backend fixture endpoint explicitly for QA (escalate to backend team).
+### Option B — Playwright `page.route()` API interception (CHOSEN)
 
-**Trade-offs:**
-- PROS: Tests the real first-login flow end-to-end; no mocks.
-- CONS: Needs backend support for reset; adds Keycloak login overhead; test is
-  stateful and brittle if reset fails.
-
-**Owner**: Backend team + lead to add env vars and confirm reset mechanism.
-
-### Option B — Playwright API interception (page.route())
-
-**What it requires:**
-1. Intercept the `GET /api/v2/social/author/` call (the `authorDetails` RTK Query
-   endpoint, `social.js:120`).
-2. Return a modified response with `personal_project_id: null` (and `id` set to a
-   valid user id).
-3. Navigate to `http://localhost:5173/onboarding`.
-4. Redux state will see `personal_project_id: null` → `IndexRoute` redirects to
-   `/onboarding` → `MainSidebar` returns `null` → `Onboarding` shows `Welcome`.
-5. Assert steps 2-9. Stop before clicking "Sure, let's go!" (step 1 is mocked,
-   not real first-login behavior).
-
-**Trade-offs:**
-- PROS: Self-contained; no backend changes; reset is automatic (mock is session-scoped);
-  technically covers steps 2-9 accurately (the Welcome component's rendering is real).
-- CONS: Step 1 (first-login navigation) is mocked; framework preference is "real
-  dependencies over mocks where possible". Must document mock scope in the test.
-- Playwright `page.route()` is a framework-native capability but is not used
-  elsewhere in the suite (no existing precedent).
-
-**Owner**: Lead to rule on whether API mocking is acceptable for this case.
-Implement via `page.route()` in a `@pytest.fixture` scoped to the onboarding tests.
-
-### Decision needed from the operator
-
-Both options require a framework-architecture decision:
-- Option A: New test credential type + reset strategy (backend scope)
-- Option B: API mocking policy exception (existing "real deps preferred" guideline)
-
-The case cannot proceed to automation until one option is chosen and the
-prerequisite (reset mechanism OR mock policy) is in place.
+Real-response single-field mutation: intercept `**/social/author/`,
+`route.fetch()` the genuine backend response, re-fulfill with
+`personal_project_id: null`, all other fields byte-identical. Implemented as a
+page-object `mock_*` method per the `generate_entity_modal_page_base.py` shape.
+Confirmed working live (2026-08-14).
 
 ---
 
 ## Known Defects Found
 
-None — the Welcome screen could not be observed live (it requires the first-login
-state). No product defects discovered during source analysis.
+None. All case elements matched the live UI exactly.
 
-**Case text observation (not a defect)**:
-Step 9 states "project provisioning does not begin until the user clicks 'Sure,
-let's go!'". Source code analysis (`Onboarding.jsx:65-87`) shows the UI button
-click only starts CLIENT-SIDE polling — it does not send a "start provisioning"
-API request. The backend provisioning trigger mechanism is not visible in the UI
-source. This may be case-text imprecision about the UX intent (the user's action
-GATES the loading UX, even if backend provisioning is triggered at login). The
-testable UI observable is: no progress bar shown before the button click. This
-is NOT filed as a defect — classifying as a case-text clarification. Document
-this in the AFS for the implementer.
-PENDING — not filed (local-only run; would file as `question` label on
-`EliteaAI/elitea-testing-public` if outward writes were enabled).
+**Pending actions (local-only run)**:
+- Clarification issue (case text / provisioning language): would file as a
+  `question`-labelled issue on `EliteaAI/elitea-testing-public` with body:
+  "Step 9 says 'provisioning does not begin until the user clicks [button]'. Code
+  analysis shows the button click starts client-side polling only — no provisioning
+  API call. The automatable assertion is absence of the progress UI. Case text
+  clarification requested. Found while working ELITEA-2231."
+  PENDING — not filed (local-only run).
 
 ---
 
 ## Cleanup
 
-No cleanup required — the Welcome screen cannot be reached and no test data was
-created. If Option A is implemented with a real user, the test teardown must reset
-the user's onboarding state (see § Escalation Options).
+- `page.unroute('**/social/author/')` in test teardown (or context close).
+- No persistent data created (user never advances past Welcome screen).
+- `sessionStorage` starts clean (fresh context) and remains clean at test end.
