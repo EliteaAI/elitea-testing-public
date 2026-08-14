@@ -1,5 +1,21 @@
 # Test Case: Build with AI — Suggested Skills section is shown with up to 5 skills
 
+> ⚠️ **UNDER REVIEW — 2026-08-14 fidelity audit. Do NOT reuse this AFS as a pattern.**
+>
+> This spec directs the implementer to **substitute the system under test** (mocking
+> the `generate_application_draft` response) for a TMS case whose text never asks for
+> simulation. Classification: **TERMINAL** — the 5-card cap is read off a hand-authored 7-item payload; it also produced #1317, which is unresolved.
+>
+> Its justifications ("the same sanctioned-mocking technique this file already uses",
+> "not a good use of fixture-creation effort") are **not valid authorities**: nothing
+> sanctions response mocking, and cost is never a reason to substitute. See
+> `.agents/testing.md` § Fidelity policy and `.agents/role-overrides.md` § Every role —
+> precedent is not authority.
+>
+> **`extend-existing` must not inherit this design.** Rework is tracked on
+> [#1298](https://github.com/EliteaAI/elitea-testing-public/issues/1298); the full chain
+> is in `sdlc-skills/bundles/test-automation/incidents/2026-08-14-response-mocking-drift.md`.
+
 ## Metadata
 - **TMS ID**: ELITEA-1910
 - **Linked Story**: none

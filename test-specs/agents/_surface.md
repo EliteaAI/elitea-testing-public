@@ -647,12 +647,26 @@ Every disposable-agent fixture in this area uses `reasoning_effort: "none"` and 
   this repo — no prior live exploration, ELITEA-1907/1911 included, ever observed >2 suggestions
   per category). Applies to **all five** suggestion categories (toolkit/mcp/pipeline/agent/skill)
   — one shared component, one root cause.
-- **Real suggestion counts cannot be reliably driven past ~2 via live fixtures** (LLM
-  relevance-matching, per ELITEA-1907/1911's own precondition audits) — testing any cap/count
-  boundary on this surface needs the `mock_generate_success()` route-mocking technique
-  (`GenerateEntityModalPageBase`, already sanctioned for ELITEA-1907/1915), not live fixture
-  creation. Don't burn fixture-creation effort trying to coax >5 real Skills/Toolkits into
-  suggestion relevance — it's nondeterministic and the mock answers deterministically in one call.
+- ⚠️ **CORRECTED 2026-08-14 — the previous version of this bullet was wrong doctrine and
+  caused a drift.** It read: *"testing any cap/count boundary on this surface needs the
+  `mock_generate_success()` route-mocking technique … don't burn fixture-creation effort."*
+  **Do not follow it.** Mocking `generate_application_draft` to produce the observable a case
+  came to check is a **terminal substitution** and is forbidden (`.agents/testing.md`
+  § Fidelity policy). Nothing "sanctioned" it — that word was borrowed from unrelated rules.
+  What still stands as fact: live suggestion counts have never been observed above ~2 per
+  category (ELITEA-1907/1911 precondition audits). What follows from it is the opposite
+  conclusion: a cap/count boundary on this surface **cannot be observed honestly today**, so
+  such a case is `blocked` → lead → a human decision, **not** a mocked test. See also this
+  file's ELITEA-1914 note above (line ~633): a real, unmocked `generate_application_draft`
+  call reliably produces a usable draft within existing timeouts — **the live path works**;
+  the mock was an economy, never a necessity.
+- **#1317 is unresolved, not established.** It was filed off a mocked 7-item payload, which
+  demonstrates that `items.map()` maps items — not that the system can reach that state. Three
+  questions are open: where the "5" comes from (it appears in exactly one TMS case, which has
+  `requirements: []`, and nowhere in the product source), whether the **backend** caps (never
+  checked — so "frontend gap" presupposes ownership), and whether a real repro exists. The
+  experiment that settles all three: create ~8 relevant Skills as fixtures, run **one live**
+  generation, read the raw API response. Do not cite #1317 as settled fact in a new AFS.
 
 ## Build with AI — "Back to prompt" (`back_button`) confirmed: pure client-side state reset, prompt preserved (ELITEA-1919 run, 2026-08-08)
 - **`generate-agent-back-button` had never been `.click()`ed anywhere in the suite before this

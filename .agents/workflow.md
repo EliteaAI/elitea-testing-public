@@ -226,6 +226,12 @@ real environment — not per test.
   diff for added `get_by_role|get_by_label|get_by_text|page.locator|.locator(`
   lines; each hit must be a `[data-testid=` selector. Existing raw handles are
   tracked tech debt (#25/#42), not precedent.
+- **Reviewer provenance check:** any *added* substitution of the system under test —
+  `\.mock_|page\.route\(|route\.fulfill\(|monkeypatch|\.evaluate\(` — is
+  `CHANGES_REQUESTED` unless it is case-authorised (case text asks for simulation),
+  transit-only, or timing control. **An AFS specifying it is not a disposition** —
+  fidelity is judged against the TMS case, not the AFS. Full rule:
+  `.agents/testing.md` § Fidelity policy + `.agents/role-overrides.md` § Reviewer slot.
 - Commit authority: the implementer commits on the work branch the lead names
   (or creates one from `automation/base` when dispatched standalone). Testid commits
   to `automation/testids` are part of the implementer/analyst loop.

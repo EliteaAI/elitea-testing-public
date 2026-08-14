@@ -43,6 +43,48 @@ verification (#19 rework shipped a false "0 of 12 on main" row exactly this way;
 truth was 5/12, added by the UI team's own EL-5400). Name the ref you checked and
 PASTE the command output.
 
+## Every role — fidelity policy (the #2 override)
+
+**An assertion is evidence only if the value it reads was produced by the SYSTEM,
+not by the test.** Fabricated responses, injected state, wrong-interface
+preconditions, replaced clients and bypassed subjects are all **substitutions**.
+
+**→ The full policy is `.agents/testing.md` § Fidelity policy — the single source.
+Read it; this section only states that it OVERRIDES every skill's defaults and
+examples**, including the AFS template's "Engineer: decide whether to stub or
+escalate" line (`test-case-analysis/references/spec-format.md`), which is a generic
+example this project does not follow.
+
+The short form every slot must know:
+
+- **Transit substitution** (only to *reach* the step under test; the case's own
+  observable still comes from the system) — allowed, **must be declared**.
+- **Terminal substitution** (the case's observable is read off the substituted
+  thing) — **forbidden**, unless the case text itself asks for simulation.
+- **Cannot be produced honestly ⇒ route to a human** (`blocked` → lead →
+  `question` card). Never engineer around it.
+- Delaying a *real* response for timing control is NOT substitution.
+
+Per-slot consequences: § Analyst / § Implementer / § Reviewer / § Orchestrator slot
+below. (Origin: the 2026-08-14 drift audit — ~15 tests across 3 files asserted
+against hand-authored payloads for cases that never asked; no gate objected.)
+
+## Every role — precedent is not authority
+
+**Neighbours are authority on CONVENTION, never on DEVIATION.** A merged, reviewed,
+green example is not a norm — it may simply be a deviation nobody had a rule to
+block. This generalises the locator-specific rule in `.agents/testing.md`
+(*"Never cite neighbors to justify a new raw handle"*) to every decision you make.
+
+- If you cannot cite a rule in `.agents/*`, `.claude/rules/*` or a skill, you have a
+  **canon gap** — not a precedent. Handle it per the protocol below.
+- "The same technique this file already uses", "consistent with the neighbouring
+  tests", "already sanctioned and merged" are **not** authorities. Naming a merged
+  example is a starting point for the question, never the answer to it.
+- Watch the word **"sanctioned"** especially: it is only true if you can name the
+  document and section that sanctions it. Borrowing an authority-word from an
+  adjacent, unrelated rule is how the 2026-08-14 drift passed four gates.
+
 ## Every role — declared-improvisation protocol (canon gaps)
 
 When the canon has NO pattern for your case: pick the most spirit-compliant option
@@ -53,6 +95,28 @@ reasoning, the auditor reports it as a `question` — it can never solo-FAIL a
 delivery. An UNDECLARED improvisation is a violation, full stop. (Origin: #19
 FAIL-1 — a semantically-correct improvisation was indistinguishable from a
 violation because it was silent.)
+
+**A declaration makes a deviation VISIBLE — it does not make it PERMITTED.** Three
+limits, added 2026-08-14 after the drift audit found declaration being used as a
+bypass token (an elaborately reasoned AFS made a forbidden choice unblockable,
+because the protocol above forbids a solo FAIL):
+
+1. **Ceiling — what a declaration can never authorise.** It covers *how* you do
+   something the canon left unshaped. It never covers a change to **what is being
+   verified**: a terminal substitution (§ fidelity policy), dropping or weakening a
+   case's observable, or swapping the subject of the case. Those are **human
+   decisions** — route them (`blocked` → lead → `question` card), don't declare
+   your way past them. A declaration in this territory is a violation, not an
+   escalation.
+2. **Obligation — a declaration is an open loop, not a receipt.** It must produce a
+   `question` card proposing the canon addition **before the batch closes**. The
+   lead owns this at close. An improvisation declared and never escalated is how a
+   one-off becomes doctrine.
+3. **Second use is a blocker, not a declaration.** The protocol covers the FIRST
+   encounter with a gap. If the same unshaped pattern is being applied again, the
+   gap is known and the answer is the canon card from (2) — repeating the
+   declaration instead is laundering, and the reviewer treats it as
+   `CHANGES_REQUESTED`.
 
 ## Every role — before filing a UI "doesn't work" bug: the interaction-discovery ladder
 
@@ -180,6 +244,23 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
 
 ## Analyst slot (qa-engineer)
 
+- **You choose the fidelity of the whole case — nobody downstream re-opens it.** The
+  implementer builds what the AFS specifies and the reviewer triangulates against the
+  AFS, so a substitution you design is invisible to every later gate (all three
+  artifacts agree). Decide it deliberately, per `.agents/testing.md` § Fidelity policy.
+- **A substitution is never a way to make a case tractable.** Determinism, speed,
+  fixture cost and LLM variance are *reasons to want* one — they are not authority to
+  take one. If the case's observable cannot be produced by the real system, the AFS is
+  `blocked` (§ Blocked Steps naming exactly what could not be produced), and the lead
+  routes it to a human. Convenience never converts into `ready-for-automation`.
+- **Any substitution you do spec requires an AFS § Fidelity Declaration** — one row
+  per substitution: what is substituted, transit-or-terminal, and the authority
+  (quoted case line for a simulation case, or "transit only" with the real observable
+  named). Terminal substitution with no quoted case line must not be written into an
+  AFS at all.
+- **Cost arguments belong in the declaration, not in the verdict.** "Coaxing the live
+  system into this state is expensive/nondeterministic" is exactly the sentence that
+  should trigger the `blocked` route, not justify a workaround.
 - The AFS **Handles Reference must list testids as the only primary handles.** An
   element without one is specced as `testid needed: {section}-{element}-{type}` —
   never "resolve by accessible role/name", never a CSS/role handle as primary.
@@ -200,6 +281,23 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
 
 ## Implementer slot (test-automation-engineer)
 
+- **An AFS specifying a terminal substitution is NOT executable — it is returned.**
+  The AFS is your work order for *what* to assert, not a waiver of
+  `.agents/testing.md` § Fidelity policy. If the AFS tells you to fabricate the very
+  thing the case came to observe, and the case text does not ask for simulation,
+  return it to the lead (`needs-analyst-rerun`-shaped) instead of building it. This is
+  the mirror of the existing rule that you may not amend a testid request *away* —
+  here you may not build a fidelity violation *in*.
+- **Self-check before handoff (same discipline as the locator grep):** run
+  ```bash
+  git diff <base>...HEAD -- automation/ | grep -nE '^[+].*(\.mock_|page\.route\(|route\.fulfill\(|monkeypatch|\.evaluate\()'
+  ```
+  and PASTE the output in the Run Report. Empty output is the evidence; a missing
+  paste is a gap. Each hit must be justified in the Run Report as transit-only or
+  case-authorised (quote the case line).
+- **Declare in the docstring, not only in the AFS.** Any substitution the test
+  performs gets one line in the test docstring naming what was substituted and why —
+  the next person reads the test, not the AFS.
 - An AFS row saying `testid needed: X` means: run `add-data-testid`, add `X` to
   EliteaUI, use `LocatorDescriptor(testid="X")`. Never substitute a role/text
   handle "for now".
@@ -221,6 +319,31 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
 
 ## Reviewer slot (qa-engineer, fresh session)
 
+- **Provenance check — ask of every asserted observable: WHAT PRODUCED THIS VALUE?**
+  Your standing checks verify that an assertion *exists*, is *strong*, and *matches
+  the AFS*. None of them asks where the value came from — a fabricated payload
+  satisfies all three, and typically scores *better* (exact-equality assertions,
+  perfectly deterministic). This check is the missing axis. Mechanical half, run on
+  every PR and PASTE command + output (or explicit "0 hits"), same discipline as the
+  locator grep:
+  ```bash
+  git diff <base>...HEAD -- automation/ | grep -nE '^[+].*(\.mock_|page\.route\(|route\.fulfill\(|monkeypatch|\.evaluate\()'
+  ```
+  A hit is COMPLIANT only if one of these holds, and you say which:
+  1. **Case-authorised** — the TMS case text asks for simulation; quote the line.
+  2. **Transit only** — the substitution merely reaches the step under test, and the
+     case's own observable is still produced by the system; name that observable.
+  3. **Timing control** — a *real* response delayed to expose a transient state.
+
+  Anything else is **`CHANGES_REQUESTED`**, including a substitution the AFS
+  specifies — *"the AFS said so"* is not a disposition. An AFS that authored a
+  terminal substitution is the classic triangulation blind spot: all three artifacts
+  agree and all three are wrong (row 1 of the triangulation table green-lights it).
+  Judge fidelity against the **TMS case**, which is the upstream contract.
+- **Do not let a declaration close the question.** Per § declared-improvisation
+  protocol, a declaration cannot authorise a terminal substitution or any change to
+  *what* is verified. A well-argued explanation for a forbidden choice is still a
+  forbidden choice — verify the reasoning, then block anyway and say why.
 - **Any non-testid handle ADDED in `automation/pages/` or `automation/tests/` is
   `CHANGES_REQUESTED`.** Not a nit, not a non-blocking tech-debt note, not waived
   for neighborhood consistency. Mechanical check on every PR:
@@ -280,6 +403,22 @@ Plain branching, **one thing at a time**, no concurrent checkouts. Never create 
 
 ## Orchestrator slot (test-automation-lead)
 
+- **NEVER prescribe a technique that substitutes the system under test.** Your
+  dispatch prompt is the strongest signal in the pipeline: an IC treats it as settled
+  and the reviewer ends up judging work *you ordered*, which removes the last
+  independent axis. Suggesting a mock/stub/injection to "sidestep a live-data
+  dependency" is how the 2026-08-14 drift began (three dispatches on one batch).
+  Name the *observable* and the *constraint*; let the analyst determine fidelity, and
+  route a `blocked` return to a human instead of unblocking it with a technique.
+- **Dispatch-prompt contract:** every implementer and reviewer dispatch prompt MUST
+  carry the fidelity line verbatim alongside the locator line: *"Fidelity policy:
+  the observable must be produced by the system (`.agents/testing.md` § Fidelity
+  policy). Terminal substitution — fabricated responses, injected state, replaced
+  clients — is CHANGES_REQUESTED unless the case text asks for simulation."*
+- **At batch close, resolve every declaration.** Each declared improvisation in the
+  run must have produced a `question` card proposing the canon addition (§
+  declared-improvisation protocol, limit 2). An unresolved declaration is not a
+  closed batch — it is a pattern about to become doctrine.
 - **Dispatch-prompt contract:** every implementer and reviewer dispatch prompt
   MUST carry the line: *"Locator policy: testid-only (`.agents/role-overrides.md`
   + `.agents/testing.md` § Locator policy). The workflow skill's example ladder

@@ -54,6 +54,13 @@ cd ../EliteaUI && npm run dev                                    # → http://lo
   `LocatorDescriptor(testid="agent-form-save-button")`; `fallback`/`locator` params are
   forbidden. Naming: `{section}-{element}-{type}`. Locators live **only as page-object
   class fields** — never inside methods or specs. Overrides: `.agents/role-overrides.md`.
+- **Fidelity: the observable must be produced by the SYSTEM, not by the test.**
+  Fabricated responses (`route.fulfill`), injected state (`page.evaluate`),
+  wrong-interface preconditions and replaced clients are **substitutions**. Allowed
+  only as *transit* (to reach the step under test, declared) or when the case text
+  asks for simulation. Reading the case's own observable off a substitution is
+  forbidden — if it can't be produced honestly, it goes to a **human**, not around.
+  Delaying a real response for timing control is fine. `.agents/testing.md` § Fidelity policy.
 - **Test steps wrapped in `with allure.step("Step N — …"):`** so they reach reports.
 - **`.env.test` beats shell env vars** (`config.py` orders dotenv first). Edit the file,
   don't export.

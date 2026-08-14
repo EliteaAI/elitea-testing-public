@@ -1,5 +1,21 @@
 # Test Case: Build with AI — "Back to prompt" returns to input step and preserves prompt text
 
+> ⚠️ **UNDER REVIEW — 2026-08-14 fidelity audit. Do NOT reuse this AFS as a pattern.**
+>
+> This spec directs the implementer to **substitute the system under test** (mocking
+> the `generate_application_draft` response) for a TMS case whose text never asks for
+> simulation. Classification: **TRANSIT** — as 1918 — the mock is transit to the review step; the back-to-prompt observable is real.
+>
+> Its justifications ("the same sanctioned-mocking technique this file already uses",
+> "not a good use of fixture-creation effort") are **not valid authorities**: nothing
+> sanctions response mocking, and cost is never a reason to substitute. See
+> `.agents/testing.md` § Fidelity policy and `.agents/role-overrides.md` § Every role —
+> precedent is not authority.
+>
+> **`extend-existing` must not inherit this design.** Rework is tracked on
+> [#1298](https://github.com/EliteaAI/elitea-testing-public/issues/1298); the full chain
+> is in `sdlc-skills/bundles/test-automation/incidents/2026-08-14-response-mocking-drift.md`.
+
 ## Metadata
 - **TMS ID**: ELITEA-1919
 - **Source case**: `onetest-ai-tm-Elitea/tests/automated-full-regression-ui/agents/build_with_ai/ELITEA-1919_build-with-ai-back-to-prompt-returns-to-input-step-preserves-text.md`
