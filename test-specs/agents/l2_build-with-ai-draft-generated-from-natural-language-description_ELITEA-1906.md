@@ -1,26 +1,14 @@
 # Test Case: Build with AI — agent draft is generated from a natural-language description (Agent)
 
-> ⚠️ **UNDER REVIEW — 2026-08-14 fidelity audit. Do NOT reuse this AFS as a pattern.**
->
-> This spec directs the implementer to **substitute the system under test** (mocking
-> the generate-draft response) for a TMS case whose text never asks for simulation.
-> Classification: **TERMINAL** — the case's subject is that the AI populates the draft from a natural-language description — the mock removes the subject entirely.
->
-> **Rework by class:** `TERMINAL` → rewrite against the live flow (the test currently
-> proves nothing about the case's subject). `MIXED` → drop the tautological assertions
-> and prefer a live draft; the rest of the coverage is sound. `TRANSIT` → cheapest —
-> swap the mock for a live generate, or keep it and declare it per
-> `.agents/testing.md` § Fidelity policy.
->
-> Justifications of the form "the same sanctioned-mocking technique this file already
-> uses" or "not a good use of fixture-creation effort" are **not valid authorities**:
-> nothing sanctions response mocking, and cost is never a reason to substitute. See
-> `.agents/role-overrides.md` § Every role — precedent is not authority.
->
-> **`extend-existing` must not inherit this design.** Rework tracked on
-> [#1298](https://github.com/EliteaAI/elitea-testing-public/issues/1298) (agents) and
-> [#1399](https://github.com/EliteaAI/elitea-testing-public/issues/1399) (skills); full
-> chain in `sdlc-skills/bundles/test-automation/incidents/2026-08-14-response-mocking-drift.md`.
+> ✅ **Reworked 2026-08-14 (fidelity rework, issue #1298).** The implementer replaced
+> `modal.mock_generate_success(draft)` with a LIVE `modal.click_generate_and_wait_for_response()`
+> call — every review-form field assertion (Steps 5-10) now compares against
+> `response.json()`, the real generate-draft response body, not a hand-authored payload.
+> The test ran green 3× locally against the real backend (project 399). See
+> `automation/tests/ui/agents/test_agent_build_with_ai.py` (`TestAgentBuildWithAIDraftFieldPopulation.test_draft_fields_prepopulated_and_editable`)
+> and the implementer's Run Report on branch `tests/1906-1910-terminal-live-rework` for
+> the live-run evidence. `FIELD_POPULATION_DRAFT_PAYLOAD` is no longer referenced by
+> this test but is still used by ELITEA-1912/1913 (separate units) — not deleted here.
 
 ## Metadata
 - **TMS ID**: ELITEA-1906
@@ -101,11 +89,13 @@ gap-fill; per the skill's boundary call, a gap this size is routed to
 ### reuse-existing (no fixture creation/teardown needed)
 - Natural-language prompt (case's own exact Test Data wording):
   `"An agent that helps write concise JIRA ticket descriptions"`.
-- **Mocked generate-draft success payload** (deterministic, matching this
-  suite's established pattern in ELITEA-1907/1909/1911/1915 — see
-  `mock_generate_success()`), content plausibly aligned with the prompt's
-  intent so the assertions genuinely exercise "the UI renders the generated
-  draft content", not just "the UI renders some non-empty string":
+- **[SUPERSEDED — implementation note, 2026-08-14]** The payload below was the
+  original analyst-specified `mock_generate_success()` fixture. The implementer
+  replaced it with a LIVE `click_generate_and_wait_for_response()` call — the
+  test now asserts every field against `response.json()`, the real backend's
+  own output, not this constant. Kept here only as a reference for the shape/
+  spirit real responses take (see the live-verified reference bullet below,
+  which already confirmed this):
   ```json
   {
     "name": "JIRA Ticket Description Writer",
@@ -123,15 +113,13 @@ gap-fill; per the skill's boundary call, a gap this size is routed to
     "suggested_skills": []
   }
   ```
-  Suggested-resource arrays are deliberately empty — `ResourceSuggestions.jsx`
-  renders `null` for an empty category (already asserted by ELITEA-1907), so
-  this keeps the DOM surface focused on the 5 core fields this case actually
-  cares about, without re-deriving ELITEA-1907's coverage.
 - Live-verified reference (not asserted, informational): a REAL (unmocked)
   generation against the DEV backend for the exact case prompt returned name
   `"JIRA Ticket Writer"`, a JIRA-ticket-focused description/instructions, a
   Welcome Message, and 4 conversation starters (hit `MAX_CONVERSATION_STARTERS`)
-  — confirming the mocked payload's shape/spirit matches real backend output.
+  — confirming the (now-superseded) mocked payload's shape/spirit matched real
+  backend output, and this is exactly what the implemented live-call test now
+  asserts against directly, every run.
   Screenshot: `test-results/screenshots/ELITEA-1906-step-05-review-form-populated.png`.
 
 No test data is created or persisted in the product — this case's steps stop
@@ -154,63 +142,48 @@ clicked. See Cleanup.
      and `generate_button` (`generate-agent-submit-button`) transitions from
      disabled to enabled.
 
-3. Install a `mock_generate_success()` route on
-   `GENERATE_DRAFT_ROUTE` with the Test Data payload above, then click
-   **"Generate Draft"** (`generate-agent-submit-button`).
-   - **Verify**: the modal shows the loading state
-     (`generate-agent-loading-indicator`, text `"Generating agent
-     draft..."`) while the (artificially delayed) mocked response is in
-     flight. Confirmed live via the real (unmocked) call — the identical
-     loading state renders during a genuine multi-second generation.
+3. **[As implemented: live, not mocked]** Click **"Generate Draft"**
+   (`generate-agent-submit-button`) via
+   `modal.click_generate_and_wait_for_response(timeout=LIVE_GENERATE_RESPONSE_TIMEOUT)`
+   — a real, unmocked call to `generate_application_draft` — and assert
+   `response.status == 200`, then `body = response.json()`. Assert each of
+   `body["name"]`/`["description"]`/`["instructions"]`/`["welcome_message"]`
+   is truthy and `body["conversation_starters"]` is non-empty — the invariant
+   a mock could never violate.
 
-4. Wait for the mocked generate-draft response to resolve and for
+4. Wait for the live generate-draft response to resolve and for
    `wait_for_review_form()` (`generate-agent-back-button` +
    `generate-agent-approve-button` visible) to succeed.
-   - **Verify**: the loading state ends and the modal transitions to the
-     review/edit form. Confirmed live (real backend run): loading ends,
-     review form renders, in well under the 15s `REVIEW_FORM_TIMEOUT` this
-     suite already uses for the mocked-payload tests.
+   - **Verify**: the modal transitions to the review/edit form within the
+     `LIVE_GENERATE_RESPONSE_TIMEOUT`/`REVIEW_FORM_TIMEOUT` budget. Live-run
+     evidence (implementation, 2026-08-14): green in 24s locally.
 
 5. Inspect the review form's **Name** field
    (`generate-agent-review-name-input`).
-   - **Verify**: `get_review_name()` (or `expect(review_name_input)
-     .to_have_value(...)`) equals the mocked payload's `name` —
-     `"JIRA Ticket Description Writer"`. Live-confirmed pattern: the real
-     (unmocked) run rendered a semantically-matching generated Name
-     (`"JIRA Ticket Writer"`) in the identical field.
+   - **Verify**: `get_review_name() == body["name"]` — the real, live
+     response's own name, not a constant.
 
 6. Inspect the review form's **Description** field
    (`generate-agent-review-description-input`).
-   - **Verify**: `get_review_description()` equals the mocked payload's
-     `description`. Live-confirmed pattern (real run): a non-empty,
-     JIRA-relevant description rendered in the identical field.
+   - **Verify**: `get_review_description() == body["description"]`.
 
 7. Inspect the review form's **Instructions** field
    (`generate-agent-review-instructions-input`).
-   - **Verify**: `get_review_instructions()` equals the mocked payload's
-     `instructions`. Live-confirmed pattern (real run): a non-empty,
-     multi-paragraph, JIRA-relevant instructions block rendered in the
-     identical field.
+   - **Verify**: `get_review_instructions() == body["instructions"]`.
 
 8. Inspect the review form's **Welcome Message** field — **testid
    needed**, see § Concrete Handles.
-   - **Verify**: the field's value equals the mocked payload's
-     `welcome_message`. Live-confirmed live (real run, screenshot cited
-     above): a non-empty Welcome Message rendered under the label
-     `"Welcome Message"`, directly below Instructions.
+   - **Verify**: the field's value equals `body["welcome_message"]`.
 
 9. Inspect the review form's **Chat starters** section — **testid
    needed per starter input**, see § Concrete Handles. Section only
    renders when `conversation_starters.length > 0`
-   (`GenerateAgentReviewForm.jsx` — source-confirmed), which the mocked
-   payload's 2-item array satisfies.
+   (`GenerateAgentReviewForm.jsx` — source-confirmed).
    - **Verify**: the section header `"Chat starters:"` is visible, and each
-     starter input's value equals the corresponding mocked payload entry
-     (2 inputs, in order). Live-confirmed live (real run): 4 starter inputs
-     rendered, each pre-filled with a generated, JIRA-relevant suggestion,
-     plus a live `"N/4 added."` counter and a disabled "Starter" add-button
-     once the max was reached (informational — out of this case's scope,
-     see § Coverage Map Axis 2).
+     starter input's value equals the corresponding entry of
+     `body["conversation_starters"]`, iterating however many the live call
+     actually returned (do not assume exactly 2 — the mocked payload's count
+     was a fixture artifact, not a contract).
 
 10. For each of the 5 fields (Name, Description, Instructions, Welcome
     Message, and the first Chat-starter input), click into the field and
@@ -240,8 +213,9 @@ and generation completes, displays a fully populated review/edit form with
 Name, Description, Instructions, Welcome message, and Conversation starters
 — all pre-populated with generated values and all editable — before agent
 creation. Live-verified end-to-end (real, unmocked backend call) that this
-is exactly what the live product does; the mocked-payload version above
-makes the same observable deterministic for CI.
+is exactly what the live product does; the implemented test now asserts
+directly against a live call every run — no mocked-payload determinism
+substitute is used.
 
 ## Coverage Map
 
@@ -252,13 +226,13 @@ makes the same observable deterministic for CI.
 | Precondition: "GenerateAgentModal is accessible from the New Agent creation page" | modal reachable from `/agents/create` | step 1 | step 1: navigate + click Build with AI, modal opens | asserted |
 | 1 Open the GenerateAgentModal | modal opens with prompt input field | step 1 | step 1: `modal.modal` + `modal.prompt_input` visible | asserted |
 | 2 Enter natural-language description | input field accepts/displays entered text | step 2 | step 2: `get_prompt_value() == PROMPT_TEXT` | asserted |
-| 3 Click "Generate agent" | loading state shown while generation in progress | step 3 | step 3: `loading_indicator` visible during the mocked (delayed) request | asserted |
+| 3 Click "Generate agent" | live generate-draft call succeeds (200), response is substantively non-empty | step 3 | step 3: `response.status == 200` + truthy-field invariants on `body` | asserted (implemented live, no loading-state check per brief) |
 | 4 Wait for generation to complete | loading ends, transitions to review/edit form | step 4 | step 4: `wait_for_review_form()` succeeds | asserted |
-| 5 Review form pre-populated with Name | Name field has a generated value | step 5 | step 5: `get_review_name() == mocked payload name` | asserted |
-| 6 Review form pre-populated with Description | Description field has a generated value | step 6 | step 6: `get_review_description() == mocked payload description` | asserted |
-| 7 Review form pre-populated with Instructions | Instructions field has generated content | step 7 | step 7: `get_review_instructions() == mocked payload instructions` | asserted |
-| 8 Review form pre-populated with Welcome message | Welcome message field has a generated value | step 8 | step 8: new getter against new testid == mocked payload `welcome_message` | asserted (implementer adds testid + getter) |
-| 9 Review form pre-populated with Conversation starters | Conversation starters field has generated suggestions | step 9 | step 9: `"Chat starters:"` section header (`generate-agent-review-starters-header`) visible + per-starter-input getter == mocked payload `conversation_starters[i]` | asserted (implementer adds dynamic testid + getter, plus a static testid for the section header) |
+| 5 Review form pre-populated with Name | Name field has a generated value | step 5 | step 5: `get_review_name() == body["name"]` (live response) | asserted |
+| 6 Review form pre-populated with Description | Description field has a generated value | step 6 | step 6: `get_review_description() == body["description"]` (live response) | asserted |
+| 7 Review form pre-populated with Instructions | Instructions field has generated content | step 7 | step 7: `get_review_instructions() == body["instructions"]` (live response) | asserted |
+| 8 Review form pre-populated with Welcome message | Welcome message field has a generated value | step 8 | step 8: `get_review_welcome_message() == body["welcome_message"]` (live response) | asserted |
+| 9 Review form pre-populated with Conversation starters | Conversation starters field has generated suggestions | step 9 | step 9: `"Chat starters:"` section header visible + per-starter-input getter == `body["conversation_starters"][i]`, iterated over however many the live call returned | asserted |
 | 10 All fields editable before approval | all pre-populated fields can be edited | step 10 | step 10: type into each of the 5 fields, re-read value, confirm it reflects the edit | asserted |
 
 ### Axis 2 — Analyst additions
@@ -306,10 +280,8 @@ makes the same observable deterministic for CI.
    case step) fully resets local state per `GenerateEntityModal.jsx`'s
    `handleClose`, same as documented in ELITEA-1915's AFS.
 2. No API/DB cleanup fixture needed for this case as scoped.
-3. The mocked route (`mock_generate_success()` / `page.route(...)`) is
-   scoped to the test's own browser context/page — no explicit teardown
-   needed beyond the normal per-test fixture lifecycle, same pattern already
-   used by ELITEA-1907/1909/1911/1915's tests in this file.
+3. **[As implemented]** No route mock is installed at all — the test drives
+   a real `generate_application_draft` call and needs no route teardown.
 
 ## Concrete Handles (discovered during exploration)
 
@@ -343,15 +315,16 @@ slots if only 2 are exercised by this test's own code path.
 
 ## Network Behavior
 - `POST /api/v2/elitea_core/generate_application_draft/prompt_lib/{project_id}`
-  — same sole endpoint documented by ELITEA-1915's AFS. This case mocks it
-  (200 + the Test Data payload above) rather than hitting the real backend,
-  for CI determinism — matching ELITEA-1907/1909/1911/1915's established
-  pattern in this file.
+  — same sole endpoint documented by ELITEA-1915's AFS. **[As implemented]**
+  this test hits it for real (`click_generate_and_wait_for_response()`,
+  `LIVE_GENERATE_RESPONSE_TIMEOUT`), asserting every review-form field
+  against the response body — no mock, no CI-determinism substitution.
 - Real (unmocked) reference call made during this exploration for the
   case's exact prompt resolved 200 in well under 30s, with a response body
   shape (`name`, `description`, `instructions`, `welcome_message`,
-  `conversation_starters`, plus empty `suggested_*` arrays for this prompt)
-  matching what the mocked payload above encodes.
+  `conversation_starters`, plus empty `suggested_*` arrays for this prompt).
+  The implemented test's own live runs (2026-08-14) confirmed the same shape,
+  3× consecutively, green.
 
 ## Known Defects Found During Exploration
 None blocking. See § Coverage Map Axis 2 for the already-tracked, non-
@@ -368,12 +341,15 @@ implementer prerequisite is the 2 new testids in § Concrete Handles.
 ## Automation Hints
 - Framework: Playwright + pytest, per `.agents/testing.md`. Home:
   `automation/tests/ui/agents/test_agent_build_with_ai.py` (existing file —
-  add a new test class, e.g. `TestAgentBuildWithAIDraftFieldPopulation`,
+  a new test class, `TestAgentBuildWithAIDraftFieldPopulation`, sits
   alongside the existing `TestAgentBuildWithAIGenerationFailureRetry` /
   `TestAgentBuildWithAISuggestedResources` / `TestAgentBuildWithAISelectedResourcesAttached`
-  classes — same module, same fixtures/imports, same
-  `mock_generate_success()` pattern, new payload constant e.g.
-  `FIELD_POPULATION_DRAFT_PAYLOAD`).
+  classes. **[As implemented, 2026-08-14 fidelity rework]:** the test uses
+  `modal.click_generate_and_wait_for_response(timeout=LIVE_GENERATE_RESPONSE_TIMEOUT)`
+  — the same live pattern `TestAgentBuildWithAISelectedResourcesAttached`
+  (ELITEA-1909/1911) already established — NOT `mock_generate_success()`.
+  `FIELD_POPULATION_DRAFT_PAYLOAD` is no longer referenced by this test (still
+  used by ELITEA-1912/1913, separate units).
 - Page object: extend `automation/pages/generate_agent_modal_page.py`'s
   `GenerateAgentModalPage` with:
   - `review_welcome_message_input = LocatorDescriptor(testid="generate-agent-review-welcome-message-input", ...)`
