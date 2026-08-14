@@ -534,6 +534,32 @@ class AgentHubPage(BasePage):
         """
         return self.page.locator(self.MODAL_STARTER_ITEM)
 
+    @action("Click a conversation starter item in the agent preview modal")
+    def click_modal_starter_item(self, match_text: str, timeout: int = 10000):
+        """Click the modal starter item whose text CONTAINS *match_text*
+        (ELITEA-2093) — resolves via ``MODAL_STARTER_ITEM`` +
+        ``.filter(has_text=...)``, same idiom as
+        :meth:`ChatPage.click_chat_starter_tile`.
+
+        Unlike :meth:`click_start_chat`, this click does NOT need the known
+        defect #1043 timing workaround: ``AgentConversationStarterItem.jsx``
+        only renders once ``agentDetails?.version_details?.conversation_starters``
+        has committed (confirmed via source — same data dependency as the
+        race, but here the race manifests as the item not existing yet rather
+        than a click-time exception), so callers that already waited for
+        :meth:`get_modal_starter_items` to be visible (this case's own
+        "verify starters visible" step) are naturally past the race window
+        before this method is ever called.
+
+        ``AgentModal.jsx``'s ``onSelectStarter`` handler both navigates to
+        ``/chat`` (via ``onStartConversation``) AND closes the modal
+        (``onClose()``) synchronously off this single click — no separate
+        "Start Chat" click is involved for this flow.
+        """
+        item = self.page.locator(self.MODAL_STARTER_ITEM).filter(has_text=match_text)
+        item.first.wait_for(state="visible", timeout=timeout)
+        item.first.click()
+
     @action("Click Start Chat in the agent preview modal")
     def click_start_chat(self, timeout: int = 10000):
         """Click the 'Start Chat' button in the (already-ready) agent preview modal.
