@@ -56,6 +56,20 @@ at least one item per category) and from ELITEA-1914 (whose plain draft
 never renders any suggestion at all) — the first test in this file to
 assert a combined, all-category zero with resources genuinely on offer.
 
+2026-08-14 fidelity rework (issue #1298) — BLOCKED, mock intentionally kept.
+A live, dynamic-category rewrite (drop the mock, use
+`click_generate_and_wait_for_response()`, derive asserted categories/ids/
+names from the response body) was attempted for `SUGGESTED_RESOURCES_PROMPT_
+TEXT` against this environment's actual test project (399). 3 consecutive
+live calls each returned all five `suggested_*` arrays empty — a fully empty
+response degenerates the case into ELITEA-1914's scenario and exercises none
+of this case's distinguishing "combined across categories" contract. Per the
+rework brief's explicit instruction not to fabricate a workaround, the live
+rewrite was NOT applied; the original mock is kept and the fidelity issue is
+unresolved, routed to a human for a scope decision — same pattern as
+ELITEA-1910 below. See the AFS and the implementer's Run Report on branch
+tests/1908-1913-mixed-rework for the full evidence.
+
 Covers ELITEA-1910: extends ELITEA-1907's coverage of the "SUGGESTED SKILLS"
 section to a 7-item mocked payload (2 over the case's stated cap of 5) —
 proves the section still renders and sampled cards (first/middle/last)
@@ -87,7 +101,13 @@ regular Create Agent form's `agent-name-input`, ELITEA-1900) — typing past
 32 characters is accepted into the DOM (no truncation) and triggers
 `aria-invalid="true"` plus a visible "Name must be 32 characters or less"
 error message and a disabled "Create Agent" button; trimming back to
-exactly 32 characters clears both and re-enables the button.
+exactly 32 characters clears both and re-enables the button. 2026-08-14
+fidelity rework (issue #1298): step 1's draft-generation now drives a LIVE
+`click_generate_and_wait_for_response()` call (no `mock_generate_success()`)
+and the pre-population assertion reads the real response body's `name`
+field — the response is the oracle, per `.agents/testing.md` § Fidelity
+policy — while steps 2-6 (real keystrokes, live client-side validation)
+were already fully real and are unchanged.
 
 Covers ELITEA-1916: a CREATE-time failure (mocked 500 on the base-create
 POST, distinct from ELITEA-1915's generate-draft-time failure — no existing
@@ -1372,7 +1392,34 @@ class TestAgentBuildWithAISelectedResourcesAttached:
         coverage (ELITEA-1909/1911, which always select at least one item)
         and from ELITEA-1914's ungated no-resources-rendered-at-all path —
         this is the first test to assert a COMBINED all-category zero with
-        resources genuinely on offer."""
+        resources genuinely on offer.
+
+        2026-08-14 fidelity rework (issue #1298) — BLOCKED, mock intentionally
+        kept. A live rewrite (drop the mock, use
+        `click_generate_and_wait_for_response()`, derive the asserted
+        categories/ids/names dynamically from the response body instead of
+        the hardcoded `SUGGESTED_RESOURCES_DRAFT_PAYLOAD` literals) was
+        attempted for `SUGGESTED_RESOURCES_PROMPT_TEXT` against this
+        environment's actual test project (399, per `ELITEA_PROJECT_ID` in
+        `.env.test` — not project 400, which the AFS's Preconditions explored
+        against). 3 consecutive live `click_generate_and_wait_for_response()`
+        calls each returned all five `suggested_*` arrays EMPTY
+        (`suggested_toolkits: [], suggested_mcp: [], suggested_pipelines: [],
+        suggested_agents: [], suggested_skills: []`) — a fully empty response
+        degenerates this case into ELITEA-1914's scenario and exercises none
+        of ELITEA-1908's distinguishing "combined across categories" contract.
+        Per the rework brief's explicit instruction ("if the live call
+        surfaces ZERO categories at all... if that happens consistently (try
+        more than once with the same prompt before concluding), return this
+        case as blocked rather than force a green with a prompt engineered to
+        fabricate multi-category suggestions — that would just reintroduce a
+        different-shaped fabrication"), the live rewrite was NOT applied; the
+        original `SUGGESTED_RESOURCES_DRAFT_PAYLOAD` mock is kept and the
+        fidelity issue for this test is unresolved and routed to a human for
+        a scope decision. See the AFS and the implementer's Run Report on
+        branch tests/1908-1913-mixed-rework for the full evidence — this
+        mirrors ELITEA-1910's identical live-suggestion-nondeterminism
+        finding in the same file."""
         list_page = AgentsListPage(page)
         modal = GenerateAgentModalPage(page)
 
@@ -1380,9 +1427,10 @@ class TestAgentBuildWithAISelectedResourcesAttached:
         try:
             # ------------------------------------------------------------------
             # Step 1 (case) — Generate a draft with Toolkit/MCP/Pipeline/Agent
-            # suggestions all rendered (mocked — see AFS Preconditions:
-            # project 400 cannot reliably reproduce multi-category live
-            # suggestions, same gap ELITEA-1906/1907/1915 already resolve
+            # suggestions all rendered (mocked — see AFS Preconditions and the
+            # docstring above: 3 consecutive live attempts against project 399
+            # for this prompt all returned zero suggestions across every
+            # category, same gap ELITEA-1906/1907/1915/1910 already resolve
             # this way)
             # ------------------------------------------------------------------
             with allure.step("Step 1 — Generate a draft with suggested Toolkits/MCP/Pipelines/Agents rendered"):
@@ -1835,7 +1883,6 @@ class TestAgentBuildWithAIReviewNameValidation:
         exactly 32 characters clears the error and re-enables the button."""
         list_page = AgentsListPage(page)
         modal = GenerateAgentModalPage(page)
-        draft = FIELD_POPULATION_DRAFT_PAYLOAD
 
         # ------------------------------------------------------------------
         # Step 1 (case) — Generate a draft; review form renders with the
@@ -1845,23 +1892,21 @@ class TestAgentBuildWithAIReviewNameValidation:
             list_page.navigate_to_create()
             modal.open_modal()
             modal.fill_prompt(FIELD_POPULATION_PROMPT_TEXT)
-            modal.mock_generate_success(draft)
 
-            with modal.expect_generate_response(timeout=GENERATE_RESPONSE_TIMEOUT) as response_info:
-                modal.generate_button.click()
-
-            response = response_info.value
+            response = modal.click_generate_and_wait_for_response(timeout=LIVE_GENERATE_RESPONSE_TIMEOUT)
             assert response.status == 200, (
-                f"Expected the mocked generate-draft request to succeed, got {response.status}"
+                f"Expected the generate-draft request to succeed, got {response.status}"
             )
+            body = response.json()
             modal.wait_for_review_form(timeout=REVIEW_FORM_TIMEOUT)
 
             assert modal.review_name_input.is_visible(), (
                 "Review-form Name field should be visible and interactable once the review form renders"
             )
-            assert modal.get_review_name() == draft["name"], (
-                "Review-form Name field should be pre-populated with the generated draft's name "
-                "before this test starts editing it"
+            assert modal.get_review_name() == body["name"], (
+                "Review-form Name field should be pre-populated with the real generated draft's name "
+                "(the response is the oracle — see .agents/testing.md § Fidelity policy) before this "
+                "test starts editing it"
             )
 
         # ------------------------------------------------------------------
