@@ -1,0 +1,91 @@
+{
+  "batch": "elitea-2397-set-llm-model-tiers",
+  "base": "automation/base",
+  "integration_branch": "tests/batch-elitea-2397-set-llm-model-tiers",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      61.826188083,
+      57.768906291,
+      57.768002083,
+      10.068480917
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2397",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2397 step 9 ('repeat steps 2-8 for High-tier and Low-tier selectors') implies tier-parity with Default for the 'used when starting a chat' claim. Live verification + EliteaUI source grep show this is false: only Default feeds the plain /chat model-selector-button. Low-tier is consumed only by the Mermaid diagram 'Quick Fix' AI-assist action (mermaidQuickFixModel.helpers.js); High-tier has z… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1253"
+        },
+        {
+          "kind": "note",
+          "note": "Real automation/product gap: the Default/High-tier/Low-tier model selector (MUI Select, shared Select.SingleSelect component) offers no 'clear'/unset option in its dropdown. Once a tier has a value there is no UI-only path back to 'unset'. This session's own live exploration left the shared Private/399 test project's High-tier set to GPT-5.2 (it was unset before) with no way to revert via UI. The … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The exact POST /api/v2/configurations/models/{project_id} request-body shape (what a tier-selection PATCH payload looks like) was not captured this session — the browser's network-log buffer had rotated the request body out by the time it was queried; only the 200 response ({\"result\": \"success\"}) was retrievable. The implementer needs to capture this live during the Automate phase, both for the AF… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "This case mutates SHARED, live project configuration (the whole Private/399 project's LLM tier defaults) that other suite tests read from — notably ELITEA-2090's chat-default-LLM test. The AFS calls out that this test must run in serial mode (already a project-wide convention per .agents/testing.md) and must capture+restore the original three tier values via a finally/teardown block, not just asse… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Card-text-concatenation gotcha generalizes beyond this case: ConfigurationCard.jsx (and likely other similar card/row components in this codebase) renders displayName + status text + conditional badge text as sibling Typography children with NO whitespace separator in the concatenated textContent (e.g. 'GPT-5.4OK • Shared'). An anchored exact-match .filter(has_text=re.compile('^name$')) on the out… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/ai_providers_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed (via EliteaUI/src/api/configurations.js) that the POST /configurations/models/{project_id} save mutation has no null/clear payload shape for any LLM tier — and the MUI dropdown itself offers no blank/None option either. A tier that starts genuinely UNSET on the shared project has no UI-only or API-only path back to 'unset' as of 2026-08-06. This test's cleanup documents that limitation v… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/settings-ai-providers/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Reverse-masking claims (High-tier has zero frontend consumers; Low-tier consumed only by the Mermaid Quick-Fix action) independently re-verified against EliteaUI src via grep, not just trusted from the AFS/PR body — both hold. Clarification issues #1250 and #1253 confirmed real, OPEN, correctly `question`-labelled.",
+          "ref": "EliteaAI/elitea-testing-public#1253"
+        },
+        {
+          "kind": "note",
+          "note": "pick_alternative_llm_model's option-value construction (name<<>>project_id) and Default's unfiltered-eligibility vs High/Low-tier's filtered eligibility were cross-checked against the live useModelConfiguration.hooks.jsx (createOptions/modelOptions/highTierModelOptions/lowTierModelOptions) and SingleSelectMenuItem.jsx's select-option-${value} testid derivation — all match exactly.",
+          "ref": "automation/pages/ai_providers_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "card_for_model()/card_tier_badge() resolve a card by exact display-name filter with no .first — if the catalog ever contained two configs with the identical display_name, expect(...).to_be_visible() would strict-mode-fail rather than silently pass. No evidence this occurs today (11 unique configs, confirmed green run); latent scaling risk only, not a defect.",
+          "ref": "automation/pages/ai_providers_page.py:card_for_model"
+        },
+        {
+          "kind": "note",
+          "note": "Cleanup's High-tier-originally-unset restoration branch (logger.warning, no UI clear affordance) was not exercised this run because the shared project already had concrete values for all three tiers going in — a real, honestly-documented automation gap (not masked), flagged by both the AFS and implementer memory as pending.",
+          "ref": "automation/tests/ui/settings/test_set_llm_model_default_high_low_tier.py"
+        }
+      ],
+      "afs": "test-specs/settings-ai-providers/l3_set-llm-model-default-high-low-tier_ELITEA-2397.md",
+      "branch": "tests/ELITEA-2397-set-llm-model-default-high-low-tier",
+      "pr": 1254,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          61.826188083,
+          57.768906291,
+          57.768002083,
+          10.068480917
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "automated": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

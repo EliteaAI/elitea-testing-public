@@ -23,6 +23,7 @@ from config import settings
 from components.mui import Popper
 from pages.base_page import BasePage
 from pages.chat_page import ChatPage
+from pages.toolkit_test_settings_page import ToolkitTestSettingsPage
 from toolkit_configs import TOOLKIT_CONFIGS, ToolkitConfig
 from toolkit_factories import CREDENTIAL_FACTORIES, TOOLKIT_SETTINGS_FACTORIES
 
@@ -32,7 +33,7 @@ import allure
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.toolkits]
+pytestmark = [pytest.mark.ui, pytest.mark.toolkits, pytest.mark.new]
 
 # Timeout constants (ms)
 UI_ELEMENT_TIMEOUT = 10_000
@@ -362,6 +363,7 @@ class TestToolkitTestSettings:
         cfg = toolkit_config
         tk_id = managed_toolkit["id"]
         base_url = settings.app_base_url
+        test_settings = ToolkitTestSettingsPage(page)
 
         with allure.step("Step 1 — Navigate to toolkit detail page"):
             page.goto(f"{base_url}/toolkits/all", wait_until="domcontentloaded")
@@ -373,17 +375,22 @@ class TestToolkitTestSettings:
             page.goto(f"{base_url}/toolkits/all/{tk_id}", wait_until="domcontentloaded")
             page.wait_for_timeout(2000)
 
-        with allure.step("Step 2 — Wait for Test toolkit panel and click Select Tool"):
-            # Initial state: panel is "Test toolkit" with "Select Tool" button
-            page.locator('text="Test toolkit"').wait_for(
-                state="visible", timeout=UI_ELEMENT_TIMEOUT,
-            )
-            select_tool_btn = page.get_by_role("button", name="Select Tool")
-            select_tool_btn.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-            select_tool_btn.click()
-            page.wait_for_timeout(1000)
+        with allure.step("Step 2 — Open the Tool select on the Test-Tools empty state"):
+            # ORDER CHANGE (EliteaUI EL-5947). The toolkit detail page no longer
+            # opens on the Test Settings panel: TestTools.jsx now early-returns
+            # `<TestToolsEmptyState/>` while `!selectedTool`, and the panel — with
+            # its 'Test Settings' heading and Tool dropdown — only mounts AFTER a
+            # tool is chosen. Waiting for the panel first (the old Step 2) is
+            # therefore unsatisfiable: the panel cannot appear until this select
+            # is used. Selecting first, asserting the panel second.
+            #
+            # This also retires the old raw-handle hunt — a visible-text probe and
+            # a role-based combobox scan, both filtered by horizontal position,
+            # plus a CSS class fallback — in favour of a testid, per
+            # `.agents/testing.md` § Locator policy.
+            test_settings.open_empty_state_tool_select(timeout=UI_ELEMENT_TIMEOUT)
 
-        with allure.step(f"Step 4 — Select tool: {cfg.test_tool_name}"):
+        with allure.step(f"Step 3 — Select tool: {cfg.test_tool_name}"):
             visible_search = Popper.find_visible_search_input(page, timeout=UI_ELEMENT_TIMEOUT)
             visible_search.fill(cfg.test_tool_name)
             page.wait_for_timeout(500)
@@ -393,43 +400,35 @@ class TestToolkitTestSettings:
                 page, lambda text: keyword in text.lower(),
             )
             assert selected, f"Could not find '{cfg.test_tool_name}' in dropdown"
-            page.wait_for_timeout(1000)
+
+        with allure.step("Step 4 — Verify the Test Settings panel is now shown"):
+            # Anchored on the panel's Tool dropdown testid rather than the
+            # 'Test Settings' heading text (raw-text handles are policy-forbidden).
+            test_settings.wait_for_panel(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step("Step 5 — Fill tool-specific parameters"):
             if cfg.test_tool_params:
                 for field_label, value in cfg.test_tool_params.items():
                     _fill_test_settings_param(page, field_label, value)
 
-        with allure.step("Step 6 — Click Run Test button"):
-            # Dismiss any popups (NPS survey, banners) that may block the Run Test button
+        with allure.step("Step 6 — Click the Run Test button"):
+            # Dismiss any popups (NPS survey, banners) that may block the button
             BasePage(page).dismiss_popups()
 
-            # UI updated: button is now "Run Test" instead of "Run Tool"
-            run_btn = page.get_by_role("button", name="Run Test")
-            if run_btn.count() == 0:
-                # Fallback for older UI
-                run_btn = page.get_by_role("button", name="Run Tool")
-            run_btn.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-            run_btn.first.scroll_into_view_if_needed()
-            page.wait_for_timeout(500)
-
-            try:
-                page.wait_for_function(
-                    """() => {
-                        const buttons = document.querySelectorAll('button');
-                        for (const b of buttons) {
-                            if (b.textContent.includes('Run Test') || b.textContent.includes('Run Tool') || b.textContent.includes('RUN TOOL')) {
-                                return !b.disabled;
-                            }
-                        }
-                        return false;
-                    }""",
-                    timeout=UI_ELEMENT_TIMEOUT,
-                )
-            except Exception:
-                logger.warning("Run Test button may still be disabled — attempting click anyway")
-
-            run_btn.first.click(force=True)
+            # LABEL DRIFT (EliteaUI EL-5947). The button's visible text changed
+            # from "Run Tool" to "Run Test" (TestToolSettings.jsx), which broke
+            # the old role+name handle. It already carries
+            # data-testid="toolkit-test-run-tool-button", so it is located by
+            # testid through the page object and the label no longer matters —
+            # also retiring a raw handle from this spec, per
+            # `.agents/testing.md` § Locator policy.
+            #
+            # Playwright's click actionability waits out the button's own
+            # `disabledRunTool` guard (!isValidForm || isRunning ||
+            # indexNameError || patInvalid), which replaces the old
+            # wait_for_function poll on button.disabled — and, unlike the
+            # previous force-click, will not fire while the form is invalid.
+            test_settings.run_tool(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step("Step 7 — Wait for tool execution result"):
             success_locator = page.locator(f'text="{cfg.test_tool_result_indicator}"')

@@ -1,0 +1,170 @@
+{
+  "batch": "pipelines-remaining-w5",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-pipelines-remaining-w5",
+  "gate": {
+    "verdict": "not-run",
+    "runs": 1,
+    "seconds": [
+      360.97
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2017",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Observed once (not reproduced): a pipeline LLM-node response to a long-essay prompt stopped mid-sentence with an in-UI 'Token limit reached mid-response. Press Continue to see more.' affordance (~730 chars in). Not an error state (no console error, no failed request, no red banner) -- a deliberate continuation UI, likely tied to the pipeline's default/unconfigured max-token budget. Did NOT reprodu… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-execution-long-response-streaming_ELITEA-2017.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "The existing pipeline_with_llm_id fixture (api/client.py's create_pipeline_with_llm_node) hardcodes TASK as Fixed/empty-string, not the F-String '{input}' this case's Preconditions literally specify. Existing test_pipeline_execution.py tests pass anyway with plain-text questions, so the exact wiring by which the user's message reaches the LLM node under the Fixed-empty-task fixture is not fully un… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "PipelineAPI (api/client.py) requires browser cookies to construct, so a standalone Python script for pipeline setup wasn't viable in this session without a live browser context already established; built and configured the exploration pipeline directly through the live UI instead (Add-node -> LLM -> TASK Type=F-String -> Value={input} -> Save), which also double-confirmed the exact live selectors … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Found and fixed during implementation: a naive 'poll get_embedded_chat_last_message(), assert length grows' progressive-streaming check is unsound on this surface because transient loading placeholders ('Waking the agent…', then 'Packing its tools…') are non-empty, different lengths, and neither is real content — a length-only growth check can be fooled by a placeholder SWAP. Not a product defect … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS Concrete Handles table and the pipelines _surface.md digest both claimed the dynamic model-selector-option-{slug} testid was 'on-main ✓ (confirmed live)'. Fresh git fetch + git grep against both origin/main (0 hits) and origin/automation/testids (1 hit, LLMModelsMenu.jsx:48) showed it is testids-only, not yet cherry-picked to main. Amended both documents in this PR. This is the same false-prov… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1357"
+        },
+        {
+          "kind": "note",
+          "note": "No originating per-case GitHub issue found on board #9 for ELITEA-2017 (searched by '2017' substring across all states). Skipped the PR-link comment step accordingly; if this batch tracks cases via a single batch-level issue instead of per-case cards, the orchestrator may want to post the PR link there."
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case (.agents/automation/pipelines-remaining/cases/ELITEA-2017.md) ↔ AFS (test-specs/pipelines/l2_pipeline-execution-long-response-streaming_ELITEA-2017.md) ↔ diff (git diff origin/automation/base...origin/tests/ELITEA-2017-pipeline-execution-long-response-streaming). All 6 case steps plus both preconditions map to a real assertion at the claimed step: step2 model-name equality after … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_execution.py"
+        },
+        {
+          "kind": "note",
+          "note": "Independently re-verified (not just trusted) the implementer's in-PR AFS amendment: the AFS/​_surface.md originally claimed `model-selector-option-{slug}` was on-main; the implementer corrected this to 'automation/testids only, awaiting promotion' in the same PR. Ran a fresh `git fetch origin` + `git grep 'model-selector-option' origin/main -- src/` (0 hits) vs `origin/automation/testids` (1 hit, … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-execution-long-response-streaming_ELITEA-2017.md:107"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator-policy grep on the full pages/+tests diff (`git diff <base>... -- automation/pages automation/tests | grep -nE '(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(')`) returned exactly 2 hits, both `self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR)` where MODEL_SELECTOR_OPTION_ANY_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:177"
+        },
+        {
+          "kind": "note",
+          "note": "New pipeline_with_fstring_llm_id fixture correctly reuses the generic PipelineAPI.create_pipeline_with_nodes() helper (the same one ELITEA-2452's pipeline_with_two_llm_nodes_id already uses) rather than mutating create_pipeline_with_llm_node()'s hardcoded fixed/'' TASK — satisfies the case's literal F-String precondition. try/finally teardown present, mirrors sibling pipeline_with_llm_id fixture. … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/fixtures/data_fixtures.py:208"
+        },
+        {
+          "kind": "note",
+          "note": "Git history on the branch shows clean separation: analyst AFS commit (2fdf886f), implementer test+page-object+fixture commit (59d6987e, which also includes the AFS/​_surface.md amendment in the same PR per contract), then two implementer memory commits (attributed, additive-only under .agents/memory/test-automation-engineer/). No commit mixes unrelated concerns."
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-execution-long-response-streaming_ELITEA-2017.md",
+      "branch": "tests/ELITEA-2017-pipeline-execution-long-response-streaming",
+      "pr": 1357
+    },
+    {
+      "id": "ELITEA-2052",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2052 case text, step 2 ('Expand \"Welcome message\" section in left panel'): the section is a real BasicAccordion item with an expand/collapse header, but it renders already-expanded by default on both the pipeline create form and detail page — confirmed live. No click is needed; asserting the welcome-message textarea's visibility already proves the section is open. Same class of drift ELITEA… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-welcome-message-shown-before-first-input_ELITEA-2052.md"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-welcome-message-shown-before-first-input_ELITEA-2052.md",
+      "branch": "tests/2052-pipeline-welcome-message-shown-before-first-input",
+      "pr": 1358
+    },
+    {
+      "id": "ELITEA-2053",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case step 2 ('Expand Chat starters section') is a no-op on the live product -- the accordion renders already expanded by default, same pattern already normalized for Welcome message (ELITEA-2052) and Advanced (ELITEA-2021) on this same pipeline settings panel. Not filed as a tracker issue -- documented in the AFS per the reverse-masking guard, same low-stakes wording-drift class as those two prior… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-chat-starters-visible-and-clickable_ELITEA-2053.md"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-chat-starters-visible-and-clickable_ELITEA-2053.md",
+      "branch": "tests/2053-pipeline-chat-starters",
+      "pr": 1359
+    },
+    {
+      "id": "ELITEA-2058",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "extend-existing target: automation/tests/ui/pipelines/test_pipeline_execution.py::TestExecutePipelineStreaming::test_long_response_streams_progressively (ELITEA-2017), merged onto tests/batch-pipelines-remaining-w5 but not yet on origin/automation/base — implementer should branch after this batch trunk state, and the gate/merge order must land ELITEA-2017 before or together with ELITEA-2058's exte… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2058"
+        }
+      ],
+      "afs": "test-specs/pipelines/lextend_pipeline-llm-model-selection-and-execution-usage_ELITEA-2058.md",
+      "branch": "tests/ELITEA-2058-pipeline-llm-model-selection-execution-usage",
+      "pr": 1360
+    },
+    {
+      "id": "ELITEA-2059",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Coverage-Map row 6 (case step 6, 'Message with attachment is sent') claims the assertion at AFS step 6 is 'message bubble shows text+chip, composer's chip count resets to 0' (test-specs/pipelines/l2_pipeline-attach-files-in-chat_ELITEA-2059.md coverage row 6). The shipped test (automation/tests/ui/pipelines/test_pipeline_attach_files_in_chat.py:118-131, Step 6 block) only asserts (a) message count… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_attach_files_in_chat.py:122"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-attach-files-in-chat_ELITEA-2059.md",
+      "branch": "tests/2059-pipeline-attach-files-in-chat",
+      "pr": 1361
+    },
+    {
+      "id": "ELITEA-2062",
+      "outcome": "merged-ungated",
+      "note": "gate never produced a verdict (interrupted or dropped) — merged on the trunk but unproven; re-run the gate",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "ELITEA-2062's case text is authored as if the product had an in-app 'multiple pipeline tabs' UI widget (a tablist inside the pipeline surface). It does not — pipeline cards navigate via plain SPA route push (Card.jsx handleCardClick), replacing the current view. The case is correctly satisfiable by testing the browser's own tab strip instead (document.title correctness per tab + zero cross-tab sta… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-multiple-browser-tabs_ELITEA-2062.md",
+      "branch": "tests/ELITEA-2062-pipeline-multiple-browser-tabs",
+      "pr": 1362
+    },
+    {
+      "id": "ELITEA-2071",
+      "outcome": "blocked",
+      "note": "defect-found: confirmed live (probe-pipeline id 6934, Playwright MCP) that the pipeline chat panel header has NO fullscreen/expand control at all -- the only header icon is a COLLAPSE toggle (opposite direction; verified by clicking it live that it leaves the left config panel untouched, 0 console errors). Source read of EliteaUI automation/testids confirmed root cause: Pipelines/Components/Config… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Pipeline chat panel is missing the Fullscreen Mode toggle present on every other chat-hosting surface (Agents, Skills, Toolkit Indexes) -- filed elitea-testing-public#1363 with source-level root cause (ConfigurationTab.jsx:205 dead isFullScreenChat literal; ChatPanel.jsx never imports FullScreenToggle.jsx). Blocks automation of ELITEA-2071 until the product implements the feature or the case is re… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "elitea-testing-public#1363"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-fullscreen-chat-mode_ELITEA-2071.md"
+    }
+  ],
+  "totals": {
+    "merged-ungated": 6,
+    "blocked": 1
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

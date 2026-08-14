@@ -8,6 +8,7 @@ Tests the full lifecycle of a skill:
 """
 
 import logging
+import re
 
 import pytest
 import allure
@@ -16,7 +17,7 @@ from pages.skills_list_page import SkillsListPage
 from pages.skill_form_page import SkillFormPage
 from pages.skill_detail_page import SkillDetailPage
 
-pytestmark = [pytest.mark.ui, pytest.mark.skills]
+pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.new]
 
 UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
@@ -26,6 +27,10 @@ AI_RESPONSE_TIMEOUT = 30_000
 logger = logging.getLogger("elitea.tests.skills")
 
 SKILL_NAME = "autotest-skill-caps"
+MANDATORY_FIELDS_SKILL_NAME = "autotest-skill-mandatory-fields"
+EDIT_SKILL_ORIGINAL_NAME = "autotest-skill-edit-original"
+EDIT_SKILL_NEW_NAME = "autotest-skill-edit-updated"
+MARKDOWN_TOGGLE_SKILL_NAME = "autotest-skill-markdown-toggle"
 
 
 @pytest.fixture
@@ -140,3 +145,329 @@ class TestCreateSkill:
             assert not list_page.skill_exists_in_list(skill_name), (
                 f"Skill '{skill_name}' should be gone from list after deletion"
             )
+
+
+class TestSkillMandatoryFieldsValidation:
+    """Skill creation (P3, ELITEA-2430): Save stays disabled while Name and/or
+    Description are empty, and becomes enabled only once both are filled —
+    then Save succeeds and the skill appears in the Skills list.
+    """
+
+    @allure.issue("ELITEA-2430", "onetest-ai Test Case link")
+    @pytest.mark.p3
+    @pytest.mark.skills
+    def test_save_disabled_until_name_and_description_filled(self, page, skill_api):
+        """Walk every Name/Description empty/filled combination the case
+        exercises, asserting the Save button's enabled state at each point,
+        then save and verify the skill was created and is listed.
+        """
+        skill_name = MANDATORY_FIELDS_SKILL_NAME
+        skill_description = "Test skill description for mandatory field validation"
+        skill_instructions = "Always respond with OK"
+        skill_id = None
+
+        try:
+            # ------------------------------------------------------------------
+            # Step 1 — Navigate to Create Skill page
+            # ------------------------------------------------------------------
+            with allure.step("Step 1 — Navigate to Create Skill page"):
+                list_page = SkillsListPage(page)
+                list_page.navigate_to_create()
+                form_page = SkillFormPage(page)
+                form_page.wait_for_form_load()
+
+            # ------------------------------------------------------------------
+            # Step 2/3 — Leave Name empty, fill Description + Instructions;
+            # verify Save stays disabled
+            # ------------------------------------------------------------------
+            with allure.step("Step 2 — Leave Name empty, fill Description and Instructions"):
+                form_page.set_description(skill_description)
+                form_page.fill_instructions(skill_instructions)
+                assert form_page.get_description() == skill_description
+                assert form_page.get_instructions() == skill_instructions
+
+            with allure.step("Step 3 — Verify Save button is disabled (Name empty)"):
+                form_page.wait_for_form_validation()
+                assert not form_page.is_save_enabled(), (
+                    "Save should stay disabled while Name is empty"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 4/5 — Fill Name, clear Description, keep Instructions;
+            # verify Save stays disabled
+            # ------------------------------------------------------------------
+            with allure.step("Step 4 — Fill Name, clear Description, keep Instructions filled"):
+                form_page.set_name(skill_name)
+                form_page.set_description("")
+                assert form_page.get_name() == skill_name
+                assert form_page.get_description() == ""
+
+            with allure.step("Step 5 — Verify Save button is disabled (Description empty)"):
+                form_page.wait_for_form_validation()
+                assert not form_page.is_save_enabled(), (
+                    "Save should stay disabled while Description is empty"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 6/7 — Leave both Name and Description empty; verify Save
+            # stays disabled
+            # ------------------------------------------------------------------
+            with allure.step("Step 6 — Leave both Name and Description empty"):
+                form_page.set_name("")
+                assert form_page.get_name() == ""
+                assert form_page.get_description() == ""
+
+            with allure.step("Step 7 — Verify Save button is disabled (both empty)"):
+                form_page.wait_for_form_validation()
+                assert not form_page.is_save_enabled(), (
+                    "Save should stay disabled while both Name and Description are empty"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 8/9 — Fill both Name and Description, keep Instructions;
+            # verify Save becomes enabled
+            # ------------------------------------------------------------------
+            with allure.step("Step 8 — Fill both Name and Description, keep Instructions filled"):
+                form_page.set_name(skill_name)
+                form_page.set_description(skill_description)
+                assert form_page.get_name() == skill_name
+                assert form_page.get_description() == skill_description
+
+            with allure.step("Step 9 — Verify Save button becomes enabled"):
+                form_page.wait_for_form_validation()
+                assert form_page.is_save_enabled(), (
+                    "Save should be enabled once Name and Description are both filled"
+                )
+
+            # ------------------------------------------------------------------
+            # Step 10 — Click Save; verify the skill is created and appears
+            # in the Skills list
+            # ------------------------------------------------------------------
+            with allure.step("Step 10 — Click Save; verify skill is created and appears in the Skills list"):
+                form_page.save_and_wait_for_navigation(timeout=FORM_SAVE_TIMEOUT)
+                detail_page = SkillDetailPage(page)
+                detail_page.verify_on_detail_page()
+
+                match = re.search(r"/skills/all/(\d+)$", page.url)
+                assert match, f"Expected detail-page URL with a skill id, got: {page.url}"
+                skill_id = int(match.group(1))
+
+                list_page.navigate()
+                assert list_page.skill_exists_in_list(skill_name), (
+                    f"Skill '{skill_name}' should appear in the Skills list after creation"
+                )
+        finally:
+            if skill_id is not None:
+                try:
+                    skill_api.delete_skill(skill_id)
+                    logger.info("Cleanup: deleted skill id=%s", skill_id)
+                except Exception as exc:
+                    logger.warning("Skill cleanup failed (non-fatal): %s", exc)
+
+
+class TestEditSkill:
+    """Edit an existing skill's Name, Description, and Instructions, save,
+    and verify all three values persist across a re-open (ELITEA-2431, P3).
+    """
+
+    @allure.issue("ELITEA-2431", "onetest-ai Test Case link")
+    @pytest.mark.p3
+    @pytest.mark.skills
+    def test_edit_name_description_instructions_persist(self, page, skill_api):
+        """Seed a skill via API, open it, edit all three fields, Save,
+        navigate back to the Skills list and re-open the skill, then verify
+        the Name/Description/Instructions fields all show the updated values.
+        """
+        original_description = "Original description before edit"
+        original_instructions = "Always say ORIGINAL"
+        updated_description = "Updated description after edit"
+        updated_instructions = "Always say UPDATED"
+        skill_id = None
+
+        try:
+            # ------------------------------------------------------------
+            # Setup — seed the skill via API (edit needs pre-existing state)
+            # ------------------------------------------------------------
+            created = skill_api.create_skill(
+                name=EDIT_SKILL_ORIGINAL_NAME,
+                description=original_description,
+                instructions=original_instructions,
+            )
+            skill_id = created["id"]
+
+            # ------------------------------------------------------------
+            # Step 1 — Open an existing Skill
+            # ------------------------------------------------------------
+            with allure.step("Step 1 — Open an existing Skill"):
+                detail_page = SkillDetailPage(page)
+                detail_page.navigate(skill_id)
+                assert detail_page.get_name() == EDIT_SKILL_ORIGINAL_NAME
+                assert detail_page.get_description() == original_description
+                assert detail_page.get_instructions() == original_instructions
+
+            # ------------------------------------------------------------
+            # Step 2 — Change the Name, Description, and Instructions
+            # ------------------------------------------------------------
+            with allure.step("Step 2 — Change the Name, Description, and Instructions to new values"):
+                detail_page.set_name(EDIT_SKILL_NEW_NAME)
+                detail_page.set_description(updated_description)
+                detail_page.fill_instructions(updated_instructions)
+                detail_page.wait_for_form_validation()
+                assert detail_page.get_name() == EDIT_SKILL_NEW_NAME
+                assert detail_page.get_description() == updated_description
+                assert detail_page.get_instructions() == updated_instructions
+                assert detail_page.is_save_enabled(), (
+                    "Save should be enabled once all three fields hold valid values"
+                )
+
+            # ------------------------------------------------------------
+            # Step 3 — Click Save
+            # ------------------------------------------------------------
+            with allure.step("Step 3 — Click Save"):
+                response = detail_page.save_edits(timeout=FORM_SAVE_TIMEOUT)
+                assert response.status == 200, (
+                    f"Expected 200 from the skill update PUT, got {response.status}"
+                )
+
+            # ------------------------------------------------------------
+            # Step 4 — Navigate back to the Skills list and re-open the Skill
+            # ------------------------------------------------------------
+            with allure.step("Step 4 — Navigate back to the Skills list and re-open the Skill"):
+                list_page = SkillsListPage(page)
+                list_page.navigate()
+                assert list_page.skill_exists_in_list(EDIT_SKILL_NEW_NAME), (
+                    f"Skill should be listed under its new name {EDIT_SKILL_NEW_NAME!r}"
+                )
+                list_page.click_skill_card(EDIT_SKILL_NEW_NAME)
+                detail_page.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
+
+            # ------------------------------------------------------------
+            # Step 5 — Verify all three updated values are persisted
+            # ------------------------------------------------------------
+            with allure.step("Step 5 — Verify all three updated values are persisted correctly"):
+                assert detail_page.get_name() == EDIT_SKILL_NEW_NAME, (
+                    "Name should show the updated value after re-open"
+                )
+                assert detail_page.get_description() == updated_description, (
+                    "Description should show the updated value after re-open"
+                )
+                assert detail_page.get_instructions() == updated_instructions, (
+                    "Instructions should show the updated value after re-open"
+                )
+        finally:
+            if skill_id is not None:
+                try:
+                    skill_api.delete_skill(skill_id)
+                    logger.info("Cleanup: deleted skill id=%s", skill_id)
+                except Exception as exc:
+                    logger.warning("Skill cleanup failed (non-fatal): %s", exc)
+
+
+class TestSkillInstructionsMarkdownTogglePersistence:
+    """Skill instructions — Markdown edit/preview toggle round-trips the raw
+    source unchanged and persists it on Save (ELITEA-2432, P3).
+    """
+
+    @allure.issue("ELITEA-2432", "onetest-ai Test Case link")
+    @pytest.mark.p3
+    @pytest.mark.skills
+    def test_markdown_edit_preview_toggle_and_persist(self, page, skill_api):
+        """Seed a skill via API, open it, edit the Instructions with Markdown,
+        toggle Preview -> verify rendered output, toggle back to Edit ->
+        verify raw source unchanged, Save, re-open and verify persistence.
+        """
+        original_instructions = "Always say ORIGINAL"
+        markdown_instructions = "**Bold text** and a list:\n- Item one\n- Item two"
+        skill_id = None
+
+        try:
+            # ------------------------------------------------------------
+            # Setup — seed the skill via API (edit needs pre-existing state)
+            # ------------------------------------------------------------
+            created = skill_api.create_skill(
+                name=MARKDOWN_TOGGLE_SKILL_NAME,
+                description="Automation test skill for ELITEA-2432",
+                instructions=original_instructions,
+            )
+            skill_id = created["id"]
+
+            # ------------------------------------------------------------
+            # Step 1 — Open an existing Skill
+            # ------------------------------------------------------------
+            with allure.step("Step 1 — Open an existing Skill"):
+                detail_page = SkillDetailPage(page)
+                detail_page.navigate(skill_id)
+                assert detail_page.get_instructions() == original_instructions
+                assert detail_page.instructions_edit_mode_button.get_attribute("aria-pressed") == "true", (
+                    "Edit mode should be the toggle's default active state"
+                )
+
+            # ------------------------------------------------------------
+            # Step 2 — Switch to Edit mode and modify the Markdown body
+            # ------------------------------------------------------------
+            with allure.step("Step 2 — In the Instructions section, switch to Edit mode and modify the Markdown body"):
+                detail_page.click_edit_mode()
+                detail_page.fill_instructions_markdown(markdown_instructions)
+                assert detail_page.get_instructions_multiline() == markdown_instructions, (
+                    "Raw editor content should be replaced with the new Markdown source"
+                )
+
+            # ------------------------------------------------------------
+            # Step 3 — Switch to Preview mode, verify rendered output
+            # ------------------------------------------------------------
+            with allure.step("Step 3 — Switch to Preview mode — verify the rendered Markdown output is correct"):
+                detail_page.click_preview_mode()
+                assert detail_page.instructions_preview_mode_button.get_attribute("aria-pressed") == "true", (
+                    "Preview mode should become the active toggle state"
+                )
+                preview_text = detail_page.get_preview_content()
+                assert "**Bold text**" not in preview_text, (
+                    "Preview should render bold markup, not echo the raw '**' syntax"
+                )
+                assert "- Item one" not in preview_text and "- Item two" not in preview_text, (
+                    "Preview should render the list, not echo the raw '- ' markers"
+                )
+                assert "Bold text" in preview_text, "Preview should still show the bold text's words"
+                assert "Item one" in preview_text and "Item two" in preview_text, (
+                    "Preview should still show both list items' words"
+                )
+
+            # ------------------------------------------------------------
+            # Step 4 — Switch back to Edit mode, verify raw Markdown unchanged
+            # ------------------------------------------------------------
+            with allure.step("Step 4 — Switch back to Edit mode — verify the raw Markdown matches what was typed"):
+                detail_page.click_edit_mode()
+                assert detail_page.instructions_edit_mode_button.get_attribute("aria-pressed") == "true", (
+                    "Edit mode should become the active toggle state again"
+                )
+                assert detail_page.get_instructions_multiline() == markdown_instructions, (
+                    "Raw Markdown should be byte-identical after round-tripping through Preview"
+                )
+
+            # ------------------------------------------------------------
+            # Step 5 — Save and re-open, verify instructions persist
+            # ------------------------------------------------------------
+            with allure.step("Step 5 — Save and re-open — verify updated instructions persist"):
+                response = detail_page.save_edits(timeout=FORM_SAVE_TIMEOUT)
+                assert response.status == 200, (
+                    f"Expected 200 from the skill update PUT, got {response.status}"
+                )
+
+                list_page = SkillsListPage(page)
+                list_page.navigate()
+                assert list_page.skill_exists_in_list(MARKDOWN_TOGGLE_SKILL_NAME), (
+                    f"Skill should still be listed under {MARKDOWN_TOGGLE_SKILL_NAME!r}"
+                )
+                list_page.click_skill_card(MARKDOWN_TOGGLE_SKILL_NAME)
+                detail_page.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
+
+                assert detail_page.get_instructions_multiline() == markdown_instructions, (
+                    "Instructions should show the saved Markdown source after re-open"
+                )
+        finally:
+            if skill_id is not None:
+                try:
+                    skill_api.delete_skill(skill_id)
+                    logger.info("Cleanup: deleted skill id=%s", skill_id)
+                except Exception as exc:
+                    logger.warning("Skill cleanup failed (non-fatal): %s", exc)

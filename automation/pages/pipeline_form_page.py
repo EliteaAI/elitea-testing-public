@@ -52,8 +52,45 @@ class PipelineFormPage(BasePage):
 
     discard_button = LocatorDescriptor(
         testid="discard-button",
-        fallback=lambda page: page.get_by_role("button", name="Discard"),
-        description="Discard changes button"
+        description="Discard changes button (ApplicationTabBar.jsx — the pipeline "
+        "detail page reuses the application tab bar). Rendered unconditionally; "
+        "only `disabled` toggles with form dirtiness, so it is always visible. "
+        "The `fallback=` that used to sit here was dead code — LocatorDescriptor "
+        "never invokes it when a testid is set — and it masked nothing: the "
+        "testid was simply not reaching the DOM until the call site was fixed "
+        "to pass DiscardButton's `dataTestId` prop instead of `data-testid`.",
+    )
+
+    # "Save As Version" button (SaveNewVersionButton.jsx, rendered via
+    # ApplicationTabBar.jsx — the same shared component AgentFormPage.
+    # save_as_version_button already wires; EditPipeline.jsx reuses
+    # ApplicationTabBar.jsx too). Confirmed live end-to-end on a pipeline
+    # detail page (ELITEA-2002 implementation, 2026-08-07): NOT dirtiness-
+    # gated — `ApplicationTabBar.jsx` (source read) passes `SaveNewVersionButton`
+    # no `disabled` prop, so its own `disabled={isSavingNewVersion || disabled}`
+    # only ever reflects mid-request state, never form dirtiness. Unlike
+    # save_button/discard_button, it stays enabled on a clean, zero-edit form
+    # (re-verified live on a fresh zero-node pipeline, immediate + after a 3s
+    # settle) — see `test-specs/pipelines/_surface.md`'s 2026-08-07 CORRECTION
+    # bullet. Zero add-data-testid work needed — the testid already reaches
+    # the DOM via the shared component.
+    save_as_version_button = LocatorDescriptor(
+        testid="agent-save-as-version-button",
+        description="Save current edits as a new pipeline version button",
+    )
+
+    # Tags combobox (ELITEA-2021). Testid-only, added via add-data-testid onto
+    # the shared TagEditor/AutoCompleteDropDown component's `inputTestId`/
+    # `chipTestId` hooks (ApplicationEditForm.jsx, pipeline branch only —
+    # canon #511 scope discipline: no case exercises Agent's Tags yet).
+    tags_input = LocatorDescriptor(
+        testid="pipeline-tags-input",
+        description="Tags Autocomplete input field (real <input>, MUI TextField)",
+    )
+
+    tags_chip = LocatorDescriptor(
+        testid="pipeline-tags-chip",
+        description="Rendered tag chip in the Tags field (one per committed tag)",
     )
 
     def __init__(self, page: Page):
@@ -204,6 +241,41 @@ class PipelineFormPage(BasePage):
         return self.description_input.input_value()
 
     # ------------------------------------------------------------------
+    # Tags (ELITEA-2021)
+    # ------------------------------------------------------------------
+
+    def add_tag(self, tag_name: str, timeout: int = 5000):
+        """Type a tag into the Tags combobox and commit it with Enter.
+
+        The field's placeholder literally reads "Type a tag and press
+        comma/enter" (AutoCompleteDropDown's freeSolo Autocomplete) —
+        Enter commits the typed text as a chip.
+
+        Args:
+            tag_name: Tag text to type and commit.
+            timeout: Maximum wait time for the input to be visible.
+        """
+        logger.info("Adding tag '%s'", tag_name)
+        self.tags_input.wait_for(state="visible", timeout=timeout)
+        self.tags_input.click()
+        self.tags_input.press_sequentially(tag_name, delay=20)
+        self.tags_input.press("Enter")
+        self.page.wait_for_timeout(300)
+
+    def get_tag_chip_text(self, timeout: int = 5000) -> str:
+        """Read the text of the first rendered tag chip.
+
+        Args:
+            timeout: Maximum wait time for the chip to be visible.
+
+        Returns:
+            The chip's visible text (trimmed).
+        """
+        chip = self.tags_chip.first
+        chip.wait_for(state="visible", timeout=timeout)
+        return (chip.text_content() or "").strip()
+
+    # ------------------------------------------------------------------
     # Save/Cancel/Discard actions
     # ------------------------------------------------------------------
 
@@ -232,6 +304,32 @@ class PipelineFormPage(BasePage):
         # Wait for URL to change
         self.page.wait_for_url("**/pipelines/all/*", timeout=timeout)
         self.wait_for_network(timeout=10000)
+
+    def save_and_wait_for_creation(self, project_id: str, timeout: int = 15000) -> dict:
+        """Click Save on the create form and wait for the create POST's 2xx response.
+
+        Waits on the network response itself (not just navigation), so a
+        non-2xx create failure surfaces here rather than downstream. Mirrors
+        ``PipelineDetailPage.save_and_wait_for_update`` (ELITEA-1954), the
+        create-side equivalent — additive, no existing caller touched.
+
+        Args:
+            project_id: Project id, used to scope the response URL match.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the create response.
+        """
+        with self.page.expect_response(
+            lambda r: f"/applications/prompt_lib/{project_id}" in r.url
+            and r.request.method == "POST"
+            and 200 <= r.status < 300,
+            timeout=timeout,
+        ) as response_info:
+            self.save_button.evaluate("el => el.click()")
+        self.page.wait_for_url("**/pipelines/all/*", timeout=timeout)
+        self.wait_for_network(timeout=10000)
+        return response_info.value.json()
 
     def is_save_enabled(self) -> bool:
         """Check if the Save button is enabled.
@@ -282,3 +380,18 @@ class PipelineFormPage(BasePage):
             self.discard_button.is_visible()
             and self.discard_button.is_enabled()
         )
+
+    def is_save_as_version_enabled(self) -> bool:
+        """Check if the Save As Version button is enabled.
+
+        Unlike :meth:`is_save_enabled` (form-dirtiness-gated), Save As
+        Version is NOT dirtiness-gated — confirmed live (ELITEA-2002
+        implementation, 2026-08-07): `ApplicationTabBar.jsx` passes
+        `SaveNewVersionButton` no `disabled` prop, so it stays enabled on a
+        clean form and only disables mid-request (`isSavingNewVersion`). See
+        the `save_as_version_button` field docstring / CORRECTION note.
+
+        Returns:
+            True if Save As Version is enabled, False otherwise.
+        """
+        return self.save_as_version_button.is_enabled()

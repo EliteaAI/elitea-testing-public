@@ -33,7 +33,7 @@ import allure
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui]
+pytestmark = [pytest.mark.ui, pytest.mark.new]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)
@@ -119,6 +119,7 @@ class TestCreateConversation:
     """TC-CONV-001 / TC-CONV-002: Creating new conversations."""
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/conversations/ELITEA-0571_conversation-creation-and-list.md", "onetest-ai Test Case link")
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2090_create-new-conversation-from-private-project-via-chat-with-default-llm.md", "onetest-ai Test Case link")
     @pytest.mark.p0
     def test_create_conversation_via_ui_button(self, page, conversation_api):
         """TC-CONV-001 UI: Create a conversation by clicking the UI button."""
@@ -133,15 +134,60 @@ class TestCreateConversation:
             with allure.step("Step 2 — Click Create Conversation button"):
                 chat.click_create_conversation(timeout=NAVIGATION_TIMEOUT)
 
+            with allure.step(
+                "Step 2b (ELITEA-2090 extension) — Verify +Chat button is disabled in "
+                "the blank-composer state, and the default LLM is pre-selected"
+            ):
+                # GA1 — +Chat button disabled immediately after being clicked, before Send.
+                assert chat.create_conversation_button.is_disabled(), (
+                    "sidebar-create-button should be disabled while a new blank "
+                    "conversation is open and no message has been sent yet"
+                )
+                # GA2 — default LLM shown in the PRE-SEND blank-composer state (closes the
+                # gap ELITEA-0569's own test leaves — it only checks an existing
+                # conversation_id-fixture conversation, never the blank +Chat state).
+                model_text = chat.get_selected_model()
+                assert model_text, (
+                    "A default model should be pre-selected before any message is sent"
+                )
+
             with allure.step("Step 3 — Send a message to create conversation"):
                 test_msg = "at_create_ui_test"
                 initial_count = chat.get_message_count()
                 chat.send_message(test_msg, use_enter=True)
+
+                # GA3 — +Chat button re-enables on Send, NOT gated on naming/generation
+                # completion. Confirmed live (AFS exploration) that re-enablement happens
+                # right as the SPA navigates to /chat/{id}, well before the "Naming"
+                # placeholder resolves or the LLM finishes responding — but that
+                # navigation is itself async, so a bare synchronous `.is_enabled()` read
+                # right after firing the Enter key races the SPA (confirmed live this
+                # run: first read landed while the URL was still bare "/chat", greeting
+                # screen still shown). `expect(...).to_be_enabled()` polls instead of
+                # reading once, giving the SPA time to complete that navigation while
+                # still failing loudly — and well within NAVIGATION_TIMEOUT — if the
+                # button stayed gated on generation/naming instead.
+                expect(chat.create_conversation_button).to_be_enabled(timeout=NAVIGATION_TIMEOUT)
+
                 chat.wait_for_input_ready()
                 chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
 
             with allure.step("Step 4 — Extract conversation ID for cleanup"):
                 conv_id = _extract_conversation_id(page, conversation_api, test_msg)
+
+            with allure.step(
+                "Step 4b (ELITEA-2090 extension) — Verify the conversation belongs to "
+                "the Private project"
+            ):
+                # GA4 — Private-project precondition, verified via the conversation's own
+                # API representation rather than a UI-only combobox read (no testid exists
+                # on that combobox today — see AFS § Concrete Handles).
+                assert conv_id, "conv_id must be resolved before checking is_private"
+                conv_data = conversation_api.get_conversation(int(conv_id))
+                assert conv_data.get("is_private") is True, (
+                    "Conversation created via +Chat in the Private project should be "
+                    "flagged is_private=true"
+                )
 
             with allure.step("Step 5 — Verify conversation appears in sidebar"):
                 chat.wait_for_naming_label_to_resolve()
@@ -513,7 +559,6 @@ class TestConversationIsolation:
             chat = ChatPage(page)
             chat.navigate_to_chat(conversation_id=conversation_id)
             chat.wait_for_page_load()
-            chat.dismiss_banner_if_present()
 
         with allure.step("Step 2 — Verify conversation page loaded correctly"):
             _verify_conversation_page_loaded(chat, conversation_id, page)

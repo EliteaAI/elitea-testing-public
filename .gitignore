@@ -53,8 +53,40 @@ automation/.env
 .claude/settings.local.json
 elitea_testing.egg-info/
 .playwright-mcp
+.playwright-cli/*
 
 # Accidental pip install artifacts (from shell redirect errors)
 automation/=*
 **/.env*
 !**/.env*.example
+
+factory/*
+
+# Reversible process-change notes (local-only; how to restore a suspended policy)
+.agents/_reverted/
+.agents/automation/
+.agents/efficiency/
+
+
+# Runtime execution coverage artifacts (coverage trial — docs/coveragetrial.md)
+coverage/.v8/
+coverage/report/
+coverage/node_modules/
+coverage/package-lock.json
+docs/coverage-priority-60
+*_backup_*
+/*.png
+coverage/report/
+coverage/**/node_modules/
+
+
+
+# Claude folders
+
+.claude/*
+!.claude/agents/
+!.claude/agent-memory/
+!.claude/skills/
+!.claude/hooks/
+!.claude/rules/
+!.claude/settings.json

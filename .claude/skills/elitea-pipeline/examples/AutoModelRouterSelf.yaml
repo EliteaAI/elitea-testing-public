@@ -1,0 +1,269 @@
+# =============================================================================
+# Auto Model Router — Self (SDLC demo)   |  ELITEA project 27, app_id 386
+# =============================================================================
+# A SELF-REFERENTIAL auto-model-router. ONE pipeline app holds FOUR versions of
+# TWO graph types. The base ORCHESTRATOR classifies each SDLC task and routes it
+# to a tier-appropriate model by self-`predict`-ing a SIBLING EXECUTOR VERSION of
+# its own app. Each executor version differs ONLY in its version-level model.
+#
+# WHY THIS SHAPE — the core constraint it works around:
+#   A pipeline's internal `llm` nodes ALWAYS run on that VERSION's
+#   `llm_settings.model_name`. Per-node / predict / entity_settings model
+#   overrides are ALL ignored. The ONLY lever for model choice is WHICH VERSION
+#   RUNS. So to route to a different model you must call a different version —
+#   here, a sibling version of the same app, via the platform predict API.
+#
+# VERSIONS (app 386):
+#   base           (845)  ORCHESTRATOR  model = Claude Haiku 4.5    (cheap classifier)
+#   exec-simple    (846)  EXECUTOR      model = Claude Haiku 4.5
+#   exec-standard  (847)  EXECUTOR      model = gpt-5.4-mini
+#   exec-complex   (848)  EXECUTOR      model = Claude 4.6 Sonnet
+#
+# All three executors bind the `auto-router-demo` artifact toolkit (toolkit_id
+# 912) for real file ops. The orchestrator's tools[] is EMPTY — it only self-
+# predicts; the executors are the ones that touch tools.
+#
+# SELF-PREDICT HOP (Dispatch node): the orchestrator POSTs
+#   /api/v2/elitea_core/predict/prompt_lib/27/{executor_version_id}
+# with the caller's `elitea_client.auth_token` / `base_url`. The inner run
+# executes on the target VERSION's model. Stateless predict returns
+# chat_history=null; the inner answer + real model_name live in
+# `thinking_steps[]`. A code-only node's return surfaces under
+# `tool_calls_dict[pyodide_sandbox].tool_output` as JSON {"result": {...state}}.
+#
+# MULTI-TURN HISTORY: the orchestrator converts its own `state.messages` into the
+# predict `chat_history` param so forwarded turns reach the executor. See the
+# "History verdict" note at the bottom of this file for the empirical result.
+#
+# HARD CONSTRAINT — the code (pyodide) node has a ~55s execution cap. Because the
+# Dispatch node's self-`predict` runs INSIDE that cap, the inner executor MUST
+# finish in <55s. Slow models (Sonnet on a long generation) will time out. The
+# mitigation here: executors are capped at max_tokens=2000 and told to stay
+# concise. If you route to a slow model for a long answer, either raise this via
+# an async predict pattern or split the work — do NOT just bump the httpx timeout
+# (it is the SANDBOX, not the HTTP call, that caps at 55s).
+#
+# This file contains BOTH graph types as two YAML documents (--- separated):
+#   Document 1 = ORCHESTRATOR (base 845)
+#   Document 2 = EXECUTOR     (exec-simple/standard/complex — identical graph)
+# =============================================================================
+
+# ----------------------------------------------------------------------------
+# DOCUMENT 1 — ORCHESTRATOR  (base 845, Claude Haiku 4.5)
+#   Classify (llm, structured {tier,reason}) -> Dispatch (code, self-predict) -> Show (printer)
+# ----------------------------------------------------------------------------
+entry_point: Classify
+
+state:
+  input:
+    type: str
+  messages:
+    type: list
+  tier:
+    type: str
+    value: ''
+  reason:
+    type: str
+    value: ''
+  report:
+    type: str
+    value: ''
+
+nodes:
+  # 1. Classifier — runs on the BASE version model (Claude Haiku 4.5, cheap/fast).
+  #    Scores the task against the SDLC complexity rubric, emits {tier, reason}.
+  - id: Classify
+    type: llm
+    input: [input]
+    output: [tier, reason]
+    structured_output: true
+    input_mapping:
+      chat_history:
+        type: fixed
+        value: []
+      system:
+        type: fixed
+        value: |
+          You are a fast task-complexity classifier for an SDLC assistant.
+          Read the user's task and assign exactly ONE tier:
+
+          - complex: 4+ dependent steps or tool-calls; architecture / design
+            reasoning; deep debugging or root-cause analysis; or broad
+            investigation across multiple artifacts. e.g. "investigate why X
+            intermittently fails and propose a fix plan", "design the auth flow".
+          - simple: a PURE retrieval or mechanical transform with NO new authoring
+            — a fact/status lookup, a rename, a single value, one format
+            conversion, one tiny test case. e.g. "what status code does POST /x
+            return", "rename this variable", "convert this JSON to YAML".
+          - standard (DEFAULT): everything else, INCLUDING authoring a single
+            artifact — drafting a user story, writing one function, a doc
+            section, or a moderate explanation. When unsure, choose standard.
+
+          Respond with ONLY raw JSON — no code fences, no prose, no extra keys —
+          exactly of the form:
+          {"tier": "simple|standard|complex", "reason": "one short sentence explaining the choice"}
+      task:
+        type: fstring
+        value: '{input}'
+    transition: Dispatch
+
+  # 2. Dispatch — pure code. Maps tier -> sibling EXECUTOR version_id, forwards the
+  #    conversation history, self-`predict`s that version (which runs on ITS model),
+  #    extracts the inner answer + real model_name from thinking_steps, builds the
+  #    routing banner, writes `report`, and appends it to `messages`.
+  #    THE SELF-REFERENTIAL HOP: the orchestrator calls sibling versions of its own app.
+  #    NOTE: version ids below are hardcoded for app 386. Re-point them if you
+  #    re-deploy, OR discover at runtime via GET /application/prompt_lib/27/{APP_ID}
+  #    and match version names (exec-simple/standard/complex).
+  - id: Dispatch
+    type: code
+    input: [input, tier, reason, messages]
+    output: [report, messages]
+    structured_output: true
+    code:
+      type: fixed
+      value: |
+        import httpx
+
+        # tier -> sibling executor version_id (same app, different version = different model)
+        VMAP = {'simple': 846, 'standard': 847, 'complex': 848}
+        LABELS = {'simple': 'Claude Haiku 4.5', 'standard': 'GPT-5.4-mini', 'complex': 'Claude 4.6 Sonnet'}
+
+        tier = (alita_state.get('tier', '') or '').strip().lower()
+        if tier not in VMAP:
+            tier = 'standard'
+        reason = (alita_state.get('reason', '') or '').strip()
+        target_vid = VMAP[tier]
+        task = alita_state.get('input', '') or ''
+
+        # Forward conversation history: state.messages -> predict chat_history [{role,content}]
+        raw_msgs = alita_state.get('messages', []) or []
+        chat_history = []
+        for m in raw_msgs:
+            role = None
+            content = None
+            if isinstance(m, (list, tuple)) and len(m) >= 2:
+                role, content = m[0], m[1]
+            elif isinstance(m, dict):
+                role = m.get('role') or m.get('type')
+                content = m.get('content')
+            if content is None:
+                continue
+            r = 'assistant' if str(role).lower() in ('ai', 'assistant') else 'user'
+            chat_history.append({'role': r, 'content': content if isinstance(content, str) else str(content)})
+
+        base_url = elitea_client.base_url.rstrip('/')
+        url = f"{base_url}/api/v2/elitea_core/predict/prompt_lib/27/{target_vid}"
+        headers = {"Authorization": f"Bearer {elitea_client.auth_token}", "Content-Type": "application/json"}
+        body = {"user_input": task}
+        if chat_history:
+            body["chat_history"] = chat_history
+
+        async with httpx.AsyncClient(timeout=180, follow_redirects=True) as _c:
+            data = (await _c.post(url, headers=headers, json=body)).json()
+
+        # Stateless pipeline predict returns null chat_history; answer + model live in thinking_steps.
+        steps = data.get('thinking_steps') or []
+        inner_answer = ''
+        inner_model = ''
+        for s in steps:
+            if s.get('text'):
+                inner_answer = s['text']
+            md = ((s.get('message') or {}).get('response_metadata') or {})
+            if md.get('model_name'):
+                inner_model = md['model_name']
+        if not inner_answer:
+            ch = data.get('chat_history') or []
+            if ch:
+                inner_answer = ch[-1].get('content', '') or ''
+
+        label = LABELS.get(tier, LABELS['standard'])
+        shown_model = inner_model or label
+        banner = (
+            '\U0001F501 **Auto Model Router (self)** → **' + shown_model + '** '
+            '(' + tier + ' tier)\n\n'
+            '> ' + (reason or 'no rationale returned') + '\n\n'
+            '---\n\n'
+        )
+        report = banner + (inner_answer or '_(no answer returned)_')
+
+        existing = alita_state.get('messages', []) or []
+        out_messages = list(existing) + [('ai', report)]
+
+        {'report': report, 'messages': out_messages}
+    transition: Show
+
+  # 3. Printer — surface the composed report in chat, then END.
+  - id: Show
+    type: printer
+    input_mapping:
+      printer:
+        type: variable
+        value: report
+    transition: END
+
+---
+# ----------------------------------------------------------------------------
+# DOCUMENT 2 — EXECUTOR  (exec-simple 846 / exec-standard 847 / exec-complex 848)
+#   IDENTICAL graph across all three; the ONLY difference is the version-level
+#   llm_settings.model_name (Haiku / gpt-5.4-mini / Sonnet 4.6). Each version
+#   binds the `auto-router-demo` artifact toolkit in its tools[].
+#   Execute (llm, on this version's model, bound to Artifact toolkit) -> END
+# ----------------------------------------------------------------------------
+entry_point: Execute
+
+state:
+  input:
+    type: str
+  messages:
+    type: list
+
+nodes:
+  # Single execution node. Runs on THIS VERSION'S llm_settings.model_name
+  # (the only real model lever in ELITEA pipelines). Bound to the
+  # 'auto-router-demo' artifact toolkit so the routed model can do real file ops.
+  # input_mapping.chat_history = {type: variable, value: messages} so it consumes
+  # any history the orchestrator forwarded via the predict `chat_history` param.
+  - id: Execute
+    type: llm
+    input: [input, messages]
+    output: [messages]
+    structured_output: false
+    input_mapping:
+      chat_history:
+        type: variable
+        value: messages
+      system:
+        type: fixed
+        value: |
+          You are an SDLC execution assistant. Answer the user's task
+          correctly, using your own knowledge. Be CONCISE and focused — this
+          runs inside a caller with a strict time budget (the orchestrator's
+          code node has a ~55s sandbox cap), so for broad or complex tasks give
+          a tight, structured plan (short bullets, no exhaustive prose).
+
+          You also have file tools on the 'auto-router-demo' artifact bucket:
+          list_files, create_file, read_file, append_data, get_file_metadata,
+          read_multiple_files, grep_file, edit_file, create_new_bucket.
+          Use a file tool ONLY when the task literally mentions a file, a
+          bucket, or an artifact to read/write. For every general question,
+          answer directly from your own knowledge and do NOT touch the bucket.
+          If create_file reports the bucket is missing, call
+          create_new_bucket('auto-router-demo') first, then retry.
+      task:
+        type: fstring
+        value: '{input}'
+    # tool_names binds the artifact toolkit; the version's tools[] must carry the
+    # matching {type: artifact, toolkit_id, toolkit_name, settings, selected_tools}.
+    tool_names:
+      auto-router-demo:
+        - list_files
+        - create_file
+        - read_file
+        - append_data
+        - get_file_metadata
+        - read_multiple_files
+        - grep_file
+        - edit_file
+        - create_new_bucket
+    transition: END

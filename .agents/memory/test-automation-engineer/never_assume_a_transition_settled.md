@@ -1,0 +1,112 @@
+---
+name: Never assume a transition settled — the four wait/race rules
+description: Four independently-confirmed classes of false-settle in this suite (networkidle before a debounced request, capture_requests_matching status None, an action returning before the SPA navigates, a cold direct-URL nav landing elsewhere) plus the two structural rules that prevent all of them.
+type: feedback
+---
+
+## Rule
+
+Between any action and the read that judges it, name the signal that proves
+the transition landed. "The method returned" and "networkidle resolved" are
+not signals.
+
+1. **`networkidle` ≠ the request happened.** `wait_for_load_state("networkidle")`
+   is satisfied by zero in-flight connections for 500 ms — trivially true if
+   the app debounces before dispatching. Never assert on a captured response
+   right after `click_save()`. Poll the captured list for a **resolved
+   status** (15 s budget, not the usual 8–10 s).
+   **Addendum (ELITEA-2312):** it is also a **one-time-per-navigation
+   lifecycle event**, not a repeatable "wait until currently idle" check —
+   once the page has already reached `networkidle` once (true by the time
+   any helper method runs mid-test), a LATER call to
+   `BasePage.wait_for_network()` can resolve **immediately**, ignoring a
+   request an action a few ms earlier is about to trigger. Confirmed live:
+   `.fill()` into a search box → `wait_for_network()` → read row count = 0,
+   even though the search's own XHR hadn't fired yet. Two fixes, pick based
+   on whether the action is guaranteed to fire a request: (a) wrap the
+   action in `page.expect_response(predicate)` when it's a genuine new query
+   (cache miss); (b) when the action MAY be a cache hit (e.g. clearing a
+   search back to a value already fetched at mount — RTK Query serves it
+   from cache, no network call at all, so `expect_response` times out
+   waiting for a request that legitimately never happens), add a testid to
+   the component's loading/fetching-state element and wait for IT to be
+   hidden instead — resolves instantly on a cache hit (never shown), and
+   catches the real response-vs-render lag on a cache miss (isFetching
+   flips false in the same render that repopulates the rows).
+2. **`capture_requests_matching()` is proven for ABSENCE only.** A positive
+   `status == 200` read races to `None`. Two valid fixes: `page.expect_response()`
+   (blocks; use when no other completion signal exists) or **defer the read**
+   until an independent UI completion condition has already resolved (better
+   for N concurrent requests). Where the response fires relative to your
+   natural anchor is a fact you read out of the frontend source, not guess —
+   it can fire BEFORE the wait you'd anchor to, in which case register the
+   capture before Setup and still defer the read.
+3. **An action method returns when the event is dispatched, not when the app
+   settled.** `send_message(use_enter=True)` returns on keypress, before the
+   SPA reaches `/chat/{id}`. Any state read keyed on that navigation must be
+   a polling `expect(...)`, never a synchronous `.is_enabled()`/`.text_content()`.
+   Two "equivalent" user actions (Enter vs button, `fill()` vs
+   `press_sequentially()`) do not share timing — an AFS sentence "I verified
+   path A but the test uses path B" IS a to-verify marker.
+4. **A cold direct-URL nav can land somewhere else entirely** and never time
+   out (`/artifacts?bucket=X` → an unrelated bucket; loose text waits don't
+   catch it, #638). Re-read the live URL params after the wait and retry once;
+   `AssertionError` on the second failure, never silent. Both
+   `navigate_to_bucket()` and `navigate_to_bucket_folder()` are guarded — use
+   them, don't roll your own `navigate()`.
+5. **A URL-substring predicate matching SEVERAL concurrently-firing requests
+   resolves on whichever settles first, not "the one you meant."** Catalog
+   mount/clear fires 3 requests sharing `/public_applications/prompt_lib/`
+   (bulk all-applications, Trending, My-Liked) — a generic
+   `expect_response(lambda r: substring in r.url)` can return on the fast
+   Trending/My-Liked call while the bulk call (the one that actually
+   repopulates the grid you're about to read) is still in flight;
+   `wait_for_network()` afterwards doesn't reliably save you either. Fix:
+   add the same distinguishing filter the mount-time reader already uses
+   (exclude the other calls' unique params), and back it with a retrying
+   `expect(locator).to_have_count(...)` on the thing you actually read next
+   — don't trust "a matching response resolved" to mean "the DOM I'm about
+   to read reflects it." Full detail:
+   generic_expect_response_predicate_can_match_wrong_parallel_request.md
+
+**Two structural rules that pre-empt all four:**
+
+- **A wait condition must not itself be gated behind a different
+  interaction.** A `display:none`-until-hover element can never satisfy a
+  visibility wait on an unhovered row. Pick an ungated ancestor, or add a
+  testid to one.
+- **Match the idiom to the condition's shape.** Locator `.filter(has_text=)`
+  + `.wait_for(state="visible")` for pure existence/text-equality; a manual
+  `time.monotonic()` poll only when Python-side logic is required (transient-
+  message filtering, swallowing re-render detaches). Defaulting to whichever
+  you saw last is itself "inventing an idiom."
+
+**Infrastructure timeouts that are NOT product races** — rerun, don't fix:
+first-navigation cold-start timeouts (~40%, OneDrive I/O), and the Support
+Assistant's 60 s AI-response ceiling (3 sittings, up to 4 tests in one run).
+Record them honestly in the Run Report; never patch a shared constant inside
+an unrelated case's PR. Separately, a typed-text field has a real ceiling:
+`fill_form()` uses `press_sequentially(delay=80)` against a 10 s action
+timeout ⇒ any field text over ~120 chars times out looking like a product
+hang. Keep planted markers short.
+
+## Seen 8×
+
+- ELITEA-1884 / PR #536 — networkidle resolved before the Save PUT dispatched.
+- ELITEA-1808 / PR #643 — hover-gated wait condition; `capture_requests_matching()` status `None`. Addenda: ELITEA-1826 (defer-the-read), ELITEA-2114/#696 (register before Setup).
+- ELITEA-2090 / PR #682 — `send_message(use_enter=True)` raced the `/chat/{id}` nav.
+- ELITEA-2312 / PR #1189 — `wait_for_network()` called mid-test after the page had already reached `networkidle` once resolved instantly, ignoring a search-input `.fill()`'s about-to-fire request; fixed with `expect_response` (cache-miss) + a loading-indicator-testid wait (cache-hit-safe).
+- ELITEA-2363 / PR #1230 — `AgentHubPage.clear_search()`'s generic `expect_response` predicate resolved on the parallel Trending/My-Liked call instead of the bulk all-applications call; content grid still showed the pre-clear filtered set when read right after. Fixed with a distinguishing filter + `wait_for_agent_card_count()`. Related, same PR's fix round: waiting for DOM card count == the bulk response's raw row count is ALSO wrong on this page — see agent_hub_catalog_per_category_display_cap.md (a different bug in the same neighborhood: right response, wrong metric to compare it against).
+- …plus 4 earlier occurrence(s) — full per-case detail in the source entries below.
+
+See also: console_capture_read_races_async_dispatch.md (rule-3 variant — a
+console-message capture list read right after a click can miss an event that
+fires inside the click's own async success handler) ·
+save_networkidle_race_quirk.md ·
+hover_gated_wait_condition_and_response_status_race.md ·
+send_message_enter_key_races_spa_navigation.md ·
+artifacts_direct_bucket_url_nav_project_id_race.md ·
+mcp_list_first_navigation_timeout_flake.md ·
+support_assistant_ai_response_timeout_flakiness.md ·
+agent_form_fill_form_timeout_ceiling.md ·
+search_input_press_sequentially_drops_leading_keystroke.md

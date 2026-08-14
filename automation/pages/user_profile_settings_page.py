@@ -1,14 +1,18 @@
 """User Profile Settings page object for Elitea platform.
 
-Handles the /user-settings/profile page, specifically:
-- Default Context Management section (toggle, max tokens input)
+Handles the /settings/memory page, specifically:
+- Context Management section (toggle, Max Context Tokens / Preserve Recent
+  Messages inputs, Automatic Summarization sub-section)
 
-And the /settings/personalization page:
+And the /settings/preferences page:
 - Voice Personalization section (voice, speed, volume, preview)
 
 Changes on these pages autosave — there is no explicit Save button.
 
-URL: /user-settings/profile, /settings/personalization
+URL: /settings/memory, /settings/preferences
+
+NOTE: /settings/personalization and /user-settings/profile are STALE routes
+that 404 — see navigate_to_profile() and EliteaAI/elitea-testing-public#1238.
 """
 
 import logging
@@ -22,63 +26,91 @@ logger = logging.getLogger("elitea.pages.user_profile_settings")
 
 
 class UserProfileSettingsPage(BasePage):
-    """Page object for /user-settings/profile.
+    """Page object for /settings/memory.
 
-    Covers the Default Context Management section which contains:
+    Covers the Context Management section which contains:
     - A toggle to enable/disable context management for new conversations
     - A numeric input for Max Context Tokens
     - A numeric input for Preserve Recent Messages
+    - An Automatic Summarization sub-section (own toggle)
 
-    All changes autosave on blur/change — no Save button interaction needed.
+    Context Management is a conditional-unmount block, not a disabled/
+    grayed-out one: with the top toggle OFF, the Max Context Tokens input,
+    Preserve Recent Messages input, Context Editing toggle, and the entire
+    Automatic Summarization sub-section are removed from the DOM entirely
+    (`{isEnabled && (...)}` in `MemoryContextManagement.jsx`), and reappear
+    with prior values intact when re-enabled.
 
-    URL: /user-settings/profile
+    All changes autosave on click/change — no Save button interaction needed.
+
+    URL: /settings/memory
     """
 
     # ------------------------------------------------------------------
-    # Default Context Management — toggle
-    # LOCATOR NOTE: The switch has an accessible name. No data-testid is
-    # present in the frontend, so fallback is the only strategy.
+    # Context Management — section container
+    # ------------------------------------------------------------------
+
+    context_management_section = LocatorDescriptor(
+        testid="context-management-section",
+        description="Container for the Context Management accordion section on /settings/memory",
+    )
+
+    # ------------------------------------------------------------------
+    # Context Management — toggle
     # ------------------------------------------------------------------
 
     context_management_toggle = LocatorDescriptor(
         testid="context-management-toggle",
-        fallback=lambda page: page.get_by_role(
-            "switch", name="Enable context management for new conversations"
-        ),
         description=(
             "Toggle switch for 'Enable context management for new conversations' "
-            "inside the Default Context Management section"
+            "inside the Context Management section"
         ),
     )
 
     # ------------------------------------------------------------------
-    # Default Context Management — Max Context Tokens input
-    # LOCATOR NOTE: The textbox has no accessible name. It is the first
-    # unnamed textbox inside the region that also contains the label text
-    # 'Max Context Tokens'. We scope the locator to the section heading
-    # region to avoid matching the Preserve Recent Messages input.
+    # Context Management — Max Context Tokens input
     # ------------------------------------------------------------------
 
     max_context_tokens_input = LocatorDescriptor(
         testid="max-context-tokens-input",
-        fallback=lambda page: page.get_by_test_id("context-management-section").get_by_role("textbox").nth(0),
-        description=(
-            "Numeric input for Max Context Tokens. "
-            "Located as the first textbox inside the Default Context Management section."
-        ),
+        description="Numeric input for Max Context Tokens.",
     )
 
     # ------------------------------------------------------------------
-    # Default Context Management — Preserve Recent Messages input
+    # Context Management — Preserve Recent Messages input
     # ------------------------------------------------------------------
 
     preserve_recent_messages_input = LocatorDescriptor(
         testid="preserve-recent-messages-input",
-        fallback=lambda page: page.get_by_test_id("context-management-section").get_by_role("textbox").nth(1),
+        description="Numeric input for Preserve Recent Messages.",
+    )
+
+    # ------------------------------------------------------------------
+    # Context Management — Automatic Summarization sub-section toggle
+    # ------------------------------------------------------------------
+
+    automatic_summarization_toggle = LocatorDescriptor(
+        testid="automatic-summarization-toggle",
         description=(
-            "Numeric input for Preserve Recent Messages. "
-            "Located as the second textbox inside the Default Context Management section."
+            "Toggle switch for the Automatic Summarization sub-section "
+            "(MemorySummarization.jsx), nested inside Context Management"
         ),
+    )
+
+    # ------------------------------------------------------------------
+    # Automatic Summarization — Summarization Instructions / Target Summary
+    # Tokens fields (own children of the Automatic Summarization toggle,
+    # nested inside MemorySummarization.jsx)
+    # ------------------------------------------------------------------
+
+    summarization_instructions_textarea = LocatorDescriptor(
+        testid="summarization-instructions-textarea",
+        description="Multiline textarea for custom Summarization instructions.",
+    )
+
+    target_summary_tokens_input = LocatorDescriptor(
+        testid="target-summary-tokens-input",
+        description="Numeric input for Target Summary Tokens.",
     )
 
     # ------------------------------------------------------------------
@@ -89,18 +121,19 @@ class UserProfileSettingsPage(BasePage):
         super().__init__(page)
 
     def navigate_to_profile(self) -> None:
-        """Navigate to the user profile settings page and wait until ready.
+        """Navigate to the Context Management settings page and wait until ready.
 
-        The profile settings (context management, personalization, voice) are
-        served at /settings/personalization in the current routing structure.
-        /user-settings/profile is not a valid route.
+        Context Management now lives at /settings/memory. The former routes
+        (/settings/personalization, /user-settings/profile) 404 — the section
+        was relocated without updating case text / this method's old route
+        (see EliteaAI/elitea-testing-public#1238).
 
         Automatically waits for the context management section to be visible
         before returning.
         """
-        self.navigate("/settings/personalization")
+        self.navigate("/settings/memory")
         self.wait_for_page_load()
-        logger.info("Navigated to user profile settings page")
+        logger.info("Navigated to Context Management settings page (/settings/memory)")
 
     def wait_for_page_load(self, timeout: int = 60000) -> None:
         """Wait until the profile settings page is fully loaded with API data.
@@ -109,7 +142,7 @@ class UserProfileSettingsPage(BasePage):
         then fetches user settings and re-renders. We must wait for this second
         render to complete before reading field values.
 
-        The /settings/personalization page has a persistent WebSocket connection
+        The /settings/memory page has a persistent WebSocket connection
         (socket.io) that prevents networkidle from being reached, so the
         networkidle wait is best-effort (failure is tolerated).
 
@@ -117,7 +150,10 @@ class UserProfileSettingsPage(BasePage):
         its value is stable for two consecutive reads 500ms apart. This guards
         against reading the form before the author API response has updated the
         Formik state (which can lag especially when the backend returns transient
-        503s on reload and retries).
+        503s on reload and retries). If Context Management is currently OFF for
+        this account, the input is conditionally unmounted (not merely hidden) —
+        the poll is skipped in that case rather than spinning for the full
+        timeout waiting on a value that will never appear.
 
         Args:
             timeout: Maximum wait time in milliseconds (default raised to 60s to
@@ -130,10 +166,9 @@ class UserProfileSettingsPage(BasePage):
         except Exception:
             logger.debug("wait_for_page_load: networkidle not reached — continuing")
 
-        # Wait for the "Default Context Management" section accordion container
-        # The accordion title is not a semantic heading — use its data-testid instead
-        context_section = self.page.get_by_test_id("context-management-section")
-        context_section.wait_for(state="visible", timeout=timeout)
+        # Wait for the Context Management section accordion container.
+        # The accordion title is not a semantic heading — use its data-testid instead.
+        self.context_management_section.wait_for(state="visible", timeout=timeout)
 
         # The accordion should be expanded by default, but give it time to render
         self.page.wait_for_timeout(500)
@@ -141,6 +176,14 @@ class UserProfileSettingsPage(BasePage):
         # Wait for the context management toggle to be present — it is
         # the key element used by the context management tests.
         self.context_management_toggle.wait_for(state="visible", timeout=timeout)
+
+        if self.max_context_tokens_input.count() == 0:
+            logger.info(
+                "wait_for_page_load: Context Management is OFF for this account "
+                "(Max Context Tokens input not mounted) — skipping value-stabilization poll"
+            )
+            logger.info("Profile settings page loaded")
+            return
 
         # Poll max-context-tokens-input until the value is stable.
         # The form first shows the Formik default (64000), then updates when the
@@ -173,12 +216,20 @@ class UserProfileSettingsPage(BasePage):
     def is_context_management_enabled(self) -> bool:
         """Return True if the context management toggle is currently ON.
 
-        Uses the ARIA ``checked`` attribute set by MUI Switch.
+        Same shape as ``ArtifactsPage.is_file_checkbox_checked`` /
+        ``NotificationCenterPage.is_notification_checkbox_checked``: the
+        ``data-testid`` lands on the MUI ``SwitchBase`` root span (confirmed
+        live — ``<span class="... Mui-checked ..." data-testid="context-
+        management-toggle"><input type="checkbox" role="switch" .../></span>``),
+        not the nested ``<input>``, so Playwright's ``is_checked()`` raises
+        "Not a checkbox or radio button" on it — read the ``Mui-checked``
+        class instead.
 
         Returns:
             True if the switch is checked (context management enabled).
         """
-        checked = self.context_management_toggle.is_checked()
+        class_attr = self.context_management_toggle.get_attribute("class") or ""
+        checked = "Mui-checked" in class_attr
         logger.info("Context management enabled: %s", checked)
         return checked
 
@@ -221,6 +272,34 @@ class UserProfileSettingsPage(BasePage):
         logger.info("Max context tokens raw value: %r", raw)
         return int(raw)
 
+    def get_preserve_recent_messages(self) -> int:
+        """Return the current value of the Preserve Recent Messages input.
+
+        Returns:
+            Current preserve-recent-messages count as an integer.
+
+        Raises:
+            ValueError: If the field contains a non-numeric value.
+        """
+        raw = self.preserve_recent_messages_input.input_value()
+        logger.info("Preserve recent messages raw value: %r", raw)
+        return int(raw)
+
+    def are_context_fields_mounted(self) -> bool:
+        """Return True if Max Context Tokens and Preserve Recent Messages
+        inputs are present in the DOM.
+
+        Context Management OFF conditionally UNMOUNTS these fields (and the
+        Automatic Summarization sub-section) rather than disabling them —
+        see the class docstring. Use ``count() > 0`` (presence), not
+        visibility, since an unmounted element also fails a visibility check
+        but for a different reason.
+
+        Returns:
+            True if both inputs are present in the DOM.
+        """
+        return self.max_context_tokens_input.count() > 0 and self.preserve_recent_messages_input.count() > 0
+
     def set_max_context_tokens(self, value: int) -> None:
         """Set the Max Context Tokens input to *value*.
 
@@ -246,12 +325,166 @@ class UserProfileSettingsPage(BasePage):
         self.page.wait_for_timeout(3000)  # Wait for debounced autosave
 
         # Use wait_for_autosave which tolerates the persistent WebSocket on
-        # /settings/personalization preventing networkidle from being reached.
+        # /settings/memory preventing networkidle from being reached.
         self.wait_for_autosave(timeout=5000)
         actual = self.get_max_context_tokens()
         if actual != value:
             logger.warning("Max context tokens shows %d after set, expected %d — autosave may be delayed", actual, value)
         logger.info("Max context tokens set to %d", value)
+
+    def type_max_context_tokens_raw(self, text: str) -> None:
+        """Type *text* verbatim into Max Context Tokens and blur (Tab).
+
+        Sibling of :meth:`set_target_summary_tokens` for the same reasons
+        (ELITEA-2391): unlike :meth:`set_max_context_tokens`, this method:
+
+        - accepts a raw ``str`` instead of forcing ``str(int)``, so it can
+          type genuinely non-numeric input (e.g. ``"abc"``, ``"-100"``) that
+          :meth:`set_max_context_tokens`'s ``int``-typed signature cannot
+          express;
+        - does NOT call :meth:`wait_for_autosave` — that wait is a
+          best-effort networkidle wait that falls back to a fixed 1s sleep
+          on timeout (see its docstring) and so cannot reliably distinguish
+          "PUT fired" from "PUT did not fire". Max Context Tokens has
+          client-side validation (min 1000, required) that BLOCKS the
+          autosave submit for invalid input
+          (``useFormikAutoSaveOnBlur`` calls ``validateForm()`` before
+          ``submitForm()`` and returns early on errors) — so whether a PUT
+          fires at all depends on the value. Callers own their own
+          ``page.expect_response(...)`` (value expected to pass validation)
+          or a bounded absence check (value expected to fail validation)
+          around this call, matching the wrap-the-call pattern already used
+          throughout ``test_context_management_toggle.py``.
+
+        Do NOT modify :meth:`set_max_context_tokens` itself — it is used
+        unchanged by ``test_context_management_toggle_enables_disables_fields``
+        (ELITEA-2374); this is a sibling method, not a behavioural change to
+        the shared one.
+
+        Args:
+            text: Raw text to type verbatim. May be non-numeric or contain a
+                minus sign — this method does not validate, clamp, or
+                coerce it, by design (the caller is testing the browser's
+                own client-side filtering/validation).
+        """
+        logger.info("Typing raw text into max context tokens: %r", text)
+        field = self.max_context_tokens_input
+
+        # Clear the field and type the new value character by character —
+        # reliably triggers React's onChange for MUI inputs (fill() does not).
+        field.click()
+        field.fill("")
+        field.type(text, delay=50)
+
+        # Press Tab to blur — this is what triggers useFormikAutoSaveOnBlur's
+        # validate-then-maybe-submit flow.
+        field.press("Tab")
+
+    # ------------------------------------------------------------------
+    # Automatic Summarization helpers
+    #
+    # Unlike the parent Context Management toggle (conditional UNMOUNT of its
+    # children — see class docstring), the Automatic Summarization toggle
+    # DISABLES its own children instead: MemorySummarization.jsx sets
+    # `disabled={isSummarizationDisabled}` (where
+    # `isSummarizationDisabled = !context_enabled || !enable_summarization`)
+    # on the Summarization Instructions / Target Summary Tokens fields. They
+    # stay mounted in the DOM and are asserted via `to_be_disabled()` /
+    # `to_be_enabled()`, not `to_have_count(0)`.
+    # ------------------------------------------------------------------
+
+    def is_automatic_summarization_enabled(self) -> bool:
+        """Return True if the Automatic Summarization toggle is currently ON.
+
+        Same ``Mui-checked`` class-attribute check as
+        ``is_context_management_enabled()`` — see that method's docstring
+        for why ``is_checked()`` cannot be used directly on this element.
+
+        Returns:
+            True if the switch is checked (automatic summarization enabled).
+        """
+        class_attr = self.automatic_summarization_toggle.get_attribute("class") or ""
+        checked = "Mui-checked" in class_attr
+        logger.info("Automatic summarization enabled: %s", checked)
+        return checked
+
+    def enable_automatic_summarization(self) -> None:
+        """Enable Automatic Summarization if it is not already enabled.
+
+        Clicks the toggle only when it is currently OFF. After clicking,
+        waits for the autosave network round-trip to settle.
+        """
+        if not self.is_automatic_summarization_enabled():
+            logger.info("Enabling automatic summarization toggle")
+            self.automatic_summarization_toggle.click()
+            self.wait_for_autosave()
+        else:
+            logger.info("Automatic summarization already enabled — no action taken")
+
+    def disable_automatic_summarization(self) -> None:
+        """Disable Automatic Summarization if it is not already disabled.
+
+        Clicks the toggle only when it is currently ON. After clicking,
+        waits for the autosave network round-trip to settle.
+        """
+        if self.is_automatic_summarization_enabled():
+            logger.info("Disabling automatic summarization toggle")
+            self.automatic_summarization_toggle.click()
+            self.wait_for_autosave()
+        else:
+            logger.info("Automatic summarization already disabled — no action taken")
+
+    def get_target_summary_tokens(self) -> int:
+        """Return the current value of the Target Summary Tokens input.
+
+        Returns:
+            Current target summary tokens as an integer.
+
+        Raises:
+            ValueError: If the field contains a non-numeric value.
+        """
+        raw = self.target_summary_tokens_input.input_value()
+        logger.info("Target summary tokens raw value: %r", raw)
+        return int(raw)
+
+    def set_target_summary_tokens(self, value: int) -> None:
+        """Type *value* into the Target Summary Tokens input and blur (Tab).
+
+        Uses keyboard events (click + fill("") + type) instead of fill()
+        alone to correctly trigger React's onChange handler on MUI form
+        fields — same rationale as :meth:`set_max_context_tokens`.
+
+        Unlike :meth:`set_max_context_tokens`, this method does NOT wait
+        for an autosave round-trip: Target Summary Tokens has client-side
+        min/max validation (100-4096, ``VALIDATION_LIMITS.MAX_TOKENS`` in
+        ``src/[fsd]/widgets/context-budget/lib/constants.js``) that BLOCKS
+        the autosave submit when the typed value is out of range
+        (``useFormikAutoSaveOnBlur`` calls ``validateForm()`` before
+        ``submitForm()`` and returns early on errors) — so whether a PUT
+        fires at all depends on the value. Callers own their own
+        ``page.expect_response(...)`` context manager (value expected to
+        pass validation) or a bounded absence check (value expected to
+        fail validation) around this call, matching the wrap-the-call
+        pattern already used throughout this test file's autosave
+        assertions.
+
+        Args:
+            value: New target summary tokens value to type. May be
+                out-of-range — this method does not validate or clamp it,
+                by design (the caller is testing the validation itself).
+        """
+        logger.info("Setting target summary tokens to %d", value)
+        field = self.target_summary_tokens_input
+
+        # Clear the field and type the new value character by character —
+        # reliably triggers React's onChange for MUI inputs (fill() does not).
+        field.click()
+        field.fill("")
+        field.type(str(value), delay=50)
+
+        # Press Tab to blur — this is what triggers useFormikAutoSaveOnBlur's
+        # validate-then-maybe-submit flow.
+        field.press("Tab")
 
     def wait_for_autosave(self, timeout: int = 5000) -> None:
         """Wait for the autosave network request to complete.

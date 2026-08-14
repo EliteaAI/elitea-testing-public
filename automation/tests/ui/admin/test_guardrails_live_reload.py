@@ -456,8 +456,9 @@ class TestBlockedToolkitLiveReload:
                 timeout=CHAT_RESPONSE_TIMEOUT,
             )
 
-            response1 = agent_page.get_last_chat_message()
-            logger.info("Response before blocking: %s", response1[:300])
+            response1 = agent_page.get_last_chat_response_text()
+            logger.info("Response before blocking: %s", response1[:300] if response1 else "(empty)")
+            assert response1, "AI response should not be empty"
             assert "blocked" not in response1.lower() and "can't run" not in response1.lower(), (
                 "Tool should execute successfully before blocking"
             )
@@ -536,9 +537,28 @@ class TestBlockedToolLiveReload:
             guardrails = GuardrailsAdminPage(admin_page)
             guardrails.navigate_to_guardrails()
 
-        with allure.step("Step 2 — Verify get_issue tool is NOT blocked initially"):
+        with allure.step("Step 2 — Ensure get_issue tool is NOT blocked (cleanup if needed)"):
+            # Self-healing: remove blocked tool if left over from previous run
+            # Retry up to 2 times in case first cleanup fails
+            for attempt in range(2):
+                if not guardrails.is_tool_blocked(TEST_TOOL):
+                    break
+                logger.warning(
+                    "Tool '%s' was already blocked - cleanup attempt %d/2", TEST_TOOL, attempt + 1
+                )
+                try:
+                    guardrails.remove_blocked_tool(TEST_TOOL)
+                    guardrails.remove_empty_toolkit_containers()
+                    guardrails.save_configuration(timeout=15000)
+                    admin_page.reload()
+                    guardrails.wait_for_page_load()
+                except Exception as cleanup_err:
+                    logger.warning("Cleanup failed: %s - reloading page", cleanup_err)
+                    admin_page.reload()
+                    guardrails.wait_for_page_load()
+
             assert not guardrails.is_tool_blocked(TEST_TOOL), (
-                f"Tool '{TEST_TOOL}' should NOT be blocked initially"
+                f"Tool '{TEST_TOOL}' should NOT be blocked after cleanup"
             )
             assert not guardrails.has_reload_required_badge("Blocked Tools"), (
                 "Blocked Tools should NOT have 'Reload required' badge"
@@ -558,8 +578,9 @@ class TestBlockedToolLiveReload:
                 timeout=CHAT_RESPONSE_TIMEOUT,
             )
 
-            response1 = agent_page.get_last_chat_message()
-            logger.info("Response before blocking: %s", response1[:300])
+            response1 = agent_page.get_last_chat_response_text()
+            logger.info("Response before blocking: %s", response1[:300] if response1 else "(empty)")
+            assert response1, "AI response should not be empty"
             assert "blocked" not in response1.lower() and "not available" not in response1.lower(), (
                 "get_issue tool should execute successfully before blocking"
             )
@@ -594,8 +615,9 @@ class TestBlockedToolLiveReload:
                 timeout=CHAT_RESPONSE_TIMEOUT,
             )
 
-            response3 = agent_page.get_last_chat_message()
-            logger.info("Response for other tool: %s", response3[:200])
+            response3 = agent_page.get_last_chat_response_text()
+            logger.info("Response for other tool: %s", response3[:200] if response3 else "(empty)")
+            assert response3, "AI response should not be empty"
             assert "yes" in response3.lower() or "main" in response3.lower() or "exist" in response3.lower(), (
                 "Other tools in the toolkit should still work"
             )
@@ -650,9 +672,28 @@ class TestSensitiveToolLiveReload:
             guardrails = GuardrailsAdminPage(admin_page)
             guardrails.navigate_to_guardrails()
 
-        with allure.step("Step 2 — Verify get_issue is NOT in Sensitive Action Tools"):
+        with allure.step("Step 2 — Ensure get_issue is NOT in Sensitive Action Tools (cleanup if needed)"):
+            # Self-healing: remove sensitive tool if left over from previous run
+            # Retry up to 2 times in case first cleanup fails
+            for attempt in range(2):
+                if not guardrails.is_tool_in_sensitive_list(TEST_TOOL, TEST_TOOLKIT):
+                    break
+                logger.warning(
+                    "Tool '%s' was in sensitive list - cleanup attempt %d/2", TEST_TOOL, attempt + 1
+                )
+                try:
+                    guardrails.remove_sensitive_tool(TEST_TOOL)
+                    guardrails.remove_empty_sensitive_toolkit_blocks()
+                    guardrails.save_configuration(timeout=15000)
+                    admin_page.reload()
+                    guardrails.wait_for_page_load()
+                except Exception as cleanup_err:
+                    logger.warning("Cleanup failed: %s - reloading page", cleanup_err)
+                    admin_page.reload()
+                    guardrails.wait_for_page_load()
+
             assert not guardrails.is_tool_in_sensitive_list(TEST_TOOL, TEST_TOOLKIT), (
-                f"Tool '{TEST_TOOL}' should NOT be in sensitive list initially"
+                f"Tool '{TEST_TOOL}' should NOT be in sensitive list after cleanup"
             )
             assert not guardrails.has_reload_required_badge("Sensitive Action Tools"), (
                 "Sensitive Action Tools should NOT have 'Reload required' badge"
@@ -672,8 +713,9 @@ class TestSensitiveToolLiveReload:
                 timeout=CHAT_RESPONSE_TIMEOUT,
             )
 
-            response1 = agent_page.get_last_chat_message()
-            logger.info("Response before marking sensitive: %s", response1[:300])
+            response1 = agent_page.get_last_chat_response_text()
+            logger.info("Response before marking sensitive: %s", response1[:300] if response1 else "(empty)")
+            assert response1, "AI response should not be empty"
             assert "authorize" not in response1.lower() and "approval" not in response1.lower(), (
                 "Tool should execute without authorization before marking sensitive"
             )
@@ -707,8 +749,8 @@ class TestSensitiveToolLiveReload:
                 timeout=CHAT_RESPONSE_TIMEOUT,
             )
 
-            response2 = agent_page.get_last_chat_message()
-            logger.info("Response after marking sensitive: %s", response2[:300])
+            response2 = agent_page.get_last_chat_response_text()
+            logger.info("Response after marking sensitive: %s", response2[:300] if response2 else "(empty)")
 
             assert auth_appeared, (
                 "Sensitive Action Authorization panel should appear for sensitive tool"
@@ -731,8 +773,8 @@ class TestSensitiveToolLiveReload:
                     timeout=CHAT_RESPONSE_TIMEOUT,
                 )
 
-                response3 = agent_page.get_last_chat_message()
-                logger.info("Response after removing from sensitive: %s", response3[:300])
+                response3 = agent_page.get_last_chat_response_text()
+                logger.info("Response after removing from sensitive: %s", response3[:300] if response3 else "(empty)")
             finally:
                 try:
                     guardrails.remove_sensitive_tool(TEST_TOOL)

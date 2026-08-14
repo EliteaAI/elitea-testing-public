@@ -1,0 +1,151 @@
+# Campaign: approved-next50
+
+## State
+- Stage: **COMPLETE — 50/50 cases reached a terminal outcome**
+- Conductor run: wf_aa16c5c4-f74 (propose + wave-01) — wave-02-05 merge ran under wf_526976ac-58a
+- Operator checkpoint: consolidated 11 proposed waves -> 5 (round 1), then operator asked to merge waves 02-05 into
+  ONE (round 2, after wave-01 landed) — both approved
+- Foundation merged: n/a — foundation is null (all 4 surfaces already foundation-rich, evidenced by directory listing)
+- Foundation surfaces CLAIMED: none (no foundation stage — skipped, F=null)
+- Heads analyzed: none (skipped — no foundation stage)
+- Waves: wave-01 (11 cases) LANDED — elitea-testing-public#1107, merged `7d2f8811`, TMS back-written, closure
+  records posted, board -> Ready, branches cleaned up.
+  wave-02-05-merged (39 cases) LANDED — elitea-testing-public#1143, merged `9680e1a6`, 33 automated (3
+  sanctioned RED: #1119/#1121/#1039) + 6 blocked (5 on #1140, 1 on #1142), TMS back-written for the 33, closure
+  records posted on all 39, board -> Ready (33) / Blocked (6), 17 unit branches + trunk cleaned up.
+- Campaign totals: 44/50 automated, 6/50 blocked (real product blockers, code merged and correct)
+- Landing: per-batch — each wave landed before the next cut its trunk
+
+## Source
+
+50 cases, next in raw board #9 Approved-column API order after `approved-top10`
+(unsorted — issue numbers as GitHub returned them, NOT sorted by id/priority):
+
+188, 191, 210, 217, 218, 220, 229, 234, 248, 258, 259, 263, 267, 338, 340, 352,
+365, 371, 384, 400, 403, 405, 406, 407, 414, 415, 416, 417, 418, 421, 424, 428,
+434, 435, 436, 437, 441, 442, 443, 444, 445, 447, 451, 452, 455, 458, 465, 467,
+468, 469
+
+Modules touched (per case titles): agents (2), artifacts (11), chat-interface
+(23), pipelines (14).
+
+Pre-check before proposing: all 4 surfaces already have page objects + test
+dirs in `automation/` (agents, artifacts, chat, pipelines) — foundation-rich,
+no greenfield bootstrap expected. `ls automation/pages/` and `ls
+automation/tests/ui/` both confirm existing coverage per surface.
+
+## Pre-batch state
+
+- Board: all 50 issues moved In Progress, assigned, work-log comment posted,
+  before dispatch.
+- Case snapshots: `.agents/automation/approved-next50/cases/*.md` (committed
+  on automation/base, edbe9c6e).
+- base: origin/automation/base (up to date — includes the just-merged
+  approved-top10 batch, PR #1097).
+- No other campaign cards exist yet (`.agents/automation/campaigns/` was
+  empty before this file) — no foundation-surface conflicts to check against.
+
+## Goal
+
+No numeric coverage goal set for this campaign — plain backlog automation.
+
+## Plan
+
+```json
+{
+  "campaign": "approved-next50", "batch": "approved-next50", "base": "origin/automation/base",
+  "heads": ["ELITEA-1920", "ELITEA-1811", "ELITEA-2181", "ELITEA-2021"],
+  "extendCandidates": ["ELITEA-2028", "ELITEA-2014", "ELITEA-2021", "ELITEA-2218", "ELITEA-1999", "ELITEA-1920"],
+  "foundation": null, "goal": null,
+  "waves": [
+    { "slug": "wave-01-heads", "caseIds": ["ELITEA-1920","ELITEA-1999","ELITEA-1811","ELITEA-1814","ELITEA-2181","ELITEA-2021"],
+      "clusters": [["ELITEA-1920","ELITEA-1999"],["ELITEA-1811","ELITEA-1814"]] },
+    { "slug": "wave-02-artifacts-upload-dup_pipe-hitl-node", "caseIds": ["ELITEA-1828","ELITEA-1829","ELITEA-1831","ELITEA-2014","ELITEA-2015"],
+      "clusters": [["ELITEA-1828","ELITEA-1829","ELITEA-1831"],["ELITEA-2014","ELITEA-2015"]] },
+    { "slug": "wave-03-artifacts-file-editor-core_pipe-node-config", "caseIds": ["ELITEA-1851","ELITEA-1852","ELITEA-1856","ELITEA-2004","ELITEA-2010"],
+      "clusters": [["ELITEA-1851","ELITEA-1852","ELITEA-1856"],["ELITEA-2004","ELITEA-2010"]] },
+    { "slug": "wave-04-artifacts-file-editor-formats_pipe-yaml_chat-search", "caseIds": ["ELITEA-1857","ELITEA-1858","ELITEA-1862","ELITEA-2028","ELITEA-2162"],
+      "clusters": [["ELITEA-1857","ELITEA-1858","ELITEA-1862"]] },
+    { "slug": "wave-05-chat-conversation-organization", "caseIds": ["ELITEA-2135","ELITEA-2137","ELITEA-2149","ELITEA-2168"],
+      "clusters": [["ELITEA-2135","ELITEA-2137","ELITEA-2149"]] },
+    { "slug": "wave-06-chat-attachments_slash-commands", "caseIds": ["ELITEA-2197","ELITEA-2200","ELITEA-2202","ELITEA-2203","ELITEA-2204"],
+      "clusters": [["ELITEA-2197","ELITEA-2200"],["ELITEA-2202","ELITEA-2203","ELITEA-2204"]] },
+    { "slug": "wave-07-chat-hitl-toolkit-direct", "caseIds": ["ELITEA-2211","ELITEA-2212","ELITEA-2213","ELITEA-2214","ELITEA-2215"],
+      "clusters": [["ELITEA-2211","ELITEA-2212","ELITEA-2213","ELITEA-2214","ELITEA-2215"]] },
+    { "slug": "wave-08-chat-context-agenthub-embedded-builders", "caseIds": ["ELITEA-2218","ELITEA-2075","ELITEA-2079","ELITEA-2085"],
+      "clusters": [["ELITEA-2079","ELITEA-2085"]] },
+    { "slug": "wave-09-chat-canvas-mode-editing", "caseIds": ["ELITEA-2086","ELITEA-2087","ELITEA-2088"],
+      "clusters": [["ELITEA-2086","ELITEA-2087","ELITEA-2088"]] },
+    { "slug": "wave-10-pipeline-entry-point-triggers", "caseIds": ["ELITEA-2005","ELITEA-2006","ELITEA-2007","ELITEA-2008"],
+      "clusters": [["ELITEA-2005","ELITEA-2006","ELITEA-2007","ELITEA-2008"]] },
+    { "slug": "wave-11-pipeline-canvas-graph-ops", "caseIds": ["ELITEA-2018","ELITEA-2030","ELITEA-2031","ELITEA-2032"],
+      "clusters": [["ELITEA-2018","ELITEA-2030","ELITEA-2031","ELITEA-2032"]] }
+  ],
+  "policy": {}
+}
+```
+
+Rationale (planner, verbatim summary): 4 surfaces (agents ×2, artifacts ×11, chat ×23, pipelines ×14), all
+foundation-rich per `ls automation/pages/` + `ls automation/tests/ui/{agents,artifacts,chat,pipelines}/`
+(chat_page.py 3818 lines, pipeline_detail_page.py 1778 lines, artifacts_page.py 2133 lines, etc.) → `foundation:
+null`. No live campaign card claims these surfaces. 6 `extendCandidates` flagged (not pre-decided) against
+existing suites (test_pipeline_advanced.py, test_pipeline_nodes.py, test_pipeline_management.py,
+test_context_management.py, test_agent_build_with_ai.py/test_skill_build_with_ai.py) — genuine overlaps to
+verify at analysis time, not assumed already-covered. No exact-ID AFS pre-exists for any of the 50. Same-surface
+flow-variant clusters capped ≤5; genuinely distinct/complex cases (2162, 2168, 2181, 2218, 2075) left solo.
+Heads = one representative per surface, seeded into wave 1 with their own small clusters (avoids fragmenting a
+cluster's one analyst session across waves).
+
+Verified count: 50/50 cases covered across the 11 waves, no duplicates, no omissions (checked programmatically).
+
+## Consolidated plan (approved, 5 waves)
+
+| Wave | Cases | Size |
+|---|---|---|
+| wave-01-heads_artifacts-upload-dup_pipe-hitl-node | 1920,1999,1811,1814,2181,2021,1828,1829,1831,2014,2015 | 11 |
+| wave-02-artifacts-file-editor_pipe-node-config-yaml_chat-search | 1851,1852,1856,2004,2010,1857,1858,1862,2028,2162 | 10 |
+| wave-03-chat-conversation-org_attachments_slash-commands | 2135,2137,2149,2168,2197,2200,2202,2203,2204 | 9 |
+| wave-04-chat-hitl-direct_context-agenthub-embedded-builders | 2211,2212,2213,2214,2215,2218,2075,2079,2085 | 9 |
+| wave-05-chat-canvas_pipe-entry-triggers_pipe-canvas-graph-ops | 2086,2087,2088,2005,2006,2007,2008,2018,2030,2031,2032 | 11 |
+
+Verified 50/50 covered, no dupes/gaps (checked programmatically before re-invoking).
+
+## Log
+
+- 2026-08-02 propose — conductor wf_aa16c5c4-f74 launched
+- 2026-08-02 plan-proposed — 11 waves, foundation null, awaiting operator checkpoint
+- 2026-08-02 operator approved a consolidation to 5 waves — re-invoked wf_aa16c5c4-f74 with { plan } (task w6x0n1m8v)
+- 2026-08-02 operator asked to further consolidate: once wave-01 lands, merge waves 02-05 into ONE wave (39 cases:
+  1851,1852,1856,2004,2010,1857,1858,1862,2028,2162,2135,2137,2149,2168,2197,2200,2202,2203,2204,2211,2212,2213,
+  2214,2215,2218,2075,2079,2085,2086,2087,2088,2005,2006,2007,2008,2018,2030,2031,2032 — all 10 existing clusters
+  preserved). Noted for the re-invocation after wave-01's report lands. Flagged (not blocking): this makes the
+  gate N=3-green run over ~39 spec files together plus one regression sweep — a much longer single gate than
+  wave-01's; builds still run sequentially either way so total build wall-clock is unchanged, only the gate/merge
+  round-trip count drops (2 total instead of 5).
+- 2026-08-02 wave-01 LANDED. Real gate run by lead (workflow's internal gate stalled on git fetch again, same as
+  approved-top10): N=3 green (9-file set) + sanctioned-red (test_pipeline_hitl_node_runtime_behavior.py, defect
+  #1103, deterministic 3/3) + full 64-file blast-radius regression sweep (9 failures, ALL confirmed pre-existing/
+  unrelated — 3 fresh-checked against automation/base, 6 matched to approved-top10-confirmed patterns, 1 follow-up
+  comment posted on #1088 re: incomplete fix). ELITEA-2181 needed a full recovery (original session force-ended
+  mid-verification; AFS/testids/test-file recovered from a gate-agent stash, page-object additions recreated) plus
+  3 review rounds (round 1: weakened regression guard + false AFS-amendment claim; round 2: fix rested on a
+  misread of EliteaUI source; round 3: correct, independently re-verified 2x). PR elitea-testing-public#1107
+  merged (7d2f8811). TMS back-written (11 cases), closure records posted, board -> Ready, 7 branches cleaned up.
+- 2026-08-02 launching merged wave-02-05 (39 cases) — re-invoking conductor with a fresh plan (only the new
+  merged wave listed; wave-01 omitted since it already landed). NEW runId (fresh Workflow call, not a resume):
+  **wf_526976ac-58a**, task wywy5pvg9. Slug: wave-02-05-merged.
+- 2026-08-02 resumed wf_526976ac-58a (task wnpzuoy2r, same args) — completed calls replay from cache.
+- 2026-08-04 wave-02-05-merged CLOSED. Recovered all 6 interrupted units (2004+2010, 2162, 2211-2215,
+  2086-2088, 2005-2008, 2018/2030/2031/2032) through review to merge. Gate run directly by the lead (not the
+  workflow's internal gate): green-required 29-file set N=3 clean (1 mid-gate flake — ELITEA-2007 virtualized
+  cron-picker click-verification gap — found+fixed by a dispatched implementer, commit `60b3d49b`, re-gated
+  fresh N=3); 3 sanctioned-red specs (#1119/#1121/#1039) independently confirmed deterministic 3/3 each;
+  85-file blast-radius regression sweep — 19 failed/7 errored, every one triaged (14 matched known
+  patterns/defects, 5 freshly checked against unmodified `automation/base` — 2 reproduced identically, 2
+  matched the same AI-response-timing flake by signature, 1 one-off transient cleared on recheck), zero
+  regressions. PR elitea-testing-public#1143 merged `9680e1a6`. TMS back-written for 33 automated cases
+  (mechanical Form-C derivation from source, self-checked); onetest index.json rebuilt (2743 cases). Closure
+  records posted + board moved for all 39 issues (33 -> Ready, 6 -> Blocked) — testid provenance verified via
+  one bulk fresh-fetch check (84 new testids this wave, 83 on `automation/testids` only awaiting human
+  cherry-pick, 1 pre-existing reuse). 17 unit branches + the trunk deleted. Campaign closed: 44/50 automated,
+  6/50 blocked on real product defects with merged, correct code.

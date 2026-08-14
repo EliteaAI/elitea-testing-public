@@ -3,7 +3,10 @@
 Configures Playwright browser, environment loading, API clients, and shared fixtures.
 """
 
+import os
 import sys
+import json
+import uuid
 import base64
 import logging
 from pathlib import Path
@@ -45,16 +48,40 @@ from fixtures.data_fixtures import (
     agent_id,
     pipeline_id,
     pipeline_with_llm_id,
+    pipeline_with_fstring_llm_id,
+    pipeline_with_variable_task_llm_id,
+    pipeline_with_two_llm_nodes_id,
+    pipeline_three_llm_chain,
+    pipeline_with_typed_state_vars_id,
+    pipeline_with_custom_state_var_id,
+    pipeline_llm_reads_state_via_code,
+    pipeline_code_node_multi_var_dict_return,
+    pipeline_code_node_elitea_client_user_info,
+    pipeline_code_node_input_filtering,
+    pipeline_parent_child_state_sharing,
+    pipeline_parent_child_state_sharing_three_node,
+    pipeline_parent_child_state_isolation,
     github_credential,
     github_toolkit,
+    github_toolkit_with_selected_tools,
+    github_relevant_agents,
+    github_relevant_skills,
     artifact_bucket,
     artifact_toolkit,
+    artifact_toolkit_four_tools,
+    artifact_seeded_file,
+    sensitive_delete_file_toolkit,
     invalid_jira_credential,
     jira_toolkit_with_invalid_credential,
     invalid_github_credential,
     github_toolkit_with_invalid_credential,
     mcp_toolkit_with_tools,
     mcp_pipeline_with_toolkits,
+    hitl_runtime_pipeline,
+    pipeline_llm_code_end,
+    pipeline_llm_printer_disconnected,
+    pipeline_llm_printer_connected,
+    clean_project_context,
 )
 from fixtures.cleanup_fixtures import (
     cleanup_autotest_pipelines_at_end,
@@ -87,6 +114,11 @@ VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Logger
 logger = logging.getLogger("elitea.automation")
+
+# Runtime execution coverage (docs/coveragetrial.md) — inert unless COVERAGE=1.
+# Fragments land in repo-root coverage/.v8/ (CWD-proof); merged by coverage/report.mjs.
+_COVERAGE = os.environ.get("COVERAGE") == "1"
+_V8_DIR = Path(__file__).parent.parent / "coverage" / ".v8"
 
 
 # ---------------------------------------------------------------------------
@@ -333,10 +365,77 @@ def context(browser: Browser, auth_state, request) -> BrowserContext:
 
 @pytest.fixture
 def page(context: BrowserContext) -> Page:
-    """Create a new page for each test."""
+    """Create a new page for each test.
+
+    When COVERAGE=1, records V8 precise coverage over a raw CDP session
+    (Playwright Python has no page.coverage helper) and writes one fragment
+    per test to coverage/.v8/. Each entry gets its script `source` attached
+    via Debugger.getScriptSource — required by monocart to remap back to
+    src/**.jsx through Vite's inline sourcemaps. No-op when COVERAGE unset.
+    """
     pg = context.new_page()
+    cdp = None
+    if _COVERAGE:
+        _V8_DIR.mkdir(parents=True, exist_ok=True)
+        cdp = context.new_cdp_session(pg)
+        cdp.send("Debugger.enable")  # required for Debugger.getScriptSource
+        cdp.send("Profiler.enable")
+        cdp.send("Profiler.startPreciseCoverage", {"callCount": True, "detailed": True})
     yield pg
+    if _COVERAGE and cdp is not None:
+        try:
+            result = cdp.send("Profiler.takePreciseCoverage")["result"]
+            entries = []
+            for entry in result:
+                url = entry.get("url", "")
+                if "/src/" not in url or "node_modules" in url:
+                    continue  # app source only — skips Vite dep bundles/HMR runtime
+                try:
+                    entry["source"] = cdp.send(
+                        "Debugger.getScriptSource", {"scriptId": entry["scriptId"]}
+                    )["scriptSource"]
+                except Exception:
+                    continue  # script discarded (e.g. full reload) — skip entry
+                entries.append(entry)
+            if entries:
+                (_V8_DIR / f"{uuid.uuid4().hex}.json").write_text(json.dumps(entries))
+        except Exception as e:
+            print(f"[coverage] capture skipped: {e}")
     pg.close()
+
+
+@pytest.fixture(autouse=True)
+def dismiss_banner_after_navigation(page: Page, request):
+    """Dismiss deployment/maintenance banners after navigation.
+
+    Banners (e.g., "Release 2.0.5 - Deployment") overlay the top of the page
+    and intercept clicks on form fields. This fixture wraps page.goto() and
+    page.reload() to automatically dismiss banners after navigation.
+    """
+    from pages.base_page import BasePage
+
+    def _dismiss_banner():
+        base = BasePage(page)
+        base.dismiss_banner_if_present()
+
+    original_goto = page.goto
+    original_reload = page.reload
+
+    def goto_with_banner_dismiss(url, **kwargs):
+        result = original_goto(url, **kwargs)
+        _dismiss_banner()
+        return result
+
+    def reload_with_banner_dismiss(**kwargs):
+        result = original_reload(**kwargs)
+        _dismiss_banner()
+        return result
+
+    page.goto = goto_with_banner_dismiss
+    page.reload = reload_with_banner_dismiss
+    yield
+    page.goto = original_goto
+    page.reload = original_reload
 
 
 # ===========================================================================

@@ -1,0 +1,300 @@
+# Role Overrides — project-specific hard rules (this file wins)
+
+_This is the bundle's designed override channel. Where anything here conflicts
+with a skill's **defaults or examples** — including the
+`test-automation-workflow` "UI example" locator ladder — **this file wins.**
+Seeded by scout 2026-07-14 after the framework-alignment audit; the team's own
+ruling (elitea-testing-public PR #23, "Enforce testid-only locators") is the
+source of the locator policy._
+
+> ⚠️ **Delivery: this file reaches agents ONLY via the `@`-import block in
+> `CLAUDE.md`.** The bundle's hook *can* inject it, but this project sets
+> `SDLC_SHARED_DOCS=__none__` (`.claude/hooks/sdlc-skills/config.sh`) because the
+> hook's ~10 KB `additionalContext` cap truncated the shared docs. **Removing
+> `@.agents/role-overrides.md` from `CLAUDE.md` silently deletes the override
+> channel** — every hard rule below stops reaching every agent, with no error.
+> Verified 2026-08-10 (scout): the hook injects only per-role memory
+> (`RULES.md` + `MEMORY.md` + `project_briefing.md`), never this file.
+
+## Every role — locator policy (the #1 override)
+
+**This project has NO locator ladder. The ladder is one rung: `data-testid`.**
+The `getByRole → testid → label → text → CSS` sequence in
+`test-automation-workflow` is a generic *example* that does **not** apply here.
+
+**→ The full policy is `.agents/testing.md` § Locator policy — the single source,
+and the authority the skill itself defers to. Read it; this section only states
+that it OVERRIDES the skill.** It covers, in full: why (coverage is measured by
+testid presence, so a raw handle is invisible to the metric); missing testid ⇒
+add it via `add-data-testid`, never rung down; the #579 sanctioned exceptions and
+their discipline; the blanket-add ban and the #511 "referenced = called on the
+executed path" ruling; #277 conditional pairs; dynamic-testid and state-attribute
+shapes; connected first-party repos; and why `automation/pages/`' ~350 pre-policy
+raw handles (#25/#42) are tech debt, never precedent.
+
+The per-slot consequences are below (§ Analyst / § Implementer / § Reviewer slot).
+
+## Every role — fresh ground truth (hard rule)
+
+Any verification against `origin/*` refs — promotability greps, "does this testid
+exist on main", branch-state checks — is preceded by `git fetch origin` in that
+repo, **in the same command block**. A verification against a stale clone is not a
+verification (#19 rework shipped a false "0 of 12 on main" row exactly this way;
+truth was 5/12, added by the UI team's own EL-5400). Name the ref you checked and
+PASTE the command output.
+
+## Every role — declared-improvisation protocol (canon gaps)
+
+When the canon has NO pattern for your case: pick the most spirit-compliant option
+AND declare it explicitly — in the Run Report and the PR description — as a
+proposed pattern with reasoning ("no sanctioned shape for X; chose Y because Z").
+A DECLARED improvisation is a canon-gap escalation: the reviewer verifies the
+reasoning, the auditor reports it as a `question` — it can never solo-FAIL a
+delivery. An UNDECLARED improvisation is a violation, full stop. (Origin: #19
+FAIL-1 — a semantically-correct improvisation was indistinguishable from a
+violation because it was silent.)
+
+## Every role — before filing a UI "doesn't work" bug: the interaction-discovery ladder
+
+A case text that under-specifies HOW a control activates is normal — never
+assume your first guess (e.g. live filtering) is the intended mode. Before
+declaring UI behavior broken, exhaust, in order:
+1. **Wait out a debounce** (~1.5s after typing) — some controls are just slow.
+2. **Press Enter** in the field.
+3. **Look for an adjacent activation control** — search/submit icon or button
+   (check `aria-label`s near the field in the DOM snapshot).
+4. **Blur the field** (Tab out) — some inputs commit on blur.
+5. **Compare with the nearest working analog** in the app (e.g. how does the
+   Agents list search behave?).
+6. **Read the source — this is the decisive step.** `../EliteaUI/src` is checked
+   out locally; the component's handlers state the INTENDED mode as fact:
+   `grep -rn "<placeholder or label text>" ../EliteaUI/src/` → open the
+   component → `onChange` handler filtering = live; `onKeyDown` + `Enter` /
+   an `onClick={onSearch}` button = explicit activation. (Worked example:
+   #44 — SearchBar.jsx activates on Enter/icon-click, not on typing.)
+
+Then, and only then:
+- **Intended mode (per code) fails** ⇒ CONFIRMED product `bug` — the report
+  MUST name the intended activation mode with the code pointer, so nobody
+  re-litigates it.
+- **An alternative mode works but the case text implied otherwise** ⇒ NOT a
+  product bug: file a case-text **clarification** issue (the #40 pattern) so
+  the TMS case gets fixed; optionally note a UX-discoverability concern as
+  its own observation. Filing it as `bug` creates false red and wastes a
+  repro cycle (#44 is the cautionary example).
+
+## Every role — 4xx/5xx from the UI: cross-check the OpenAPI contract before verdict
+
+A repro that surfaces a `4xx`/`5xx` (network tab, console) is **not** classified
+as backend-vs-UI from the status code alone. Consult the OpenAPI spec before
+declaring "backend bug" or "UI bug" — the same status can be either, depending
+on the endpoint's declared parameter contract.
+
+The `pylon_main` `shared` plugin hosts:
+- `GET /shared/openapi/?all=true` — raw OpenAPI JSON (`?plugins=a,b` filters)
+- `GET /swagger/?all=true` — Swagger UI
+
+Same base URL as the app under test (localhost dev-proxy or the deployed env).
+
+**Procedure when a UI action produces a 4xx/5xx:**
+1. Note the endpoint + full query/body from Playwright MCP's network capture.
+2. Fetch `/shared/openapi/?all=true` and locate that endpoint's parameter list.
+3. Classify:
+   - **Documented + params match declared required set** → response is
+     expected-per-contract. The bug (if any) lives in the UI: wrong endpoint,
+     wrong viewMode, missing query param, silent fallback to a public endpoint
+     for an authenticated user, no redirect for bare deep links.
+   - **Documented + params satisfy the spec** but backend still returns 4xx/5xx
+     → backend bug. Quote the spec row.
+   - **Undocumented endpoint (spec silent)** → say so explicitly; classify by
+     the response body's error text plus the calling code (grep
+     `../EliteaUI/src` for the endpoint string, read the RTK-Query slice). The
+     `public_application` vs `application` split in `applications.js` is the
+     canonical example — bare `/pipelines/all/{id}` without `?viewMode=owner`
+     silently hits the public endpoint, which returns 400 for owner-only
+     resources; the backend is correct, the UI defaults wrong.
+
+**Verdict must quote either the spec parameter row or the calling-code line** —
+"the API returned 400" is not a classification, it's an observation. (Origin:
+canonical question #512, 2026-07-22 — the first-pass verdict missed the
+public/private endpoint split because it stopped at the status code.)
+
+## Every role — screenshot evidence ATTACHES, never local paths
+
+**The rule is positive, not a blocklist: ANY local path OR bare `.png` filename
+in an issue/comment must be uploaded + embedded.** This covers *every* on-disk
+form — `.playwright-mcp/…`, `automation/screenshots/…`, `test-results/screenshots/…`,
+**and a naked `ELITEA-1933-step-08-tool.png` with no path at all**. Don't reason
+"my path isn't in the forbidden examples" — if a reader on GitHub can't click it
+and see the image, it isn't evidence (the #51/#526/#595 anti-pattern: local paths
+and bare names shipped to the tracker where nobody but the author can open them).
+When an issue/comment cites a screenshot, UPLOAD it and embed it inline:
+
+```bash
+env -u GITHUB_TOKEN gh release upload evidence <file.png> --clobber --repo EliteaAI/elitea-testing-public
+# then embed in the issue body/comment:
+# ![what it shows](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/<file.png>)
+```
+
+The `evidence` prerelease is the attachment store (create once with
+`gh release create evidence --prerelease --title "Evidence store" …` if
+missing). Name files `<CASE-ID>-<step>-<what>.png` — the store is flat, names
+are the only namespace. Local paths may ACCOMPANY the embed (for on-machine
+lookup), never replace it.
+
+## Every role — live-UI browser discipline (Playwright MCP)
+
+- **Snapshot first, act second** — element refs go stale after EVERY action;
+  re-snapshot before each interaction. Big page: save snapshot to a file, Grep it.
+- **Simplest dedicated tool** (`browser_click`/`browser_type`/`browser_wait_for`).
+  On "ref not found" / "not an input" / timeout: re-snapshot and retarget — never
+  escalate to `browser_evaluate`/`run_code`, EXCEPT the documented overlay quirks
+  (qa-engineer memory: e.g. Support Assistant launcher needs a JS-evaluate click).
+- **Browser-driving Bash commands: timeout=600000 (10 min)** — the 120s default
+  false-fails on Keycloak + SPA navigation + WebSocket AI waits (2–30s).
+
+## Every role — NO git worktrees for regular work (operator ruling 2026-07-24)
+
+Plain branching, **one thing at a time**, no concurrent checkouts. Never create a
+`git worktree` in ordinary analysis, implementation, review, or promotion —
+**only on an explicit human ask.**
+
+**→ `.agents/workflow.md` § No git worktrees** is the single source: the rationale
+(a confirmed-twice hazard, PRs #608/#693) and the replacement table for every
+"I need a worktree" moment — none of which needs a checkout.
+
+## Every role — batch shell round-trips (time-audit finding, 2026-07-16)
+
+- **Combine related read-only shell commands into ONE Bash call** (`git status &&
+  git log --oneline -3 && grep -c X file`) instead of one call each. Measured across
+  35 delivered cases: misc-bash + git turns alone were **45% of all model time**
+  (~5,700 turns × ~5 s each — the round-trip itself costs ~5 s regardless of how
+  trivial the command is). Halving them saves ~7 min/case. Same for `gh` reads.
+- **Scope file reads** — `Read` with offset/limit or a targeted `Grep`, not whole
+  files: file-reading turns carry the largest payloads (12 KB avg) and the biggest
+  context growth (~8.6k cache-creation tokens/turn), making them the slowest turns.
+- Keep WRITE-side commands (commits, pushes, board writes) separate and reviewable —
+  batching is for reads/checks, not for irreversible actions.
+- Playwright MCP needs no such economy — its turns are the cheapest in the stack
+  (3.3 s avg, compact snapshots); don't avoid it for "weight" reasons.
+
+## Analyst slot (qa-engineer)
+
+- The AFS **Handles Reference must list testids as the only primary handles.** An
+  element without one is specced as `testid needed: {section}-{element}-{type}` —
+  never "resolve by accessible role/name", never a CSS/role handle as primary.
+- **Every handle row carries a PROVENANCE column**, verified at analysis time with
+  a fresh fetch (`cd ../EliteaUI && git fetch origin` first): `on-main ✓` /
+  `on-automation/testids only (awaiting human promotion to main)` / `needs-adding`.
+  The implementer and the
+  closure record inherit this verified data instead of re-deriving it — and the UI
+  team adds testids in parallel (75+ on main already), so never assume "we didn't
+  add it" means "it doesn't exist".
+- Do not soften a testid demand into a MINOR defect or a note; it is implementer
+  work, and the AFS is its work order.
+- **State is specced as a `data-*` attribute filter, never as a state-dependent
+  testid** (`.agents/testing.md` § Locator policy, PR #581 ruling). If the case
+  asserts an element's state (expanded/selected/disabled), the handle row names the
+  stable testid + the state attribute (`[data-testid="x"][data-expanded="false"]`)
+  — never `testid needed: x-expanded` / `x-collapsed` variants.
+
+## Implementer slot (test-automation-engineer)
+
+- An AFS row saying `testid needed: X` means: run `add-data-testid`, add `X` to
+  EliteaUI, use `LocatorDescriptor(testid="X")`. Never substitute a role/text
+  handle "for now".
+- **Amending an analyst's testid request away** (the ELITEA-1735 pattern: "the
+  accessible name is stable, no testid needed") is out of contract — a testid
+  request is satisfied by a testid or escalated to the lead, never re-scoped down.
+- Locators are class-level `LocatorDescriptor(testid=…)` fields ONLY — no
+  `fallback=`, no `locator=`, nothing built in method bodies, no raw selector
+  chained off an existing field (`self.x.locator(".css")`). Scoped sub-selectors
+  and **dynamic testids** use UPPER_CASE `[data-testid="…"]` string/template
+  constants per `.claude/rules/page-objects.md` and `.agents/testing.md`
+  § Locator policy (inline `get_by_test_id(f"…")` is NOT the compliant shape).
+- **Self-check before handoff:** run the reviewer's mechanical grep (below) on
+  your own diff and PASTE its output in the Run Report — an empty result is the
+  evidence, a missing paste is a gap. Catching your own hit costs minutes; a
+  review round costs a session.
+- **`locator_descriptor.py`'s `locator=`/`fallback=` params are LEGACY** — kept so
+  old code imports; never valid in new code, whatever any docstring example shows.
+
+## Reviewer slot (qa-engineer, fresh session)
+
+- **Any non-testid handle ADDED in `automation/pages/` or `automation/tests/` is
+  `CHANGES_REQUESTED`.** Not a nit, not a non-blocking tech-debt note, not waived
+  for neighborhood consistency. Mechanical check on every PR:
+  `git diff <base>... | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\.locator|\.locator\()'`
+  (`get_by_test_id` included: inline Playwright calls are also banned — locators are
+  class-level `LocatorDescriptor` fields)
+  — a hit is COMPLIANT only if the line contains a literal `[data-testid=` selector
+  OR references an UPPER_CASE class constant whose class-level definition is a
+  `[data-testid=` string/template (one-hop check — look it up). Everything else blocks.
+- **Show your grep to the orchestrator.** Include the mechanical grep's actual
+  command + output in the verdict you return to Tal — command (so scope/pattern
+  is auditable) + result (hits verbatim, or explicit "0 hits / (no matches)" for
+  empty). This is how Tal (and you) know it was really run on the full diff, not
+  a weak subset — the #19 FAIL-2 lesson. (The delivery audit does NOT require this
+  paste to survive into the tracker: the auditor re-runs the grep itself. It's
+  reviewer discipline, not a tracker-artifact gate.)
+- **Testid-convention check on any EliteaUI JSX in the case's diff** (PR #581
+  ruling, `.agents/testing.md` § Locator policy): a state-conditional testid
+  whose VALUE flips as component state changes on the SAME live element
+  (`data-testid={isExpanded ? A : B}` on an element that expands in place), a
+  feature-scoped testid hardcoded in a shared component (`src/components/`,
+  `src/[fsd]/shared/`), or a `dataTestId`-style prop name is `CHANGES_REQUESTED`.
+- **Same-element conditional pair check (canon ruling #277, 2026-07-22).** A
+  `data-testid={cond ? A : B}` on a single JSX node where `cond` is a per-mount
+  prop discriminating two mutually-exclusive JSX renders (e.g. `isOverflow` on
+  `CardTagSectionItem` — the same component renders EITHER a real tag chip OR
+  a "+N" overflow badge, never one that becomes the other) is distinct from
+  the PR #581 anti-pattern and MAY be compliant. Exactly two shapes pass:
+  (a) only the used branch is named, the other is `undefined`; OR (b) both
+  branches are named AND both are referenced by locators on the test's
+  executed code path — the untested branch via an absence assertion
+  (`to_have_count(0)`/`not_to_be_visible()`) on the elements the test
+  exercises. A documentation-only justification (docstring / AFS PROVENANCE
+  row explaining why the untested branch exists) is NOT compliant on its own
+  — `CHANGES_REQUESTED`. Absence assertions are caught by the existing
+  mechanical grep (they use `.locator(`/`get_by_*` the same as positive
+  assertions), so no new grep is needed.
+- **Zero-functional-impact check on any EliteaUI JSX in the diff (origin: EliteaUI PR
+  #753, 2026-08-11).** A new DOM node, a replaced MUI built-in, a new/moved hook call,
+  a render-prop form change, or product state frozen into `useState` — added in order to
+  host a testid — is `CHANGES_REQUESTED`. Mechanical check: run the three Step-5.5 greps
+  from `add-data-testid` § Step 5.5 on the PR diff and paste command + output (or explicit
+  "0 hits") per the existing reviewer paste discipline:
+  ```bash
+  git diff origin/main...HEAD -- src/ | grep -nE '^\+.*\buse(State|Effect|Memo|Callback|Ref)\('
+  git diff origin/main...HEAD -- src/ | grep -nE '^\+.*<(Box|div|span|Fragment)'
+  git diff origin/main...HEAD -- src/ | grep -nE '^-' | grep -vE 'testid|TestId'
+  ```
+  A hit is a blocker unless the commit body names the mandatory-plumbing exception
+  (`add-data-testid` § Mandatory-plumbing exceptions) and explains why it was unavoidable.
+  An undeclared hit is a violation (§ Declared-improvisation protocol).
+- **Declared improvisations** (see § Every role): verify the reasoning and say so
+  explicitly in the verdict; if sound, APPROVED + recommend the canon addition —
+  do not block solely for the gap the canon itself left.
+- "Selector stability per testing.md" in the review checklist means **this**
+  policy, not the skill's example ladder.
+
+## Orchestrator slot (test-automation-lead)
+
+- **Dispatch-prompt contract:** every implementer and reviewer dispatch prompt
+  MUST carry the line: *"Locator policy: testid-only (`.agents/role-overrides.md`
+  + `.agents/testing.md` § Locator policy). The workflow skill's example ladder
+  does not apply. New non-testid handles are CHANGES_REQUESTED."* The dispatch
+  prompt is the gate — put the policy where it cannot lose.
+- **Closure records state verified facts.** Before writing the promotability row:
+  `cd ../EliteaUI && git fetch origin` FIRST (a stale clone produced the #19
+  rework's false 0-of-12 row — truth was 5/12, the UI team's own EL-5400 testids),
+  then check which testids the case's tests use (`grep` the diff) against **main**
+  vs `automation/testids` (`git grep` both), and PASTE the output into the record
+  (verbatim block in `.agents/workflow.md` § Closure record). Never copy the
+  AFS/implementer's claim — #35/#36/#37 shipped false rows exactly that way.
+- Run `sync-base-branches` before dispatching the first case of a session, not
+  after the batch.
+- **Never dispatch `ui-test-orchestrator` or `failure-investigator`.** They are
+  installed for the HUMAN team's direct use only — their flows bypass the pipeline's
+  gates (AFS, fresh-session review, merge gate, closure record). Every stage they
+  cover has a canonical owner in your pipeline.

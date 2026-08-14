@@ -1,0 +1,94 @@
+---
+name: AFS "on-main ✓" PROVENANCE claim needs both origin/main AND origin/automation/testids grepped
+description: A PROVENANCE row can claim "on-main ✓" for a testid that only exists on origin/automation/testids — grep BOTH refs (fresh git fetch first), never take the analyst's single-ref claim at face value even when dated same-day
+type: feedback
+---
+
+## What happened (ELITEA-1876, PR #1283, fix round 1)
+
+The analyst's AFS PROVENANCE row for `run-history-list-item` claimed
+`on-main ✓ (pre-existing, reused as-is — verified via git fetch + git grep
+against origin/main, 2026-08-06)`. Reviewer re-ran the exact same check
+(fresh `git fetch origin` + `git grep -- 'run-history-list-item'
+origin/main -- src/`) one day later and got **0 hits** (exit 1) — the
+testid is real, but it lives only on `src/[fsd]/entities/run-history/ui/
+RunHistoryList/RunHistoryListItem.jsx` on `origin/automation/testids`
+(1 hit, exit 0), not on `origin/main`.
+
+Root cause unclear (analyst error, or a since-reverted main-side promotion)
+— doesn't matter for the fix: the claim was false at review time regardless
+of history, and PROVENANCE rows are input to the closure record's
+promotability determination, so a wrong "on-main ✓" would have shipped a
+false "deployed-env-promotable" signal.
+
+## The check — always grep BOTH refs, not just the one the AFS claims
+
+```bash
+cd ../EliteaUI && git fetch origin
+git grep -- '<testid>' origin/main -- src/                  # promotable-to-deployed truth
+git grep -- '<testid>' origin/automation/testids -- src/    # dev-server/localhost truth
+```
+
+A same-day-dated PROVENANCE claim is not exempt from re-verification —
+`automation/testids` and `main` diverge routinely (that's the whole point
+of the integration-branch design), so "verified yesterday" can already be
+stale, and a wrong ref name in the analyst's own check (grepped
+`automation/testids` but wrote "on-main") is indistinguishable from staleness
+without re-running it yourself.
+
+## Fix mechanics when this fires
+
+1. Correct the PROVENANCE cell to name the real ref: `on automation/testids
+   only — NOT yet on origin/main (awaiting human promotion)`.
+2. Commit as `docs(afs): (<CASE-ID>) correct false on-main PROVENANCE claim
+   for <testid>` — doc-only, no test code change, no regression test
+   applicable (the defect is in the AFS text, not in test behavior).
+3. Flag the closure-record implication explicitly in the PR comment: the
+   case is not deployed-env-promotable until the testid is cherry-picked to
+   `main` — the lead's closure record inherits this, don't make them
+   re-derive it.
+
+## Seen again (ELITEA-2464, PR #1294, fix round 1, 2026-08-07)
+
+7 of 10 rows in the Concrete Handles table claimed `on-main ✓` without a
+fresh grep. Re-verification found only 3 genuinely on `main`
+(`internal-tools-menuitem`, `toast-message`, `chat-message-input`); the
+other 7 — including the ENTIRE `modules-toggle-{}` dynamic-testid template
+mechanism (`PlusChatButton.jsx`'s `slotProps: { input: { 'data-testid':
+\`modules-toggle-${tool.name}\` } }`), not just the new `ask_user` entry —
+exist only on `automation/testids`. Lesson refined: when a dynamic/templated
+testid is involved, grep the TEMPLATE STRING itself (e.g. `modules-toggle-`),
+not just one instantiated value — the mechanism can be entirely
+testids-only even when the underlying data/tool-key it parameterizes over
+is already on `main` (the `ask_user` tool key string was on `main` in
+`internalTools.constants.js`; its testid wiring was not — two different
+promotion states easy to conflate).
+
+## Seen again (ELITEA-2038, PR #1323, fix round 1, 2026-08-08)
+
+`agent-add-agent-button` was claimed `on-main` on the strength of "it's a
+pre-existing field already used by `AgentDetailPage`, just newly ported to
+`PipelineDetailPage`" — plausible reasoning, still wrong. Re-verify found
+`git log -S'"agent-add-agent-button"' origin/automation/testids` has exactly
+one hit (`EliteaAI/EliteaUI@ce74cd40`, ELITEA-1887); `git merge-base
+--is-ancestor ce74cd40 origin/main` → false; `git grep 'agent-add-agent-button'
+origin/main -- src/` → empty. "Already used elsewhere in this repo's page
+objects" is not evidence of `main` presence — a testid can be wired,
+committed, and reused across several `PipelineDetailPage`/`AgentDetailPage`
+methods while still living only on `automation/testids`. Always run the
+two-ref grep per-testid, never infer promotion state from reuse.
+
+## Seen again (ELITEA-2017, implementer, 2026-08-09)
+
+AFS + `test-specs/pipelines/_surface.md` both claimed `model-selector-option-
+{model-slug}` (the dynamic per-option testid in `LLMModelsMenu.jsx`)
+`on-main ✓ (confirmed live)` — same widget's `model-selector-button`/
+`model-selector-name` genuinely ARE on-main, which likely primed the
+false generalization to the third field of the same table row-group.
+`git fetch origin` + `git grep "model-selector-option" origin/main -- src/`
+→ 0 hits; `origin/automation/testids` → 1 hit (`LLMModelsMenu.jsx:48`).
+Amended both documents (AFS Concrete Handles row + surface digest) with an
+implementer-attributed correction, same mechanics as the fix rounds above.
+Pattern confirmation: sibling testids on the SAME component/widget can have
+DIFFERENT promotion states — verifying two of three fields on a widget is
+not evidence for the third.

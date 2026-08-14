@@ -1,5 +1,5 @@
 """Export Agent with attached Skills — exported .md contains Skill content
-(ELITEA-1794).
+(ELITEA-1794, also covers ELITEA-1896).
 
 Creates a Skill + an Agent, attaches the Skill to the Agent, triggers
 "Export" from the agent-actions overflow menu (VERSION group), downloads
@@ -7,6 +7,12 @@ the resulting ``.agent.md`` file, and asserts its raw content directly:
 the attached Skill's ``name``, `base` ``version``, and full ``instructions``
 text (via a planted unique marker string) are all embedded verbatim in the
 exported YAML frontmatter — not merely referenced by ID.
+
+ELITEA-1896 is a behavioural duplicate of ELITEA-1794 (same objective, same
+steps, same pass criteria under different literal test-data names) — see
+test-specs/agents/lextend_export-agent-with-attached-skills-exported-md-contains-skill_ELITEA-1896.md
+for the dedup proof. No new assertions were added for it; only the
+traceability tag above.
 
 No product defect found.
 
@@ -29,7 +35,7 @@ from pages.skill_detail_page import SkillDetailPage
 from pages.skill_form_page import SkillFormPage
 from pages.skills_list_page import SkillsListPage
 
-pytestmark = [pytest.mark.ui, pytest.mark.skills]
+pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.new]
 
 UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
@@ -73,6 +79,11 @@ class TestExportAgentWithAttachedSkills:
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/skills/ELITEA-1794_export-agent-with-attached-skills.md",
         "onetest-ai Test Case link",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/agents/ELITEA-1896_export-agent-with-attached-skills-exported-md-contains-skill.md",
+        "onetest-ai Test Case link (also covers ELITEA-1896 — behavioural duplicate, "
+        "see test-specs/agents/lextend_export-agent-with-attached-skills-exported-md-contains-skill_ELITEA-1896.md)",
     )
     @pytest.mark.p2
     @pytest.mark.regression

@@ -30,12 +30,13 @@ from api import CredentialAPI, ToolkitAPI
 from config import settings
 from pages.base_page import BasePage
 from pages.chat_page import ChatPage
+from pages.toolkit_test_settings_page import ToolkitTestSettingsPage
 from components.mui import Popper
 import allure
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.toolkits]
+pytestmark = [pytest.mark.ui, pytest.mark.toolkits, pytest.mark.new]
 
 # Credential creation can hit race conditions (server-side deduplication or
 # eventual consistency), so allow extra retries beyond the global default.
@@ -421,6 +422,7 @@ class TestGitHubToolkitTestSettings:
         """Select 'List branches in repo' from Test Settings and run it."""
         tk_id = toolkit_id["id"]
         base_url = settings.app_base_url
+        test_settings = ToolkitTestSettingsPage(page)
 
         # ------------------------------------------------------------------
         # Step 1 — Navigate to toolkit detail page /toolkits/all/{id}
@@ -451,18 +453,26 @@ class TestGitHubToolkitTestSettings:
                 page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
                 page.wait_for_timeout(3000)
 
-            page.locator('text="Test toolkit"').wait_for(
-                state="visible", timeout=UI_ELEMENT_TIMEOUT,
-            )
-
         # ------------------------------------------------------------------
-        # Step 2 — Click Select Tool button
+        # Step 2 — Open the Tool select (Test-Tools empty state)
         # ------------------------------------------------------------------
-        with allure.step("Step 2 — Click Select Tool button"):
-            select_tool_btn = page.get_by_role("button", name="Select Tool")
-            select_tool_btn.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-            select_tool_btn.click()
-            page.wait_for_timeout(1000)
+        with allure.step("Step 2 — Open the Tool select on the Test-Tools empty state"):
+            # ORDER CHANGE (EliteaUI EL-5947). The toolkit detail page no longer
+            # opens on the Test Settings panel: TestTools.jsx early-returns
+            # <TestToolsEmptyState/> while `!selectedTool`, so the panel — and
+            # its "Test Settings" heading and Tool dropdown — only mounts AFTER
+            # a tool is chosen. The old Step 1 wait on `text="Test Settings"`
+            # and this step's dropdown hunt were therefore both unsatisfiable:
+            # neither element can exist before a tool is selected. Selecting
+            # first, asserting the panel second (same correction already applied
+            # to test_toolkit_parameterized.py::test_toolkit_test_settings).
+            #
+            # This also retires the legacy discovery ladder that used to live
+            # here — a visible-text probe, a role-based combobox scan (both
+            # filtered by horizontal position) and a CSS-class fallback — in
+            # favour of the testid the page object owns, per
+            # `.agents/testing.md` § Locator policy.
+            test_settings.open_empty_state_tool_select(timeout=UI_ELEMENT_TIMEOUT)
 
         # ------------------------------------------------------------------
         # Step 3 — Search for 'List branches' and select the tool
@@ -479,21 +489,30 @@ class TestGitHubToolkitTestSettings:
             page.wait_for_timeout(1000)
 
         # ------------------------------------------------------------------
-        # Step 4 — Click Run Test
+        # Step 3b — The Test Settings panel is only now mounted (EL-5947)
         # ------------------------------------------------------------------
-        with allure.step("Step 4 — Click Run Test"):
-            # Dismiss any popups (NPS survey, banners) that may block the Run Test button
+        with allure.step("Step 3b — Verify the Test Settings panel is now shown"):
+            # Replaces Step 1's old `text="Test Settings"` wait, which could
+            # never pass before a tool was picked. Anchored on the panel's Tool
+            # dropdown testid rather than the heading text — raw-text handles
+            # are policy-forbidden (`.agents/testing.md` § Locator policy).
+            test_settings.wait_for_panel(timeout=UI_ELEMENT_TIMEOUT)
+
+        # ------------------------------------------------------------------
+        # Step 4 — Click the Run Test button
+        # ------------------------------------------------------------------
+        with allure.step("Step 4 — Click the Run Test button"):
+            # Dismiss any popups (NPS survey, banners) that may block the button
             BasePage(page).dismiss_popups()
 
-            # UI updated: button is now "Run Test" instead of "Run Tool"
-            run_btn = page.get_by_role("button", name="Run Test")
-            if run_btn.count() == 0:
-                # Fallback for older UI
-                run_btn = page.get_by_role("button", name="Run Tool")
-            run_btn.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-            run_btn.first.scroll_into_view_if_needed()
-            page.wait_for_timeout(300)
-            run_btn.first.click()
+            # LABEL DRIFT (EliteaUI EL-5947): the button's visible text changed
+            # from "Run Tool" to "Run Test" (TestToolSettings.jsx), breaking the
+            # old role+name handle. It carries
+            # data-testid="toolkit-test-run-tool-button", so it is located by
+            # testid through the page object and the label no longer matters.
+            # Playwright's click actionability waits out the button's own
+            # `disabledRunTool` guard, replacing the previous scroll+sleep.
+            test_settings.run_tool(timeout=UI_ELEMENT_TIMEOUT)
 
         # ------------------------------------------------------------------
         # Step 5 — Wait for the result to appear
