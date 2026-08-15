@@ -53,7 +53,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | 05 | Folder creation | 2118,2119,2120,2133,2134,2457 | 6 | **LANDED** — PR #1532, 6/6 automated |
 | 06 | Folder rename | 2121,2122,2123,2124,2125,2126,2127,2128,2129,2130,2131 | 11 | **LANDED** — PR #1539, 7 automated/extended + 4 already-covered |
 | 07 | Move/drag conversation between folders + list scrolling | 2136,2138,2139,2140,2141,2142,2143,2144,2145,2146,2147,2148 | 12 | **LANDED** — PR #1545, 11/12 automated + 1 blocked (#1541) |
-| 08 | Pin/unpin — conversation & folder basics | 2150,2151,2152,2153,2154,2155,2156 | 7 | pending |
+| 08 | Pin/unpin — conversation & folder basics | 2150,2151,2152,2153,2154,2155,2156 | 7 | **LANDED** — PR #1552, 7/7 automated |
 | 09 | Pin/unpin — edge cases + newer duplicate-family cases | 2157,2158,2159,2160,2161,2461,2462,2460 | 8 | pending |
 | 10 | Team Project — participants management | 2169,2171,2172,2173,2174,2175,2176 | 7 | pending |
 | 11 | Team Project — public conversation / non-owner restrictions | 2188,2189,2190,2191,2192,2193,2194 | 7 | pending |
@@ -182,9 +182,21 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   EliteaAI/EliteaUI@86f4a564 + @1787ad67 (+rewired @1b35a0a2) on
   `automation/testids`, confirmed NOT yet on `main`.
 
+- **wave-08 LANDED** — elitea-testing-public#1552, merged (`fb306056`). 7/7
+  automated (2/7 ready-for-automation: ELITEA-2152/2153; 5/7 extend-existing:
+  ELITEA-2150/2151/2154/2155/2156). Quality-flag response: extend-rate 5/7 >
+  0.5 triggered the workflow's own audit requirement; blind-audited 2 of the
+  5 extend-existing conclusions myself against case text + merged diff before
+  trusting the batch (ELITEA-2151's 4-tier panel-order claim, ELITEA-2154's
+  plural-conversations claim onto ELITEA-2152's single-conversation test) —
+  both genuine, sound. Gate: 2 non-reproducing console-404 flakes across the
+  lead's own 3 independent full-set attempts (different tests each time,
+  byte-identical message text), classified as a new flavor of the project's
+  known background-resource noise class (distinct from the confirmed 500
+  bucket, tracked separately) — 3 consecutive clean full-set runs followed
+  before merge. Recorded in `.agents/testing.md` § Unconfirmed. No new
+  testids (surface already covered by wave-06). TMS back-written (7 cases).
+
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-08** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w08`,
-  base=`origin/automation/base`, cases 2150,2151,2152,2153,2154,2155,2156 (7),
-  clusters `[2152,2153]` (pin/unpin folder) + `[2155,2156]` (empty-folder pin/unpin);
-  2150/2151/2154 solo units. Task ID `w9ugems43`, Run ID `wf_2ca5d16f-771`.
+- (none)
