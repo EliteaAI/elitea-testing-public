@@ -50,3 +50,13 @@ proceeding, retrying up to 3x. A future dispatch that fixes
 `_open_blank_conversation()` itself needs the shared-file regression
 protocol (enumerate + re-run every caller: at minimum ELITEA-2167's own test
 plus this file's two new ones).
+
+**Update (ELITEA-2188, 2026-08-15): NOT reunder-only — a SECOND back-to-back
+`+Chat` click within ONE test run (no rerun involved) reliably hits it too.**
+A test creating two fresh conversations (open blank -> send -> open blank
+AGAIN for a second one) needs the `_open_genuinely_blank_conversation`-style
+settle-and-retry guard on EVERY `+Chat` click, not just the first. Confirmed
+live: the first click after a completed Send landed back on the just-sent
+conversation (greeting not visible) on the very first attempt, self-correcting
+only on the retry. Generalize this guard to "any test opening 2+ fresh
+conversations", not "tests that get rerun".

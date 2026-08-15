@@ -83,6 +83,18 @@ already used in `test_open_conversation_today_section.py` Step 2. Any future
 assertion reading a conversation-list-item's DERIVED (not directly-fetched) field right
 after a mutating action should default to reload-before-read, not assume live sync.
 
+**Update (ELITEA-2188, 2026-08-15):** the same staleness class in item 5 also
+fires on `data-conversation-type` (new attribute added this case) and on the
+"Make public" mutation, not only `data-has-icon`/Invite-Users. Confirmed
+live: `data-conversation-type` stayed `"private_without_users"` right after
+an invited participant's first Send, AND stayed at its pre-mutation value
+right after `confirm_make_public()`'s 200 response — both required the same
+`page.reload()` + `wait_for_page_load()` + `wait_for_conversations_to_load()`
+fix, in TWO separate places in one test. Treat this as a general rule for
+`ConversationItem.jsx`-derived sidebar state, not a per-field one-off: any
+sidebar-icon assertion made right after ANY mutation that changes a
+conversation's participants OR its `is_private` flag needs a reload first.
+
 ## Process note: recognize this class of bug fast
 
 All five of the above are READ-STRATEGY bugs (wrong wait state / wrong text source /
