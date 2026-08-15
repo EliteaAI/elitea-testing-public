@@ -49,7 +49,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | 01 | Conversation entry / navigation into existing conversations | 2091,2093,2096,2097,2098 | 5 | **LANDED** — PR #1512, 3 automated / 2 blocked (question #1511) |
 | 02 | Conversation rename — basic flow + length boundaries | 2099,2100,2101,2102,2103,2104 | 6 | **LANDED** — PR #1518, 6/6 automated |
 | 03 | Conversation rename — check-icon states + edge chars | 2105,2106,2107,2108,2109,2110,2111,2112,2113 | 9 | **LANDED** — PR #1522, 9/9 automated |
-| 04 | Conversation deletion + chat search (left-panel micro-UI) | 2115,2116,2117,2456,2163,2164,2165,2463 | 8 | **IN PROGRESS** |
+| 04 | Conversation deletion + chat search (left-panel micro-UI) | 2115,2116,2117,2456,2163,2164,2165,2463 | 8 | **LANDED** — PR #1528, 7 automated/extended + 1 already-covered |
 | 05 | Folder creation | 2118,2119,2120,2133,2134,2457 | 6 | pending |
 | 06 | Folder rename | 2121,2122,2123,2124,2125,2126,2127,2128,2129,2130,2131 | 11 | pending |
 | 07 | Move/drag conversation between folders + list scrolling | 2136,2138,2139,2140,2141,2142,2143,2144,2145,2146,2147,2148 | 12 | pending |
@@ -107,9 +107,22 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   bodies copied from the TMS sibling clone into `.../chat-remaining-w04/cases/` before
   dispatch).
 
+- **wave-04 LANDED** — elitea-testing-public#1528, merged (`778d02a8`). 7/8
+  automated/extended (ELITEA-2115/2116/2117 #1524, ELITEA-2163/2164/2165/2463
+  #1527) + 1 already-covered (ELITEA-2456, Rule-6 dedup onto ELITEA-2114's merged
+  spec PR #696 — blind-audited by the lead against the actual merged code per
+  the batch's own 5/8 extend-rate quality flag, citations verified accurate).
+  Two sanctioned-RED-by-design cases (ELITEA-2117→#1523, ELITEA-2163→#1525), both
+  real filed open product bugs. Gate investigation: (1) root-caused and cleaned 6
+  stray same-prefix conversations left by the implementer's own earlier debug runs
+  (verified live via direct API query, not guessed) that were breaking ELITEA-2165's
+  count assertion; (2) one non-reproducing toast-timing flake on an unrelated
+  pre-existing spec, recorded in `.agents/testing.md` § Unconfirmed. Lead's own gate:
+  2 back-to-back clean pairs, exact sanctioned-RED signature both times. TMS
+  back-written (8 cases + reciprocal "Also satisfies" note on ELITEA-2114). New
+  testids: `chat-search-no-results-message`, `chat-conversations-empty-state-message`
+  — EliteaAI/EliteaUI@d5e0ba63 on `automation/testids`, confirmed NOT yet on `main`.
+
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-04** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w04`,
-  base=`origin/automation/base`, clusters `[2115,2116,2117,2456]` (deletion family) +
-  `[2163,2164,2165,2463]` (search family). Case snapshots pre-written this time. Task
-  ID `wygrlo6mz`, Run ID `wf_f9727c64-c02`.
+(none — wave-04 closed; wave-05 not yet dispatched)
