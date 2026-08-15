@@ -2,7 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2142/2143/2144/2145,
+a time; last confirmed by: qa-engineer analyst, ELITEA-2146/2147/2148,
+2026-08-15 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: qa-engineer analyst, ELITEA-2142/2143/2144/2145,
 2026-08-15 (supersedes nothing below — new section, other sections unchanged;
 previous confirmer: test-automation-engineer (combined analyst+
 implementer), ELITEA-2136/2138/2139/2140/2141, 2026-08-15 (supersedes nothing
@@ -25,6 +27,72 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+
+## ELITEA-2146/2147/2148 — folder-list & submenu SCROLLABILITY, expand/collapse +
+## empty-state, ALL 3 ready-for-automation, TWO new testid gaps found, ZERO defects
+- **Sidebar list scroll container genuinely overflows once enough folders exist —
+  confirmed live, but at a viewport-dependent scale.** `Conversations.jsx`'s
+  `ref={listRef}` `Box` (line ~731, `overflowY: 'scroll'`, `height: 'calc(100% -
+  40px)'`) wraps pinned folders + pinned conversations + unpinned folders +
+  date-grouped conversations ALL in one shared container — there is no
+  folder-only scroll region, the whole sidebar list scrolls together. At the
+  CARRIED-OVER 1280×4000 viewport (leftover from the prior ELITEA-2142/2143/
+  2144/2145 session sharing this MCP browser instance) `scrollHeight ===
+  clientHeight === 3928` — NOT scrollable, a false negative trap for any future
+  session that inherits an oversized viewport. Resized to 1440×900:
+  `scrollHeight=2946` vs `clientHeight=828` (with the account's ambient 67
+  folders present) — genuinely overflowing. Collapsed folder row height
+  measured at 41px (folder `279`). **testid needed**: this container has NO
+  testid today — add one (e.g. `chat-conversation-list-scroll-container`) via
+  `add-data-testid`, same family as the existing `chat-messages-scroll-container`
+  precedent. Full spec: ELITEA-2146's AFS.
+- **"Move to" submenu's folder-list popover ALSO genuinely overflows, and is a
+  SEPARATE container from the sidebar** (MUI's own default `Menu`/Popover Paper
+  sizing — `overflow-y: auto`, `max-height: calc(100% - 96px)` — not bespoke
+  EliteaUI logic). With the submenu open and 67 ambient folders rendered:
+  popover Paper `scrollHeight=2781` vs `clientHeight=802`. Confirmed
+  FUNCTIONALLY wired, not just visually present: scrolled to the popover's max
+  `scrollTop`, clicked the then-revealed last folder item
+  (`chat-move-to-folder-88-menuitem` this run), and observed a real `PUT
+  .../elitea_core/conversation/prompt_lib/399/8152 → 200` — the scrolled-to
+  item genuinely moves the conversation. **testid needed**: the submenu's
+  `<Menu>` Paper (`DotMenu.jsx` line ~93, the nested `subMenuItems?.length &&`
+  branch) carries NO testid and NO `id` at all today (confirmed via DOM
+  inspection) — add via `slotProps={{ paper: { 'data-testid':
+  'chat-move-to-submenu-popover' } }}` (or equivalent MUI prop shape). Full
+  spec: ELITEA-2147's AFS.
+- **Expand/collapse + empty-state mechanism (ELITEA-2148) works exactly as
+  cased, but the case TITLE overclaims** — "Displays Conversation Count" implies
+  a numeric badge that does not exist anywhere (source-confirmed:
+  `FolderAccordionItem.jsx`/`FolderAccordion.jsx` never render `folder.total`/
+  `conversations.length` as visible text, only as internal pagination state).
+  The case's own numbered STEPS never ask for a count badge either — only
+  "expand and see the list" / "see the empty state" — and those match live
+  behavior exactly, so this is a title/scope mismatch, not case-text drift
+  worth a clarification filing. Live-confirmed: collapsed folder row's
+  conversation items stay MOUNTED in the DOM under MUI `Collapse`
+  (`.MuiCollapse-hidden` sets `visibility: hidden`, not `display:none`/unmount)
+  — a future test must assert via `not_to_be_visible()`, NOT `to_have_count(0)`
+  (the element IS still present, so a count-based assertion would pass for the
+  wrong reason — see `.agents/memory/qa-engineer/passing_assertion_may_prove_nothing.md`).
+  `chat-folder-empty-state` text reconfirmed: **"No conversations added"**
+  (folder `279`, this session).
+- **Page-object gap (method, not testid)**: no `collapse_folder()` exists.
+  `expand_folder()` isn't safe to call a second time to collapse (it waits for
+  `data-expanded="true"`, already true going in). Small addition needed,
+  mirrors `expand_folder()` waiting for `[data-expanded="false"]` instead.
+- **Reconfirms the ELITEA-2121/2130 pinned-folder disabled-ancestor gotcha**
+  (unrelated to any of these 3 cases' own seeded data, hit only because folder
+  `213` — a PINNED leftover exploration folder from that earlier session — was
+  tried first and both a plain Playwright click AND a raw `element.click()`
+  via `browser_evaluate` silently no-opped against it, "element is not
+  enabled" despite `.disabled === false`). Not a new defect — same
+  `isDragDisabled={isPinned}` ancestor already documented; switched to an
+  unpinned folder and the normal click worked immediately.
+- **Zero product defects found this pass** — all 3 cases' own subjects
+  (scrollability ×2, expand/collapse/empty-state ×1) work correctly and
+  genuinely on the real system, end to end, including a real network mutation
+  chosen specifically from a scrolled-to-only-reachable submenu item.
 
 ## ELITEA-2142/2143/2144/2145 — drag-and-drop conversation<->folder, NEW
 ## surface (`chat-conversation-drag-drop`), mechanism confirmed real,
