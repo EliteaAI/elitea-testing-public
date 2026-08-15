@@ -55,7 +55,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | 07 | Move/drag conversation between folders + list scrolling | 2136,2138,2139,2140,2141,2142,2143,2144,2145,2146,2147,2148 | 12 | **LANDED** — PR #1545, 11/12 automated + 1 blocked (#1541) |
 | 08 | Pin/unpin — conversation & folder basics | 2150,2151,2152,2153,2154,2155,2156 | 7 | **LANDED** — PR #1552, 7/7 automated |
 | 09 | Pin/unpin — edge cases + newer duplicate-family cases | 2157,2158,2159,2160,2161,2461,2462,2460 | 8 | **LANDED** — PR #1555, 4/8 automated + 4/8 already-covered |
-| 10 | Team Project — participants management | 2169,2171,2172,2173,2174,2175,2176 | 7 | pending |
+| 10 | Team Project — participants management | 2169,2171,2172,2173,2174,2175,2176 | 7 | **LANDED** — PR #1561, 5/7 automated + 2/7 already-covered |
 | 11 | Team Project — public conversation / non-owner restrictions | 2188,2189,2190,2191,2192,2193,2194 | 7 | pending |
 | 12 | Message input + generation controls (stop/regenerate/send-button/starters) | 2177,2178,2179,2182,2183,2184,2185,2186,2187,2465,2466 | 11 | pending |
 | 13 | File attachments | 2195,2196,2198,2199,2201,2467 | 6 | pending |
@@ -217,13 +217,27 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   NOT yet on `main` (composed-testid grep caveat applied — base key, not the
   rendered `-menuitem` suffix). TMS back-written (8 cases).
 
+- **wave-10 LANDED** — elitea-testing-public#1561, merged (`84651741`). 5/7
+  automated (ELITEA-2172, 2173, 2174, 2175, 2176) + 2/7 already-covered
+  (ELITEA-2169→2167, ELITEA-2171→2168). First case touching Team Project
+  participants. **Workflow's internal gate was cut off mid-run** (0/3 banked,
+  5 units landed as `merged-ungated`, not failed) — resolved by running my
+  own independent gate directly rather than re-poking the cached workflow.
+  During that gate, hit + root-caused 2 real regressions on the PRE-EXISTING
+  ELITEA-2167 test (collateral gate scope, not one of wave-10's own cases):
+  (1) deterministic badge-visibility failure, soft-asserted + linked to
+  already-open #1082 (dispatched fix-only, not done by me directly per the
+  no-code-edits guardrail); (2) a second symptom (dropdown search timeout)
+  root-caused live as the SAME #1082 mechanism — search correctly excluding
+  an already-participant user off a stale landed conversation — fixed by
+  swapping to the stronger `_open_genuinely_blank_conversation()` guard.
+  3 distinct conversation-timing flakes total across 2 full-set gate
+  attempts, none reproducing standalone — new session-level heavy-load noise
+  category recorded in `.agents/testing.md` (6+ continuous hours of chat
+  churn this session). 3 consecutive clean 6/6 full-set runs before merge.
+  No new testids (fully reused from ELITEA-2167/2168). TMS back-written
+  (7 cases).
+
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-10** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w10`,
-  base=`origin/automation/base`, cases 2169,2171,2172,2173,2174,2175,2176 (7),
-  clusters `[2171,2172]` (remove-user dialog family) + `[2173,2174]` (@mention
-  family) + `[2175,2176]` (add-users modal micro-interactions); 2169 solo
-  (foundational add-participants flow). New surface — Team Project participants
-  management, first case in this campaign touching this area; may require a
-  Team-type project (prior waves used project 399/Private) — analyst to confirm
-  live. Task ID `wcsk7xwh2`, Run ID `wf_2c0aab30-eb1`.
+- (none)
