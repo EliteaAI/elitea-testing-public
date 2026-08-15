@@ -9,6 +9,7 @@
 > preventive entries. No entry file was deleted — everything stays greppable.
 > `(N×)` = how many separate sessions hit it.
 - [Autonomous skill invocation needs a nudge](autonomous_skill_invocation_nudge.md) — attach alone won't do it
+- [dnd-kit drag needs a settle-check](dnd_kit_drag_gesture_needs_settle_check.md) — scroll-into-view AND elementFromPoint poll, not just one
 - [chat-remaining-w03 case snapshots never existed](chat_remaining_w03_case_snapshots_never_existed.md) — read the TMS file directly, not a novel-ground signal
 
 - [Project briefing](project_briefing.md) — your slot, the six-phase loop, the ≤2-rerun budget, the Run Report
@@ -69,3 +70,4 @@
 - [Sandbox project 400 for isolated conversation state](sandbox_project_400_for_isolated_conversation_state.md) — genuinely empty; use for exact-count preconditions instead of clearing a shared project
 - [Search query cache hit defeats expect_response](search_query_cache_hit_defeats_expect_response_wait.md) — re-querying an already-fetched value (incl. clear-to-initial) can skip the network entirely
 - [Folder menuItems array is a repeat regression site](folder_menuitems_array_is_a_repeat_regression_site.md) — re-verify a dot-menu testid live before building, don't trust a prior AFS's claim
+- [Chat folder list: shared scroll region, newest-first](chat_folder_list_shared_scroll_container_and_ordering.md) — never assume raw-scroll-max = last-created folder; check live position instead

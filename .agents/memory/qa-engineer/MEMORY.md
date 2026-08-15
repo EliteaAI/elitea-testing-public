@@ -44,3 +44,4 @@
 - [Edit-with-AI wizard testid gaps](edit_with_ai_wizard_testid_gaps.md) — Refine Prompt/Save-as-Version still unwired; Cancel absent in wizard phase
 - [Native maxlength probe w/o context blowup](native_maxlength_probe_without_context_blowup.md) — execCommand('insertText') in browser_evaluate, never a literal huge string
 - [Reviewer diff base = PR's own base](reviewer_diff_base_is_the_prs_own_base_not_automation_base.md) — `gh pr view --json baseRefName`; batch trunk ≠ automation/base
+- [Shared MCP browser carries viewport across dispatches](shared_mcp_browser_carries_viewport_across_dispatches.md) — resize before any scrollHeight/clientHeight check

@@ -1041,6 +1041,21 @@ class ChatPage(BasePage):
     # render their own submenu item.
     MOVE_TO_FOLDER_ITEM = '[data-testid="chat-move-to-folder-{}-menuitem"]'
 
+    # The "Move to" submenu's own MUI Menu popover Paper (ELITEA-2147
+    # implementer pass, EliteaAI/EliteaUI automation/testids commit
+    # 1787ad67 — DotMenu.jsx's nested <Menu> forwards this via
+    # slotProps={{paper: {'data-testid': ...}}}). Only one such submenu can
+    # be open at a time, so a single static testid is safe (confirmed at
+    # add-time per the AFS's own scoping caveat).
+    # Fix-round-1 (commit 1b35a0a2): the testid's origin moved from a
+    # hardcoded literal in DotMenu.jsx to a caller-supplied `submenuTestId`
+    # prop (only ConversationItem.jsx's "Move to" item passes it) — value
+    # and this locator are unchanged.
+    move_to_submenu_popover = LocatorDescriptor(
+        testid="chat-move-to-submenu-popover",
+        description="'Move to' submenu's own scrollable Menu popover Paper.",
+    )
+
     # Pin icon inside a conversation item — non-unique testid (the SAME
     # value renders once per pinned conversation), ALWAYS resolved scoped
     # inside a CONVERSATION_ITEM-scoped element, never at page level.
@@ -1276,6 +1291,35 @@ class ChatPage(BasePage):
     FOLDER_ICON = '[data-testid="chat-folder-icon"]'
     FOLDER_EXPAND_ICON = '[data-testid="chat-folder-expand-icon"]'
     FOLDER_EMPTY_STATE = '[data-testid="chat-folder-empty-state"]'
+
+    # The sidebar's own scroll container (folders + pinned + date-grouped
+    # conversations ALL share this one container) — Conversations.jsx's
+    # ref={listRef} Box (ELITEA-2146 implementer pass, EliteaAI/EliteaUI
+    # automation/testids commit 1787ad67). Same "genuine overflow, not just
+    # CSS overflow-y" discipline as chat_messages_scroll_container above.
+    chat_conversation_list_scroll_container = LocatorDescriptor(
+        testid="chat-conversation-list-scroll-container",
+        description="Scrollable sidebar folder/conversation list container.",
+    )
+
+    # Drag-and-drop drop zones (ELITEA-2142/2143/2145) — testids + a
+    # data-drop-active boolean ADDED this implementation on the EXISTING
+    # outer ref={setNodeRef} Box each of DroppableFolderItem.jsx /
+    # DroppableGroupedArea.jsx already renders (zero new DOM nodes). Testid
+    # is the stable identity, data-drop-active carries
+    # shouldShowDropFeedback's state — state-via-data-attribute, not a
+    # state-switched testid (PR #581 ruling).
+    FOLDER_DROP_ZONE = '[data-testid="chat-folder-drop-zone-{}"]'
+
+    conversation_list_drop_zone = LocatorDescriptor(
+        testid="chat-conversation-list-drop-zone",
+        description=(
+            "Ungrouped/date-group area's droppable wrapper "
+            "(DroppableGroupedArea.jsx). Carries data-drop-active "
+            "reflecting the same shouldShowDropFeedback mechanism as "
+            "FOLDER_DROP_ZONE."
+        ),
+    )
 
     # Folder dot-menu "Delete" item — ADDED this implementation
     # (FolderItem.jsx's menuItems had no `key`, so DotMenu/BasicMenuItem
@@ -1547,7 +1591,214 @@ class ChatPage(BasePage):
         after = self.chat_messages_scroll_container.evaluate("el => el.scrollTop")
         logger.info("Scrolled messages container: scrollTop %s -> %s", before, after)
         return before, after
-        
+
+    # ------------------------------------------------------------------
+    # Sidebar folder/conversation list scroll (ELITEA-2146) — mirrors the
+    # chat_messages_scroll_container trio above exactly; same "don't trust
+    # CSS overflow alone" discipline applied to the sidebar container.
+    # ------------------------------------------------------------------
+
+    def get_conversation_list_scroll_metrics(self) -> dict:
+        """Return scrollHeight/clientHeight/scrollTop for the sidebar list scroll container."""
+        return self.chat_conversation_list_scroll_container.evaluate(
+            "el => ({scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, "
+            "scrollTop: el.scrollTop})"
+        )
+
+    def is_conversation_list_scrollable(self) -> bool:
+        """Return True if the sidebar list genuinely overflows (scrollHeight > clientHeight)."""
+        metrics = self.get_conversation_list_scroll_metrics()
+        return metrics["scrollHeight"] > metrics["clientHeight"]
+
+    def scroll_conversation_list_container(self, delta_y: int = 200) -> tuple[int, int]:
+        """Perform a real scroll on the sidebar list container; return (scrollTop_before, scrollTop_after).
+
+        Same real-wheel-gesture idiom as :meth:`scroll_messages_container` —
+        never a synthetic ``el.scrollTop = N`` assignment in the shipped test.
+
+        Args:
+            delta_y: Vertical scroll delta in pixels (positive = scroll down).
+        """
+        before = self.chat_conversation_list_scroll_container.evaluate("el => el.scrollTop")
+        self.chat_conversation_list_scroll_container.hover()
+        self.page.mouse.wheel(0, delta_y)
+        self.page.wait_for_timeout(300)
+        after = self.chat_conversation_list_scroll_container.evaluate("el => el.scrollTop")
+        logger.info("Scrolled conversation list container: scrollTop %s -> %s", before, after)
+        return before, after
+
+    def is_folder_row_within_scroll_container(
+        self, folder_id: str | int, tolerance: int = 2
+    ) -> bool:
+        """Return True if *folder_id*'s row is fully within the sidebar
+        scroll container's own bounding box — proves a scrolled-to folder
+        row is genuinely reachable, not just that ``scrollTop`` moved
+        (ELITEA-2146 steps 4/5). Same containment-check idiom as
+        ``PipelineDetailPage.are_all_nodes_within_canvas_wrapper()``.
+
+        Args:
+            folder_id: Numeric folder id.
+            tolerance: Pixels of slack allowed on each edge (sub-pixel
+                rounding).
+        """
+        container_box = self.chat_conversation_list_scroll_container.bounding_box()
+        if not container_box:
+            raise ValueError("Could not get bounding box for chat_conversation_list_scroll_container")
+        row_box = self.get_folder_item(folder_id).bounding_box()
+        if not row_box:
+            raise ValueError(f"Could not get bounding box for folder {folder_id}")
+        top = container_box["y"] - tolerance
+        bottom = container_box["y"] + container_box["height"] + tolerance
+        return row_box["y"] >= top and (row_box["y"] + row_box["height"]) <= bottom
+
+    def get_folder_row_scroll_position(self, folder_id: str | int) -> str:
+        """Return ``"above"``, ``"within"``, or ``"below"`` describing
+        *folder_id*'s row position relative to the sidebar scroll
+        container's own bounding box (ELITEA-2146 implementer-pass
+        addition). Distinguishes the two DIFFERENT ways a row can be
+        outside the container's bounds — needed because
+        Conversations.jsx renders newest-created folders CLOSER TO THE
+        TOP (live-confirmed this pass), so "hidden" alone doesn't say
+        whether scrolling DOWN or UP is the direction that reveals a given
+        row.
+
+        Args:
+            folder_id: Numeric folder id.
+        """
+        container_box = self.chat_conversation_list_scroll_container.bounding_box()
+        if not container_box:
+            raise ValueError("Could not get bounding box for chat_conversation_list_scroll_container")
+        row_box = self.get_folder_item(folder_id).bounding_box()
+        if not row_box:
+            raise ValueError(f"Could not get bounding box for folder {folder_id}")
+        top = container_box["y"]
+        bottom = container_box["y"] + container_box["height"]
+        if row_box["y"] + row_box["height"] <= top:
+            return "above"
+        if row_box["y"] >= bottom:
+            return "below"
+        return "within"
+
+    def scroll_conversation_list_until_folder_visible(
+        self, folder_id: str | int, delta_y: int, max_attempts: int = 40
+    ) -> bool:
+        """Repeatedly wheel-scroll the sidebar list container via real
+        gestures until *folder_id*'s row falls within the container's own
+        bounding box, or ``scrollTop`` plateaus (genuinely can't scroll
+        further in that direction).
+
+        The sidebar container shares its scroll region with pinned
+        conversations AND the full date-grouped conversation list
+        (Conversations.jsx renders folders, then ``GroupedConversations``,
+        in the SAME ``ref={listRef}`` container) — on an account carrying
+        many conversations, the container's own absolute scroll extreme
+        sits well past the folder section, so "scroll to the container's
+        raw max" does not reliably land on any particular folder.
+        Scrolling with a check after every real gesture — stopping the
+        moment the target becomes reachable — is the honest equivalent
+        (ELITEA-2146 implementer-pass discovery; AFS amended accordingly).
+
+        Args:
+            folder_id: Numeric folder id to search for.
+            delta_y: Positive scrolls down, negative scrolls up.
+            max_attempts: Safety cap on the number of wheel gestures.
+
+        Returns:
+            True if the folder became reachable; False if the scroll
+            genuinely plateaued (bottomed/topped out) without reaching it.
+        """
+        if self.is_folder_row_within_scroll_container(folder_id):
+            return True
+        previous = self.chat_conversation_list_scroll_container.evaluate("el => el.scrollTop")
+        for _ in range(max_attempts):
+            _, current = self.scroll_conversation_list_container(delta_y=delta_y)
+            if self.is_folder_row_within_scroll_container(folder_id):
+                return True
+            if current == previous:
+                return False
+            previous = current
+        return False
+
+    def is_move_to_folder_item_within_submenu(
+        self, folder_id: str | int, tolerance: int = 2
+    ) -> bool:
+        """Return True if *folder_id*'s "Move to" submenu entry is fully
+        within the submenu popover's own bounding box (ELITEA-2147 step 3).
+        Same containment-check idiom as
+        :meth:`is_folder_row_within_scroll_container`.
+
+        Args:
+            folder_id: Numeric folder id.
+            tolerance: Pixels of slack allowed on each edge.
+        """
+        popover_box = self.move_to_submenu_popover.bounding_box()
+        if not popover_box:
+            raise ValueError("Could not get bounding box for move_to_submenu_popover")
+        item_box = self.get_move_to_folder_item(folder_id).bounding_box()
+        if not item_box:
+            raise ValueError(f"Could not get bounding box for move-to folder item {folder_id}")
+        top = popover_box["y"] - tolerance
+        bottom = popover_box["y"] + popover_box["height"] + tolerance
+        return item_box["y"] >= top and (item_box["y"] + item_box["height"]) <= bottom
+
+    def get_move_to_folder_item_scroll_position(self, folder_id: str | int) -> str:
+        """Return ``"above"``, ``"within"``, or ``"below"`` describing
+        *folder_id*'s "Move to" submenu entry position relative to the
+        popover's own bounding box. Same "above" vs "below" distinction as
+        :meth:`get_folder_row_scroll_position`, applied to the submenu
+        popover (ELITEA-2147 implementer-pass addition).
+
+        Args:
+            folder_id: Numeric folder id.
+        """
+        popover_box = self.move_to_submenu_popover.bounding_box()
+        if not popover_box:
+            raise ValueError("Could not get bounding box for move_to_submenu_popover")
+        item_box = self.get_move_to_folder_item(folder_id).bounding_box()
+        if not item_box:
+            raise ValueError(f"Could not get bounding box for move-to folder item {folder_id}")
+        top = popover_box["y"]
+        bottom = popover_box["y"] + popover_box["height"]
+        if item_box["y"] + item_box["height"] <= top:
+            return "above"
+        if item_box["y"] >= bottom:
+            return "below"
+        return "within"
+
+    def scroll_move_to_submenu_until_folder_visible(
+        self, folder_id: str | int, delta_y: int, max_attempts: int = 40
+    ) -> bool:
+        """Repeatedly wheel-scroll the open 'Move to' submenu popover via
+        real gestures until *folder_id*'s menuitem falls within the
+        popover's own bounding box, or ``scrollTop`` plateaus. Same
+        "check after every real gesture, don't assume the raw scroll
+        extreme lands on a specific item" idiom as
+        :meth:`scroll_conversation_list_until_folder_visible` (ELITEA-2147
+        implementer-pass discovery — the submenu enumerates ALL of the
+        account's folders, not just the seeded set, in an order this test
+        does not control).
+
+        Args:
+            folder_id: Numeric folder id to search for.
+            delta_y: Positive scrolls down, negative scrolls up.
+            max_attempts: Safety cap on the number of wheel gestures.
+
+        Returns:
+            True if the folder's menuitem became reachable; False if the
+            scroll genuinely plateaued without reaching it.
+        """
+        if self.is_move_to_folder_item_within_submenu(folder_id):
+            return True
+        previous = self.move_to_submenu_popover.evaluate("el => el.scrollTop")
+        for _ in range(max_attempts):
+            _, current = self.scroll_move_to_submenu(delta_y=delta_y)
+            if self.is_move_to_folder_item_within_submenu(folder_id):
+                return True
+            if current == previous:
+                return False
+            previous = current
+        return False
+
     @staticmethod
     def _extract_message_body(message_locator) -> str:
         """Extract the body text from a message ``<li>``, excluding headers.
@@ -3661,6 +3912,71 @@ class ChatPage(BasePage):
         logger.info("Selecting 'Create folder' in 'Move to' submenu")
         self.move_to_create_folder_menuitem.wait_for(state="visible", timeout=timeout)
         self.move_to_create_folder_menuitem.click()
+
+    @action("Select 'Back to the list' in 'Move to' submenu")
+    def select_move_to_back_to_list(self, timeout: int = 5000):
+        """Click 'Back to the list' inside the open 'Move to' submenu.
+
+        Moves the conversation out of its current folder into the general,
+        date-grouped list (ELITEA-2139/2140). Mirrors
+        ``select_move_to_folder()``/``select_move_to_create_folder()``'s
+        shape. The ``move_to_back_to_list_menuitem`` locator itself
+        pre-dates this method (added by ELITEA-2135's implementation) but
+        had zero callers until this method (canon ruling #511 — a
+        page-object field isn't "referenced" until something on an
+        executed test path calls it).
+
+        Fires ``PUT .../conversation/prompt_lib/{project_id}/{id}`` with
+        ``folder_id: null`` and unconditionally refreshes the
+        conversation's ``updated_at`` to "now" — live-confirmed this
+        unconditionally places the conversation in the "Today" date group
+        regardless of its recency before entering the folder (see
+        ``test-specs/chat-interface/_surface.md`` § ELITEA-2136/2138/2139/
+        2140/2141). Toast text is a DISTINCT template from the
+        move-INTO-a-folder toast: "Chat moved to ungrouped area
+        successfully" (no folder name, different verb phrase).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting 'Back to the list' in 'Move to' submenu")
+        self.move_to_back_to_list_menuitem.wait_for(state="visible", timeout=timeout)
+        self.move_to_back_to_list_menuitem.click()
+
+    # ------------------------------------------------------------------
+    # "Move to" submenu popover scroll (ELITEA-2147) — mirrors the
+    # chat_messages_scroll_container / chat_conversation_list_scroll_container
+    # trios exactly, applied to the submenu's own MUI Menu popover Paper.
+    # ------------------------------------------------------------------
+
+    def get_move_to_submenu_scroll_metrics(self) -> dict:
+        """Return scrollHeight/clientHeight/scrollTop for the open 'Move to' submenu popover."""
+        return self.move_to_submenu_popover.evaluate(
+            "el => ({scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, "
+            "scrollTop: el.scrollTop})"
+        )
+
+    def is_move_to_submenu_scrollable(self) -> bool:
+        """Return True if the open 'Move to' submenu popover genuinely overflows."""
+        metrics = self.get_move_to_submenu_scroll_metrics()
+        return metrics["scrollHeight"] > metrics["clientHeight"]
+
+    def scroll_move_to_submenu(self, delta_y: int = 200) -> tuple[int, int]:
+        """Perform a real scroll on the open 'Move to' submenu popover; return
+        (scrollTop_before, scrollTop_after). Same real-wheel-gesture idiom as
+        :meth:`scroll_messages_container` — never a synthetic ``el.scrollTop = N``
+        assignment in the shipped test.
+
+        Args:
+            delta_y: Vertical scroll delta in pixels (positive = scroll down).
+        """
+        before = self.move_to_submenu_popover.evaluate("el => el.scrollTop")
+        self.move_to_submenu_popover.hover()
+        self.page.mouse.wheel(0, delta_y)
+        self.page.wait_for_timeout(300)
+        after = self.move_to_submenu_popover.evaluate("el => el.scrollTop")
+        logger.info("Scrolled 'Move to' submenu popover: scrollTop %s -> %s", before, after)
+        return before, after
 
     @action("Set folder name in inline editor")
     def set_folder_name(self, name: str):
@@ -6418,6 +6734,41 @@ class ChatPage(BasePage):
         expanded_item.wait_for(state="visible", timeout=timeout)
         logger.info("Folder %s expanded", folder_id)
 
+    @action("Collapse folder")
+    def collapse_folder(self, folder_id: str | int, timeout: int = 5000):
+        """Click an already-expanded folder's expand icon to collapse it;
+        waits for ``data-expanded`` to flip back to ``"false"``
+        (ELITEA-2148 addition).
+
+        Not safe to reach by calling :meth:`expand_folder` a second time —
+        that method waits for ``data-expanded="true"``, which is already
+        true going in, so it would return immediately without waiting for
+        the click's own effect.
+
+        Clicks the SCOPED ``FOLDER_EXPAND_ICON`` rather than
+        :meth:`get_folder_item`'s whole-row container (unlike
+        :meth:`expand_folder`, which safely clicks the whole row because a
+        COLLAPSED row's bounding box is just the header). ``FOLDER_ITEM``
+        scopes both the header AND the now-visible body (conversation
+        list/empty-state) as descendants — a plain click on the whole
+        container lands at its bounding-box CENTER, which for an EXPANDED
+        folder with body content can fall inside the body instead of the
+        header, live-confirmed to leave ``data-expanded="true"`` (the wait
+        below times out). The icon is always inside the header, so it's
+        the safe target for the collapse direction specifically.
+
+        Args:
+            folder_id: Numeric folder id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Collapsing folder %s", folder_id)
+        self.get_folder_item(folder_id).locator(self.FOLDER_EXPAND_ICON).click()
+        collapsed_item = self.page.locator(
+            f'{self.FOLDER_ITEM.format(folder_id)}[data-expanded="false"]'
+        )
+        collapsed_item.wait_for(state="visible", timeout=timeout)
+        logger.info("Folder %s collapsed", folder_id)
+
     def is_conversation_in_folder(
         self, folder_id: str | int, conversation_id: str | int, timeout: int = 5000,
     ) -> bool:
@@ -6623,6 +6974,261 @@ class ChatPage(BasePage):
                 f"API delete of folder {folder_id} failed: "
                 f"{response.status} {response.text()}"
             )
+
+    # ------------------------------------------------------------------
+    # Conversation<->folder drag-and-drop (ELITEA-2142/2143/2145)
+    # ------------------------------------------------------------------
+    # Mechanism: @dnd-kit/core's PointerSensor (8px activation distance),
+    # NOT native HTML5 draggable/DragEvent — DraggableConversationItem.jsx
+    # (useDraggable) / DroppableFolderItem.jsx + DroppableGroupedArea.jsx
+    # (useDroppable). Real page.mouse gestures drive the real product code
+    # (confirmed live via network capture, test-specs/chat-interface/
+    # _surface.md § ELITEA-2142/2143/2144/2145) — do NOT reuse
+    # drag_and_drop_file()'s synthetic-DataTransfer-DragEvent technique,
+    # that is a DIFFERENT mechanism for a native OS file drag Playwright
+    # cannot otherwise produce; dnd-kit's PointerSensor listens for real
+    # pointer events, so a synthetic DragEvent here would never reach it.
+    #
+    # Exposed as composable primitives (start / move / release) rather
+    # than one monolithic "drag and drop" call, because the caller needs
+    # to wrap page.expect_response(...) around the RELEASE step
+    # specifically (the move PUT only fires on drop) and, for
+    # ELITEA-2143, needs to pause mid-gesture over each candidate folder
+    # to assert its FOLDER_DROP_ZONE's data-drop-active before continuing
+    # to the next one.
+
+    def get_folder_drop_zone(self, folder_id: str | int):
+        """Return the Locator for a folder's droppable drop-zone wrapper
+        (FOLDER_DROP_ZONE) — carries data-drop-active while a drag is
+        hovering it.
+
+        Args:
+            folder_id: Numeric folder id.
+        """
+        return self.page.locator(self.FOLDER_DROP_ZONE.format(folder_id))
+
+    def get_conversation_drag_opacity(self, conversation_id: str | int) -> float:
+        """Return the computed opacity of *conversation_id*'s draggable
+        wrapper (DraggableConversationItem.jsx's own inline ``style``,
+        NOT the CONVERSATION_ITEM testid element itself — the testid sits
+        on a CHILD Box, the opacity is set on the PARENT ``ref={setNodeRef}``
+        Box). 1.0 at rest, 0.5 while ``isDragging`` — no dedicated testid
+        for this transient state, per the AFS.
+
+        Args:
+            conversation_id: Numeric conversation id.
+        """
+        item = self.get_conversation_item(conversation_id)
+        value = item.evaluate("el => getComputedStyle(el.parentElement).opacity")
+        return float(value)
+
+    def wait_for_conversation_dragging(
+        self, conversation_id: str | int, expected: bool = True, timeout: int = 5000,
+    ) -> bool:
+        """Poll :meth:`get_conversation_drag_opacity` until it reaches the
+        dragging (0.5) or at-rest (1.0) value, or *timeout* elapses.
+
+        Args:
+            conversation_id: Numeric conversation id.
+            expected: True to wait for the dragging (0.5) opacity, False
+                to wait for the at-rest (1.0) opacity.
+            timeout: Maximum wait time in milliseconds.
+        """
+        target = 0.5 if expected else 1.0
+        deadline = time.monotonic() + timeout / 1000.0
+        while time.monotonic() < deadline:
+            try:
+                if abs(self.get_conversation_drag_opacity(conversation_id) - target) < 0.05:
+                    return True
+            except Exception:
+                pass
+            time.sleep(0.1)
+        return False
+
+    def _wait_for_pointer_target(self, locator, timeout: int = 5000):
+        """Poll until *locator*'s own DOM node is what
+        ``document.elementFromPoint()`` resolves to at its own
+        bounding-box center (or a descendant of it), returning that
+        settled ``(x, y)`` center.
+
+        Guards against a virtualization/layout race distinct from the
+        off-screen problem ``scroll_into_view_if_needed()`` fixes:
+        ``bounding_box()`` can report CORRECT coordinates for the element
+        itself (confirmed via ``getBoundingClientRect()`` matching) while a
+        DIFFERENT, stale-positioned row visually overlaps that exact pixel
+        and silently intercepts a raw ``page.mouse`` event there — this
+        shared DEV account's 65+ folders can still be settling their
+        layout (row heights shift as an accordion expands) right after an
+        ``expand_folder()`` call. Confirmed live this implementation via
+        ``document.elementFromPoint`` diffing: a conversation nested inside
+        a just-expanded folder measured the correct rect, but the pixel at
+        its center hit a DIFFERENT folder's collapsed header instead.
+
+        Args:
+            locator: Playwright Locator to settle onto its own pointer target.
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            RuntimeError: if the target never settles within *timeout*.
+        """
+        deadline = time.monotonic() + timeout / 1000.0
+        last_result = None
+        while time.monotonic() < deadline:
+            last_result = locator.evaluate(
+                """el => {
+                    const r = el.getBoundingClientRect();
+                    const x = r.x + r.width / 2;
+                    const y = r.y + r.height / 2;
+                    const hit = document.elementFromPoint(x, y);
+                    const settled = !!hit && (hit === el || el.contains(hit));
+                    return { x, y, settled };
+                }"""
+            )
+            if last_result["settled"]:
+                return last_result["x"], last_result["y"]
+            time.sleep(0.15)
+        raise RuntimeError(
+            f"Element did not settle onto its own pointer target within {timeout}ms "
+            f"(last measured center: {last_result})"
+        )
+
+    @action("Start dragging a conversation")
+    def start_conversation_drag(self, conversation_id: str | int, timeout: int = 5000):
+        """Press-and-hold on a conversation row and move a few px to cross
+        @dnd-kit's PointerSensor 8px activation distance, then wait for the
+        drag to actually activate (opacity transition) before returning.
+
+        Leaves the mouse button PRESSED — callers must eventually call
+        :meth:`release_drag` (directly or via a helper that calls it), even
+        on assertion failure, or the pressed button leaks into the NEXT
+        test's page state in the same browser context (confirmed live this
+        cluster's own exploration — see ``_surface.md``).
+
+        Args:
+            conversation_id: Numeric conversation id to start dragging.
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            RuntimeError: if the drag never activates within *timeout* —
+                releases the mouse button first so it never leaks.
+        """
+        logger.info("Starting drag of conversation %s", conversation_id)
+        item = self.get_conversation_item(conversation_id)
+        item.wait_for(state="visible", timeout=timeout)
+        # bounding_box() is viewport-relative — an item below the fold
+        # (this shared DEV account's sidebar routinely carries 65+ folders
+        # ahead of the conversation list, see _surface.md) reports a y far
+        # past the viewport height, and page.mouse.move() to that
+        # coordinate lands outside the rendered viewport, never reaching
+        # the element (confirmed live this implementation — the drag
+        # silently never activated). scroll_into_view_if_needed() first,
+        # same as every other id-scoped interaction in this file.
+        item.scroll_into_view_if_needed()
+        # Settle-check (see _wait_for_pointer_target docstring) — a
+        # DIFFERENT, stale-positioned row can visually overlap this item's
+        # own correct coordinates right after a folder expand.
+        start_x, start_y = self._wait_for_pointer_target(item, timeout=timeout)
+        self.page.mouse.move(start_x, start_y)
+        self.page.mouse.down()
+        # Cross the PointerSensor's 8px activation distance.
+        self.page.mouse.move(start_x + 12, start_y + 12, steps=3)
+        if not self.wait_for_conversation_dragging(conversation_id, expected=True, timeout=timeout):
+            self.page.mouse.up()
+            raise RuntimeError(
+                f"Conversation {conversation_id}: drag did not activate "
+                f"(opacity never reached 0.5) within {timeout}ms"
+            )
+        logger.info("Drag activated for conversation %s", conversation_id)
+
+    @action("Move the pressed drag pointer over a target element")
+    def move_drag_over_target(self, target_locator, iterations: int = 4, steps_per_move: int = 4):
+        """Move the ALREADY-PRESSED pointer (see :meth:`start_conversation_drag`)
+        toward *target_locator*'s center, re-measuring on EVERY iteration —
+        a stale captured position can miss (layout shifts, e.g. a source
+        folder's accordion collapsing mid-drag, move sibling elements a few
+        px during the gesture) or land on a DIFFERENT, stale-positioned
+        element that visually overlaps the correct coordinates (settle-
+        checked via :meth:`_wait_for_pointer_target` — both confirmed live,
+        see ``_surface.md``).
+
+        Args:
+            target_locator: Playwright Locator to move the pointer onto.
+            iterations: Number of re-measured move legs.
+            steps_per_move: ``steps=`` passed to each ``mouse.move()`` call.
+
+        Returns:
+            The last settled ``(x, y)`` center, or None if the target
+            never settled during any iteration.
+        """
+        last_center = None
+        for _ in range(iterations):
+            try:
+                target_locator.scroll_into_view_if_needed(timeout=2000)
+            except Exception:
+                pass
+            try:
+                cx, cy = self._wait_for_pointer_target(target_locator, timeout=2000)
+            except RuntimeError:
+                continue
+            last_center = (cx, cy)
+            self.page.mouse.move(cx, cy, steps=steps_per_move)
+        return last_center
+
+    @action("Release the pressed drag pointer")
+    def release_drag(self, timeout: int = 10000):
+        """Release the mouse button (completing whatever drop target the
+        pointer is currently over) and wait for network activity to settle.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the settle.
+        """
+        self.page.mouse.up()
+        self.wait_for_network(timeout=timeout)
+
+    @action("Abort a pressed drag without dropping")
+    def abort_drag(self):
+        """Best-effort mouse-up with no network wait — used from a
+        ``finally`` block to guarantee the button never leaks into the
+        NEXT test, even after a mid-drag assertion failure. Swallows
+        errors (the button may already be up).
+        """
+        try:
+            self.page.mouse.up()
+        except Exception:
+            pass
+
+    @action("Drag a conversation onto a folder and drop it")
+    def drag_conversation_to_folder(self, conversation_id: str | int, folder_id: str | int, timeout: int = 10000):
+        """Press, move onto *folder_id*, and release — the full gesture in
+        one call, for callers that don't need to wrap the drop's network
+        response (use :meth:`start_conversation_drag` +
+        :meth:`move_drag_over_target` + :meth:`release_drag` directly when
+        the caller needs to wrap ``page.expect_response(...)`` around the
+        release step specifically, e.g. ELITEA-2142's PUT assertion).
+
+        Args:
+            conversation_id: Numeric conversation id to drag.
+            folder_id: Numeric target folder id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.start_conversation_drag(conversation_id, timeout=timeout)
+        self.move_drag_over_target(self.get_folder_item(folder_id), iterations=4, steps_per_move=4)
+        self.release_drag(timeout=timeout)
+
+    @action("Drag a conversation into the general/ungrouped list area")
+    def drag_conversation_to_general_list(self, conversation_id: str | int, timeout: int = 10000):
+        """Press, move onto the ungrouped drop-zone
+        (``conversation_list_drop_zone`` — ``DroppableGroupedArea``'s drop
+        target id is ``'ungrouped-conversations'`` per ``useDragAndDrop.js``),
+        and release.
+
+        Args:
+            conversation_id: Numeric conversation id to drag.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.start_conversation_drag(conversation_id, timeout=timeout)
+        self.move_drag_over_target(self.conversation_list_drop_zone, iterations=4, steps_per_move=4)
+        self.release_drag(timeout=timeout)
 
     @action("Open folder context menu")
     def open_folder_context_menu(self, folder_id: str | int, timeout: int = 5000):

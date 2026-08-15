@@ -2,8 +2,15 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: test-automation-engineer (combined analyst+
-implementer), ELITEA-2128/2129, 2026-08-15 (supersedes nothing below — new
+a time; last confirmed by: qa-engineer analyst, ELITEA-2146/2147/2148,
+2026-08-15 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: qa-engineer analyst, ELITEA-2142/2143/2144/2145,
+2026-08-15 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: test-automation-engineer (combined analyst+
+implementer), ELITEA-2136/2138/2139/2140/2141, 2026-08-15 (supersedes nothing
+below — new section, other sections unchanged; previous confirmer:
+test-automation-engineer (combined analyst+implementer), ELITEA-2128/2129,
+2026-08-15 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2123/2127, 2026-08-15; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2122, 2026-08-15; previous confirmer: test-automation-engineer
@@ -20,6 +27,302 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+
+## ELITEA-2146/2147/2148 — folder-list & submenu SCROLLABILITY, expand/collapse +
+## empty-state, ALL 3 ready-for-automation, TWO new testid gaps found, ZERO defects
+- **Sidebar list scroll container genuinely overflows once enough folders exist —
+  confirmed live, but at a viewport-dependent scale.** `Conversations.jsx`'s
+  `ref={listRef}` `Box` (line ~731, `overflowY: 'scroll'`, `height: 'calc(100% -
+  40px)'`) wraps pinned folders + pinned conversations + unpinned folders +
+  date-grouped conversations ALL in one shared container — there is no
+  folder-only scroll region, the whole sidebar list scrolls together. At the
+  CARRIED-OVER 1280×4000 viewport (leftover from the prior ELITEA-2142/2143/
+  2144/2145 session sharing this MCP browser instance) `scrollHeight ===
+  clientHeight === 3928` — NOT scrollable, a false negative trap for any future
+  session that inherits an oversized viewport. Resized to 1440×900:
+  `scrollHeight=2946` vs `clientHeight=828` (with the account's ambient 67
+  folders present) — genuinely overflowing. Collapsed folder row height
+  measured at 41px (folder `279`). **testid needed**: this container has NO
+  testid today — add one (e.g. `chat-conversation-list-scroll-container`) via
+  `add-data-testid`, same family as the existing `chat-messages-scroll-container`
+  precedent. Full spec: ELITEA-2146's AFS.
+- **"Move to" submenu's folder-list popover ALSO genuinely overflows, and is a
+  SEPARATE container from the sidebar** (MUI's own default `Menu`/Popover Paper
+  sizing — `overflow-y: auto`, `max-height: calc(100% - 96px)` — not bespoke
+  EliteaUI logic). With the submenu open and 67 ambient folders rendered:
+  popover Paper `scrollHeight=2781` vs `clientHeight=802`. Confirmed
+  FUNCTIONALLY wired, not just visually present: scrolled to the popover's max
+  `scrollTop`, clicked the then-revealed last folder item
+  (`chat-move-to-folder-88-menuitem` this run), and observed a real `PUT
+  .../elitea_core/conversation/prompt_lib/399/8152 → 200` — the scrolled-to
+  item genuinely moves the conversation. **testid needed**: the submenu's
+  `<Menu>` Paper (`DotMenu.jsx` line ~93, the nested `subMenuItems?.length &&`
+  branch) carries NO testid and NO `id` at all today (confirmed via DOM
+  inspection) — add via `slotProps={{ paper: { 'data-testid':
+  'chat-move-to-submenu-popover' } }}` (or equivalent MUI prop shape). Full
+  spec: ELITEA-2147's AFS.
+- **Expand/collapse + empty-state mechanism (ELITEA-2148) works exactly as
+  cased, but the case TITLE overclaims** — "Displays Conversation Count" implies
+  a numeric badge that does not exist anywhere (source-confirmed:
+  `FolderAccordionItem.jsx`/`FolderAccordion.jsx` never render `folder.total`/
+  `conversations.length` as visible text, only as internal pagination state).
+  The case's own numbered STEPS never ask for a count badge either — only
+  "expand and see the list" / "see the empty state" — and those match live
+  behavior exactly, so this is a title/scope mismatch, not case-text drift
+  worth a clarification filing. Live-confirmed: collapsed folder row's
+  conversation items stay MOUNTED in the DOM under MUI `Collapse`
+  (`.MuiCollapse-hidden` sets `visibility: hidden`, not `display:none`/unmount)
+  — a future test must assert via `not_to_be_visible()`, NOT `to_have_count(0)`
+  (the element IS still present, so a count-based assertion would pass for the
+  wrong reason — see `.agents/memory/qa-engineer/passing_assertion_may_prove_nothing.md`).
+  `chat-folder-empty-state` text reconfirmed: **"No conversations added"**
+  (folder `279`, this session).
+- **Page-object gap (method, not testid)**: no `collapse_folder()` exists.
+  `expand_folder()` isn't safe to call a second time to collapse (it waits for
+  `data-expanded="true"`, already true going in). Small addition needed,
+  mirrors `expand_folder()` waiting for `[data-expanded="false"]` instead.
+- **Reconfirms the ELITEA-2121/2130 pinned-folder disabled-ancestor gotcha**
+  (unrelated to any of these 3 cases' own seeded data, hit only because folder
+  `213` — a PINNED leftover exploration folder from that earlier session — was
+  tried first and both a plain Playwright click AND a raw `element.click()`
+  via `browser_evaluate` silently no-opped against it, "element is not
+  enabled" despite `.disabled === false`). Not a new defect — same
+  `isDragDisabled={isPinned}` ancestor already documented; switched to an
+  unpinned folder and the normal click worked immediately.
+- **Zero product defects found this pass** — all 3 cases' own subjects
+  (scrollability ×2, expand/collapse/empty-state ×1) work correctly and
+  genuinely on the real system, end to end, including a real network mutation
+  chosen specifically from a scrolled-to-only-reachable submenu item.
+
+## ELITEA-2142/2143/2144/2145 — drag-and-drop conversation<->folder, NEW
+## surface (`chat-conversation-drag-drop`), mechanism confirmed real,
+## TWO new defects filed (#1541 drop-target misresolution, #1542 missing
+## single-item toast), one direction not pristine-confirmed (scroll)
+- **Mechanism**: `@dnd-kit/core`'s `PointerSensor` (8px activation distance),
+  NOT native HTML5 `draggable`/`DragEvent`. `DraggableConversationItem.jsx`
+  (`useDraggable`, id = conversation numeric id) / `DraggableFolderItem.jsx`
+  (`useSortable`, id = `folder-{id}`, used for folder REORDERING, a separate
+  concern from conversation drops) / `DroppableFolderItem.jsx` +
+  `DroppableGroupedArea.jsx` (`useDroppable`, ids `folder-{id}` /
+  `'ungrouped-conversations'`). All logic in
+  `src/hooks/chat/useDragAndDrop.js`.
+- **Real Playwright mouse gestures DO drive the real product code — no
+  substitution needed for this whole family.** Confirmed via network capture:
+  a genuine multi-step `mouse.down()` → several `mouse.move(..., {steps:N})`
+  → `mouse.up()` sequence (or Playwright's own `locator.dragTo()`) fires a
+  real `PUT /elitea_core/conversation/prompt_lib/{project}/{id}`. A single
+  big-jump `dragTo()` with NO intermediate steps risks under-shooting the
+  8px `PointerSensor` activation distance or missing collision recompute —
+  use several `steps` per `mouse.move()` call and re-measure the target's
+  `boundingBox()` on every iteration (layout shifts — e.g. a source folder's
+  accordion collapsing mid-drag — move sibling elements a few px during the
+  gesture; a STALE captured target rect can miss).
+- **Hover-highlight over a candidate drop folder IS implemented and
+  CONFIRMED WORKING live** (screenshot evidence,
+  `.playwright-mcp/w07-mid-drag-hover-folderB.png`): `DroppableFolderItem`'s
+  `shouldShowDropFeedback` (`isOver && isActive && isValidDropTarget`) renders
+  a `2px dashed` primary-color overlay `Box` around the hovered folder. Same
+  mechanism/component (`DroppableGroupedArea`) exists for the ungrouped/
+  date-group drop area. **Neither overlay carries a testid today** —
+  `testid needed`: add a stable `data-testid` (e.g.
+  `chat-folder-drop-zone-{folder_id}` / `chat-conversation-list-drop-zone`)
+  PLUS a `data-drop-active` boolean attribute on the EXISTING outer
+  `ref={setNodeRef}` Box (the wrapper `DroppableFolderItem`/
+  `DroppableGroupedArea` already render, one level above the pre-existing
+  `chat-folder-item-{id}` testid) reflecting `shouldShowDropFeedback` —
+  state-via-`data-*`-attribute per this project's testid policy, NOT a
+  state-switched testid, and NOT the conditionally-mounted anonymous overlay
+  `Box` itself (that element mounts/unmounts with drag state, which is the
+  wrong node to carry an identity testid).
+- **CONFIRMED DEFECT, filed
+  [elitea-testing-public#1541](https://github.com/EliteaAI/elitea-testing-public/issues/1541)**:
+  dragging a conversation OUT OF one folder and dropping it ONTO another
+  folder does NOT move it there — it lands in the ungrouped/general list
+  (`folder_id: null`) instead, even though the target folder was correctly
+  highlighted (dashed border, confirmed via screenshot) right up to release.
+  Reproduced 3× this session, cleanest repro was a fresh page load + single
+  continuous gesture with the target's `boundingBox()` re-measured
+  immediately before `mouse.up()` (pristine-repro gate satisfied). Root
+  cause suspected in `handleDragEnd`'s `over.id` resolution vs. the
+  `getDropAreaState`-driven highlight diverging — not yet fix-verified, see
+  the issue for the exact source-line reasoning.
+- **CONFIRMED DEFECT (source-level, not live-UI-dependent), filed
+  [elitea-testing-public#1542](https://github.com/EliteaAI/elitea-testing-public/issues/1542)**:
+  `handleDragEnd`'s `toastSuccess(...)` call is gated behind
+  `currentDraggedItems.length > 1` — a SINGLE-conversation drag-and-drop
+  move NEVER shows a success toast, regardless of whether the move itself
+  succeeds. Contradicts both the TMS cases (ELITEA-2142/2144 each ask to
+  "verify a success toast confirms the move" for a single conversation) AND
+  the product's own precedent — the "Move to" CONTEXT-MENU flow (a
+  different code path, `test_move_conversation_to_folder.py`) DOES show a
+  toast for a single-item move (`Chat moved to "X" folder successfully`).
+- **NOT pristine-confirmed this session, due to environment obstacles, not
+  a defect claim**: the Today/date-group → folder direction specifically
+  (ELITEA-2142's own core assertion). This shared DEV account currently
+  carries **65+ orphaned folders** (known, already-tracked cleanup gap —
+  see the `#1309`/`#1310`/`#1533` testid-regression section below, which is
+  the root cause of the leaked `delete_folder_via_menu()` cleanup failures),
+  pushing the "Today" conversation list thousands of px below the folder
+  list and out of simultaneous viewport reach even at a 4000px-tall resize;
+  `@dnd-kit`'s autoscroll did not visibly engage for synthetic MCP pointer
+  input in the time available. Given `handleDragEnd`'s folder-branch code
+  is IDENTICAL for both directions (`droppedOnId.startsWith('folder-')` →
+  `onMoveToFolderConversation(conversation, targetFolder)`, regardless of
+  whether the drag started from `ungrouped` or another folder), there is a
+  real, non-trivial risk ELITEA-2142 hits the SAME #1541 defect — but this
+  was not independently proven for this exact direction. **Flagged as an
+  explicit build-time check** in ELITEA-2142's own AFS, not asserted as a
+  separate defect.
+- **Test-data hygiene note (not new — corroborates the already-documented
+  `#1309`/`#1310` sections below)**: `ConversationAPI` already has
+  `create_folder(name)` / `delete_folder(id)` /
+  `move_conversation_to_folder(conversation_id, folder_id)` (contrary to the
+  "no FolderAPI client exists yet" note in the ELITEA-2135 AFS/section
+  below — this has since been added; use it directly, don't re-add).
+  This session's own exploration folders/conversations (ids 301/302,
+  8404/8405) were deleted via these API methods before finishing — zero net
+  pollution added by this session.
+
+**Resolved/added during ELITEA-2142/2143/2145 implementation (implementer,
+2026-08-15):**
+- **`#1542` corrected — NOT a defect.** The analyst's source read covered
+  only `useDragAndDrop.js`'s own `toastSuccess(...)` call (gated to
+  `currentDraggedItems.length > 1`, a SEPARATE multi-select aggregate
+  toast). It missed that `handleDragEnd` also calls `await
+  onMoveToFolderConversation(...)` per item, and THAT hook
+  (`useMoveToFolderConversation.hooks.js`, shared with the "Move to" menu
+  flow) fires its own toast unconditionally on success. Live-confirmed a
+  single-item drag DOES show `Chat moved to "<folder>" folder successfully`.
+  Corrected via a comment on #1542 (left open, human disposition).
+- **Toast auto-dismisses before a multi-step verification chain finishes.**
+  Capture toast text IMMEDIATELY after the triggering action (same
+  `page.expect_response` block as the drop), not several steps later — a
+  step-6-style "verify toast" read that runs after 2+ intervening
+  assertions (folder-removal check, folder-expand) can find the toast
+  already gone. Same idiom `test_move_conversation_to_folder.py` already
+  uses; drag-and-drop tests need it explicitly because the case text lists
+  the toast check LAST.
+- **Drag gestures need TWO distinct guards before every `mouse.move()`/
+  `mouse.down()`, not just `scroll_into_view_if_needed()`:**
+  1. *Off-screen:* `bounding_box()` is viewport-relative; an item below the
+     fold (this shared DEV account's sidebar routinely carries 65+ folders
+     ahead of the conversation list) reports a y far past the viewport
+     height, and `page.mouse.move()` to that coordinate never reaches the
+     element (drag silently never activates, no error).
+  2. *Stale-position overlap (distinct from #1, more subtle):* even AFTER
+     scrolling, `bounding_box()` can report the CORRECT rect for an
+     element (matches `getBoundingClientRect()`) while a DIFFERENT,
+     stale-positioned row visually overlaps that exact pixel — reproduced
+     dragging a conversation OUT of a just-expanded folder: the physical
+     coordinate resolved (via `document.elementFromPoint`) to an UNRELATED
+     folder's collapsed header, not the conversation. A raw `page.mouse`
+     sequence has no actionability check (unlike `.click()`) and silently
+     presses on the wrong element. Fix: poll
+     `document.elementFromPoint(cx, cy) === el || el.contains(hit)` until
+     it settles before pressing/moving — `ChatPage._wait_for_pointer_target()`.
+     Both guards are now baked into `start_conversation_drag()` /
+     `move_drag_over_target()` — any FUTURE drag-and-drop page-object
+     method should reuse those two, not raw `bounding_box()` + `mouse.move()`.
+- **A conversation's OWN drag-opacity lives on its PARENT node, not the
+  testid'd element itself** — `DraggableConversationItem.jsx`'s Box (style
+  `opacity: isDragging ? 0.5 : 1`) wraps the `chat-conversation-item-{id}`
+  testid'd Box as its immediate child. Read via
+  `el => getComputedStyle(el.parentElement).opacity`, not the element's own
+  computed style. Same wrapper-vs-testid-node split applies to
+  `DraggableFolderItem.jsx` (used for folder reordering, not exercised by
+  this cluster's own cases).
+
+## ELITEA-2136/2138/2139/2140/2141 — "Move to" submenu family, extends
+## ELITEA-2135/2137/2138's own surface: back-to-list, folder-to-folder,
+## disabled self-entry, `updated_at` mechanism (all extend-existing, tag/gap-only)
+- **All 5 cases extend `test_move_conversation_to_folder.py`** (ELITEA-2135/2137,
+  merged `origin/automation/base` commit `37dbd948`) — purely additive: 2 tag-only/
+  small-insertion extensions (ELITEA-2136 onto ELITEA-2135's own test; ELITEA-2140
+  onto this session's own new ELITEA-2139 test) + 3 brand-new test methods
+  (ELITEA-2138, ELITEA-2139, ELITEA-2141), zero existing method bodies modified.
+- **`select_move_to_back_to_list()` did not exist before this session** — the
+  `move_to_back_to_list_menuitem` LOCATOR was added by ELITEA-2135's own
+  implementation but had ZERO callers (canon #511) until ELITEA-2139/2140's test.
+  New method mirrors `select_move_to_folder()`/`select_move_to_create_folder()`'s
+  shape exactly.
+- **"Back to the list" toast is a DISTINCT template** from the move-INTO-a-folder
+  toast (`Chat moved to "X" folder successfully`, `useMoveToFolderConversation.hooks.js`):
+  live-confirmed exact text `Chat moved to ungrouped area successfully` — no quoted
+  folder name (there isn't one), different verb phrase entirely. Don't assume the
+  same template with an empty/null substitution.
+- **Empirically confirmed the mechanism behind ELITEA-2140's "appears in Today"
+  claim, not just inferred from source**: the "Back to the list" `PUT
+  .../conversation/prompt_lib/{project}/{id}` unconditionally bumps `updated_at`
+  to the request's own timestamp, regardless of the conversation's prior recency
+  — verified on a conversation that had NEVER been touched between creation and
+  the move (its `updated_at` jumped from creation-time to move-time, ~1 minute
+  later, in the same response body). Date-group bucketing
+  (`DATE_GROUP_ORDER = ['today','this_week','older']`, EliteaUI
+  `conversationList.constants.js`) is server-side and keyed purely off
+  `updated_at` — folder membership (`folder_id`) and date-group bucket are
+  orthogonal fields with no memory of "which group before the folder move".
+  **Practical consequence**: there is no way to make a "moved back to list"
+  conversation land anywhere OTHER than Today via this flow — the mechanism is
+  origin-independent by construction, confirmed live not assumed.
+- **The API silently ignores caller-supplied `created_at`/`updated_at`** — live-
+  verified: `PUT` a conversation with `{"updated_at": "2020-01-01...",
+  "created_at": "2020-01-01..."}` returns `200` but the persisted timestamps are
+  UNCHANGED. **There is no test-accessible way to seed a genuinely-"Older"
+  conversation on demand** (no natural one existed live in the shared DEV
+  project either, at time of writing — only a populated "This Week" group, zero
+  Today, zero Older). Any case whose precondition specifically requires an
+  Older-origin fixture (ELITEA-2140 here) needs this same treatment: reason from
+  the live-confirmed mechanism instead of fabricating the precondition via
+  DB/`page.evaluate()` injection (which would be a fidelity-policy substitution).
+- **"Move to" submenu, when opened for a conversation ALREADY inside a folder,
+  lists that folder's OWN entry — DISABLED, not absent.** Live-confirmed via
+  `browser_snapshot` + `aria-disabled` read: `chat-move-to-folder-{own_id}-menuitem`
+  renders with `aria-disabled="true"` (self-move prevention) rather than being
+  filtered out of the list. A DIFFERENT folder's entry in the same submenu is a
+  normal enabled `menuitem`. Not previously documented — no prior case (2135/
+  2137) opened "Move to" on an already-in-a-folder conversation. Read via
+  `get_move_to_folder_item(folder_id).get_attribute("aria-disabled")` — no new
+  testid needed, same `MOVE_TO_FOLDER_ITEM` template ELITEA-2135 provisioned.
+- **Context-menu item SET differs for a folder-contained conversation** vs. the
+  flat-list 5-item set ELITEA-2114/2135 already document (`Rename, Move to,
+  Playback, Pin on top, Delete`): live-confirmed 6 items for an in-folder
+  conversation — `Rename, Move to, Playback, Duplicate, Pin on top (DISABLED),
+  Delete` — "Duplicate" present, "Pin on top" present-but-disabled rather than
+  absent (matches the already-documented `disabled: !isPinned &&
+  !!conversation.folder_id` rule under § Pin conversation, reconfirmed here from
+  the OTHER side — pin disabled specifically BECAUSE folder_id is set). None of
+  ELITEA-2136/2138/2139/2140/2141's own case steps require asserting this full
+  set, so no test in this pass encodes it — flagged here in case a future case
+  does (don't assume the flat-list 5-item set applies unconditionally).
+- **`.clear()` (Playwright's own method) correctly replaces the folder-name
+  editor's default value; a raw `Control+a`+`Backspace` sequence reproduces the
+  documented "append not replace" race AGAIN** (live-reconfirmed during
+  ELITEA-2138 exploration — typing "Sprint Chats" after `Control+a`+`Backspace`
+  produced `"Sprint ChatsNew folder"`, a REAL folder created with that wrong
+  name, id 293, cleaned up). `ChatPage.set_folder_name()`'s existing
+  implementation already uses `.clear()`, not a bare `Control+a` — reuse it
+  verbatim, do not hand-roll the input-clearing sequence for any new
+  folder/conversation-name editing code (same standing warning as the
+  ELITEA-2128/2129 section below).
+- **Folder-to-folder move fires the identical `PUT`+toast mechanism as
+  move-from-flat-list** (`folder_id` changes in the response body, toast is the
+  same `Chat moved to "X" folder successfully` template) — confirmed the prior
+  container (date group vs. another folder) makes no difference to the
+  move-INTO-a-folder mechanism; only "Back to the list" (moving OUT, to no
+  container) has the distinct toast/mechanism documented above.
+- **Setup for "conversation already inside a folder" is fastest via
+  `conversation_api.create_folder()` + `conversation_api.move_conversation_to_folder()`**
+  (both pre-existing on `ConversationAPI`, `api/client.py`) rather than the
+  UI-driven folder creation ELITEA-2135's own test uses — real API setup, not a
+  substitution (reaches a precondition state, doesn't fabricate the case's own
+  observable). Used for ELITEA-2139/2140/2141's setup this session; ELITEA-2136
+  reuses ELITEA-2135's existing UI-driven setup unmodified (extension, not a
+  fresh test).
+- **Cleanup**: all exploration conversations (4) and folders (4, ids 291-294)
+  created this session were deleted via `conversation_api.delete_conversation`/
+  `delete_folder` immediately after each probe — zero net pollution left by this
+  session's exploration (unlike several prior sessions documented elsewhere in
+  this digest).
 
 ## ELITEA-2128/2129 — folder-rename LENGTH boundary, confirms `FolderItem.jsx`
 ## shares `MAX_CONVERSATION_LENGTH=50` truncation with `ConversationItem.jsx`,
