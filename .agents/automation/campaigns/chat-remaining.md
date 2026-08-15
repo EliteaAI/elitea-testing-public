@@ -50,7 +50,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | 02 | Conversation rename — basic flow + length boundaries | 2099,2100,2101,2102,2103,2104 | 6 | **LANDED** — PR #1518, 6/6 automated |
 | 03 | Conversation rename — check-icon states + edge chars | 2105,2106,2107,2108,2109,2110,2111,2112,2113 | 9 | **LANDED** — PR #1522, 9/9 automated |
 | 04 | Conversation deletion + chat search (left-panel micro-UI) | 2115,2116,2117,2456,2163,2164,2165,2463 | 8 | **LANDED** — PR #1528, 7 automated/extended + 1 already-covered |
-| 05 | Folder creation | 2118,2119,2120,2133,2134,2457 | 6 | **IN PROGRESS** |
+| 05 | Folder creation | 2118,2119,2120,2133,2134,2457 | 6 | **LANDED** — PR #1532, 6/6 automated |
 | 06 | Folder rename | 2121,2122,2123,2124,2125,2126,2127,2128,2129,2130,2131 | 11 | pending |
 | 07 | Move/drag conversation between folders + list scrolling | 2136,2138,2139,2140,2141,2142,2143,2144,2145,2146,2147,2148 | 12 | pending |
 | 08 | Pin/unpin — conversation & folder basics | 2150,2151,2152,2153,2154,2155,2156 | 7 | pending |
@@ -123,10 +123,16 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   testids: `chat-search-no-results-message`, `chat-conversations-empty-state-message`
   — EliteaAI/EliteaUI@d5e0ba63 on `automation/testids`, confirmed NOT yet on `main`.
 
+- **wave-05 LANDED** — elitea-testing-public#1532, merged (`58e1d93f`). 6/6
+  automated, all `extend-existing` (ELITEA-2118 #1529, 2119+2120 #1529 [1 fix
+  round — POM construction-site violation], 2133+2134 #1530, 2457 #1531 —
+  2119/2133/2457 share one test, 2120/2134 share another). Confirms (3rd
+  instance) this TMS module carries near-duplicate case-ID clusters not
+  confined to adjacent ranges — durable memory updated. Gate: 3rd occurrence
+  of the recurring console-500 pattern (wave-02/wave-04/wave-05), formally
+  confirmed as environmental in `.agents/testing.md`. Lead's own gate 3/3
+  clean. TMS back-written (6 cases). No new testids.
+
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-05** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w05`,
-  base=`origin/automation/base`, clusters `[2118,2119,2120]` (folder inline-rename
-  during creation) + `[2133,2134]` (folder creation via header icon + cancel).
-  2457 merged into the [2133,2134] triage decision (folder creation family). Task
-  ID `woc1y9p2w`, Run ID `wf_36c9625f-d1d`.
+(none — wave-05 closed; wave-06 not yet dispatched)
