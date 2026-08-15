@@ -3183,6 +3183,26 @@ class ChatPage(BasePage):
         logger.info(f"Folder link count: {count}")
         return count
 
+    def get_folder_names_containing(self, substring: str) -> list[str]:
+        """Return the text content of every rendered folder item
+        (FOLDER_ITEM_PREFIX, page-wide, unscoped) whose text contains
+        *substring* — for "no folder named X exists" assertions
+        (ELITEA-2120, discarded/cancelled folder-creation check).
+
+        Args:
+            substring: Text to search for within each folder item's
+                rendered text content.
+
+        Returns:
+            List of matching folder items' text content (may be empty).
+        """
+        items = self.page.locator(self.FOLDER_ITEM_PREFIX)
+        return [
+            items.nth(i).text_content() or ""
+            for i in range(items.count())
+            if substring in (items.nth(i).text_content() or "")
+        ]
+
     def wait_for_any_folder_visible(self, timeout: int = 10000):
         """Wait until at least one folder item (FOLDER_ITEM_PREFIX) is
         visible — a real settle-wait for "the default/unfiltered sidebar

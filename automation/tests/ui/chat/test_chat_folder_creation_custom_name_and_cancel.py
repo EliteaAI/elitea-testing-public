@@ -217,7 +217,7 @@ class TestChatFolderCreationCustomNameAndCancel:
         with allure.step("Step 1 — Navigate to chat, open the create-folder editor"):
             chat.navigate_to_chat()
             chat.wait_for_page_load()
-            folder_count_before = chat.page.locator(chat.FOLDER_ITEM_PREFIX).count()
+            folder_count_before = chat.get_folder_link_count()
             chat.click_create_folder_button(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step("Step 2 — Type the folder name to be discarded"):
@@ -236,12 +236,7 @@ class TestChatFolderCreationCustomNameAndCancel:
         with allure.step(
             "Step 4 — Verify no folder named 'Temp Folder' appears in the list"
         ):
-            folder_items = chat.page.locator(chat.FOLDER_ITEM_PREFIX)
-            matching_names = [
-                folder_items.nth(i).text_content() or ""
-                for i in range(folder_items.count())
-                if CANCEL_FOLDER_NAME in (folder_items.nth(i).text_content() or "")
-            ]
+            matching_names = chat.get_folder_names_containing(CANCEL_FOLDER_NAME)
             assert not matching_names, (
                 f"No folder should contain {CANCEL_FOLDER_NAME!r} after "
                 f"cancel, found: {matching_names!r}"
@@ -251,7 +246,7 @@ class TestChatFolderCreationCustomNameAndCancel:
             "Step 5 — Verify the folder list's total count is unchanged, "
             "and no new POST request fired"
         ):
-            folder_count_after = chat.page.locator(chat.FOLDER_ITEM_PREFIX).count()
+            folder_count_after = chat.get_folder_link_count()
             assert folder_count_after == folder_count_before, (
                 "Folder list count should be unchanged after cancelling "
                 f"creation — before={folder_count_before}, "
