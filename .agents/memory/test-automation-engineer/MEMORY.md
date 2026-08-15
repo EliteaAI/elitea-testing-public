@@ -9,6 +9,7 @@
 > preventive entries. No entry file was deleted — everything stays greppable.
 > `(N×)` = how many separate sessions hit it.
 - [Autonomous skill invocation needs a nudge](autonomous_skill_invocation_nudge.md) — attach alone won't do it
+- [dnd-kit drag needs a settle-check](dnd_kit_drag_gesture_needs_settle_check.md) — scroll-into-view AND elementFromPoint poll, not just one
 - [chat-remaining-w03 case snapshots never existed](chat_remaining_w03_case_snapshots_never_existed.md) — read the TMS file directly, not a novel-ground signal
 
 - [Project briefing](project_briefing.md) — your slot, the six-phase loop, the ≤2-rerun budget, the Run Report
