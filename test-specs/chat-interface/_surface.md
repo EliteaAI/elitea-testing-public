@@ -2,7 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: test-automation-engineer (combined analyst+
+a time; last confirmed by: qa-engineer analyst, ELITEA-2189/2190/2191,
+2026-08-15 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: test-automation-engineer (combined analyst+
 implementer), ELITEA-2175/2176, 2026-08-15 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: qa-engineer analyst,
 ELITEA-2171/2172, 2026-08-15
@@ -2700,3 +2702,45 @@ confirmer: qa-engineer analyst, ELITEA-2168, 2026-08-15)
   (Conversation id `420`, "Review attached documents" on project 471, is now
   permanently public from this session's exploration — dev/local test data,
   low-risk, left as-is.)
+
+## ELITEA-2189/2190/2191 (2026-08-15) — NO second user identity exists; every "non-owner" case on this surface is `blocked`
+
+- **Root cause (checked live, not assumed):** `.env.test` has exactly one UI
+  credential (`TEST_USER_EMAIL`/`TEST_USER_PASSWORD`), and localhost's
+  `auth_state` bypasses login entirely via a single static `VITE_DEV_TOKEN`
+  (`../EliteaUI/.env`, wired in `root.jsx`/`upload.js`/
+  `useArtifactContentFetch.hooks.js`/`SupportAssistant.jsx` — always the SAME
+  fixed identity, `author_id: 659` / "Test Bot"). There is no code path to
+  authenticate as a second identity on localhost, and no second credential
+  anywhere in the repo's test data.
+- **Confirmed empty second-owner conversation set**: `GET
+  /api/v2/elitea_core/folder/prompt_lib/471?sort_by=updated_at&sort_order=desc&grouped=true`
+  returns every conversation in project 471 with `author_id: 659` (this same
+  account) — no other-owned conversation, public or private, is currently
+  reachable. Conversation `420` (see the entry above — made public by a prior
+  analyst session) now 404s (`GET .../conversation/prompt_lib/471/420` →
+  `400 Bad Request`, "Conversation not found") — it was likely cleaned up by
+  a later run; do not assume it still exists as a fixture.
+- **"Invite Users" does NOT give you a second identity to log in as.** It adds
+  named users ("Hrach Sargsyan", "Levon Dadayan", "Mariam Hakobyan", …
+  ELITEA-2167 precedent) as **participants** of a conversation `${TEST_USER}`
+  still authors/owns. Those names come from a user-search endpoint with no
+  corresponding password/token this suite holds — don't mistake "can add as
+  participant" for "can view as".
+- **Any future case shaped "user B cannot see/edit/delete user A's X" on this
+  surface hits the identical wall.** Don't re-derive this from scratch —
+  check [Question #1563](https://github.com/EliteaAI/elitea-testing-public/issues/1563)
+  first (files ELITEA-2189/2190/2191 together as one shared-root-cause
+  question, precedent-matched to #1314's analogous editor/viewer RBAC-role
+  gap) for current status before spending a session re-confirming the same
+  blocker.
+- **Owner-side baseline handles ARE confirmed** (useful once unblocked):
+  `chat-copy-button`/`chat-regenerate-button` (real testids, ELITEA-2181) on
+  AI responses; accessible names "Read out" and "Delete" (no testid found for
+  the per-message Delete icon); user-message pencil icon has accessible name
+  "Edit the message and regenerate answer" with **no confirmed testid**
+  (distinct from `click_table_edit_icon`/`click_diagram_edit_icon`, which
+  target AI-generated table/diagram edit affordances, not user-message
+  editing — do not conflate). Conversation-level delete already has full
+  testid coverage via `delete-confirm-*` (ELITEA-2114) and
+  `CONVERSATION_MENU_ITEM_KEYS` includes `"delete"`.
