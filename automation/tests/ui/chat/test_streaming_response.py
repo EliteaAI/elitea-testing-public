@@ -57,6 +57,9 @@ STREAM_GROWTH_TIMEOUT = 60_000
 AI_RESPONSE_TIMEOUT = 120_000
 
 MESSAGE_TEXT = "Write a long poem about the city"
+# ELITEA-2179/2466 — a short, unambiguous message; this test only needs a
+# real response to eventually complete (Step 7), not a long one.
+SEND_TOGGLE_MESSAGE_TEXT = "Hello"
 
 
 def _is_known_secrets_403(msg) -> bool:
@@ -309,3 +312,153 @@ class TestStreamingResponse:
                 f"Unexpected console errors: {[m.text for m in console_issues]!r}; "
                 f"page errors: {page_errors!r}"
             )
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2179_chat-message-input-field-empty-send-button-not-visible-and-typing-makes-send-button-appear.md",
+        "onetest-ai Test Case link (ELITEA-2179)",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2466_chat-message-input-empty-shows-no-send-button-typing-shows-send-button-send-clears-field.md",
+        "onetest-ai Test Case link (ELITEA-2466)",
+    )
+    @pytest.mark.p0
+    def test_composer_send_button_toggles_with_empty_input_and_waveform_reappears(
+        self, page, conversation_id
+    ):
+        """ELITEA-2179 / ELITEA-2466 (family — 2466 is a more granular
+        superset of the same flow 2179 describes; one live execution
+        satisfies both).
+
+        The composer's send-button slot swaps between the waveform
+        ("enter speaking mode") button and the real Send button based on
+        whether the input has text — SendButton.jsx renders exactly one of
+        two mutually exclusive DOM nodes, never a visibility toggle on a
+        single node (source- and live-confirmed). Also covers the
+        surrounding bottom-bar icon inventory, the composer's focus-border
+        glow, and a sent message's sender-name/avatar (ELITEA-2466's extra
+        granularity beyond ELITEA-2179).
+
+        Steps (AFS
+        test-specs/chat-interface/l1_composer-send-button-visibility-toggle_ELITEA-2179.md,
+        family AFS — also covers ELITEA-2466):
+        1. Baseline: input empty, Send button absent, waveform button
+           present; bottom-bar icon inventory (+ / model name / gear /
+           mic / waveform) all present.
+        2. Click into the input; verify the focus-border glow activates.
+        3. Type a single character; verify the waveform is replaced by
+           the Send button.
+        4. Delete the character; verify the Send button disappears and
+           the waveform reappears.
+        5. Type the full message and click Send; verify it appears with
+           the sender's name + avatar, the input clears, and the Send
+           button disappears.
+        6. Verify neither the Send button nor the waveform render while
+           the response streams (a Stop control takes that slot instead).
+        7. Wait for the response to finish generating; verify the
+           waveform reappears once generation completes.
+
+        CLARIFICATION (both cases' own wording): "waveform reappears" is
+        live-confirmed to resolve once generation COMPLETES, not while the
+        LLM is still streaming — matches this page object's own
+        pre-existing `wait_for_generation_complete()` docstring ("The
+        Speaking mode button appears when generation is complete... During
+        generation, a stop button is shown instead"). Step 6 asserts the
+        live, self-consistent mid-stream state (neither button present);
+        Step 7 asserts the reappearance the case describes, at the point
+        it actually happens.
+        """
+        chat = ChatPage(page)
+
+        with allure.step("Setup — navigate to the fresh conversation"):
+            chat.navigate_to_chat(conversation_id=conversation_id)
+
+        with allure.step(
+            "Step 1 — Baseline: input empty, Send button absent, waveform "
+            "button present; full bottom-bar icon inventory present"
+        ):
+            assert chat.is_input_empty(), "Message input should start empty"
+            assert chat.send_button.count() == 0, (
+                "Send button should be absent while the input is empty"
+            )
+            expect(chat.voice_mode_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(chat.plus_menu_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(chat.model_selector_name).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(chat.model_settings_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(chat.voice_input_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+
+        with allure.step(
+            "Step 2 — Click into the input; verify the composer's "
+            "focus-border glow activates (teal/cyan box-shadow)"
+        ):
+            chat.message_input.click()
+            expect(chat.composer_focus_border).to_have_attribute(
+                "data-focused", "true", timeout=UI_ELEMENT_TIMEOUT
+            )
+            box_shadow = chat.composer_focus_border.evaluate(
+                "el => getComputedStyle(el).boxShadow"
+            )
+            assert box_shadow != "none", (
+                "Composer should show a focus glow (box-shadow) once the "
+                f"input is focused, got: {box_shadow!r}"
+            )
+
+        with allure.step(
+            "Step 3 — Type a single character; verify the waveform button "
+            "is replaced by the Send button (mutually exclusive DOM nodes)"
+        ):
+            chat.message_input.press_sequentially("h", delay=30)
+            expect(chat.send_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(chat.voice_mode_button).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)
+
+        with allure.step(
+            "Step 4 — Delete the character; verify the Send button "
+            "disappears and the waveform button reappears"
+        ):
+            chat.message_input.press("Backspace")
+            expect(chat.send_button).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)
+            expect(chat.voice_mode_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+
+        with allure.step(
+            "Step 5 — Type the full message and send; verify it appears "
+            "with the sender's name + avatar, the input clears, and the "
+            "Send button disappears"
+        ):
+            initial_count = chat.get_message_count()
+            chat.send_message(SEND_TOGGLE_MESSAGE_TEXT)
+
+            sent_message = chat.messages_container.nth(initial_count)
+            expect(sent_message).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            sender_name = sent_message.locator(chat.MESSAGE_SENDER_NAME)
+            sender_avatar = sent_message.locator(chat.MESSAGE_SENDER_AVATAR)
+            expect(sender_name).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(sender_avatar).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            assert sender_name.text_content().strip() != "", (
+                "Sent message should render a non-empty sender name"
+            )
+
+            assert chat.message_input.input_value() == "", (
+                "Input should be cleared immediately after send"
+            )
+            assert chat.send_button.count() == 0, (
+                "Send button should be absent again once the message is sent"
+            )
+
+        with allure.step(
+            "Step 6 — Verify neither the Send button nor the waveform "
+            "button render while the response is streaming (a Stop "
+            "control occupies that slot instead)"
+        ):
+            assert chat.send_button.count() == 0, (
+                "Send button should stay absent during streaming"
+            )
+            assert chat.voice_mode_button.count() == 0, (
+                "Waveform button should stay absent during streaming — a "
+                "Stop control occupies the send-button slot instead"
+            )
+
+        with allure.step(
+            "Step 7 — Wait for the response to finish generating; verify "
+            "the waveform button reappears once generation completes"
+        ):
+            chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
+            expect(chat.voice_mode_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
