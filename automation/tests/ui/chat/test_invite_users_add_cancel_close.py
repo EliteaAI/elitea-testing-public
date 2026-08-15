@@ -58,6 +58,7 @@ re-filed — a11y-only, does not affect testid-only automation).
 
 import logging
 import re
+import time
 
 import allure
 import pytest
@@ -200,6 +201,37 @@ def _open_blank_conversation(chat: ChatPage, timeout: int = NAVIGATION_TIMEOUT) 
             raise
 
 
+def _poll_blank_state_holds(
+    chat: ChatPage,
+    blank_url_pattern: "re.Pattern[str]",
+    settle_ms: int = 1500,
+    poll_interval_s: float = 0.25,
+) -> tuple[bool, str]:
+    """Poll message-count + URL at short intervals across *settle_ms*,
+    instead of a fixed-latency sleep-then-recheck-once.
+
+    Same idiom as ``ChatPage.wait_for_message_content_stable()``: sample the
+    observed state on a short interval and only conclude "stable" once it
+    has held for the whole window — here the value being watched for
+    stability is "still blank" rather than "content stopped changing".
+    Exits the instant either signal flips (a definitive, immediate result)
+    rather than waiting out the full window and discovering the reversion
+    only at the end.
+
+    Returns ``(settled, reason)`` — ``settled`` is False (with a reason)
+    the moment either signal flips during the window, True only if both
+    signals held blank for the entire window.
+    """
+    deadline = time.monotonic() + settle_ms / 1000.0
+    while time.monotonic() < deadline:
+        time.sleep(poll_interval_s)
+        count = chat.get_message_count()
+        url = chat.page.url
+        if count != 0 or not blank_url_pattern.search(url):
+            return False, f"blank state reverted mid-settle (url={url!r}, message_count={count})"
+    return True, ""
+
+
 def _open_genuinely_blank_conversation(chat: ChatPage, timeout: int = NAVIGATION_TIMEOUT) -> None:
     """Stronger sibling of ``_open_blank_conversation()`` — additive, does
     NOT modify that function or its existing caller (Hard Rule 3).
@@ -221,13 +253,15 @@ def _open_genuinely_blank_conversation(chat: ChatPage, timeout: int = NAVIGATION
     conversation (bare ``/chat`` URL, no participants) when driven slowly
     with pauses between steps, but pytest's own faster, back-to-back
     action sequence consistently lost this race. Guards against it with a
-    settle-and-recheck: wait out the restore's own timing window, then
-    verify BOTH the message count AND the URL are still blank before
-    proceeding — not a blind sleep substituting for a condition wait (no
-    condition exists to await for "an effect did NOT fire"), but a bounded
-    settle window inside an already-retrying loop, same category as this
-    project's own documented MUI-animation waits (`.claude/rules/
-    mui-patterns.md`).
+    settle-and-recheck: poll BOTH the message count AND the URL at short
+    intervals across the restore's own timing window (same idiom as
+    ``ChatPage.wait_for_message_content_stable()`` — poll a value on a short
+    interval, only proceed once it has held steady across the whole
+    window), exiting the instant either signal flips instead of sleeping the
+    full window blind and checking once. This stays condition-based even
+    though there is no positive condition to await for "an effect did NOT
+    fire": the condition polled for is continued stability of the observed
+    state, checked repeatedly rather than assumed after a fixed delay.
     """
     blank_url_pattern = re.compile(r"/chat/?(?:\?.*)?$")
     last_reason = "unknown"
@@ -252,15 +286,13 @@ def _open_genuinely_blank_conversation(chat: ChatPage, timeout: int = NAVIGATION
             )
             continue
         # Settle window for the delayed last-viewed-conversation restore
-        # (see docstring) — then re-verify both signals didn't flip.
-        chat.page.wait_for_timeout(1500)
-        if chat.get_message_count() != 0 or not blank_url_pattern.search(chat.page.url):
-            last_reason = (
-                f"blank state reverted after settling (url={chat.page.url!r}, "
-                f"message_count={chat.get_message_count()})"
-            )
+        # (see docstring) — poll both signals across the window instead of
+        # a fixed sleep-then-recheck-once.
+        settled, reason = _poll_blank_state_holds(chat, blank_url_pattern)
+        if not settled:
+            last_reason = reason
             logger.warning(
-                "Blank conversation reverted to a restored one after "
+                "Blank conversation reverted to a restored one during "
                 "settling (attempt %d) — retrying (see "
                 "_open_genuinely_blank_conversation docstring)",
                 attempt + 1,
