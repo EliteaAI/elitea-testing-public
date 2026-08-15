@@ -22,6 +22,18 @@ precedent as the ELITEA-2110/2112/2113 family's separate "Shape A"
 No product defects were found — both cases matched ``FolderItem.jsx``'s
 actual create/cancel handling exactly, live-confirmed via Playwright MCP
 against ``http://localhost:5173`` before this file was written.
+
+Extended for ELITEA-2133/ELITEA-2134 (near-total TMS-case duplicates of
+ELITEA-2119/ELITEA-2120 — same flows, different literal test data):
+``test_create_folder_with_custom_name`` gained a new Step 6 closing
+ELITEA-2133's own gap (expand the newly-created folder, verify the empty
+state — the covering test previously only verified it rendered collapsed);
+``test_cancel_folder_creation_discards_folder`` gained only a second
+``@allure.issue`` tag for ELITEA-2134 — zero assertion gap, every step
+already covered. See
+test-specs/chat-interface/lextend_chat-folder-creation-custom-name-expand-empty-state_ELITEA-2133.md
+and
+test-specs/chat-interface/lextend_chat-folder-creation-cancel-discard-tag-only_ELITEA-2134.md.
 """
 
 import logging
@@ -67,6 +79,10 @@ class TestChatFolderCreationCustomNameAndCancel:
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2119_chat-folder-name-edited-inline-during-creation-with-custom-name.md",
         "onetest-ai Test Case link",
     )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2133_chat-folder-creation-with-custom-name-via-chats-header-icon.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.p2
     def test_create_folder_with_custom_name(self, page):
         """Type a custom folder name during creation and confirm; verify the
@@ -82,6 +98,12 @@ class TestChatFolderCreationCustomNameAndCancel:
            expected name.
         5. Verify the input field closes and the folder shows the custom
            name as plain text.
+
+        Step 6 (AFS
+        test-specs/chat-interface/lextend_chat-folder-creation-custom-name-expand-empty-state_ELITEA-2133.md)
+        closes ELITEA-2133's own case step 4 — expand the just-created
+        folder and verify it shows the empty state — which was not asserted
+        here before (only the collapsed render was).
         """
         chat = ChatPage(page)
         folder_id = None
@@ -156,6 +178,22 @@ class TestChatFolderCreationCustomNameAndCancel:
                 )
 
             with allure.step(
+                "Step 6 — Click the folder to expand it; verify it shows "
+                "the empty state (ELITEA-2133 case step 4 — the gap this "
+                "extension closes)"
+            ):
+                chat.expand_folder(folder_id, timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.is_folder_expanded(folder_id), (
+                    f"Folder {folder_id} should carry data-expanded=\"true\" "
+                    "after being clicked"
+                )
+                empty_state_text = chat.get_folder_empty_state_text(folder_id)
+                assert "No conversations added" in empty_state_text, (
+                    f"Expanded empty folder {folder_id} should show the empty "
+                    f"state, got: {empty_state_text!r}"
+                )
+
+            with allure.step(
                 "Side-channel check — no unexpected console errors across "
                 "the full flow"
             ):
@@ -176,6 +214,10 @@ class TestChatFolderCreationCustomNameAndCancel:
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2120_chat-folder-name-edited-inline-during-creation-cancel-discards-folder.md",
         "onetest-ai Test Case link",
     )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2134_chat-folder-creation-cancel-discards-new-folder.md",
+        "onetest-ai Test Case link",
+    )
     @pytest.mark.p2
     def test_cancel_folder_creation_discards_folder(self, page):
         """Type a name during folder creation, then click cancel (X);
@@ -191,6 +233,11 @@ class TestChatFolderCreationCustomNameAndCancel:
         4. Verify no folder named 'Temp Folder' appears in the list.
         5. Verify the folder list's total count is unchanged from before the
            creation attempt, and no network request fired.
+
+        Coverage tag chain only for ELITEA-2134 (AFS
+        test-specs/chat-interface/lextend_chat-folder-creation-cancel-discard-tag-only_ELITEA-2134.md)
+        — same flow, different literal discarded name ("Cancelled Folder"),
+        zero assertion gap; every step is already proven above.
         """
         chat = ChatPage(page)
 
