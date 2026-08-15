@@ -2,7 +2,10 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2192/2193/2194,
+a time; last confirmed by: test-automation-engineer (combined analyst+
+implementer), ELITEA-2179/2466, 2026-08-15 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: qa-engineer analyst,
+ELITEA-2192/2193/2194,
 2026-08-15 (supersedes nothing below — new section, other sections unchanged;
 previous confirmer: qa-engineer analyst, ELITEA-2189/2190/2191,
 2026-08-15 (supersedes nothing below — new section, other sections unchanged;
@@ -48,6 +51,79 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03))).
+
+## ELITEA-2179/2466 — composer send-button/waveform visibility toggle,
+## family AFS (2466 is a granular superset of 2179), FIVE new testids added,
+## `extend-existing` against the ELITEA-2181 streaming test
+- **SendButton.jsx renders exactly ONE of two mutually exclusive DOM
+  nodes in the composer's send-button slot, never a visibility toggle on a
+  shared node** — `chat-send-button` (real Send, when the input has text)
+  OR a waveform/"enter speaking mode" button (when empty, voice features
+  on). Source- AND live-confirmed: typing swaps `chat-send-button` 0->1 the
+  SAME tick the waveform testid's count swaps 1->0. While the response is
+  streaming, UserInput.jsx swaps the ENTIRE slot to a Stop control — neither
+  of the two idle-state buttons renders, confirmed live (`send_button.count()
+  == 0 AND voice_mode_button.count() == 0` immediately after Send, before
+  `wait_for_ai_response` returns).
+- **"Waveform reappears" (both cases' final step) resolves once generation
+  COMPLETES, not while the LLM is still streaming** — matches this page
+  object's own pre-existing `wait_for_generation_complete()` docstring
+  ("Speaking mode button appears when generation is complete... During
+  generation, a stop button is shown instead"). Treated as a wording
+  nuance/clarification in both AFS files, not a defect — the live,
+  self-consistent behavior is asserted (reverse-masking guard).
+- **`test_streaming_response_progressive_display` (ELITEA-2181, merged
+  `origin/automation/base`) already proves the CORE toggle** (absent when
+  empty -> visible on typing -> absent on Backspace -> Send clears input) as
+  its own Step 1 — but only via `send_button.count()==0/visible`, never a
+  positive assertion on WHAT renders in the empty-state slot. That gap (plus
+  ELITEA-2466's bottom-bar-inventory/focus-border/sender-name-avatar asks,
+  entirely untouched by the covering test) is what this family AFS closes —
+  landed as a new test METHOD in the same file/class, tagged with both TMS
+  IDs via two `@allure.issue` decorators, original method byte-identical.
+- **Five new testids, all `EliteaAI/EliteaUI` `automation/testids` only
+  (not yet on `main`, human cherry-pick pending)**:
+  - `chat-voice-mode-button` — `SendButton.jsx`'s speaking-mode-entry
+    branch (the waveform icon itself). `EliteaAI/EliteaUI@b84f4f8d`.
+  - `chat-voice-input-button` — `VoiceButton.jsx`'s mic button (a SEPARATE
+    feature from the waveform — this one dictates INTO the text field, the
+    waveform button enters a live speaking conversation).
+    `EliteaAI/EliteaUI@b84f4f8d`.
+  - `chat-composer-focus-border` + `data-focused` state attribute — on
+    `UserInput.jsx`'s PRE-EXISTING gradient-border `Box` (zero new DOM
+    node). Focus glow is a `box-shadow` + gradient-background effect, NOT a
+    literal CSS `border-color` — live-confirmed `boxShadow` flips
+    `"none"` <-> `"rgba(21, 255, 247, 0.2) 0px -5px 20px 0px"` (cyan) with
+    `data-focused`. `EliteaAI/EliteaUI@bfdc3148`.
+  - `chat-message-sender-name` / `chat-message-sender-avatar` — on
+    `UserMessage.jsx`'s header row (vertical-layout branch). Avatar wired
+    via `UserAvatar`'s PRE-EXISTING `testId` prop (zero new DOM node), name
+    on the existing `Typography`. `EliteaAI/EliteaUI@3762995c`.
+  - **Self-correction mid-session**: an initial 6th testid
+    (`llm-model-settings-button`) was added on `LLMModelSelector.jsx`'s
+    `field` variant — then live-verified (via `document.querySelectorAll`
+    against the running dev server) that the chat composer actually renders
+    the component's DEFAULT (non-`field`) variant, which already carries a
+    PRE-EXISTING `data-testid="model-settings-button"` with zero prior
+    page-object callers (canon #511 first caller). Reverted the unused
+    addition same-session (`EliteaAI/EliteaUI@293d3aee`) rather than
+    shipping dead instrumentation — verify a testid RENDERS on the actual
+    call site your test drives before assuming a component-source read is
+    enough; two nearly-identical variants of the same shared component can
+    diverge on which one a given page actually uses.
+- **`+` menu button (`plus-menu-button`) and the gear/settings button
+  (`model-settings-button`) were both ALREADY on `main`** (pre-existing,
+  zero prior `LocatorDescriptor`/page-object callers before this case —
+  canon #511 first callers, not new testids).
+- **Test-data note**: `/chat` (bare, no id) redirects unpredictably to the
+  LAST-VIEWED conversation rather than a genuinely blank one (same
+  documented gotcha as the ELITEA-2175/2176 section below) — this AFS's
+  shipped test uses the `conversation_id` fixture (fresh, API-seeded), same
+  as the covering ELITEA-2181 test, rather than the ambient "new chat"
+  screen this session used only for live handle-exploration via Playwright
+  MCP (not the shipped test's own path).
+- Family AFS (covers both TMS IDs, same `afs_path`):
+  `test-specs/chat-interface/lextend_composer-send-button-visibility-toggle_ELITEA-2179.md`.
 
 ## ELITEA-2192/2193/2194 — Users-dropdown remove-control family, round 2:
 ## owner-attempt-toast is UNREACHABLE (clarification, not a defect), owner-
