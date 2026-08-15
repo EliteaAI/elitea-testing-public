@@ -199,4 +199,11 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- (none)
+- **wave-09** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w09`,
+  base=`origin/automation/base`, cases 2157,2158,2159,2160,2161,2461,2462,2460 (8),
+  clusters `[2157,2158]` (folder-pin restriction/workaround) + `[2160,2161]`
+  (multiple-independent-pin); 2159/2461/2462/2460 solo units — 2461/2462/2460 are
+  suspected near-duplicates of wave-08's ELITEA-2151/2152/wave-04-family ELITEA-2148
+  by title (this campaign's 3rd-instance duplicate-cluster pattern) — analyst to
+  determine already-covered/extend-existing per normal rule. Task ID `w9a058089`,
+  Run ID `wf_c516377e-9b8`.
