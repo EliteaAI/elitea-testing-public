@@ -1110,6 +1110,20 @@ class ChatPage(BasePage):
         ),
     )
 
+    delete_confirm_title_icon = LocatorDescriptor(
+        testid="delete-confirm-title-icon",
+        description=(
+            "Delete-confirmation modal title's status icon (BaseModal.jsx "
+            "renderIconType(), e.g. the warning <svg> for a "
+            "'Remove user?' dialog, ELITEA-2193). Fix round 1: replaces the "
+            "prior #579-shape-1 raw ``svg`` tag selector — that exception "
+            "was a misclassification (the icon is first-party app JSX "
+            "render output via ModalConstants.MODAL_ICONS, not a "
+            "third-party-library-internal node), so a real testid was "
+            "added instead (EliteaAI/EliteaUI@7b359d32)."
+        ),
+    )
+
     delete_confirm_message = LocatorDescriptor(
         testid="delete-confirm-message",
         description="Delete-confirmation modal body text.",
@@ -1123,6 +1137,27 @@ class ChatPage(BasePage):
     delete_confirm_button = LocatorDescriptor(
         testid="delete-confirm-button",
         description="Delete (confirm) button inside the delete-confirmation modal.",
+    )
+
+    # "Make public" confirmation dialog (DotMenu.jsx's shared Modal.BaseModal
+    # branch — ELITEA-2188). Previously carried zero testids at all (AFS §
+    # Concrete Handles gap #1); testids added this implementation via
+    # caller-supplied dialogTestId/confirmButtonTestId/cancelButtonTestId
+    # props threaded through DotMenu.jsx, same precedent as
+    # delete_confirm_* above being a shared-component testid declared here.
+    make_public_confirm_dialog = LocatorDescriptor(
+        testid="chat-conversation-make-public-confirm-dialog",
+        description="'Public conversation?' confirmation modal container.",
+    )
+
+    make_public_confirm_button = LocatorDescriptor(
+        testid="chat-conversation-make-public-confirm-button",
+        description="'Make public' (confirm) button inside the make-public confirmation modal.",
+    )
+
+    make_public_cancel_button = LocatorDescriptor(
+        testid="chat-conversation-make-public-cancel-button",
+        description="Cancel button inside the make-public confirmation modal.",
     )
 
     # ------------------------------------------------------------------
@@ -4204,6 +4239,27 @@ class ChatPage(BasePage):
             timeout=timeout,
         )
 
+    @action("Confirm make conversation public")
+    def confirm_make_public(self, conversation_id: str | int, timeout: int = 10000):
+        """Click the make-public-confirm button and return the PUT response
+        (ELITEA-2188 — AFS § Test Steps step 3, Axis 2 addition).
+
+        Waits for the network response so callers can assert its status
+        code (200) — proves the publicness change is server-persisted, not
+        just a client-side list re-render (same idiom as
+        ``confirm_delete_conversation()`` above).
+        """
+        with self.page.expect_response(
+            lambda r: (
+                r.request.method == "PUT"
+                and "/conversation/prompt_lib/" in r.url
+                and str(conversation_id) in r.url
+            ),
+            timeout=timeout,
+        ) as resp_info:
+            self.make_public_confirm_button.click()
+        return resp_info.value
+
     @action("Confirm delete conversation")
     def confirm_delete_conversation(self, conversation_id: str | int, timeout: int = 10000):
         """Click the delete-confirm button and return the DELETE response.
@@ -4266,6 +4322,35 @@ class ChatPage(BasePage):
         self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
         self.page.mouse.click(5, 5)
         self.delete_confirm_dialog.wait_for(state="hidden", timeout=timeout)
+
+    def get_delete_confirm_title_icon(self, timeout: int = 5000):
+        """Return the Locator for the status ``<svg>`` icon (e.g. the
+        orange warning icon) inside the 'Remove X?' confirmation dialog's
+        title (ELITEA-2193).
+
+        Fix round 1: previously a #579-shape-1 scoped-raw-handle exception
+        (a bare ``svg`` tag selector scoped off ``delete_confirm_title``).
+        That was a misclassification — the icon is first-party app JSX
+        render output (``BaseModal.jsx``'s ``renderIconType()``, backed by
+        ``ModalConstants.MODAL_ICONS`` → ``@/assets/*.svg?react`` — our own
+        icon components, not third-party-library-internal chrome), so a
+        real testid was genuinely placeable. Now resolves the
+        ``delete_confirm_title_icon`` ``LocatorDescriptor`` (testid
+        ``delete-confirm-title-icon``, added via
+        EliteaAI/EliteaUI@7b359d32). Caller asserts the icon's computed
+        styling, e.g. ``expect(icon).to_have_css("fill", "rgb(233, 121,
+        18)")`` — this method only resolves and waits for the handle, per
+        the page-object layer never owning assertions.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator for ``delete_confirm_title_icon``.
+        """
+        icon = self.delete_confirm_title_icon
+        icon.wait_for(state="visible", timeout=timeout)
+        return icon
 
     # ------------------------------------------------------------------
     # Internal Tools / Image Creation
@@ -5588,6 +5673,39 @@ class ChatPage(BasePage):
             "data-has-icon", "true" if expected_has_icon else "false", timeout=timeout,
         )
 
+    def wait_for_conversation_type(
+        self, conversation_id: str | int, expected_type: str, timeout: int = 10000,
+    ):
+        """Assert *conversation_id*'s sidebar multi-person icon wrapper settles
+        to ``data-conversation-type=<expected_type>`` (ELITEA-2188).
+
+        Sibling of ``wait_for_conversation_multi_user_icon()`` above, added
+        for this case's own observable — "public conversations show a
+        GREEN icon, private-with-users conversations show the DEFAULT
+        (non-green) icon" — which ``data-has-icon`` alone cannot
+        distinguish (it is ``"true"`` for BOTH ``public`` and
+        ``private_with_users``, per that method's own docstring). The
+        underlying color distinction lives only in the rendered ``<svg>``'s
+        raw ``fill`` attribute (``public`` -> ``theme.palette.status.published``,
+        ``private_with_users`` -> ``theme.palette.icon.fill.default``); per
+        the testid=identity/state=data-* ruling
+        (``.agents/testing.md`` § Locator policy), the compliant handle is
+        this NEW ``data-conversation-type`` attribute on the SAME
+        ``conversation-multi-user-icon`` testid, not a raw CSS/fill read.
+        ``expected_type`` is one of ``"public"``, ``"private_with_users"``,
+        ``"private_without_users"`` (``ConversationItem.jsx``'s own
+        ``getConversationType()`` values).
+
+        Uses ``expect().to_have_attribute()`` (auto-retrying) for the same
+        async-settle reason documented on
+        ``wait_for_conversation_multi_user_icon()`` above.
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        icon_wrapper = item.locator(self.CONVERSATION_MULTI_USER_ICON)
+        expect(icon_wrapper).to_have_attribute(
+            "data-conversation-type", expected_type, timeout=timeout,
+        )
+
     new_conversation_greeting = LocatorDescriptor(
         testid="chat-new-conversation-greeting",
         description=(
@@ -6284,8 +6402,23 @@ class ChatPage(BasePage):
         # live this implementation) — reusing it as "already open" then
         # races that in-flight re-render. A fresh close+reopen forces a
         # clean re-render against current state.
+        #
+        # Close via a real outside CLICK, not ``dismiss_participants_popover()``'s
+        # Escape press — fix round 1, ELITEA-2193: this branch was previously
+        # DEAD CODE (no caller ever reached ``open_remove_user_dialog()`` with
+        # the "users" popper already open, so the Escape path was never
+        # actually exercised), until ``hover_participant_user_row()``
+        # (ELITEA-2172) started leaving the popper open on entry to this
+        # method. ``hover_participant_user_row()``'s own docstring documents
+        # — confirmed live, 100% reproducible, 3/3 local runs — that Escape
+        # has NO effect on ``chat-participants-popper``'s "users" instance;
+        # only a genuine click outside its DOM subtree fires MUI's
+        # ``ClickAwayListener``. Reuses that method's exact verified
+        # technique (a real ``page.mouse``-driven click on the
+        # ``chat_messages_scroll_container`` far corner) instead of the
+        # Escape press this branch used before it was ever actually hit.
         if self.participants_popper.is_visible():
-            self.dismiss_participants_popover()
+            self.chat_messages_scroll_container.click(position={"x": 10, "y": 10})
             self.participants_popper.wait_for(state="hidden", timeout=timeout)
         popper = self.open_participants_popover(section="users", timeout=timeout)
 

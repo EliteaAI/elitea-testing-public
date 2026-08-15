@@ -543,3 +543,51 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   load/timing across an extended campaign session, not a single spec's flake.
   Record further occurrences (and whether they correlate with session
   duration) here.
+- **Sanctioned-RED, new spec signature (chat-remaining wave-11, 2026-08-16)**:
+  `test_team_users_mention_and_remove_participants.py::TestTeamUsersMentionAndRemoveParticipants::test_team_users_mention_and_remove_participants`
+  (ELITEA-2168, pre-existing, extended by wave-11's ELITEA-2193) now carries a
+  deterministic, single-cause, soft-asserted failure linked to already-open
+  #1119 ("All users" click doesn't insert "@Everyone "). Confirmed 3/3 across
+  the lead's own independent gate runs immediately after landing wave-11's
+  fixes (runs 1, 3, 4 of a 5-run investigation — see below). Merges RED going
+  forward on this signature per § Merge gate's sanctioned-RED exception; the
+  `# Known defect: #1119` comment + soft-assert are already in place in the
+  test. `test_public_conversation_green_icon.py` (ELITEA-2188, same gate run)
+  passed clean every single time.
+- **Known-noise entry (chat-remaining wave-11, 2026-08-16)**: 1 of 5 gate
+  attempts on the same pair above hit the already-confirmed recurring
+  console-500 pattern (unrelated-resource `Failed to load resource: ... 500`)
+  instead of the #1119 signature — non-reproducing on the immediately
+  following re-run (which returned to the #1119 signature). Consistent with
+  the existing recurring-pattern entry above; recorded as another occurrence,
+  not a new class.
+- **#1082 now 100% reproducible on `test_team_users_mention_and_remove_participants.py`
+  (ELITEA-2168's own file), chat-remaining wave-11, ELITEA-2193 implementation
+  (2026-08-15)**: 3 consecutive full-invocation runs (each also exhausting
+  pytest-rerunfailures' own 2 auto-reruns, so 9 total attempts) ALL failed
+  identically in Setup — `_open_blank_conversation()`'s 3-attempt retry never
+  escapes the same two stale, non-blank leftover conversations (`/chat/566`
+  "HI Chat", 5 participants; `/chat/564` "HI Chat", 3 participants — both
+  pre-dating this session, referenced by this wave's own AFS files as the
+  live-analysis targets) — `+Chat` keeps landing back on one of them rather
+  than a genuinely blank composer, so either the Setup's own
+  `initial_count == 0` assertion fails outright, or (once that happens to
+  read 0 message groups) the subsequent `search_and_select_add_user_verified`
+  step times out because the seed user is correctly *excluded* as an
+  already-existing participant of the stale conversation it actually landed
+  on. Root cause and fix pattern are already known — wave-10's entry above
+  links the SAME `#1082` mechanism to a **stronger guard**,
+  `_open_genuinely_blank_conversation()`, already implemented as a suite-local
+  helper in `test_invite_users_add_cancel_close.py` (ELITEA-2167's file) —
+  this file (`test_team_users_mention_and_remove_participants.py`, ELITEA-2168)
+  still has the weaker original guard and was not itself in scope for
+  ELITEA-2193 (a 2-assertion `extend-existing` on this file's Steps 8-9, not a
+  Setup fix — `_open_blank_conversation()` has 4 callers, out of scope to
+  modify under this ticket). ELITEA-2193's own 2 new assertions (tooltip
+  accessible name + warning-icon fill) were independently verified GREEN via
+  an isolated throwaway script driving the SAME live conversation `/chat/566`
+  directly (bypassing Setup) — both passed cleanly first try. Whoever next
+  touches this file's Setup should port the `_open_genuinely_blank_conversation()`
+  pattern from ELITEA-2167's file; until then, expect this spec's gate runs to
+  need a moment when `/chat/566`/`/chat/564` are the most-recently-touched
+  conversations in project 471.

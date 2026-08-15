@@ -2,7 +2,11 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: test-automation-engineer (combined analyst+
+a time; last confirmed by: qa-engineer analyst, ELITEA-2192/2193/2194,
+2026-08-15 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: qa-engineer analyst, ELITEA-2189/2190/2191,
+2026-08-15 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: test-automation-engineer (combined analyst+
 implementer), ELITEA-2175/2176, 2026-08-15 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: qa-engineer analyst,
 ELITEA-2171/2172, 2026-08-15
@@ -44,6 +48,64 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03))).
+
+## ELITEA-2192/2193/2194 — Users-dropdown remove-control family, round 2:
+## owner-attempt-toast is UNREACHABLE (clarification, not a defect), owner-
+## removes-non-owner GAINS 2 new assertions (tooltip text + warning icon),
+## Cancel-preserves-user is a 2nd-generation near-duplicate of ELITEA-2171
+- **All three `already-covered`/`extend-existing` against the SAME two covering tests this digest's
+  ELITEA-2171/2172 section already established** — `test_owner_has_no_remove_control_in_users_dropdown.py`
+  (ELITEA-2172) and `test_team_users_mention_and_remove_participants.py`
+  (ELITEA-2168). Zero new page-object methods needed; two new LIVE-CONFIRMED facts about existing,
+  already-testid'd surfaces.
+- **ELITEA-2192 ("Owner Cannot Be Removed") is `already-covered` against ELITEA-2172's test — but its
+  own step 4 ("attempt delete → red error toast 'Cannot delete author of the conversation'") is
+  UNREACHABLE via any real UI interaction, filed as a CLARIFICATION (not a defect).** Investigated via
+  `getComputedStyle` on the owner row's `#DeleteButton` (not hover-dependent): the delete icon is
+  ALWAYS in the DOM (never conditionally rendered) but `visibility: hidden` is its BASE state, and the
+  `&:hover` rule only flips it to `visible` when `isSelectable` is `true` for that row — permanently
+  `false` for the owner's own row. `visibility: hidden` (unlike `opacity: 0`/`pointer-events: none`
+  alone) removes an element from the browser's own hit-testing, so a genuine mouse click at that
+  screen position can never land on it — there is no code path by which a real user can "attempt" this
+  delete at all. `useDeleteParticipant.js` DOES wire a `toastError(...)` for a failed delete mutation
+  (so a server-side "cannot remove the author" guard, if any, would surface as a toast IF the request
+  were ever sent) — but since the request can never be triggered through the UI for the owner's own
+  row, that guard/toast is unreachable through the case's own described interaction. `grep -rn "Cannot
+  delete author" src/` → 0 hits anywhere in the frontend. Filed
+  [elitea-testing-public#1564](https://github.com/EliteaAI/elitea-testing-public/issues/1564).
+- **ELITEA-2193 ("Owner Can Remove Non-Owner via Confirm Dialog") is `extend-existing` against
+  ELITEA-2168's Step 8/9 — 2 gap assertions, both live-confirmed, zero defects.** The covering test's
+  `open_remove_user_dialog()` hovers-and-clicks in one motion and only asserts the dialog's BODY text;
+  it never separately checks (a) the delete icon's hover TOOLTIP text, or (b) the confirm dialog's
+  ICON. Both are genuinely new, additive assertions on the SAME existing call site:
+  1. **Tooltip = "Remove user"** — confirmed live via accessibility snapshot: hovering a non-owner row
+     produces `button "Remove user"`, matching `DeleteParticipantButton.jsx`'s MUI `Tooltip` `title`
+     prop (`` `Remove ${entityType}` ``, `entityType` resolves to `'user'` for Users-section rows).
+  2. **Orange warning icon** — confirmed live via `browser_evaluate`: `delete-confirm-title` (existing
+     testid, `ChatPage.delete_confirm_title`, previously UNUSED for icon inspection anywhere in the
+     suite — this case is its first icon-check caller) contains exactly one `<svg>` with computed
+     `fill: rgb(233, 121, 18)` — a genuine orange, matching `Modal.DeleteEntityModal`'s
+     `titleIcon={ModalConstants.MODAL_ICON_TYPE.warning}` prop.
+- **ELITEA-2194 ("Cancel Keeps User in List") is a SECOND near-duplicate TMS case of ELITEA-2171** —
+  same wording, same 3-step flow, different TMS ID, same covering test's Step 10. Live-reconfirmed a
+  SECOND time this session (different conversation/participant pair than ELITEA-2171's own repro) —
+  same result: Cancel closes the dialog, badge and popover listing both stay unchanged. Reinforces the
+  "near-duplicate TMS case ID" pattern this digest already documents recurring across the folder
+  surface (ELITEA-2460/2148, ELITEA-2461/2149+2151, ELITEA-2123/2127/2459) — now confirmed on the
+  Users-dropdown remove-control surface too.
+- **Zero new testids for all three cases** — every handle needed (`chat-participants-badge-button`,
+  `chat-participant-row-user_{userId}_`, `chat-participant-remove-button`, `delete-confirm-dialog`,
+  `delete-confirm-title`) already exists on both `main` and `automation/testids` (fresh `git fetch
+  origin` + `git grep` this session).
+- **Test-data reuse**: all three cases' live exploration this session reused ONE pre-existing
+  conversation from earlier in the same batch (`/chat/566` "HI Chat", owner "Test Bot" + non-owner
+  "Hrach Sargsyan") rather than seeding a fresh one — zero new conversations created, zero participants
+  actually removed (the one confirm dialog opened during exploration was Cancelled, not Removed, so the
+  conversation's state is unchanged from before this session).
+- All three AFS files:
+  `test-specs/chat-interface/lcovered_conversation-owner-cannot-be-removed-attempted-delete-toast_ELITEA-2192.md`,
+  `test-specs/chat-interface/lextend_owner-removes-non-owner-tooltip-and-warning-icon_ELITEA-2193.md`,
+  `test-specs/chat-interface/lcovered_cancel-remove-participant-dialog-keeps-user-in-list_ELITEA-2194.md`.
 
 ## ELITEA-2175/2176 — Add users modal: middle-chip removal via X + cancel
 ## with TWO pre-selected users, both `extend-existing` against ELITEA-2167's
@@ -2644,3 +2706,142 @@ covering test 3× back-to-back this session:
 - Family AFS:
   `test-specs/chat-interface/l2_participants-dropdown-click-name-inserts-mention_ELITEA-2173.md`
   (same `afs_path` for both ELITEA-2173 and ELITEA-2174).
+
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: qa-engineer analyst, ELITEA-2168, 2026-08-15)
+
+## "Make public" + multi-user icon color (ELITEA-2188, qa-engineer analyst, 2026-08-15)
+
+- **`conversation-multi-user-icon`'s color is the actual signal, `data-has-icon`
+  is presence-only.** The wrapper (`ConversationItem.jsx:419`, existing testid)
+  already carries `data-has-icon="true"/"false"` (ELITEA-2167), but that boolean
+  is `true` for BOTH `private_with_users` AND `public` — the GREEN-vs-default
+  distinction only lives in the child `<svg>`'s `fill` attribute
+  (`theme.palette.status.published` = `#2BD48D` for public vs
+  `theme.palette.icon.fill.default` = `#A9B7C1` for private-with-users;
+  confirmed live by making a real conversation public and reading both colors
+  via direct DOM query). **No `data-*` attribute yet distinguishes them** — a
+  genuine testid gap (not a defect), specced in
+  `l3_public-conversation-green-icon-in-chat-list_ELITEA-2188.md` § Concrete
+  Handles gap #2 as a new `data-conversation-type`/`data-public` attribute on
+  the SAME element (testid=identity, state=data-* ruling).
+- **The sharp negative control for "private = not green" is a WITH-PARTICIPANTS
+  private conversation, not a single-owner one.** A single-owner conversation
+  renders NO icon at all (`data-has-icon="false"`) — that only proves
+  presence/absence, not color. Use a private conversation that already has
+  `data-has-icon="true"` (2+ participants) as the negative control so the test
+  actually isolates "public vs private", matching what the case's own step 3
+  wording asks for.
+- **"Make public" confirmation dialog (`DotMenu.jsx`'s plain `Modal.BaseModal`
+  branch, lines 535–545) has ZERO testids** — confirmed live via direct DOM
+  read of the open dialog: no `data-testid` anywhere inside it. Root cause:
+  `BaseModal.jsx` accepts `data-testid`/`titleTestId`/`closeButtonTestId`/
+  `confirmButtonTestId`/`cancelButtonTestId` props, but `DotMenu.jsx`'s
+  `Modal.BaseModal` call never forwards any of them from `activeDialog.props`
+  (unlike the sibling `Modal.DeleteEntityModal` branch, which DOES carry
+  testids — `delete-confirm-dialog`/`delete-confirm-button`/etc.). This is a
+  SHARED gap: `BucketItem.jsx`'s "Delete bucket?" confirm (artifacts feature)
+  uses the exact same `alertTitle`/`confirmText`/no-`entityName` shape and has
+  the identical zero-testid problem — grepped, only these two call sites exist
+  (`grep -rn "alertTitle:" ../EliteaUI/src`). Fix threads new testid props
+  through `DotMenu.jsx`'s `activeDialog.props` the same way `alertTitle` etc.
+  already are — same caller-supplied-prop precedent as the existing
+  `submenuTestId` on the "Move to" item.
+- **`PUT /api/v2/elitea_core/conversation/prompt_lib/{project}/{id}`** with
+  `is_private: false` is the real endpoint behind "Make public" (`onEdit()` in
+  `handleMakePublic`, `ConversationItem.jsx:161-163`) — confirmed live,
+  `200 OK`. **No inverse UI action exists** — once public, `menuItems` filters
+  the "Make public" item out entirely and no "Make private" item is ever
+  added (`ConversationItem.jsx`'s `.filter(item => item.label !== 'Make
+  public')` at the end of the `menuItems` `useMemo`). A conversation made
+  public during live exploration CANNOT be reverted via the UI; a bare
+  `fetch()` PUT from the browser console also failed (`Failed to fetch` — the
+  real app call carries a bearer token not reachable from `localStorage`).
+  **Analyst/implementer consequence: always create a FRESH conversation for
+  this flow, never reuse an existing one you don't want permanently public.**
+  (Conversation id `420`, "Review attached documents" on project 471, is now
+  permanently public from this session's exploration — dev/local test data,
+  low-risk, left as-is.)
+
+## ELITEA-2189/2190/2191 (2026-08-15) — NO second user identity exists; every "non-owner" case on this surface is `blocked`
+
+- **Root cause (checked live, not assumed):** `.env.test` has exactly one UI
+  credential (`TEST_USER_EMAIL`/`TEST_USER_PASSWORD`), and localhost's
+  `auth_state` bypasses login entirely via a single static `VITE_DEV_TOKEN`
+  (`../EliteaUI/.env`, wired in `root.jsx`/`upload.js`/
+  `useArtifactContentFetch.hooks.js`/`SupportAssistant.jsx` — always the SAME
+  fixed identity, `author_id: 659` / "Test Bot"). There is no code path to
+  authenticate as a second identity on localhost, and no second credential
+  anywhere in the repo's test data.
+- **Confirmed empty second-owner conversation set**: `GET
+  /api/v2/elitea_core/folder/prompt_lib/471?sort_by=updated_at&sort_order=desc&grouped=true`
+  returns every conversation in project 471 with `author_id: 659` (this same
+  account) — no other-owned conversation, public or private, is currently
+  reachable. Conversation `420` (see the entry above — made public by a prior
+  analyst session) now 404s (`GET .../conversation/prompt_lib/471/420` →
+  `400 Bad Request`, "Conversation not found") — it was likely cleaned up by
+  a later run; do not assume it still exists as a fixture.
+- **"Invite Users" does NOT give you a second identity to log in as.** It adds
+  named users ("Hrach Sargsyan", "Levon Dadayan", "Mariam Hakobyan", …
+  ELITEA-2167 precedent) as **participants** of a conversation `${TEST_USER}`
+  still authors/owns. Those names come from a user-search endpoint with no
+  corresponding password/token this suite holds — don't mistake "can add as
+  participant" for "can view as".
+- **Any future case shaped "user B cannot see/edit/delete user A's X" on this
+  surface hits the identical wall.** Don't re-derive this from scratch —
+  check [Question #1563](https://github.com/EliteaAI/elitea-testing-public/issues/1563)
+  first (files ELITEA-2189/2190/2191 together as one shared-root-cause
+  question, precedent-matched to #1314's analogous editor/viewer RBAC-role
+  gap) for current status before spending a session re-confirming the same
+  blocker.
+- **Owner-side baseline handles ARE confirmed** (useful once unblocked):
+  `chat-copy-button`/`chat-regenerate-button` (real testids, ELITEA-2181) on
+  AI responses; accessible names "Read out" and "Delete" (no testid found for
+  the per-message Delete icon); user-message pencil icon has accessible name
+  "Edit the message and regenerate answer" with **no confirmed testid**
+  (distinct from `click_table_edit_icon`/`click_diagram_edit_icon`, which
+  target AI-generated table/diagram edit affordances, not user-message
+  editing — do not conflate). Conversation-level delete already has full
+  testid coverage via `delete-confirm-*` (ELITEA-2114) and
+  `CONVERSATION_MENU_ITEM_KEYS` includes `"delete"`.
+
+**Resolved/added during ELITEA-2188 implementation (2026-08-15):**
+- **Both testid gaps closed** on `automation/testids`
+  (EliteaAI/EliteaUI@7292e18f): `chat-conversation-make-public-confirm-dialog`
+  / `-confirm-button` / `-cancel-button` (threaded through `DotMenu.jsx` via
+  new caller-supplied `dialogTestId`/`confirmButtonTestId`/`cancelButtonTestId`
+  props, same precedent as `submenuTestId`); `data-conversation-type`
+  (`"public"`/`"private_with_users"`/`"private_without_users"`) added to the
+  existing `conversation-multi-user-icon` wrapper — asserted via new
+  `ChatPage.wait_for_conversation_type()`.
+- **Known, already-documented sidebar staleness defect
+  (EliteaAI/elitea-testing-public#989, same class as
+  `test_invite_users_add_cancel_close.py` Step 10) also fires on THIS case's
+  own observables** — confirmed live: `data-conversation-type` stayed
+  `"private_without_users"` for several seconds straight after an invited
+  participant's Send (well after the server had persisted it), and stayed
+  stale after making a conversation public too. The suite's established fix
+  (`page.reload()` before re-reading the sidebar icon state) is required in
+  BOTH places — right after conversation B's Send, and right after the
+  make-public confirm — not just the one place ELITEA-2167 already
+  documented it.
+- **A SECOND back-to-back `+Chat` click in one test (open blank -> send ->
+  open blank AGAIN for a second conversation) reliably hits the
+  #1082-class stale-conversation race** — the first click after a Send often
+  lands back on the just-sent conversation instead of a genuinely blank one.
+  The `_open_genuinely_blank_conversation`-style settle-and-retry guard
+  (already established in `test_invite_users_add_cancel_close.py`) is
+  needed for ANY test creating 2+ fresh conversations in one run, not only
+  the specific scenario that first surfaced it.
+- **New timing race found and fixed this pass**: right after
+  `click_add_users_confirm()`, the "Add users" modal's own MUI Dialog close
+  transition can still be resolving when the very next action targets the
+  composer's send button — `send_button.click(force=True, ...)` can fire
+  during that transition and be silently lost (message typed, never sent, no
+  navigation). Fix: `chat.add_users_dialog.wait_for(state="hidden", ...)`
+  before touching the composer. Add this wait to any future flow that sends
+  a message immediately after the Add-users confirm.
+- **Known defect EliteaAI/elitea-testing-public#719** (Add-users picker's
+  checkmark-icon `sx`-on-raw-svg console warning) re-confirmed on THIS case's
+  own conversation-B setup too (not just ELITEA-2167/2168's flows) — filtered
+  via the same `_is_known_checkicon_sx_svg_warning_719` idiom.

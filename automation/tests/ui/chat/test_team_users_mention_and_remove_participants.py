@@ -84,16 +84,61 @@ Known defects (AFS § Known Defects Found):
   unguarded ``click_create_conversation()`` can land on a stale
   conversation. Worked around via the same retry-guarded
   ``_open_blank_conversation()`` ELITEA-2167's test already implements.
+
+Extended by ELITEA-2193 (this pass, ``extend-existing``, AFS
+test-specs/chat-interface/lextend_owner-removes-non-owner-tooltip-and-warning-icon_ELITEA-2193.md):
+two additive gap assertions inserted around Step 8's existing
+``open_remove_user_dialog()`` call — neither Step 8 nor Step 9's own
+existing assertions were modified. (1) A new step calls the read-only
+``ChatPage.hover_participant_user_row()`` (ELITEA-2172) BEFORE Step 8 and
+asserts the delete icon's accessible name is exactly "Remove user"
+(``DeleteParticipantButton.jsx``'s ``removeLabel``, entity type "user").
+(2) A new step, inserted between the existing Step 8 and Step 9, asserts
+the 'Remove user?' dialog's title shows an orange warning ``<svg>``
+(``fill: rgb(233, 121, 18)``) via the new ``ChatPage.get_delete_confirm_title_icon()``.
+Both gaps were live-confirmed during ELITEA-2193's analysis; no defect found.
+
+Fix round 1 (reviewer-caught, both corrected on this branch):
+- The warning-icon handle above was originally a #579-shape-1 "sanctioned
+  raw-handle exception" (bare ``svg`` tag selector). That was a
+  misclassification — the icon is first-party app JSX render output
+  (``BaseModal.jsx``'s ``renderIconType()``, our own
+  ``@/assets/attention-icon.svg?react`` icon components), not a
+  third-party-library-internal node, so a real testid was genuinely
+  placeable. Added ``data-testid="delete-confirm-title-icon"`` via a new
+  ``BaseModal`` ``titleIconTestId`` prop (same channel as the existing
+  ``titleTestId``/``closeButtonTestId``/``confirmButtonTestId``/
+  ``cancelButtonTestId``), wired from ``DeleteEntityModal``
+  (EliteaAI/EliteaUI@7b359d32 on ``automation/testids``).
+  ``ChatPage.get_delete_confirm_title_icon()`` now resolves a real
+  ``delete_confirm_title_icon`` ``LocatorDescriptor`` — no raw handle.
+  See ``.agents/memory/test-automation-engineer/delete_confirm_warning_icon_579_shape1_pattern.md``.
+- Step 3's ``hover_participant_user_row()`` leaves the "users" participants
+  popper OPEN (read-only hover, no close). The existing Step 8's
+  ``open_remove_user_dialog()`` has its own close-if-already-open branch,
+  but that branch was previously DEAD CODE — no caller had ever reached it
+  with the popper open — so it still used ``dismiss_participants_popover()``'s
+  Escape press, which ``hover_participant_user_row()``'s own docstring
+  documents (live-confirmed, 100% reproducible) has NO effect on this exact
+  popper instance. Fixed ``open_remove_user_dialog()``'s close-if-open
+  branch to use the same real-outside-click technique
+  ``hover_participant_user_row()`` already established as reliable
+  (``chat_page.py``, ``open_remove_user_dialog()`` docstring/comment has the
+  full account). Only 2 callers of ``open_remove_user_dialog()`` exist,
+  both in this file (Step 8, Step 10); the branch is a no-op unless the
+  popper is already open, so this is backward-compatible with both.
 """
 
 import logging
 import re
+import time
 
 import allure
 import pytest
 from api import ConversationAPI
 from components.mui import Dialog
 from pages.chat_page import ChatPage
+from playwright.sync_api import expect
 
 logger = logging.getLogger("elitea.tests.chat")
 
@@ -225,6 +270,115 @@ def _open_blank_conversation(chat: ChatPage, timeout: int = NAVIGATION_TIMEOUT) 
     )
 
 
+def _poll_blank_state_holds(
+    chat: ChatPage,
+    blank_url_pattern: "re.Pattern[str]",
+    settle_ms: int = 1500,
+    poll_interval_s: float = 0.25,
+) -> tuple[bool, str]:
+    """Poll message-count + URL at short intervals across *settle_ms*,
+    instead of a fixed-latency sleep-then-recheck-once.
+
+    Duplicated with attribution from ``test_invite_users_add_cancel_close.py``
+    (ELITEA-2175/2176, wave-10) — this suite's own established pattern for
+    sharing such helpers across chat test files is per-file duplication
+    (``_open_blank_conversation()`` above is itself one such copy), not a
+    cross-file import or a shared conftest fixture; no such shared module
+    exists for this helper family. Same idiom as
+    ``ChatPage.wait_for_message_content_stable()``: sample the observed
+    state on a short interval and only conclude "stable" once it has held
+    for the whole window — here the value being watched for stability is
+    "still blank" rather than "content stopped changing". Exits the instant
+    either signal flips (a definitive, immediate result) rather than
+    waiting out the full window and discovering the reversion only at the
+    end.
+
+    Returns ``(settled, reason)`` — ``settled`` is False (with a reason)
+    the moment either signal flips during the window, True only if both
+    signals held blank for the entire window.
+    """
+    deadline = time.monotonic() + settle_ms / 1000.0
+    while time.monotonic() < deadline:
+        time.sleep(poll_interval_s)
+        count = chat.get_message_count()
+        url = chat.page.url
+        if count != 0 or not blank_url_pattern.search(url):
+            return False, f"blank state reverted mid-settle (url={url!r}, message_count={count})"
+    return True, ""
+
+
+def _open_genuinely_blank_conversation(chat: ChatPage, timeout: int = NAVIGATION_TIMEOUT) -> None:
+    """Stronger sibling of ``_open_blank_conversation()`` — additive, does
+    NOT modify that function or its docstring-only remaining references
+    (Hard Rule 3).
+
+    Duplicated with attribution from ``test_invite_users_add_cancel_close.py``
+    (ELITEA-2175/2176, wave-10) — same "duplicate the helper into the file
+    that needs it" pattern this suite already uses for
+    ``_open_blank_conversation()`` itself; no shared cross-file module or
+    conftest fixture exists for this helper family.
+
+    Confirmed live on THIS file's own gate runs (wave-11, 100% reproducible
+    across 3 full-invocation attempts / 9 total attempts): the SAME #1082
+    mechanism documented in ``_open_blank_conversation()``'s docstring —
+    ``click_create_conversation()`` only waits for the message input to be
+    visible, which is trivially true on ANY conversation — has a DELAYED
+    variant ``_open_blank_conversation()``'s single settle-free check does
+    not catch: the SPA can restore the last-viewed conversation from
+    browser/session storage (documented by ``ChatPage.navigate_to_chat()``'s
+    own docstring) AFTER the blank greeting and a momentary 0 message count
+    were both already observed. The restore silently wins a race against a
+    check performed too early, snapping back to a stale conversation a
+    moment later — which then starves this file's Setup block: the seed-
+    user search (``search_and_select_add_user_verified()``) times out
+    because the stale conversation's ``excludedUserIds`` already contains
+    the very users Setup is trying to add. Guards against it with a
+    settle-and-recheck: poll BOTH the message count AND the URL at short
+    intervals across the restore's own timing window, exiting the instant
+    either signal flips instead of sleeping the full window blind and
+    checking once.
+    """
+    blank_url_pattern = re.compile(r"/chat/?(?:\?.*)?$")
+    last_reason = "unknown"
+    for attempt in range(3):
+        chat.click_create_conversation(timeout=timeout)
+        try:
+            chat.new_conversation_greeting.wait_for(state="visible", timeout=5000)
+        except Exception:
+            last_reason = "greeting never appeared"
+            logger.warning(
+                "New-conversation greeting not visible after +Chat click "
+                "(attempt %d) — retrying (see _open_genuinely_blank_conversation docstring)",
+                attempt + 1,
+            )
+            continue
+        if chat.get_message_count() != 0:
+            last_reason = "greeting appeared but conversation has message history"
+            logger.warning(
+                "Landed on a non-blank conversation (attempt %d) — retrying "
+                "(see _open_genuinely_blank_conversation docstring)",
+                attempt + 1,
+            )
+            continue
+        # Settle window for the delayed last-viewed-conversation restore
+        # (see docstring) — poll both signals across the window instead of
+        # a fixed sleep-then-recheck-once.
+        settled, reason = _poll_blank_state_holds(chat, blank_url_pattern)
+        if not settled:
+            last_reason = reason
+            logger.warning(
+                "Blank conversation reverted to a restored one during "
+                "settling (attempt %d) — retrying (see "
+                "_open_genuinely_blank_conversation docstring)",
+                attempt + 1,
+            )
+            continue
+        return
+    raise AssertionError(
+        f"Could not open a genuinely blank conversation after 3 attempts: {last_reason}"
+    )
+
+
 class TestTeamUsersMentionAndRemoveParticipants:
     """ELITEA-2168: Chat – Team Project – Add Multiple Users, Mention User,
     View User List and Remove Users from Conversation (l2, high)."""
@@ -293,7 +447,23 @@ class TestTeamUsersMentionAndRemoveParticipants:
                 chat.switch_project(TEAM_PROJECT_ID, timeout=NAVIGATION_TIMEOUT)
                 chat.wait_for_conversations_to_load(timeout=UI_ELEMENT_TIMEOUT)
 
-                _open_blank_conversation(chat, timeout=NAVIGATION_TIMEOUT)
+                # Known defect: #1082 — the weaker _open_blank_conversation()
+                # guard (greeting-visible + message-count-zero, no settle
+                # window) does not protect against the SPA's DELAYED
+                # restore-to-last-viewed-conversation effect (see
+                # _open_genuinely_blank_conversation()'s own docstring),
+                # confirmed 100% reproducible live on THIS file's gate runs
+                # (wave-11, 3/3 full-invocation attempts, 9 total attempts):
+                # this exact call landed on a stale conversation, whose
+                # excludedUserIds then silently dropped the seed users from
+                # every search, so the setup search below timed out finding
+                # an option that legitimately cannot appear. Same root cause
+                # already root-caused and fixed on the sibling
+                # test_invite_users_add_cancel_close.py (ELITEA-2175/2176,
+                # wave-10) — swapped to the stronger sibling proven there.
+                # Additive only — does not touch the shared
+                # _open_blank_conversation() itself.
+                _open_genuinely_blank_conversation(chat, timeout=NAVIGATION_TIMEOUT)
 
                 chat.open_add_users_modal(timeout=UI_ELEMENT_TIMEOUT)
                 # Residual real-mouse hover on the plus-menu button (its own
@@ -528,6 +698,16 @@ class TestTeamUsersMentionAndRemoveParticipants:
                 )
 
             with allure.step(
+                f"Step 3 (ELITEA-2193 gap) — Hover {USER_2_NAME!r}'s row "
+                "read-only (before deciding to click); verify the delete "
+                "icon exposes the 'Remove user' tooltip/accessible name"
+            ):
+                remove_button = chat.hover_participant_user_row(
+                    participant_id_by_name[USER_2_NAME], timeout=UI_ELEMENT_TIMEOUT,
+                )
+                expect(remove_button).to_have_accessible_name("Remove user")
+
+            with allure.step(
                 f"Step 8 — Open Users dropdown, hover {USER_2_NAME!r}, "
                 "click delete icon — 'Remove user?' modal appears"
             ):
@@ -541,6 +721,13 @@ class TestTeamUsersMentionAndRemoveParticipants:
                 assert dialog_text == expected_dialog_text, (
                     f"Expected dialog text {expected_dialog_text!r}, got {dialog_text!r}"
                 )
+
+            with allure.step(
+                "Step 4 (ELITEA-2193 gap) — Verify the 'Remove user?' "
+                "dialog's title shows an orange warning icon"
+            ):
+                warning_icon = chat.get_delete_confirm_title_icon(timeout=UI_ELEMENT_TIMEOUT)
+                expect(warning_icon).to_have_css("fill", "rgb(233, 121, 18)")
 
             with allure.step(
                 f"Step 9 — Click Remove; verify {USER_2_NAME!r} removed "
