@@ -44,6 +44,30 @@ Nothing in an AFS is true because it is written down. Two mechanical duties:
   normal viewport. Confirming the CLARIFICATION-vs-bug classification is
   internally consistent is NOT confirming its premise is true.
 
+## Seen 11×
+
+- PR #1553/ELITEA-2157+2158 — AFS's own Concrete Handles table states verbatim
+  "**No new testids needed for either case.** All handles already exist and are
+  provisioned" — written before implementation. During implementation the
+  combined analyst+implementer found the "Duplicate" context-menu item had NO
+  `key`/testid at all (the only item in a 7-item array missing one) and added
+  `key: 'chat-conversation-menu-duplicate'` (EliteaAI/EliteaUI@a53b9d4b on
+  `automation/testids`) — because the test's own Step 2 assertion
+  (`get_open_conversation_menu_item_count() == 6`) silently DEPENDS on it: the
+  count locator is a page-level prefix wildcard
+  (`CONVERSATION_MENU_ITEM_PREFIX`), so an item missing a testid would have
+  made the true in-folder count invisible to the check (5, not 6). The
+  finding + fix were narrated faithfully in a same-PR `_surface.md` digest
+  commit *literally titled* `docs(afs): … implementation-time digest notes` —
+  but that commit touches ONLY `_surface.md`; the actual AFS file's Concrete
+  Handles table and its "No new testids needed" sentence were never touched,
+  so the primary artifact still asserts something the shipped diff
+  contradicts. Lesson sharpened: a commit MESSAGE claiming `docs(afs)` is not
+  evidence the AFS file itself was amended — `git show --stat` the commit (or
+  diff the AFS path specifically) before crediting the amendment; the digest
+  and the AFS are two different files under the same "docs" label and only
+  one of them is a reviewer triangulation artifact.
+
 ## Seen 10×
 
 - PR #1294/ELITEA-2464 — Concrete Handles table marked **7 of 9** rows

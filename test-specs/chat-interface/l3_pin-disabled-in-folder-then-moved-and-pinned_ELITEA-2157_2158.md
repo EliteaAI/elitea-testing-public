@@ -174,13 +174,18 @@ Disposition key: `asserted` / `already-covered` / `clarification` / `blocked` / 
 | "Move to" → "Back to the list" | `[data-testid="chat-move-to-back-to-list-menuitem"]` | pre-existing (ELITEA-2135's addition, first live caller ELITEA-2139/2140) | Reused via `select_move_to_back_to_list()`. |
 | Pinned-state attribute | `data-pinned="true"/"false"` on `chat-conversation-item-{id}` | pre-existing (ELITEA-2149's addition) | Reused via `is_conversation_pinned()`. |
 | Pin icon | `[data-testid="chat-pin-icon"]`, scoped inside `chat-conversation-item-{id}` | pre-existing (ELITEA-2149's addition) | Reused via `get_pin_icon()`. |
+| "Duplicate" context-menu item | `[data-testid="chat-conversation-menu-duplicate-menuitem"]` | **NEW — added during implementation**, on-`automation/testids` only (awaiting human promotion to `main`) — `EliteaAI/EliteaUI@a53b9d4b` | The "Duplicate" item was the only one of the 7 top-level menu items with no `key` (hence no testid) in `ConversationItem.jsx`'s object literal. Step 2's `get_open_conversation_menu_item_count()` counts via the `[data-testid^="chat-conversation-menu-"][data-testid$="-menuitem"]` prefix selector (`CONVERSATION_MENU_ITEM_PREFIX`), so the missing testid made the in-folder 6-item count silently under-count to 5 — the item was rendering and working, just invisible to that selector. One-line, zero-functional-impact addition (`key: 'chat-conversation-menu-duplicate'`), naming matches the existing `chat-conversation-menu-{action}` family. |
 
-**No new testids needed for either case.** All handles already exist and are provisioned; no new
-page-object METHOD is needed either — every interaction/verification composes pre-existing
-`ChatPage` methods (`expand_folder`, `is_conversation_in_folder`, `open_conversation_context_menu`,
-`get_conversation_menu_item`, `open_move_to_submenu`, `select_move_to_back_to_list`,
-`is_conversation_in_group`, `is_conversation_pinned`, `get_pin_icon`,
-`click_conversation_menu_item`).
+**Correction (implementation-time; this row was wrong in the original AFS pass):** one new testid
+WAS needed — see the "Duplicate" row above — required by AFS step 2's 6-item menu-count
+assertion, which the analyst-authored AFS text itself specifies but which the original Concrete
+Handles table incorrectly claimed required "no new testids." All OTHER handles were already
+provisioned; no new page-object METHOD was needed — every interaction/verification composes
+pre-existing `ChatPage` methods (`expand_folder`, `is_conversation_in_folder`,
+`open_conversation_context_menu`, `get_conversation_menu_item`, `open_move_to_submenu`,
+`select_move_to_back_to_list`, `is_conversation_in_group`, `is_conversation_pinned`,
+`get_pin_icon`, `click_conversation_menu_item`). Full narrative of the discovery: `_surface.md`
+§ "Resolved/added during ELITEA-2157/2158 implementation."
 
 ## Network Behavior
 - Disabled-click attempt (AFS step 4): NO `POST/DELETE .../pin/prompt_lib/{project_id}/conversation/
@@ -207,8 +212,11 @@ None.
 
 ## Automation Hints
 - Framework: Playwright + pytest, testid-only `LocatorDescriptor`.
-- Page object: `automation/pages/chat_page.py` — no new locators, no new methods. Compose the
-  methods listed in § Concrete Handles.
+- Page object: `automation/pages/chat_page.py` — no new locator CONSTANTS, no new methods (the
+  pre-existing `CONVERSATION_MENU_ITEM_PREFIX` prefix-matcher picks up the "Duplicate" item once
+  it carries a testid, with no page-object change). One new JSX-side testid WAS required in
+  EliteaUI itself — see § Concrete Handles "Duplicate" row. Compose the methods listed in
+  § Concrete Handles.
 - **One continuous test method**, not two — ELITEA-2158's own precondition (step 1) IS ELITEA-2157's
   entire subject; running them as a single live flow on ONE seeded conversation avoids re-deriving a
   second "conversation inside a folder" fixture purely to re-prove a fact the SAME test already

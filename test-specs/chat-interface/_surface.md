@@ -2333,3 +2333,37 @@ needed.
   live flow on one seeded conversation honestly satisfies both cases' full
   Pass/Fail criteria without re-deriving a second "conversation inside a
   folder" fixture.
+
+**Resolved/added during ELITEA-2157/2158 implementation (implementer,
+2026-08-15):**
+- **The "Duplicate" context-menu item had NO `key` (and therefore no
+  testid) at all** — `DotMenu.jsx` maps `testId: item.key` for TOP-level
+  menu items (not just submenu items — confirmed by reading the same file
+  the earlier ELITEA-2135 pass read for submenu items), and the
+  `ConversationItem.jsx` object literal for "Duplicate" was the ONLY item
+  in the 7-item array missing a `key` (every sibling item — Rename, Move
+  to, Playback, Make public, Share, Pin, Delete — has one). The item
+  renders and works fine (confirmed via ARIA snapshot: `menuitem
+  "Duplicate"`), it's simply invisible to any `[data-testid^="chat-
+  conversation-menu-"]`-prefix-based count. Added `key:
+  'chat-conversation-menu-duplicate'` (one line, zero functional impact —
+  no new DOM node/hook/render-prop change) on `automation/testids`,
+  EliteaAI/EliteaUI commit `a53b9d4b`. Naming matches the existing
+  `chat-conversation-menu-{action}` family exactly.
+- **A forced click on a DISABLED MUI `MenuItem` leaves the menu OPEN** —
+  MUI's `ButtonBase` guards its own click handler when `disabled`, so the
+  menu's close-on-select trigger (which normally fires from the item's
+  own `onClick`) never runs either. Re-hovering the SAME conversation
+  immediately afterward (e.g. to open "Move to") hits the still-open
+  menu's invisible `MuiBackdrop` and times out ("subtree intercepts
+  pointer events") — this is NOT the same as the already-documented #1117
+  "Move to doesn't open on one click" defect; it's a distinct
+  after-a-disabled-click state that no prior test in this suite produced
+  (every other pin/move-to test only ever clicks ENABLED items, which
+  close the menu normally). Fix: explicit `page.keyboard.press("Escape")`
+  after a deliberately-disabled-item click, then wait for the shared
+  `FOLDER_CONTEXT_MENU_POPOVER` (`[data-testid="conversation-menu-menu"]`
+  — pre-existing constant, ELITEA-2146/2147 pass, first live caller here)
+  to become hidden before the next hover. Any FUTURE test that clicks a
+  DISABLED context-menu item and then needs to interact with the same
+  conversation again should apply the same explicit-close pattern.
