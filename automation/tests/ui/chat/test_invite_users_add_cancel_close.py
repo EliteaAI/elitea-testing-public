@@ -349,6 +349,7 @@ class TestInviteUsersAddCancelClose:
         )
         conv_id: int | None = None
         control_conv_id: int | None = None
+        soft_failures: list[str] = []
 
         # Registered before Setup so console errors from every step (project
         # switch, +Chat seeding, all 10 case steps, the control conversation)
@@ -402,10 +403,22 @@ class TestInviteUsersAddCancelClose:
                 # (matches the already-documented ELITEA-2095/ELITEA-2166
                 # pattern) — asserting absence per is_participants_badge_visible's
                 # own contract (the container disappears from the DOM entirely).
-                assert not chat.is_participants_badge_visible(section="users", timeout=3000), (
-                    "A brand-new, zero-participant conversation should render "
-                    "no participants badge/panel at all"
-                )
+                # Known defect: #1082 — a test-isolation defect (project-switch
+                # settling in a full-suite run can leave a stale/deleted
+                # conversation on screen), confirmed deterministic 3/3 on this
+                # branch, unrelated to this test's own logic; passes standalone.
+                # Soft per the pytest-native soft_failures/pytest.fail() idiom
+                # (mirrors test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py's
+                # #1039 handling) since the observable
+                # (is_participants_badge_visible()) is a bool, not a bare
+                # Locator/Page/APIResponse assertion that expect.soft() takes.
+                if chat.is_participants_badge_visible(section="users", timeout=3000):
+                    soft_failures.append(
+                        "Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1082: "
+                        "a brand-new, zero-participant conversation should render no participants "
+                        "badge/panel at all, but the badge was visible (test-isolation / "
+                        "stale-conversation defect, reproduces only in a full-suite run)"
+                    )
 
             with allure.step(
                 "Step 2 — Click + menu; verify 'Invite Users' is present "
@@ -670,6 +683,13 @@ class TestInviteUsersAddCancelClose:
             ):
                 assert not console_messages, (
                     f"Unexpected console errors: {[m.text for m in console_messages]!r}"
+                )
+
+            if soft_failures:
+                pytest.fail(
+                    "Soft assertion(s) failed (known isolated product "
+                    "defect, not test/infrastructure — remaining steps "
+                    "above passed cleanly):\n" + "\n".join(soft_failures)
                 )
 
         finally:
