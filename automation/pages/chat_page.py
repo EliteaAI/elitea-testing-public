@@ -1297,6 +1297,19 @@ class ChatPage(BasePage):
     # Pin remains untouched (this case's test never opens Pin).
     FOLDER_MENU_RENAME_ITEM = '[data-testid="chat-folder-menu-rename-menuitem"]'
 
+    # Folder dot-menu "Pin on top"/"Unpin" item — ADDED ELITEA-2130 (first
+    # testid ever on this item, not a regression). Label text toggles
+    # "Pin on top" <-> "Unpin" per folder.meta?.is_pinned — same
+    # DotMenu/BasicMenuItem `key` -> `{key}-menuitem` mechanism as
+    # FOLDER_MENU_RENAME_ITEM.
+    FOLDER_MENU_PIN_ITEM = '[data-testid="chat-folder-menu-pin-menuitem"]'
+
+    # The open dot-menu popover itself (shared DotMenu component — same
+    # element for both folder and conversation menus). Scoped selector per
+    # `.claude/rules/page-objects.md` — lives here as a class constant so
+    # callers never construct the raw string inline.
+    FOLDER_CONTEXT_MENU_POPOVER = '[data-testid="conversation-menu-menu"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
         
@@ -3675,6 +3688,51 @@ class ChatPage(BasePage):
         self.folder_name_input.clear()
         self.page.wait_for_timeout(100)  # Wait for clear to complete
         self.folder_name_input.press_sequentially(name, delay=30)
+
+    @action("Clear folder name in inline editor")
+    def clear_folder_name(self) -> None:
+        """Clear the inline folder-name editor's value.
+
+        Mirrors ``clear_conversation_name()`` exactly — isolated from
+        ``set_folder_name()``/``paste_folder_name()`` so a caller can assert
+        the empty intermediate state as its own step. Assumes the editor is
+        already open and ``folder_name_input`` is visible/focused (e.g.
+        right after ``open_folder_rename_editor()``).
+        """
+        logger.info("Clearing folder name")
+        self.folder_name_input.click()
+        self.page.wait_for_timeout(100)  # Wait for focus
+        self.folder_name_input.clear()
+
+    @action("Paste folder name in inline editor via real clipboard paste")
+    def paste_folder_name(self, text: str) -> None:
+        """Paste *text* into the inline folder-name editor via a REAL clipboard paste.
+
+        Mirrors ``paste_conversation_name()`` exactly (ELITEA-2129 applies the
+        same real-clipboard-paste idiom to ``FolderItem.jsx``'s rename editor
+        as ELITEA-2104 already established for ``ConversationItem.jsx``) —
+        stages *text* on the real OS/browser clipboard via
+        ``navigator.clipboard.writeText()``, then dispatches a genuine
+        ``Control+V``/``Meta+V`` keypress. This is NOT a DOM injection — the
+        paste itself is a real browser paste event routed through
+        ``FolderItem.jsx``'s own ``onChange={onChangeFolderName}`` handler (no
+        separate ``onPaste`` handler exists, source-confirmed in AFS
+        ELITEA-2129 exactly as ELITEA-2104 confirmed for the conversation
+        entity). ``clipboard-read``/``clipboard-write`` permissions are already
+        granted suite-wide (``conftest.py``). Assumes the editor is already
+        open and focused.
+
+        Args:
+            text: Clipboard content to paste.
+        """
+        logger.info("Pasting folder name (%d chars)", len(text))
+        self.page.evaluate("(text) => navigator.clipboard.writeText(text)", text)
+        paste_shortcut = (
+            "Meta+V"
+            if self.page.evaluate("() => navigator.platform.includes('Mac')")
+            else "Control+V"
+        )
+        self.page.keyboard.press(paste_shortcut)
 
     @action("Set conversation name in inline editor")
     def set_conversation_name(self, name: str):
@@ -6565,6 +6623,75 @@ class ChatPage(BasePage):
                 f"API delete of folder {folder_id} failed: "
                 f"{response.status} {response.text()}"
             )
+
+    @action("Open folder context menu")
+    def open_folder_context_menu(self, folder_id: str | int, timeout: int = 5000):
+        """Hover a folder's row and click its scoped 3-dot menu button, WITHOUT
+        clicking any item — leaves the popover open for the caller to inspect
+        or select from (ELITEA-2121/2130).
+
+        Same hover-then-open sequence ``open_folder_rename_editor()`` and
+        ``delete_folder_via_menu()`` each already perform inline before
+        clicking their own target item — factored out here as a small,
+        purely-additive method so a caller can assert the menu's own content
+        (which items are present, their label text) before deciding what to
+        click, or click a non-Rename/Delete item (e.g. Pin/Unpin).
+
+        Hovers ``FOLDER_ICON`` (not the outer ``FOLDER_ITEM`` row) for the
+        same reason documented on ``delete_folder_via_menu()``. Uses
+        ``.click(force=True)`` — REQUIRED for a PINNED folder: its
+        ``DraggableFolderItem`` wrapper renders ``isDragDisabled=true`` as a
+        genuinely HTML-``disabled`` ancestor around the row, which makes a
+        plain click on the (itself-enabled) dot-menu button time out with
+        "element is not enabled" (Playwright's actionability check walks up
+        to the disabled ancestor). Confirmed live this session — see
+        ``test-specs/chat-interface/_surface.md``.
+
+        Args:
+            folder_id: Numeric folder id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening context menu for folder %s", folder_id)
+        item = self.get_folder_item(folder_id)
+        item.locator(self.FOLDER_ICON).hover()
+        menu_button = item.locator(self.CONVERSATION_MENU_BUTTON).first
+        menu_button.wait_for(state="visible", timeout=timeout)
+        menu_button.click(force=True)
+
+    def is_folder_pinned(self, folder_id: str | int, timeout: int = 5000) -> bool:
+        """Return True if *folder_id*'s row carries ``data-pinned="true"``.
+
+        ADDED ELITEA-2130 alongside the ``data-pinned`` attribute itself
+        (``FolderAccordion.jsx``'s already-testid'd ``chat-folder-item-{id}``
+        element, sibling to the pre-existing ``data-expanded``). Mirrors
+        ``is_conversation_pinned()``'s exact attribute-read idiom — state via
+        a ``data-*`` attribute on a stable testid, never a bare icon-presence
+        check (``.agents/testing.md`` § Locator policy).
+        """
+        item = self.get_folder_item(folder_id)
+        item.wait_for(state="visible", timeout=timeout)
+        return item.get_attribute("data-pinned") == "true"
+
+    @action("Pin folder via menu")
+    def pin_folder_via_menu(self, folder_id: str | int, timeout: int = 5000):
+        """Open *folder_id*'s dot-menu and click its Pin/Unpin item (ELITEA-2130).
+
+        Toggles ``folder.meta.is_pinned`` server-side (``PATCH
+        .../folder/prompt_lib/{project_id}/{folder_id}`` — NOT ``PUT``, see
+        the AFS's Network Behavior section). The menu auto-closes on any
+        item click (``DotMenu.jsx``'s ``withClose`` wrapper) — no explicit
+        close needed. Same item click regardless of current state: labelled
+        "Pin on top" when unpinned, "Unpin" when already pinned.
+
+        Args:
+            folder_id: Numeric folder id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Toggling pin state for folder %s via menu", folder_id)
+        self.open_folder_context_menu(folder_id, timeout=timeout)
+        pin_item = self.page.locator(self.FOLDER_MENU_PIN_ITEM)
+        pin_item.wait_for(state="visible", timeout=timeout)
+        pin_item.click()
 
     @action("Open folder rename editor")
     def open_folder_rename_editor(self, folder_id: str | int, timeout: int = 5000):

@@ -25,3 +25,21 @@ Step 2's click is immediately followed by asserting the first chip's
 `data-selected="true"`; Step 3's click is immediately followed by asserting
 BOTH chips' `data-selected="true"` — in the same block as the click that AFS
 step describes.
+
+**Variant caught in fix round 1 (ELITEA-2121, PR #1535, 2026-08-15): a step's
+own verify can be missing altogether, not just moved — when a later step's
+page-object method call happens to exercise the same precondition as a
+side effect.** `test_folder_rename_via_context_menu_edit_option`'s Step 1
+was labelled "hover row; verify 3-dot menu button becomes visible" but the
+block only seeded the folder — no hover, no assertion. Step 2 then called
+`open_folder_context_menu()`, which internally hovers + waits for the same
+button before clicking it, so the test passed even though Step 1 asserted
+nothing: the helper's internal `wait_for` silently absorbed Step 1's claimed
+verify. Fix: add the explicit `hover()` + `expect(...).to_be_visible()` in
+Step 1's own block even though a later step's helper would have caught a
+regression anyway — a green run through a helper's internal wait is not
+evidence for the step that claims the observable as ITS OWN. Same root
+check as the deferred-assertion case: for every `allure.step` label, ask
+"does an assertion I can point to actually live in THIS block for THIS
+claim" — a helper call in a later block doesn't count, even if it happens
+to depend on the same DOM state.

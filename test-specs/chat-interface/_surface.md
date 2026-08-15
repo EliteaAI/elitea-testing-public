@@ -3,8 +3,12 @@
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
 a time; last confirmed by: test-automation-engineer (combined analyst+
-implementer), ELITEA-2457, 2026-08-15 (supersedes nothing below — new
+implementer), ELITEA-2128/2129, 2026-08-15 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: test-automation-engineer
+(combined analyst+implementer), ELITEA-2123/2127, 2026-08-15; previous confirmer: test-automation-engineer
+(combined analyst+implementer), ELITEA-2122, 2026-08-15; previous confirmer: test-automation-engineer
+(combined analyst+implementer), ELITEA-2121/2130, 2026-08-15; previous confirmer: test-automation-engineer
+(combined analyst+implementer), ELITEA-2457, 2026-08-15; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2133/2134, 2026-08-15; previous confirmer:
 test-automation-engineer (combined analyst+implementer), ELITEA-2118/2119/2120, 2026-08-15; previous confirmer:
 test-automation-engineer (combined analyst+implementer), ELITEA-2163/2164/
@@ -16,6 +20,215 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+
+## ELITEA-2128/2129 — folder-rename LENGTH boundary, confirms `FolderItem.jsx`
+## shares `MAX_CONVERSATION_LENGTH=50` truncation with `ConversationItem.jsx`,
+## `ready-for-automation` (new spec, zero existing coverage of this axis)
+- **Zero existing coverage of folder-rename LENGTH/truncation anywhere on the
+  trunk** — `test_chat_folder_rename_checkmark_validation.py` (ELITEA-2458 family)
+  only exercises the empty/2-char/unchanged/3-char-changed/special-char/
+  leading-space VALIDITY axis (regex + changed-state), never a name anywhere near
+  the 50-char length boundary. ELITEA-2128 (exact-50 acceptance) and ELITEA-2129
+  (51+ type / 70-char paste overflow) close that gap — mirrors the conversation-
+  rename precedent (`test_conversation_rename_length_boundaries.py`,
+  ELITEA-2101/2102/2103/2104) applied to the folder entity.
+- **Source-confirmed AND live-confirmed this session** (both, not source-only):
+  `FolderItem.jsx`'s `onChangeFolderName` (line ~180) does `event.target.value
+  .slice(0, MAX_CONVERSATION_LENGTH)` on every `onChange` — the EXACT SAME
+  constant/mechanism `ConversationItem.jsx`'s `onChangeConversationName` uses
+  (`constants.js:74`, `MAX_CONVERSATION_LENGTH = 50`). This was NOT assumed from
+  the conversation sibling — grep-confirmed independently in `FolderItem.jsx`'s
+  own source, then live-verified on BOTH the create-folder editor AND the actual
+  rename-existing-folder path (dot-menu → Rename): typing exactly 50 chars lands
+  all 50 (no truncation); typing a 51st char is silently dropped (value stays at
+  the first 50); pasting a 70-char clipboard string (real
+  `navigator.clipboard.writeText()` + `Control+V`/`Meta+V`, not DOM injection)
+  truncates to the first 50 identically — no separate `onPaste` handler exists on
+  the input (grep-confirmed), same "reached via the same onChange path" finding
+  ELITEA-2103/2104 already documented for conversations.
+- **Case-text drift found in ELITEA-2129's own step 2** (its Steps table, NOT a
+  cross-case drift like the "Edit"-vs-"Rename" one below): the Expected Result
+  column says "Only first **64** characters accepted; 65th is not entered" —
+  contradicts the case's own title ("...Beyond **50** Characters"), Test Data (a
+  70-char *paste* string), and steps 3-4 (both correctly say 50). Live execution
+  confirms 50 is correct and internally consistent; "64" is very likely a mix-up
+  with `ConversationNameRegExp`'s SEPARATE 3-64-char CHARSET ceiling (a different
+  gate — regex validity, not the length-slice truncation this step actually
+  tests). AFS asserts the live, self-consistent 50-char behavior per the
+  reverse-masking guard; recommend a case-text CLARIFICATION on the TMS case's
+  step 2 wording, not a product bug (see ELITEA-2129's AFS § Known Defects Found
+  for the full reasoning).
+- **No folder equivalent of `paste_conversation_name()`/`clear_conversation_name()`
+  existed before this session** — `ChatPage` only had these for the conversation
+  entity. ELITEA-2129's implementation adds `paste_folder_name()`/
+  `clear_folder_name()`, mirroring the conversation methods' exact idiom (real
+  clipboard write + platform-aware `Control+V`/`Meta+V` keypress; isolated
+  `.clear()` helper) rather than inlining either into the test body.
+- **`set_folder_name()`'s documented "append not replace" race reconfirmed live
+  AGAIN this session** (3rd/4th independent confirmation after ELITEA-2458's
+  original finding and the pollution it already left in the shared DEV project) —
+  a bare `Control+a` + typed text raced React's re-render and produced
+  `"<new-text>New folder"` (append, not replace) on the FIRST attempt of this
+  session, before switching to a proper select+delete clear. `set_folder_name()`'s
+  own existing `.clear()` call (not a bare `Control+a`) already avoids this — the
+  race only reproduces when that safeguard is bypassed, exactly as documented.
+- **Cleanup**: exploration folder (id 250, `at_w06_folder_orig` → renamed through
+  the type/paste-overflow sequence → deleted) via the UI's own Delete flow —
+  zero net pollution left by this session's exploration. A raw `fetch()` DELETE
+  to `dev.elitea.ai` from the `localhost:5173` origin was attempted first and
+  CORS-blocked (4 console ERROR entries, all this analyst's own probe, not
+  product errors, not reachable from the shipped test which uses
+  `ChatPage.delete_folder_via_api()` — that method already has the correct base
+  URL + auth-header fallback baked in, unlike an ad-hoc `fetch()`).
+
+## ELITEA-2123/2127 — near-total duplicates of ELITEA-2459's already-merged
+## special-chars/leading-space scenarios, `already-covered` (zero new code)
+- **ELITEA-2123** ("...Validation Tooltip Displayed for Invalid Input") and
+  **ELITEA-2127** ("...First Character Cannot Be a Space") ask for exactly
+  the two scenarios `test_folder_rename_checkmark_special_chars_and_leading_space_invalid`
+  (ELITEA-2459, merged `origin/automation/base` commit `5cc8647c`, PR #1313)
+  already implements end-to-end — ELITEA-2123's literal test data
+  (`"Folder$$%%"`) is BYTE-IDENTICAL to that test's Step 2 data, and
+  ELITEA-2127's "space as first character" ask is exactly that test's
+  Step 3 (`" ValidRest"` — deliberately isolating the first-char-space rule
+  from the length-floor rule, a stronger proof than a bare single-space
+  input). Classified `already-covered` (traceability AFS only, zero code
+  change) rather than `extend-existing` — the merged-target rule permits
+  either against a base-merged spec, and there is no gap left to fill: every
+  case step already has a corresponding assertion in the covering test.
+- **Live-reconfirmed this session, not assumed from the digest alone** (the
+  "coverage judgments stand on your own execution" rule applies to dedup
+  verdicts too, not just extend/ready ones): seeded a fresh folder via the
+  UI dot-menu → Rename flow, drove both invalid-name scenarios
+  (`"Folder$$%%"` and `" ValidRest2127"`) via `browser_fill_form` (a
+  same-session live re-hit of the documented "append not replace" `Control+a`
+  race — confirmed it again with a bare `Control+a`+`Backspace` sequence,
+  then worked around it via `fill()`, which replaces correctly), and
+  observed: the exact quoted `FolderNameWarningMessage` tooltip text (both
+  cases), the confirm control's accessible name becoming the tooltip text in
+  the invalid state (matching the already-documented a11y gotcha), and — via
+  `browser_network_requests` — **zero** `PUT .../folder/prompt_lib/...`
+  firing on either inactive-checkmark click. Cleaned up via the UI's own
+  Delete flow (dot-menu → Delete → confirm) — zero net pollution.
+- **Case-text drift, same as ELITEA-2121/2130/2456**: both cases' step 1 says
+  "click three-dot icon, click Edit" — the real dot-menu item is labelled
+  "Rename", not "Edit". Not a defect, already documented elsewhere in this
+  digest; noted again here since both AFS files reference it independently.
+- **TMS linkage**: both cases point their `already-covered` disposition at
+  ELITEA-2459; ELITEA-2459's own case should gain "also satisfies
+  ELITEA-2123, ELITEA-2127" back-references.
+
+## ELITEA-2122 — folder-rename CANCEL/X-icon path, source-confirmed
+## (no live re-drive needed — mechanism identical to two already-live-verified
+## sibling cancel flows), `folder_name_cancel_button` gets its first caller
+- **Zero existing coverage of folder-rename cancel anywhere on the trunk**,
+  confirmed by reading `test_chat_folder_rename_checkmark_validation.py`
+  end-to-end (grep for "cancel" inside that file returns 0 hits — its three
+  existing test methods, ELITEA-2458/2459/2121, and the file's own
+  ELITEA-2130 pinned-folder test only ever exercise the checkmark/confirm
+  path). The sibling cancel flows that DO exist —
+  `test_chat_folder_creation_custom_name_and_cancel.py` (ELITEA-2119/2120/
+  2133/2134) and the conversation-rename cancel path (ELITEA-2100) — cover
+  folder-CREATION-cancel and conversation-rename-cancel respectively, never
+  folder-RENAME-cancel. ELITEA-2122 closes that one remaining gap.
+- **Source-only AFS, deliberately not re-driven live** — `FolderItem.jsx`'s
+  cancel `Box`'s `onClick` for an EXISTING folder (`isNewFolder === false`)
+  is `handleOnCloseEditFolder`: `setFolderName(name)` (resets local editor
+  state to the folder's persisted name) + `setIsFolderEditing(false)` (exits
+  edit mode). Zero network calls anywhere in the handler or its dependency
+  closure. Same shape, same file, as `handleOnCancelCreateFolder`
+  (ELITEA-2120's already-live-verified target) and structurally identical to
+  `ConversationItem.jsx`'s cancel handler (ELITEA-2100) — both already
+  independently live-confirmed elsewhere in this digest as "cancel fires zero
+  new requests". A third live re-drive of the mechanically same pattern
+  would reconfirm, not discover.
+- **`chat-folder-name-cancel-button` is on BOTH `main` and
+  `automation/testids`** (fresh `git fetch origin` + `git grep` against both
+  refs this session) — no new testid work needed.
+- **`ChatPage.folder_name_cancel_button` (`chat_page.py:1197`) existed with
+  ZERO callers before this case** — added defensively in an earlier session
+  alongside the confirm button, never referenced by any test until now. This
+  case is its first live caller; compliant per canon ruling #511 (a
+  page-object field isn't "referenced" until something on an executed test
+  path actually calls it).
+- Routed `extend-existing` against `test_chat_folder_rename_checkmark_validation.py`
+  (its own file, alongside the checkmark-validation/special-chars/context-menu/
+  pinned-folder tests) — new test method + a second `@allure.issue` tag,
+  existing three methods untouched.
+
+## ELITEA-2121/2130 — Rename-menuitem REGRESSION found+fixed, folder Pin testid +
+## data-pinned state ADDED, disabled-ancestor force-click gotcha for pinned folders
+- **Blocking regression, confirmed via a LIVE test failure, not just source
+  inspection.** `FolderItem.jsx`'s dot-menu "Rename" item's
+  `key: 'chat-folder-menu-rename'` (added by ELITEA-2458, commit `0298860f`) was
+  silently dropped by a later, unrelated main-branch feature commit (`f5e0c325`,
+  "Restore user message to input field when Stop is clicked (#764)", 2026-08-13),
+  which replaced the `menuItems` array wholesale to add a new "New chat" item.
+  Re-ran `test_chat_folder_rename_checkmark_validation.py` (ELITEA-2458's own,
+  previously-merged, previously-green test) live BEFORE touching anything this
+  session — it FAILED (`TimeoutError` waiting for
+  `chat-folder-menu-rename-menuitem`), proving the regression rather than assuming
+  it from a diff read. Filed
+  [elitea-testing-public#1533](https://github.com/EliteaAI/elitea-testing-public/issues/1533)
+  (sibling to `#1309` — same failure shape, a shared `menuItems` array literal
+  edited by unrelated feature work dropping a sibling item's `key`). **Fixed**
+  this session (re-added the `key`) and **live-reverified**: the same test now
+  passes cleanly (41s). Both ELITEA-2121 and ELITEA-2130 depend on this fix for
+  their very first interactive step (open rename editor via dot-menu → Rename) —
+  neither case could have been attempted at all without it.
+- **New testid + new state attribute added, both in the SAME commit as the
+  regression fix** — `EliteaAI/EliteaUI@be489cee` on `automation/testids` (NOT
+  yet on `main`, standard human-cherry-pick pending):
+  - `key: 'chat-folder-menu-pin'` on the Pin/Unpin menu item → testid
+    `chat-folder-menu-pin-menuitem` (first testid ever on this item, not a
+    regression). Label text toggles `"Pin on top"` ↔ `"Unpin"` per
+    `folder.meta?.is_pinned` — read via `.text_content()` for a genuine
+    state-correctness check, not just presence.
+  - `data-pinned={isPinned}` added to `FolderAccordion.jsx`'s already-testid'd
+    `StyledAccordion` (`chat-folder-item-{id}`), alongside the pre-existing
+    `data-expanded`. Mirrors `ConversationItem.jsx`'s existing `data-pinned`
+    convention (already consumed by `is_conversation_pinned()`) — zero new DOM
+    node, testid identity unchanged, pure sibling-attribute addition. This is
+    the correct locator for "is this folder pinned" — the raw `<PinIcon>` the
+    collapsed header conditionally renders has NO testid and isn't sanctioned as
+    a target per the project's state-via-`data-*` policy; the attribute is
+    driven by the exact same `isPinned` boolean, so it's not a weaker proxy.
+  - Both edits verified via the `add-data-testid` Step 5.5 discipline: `git diff`
+    is testid/key lines only, `npx prettier --check` clean, `npx eslint` clean,
+    all three PR #753 greps (new hooks / new DOM nodes / real deletions) empty.
+- **Live gotcha, already handled by existing code, no page-object change
+  needed**: a PINNED folder's `DraggableFolderItem` wrapper renders
+  `isDragDisabled={isPinned}` as a genuinely HTML-`disabled` ancestor around the
+  folder's title button. A PLAIN `Locator.click()` on the scoped dot-menu button
+  times out ("element is not enabled") for a pinned folder specifically — even
+  though the button's OWN `.disabled` DOM property is `false` and
+  `pointer-events: auto` (Playwright's actionability check walks up to the
+  disabled ancestor regardless). Confirmed live via Playwright MCP (which has no
+  `force` option, so this had to be worked around with `element.click()` via
+  `browser_evaluate` just to keep exploring) — but `open_folder_rename_editor()`'s
+  and `delete_folder_via_menu()`'s EXISTING `menu_button.click(force=True)` (not
+  new this session) already bypasses this correctly for real pytest runs. Worth
+  knowing before "fixing" this a second time.
+- **HTTP method note**: pinning a folder is `PATCH
+  /elitea_core/folder/prompt_lib/{project_id}/{folder_id}` — NOT `PUT` (the
+  rename endpoint) or `POST` (create). First `PATCH` documented on this surface
+  so far; every other folder mutation in this digest is `PUT`/`POST`/`DELETE`.
+- **Case-text drift, same class as the already-documented ELITEA-2099/#1513
+  conversation-menu drift, filed as
+  [elitea-testing-public#1534](https://github.com/EliteaAI/elitea-testing-public/issues/1534)**:
+  both cases' text says the folder context menu shows "Delete, Edit, Export,
+  Pin/Unpin". Live-confirmed (source + `browser_snapshot`) the REAL 4-item set is
+  **New chat, Rename, Pin on top (or Unpin), Delete** — "Edit" doesn't exist
+  (item is "Rename"), "Export" doesn't exist at all, "New chat" is unlisted by
+  either case. Not a product bug — both AFS files assert the real, live-confirmed
+  set instead of the case's literal list.
+- Exploration folders (`ELITEA2121RenameSource`/`New folder_edited`, id `212`;
+  `ELITEA2130PinnedSource`/`Pinned Renamed Folder`, id `213`) left undeleted in
+  the shared DEV project — same accepted precedent as prior sessions
+  (`MCP evaluate`-injected `fetch()` to same-origin API fails, documented below
+  in the ELITEA-2118/2119/2120 section; a `curl`-based cleanup attempt via
+  `ELITEA_API_TOKEN` also 404'd, likely a project-id/auth-scope mismatch not
+  worth chasing further given the already-extensive documented pollution).
 
 ## ELITEA-2457 — third near-total duplicate of the same ELITEA-2119/2133
 ## folder-creation flow, ZERO remaining gap (extend-existing, tag-only)
