@@ -13,9 +13,18 @@ section, hides the pin icon, and returns it to EXACTLY its pre-pin
 position — live-confirmed this session to be a deterministic round-trip,
 not merely "some unpinned position".
 
+ELITEA-2155 / ELITEA-2156 extend the same pin/unpin mechanism with the
+EMPTY-folder axis (distinct from ELITEA-2152/2153/2154's conversation-bearing
+folders): pinning and unpinning a folder with NO conversations must retain
+its empty state ("No conversations added", `get_folder_empty_state_text()`,
+ELITEA-2148's own idiom) rather than erroring, showing stale content, or
+losing the empty-state rendering across the pin-triggered remount.
+
 Specs:
 - test-specs/chat-interface/l3_pin-a-folder-via-pin-on-top-option_ELITEA-2152.md
 - test-specs/chat-interface/l3_unpin-a-pinned-folder_ELITEA-2153.md
+- test-specs/chat-interface/lextend_pin-empty-folder-retains-empty-state_ELITEA-2155.md
+- test-specs/chat-interface/lextend_unpin-empty-folder-retains-empty-state_ELITEA-2156.md
 
 No fidelity substitution — pin/unpin state, position, and conversation
 membership are all read off the real system through the real UI flow
@@ -441,6 +450,146 @@ class TestPinFolderViaPinOnTop:
                 except Exception as exc:
                     logger.warning("Failed to delete folder_multi %s: %s", folder_multi_id, exc)
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2155_chat-empty-folder-can-be-pinned.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    def test_pin_empty_folder_retains_empty_state(self, page, conversation_api):
+        """ELITEA-2155: Chat – Empty Folder Can Be Pinned (l3, medium).
+
+        Extends ELITEA-2152's pin coverage with the EMPTY-folder axis:
+        ELITEA-2152/2154 both seed a folder WITH conversation(s) and prove
+        pinning preserves them; this case seeds a folder with ZERO
+        conversations and proves pinning still moves it into the pinned
+        section (same `data-pinned` mechanism) AND that re-expanding it
+        after the pin-triggered remount (ELITEA-2152's documented
+        collapse-on-remount finding) still renders the exact empty-state
+        text — not an error, not stale/missing content.
+
+        Steps (AFS
+        test-specs/chat-interface/lextend_pin-empty-folder-retains-empty-state_ELITEA-2155.md):
+        1. Navigate to Chats, expand folder_empty; verify it shows the
+           empty state "No conversations added" (baseline, before pinning).
+        2. Hover folder_empty, click its 3-dot menu; verify the item label
+           reads "Pin on top" before clicking it.
+        3. Verify the folder moved into the pinned section: data-pinned
+           flips false->true.
+        4. Verify a pin icon is displayed (data-pinned=true is the
+           compliant locator per project policy).
+        5. Expand the pinned folder; verify it still shows the exact
+           empty-state text "No conversations added".
+        """
+        chat = ChatPage(page)
+        folder_empty_id = None
+
+        console_messages = []
+
+        def _on_console(msg):
+            if msg.type == "error" and not _is_known_secrets_403(msg):
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
+
+        try:
+            with allure.step(
+                "Setup — create folder_empty via API (no conversations "
+                "moved in); navigate to chat and expand it"
+            ):
+                ts = int(time.time())
+                folder = conversation_api.create_folder(f"autotest_2155_empty_{ts}")
+                folder_empty_id = folder["id"]
+
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+
+                folder_item = chat.get_folder_item(folder_empty_id)
+                folder_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+                assert not chat.is_folder_pinned(folder_empty_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Freshly-seeded folder {folder_empty_id} should not start pinned"
+                )
+                logger.info("Setup complete — folder_empty=%s", folder_empty_id)
+
+            with allure.step(
+                "Step 1 — Expand folder_empty; verify it shows the empty "
+                "state 'No conversations added' (baseline, before pinning)"
+            ):
+                chat.expand_folder(folder_empty_id, timeout=UI_ELEMENT_TIMEOUT)
+                baseline_empty_text = chat.get_folder_empty_state_text(folder_empty_id)
+                assert baseline_empty_text == "No conversations added", (
+                    f"folder_empty {folder_empty_id} should show exactly "
+                    f"'No conversations added' before pinning, got: {baseline_empty_text!r}"
+                )
+
+            with allure.step(
+                "Step 2 — Hover folder_empty, open its 3-dot menu; verify "
+                "the 'Pin on top' label before clicking it"
+            ):
+                chat.open_folder_context_menu(folder_empty_id, timeout=UI_ELEMENT_TIMEOUT)
+                pin_item = page.locator(chat.FOLDER_MENU_PIN_ITEM)
+                pin_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                assert (pin_item.text_content() or "").strip() == PIN_ON_TOP_LABEL, (
+                    f"Menu item should read {PIN_ON_TOP_LABEL!r} before pinning, "
+                    f"got: {pin_item.text_content()!r}"
+                )
+                with page.expect_response(
+                    lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "PATCH",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as pin_response_info:
+                    pin_item.click()
+                pin_response = pin_response_info.value
+                assert pin_response.status == 200, (
+                    f"Pin PATCH should resolve 200, got {pin_response.status} "
+                    f"for {pin_response.url}"
+                )
+
+            with allure.step(
+                "Step 3 — Verify the folder moved into the pinned section: "
+                "data-pinned flips false->true"
+            ):
+                assert chat.is_folder_pinned(folder_empty_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"folder_empty {folder_empty_id} should carry data-pinned=\"true\""
+                )
+
+            with allure.step(
+                "Step 4 — Verify a pin icon is displayed next to the "
+                "folder name (data-pinned=true is the compliant locator "
+                "per .agents/testing.md Locator policy)"
+            ):
+                assert chat.is_folder_pinned(folder_empty_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"folder_empty {folder_empty_id} should still carry data-pinned=\"true\""
+                )
+
+            with allure.step(
+                "Step 5 — Expand the pinned folder; verify it still shows "
+                "the exact empty-state text 'No conversations added' "
+                "(force=True — disabled-ancestor gotcha applies to a "
+                "PINNED folder's whole row, ELITEA-2130/2152)"
+            ):
+                chat.expand_folder(folder_empty_id, timeout=UI_ELEMENT_TIMEOUT, force=True)
+                post_pin_empty_text = chat.get_folder_empty_state_text(folder_empty_id)
+                assert post_pin_empty_text == "No conversations added", (
+                    f"folder_empty {folder_empty_id} should still show exactly "
+                    f"'No conversations added' after pinning, got: {post_pin_empty_text!r}"
+                )
+
+            with allure.step(
+                "Side-channel check — no unexpected console errors across the full flow"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors during pin-empty-folder flow: "
+                    f"{[m.text for m in console_messages]!r}"
+                )
+
+        finally:
+            if folder_empty_id:
+                try:
+                    conversation_api.delete_folder(folder_empty_id)
+                    logger.info("Cleaned up folder_empty %s", folder_empty_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder_empty %s: %s", folder_empty_id, exc)
+
 
 class TestUnpinFolderViaContextMenu:
     """ELITEA-2153: Chat – Unpin a Pinned Folder (l3, medium)."""
@@ -649,3 +798,168 @@ class TestUnpinFolderViaContextMenu:
                     logger.info("Cleaned up folder_sibling %s", folder_sibling_id)
                 except Exception as exc:
                     logger.warning("Failed to delete folder_sibling %s: %s", folder_sibling_id, exc)
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2156_chat-empty-folder-can-be-unpinned.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    def test_unpin_empty_folder_retains_empty_state(self, page, conversation_api):
+        """ELITEA-2156: Chat – Empty Folder Can Be Unpinned (l3, medium).
+
+        Extends ELITEA-2153's unpin coverage with the EMPTY-folder axis
+        (mirrors ELITEA-2155's pin-side extension): seeds a folder with
+        ZERO conversations, pins it via the real UI dot-menu flow to reach
+        the "a pinned empty folder exists" precondition, then unpins it and
+        verifies it still renders the exact empty-state text — not an
+        error, not stale/missing content — across BOTH the pin and unpin
+        remounts.
+
+        Steps (AFS
+        test-specs/chat-interface/lextend_unpin-empty-folder-retains-empty-state_ELITEA-2156.md):
+        1. Setup reaches the precondition: folder_empty seeded unpinned,
+           confirmed empty, then pinned via the real UI dot-menu action
+           (the already-covered ELITEA-2155 flow) and re-confirmed empty
+           post-pin.
+        2. Hover folder_empty, click its 3-dot menu; verify the item label
+           reads "Unpin" before clicking it.
+        3. Verify data-pinned flips true->false (folder removed from the
+           pinned section).
+        4. Verify the pin icon is no longer visible (same data-pinned
+           fact, restated per the case's own explicit wording).
+        5. Expand the folder; verify it still shows the exact empty-state
+           text "No conversations added".
+        """
+        chat = ChatPage(page)
+        folder_empty_id = None
+
+        console_messages = []
+
+        def _on_console(msg):
+            if msg.type == "error" and not _is_known_secrets_403(msg):
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
+
+        try:
+            with allure.step(
+                "Setup — create folder_empty via API (no conversations "
+                "moved in); navigate, expand and confirm the empty state; "
+                "pin folder_empty via the UI dot-menu (already-covered "
+                "ELITEA-2155 flow) to reach the 'a pinned empty folder "
+                "exists' precondition, then re-confirm the empty state "
+                "post-pin"
+            ):
+                ts = int(time.time())
+                folder = conversation_api.create_folder(f"autotest_2156_empty_{ts}")
+                folder_empty_id = folder["id"]
+
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+
+                folder_item = chat.get_folder_item(folder_empty_id)
+                folder_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+                assert not chat.is_folder_pinned(folder_empty_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Freshly-seeded folder {folder_empty_id} should not start pinned"
+                )
+
+                chat.expand_folder(folder_empty_id, timeout=UI_ELEMENT_TIMEOUT)
+                pre_pin_empty_text = chat.get_folder_empty_state_text(folder_empty_id)
+                assert pre_pin_empty_text == "No conversations added", (
+                    f"folder_empty {folder_empty_id} should show exactly "
+                    f"'No conversations added' before pinning, got: {pre_pin_empty_text!r}"
+                )
+
+                with page.expect_response(
+                    lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "PATCH",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as setup_pin_response_info:
+                    chat.pin_folder_via_menu(folder_empty_id, timeout=UI_ELEMENT_TIMEOUT)
+                setup_pin_response = setup_pin_response_info.value
+                assert setup_pin_response.status == 200, (
+                    f"Setup pin PATCH should resolve 200, got {setup_pin_response.status} "
+                    f"for {setup_pin_response.url}"
+                )
+                assert chat.is_folder_pinned(folder_empty_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Setup: folder_empty {folder_empty_id} should carry data-pinned=\"true\" "
+                    "before the unpin case steps run"
+                )
+
+                chat.expand_folder(folder_empty_id, timeout=UI_ELEMENT_TIMEOUT, force=True)
+                post_pin_empty_text = chat.get_folder_empty_state_text(folder_empty_id)
+                assert post_pin_empty_text == "No conversations added", (
+                    f"folder_empty {folder_empty_id} should still show exactly "
+                    f"'No conversations added' after pinning (setup), got: "
+                    f"{post_pin_empty_text!r}"
+                )
+                logger.info(
+                    "Setup complete — folder_empty=%s (pinned, empty)", folder_empty_id,
+                )
+
+            with allure.step(
+                "Step 1 — Hover folder_empty, open its 3-dot menu "
+                "(force-click required — pinned-folder disabled-ancestor "
+                "gotcha, ELITEA-2130); verify the 'Unpin' label before "
+                "clicking it"
+            ):
+                chat.open_folder_context_menu(folder_empty_id, timeout=UI_ELEMENT_TIMEOUT)
+                unpin_item = page.locator(chat.FOLDER_MENU_PIN_ITEM)
+                unpin_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                assert (unpin_item.text_content() or "").strip() == UNPIN_LABEL, (
+                    f"Menu item should read {UNPIN_LABEL!r} for an already-pinned folder, "
+                    f"got: {unpin_item.text_content()!r}"
+                )
+                with page.expect_response(
+                    lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "PATCH",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as unpin_response_info:
+                    unpin_item.click()
+                unpin_response = unpin_response_info.value
+                assert unpin_response.status == 200, (
+                    f"Unpin PATCH should resolve 200, got {unpin_response.status} "
+                    f"for {unpin_response.url}"
+                )
+
+            with allure.step(
+                "Step 2 — Verify the folder is removed from the pinned "
+                "section: data-pinned flips true->false"
+            ):
+                assert not chat.is_folder_pinned(folder_empty_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"folder_empty {folder_empty_id} should no longer carry data-pinned=\"true\""
+                )
+
+            with allure.step(
+                "Step 3 — Verify the pin icon is no longer visible (same "
+                "data-pinned fact, restated per the case's own wording)"
+            ):
+                assert not chat.is_folder_pinned(folder_empty_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"folder_empty {folder_empty_id} should not carry data-pinned=\"true\""
+                )
+
+            with allure.step(
+                "Step 4 — Expand the folder; verify it still shows the "
+                "exact empty-state text 'No conversations added'"
+            ):
+                chat.expand_folder(folder_empty_id, timeout=UI_ELEMENT_TIMEOUT, force=True)
+                final_empty_text = chat.get_folder_empty_state_text(folder_empty_id)
+                assert final_empty_text == "No conversations added", (
+                    f"folder_empty {folder_empty_id} should still show exactly "
+                    f"'No conversations added' after unpinning, got: {final_empty_text!r}"
+                )
+
+            with allure.step(
+                "Side-channel check — no unexpected console errors across the full flow"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors during unpin-empty-folder flow: "
+                    f"{[m.text for m in console_messages]!r}"
+                )
+
+        finally:
+            if folder_empty_id:
+                try:
+                    conversation_api.delete_folder(folder_empty_id)
+                    logger.info("Cleaned up folder_empty %s", folder_empty_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder_empty %s: %s", folder_empty_id, exc)
