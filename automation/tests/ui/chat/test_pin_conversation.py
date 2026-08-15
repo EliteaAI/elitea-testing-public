@@ -926,3 +926,184 @@ class TestPinDisabledInFolderThenMovedAndPinned:
                     logger.info("Cleaned up folder %s", folder_id)
                 except Exception as exc:
                     logger.warning("Failed to delete folder %s: %s", folder_id, exc)
+
+
+class TestMultipleConversationsPinnedIndependently:
+    """ELITEA-2160: Chat – Multiple Conversations Can Be Pinned Independently (l3, medium)."""
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2160_chat-multiple-conversations-can-be-pinned-independently.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    def test_pin_two_conversations_independently(self, page, conversation_api):
+        """Pin two conversations, one after the other, and verify neither pin disturbs the other.
+
+        Steps (AFS
+        test-specs/chat-interface/lextend_multiple-conversations-pinned-independently_ELITEA-2160.md):
+        1. Pin conv_1 via "Pin on top"; verify data-pinned=true + pin icon renders.
+        2. Pin conv_2 via "Pin on top"; verify data-pinned=true + pin icon renders
+           for conv_2 AND that conv_1 is STILL pinned (the case's core
+           independence claim).
+        3. Verify both conv_1 and conv_2 render above an unpinned folder
+           (the case's own wording: "above unpinned folders").
+        4. Verify both conv_1 and conv_2 are no longer in the "today" date group.
+
+        Case-text drift: the case's step 2 asks for a conversation "from This
+        Week" — this environment has zero non-today conversations and no API
+        way to backdate one (see AFS's Case-text drift note / _surface.md's
+        already-documented ELITEA-2096/2097 finding). Both conv_1/conv_2 are
+        seeded fresh (both land in "today", the only reachable group) — the
+        case's actual subject (independent multi-pin) does not require
+        different origin groups, only that each conversation leaves whichever
+        group it started in.
+        """
+        chat = ChatPage(page)
+        conv_1_id = None
+        conv_2_id = None
+        folder_unpinned_id = None
+
+        console_messages = []
+
+        def _on_console(msg):
+            if msg.type == "error" and not _is_known_secrets_403(msg):
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
+
+        try:
+            with allure.step(
+                "Setup — create conv_1, conv_2, and an empty unpinned "
+                "folder via API; navigate to chat"
+            ):
+                ts = int(time.time())
+                conv_1 = conversation_api.create_conversation(f"autotest_2160_conv1_{ts}")
+                conv_1_id = conv_1["id"]
+                conv_2 = conversation_api.create_conversation(f"autotest_2160_conv2_{ts}")
+                conv_2_id = conv_2["id"]
+                folder_unpinned = conversation_api.create_folder(f"autotest_2160_folder_{ts}")
+                folder_unpinned_id = folder_unpinned["id"]
+
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+
+                conv_1_item = chat.get_conversation_item(conv_1_id)
+                conv_1_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                conv_2_item = chat.get_conversation_item(conv_2_id)
+                conv_2_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                folder_item = chat.get_folder_item(folder_unpinned_id)
+                folder_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+                assert not chat.is_conversation_pinned(conv_1_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Freshly-seeded conv_1 {conv_1_id} should not start pinned"
+                )
+                assert not chat.is_conversation_pinned(conv_2_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Freshly-seeded conv_2 {conv_2_id} should not start pinned"
+                )
+                logger.info(
+                    "Setup complete — conv_1=%s conv_2=%s folder_unpinned=%s",
+                    conv_1_id, conv_2_id, folder_unpinned_id,
+                )
+
+            with allure.step(
+                "Step 1 — Pin conv_1 via 'Pin on top'; verify data-pinned=true "
+                "and a pin icon renders"
+            ):
+                pin_icon_1_before = chat.get_pin_icon(conv_1_id).count()
+                chat.open_conversation_context_menu(conv_1_id, timeout=UI_ELEMENT_TIMEOUT)
+                chat.click_conversation_menu_item("pin", timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.is_conversation_pinned(conv_1_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"conv_1 {conv_1_id} should carry data-pinned=\"true\" after pinning"
+                )
+                assert pin_icon_1_before == 0, (
+                    f"Pin icon should NOT be present before pinning, found {pin_icon_1_before}"
+                )
+                pin_icon_1 = chat.get_pin_icon(conv_1_id)
+                expect(pin_icon_1).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                assert pin_icon_1.count() == 1, (
+                    f"Expected exactly 1 pin icon inside conv_1, found {pin_icon_1.count()}"
+                )
+
+            with allure.step(
+                "Step 2 — Pin conv_2 via 'Pin on top'; verify data-pinned=true "
+                "+ pin icon for conv_2 AND that conv_1 is STILL pinned"
+            ):
+                pin_icon_2_before = chat.get_pin_icon(conv_2_id).count()
+                chat.open_conversation_context_menu(conv_2_id, timeout=UI_ELEMENT_TIMEOUT)
+                chat.click_conversation_menu_item("pin", timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.is_conversation_pinned(conv_2_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"conv_2 {conv_2_id} should carry data-pinned=\"true\" after pinning"
+                )
+                assert pin_icon_2_before == 0, (
+                    f"Pin icon should NOT be present before pinning, found {pin_icon_2_before}"
+                )
+                pin_icon_2 = chat.get_pin_icon(conv_2_id)
+                expect(pin_icon_2).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                assert pin_icon_2.count() == 1, (
+                    f"Expected exactly 1 pin icon inside conv_2, found {pin_icon_2.count()}"
+                )
+                # Central independence assertion — the case's own Fail
+                # criterion ("only one conversation can be pinned at a time").
+                assert chat.is_conversation_pinned(conv_1_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"conv_1 {conv_1_id} should STILL carry data-pinned=\"true\" after "
+                    "pinning conv_2 — pinning a second conversation must not unpin the first"
+                )
+
+            with allure.step(
+                "Step 3 — Verify both pinned conversations render above the "
+                "unpinned folder"
+            ):
+                conv_1_box = conv_1_item.bounding_box()
+                conv_2_box = conv_2_item.bounding_box()
+                folder_box = folder_item.bounding_box()
+                assert conv_1_box is not None and conv_2_box is not None and folder_box is not None, (
+                    "conv_1, conv_2, and folder_unpinned should all have a resolvable "
+                    f"bounding box — conv_1={conv_1_box}, conv_2={conv_2_box}, folder={folder_box}"
+                )
+                assert conv_1_box["y"] + conv_1_box["height"] <= folder_box["y"], (
+                    "conv_1 should render ABOVE the unpinned folder — "
+                    f"conv_1={conv_1_box}, folder={folder_box}"
+                )
+                assert conv_2_box["y"] + conv_2_box["height"] <= folder_box["y"], (
+                    "conv_2 should render ABOVE the unpinned folder — "
+                    f"conv_2={conv_2_box}, folder={folder_box}"
+                )
+
+            with allure.step(
+                "Step 4 — Verify both conv_1 and conv_2 are no longer in "
+                "the 'today' date group"
+            ):
+                assert not chat.is_conversation_in_group(
+                    conv_1_id, "today", timeout=UI_ELEMENT_TIMEOUT,
+                ), f"conv_1 {conv_1_id} should no longer render under Today"
+                assert not chat.is_conversation_in_group(
+                    conv_2_id, "today", timeout=UI_ELEMENT_TIMEOUT,
+                ), f"conv_2 {conv_2_id} should no longer render under Today"
+
+            with allure.step(
+                "Side-channel check — no unexpected console errors across the full flow"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors during multi-conversation pin flow: "
+                    f"{[m.text for m in console_messages]!r}"
+                )
+
+        finally:
+            if conv_1_id:
+                try:
+                    conversation_api.delete_conversation(conv_1_id)
+                    logger.info("Cleaned up conv_1 %s", conv_1_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete conv_1 %s: %s", conv_1_id, exc)
+            if conv_2_id:
+                try:
+                    conversation_api.delete_conversation(conv_2_id)
+                    logger.info("Cleaned up conv_2 %s", conv_2_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete conv_2 %s: %s", conv_2_id, exc)
+            if folder_unpinned_id:
+                try:
+                    conversation_api.delete_folder(folder_unpinned_id)
+                    logger.info("Cleaned up folder_unpinned %s", folder_unpinned_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder_unpinned %s: %s", folder_unpinned_id, exc)
