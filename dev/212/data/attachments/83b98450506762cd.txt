@@ -1,3 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Click Generate — Timeout 30000ms exceeded while waiting for event "response"
-ERROR    elitea.steps:actions.py:49 Step failed: Click Generate — Timeout 30000ms exceeded while waiting for event "response"
-ERROR    elitea.steps:actions.py:49 Step failed: Click Generate — Timeout 30000ms exceeded while waiting for event "response"

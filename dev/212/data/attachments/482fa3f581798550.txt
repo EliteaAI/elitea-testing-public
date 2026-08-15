@@ -1,1 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Click like/unlike button on agent card — Timeout 10000ms exceeded while waiting for event "response"

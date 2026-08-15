@@ -1,9 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Remove a committed tag chip — Locator.wait_for: Timeout 5000ms exceeded.
-Call log:
-  - waiting for locator("[data-testid=\"skill-tag-chip-delete-regression_v1\"]") to be visible
-ERROR    elitea.steps:actions.py:49 Step failed: Remove a committed tag chip — Locator.wait_for: Timeout 5000ms exceeded.
-Call log:
-  - waiting for locator("[data-testid=\"skill-tag-chip-delete-regression_v1\"]") to be visible
-ERROR    elitea.steps:actions.py:49 Step failed: Remove a committed tag chip — Locator.wait_for: Timeout 5000ms exceeded.
-Call log:
-  - waiting for locator("[data-testid=\"skill-tag-chip-delete-regression_v1\"]") to be visible
