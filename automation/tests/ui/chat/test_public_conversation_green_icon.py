@@ -78,6 +78,7 @@ import time
 import allure
 import pytest
 from pages.chat_page import ChatPage
+from playwright.sync_api import expect
 
 logger = logging.getLogger("elitea.tests.chat")
 
@@ -365,9 +366,7 @@ class TestPublicConversationGreenIcon:
             ):
                 chat.open_conversation_context_menu(conv_a_id, timeout=UI_ELEMENT_TIMEOUT)
                 chat.click_conversation_menu_item("make-public", timeout=UI_ELEMENT_TIMEOUT)
-                assert chat.make_public_confirm_dialog.is_visible(), (
-                    "'Make public' confirmation dialog should be visible"
-                )
+                expect(chat.make_public_confirm_dialog).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
                 make_public_response = chat.confirm_make_public(conv_a_id, timeout=UI_ELEMENT_TIMEOUT)
                 assert make_public_response.status == 200, (
                     "PUT .../conversation/prompt_lib/.../{id} should return 200 "
