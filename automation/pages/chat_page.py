@@ -6399,6 +6399,56 @@ class ChatPage(BasePage):
 
         return row.locator(self.PARTICIPANT_REMOVE_BUTTON)
 
+    @action("Mention a user by clicking their name in the Users participants dropdown")
+    def mention_user_via_participants_dropdown(self, user_id: int, timeout: int = 10000) -> None:
+        """Open the 'Users' participants popover and click *user_id*'s NAME
+        row (not its hover-only delete icon) to insert an @mention into the
+        composer (ELITEA-2173/2174).
+
+        A genuinely different code path than ``open_user_mention_popper()``/
+        ``select_user_mention()`` (the composer's own typed-``"@"`` mention
+        popper, ``UserMentionList``/``onSelectUserMention``) — this method
+        exercises the Users dropdown's own row click: ``UserMenu.jsx``'s
+        row ``onClick`` → ``onSelectOption`` →
+        ``UsersParticipantDropdown``'s ``handleSelectUser`` →
+        ``NewChat.jsx``'s ``onSelectParticipant(participant, true)`` →
+        ``mentionTarget.mentionUser('@<name> ')``. Source-confirmed
+        (``UserMenu.jsx``/``NewChat.jsx``) before automating, per the
+        interaction-discovery ladder (``.agents/role-overrides.md``).
+
+        Reuses the SAME ``chat-participant-row-{uniqueId}`` testid family
+        ``open_remove_user_dialog()``/``hover_participant_user_row()``
+        already resolve (``uniqueId`` = ``user_{user_id}_`` — the trailing
+        project-id segment is always empty for "user" participants). Clicks
+        the row's own content Box directly — no hover needed: the row's
+        ``onClick`` fires on the whole content area, and the hover-only
+        delete icon stays ``visibility: hidden`` by default, so it never
+        intercepts a plain click at the row's center (confirmed live — AFS
+        § Automation Hints). Does not modify ``open_remove_user_dialog()``/
+        ``hover_participant_user_row()`` themselves (additive-only —
+        Hard Rule 3).
+
+        Selecting a row closes the popover automatically
+        (``UsersParticipantDropdown``'s ``handleSelectUser`` sets
+        ``open=false``) — a caller that needs a SECOND mention calls this
+        method again (it reopens the popover itself via
+        ``open_participants_popover()``), matching ELITEA-2174's own case
+        text ("Reopen USERS dropdown, click on user_2's name").
+
+        Args:
+            user_id: The participant's ``entity_meta.id`` (platform user id).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Mentioning user_id=%s via the Users participants dropdown row", user_id)
+        popper = self.open_participants_popover(section="users", timeout=timeout)
+
+        unique_id = f"user_{user_id}_"
+        row = popper.locator(self.PARTICIPANT_ROW.format(unique_id))
+        row.wait_for(state="visible", timeout=timeout)
+        row.click()
+
+        self.participants_popper.wait_for(state="hidden", timeout=timeout)
+
     @action("Open Mention skill popper")
     def open_mention_skill_popper(self, timeout: int = 10000):
         """Clear the message input and type "~" to open the "Mention skill" popper.
