@@ -6334,6 +6334,71 @@ class ChatPage(BasePage):
 
         return Dialog.wait_for(self.page, timeout=timeout)
 
+    @action("Hover a Users-dropdown row and return its Remove-user button locator")
+    def hover_participant_user_row(self, user_id: int, timeout: int = 10000):
+        """Open a fresh 'Users' participants popover (closing one first if
+        already open via a real outside click), hover *user_id*'s row, and
+        return its scoped 'Remove user' button Locator WITHOUT clicking it
+        (ELITEA-2172).
+
+        Read-only sibling of ``open_remove_user_dialog()`` — that method
+        hovers, clicks the delete icon, and returns the confirmation dialog
+        for the caller to Remove/Cancel; this one stops right after the
+        hover so the CALLER asserts the button's visibility with a
+        web-first ``expect(...).to_be_visible()`` /
+        ``not_to_be_visible()`` — the correct shape here, since the button
+        is ALWAYS present in the DOM (never conditionally rendered) and
+        merely stays ``visibility: hidden`` when the row isn't removable
+        (``UserMenu.jsx``'s ``isSelectable``/``currentUserId`` self-check —
+        see AFS test-specs/chat-interface/
+        l2_conversation-owner-has-no-remove-control-in-users-dropdown_ELITEA-2172.md
+        step 2's mechanism note). A caller must never click through the
+        returned locator: the conversation owner's own row has no control
+        that does anything if clicked. Does not modify
+        ``open_remove_user_dialog()`` itself (additive-only — Hard Rule 3).
+
+        Close-if-already-open uses a real outside CLICK, not
+        ``dismiss_participants_popover()``'s Escape press — confirmed live
+        this implementation (100% reproducible, 3/3 local runs) that
+        Escape has NO effect on ``chat-participants-popper``'s "users"
+        instance; only a genuine click outside its DOM subtree fires
+        MUI's ``ClickAwayListener``. Same root cause and same fix shape as
+        the already-documented ``close_modules_panel()`` gotcha
+        ("Escape does NOT close it... only a click outside the popper...
+        does") — reuses that method's exact technique: a real
+        ``page.mouse``-driven click on the ``chat_messages_scroll_container``
+        far corner (top-left, well clear of the popper, which anchors
+        top-right).
+
+        Args:
+            user_id: The participant's ``entity_meta.id`` (platform user id).
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The row's scoped ``chat-participant-remove-button`` Locator,
+            post-hover. Assert visibility only — never click it.
+        """
+        logger.info("Hovering Users-dropdown row for user_id=%s (read-only)", user_id)
+        if self.participants_popper.is_visible():
+            self.chat_messages_scroll_container.click(position={"x": 10, "y": 10})
+            self.participants_popper.wait_for(state="hidden", timeout=timeout)
+        popper = self.open_participants_popover(section="users", timeout=timeout)
+
+        unique_id = f"user_{user_id}_"
+        row = popper.locator(self.PARTICIPANT_ROW.format(unique_id))
+
+        # Same residual-hover reset + force-hover rationale as
+        # ``open_remove_user_dialog()`` — the popper's row list keeps
+        # re-rendering (UserMenu.jsx's in-place ``sortedUsers.sort()``),
+        # so a plain (non-forced) hover's "wait until stable" pre-check
+        # can never be satisfied even though the element is genuinely
+        # actionable throughout.
+        self.page.mouse.move(0, 0)
+        row.hover(timeout=timeout, force=True)
+        self.page.wait_for_timeout(300)  # hover-reveal CSS transition
+
+        return row.locator(self.PARTICIPANT_REMOVE_BUTTON)
+
     @action("Open Mention skill popper")
     def open_mention_skill_popper(self, timeout: int = 10000):
         """Clear the message input and type "~" to open the "Mention skill" popper.
