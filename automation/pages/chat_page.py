@@ -3662,6 +3662,36 @@ class ChatPage(BasePage):
         self.move_to_create_folder_menuitem.wait_for(state="visible", timeout=timeout)
         self.move_to_create_folder_menuitem.click()
 
+    @action("Select 'Back to the list' in 'Move to' submenu")
+    def select_move_to_back_to_list(self, timeout: int = 5000):
+        """Click 'Back to the list' inside the open 'Move to' submenu.
+
+        Moves the conversation out of its current folder into the general,
+        date-grouped list (ELITEA-2139/2140). Mirrors
+        ``select_move_to_folder()``/``select_move_to_create_folder()``'s
+        shape. The ``move_to_back_to_list_menuitem`` locator itself
+        pre-dates this method (added by ELITEA-2135's implementation) but
+        had zero callers until this method (canon ruling #511 — a
+        page-object field isn't "referenced" until something on an
+        executed test path calls it).
+
+        Fires ``PUT .../conversation/prompt_lib/{project_id}/{id}`` with
+        ``folder_id: null`` and unconditionally refreshes the
+        conversation's ``updated_at`` to "now" — live-confirmed this
+        unconditionally places the conversation in the "Today" date group
+        regardless of its recency before entering the folder (see
+        ``test-specs/chat-interface/_surface.md`` § ELITEA-2136/2138/2139/
+        2140/2141). Toast text is a DISTINCT template from the
+        move-INTO-a-folder toast: "Chat moved to ungrouped area
+        successfully" (no folder name, different verb phrase).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting 'Back to the list' in 'Move to' submenu")
+        self.move_to_back_to_list_menuitem.wait_for(state="visible", timeout=timeout)
+        self.move_to_back_to_list_menuitem.click()
+
     @action("Set folder name in inline editor")
     def set_folder_name(self, name: str):
         """Replace the inline folder-name editor's value via keyboard events.
