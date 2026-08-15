@@ -51,7 +51,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | 03 | Conversation rename — check-icon states + edge chars | 2105,2106,2107,2108,2109,2110,2111,2112,2113 | 9 | **LANDED** — PR #1522, 9/9 automated |
 | 04 | Conversation deletion + chat search (left-panel micro-UI) | 2115,2116,2117,2456,2163,2164,2165,2463 | 8 | **LANDED** — PR #1528, 7 automated/extended + 1 already-covered |
 | 05 | Folder creation | 2118,2119,2120,2133,2134,2457 | 6 | **LANDED** — PR #1532, 6/6 automated |
-| 06 | Folder rename | 2121,2122,2123,2124,2125,2126,2127,2128,2129,2130,2131 | 11 | pending |
+| 06 | Folder rename | 2121,2122,2123,2124,2125,2126,2127,2128,2129,2130,2131 | 11 | **IN PROGRESS** |
 | 07 | Move/drag conversation between folders + list scrolling | 2136,2138,2139,2140,2141,2142,2143,2144,2145,2146,2147,2148 | 12 | pending |
 | 08 | Pin/unpin — conversation & folder basics | 2150,2151,2152,2153,2154,2155,2156 | 7 | pending |
 | 09 | Pin/unpin — edge cases + newer duplicate-family cases | 2157,2158,2159,2160,2161,2461,2462,2460 | 8 | pending |
@@ -135,4 +135,11 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-(none — wave-05 closed; wave-06 not yet dispatched)
+- **wave-06** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w06`,
+  base=`origin/automation/base`, clusters `[2121,2130]` (basic rename + pinned-folder
+  rename variant) + `[2123,2127]` (invalid-input tooltip + leading-space reject) +
+  `[2124,2125,2126,2131]` (checkmark active/inactive states, mirrors wave-03's
+  conversation-rename pattern) + `[2128,2129]` (50-char max/overflow, mirrors
+  wave-02's pattern), 2122 solo (cancel via X icon). New session this dispatch
+  (resumed campaign, git-persisted state) — sync-base-branches re-run fresh
+  (0 drift on all 3 branches). Task ID `wp0mdidj7`, Run ID `wf_99e24ae8-2df`.
