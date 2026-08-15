@@ -1110,6 +1110,20 @@ class ChatPage(BasePage):
         ),
     )
 
+    delete_confirm_title_icon = LocatorDescriptor(
+        testid="delete-confirm-title-icon",
+        description=(
+            "Delete-confirmation modal title's status icon (BaseModal.jsx "
+            "renderIconType(), e.g. the warning <svg> for a "
+            "'Remove user?' dialog, ELITEA-2193). Fix round 1: replaces the "
+            "prior #579-shape-1 raw ``svg`` tag selector — that exception "
+            "was a misclassification (the icon is first-party app JSX "
+            "render output via ModalConstants.MODAL_ICONS, not a "
+            "third-party-library-internal node), so a real testid was "
+            "added instead (EliteaAI/EliteaUI@7b359d32)."
+        ),
+    )
+
     delete_confirm_message = LocatorDescriptor(
         testid="delete-confirm-message",
         description="Delete-confirmation modal body text.",
@@ -4267,36 +4281,32 @@ class ChatPage(BasePage):
         self.page.mouse.click(5, 5)
         self.delete_confirm_dialog.wait_for(state="hidden", timeout=timeout)
 
-    # Scoped raw handle — #579-shape-1 sanctioned exception (third-party MUI
-    # internal node, ELITEA-2193): the warning icon inside the delete-confirm
-    # dialog's title is MUI icon-component render output
-    # (``Modal.DeleteEntityModal``'s ``titleIcon={ModalConstants.MODAL_ICON_TYPE
-    # .warning}`` prop, rendered by the shared ``BaseModal``) — library-internal
-    # chrome with no app testid placeable on it. It lives inside the real app
-    # testid ``delete-confirm-title``, so the bare ``svg`` tag selector is
-    # scoped off that parent field, never a free-floating page-level handle.
-    # Do not extend this to any handle that COULD carry a testid. Same shape
-    # as ``DELETE_DIALOG_BACKDROP`` above (ELITEA-2116) for the dialog's own
-    # ``MuiBackdrop-root``.
-    DELETE_CONFIRM_TITLE_ICON = "svg"
-
     def get_delete_confirm_title_icon(self, timeout: int = 5000):
-        """Return the Locator for the warning ``<svg>`` icon inside the
-        'Remove X?' confirmation dialog's title (ELITEA-2193).
+        """Return the Locator for the status ``<svg>`` icon (e.g. the
+        orange warning icon) inside the 'Remove X?' confirmation dialog's
+        title (ELITEA-2193).
 
-        See ``DELETE_CONFIRM_TITLE_ICON`` docstring for the scoped-raw-handle
-        justification. Caller asserts the icon's computed styling, e.g.
-        ``expect(icon).to_have_css("fill", "rgb(233, 121, 18)")`` — this
-        method only resolves and waits for the handle, per the page-object
-        layer never owning assertions.
+        Fix round 1: previously a #579-shape-1 scoped-raw-handle exception
+        (a bare ``svg`` tag selector scoped off ``delete_confirm_title``).
+        That was a misclassification — the icon is first-party app JSX
+        render output (``BaseModal.jsx``'s ``renderIconType()``, backed by
+        ``ModalConstants.MODAL_ICONS`` → ``@/assets/*.svg?react`` — our own
+        icon components, not third-party-library-internal chrome), so a
+        real testid was genuinely placeable. Now resolves the
+        ``delete_confirm_title_icon`` ``LocatorDescriptor`` (testid
+        ``delete-confirm-title-icon``, added via
+        EliteaAI/EliteaUI@7b359d32). Caller asserts the icon's computed
+        styling, e.g. ``expect(icon).to_have_css("fill", "rgb(233, 121,
+        18)")`` — this method only resolves and waits for the handle, per
+        the page-object layer never owning assertions.
 
         Args:
             timeout: Maximum wait time in milliseconds.
 
         Returns:
-            Locator for the single <svg> node inside ``delete_confirm_title``.
+            Locator for ``delete_confirm_title_icon``.
         """
-        icon = self.delete_confirm_title.locator(self.DELETE_CONFIRM_TITLE_ICON)
+        icon = self.delete_confirm_title_icon
         icon.wait_for(state="visible", timeout=timeout)
         return icon
 
@@ -6317,8 +6327,23 @@ class ChatPage(BasePage):
         # live this implementation) — reusing it as "already open" then
         # races that in-flight re-render. A fresh close+reopen forces a
         # clean re-render against current state.
+        #
+        # Close via a real outside CLICK, not ``dismiss_participants_popover()``'s
+        # Escape press — fix round 1, ELITEA-2193: this branch was previously
+        # DEAD CODE (no caller ever reached ``open_remove_user_dialog()`` with
+        # the "users" popper already open, so the Escape path was never
+        # actually exercised), until ``hover_participant_user_row()``
+        # (ELITEA-2172) started leaving the popper open on entry to this
+        # method. ``hover_participant_user_row()``'s own docstring documents
+        # — confirmed live, 100% reproducible, 3/3 local runs — that Escape
+        # has NO effect on ``chat-participants-popper``'s "users" instance;
+        # only a genuine click outside its DOM subtree fires MUI's
+        # ``ClickAwayListener``. Reuses that method's exact verified
+        # technique (a real ``page.mouse``-driven click on the
+        # ``chat_messages_scroll_container`` far corner) instead of the
+        # Escape press this branch used before it was ever actually hit.
         if self.participants_popper.is_visible():
-            self.dismiss_participants_popover()
+            self.chat_messages_scroll_container.click(position={"x": 10, "y": 10})
             self.participants_popper.wait_for(state="hidden", timeout=timeout)
         popper = self.open_participants_popover(section="users", timeout=timeout)
 

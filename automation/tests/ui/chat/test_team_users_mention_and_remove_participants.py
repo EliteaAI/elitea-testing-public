@@ -95,10 +95,38 @@ asserts the delete icon's accessible name is exactly "Remove user"
 (``DeleteParticipantButton.jsx``'s ``removeLabel``, entity type "user").
 (2) A new step, inserted between the existing Step 8 and Step 9, asserts
 the 'Remove user?' dialog's title shows an orange warning ``<svg>``
-(``fill: rgb(233, 121, 18)``) via the new ``ChatPage.get_delete_confirm_title_icon()``
-(#579-shape-1 sanctioned raw-handle exception — MUI icon-component internal
-node, scoped off the existing ``delete-confirm-title`` testid). Both gaps
-were live-confirmed during ELITEA-2193's analysis; no defect found.
+(``fill: rgb(233, 121, 18)``) via the new ``ChatPage.get_delete_confirm_title_icon()``.
+Both gaps were live-confirmed during ELITEA-2193's analysis; no defect found.
+
+Fix round 1 (reviewer-caught, both corrected on this branch):
+- The warning-icon handle above was originally a #579-shape-1 "sanctioned
+  raw-handle exception" (bare ``svg`` tag selector). That was a
+  misclassification — the icon is first-party app JSX render output
+  (``BaseModal.jsx``'s ``renderIconType()``, our own
+  ``@/assets/attention-icon.svg?react`` icon components), not a
+  third-party-library-internal node, so a real testid was genuinely
+  placeable. Added ``data-testid="delete-confirm-title-icon"`` via a new
+  ``BaseModal`` ``titleIconTestId`` prop (same channel as the existing
+  ``titleTestId``/``closeButtonTestId``/``confirmButtonTestId``/
+  ``cancelButtonTestId``), wired from ``DeleteEntityModal``
+  (EliteaAI/EliteaUI@7b359d32 on ``automation/testids``).
+  ``ChatPage.get_delete_confirm_title_icon()`` now resolves a real
+  ``delete_confirm_title_icon`` ``LocatorDescriptor`` — no raw handle.
+  See ``.agents/memory/test-automation-engineer/delete_confirm_warning_icon_579_shape1_pattern.md``.
+- Step 3's ``hover_participant_user_row()`` leaves the "users" participants
+  popper OPEN (read-only hover, no close). The existing Step 8's
+  ``open_remove_user_dialog()`` has its own close-if-already-open branch,
+  but that branch was previously DEAD CODE — no caller had ever reached it
+  with the popper open — so it still used ``dismiss_participants_popover()``'s
+  Escape press, which ``hover_participant_user_row()``'s own docstring
+  documents (live-confirmed, 100% reproducible) has NO effect on this exact
+  popper instance. Fixed ``open_remove_user_dialog()``'s close-if-open
+  branch to use the same real-outside-click technique
+  ``hover_participant_user_row()`` already established as reliable
+  (``chat_page.py``, ``open_remove_user_dialog()`` docstring/comment has the
+  full account). Only 2 callers of ``open_remove_user_dialog()`` exist,
+  both in this file (Step 8, Step 10); the branch is a no-op unless the
+  popper is already open, so this is backward-compatible with both.
 """
 
 import logging
