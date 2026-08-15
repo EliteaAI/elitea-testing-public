@@ -62,21 +62,33 @@
      96px)`), not a bespoke behavior EliteaUI added.
 3. Scroll down through the submenu folder list via a REAL scroll gesture (mouse wheel, hovering the
    popover Paper).
-   - **Verify**: all seeded folders are accessible — after scrolling to the popover's maximum
-     `scrollTop`, the LAST seeded folder's `chat-move-to-folder-{folder_id}-menuitem` is within the
-     popover's own bounding box (same "prove reachability, not just scrollTop movement" discipline as
-     ELITEA-2146 step 4).
-4. Select the last seeded folder from the scrolled-to position.
+   - **Verify** (AMENDED during implementation — see note below): identify a seeded folder currently
+     positioned BELOW the popover's visible viewport; scroll down via repeated real wheel gestures
+     (checking reachability after every gesture) until its `chat-move-to-folder-{folder_id}-menuitem`
+     falls within the popover's own bounding box (same "prove reachability, not just scrollTop
+     movement" discipline as ELITEA-2146 step 4).
+4. Select the scrolled-to folder from step 3.
    - **Verify**: `PUT /elitea_core/conversation/prompt_lib/{project_id}/{conv_target_id}`
-     `{"folder_id": <last_seeded_folder_id>}` fires and returns 200 (source-confirmed endpoint,
+     `{"folder_id": <scrolled_to_folder_id>}` fires and returns 200 (source-confirmed endpoint,
      `useMoveToFolderConversation.hooks.js`) — live-confirmed this pass via
      `browser_network_requests` (`PUT .../elitea_core/conversation/prompt_lib/399/8152` → 200 for an
      analogous move during this exploration). Conversation moved; success toast appears:
      `Chat moved to "${targetFolder.name}" folder successfully` (documented, ELITEA-2135/ELITEA-2137's
      AFS — WITH quote marks around the folder name, the case text's paraphrase omits them, cosmetic
-     drift only). Additionally: `conv_target` now renders inside the last seeded folder's row
-     (`is_conversation_in_folder(last_seeded_folder_id, conv_target_id)` reads `True`, pre-existing
+     drift only). Additionally: `conv_target` now renders inside the scrolled-to folder's row
+     (`is_conversation_in_folder(scrolled_to_folder_id, conv_target_id)` reads `True`, pre-existing
      helper).
+
+**Implementer amendment (steps 3–4, discovered during ELITEA-2147 implementation):** the original
+verify text ("scroll to the popover's maximum `scrollTop`; the LAST seeded folder is at that extreme")
+assumed the popover's raw scroll maximum lands on the last-created seeded folder. Live-confirmed this
+is FALSE, for the same reason as ELITEA-2146's sibling amendment: the submenu enumerates the account's
+folders in the SAME `folders` store order the sidebar uses, which renders NEWEST-created folders
+closer to the TOP, not the bottom. The shipped test instead identifies, empirically via live bounding
+boxes, a folder genuinely below the current popover viewport and proves it becomes reachable — same
+case-level claim (scrolling reaches every folder, including ones initially off-screen), without
+assuming a specific creation-order position. See
+`automation/tests/ui/chat/test_folder_list_scrollability_and_expand_states.py` for the implementation.
 
 ## Expected Results
 - The submenu's folder-list popover genuinely overflows (`scrollHeight > clientHeight`) once enough

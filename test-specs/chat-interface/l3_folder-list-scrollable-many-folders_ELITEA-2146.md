@@ -54,16 +54,32 @@
    - **Verify**: `scrollTop` reads > 0 after the scroll and strictly greater than its value before
      scrolling (before/after comparison, matching `scroll_messages_container()`'s own return shape).
 4. Verify all folders are accessible via scrolling — scroll to the bottom of the container.
-   - **Verify**: scroll the container to its maximum (`scrollTop == scrollHeight - clientHeight`);
-     the LAST seeded folder (`AutoScrollFolder24`)'s row (`chat-folder-item-{last_seeded_id}`) is
-     within the container's viewport bounds (`getBoundingClientRect()` top/bottom fall inside the
-     container's own bounding box) — proves the scroll genuinely reaches every seeded folder, not
-     just that `scrollTop` moved.
+   - **Verify** (AMENDED during implementation — see note below): identify a seeded folder currently
+     positioned BELOW the container's visible viewport; scroll down via repeated real wheel gestures
+     (checking reachability after every gesture) until its row falls within the container's own
+     bounding box — proves the scroll genuinely reaches a folder that was off-screen, not just that
+     `scrollTop` moved.
 5. Scroll back up and verify the top folders are still accessible.
-   - **Verify**: scroll the container back to `scrollTop = 0`; the FIRST seeded folder
-     (`AutoScrollFolder0`)'s row is again within the container's viewport bounds — mirrors step 4's
-     assertion at the opposite end, proving the round trip doesn't leave anything permanently
-     scrolled out.
+   - **Verify** (AMENDED — see note below): identify a seeded folder now positioned ABOVE the visible
+     viewport (scrolled past by step 4); scroll back up via repeated real wheel gestures until its row
+     is again within the container's own bounding box — mirrors step 4's assertion at the opposite
+     end, proving the round trip doesn't leave anything permanently inaccessible.
+
+**Implementer amendment (steps 4–5, discovered during ELITEA-2146 implementation):** the original
+verify text above ("scroll to `scrollTop == scrollHeight - clientHeight`; the LAST/FIRST seeded
+folder by creation order is at that extreme") assumed the container's raw scroll maximum lands on the
+last-created seeded folder. Live-confirmed this is FALSE on two counts: (1) `Conversations.jsx`'s
+`ref={listRef}` container holds folders AND the full pinned/date-grouped conversation list in ONE
+shared scroll region — on this account (carrying many ambient conversations) the container's true
+scroll extreme sits well past the folder section entirely, confirmed via a deeply negative
+`getBoundingClientRect().y` on the target folder after scrolling to the literal max; (2) the folder
+list itself renders NEWEST-created folders closer to the TOP, not the bottom (confirmed via bounding
+boxes of all 25 seeded folders — id order strictly correlates with descending `y`), so "last created"
+and "bottommost" are opposite ends, not the same one. The shipped test instead identifies, empirically
+via live bounding boxes, a folder genuinely below/above the current viewport and proves it becomes
+reachable — this verifies the same case-level claim (no folder permanently inaccessible, round trip
+intact) without assuming a specific creation-order position. See
+`automation/tests/ui/chat/test_folder_list_scrollability_and_expand_states.py` for the implementation.
 
 ## Expected Results
 - The sidebar list container genuinely overflows (`scrollHeight > clientHeight`) once enough folders
