@@ -148,6 +148,19 @@ Disposition key: `asserted` / `already-covered` / `clarification` / `blocked` / 
 | Submenu open (with retry for #1117) | n/a (composed action) | pre-existing | `ChatPage.open_move_to_submenu(conversation_id)` (pre-existing, `chat_page.py:3626`). |
 | **Submenu folder-list popover container** (the MUI `Menu`'s Paper — role="menu" `<ul>`'s closest `.MuiPaper-root`) | **testid needed**: e.g. `chat-move-to-submenu-popover` on the nested `<Menu>` in `DotMenu.jsx` (line ~93, the `subMenuItems?.length &&` branch) — add via `slotProps={{ paper: { 'data-testid': 'chat-move-to-submenu-popover' } }}` (MUI Menu forwards this to its Paper). Zero new DOM node — MUI already renders this Paper, this is a pure attribute addition on an existing element. | **ADD via `add-data-testid`.** Currently carries NO testid and NO `id` at all (confirmed live this pass via DOM inspection — `paper.getAttribute('data-testid')` and `paper.id` both empty/null). | New: `ChatPage.move_to_submenu_popover = LocatorDescriptor(testid="chat-move-to-submenu-popover")` + `get_move_to_submenu_scroll_metrics()` / `is_move_to_submenu_scrollable()` / `scroll_move_to_submenu()`, mirroring the `chat_messages_scroll_container` trio (same pattern ELITEA-2146 specs for the sidebar container). **Scoping caveat**: `DotMenu.jsx` renders this SAME nested-`Menu` shape for every dot-menu instance in the app with `subMenuItems` (not folder-move-specific) — if a testid this specific would collide with a future unrelated submenu, the implementer should confirm at add-time whether a single static testid is safe (only one such submenu can be open at a time, so likely yes) or whether it needs scoping; call out either way in the Run Report. |
 
+**Resolved during fix-round-1 (implementer, EliteaAI/EliteaUI automation/testids
+commit `1b35a0a2`):** the Scoping caveat above under-called it — a single static
+testid IS safe (only one such submenu can be open at a time), but the reviewer
+flagged the *placement*, not the collision risk: the literal `'chat-move-to-
+submenu-popover'` string was baked directly into shared `DotMenu.jsx` (16+
+consumers), which is the anti-pattern `.agents/testing.md` § Locator policy names
+explicitly ("a component under `src/components/` … gets either a GENERIC testid
+or a caller-supplied `testId` prop … never the shared component's first
+consumer"). Rewired as a `submenuTestId` prop threaded from the menu-item
+definition down through `DotMenu` → `BasicMenuItem`, supplied only by the chat
+"Move to" item in `ConversationItem.jsx`. Testid value, locator, and every
+assertion below are unchanged — only the JSX origin moved.
+
 **Live measurement (this pass, confirms the submenu popover genuinely overflows):**
 - With `conv_target`'s "Move to" submenu open and 67 ambient folder items rendered: popover Paper
   `scrollHeight=2781`, `clientHeight=802`, computed `overflow-y: auto`, computed

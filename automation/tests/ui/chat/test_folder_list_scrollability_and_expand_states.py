@@ -30,6 +30,19 @@ nested submenu Menu, via ``slotProps={{paper: {...}}}``) — both zero-new-
 DOM-node attribute additions on elements that already existed and already
 rendered ``ref={listRef}`` / the Paper respectively.
 
+Fix-round-1 (EliteaAI/EliteaUI automation/testids commit 1b35a0a2, "test:
+[EL-2147] rewire chat-move-to-submenu-popover testid as caller-supplied
+prop"): the popover testid was originally hardcoded as a literal string
+inside ``DotMenu.jsx`` — a shared component with 16+ consumers, which
+violates the shared-component testid rule (``.agents/testing.md`` §
+Locator policy: a shared component gets a generic testid or a
+caller-supplied prop, never a feature-scoped literal baked into the shared
+file). Rewired as a ``submenuTestId`` prop threaded from the menu-item
+definition down through ``DotMenu`` -> ``BasicMenuItem``, supplied only by
+the chat "Move to" item in ``ConversationItem.jsx``; no other DotMenu
+consumer passes it. The testid VALUE and every locator/assertion in this
+file are unchanged — only its origin in the JSX moved.
+
 Real scroll gestures only (``container.hover()`` + ``page.mouse.wheel()``,
 mirroring ``ChatPage.scroll_messages_container()``) — never a synthetic
 ``el.scrollTop = N`` assignment, per this project's fidelity policy

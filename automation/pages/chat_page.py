@@ -1047,6 +1047,10 @@ class ChatPage(BasePage):
     # slotProps={{paper: {'data-testid': ...}}}). Only one such submenu can
     # be open at a time, so a single static testid is safe (confirmed at
     # add-time per the AFS's own scoping caveat).
+    # Fix-round-1 (commit 1b35a0a2): the testid's origin moved from a
+    # hardcoded literal in DotMenu.jsx to a caller-supplied `submenuTestId`
+    # prop (only ConversationItem.jsx's "Move to" item passes it) — value
+    # and this locator are unchanged.
     move_to_submenu_popover = LocatorDescriptor(
         testid="chat-move-to-submenu-popover",
         description="'Move to' submenu's own scrollable Menu popover Paper.",
