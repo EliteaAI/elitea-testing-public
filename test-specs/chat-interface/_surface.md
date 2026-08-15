@@ -2,7 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2189/2190/2191,
+a time; last confirmed by: qa-engineer analyst, ELITEA-2192/2193/2194,
+2026-08-15 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: qa-engineer analyst, ELITEA-2189/2190/2191,
 2026-08-15 (supersedes nothing below — new section, other sections unchanged;
 previous confirmer: test-automation-engineer (combined analyst+
 implementer), ELITEA-2175/2176, 2026-08-15 (supersedes nothing below — new
@@ -46,6 +48,64 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03))).
+
+## ELITEA-2192/2193/2194 — Users-dropdown remove-control family, round 2:
+## owner-attempt-toast is UNREACHABLE (clarification, not a defect), owner-
+## removes-non-owner GAINS 2 new assertions (tooltip text + warning icon),
+## Cancel-preserves-user is a 2nd-generation near-duplicate of ELITEA-2171
+- **All three `already-covered`/`extend-existing` against the SAME two covering tests this digest's
+  ELITEA-2171/2172 section already established** — `test_owner_has_no_remove_control_in_users_dropdown.py`
+  (ELITEA-2172) and `test_team_users_mention_and_remove_participants.py`
+  (ELITEA-2168). Zero new page-object methods needed; two new LIVE-CONFIRMED facts about existing,
+  already-testid'd surfaces.
+- **ELITEA-2192 ("Owner Cannot Be Removed") is `already-covered` against ELITEA-2172's test — but its
+  own step 4 ("attempt delete → red error toast 'Cannot delete author of the conversation'") is
+  UNREACHABLE via any real UI interaction, filed as a CLARIFICATION (not a defect).** Investigated via
+  `getComputedStyle` on the owner row's `#DeleteButton` (not hover-dependent): the delete icon is
+  ALWAYS in the DOM (never conditionally rendered) but `visibility: hidden` is its BASE state, and the
+  `&:hover` rule only flips it to `visible` when `isSelectable` is `true` for that row — permanently
+  `false` for the owner's own row. `visibility: hidden` (unlike `opacity: 0`/`pointer-events: none`
+  alone) removes an element from the browser's own hit-testing, so a genuine mouse click at that
+  screen position can never land on it — there is no code path by which a real user can "attempt" this
+  delete at all. `useDeleteParticipant.js` DOES wire a `toastError(...)` for a failed delete mutation
+  (so a server-side "cannot remove the author" guard, if any, would surface as a toast IF the request
+  were ever sent) — but since the request can never be triggered through the UI for the owner's own
+  row, that guard/toast is unreachable through the case's own described interaction. `grep -rn "Cannot
+  delete author" src/` → 0 hits anywhere in the frontend. Filed
+  [elitea-testing-public#1564](https://github.com/EliteaAI/elitea-testing-public/issues/1564).
+- **ELITEA-2193 ("Owner Can Remove Non-Owner via Confirm Dialog") is `extend-existing` against
+  ELITEA-2168's Step 8/9 — 2 gap assertions, both live-confirmed, zero defects.** The covering test's
+  `open_remove_user_dialog()` hovers-and-clicks in one motion and only asserts the dialog's BODY text;
+  it never separately checks (a) the delete icon's hover TOOLTIP text, or (b) the confirm dialog's
+  ICON. Both are genuinely new, additive assertions on the SAME existing call site:
+  1. **Tooltip = "Remove user"** — confirmed live via accessibility snapshot: hovering a non-owner row
+     produces `button "Remove user"`, matching `DeleteParticipantButton.jsx`'s MUI `Tooltip` `title`
+     prop (`` `Remove ${entityType}` ``, `entityType` resolves to `'user'` for Users-section rows).
+  2. **Orange warning icon** — confirmed live via `browser_evaluate`: `delete-confirm-title` (existing
+     testid, `ChatPage.delete_confirm_title`, previously UNUSED for icon inspection anywhere in the
+     suite — this case is its first icon-check caller) contains exactly one `<svg>` with computed
+     `fill: rgb(233, 121, 18)` — a genuine orange, matching `Modal.DeleteEntityModal`'s
+     `titleIcon={ModalConstants.MODAL_ICON_TYPE.warning}` prop.
+- **ELITEA-2194 ("Cancel Keeps User in List") is a SECOND near-duplicate TMS case of ELITEA-2171** —
+  same wording, same 3-step flow, different TMS ID, same covering test's Step 10. Live-reconfirmed a
+  SECOND time this session (different conversation/participant pair than ELITEA-2171's own repro) —
+  same result: Cancel closes the dialog, badge and popover listing both stay unchanged. Reinforces the
+  "near-duplicate TMS case ID" pattern this digest already documents recurring across the folder
+  surface (ELITEA-2460/2148, ELITEA-2461/2149+2151, ELITEA-2123/2127/2459) — now confirmed on the
+  Users-dropdown remove-control surface too.
+- **Zero new testids for all three cases** — every handle needed (`chat-participants-badge-button`,
+  `chat-participant-row-user_{userId}_`, `chat-participant-remove-button`, `delete-confirm-dialog`,
+  `delete-confirm-title`) already exists on both `main` and `automation/testids` (fresh `git fetch
+  origin` + `git grep` this session).
+- **Test-data reuse**: all three cases' live exploration this session reused ONE pre-existing
+  conversation from earlier in the same batch (`/chat/566` "HI Chat", owner "Test Bot" + non-owner
+  "Hrach Sargsyan") rather than seeding a fresh one — zero new conversations created, zero participants
+  actually removed (the one confirm dialog opened during exploration was Cancelled, not Removed, so the
+  conversation's state is unchanged from before this session).
+- All three AFS files:
+  `test-specs/chat-interface/lcovered_conversation-owner-cannot-be-removed-attempted-delete-toast_ELITEA-2192.md`,
+  `test-specs/chat-interface/lextend_owner-removes-non-owner-tooltip-and-warning-icon_ELITEA-2193.md`,
+  `test-specs/chat-interface/lcovered_cancel-remove-participant-dialog-keeps-user-in-list_ELITEA-2194.md`.
 
 ## ELITEA-2175/2176 — Add users modal: middle-chip removal via X + cancel
 ## with TWO pre-selected users, both `extend-existing` against ELITEA-2167's
