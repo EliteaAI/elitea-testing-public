@@ -3,8 +3,10 @@
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
 a time; last confirmed by: test-automation-engineer (combined analyst+
-implementer), ELITEA-2155/2156, 2026-08-15 (supersedes nothing below — new
+implementer), ELITEA-2157/2158, 2026-08-15 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: test-automation-engineer
+(combined analyst+implementer), ELITEA-2155/2156, 2026-08-15 (supersedes nothing
+below — new section, other sections unchanged; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2152/2153, 2026-08-15 (supersedes nothing
 below — new section, other sections unchanged; previous confirmer: qa-engineer analyst,
 ELITEA-2146/2147/2148,
@@ -2279,3 +2281,55 @@ Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
 2026-08-15):** nothing new to resolve — both tests ran green on the first
 attempt, reusing 100% pre-existing handles/methods; no AFS amendment was
 needed.
+
+## ELITEA-2157/2158 — Pin on top DISABLED for an in-folder conversation,
+## ENABLED after "Move to" > "Back to the list"; family AFS, ZERO new
+## testids, ZERO defects
+- **Live-reconfirms, from BOTH sides in one session, the already-documented
+  `disabled: !isPinned && !!conversation.folder_id` rule** (`ConversationItem.jsx`
+  line 260) — first documented in `_surface.md` § ELITEA-2136/2138/2139/2140/2141
+  as a flagged-but-unencoded gap ("None of ELITEA-2136/2138/2139/2140/2141's own
+  case steps require asserting this full [in-folder menu item] set, so no test
+  in this pass encodes it"). This pair closes that gap.
+- **Reused an ambient leftover conversation for the live confirmation pass**
+  (`W08_2152_conv seed message`, id `8514`, inside folder `w08_2152target`/id
+  `1091`, both leftover fixtures from an earlier wave) rather than seeding new
+  data purely to eyeball the mechanism — same "leftover exploration data is
+  fair game for a quick live check, the test itself still seeds its own"
+  pattern already established for the pinned-folder ancestor gotcha (§
+  ELITEA-2146/2147/2148). The actual implemented test seeds its own
+  `folder`/`conv_target` via `conversation_api`, per usual.
+- **Testid renders unconditionally regardless of disabled state** —
+  source-confirmed: `DotMenu.jsx`'s `BasicMenuItem` sets
+  `data-testid={testId ? \`${testId}-menuitem\` : undefined}` unconditionally;
+  `disabled` is a separate MUI `MenuItem` prop rendered as `aria-disabled`.
+  So `chat-conversation-menu-pin-menuitem` is present-and-selectable either
+  way — the DISABLED check is a plain attribute read on the existing
+  testid-selected locator, no new locator needed.
+- **A forced click on the disabled item has no network side effect** —
+  live-confirmed: MUI's `ButtonBase` guards its own click handler internally
+  when `disabled`, so even `force=True` (which bypasses Playwright's
+  actionability check, not MUI's own guard) never fires the
+  `POST .../pin/prompt_lib/...` mutation. This is EliteaUI-independent MUI
+  behavior, not app-specific logic.
+- **In-folder context menu is a 6-item set** (`Rename, Move to, Playback,
+  Duplicate, Pin on top [disabled], Delete`), one more than the flat-list
+  5-item set ELITEA-2114/2149 document (`Duplicate` present, absent
+  outside a folder) — reconfirmed live this pass, matches the prior flag.
+- **Zero new testids, zero new page-object methods** — every handle and
+  every interaction/verification method needed already existed
+  (`expand_folder`, `is_conversation_in_folder`, `open_conversation_context_menu`,
+  `get_conversation_menu_item`, `open_move_to_submenu`,
+  `select_move_to_back_to_list`, `is_conversation_in_group`,
+  `is_conversation_pinned`, `get_pin_icon`, `click_conversation_menu_item`).
+- **Zero product defects found.** Both cases' mechanisms work exactly as
+  cased, end to end, live-confirmed (0 console errors across the repro).
+- **Landed as ONE new test method** (not two) in
+  `test_pin_conversation.py` — `test_pin_disabled_in_folder_then_moved_and_pinned`
+  in a new class `TestPinDisabledInFolderThenMovedAndPinned`, tagged with
+  both TMS IDs via two stacked `@allure.issue` decorators (same pattern
+  ELITEA-2139/2140's family test already uses) — ELITEA-2158's own
+  precondition (step 1) IS ELITEA-2157's entire subject, so one continuous
+  live flow on one seeded conversation honestly satisfies both cases' full
+  Pass/Fail criteria without re-deriving a second "conversation inside a
+  folder" fixture.
