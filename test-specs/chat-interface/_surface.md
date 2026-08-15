@@ -2845,3 +2845,90 @@ confirmer: qa-engineer analyst, ELITEA-2168, 2026-08-15)
   checkmark-icon `sx`-on-raw-svg console warning) re-confirmed on THIS case's
   own conversation-B setup too (not just ELITEA-2167/2168's flows) — filtered
   via the same `_is_known_checkicon_sx_svg_warning_719` idiom.
+
+## Add/remove agent participant mid-conversation + conversation starters
+(ELITEA-2177/2178/2465, qa-engineer analyst, 2026-08-15) — `/chat/{id}`
+existing-conversation surface, NOT the Agent Hub / embedded-agent-detail
+surfaces ELITEA-2369/1886 already cover.
+
+- **`chat-conversation-starter-tile` renders on THIS surface too, already
+  wired, zero new testid needed.** `/chat/{id}`'s `NewChat.jsx` mounts the
+  SAME `ChatBox.jsx` → `ChatConversationStarters.jsx` tree ELITEA-1886 wired
+  the testid on (for the embedded `/agents/all/{id}` chat) — confirmed live:
+  adding an agent as a participant via the composer's "+ → Agents" flow on an
+  EXISTING conversation renders starter tiles carrying
+  `chat-conversation-starter-tile` with no additional wiring. `ChatPage`
+  already has `CHAT_STARTER_TILE` / `get_chat_starter_tiles()` /
+  `click_chat_starter_tile()` ready to use as-is.
+- **The tooltip on a starter tile is CONDITIONAL on genuine visual
+  truncation** (`EllipsisTextWithTooltip`'s `clientWidth < scrollWidth` check,
+  `src/components/ConversationStarters.jsx:218-223`) — a short starter (e.g.
+  the case-family's own "here is your task: Explain Exponential Backoff",
+  48 chars) does NOT truncate at this environment's rendered tile width and
+  correctly shows no tooltip on hover. Any case asserting the hover-tooltip
+  behavior needs a starter text long enough to actually overflow (~150+
+  chars confirmed to truncate reliably) — don't assume the case's own short
+  example starter will exercise this path.
+- **Plus-menu ("+") testids exist and are cleaner than the page object's
+  current raw handles** — confirmed live via `getByTestId` resolution:
+  `plus-menu-button`, `agents-menuitem` (same `-menuitem` suffix family as
+  `PLUS_MENU_ITEM_SUFFIX`), `agents-search-input`, and the dynamic per-row
+  `agents-menu-item-agent-{index}-{agent_id}`. `ChatPage.add_agent_participant()`
+  still uses `get_by_role("button", name="plus menu")` /
+  `get_by_placeholder("Search agents...")` / a raw `li[role="menuitem"]`
+  text-match — pre-existing tech debt (#25/#42 class), not touched this
+  dispatch since the method already works; a future refactor pass could
+  tighten it to the testids above.
+- **The composer's "X" / remove-participant icon has NO testid** —
+  `AgentEditorPanel.jsx`'s `IconButton` (`aria-label="switch to model"`,
+  tooltip "Switch to model", TWO render branches ~line 178 and ~line 294)
+  is genuinely missing `data-testid`, confirmed via source. `testid needed:
+  chat-switch-to-model-button` — real gap, not yet added (ELITEA-2465's own
+  case step 4 needs to verify this icon's presence).
+- **`reasoning_effort: "none"` passes agent-CREATE but 400s
+  participant-ADD.** `POST .../applications/prompt_lib/{project}` accepts
+  `llm_settings.reasoning_effort: "none"` silently (agent created, `201`,
+  bad value persisted) but
+  `POST .../elitea_core/participants/prompt_lib/{project}/{conv_id}` for
+  that same agent 400s:
+  `"Input should be 'low', 'medium' or 'high'"` (Pydantic literal-enum
+  validation on the participants endpoint only). Confirmed live this
+  dispatch — cost ~15 minutes of debugging until traced via the network
+  response body. Fixture guidance: omit `reasoning_effort` entirely (or set
+  a valid enum value) when creating a disposable agent that will be added as
+  a chat PARTICIPANT (not just used standalone) — this is a stricter check
+  than agent-creation's own validation, asymmetric between the two
+  endpoints.
+- **The Playwright MCP browser's default-active project is NOT guaranteed to
+  match `${ELITEA_PROJECT_ID}` (399, `Private`) from `.env.test`.** This
+  session's persistent browser profile opened on project 471 ("Elitea
+  Testing Team") by default — confirmed via the sidebar's project-id textbox
+  and via `GET .../applications/prompt_lib/{id}?...` calls literally
+  targeting different project ids. Data seeded via `AgentAPI`/Bearer-token
+  calls against project 399 was invisible in the UI's own agent search until
+  the project switcher was used to select "Private" (project 399) —
+  `participants`-add also 400s cross-project (targets the CONVERSATION's
+  project, not the agent's). Any future analyst/fixture on this surface:
+  confirm the UI session's ACTUAL active project (sidebar textbox, or force
+  `page.goto`/project-switcher-select at test start) rather than assuming
+  the config default is what's live in a persistent local browser profile.
+- **Removing an agent participant cleanly clears starters AND restores the
+  default LLM, confirmed via full reload (not just live DOM).** Deleting the
+  agent via API (`AgentAPI.delete_agent()`) also cleanly drops it as a
+  conversation participant server-side — post-reload, zero leftover chip,
+  zero leftover starter tiles, default LLM shown again, zero console errors.
+  Deleting a just-sent agent-response message item (via its own "Delete"
+  button) CASCADES to also remove the paired user message — confirmed live,
+  useful cleanup shortcut instead of deleting each message individually.
+- **Case-text drift (CLARIFICATION, not filed as a defect):** the
+  "Remove agent?" confirmation dialog reads
+  `"Are you sure to remove the {agent-name} agent from chat?"` — case text
+  (ELITEA-2178) says "...from **conversation**?". Live wording is correct/
+  current; assert "from chat".
+- **"Claude B" (the case-family's own example agent name, ELITEA-2177/2178/
+  2465) does not exist in either the `Private` (399) or "Elitea Testing
+  Team" (471) project** — confirmed via full agent listing in both. Use any
+  starters-bearing agent (the pre-existing Catalog "StarterComposer" agent,
+  4 starters configured, works for a quick manual check; a disposable
+  per-test agent via `AgentAPI.create_agent_full()` is the implementer's
+  correct choice for isolation).
