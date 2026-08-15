@@ -2,7 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: test-automation-engineer (combined analyst+
+a time; last confirmed by: qa-engineer analyst, ELITEA-2142/2143/2144/2145,
+2026-08-15 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: test-automation-engineer (combined analyst+
 implementer), ELITEA-2136/2138/2139/2140/2141, 2026-08-15 (supersedes nothing
 below — new section, other sections unchanged; previous confirmer:
 test-automation-engineer (combined analyst+implementer), ELITEA-2128/2129,
@@ -23,6 +25,95 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+
+## ELITEA-2142/2143/2144/2145 — drag-and-drop conversation<->folder, NEW
+## surface (`chat-conversation-drag-drop`), mechanism confirmed real,
+## TWO new defects filed (#1541 drop-target misresolution, #1542 missing
+## single-item toast), one direction not pristine-confirmed (scroll)
+- **Mechanism**: `@dnd-kit/core`'s `PointerSensor` (8px activation distance),
+  NOT native HTML5 `draggable`/`DragEvent`. `DraggableConversationItem.jsx`
+  (`useDraggable`, id = conversation numeric id) / `DraggableFolderItem.jsx`
+  (`useSortable`, id = `folder-{id}`, used for folder REORDERING, a separate
+  concern from conversation drops) / `DroppableFolderItem.jsx` +
+  `DroppableGroupedArea.jsx` (`useDroppable`, ids `folder-{id}` /
+  `'ungrouped-conversations'`). All logic in
+  `src/hooks/chat/useDragAndDrop.js`.
+- **Real Playwright mouse gestures DO drive the real product code — no
+  substitution needed for this whole family.** Confirmed via network capture:
+  a genuine multi-step `mouse.down()` → several `mouse.move(..., {steps:N})`
+  → `mouse.up()` sequence (or Playwright's own `locator.dragTo()`) fires a
+  real `PUT /elitea_core/conversation/prompt_lib/{project}/{id}`. A single
+  big-jump `dragTo()` with NO intermediate steps risks under-shooting the
+  8px `PointerSensor` activation distance or missing collision recompute —
+  use several `steps` per `mouse.move()` call and re-measure the target's
+  `boundingBox()` on every iteration (layout shifts — e.g. a source folder's
+  accordion collapsing mid-drag — move sibling elements a few px during the
+  gesture; a STALE captured target rect can miss).
+- **Hover-highlight over a candidate drop folder IS implemented and
+  CONFIRMED WORKING live** (screenshot evidence,
+  `.playwright-mcp/w07-mid-drag-hover-folderB.png`): `DroppableFolderItem`'s
+  `shouldShowDropFeedback` (`isOver && isActive && isValidDropTarget`) renders
+  a `2px dashed` primary-color overlay `Box` around the hovered folder. Same
+  mechanism/component (`DroppableGroupedArea`) exists for the ungrouped/
+  date-group drop area. **Neither overlay carries a testid today** —
+  `testid needed`: add a stable `data-testid` (e.g.
+  `chat-folder-drop-zone-{folder_id}` / `chat-conversation-list-drop-zone`)
+  PLUS a `data-drop-active` boolean attribute on the EXISTING outer
+  `ref={setNodeRef}` Box (the wrapper `DroppableFolderItem`/
+  `DroppableGroupedArea` already render, one level above the pre-existing
+  `chat-folder-item-{id}` testid) reflecting `shouldShowDropFeedback` —
+  state-via-`data-*`-attribute per this project's testid policy, NOT a
+  state-switched testid, and NOT the conditionally-mounted anonymous overlay
+  `Box` itself (that element mounts/unmounts with drag state, which is the
+  wrong node to carry an identity testid).
+- **CONFIRMED DEFECT, filed
+  [elitea-testing-public#1541](https://github.com/EliteaAI/elitea-testing-public/issues/1541)**:
+  dragging a conversation OUT OF one folder and dropping it ONTO another
+  folder does NOT move it there — it lands in the ungrouped/general list
+  (`folder_id: null`) instead, even though the target folder was correctly
+  highlighted (dashed border, confirmed via screenshot) right up to release.
+  Reproduced 3× this session, cleanest repro was a fresh page load + single
+  continuous gesture with the target's `boundingBox()` re-measured
+  immediately before `mouse.up()` (pristine-repro gate satisfied). Root
+  cause suspected in `handleDragEnd`'s `over.id` resolution vs. the
+  `getDropAreaState`-driven highlight diverging — not yet fix-verified, see
+  the issue for the exact source-line reasoning.
+- **CONFIRMED DEFECT (source-level, not live-UI-dependent), filed
+  [elitea-testing-public#1542](https://github.com/EliteaAI/elitea-testing-public/issues/1542)**:
+  `handleDragEnd`'s `toastSuccess(...)` call is gated behind
+  `currentDraggedItems.length > 1` — a SINGLE-conversation drag-and-drop
+  move NEVER shows a success toast, regardless of whether the move itself
+  succeeds. Contradicts both the TMS cases (ELITEA-2142/2144 each ask to
+  "verify a success toast confirms the move" for a single conversation) AND
+  the product's own precedent — the "Move to" CONTEXT-MENU flow (a
+  different code path, `test_move_conversation_to_folder.py`) DOES show a
+  toast for a single-item move (`Chat moved to "X" folder successfully`).
+- **NOT pristine-confirmed this session, due to environment obstacles, not
+  a defect claim**: the Today/date-group → folder direction specifically
+  (ELITEA-2142's own core assertion). This shared DEV account currently
+  carries **65+ orphaned folders** (known, already-tracked cleanup gap —
+  see the `#1309`/`#1310`/`#1533` testid-regression section below, which is
+  the root cause of the leaked `delete_folder_via_menu()` cleanup failures),
+  pushing the "Today" conversation list thousands of px below the folder
+  list and out of simultaneous viewport reach even at a 4000px-tall resize;
+  `@dnd-kit`'s autoscroll did not visibly engage for synthetic MCP pointer
+  input in the time available. Given `handleDragEnd`'s folder-branch code
+  is IDENTICAL for both directions (`droppedOnId.startsWith('folder-')` →
+  `onMoveToFolderConversation(conversation, targetFolder)`, regardless of
+  whether the drag started from `ungrouped` or another folder), there is a
+  real, non-trivial risk ELITEA-2142 hits the SAME #1541 defect — but this
+  was not independently proven for this exact direction. **Flagged as an
+  explicit build-time check** in ELITEA-2142's own AFS, not asserted as a
+  separate defect.
+- **Test-data hygiene note (not new — corroborates the already-documented
+  `#1309`/`#1310` sections below)**: `ConversationAPI` already has
+  `create_folder(name)` / `delete_folder(id)` /
+  `move_conversation_to_folder(conversation_id, folder_id)` (contrary to the
+  "no FolderAPI client exists yet" note in the ELITEA-2135 AFS/section
+  below — this has since been added; use it directly, don't re-add).
+  This session's own exploration folders/conversations (ids 301/302,
+  8404/8405) were deleted via these API methods before finishing — zero net
+  pollution added by this session.
 
 ## ELITEA-2136/2138/2139/2140/2141 — "Move to" submenu family, extends
 ## ELITEA-2135/2137/2138's own surface: back-to-list, folder-to-folder,
