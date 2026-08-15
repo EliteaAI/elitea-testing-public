@@ -83,6 +83,10 @@ class TestChatFolderRenameCheckmarkValidation:
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2458_chat-folder-rename-checkmark-inactive-when-empty-less-than-3.md",
         "onetest-ai Test Case link",
     )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2125_chat-folder-rename-check-icon-inactive-for-less-than-3-characters.md",
+        "onetest-ai Test Case link — ELITEA-2125",
+    )
     @pytest.mark.p1
     def test_folder_rename_checkmark_validation(self, page):
         """Validate the rename editor's confirm-checkmark enable/disable
@@ -227,6 +231,31 @@ class TestChatFolderRenameCheckmarkValidation:
                 tooltip_text = chat.get_folder_name_confirm_tooltip_text(timeout=UI_ELEMENT_TIMEOUT)
                 assert tooltip_text == VALIDATION_TOOLTIP_TEXT, (
                     f"Validation tooltip text mismatch — got: {tooltip_text!r}"
+                )
+
+            with allure.step(
+                "Step 4a — ELITEA-2125: click the checkmark while the name "
+                'is 2 characters ("AB"); verify it has no effect'
+            ):
+                puts_before = len(put_requests)
+                chat.folder_name_confirm_button.click()
+                page.wait_for_timeout(300)
+                assert chat.folder_name_input.is_visible(), (
+                    "Editor should stay open after clicking the inactive "
+                    "(2-character) checkmark"
+                )
+                assert chat.folder_name_input.input_value() == TWO_CHAR_NAME, (
+                    "Input should remain unchanged by the no-op click"
+                )
+                assert chat.get_folder_item(folder_id).count() == 0, (
+                    f"Folder {folder_id} should NOT re-render as an "
+                    "accordion row — that would mean edit mode exited "
+                    "unexpectedly (FolderAccordion.jsx only mounts when "
+                    "NOT editing)"
+                )
+                assert len(put_requests) == puts_before, (
+                    "No PUT to the folder endpoint should fire on an "
+                    f"inactive-checkmark click, saw: {put_requests[puts_before:]}"
                 )
 
             with allure.step(
@@ -1025,6 +1054,169 @@ class TestChatFolderRenameCheckmarkValidation:
                 try:
                     chat.delete_folder_via_api(folder_id, timeout=UI_ELEMENT_TIMEOUT)
                     logger.info("Cleaned up folder %s via API", folder_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder %s: %s", folder_id, exc)
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2131_chat-folder-rename-no-changes-made-checkmark-inactive.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p3
+    def test_folder_rename_no_changes_close_via_x_icon(self, page):
+        """ELITEA-2131 — Chat: Folder Rename — No Changes Made, Checkmark
+        Inactive, Close via X Icon.
+
+        Steps 1-4 restate test_folder_rename_checkmark_validation
+        (ELITEA-2458/2125)'s own Step 6 mechanism ("valid but unchanged"
+        state — FolderItem.jsx's isFolderSaveEnabled is a pure string
+        comparison at render time, so "restore the original value" and
+        "never touch the field" are behaviourally identical, source-
+        confirmed). The genuinely NEW element (steps 5-6) is closing the
+        editor via the X (cancel) icon with ZERO edits ever made, then
+        re-reading the folder's displayed NAME IN THE LIST (not just the
+        editor's own local state) — neither
+        test_folder_rename_checkmark_validation (never clicks cancel) nor
+        test_folder_rename_cancel_via_x_icon_discards_changes (ELITEA-2122,
+        cancels only AFTER typing a different name first) exercises this
+        exact "cancel with no prior edits" combination.
+
+        Spec: test-specs/chat-interface/lextend_folder-rename-no-changes-close-via-x_ELITEA-2131.md
+        """
+        chat = ChatPage(page)
+        folder_id = None
+        seed_name = "ELITEA2131NoChangesSource"
+
+        console_messages = []
+
+        def _on_console(msg):
+            if msg.type == "error" and not _is_known_secrets_403(msg):
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
+
+        put_requests = []
+
+        def _on_request(request):
+            if request.method == "PUT" and "/folder/prompt_lib/" in request.url:
+                put_requests.append(request.url)
+
+        page.on("request", _on_request)
+
+        try:
+            with allure.step(
+                "Step 1 — Seed a folder, open its rename editor via the "
+                "dot-menu; verify the input is pre-filled with the "
+                "folder's current name"
+            ):
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+
+                chat.click_create_folder_button(timeout=UI_ELEMENT_TIMEOUT)
+                with page.expect_response(
+                    lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "POST",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as create_response_info:
+                    chat.set_folder_name(seed_name)
+                    chat.folder_name_confirm_button.click()
+                create_response = create_response_info.value
+                assert create_response.status == 201, (
+                    "Seed folder POST should resolve 201, got "
+                    f"{create_response.status} for {create_response.url}"
+                )
+                folder_id = create_response.json().get("id")
+                assert folder_id is not None, (
+                    "Seed folder response should include a real 'id', got: "
+                    f"{create_response.json()!r}"
+                )
+                chat.folder_name_input.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+                chat.get_folder_item(folder_id).wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                logger.info("Seeded folder %s named %r", folder_id, seed_name)
+
+                chat.open_folder_rename_editor(folder_id, timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.folder_name_input.input_value() == seed_name, (
+                    f"Rename editor should be pre-filled with {seed_name!r}"
+                )
+
+            with allure.step(
+                "Step 2 — Do not make any changes to the folder name; "
+                "verify it is still unchanged"
+            ):
+                assert chat.folder_name_input.input_value() == seed_name, (
+                    "Input should still show the unchanged original name"
+                )
+
+            with allure.step(
+                "Step 3 — Verify the checkmark icon is disabled/inactive "
+                "for the unchanged, valid name"
+            ):
+                assert not chat.is_folder_name_confirm_enabled(), (
+                    'chat-folder-name-confirm-button should carry '
+                    'data-disabled="true" for a valid-but-unchanged name'
+                )
+
+            with allure.step(
+                "Step 4 — Attempt to click the checkmark icon; verify it "
+                "has no effect"
+            ):
+                puts_before = len(put_requests)
+                chat.folder_name_confirm_button.click()
+                page.wait_for_timeout(300)
+                assert chat.folder_name_input.is_visible(), (
+                    "Editor should stay open after clicking the inactive "
+                    "(unchanged) checkmark"
+                )
+                assert chat.folder_name_input.input_value() == seed_name, (
+                    "Input should still show the unchanged original name"
+                )
+                assert chat.get_folder_item(folder_id).count() == 0, (
+                    f"Folder {folder_id} should NOT re-render as an "
+                    "accordion row — that would mean edit mode exited "
+                    "unexpectedly"
+                )
+                assert len(put_requests) == puts_before, (
+                    "No PUT to the folder endpoint should fire on an "
+                    f"inactive-checkmark click, saw: {put_requests[puts_before:]}"
+                )
+
+            with allure.step(
+                "Step 5 — Click the X (cancel) icon to close the edit "
+                "mode; verify it closes with no network effect"
+            ):
+                puts_before_cancel = len(put_requests)
+                chat.folder_name_cancel_button.click()
+                chat.folder_name_input.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+                chat.wait_for_network(timeout=UI_ELEMENT_TIMEOUT)
+                assert len(put_requests) == puts_before_cancel, (
+                    "No PUT to the folder endpoint should fire on a "
+                    f"cancel-icon click, saw: {put_requests[puts_before_cancel:]}"
+                )
+
+            with allure.step(
+                "Step 6 — Verify the folder name is unchanged in the "
+                "folder list"
+            ):
+                folder_item = chat.get_folder_item(folder_id)
+                folder_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                folder_item_text = folder_item.text_content() or ""
+                assert seed_name in folder_item_text, (
+                    f"Folder {folder_id} should still display its "
+                    f"original name {seed_name!r}, got: {folder_item_text!r}"
+                )
+
+            with allure.step(
+                "Side-channel check — no unexpected console errors across "
+                "the full flow"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors during folder rename with "
+                    f"no changes made: {[m.text for m in console_messages]!r}"
+                )
+
+        finally:
+            if folder_id:
+                try:
+                    chat.delete_folder_via_api(folder_id, timeout=UI_ELEMENT_TIMEOUT)
+                    logger.info("Cleaned up folder %s", folder_id)
                 except Exception as exc:
                     logger.warning("Failed to delete folder %s: %s", folder_id, exc)
 
