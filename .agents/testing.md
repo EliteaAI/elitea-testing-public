@@ -511,3 +511,14 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   ⇒ don't fold in blind" caution. If a URL-carrying occurrence surfaces
   (e.g. via a `requestfailed` listener upgrade), capture it here to convert
   this from suspected-font-asset to confirmed.
+- **404 variant, now confirmed (3 occurrences, chat-remaining wave-08/09,
+  2026-08-15)**: 3rd occurrence hit the SAME test as the wave-08 1st
+  occurrence — `test_pin_empty_folder_retains_empty_state` again, byte-identical
+  message, on the lead's 1st independent full-set gate attempt for wave-09 (11
+  node-ids, unchanged test — wave-09 added new classes to the same two files but
+  did not touch this test). Not reproduced standalone (15.86s clean); 3
+  consecutive clean 11/11 full-set runs followed before merge. Two-of-three
+  hits on the same test id strengthens the suspected-static-asset theory (a
+  resource this specific test's flow requests more consistently than others) —
+  still short of a captured URL. Record a 4th occurrence's URL if one surfaces
+  to convert from suspected to confirmed and enable a shared filter.
