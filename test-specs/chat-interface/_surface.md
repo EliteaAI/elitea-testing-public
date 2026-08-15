@@ -3,9 +3,10 @@
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
 a time; last confirmed by: test-automation-engineer (combined analyst+
-implementer), ELITEA-2133/2134, 2026-08-15 (supersedes nothing below — new
+implementer), ELITEA-2457, 2026-08-15 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: test-automation-engineer
-(combined analyst+implementer), ELITEA-2118/2119/2120, 2026-08-15; previous confirmer:
+(combined analyst+implementer), ELITEA-2133/2134, 2026-08-15; previous confirmer:
+test-automation-engineer (combined analyst+implementer), ELITEA-2118/2119/2120, 2026-08-15; previous confirmer:
 test-automation-engineer (combined analyst+implementer), ELITEA-2163/2164/
 2165/2463, 2026-08-15; previous confirmer:
 test-automation-engineer (combined analyst+implementer), ELITEA-2115/2116/
@@ -15,6 +16,36 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+
+## ELITEA-2457 — third near-total duplicate of the same ELITEA-2119/2133
+## folder-creation flow, ZERO remaining gap (extend-existing, tag-only)
+- ELITEA-2457 ("Chat – Create folder with custom name") is the SAME
+  6-step flow as ELITEA-2119 (steps 1-5) + ELITEA-2133 (step 4, expand ->
+  empty state) combined — confirming the "near-duplicate case-ID pattern"
+  flagged in the ELITEA-2133/2134 section below extends even to a case ID
+  far outside that range (2457 vs 2118-2120/2133-2134). Re-executed live
+  this session with its OWN literal data ("My Test Folder", fresh folder id
+  193 — not reused from ELITEA-2133's earlier, already-deleted run) before
+  classifying: default-name-shown, custom-name-typed (replace not append),
+  checkmark-active, POST 201, collapsed render, AND expand->empty-state all
+  independently reconfirmed.
+- Unlike ELITEA-2133 (which needed one new Step 6 to close the expand/empty
+  gap), by the time this case landed **that gap was already closed** by the
+  ELITEA-2133 extension itself (same trunk, earlier commit) — so ELITEA-2457
+  needed literally ZERO new assertion code, only a third stacked
+  `@allure.issue` tag on `test_create_folder_with_custom_name`.
+- One case element (case step 2, "default name shown") is `already-covered`
+  by a DIFFERENT sibling test on this trunk
+  (`test_folder_creation.py::test_create_folder_default_name_checkmark_active`,
+  ELITEA-2118/2132) rather than by the tag-target test itself — a Coverage
+  Map row can point `already-covered` at any merged/on-trunk test, not only
+  the one being tagged; worth checking BOTH the direct covering test and
+  its siblings before assuming a step needs new code.
+- **Pattern reinforced**: this chat-interface module's near-duplicate case
+  IDs are not confined to adjacent ID ranges — always `grep -i "folder"`
+  (or the relevant noun) across this digest's existing sections FIRST,
+  regardless of how far the new case's ID sits from a previously-seen
+  cluster.
 
 ## ELITEA-2133/2134 — near-total TMS-case duplicates of ELITEA-2119/2120,
 ## same session batch (extend-existing, tag-only + one small gap)
