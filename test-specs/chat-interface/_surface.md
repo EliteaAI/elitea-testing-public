@@ -3,8 +3,9 @@
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
 a time; last confirmed by: test-automation-engineer (combined analyst+
-implementer), ELITEA-2122, 2026-08-15 (supersedes nothing below — new
+implementer), ELITEA-2123/2127, 2026-08-15 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: test-automation-engineer
+(combined analyst+implementer), ELITEA-2122, 2026-08-15; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2121/2130, 2026-08-15; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2457, 2026-08-15; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2133/2134, 2026-08-15; previous confirmer:
@@ -18,6 +19,43 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+
+## ELITEA-2123/2127 — near-total duplicates of ELITEA-2459's already-merged
+## special-chars/leading-space scenarios, `already-covered` (zero new code)
+- **ELITEA-2123** ("...Validation Tooltip Displayed for Invalid Input") and
+  **ELITEA-2127** ("...First Character Cannot Be a Space") ask for exactly
+  the two scenarios `test_folder_rename_checkmark_special_chars_and_leading_space_invalid`
+  (ELITEA-2459, merged `origin/automation/base` commit `5cc8647c`, PR #1313)
+  already implements end-to-end — ELITEA-2123's literal test data
+  (`"Folder$$%%"`) is BYTE-IDENTICAL to that test's Step 2 data, and
+  ELITEA-2127's "space as first character" ask is exactly that test's
+  Step 3 (`" ValidRest"` — deliberately isolating the first-char-space rule
+  from the length-floor rule, a stronger proof than a bare single-space
+  input). Classified `already-covered` (traceability AFS only, zero code
+  change) rather than `extend-existing` — the merged-target rule permits
+  either against a base-merged spec, and there is no gap left to fill: every
+  case step already has a corresponding assertion in the covering test.
+- **Live-reconfirmed this session, not assumed from the digest alone** (the
+  "coverage judgments stand on your own execution" rule applies to dedup
+  verdicts too, not just extend/ready ones): seeded a fresh folder via the
+  UI dot-menu → Rename flow, drove both invalid-name scenarios
+  (`"Folder$$%%"` and `" ValidRest2127"`) via `browser_fill_form` (a
+  same-session live re-hit of the documented "append not replace" `Control+a`
+  race — confirmed it again with a bare `Control+a`+`Backspace` sequence,
+  then worked around it via `fill()`, which replaces correctly), and
+  observed: the exact quoted `FolderNameWarningMessage` tooltip text (both
+  cases), the confirm control's accessible name becoming the tooltip text in
+  the invalid state (matching the already-documented a11y gotcha), and — via
+  `browser_network_requests` — **zero** `PUT .../folder/prompt_lib/...`
+  firing on either inactive-checkmark click. Cleaned up via the UI's own
+  Delete flow (dot-menu → Delete → confirm) — zero net pollution.
+- **Case-text drift, same as ELITEA-2121/2130/2456**: both cases' step 1 says
+  "click three-dot icon, click Edit" — the real dot-menu item is labelled
+  "Rename", not "Edit". Not a defect, already documented elsewhere in this
+  digest; noted again here since both AFS files reference it independently.
+- **TMS linkage**: both cases point their `already-covered` disposition at
+  ELITEA-2459; ELITEA-2459's own case should gain "also satisfies
+  ELITEA-2123, ELITEA-2127" back-references.
 
 ## ELITEA-2122 — folder-rename CANCEL/X-icon path, source-confirmed
 ## (no live re-drive needed — mechanism identical to two already-live-verified
