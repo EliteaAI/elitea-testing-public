@@ -184,4 +184,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- (none)
+- **wave-08** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w08`,
+  base=`origin/automation/base`, cases 2150,2151,2152,2153,2154,2155,2156 (7),
+  clusters `[2152,2153]` (pin/unpin folder) + `[2155,2156]` (empty-folder pin/unpin);
+  2150/2151/2154 solo units. Task ID `w9ugems43`, Run ID `wf_2ca5d16f-771`.
