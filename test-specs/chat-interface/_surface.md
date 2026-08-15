@@ -1334,6 +1334,19 @@ handle ELITEA-2458 added was reused verbatim and all resolved correctly.
   `1`→`0`; the conversation reappears scoped inside its date group
   (`is_conversation_in_group()`), same as any freshly-created conversation.
 
+  **ELITEA-2159 ("Left Panel Order Verified After Multiple Pin Actions",
+  combined analyst+implementer, batch chat-remaining-w09, 2026-08-15) is a
+  near-total duplicate of ELITEA-2151** — same 4-tier fixture (pinned folder,
+  pinned conversation not in a folder, unpinned folder, unpinned
+  conversation), same panel-order + same-type-ordering + folders-before-
+  conversations assertions, all already directly asserted by
+  `TestChatPanelOrderingPinnedFoldersAndConversations::test_pinned_folder_and_conversation_render_above_unpinned_panel_order`
+  (merged `origin/automation/base`). Classified `already-covered` (zero new
+  code) — live-reconfirmed by re-running the covering test this session
+  (`1 passed in 19.44s`), not assumed from the digest alone. See ELITEA-2159's
+  AFS (`test-specs/chat-interface/lcovered_left-panel-order-after-multiple-pin-actions_ELITEA-2159.md`)
+  for the full step-by-step dedup proof.
+
 ## Conversation search (ELITEA-2162)
 - `conversation-search-button` (on-main) opens `conversation-search-input`
   (on-main) + an X/clear icon — but the folder/date-group list is **not**
