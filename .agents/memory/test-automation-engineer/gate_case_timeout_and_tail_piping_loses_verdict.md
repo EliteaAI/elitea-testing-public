@@ -30,3 +30,15 @@ traps compound on a large/slow batch (5 UI specs, ~16 min real runtime observed
 If you still lose the JSON block, the ground truth is `automation/reports/junit.xml`
 (freshest by mtime) — parse it directly for pass/fail per testcase; the pytest
 summary line at the true tail of the log (`N failed, ... in Ns`) is also reliable.
+
+**Third trap, distinct from the above (2026-08-15, chat-remaining-w04 gate):** the
+script's own `--timeout` flag is a SEPARATE knob from the Bash-tool's own `timeout`
+parameter on the invoking call. Passing `--timeout 480` to gate-case.mjs does nothing
+to protect against the Bash tool's own 120s default — 2 straight attempts got killed
+at exactly 2 minutes (exit 143, "Command timed out after 2m 0s") before the script's
+internal timeout ever had a chance to matter, because the OUTER tool call itself
+had no `timeout` param set. Set BOTH: the tool call's `timeout` (e.g. 600000ms) AND,
+if desired, the script's `--timeout` (seconds) as a secondary guard. Good news: an
+outer-tool kill took the whole process tree with it both times — no orphaned pytest
+survived (checked via `ps aux | grep pytest`), so no cleanup was needed beyond
+`git checkout <branch>` to leave the detached-HEAD state gate-case.mjs left behind.
