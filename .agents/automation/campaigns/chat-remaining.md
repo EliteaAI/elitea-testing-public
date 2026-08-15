@@ -54,7 +54,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | 06 | Folder rename | 2121,2122,2123,2124,2125,2126,2127,2128,2129,2130,2131 | 11 | **LANDED** — PR #1539, 7 automated/extended + 4 already-covered |
 | 07 | Move/drag conversation between folders + list scrolling | 2136,2138,2139,2140,2141,2142,2143,2144,2145,2146,2147,2148 | 12 | **LANDED** — PR #1545, 11/12 automated + 1 blocked (#1541) |
 | 08 | Pin/unpin — conversation & folder basics | 2150,2151,2152,2153,2154,2155,2156 | 7 | **LANDED** — PR #1552, 7/7 automated |
-| 09 | Pin/unpin — edge cases + newer duplicate-family cases | 2157,2158,2159,2160,2161,2461,2462,2460 | 8 | pending |
+| 09 | Pin/unpin — edge cases + newer duplicate-family cases | 2157,2158,2159,2160,2161,2461,2462,2460 | 8 | **LANDED** — PR #1555, 4/8 automated + 4/8 already-covered |
 | 10 | Team Project — participants management | 2169,2171,2172,2173,2174,2175,2176 | 7 | pending |
 | 11 | Team Project — public conversation / non-owner restrictions | 2188,2189,2190,2191,2192,2193,2194 | 7 | pending |
 | 12 | Message input + generation controls (stop/regenerate/send-button/starters) | 2177,2178,2179,2182,2183,2184,2185,2186,2187,2465,2466 | 11 | pending |
@@ -197,13 +197,26 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   before merge. Recorded in `.agents/testing.md` § Unconfirmed. No new
   testids (surface already covered by wave-06). TMS back-written (7 cases).
 
+- **wave-09 LANDED** — elitea-testing-public#1555, merged (`9fb2d9d9`). 4/8
+  automated (ELITEA-2157/2158 family, ELITEA-2160, ELITEA-2161) + 4/8
+  already-covered (ELITEA-2159→2151, ELITEA-2461→2149+2151 combined — first
+  case needing 2 covering specs, ELITEA-2462→2152 word-for-word TMS-side dup,
+  ELITEA-2460→2148 wave-07). Real product fix: "Duplicate" context-menu item
+  (`ConversationItem.jsx`) was the only item in its 7-item menu array missing
+  a `key` prop, leaving it testid-invisible — added
+  `key: 'chat-conversation-menu-duplicate'` (composes to `-menuitem` at
+  runtime via `DotMenu.jsx`), `EliteaAI/EliteaUI@a53b9d4b`. Reviewer caught a
+  real AFS/diff drift (AFS claimed "no new testids" while the shipped test
+  depended on this one) in round 1, fixed round 2. Quality-flag response:
+  extend-rate 6/8 — blind-audited 2 already-covered conclusions myself
+  (ELITEA-2462 vs 2152, ELITEA-2159 vs 2151), both genuine. Gate: 3rd
+  occurrence of the wave-08 404 console-noise flake (same test both times,
+  byte-identical message) — promoted from suspected to confirmed recurring
+  pattern in `.agents/testing.md`. 3 consecutive clean 11/11 full-set runs
+  before merge. New testid: `chat-conversation-menu-duplicate` — confirmed
+  NOT yet on `main` (composed-testid grep caveat applied — base key, not the
+  rendered `-menuitem` suffix). TMS back-written (8 cases).
+
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-09** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w09`,
-  base=`origin/automation/base`, cases 2157,2158,2159,2160,2161,2461,2462,2460 (8),
-  clusters `[2157,2158]` (folder-pin restriction/workaround) + `[2160,2161]`
-  (multiple-independent-pin); 2159/2461/2462/2460 solo units — 2461/2462/2460 are
-  suspected near-duplicates of wave-08's ELITEA-2151/2152/wave-04-family ELITEA-2148
-  by title (this campaign's 3rd-instance duplicate-cluster pattern) — analyst to
-  determine already-covered/extend-existing per normal rule. Task ID `w9a058089`,
-  Run ID `wf_c516377e-9b8`.
+- (none)
