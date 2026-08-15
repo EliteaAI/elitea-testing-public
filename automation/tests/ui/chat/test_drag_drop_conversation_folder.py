@@ -299,12 +299,31 @@ class TestDragDropHighlightsTargetFolderOnHover:
         2. Drag over folder_a; verify its drop-zone shows data-drop-active=true.
         3. Move toward folder_b; verify folder_a's highlight is removed AND
            folder_b's highlight appears.
-        4. Drop on folder_b; verify the highlight disappears and the drag ends.
+        4. Drop on folder_b; verify the highlight disappears, the drag
+           ends, the PUT resolves 200 with ``folder_id`` == folder_b's own
+           id, and folder_b actually contains conv_target afterwards.
 
         No defect found for this case's own hover-highlight assertion —
-        the mechanism is confirmed working correctly. The drop OUTCOME
-        (which folder_id the PUT actually resolves to) is explicitly
-        out-of-scope here per the AFS — that is ELITEA-2144's own concern.
+        the mechanism is confirmed working correctly.
+
+        AFS AMENDMENT (fix round 1, review finding): the original AFS
+        marked the drop OUTCOME (does the conversation actually land in
+        folder_b) out-of-scope, deferring it to ELITEA-2144 — but ELITEA-2144
+        is a separate dispatch, not part of this PR/batch, and this case's
+        OWN TMS Pass/Fail criteria explicitly requires it ("Pass: ... drop
+        moves conversation" / "Fail: ... drop does not move conversation").
+        Step 4 now hard-asserts the response body's ``folder_id`` and
+        confirms conv_target renders inside folder_b via the UI (same
+        pattern as ``test_drag_drop_conversation_to_folder`` steps 3/5).
+        This is the SAME Today->folder direction confirmed clean of the
+        #1541 drop-target-misresolution defect in
+        ``test_drag_drop_conversation_to_folder`` (conv_target here is
+        dragged straight from Today, never having been inside folder_a —
+        only hovered — so the drop is a Today->folder_b move, not a
+        folder-to-folder move); asserted as literal expected behavior, not
+        soft-asserted or tied to any known defect. The AFS's own Coverage
+        Map row 4 and Concrete-Handles framing are amended accordingly (see
+        the AFS file).
         """
         chat = ChatPage(page)
         conv_target_id = None
@@ -372,9 +391,11 @@ class TestDragDropHighlightsTargetFolderOnHover:
 
             with allure.step(
                 "Step 4 — Drop the conversation on folder_b; verify the "
-                "highlight disappears (drag ends) and the PUT fires "
-                "(drop OUTCOME correctness is ELITEA-2144's own scope, "
-                "not re-asserted here)"
+                "highlight disappears (drag ends), the PUT fires with "
+                "folder_id resolving to folder_b, and folder_b actually "
+                "contains conv_target afterwards (case Pass/Fail criteria: "
+                "'drop moves conversation' / 'Fail: ... drop does not move "
+                "conversation' — see docstring, fix-round amendment)"
             ):
                 with page.expect_response(
                     lambda r: "/conversation/prompt_lib/" in r.url
@@ -387,12 +408,25 @@ class TestDragDropHighlightsTargetFolderOnHover:
                 assert move_response.status == 200, (
                     f"Drop PUT should resolve 200, got {move_response.status} for {move_response.url}"
                 )
+                move_body = move_response.json()
+                assert move_body.get("folder_id") == folder_b_id, (
+                    f"Response body 'folder_id' should be {folder_b_id!r} after "
+                    f"dropping on folder_b, got: {move_body!r}"
+                )
                 expect(chat.get_folder_drop_zone(folder_b_id)).to_have_attribute(
                     "data-drop-active", "false", timeout=UI_ELEMENT_TIMEOUT
                 )
                 assert chat.wait_for_conversation_dragging(
                     conv_target_id, expected=False, timeout=UI_ELEMENT_TIMEOUT,
                 ), f"conv_target {conv_target_id} should no longer show the dragging opacity after drop"
+                chat.expand_folder(folder_b_id, timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.is_folder_expanded(folder_b_id), (
+                    f"folder_b {folder_b_id} should carry data-expanded=\"true\" "
+                    "after being clicked"
+                )
+                assert chat.is_conversation_in_folder(
+                    folder_b_id, conv_target_id, timeout=UI_ELEMENT_TIMEOUT,
+                ), f"conv_target {conv_target_id} should be inside folder_b {folder_b_id} after the drop"
 
             with allure.step(
                 "Side-channel check — no unexpected console errors across the full flow"
