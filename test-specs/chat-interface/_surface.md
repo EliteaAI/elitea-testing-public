@@ -3008,3 +3008,23 @@ surfaces ELITEA-2369/1886 already cover.
   4 starters configured, works for a quick manual check; a disposable
   per-test agent via `AgentAPI.create_agent_full()` is the implementer's
   correct choice for isolation).
+- **CONFIRMED DEFECT (issue #1569, 2/2 deterministic): clicking the Stop
+  control mid-generation wipes the ENTIRE message exchange, not just the
+  streaming response.** After Send → (while streaming) → click Stop, the
+  message list goes empty in the UI AND server-side — confirmed via
+  `GET .../conversation/prompt_lib/{project}/{conv_id}?messages_limit=10&
+  sort_order=desc` returning `"message_groups_count":0,"message_groups":[]`
+  even after a full page reload. Reproduced on two independent fresh
+  conversations (ELITEA-2182/2183 session). The input bar DOES restore
+  correctly (waveform reappears, input re-enabled) — only the transcript
+  wipe is the defect. A SUBSEQUENT send-and-respond cycle after Stop works
+  perfectly cleanly (ELITEA-2183 confirmed) — the defect is isolated to
+  "does the interrupted turn survive", not "is the composer left usable".
+- **The Stop control (`UserInput.jsx` ~line 552-562, `onClick={onStop}`,
+  `<StopIcon>`) has NO `data-testid` today** — `testid needed:
+  chat-stop-generation-button`, real gap (ELITEA-2182/2183's own subject).
+  It renders in the SAME footer slot the composer-send-button-toggle test
+  already proves is neither Send nor waveform during streaming
+  (`send_button.count()==0` AND `voice_mode_button.count()==0`) — that
+  test proves the Stop control occupies the slot by elimination but never
+  asserts on it directly.
