@@ -3028,3 +3028,63 @@ surfaces ELITEA-2369/1886 already cover.
   (`send_button.count()==0` AND `voice_mode_button.count()==0`) — that
   test proves the Stop control occupies the slot by elimination but never
   asserts on it directly.
+
+## ELITEA-2184/2185/2186/2187 (2026-08-15/16) — Regenerate exclusivity + click-replace behavior; #1569 re-confirmed a 3rd time
+
+**Resolved/added during ELITEA-2184/2185/2186/2187 implementation (combined
+analyst+implementer session):**
+
+- **Regenerate and Delete render ONLY for the last AI message — confirmed
+  via direct DOM query, not just hover/a11y-tree inspection.**
+  `document.querySelectorAll('[data-testid="chat-regenerate-button"]').length`
+  and the same for `chat-delete-button` return exactly **1** regardless of
+  how many AI messages exist in the conversation (confirmed with 2 AI
+  messages live) — the element is conditionally rendered
+  (`isLastMessage`-gated in `ApplicationAnswer.jsx`, same conditional
+  family as the already-documented `Answer` block's
+  `skill-test-last-response`/`chat-answer-content` split), not merely
+  CSS-hover-hidden on every message. This makes "Regenerate is exclusive to
+  the last response" a deterministic, non-hover-timing-dependent testid-
+  count assertion.
+- **Copy and Read-out render on EVERY AI message**, by contrast —
+  `chat-copy-button` returned **2** matches for the same 2-AI-message
+  conversation. Do not assume the 4 action icons share identical
+  last-message-exclusivity; only Regenerate + Delete are exclusive.
+- **The existing `regenerate_action_button`/`copy_action_button`/
+  `read_out_button`/`delete_action_button` `LocatorDescriptor` fields
+  resolve PAGE-WIDE** (`page.get_by_test_id(...)`, no scoping). Safe to use
+  bare only when the conversation has a single AI message (as
+  `test_streaming_response.py` does) — a 2+-AI-message conversation makes
+  `chat.copy_action_button`/`chat.read_out_button` throw a Playwright
+  strict-mode violation (multiple matches). Any test touching a
+  multi-exchange conversation needs the message-scoped constant variants
+  added this session (`REGENERATE_ACTION_BUTTON` etc., chained off a
+  specific `messages_container.nth(i)`).
+- **Clicking Regenerate reuses the IDENTICAL `chat-stop-generation-button`
+  control/testid as a normal Send's mid-stream state** — confirmed live:
+  the composer's send-slot shows the same orange Stop control (computed
+  `color: rgb(242, 153, 74)`) whether the in-flight generation came from a
+  fresh Send or a Regenerate click. No separate "regenerating" indicator
+  exists — reuse the existing `ChatPage.stop_generation_button` field
+  as-is for both flows.
+- **Regenerate replaces the last message's content IN PLACE** — the
+  message-item list count does NOT grow (confirmed: 4 items before, 4
+  items after a full regenerate-and-complete cycle on a 2-exchange
+  conversation); only the last item's body text and its internal "Thought
+  for `<n>` secs" accordion reset and re-stream. The new response text is
+  genuinely different from the pre-regenerate text (both real LLM
+  completions, observed live — not test-authored).
+- **Defect #1569 re-confirmed a THIRD time, independently** (ELITEA-2182/
+  2183 confirmed it 2/2; this session confirmed it again on a fresh,
+  unrelated conversation, using the CASE's own `"generate a poem"` prompt
+  rather than ELITEA-2182's prompt): clicking Stop mid-stream removes the
+  entire exchange (user message + partial AI reply), not just the
+  streaming response — the message list reverts to its pre-send state, and
+  the composer's input is silently refilled with the typed-but-unsent
+  text. This blocks ELITEA-2186 ("Regenerate After Stopped Generation")
+  entirely — its own precondition (a stopped response to hover over and
+  regenerate) cannot be constructed while #1569 is open. Do not re-attempt
+  ELITEA-2186 without first checking #1569's status — the WIP commit
+  observed on this same batch trunk for ELITEA-2182/2183 (`d2c3dcc2`,
+  "verification run in progress") suggests active work on the underlying
+  Stop-handling code at the time of this session.
