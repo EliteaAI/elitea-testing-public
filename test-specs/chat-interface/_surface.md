@@ -3,8 +3,9 @@
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
 a time; last confirmed by: test-automation-engineer (combined analyst+
-implementer), ELITEA-2121/2130, 2026-08-15 (supersedes nothing below — new
+implementer), ELITEA-2122, 2026-08-15 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: test-automation-engineer
+(combined analyst+implementer), ELITEA-2121/2130, 2026-08-15; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2457, 2026-08-15; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2133/2134, 2026-08-15; previous confirmer:
 test-automation-engineer (combined analyst+implementer), ELITEA-2118/2119/2120, 2026-08-15; previous confirmer:
@@ -17,6 +18,44 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+
+## ELITEA-2122 — folder-rename CANCEL/X-icon path, source-confirmed
+## (no live re-drive needed — mechanism identical to two already-live-verified
+## sibling cancel flows), `folder_name_cancel_button` gets its first caller
+- **Zero existing coverage of folder-rename cancel anywhere on the trunk**,
+  confirmed by reading `test_chat_folder_rename_checkmark_validation.py`
+  end-to-end (grep for "cancel" inside that file returns 0 hits — its three
+  existing test methods, ELITEA-2458/2459/2121, and the file's own
+  ELITEA-2130 pinned-folder test only ever exercise the checkmark/confirm
+  path). The sibling cancel flows that DO exist —
+  `test_chat_folder_creation_custom_name_and_cancel.py` (ELITEA-2119/2120/
+  2133/2134) and the conversation-rename cancel path (ELITEA-2100) — cover
+  folder-CREATION-cancel and conversation-rename-cancel respectively, never
+  folder-RENAME-cancel. ELITEA-2122 closes that one remaining gap.
+- **Source-only AFS, deliberately not re-driven live** — `FolderItem.jsx`'s
+  cancel `Box`'s `onClick` for an EXISTING folder (`isNewFolder === false`)
+  is `handleOnCloseEditFolder`: `setFolderName(name)` (resets local editor
+  state to the folder's persisted name) + `setIsFolderEditing(false)` (exits
+  edit mode). Zero network calls anywhere in the handler or its dependency
+  closure. Same shape, same file, as `handleOnCancelCreateFolder`
+  (ELITEA-2120's already-live-verified target) and structurally identical to
+  `ConversationItem.jsx`'s cancel handler (ELITEA-2100) — both already
+  independently live-confirmed elsewhere in this digest as "cancel fires zero
+  new requests". A third live re-drive of the mechanically same pattern
+  would reconfirm, not discover.
+- **`chat-folder-name-cancel-button` is on BOTH `main` and
+  `automation/testids`** (fresh `git fetch origin` + `git grep` against both
+  refs this session) — no new testid work needed.
+- **`ChatPage.folder_name_cancel_button` (`chat_page.py:1197`) existed with
+  ZERO callers before this case** — added defensively in an earlier session
+  alongside the confirm button, never referenced by any test until now. This
+  case is its first live caller; compliant per canon ruling #511 (a
+  page-object field isn't "referenced" until something on an executed test
+  path actually calls it).
+- Routed `extend-existing` against `test_chat_folder_rename_checkmark_validation.py`
+  (its own file, alongside the checkmark-validation/special-chars/context-menu/
+  pinned-folder tests) — new test method + a second `@allure.issue` tag,
+  existing three methods untouched.
 
 ## ELITEA-2121/2130 — Rename-menuitem REGRESSION found+fixed, folder Pin testid +
 ## data-pinned state ADDED, disabled-ancestor force-click gotcha for pinned folders
