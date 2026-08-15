@@ -456,3 +456,11 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   one occurrence. Classified as transient environmental noise, same class as the
   Montserrat-font-404 and ArtifactsPage entries above — record further occurrences
   here if this specific 500 repeats on this spec.
+- Known-noise entry (2026-08-15, chat-remaining wave-04, PR #1528): 1 of 5 gate
+  runs over the full 4-spec set hit an extra failure on
+  `test_search_filters_and_modules_panel_toggles` (a pre-existing, unrelated spec —
+  `AssertionError: Locator expected to have text 'Modules configuration updated'`)
+  alongside the 2 declared sanctioned-RED specs. Passed clean standalone and in 4 of
+  the 5 full-file runs (including 2 immediately-following re-runs) — a toast-timing
+  race after rapid module-toggle interactions, not reproduced since. Record further
+  occurrences here if it repeats.
