@@ -3,8 +3,12 @@
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
 a time; last confirmed by: test-automation-engineer (combined analyst+
-implementer), ELITEA-2163/2164/2165/2463, 2026-08-15 (supersedes nothing
-below — new section, other sections unchanged; previous confirmer:
+implementer), ELITEA-2457, 2026-08-15 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: test-automation-engineer
+(combined analyst+implementer), ELITEA-2133/2134, 2026-08-15; previous confirmer:
+test-automation-engineer (combined analyst+implementer), ELITEA-2118/2119/2120, 2026-08-15; previous confirmer:
+test-automation-engineer (combined analyst+implementer), ELITEA-2163/2164/
+2165/2463, 2026-08-15; previous confirmer:
 test-automation-engineer (combined analyst+implementer), ELITEA-2115/2116/
 2117/2456, 2026-08-15; previous confirmer:
 qa-engineer analyst, ELITEA-2111, 2026-08-15;
@@ -12,6 +16,115 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+
+## ELITEA-2457 — third near-total duplicate of the same ELITEA-2119/2133
+## folder-creation flow, ZERO remaining gap (extend-existing, tag-only)
+- ELITEA-2457 ("Chat – Create folder with custom name") is the SAME
+  6-step flow as ELITEA-2119 (steps 1-5) + ELITEA-2133 (step 4, expand ->
+  empty state) combined — confirming the "near-duplicate case-ID pattern"
+  flagged in the ELITEA-2133/2134 section below extends even to a case ID
+  far outside that range (2457 vs 2118-2120/2133-2134). Re-executed live
+  this session with its OWN literal data ("My Test Folder", fresh folder id
+  193 — not reused from ELITEA-2133's earlier, already-deleted run) before
+  classifying: default-name-shown, custom-name-typed (replace not append),
+  checkmark-active, POST 201, collapsed render, AND expand->empty-state all
+  independently reconfirmed.
+- Unlike ELITEA-2133 (which needed one new Step 6 to close the expand/empty
+  gap), by the time this case landed **that gap was already closed** by the
+  ELITEA-2133 extension itself (same trunk, earlier commit) — so ELITEA-2457
+  needed literally ZERO new assertion code, only a third stacked
+  `@allure.issue` tag on `test_create_folder_with_custom_name`.
+- One case element (case step 2, "default name shown") is `already-covered`
+  by a DIFFERENT sibling test on this trunk
+  (`test_folder_creation.py::test_create_folder_default_name_checkmark_active`,
+  ELITEA-2118/2132) rather than by the tag-target test itself — a Coverage
+  Map row can point `already-covered` at any merged/on-trunk test, not only
+  the one being tagged; worth checking BOTH the direct covering test and
+  its siblings before assuming a step needs new code.
+- **Pattern reinforced**: this chat-interface module's near-duplicate case
+  IDs are not confined to adjacent ID ranges — always `grep -i "folder"`
+  (or the relevant noun) across this digest's existing sections FIRST,
+  regardless of how far the new case's ID sits from a previously-seen
+  cluster.
+
+## ELITEA-2133/2134 — near-total TMS-case duplicates of ELITEA-2119/2120,
+## same session batch (extend-existing, tag-only + one small gap)
+- ELITEA-2133 ("...Custom Name via CHATS Header Icon") and ELITEA-2134
+  ("...Cancel Discards New Folder") are the SAME two flows as ELITEA-2119/
+  2120 below — different TMS case IDs, near-identical case text, only the
+  literal folder-name test data differs ("My Test Folder"/"Cancelled
+  Folder" vs "My Sprint Folder"/"Temp Folder"). Both re-executed live this
+  session with their OWN literal data (not assumed from the ELITEA-2119/
+  2120 run) before classifying — both confirmed to behave identically.
+- Routed `extend-existing` against `test_chat_folder_creation_custom_name_and_cancel.py`
+  (merged onto this batch's OWN trunk `tests/batch-chat-remaining-w05`, NOT
+  yet `origin/automation/base` — the merged-target rule permits
+  `extend-existing` against a same-batch-trunk target, unlike
+  `already-covered` which needs a base-merged target).
+- ELITEA-2134: **zero** assertion gap vs ELITEA-2120 — tag-only extension
+  (second `@allure.issue` decorator, no test-body change). ELITEA-2133 DOES
+  have one real gap ELITEA-2119 never covers: case step 4 ("click the
+  folder to expand it -> shows empty state") — the covering test only
+  verifies the new folder renders COLLAPSED, never expands it. Appended a
+  new Step 6 to `test_create_folder_with_custom_name` calling the existing
+  `expand_folder()`/`get_folder_empty_state_text()` methods (added
+  ELITEA-2098/2115, no new page-object work needed).
+- **Pattern worth watching for future chat-folder cases**: this TMS module
+  appears to carry near-duplicate case pairs across different ID ranges
+  (2118-2120 vs 2133-2134 here). Worth a quick `grep -i "folder"` over
+  upcoming case snapshots before assuming `ready-for-automation` — check
+  this digest's existing sections first, they may already answer it.
+
+## Folder creation inline editor — custom name / cancel / checkmark-active
+## at creation time (ELITEA-2118/2119/2120)
+- ELITEA-2118's case (open create-folder editor, leave default "New folder"
+  name, confirm) is a near-total duplicate of the ALREADY-MERGED
+  `test_folder_creation.py`/ELITEA-2132 test — every step except the case's
+  own step 4 ("checkmark is active") is already proven there (2132 only
+  asserts confirm/cancel icon VISIBILITY, never the `data-disabled` state).
+  Handled as `extend-existing`: appended ONE small new test method to
+  `test_folder_creation.py` that opens the editor, asserts
+  `is_folder_name_confirm_enabled()` is `True` for the untouched default
+  name, then cancels (no real folder created, no cleanup needed).
+- `FolderItem.jsx`'s `isFolderSaveEnabled = isFolderNameValid &&
+  (isNewFolder || folderName !== name)` — for a NEW folder (`isNewFolder ===
+  true`) the `(isNewFolder || …)` clause short-circuits true, so the gate
+  collapses to `isFolderNameValid` ALONE — no "changed" requirement, unlike
+  the RENAME path (`test_chat_folder_rename_checkmark_validation.py`,
+  ELITEA-2458, which needs BOTH valid AND changed). Live-confirmed: the
+  confirm checkmark is active (`data-disabled="false"`) the INSTANT the
+  create-folder editor opens with the untouched "New folder" default — no
+  typing required.
+- ELITEA-2119 (type a custom name, confirm) and ELITEA-2120 (type a name,
+  cancel) had ZERO existing coverage — the only other caller of
+  `click_create_folder_button()` (`test_chat_folder_rename_checkmark_validation.py`)
+  only uses it as SETUP to seed a folder before opening the RENAME editor,
+  never asserting the create-flow's own custom-name-save or cancel-discard
+  outcome. New family AFS + new file
+  `test_chat_folder_creation_custom_name_and_cancel.py`, two independent
+  test methods (action diverges — confirm vs cancel — not just data).
+- Both scenarios live-confirmed via Playwright MCP against
+  `http://localhost:5173`: typing "My Sprint Folder" over the default via
+  `set_folder_name()`'s click+clear+`press_sequentially()` idiom correctly
+  REPLACES (not appends) the value; confirm fires `POST
+  /elitea_core/folder/prompt_lib/399` -> `201` with `name == "My Sprint
+  Folder"`. Cancel after typing "Temp Folder" fires **zero** new requests
+  to `folder/prompt_lib` at all (confirmed via `browser_network_requests`,
+  not just a DOM-absence check) — a genuine client-side-only discard, same
+  as the already-documented conversation-rename cancel path (ELITEA-2100,
+  above).
+- **Gotcha, not a defect**: `browser_evaluate`-injected `fetch()` calls to
+  the app's own same-origin `/api/v2/...` path fail with `TypeError: Failed
+  to fetch` from the MCP evaluate context (confirmed for both GET and
+  DELETE) — NOT usable as an ad-hoc exploration-session cleanup shortcut.
+  Real pytest tests are unaffected (`page.request`, Playwright's
+  `APIRequestContext`, is a different mechanism and works fine — see
+  `ChatPage.delete_folder_via_api()`). See
+  `.agents/memory/test-automation-engineer/mcp_evaluate_fetch_to_same_origin_api_fails.md`.
+  Left one exploration-only folder ("My Sprint Folder") undeleted in the
+  shared DEV project as a result of this — the UI delete flow was not
+  attempted mid-exploration; acceptable given the project's already
+  extensive pre-existing pollution (see the folder-rename section below).
 
 ## Conversation-rename tooltip content — CLOSES the gap, EXTENDS not duplicates
 ## the ELITEA-2110/2112/2113 family (ELITEA-2111, combined analyst+implementer)
