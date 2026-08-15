@@ -42,16 +42,22 @@ already-proven pin/unpin pairing structure (ELITEA-2149/2150).
 
 ## Test Data
 
+> **Corrected during implementation** (Phase 2 amend-in-PR): the creation-order/expand-persistence
+> claims below were revised after the implementer's pytest run contradicted two premature
+> conclusions drawn from the analyst's own live MCP exploration (see `_surface.md`'s ELITEA-2152/2153
+> section for the full before/after). Both corrections are load-bearing for anyone re-deriving this
+> flow — read this note before trusting the analyst's original phrasing anywhere else in this file.
+
 ### generate-per-test (created via API in setup, cleaned up in teardown)
-- **`folder_sibling`** — created first via `conversation_api.create_folder(name)`, stays unpinned
-  throughout. Gives Step 4 ("folder no longer in its original position") a stable unpinned
-  reference to compare against, and gives Step 1 a deterministic "folder A is above folder B"
-  baseline before any pinning happens (live-confirmed this session: a folder created AFTER another
-  one renders ABOVE it in the default `sort_by=updated_at&sort_order=desc` list — i.e. most
-  recently created/touched first).
-- **`folder_target`** — created via `conversation_api.create_folder(name)` AFTER `folder_sibling`,
-  so it starts BELOW `folder_sibling` in the unpinned list (live-confirmed baseline this session).
-  This is the folder the case's own steps act on.
+- **`folder_target`** — created FIRST via `conversation_api.create_folder(name)`. This is the folder
+  the case's own steps act on.
+- **`folder_sibling`** — created SECOND via `conversation_api.create_folder(name)`, AFTER
+  `folder_target`, stays unpinned throughout. Because it is the more-recently-created/touched folder,
+  it renders ABOVE `folder_target` in the default `sort_by=updated_at&sort_order=desc` list —
+  **corrected ordering rule** (implementer pytest run, not the analyst's original MCP read): the
+  MORE RECENTLY created/touched folder renders higher. Gives Step 1 a deterministic "folder A is
+  above folder B" baseline before any pinning happens, and gives Step 4 ("folder no longer in its
+  original position") a stable unpinned reference to compare against.
 - **`conv_in_folder`** — created via `conversation_api.create_conversation(name)`, then moved into
   `folder_target` via `conversation_api.move_conversation_to_folder(id, folder_target_id)` — both
   transit/setup, not the case's own subject. Gives Step 3 a real conversation to prove "intact"
@@ -86,9 +92,17 @@ already-proven pin/unpin pairing structure (ELITEA-2149/2150).
      assertion as Step 3's `data-pinned` check, restated because the case enumerates it as its own
      step.
 5. Verify the folder still shows all its conversations when expanded.
-   - **Verify**: `data-expanded="true"` persists through the pin action WITHOUT re-clicking (live-
-     confirmed this session — pinning does not collapse an already-expanded folder); `conv_in_folder`
-     still resolves inside `folder_target`'s container post-pin.
+   - **Verify**: pinning MOVES the folder's row between the unpinned and pinned list partitions — a
+     genuine remount, live-confirmed via the pytest run (settled state, polled with a web-first
+     assertion) to reset `data-expanded` back to `"false"` even though the folder was expanded before
+     pinning. This corrects the analyst's original MCP-based read, which observed `"true"`
+     immediately after the click and concluded (wrongly) that expand state survives — that read was
+     racing the settling re-render, not observing its final state. Re-expand explicitly
+     (`expand_folder(..., force=True)` — the pinned-folder disabled-ancestor gotcha applies to a
+     plain click on the whole row, not only the dot-menu button) and THEN verify `conv_in_folder`
+     still resolves inside `folder_target`'s container. The case's own literal wording ("shows all
+     its conversations WHEN expanded") does not require the folder to stay expanded automatically —
+     only that expanding it (again, if needed) still shows its conversations, which it does.
 6. Verify the folder is no longer in its original position (same observable as Step 3's Y/order
    check, re-asserted per the case's own explicit Step 4 wording — not a new mechanism).
    - **Verify**: new Y != `initial_y` (strictly less); relative order vs `folder_sibling` has
@@ -101,8 +115,9 @@ already-proven pin/unpin pairing structure (ELITEA-2149/2150).
 - `data-pinned` on `chat-folder-item-{folder_id}` flips `"false"` → `"true"` — the compliant,
   policy-mandated proxy for "pin icon visible" (raw icon has no testid, is driven by the same
   boolean).
-- The folder's expand state and conversation contents are unaffected by pinning — it does not
-  collapse, and its conversations remain rendered inside it.
+- Pinning collapses the folder's expand state (a remount between list partitions — corrected finding,
+  see Step 5), but does NOT affect its conversation membership: re-expanding after the pin action
+  shows the same conversations, unchanged.
 - The folder's rendered position changes measurably (Y decreases; relative order vs a stable
   unpinned sibling reverses) — proving it left its original position, not merely that a flag
   flipped.
@@ -117,7 +132,7 @@ already-proven pin/unpin pairing structure (ELITEA-2149/2150).
 | Precondition: at least one unpinned folder exists | — | Setup | `folder_target` seeded unpinned via API | asserted |
 | 1 Navigate to Chats, hover unpinned folder, click 3-dot, click 'Pin on top' | Folder moves to pinned folders section at top | AFS steps 1–3 | step 1: baseline; step 2: menu label + click; step 3: `data-pinned` flip + Y decrease + order reversal vs `folder_sibling` | asserted |
 | 2 Verify a pin icon is displayed next to the folder name | Pin icon visible | AFS step 4 | `data-pinned="true"` per Locator policy (raw icon has no testid, same driving boolean) | asserted |
-| 3 Verify the folder still shows all its conversations when expanded | Conversations intact | AFS step 5 | `data-expanded="true"` persists; `conv_in_folder` still resolves inside `folder_target` | asserted |
+| 3 Verify the folder still shows all its conversations when expanded | Conversations intact | AFS step 5 | folder re-expanded post-pin (`force=True`, corrected — see Step 5 note); `conv_in_folder` still resolves inside `folder_target` | asserted |
 | 4 Verify the folder is no longer in its original position | Folder moved from original position | AFS step 6 | Y != `initial_y`; order vs `folder_sibling` reversed | asserted |
 | Expected Final State: "Folder pinned and appears at top with pin icon, conversations intact" | — | steps 3–6 | covered by the rows above | asserted |
 | Pass/Fail: "Folder not pinned or conversations lost" (fail condition) | — | steps 3, 5 | `data-pinned`/conversation-presence checks are the direct inverse of this fail condition | asserted |
@@ -178,11 +193,19 @@ into `ChatPage`, entirely from prior sessions' work on this same surface family 
   excluded from "no new console errors" checks, same as every sibling AFS in this suite.
 
 ## Known Defects Found During Exploration
-None. Live-confirmed this session, end-to-end, folder id `1091` (`w08_2152target`) against sibling
-`1092` (`w08_2152sibling`) with conversation `8514` moved inside: pre-pin Y=138 (below sibling's
-Y=97) → pin action (`PATCH → 200`) → `data-pinned` `false`→`true`, Y=56 (now ABOVE sibling's new
-Y=178 — a full order reversal), folder stayed `data-expanded="true"` throughout with the
-conversation still resolving inside it. Behaves exactly as the case's own steps expect.
+None. Live-confirmed end-to-end (MCP exploration + implementer's pytest run), folder id `1091`
+(`w08_2152target`) against sibling `1092` (`w08_2152sibling`) with conversation `8514` moved inside:
+pre-pin Y=138 (below sibling's Y=97) → pin action (`PATCH → 200`) → `data-pinned` `false`→`true`,
+Y=56 (now ABOVE sibling's new Y=178 — a full order reversal). **Corrected during implementation**:
+the folder does NOT stay expanded through the pin action — the settled (pytest-polled) state is
+`data-expanded="false"` post-pin, a genuine remount when the row moves between the unpinned and
+pinned list partitions, not merely a flag reset. The analyst's original MCP read (`"true"`
+immediately post-click) was a race against this settling re-render, not the final state — see the
+Test Steps § Step 5 note. Re-expanding after the pin action (`force=True`) shows the conversation is
+unaffected — behavior matches the case's steps once re-expansion is treated as part of "verify …
+when expanded" rather than an automatic persistence guarantee the case never actually asked for.
+Not filed as a product defect: collapsing on a structural move between list sections is a
+defensible, common UI pattern, and the case's own wording does not demand persistence.
 
 **Note on exploration technique, not a product defect**: driving the folder's dot-menu via a raw DOM
 `element.click()` (`browser_evaluate`, no `force` option in Playwright MCP) produced 4 transient
@@ -200,11 +223,16 @@ implementation uses the proven `pin_folder_via_menu()` force-click path).
 
 ## Automation Hints
 - Framework: Playwright + pytest, testid-only `LocatorDescriptor`.
-- Page object: `automation/pages/chat_page.py` — **zero new methods needed**; reuse
-  `pin_folder_via_menu()`, `is_folder_pinned()`, `get_folder_item()`, `is_folder_expanded()`,
-  `expand_folder()`, `is_conversation_in_folder()` (all ELITEA-2121/2130), plus
-  `conversation_api.create_folder()` / `create_conversation()` / `move_conversation_to_folder()` /
-  `delete_conversation()` / `delete_folder()`.
+- Page object: `automation/pages/chat_page.py` — reuses `pin_folder_via_menu()`, `is_folder_pinned()`,
+  `get_folder_item()`, `is_folder_expanded()`, `is_conversation_in_folder()` (all ELITEA-2121/2130)
+  verbatim, plus `conversation_api.create_folder()` / `create_conversation()` /
+  `move_conversation_to_folder()` / `delete_conversation()` / `delete_folder()`. **One additive
+  change**, discovered during implementation (not foreseeable from live MCP exploration alone —
+  see Step 5's correction): `expand_folder(folder_id, timeout, force: bool = False)` gained a new
+  OPTIONAL `force` parameter, defaulting to `False` (identical behavior for all ~15 existing
+  callers, verified via `git diff | grep -E '^-[^-]'` plus a spot-check regression run of an
+  existing caller). Needed because re-expanding a PINNED folder hits the same disabled-ancestor
+  gotcha as the dot-menu button (ELITEA-2130), but on the WHOLE row this time, not just the button.
 - Test file: **new** `automation/tests/ui/chat/test_pin_folder.py`, mirroring
   `test_pin_conversation.py`'s structure (ELITEA-2149/2150) — a `TestPinFolderViaPinOnTop` class
   here; ELITEA-2153's `TestUnpinFolderViaContextMenu` class lands in the SAME file (see that AFS).

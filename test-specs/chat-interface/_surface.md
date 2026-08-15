@@ -2160,34 +2160,55 @@ Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
   effects** — ELITEA-2130 pins a folder only as setup for a RENAME test (never
   checks position or conversations); ELITEA-2151 pins a folder only as setup
   for a 4-tier ORDERING check against conversation rows (never captures a
-  folder's own before/after position or touches its conversations). Zero new
-  testid/page-object work needed either way — `pin_folder_via_menu()`,
-  `is_folder_pinned()`, `get_folder_item()`, `expand_folder()`,
-  `is_conversation_in_folder()` (all ELITEA-2121/2130) cover the whole surface.
-- **A folder's unpinned-list position is DETERMINISTIC and returns EXACTLY to
-  its pre-pin Y coordinate on unpin** — live-confirmed this session across a
-  full pin→unpin round-trip on the SAME folder (id `1091`, `w08_2152target`):
-  baseline Y=138 (below unpinned sibling `1092` at Y=97) → pin (`PATCH → 200`)
-  → Y=56 (now ABOVE the sibling, whose own Y shifted to 178 as the list
-  reflowed) → unpin (`PATCH → 200`, SAME endpoint/method, SAME
-  `chat-folder-menu-pin-menuitem` toggle) → Y returns to EXACTLY 138, sibling
-  back to 97 — the identical pre-pin layout, not merely "some unpinned
-  position". This is a stronger, more diagnostic assertion than a bare
-  `data-pinned` flag check and is what ELITEA-2152/2153's AFS files use for
-  "folder moved from/returns to its original position".
+  folder's own before/after position or touches its conversations). Reuses
+  `pin_folder_via_menu()`, `is_folder_pinned()`, `get_folder_item()`,
+  `is_conversation_in_folder()` (all ELITEA-2121/2130) verbatim, plus ONE
+  additive change: `expand_folder(folder_id, timeout, force: bool = False)`
+  gained an optional `force` param (default `False`, zero behavior change for
+  ~15 existing callers) — see the expand-state bullet below for why.
+- **A folder's unpinned-list position is DETERMINISTIC and returns to its
+  pre-pin Y coordinate (within sub-pixel tolerance) on unpin** — live-confirmed
+  across a full pin→unpin round-trip on the SAME folder (id `1091`,
+  `w08_2152target`): baseline Y=138 (below unpinned sibling `1092` at Y=97) →
+  pin (`PATCH → 200`) → Y=56 (now ABOVE the sibling, whose own Y shifted to 178
+  as the list reflowed) → unpin (`PATCH → 200`, SAME endpoint/method, SAME
+  `chat-folder-menu-pin-menuitem` toggle) → Y returns to ~138, sibling back to
+  ~97 — the identical pre-pin layout, not merely "some unpinned position".
+  `getBoundingClientRect()` reads of an UNMOVED element can differ by a
+  fraction of a pixel between two calls (observed: 138.71875 vs 138 for the
+  exact same row) — assert with a ~2px tolerance, not `==`, or the test flakes
+  on zero real position change. This is a stronger, more diagnostic assertion
+  than a bare `data-pinned` flag check and is what ELITEA-2152/2153's AFS files
+  use for "folder moved from/returns to its original position".
 - **A folder created AFTER another one renders ABOVE it** in the default
   `sort_by=updated_at&sort_order=desc&grouped=true` folder-list query — i.e.
   most-recently-created/touched first. Useful for any case needing a
   deterministic before-pin ordering baseline between two fresh sibling
   folders without depending on ambient DEV-project data.
-- **Pinning does NOT collapse an already-expanded folder, and does not drop
-  its conversations** — live-confirmed: folder `1091` was expanded
-  (`data-expanded="true"`) with conversation `8514` moved inside it via
-  `conversation_api.move_conversation_to_folder()` BEFORE pinning; after the
-  pin action, `data-expanded` was STILL `"true"` (no re-click needed) and the
-  conversation still resolved inside the folder's container. Same true for
-  the unpin direction. No gap here — a plausible regression class (pin action
-  re-rendering the row and losing local expand state) simply doesn't occur.
+- **CORRECTED finding — pinning (and unpinning) a folder DOES reset its
+  expand state; a bare live MCP read that says otherwise is racing the
+  settling re-render, not observing final state.** The first pass through
+  this exploration read `data-expanded="true"` immediately after a raw click
+  on the pin menu item and concluded expand state survives pinning — WRONG.
+  The implementer's pytest run, using a **web-first, polling assertion**
+  (`expect(locator).to_have_attribute(..., timeout=...)`) instead of a single
+  synchronous read, caught the SETTLED value: `data-expanded="false"` after
+  BOTH the pin and the unpin action, even though the folder was expanded
+  immediately beforehand in both cases. Root cause (structural, not a flake):
+  moving a folder's row between the pinned and unpinned list partitions is a
+  genuine remount, not an in-place reorder, so any local component state
+  (expand/collapse) resets to its default. Conversations are NOT lost —
+  re-expanding after the action (`expand_folder(..., force=True)` — the
+  pinned-folder disabled-ancestor gotcha applies to a plain click on the WHOLE
+  row here, not only the dot-menu button) shows them intact. **Methodological
+  lesson for future exploration on this surface**: a single MCP `evaluate()`
+  read immediately after a click proves only "not yet false" — it is not
+  evidence of the settled state. Reach for a genuinely time-separated re-check
+  (several tool round-trips later, or better, drive the actual pytest
+  assertion) before writing a persistence claim into an AFS. Not filed as a
+  product defect — the case's own wording ("shows its conversations WHEN
+  expanded") doesn't demand automatic persistence, and collapsing on a
+  structural list move is a defensible, common UI pattern.
 - **"Pin icon visible/removed" is asserted via `data-pinned`, per policy, not
   a raw icon locator** — same equivalence ELITEA-2121/2130's AFS already
   established (`isPinned && <PinIcon>` in `FolderAccordion.jsx`'s header has
@@ -2204,7 +2225,7 @@ Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
   test already runs that exact click pattern with 0 console errors observed).
   Do not re-investigate this as a product bug if seen again during MCP-only
   exploration on this surface; it does not occur under real pytest runs.
-- **Exploration folders left undeliberately live** (`w08_2152target` id
+- **Exploration folders left live, undeleted** (`w08_2152target` id
   `1091`, `w08_2152sibling` id `1092`) — same accepted precedent as
   ELITEA-2121/2130/2151 (folder-delete's UI testid is dead, tracked in
   `#1309`; MCP-`fetch()` to the same-origin API also fails — confirmed again
