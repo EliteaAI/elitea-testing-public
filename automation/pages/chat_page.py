@@ -1302,6 +1302,25 @@ class ChatPage(BasePage):
         description="Scrollable sidebar folder/conversation list container.",
     )
 
+    # Drag-and-drop drop zones (ELITEA-2142/2143/2145) — testids + a
+    # data-drop-active boolean ADDED this implementation on the EXISTING
+    # outer ref={setNodeRef} Box each of DroppableFolderItem.jsx /
+    # DroppableGroupedArea.jsx already renders (zero new DOM nodes). Testid
+    # is the stable identity, data-drop-active carries
+    # shouldShowDropFeedback's state — state-via-data-attribute, not a
+    # state-switched testid (PR #581 ruling).
+    FOLDER_DROP_ZONE = '[data-testid="chat-folder-drop-zone-{}"]'
+
+    conversation_list_drop_zone = LocatorDescriptor(
+        testid="chat-conversation-list-drop-zone",
+        description=(
+            "Ungrouped/date-group area's droppable wrapper "
+            "(DroppableGroupedArea.jsx). Carries data-drop-active "
+            "reflecting the same shouldShowDropFeedback mechanism as "
+            "FOLDER_DROP_ZONE."
+        ),
+    )
+
     # Folder dot-menu "Delete" item — ADDED this implementation
     # (FolderItem.jsx's menuItems had no `key`, so DotMenu/BasicMenuItem
     # never emitted a data-testid for them; ConversationItem.jsx's sibling
@@ -6955,6 +6974,261 @@ class ChatPage(BasePage):
                 f"API delete of folder {folder_id} failed: "
                 f"{response.status} {response.text()}"
             )
+
+    # ------------------------------------------------------------------
+    # Conversation<->folder drag-and-drop (ELITEA-2142/2143/2145)
+    # ------------------------------------------------------------------
+    # Mechanism: @dnd-kit/core's PointerSensor (8px activation distance),
+    # NOT native HTML5 draggable/DragEvent — DraggableConversationItem.jsx
+    # (useDraggable) / DroppableFolderItem.jsx + DroppableGroupedArea.jsx
+    # (useDroppable). Real page.mouse gestures drive the real product code
+    # (confirmed live via network capture, test-specs/chat-interface/
+    # _surface.md § ELITEA-2142/2143/2144/2145) — do NOT reuse
+    # drag_and_drop_file()'s synthetic-DataTransfer-DragEvent technique,
+    # that is a DIFFERENT mechanism for a native OS file drag Playwright
+    # cannot otherwise produce; dnd-kit's PointerSensor listens for real
+    # pointer events, so a synthetic DragEvent here would never reach it.
+    #
+    # Exposed as composable primitives (start / move / release) rather
+    # than one monolithic "drag and drop" call, because the caller needs
+    # to wrap page.expect_response(...) around the RELEASE step
+    # specifically (the move PUT only fires on drop) and, for
+    # ELITEA-2143, needs to pause mid-gesture over each candidate folder
+    # to assert its FOLDER_DROP_ZONE's data-drop-active before continuing
+    # to the next one.
+
+    def get_folder_drop_zone(self, folder_id: str | int):
+        """Return the Locator for a folder's droppable drop-zone wrapper
+        (FOLDER_DROP_ZONE) — carries data-drop-active while a drag is
+        hovering it.
+
+        Args:
+            folder_id: Numeric folder id.
+        """
+        return self.page.locator(self.FOLDER_DROP_ZONE.format(folder_id))
+
+    def get_conversation_drag_opacity(self, conversation_id: str | int) -> float:
+        """Return the computed opacity of *conversation_id*'s draggable
+        wrapper (DraggableConversationItem.jsx's own inline ``style``,
+        NOT the CONVERSATION_ITEM testid element itself — the testid sits
+        on a CHILD Box, the opacity is set on the PARENT ``ref={setNodeRef}``
+        Box). 1.0 at rest, 0.5 while ``isDragging`` — no dedicated testid
+        for this transient state, per the AFS.
+
+        Args:
+            conversation_id: Numeric conversation id.
+        """
+        item = self.get_conversation_item(conversation_id)
+        value = item.evaluate("el => getComputedStyle(el.parentElement).opacity")
+        return float(value)
+
+    def wait_for_conversation_dragging(
+        self, conversation_id: str | int, expected: bool = True, timeout: int = 5000,
+    ) -> bool:
+        """Poll :meth:`get_conversation_drag_opacity` until it reaches the
+        dragging (0.5) or at-rest (1.0) value, or *timeout* elapses.
+
+        Args:
+            conversation_id: Numeric conversation id.
+            expected: True to wait for the dragging (0.5) opacity, False
+                to wait for the at-rest (1.0) opacity.
+            timeout: Maximum wait time in milliseconds.
+        """
+        target = 0.5 if expected else 1.0
+        deadline = time.monotonic() + timeout / 1000.0
+        while time.monotonic() < deadline:
+            try:
+                if abs(self.get_conversation_drag_opacity(conversation_id) - target) < 0.05:
+                    return True
+            except Exception:
+                pass
+            time.sleep(0.1)
+        return False
+
+    def _wait_for_pointer_target(self, locator, timeout: int = 5000):
+        """Poll until *locator*'s own DOM node is what
+        ``document.elementFromPoint()`` resolves to at its own
+        bounding-box center (or a descendant of it), returning that
+        settled ``(x, y)`` center.
+
+        Guards against a virtualization/layout race distinct from the
+        off-screen problem ``scroll_into_view_if_needed()`` fixes:
+        ``bounding_box()`` can report CORRECT coordinates for the element
+        itself (confirmed via ``getBoundingClientRect()`` matching) while a
+        DIFFERENT, stale-positioned row visually overlaps that exact pixel
+        and silently intercepts a raw ``page.mouse`` event there — this
+        shared DEV account's 65+ folders can still be settling their
+        layout (row heights shift as an accordion expands) right after an
+        ``expand_folder()`` call. Confirmed live this implementation via
+        ``document.elementFromPoint`` diffing: a conversation nested inside
+        a just-expanded folder measured the correct rect, but the pixel at
+        its center hit a DIFFERENT folder's collapsed header instead.
+
+        Args:
+            locator: Playwright Locator to settle onto its own pointer target.
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            RuntimeError: if the target never settles within *timeout*.
+        """
+        deadline = time.monotonic() + timeout / 1000.0
+        last_result = None
+        while time.monotonic() < deadline:
+            last_result = locator.evaluate(
+                """el => {
+                    const r = el.getBoundingClientRect();
+                    const x = r.x + r.width / 2;
+                    const y = r.y + r.height / 2;
+                    const hit = document.elementFromPoint(x, y);
+                    const settled = !!hit && (hit === el || el.contains(hit));
+                    return { x, y, settled };
+                }"""
+            )
+            if last_result["settled"]:
+                return last_result["x"], last_result["y"]
+            time.sleep(0.15)
+        raise RuntimeError(
+            f"Element did not settle onto its own pointer target within {timeout}ms "
+            f"(last measured center: {last_result})"
+        )
+
+    @action("Start dragging a conversation")
+    def start_conversation_drag(self, conversation_id: str | int, timeout: int = 5000):
+        """Press-and-hold on a conversation row and move a few px to cross
+        @dnd-kit's PointerSensor 8px activation distance, then wait for the
+        drag to actually activate (opacity transition) before returning.
+
+        Leaves the mouse button PRESSED — callers must eventually call
+        :meth:`release_drag` (directly or via a helper that calls it), even
+        on assertion failure, or the pressed button leaks into the NEXT
+        test's page state in the same browser context (confirmed live this
+        cluster's own exploration — see ``_surface.md``).
+
+        Args:
+            conversation_id: Numeric conversation id to start dragging.
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            RuntimeError: if the drag never activates within *timeout* —
+                releases the mouse button first so it never leaks.
+        """
+        logger.info("Starting drag of conversation %s", conversation_id)
+        item = self.get_conversation_item(conversation_id)
+        item.wait_for(state="visible", timeout=timeout)
+        # bounding_box() is viewport-relative — an item below the fold
+        # (this shared DEV account's sidebar routinely carries 65+ folders
+        # ahead of the conversation list, see _surface.md) reports a y far
+        # past the viewport height, and page.mouse.move() to that
+        # coordinate lands outside the rendered viewport, never reaching
+        # the element (confirmed live this implementation — the drag
+        # silently never activated). scroll_into_view_if_needed() first,
+        # same as every other id-scoped interaction in this file.
+        item.scroll_into_view_if_needed()
+        # Settle-check (see _wait_for_pointer_target docstring) — a
+        # DIFFERENT, stale-positioned row can visually overlap this item's
+        # own correct coordinates right after a folder expand.
+        start_x, start_y = self._wait_for_pointer_target(item, timeout=timeout)
+        self.page.mouse.move(start_x, start_y)
+        self.page.mouse.down()
+        # Cross the PointerSensor's 8px activation distance.
+        self.page.mouse.move(start_x + 12, start_y + 12, steps=3)
+        if not self.wait_for_conversation_dragging(conversation_id, expected=True, timeout=timeout):
+            self.page.mouse.up()
+            raise RuntimeError(
+                f"Conversation {conversation_id}: drag did not activate "
+                f"(opacity never reached 0.5) within {timeout}ms"
+            )
+        logger.info("Drag activated for conversation %s", conversation_id)
+
+    @action("Move the pressed drag pointer over a target element")
+    def move_drag_over_target(self, target_locator, iterations: int = 4, steps_per_move: int = 4):
+        """Move the ALREADY-PRESSED pointer (see :meth:`start_conversation_drag`)
+        toward *target_locator*'s center, re-measuring on EVERY iteration —
+        a stale captured position can miss (layout shifts, e.g. a source
+        folder's accordion collapsing mid-drag, move sibling elements a few
+        px during the gesture) or land on a DIFFERENT, stale-positioned
+        element that visually overlaps the correct coordinates (settle-
+        checked via :meth:`_wait_for_pointer_target` — both confirmed live,
+        see ``_surface.md``).
+
+        Args:
+            target_locator: Playwright Locator to move the pointer onto.
+            iterations: Number of re-measured move legs.
+            steps_per_move: ``steps=`` passed to each ``mouse.move()`` call.
+
+        Returns:
+            The last settled ``(x, y)`` center, or None if the target
+            never settled during any iteration.
+        """
+        last_center = None
+        for _ in range(iterations):
+            try:
+                target_locator.scroll_into_view_if_needed(timeout=2000)
+            except Exception:
+                pass
+            try:
+                cx, cy = self._wait_for_pointer_target(target_locator, timeout=2000)
+            except RuntimeError:
+                continue
+            last_center = (cx, cy)
+            self.page.mouse.move(cx, cy, steps=steps_per_move)
+        return last_center
+
+    @action("Release the pressed drag pointer")
+    def release_drag(self, timeout: int = 10000):
+        """Release the mouse button (completing whatever drop target the
+        pointer is currently over) and wait for network activity to settle.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the settle.
+        """
+        self.page.mouse.up()
+        self.wait_for_network(timeout=timeout)
+
+    @action("Abort a pressed drag without dropping")
+    def abort_drag(self):
+        """Best-effort mouse-up with no network wait — used from a
+        ``finally`` block to guarantee the button never leaks into the
+        NEXT test, even after a mid-drag assertion failure. Swallows
+        errors (the button may already be up).
+        """
+        try:
+            self.page.mouse.up()
+        except Exception:
+            pass
+
+    @action("Drag a conversation onto a folder and drop it")
+    def drag_conversation_to_folder(self, conversation_id: str | int, folder_id: str | int, timeout: int = 10000):
+        """Press, move onto *folder_id*, and release — the full gesture in
+        one call, for callers that don't need to wrap the drop's network
+        response (use :meth:`start_conversation_drag` +
+        :meth:`move_drag_over_target` + :meth:`release_drag` directly when
+        the caller needs to wrap ``page.expect_response(...)`` around the
+        release step specifically, e.g. ELITEA-2142's PUT assertion).
+
+        Args:
+            conversation_id: Numeric conversation id to drag.
+            folder_id: Numeric target folder id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.start_conversation_drag(conversation_id, timeout=timeout)
+        self.move_drag_over_target(self.get_folder_item(folder_id), iterations=4, steps_per_move=4)
+        self.release_drag(timeout=timeout)
+
+    @action("Drag a conversation into the general/ungrouped list area")
+    def drag_conversation_to_general_list(self, conversation_id: str | int, timeout: int = 10000):
+        """Press, move onto the ungrouped drop-zone
+        (``conversation_list_drop_zone`` — ``DroppableGroupedArea``'s drop
+        target id is ``'ungrouped-conversations'`` per ``useDragAndDrop.js``),
+        and release.
+
+        Args:
+            conversation_id: Numeric conversation id to drag.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.start_conversation_drag(conversation_id, timeout=timeout)
+        self.move_drag_over_target(self.conversation_list_drop_zone, iterations=4, steps_per_move=4)
+        self.release_drag(timeout=timeout)
 
     @action("Open folder context menu")
     def open_folder_context_menu(self, folder_id: str | int, timeout: int = 5000):

@@ -51,16 +51,26 @@ case specifically.
 4. Drop the conversation on `folder_b`.
    - **Verify**: the highlight on `folder_b` disappears (drag ends,
      `isDragging`/`isOver` both clear); `PUT` fires with `folder_id` reflecting
-     the drop. (Whether it resolves to `folder_b`'s own id or is affected by
-     the #1541 misresolution defect is exactly ELITEA-2144's own concern, not
-     re-asserted here — this case's own scope is the HOVER highlight, not the
-     drop outcome. If reused as a transit step, note the #1541 risk per
-     ELITEA-2142/2144's AFS.)
+     the drop **and resolving to `folder_b`'s own id**; `folder_b` actually
+     contains `conv_target` afterwards (UI check via expand + membership).
+     **AMENDED (fix round 1, review finding):** originally this row deferred
+     the drop-outcome check to ELITEA-2144 as out-of-scope — but ELITEA-2144
+     is a separate dispatch, not part of this batch, and this case's own TMS
+     Pass/Fail criteria explicitly require it ("Pass: ... drop moves
+     conversation" / "Fail: ... drop does not move conversation"). This is
+     the Today->folder_b direction (`conv_target` is dragged straight from
+     Today, never placed inside `folder_a`), the SAME direction
+     `test_drag_drop_conversation_to_folder` (ELITEA-2142) confirmed clean of
+     the #1541 drop-target-misresolution defect during this same
+     implementation — asserted as literal expected behavior, not tied to any
+     known defect.
 
 ## Expected Results
 - Each folder shows the dashed-border highlight while the dragged
   conversation hovers over it, and loses it when the pointer moves away.
-- Dropping ends the drag and removes all highlights.
+- Dropping ends the drag, removes all highlights, and moves the conversation
+  into `folder_b` (verified via response `folder_id` + UI membership —
+  AMENDED, fix round 1).
 
 ## Coverage Map
 
@@ -72,7 +82,7 @@ case specifically.
 | 1 Begin dragging a conversation from Today | Drag started | AFS step 1 | step 1: `isDragging` transition | asserted |
 | 2 Drag over different folders one at a time | Each folder highlighted (dashed border) when hovered | AFS step 2 | step 2: `data-drop-active="true"` per folder, screenshot-confirmed live this pass | asserted |
 | 3 Move away from a folder, verify highlight removed | Highlight removed | AFS step 3 | step 3: `data-drop-active="false"` reverts | asserted |
-| 4 Drop on a desired folder | Conversation moved; highlight disappears | AFS step 4 | step 4: highlight clears; drop mechanism itself is ELITEA-2144's own scope | asserted (highlight-clear only) / out-of-scope (drop-outcome correctness — belongs to ELITEA-2144) |
+| 4 Drop on a desired folder | Conversation moved; highlight disappears | AFS step 4 | step 4: highlight clears; response body `folder_id` == folder_b's id; folder_b's UI membership contains conv_target (AMENDED, fix round 1) | asserted |
 | Expected Final State: "Folder highlighting works during drag" | — | steps 2-3 | covered by the rows above | asserted |
 
 Disposition key: `asserted` / `already-covered` / `clarification` / `blocked` / `out-of-scope`.
@@ -85,10 +95,17 @@ Disposition key: `asserted` / `already-covered` / `clarification` / `blocked` / 
   scriptable assertion is required; the screenshot evidence from this pass
   proves the CSS effect exists, but a shipped test needs a DOM-readable
   signal, hence the testid-needed spec below.*
-- Step 4's drop OUTCOME (does the conversation land in the right folder) is
-  explicitly marked out-of-scope for THIS case — *added: avoids duplicating
-  ELITEA-2144's own assertion and avoids this case inheriting the #1541
-  defect risk it doesn't need to carry.*
+- **SUPERSEDED (fix round 1, review finding):** Step 4's drop OUTCOME was
+  originally marked out-of-scope for THIS case, deferred to ELITEA-2144 —
+  but ELITEA-2144 is a separate dispatch, not part of this batch, and this
+  case's OWN TMS Pass/Fail criteria explicitly require the drop-outcome
+  check ("Pass: ... drop moves conversation" / "Fail: ... drop does not
+  move conversation"). The implementation now hard-asserts the response
+  body's `folder_id` plus the folder's UI membership, using the same
+  Today->folder direction `test_drag_drop_conversation_to_folder`
+  (ELITEA-2142) already confirmed clean of the #1541 defect — so this case
+  no longer inherits any unconfirmed #1541 risk; it asserts a
+  build-time-confirmed-clean behavior.
 
 ## Cleanup
 1. Delete `conv_target` via `conversation_api.delete_conversation(id)`.
