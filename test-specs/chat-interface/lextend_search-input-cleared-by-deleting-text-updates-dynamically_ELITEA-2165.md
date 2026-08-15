@@ -125,10 +125,15 @@ the trimmed query is empty, per `Conversations.jsx`'s `debouncedSearchQuery.trim
 
 ## Network Behavior
 Same debounced `GET .../elitea_core/folder/prompt_lib/{projectId}?query=<value>&grouped=true`
-mechanism as the covering spec, fired independently for each committed value change (narrow query,
-broader query, empty query) — 500ms debounce each time; the empty-query fetch is the same request
-the initial page load already makes (no `query` param / empty value), confirmed via source read of
-`isSearchMode = !!debouncedSearchQuery.trim()`.
+mechanism as the covering spec for the narrow→broad transition (step 2) — 500ms debounce.
+**Implementer correction**: the final clear-to-empty step (step 3) does **NOT** reliably fire a
+NEW network response — live-confirmed via a failing first implementation attempt that waited on
+`page.expect_response()` and timed out. The empty/no-query state is the SAME query-client cache key
+the page loaded with, so React Query (or whatever caching layer backs `useFoldersListQuery`) can
+serve it from cache with zero network round-trip. The correct wait is on the resulting UI state
+(the polling `is_conversation_in_group()` / `get_folder_link_count()` checks), not a network event —
+this section's earlier claim that this step "fires the debounced empty-query fetch" was NOT actually
+verified against the Network tab during analysis and was wrong.
 
 ## Known Defects Found During Exploration
 None.
@@ -147,10 +152,12 @@ None.
   sequentially + wait for the query-tagged response" sequence needed for step 2's narrow→broad
   transition (a non-empty replacement value). It is NOT reusable verbatim for step 3's clear-to-empty
   case — `press_sequentially("")` types zero characters, so no `onChange` fires and the wrapping
-  `expect_response()` would hang waiting for a request that never triggers. Live-confirmed working
-  clear sequence instead: click the input, `page.keyboard.press("Meta+a")` (macOS Chromium — plain
-  `Control+a` does NOT select-all in a Chromium text field, per `.claude/rules/mui-patterns.md`'s
-  documented gotcha, live-reconfirmed this session), then `page.keyboard.press("Backspace")` — this
-  IS a real keystroke (fires the debounced empty-query fetch); wait on the folder list / full item
-  set reappearing rather than a `query=`-substring response match (an empty query string makes the
-  substring match ambiguous against unrelated requests).
+  `expect_response()` would hang waiting for a request that never triggers. Working clear sequence:
+  click the input, `page.keyboard.press("Meta+a")` (macOS Chromium — plain `Control+a` does NOT
+  select-all in a Chromium text field, per `.claude/rules/mui-patterns.md`'s documented gotcha,
+  live-reconfirmed this session), then `page.keyboard.press("Backspace")`. **Do NOT wrap this in
+  `page.expect_response()`** — implementation-round-1 confirmed this specific transition (back to the
+  page's initial no-query cache key) can be served entirely from cache with no new network round-trip,
+  so the wait times out. Wait on the resulting UI state instead — the polling `is_conversation_in_
+  group()` calls already used in step 3's other assertions are sufficient; run them BEFORE any
+  non-polling `.count()` read (e.g. `get_folder_link_count()`) so the DOM has actually settled first.

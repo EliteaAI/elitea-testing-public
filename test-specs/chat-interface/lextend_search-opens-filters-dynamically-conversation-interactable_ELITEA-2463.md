@@ -93,16 +93,28 @@ one additional seeded conversation for the Gap assertions:
      currently matched — no assertion needed here, this is just documenting that the pin state is
      orthogonal to search matching (not a new check).
 3. **New — after existing Step 3, still inside the same allure.step or a new one immediately
-   following it**: type the query `"AutomationOther"` (an exact-ish prefix that DOES match
-   `sibling_conv_name` but not the generated `AutomationUnique...` conversation) — satisfies Gap 1
-   (case step 6, pinned grouping).
+   following it**: type the query `"Automation"` — the common prefix of BOTH `conv_name`
+   (`AutomationUnique...`) and `sibling_conv_name` (`AutomationOther...`), so it surfaces the pinned
+   sibling and the non-pinned, date-grouped conversation simultaneously — satisfies Gap 1 (case step
+   6, pinned grouping) with a real DOM-containment assertion instead of only visibility/absence.
+   *(Amended during implementer fix round 1 — the original `"AutomationOther"`-only query only ever
+   surfaced the pinned item, so nothing in the original AFS's assertions could prove a
+   simultaneously-matching date-grouped item sits in a DIFFERENT container; a pinned-only match is
+   consistent with both "pinned items render outside date groups" and "the app just doesn't render
+   pinned items in the date-grouped container at all, full stop" — the shared query closes that
+   gap.)*
    - **Verify**: `chat.is_conversation_pinned(sibling_conv_id)` is still `True`; the sibling's row
-     (`chat-conversation-item-{sibling_conv_id}`) is visible; the generated conversation's row is
-     NOT visible (query doesn't match it) — proves search results correctly narrow to the pinned
-     match alone, and the pinned item is retrievable via the page-wide `CONVERSATION_ITEM` testid
-     regardless of its (pinned, not date-grouped) DOM position.
-   - Re-type the original partial query `"un"` afterward (`type_conversation_search_query("un", ...)`
-     again — same pre-existing method) to restore state for the existing Step 4 that follows.
+     (`chat-conversation-item-{sibling_conv_id}`) is visible; the generated conversation's row
+     (`chat-conversation-item-{conv_id}`) is ALSO visible (both match `"Automation"`) — proves search
+     narrows to exactly the two matching items, one from each tier.
+   - **Verify (DOM containment)**: `chat.is_conversation_in_group(sibling_conv_id, group="today")` is
+     `False` — the pinned match does NOT render inside the `CONVERSATION_GROUP_HEADER` container.
+     `chat.is_conversation_in_group(conv_id, group="today")` is `True` — the non-pinned match DOES
+     render inside it, for the SAME query at the SAME time. This is the actual case-step-6 assertion:
+     two simultaneously-matching items scoped into two different DOM containers, not merely "a pinned
+     item is visible" and "a non-pinned item is visible" as two independent facts.
+   - No query restoration needed before existing Step 4 — Step 4's `type_conversation_search_query()`
+     call does a select-all + retype regardless of the current value.
 4. **Extends existing Step 4** (types the exact full-name query, additive `expect()` lines only — the
    existing `to_have_count(1)` assertion is untouched, it already proves Gap 2 for the exact-match
    case):
@@ -132,7 +144,7 @@ one additional seeded conversation for the Gap assertions:
 | 3 Verify input focused, X icon appears | Condition holds | covering spec step 2 | covering spec | asserted (reused) |
 | 4 Type partial query 'un' | Field accepts input | covering spec step 3 | covering spec | asserted (reused) |
 | 5 Verify filtered conversations shown | Condition holds | covering spec step 3 | covering spec | asserted (reused) |
-| 6 Verify results grouped by pinned and date sections | Condition holds | new step 1 (pin setup) + new step 3 | new step 3: pinned item present via query match while non-pinned generated conv is absent, `is_conversation_pinned` stays True | asserted |
+| 6 Verify results grouped by pinned and date sections | Condition holds | new step 1 (pin setup) + new step 3 | new step 3: shared `"Automation"` query matches both tiers at once — `is_conversation_in_group(sibling_conv_id, "today")` is False (pinned, outside) AND `is_conversation_in_group(conv_id, "today")` is True (non-pinned, inside), a real DOM-containment split | asserted |
 | 7 Verify non-matching conversations are not displayed | Condition holds | new step 2 | new step 2: sibling (non-matching) item NOT visible during partial-query step | asserted |
 | 8 Type exact full name | Field accepts input | covering spec step 4 | covering spec | asserted (reused) |
 | 9 Verify only the matching conversation is shown under its correct date group | Condition holds | covering spec step 4 (count=1) + new step 4 (`is_conversation_in_group`) | both | asserted |

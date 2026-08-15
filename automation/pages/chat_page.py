@@ -103,6 +103,29 @@ class ChatPage(BasePage):
         ),
     )
 
+    search_no_results_message = LocatorDescriptor(
+        testid="chat-search-no-results-message",
+        description=(
+            "Box wrapping 'No conversations found' / 'Try adjusting your "
+            "search terms' (ELITEA-2163 — testid added, "
+            "EliteaAI/EliteaUI@d5e0ba63, Conversations.jsx ~L775). Renders "
+            "only when a search query is active and matches nothing."
+        ),
+    )
+
+    conversations_empty_state_message = LocatorDescriptor(
+        testid="chat-conversations-empty-state-message",
+        description=(
+            "Typography rendering 'Still no conversations created.' "
+            "(ELITEA-2163 — testid added, EliteaAI/EliteaUI@d5e0ba63, "
+            "GroupedConversations.jsx ~L82). Meant to render ONLY when the "
+            "project has genuinely never had a conversation — a live defect "
+            "(EliteaAI/elitea-testing-public#1525) currently also shows it "
+            "during a no-results SEARCH on a project with other, "
+            "non-matching data."
+        ),
+    )
+
     # ------------------------------------------------------------------
     # Project selector (ELITEA-2095)
     # ------------------------------------------------------------------
@@ -344,13 +367,24 @@ class ChatPage(BasePage):
     # (tool_key, accessible name) — DOM/case order, live-confirmed. "ask_user"
     # ("Ask User") added 2026-08-07 (ELITEA-2464 exploration) — live product
     # change post-dating ELITEA-2162's original 7-entry analysis (2026-08-03);
-    # see EliteaAI/elitea-testing-public#1293. Inserted in its live DOM
-    # position (between pyodide and swarm) — the 7 original entries are
-    # otherwise unchanged.
+    # see EliteaAI/elitea-testing-public#1293. "skill_builder" ("Skill
+    # Builder") and "project_context_builder" ("Project Context Builder")
+    # added 2026-08-15 (ELITEA-2163/2164/2165/2463 implementation) — live
+    # product change post-dating ELITEA-2464's 8-entry analysis (see
+    # EliteaAI/elitea-testing-public#1526); confirmed
+    # via source read of internalTools.constants.js's INTERNAL_TOOLS_LIST
+    # (declaration order) AND a live DOM count of 10 modules-toggle-*
+    # elements. Both inserted in their live declaration position (between
+    # internal_mcp and planner) — the other 8 entries are otherwise
+    # unchanged. "attachments" is deliberately excluded (agentOnly: true,
+    # hidden for plain LLM chats — this panel is reached from a chat
+    # conversation, not an agent).
     MODULE_TOGGLE_ORDER = (
         ("image_generation", "Image creation"),
         ("data_analysis", "Data Analysis"),
         ("internal_mcp", "Agents & Pipeline Builder"),
+        ("skill_builder", "Skill Builder"),
+        ("project_context_builder", "Project Context Builder"),
         ("planner", "Planner"),
         ("pyodide", "Python Sandbox"),
         ("ask_user", "Ask User"),
@@ -3149,6 +3183,20 @@ class ChatPage(BasePage):
         logger.info(f"Folder link count: {count}")
         return count
 
+    def wait_for_any_folder_visible(self, timeout: int = 10000):
+        """Wait until at least one folder item (FOLDER_ITEM_PREFIX) is
+        visible — a real settle-wait for "the default/unfiltered sidebar
+        view has (re)rendered", needed because folders can lag conversation
+        items on re-render (ELITEA-2164/2165 — live-confirmed a plain
+        get_folder_link_count() read right after clearing search returns 0
+        before this settles, even though the conversation items are already
+        back).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.page.locator(self.FOLDER_ITEM_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
     @action("Click a conversation item")
     def click_conversation_item(self, conversation_id: str | int, timeout: int = 5000):
         """Click a conversation item row by id (e.g. a search result) to open it.
@@ -3984,8 +4032,9 @@ class ChatPage(BasePage):
         return self.page.locator(self.MODULES_TOGGLE_SWITCH_PREFIX)
 
     def verify_module_toggle_order(self, timeout: int = 5000):
-        """Assert all 7 MODULE_TOGGLE_ORDER switches are visible, each with
-        its expected accessible name, in DOM order.
+        """Assert all MODULE_TOGGLE_ORDER switches (currently 10 — see that
+        constant's own history comment) are visible, each with its expected
+        accessible name, in DOM order.
 
         Must be called while the Modules panel is open (after
         open_internal_tools_menu()).
