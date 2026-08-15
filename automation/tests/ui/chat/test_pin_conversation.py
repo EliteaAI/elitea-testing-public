@@ -1,12 +1,18 @@
-"""UI Test for ELITEA-2149 — Chat: Pin a Conversation via Pin on Top Option.
+"""UI Tests for ELITEA-2149 / ELITEA-2150 — Chat: Pin / Unpin a Conversation.
 
-Verifies pinning a conversation via the conversation's 3-dot menu "Pin on
-top" item: the conversation moves into the pinned section (above date
+ELITEA-2149 verifies pinning a conversation via the conversation's 3-dot menu
+"Pin on top" item: the conversation moves into the pinned section (above date
 groups), a pin icon renders next to its name, it disappears from its
 original date group, and the pinned section renders above the unpinned
 conversation list.
 
-Spec: test-specs/chat-interface/l3_pin-conversation-via-pin-on-top_ELITEA-2149.md
+ELITEA-2150 verifies the inverse flow: unpinning an already-pinned
+conversation via the SAME menu item (now labelled "Unpin") removes it from
+the pinned section, hides the pin icon, and returns it to its date group.
+
+Specs:
+- test-specs/chat-interface/l3_pin-conversation-via-pin-on-top_ELITEA-2149.md
+- test-specs/chat-interface/lextend_unpin-a-pinned-conversation_ELITEA-2150.md
 
 Shares the conversation 3-dot context-menu surface with ELITEA-2135/
 ELITEA-2137 (the "Move to" flows) but never opens "Move to" — the "pin"
@@ -14,8 +20,8 @@ item has no submenu, so this test is NOT affected by the "Move to"
 activation-gesture defect filed against those two cases
 (EliteaAI/elitea-testing-public#1117); confirmed live during analysis.
 
-No product defects found — all case steps executed live end-to-end and
-matched expected results exactly.
+No product defects found — all case steps (both ELITEA-2149 and ELITEA-2150)
+executed live end-to-end and matched expected results exactly.
 
 Implementer addition (not in the AFS's own Test Data table, but within its
 recommended scope — see AFS § Automation Hints option (a)): a second,
@@ -26,6 +32,18 @@ has a real unpinned conversation row to compare bounding-box position
 against (rather than depending on ambient shared-project state to keep
 "Today" non-empty). Mirrors the same determinism reasoning ELITEA-2114's
 AFS already established for its own ``conv_sibling``.
+
+ELITEA-2150's own test (``TestUnpinConversationViaContextMenu``) pins
+``conv_target`` via the UI as a SETUP action (not a case step) — reusing
+the same already-covered "Pin on top" flow ELITEA-2149's own test proves
+correct — to reach the "at least one pinned conversation exists"
+precondition, then exercises the real case steps (unpin, verify removal).
+A pinned conversation's row carries the same ``aria-disabled="true"``
+draggable-wrapper ancestor already documented for pinned folders
+(``isDragDisabled={isPinned}``) — ``open_conversation_context_menu()``'s
+existing ``force=True`` click already bypasses it; see
+test-specs/chat-interface/_surface.md's Pin conversation section for the
+live-confirmed DOM-chain detail.
 """
 
 import logging
@@ -47,6 +65,7 @@ UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
 
 PIN_ON_TOP_LABEL = "Pin on top"
+UNPIN_LABEL = "Unpin"
 
 
 def _is_known_secrets_403(msg) -> bool:
@@ -221,6 +240,149 @@ class TestPinConversationViaPinOnTop:
             ):
                 assert not console_messages, (
                     "Unexpected console errors during pin flow: "
+                    f"{[m.text for m in console_messages]!r}"
+                )
+
+        finally:
+            if conv_target_id:
+                try:
+                    conversation_api.delete_conversation(conv_target_id)
+                    logger.info("Cleaned up conv_target %s", conv_target_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete conv_target %s: %s", conv_target_id, exc)
+            if conv_sibling_id:
+                try:
+                    conversation_api.delete_conversation(conv_sibling_id)
+                    logger.info("Cleaned up conv_sibling %s", conv_sibling_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete conv_sibling %s: %s", conv_sibling_id, exc)
+
+
+class TestUnpinConversationViaContextMenu:
+    """ELITEA-2150: Chat – Unpin a Pinned Conversation (l3, medium)."""
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2150_chat-unpin-a-pinned-conversation.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    def test_unpin_conversation_via_context_menu(self, page, conversation_api):
+        """Unpin an already-pinned conversation via the context menu's "Unpin" item.
+
+        Steps (AFS
+        test-specs/chat-interface/lextend_unpin-a-pinned-conversation_ELITEA-2150.md):
+        1. Hover conv_target (already pinned via UI setup), click its 3-dot
+           menu; verify the item label reads "Unpin" before clicking it.
+        2. Verify the conversation is removed from the pinned section:
+           still resolves to exactly 1 element, data-pinned flips to
+           "false".
+        3. Verify the pin icon is no longer displayed (1->0 transition —
+           captured before/after the click).
+        4. Verify conv_target reappears in its "Today" date group;
+           conv_sibling (never pinned) stays in "Today" too, proving the
+           group itself wasn't disturbed.
+        """
+        chat = ChatPage(page)
+        conv_target_id = None
+        conv_sibling_id = None
+
+        console_messages = []
+
+        def _on_console(msg):
+            if msg.type == "error" and not _is_known_secrets_403(msg):
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
+
+        try:
+            with allure.step(
+                "Setup — create conv_sibling then conv_target via API, "
+                "navigate to chat, and pin conv_target via the UI (already-"
+                "covered ELITEA-2149 flow) to reach the 'at least one "
+                "pinned conversation exists' precondition"
+            ):
+                ts = int(time.time())
+                sibling = conversation_api.create_conversation(f"autotest_2150_sibling_{ts}")
+                conv_sibling_id = sibling["id"]
+                target = conversation_api.create_conversation(f"autotest_2150_target_{ts}")
+                conv_target_id = target["id"]
+
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+
+                conv_target_item = chat.get_conversation_item(conv_target_id)
+                conv_target_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+                chat.open_conversation_context_menu(conv_target_id, timeout=UI_ELEMENT_TIMEOUT)
+                pin_item_pre = chat.get_conversation_menu_item("pin")
+                pin_item_pre.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                assert (pin_item_pre.text_content() or "").strip() == PIN_ON_TOP_LABEL, (
+                    f"Menu item should read {PIN_ON_TOP_LABEL!r} before pinning, "
+                    f"got: {pin_item_pre.text_content()!r}"
+                )
+                chat.click_conversation_menu_item("pin", timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.is_conversation_pinned(conv_target_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Setup: conv_target {conv_target_id} should be pinned "
+                    "(data-pinned=\"true\") before the unpin case steps run"
+                )
+                pin_icon_count_before_unpin = chat.get_pin_icon(conv_target_id).count()
+                logger.info(
+                    "Setup complete — conv_target=%s (pinned) conv_sibling=%s pin_icon_before_unpin=%d",
+                    conv_target_id, conv_sibling_id, pin_icon_count_before_unpin,
+                )
+
+            with allure.step(
+                "Step 1 — Hover conv_target, click its 3-dot menu; verify "
+                "the 'Unpin' label before clicking it"
+            ):
+                chat.open_conversation_context_menu(conv_target_id, timeout=UI_ELEMENT_TIMEOUT)
+                unpin_item = chat.get_conversation_menu_item("pin")
+                unpin_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                assert (unpin_item.text_content() or "").strip() == UNPIN_LABEL, (
+                    f"Menu item should read {UNPIN_LABEL!r} for an already-pinned "
+                    f"conversation, got: {unpin_item.text_content()!r}"
+                )
+                chat.click_conversation_menu_item("pin", timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step(
+                "Step 2 — Verify the conversation is removed from the "
+                "pinned section: exactly 1 element, data-pinned=\"false\""
+            ):
+                assert not chat.is_conversation_pinned(conv_target_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"conv_target {conv_target_id} should no longer carry data-pinned=\"true\""
+                )
+                assert conv_target_item.count() == 1, (
+                    "conv_target's item testid should resolve to exactly 1 element "
+                    "(re-rendered back into the date-grouped list, not duplicated)"
+                )
+
+            with allure.step(
+                "Step 3 — Verify the pin icon is no longer displayed "
+                "(1->0 transition)"
+            ):
+                assert pin_icon_count_before_unpin == 1, (
+                    "Pin icon should have been present before unpinning, found "
+                    f"{pin_icon_count_before_unpin}"
+                )
+                pin_icon = chat.get_pin_icon(conv_target_id)
+                expect(pin_icon).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step(
+                "Step 4 — Verify conv_target reappears in its 'Today' date "
+                "group; conv_sibling stays in 'Today' too"
+            ):
+                assert chat.is_conversation_in_group(
+                    conv_target_id, "today", timeout=UI_ELEMENT_TIMEOUT,
+                ), f"conv_target {conv_target_id} should be back under Today after unpin"
+                assert chat.is_conversation_in_group(
+                    conv_sibling_id, "today", timeout=UI_ELEMENT_TIMEOUT,
+                ), f"conv_sibling {conv_sibling_id} should still render under Today"
+
+            with allure.step(
+                "Side-channel check — no unexpected console errors across the full flow"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors during unpin flow: "
                     f"{[m.text for m in console_messages]!r}"
                 )
 
