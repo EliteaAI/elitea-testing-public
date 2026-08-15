@@ -399,3 +399,227 @@ class TestUnpinConversationViaContextMenu:
                     logger.info("Cleaned up conv_sibling %s", conv_sibling_id)
                 except Exception as exc:
                     logger.warning("Failed to delete conv_sibling %s: %s", conv_sibling_id, exc)
+
+
+class TestChatPanelOrderingPinnedFoldersAndConversations:
+    """ELITEA-2151: Chat – Pinned Conversation Appears Above Unpinned Folders
+    and Conversations (l2, medium).
+
+    Extends this file's pin surface with the full 4-tier panel-order check
+    ELITEA-2149's own AFS explicitly deferred (§ Automation Hints option (b)):
+    ELITEA-2149's Step 5 only ever proves 2 of the 4 tiers (pinned
+    conversation above the "Today" heading / an unpinned sibling), because
+    that case's own steps never produce a pinned FOLDER to compare against.
+    This test seeds one pinned folder alongside a pinned conversation (plus
+    one unpinned folder and one unpinned conversation) and asserts all 4
+    tiers — pinned folders, pinned conversations, unpinned folders, unpinned
+    conversations — via bounding-box Y-position, per
+    ``Conversations.jsx``'s source-confirmed render order
+    (``renderFoldersSection({isPinned: true})`` -> ``<PinnedConversations>``
+    -> ``renderFoldersSection({isPinned: false})`` ->
+    ``<DroppableGroupedArea><GroupedConversations>``).
+
+    Spec: test-specs/chat-interface/lextend_pinned-conversation-panel-ordering_ELITEA-2151.md
+
+    Zero new page-object work — reuses ``pin_folder_via_menu()``,
+    ``is_folder_pinned()``, ``get_folder_item()`` (folder side, ELITEA-2121/
+    2130) and ``open_conversation_context_menu()``, ``get_conversation_menu_item()``,
+    ``click_conversation_menu_item()``, ``is_conversation_pinned()``,
+    ``get_conversation_item()`` (conversation side, ELITEA-2114/2149) —
+    every handle this test needs already exists on this surface.
+    """
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2151_chat-pinned-conversation-appears-above-unpinned-folders-and-conversations.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    def test_pinned_folder_and_conversation_render_above_unpinned_panel_order(
+        self, page, conversation_api,
+    ):
+        """Full 4-tier panel order: pinned folders, pinned conversations,
+        unpinned folders, unpinned conversations.
+
+        Steps (AFS
+        test-specs/chat-interface/lextend_pinned-conversation-panel-ordering_ELITEA-2151.md):
+        1. Pin a folder via its dot-menu's "Pin on top" item, and pin a
+           conversation via its own 3-dot menu's "Pin on top" item; verify
+           both carry ``data-pinned="true"``.
+        2. Verify the full left-panel order top to bottom: pinned folder,
+           pinned conversation, unpinned folder, unpinned conversation
+           (3 adjacent-tier bounding-box Y comparisons spanning all 4 tiers).
+        3. Verify no pinned item (folder or conversation) renders below any
+           unpinned item (folder or conversation) — the 2 non-adjacent
+           "skip" pairs the adjacent chain in step 2 only proves
+           transitively, asserted directly here per the case's own wording.
+        """
+        chat = ChatPage(page)
+        folder_pinned_id = None
+        folder_unpinned_id = None
+        conv_target_id = None
+        conv_unpinned_id = None
+
+        console_messages = []
+
+        def _on_console(msg):
+            if msg.type == "error" and not _is_known_secrets_403(msg):
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
+
+        try:
+            with allure.step(
+                "Setup — seed folder_pinned, folder_unpinned, conv_target "
+                "(to be pinned), conv_unpinned via API; navigate to chat"
+            ):
+                ts = int(time.time())
+                folder_pinned = conversation_api.create_folder(f"autotest_2151_pinned_folder_{ts}")
+                folder_pinned_id = folder_pinned["id"]
+                folder_unpinned = conversation_api.create_folder(f"autotest_2151_unpinned_folder_{ts}")
+                folder_unpinned_id = folder_unpinned["id"]
+                target = conversation_api.create_conversation(f"autotest_2151_target_{ts}")
+                conv_target_id = target["id"]
+                unpinned_conv = conversation_api.create_conversation(f"autotest_2151_unpinned_{ts}")
+                conv_unpinned_id = unpinned_conv["id"]
+
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+
+                chat.get_folder_item(folder_pinned_id).wait_for(
+                    state="visible", timeout=UI_ELEMENT_TIMEOUT,
+                )
+                chat.get_folder_item(folder_unpinned_id).wait_for(
+                    state="visible", timeout=UI_ELEMENT_TIMEOUT,
+                )
+                conv_target_item = chat.get_conversation_item(conv_target_id)
+                conv_target_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                conv_unpinned_item = chat.get_conversation_item(conv_unpinned_id)
+                conv_unpinned_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+                assert not chat.is_folder_pinned(folder_pinned_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Freshly-seeded folder {folder_pinned_id} should not start pinned"
+                )
+                assert not chat.is_conversation_pinned(conv_target_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Freshly-seeded conversation {conv_target_id} should not start pinned"
+                )
+                logger.info(
+                    "Setup complete — folder_pinned=%s folder_unpinned=%s "
+                    "conv_target=%s conv_unpinned=%s",
+                    folder_pinned_id, folder_unpinned_id, conv_target_id, conv_unpinned_id,
+                )
+
+            with allure.step(
+                "Step 1 — Pin folder_pinned via its dot-menu, then pin "
+                "conv_target via its 3-dot menu's 'Pin on top'; verify both "
+                "carry data-pinned=\"true\""
+            ):
+                with page.expect_response(
+                    lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "PATCH",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as pin_folder_response_info:
+                    chat.pin_folder_via_menu(folder_pinned_id, timeout=UI_ELEMENT_TIMEOUT)
+                pin_folder_response = pin_folder_response_info.value
+                assert pin_folder_response.status == 200, (
+                    f"Pin folder PATCH should resolve 200, got {pin_folder_response.status} "
+                    f"for {pin_folder_response.url}"
+                )
+                assert chat.is_folder_pinned(folder_pinned_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Folder {folder_pinned_id} should carry data-pinned=\"true\" after pinning"
+                )
+
+                chat.open_conversation_context_menu(conv_target_id, timeout=UI_ELEMENT_TIMEOUT)
+                pin_item = chat.get_conversation_menu_item("pin")
+                pin_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                assert (pin_item.text_content() or "").strip() == PIN_ON_TOP_LABEL, (
+                    f"Menu item should read {PIN_ON_TOP_LABEL!r} before pinning, "
+                    f"got: {pin_item.text_content()!r}"
+                )
+                chat.click_conversation_menu_item("pin", timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.is_conversation_pinned(conv_target_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Conversation {conv_target_id} should carry data-pinned=\"true\" after pinning"
+                )
+
+            with allure.step(
+                "Step 2 — Verify the full left-panel order top to bottom: "
+                "pinned folder, pinned conversation, unpinned folder, "
+                "unpinned conversation (bounding-box Y-position, all 4 tiers)"
+            ):
+                folder_pinned_box = chat.get_folder_item(folder_pinned_id).bounding_box()
+                conv_target_box = conv_target_item.bounding_box()
+                folder_unpinned_box = chat.get_folder_item(folder_unpinned_id).bounding_box()
+                conv_unpinned_box = conv_unpinned_item.bounding_box()
+
+                assert all(
+                    box is not None
+                    for box in (
+                        folder_pinned_box, conv_target_box, folder_unpinned_box, conv_unpinned_box,
+                    )
+                ), (
+                    "All 4 tiers' representative elements should have a resolvable bounding "
+                    f"box — folder_pinned={folder_pinned_box}, conv_target={conv_target_box}, "
+                    f"folder_unpinned={folder_unpinned_box}, conv_unpinned={conv_unpinned_box}"
+                )
+
+                assert folder_pinned_box["y"] + folder_pinned_box["height"] <= conv_target_box["y"], (
+                    "Pinned folder should render ABOVE the pinned conversation — "
+                    f"folder_pinned_box={folder_pinned_box}, conv_target_box={conv_target_box}"
+                )
+                assert conv_target_box["y"] + conv_target_box["height"] <= folder_unpinned_box["y"], (
+                    "Pinned conversation should render ABOVE the unpinned folder — "
+                    f"conv_target_box={conv_target_box}, folder_unpinned_box={folder_unpinned_box}"
+                )
+                assert folder_unpinned_box["y"] + folder_unpinned_box["height"] <= conv_unpinned_box["y"], (
+                    "Unpinned folder should render ABOVE the unpinned conversation list — "
+                    f"folder_unpinned_box={folder_unpinned_box}, conv_unpinned_box={conv_unpinned_box}"
+                )
+
+            with allure.step(
+                "Step 3 — Verify no pinned item (folder or conversation) "
+                "renders below any unpinned item (folder or conversation)"
+            ):
+                assert folder_pinned_box["y"] + folder_pinned_box["height"] <= folder_unpinned_box["y"], (
+                    "Pinned folder should render ABOVE the unpinned folder — "
+                    f"folder_pinned_box={folder_pinned_box}, folder_unpinned_box={folder_unpinned_box}"
+                )
+                assert folder_pinned_box["y"] + folder_pinned_box["height"] <= conv_unpinned_box["y"], (
+                    "Pinned folder should render ABOVE the unpinned conversation — "
+                    f"folder_pinned_box={folder_pinned_box}, conv_unpinned_box={conv_unpinned_box}"
+                )
+                assert conv_target_box["y"] + conv_target_box["height"] <= conv_unpinned_box["y"], (
+                    "Pinned conversation should render ABOVE the unpinned conversation — "
+                    f"conv_target_box={conv_target_box}, conv_unpinned_box={conv_unpinned_box}"
+                )
+
+            with allure.step(
+                "Side-channel check — no unexpected console errors across the full flow"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors during panel-order flow: "
+                    f"{[m.text for m in console_messages]!r}"
+                )
+
+        finally:
+            if conv_target_id:
+                try:
+                    conversation_api.delete_conversation(conv_target_id)
+                    logger.info("Cleaned up conv_target %s", conv_target_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete conv_target %s: %s", conv_target_id, exc)
+            if conv_unpinned_id:
+                try:
+                    conversation_api.delete_conversation(conv_unpinned_id)
+                    logger.info("Cleaned up conv_unpinned %s", conv_unpinned_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete conv_unpinned %s: %s", conv_unpinned_id, exc)
+            if folder_pinned_id:
+                try:
+                    conversation_api.delete_folder(folder_pinned_id)
+                    logger.info("Cleaned up folder_pinned %s", folder_pinned_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder_pinned %s: %s", folder_pinned_id, exc)
+            if folder_unpinned_id:
+                try:
+                    conversation_api.delete_folder(folder_unpinned_id)
+                    logger.info("Cleaned up folder_unpinned %s", folder_unpinned_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder_unpinned %s: %s", folder_unpinned_id, exc)

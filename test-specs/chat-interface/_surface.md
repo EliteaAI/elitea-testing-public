@@ -1284,6 +1284,30 @@ handle ELITEA-2458 added was reused verbatim and all resolved correctly.
   (pinned conversation Y=56, well above "Today" heading Y=178–260 across
   repro runs) — a full 4-tier live check needs a seeded pinned FOLDER, which
   no case so far has needed; flagged as a follow-up opportunity, not done.
+
+  **Resolved during ELITEA-2151 implementation (combined analyst+implementer,
+  2026-08-15):** the follow-up above is now closed and LIVE-verified. Seeded
+  one pinned folder + one pinned conversation + one unpinned folder + one
+  unpinned conversation (all fresh, own IDs — no ambient-data dependency) and
+  asserted all 3 adjacent-tier boundaries (pinned-folder→pinned-conversation,
+  pinned-conversation→unpinned-folder, unpinned-folder→unpinned-conversation)
+  via bounding-box Y-position, plus the 2 non-adjacent "skip" pairs the
+  case's own Step 3 asks for directly. All 4 tiers behaved exactly as
+  `Conversations.jsx`'s source predicted on the FIRST live run — green,
+  zero reruns, zero new console errors, zero product defects. Folder-pin
+  wrapped in `page.expect_response()` for the PATCH (mirrors ELITEA-2121/
+  2130's own proven idiom); conversation-pin reused the bare click +
+  `is_conversation_pinned()` idiom ELITEA-2149's test already proves
+  reliable — no new flake risk introduced by combining both mechanisms in
+  one test. New test class appended to `test_pin_conversation.py`
+  (`TestChatPanelOrderingPinnedFoldersAndConversations`); zero existing
+  method bodies touched (verified: full 3-test file re-run green,
+  additive-only `git diff` grep empty). Zero new testid work — every handle
+  (`chat-folder-menu-pin-menuitem`, `data-pinned` on both folder/conversation
+  rows, `chat-folder-item-{id}`, `chat-conversation-item-{id}`) already
+  existed from prior sessions on this surface. See ELITEA-2151's AFS
+  (`test-specs/chat-interface/lextend_pinned-conversation-panel-ordering_ELITEA-2151.md`)
+  for the full reasoning.
 - No success toast on pin (`usePinConversation.hooks.js`'s
   `onPinConversation` only calls `toastError` on FAILURE) — don't wait for
   one.
