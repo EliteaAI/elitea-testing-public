@@ -52,7 +52,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | 04 | Conversation deletion + chat search (left-panel micro-UI) | 2115,2116,2117,2456,2163,2164,2165,2463 | 8 | **LANDED** — PR #1528, 7 automated/extended + 1 already-covered |
 | 05 | Folder creation | 2118,2119,2120,2133,2134,2457 | 6 | **LANDED** — PR #1532, 6/6 automated |
 | 06 | Folder rename | 2121,2122,2123,2124,2125,2126,2127,2128,2129,2130,2131 | 11 | **LANDED** — PR #1539, 7 automated/extended + 4 already-covered |
-| 07 | Move/drag conversation between folders + list scrolling | 2136,2138,2139,2140,2141,2142,2143,2144,2145,2146,2147,2148 | 12 | **IN PROGRESS** |
+| 07 | Move/drag conversation between folders + list scrolling | 2136,2138,2139,2140,2141,2142,2143,2144,2145,2146,2147,2148 | 12 | **LANDED** — PR #1545, 11/12 automated + 1 blocked (#1541) |
 | 08 | Pin/unpin — conversation & folder basics | 2150,2151,2152,2153,2154,2155,2156 | 7 | pending |
 | 09 | Pin/unpin — edge cases + newer duplicate-family cases | 2157,2158,2159,2160,2161,2461,2462,2460 | 8 | pending |
 | 10 | Team Project — participants management | 2169,2171,2172,2173,2174,2175,2176 | 7 | pending |
@@ -150,10 +150,38 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   back-written (11 cases). Testids `chat-folder-menu-rename`/`-pin` (restored)
   confirmed NOT yet on `main`.
 
+- **wave-07 LANDED** — elitea-testing-public#1545, merged (`d2b5d1a`). 11/12
+  automated (ELITEA-2136/2138/2139/2140/2141 #1540, ELITEA-2142/2143/2145 #1543
+  [recovered], ELITEA-2146/2147/2148 #1544) + 1 blocked (ELITEA-2144 — real open
+  bug #1541, folder→folder drag-drop lands in ungrouped list, 3× pristine repro).
+  2139/2140 share one test (`TestMoveConversationBackToList`). Canon-gap question
+  #1546 filed distinguishing ELITEA-2140's precondition-as-narrative pattern
+  (automated) from wave-01's precondition-as-observable pattern (blocked). Two
+  more defects: #1533 (folder Rename menuitem testid regression, fixed same
+  session, sibling of #1309) and #1542 (drag-drop success-toast — filed then
+  self-corrected mid-triage: toast does fire via a different hook path than
+  first examined, left OPEN for human disposition rather than silently closed).
+  **Two process incidents, both self-caught and logged:** (1) PR #1543's second
+  internal review pass crashed on a harness bug (`StructuredOutput retry cap
+  exceeded`) after the one real reviewer finding had already been fixed; the
+  workflow's report writer mechanically labelled the 3 cases "blocked" on that
+  crash — not accepted at face value, verified the PR was still open with the
+  fix present, dispatched a fresh qa-engineer review, got `APPROVED` 0-blocking,
+  merged. (2) 3-way merge conflict during the trunk merge — 2 memory daily-logs
+  spliced directly (allowed path), `automation/pages/chat_page.py` (forbidden
+  path — two independent non-overlapping `LocatorDescriptor` additions at the
+  same insertion point) dispatched to test-automation-engineer for resolution,
+  verified clean before completing the merge myself. Gate: 11 node-ids, 3 full
+  independent runs; 1 flake on `test_drag_drop_conversation_back_to_general_list`
+  (`data-drop-active` hover-highlight timing race), not reproduced standalone or
+  in 3 subsequent clean full-set runs — recorded in `.agents/testing.md` §
+  Unconfirmed. TMS back-written (11 cases; ELITEA-2144 deliberately left
+  `draft`/`manual`, blocked by #1541). New testids: `chat-folder-drop-zone`,
+  `chat-conversation-list-drop-zone` (+`data-drop-active`),
+  `chat-conversation-list-scroll-container`, `chat-move-to-submenu-popover` —
+  EliteaAI/EliteaUI@86f4a564 + @1787ad67 (+rewired @1b35a0a2) on
+  `automation/testids`, confirmed NOT yet on `main`.
+
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-07** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w07`,
-  base=`origin/automation/base`, clusters `[2136,2138,2139,2140,2141]` (move-to-menu
-  family) + `[2142,2143,2144,2145]` (drag-drop family) + `[2146,2147,2148]`
-  (scrollable-list + conversation-count states). Task ID `wr8j06zz8`, Run ID
-  `wf_d5abbfc7-d70`.
+- (none)
