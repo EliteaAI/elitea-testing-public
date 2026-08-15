@@ -56,7 +56,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | 08 | Pin/unpin — conversation & folder basics | 2150,2151,2152,2153,2154,2155,2156 | 7 | **LANDED** — PR #1552, 7/7 automated |
 | 09 | Pin/unpin — edge cases + newer duplicate-family cases | 2157,2158,2159,2160,2161,2461,2462,2460 | 8 | **LANDED** — PR #1555, 4/8 automated + 4/8 already-covered |
 | 10 | Team Project — participants management | 2169,2171,2172,2173,2174,2175,2176 | 7 | **LANDED** — PR #1561, 5/7 automated + 2/7 already-covered |
-| 11 | Team Project — public conversation / non-owner restrictions | 2188,2189,2190,2191,2192,2193,2194 | 7 | pending |
+| 11 | Team Project — public conversation / non-owner restrictions | 2188,2189,2190,2191,2192,2193,2194 | 7 | **LANDED (partial)** — PR #1566, 2/7 automated + 2/7 already-covered + 3/7 blocked (#1563) |
 | 12 | Message input + generation controls (stop/regenerate/send-button/starters) | 2177,2178,2179,2182,2183,2184,2185,2186,2187,2465,2466 | 11 | pending |
 | 13 | File attachments | 2195,2196,2198,2199,2201,2467 | 6 | pending |
 | 14 | Slash commands / # mentions / MCP dropdown | 2205,2206,2207,2208,2468,2469,2470 | 7 | pending |
@@ -238,12 +238,37 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   No new testids (fully reused from ELITEA-2167/2168). TMS back-written
   (7 cases).
 
+- **wave-11 LANDED (partial)** — elitea-testing-public#1566, merged (`28aad778`).
+  2/7 automated (ELITEA-2188, ELITEA-2193) + 2/7 already-covered
+  (ELITEA-2192→2172, ELITEA-2194→2168 Step 10, same target as ELITEA-2171) +
+  3/7 genuinely blocked (ELITEA-2189/2190/2191 — no second test-user credential
+  exists on localhost; every conversation in Team project 471 confirmed live
+  via API to share one `author_id`; blocks any future "user B cannot see/edit/
+  delete user A's X" case on any surface — routed to question #1563, NOT
+  guessed around). Defect filed: #1564 (case-text clarification — owner-row
+  delete control is permanently `visibility:hidden`, unreachable via real
+  hit-testing; product is more protective than case text implies).
+  **Workflow's internal gate cut off mid-run** (0/3 banked, `merged-ungated`) —
+  resolved by running my own independent gate directly. During that gate:
+  fixed 2 real regressions on pre-existing tests (collateral scope) — ELITEA-
+  2188's own bare non-polling `is_visible()` dialog assertion, and ELITEA-2168's
+  Setup swapped to the stronger `_open_genuinely_blank_conversation()` guard
+  (same #1082 mechanism as wave-10). **New sanctioned-RED signature**: gate
+  scope's pre-existing ELITEA-2168 test now deterministically fails on a
+  soft-assert linked to already-open #1119 — confirmed identical 3/3 across 5
+  independent gate attempts (1 non-reproducing console-500 blip in between,
+  matching the already-documented noise pattern). Recorded explicitly in
+  `.agents/testing.md`. **Process incident, self-caught:** two parallel
+  fix-only dispatches collided on the shared working tree (both needed
+  different branch checkouts in the same physical clone simultaneously) —
+  recovered via `git stash`, zero work lost; logged as a durable lesson
+  (never parallel-dispatch code-touching agents onto the same clone, even
+  across different branches). New testids: `chat-conversation-make-public-
+  confirm-dialog`/`-confirm-button`/`-cancel-button` —
+  EliteaAI/EliteaUI@7292e18f on `automation/testids`, confirmed NOT yet on
+  `main`. TMS back-written (4 cases; 2189/2190/2191 deliberately left
+  `draft`/`manual`, blocked by #1563).
+
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-11** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w11`,
-  base=`origin/automation/base`, cases 2188,2189,2190,2191,2192,2193,2194 (7),
-  clusters `[2189,2190,2191]` (non-owner restrictions on public conversation:
-  delete/edit/regenerate) + `[2192,2193,2194]` (owner/remove-participant flows —
-  suspected near-duplicates of wave-10's 2172/2171/2168 by title, analyst to
-  determine); 2188 solo (public-conversation green-icon marker). Task ID
-  `waqqw1flr`, Run ID `wf_10bb73e3-117`.
+- (none)
