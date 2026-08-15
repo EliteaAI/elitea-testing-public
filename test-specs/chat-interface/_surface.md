@@ -2,7 +2,10 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2146/2147/2148,
+a time; last confirmed by: test-automation-engineer (combined analyst+
+implementer), ELITEA-2152/2153, 2026-08-15 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: qa-engineer analyst,
+ELITEA-2146/2147/2148,
 2026-08-15 (supersedes nothing below — new section, other sections unchanged;
 previous confirmer: qa-engineer analyst, ELITEA-2142/2143/2144/2145,
 2026-08-15 (supersedes nothing below — new section, other sections unchanged;
@@ -2149,3 +2152,66 @@ Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
   prove the wrong thing"), but any case asserting an exact conversation/
   folder COUNT on project 399 must still seed+scope its own data, never
   count on the pre-existing set staying stable.
+
+## ELITEA-2152/2153 — Pin/Unpin a FOLDER's position/icon/conversations
+## (folder-pin surface's OWN subject, not incidental rename/ordering setup)
+
+- **First case whose OWN subject is the folder-pin action's position/visibility
+  effects** — ELITEA-2130 pins a folder only as setup for a RENAME test (never
+  checks position or conversations); ELITEA-2151 pins a folder only as setup
+  for a 4-tier ORDERING check against conversation rows (never captures a
+  folder's own before/after position or touches its conversations). Zero new
+  testid/page-object work needed either way — `pin_folder_via_menu()`,
+  `is_folder_pinned()`, `get_folder_item()`, `expand_folder()`,
+  `is_conversation_in_folder()` (all ELITEA-2121/2130) cover the whole surface.
+- **A folder's unpinned-list position is DETERMINISTIC and returns EXACTLY to
+  its pre-pin Y coordinate on unpin** — live-confirmed this session across a
+  full pin→unpin round-trip on the SAME folder (id `1091`, `w08_2152target`):
+  baseline Y=138 (below unpinned sibling `1092` at Y=97) → pin (`PATCH → 200`)
+  → Y=56 (now ABOVE the sibling, whose own Y shifted to 178 as the list
+  reflowed) → unpin (`PATCH → 200`, SAME endpoint/method, SAME
+  `chat-folder-menu-pin-menuitem` toggle) → Y returns to EXACTLY 138, sibling
+  back to 97 — the identical pre-pin layout, not merely "some unpinned
+  position". This is a stronger, more diagnostic assertion than a bare
+  `data-pinned` flag check and is what ELITEA-2152/2153's AFS files use for
+  "folder moved from/returns to its original position".
+- **A folder created AFTER another one renders ABOVE it** in the default
+  `sort_by=updated_at&sort_order=desc&grouped=true` folder-list query — i.e.
+  most-recently-created/touched first. Useful for any case needing a
+  deterministic before-pin ordering baseline between two fresh sibling
+  folders without depending on ambient DEV-project data.
+- **Pinning does NOT collapse an already-expanded folder, and does not drop
+  its conversations** — live-confirmed: folder `1091` was expanded
+  (`data-expanded="true"`) with conversation `8514` moved inside it via
+  `conversation_api.move_conversation_to_folder()` BEFORE pinning; after the
+  pin action, `data-expanded` was STILL `"true"` (no re-click needed) and the
+  conversation still resolved inside the folder's container. Same true for
+  the unpin direction. No gap here — a plausible regression class (pin action
+  re-rendering the row and losing local expand state) simply doesn't occur.
+- **"Pin icon visible/removed" is asserted via `data-pinned`, per policy, not
+  a raw icon locator** — same equivalence ELITEA-2121/2130's AFS already
+  established (`isPinned && <PinIcon>` in `FolderAccordion.jsx`'s header has
+  no testid); re-confirmed live this session, not re-derived from scratch.
+- **Exploration-only console-warning artifact, NOT a product defect** (same
+  class already documented under ELITEA-2121/2130's "disabled-ancestor"
+  entry): driving the dot-menu button via a raw DOM `element.click()`
+  (`browser_evaluate`, since Playwright MCP's `browser_click` has no `force`
+  option) on a PINNED folder produced 4 transient React console warnings
+  (`Invalid prop 'expanded'/'in' of type object supplied to
+  ForwardRef(Accordion2)/(Collapse2)/Transition2`, `MUI: anchorEl prop
+  invalid`) — an artifact of bypassing React's synthetic-event path, not
+  reproduced by a real Playwright `.click(force=True)` (ELITEA-2130's own
+  test already runs that exact click pattern with 0 console errors observed).
+  Do not re-investigate this as a product bug if seen again during MCP-only
+  exploration on this surface; it does not occur under real pytest runs.
+- **Exploration folders left undeliberately live** (`w08_2152target` id
+  `1091`, `w08_2152sibling` id `1092`) — same accepted precedent as
+  ELITEA-2121/2130/2151 (folder-delete's UI testid is dead, tracked in
+  `#1309`; MCP-`fetch()` to the same-origin API also fails — confirmed again
+  this session, `TypeError: Failed to fetch` on a relative `/api/v2/...` POST
+  even though the identical request made via a real UI click succeeds, e.g.
+  request `#1917` `POST .../folder/prompt_lib/399 => 201`; not worth chasing
+  further given the already-extensive documented pollution). Both AFS files'
+  own implementations create/delete their OWN fixtures via
+  `conversation_api` (cookie-authenticated, not `page.evaluate`-`fetch()`),
+  so this does not affect the shipped tests' own cleanup.
