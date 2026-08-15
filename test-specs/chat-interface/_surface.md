@@ -2194,6 +2194,17 @@ Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
   folder COUNT on project 399 must still seed+scope its own data, never
   count on the pre-existing set staying stable.
 
+## ELITEA-2462 — already-covered by ELITEA-2152 (word-for-word duplicate case text)
+
+- w09 analysis (2026-08-15): ELITEA-2462 ("Chat – Pin a folder and verify it appears at the
+  top of the left panel") is a verbatim re-authoring of ELITEA-2152's case text under a new
+  TMS id — same title, same objective, same 6-step sequence in the same order. Covering test
+  `test_pin_folder.py::TestPinFolderViaPinOnTop::test_pin_folder_via_pin_on_top` (merged to
+  `origin/automation/base`, PR #1552) asserts every one of ELITEA-2462's 6 steps 1:1.
+  Live-reconfirmed green this session (18.40s). AFS:
+  `lcovered_pin-a-folder-and-verify-it-appears-at-top-of-left-panel_ELITEA-2462.md`. No new
+  test written — `already-covered`, not `extend-existing`.
+
 ## ELITEA-2152/2153 — Pin/Unpin a FOLDER's position/icon/conversations
 ## (folder-pin surface's OWN subject, not incidental rename/ordering setup)
 
