@@ -3,8 +3,10 @@
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
 a time; last confirmed by: test-automation-engineer (combined analyst+
-implementer), ELITEA-2152/2153, 2026-08-15 (supersedes nothing below — new
-section, other sections unchanged; previous confirmer: qa-engineer analyst,
+implementer), ELITEA-2155/2156, 2026-08-15 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: test-automation-engineer
+(combined analyst+implementer), ELITEA-2152/2153, 2026-08-15 (supersedes nothing
+below — new section, other sections unchanged; previous confirmer: qa-engineer analyst,
 ELITEA-2146/2147/2148,
 2026-08-15 (supersedes nothing below — new section, other sections unchanged;
 previous confirmer: qa-engineer analyst, ELITEA-2142/2143/2144/2145,
@@ -2236,3 +2238,44 @@ Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
   own implementations create/delete their OWN fixtures via
   `conversation_api` (cookie-authenticated, not `page.evaluate`-`fetch()`),
   so this does not affect the shipped tests' own cleanup.
+
+## ELITEA-2155/2156 — Pin/Unpin an EMPTY folder retains its empty state,
+## BOTH extend-existing onto `test_pin_folder.py` (ELITEA-2152/2153's
+## classes), ZERO defects, ZERO new handles
+
+- **Distinguishing axis vs ELITEA-2152/2153/2154 (which all seed a folder
+  WITH ≥1 conversation): this pair seeds a folder with ZERO conversations
+  and proves the pin/unpin mechanism doesn't special-case (or break on) the
+  empty-state rendering path across the already-documented pin/unpin-
+  triggered remount** (see the ELITEA-2152/2153 section above — pinning
+  moves a folder's row between list partitions, a genuine remount that
+  resets local expand state). Reused `get_folder_empty_state_text()`
+  verbatim — pre-existing on `ChatPage` since ELITEA-2148, first REUSED
+  (not just introduced) by this pair. No new page-object work at all: both
+  new test methods reuse every handle ELITEA-2148/2152/2153 already
+  established, with zero additions.
+- **Confirmed live, both directions, via a real `pytest` run (this WAS the
+  exploration — combined analyst+implementer session, executed once,
+  green)**: an empty folder's `chat-folder-empty-state` text ("No
+  conversations added") is byte-identical before pinning, after pinning
+  (re-expanded with `force=True`), and — for the unpin case — after
+  unpinning too. No blank body, no leftover/stale content, no console
+  error, on either transition. Zero product defects found.
+- **Landed as two new test methods in `test_pin_folder.py`** (not a new
+  file, not a family AFS) — `test_pin_empty_folder_retains_empty_state` in
+  `TestPinFolderViaPinOnTop` (ELITEA-2155), `test_unpin_empty_folder_retains_empty_state`
+  in `TestUnpinFolderViaContextMenu` (ELITEA-2156) — mirroring how
+  ELITEA-2154 extended the pin-side class. Each `extend-existing` AFS
+  targets the SAME-batch-trunk spec (merged-target rule: same-batch trunk is
+  a valid extend-existing target while `test_pin_folder.py` itself is not
+  yet on `origin/automation/base`).
+- **Cleanup**: both test methods' own `folder_empty` fixture is created and
+  deleted via `conversation_api.create_folder()`/`delete_folder()` — zero
+  net pollution added by this pair (distinct from the ELITEA-2152/2153
+  exploration folders left live above, which predate this pair's own
+  session and are unrelated to it).
+
+**Resolved/added during ELITEA-2155/2156 implementation (implementer,
+2026-08-15):** nothing new to resolve — both tests ran green on the first
+attempt, reusing 100% pre-existing handles/methods; no AFS amendment was
+needed.
