@@ -115,6 +115,55 @@ ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
   8404/8405) were deleted via these API methods before finishing — zero net
   pollution added by this session.
 
+**Resolved/added during ELITEA-2142/2143/2145 implementation (implementer,
+2026-08-15):**
+- **`#1542` corrected — NOT a defect.** The analyst's source read covered
+  only `useDragAndDrop.js`'s own `toastSuccess(...)` call (gated to
+  `currentDraggedItems.length > 1`, a SEPARATE multi-select aggregate
+  toast). It missed that `handleDragEnd` also calls `await
+  onMoveToFolderConversation(...)` per item, and THAT hook
+  (`useMoveToFolderConversation.hooks.js`, shared with the "Move to" menu
+  flow) fires its own toast unconditionally on success. Live-confirmed a
+  single-item drag DOES show `Chat moved to "<folder>" folder successfully`.
+  Corrected via a comment on #1542 (left open, human disposition).
+- **Toast auto-dismisses before a multi-step verification chain finishes.**
+  Capture toast text IMMEDIATELY after the triggering action (same
+  `page.expect_response` block as the drop), not several steps later — a
+  step-6-style "verify toast" read that runs after 2+ intervening
+  assertions (folder-removal check, folder-expand) can find the toast
+  already gone. Same idiom `test_move_conversation_to_folder.py` already
+  uses; drag-and-drop tests need it explicitly because the case text lists
+  the toast check LAST.
+- **Drag gestures need TWO distinct guards before every `mouse.move()`/
+  `mouse.down()`, not just `scroll_into_view_if_needed()`:**
+  1. *Off-screen:* `bounding_box()` is viewport-relative; an item below the
+     fold (this shared DEV account's sidebar routinely carries 65+ folders
+     ahead of the conversation list) reports a y far past the viewport
+     height, and `page.mouse.move()` to that coordinate never reaches the
+     element (drag silently never activates, no error).
+  2. *Stale-position overlap (distinct from #1, more subtle):* even AFTER
+     scrolling, `bounding_box()` can report the CORRECT rect for an
+     element (matches `getBoundingClientRect()`) while a DIFFERENT,
+     stale-positioned row visually overlaps that exact pixel — reproduced
+     dragging a conversation OUT of a just-expanded folder: the physical
+     coordinate resolved (via `document.elementFromPoint`) to an UNRELATED
+     folder's collapsed header, not the conversation. A raw `page.mouse`
+     sequence has no actionability check (unlike `.click()`) and silently
+     presses on the wrong element. Fix: poll
+     `document.elementFromPoint(cx, cy) === el || el.contains(hit)` until
+     it settles before pressing/moving — `ChatPage._wait_for_pointer_target()`.
+     Both guards are now baked into `start_conversation_drag()` /
+     `move_drag_over_target()` — any FUTURE drag-and-drop page-object
+     method should reuse those two, not raw `bounding_box()` + `mouse.move()`.
+- **A conversation's OWN drag-opacity lives on its PARENT node, not the
+  testid'd element itself** — `DraggableConversationItem.jsx`'s Box (style
+  `opacity: isDragging ? 0.5 : 1`) wraps the `chat-conversation-item-{id}`
+  testid'd Box as its immediate child. Read via
+  `el => getComputedStyle(el.parentElement).opacity`, not the element's own
+  computed style. Same wrapper-vs-testid-node split applies to
+  `DraggableFolderItem.jsx` (used for folder reordering, not exercised by
+  this cluster's own cases).
+
 ## ELITEA-2136/2138/2139/2140/2141 — "Move to" submenu family, extends
 ## ELITEA-2135/2137/2138's own surface: back-to-list, folder-to-folder,
 ## disabled self-entry, `updated_at` mechanism (all extend-existing, tag/gap-only)
