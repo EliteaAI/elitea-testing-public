@@ -963,3 +963,208 @@ class TestUnpinFolderViaContextMenu:
                     logger.info("Cleaned up folder_empty %s", folder_empty_id)
                 except Exception as exc:
                     logger.warning("Failed to delete folder_empty %s: %s", folder_empty_id, exc)
+
+
+class TestMultipleFoldersPinnedIndependently:
+    """ELITEA-2161: Chat – Multiple Folders Can Be Pinned Independently (l3, medium)."""
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2161_chat-multiple-folders-can-be-pinned-independently.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    def test_pin_two_folders_independently(self, page, conversation_api):
+        """Pin two folders, one after the other, and verify neither pin disturbs the other.
+
+        Steps (AFS
+        test-specs/chat-interface/lextend_multiple-folders-pinned-independently_ELITEA-2161.md):
+        1. Pin folder_1 via "Pin on top"; verify data-pinned=true.
+        2. Pin folder_2 via "Pin on top"; verify data-pinned=true for
+           folder_2 AND that folder_1 is STILL pinned (the case's core
+           independence claim).
+        3. Verify both folder_1 and folder_2 render above an unpinned
+           third folder (folder_sibling) — neither pinned folder can serve
+           as its own "before" baseline by this point.
+        4. Verify both folders retain their own conversation when expanded
+           (force=True — pinning is a genuine list-partition remount that
+           resets local expand state, ELITEA-2152/2153).
+        """
+        chat = ChatPage(page)
+        folder_1_id = None
+        folder_2_id = None
+        folder_sibling_id = None
+        conv_in_1_id = None
+        conv_in_2_id = None
+
+        console_messages = []
+
+        def _on_console(msg):
+            if msg.type == "error" and not _is_known_secrets_403(msg):
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
+
+        try:
+            with allure.step(
+                "Setup — create folder_1, folder_2 (each with one "
+                "conversation) and an empty unpinned folder_sibling via "
+                "API; navigate to chat"
+            ):
+                ts = int(time.time())
+                f1 = conversation_api.create_folder(f"autotest_2161_f1_{ts}")
+                folder_1_id = f1["id"]
+                f2 = conversation_api.create_folder(f"autotest_2161_f2_{ts}")
+                folder_2_id = f2["id"]
+                sibling = conversation_api.create_folder(f"autotest_2161_sibling_{ts}")
+                folder_sibling_id = sibling["id"]
+
+                conv_1 = conversation_api.create_conversation(f"autotest_2161_conv1_{ts}")
+                conv_in_1_id = conv_1["id"]
+                conversation_api.move_conversation_to_folder(conv_in_1_id, folder_1_id)
+                conv_2 = conversation_api.create_conversation(f"autotest_2161_conv2_{ts}")
+                conv_in_2_id = conv_2["id"]
+                conversation_api.move_conversation_to_folder(conv_in_2_id, folder_2_id)
+
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+
+                folder_1_item = chat.get_folder_item(folder_1_id)
+                folder_1_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                folder_2_item = chat.get_folder_item(folder_2_id)
+                folder_2_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                folder_sibling_item = chat.get_folder_item(folder_sibling_id)
+                folder_sibling_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+                assert not chat.is_folder_pinned(folder_1_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Freshly-seeded folder_1 {folder_1_id} should not start pinned"
+                )
+                assert not chat.is_folder_pinned(folder_2_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Freshly-seeded folder_2 {folder_2_id} should not start pinned"
+                )
+                logger.info(
+                    "Setup complete — folder_1=%s folder_2=%s folder_sibling=%s "
+                    "conv_in_1=%s conv_in_2=%s",
+                    folder_1_id, folder_2_id, folder_sibling_id, conv_in_1_id, conv_in_2_id,
+                )
+
+            with allure.step(
+                "Step 1 — Pin folder_1 via 'Pin on top'; verify data-pinned=true"
+            ):
+                chat.open_folder_context_menu(folder_1_id, timeout=UI_ELEMENT_TIMEOUT)
+                pin_item_1 = page.locator(chat.FOLDER_MENU_PIN_ITEM)
+                pin_item_1.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                with page.expect_response(
+                    lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "PATCH",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as pin_1_response_info:
+                    pin_item_1.click()
+                pin_1_response = pin_1_response_info.value
+                assert pin_1_response.status == 200, (
+                    f"Pin PATCH should resolve 200, got {pin_1_response.status} "
+                    f"for {pin_1_response.url}"
+                )
+                assert chat.is_folder_pinned(folder_1_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"folder_1 {folder_1_id} should carry data-pinned=\"true\" after pinning"
+                )
+
+            with allure.step(
+                "Step 2 — Pin folder_2 via 'Pin on top'; verify "
+                "data-pinned=true for folder_2 AND that folder_1 is STILL pinned"
+            ):
+                chat.open_folder_context_menu(folder_2_id, timeout=UI_ELEMENT_TIMEOUT)
+                pin_item_2 = page.locator(chat.FOLDER_MENU_PIN_ITEM)
+                pin_item_2.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                with page.expect_response(
+                    lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "PATCH",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as pin_2_response_info:
+                    pin_item_2.click()
+                pin_2_response = pin_2_response_info.value
+                assert pin_2_response.status == 200, (
+                    f"Pin PATCH should resolve 200, got {pin_2_response.status} "
+                    f"for {pin_2_response.url}"
+                )
+                assert chat.is_folder_pinned(folder_2_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"folder_2 {folder_2_id} should carry data-pinned=\"true\" after pinning"
+                )
+                # Central independence assertion — the case's own Fail
+                # criterion ("only one folder can be pinned at a time").
+                assert chat.is_folder_pinned(folder_1_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"folder_1 {folder_1_id} should STILL carry data-pinned=\"true\" after "
+                    "pinning folder_2 — pinning a second folder must not unpin the first"
+                )
+
+            with allure.step(
+                "Step 3 — Verify both pinned folders render above the "
+                "unpinned folder_sibling"
+            ):
+                folder_1_box = folder_1_item.bounding_box()
+                folder_2_box = folder_2_item.bounding_box()
+                sibling_box = folder_sibling_item.bounding_box()
+                assert folder_1_box is not None and folder_2_box is not None and sibling_box is not None, (
+                    "folder_1, folder_2, and folder_sibling should all have a resolvable "
+                    f"bounding box — folder_1={folder_1_box}, folder_2={folder_2_box}, "
+                    f"sibling={sibling_box}"
+                )
+                assert folder_1_box["y"] + folder_1_box["height"] <= sibling_box["y"], (
+                    "folder_1 should render ABOVE the unpinned folder_sibling — "
+                    f"folder_1={folder_1_box}, sibling={sibling_box}"
+                )
+                assert folder_2_box["y"] + folder_2_box["height"] <= sibling_box["y"], (
+                    "folder_2 should render ABOVE the unpinned folder_sibling — "
+                    f"folder_2={folder_2_box}, sibling={sibling_box}"
+                )
+
+            with allure.step(
+                "Step 4 — Verify both folders retain their own "
+                "conversation when expanded"
+            ):
+                chat.expand_folder(folder_1_id, timeout=UI_ELEMENT_TIMEOUT, force=True)
+                assert chat.is_conversation_in_folder(
+                    folder_1_id, conv_in_1_id, timeout=UI_ELEMENT_TIMEOUT,
+                ), f"conv_in_1 {conv_in_1_id} should still render inside folder_1"
+
+                chat.expand_folder(folder_2_id, timeout=UI_ELEMENT_TIMEOUT, force=True)
+                assert chat.is_conversation_in_folder(
+                    folder_2_id, conv_in_2_id, timeout=UI_ELEMENT_TIMEOUT,
+                ), f"conv_in_2 {conv_in_2_id} should still render inside folder_2"
+
+            with allure.step(
+                "Side-channel check — no unexpected console errors across the full flow"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors during multi-folder pin flow: "
+                    f"{[m.text for m in console_messages]!r}"
+                )
+
+        finally:
+            if conv_in_1_id:
+                try:
+                    conversation_api.delete_conversation(conv_in_1_id)
+                    logger.info("Cleaned up conv_in_1 %s", conv_in_1_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete conv_in_1 %s: %s", conv_in_1_id, exc)
+            if conv_in_2_id:
+                try:
+                    conversation_api.delete_conversation(conv_in_2_id)
+                    logger.info("Cleaned up conv_in_2 %s", conv_in_2_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete conv_in_2 %s: %s", conv_in_2_id, exc)
+            if folder_1_id:
+                try:
+                    conversation_api.delete_folder(folder_1_id)
+                    logger.info("Cleaned up folder_1 %s", folder_1_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder_1 %s: %s", folder_1_id, exc)
+            if folder_2_id:
+                try:
+                    conversation_api.delete_folder(folder_2_id)
+                    logger.info("Cleaned up folder_2 %s", folder_2_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder_2 %s: %s", folder_2_id, exc)
+            if folder_sibling_id:
+                try:
+                    conversation_api.delete_folder(folder_sibling_id)
+                    logger.info("Cleaned up folder_sibling %s", folder_sibling_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder_sibling %s: %s", folder_sibling_id, exc)

@@ -3,8 +3,15 @@
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
 a time; last confirmed by: test-automation-engineer (combined analyst+
-implementer), ELITEA-2155/2156, 2026-08-15 (supersedes nothing below — new
+implementer), ELITEA-2460, 2026-08-15 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: qa-engineer analyst,
+ELITEA-2461, 2026-08-15
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: test-automation-engineer (combined analyst+
+implementer), ELITEA-2157/2158, 2026-08-15 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: test-automation-engineer
+(combined analyst+implementer), ELITEA-2155/2156, 2026-08-15 (supersedes nothing
+below — new section, other sections unchanged; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2152/2153, 2026-08-15 (supersedes nothing
 below — new section, other sections unchanged; previous confirmer: qa-engineer analyst,
 ELITEA-2146/2147/2148,
@@ -31,7 +38,47 @@ qa-engineer analyst, ELITEA-2111, 2026-08-15;
 previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
-ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)).
+
+## ELITEA-2460 — near-total duplicate of ELITEA-2148, `already-covered`
+## (zero new code — the 3-observable covering test already proves all 5 steps)
+- ELITEA-2460's 5 granular steps (expand folder-with-conversations → conversations
+  listed → collapse → hidden → expand empty folder → "No conversations added")
+  decompose 1:1 onto the 3 compound observables
+  `test_folder_displays_conversations_or_empty_state` (ELITEA-2148, merged
+  `origin/automation/base` commit `d2b5d1aa`, PR #1545, chat-remaining wave-07)
+  already asserts. No gap — every case step maps onto an existing assertion,
+  and the covering test is stricter (exact empty-state string, visibility-based
+  not count-based collapse check).
+- Live-reconfirmed this session: re-ran the covering test standalone, PASSED,
+  `1 passed in 17.09s`.
+- AFS: `test-specs/chat-interface/lcovered_folder-displays-conversations-when-expanded-and-empty-state_ELITEA-2460.md`.
+- **Pattern reinforced (same class as ELITEA-2461/2457/2123/2127 below)**: this
+  module's near-duplicate case pattern also recurs on the expand/collapse/
+  empty-state surface — grep this digest by BEHAVIOUR ("empty state", "expand")
+  before assuming a fresh case needs new code.
+
+## ELITEA-2461 — near-total duplicate of ELITEA-2149 + ELITEA-2151 combined,
+## `already-covered` (zero new code, two-spec dedup)
+- ELITEA-2461's 5 steps decompose cleanly across two already-merged specs on this
+  same pin/panel-order surface: steps 1–4 (hover a Today/This Week/Older
+  conversation → 3-dot → Pin on top → moves out of its date group into the
+  pinned section → pin icon renders) are verbatim `test_pin_conversation_via_pin_on_top`
+  (ELITEA-2149); step 5 (full 4-tier panel order: pinned folders → pinned
+  conversations → unpinned folders → unpinned conversations by date group) is
+  verbatim `test_pinned_folder_and_conversation_render_above_unpinned_panel_order`
+  (ELITEA-2151) — the SAME covering test ELITEA-2159's dedup already used for its
+  own near-identical step-5 wording. This is the first case in this digest that
+  needed BOTH covering tests to close its own case, rather than just one.
+- Live-reconfirmed this session: re-ran both covering tests together
+  (`tests/ui/chat/test_pin_conversation.py::TestPinConversationViaPinOnTop::test_pin_conversation_via_pin_on_top`
+  + `::TestChatPanelOrderingPinnedFoldersAndConversations::test_pinned_folder_and_conversation_render_above_unpinned_panel_order`),
+  both PASSED, `2 passed in 45.98s`.
+- AFS: `test-specs/chat-interface/lcovered_pin-conversation-appears-above-folders-and-date-groups_ELITEA-2461.md`.
+- **Pattern reinforced (same as the ELITEA-2457/2123/2127 sections below)**: this
+  module's near-duplicate case pattern isn't confined to folder-creation/rename —
+  it recurs on the pin/panel-order surface too. Always grep this digest by
+  BEHAVIOUR ("pin", "panel order") before assuming a fresh case needs new code.
 
 ## ELITEA-2146/2147/2148 — folder-list & submenu SCROLLABILITY, expand/collapse +
 ## empty-state, ALL 3 ready-for-automation, TWO new testid gaps found, ZERO defects
@@ -1332,6 +1379,19 @@ handle ELITEA-2458 added was reused verbatim and all resolved correctly.
   `1`→`0`; the conversation reappears scoped inside its date group
   (`is_conversation_in_group()`), same as any freshly-created conversation.
 
+  **ELITEA-2159 ("Left Panel Order Verified After Multiple Pin Actions",
+  combined analyst+implementer, batch chat-remaining-w09, 2026-08-15) is a
+  near-total duplicate of ELITEA-2151** — same 4-tier fixture (pinned folder,
+  pinned conversation not in a folder, unpinned folder, unpinned
+  conversation), same panel-order + same-type-ordering + folders-before-
+  conversations assertions, all already directly asserted by
+  `TestChatPanelOrderingPinnedFoldersAndConversations::test_pinned_folder_and_conversation_render_above_unpinned_panel_order`
+  (merged `origin/automation/base`). Classified `already-covered` (zero new
+  code) — live-reconfirmed by re-running the covering test this session
+  (`1 passed in 19.44s`), not assumed from the digest alone. See ELITEA-2159's
+  AFS (`test-specs/chat-interface/lcovered_left-panel-order-after-multiple-pin-actions_ELITEA-2159.md`)
+  for the full step-by-step dedup proof.
+
 ## Conversation search (ELITEA-2162)
 - `conversation-search-button` (on-main) opens `conversation-search-input`
   (on-main) + an X/clear icon — but the folder/date-group list is **not**
@@ -2155,6 +2215,17 @@ Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
   folder COUNT on project 399 must still seed+scope its own data, never
   count on the pre-existing set staying stable.
 
+## ELITEA-2462 — already-covered by ELITEA-2152 (word-for-word duplicate case text)
+
+- w09 analysis (2026-08-15): ELITEA-2462 ("Chat – Pin a folder and verify it appears at the
+  top of the left panel") is a verbatim re-authoring of ELITEA-2152's case text under a new
+  TMS id — same title, same objective, same 6-step sequence in the same order. Covering test
+  `test_pin_folder.py::TestPinFolderViaPinOnTop::test_pin_folder_via_pin_on_top` (merged to
+  `origin/automation/base`, PR #1552) asserts every one of ELITEA-2462's 6 steps 1:1.
+  Live-reconfirmed green this session (18.40s). AFS:
+  `lcovered_pin-a-folder-and-verify-it-appears-at-top-of-left-panel_ELITEA-2462.md`. No new
+  test written — `already-covered`, not `extend-existing`.
+
 ## ELITEA-2152/2153 — Pin/Unpin a FOLDER's position/icon/conversations
 ## (folder-pin surface's OWN subject, not incidental rename/ordering setup)
 
@@ -2279,3 +2350,89 @@ Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
 2026-08-15):** nothing new to resolve — both tests ran green on the first
 attempt, reusing 100% pre-existing handles/methods; no AFS amendment was
 needed.
+
+## ELITEA-2157/2158 — Pin on top DISABLED for an in-folder conversation,
+## ENABLED after "Move to" > "Back to the list"; family AFS, ZERO new
+## testids, ZERO defects
+- **Live-reconfirms, from BOTH sides in one session, the already-documented
+  `disabled: !isPinned && !!conversation.folder_id` rule** (`ConversationItem.jsx`
+  line 260) — first documented in `_surface.md` § ELITEA-2136/2138/2139/2140/2141
+  as a flagged-but-unencoded gap ("None of ELITEA-2136/2138/2139/2140/2141's own
+  case steps require asserting this full [in-folder menu item] set, so no test
+  in this pass encodes it"). This pair closes that gap.
+- **Reused an ambient leftover conversation for the live confirmation pass**
+  (`W08_2152_conv seed message`, id `8514`, inside folder `w08_2152target`/id
+  `1091`, both leftover fixtures from an earlier wave) rather than seeding new
+  data purely to eyeball the mechanism — same "leftover exploration data is
+  fair game for a quick live check, the test itself still seeds its own"
+  pattern already established for the pinned-folder ancestor gotcha (§
+  ELITEA-2146/2147/2148). The actual implemented test seeds its own
+  `folder`/`conv_target` via `conversation_api`, per usual.
+- **Testid renders unconditionally regardless of disabled state** —
+  source-confirmed: `DotMenu.jsx`'s `BasicMenuItem` sets
+  `data-testid={testId ? \`${testId}-menuitem\` : undefined}` unconditionally;
+  `disabled` is a separate MUI `MenuItem` prop rendered as `aria-disabled`.
+  So `chat-conversation-menu-pin-menuitem` is present-and-selectable either
+  way — the DISABLED check is a plain attribute read on the existing
+  testid-selected locator, no new locator needed.
+- **A forced click on the disabled item has no network side effect** —
+  live-confirmed: MUI's `ButtonBase` guards its own click handler internally
+  when `disabled`, so even `force=True` (which bypasses Playwright's
+  actionability check, not MUI's own guard) never fires the
+  `POST .../pin/prompt_lib/...` mutation. This is EliteaUI-independent MUI
+  behavior, not app-specific logic.
+- **In-folder context menu is a 6-item set** (`Rename, Move to, Playback,
+  Duplicate, Pin on top [disabled], Delete`), one more than the flat-list
+  5-item set ELITEA-2114/2149 document (`Duplicate` present, absent
+  outside a folder) — reconfirmed live this pass, matches the prior flag.
+- **Zero new testids, zero new page-object methods** — every handle and
+  every interaction/verification method needed already existed
+  (`expand_folder`, `is_conversation_in_folder`, `open_conversation_context_menu`,
+  `get_conversation_menu_item`, `open_move_to_submenu`,
+  `select_move_to_back_to_list`, `is_conversation_in_group`,
+  `is_conversation_pinned`, `get_pin_icon`, `click_conversation_menu_item`).
+- **Zero product defects found.** Both cases' mechanisms work exactly as
+  cased, end to end, live-confirmed (0 console errors across the repro).
+- **Landed as ONE new test method** (not two) in
+  `test_pin_conversation.py` — `test_pin_disabled_in_folder_then_moved_and_pinned`
+  in a new class `TestPinDisabledInFolderThenMovedAndPinned`, tagged with
+  both TMS IDs via two stacked `@allure.issue` decorators (same pattern
+  ELITEA-2139/2140's family test already uses) — ELITEA-2158's own
+  precondition (step 1) IS ELITEA-2157's entire subject, so one continuous
+  live flow on one seeded conversation honestly satisfies both cases' full
+  Pass/Fail criteria without re-deriving a second "conversation inside a
+  folder" fixture.
+
+**Resolved/added during ELITEA-2157/2158 implementation (implementer,
+2026-08-15):**
+- **The "Duplicate" context-menu item had NO `key` (and therefore no
+  testid) at all** — `DotMenu.jsx` maps `testId: item.key` for TOP-level
+  menu items (not just submenu items — confirmed by reading the same file
+  the earlier ELITEA-2135 pass read for submenu items), and the
+  `ConversationItem.jsx` object literal for "Duplicate" was the ONLY item
+  in the 7-item array missing a `key` (every sibling item — Rename, Move
+  to, Playback, Make public, Share, Pin, Delete — has one). The item
+  renders and works fine (confirmed via ARIA snapshot: `menuitem
+  "Duplicate"`), it's simply invisible to any `[data-testid^="chat-
+  conversation-menu-"]`-prefix-based count. Added `key:
+  'chat-conversation-menu-duplicate'` (one line, zero functional impact —
+  no new DOM node/hook/render-prop change) on `automation/testids`,
+  EliteaAI/EliteaUI commit `a53b9d4b`. Naming matches the existing
+  `chat-conversation-menu-{action}` family exactly.
+- **A forced click on a DISABLED MUI `MenuItem` leaves the menu OPEN** —
+  MUI's `ButtonBase` guards its own click handler when `disabled`, so the
+  menu's close-on-select trigger (which normally fires from the item's
+  own `onClick`) never runs either. Re-hovering the SAME conversation
+  immediately afterward (e.g. to open "Move to") hits the still-open
+  menu's invisible `MuiBackdrop` and times out ("subtree intercepts
+  pointer events") — this is NOT the same as the already-documented #1117
+  "Move to doesn't open on one click" defect; it's a distinct
+  after-a-disabled-click state that no prior test in this suite produced
+  (every other pin/move-to test only ever clicks ENABLED items, which
+  close the menu normally). Fix: explicit `page.keyboard.press("Escape")`
+  after a deliberately-disabled-item click, then wait for the shared
+  `FOLDER_CONTEXT_MENU_POPOVER` (`[data-testid="conversation-menu-menu"]`
+  — pre-existing constant, ELITEA-2146/2147 pass, first live caller here)
+  to become hidden before the next hover. Any FUTURE test that clicks a
+  DISABLED context-menu item and then needs to interact with the same
+  conversation again should apply the same explicit-close pattern.

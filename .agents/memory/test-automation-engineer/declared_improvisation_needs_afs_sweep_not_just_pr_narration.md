@@ -41,6 +41,30 @@ row + rewriting the Automation Hints `add-data-testid` bullet and the
 discrete-slider-interaction note to name both testids, their originating
 commits, and the `slotProps.input` mechanism — in the SAME PR, round 1.
 
+## Seen also (ELITEA-2157/2158, PR #1553, fix round 1)
+
+Same failure mode, a THIRD near-miss surface: not the PR body this time, but
+a same-PR `_surface.md` digest commit. Implementation found the "Duplicate"
+context-menu item had no `key`/testid at all — the test's own
+`get_open_conversation_menu_item_count() == 6` assertion silently depends on
+it via a prefix-wildcard locator — and added
+`key: 'chat-conversation-menu-duplicate'` (`EliteaAI/EliteaUI@a53b9d4b`). The
+finding was narrated fully and correctly in a commit literally titled
+`docs(afs): … implementation-time digest notes` — but that commit's diff
+touched ONLY `test-specs/<feature>/_surface.md`. The AFS file itself still
+said, verbatim, "**No new testids needed for either case.** All handles
+already exist and are provisioned" in its own Concrete Handles table.
+Reviewer caught it, same "not addressed — no attempt visible in the diff"
+verdict. **A commit message containing `docs(afs):` is not evidence the AFS
+was amended — `git show --stat <sha>` (or diff the AFS path directly) before
+crediting an amendment.** `_surface.md` (the digest) and the case's own AFS
+file are two different documents that happen to share a directory and a
+commit-message prefix; only the AFS is what Phase 1's Coverage-Map walk and
+the reviewer's provenance grep read. Fixed round 1 by adding the Concrete
+Handles row + replacing the false "no new testids" sentence + correcting the
+Automation Hints line — same remedy as below, applied to a THIRD surface
+(digest commit) beyond the original two (PR body, general staleness).
+
 ## Remedy
 
 Before finishing ANY `docs(afs): amend …` commit that follows a declared

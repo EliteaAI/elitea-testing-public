@@ -35,3 +35,18 @@ Elements INSIDE the Menu's own Paper (its `MenuItem`s) are never covered by
 their own backdrop — only elements *outside* it are affected. So a plain
 `.click()` on a menu item is fine; the fix is only needed for (1) sibling
 elements outside the Menu and (2) the toggle itself on a second open call.
+
+**A third cause, confirmed live (ELITEA-2157/2158, chat conversation
+context menu):** clicking a DISABLED `MenuItem` never closes the Menu
+either — even a forced `.click(force=True)`. MUI's `ButtonBase` guards its
+own click handler internally when `disabled`, so the item's `onClick` (and
+therefore the Menu's own close-on-select trigger, which normally fires
+FROM that onClick) never runs. This is a distinct mechanism from "no
+auto-close wired" above — it happens even on a Menu that DOES close
+normally on every OTHER (enabled) item. Symptom is identical: the next
+hover/click on anything outside the Paper — including re-hovering the
+SAME row to re-open its own menu — times out on the invisible backdrop.
+Fix: after a deliberate disabled-item click, close the menu explicitly
+(`page.keyboard.press("Escape")`) and wait for the Menu's own testid/Paper
+to become hidden before the next interaction — don't assume the click
+closed it just because it does for every enabled sibling item.

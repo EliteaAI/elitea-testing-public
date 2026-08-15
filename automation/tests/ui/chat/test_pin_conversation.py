@@ -44,6 +44,15 @@ draggable-wrapper ancestor already documented for pinned folders
 existing ``force=True`` click already bypasses it; see
 test-specs/chat-interface/_surface.md's Pin conversation section for the
 live-confirmed DOM-chain detail.
+
+ELITEA-2157/2158 (added chat-remaining-w09, ``TestPinDisabledInFolderThenMovedAndPinned``):
+a family AFS covering the OTHER side of the same
+``disabled: !isPinned && !!conversation.folder_id`` rule — "Pin on top" is
+present-but-DISABLED for a conversation still inside a folder, and becomes
+enabled once "Move to" > "Back to the list" moves it out, at which point
+pinning it exercises the same already-covered ELITEA-2149 mechanism. See
+test-specs/chat-interface/
+l3_pin-disabled-in-folder-then-moved-and-pinned_ELITEA-2157_2158.md.
 """
 
 import logging
@@ -52,6 +61,7 @@ import time
 import allure
 import pytest
 from pages.chat_page import ChatPage
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
 
 logger = logging.getLogger("elitea.tests.chat")
@@ -617,6 +627,480 @@ class TestChatPanelOrderingPinnedFoldersAndConversations:
                     logger.info("Cleaned up folder_pinned %s", folder_pinned_id)
                 except Exception as exc:
                     logger.warning("Failed to delete folder_pinned %s: %s", folder_pinned_id, exc)
+            if folder_unpinned_id:
+                try:
+                    conversation_api.delete_folder(folder_unpinned_id)
+                    logger.info("Cleaned up folder_unpinned %s", folder_unpinned_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder_unpinned %s: %s", folder_unpinned_id, exc)
+
+
+class TestPinDisabledInFolderThenMovedAndPinned:
+    """ELITEA-2157/2158: Pin on Top Disabled Inside a Folder, Enabled After
+    Moving Out (family AFS, l3, medium).
+
+    ELITEA-2158's own Step 1 ("verify 'Pin on top' is greyed out for a
+    conversation inside a folder") IS ELITEA-2157's entire subject. One
+    continuous live flow on a single seeded conversation honestly satisfies
+    both cases' full Pass/Fail criteria — see the AFS's own family_afs
+    reasoning (test-specs/chat-interface/
+    l3_pin-disabled-in-folder-then-moved-and-pinned_ELITEA-2157_2158.md).
+    """
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2157_chat-conversation-inside-a-folder-cannot-be-pinned-separately.md",
+        "onetest-ai Test Case link",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2158_chat-pin-conversation-inside-folder-by-moving-it-out-first.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    def test_pin_disabled_in_folder_then_moved_and_pinned(self, page, conversation_api):
+        """Pin on top is disabled for an in-folder conversation; a forced
+        click has no effect; moving it out via 'Move to' > 'Back to the
+        list' enables Pin on top, and clicking it pins the conversation.
+
+        Steps (AFS
+        test-specs/chat-interface/
+        l3_pin-disabled-in-folder-then-moved-and-pinned_ELITEA-2157_2158.md):
+        1. Expand folder containing conv_target; verify it's inside.
+        2. Hover conv_target, click its 3-dot menu; verify the 6-item
+           in-folder menu set mounts (one more than the flat-list 5-item
+           set — Duplicate is present when inside a folder).
+        3. Verify 'Pin on top' is disabled (ELITEA-2157 steps 1-2).
+        4. Attempt a forced click on the disabled item; verify no pin
+           mutation request fires (ELITEA-2157 step 3).
+        5. Verify conv_target is still inside the folder and never pinned
+           (ELITEA-2157 step 4).
+        6. Open 'Move to' submenu, click 'Back to the list'; verify the
+           PUT resolves 200 with folder_id: null and the success toast
+           (ELITEA-2158 step 2).
+        7. Verify conv_target now renders in the 'Today' date group.
+        8. Re-open the 3-dot menu; verify 'Pin on top' is now enabled
+           (ELITEA-2158 steps 3-4).
+        9. Click 'Pin on top'; verify conv_target moves into the pinned
+           section with a pin icon (ELITEA-2158 step 5, same mechanism
+           ELITEA-2149's already-covered test asserts).
+
+        A second, unpinned sibling conversation (``conv_sibling``) is
+        seeded so the 'Today' date-group heading is guaranteed to remain
+        visible after ``conv_target`` is pinned (same determinism
+        reasoning ELITEA-2149's/ELITEA-2114's AFSes already establish for
+        their own siblings).
+        """
+        chat = ChatPage(page)
+        conv_target_id = None
+        conv_sibling_id = None
+        folder_id = None
+
+        console_messages = []
+
+        def _on_console(msg):
+            if msg.type == "error" and not _is_known_secrets_403(msg):
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
+
+        try:
+            with allure.step(
+                "Setup — create folder + conv_sibling + conv_target via "
+                "API; move conv_target into folder via API; navigate to chat"
+            ):
+                ts = int(time.time())
+                folder = conversation_api.create_folder(f"autotest_2157_folder_{ts}")
+                folder_id = folder["id"]
+                sibling = conversation_api.create_conversation(f"autotest_2157_sibling_{ts}")
+                conv_sibling_id = sibling["id"]
+                target = conversation_api.create_conversation(f"autotest_2157_target_{ts}")
+                conv_target_id = target["id"]
+                conversation_api.move_conversation_to_folder(conv_target_id, folder_id)
+
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+
+            with allure.step(
+                "Step 1 — Expand the folder containing conv_target; "
+                "verify it's inside"
+            ):
+                chat.expand_folder(folder_id, timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.is_folder_expanded(folder_id), (
+                    f"folder {folder_id} should carry data-expanded=\"true\" "
+                    "after being clicked"
+                )
+                assert chat.is_conversation_in_folder(
+                    folder_id, conv_target_id, timeout=UI_ELEMENT_TIMEOUT
+                ), f"conv_target {conv_target_id} should be inside folder {folder_id}"
+
+            with allure.step(
+                "Step 2 — Hover conv_target, click its 3-dot menu; verify "
+                "the 6-item in-folder menu set mounts"
+            ):
+                chat.open_conversation_context_menu(conv_target_id, timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.get_open_conversation_menu_item_count() == 6, (
+                    "An in-folder conversation's context menu should render 6 items "
+                    "(Rename, Move to, Playback, Duplicate, Pin on top, Delete) — "
+                    f"got {chat.get_open_conversation_menu_item_count()}"
+                )
+
+            with allure.step(
+                "Step 3 — Verify 'Pin on top' is disabled for the "
+                "in-folder conversation (ELITEA-2157 steps 1-2)"
+            ):
+                pin_item = chat.get_conversation_menu_item("pin")
+                expect(pin_item).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                assert pin_item.get_attribute("aria-disabled") == "true", (
+                    "'Pin on top' should be disabled (aria-disabled=\"true\") for a "
+                    "conversation inside a folder"
+                )
+
+            with allure.step(
+                "Step 4 — Attempt a forced click on the disabled 'Pin on "
+                "top' item; verify no pin mutation request fires "
+                "(ELITEA-2157 step 3)"
+            ):
+                pin_request_fired = True
+                try:
+                    with page.expect_response(
+                        lambda r: "/pin/prompt_lib/" in r.url and str(conv_target_id) in r.url,
+                        timeout=3_000,
+                    ):
+                        pin_item.click(force=True)
+                    pin_request_fired = True
+                except PlaywrightTimeoutError:
+                    pin_request_fired = False
+                assert not pin_request_fired, (
+                    "Clicking the disabled 'Pin on top' item should not fire a "
+                    "pin mutation request"
+                )
+                # MUI's ButtonBase never fires the disabled item's onClick, so
+                # the menu's own close-on-select trigger never runs either —
+                # the context menu stays open. Close it explicitly (Escape,
+                # same established pattern as ChatPage's own dialog-dismiss
+                # methods) before any further hover, or the still-open
+                # popover's invisible backdrop intercepts it.
+                page.keyboard.press("Escape")
+                expect(page.locator(chat.FOLDER_CONTEXT_MENU_POPOVER)).to_be_hidden(
+                    timeout=UI_ELEMENT_TIMEOUT
+                )
+
+            with allure.step(
+                "Step 5 — Verify conv_target is still inside the folder "
+                "and was never pinned (ELITEA-2157 step 4)"
+            ):
+                assert chat.is_conversation_in_folder(
+                    folder_id, conv_target_id, timeout=UI_ELEMENT_TIMEOUT
+                ), f"conv_target {conv_target_id} should still be inside folder {folder_id}"
+                assert not chat.is_conversation_pinned(conv_target_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"conv_target {conv_target_id} should not carry data-pinned=\"true\" "
+                    "after a no-op click on the disabled item"
+                )
+                assert chat.get_pin_icon(conv_target_id).count() == 0, (
+                    "conv_target should show no pin icon after a no-op click on the "
+                    "disabled 'Pin on top' item"
+                )
+
+            with allure.step(
+                "Step 6 — Open 'Move to' submenu, click 'Back to the "
+                "list'; verify the PUT resolves 200 with folder_id: null "
+                "and the success toast (ELITEA-2158 step 2)"
+            ):
+                chat.open_move_to_submenu(conv_target_id, timeout=UI_ELEMENT_TIMEOUT)
+                expect(chat.move_to_back_to_list_menuitem).to_be_visible(
+                    timeout=UI_ELEMENT_TIMEOUT
+                )
+                with page.expect_response(
+                    lambda r: "/conversation/prompt_lib/" in r.url
+                    and str(conv_target_id) in r.url
+                    and r.request.method == "PUT",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as move_response_info:
+                    chat.select_move_to_back_to_list(timeout=UI_ELEMENT_TIMEOUT)
+                move_response = move_response_info.value
+                assert move_response.status == 200, (
+                    "Back-to-the-list PUT should resolve 200, got "
+                    f"{move_response.status} for {move_response.url}"
+                )
+                move_body = move_response.json()
+                assert move_body.get("folder_id") is None, (
+                    "Response body 'folder_id' should be null after moving back to "
+                    f"the list, got: {move_body!r}"
+                )
+                expect(chat.toast_message).to_have_text(
+                    "Chat moved to ungrouped area successfully", timeout=UI_ELEMENT_TIMEOUT
+                )
+                # The "Move to" submenu's parent Menu popover (shared DotMenu
+                # component, same element for every conversation/folder menu
+                # — pre-existing FOLDER_CONTEXT_MENU_POPOVER constant, first
+                # live caller here per canon #511) must fully unmount before
+                # re-hovering conv_target below — its invisible MuiBackdrop
+                # otherwise intercepts the hover while still closing.
+                expect(page.locator(chat.FOLDER_CONTEXT_MENU_POPOVER)).to_be_hidden(
+                    timeout=UI_ELEMENT_TIMEOUT
+                )
+
+            with allure.step(
+                "Step 7 — Verify conv_target now renders in the 'Today' "
+                "date group"
+            ):
+                assert chat.is_conversation_in_group(
+                    conv_target_id, "today", timeout=UI_ELEMENT_TIMEOUT,
+                ), f"conv_target {conv_target_id} should render under Today after the move"
+
+            with allure.step(
+                "Step 8 — Hover conv_target (now un-foldered), re-open "
+                "its 3-dot menu; verify 'Pin on top' is now enabled "
+                "(ELITEA-2158 steps 3-4)"
+            ):
+                chat.open_conversation_context_menu(conv_target_id, timeout=UI_ELEMENT_TIMEOUT)
+                pin_item_enabled = chat.get_conversation_menu_item("pin")
+                expect(pin_item_enabled).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                assert pin_item_enabled.get_attribute("aria-disabled") != "true", (
+                    "'Pin on top' should no longer be disabled once conv_target is "
+                    "out of the folder"
+                )
+                assert (pin_item_enabled.text_content() or "").strip() == PIN_ON_TOP_LABEL, (
+                    f"Menu item should read {PIN_ON_TOP_LABEL!r} before pinning, got: "
+                    f"{pin_item_enabled.text_content()!r}"
+                )
+
+            with allure.step(
+                "Step 9 — Click 'Pin on top'; verify conv_target moves "
+                "into the pinned section with a pin icon (ELITEA-2158 "
+                "step 5)"
+            ):
+                pin_icon_count_before = chat.get_pin_icon(conv_target_id).count()
+                chat.click_conversation_menu_item("pin", timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.is_conversation_pinned(conv_target_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"conv_target {conv_target_id} should carry data-pinned=\"true\" "
+                    "after clicking 'Pin on top'"
+                )
+                assert pin_icon_count_before == 0, (
+                    "Pin icon should NOT be present before pinning, found "
+                    f"{pin_icon_count_before}"
+                )
+                pin_icon = chat.get_pin_icon(conv_target_id)
+                expect(pin_icon).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                assert pin_icon.count() == 1, (
+                    f"Expected exactly 1 pin icon inside conv_target, found {pin_icon.count()}"
+                )
+                today_heading = chat.get_conversation_group_header("today")
+                expect(today_heading).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                conv_target_item = chat.get_conversation_item(conv_target_id)
+                pinned_box = conv_target_item.bounding_box()
+                today_box = today_heading.bounding_box()
+                assert pinned_box is not None and today_box is not None, (
+                    "Both the pinned conversation and the 'Today' heading should "
+                    f"have a resolvable bounding box — pinned_box={pinned_box}, "
+                    f"today_box={today_box}"
+                )
+                assert pinned_box["y"] + pinned_box["height"] <= today_box["y"], (
+                    "Pinned conversation should render ABOVE the 'Today' heading — "
+                    f"pinned_box={pinned_box}, today_box={today_box}"
+                )
+
+            with allure.step(
+                "Side-channel check — no unexpected console errors across the full flow"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors during pin-disabled-then-move-and-pin "
+                    f"flow: {[m.text for m in console_messages]!r}"
+                )
+
+        finally:
+            if conv_target_id:
+                try:
+                    conversation_api.delete_conversation(conv_target_id)
+                    logger.info("Cleaned up conv_target %s", conv_target_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete conv_target %s: %s", conv_target_id, exc)
+            if conv_sibling_id:
+                try:
+                    conversation_api.delete_conversation(conv_sibling_id)
+                    logger.info("Cleaned up conv_sibling %s", conv_sibling_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete conv_sibling %s: %s", conv_sibling_id, exc)
+            if folder_id:
+                try:
+                    chat.delete_folder_via_menu(folder_id, timeout=UI_ELEMENT_TIMEOUT)
+                    logger.info("Cleaned up folder %s", folder_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder %s: %s", folder_id, exc)
+
+
+class TestMultipleConversationsPinnedIndependently:
+    """ELITEA-2160: Chat – Multiple Conversations Can Be Pinned Independently (l3, medium)."""
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2160_chat-multiple-conversations-can-be-pinned-independently.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    def test_pin_two_conversations_independently(self, page, conversation_api):
+        """Pin two conversations, one after the other, and verify neither pin disturbs the other.
+
+        Steps (AFS
+        test-specs/chat-interface/lextend_multiple-conversations-pinned-independently_ELITEA-2160.md):
+        1. Pin conv_1 via "Pin on top"; verify data-pinned=true + pin icon renders.
+        2. Pin conv_2 via "Pin on top"; verify data-pinned=true + pin icon renders
+           for conv_2 AND that conv_1 is STILL pinned (the case's core
+           independence claim).
+        3. Verify both conv_1 and conv_2 render above an unpinned folder
+           (the case's own wording: "above unpinned folders").
+        4. Verify both conv_1 and conv_2 are no longer in the "today" date group.
+
+        Case-text drift: the case's step 2 asks for a conversation "from This
+        Week" — this environment has zero non-today conversations and no API
+        way to backdate one (see AFS's Case-text drift note / _surface.md's
+        already-documented ELITEA-2096/2097 finding). Both conv_1/conv_2 are
+        seeded fresh (both land in "today", the only reachable group) — the
+        case's actual subject (independent multi-pin) does not require
+        different origin groups, only that each conversation leaves whichever
+        group it started in.
+        """
+        chat = ChatPage(page)
+        conv_1_id = None
+        conv_2_id = None
+        folder_unpinned_id = None
+
+        console_messages = []
+
+        def _on_console(msg):
+            if msg.type == "error" and not _is_known_secrets_403(msg):
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
+
+        try:
+            with allure.step(
+                "Setup — create conv_1, conv_2, and an empty unpinned "
+                "folder via API; navigate to chat"
+            ):
+                ts = int(time.time())
+                conv_1 = conversation_api.create_conversation(f"autotest_2160_conv1_{ts}")
+                conv_1_id = conv_1["id"]
+                conv_2 = conversation_api.create_conversation(f"autotest_2160_conv2_{ts}")
+                conv_2_id = conv_2["id"]
+                folder_unpinned = conversation_api.create_folder(f"autotest_2160_folder_{ts}")
+                folder_unpinned_id = folder_unpinned["id"]
+
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+
+                conv_1_item = chat.get_conversation_item(conv_1_id)
+                conv_1_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                conv_2_item = chat.get_conversation_item(conv_2_id)
+                conv_2_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                folder_item = chat.get_folder_item(folder_unpinned_id)
+                folder_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+                assert not chat.is_conversation_pinned(conv_1_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Freshly-seeded conv_1 {conv_1_id} should not start pinned"
+                )
+                assert not chat.is_conversation_pinned(conv_2_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Freshly-seeded conv_2 {conv_2_id} should not start pinned"
+                )
+                logger.info(
+                    "Setup complete — conv_1=%s conv_2=%s folder_unpinned=%s",
+                    conv_1_id, conv_2_id, folder_unpinned_id,
+                )
+
+            with allure.step(
+                "Step 1 — Pin conv_1 via 'Pin on top'; verify data-pinned=true "
+                "and a pin icon renders"
+            ):
+                pin_icon_1_before = chat.get_pin_icon(conv_1_id).count()
+                chat.open_conversation_context_menu(conv_1_id, timeout=UI_ELEMENT_TIMEOUT)
+                chat.click_conversation_menu_item("pin", timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.is_conversation_pinned(conv_1_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"conv_1 {conv_1_id} should carry data-pinned=\"true\" after pinning"
+                )
+                assert pin_icon_1_before == 0, (
+                    f"Pin icon should NOT be present before pinning, found {pin_icon_1_before}"
+                )
+                pin_icon_1 = chat.get_pin_icon(conv_1_id)
+                expect(pin_icon_1).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                assert pin_icon_1.count() == 1, (
+                    f"Expected exactly 1 pin icon inside conv_1, found {pin_icon_1.count()}"
+                )
+
+            with allure.step(
+                "Step 2 — Pin conv_2 via 'Pin on top'; verify data-pinned=true "
+                "+ pin icon for conv_2 AND that conv_1 is STILL pinned"
+            ):
+                pin_icon_2_before = chat.get_pin_icon(conv_2_id).count()
+                chat.open_conversation_context_menu(conv_2_id, timeout=UI_ELEMENT_TIMEOUT)
+                chat.click_conversation_menu_item("pin", timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.is_conversation_pinned(conv_2_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"conv_2 {conv_2_id} should carry data-pinned=\"true\" after pinning"
+                )
+                assert pin_icon_2_before == 0, (
+                    f"Pin icon should NOT be present before pinning, found {pin_icon_2_before}"
+                )
+                pin_icon_2 = chat.get_pin_icon(conv_2_id)
+                expect(pin_icon_2).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                assert pin_icon_2.count() == 1, (
+                    f"Expected exactly 1 pin icon inside conv_2, found {pin_icon_2.count()}"
+                )
+                # Central independence assertion — the case's own Fail
+                # criterion ("only one conversation can be pinned at a time").
+                assert chat.is_conversation_pinned(conv_1_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"conv_1 {conv_1_id} should STILL carry data-pinned=\"true\" after "
+                    "pinning conv_2 — pinning a second conversation must not unpin the first"
+                )
+
+            with allure.step(
+                "Step 3 — Verify both pinned conversations render above the "
+                "unpinned folder"
+            ):
+                conv_1_box = conv_1_item.bounding_box()
+                conv_2_box = conv_2_item.bounding_box()
+                folder_box = folder_item.bounding_box()
+                assert conv_1_box is not None and conv_2_box is not None and folder_box is not None, (
+                    "conv_1, conv_2, and folder_unpinned should all have a resolvable "
+                    f"bounding box — conv_1={conv_1_box}, conv_2={conv_2_box}, folder={folder_box}"
+                )
+                assert conv_1_box["y"] + conv_1_box["height"] <= folder_box["y"], (
+                    "conv_1 should render ABOVE the unpinned folder — "
+                    f"conv_1={conv_1_box}, folder={folder_box}"
+                )
+                assert conv_2_box["y"] + conv_2_box["height"] <= folder_box["y"], (
+                    "conv_2 should render ABOVE the unpinned folder — "
+                    f"conv_2={conv_2_box}, folder={folder_box}"
+                )
+
+            with allure.step(
+                "Step 4 — Verify both conv_1 and conv_2 are no longer in "
+                "the 'today' date group"
+            ):
+                assert not chat.is_conversation_in_group(
+                    conv_1_id, "today", timeout=UI_ELEMENT_TIMEOUT,
+                ), f"conv_1 {conv_1_id} should no longer render under Today"
+                assert not chat.is_conversation_in_group(
+                    conv_2_id, "today", timeout=UI_ELEMENT_TIMEOUT,
+                ), f"conv_2 {conv_2_id} should no longer render under Today"
+
+            with allure.step(
+                "Side-channel check — no unexpected console errors across the full flow"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors during multi-conversation pin flow: "
+                    f"{[m.text for m in console_messages]!r}"
+                )
+
+        finally:
+            if conv_1_id:
+                try:
+                    conversation_api.delete_conversation(conv_1_id)
+                    logger.info("Cleaned up conv_1 %s", conv_1_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete conv_1 %s: %s", conv_1_id, exc)
+            if conv_2_id:
+                try:
+                    conversation_api.delete_conversation(conv_2_id)
+                    logger.info("Cleaned up conv_2 %s", conv_2_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete conv_2 %s: %s", conv_2_id, exc)
             if folder_unpinned_id:
                 try:
                     conversation_api.delete_folder(folder_unpinned_id)
