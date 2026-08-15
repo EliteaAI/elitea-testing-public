@@ -15,6 +15,7 @@
 - [Testid presence greps](testid_presence_grep_technique.md) — bare string, always -i, [:=] not =; component-scope reused names
 - [Evidence, not narration](evidence_must_be_pasted_artifact.md) — verify every claim against a retrievable artifact
 - [Merge-gate traps](merge_gate_operational_traps.md) — flake resets count, stale gh diff, per-step allure, sanctioned-RED sets
+- [Manual gate file discovery](manual_gate_must_discover_touched_files_via_diff_not_memory.md) — `git diff --name-only` the trunk, never reconstruct touched files from memory of unit summaries
 - [Unattended run guards](unattended_run_guards.md) — liveness by ps + path overlap beats the 3 literal conditions
 - [Dispatch prompt completeness](dispatch_prompt_completeness.md) — what every dispatch carries; verify the premise first
 - [Waiting & resuming](subagent_wait_and_resume_mechanics.md) — poll in-turn; Workflow needs scriptPath AND args, every resume
