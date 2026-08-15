@@ -51,7 +51,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | 03 | Conversation rename — check-icon states + edge chars | 2105,2106,2107,2108,2109,2110,2111,2112,2113 | 9 | **LANDED** — PR #1522, 9/9 automated |
 | 04 | Conversation deletion + chat search (left-panel micro-UI) | 2115,2116,2117,2456,2163,2164,2165,2463 | 8 | **LANDED** — PR #1528, 7 automated/extended + 1 already-covered |
 | 05 | Folder creation | 2118,2119,2120,2133,2134,2457 | 6 | **LANDED** — PR #1532, 6/6 automated |
-| 06 | Folder rename | 2121,2122,2123,2124,2125,2126,2127,2128,2129,2130,2131 | 11 | **IN PROGRESS** |
+| 06 | Folder rename | 2121,2122,2123,2124,2125,2126,2127,2128,2129,2130,2131 | 11 | **LANDED** — PR #1539, 7 automated/extended + 4 already-covered |
 | 07 | Move/drag conversation between folders + list scrolling | 2136,2138,2139,2140,2141,2142,2143,2144,2145,2146,2147,2148 | 12 | pending |
 | 08 | Pin/unpin — conversation & folder basics | 2150,2151,2152,2153,2154,2155,2156 | 7 | pending |
 | 09 | Pin/unpin — edge cases + newer duplicate-family cases | 2157,2158,2159,2160,2161,2461,2462,2460 | 8 | pending |
@@ -133,13 +133,23 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   confirmed as environmental in `.agents/testing.md`. Lead's own gate 3/3
   clean. TMS back-written (6 cases). No new testids.
 
+- **wave-06 LANDED** — elitea-testing-public#1539, merged (`79ce975b`). 7/11
+  automated/extended (ELITEA-2121/2130 #1535 [1 fix round], ELITEA-2122 #1536,
+  ELITEA-2125/2131 #1537, ELITEA-2128/2129 #1538 [net-new]) + 4 already-covered
+  (ELITEA-2123/2127 → ELITEA-2459, ELITEA-2124/2126 → ELITEA-2458). Real
+  regression found+fixed: FolderItem.jsx's Rename menuitem lost its testid to
+  an unrelated main commit (#764), confirmed via a LIVE pre-fix failure of the
+  already-merged ELITEA-2458 test — filed+fixed #1533 (sibling of #1309),
+  case-text drift filed #1534. **Process gap, self-caught and logged:** manual
+  gate (workflow's own gate was cut off) was scoped from memory instead of
+  `git diff --name-only`, missing `test_chat_folder_rename_length_boundaries.py`
+  (ELITEA-2128/2129) — merged before gating those 2; caught during TMS
+  back-write, verified 3/3 clean immediately after (code was fine, process
+  wasn't) — new durable memory entry written
+  (`manual_gate_must_discover_touched_files_via_diff_not_memory.md`). TMS
+  back-written (11 cases). Testids `chat-folder-menu-rename`/`-pin` (restored)
+  confirmed NOT yet on `main`.
+
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-06** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w06`,
-  base=`origin/automation/base`, clusters `[2121,2130]` (basic rename + pinned-folder
-  rename variant) + `[2123,2127]` (invalid-input tooltip + leading-space reject) +
-  `[2124,2125,2126,2131]` (checkmark active/inactive states, mirrors wave-03's
-  conversation-rename pattern) + `[2128,2129]` (50-char max/overflow, mirrors
-  wave-02's pattern), 2122 solo (cancel via X icon). New session this dispatch
-  (resumed campaign, git-persisted state) — sync-base-branches re-run fresh
-  (0 drift on all 3 branches). Task ID `wp0mdidj7`, Run ID `wf_99e24ae8-2df`.
+(none — wave-06 closed; wave-07 not yet dispatched)
