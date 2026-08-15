@@ -2932,3 +2932,48 @@ surfaces ELITEA-2369/1886 already cover.
   4 starters configured, works for a quick manual check; a disposable
   per-test agent via `AgentAPI.create_agent_full()` is the implementer's
   correct choice for isolation).
+
+**Resolved/added during ELITEA-2177/2178/2465 implementation:**
+- **`chat-switch-to-model-button` testid ADDED** (both `AgentEditorPanel.jsx`
+  render branches) — EliteaAI/EliteaUI@c1905706 on `automation/testids`. The
+  "no testid" gap this digest flagged above is now closed;
+  `ChatPage.chat_switch_to_model_button` is a real `LocatorDescriptor`.
+- **`chat-conversation-starter-tile-tooltip` testid ADDED** on the starter
+  tile's MUI Tooltip popper content, via a new `slotProps.tooltip` wire on
+  `EllipsisTextWithTooltip` (`src/components/ConversationStarters.jsx`) —
+  EliteaAI/EliteaUI@c7e7f88e. A raw `[role="tooltip"]` selector is NOT a
+  sanctioned #579 exception for our own MUI usage, so this was a genuine gap
+  too, not just a nice-to-have. `ChatPage.chat_starter_tile_tooltip_content`
+  + `hover_chat_starter_tile()` consume it.
+- **`chat-conversation-starter-tile` itself needed NO new wiring on this
+  surface** — confirmed live it already renders on the mid-conversation
+  add-agent flow via `ChatConversationStarters.jsx`'s call site (wired
+  ELITEA-1886, EliteaAI/EliteaUI@afb48435, 2026-08-07). `chat_page.py`
+  carried a STALE comment claiming that call site was "intentionally left
+  unwired" (written before the ELITEA-1886 dispatch); corrected in place
+  this implementation.
+- **`chat.send_button.click(force=True)` right after a starter-tile click
+  is a real, reproducible no-op here too** — same root cause as the
+  project's `chat_send_button_force_click_race.md` memory entry
+  (`disabledSend`'s dependency can still be mid-flap a moment after the
+  DOM `disabled` attribute already reads false; `force=True` bypasses
+  Playwright's actionability wait that would otherwise line up with the
+  settle). Plain (non-force) `.click()` is required for the "click a
+  starter tile, then click Send" sequence on THIS surface too — confirmed
+  by reproducing the no-op live before fixing it.
+- **`ChatPage.is_participants_badge_visible()` cannot prove a NEGATIVE
+  transition right after a removal click** — it only waits for VISIBLE, so
+  `assert not is_participants_badge_visible(...)` immediately after
+  clicking "Remove" can read "still visible" a moment before the DOM
+  update lands (confirmed live — a real, reproducible flake, not a
+  one-off). Added `ChatPage.wait_for_participants_badge_absent(section,
+  timeout)` — waits on `state="hidden"` directly — as the correct
+  post-removal check; reuse it instead of the bool-returning method for
+  any future "assert this badge is now gone" step.
+- **The participants-popover row (`PARTICIPANT_ROW`) renders a
+  "Participant Name" loading-skeleton placeholder before its real content
+  settles** — a one-shot `row.wait_for(state="visible")` +
+  `text_content()` read can catch that placeholder text instead of the
+  real agent name (confirmed live — reproducible). Use a web-first
+  `expect(row).to_contain_text(agent_name, timeout=...)` instead, which
+  retries until the real content lands.
