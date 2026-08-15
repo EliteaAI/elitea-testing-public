@@ -2436,3 +2436,25 @@ needed.
   to become hidden before the next hover. Any FUTURE test that clicks a
   DISABLED context-menu item and then needs to interact with the same
   conversation again should apply the same explicit-close pattern.
+
+**Resolved/added during ELITEA-2169 combined analyst+implementer pass (batch
+chat-remaining-w10, 2026-08-15):** ELITEA-2169 ("Add Users as Conversation
+Participants") is a strict subset of ELITEA-2167's own 10-step "Add users"
+modal flow (already merged, `test_invite_users_add_persists_cancel_and_close_discard`)
+— classified `already-covered`, no new spec written. While live-reconfirming the
+covering test 3× back-to-back this session:
+- **Run 1** passed every step overlapping with ELITEA-2169 (menu → modal →
+  2 chips → Add → badge/popover show both) and only failed at the test's own
+  FINAL, unrelated side-channel console check, on a genuinely NEW React
+  `setState`-in-render warning (`UsersParticipantDropdown/index.jsx:30` setting
+  state on `CollapsedPerticapantsList` mid-render of the Participants panel) —
+  dedup-checked (distinct from #719's `sx`-on-svg and #625's Support-Assistant
+  setState warning) and filed as MINOR issue #1556.
+- **Runs 2–3** failed at the covering test's OWN Step 1 (stale conversation
+  reused instead of a genuinely blank one) — this is the already-tracked #1082
+  flake, reproducing here because back-to-back re-runs in one session leave no
+  cleanup pause between them (self-inflicted by the re-run methodology, not a
+  fresh-invocation symptom). Any future session re-running this covering test
+  repeatedly for reconfirmation should expect this and treat a Step-1 failure
+  on re-run N>1 as #1082 first, not a new regression, before investigating
+  further.
