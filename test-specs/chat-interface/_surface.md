@@ -3,8 +3,9 @@
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
 a time; last confirmed by: test-automation-engineer (combined analyst+
-implementer), ELITEA-2118/2119/2120, 2026-08-15 (supersedes nothing below —
-new section, other sections unchanged; previous confirmer:
+implementer), ELITEA-2133/2134, 2026-08-15 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: test-automation-engineer
+(combined analyst+implementer), ELITEA-2118/2119/2120, 2026-08-15; previous confirmer:
 test-automation-engineer (combined analyst+implementer), ELITEA-2163/2164/
 2165/2463, 2026-08-15; previous confirmer:
 test-automation-engineer (combined analyst+implementer), ELITEA-2115/2116/
@@ -14,6 +15,34 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+
+## ELITEA-2133/2134 — near-total TMS-case duplicates of ELITEA-2119/2120,
+## same session batch (extend-existing, tag-only + one small gap)
+- ELITEA-2133 ("...Custom Name via CHATS Header Icon") and ELITEA-2134
+  ("...Cancel Discards New Folder") are the SAME two flows as ELITEA-2119/
+  2120 below — different TMS case IDs, near-identical case text, only the
+  literal folder-name test data differs ("My Test Folder"/"Cancelled
+  Folder" vs "My Sprint Folder"/"Temp Folder"). Both re-executed live this
+  session with their OWN literal data (not assumed from the ELITEA-2119/
+  2120 run) before classifying — both confirmed to behave identically.
+- Routed `extend-existing` against `test_chat_folder_creation_custom_name_and_cancel.py`
+  (merged onto this batch's OWN trunk `tests/batch-chat-remaining-w05`, NOT
+  yet `origin/automation/base` — the merged-target rule permits
+  `extend-existing` against a same-batch-trunk target, unlike
+  `already-covered` which needs a base-merged target).
+- ELITEA-2134: **zero** assertion gap vs ELITEA-2120 — tag-only extension
+  (second `@allure.issue` decorator, no test-body change). ELITEA-2133 DOES
+  have one real gap ELITEA-2119 never covers: case step 4 ("click the
+  folder to expand it -> shows empty state") — the covering test only
+  verifies the new folder renders COLLAPSED, never expands it. Appended a
+  new Step 6 to `test_create_folder_with_custom_name` calling the existing
+  `expand_folder()`/`get_folder_empty_state_text()` methods (added
+  ELITEA-2098/2115, no new page-object work needed).
+- **Pattern worth watching for future chat-folder cases**: this TMS module
+  appears to carry near-duplicate case pairs across different ID ranges
+  (2118-2120 vs 2133-2134 here). Worth a quick `grep -i "folder"` over
+  upcoming case snapshots before assuming `ready-for-automation` — check
+  this digest's existing sections first, they may already answer it.
 
 ## Folder creation inline editor — custom name / cancel / checkmark-active
 ## at creation time (ELITEA-2118/2119/2120)
