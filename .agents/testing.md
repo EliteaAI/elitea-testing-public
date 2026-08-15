@@ -464,3 +464,19 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   the 5 full-file runs (including 2 immediately-following re-runs) — a toast-timing
   race after rapid module-toggle interactions, not reproduced since. Record further
   occurrences here if it repeats.
+- **Recurring pattern, now confirmed (3 occurrences, chat-remaining campaign,
+  2026-08-15)**: an "unexpected console errors" assertion (`assert not
+  console_messages`) intermittently fails on a `500 Internal Server Error` from a
+  resource **unrelated to the test's own action** — wave-02 (ELITEA-2093 send-button
+  flow), wave-04 (modules-panel toggle flow, `Modules configuration updated` toast),
+  wave-05 (`test_cancel_folder_creation_discards_folder`). Every occurrence: (a) not
+  the request the test itself drives (never the PUT/POST under test), (b) never
+  reproduced on immediate re-run (standalone or full-file), (c) different spec each
+  time — no single flaky test, a shared background-resource blip. Not yet promoted
+  to a project-wide filter (unlike the `secrets 403` exclusion) because the exact
+  resource differs each time and no common URL pattern has been identified — but
+  three independent occurrences in one session is enough to treat this as a known
+  environmental characteristic, not a fluke. **If a 4th occurrence surfaces, capture
+  the failing resource URL** (not just the status code) so a shared filter can be
+  written; until then, the standard response is: re-run once, and if the console-500
+  doesn't reproduce, it's this pattern.
