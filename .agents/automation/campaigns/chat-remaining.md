@@ -240,4 +240,10 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- (none)
+- **wave-11** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w11`,
+  base=`origin/automation/base`, cases 2188,2189,2190,2191,2192,2193,2194 (7),
+  clusters `[2189,2190,2191]` (non-owner restrictions on public conversation:
+  delete/edit/regenerate) + `[2192,2193,2194]` (owner/remove-participant flows —
+  suspected near-duplicates of wave-10's 2172/2171/2168 by title, analyst to
+  determine); 2188 solo (public-conversation green-icon marker). Task ID
+  `waqqw1flr`, Run ID `wf_10bb73e3-117`.
