@@ -543,3 +543,33 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   load/timing across an extended campaign session, not a single spec's flake.
   Record further occurrences (and whether they correlate with session
   duration) here.
+- **#1082 now 100% reproducible on `test_team_users_mention_and_remove_participants.py`
+  (ELITEA-2168's own file), chat-remaining wave-11, ELITEA-2193 implementation
+  (2026-08-15)**: 3 consecutive full-invocation runs (each also exhausting
+  pytest-rerunfailures' own 2 auto-reruns, so 9 total attempts) ALL failed
+  identically in Setup — `_open_blank_conversation()`'s 3-attempt retry never
+  escapes the same two stale, non-blank leftover conversations (`/chat/566`
+  "HI Chat", 5 participants; `/chat/564` "HI Chat", 3 participants — both
+  pre-dating this session, referenced by this wave's own AFS files as the
+  live-analysis targets) — `+Chat` keeps landing back on one of them rather
+  than a genuinely blank composer, so either the Setup's own
+  `initial_count == 0` assertion fails outright, or (once that happens to
+  read 0 message groups) the subsequent `search_and_select_add_user_verified`
+  step times out because the seed user is correctly *excluded* as an
+  already-existing participant of the stale conversation it actually landed
+  on. Root cause and fix pattern are already known — wave-10's entry above
+  links the SAME `#1082` mechanism to a **stronger guard**,
+  `_open_genuinely_blank_conversation()`, already implemented as a suite-local
+  helper in `test_invite_users_add_cancel_close.py` (ELITEA-2167's file) —
+  this file (`test_team_users_mention_and_remove_participants.py`, ELITEA-2168)
+  still has the weaker original guard and was not itself in scope for
+  ELITEA-2193 (a 2-assertion `extend-existing` on this file's Steps 8-9, not a
+  Setup fix — `_open_blank_conversation()` has 4 callers, out of scope to
+  modify under this ticket). ELITEA-2193's own 2 new assertions (tooltip
+  accessible name + warning-icon fill) were independently verified GREEN via
+  an isolated throwaway script driving the SAME live conversation `/chat/566`
+  directly (bypassing Setup) — both passed cleanly first try. Whoever next
+  touches this file's Setup should port the `_open_genuinely_blank_conversation()`
+  pattern from ELITEA-2167's file; until then, expect this spec's gate runs to
+  need a moment when `/chat/566`/`/chat/564` are the most-recently-touched
+  conversations in project 471.
