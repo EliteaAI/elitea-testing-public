@@ -62,21 +62,33 @@
      96px)`), not a bespoke behavior EliteaUI added.
 3. Scroll down through the submenu folder list via a REAL scroll gesture (mouse wheel, hovering the
    popover Paper).
-   - **Verify**: all seeded folders are accessible — after scrolling to the popover's maximum
-     `scrollTop`, the LAST seeded folder's `chat-move-to-folder-{folder_id}-menuitem` is within the
-     popover's own bounding box (same "prove reachability, not just scrollTop movement" discipline as
-     ELITEA-2146 step 4).
-4. Select the last seeded folder from the scrolled-to position.
+   - **Verify** (AMENDED during implementation — see note below): identify a seeded folder currently
+     positioned BELOW the popover's visible viewport; scroll down via repeated real wheel gestures
+     (checking reachability after every gesture) until its `chat-move-to-folder-{folder_id}-menuitem`
+     falls within the popover's own bounding box (same "prove reachability, not just scrollTop
+     movement" discipline as ELITEA-2146 step 4).
+4. Select the scrolled-to folder from step 3.
    - **Verify**: `PUT /elitea_core/conversation/prompt_lib/{project_id}/{conv_target_id}`
-     `{"folder_id": <last_seeded_folder_id>}` fires and returns 200 (source-confirmed endpoint,
+     `{"folder_id": <scrolled_to_folder_id>}` fires and returns 200 (source-confirmed endpoint,
      `useMoveToFolderConversation.hooks.js`) — live-confirmed this pass via
      `browser_network_requests` (`PUT .../elitea_core/conversation/prompt_lib/399/8152` → 200 for an
      analogous move during this exploration). Conversation moved; success toast appears:
      `Chat moved to "${targetFolder.name}" folder successfully` (documented, ELITEA-2135/ELITEA-2137's
      AFS — WITH quote marks around the folder name, the case text's paraphrase omits them, cosmetic
-     drift only). Additionally: `conv_target` now renders inside the last seeded folder's row
-     (`is_conversation_in_folder(last_seeded_folder_id, conv_target_id)` reads `True`, pre-existing
+     drift only). Additionally: `conv_target` now renders inside the scrolled-to folder's row
+     (`is_conversation_in_folder(scrolled_to_folder_id, conv_target_id)` reads `True`, pre-existing
      helper).
+
+**Implementer amendment (steps 3–4, discovered during ELITEA-2147 implementation):** the original
+verify text ("scroll to the popover's maximum `scrollTop`; the LAST seeded folder is at that extreme")
+assumed the popover's raw scroll maximum lands on the last-created seeded folder. Live-confirmed this
+is FALSE, for the same reason as ELITEA-2146's sibling amendment: the submenu enumerates the account's
+folders in the SAME `folders` store order the sidebar uses, which renders NEWEST-created folders
+closer to the TOP, not the bottom. The shipped test instead identifies, empirically via live bounding
+boxes, a folder genuinely below the current popover viewport and proves it becomes reachable — same
+case-level claim (scrolling reaches every folder, including ones initially off-screen), without
+assuming a specific creation-order position. See
+`automation/tests/ui/chat/test_folder_list_scrollability_and_expand_states.py` for the implementation.
 
 ## Expected Results
 - The submenu's folder-list popover genuinely overflows (`scrollHeight > clientHeight`) once enough
@@ -135,6 +147,19 @@ Disposition key: `asserted` / `already-covered` / `clarification` / `blocked` / 
 | Existing-folder submenu entry (dynamic) | `[data-testid="chat-move-to-folder-{folder_id}-menuitem"]` (`MOVE_TO_FOLDER_ITEM` template) | pre-existing, on-`automation/testids` ✓ (ELITEA-2135/ELITEA-2137) | `ChatPage.get_move_to_folder_item(folder_id)` / `select_move_to_folder(folder_id)` (both pre-existing). |
 | Submenu open (with retry for #1117) | n/a (composed action) | pre-existing | `ChatPage.open_move_to_submenu(conversation_id)` (pre-existing, `chat_page.py:3626`). |
 | **Submenu folder-list popover container** (the MUI `Menu`'s Paper — role="menu" `<ul>`'s closest `.MuiPaper-root`) | **testid needed**: e.g. `chat-move-to-submenu-popover` on the nested `<Menu>` in `DotMenu.jsx` (line ~93, the `subMenuItems?.length &&` branch) — add via `slotProps={{ paper: { 'data-testid': 'chat-move-to-submenu-popover' } }}` (MUI Menu forwards this to its Paper). Zero new DOM node — MUI already renders this Paper, this is a pure attribute addition on an existing element. | **ADD via `add-data-testid`.** Currently carries NO testid and NO `id` at all (confirmed live this pass via DOM inspection — `paper.getAttribute('data-testid')` and `paper.id` both empty/null). | New: `ChatPage.move_to_submenu_popover = LocatorDescriptor(testid="chat-move-to-submenu-popover")` + `get_move_to_submenu_scroll_metrics()` / `is_move_to_submenu_scrollable()` / `scroll_move_to_submenu()`, mirroring the `chat_messages_scroll_container` trio (same pattern ELITEA-2146 specs for the sidebar container). **Scoping caveat**: `DotMenu.jsx` renders this SAME nested-`Menu` shape for every dot-menu instance in the app with `subMenuItems` (not folder-move-specific) — if a testid this specific would collide with a future unrelated submenu, the implementer should confirm at add-time whether a single static testid is safe (only one such submenu can be open at a time, so likely yes) or whether it needs scoping; call out either way in the Run Report. |
+
+**Resolved during fix-round-1 (implementer, EliteaAI/EliteaUI automation/testids
+commit `1b35a0a2`):** the Scoping caveat above under-called it — a single static
+testid IS safe (only one such submenu can be open at a time), but the reviewer
+flagged the *placement*, not the collision risk: the literal `'chat-move-to-
+submenu-popover'` string was baked directly into shared `DotMenu.jsx` (16+
+consumers), which is the anti-pattern `.agents/testing.md` § Locator policy names
+explicitly ("a component under `src/components/` … gets either a GENERIC testid
+or a caller-supplied `testId` prop … never the shared component's first
+consumer"). Rewired as a `submenuTestId` prop threaded from the menu-item
+definition down through `DotMenu` → `BasicMenuItem`, supplied only by the chat
+"Move to" item in `ConversationItem.jsx`. Testid value, locator, and every
+assertion below are unchanged — only the JSX origin moved.
 
 **Live measurement (this pass, confirms the submenu popover genuinely overflows):**
 - With `conv_target`'s "Move to" submenu open and 67 ambient folder items rendered: popover Paper

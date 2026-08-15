@@ -119,6 +119,17 @@ it back to `false`). The implementer needs a small `collapse_folder(folder_id)` 
 `FOLDER_EXPAND_ICON`/row genuinely toggles `data-expanded` back to `false` (folder `91`, this
 session).
 
+**Implementer amendment (discovered during ELITEA-2148 implementation):** clicking the WHOLE
+`get_folder_item(folder_id)` container (mirroring `expand_folder()`'s own click target exactly) is
+NOT safe for the collapse direction specifically, though it live-confirmed fine during analyst
+exploration on a single ambient folder. `FOLDER_ITEM` scopes both the header AND the (now-visible,
+EXPANDED) body as descendants — Playwright's plain `.click()` lands at the bounding box's CENTER,
+which for an expanded folder with body content can fall inside the conversation-list body instead of
+the header, leaving `data-expanded="true"` and timing out the wait for `"false"` (live-reproduced this
+pass). The shipped `collapse_folder()` instead clicks the scoped `FOLDER_EXPAND_ICON` (always inside
+the header, unaffected by body height) — see `automation/pages/chat_page.py`'s `collapse_folder()`
+docstring.
+
 **Live measurement (this pass, confirms the mechanism end-to-end):**
 - Expanded folder `91` (containing conversation `8153`, a pre-existing folder-scoped conversation
   found during exploration): `data-expanded` flipped `false → true`, conversation's computed
