@@ -56,6 +56,60 @@ class ChatPage(BasePage):
         description="Send message button"
     )
 
+    # ELITEA-2179/2466: SendButton.jsx renders EXACTLY ONE of two mutually
+    # exclusive button nodes in the composer's send-button slot — never both,
+    # never neither (while not streaming): ``send_button`` (this element,
+    # ``chat-send-button``) when the input has text, or this waveform/
+    # "speaking mode" entry button when the input is empty and voice
+    # features are enabled. Assert PRESENCE via ``.count()``, not visibility
+    # — the two are different DOM nodes, not a hide/show toggle on one node
+    # (live-confirmed: typing swaps ``chat-send-button`` 0->1 while this
+    # testid swaps 1->0, same tick). While streaming, UserInput.jsx renders
+    # a Stop button instead of either — both counts are 0 simultaneously.
+    voice_mode_button = LocatorDescriptor(
+        testid="chat-voice-mode-button",
+        description=(
+            "Waveform/'enter speaking mode' button shown in the composer's "
+            "send-button slot when the input is empty (not streaming)."
+        ),
+    )
+
+    # Composer's dedicated dictation/voice-input mic button (VoiceButton.jsx)
+    # — a SEPARATE feature from voice_mode_button above (this one transcribes
+    # speech INTO the text field; voice_mode_button enters a live speaking
+    # conversation). Always present alongside the model selector while not
+    # streaming, regardless of whether the input has text.
+    voice_input_button = LocatorDescriptor(
+        testid="chat-voice-input-button",
+        description="Composer's microphone (dictation) button.",
+    )
+
+    # Model selector's gear/settings icon — pre-existing testid with ZERO
+    # prior page-object callers before ELITEA-2179/2466 (canon #511 first
+    # caller). Distinct from `model_selector_name` (the LLM-name text).
+    model_settings_button = LocatorDescriptor(
+        testid="model-settings-button",
+        description="Gear/settings icon button next to the model selector.",
+    )
+
+    # + (plus) menu trigger — pre-existing testid, first LocatorDescriptor
+    # caller added by ELITEA-2179/2466 (canon #511).
+    plus_menu_button = LocatorDescriptor(
+        testid="plus-menu-button",
+        description="'+' menu button on the far left of the composer bottom bar.",
+    )
+
+    # Outer gradient-border Box wrapping the whole composer (pre-existing
+    # node; the app renders a cyan box-shadow + teal gradient background on
+    # focus, live-confirmed: boxShadow "none" unfocused vs
+    # "rgba(21, 255, 247, 0.2) 0px -5px 20px 0px" focused). State exposed via
+    # `data-focused` per this project's state-via-data-attribute policy —
+    # read the attribute or the computed boxShadow, never a role/CSS handle.
+    composer_focus_border = LocatorDescriptor(
+        testid="chat-composer-focus-border",
+        description="Composer's outer gradient-border Box; carries data-focused.",
+    )
+
     # Re-pointed ELITEA-2197/2200: "chat-attach-button" never existed in
     # EliteaUI src (dead testid, tech debt — the field only "worked" via its
     # now-forbidden `fallback=`). This is the showLabel AttachmentButton
@@ -603,6 +657,13 @@ class ChatPage(BasePage):
         fallback=lambda page: page.locator('main ul.MuiList-root > li.MuiListItem-root'),
         description="Individual message items (user + AI)"
     )
+
+    # A sent USER message's header row (UserMessage.jsx, vertical layout) —
+    # ELITEA-2179/2466 first callers (canon #511). Both scoped inside
+    # messages_container via `[data-testid=` template constants, per the
+    # scoped-sub-selector convention.
+    MESSAGE_SENDER_NAME = '[data-testid="chat-message-sender-name"]'
+    MESSAGE_SENDER_AVATAR = '[data-testid="chat-message-sender-avatar"]'
 
     # An AI-generated Markdown table's rendered (non-edit) form
     # (MarkdownTableBlock.jsx) — headers/rows are fully dynamic AI content
