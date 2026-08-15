@@ -219,4 +219,11 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- (none)
+- **wave-10** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w10`,
+  base=`origin/automation/base`, cases 2169,2171,2172,2173,2174,2175,2176 (7),
+  clusters `[2171,2172]` (remove-user dialog family) + `[2173,2174]` (@mention
+  family) + `[2175,2176]` (add-users modal micro-interactions); 2169 solo
+  (foundational add-participants flow). New surface — Team Project participants
+  management, first case in this campaign touching this area; may require a
+  Team-type project (prior waves used project 399/Private) — analyst to confirm
+  live. Task ID `wcsk7xwh2`, Run ID `wf_2c0aab30-eb1`.
