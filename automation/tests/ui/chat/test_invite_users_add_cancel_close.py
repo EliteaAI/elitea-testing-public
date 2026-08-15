@@ -200,6 +200,78 @@ def _open_blank_conversation(chat: ChatPage, timeout: int = NAVIGATION_TIMEOUT) 
             raise
 
 
+def _open_genuinely_blank_conversation(chat: ChatPage, timeout: int = NAVIGATION_TIMEOUT) -> None:
+    """Stronger sibling of ``_open_blank_conversation()`` — additive, does
+    NOT modify that function or its existing caller (Hard Rule 3).
+
+    ``_open_blank_conversation()``'s single check (the new-conversation
+    greeting is visible) is not sufficient on this shared dev backend:
+    confirmed live this implementation (ELITEA-2175's own first run,
+    reproduced identically 4 times running) that the SPA can restore the
+    last-viewed conversation from browser/session storage (documented by
+    ``ChatPage.navigate_to_chat()``'s own docstring: "the SPA may redirect
+    to the last-viewed conversation stored in the browser session") AFTER
+    the blank greeting and a momentary 0 message count were both already
+    observed — the restore is a delayed effect, not synchronous with the
+    +Chat click, so it silently wins a race against a check performed too
+    early, snapping the URL back to a pre-existing conversation with real
+    history (this environment's own EL-2091 "Review attached documents",
+    id 420) a moment later. Confirmed via a parallel manual Playwright MCP
+    session: the identical +Chat click reliably produced a genuinely blank
+    conversation (bare ``/chat`` URL, no participants) when driven slowly
+    with pauses between steps, but pytest's own faster, back-to-back
+    action sequence consistently lost this race. Guards against it with a
+    settle-and-recheck: wait out the restore's own timing window, then
+    verify BOTH the message count AND the URL are still blank before
+    proceeding — not a blind sleep substituting for a condition wait (no
+    condition exists to await for "an effect did NOT fire"), but a bounded
+    settle window inside an already-retrying loop, same category as this
+    project's own documented MUI-animation waits (`.claude/rules/
+    mui-patterns.md`).
+    """
+    blank_url_pattern = re.compile(r"/chat/?(?:\?.*)?$")
+    last_reason = "unknown"
+    for attempt in range(3):
+        chat.click_create_conversation(timeout=timeout)
+        try:
+            chat.new_conversation_greeting.wait_for(state="visible", timeout=5000)
+        except Exception:
+            last_reason = "greeting never appeared"
+            logger.warning(
+                "New-conversation greeting not visible after +Chat click "
+                "(attempt %d) — retrying (see _open_genuinely_blank_conversation docstring)",
+                attempt + 1,
+            )
+            continue
+        if chat.get_message_count() != 0:
+            last_reason = "greeting appeared but conversation has message history"
+            logger.warning(
+                "Landed on a non-blank conversation (attempt %d) — retrying "
+                "(see _open_genuinely_blank_conversation docstring)",
+                attempt + 1,
+            )
+            continue
+        # Settle window for the delayed last-viewed-conversation restore
+        # (see docstring) — then re-verify both signals didn't flip.
+        chat.page.wait_for_timeout(1500)
+        if chat.get_message_count() != 0 or not blank_url_pattern.search(chat.page.url):
+            last_reason = (
+                f"blank state reverted after settling (url={chat.page.url!r}, "
+                f"message_count={chat.get_message_count()})"
+            )
+            logger.warning(
+                "Blank conversation reverted to a restored one after "
+                "settling (attempt %d) — retrying (see "
+                "_open_genuinely_blank_conversation docstring)",
+                attempt + 1,
+            )
+            continue
+        return
+    raise AssertionError(
+        f"Could not open a genuinely blank conversation after 3 attempts: {last_reason}"
+    )
+
+
 class TestInviteUsersAddCancelClose:
     """ELITEA-2167: Chat – Team Project – Create Conversation and Add Users
     via Invite Users with Add Confirmation (l2, high)."""
@@ -582,3 +654,295 @@ class TestInviteUsersAddCancelClose:
                     logger.info("Cleaned up conversation %s", cid)
                 except Exception as exc:
                     logger.warning("Failed to clean up conversation %s: %s", cid, exc)
+
+
+class TestRemovePreselectedUserViaChipX:
+    """ELITEA-2175: Chat – Team Project – Remove Pre-Selected User from Add
+    Users Modal by Clicking X on Chip (l3, medium).
+
+    Extends the ELITEA-2167 covering file: that test only exercises
+    Add/Cancel/X-close of the WHOLE modal, never removing a single
+    already-selected chip before confirming. ``ChatPage.remove_add_users_chip()``
+    already exists with one caller (ELITEA-2168's test, removing the LAST of
+    4 chips) — this case's own data (3 users, X on the MIDDLE chip) is a
+    genuinely distinct observable: it proves the removal is keyed by the
+    clicked chip's own identity, not by array position, and that the two
+    SURROUNDING selections survive a middle-item removal untouched.
+    """
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2175_chat-team-project-remove-pre-selected-user-from-add-users-modal-by-clicking-x-on-chip.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    def test_remove_preselected_user_via_chip_x(self, page, _browser_cookies):
+        """Removing the middle chip via its own X keeps the other two selected.
+
+        Steps (AFS
+        test-specs/chat-interface/l3_remove-preselected-user-via-chip-x_ELITEA-2175.md):
+        1. Open a new, blank Team-project conversation; open Add users;
+           select user_1, user_2, user_3 — verify three chips.
+        2. Click X on user_2's chip; verify user_2 is gone and user_1/user_3
+           remain, in order; Add stays enabled.
+        3. Click Add; verify modal closes and user_1/user_3 (not user_2) are
+           the queued PARTICIPANTS USERS.
+        """
+        chat = ChatPage(page)
+
+        console_messages = []
+
+        def _on_console(msg):
+            if msg.type == "error" and not (
+                _is_known_project_471_secrets_403(msg)
+                or _is_known_version_validator_400(msg)
+                or _is_known_checkicon_sx_svg_warning_719(msg)
+            ):
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
+
+        with allure.step("Preconditions — logged in; switch to the Team project (471)"):
+            chat.navigate_to_chat()
+            chat.wait_for_page_load()
+            chat.switch_project(TEAM_PROJECT_ID, timeout=NAVIGATION_TIMEOUT)
+            chat.wait_for_conversations_to_load(timeout=UI_ELEMENT_TIMEOUT)
+
+        with allure.step(
+            "Step 1 — Open a blank conversation; open Add users; select "
+            f"{USER_1_NAME!r}, {USER_2_NAME!r}, {USER_3_NAME!r} — three chips"
+        ):
+            _open_genuinely_blank_conversation(chat, timeout=NAVIGATION_TIMEOUT)
+            chat.open_add_users_modal(timeout=UI_ELEMENT_TIMEOUT)
+            chat.search_and_select_add_user_verified(USER_1_QUERY, USER_1_NAME, timeout=UI_ELEMENT_TIMEOUT)
+            chat.wait_for_add_users_chip(USER_1_NAME, timeout=UI_ELEMENT_TIMEOUT)
+            chat.search_and_select_add_user_verified(USER_2_QUERY, USER_2_NAME, timeout=UI_ELEMENT_TIMEOUT)
+            chat.wait_for_add_users_chip(USER_2_NAME, timeout=UI_ELEMENT_TIMEOUT)
+            chat.search_and_select_add_user_verified(USER_3_QUERY, USER_3_NAME, timeout=UI_ELEMENT_TIMEOUT)
+            chat.wait_for_add_users_chip(USER_3_NAME, timeout=UI_ELEMENT_TIMEOUT)
+
+            chip_names = chat.get_add_users_chip_names()
+            assert chip_names == [USER_1_NAME, USER_2_NAME, USER_3_NAME], (
+                f"Expected three chips in selection order, got {chip_names!r}"
+            )
+
+        with allure.step(
+            f"Step 2 — Click X on {USER_2_NAME!r}'s chip; verify "
+            f"{USER_1_NAME!r}/{USER_3_NAME!r} remain, {USER_2_NAME!r} is gone"
+        ):
+            chat.remove_add_users_chip(USER_2_NAME, timeout=UI_ELEMENT_TIMEOUT)
+            chip_names = chat.get_add_users_chip_names()
+            assert chip_names == [USER_1_NAME, USER_3_NAME], (
+                f"Expected only {USER_1_NAME!r}/{USER_3_NAME!r} to remain in "
+                f"order after removing the middle chip, got {chip_names!r}"
+            )
+            assert chat.is_add_users_confirm_enabled(), (
+                "Add button should stay enabled — 2 selections remain > 0"
+            )
+
+        with allure.step(
+            "Step 3 — Click Add; verify modal closes and "
+            f"{USER_1_NAME!r}/{USER_3_NAME!r} (not {USER_2_NAME!r}) are the "
+            "queued PARTICIPANTS USERS"
+        ):
+            # Same blind-Escape-after-chip-removal gotcha ELITEA-2168's test
+            # documents (ChatPage.remove_add_users_chip docstring) — removing
+            # a chip can flip the results popper back open (the removed user
+            # is no longer excluded), which would then intercept a plain
+            # click_add_users_confirm()'s unconditional Escape-then-click.
+            chat.add_users_confirm_button.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+            if chat.is_add_users_results_open():
+                chat.dismiss_add_users_dropdown()
+            chat.add_users_confirm_button.click()
+            chat.add_users_dialog.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+
+            chat.wait_for_participants_badge_count("2", section="users", timeout=UI_ELEMENT_TIMEOUT)
+            popper = chat.open_participants_popover(section="users", timeout=UI_ELEMENT_TIMEOUT)
+            popper_text = popper.text_content() or ""
+            assert USER_1_NAME in popper_text and USER_3_NAME in popper_text, (
+                f"Popover should list {USER_1_NAME!r} and {USER_3_NAME!r}, got: {popper_text!r}"
+            )
+            assert USER_2_NAME not in popper_text, (
+                f"{USER_2_NAME!r} was removed via chip X before Add and "
+                f"should NOT appear in PARTICIPANTS, got: {popper_text!r}"
+            )
+            chat.dismiss_participants_popover()
+
+        with allure.step("Side-channel check — no unexpected console errors across the full flow"):
+            assert not console_messages, f"Unexpected console errors: {[m.text for m in console_messages]!r}"
+
+        # No conversation is created server-side until the first message is
+        # sent (AFS § Network Behavior, same mechanism ELITEA-2167's own
+        # test documents) — this case never sends one, so there is nothing
+        # to clean up.
+
+
+class TestCancelAddUsersModalAfterPreselectingUsers:
+    """ELITEA-2176: Chat – Team Project – Cancel Add Users Modal After
+    Pre-Selecting Users Does Not Add Anyone (l3, medium).
+
+    Extends the ELITEA-2167 covering file: its own Cancel step (7) and
+    ELITEA-2168's Cancel step (6) each discard only ONE pre-selected chip.
+    This case's own data (select TWO users, THEN Cancel) is worth its own
+    proof on an EXISTING conversation that already carries a real,
+    persisted participant baseline — matching the case's own precondition
+    ("Team project with an existing conversation") and its own step 1
+    ("note current participants") rather than a fresh, participant-less one.
+    """
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2176_chat-team-project-cancel-add-users-modal-does-not-add-anyone.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    def test_cancel_after_preselecting_two_users_adds_no_one(self, page, _browser_cookies):
+        """Cancel with 2 chips selected discards both; baseline participants unchanged.
+
+        Steps (AFS
+        test-specs/chat-interface/l3_cancel-add-users-modal-after-preselecting-users_ELITEA-2176.md):
+        Setup. Seed an existing conversation with one persisted participant
+             (user_4) so PARTICIPANTS USERS has a real baseline to compare
+             against — the case's own "existing conversation" precondition.
+        1. Note current participants (badge count + popover names).
+        2. Open Add users; select user_1 and user_2 — verify two chips.
+        3. Click Cancel; verify modal closes.
+        4. Verify PARTICIPANTS USERS is unchanged from the noted baseline.
+        5. Verify user_1 and user_2 are NOT in PARTICIPANTS.
+        """
+        chat = ChatPage(page)
+        conv_id: int | None = None
+
+        console_messages = []
+
+        def _on_console(msg):
+            if msg.type == "error" and not (
+                _is_known_project_471_secrets_403(msg)
+                or _is_known_version_validator_400(msg)
+                or _is_known_checkicon_sx_svg_warning_719(msg)
+            ):
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
+
+        try:
+            with allure.step(
+                "Setup — switch to the Team project; open a blank "
+                "conversation; add user_4 and send so it persists as an "
+                "existing conversation with one real participant"
+            ):
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+                chat.switch_project(TEAM_PROJECT_ID, timeout=NAVIGATION_TIMEOUT)
+                chat.wait_for_conversations_to_load(timeout=UI_ELEMENT_TIMEOUT)
+
+                _open_genuinely_blank_conversation(chat, timeout=NAVIGATION_TIMEOUT)
+                chat.open_add_users_modal(timeout=UI_ELEMENT_TIMEOUT)
+                chat.search_and_select_add_user_verified(USER_4_QUERY, USER_4_NAME, timeout=UI_ELEMENT_TIMEOUT)
+                chat.wait_for_add_users_chip(USER_4_NAME, timeout=UI_ELEMENT_TIMEOUT)
+                chat.click_add_users_confirm(timeout=UI_ELEMENT_TIMEOUT)
+                chat.add_users_dialog.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+
+                initial_count = chat.get_message_count()
+                assert initial_count == 0, "Fresh conversation should have no messages yet"
+
+                with page.expect_response(
+                    lambda r: r.request.method == "POST" and _is_conversation_create_request(r.url)
+                ) as create_info, page.expect_response(
+                    lambda r: r.request.method == "POST" and _is_participants_persist_request(r.url)
+                ) as participants_info:
+                    chat.send_message(CONTROL_MESSAGE_TEXT, use_enter=False)
+
+                assert create_info.value.status == 201, (
+                    f"Conversation-create request should return 201, got {create_info.value.status}"
+                )
+                assert participants_info.value.status == 200, (
+                    "Participants-persist request should return 200, got "
+                    f"{participants_info.value.status}"
+                )
+
+                page.wait_for_url(re.compile(r"/chat/\d+"), timeout=UI_ELEMENT_TIMEOUT)
+                match = re.search(r"/chat/(\d+)", page.url)
+                assert match, f"Conversation id should appear in the URL after Send, got: {page.url}"
+                conv_id = int(match.group(1))
+
+                chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
+                chat.wait_for_generation_complete(timeout=AI_RESPONSE_TIMEOUT)
+                chat.wait_for_participants_badge_count("2", section="users", timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step(
+                "Step 1 — Note current participants: badge '2' (owner + "
+                f"{USER_4_NAME!r})"
+            ):
+                assert chat.is_participants_badge_visible(section="users", timeout=UI_ELEMENT_TIMEOUT), (
+                    "PARTICIPANTS USERS badge should be visible on this "
+                    "existing, one-participant conversation"
+                )
+                baseline_badge = chat.get_participants_badge_count(section="users", timeout=UI_ELEMENT_TIMEOUT)
+                assert baseline_badge == "2", f"Expected baseline badge '2' (owner + 1), got {baseline_badge!r}"
+                baseline_popper = chat.open_participants_popover(section="users", timeout=UI_ELEMENT_TIMEOUT)
+                baseline_popper_text = baseline_popper.text_content() or ""
+                assert USER_4_NAME in baseline_popper_text, (
+                    f"Baseline popover should list {USER_4_NAME!r}, got: {baseline_popper_text!r}"
+                )
+                chat.dismiss_participants_popover()
+
+            with allure.step(
+                f"Step 2 — Open Add users; select {USER_1_NAME!r} and "
+                f"{USER_2_NAME!r} — two chips shown"
+            ):
+                chat.open_add_users_modal(timeout=UI_ELEMENT_TIMEOUT)
+                chat.search_and_select_add_user_verified(USER_1_QUERY, USER_1_NAME, timeout=UI_ELEMENT_TIMEOUT)
+                chat.wait_for_add_users_chip(USER_1_NAME, timeout=UI_ELEMENT_TIMEOUT)
+                chat.search_and_select_add_user_verified(USER_2_QUERY, USER_2_NAME, timeout=UI_ELEMENT_TIMEOUT)
+                chat.wait_for_add_users_chip(USER_2_NAME, timeout=UI_ELEMENT_TIMEOUT)
+
+                chip_names = chat.get_add_users_chip_names()
+                assert chip_names == [USER_1_NAME, USER_2_NAME], (
+                    f"Expected both chips in selection order, got {chip_names!r}"
+                )
+                assert chat.is_add_users_confirm_enabled(), "Add button should be enabled with 2 selections"
+
+            with allure.step("Step 3 — Click Cancel; verify modal closes"):
+                chat.click_add_users_cancel(timeout=UI_ELEMENT_TIMEOUT)
+                chat.add_users_dialog.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step(
+                "Step 4 — Verify PARTICIPANTS USERS is unchanged from the "
+                "noted baseline (badge '2')"
+            ):
+                badge_after_cancel = chat.get_participants_badge_count(section="users", timeout=UI_ELEMENT_TIMEOUT)
+                assert badge_after_cancel == baseline_badge, (
+                    f"Badge should still read {baseline_badge!r} after "
+                    f"Cancel, got {badge_after_cancel!r}"
+                )
+
+            with allure.step(
+                f"Step 5 — Verify {USER_1_NAME!r} and {USER_2_NAME!r} are "
+                "NOT in PARTICIPANTS"
+            ):
+                popper = chat.open_participants_popover(section="users", timeout=UI_ELEMENT_TIMEOUT)
+                popper_text = popper.text_content() or ""
+                assert USER_1_NAME not in popper_text and USER_2_NAME not in popper_text, (
+                    f"{USER_1_NAME!r}/{USER_2_NAME!r} should NOT be added "
+                    f"after Cancel, popover: {popper_text!r}"
+                )
+                assert USER_4_NAME in popper_text, (
+                    f"Baseline participant {USER_4_NAME!r} should still be "
+                    f"present, got: {popper_text!r}"
+                )
+                chat.dismiss_participants_popover()
+
+            with allure.step("Side-channel check — no unexpected console errors across the full flow"):
+                assert not console_messages, f"Unexpected console errors: {[m.text for m in console_messages]!r}"
+
+        finally:
+            if conv_id:
+                try:
+                    chat.open_conversation_context_menu(conv_id, timeout=UI_ELEMENT_TIMEOUT)
+                    chat.click_conversation_menu_item("delete", timeout=UI_ELEMENT_TIMEOUT)
+                    delete_response = chat.confirm_delete_conversation(conv_id, timeout=UI_ELEMENT_TIMEOUT)
+                    assert delete_response.status in (200, 204), (
+                        f"DELETE for conversation {conv_id} should succeed, got {delete_response.status}"
+                    )
+                    logger.info("Cleaned up conversation %s", conv_id)
+                except Exception as exc:
+                    logger.warning("Failed to clean up conversation %s: %s", conv_id, exc)
