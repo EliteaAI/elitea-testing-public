@@ -84,6 +84,17 @@ class ChatPage(BasePage):
         description="Composer's microphone (dictation) button.",
     )
 
+    # ELITEA-2182/2183: occupies the composer's send-button slot WHILE
+    # streaming — mutually exclusive with both send_button and
+    # voice_mode_button (UserInput.jsx ~line 554-562, bare BaseBtn with
+    # onClick={onStop}). Testid added for these cases
+    # (EliteaAI/EliteaUI@7e5b0264 on automation/testids) — zero prior
+    # callers before this pair (canon #511 first caller).
+    stop_generation_button = LocatorDescriptor(
+        testid="chat-stop-generation-button",
+        description="Stop control shown in the composer's send-button slot while a response streams.",
+    )
+
     # Model selector's gear/settings icon — pre-existing testid with ZERO
     # prior page-object callers before ELITEA-2179/2466 (canon #511 first
     # caller). Distinct from `model_selector_name` (the LLM-name text).
