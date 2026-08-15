@@ -2,7 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: test-automation-engineer (combined analyst+
+a time; last confirmed by: qa-engineer analyst, ELITEA-2171/2172, 2026-08-15
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: test-automation-engineer (combined analyst+
 implementer), ELITEA-2460, 2026-08-15 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: qa-engineer analyst,
 ELITEA-2461, 2026-08-15
@@ -38,7 +40,76 @@ qa-engineer analyst, ELITEA-2111, 2026-08-15;
 previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
-ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)).
+ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03))).
+
+## ELITEA-2171/2172 — Users-dropdown remove-control: Cancel-preserves-user
+## (`already-covered` vs merged ELITEA-2168) + owner-row-has-no-delete-control
+## (`ready-for-automation`, new observable, zero new testids)
+- **ELITEA-2171** ("Cancel Remove User Dialog Keeps User in Participants
+  List") is verbatim ELITEA-2168's own Step 10 (source
+  `test_team_users_mention_and_remove_participants.py` lines 560–576, merged
+  `origin/automation/base`) — hover a non-owner row, click delete, click
+  Cancel, verify badge count AND dropdown listing unchanged. Classified
+  `already-covered`, traceability AFS only.
+- **ELITEA-2172** ("Conversation Owner Cannot Be Removed") is a GENUINELY NEW
+  observable — ELITEA-2168's test removes two different non-owner
+  participants but never once hovers/asserts anything about the OWNER's own
+  row. Classified `ready-for-automation`.
+- **Mechanism, source- AND live-confirmed**: the product implements this as
+  "you cannot remove **yourself**", not an explicit "conversation owner"
+  role/flag. `UserMenu.jsx`'s per-row `isSelectable = selectable &&
+  user.entity_meta?.id !== currentUserId` (`currentUserId` = `state.user.id`,
+  the CURRENTLY LOGGED-IN session) gates the delete `IconButton`'s
+  hover-visibility CSS (`'&:hover #DeleteButton': { visibility: selectable ?
+  'visible' : 'hidden' }` — the `selectable` param `userItemStyles` receives
+  is actually the per-row `isSelectable`). The delete button is ALWAYS
+  present in the DOM (never conditionally rendered) — even for the
+  "un-removable" row — it just never becomes visible on hover. **Assert via
+  `not_to_be_visible()`, never `to_have_count(0)`** (same class of gotcha as
+  the ELITEA-2146/2147/2148 collapsed-folder-items note above — an
+  always-mounted, visibility-toggled node needs a visibility assertion, a
+  count-based one passes for the wrong reason). In THIS single-account
+  testing environment "yourself" and "the conversation's creator/owner"
+  coincide (only one real account exists, and it always creates the
+  conversations it opens) — asserting against it faithfully verifies the
+  case's own intent, this is a mechanism clarification, not a defect or a
+  case-text drift.
+- **Live-confirmed via Playwright MCP** (conversation `/chat/420`, badge
+  went 1→2 after adding Hrach Sargsyan): hovering the owner's row ("TB Test
+  Bot") produced NO "Remove user" accessible button in the post-hover
+  snapshot; hovering the SAME dropdown's non-owner row (Hrach Sargsyan)
+  IMMEDIATELY produced `button "Remove user"` — same session, same popover
+  instance, ruling out a stale-render artifact.
+- **Zero new testids needed for either case** — `chat-participants-badge-button`,
+  `chat-participant-row-{unique_id}` (dynamic, ELITEA-2168), and
+  `chat-participant-remove-button` are all already on BOTH `main` and
+  `automation/testids` (fresh `git fetch origin` + `git grep` this session).
+  Owner id resolution reuses the exact same `ConversationAPI.get_conversation()`
+  → `meta.user_name`/`entity_meta.id` mapping ELITEA-2168's test already
+  established for non-owner rows — just matched against `${TEST_USER}`'s own
+  display name instead of a searched-for name.
+- **Gotcha — running pytest concurrently with manual Playwright-MCP
+  exploration against the SAME localhost dev server risks cross-session
+  conversation contamination.** This session ran the merged ELITEA-2168
+  pytest test live (to reconfirm ELITEA-2171 unrelated to the AFS's own
+  manual repro) WHILE a manual Playwright-MCP browser was also open on a
+  DIFFERENT, shared conversation (`/chat/420`). Both pytest attempts failed
+  at their own Setup stage before reaching Step 10 (once on the
+  already-tracked #1082 stale-conversation flake, once on an "Add users"
+  search timeout) — and one of them appears to have landed on and added
+  participants (Daniyar Chambylov, Ihar Bylitski — ELITEA-2168's own SETUP
+  users) to `/chat/420` itself rather than a fresh conversation, mid-session.
+  Root cause not fully isolated (didn't chase which specific run did it —
+  pytest's own browser context is separate from the MCP one, so this is
+  server/backend-side conversation-list contention, not a shared browser
+  session), but the practical lesson holds regardless of exact mechanism:
+  **don't run pytest against localhost while a manual MCP exploration
+  session is also active on the same dev server** — either serialize them,
+  or expect to need extra cleanup on whichever conversation the manual
+  session was using. Recovered by restoring `/chat/420` to its original
+  1-participant state before ending the session.
+- Both AFS files: `test-specs/chat-interface/lcovered_cancel-remove-user-dialog-keeps-user-in-participants_ELITEA-2171.md`,
+  `test-specs/chat-interface/l2_conversation-owner-has-no-remove-control-in-users-dropdown_ELITEA-2172.md`.
 
 ## ELITEA-2460 — near-total duplicate of ELITEA-2148, `already-covered`
 ## (zero new code — the 3-observable covering test already proves all 5 steps)
