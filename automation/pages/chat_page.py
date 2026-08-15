@@ -4267,6 +4267,39 @@ class ChatPage(BasePage):
         self.page.mouse.click(5, 5)
         self.delete_confirm_dialog.wait_for(state="hidden", timeout=timeout)
 
+    # Scoped raw handle — #579-shape-1 sanctioned exception (third-party MUI
+    # internal node, ELITEA-2193): the warning icon inside the delete-confirm
+    # dialog's title is MUI icon-component render output
+    # (``Modal.DeleteEntityModal``'s ``titleIcon={ModalConstants.MODAL_ICON_TYPE
+    # .warning}`` prop, rendered by the shared ``BaseModal``) — library-internal
+    # chrome with no app testid placeable on it. It lives inside the real app
+    # testid ``delete-confirm-title``, so the bare ``svg`` tag selector is
+    # scoped off that parent field, never a free-floating page-level handle.
+    # Do not extend this to any handle that COULD carry a testid. Same shape
+    # as ``DELETE_DIALOG_BACKDROP`` above (ELITEA-2116) for the dialog's own
+    # ``MuiBackdrop-root``.
+    DELETE_CONFIRM_TITLE_ICON = "svg"
+
+    def get_delete_confirm_title_icon(self, timeout: int = 5000):
+        """Return the Locator for the warning ``<svg>`` icon inside the
+        'Remove X?' confirmation dialog's title (ELITEA-2193).
+
+        See ``DELETE_CONFIRM_TITLE_ICON`` docstring for the scoped-raw-handle
+        justification. Caller asserts the icon's computed styling, e.g.
+        ``expect(icon).to_have_css("fill", "rgb(233, 121, 18)")`` — this
+        method only resolves and waits for the handle, per the page-object
+        layer never owning assertions.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator for the single <svg> node inside ``delete_confirm_title``.
+        """
+        icon = self.delete_confirm_title.locator(self.DELETE_CONFIRM_TITLE_ICON)
+        icon.wait_for(state="visible", timeout=timeout)
+        return icon
+
     # ------------------------------------------------------------------
     # Internal Tools / Image Creation
     # ------------------------------------------------------------------

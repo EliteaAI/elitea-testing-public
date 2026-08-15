@@ -84,6 +84,21 @@ Known defects (AFS § Known Defects Found):
   unguarded ``click_create_conversation()`` can land on a stale
   conversation. Worked around via the same retry-guarded
   ``_open_blank_conversation()`` ELITEA-2167's test already implements.
+
+Extended by ELITEA-2193 (this pass, ``extend-existing``, AFS
+test-specs/chat-interface/lextend_owner-removes-non-owner-tooltip-and-warning-icon_ELITEA-2193.md):
+two additive gap assertions inserted around Step 8's existing
+``open_remove_user_dialog()`` call — neither Step 8 nor Step 9's own
+existing assertions were modified. (1) A new step calls the read-only
+``ChatPage.hover_participant_user_row()`` (ELITEA-2172) BEFORE Step 8 and
+asserts the delete icon's accessible name is exactly "Remove user"
+(``DeleteParticipantButton.jsx``'s ``removeLabel``, entity type "user").
+(2) A new step, inserted between the existing Step 8 and Step 9, asserts
+the 'Remove user?' dialog's title shows an orange warning ``<svg>``
+(``fill: rgb(233, 121, 18)``) via the new ``ChatPage.get_delete_confirm_title_icon()``
+(#579-shape-1 sanctioned raw-handle exception — MUI icon-component internal
+node, scoped off the existing ``delete-confirm-title`` testid). Both gaps
+were live-confirmed during ELITEA-2193's analysis; no defect found.
 """
 
 import logging
@@ -94,6 +109,7 @@ import pytest
 from api import ConversationAPI
 from components.mui import Dialog
 from pages.chat_page import ChatPage
+from playwright.sync_api import expect
 
 logger = logging.getLogger("elitea.tests.chat")
 
@@ -528,6 +544,16 @@ class TestTeamUsersMentionAndRemoveParticipants:
                 )
 
             with allure.step(
+                f"Step 3 (ELITEA-2193 gap) — Hover {USER_2_NAME!r}'s row "
+                "read-only (before deciding to click); verify the delete "
+                "icon exposes the 'Remove user' tooltip/accessible name"
+            ):
+                remove_button = chat.hover_participant_user_row(
+                    participant_id_by_name[USER_2_NAME], timeout=UI_ELEMENT_TIMEOUT,
+                )
+                expect(remove_button).to_have_accessible_name("Remove user")
+
+            with allure.step(
                 f"Step 8 — Open Users dropdown, hover {USER_2_NAME!r}, "
                 "click delete icon — 'Remove user?' modal appears"
             ):
@@ -541,6 +567,13 @@ class TestTeamUsersMentionAndRemoveParticipants:
                 assert dialog_text == expected_dialog_text, (
                     f"Expected dialog text {expected_dialog_text!r}, got {dialog_text!r}"
                 )
+
+            with allure.step(
+                "Step 4 (ELITEA-2193 gap) — Verify the 'Remove user?' "
+                "dialog's title shows an orange warning icon"
+            ):
+                warning_icon = chat.get_delete_confirm_title_icon(timeout=UI_ELEMENT_TIMEOUT)
+                expect(warning_icon).to_have_css("fill", "rgb(233, 121, 18)")
 
             with allure.step(
                 f"Step 9 — Click Remove; verify {USER_2_NAME!r} removed "
