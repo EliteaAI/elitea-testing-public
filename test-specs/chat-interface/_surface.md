@@ -2,7 +2,10 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2461, 2026-08-15
+a time; last confirmed by: test-automation-engineer (combined analyst+
+implementer), ELITEA-2460, 2026-08-15 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: qa-engineer analyst,
+ELITEA-2461, 2026-08-15
 (supersedes nothing below — new section, other sections unchanged; previous
 confirmer: test-automation-engineer (combined analyst+
 implementer), ELITEA-2157/2158, 2026-08-15 (supersedes nothing below — new
@@ -36,6 +39,24 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)).
+
+## ELITEA-2460 — near-total duplicate of ELITEA-2148, `already-covered`
+## (zero new code — the 3-observable covering test already proves all 5 steps)
+- ELITEA-2460's 5 granular steps (expand folder-with-conversations → conversations
+  listed → collapse → hidden → expand empty folder → "No conversations added")
+  decompose 1:1 onto the 3 compound observables
+  `test_folder_displays_conversations_or_empty_state` (ELITEA-2148, merged
+  `origin/automation/base` commit `d2b5d1aa`, PR #1545, chat-remaining wave-07)
+  already asserts. No gap — every case step maps onto an existing assertion,
+  and the covering test is stricter (exact empty-state string, visibility-based
+  not count-based collapse check).
+- Live-reconfirmed this session: re-ran the covering test standalone, PASSED,
+  `1 passed in 17.09s`.
+- AFS: `test-specs/chat-interface/lcovered_folder-displays-conversations-when-expanded-and-empty-state_ELITEA-2460.md`.
+- **Pattern reinforced (same class as ELITEA-2461/2457/2123/2127 below)**: this
+  module's near-duplicate case pattern also recurs on the expand/collapse/
+  empty-state surface — grep this digest by BEHAVIOUR ("empty state", "expand")
+  before assuming a fresh case needs new code.
 
 ## ELITEA-2461 — near-total duplicate of ELITEA-2149 + ELITEA-2151 combined,
 ## `already-covered` (zero new code, two-spec dedup)
