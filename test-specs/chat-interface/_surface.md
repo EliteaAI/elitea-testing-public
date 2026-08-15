@@ -1287,6 +1287,21 @@ handle ELITEA-2458 added was reused verbatim and all resolved correctly.
 - No success toast on pin (`usePinConversation.hooks.js`'s
   `onPinConversation` only calls `toastError` on FAILURE) — don't wait for
   one.
+- **Resolved/added during ELITEA-2150 implementation:** unpin is the SAME
+  `chat-conversation-menu-pin-menuitem` testid, label flips to `"Unpin"`.
+  A PINNED conversation's row carries the same `aria-disabled="true"`
+  draggable-wrapper ancestor already documented above for pinned FOLDERS
+  (`isDragDisabled={isPinned}`) — confirmed live via `browser_evaluate`
+  DOM-chain inspection, a plain (non-forced) click on the scoped 3-dot menu
+  button times out ("element is not enabled") for a PINNED conversation
+  specifically. `ChatPage.open_conversation_context_menu()` already calls
+  `menu_button.click(force=True)` (pre-existing, ELITEA-2114) so this needs
+  no new workaround — but it's the first case to actually exercise a pinned
+  conversation's own context menu (ELITEA-2149 only ever opens the menu
+  BEFORE pinning), so record it here before someone "discovers" it again.
+  Unpin flips `data-pinned` `"true"`→`"false"` and `chat-pin-icon` count
+  `1`→`0`; the conversation reappears scoped inside its date group
+  (`is_conversation_in_group()`), same as any freshly-created conversation.
 
 ## Conversation search (ELITEA-2162)
 - `conversation-search-button` (on-main) opens `conversation-search-input`
