@@ -1139,6 +1139,27 @@ class ChatPage(BasePage):
         description="Delete (confirm) button inside the delete-confirmation modal.",
     )
 
+    # "Make public" confirmation dialog (DotMenu.jsx's shared Modal.BaseModal
+    # branch — ELITEA-2188). Previously carried zero testids at all (AFS §
+    # Concrete Handles gap #1); testids added this implementation via
+    # caller-supplied dialogTestId/confirmButtonTestId/cancelButtonTestId
+    # props threaded through DotMenu.jsx, same precedent as
+    # delete_confirm_* above being a shared-component testid declared here.
+    make_public_confirm_dialog = LocatorDescriptor(
+        testid="chat-conversation-make-public-confirm-dialog",
+        description="'Public conversation?' confirmation modal container.",
+    )
+
+    make_public_confirm_button = LocatorDescriptor(
+        testid="chat-conversation-make-public-confirm-button",
+        description="'Make public' (confirm) button inside the make-public confirmation modal.",
+    )
+
+    make_public_cancel_button = LocatorDescriptor(
+        testid="chat-conversation-make-public-cancel-button",
+        description="Cancel button inside the make-public confirmation modal.",
+    )
+
     # ------------------------------------------------------------------
     # Chat folders — creation via CHATS header icon (ELITEA-2132)
     # ------------------------------------------------------------------
@@ -4218,6 +4239,27 @@ class ChatPage(BasePage):
             timeout=timeout,
         )
 
+    @action("Confirm make conversation public")
+    def confirm_make_public(self, conversation_id: str | int, timeout: int = 10000):
+        """Click the make-public-confirm button and return the PUT response
+        (ELITEA-2188 — AFS § Test Steps step 3, Axis 2 addition).
+
+        Waits for the network response so callers can assert its status
+        code (200) — proves the publicness change is server-persisted, not
+        just a client-side list re-render (same idiom as
+        ``confirm_delete_conversation()`` above).
+        """
+        with self.page.expect_response(
+            lambda r: (
+                r.request.method == "PUT"
+                and "/conversation/prompt_lib/" in r.url
+                and str(conversation_id) in r.url
+            ),
+            timeout=timeout,
+        ) as resp_info:
+            self.make_public_confirm_button.click()
+        return resp_info.value
+
     @action("Confirm delete conversation")
     def confirm_delete_conversation(self, conversation_id: str | int, timeout: int = 10000):
         """Click the delete-confirm button and return the DELETE response.
@@ -5629,6 +5671,39 @@ class ChatPage(BasePage):
         icon_wrapper = item.locator(self.CONVERSATION_MULTI_USER_ICON)
         expect(icon_wrapper).to_have_attribute(
             "data-has-icon", "true" if expected_has_icon else "false", timeout=timeout,
+        )
+
+    def wait_for_conversation_type(
+        self, conversation_id: str | int, expected_type: str, timeout: int = 10000,
+    ):
+        """Assert *conversation_id*'s sidebar multi-person icon wrapper settles
+        to ``data-conversation-type=<expected_type>`` (ELITEA-2188).
+
+        Sibling of ``wait_for_conversation_multi_user_icon()`` above, added
+        for this case's own observable — "public conversations show a
+        GREEN icon, private-with-users conversations show the DEFAULT
+        (non-green) icon" — which ``data-has-icon`` alone cannot
+        distinguish (it is ``"true"`` for BOTH ``public`` and
+        ``private_with_users``, per that method's own docstring). The
+        underlying color distinction lives only in the rendered ``<svg>``'s
+        raw ``fill`` attribute (``public`` -> ``theme.palette.status.published``,
+        ``private_with_users`` -> ``theme.palette.icon.fill.default``); per
+        the testid=identity/state=data-* ruling
+        (``.agents/testing.md`` § Locator policy), the compliant handle is
+        this NEW ``data-conversation-type`` attribute on the SAME
+        ``conversation-multi-user-icon`` testid, not a raw CSS/fill read.
+        ``expected_type`` is one of ``"public"``, ``"private_with_users"``,
+        ``"private_without_users"`` (``ConversationItem.jsx``'s own
+        ``getConversationType()`` values).
+
+        Uses ``expect().to_have_attribute()`` (auto-retrying) for the same
+        async-settle reason documented on
+        ``wait_for_conversation_multi_user_icon()`` above.
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        icon_wrapper = item.locator(self.CONVERSATION_MULTI_USER_ICON)
+        expect(icon_wrapper).to_have_attribute(
+            "data-conversation-type", expected_type, timeout=timeout,
         )
 
     new_conversation_greeting = LocatorDescriptor(
