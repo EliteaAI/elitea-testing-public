@@ -2700,3 +2700,44 @@ confirmer: qa-engineer analyst, ELITEA-2168, 2026-08-15)
   (Conversation id `420`, "Review attached documents" on project 471, is now
   permanently public from this session's exploration — dev/local test data,
   low-risk, left as-is.)
+
+**Resolved/added during ELITEA-2188 implementation (2026-08-15):**
+- **Both testid gaps closed** on `automation/testids`
+  (EliteaAI/EliteaUI@7292e18f): `chat-conversation-make-public-confirm-dialog`
+  / `-confirm-button` / `-cancel-button` (threaded through `DotMenu.jsx` via
+  new caller-supplied `dialogTestId`/`confirmButtonTestId`/`cancelButtonTestId`
+  props, same precedent as `submenuTestId`); `data-conversation-type`
+  (`"public"`/`"private_with_users"`/`"private_without_users"`) added to the
+  existing `conversation-multi-user-icon` wrapper — asserted via new
+  `ChatPage.wait_for_conversation_type()`.
+- **Known, already-documented sidebar staleness defect
+  (EliteaAI/elitea-testing-public#989, same class as
+  `test_invite_users_add_cancel_close.py` Step 10) also fires on THIS case's
+  own observables** — confirmed live: `data-conversation-type` stayed
+  `"private_without_users"` for several seconds straight after an invited
+  participant's Send (well after the server had persisted it), and stayed
+  stale after making a conversation public too. The suite's established fix
+  (`page.reload()` before re-reading the sidebar icon state) is required in
+  BOTH places — right after conversation B's Send, and right after the
+  make-public confirm — not just the one place ELITEA-2167 already
+  documented it.
+- **A SECOND back-to-back `+Chat` click in one test (open blank -> send ->
+  open blank AGAIN for a second conversation) reliably hits the
+  #1082-class stale-conversation race** — the first click after a Send often
+  lands back on the just-sent conversation instead of a genuinely blank one.
+  The `_open_genuinely_blank_conversation`-style settle-and-retry guard
+  (already established in `test_invite_users_add_cancel_close.py`) is
+  needed for ANY test creating 2+ fresh conversations in one run, not only
+  the specific scenario that first surfaced it.
+- **New timing race found and fixed this pass**: right after
+  `click_add_users_confirm()`, the "Add users" modal's own MUI Dialog close
+  transition can still be resolving when the very next action targets the
+  composer's send button — `send_button.click(force=True, ...)` can fire
+  during that transition and be silently lost (message typed, never sent, no
+  navigation). Fix: `chat.add_users_dialog.wait_for(state="hidden", ...)`
+  before touching the composer. Add this wait to any future flow that sends
+  a message immediately after the Add-users confirm.
+- **Known defect EliteaAI/elitea-testing-public#719** (Add-users picker's
+  checkmark-icon `sx`-on-raw-svg console warning) re-confirmed on THIS case's
+  own conversation-B setup too (not just ELITEA-2167/2168's flows) — filtered
+  via the same `_is_known_checkicon_sx_svg_warning_719` idiom.
