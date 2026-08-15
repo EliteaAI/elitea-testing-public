@@ -31,3 +31,22 @@ yourself). If you must re-run, either (a) accept a single run as your evidence
 and stop, or (b) manually verify/clean project 471's conversation list between
 runs first. A Step-1 failure on re-run N>1 in the SAME session is #1082, not a
 new regression — don't file a duplicate.
+
+**Update (ELITEA-2175/2176, same day):** the SAME underlying mechanism —
+`ChatPage.navigate_to_chat()`'s own docstring: "the SPA may redirect to the
+last-viewed conversation stored in the browser session" — also fires on a
+genuinely FRESH session (not just self-triggered reruns), reproduced 4/4
+times, and as a DELAYED effect (fires ~1-2s AFTER a blank greeting + 0
+message count are already observed, not synchronously with the +Chat
+click). `_open_blank_conversation()`'s single check (greeting visible) is
+provably insufficient — confirmed the ORIGINAL merged
+`TestInviteUsersAddCancelClose` test now fails consistently (2/2) on this in
+the current environment, unrelated to any rerun of my own. Fix used
+(additive, does not touch that shared helper): a sibling
+`_open_genuinely_blank_conversation()` in the same test file — click +Chat,
+verify greeting + message count 0, THEN wait ~1.5s and RE-verify both
+message count AND `page.url` (must stay bare `/chat`, no numeric id) before
+proceeding, retrying up to 3x. A future dispatch that fixes
+`_open_blank_conversation()` itself needs the shared-file regression
+protocol (enumerate + re-run every caller: at minimum ELITEA-2167's own test
+plus this file's two new ones).
