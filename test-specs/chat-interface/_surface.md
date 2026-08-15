@@ -2644,3 +2644,59 @@ covering test 3× back-to-back this session:
 - Family AFS:
   `test-specs/chat-interface/l2_participants-dropdown-click-name-inserts-mention_ELITEA-2173.md`
   (same `afs_path` for both ELITEA-2173 and ELITEA-2174).
+
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: qa-engineer analyst, ELITEA-2168, 2026-08-15)
+
+## "Make public" + multi-user icon color (ELITEA-2188, qa-engineer analyst, 2026-08-15)
+
+- **`conversation-multi-user-icon`'s color is the actual signal, `data-has-icon`
+  is presence-only.** The wrapper (`ConversationItem.jsx:419`, existing testid)
+  already carries `data-has-icon="true"/"false"` (ELITEA-2167), but that boolean
+  is `true` for BOTH `private_with_users` AND `public` — the GREEN-vs-default
+  distinction only lives in the child `<svg>`'s `fill` attribute
+  (`theme.palette.status.published` = `#2BD48D` for public vs
+  `theme.palette.icon.fill.default` = `#A9B7C1` for private-with-users;
+  confirmed live by making a real conversation public and reading both colors
+  via direct DOM query). **No `data-*` attribute yet distinguishes them** — a
+  genuine testid gap (not a defect), specced in
+  `l3_public-conversation-green-icon-in-chat-list_ELITEA-2188.md` § Concrete
+  Handles gap #2 as a new `data-conversation-type`/`data-public` attribute on
+  the SAME element (testid=identity, state=data-* ruling).
+- **The sharp negative control for "private = not green" is a WITH-PARTICIPANTS
+  private conversation, not a single-owner one.** A single-owner conversation
+  renders NO icon at all (`data-has-icon="false"`) — that only proves
+  presence/absence, not color. Use a private conversation that already has
+  `data-has-icon="true"` (2+ participants) as the negative control so the test
+  actually isolates "public vs private", matching what the case's own step 3
+  wording asks for.
+- **"Make public" confirmation dialog (`DotMenu.jsx`'s plain `Modal.BaseModal`
+  branch, lines 535–545) has ZERO testids** — confirmed live via direct DOM
+  read of the open dialog: no `data-testid` anywhere inside it. Root cause:
+  `BaseModal.jsx` accepts `data-testid`/`titleTestId`/`closeButtonTestId`/
+  `confirmButtonTestId`/`cancelButtonTestId` props, but `DotMenu.jsx`'s
+  `Modal.BaseModal` call never forwards any of them from `activeDialog.props`
+  (unlike the sibling `Modal.DeleteEntityModal` branch, which DOES carry
+  testids — `delete-confirm-dialog`/`delete-confirm-button`/etc.). This is a
+  SHARED gap: `BucketItem.jsx`'s "Delete bucket?" confirm (artifacts feature)
+  uses the exact same `alertTitle`/`confirmText`/no-`entityName` shape and has
+  the identical zero-testid problem — grepped, only these two call sites exist
+  (`grep -rn "alertTitle:" ../EliteaUI/src`). Fix threads new testid props
+  through `DotMenu.jsx`'s `activeDialog.props` the same way `alertTitle` etc.
+  already are — same caller-supplied-prop precedent as the existing
+  `submenuTestId` on the "Move to" item.
+- **`PUT /api/v2/elitea_core/conversation/prompt_lib/{project}/{id}`** with
+  `is_private: false` is the real endpoint behind "Make public" (`onEdit()` in
+  `handleMakePublic`, `ConversationItem.jsx:161-163`) — confirmed live,
+  `200 OK`. **No inverse UI action exists** — once public, `menuItems` filters
+  the "Make public" item out entirely and no "Make private" item is ever
+  added (`ConversationItem.jsx`'s `.filter(item => item.label !== 'Make
+  public')` at the end of the `menuItems` `useMemo`). A conversation made
+  public during live exploration CANNOT be reverted via the UI; a bare
+  `fetch()` PUT from the browser console also failed (`Failed to fetch` — the
+  real app call carries a bearer token not reachable from `localStorage`).
+  **Analyst/implementer consequence: always create a FRESH conversation for
+  this flow, never reuse an existing one you don't want permanently public.**
+  (Conversation id `420`, "Review attached documents" on project 471, is now
+  permanently public from this session's exploration — dev/local test data,
+  low-risk, left as-is.)
