@@ -146,7 +146,7 @@ class TestLastRemainingConversationDeletion:
 
             with allure.step(
                 "Step 1 — Verify exactly one conversation exists in the left "
-                "panel; no others"
+                "panel; no others; no folders"
             ):
                 # Wait for the sidebar's own render of conv_id FIRST — a bare
                 # count() read races the SPA's post-navigation list render
@@ -155,6 +155,10 @@ class TestLastRemainingConversationDeletion:
                 expect(chat.get_conversation_item(conv_id)).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
                 assert chat.get_conversation_link_count() == 1, (
                     f"Expected exactly 1 conversation, got {chat.get_conversation_link_count()}"
+                )
+                assert chat.get_folder_link_count() == 0, (
+                    "No chat-folder-item-* should be present — project 400's "
+                    f"sole conversation is ungrouped, got {chat.get_folder_link_count()} folder(s)"
                 )
 
             with allure.step(

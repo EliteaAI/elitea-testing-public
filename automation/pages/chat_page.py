@@ -1231,6 +1231,11 @@ class ChatPage(BasePage):
     # state / conversation list) as descendants.
     FOLDER_ITEM = '[data-testid="chat-folder-item-{}"]'
 
+    # Prefix-match selector enumerating every folder item regardless of id —
+    # same idiom as CONVERSATION_ITEM_PREFIX above. Used for "no folders
+    # present" count assertions (ELITEA-2117).
+    FOLDER_ITEM_PREFIX = '[data-testid^="chat-folder-item-"]'
+
     # Scoped sub-selectors — non-unique across simultaneously-rendered
     # folders, ALWAYS resolved via .locator() on a FOLDER_ITEM-scoped
     # element, never at page level.
@@ -3131,6 +3136,18 @@ class ChatPage(BasePage):
         search results.
         """
         return self.page.locator(self.CONVERSATION_ITEM_PREFIX)
+
+    def get_folder_link_count(self) -> int:
+        """Get count of folder items rendered in the sidebar
+        (FOLDER_ITEM_PREFIX, page-wide, unscoped) — for "no folders
+        present" assertions (ELITEA-2117).
+
+        Returns:
+            Number of folder items found.
+        """
+        count = self.page.locator(self.FOLDER_ITEM_PREFIX).count()
+        logger.info(f"Folder link count: {count}")
+        return count
 
     @action("Click a conversation item")
     def click_conversation_item(self, conversation_id: str | int, timeout: int = 5000):
