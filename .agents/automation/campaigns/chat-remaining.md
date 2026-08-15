@@ -271,4 +271,10 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- (none)
+- **wave-12** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w12`,
+  base=`origin/automation/base`, cases 2177,2178,2179,2182,2183,2184,2185,2186,
+  2187,2465,2466 (11), clusters `[2177,2178,2465]` (conversation-starters family
+  — 2465 suspected near-dup of 2177 by title) + `[2179,2466]` (send-button
+  visibility, 2466 suspected near-dup of 2179) + `[2182,2183]` (stop-generation)
+  + `[2184,2185,2186,2187]` (regenerate family). Task ID `wiqn68nh8`, Run ID
+  `wf_6c4144bc-7d7`.
