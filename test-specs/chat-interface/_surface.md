@@ -3,8 +3,10 @@
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
 a time; last confirmed by: test-automation-engineer (combined analyst+
-implementer), ELITEA-2115/2116/2117/2456, 2026-08-15 (supersedes nothing
+implementer), ELITEA-2163/2164/2165/2463, 2026-08-15 (supersedes nothing
 below — new section, other sections unchanged; previous confirmer:
+test-automation-engineer (combined analyst+implementer), ELITEA-2115/2116/
+2117/2456, 2026-08-15; previous confirmer:
 qa-engineer analyst, ELITEA-2111, 2026-08-15;
 previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
@@ -1404,3 +1406,70 @@ Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
   mouse event, not a `page.evaluate()`/JS-dispatched substitution, and it
   correctly lands on `MuiDialog-container` (which still wraps/triggers MUI's
   `onClose(reason: 'backdropClick')`).
+
+## Search gap-family (ELITEA-2163/2164/2165/2463) — extends the ELITEA-2162/2464
+## covering spec, no new testids' worth of blockers except two
+- **No-results state has a live defect**: typing a query that matches nothing
+  on a project with OTHER, non-matching data (e.g. project 399 "Private", 45+
+  pre-existing folders/conversations) shows BOTH `Conversations.jsx`'s correct
+  "No conversations found / Try adjusting your search terms" AND
+  `GroupedConversations.jsx`'s "Still no conversations created." — the latter
+  is only supposed to render when the project has genuinely never had any
+  conversation (`totalConversationsAmount === 0`), but that prop is fed the
+  search-**filtered** total (0 on no-match), not the true unfiltered total.
+  Filed: EliteaAI/elitea-testing-public#1525. Not blocking (case's own pass
+  criteria is satisfied by the correct message also appearing), asserted as
+  an `expect.soft()` regression guard, not a hard fail.
+- **Two new testids added this pass** (commit `EliteaAI/EliteaUI@d5e0ba63` on
+  `automation/testids`, both zero-functional-impact attribute-only adds):
+  `chat-search-no-results-message` (the Box wrapping "No conversations
+  found" / "Try adjusting your search terms" in `Conversations.jsx`) and
+  `chat-conversations-empty-state-message` (the "Still no conversations
+  created." Typography in `GroupedConversations.jsx`).
+- **The X/clear icon (`conversation-search-clear-button`) fully UNMOUNTS the
+  search input** on click (confirmed live via accessibility-tree snapshot —
+  the input element disappears from the DOM entirely, not merely emptied),
+  restoring the exact same folders+date-grouped default view and re-showing
+  the magnifier button (`conversation-search-button`). Not a "clear text,
+  keep field open" behavior — a full close.
+- **Deleting characters re-triggers the SAME debounced filter mechanism as
+  typing** — live-confirmed 1→5 match growth going from a 30-char exact name
+  down to a 7-char shared prefix (`"Automat"`), matching BOTH previously
+  seeded `AutomationSearch*` conversations AND 3 pre-existing
+  `AutomationRenameTest` FOLDERS (which render as **disabled** buttons when
+  matched by a search query — folders are shown but not clickable in search
+  results, confirmed live). Clearing the field to empty (`Meta+a` +
+  `Backspace` — plain `Control+a` does NOT select-all in Chromium on macOS,
+  same gotcha `.claude/rules/mui-patterns.md` already documents for other
+  MUI inputs) restores the exact same unfiltered default view — NOT a
+  distinct "empty search" placeholder state (`isSearchMode =
+  !!debouncedSearchQuery.trim()` in `Conversations.jsx` — trim()'d-empty
+  means search mode itself turns off, same code path as never having opened
+  search).
+- **Search results genuinely separate pinned from date-grouped tiers, live-
+  confirmed via a real pin action**: pinning a conversation (`+` context menu
+  → "Pin on top", `chat-conversation-menu-pin-menuitem`) then searching for a
+  query that matches it renders the pinned item OUTSIDE any
+  `CONVERSATION_GROUP_HEADER` container (same DOM position as
+  `PinnedConversations`' non-search rendering — right after the folders
+  list, before the date-grouped section), while a separately-matching
+  non-pinned conversation stays correctly scoped inside its date group
+  (e.g. "Today"). Root cause (source-confirmed,
+  `useQueryFoldersList.hooks.js`): `pinned`/`folders`/date-grouped
+  conversations all come from the SAME `folder/prompt_lib` call, with the
+  SAME `query` param filtering all three tiers together — not a client-side
+  post-filter on a subset. `ChatPage.is_conversation_pinned()` (pre-existing,
+  `data-pinned` attribute) is the right check — it uses the page-wide
+  `CONVERSATION_ITEM` testid, which resolves regardless of the item's
+  pinned/grouped/foldered DOM position.
+- **Project 399 ("Private", the default/settings project) is NOT a clean
+  sandbox** — confirmed this pass to carry 45+ pre-existing folders (many
+  named "ABC", "New folder", "New folder6", "ELITEA2459RenameTest",
+  "AutomationRenameTest" ×3) plus other conversations, on top of the 4
+  non-`autotest_`-named ones already documented above. This is actually
+  USEFUL for search-family cases specifically (a genuine "no results on a
+  non-empty project" precondition needs exactly this — see project-400's
+  own caveat above, "do NOT use it for a no-results-search case, it would
+  prove the wrong thing"), but any case asserting an exact conversation/
+  folder COUNT on project 399 must still seed+scope its own data, never
+  count on the pre-existing set staying stable.
