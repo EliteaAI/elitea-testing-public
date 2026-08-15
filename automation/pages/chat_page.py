@@ -3689,6 +3689,51 @@ class ChatPage(BasePage):
         self.page.wait_for_timeout(100)  # Wait for clear to complete
         self.folder_name_input.press_sequentially(name, delay=30)
 
+    @action("Clear folder name in inline editor")
+    def clear_folder_name(self) -> None:
+        """Clear the inline folder-name editor's value.
+
+        Mirrors ``clear_conversation_name()`` exactly — isolated from
+        ``set_folder_name()``/``paste_folder_name()`` so a caller can assert
+        the empty intermediate state as its own step. Assumes the editor is
+        already open and ``folder_name_input`` is visible/focused (e.g.
+        right after ``open_folder_rename_editor()``).
+        """
+        logger.info("Clearing folder name")
+        self.folder_name_input.click()
+        self.page.wait_for_timeout(100)  # Wait for focus
+        self.folder_name_input.clear()
+
+    @action("Paste folder name in inline editor via real clipboard paste")
+    def paste_folder_name(self, text: str) -> None:
+        """Paste *text* into the inline folder-name editor via a REAL clipboard paste.
+
+        Mirrors ``paste_conversation_name()`` exactly (ELITEA-2129 applies the
+        same real-clipboard-paste idiom to ``FolderItem.jsx``'s rename editor
+        as ELITEA-2104 already established for ``ConversationItem.jsx``) —
+        stages *text* on the real OS/browser clipboard via
+        ``navigator.clipboard.writeText()``, then dispatches a genuine
+        ``Control+V``/``Meta+V`` keypress. This is NOT a DOM injection — the
+        paste itself is a real browser paste event routed through
+        ``FolderItem.jsx``'s own ``onChange={onChangeFolderName}`` handler (no
+        separate ``onPaste`` handler exists, source-confirmed in AFS
+        ELITEA-2129 exactly as ELITEA-2104 confirmed for the conversation
+        entity). ``clipboard-read``/``clipboard-write`` permissions are already
+        granted suite-wide (``conftest.py``). Assumes the editor is already
+        open and focused.
+
+        Args:
+            text: Clipboard content to paste.
+        """
+        logger.info("Pasting folder name (%d chars)", len(text))
+        self.page.evaluate("(text) => navigator.clipboard.writeText(text)", text)
+        paste_shortcut = (
+            "Meta+V"
+            if self.page.evaluate("() => navigator.platform.includes('Mac')")
+            else "Control+V"
+        )
+        self.page.keyboard.press(paste_shortcut)
+
     @action("Set conversation name in inline editor")
     def set_conversation_name(self, name: str):
         """Replace the inline conversation-name editor's value via keyboard events.

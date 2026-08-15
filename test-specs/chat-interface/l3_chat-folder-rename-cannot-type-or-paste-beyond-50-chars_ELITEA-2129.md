@@ -89,20 +89,32 @@ execution — see § Concrete Handles / § Automation Hints).
      tests). The AFS/spec assert the LIVE, internally-consistent 50-character
      boundary; a lightweight case-text CLARIFICATION is warranted for the TMS
      case's step 2 wording (not a product bug — see § Known Defects Found).
-3. Prepare a 70-character string and paste it into the SAME (still-51-typed,
-   truncated-to-50) input using a REAL system clipboard write
+3. Clear the input (isolates the paste technique from step 2's typed value —
+   same pattern ELITEA-2104's own case text uses for the conversation-entity
+   sibling, "Clear the input" as its own step before the paste), then prepare a
+   70-character string and paste it using a REAL system clipboard write
    (`navigator.clipboard.writeText`) + a genuine `Control+V`/`Meta+V` keypress —
-   NOT a DOM-injected value, which would substitute the test for the browser's own
-   paste event. The case's own step 3 says "Prepare a 70-character string and paste
-   it" without specifying the field must first be cleared; live exploration pastes
-   directly over the already-50-char truncated value from step 2 (replacing the
-   selection, since the field is not explicitly cleared between steps 2 and 3 in
-   the case text) — see § Automation Hints for the exact sequence used.
+   NOT a DOM-injected value, which would substitute the test for the browser's
+   own paste event.
+   - **Live-confirmed, both variants tried this session**: pasting 70 chars
+     WITHOUT first clearing (directly appending at the cursor, positioned at the
+     end of step 2's already-50-char truncated value) is a NO-OP — the browser
+     computes the raw concatenated value (`"B"*50 + "C"*70` = 120 chars) BEFORE
+     `onChangeFolderName` fires, and `.slice(0, 50)` then returns exactly the
+     original first 50 characters, so the field visibly does not change (still
+     `"B"*50`). This technically also satisfies the case's Expected Result
+     ("no more than 50 characters after paste" — 50 ≤ 50), but is a weaker,
+     easily-misread signal (a reader could mistake "value unchanged" for "the
+     interaction did nothing" rather than "truncation is still active"). Clearing
+     first, per ELITEA-2104's own precedent, produces the STRONGER, unambiguous
+     signal: the field shows the pasted content ITSELF truncated to exactly the
+     first 50 characters (`"C"*50`), directly proving the truncation logic
+     operates on the pasted content, not just coincidentally on old content.
    - **Verify**: the input's value has length <= 50 after the paste (live-confirmed
-     this session: pasting `"C"*70` results in exactly 50 characters landing,
-     characters 51-70 silently dropped — reached via the SAME `onChangeFolderName`
-     code path as typing, since no separate `onPaste` handler exists on
-     `FolderItem.jsx`'s input, source-confirmed).
+     this session, on a CLEARED field: pasting `"C"*70` results in exactly the
+     first 50 characters landing, characters 51-70 silently dropped — reached via
+     the SAME `onChangeFolderName` code path as typing, since no separate
+     `onPaste` handler exists on `FolderItem.jsx`'s input, source-confirmed).
 4. Click the checkmark (save) icon — an explicit click on
    `chat-folder-name-confirm-button`.
    - **Verify**: the input closes (`chat-folder-name-input` no longer present);
@@ -224,10 +236,13 @@ against a product that is demonstrably not following it.
 None — all 4 case steps executed live end-to-end this session against a real
 folder created via the UI (id 250, deleted via the UI's own Delete flow immediately
 after exploration, zero net pollution): opened the rename editor via the dot-menu,
-typed 51 characters (truncated to 50, confirmed via `element.value` reads),
-pasted a 70-character clipboard string via a real `navigator.clipboard.writeText()`
-+ `Control+V`-equivalent keypress (truncated to 50), then saved successfully
-(`data-disabled="false"` before save, DOM re-rendered the 50-char name after).
+typed 51 characters (truncated to 50, confirmed via `element.value` reads), tried
+pasting a 70-character clipboard string BOTH without clearing first (a no-op —
+value stayed the original truncated 50 chars, see step 3's note) and after
+clearing first (truncated to the pasted content's own first 50 chars) via a real
+`navigator.clipboard.writeText()` + `Control+V`-equivalent keypress, then saved
+successfully (`data-disabled="false"` before save, DOM re-rendered the 50-char
+name after).
 
 ## Automation Hints
 
