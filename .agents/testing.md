@@ -493,3 +493,21 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   this exact scenario ("folder->general-list not pristine-confirmed... due to
   scroll/virtualization obstacles"). Record further occurrences here if this
   specific assertion times out again on this spec.
+- **New noise flavor, first occurrence of a 404 variant (2026-08-15,
+  chat-remaining wave-08, PR #1552)**: the lead's own independent gate hit
+  `assert not console_messages` twice across 3 full-set gate attempts (7
+  runs total counting the workflow's own 3 internal + the lead's 4
+  independent) — `test_pin_empty_folder_retains_empty_state` (1st attempt)
+  and `test_unpin_conversation_via_context_menu` (3rd attempt), different
+  tests each time. Both carried the byte-identical message `"Failed to load
+  resource: the server responded with a status of 404 ()"` — same text twice
+  is a first for this class and suggests one specific static resource (a
+  font/icon, plausibly the same family as the Montserrat-font-404 entry
+  above) intermittently 404s, though the console API still doesn't expose a
+  URL to confirm. Neither occurrence reproduced standalone; 3 consecutive
+  clean full-set runs followed the 2nd occurrence before merge. Distinct
+  bucket from the confirmed 500-flavor recurring pattern above (404, not
+  500) — tracking separately per that pattern's own "different status code
+  ⇒ don't fold in blind" caution. If a URL-carrying occurrence surfaces
+  (e.g. via a `requestfailed` listener upgrade), capture it here to convert
+  this from suspected-font-asset to confirmed.

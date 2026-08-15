@@ -6719,15 +6719,25 @@ class ChatPage(BasePage):
         return value == "true"
 
     @action("Expand folder")
-    def expand_folder(self, folder_id: str | int, timeout: int = 5000):
+    def expand_folder(self, folder_id: str | int, timeout: int = 5000, force: bool = False):
         """Click a folder row to expand it; waits for ``data-expanded`` to flip.
 
         Args:
             folder_id: Numeric folder id.
             timeout: Maximum wait time in milliseconds.
+            force: Bypass Playwright's actionability check — REQUIRED for a
+                PINNED folder (ELITEA-2152/2153 addition): its
+                ``DraggableFolderItem`` wrapper renders
+                ``isDragDisabled={isPinned}`` as a genuinely HTML-``disabled``
+                ancestor around the WHOLE row, which makes a plain click
+                time out ("element is not enabled") for a pinned folder
+                specifically — the same gotcha already documented for the
+                dot-menu button (``open_folder_context_menu``/
+                ``pin_folder_via_menu``). Defaults to ``False`` — identical
+                behavior to every existing caller of this method.
         """
-        logger.info("Expanding folder %s", folder_id)
-        self.get_folder_item(folder_id).click()
+        logger.info("Expanding folder %s (force=%s)", folder_id, force)
+        self.get_folder_item(folder_id).click(force=force)
         expanded_item = self.page.locator(
             f'{self.FOLDER_ITEM.format(folder_id)}[data-expanded="true"]'
         )
