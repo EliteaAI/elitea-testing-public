@@ -593,8 +593,18 @@ class TestChatFolderRenameCheckmarkValidation:
                     f"{create_response.json()!r}"
                 )
                 chat.folder_name_input.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
-                chat.get_folder_item(folder_id).wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                folder_item = chat.get_folder_item(folder_id)
+                folder_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
                 logger.info("Seeded folder %s named %r", folder_id, seed_name)
+
+                # AFS step 1's own verify: hovering the folder row reveals
+                # its 3-dot menu button (CSS-hover-revealed, scoped inside
+                # chat-folder-item-{folder_id} per the AFS's Concrete
+                # Handles table) — asserted HERE, not inferred from
+                # open_folder_context_menu() succeeding in Step 2 below.
+                folder_item.locator(chat.FOLDER_ICON).hover()
+                folder_menu_button = folder_item.locator(chat.CONVERSATION_MENU_BUTTON).first
+                expect(folder_menu_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
             with allure.step(
                 "Step 2 — Click the 3-dot icon; verify the context menu "
