@@ -34,6 +34,12 @@ already covered. See
 test-specs/chat-interface/lextend_chat-folder-creation-custom-name-expand-empty-state_ELITEA-2133.md
 and
 test-specs/chat-interface/lextend_chat-folder-creation-cancel-discard-tag-only_ELITEA-2134.md.
+
+Further extended for ELITEA-2457 (a third near-total duplicate of the same
+custom-name-and-expand flow): ``test_create_folder_with_custom_name`` gained
+only a third ``@allure.issue`` tag — zero assertion gap, since ELITEA-2133's
+own Step 6 already closes ELITEA-2457's expand/empty-state requirement. See
+test-specs/chat-interface/lextend_chat-folder-creation-custom-name-and-expand-tag-only_ELITEA-2457.md.
 """
 
 import logging
@@ -81,6 +87,10 @@ class TestChatFolderCreationCustomNameAndCancel:
     )
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2133_chat-folder-creation-with-custom-name-via-chats-header-icon.md",
+        "onetest-ai Test Case link",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2457_chat-create-folder-with-custom-name.md",
         "onetest-ai Test Case link",
     )
     @pytest.mark.p2
