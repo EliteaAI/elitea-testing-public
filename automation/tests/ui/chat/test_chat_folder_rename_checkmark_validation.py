@@ -512,6 +512,368 @@ class TestChatFolderRenameCheckmarkValidation:
                 except Exception as exc:
                     logger.warning("Failed to delete folder %s: %s", folder_id, exc)
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2121_chat-folder-rename-via-edit-option-in-context-menu.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p3
+    def test_folder_rename_via_context_menu_edit_option(self, page):
+        """ELITEA-2121 — Chat: Folder Rename via Edit Option in Context Menu.
+
+        A near-total SUBSET of test_folder_rename_checkmark_validation
+        (ELITEA-2458)'s own flow: open the rename editor via the dot-menu's
+        Rename item, type ONE valid new name directly (no boundary-state
+        probing — that's ELITEA-2458/2459's own territory), confirm, verify
+        the PUT persists and the display updates. The one NEW element this
+        case covers that ELITEA-2458 never does: asserting the context
+        menu's own item set on open (Rename + Pin/Unpin present).
+
+        **Depends on a regression fix landed THIS implementation** —
+        FolderItem.jsx's dot-menu "Rename" item lost its `key`
+        (chat-folder-menu-rename-menuitem testid) to an unrelated main-branch
+        feature commit after ELITEA-2458 first added it. Re-confirmed via a
+        live pre-fix run of test_folder_rename_checkmark_validation itself
+        (this file's own sibling test) failing with a TimeoutError before
+        the fix. Filed as
+        https://github.com/EliteaAI/elitea-testing-public/issues/1533 and
+        fixed on EliteaUI's automation/testids (commit be489cee) — this test
+        would not pass without that fix.
+
+        **Case-text drift** (case step 2 says the menu shows "Delete, Edit,
+        Export, Pin or Unpin" — the real set is "New chat, Rename, Pin on
+        top, Delete") filed as
+        https://github.com/EliteaAI/elitea-testing-public/issues/1534. This
+        test asserts the real, live-confirmed item set (Rename + Pin/Unpin
+        by testid), not the case's literal list — per the project's
+        reverse-masking guard, asserting a list the product doesn't actually
+        show would be masking the drift, not proving the case.
+
+        No fidelity substitution — every observable (menu content, editor
+        pre-fill, PUT status, displayed name, console cleanliness) is read
+        off the real system through the real dot-menu -> Rename UI flow.
+
+        Spec: test-specs/chat-interface/lextend_folder-rename-via-context-menu-edit-option_ELITEA-2121.md
+        """
+        chat = ChatPage(page)
+        folder_id = None
+        seed_name = "ELITEA2121RenameSource"
+        new_name = "New folder_edited"
+
+        console_messages = []
+
+        def _on_console(msg):
+            if msg.type == "error" and not _is_known_secrets_403(msg):
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
+
+        try:
+            with allure.step(
+                "Step 1 — Seed a folder, hover its row; verify the 3-dot "
+                "menu button becomes visible"
+            ):
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+
+                chat.click_create_folder_button(timeout=UI_ELEMENT_TIMEOUT)
+                with page.expect_response(
+                    lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "POST",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as create_response_info:
+                    chat.set_folder_name(seed_name)
+                    chat.folder_name_confirm_button.click()
+                create_response = create_response_info.value
+                assert create_response.status == 201, (
+                    "Seed folder POST should resolve 201, got "
+                    f"{create_response.status} for {create_response.url}"
+                )
+                folder_id = create_response.json().get("id")
+                assert folder_id is not None, (
+                    "Seed folder response should include a real 'id', got: "
+                    f"{create_response.json()!r}"
+                )
+                chat.folder_name_input.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+                folder_item = chat.get_folder_item(folder_id)
+                folder_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                logger.info("Seeded folder %s named %r", folder_id, seed_name)
+
+                # AFS step 1's own verify: hovering the folder row reveals
+                # its 3-dot menu button (CSS-hover-revealed, scoped inside
+                # chat-folder-item-{folder_id} per the AFS's Concrete
+                # Handles table) — asserted HERE, not inferred from
+                # open_folder_context_menu() succeeding in Step 2 below.
+                folder_item.locator(chat.FOLDER_ICON).hover()
+                folder_menu_button = folder_item.locator(chat.CONVERSATION_MENU_BUTTON).first
+                expect(folder_menu_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step(
+                "Step 2 — Click the 3-dot icon; verify the context menu "
+                "becomes visible and shows the real item set (Rename, "
+                "Pin/Unpin) — NOT the case's drifted 'Delete, Edit, Export, "
+                "Pin or Unpin' list, see #1534"
+            ):
+                chat.open_folder_context_menu(folder_id, timeout=UI_ELEMENT_TIMEOUT)
+                expect(page.locator(chat.FOLDER_CONTEXT_MENU_POPOVER)).to_be_visible(
+                    timeout=UI_ELEMENT_TIMEOUT
+                )
+                rename_item = page.locator(chat.FOLDER_MENU_RENAME_ITEM)
+                expect(rename_item).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                pin_item = page.locator(chat.FOLDER_MENU_PIN_ITEM)
+                expect(pin_item).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                assert pin_item.text_content() == "Pin on top", (
+                    "Pin menu item should read 'Pin on top' for an "
+                    f"unpinned folder, got: {pin_item.text_content()!r}"
+                )
+
+            with allure.step(
+                "Step 3 — Click the Rename item; verify the inline editor "
+                "opens pre-filled with the folder's current name"
+            ):
+                rename_item.click()
+                chat.folder_name_input.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.folder_name_input.input_value() == seed_name, (
+                    f"Rename editor should be pre-filled with {seed_name!r}"
+                )
+
+            with allure.step(
+                f"Step 4 — Clear the name and type {new_name!r}"
+            ):
+                chat.set_folder_name(new_name)
+                assert chat.folder_name_input.input_value() == new_name, (
+                    f"Input should show {new_name!r}"
+                )
+
+            with allure.step(
+                "Step 5 — Click the checkmark icon; verify the rename "
+                "persists server-side and the displayed name updates"
+            ):
+                assert chat.is_folder_name_confirm_enabled(), (
+                    "Confirm checkmark should be active for a valid, "
+                    "changed name"
+                )
+                with page.expect_response(
+                    lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "PUT",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as put_response_info:
+                    chat.folder_name_confirm_button.click()
+                put_response = put_response_info.value
+                assert put_response.status == 200, (
+                    f"Rename PUT should resolve 200, got {put_response.status} "
+                    f"for {put_response.url}"
+                )
+                chat.folder_name_input.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+                folder_item = chat.get_folder_item(folder_id)
+                folder_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                assert new_name in (folder_item.text_content() or ""), (
+                    f"Folder {folder_id} should display the renamed name {new_name!r}"
+                )
+
+            with allure.step(
+                "Step 6 — Verify no error message is shown (no unexpected "
+                "console errors across the full flow)"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors during folder rename via "
+                    f"context menu: {[m.text for m in console_messages]!r}"
+                )
+
+        finally:
+            if folder_id:
+                try:
+                    chat.delete_folder_via_api(folder_id, timeout=UI_ELEMENT_TIMEOUT)
+                    logger.info("Cleaned up folder %s via API", folder_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder %s: %s", folder_id, exc)
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2130_chat-pinned-folder-can-be-renamed.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p3
+    def test_pinned_folder_rename_retains_pin_state(self, page):
+        """ELITEA-2130 — Chat: Pinned Folder Can Be Renamed.
+
+        Genuinely NEW gap vs ELITEA-2121/2458/2459: none of those ever pin a
+        folder. Seeds a folder, pins it via the dot-menu's Pin item
+        (NEW chat-folder-menu-pin-menuitem testid, added this
+        implementation), renames it through the SAME dot-menu -> Rename ->
+        checkmark flow, then re-asserts the folder is STILL pinned
+        afterwards — proving the rename mutation doesn't reset
+        meta.is_pinned server-side.
+
+        Depends on the SAME https://github.com/EliteaAI/elitea-testing-public/issues/1533
+        regression fix as ELITEA-2121 (shared first-interactive-step
+        dependency). Also depends on a NEW `data-pinned` state attribute
+        added to FolderAccordion.jsx's already-testid'd chat-folder-item-{id}
+        element this implementation (mirrors ConversationItem.jsx's existing
+        data-pinned convention) — the raw PinIcon the UI conditionally
+        renders in the collapsed header carries no testid and isn't a
+        sanctioned locator target per this project's state-via-data-*
+        policy.
+
+        Uses ChatPage.open_folder_context_menu()'s force-click (already
+        required for a PINNED folder's dot-menu button — its
+        DraggableFolderItem wrapper renders a genuinely HTML-disabled
+        ancestor once pinned; a plain click times out even though the
+        button's own `.disabled` property is false, confirmed live this
+        session and recorded in test-specs/chat-interface/_surface.md).
+
+        Case-text drift (same class as ELITEA-2121, filed together as
+        https://github.com/EliteaAI/elitea-testing-public/issues/1534) —
+        this test asserts the real item set including the "Unpin" label
+        (not the case's literal "Delete, Edit, Export, Unpin" list).
+
+        No fidelity substitution — pin state, rename, and pin-state
+        persistence are all read off the real system through the real UI
+        flow (PATCH for pin, PUT for rename, both awaited and status-checked).
+
+        Spec: test-specs/chat-interface/lextend_pinned-folder-rename-retains-pin-state_ELITEA-2130.md
+        """
+        chat = ChatPage(page)
+        folder_id = None
+        seed_name = "ELITEA2130PinnedSource"
+        new_name = "Pinned Renamed Folder"
+
+        console_messages = []
+
+        def _on_console(msg):
+            if msg.type == "error" and not _is_known_secrets_403(msg):
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
+
+        try:
+            with allure.step(
+                "Step 1 — Seed a folder, pin it via the dot-menu's Pin "
+                "item; verify data-pinned=\"true\""
+            ):
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+
+                chat.click_create_folder_button(timeout=UI_ELEMENT_TIMEOUT)
+                with page.expect_response(
+                    lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "POST",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as create_response_info:
+                    chat.set_folder_name(seed_name)
+                    chat.folder_name_confirm_button.click()
+                create_response = create_response_info.value
+                assert create_response.status == 201, (
+                    "Seed folder POST should resolve 201, got "
+                    f"{create_response.status} for {create_response.url}"
+                )
+                folder_id = create_response.json().get("id")
+                assert folder_id is not None, (
+                    "Seed folder response should include a real 'id', got: "
+                    f"{create_response.json()!r}"
+                )
+                chat.folder_name_input.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+                chat.get_folder_item(folder_id).wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                logger.info("Seeded folder %s named %r", folder_id, seed_name)
+
+                assert not chat.is_folder_pinned(folder_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Freshly-seeded folder {folder_id} should not start pinned"
+                )
+
+                with page.expect_response(
+                    lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "PATCH",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as pin_response_info:
+                    chat.pin_folder_via_menu(folder_id, timeout=UI_ELEMENT_TIMEOUT)
+                pin_response = pin_response_info.value
+                assert pin_response.status == 200, (
+                    f"Pin PATCH should resolve 200, got {pin_response.status} "
+                    f"for {pin_response.url}"
+                )
+                assert chat.is_folder_pinned(folder_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Folder {folder_id} should carry data-pinned=\"true\" "
+                    "after pinning via the dot-menu"
+                )
+
+            with allure.step(
+                "Step 2 — Hover the pinned folder, click its 3-dot icon; "
+                "verify the context menu shows the real item set with "
+                "'Unpin' (not the case's drifted list, see #1534)"
+            ):
+                chat.open_folder_context_menu(folder_id, timeout=UI_ELEMENT_TIMEOUT)
+                expect(page.locator(chat.FOLDER_CONTEXT_MENU_POPOVER)).to_be_visible(
+                    timeout=UI_ELEMENT_TIMEOUT
+                )
+                rename_item = page.locator(chat.FOLDER_MENU_RENAME_ITEM)
+                expect(rename_item).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                pin_item = page.locator(chat.FOLDER_MENU_PIN_ITEM)
+                expect(pin_item).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                assert pin_item.text_content() == "Unpin", (
+                    "Pin menu item should read 'Unpin' for an already-"
+                    f"pinned folder, got: {pin_item.text_content()!r}"
+                )
+
+            with allure.step(
+                "Step 3 — Click Rename; clear the name and type the new "
+                "pinned-folder name"
+            ):
+                rename_item.click()
+                chat.folder_name_input.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.folder_name_input.input_value() == seed_name, (
+                    f"Rename editor should be pre-filled with {seed_name!r}"
+                )
+                chat.set_folder_name(new_name)
+                assert chat.folder_name_input.input_value() == new_name, (
+                    f"Input should show {new_name!r}"
+                )
+
+            with allure.step(
+                "Step 4 — Click the checkmark icon; verify the rename "
+                "persists server-side and the displayed name updates"
+            ):
+                assert chat.is_folder_name_confirm_enabled(), (
+                    "Confirm checkmark should be active for a valid, "
+                    "changed name"
+                )
+                with page.expect_response(
+                    lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "PUT",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as put_response_info:
+                    chat.folder_name_confirm_button.click()
+                put_response = put_response_info.value
+                assert put_response.status == 200, (
+                    f"Rename PUT should resolve 200, got {put_response.status} "
+                    f"for {put_response.url}"
+                )
+                chat.folder_name_input.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+                folder_item = chat.get_folder_item(folder_id)
+                folder_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                assert new_name in (folder_item.text_content() or ""), (
+                    f"Folder {folder_id} should display the renamed name {new_name!r}"
+                )
+
+            with allure.step(
+                "Step 5 — Verify the folder retains its pinned state "
+                "(pin icon still visible) after the rename"
+            ):
+                assert chat.is_folder_pinned(folder_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Folder {folder_id} should still carry "
+                    'data-pinned="true" after being renamed — the rename '
+                    "must not reset the folder's pinned state"
+                )
+
+            with allure.step(
+                "Step 6 — Verify no error message is shown (no unexpected "
+                "console errors across the full flow)"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors during pinned folder "
+                    f"rename: {[m.text for m in console_messages]!r}"
+                )
+
+        finally:
+            if folder_id:
+                try:
+                    chat.delete_folder_via_api(folder_id, timeout=UI_ELEMENT_TIMEOUT)
+                    logger.info("Cleaned up folder %s via API", folder_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder %s: %s", folder_id, exc)
+
 
 class TestChatFolderDeleteApiFallbackRegression:
     """Regression coverage for the ``ChatPage.delete_folder_via_api()``
