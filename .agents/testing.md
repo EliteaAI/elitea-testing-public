@@ -543,6 +543,24 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   load/timing across an extended campaign session, not a single spec's flake.
   Record further occurrences (and whether they correlate with session
   duration) here.
+- **Sanctioned-RED, new spec signature (chat-remaining wave-11, 2026-08-16)**:
+  `test_team_users_mention_and_remove_participants.py::TestTeamUsersMentionAndRemoveParticipants::test_team_users_mention_and_remove_participants`
+  (ELITEA-2168, pre-existing, extended by wave-11's ELITEA-2193) now carries a
+  deterministic, single-cause, soft-asserted failure linked to already-open
+  #1119 ("All users" click doesn't insert "@Everyone "). Confirmed 3/3 across
+  the lead's own independent gate runs immediately after landing wave-11's
+  fixes (runs 1, 3, 4 of a 5-run investigation — see below). Merges RED going
+  forward on this signature per § Merge gate's sanctioned-RED exception; the
+  `# Known defect: #1119` comment + soft-assert are already in place in the
+  test. `test_public_conversation_green_icon.py` (ELITEA-2188, same gate run)
+  passed clean every single time.
+- **Known-noise entry (chat-remaining wave-11, 2026-08-16)**: 1 of 5 gate
+  attempts on the same pair above hit the already-confirmed recurring
+  console-500 pattern (unrelated-resource `Failed to load resource: ... 500`)
+  instead of the #1119 signature — non-reproducing on the immediately
+  following re-run (which returned to the #1119 signature). Consistent with
+  the existing recurring-pattern entry above; recorded as another occurrence,
+  not a new class.
 - **#1082 now 100% reproducible on `test_team_users_mention_and_remove_participants.py`
   (ELITEA-2168's own file), chat-remaining wave-11, ELITEA-2193 implementation
   (2026-08-15)**: 3 consecutive full-invocation runs (each also exhausting
