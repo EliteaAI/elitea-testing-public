@@ -388,7 +388,24 @@ class TestInviteUsersAddCancelClose:
                 "Step 1 — Click + Chat; verify a new, blank conversation opens "
                 "with no participants element (reverse-masking guard)"
             ):
-                _open_blank_conversation(chat, timeout=NAVIGATION_TIMEOUT)
+                # Known defect: #1082 — the weaker _open_blank_conversation()
+                # guard (greeting-visible only) does not protect against the
+                # SPA's DELAYED restore-to-last-viewed-conversation effect
+                # (see _open_genuinely_blank_conversation()'s own docstring),
+                # confirmed live this session (2026-08-15, wave-10 gate
+                # investigation): this exact call landed on the stale "HI
+                # Chat" conversation (id 507), which already has both
+                # USER_1_NAME/USER_2_NAME as participants — the modal's
+                # excludedUserIds then silently drops them from every search,
+                # so Step 4 timed out finding an option that legitimately
+                # cannot appear. Same root cause as the already-soft-asserted
+                # stale-badge symptom below, manifesting one step earlier via
+                # a different observable. Swapped to the stronger sibling
+                # already proven for ELITEA-2175/2176 in this same file —
+                # additive only, does not touch the shared
+                # _open_blank_conversation() (still used unmodified by
+                # _create_single_owner_control_conversation() above).
+                _open_genuinely_blank_conversation(chat, timeout=NAVIGATION_TIMEOUT)
                 assert chat.new_conversation_greeting.is_visible(), (
                     "Blank-conversation greeting should be visible for a "
                     "brand-new, unsent conversation"
