@@ -11,8 +11,11 @@ popup (6 top-level options), every module toggle exercised (not just 2
 sampled), an explicit no-error-toast check, and a main-conversation-view-
 restored check after closing the panel. ELITEA-2463 extends it further with:
 a pinned conversation proving search results genuinely separate pinned from
-date-grouped tiers, an explicit non-matching-conversation-absent check, and a
-date-group-scoped exact-match check.
+date-grouped tiers via a real DOM-containment check (a simultaneously-matching
+pinned item confirmed OUTSIDE the "Today" date-group container while a
+simultaneously-matching non-pinned item is confirmed INSIDE it), an explicit
+non-matching-conversation-absent check, and a date-group-scoped exact-match
+check.
 
 ELITEA-2163/2164/2165 are separate test methods on the same class, covering
 the search no-results state, the X/clear icon closing search and restoring
@@ -66,7 +69,7 @@ class TestChatSearchAndModulesPanel:
     )
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "chat/ELITEA-2463_chat-search-input-opens-filters-results-dynamically-conversation-is-interactable.md",
+        "chat/ELITEA-2463_chat-search-input-opens-filters-results-dynamically-conversa.md",
         "onetest-ai Test Case link",
     )
     @pytest.mark.p1
@@ -82,11 +85,16 @@ class TestChatSearchAndModulesPanel:
 
         ELITEA-2463 extension: a pinned sibling conversation proves search
         results genuinely separate the pinned tier from date-grouped tiers
-        (both filtered by the same query, live-confirmed via
-        useQueryFoldersList's single shared backend call); the partial-query
-        step also asserts a non-matching sibling is absent; the exact-match
-        step additionally asserts the match renders inside its correct date
-        group (not just "visible somewhere")."""
+        via a real DOM-containment check — a single query ("Automation")
+        that simultaneously matches both the pinned sibling and the
+        non-pinned, date-grouped conversation confirms the pinned match
+        renders OUTSIDE the "Today" date-group container while the
+        date-grouped match renders INSIDE it (both filtered by the same
+        query, live-confirmed via useQueryFoldersList's single shared
+        backend call); the partial-query step also asserts a non-matching
+        sibling is absent; the exact-match step additionally asserts the
+        match renders inside its correct date group (not just "visible
+        somewhere")."""
         conv_name = f"AutomationUnique{uuid4().hex[:8]}"
         sibling_conv_name = f"AutomationOther{uuid4().hex[:8]}"
 
@@ -139,16 +147,47 @@ class TestChatSearchAndModulesPanel:
                 )
 
             with allure.step(
-                "Step 3b (ELITEA-2463 extension) — Query for the pinned sibling's "
-                "own prefix; verify search results separate the pinned tier from "
-                "the date-grouped tier"
+                "Step 3b (ELITEA-2463 extension) — Query for a term matching "
+                "BOTH the pinned sibling and the date-grouped conversation "
+                "simultaneously; verify the pinned match renders OUTSIDE the "
+                "'Today' date-group container while the date-grouped match "
+                "renders INSIDE it — a real DOM-containment split, not just "
+                "two items independently visible"
             ):
-                chat.type_conversation_search_query("AutomationOther", timeout=NETWORK_RESPONSE_TIMEOUT)
+                # "Automation" is the common prefix of both conv_name
+                # ("AutomationUnique...") and sibling_conv_name
+                # ("AutomationOther..."), so this single query surfaces both
+                # tiers at once — required to prove they are simultaneously
+                # split across two different containers, not merely that a
+                # pinned item CAN appear somewhere on the page.
+                chat.type_conversation_search_query("Automation", timeout=NETWORK_RESPONSE_TIMEOUT)
                 assert chat.is_conversation_pinned(sibling_conv_id, timeout=UI_ELEMENT_TIMEOUT), (
                     "Sibling conversation should still read as pinned while search-filtered"
                 )
                 expect(chat.get_conversation_item(sibling_conv_id)).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-                expect(chat.get_conversation_item(conv_id)).not_to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                expect(chat.get_conversation_item(conv_id)).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                # Real DOM-containment check (not attribute/visibility alone):
+                # the pinned match must NOT be scoped inside the "Today"
+                # date-group container...
+                assert not chat.is_conversation_in_group(
+                    sibling_conv_id, group="today", timeout=UI_ELEMENT_TIMEOUT
+                ), (
+                    f"Pinned conversation {sibling_conv_id} should NOT render "
+                    "inside the 'Today' date-group container — pinned matches "
+                    "render via the pinned-section mechanism, outside any date "
+                    "group"
+                )
+                # ...while the non-pinned, date-grouped match — matching the
+                # SAME query, at the SAME time — must be scoped inside it.
+                assert chat.is_conversation_in_group(
+                    conv_id, group="today", timeout=UI_ELEMENT_TIMEOUT
+                ), (
+                    f"Non-pinned conversation {conv_id} should render INSIDE "
+                    "the 'Today' date-group container for the same search "
+                    "query — proving the pinned and date-grouped tiers are "
+                    "genuinely split in the DOM, not merely both visible "
+                    "somewhere on the page"
+                )
                 # NOTE: no need to restore the "un" query here — Step 4 below
                 # immediately replaces the query with the exact full name via
                 # the same type_conversation_search_query() call (select-all +
