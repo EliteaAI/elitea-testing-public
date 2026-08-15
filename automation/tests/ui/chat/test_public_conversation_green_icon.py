@@ -423,10 +423,36 @@ class TestPublicConversationGreenIcon:
                     "Message input should be visible and editable on the now-"
                     "public conversation"
                 )
+                badge_count = chat.get_participants_badge_count(
+                    section="users", timeout=UI_ELEMENT_TIMEOUT
+                )
                 popper = chat.open_participants_popover(section="users", timeout=UI_ELEMENT_TIMEOUT)
                 popper_text = popper.text_content() or ""
                 assert "Users" in popper_text, (
                     f"Participants popover should show a 'Users' heading, got: {popper_text!r}"
+                )
+                # The heading text alone is STATIC —
+                # UsersParticipantDropdown/index.jsx renders it
+                # unconditionally, above the dynamic participant-row list —
+                # so it proves the popover opened, never that any
+                # participant is actually listed (reviewer finding, PR
+                # #1562 round 1). Assert the DYNAMIC row content itself via
+                # the same PARTICIPANT_ROW_PREFIX template
+                # ELITEA-2167/2168/2095's remove/mention flows already
+                # resolve rows through, and cross-check against the
+                # collapsed badge's own independently-rendered count (AFS
+                # § step 7 — "lists the conversation's participants (owner
+                # at minimum)").
+                participant_rows = popper.locator(chat.PARTICIPANT_ROW_PREFIX)
+                participant_rows.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                row_count = participant_rows.count()
+                assert row_count >= 1, (
+                    "Users popover should list at least the owner as a "
+                    f"participant, got {row_count} rows"
+                )
+                assert str(row_count) == badge_count, (
+                    f"Popover row count ({row_count}) should match the "
+                    f"collapsed badge's own count ({badge_count!r})"
                 )
                 chat.dismiss_participants_popover()
 
