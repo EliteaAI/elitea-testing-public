@@ -3,7 +3,10 @@
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
 a time; last confirmed by: test-automation-engineer (combined analyst+
-implementer), ELITEA-2128/2129, 2026-08-15 (supersedes nothing below — new
+implementer), ELITEA-2136/2138/2139/2140/2141, 2026-08-15 (supersedes nothing
+below — new section, other sections unchanged; previous confirmer:
+test-automation-engineer (combined analyst+implementer), ELITEA-2128/2129,
+2026-08-15 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2123/2127, 2026-08-15; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2122, 2026-08-15; previous confirmer: test-automation-engineer
@@ -20,6 +23,98 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+
+## ELITEA-2136/2138/2139/2140/2141 — "Move to" submenu family, extends
+## ELITEA-2135/2137/2138's own surface: back-to-list, folder-to-folder,
+## disabled self-entry, `updated_at` mechanism (all extend-existing, tag/gap-only)
+- **All 5 cases extend `test_move_conversation_to_folder.py`** (ELITEA-2135/2137,
+  merged `origin/automation/base` commit `37dbd948`) — purely additive: 2 tag-only/
+  small-insertion extensions (ELITEA-2136 onto ELITEA-2135's own test; ELITEA-2140
+  onto this session's own new ELITEA-2139 test) + 3 brand-new test methods
+  (ELITEA-2138, ELITEA-2139, ELITEA-2141), zero existing method bodies modified.
+- **`select_move_to_back_to_list()` did not exist before this session** — the
+  `move_to_back_to_list_menuitem` LOCATOR was added by ELITEA-2135's own
+  implementation but had ZERO callers (canon #511) until ELITEA-2139/2140's test.
+  New method mirrors `select_move_to_folder()`/`select_move_to_create_folder()`'s
+  shape exactly.
+- **"Back to the list" toast is a DISTINCT template** from the move-INTO-a-folder
+  toast (`Chat moved to "X" folder successfully`, `useMoveToFolderConversation.hooks.js`):
+  live-confirmed exact text `Chat moved to ungrouped area successfully` — no quoted
+  folder name (there isn't one), different verb phrase entirely. Don't assume the
+  same template with an empty/null substitution.
+- **Empirically confirmed the mechanism behind ELITEA-2140's "appears in Today"
+  claim, not just inferred from source**: the "Back to the list" `PUT
+  .../conversation/prompt_lib/{project}/{id}` unconditionally bumps `updated_at`
+  to the request's own timestamp, regardless of the conversation's prior recency
+  — verified on a conversation that had NEVER been touched between creation and
+  the move (its `updated_at` jumped from creation-time to move-time, ~1 minute
+  later, in the same response body). Date-group bucketing
+  (`DATE_GROUP_ORDER = ['today','this_week','older']`, EliteaUI
+  `conversationList.constants.js`) is server-side and keyed purely off
+  `updated_at` — folder membership (`folder_id`) and date-group bucket are
+  orthogonal fields with no memory of "which group before the folder move".
+  **Practical consequence**: there is no way to make a "moved back to list"
+  conversation land anywhere OTHER than Today via this flow — the mechanism is
+  origin-independent by construction, confirmed live not assumed.
+- **The API silently ignores caller-supplied `created_at`/`updated_at`** — live-
+  verified: `PUT` a conversation with `{"updated_at": "2020-01-01...",
+  "created_at": "2020-01-01..."}` returns `200` but the persisted timestamps are
+  UNCHANGED. **There is no test-accessible way to seed a genuinely-"Older"
+  conversation on demand** (no natural one existed live in the shared DEV
+  project either, at time of writing — only a populated "This Week" group, zero
+  Today, zero Older). Any case whose precondition specifically requires an
+  Older-origin fixture (ELITEA-2140 here) needs this same treatment: reason from
+  the live-confirmed mechanism instead of fabricating the precondition via
+  DB/`page.evaluate()` injection (which would be a fidelity-policy substitution).
+- **"Move to" submenu, when opened for a conversation ALREADY inside a folder,
+  lists that folder's OWN entry — DISABLED, not absent.** Live-confirmed via
+  `browser_snapshot` + `aria-disabled` read: `chat-move-to-folder-{own_id}-menuitem`
+  renders with `aria-disabled="true"` (self-move prevention) rather than being
+  filtered out of the list. A DIFFERENT folder's entry in the same submenu is a
+  normal enabled `menuitem`. Not previously documented — no prior case (2135/
+  2137) opened "Move to" on an already-in-a-folder conversation. Read via
+  `get_move_to_folder_item(folder_id).get_attribute("aria-disabled")` — no new
+  testid needed, same `MOVE_TO_FOLDER_ITEM` template ELITEA-2135 provisioned.
+- **Context-menu item SET differs for a folder-contained conversation** vs. the
+  flat-list 5-item set ELITEA-2114/2135 already document (`Rename, Move to,
+  Playback, Pin on top, Delete`): live-confirmed 6 items for an in-folder
+  conversation — `Rename, Move to, Playback, Duplicate, Pin on top (DISABLED),
+  Delete` — "Duplicate" present, "Pin on top" present-but-disabled rather than
+  absent (matches the already-documented `disabled: !isPinned &&
+  !!conversation.folder_id` rule under § Pin conversation, reconfirmed here from
+  the OTHER side — pin disabled specifically BECAUSE folder_id is set). None of
+  ELITEA-2136/2138/2139/2140/2141's own case steps require asserting this full
+  set, so no test in this pass encodes it — flagged here in case a future case
+  does (don't assume the flat-list 5-item set applies unconditionally).
+- **`.clear()` (Playwright's own method) correctly replaces the folder-name
+  editor's default value; a raw `Control+a`+`Backspace` sequence reproduces the
+  documented "append not replace" race AGAIN** (live-reconfirmed during
+  ELITEA-2138 exploration — typing "Sprint Chats" after `Control+a`+`Backspace`
+  produced `"Sprint ChatsNew folder"`, a REAL folder created with that wrong
+  name, id 293, cleaned up). `ChatPage.set_folder_name()`'s existing
+  implementation already uses `.clear()`, not a bare `Control+a` — reuse it
+  verbatim, do not hand-roll the input-clearing sequence for any new
+  folder/conversation-name editing code (same standing warning as the
+  ELITEA-2128/2129 section below).
+- **Folder-to-folder move fires the identical `PUT`+toast mechanism as
+  move-from-flat-list** (`folder_id` changes in the response body, toast is the
+  same `Chat moved to "X" folder successfully` template) — confirmed the prior
+  container (date group vs. another folder) makes no difference to the
+  move-INTO-a-folder mechanism; only "Back to the list" (moving OUT, to no
+  container) has the distinct toast/mechanism documented above.
+- **Setup for "conversation already inside a folder" is fastest via
+  `conversation_api.create_folder()` + `conversation_api.move_conversation_to_folder()`**
+  (both pre-existing on `ConversationAPI`, `api/client.py`) rather than the
+  UI-driven folder creation ELITEA-2135's own test uses — real API setup, not a
+  substitution (reaches a precondition state, doesn't fabricate the case's own
+  observable). Used for ELITEA-2139/2140/2141's setup this session; ELITEA-2136
+  reuses ELITEA-2135's existing UI-driven setup unmodified (extension, not a
+  fresh test).
+- **Cleanup**: all exploration conversations (4) and folders (4, ids 291-294)
+  created this session were deleted via `conversation_api.delete_conversation`/
+  `delete_folder` immediately after each probe — zero net pollution left by this
+  session's exploration (unlike several prior sessions documented elsewhere in
+  this digest).
 
 ## ELITEA-2128/2129 — folder-rename LENGTH boundary, confirms `FolderItem.jsx`
 ## shares `MAX_CONVERSATION_LENGTH=50` truncation with `ConversationItem.jsx`,
