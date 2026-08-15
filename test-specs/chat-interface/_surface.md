@@ -2,7 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: test-automation-engineer (combined analyst+
+a time; last confirmed by: qa-engineer analyst, ELITEA-2461, 2026-08-15
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: test-automation-engineer (combined analyst+
 implementer), ELITEA-2157/2158, 2026-08-15 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2155/2156, 2026-08-15 (supersedes nothing
@@ -33,7 +35,29 @@ qa-engineer analyst, ELITEA-2111, 2026-08-15;
 previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
-ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)).
+
+## ELITEA-2461 — near-total duplicate of ELITEA-2149 + ELITEA-2151 combined,
+## `already-covered` (zero new code, two-spec dedup)
+- ELITEA-2461's 5 steps decompose cleanly across two already-merged specs on this
+  same pin/panel-order surface: steps 1–4 (hover a Today/This Week/Older
+  conversation → 3-dot → Pin on top → moves out of its date group into the
+  pinned section → pin icon renders) are verbatim `test_pin_conversation_via_pin_on_top`
+  (ELITEA-2149); step 5 (full 4-tier panel order: pinned folders → pinned
+  conversations → unpinned folders → unpinned conversations by date group) is
+  verbatim `test_pinned_folder_and_conversation_render_above_unpinned_panel_order`
+  (ELITEA-2151) — the SAME covering test ELITEA-2159's dedup already used for its
+  own near-identical step-5 wording. This is the first case in this digest that
+  needed BOTH covering tests to close its own case, rather than just one.
+- Live-reconfirmed this session: re-ran both covering tests together
+  (`tests/ui/chat/test_pin_conversation.py::TestPinConversationViaPinOnTop::test_pin_conversation_via_pin_on_top`
+  + `::TestChatPanelOrderingPinnedFoldersAndConversations::test_pinned_folder_and_conversation_render_above_unpinned_panel_order`),
+  both PASSED, `2 passed in 45.98s`.
+- AFS: `test-specs/chat-interface/lcovered_pin-conversation-appears-above-folders-and-date-groups_ELITEA-2461.md`.
+- **Pattern reinforced (same as the ELITEA-2457/2123/2127 sections below)**: this
+  module's near-duplicate case pattern isn't confined to folder-creation/rename —
+  it recurs on the pin/panel-order surface too. Always grep this digest by
+  BEHAVIOUR ("pin", "panel order") before assuming a fresh case needs new code.
 
 ## ELITEA-2146/2147/2148 — folder-list & submenu SCROLLABILITY, expand/collapse +
 ## empty-state, ALL 3 ready-for-automation, TWO new testid gaps found, ZERO defects
