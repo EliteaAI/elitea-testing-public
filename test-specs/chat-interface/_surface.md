@@ -1445,7 +1445,15 @@ Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
   distinct "empty search" placeholder state (`isSearchMode =
   !!debouncedSearchQuery.trim()` in `Conversations.jsx` — trim()'d-empty
   means search mode itself turns off, same code path as never having opened
-  search).
+  search). **Correction (ELITEA-2165 implementation round 1):** this specific
+  clear-to-empty transition does NOT reliably produce a NEW `folder/
+  prompt_lib` network response — it's the same cache key the page loaded
+  with, so it can be served from the query-client cache with zero round-trip
+  (a `page.expect_response()` wait on this step times out; live-confirmed via
+  a failing first attempt). Wait on the resulting UI state (polling
+  `is_conversation_in_group()`), not a network event, for this ONE
+  transition specifically — every OTHER query change in this family (narrow,
+  broad, exact) does fire a fresh response and remains request-waitable.
 - **Search results genuinely separate pinned from date-grouped tiers, live-
   confirmed via a real pin action**: pinning a conversation (`+` context menu
   → "Pin on top", `chat-conversation-menu-pin-menuitem`) then searching for a

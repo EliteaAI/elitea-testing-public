@@ -63,11 +63,15 @@ the no-results state is entirely unautomated. This is a genuinely new scenario, 
      wired via `conftest.py`'s failure-diagnostics — assert the collected list is empty for this
      window); `conversation-search-input` remains visible/interactable (page did not navigate away
      or blank).
-   - **Known-defect regression guard** (`expect.soft()`, non-blocking): `chat-conversations-empty-
-     state-message` ("Still no conversations created.", new testid, added this pass) should NOT be
-     visible at the same time — it currently IS, incorrectly, on a project that has other
-     non-matching data (see § Known Defects, issue #1525). Soft-asserted so this test still goes
-     green while the defect stands, and flips to catching a real regression once fixed.
+   - **Known-defect assertion, RED-by-design** (`expect.soft()`, per `.agents/testing.md` § Merge
+     gate's sanctioned-RED exception — same shape as `test_attach_unsupported_file_format_error.py`'s
+     toast-severity check): `chat-conversations-empty-state-message` ("Still no conversations
+     created.", new testid, added this pass) asserts the CORRECT expected behavior (should NOT be
+     visible at the same time as the no-results message) — it currently IS visible, incorrectly, on a
+     project that has other non-matching data (see § Known Defects, issue #1525). `expect.soft()`
+     lets every OTHER assertion in this test run and pass as a hard assert; this one specific
+     assertion is expected to FAIL (RED) until issue #1525 ships — the test as a whole is
+     sanctioned-RED, not green, until then.
 
 ## Expected Results
 - Typing a query that matches nothing shows the search-specific "No conversations found" empty
@@ -125,8 +129,12 @@ with `Conversations.jsx`'s correct "No conversations found" search-empty state �
 the true unfiltered project total, so its own "literally zero conversations ever" condition
 (`visibleGroups.length === 0 && totalConversationsAmount === 0`) fires during a no-results SEARCH
 too. Confirmed live via source read + screenshot (project 399, 45+ pre-existing folders). Does not
-block the case's own pass criteria (the correct message is also present, no crash) — asserted via
-`expect.soft()` in step 4 as a regression guard, not a hard fail.
+block the case's OWN pass criteria (the correct message is also present, no crash — every OTHER
+assertion in this test is a hard assert and passes) — but the misleading text's own assertion IS a
+genuine, deterministic RED via `expect.soft()`: **the test as a whole is sanctioned-RED, not green,
+until issue #1525 ships** (`.agents/testing.md` § Merge gate exception, same shape as the
+ELITEA-2200 precedent). Declare it in `expected_red[]` at handoff — an undeclared RED here would
+hold the whole batch's gate.
 
 ## Blocked Steps
 None.
