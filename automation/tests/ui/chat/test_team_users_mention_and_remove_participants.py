@@ -131,6 +131,7 @@ Fix round 1 (reviewer-caught, both corrected on this branch):
 
 import logging
 import re
+import time
 
 import allure
 import pytest
@@ -269,6 +270,115 @@ def _open_blank_conversation(chat: ChatPage, timeout: int = NAVIGATION_TIMEOUT) 
     )
 
 
+def _poll_blank_state_holds(
+    chat: ChatPage,
+    blank_url_pattern: "re.Pattern[str]",
+    settle_ms: int = 1500,
+    poll_interval_s: float = 0.25,
+) -> tuple[bool, str]:
+    """Poll message-count + URL at short intervals across *settle_ms*,
+    instead of a fixed-latency sleep-then-recheck-once.
+
+    Duplicated with attribution from ``test_invite_users_add_cancel_close.py``
+    (ELITEA-2175/2176, wave-10) — this suite's own established pattern for
+    sharing such helpers across chat test files is per-file duplication
+    (``_open_blank_conversation()`` above is itself one such copy), not a
+    cross-file import or a shared conftest fixture; no such shared module
+    exists for this helper family. Same idiom as
+    ``ChatPage.wait_for_message_content_stable()``: sample the observed
+    state on a short interval and only conclude "stable" once it has held
+    for the whole window — here the value being watched for stability is
+    "still blank" rather than "content stopped changing". Exits the instant
+    either signal flips (a definitive, immediate result) rather than
+    waiting out the full window and discovering the reversion only at the
+    end.
+
+    Returns ``(settled, reason)`` — ``settled`` is False (with a reason)
+    the moment either signal flips during the window, True only if both
+    signals held blank for the entire window.
+    """
+    deadline = time.monotonic() + settle_ms / 1000.0
+    while time.monotonic() < deadline:
+        time.sleep(poll_interval_s)
+        count = chat.get_message_count()
+        url = chat.page.url
+        if count != 0 or not blank_url_pattern.search(url):
+            return False, f"blank state reverted mid-settle (url={url!r}, message_count={count})"
+    return True, ""
+
+
+def _open_genuinely_blank_conversation(chat: ChatPage, timeout: int = NAVIGATION_TIMEOUT) -> None:
+    """Stronger sibling of ``_open_blank_conversation()`` — additive, does
+    NOT modify that function or its docstring-only remaining references
+    (Hard Rule 3).
+
+    Duplicated with attribution from ``test_invite_users_add_cancel_close.py``
+    (ELITEA-2175/2176, wave-10) — same "duplicate the helper into the file
+    that needs it" pattern this suite already uses for
+    ``_open_blank_conversation()`` itself; no shared cross-file module or
+    conftest fixture exists for this helper family.
+
+    Confirmed live on THIS file's own gate runs (wave-11, 100% reproducible
+    across 3 full-invocation attempts / 9 total attempts): the SAME #1082
+    mechanism documented in ``_open_blank_conversation()``'s docstring —
+    ``click_create_conversation()`` only waits for the message input to be
+    visible, which is trivially true on ANY conversation — has a DELAYED
+    variant ``_open_blank_conversation()``'s single settle-free check does
+    not catch: the SPA can restore the last-viewed conversation from
+    browser/session storage (documented by ``ChatPage.navigate_to_chat()``'s
+    own docstring) AFTER the blank greeting and a momentary 0 message count
+    were both already observed. The restore silently wins a race against a
+    check performed too early, snapping back to a stale conversation a
+    moment later — which then starves this file's Setup block: the seed-
+    user search (``search_and_select_add_user_verified()``) times out
+    because the stale conversation's ``excludedUserIds`` already contains
+    the very users Setup is trying to add. Guards against it with a
+    settle-and-recheck: poll BOTH the message count AND the URL at short
+    intervals across the restore's own timing window, exiting the instant
+    either signal flips instead of sleeping the full window blind and
+    checking once.
+    """
+    blank_url_pattern = re.compile(r"/chat/?(?:\?.*)?$")
+    last_reason = "unknown"
+    for attempt in range(3):
+        chat.click_create_conversation(timeout=timeout)
+        try:
+            chat.new_conversation_greeting.wait_for(state="visible", timeout=5000)
+        except Exception:
+            last_reason = "greeting never appeared"
+            logger.warning(
+                "New-conversation greeting not visible after +Chat click "
+                "(attempt %d) — retrying (see _open_genuinely_blank_conversation docstring)",
+                attempt + 1,
+            )
+            continue
+        if chat.get_message_count() != 0:
+            last_reason = "greeting appeared but conversation has message history"
+            logger.warning(
+                "Landed on a non-blank conversation (attempt %d) — retrying "
+                "(see _open_genuinely_blank_conversation docstring)",
+                attempt + 1,
+            )
+            continue
+        # Settle window for the delayed last-viewed-conversation restore
+        # (see docstring) — poll both signals across the window instead of
+        # a fixed sleep-then-recheck-once.
+        settled, reason = _poll_blank_state_holds(chat, blank_url_pattern)
+        if not settled:
+            last_reason = reason
+            logger.warning(
+                "Blank conversation reverted to a restored one during "
+                "settling (attempt %d) — retrying (see "
+                "_open_genuinely_blank_conversation docstring)",
+                attempt + 1,
+            )
+            continue
+        return
+    raise AssertionError(
+        f"Could not open a genuinely blank conversation after 3 attempts: {last_reason}"
+    )
+
+
 class TestTeamUsersMentionAndRemoveParticipants:
     """ELITEA-2168: Chat – Team Project – Add Multiple Users, Mention User,
     View User List and Remove Users from Conversation (l2, high)."""
@@ -337,7 +447,23 @@ class TestTeamUsersMentionAndRemoveParticipants:
                 chat.switch_project(TEAM_PROJECT_ID, timeout=NAVIGATION_TIMEOUT)
                 chat.wait_for_conversations_to_load(timeout=UI_ELEMENT_TIMEOUT)
 
-                _open_blank_conversation(chat, timeout=NAVIGATION_TIMEOUT)
+                # Known defect: #1082 — the weaker _open_blank_conversation()
+                # guard (greeting-visible + message-count-zero, no settle
+                # window) does not protect against the SPA's DELAYED
+                # restore-to-last-viewed-conversation effect (see
+                # _open_genuinely_blank_conversation()'s own docstring),
+                # confirmed 100% reproducible live on THIS file's gate runs
+                # (wave-11, 3/3 full-invocation attempts, 9 total attempts):
+                # this exact call landed on a stale conversation, whose
+                # excludedUserIds then silently dropped the seed users from
+                # every search, so the setup search below timed out finding
+                # an option that legitimately cannot appear. Same root cause
+                # already root-caused and fixed on the sibling
+                # test_invite_users_add_cancel_close.py (ELITEA-2175/2176,
+                # wave-10) — swapped to the stronger sibling proven there.
+                # Additive only — does not touch the shared
+                # _open_blank_conversation() itself.
+                _open_genuinely_blank_conversation(chat, timeout=NAVIGATION_TIMEOUT)
 
                 chat.open_add_users_modal(timeout=UI_ELEMENT_TIMEOUT)
                 # Residual real-mouse hover on the plus-menu button (its own
