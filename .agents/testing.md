@@ -480,3 +480,16 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   the failing resource URL** (not just the status code) so a shared filter can be
   written; until then, the standard response is: re-run once, and if the console-500
   doesn't reproduce, it's this pattern.
+- Known-noise entry (2026-08-15, chat-remaining wave-07, PR pending): 1 of 4
+  gate runs over the full 11-node-id set hit
+  `test_drag_drop_conversation_back_to_general_list` (ELITEA-2145) —
+  `expect(conversation_list_drop_zone).to_have_attribute("data-drop-active",
+  "true")` waited 10s (24 polls) and never saw the hover-highlight flip, timed
+  out on `"false"`. Passed clean standalone and in 3 consecutive full-file
+  re-runs immediately after. Distinct from the console-500 pattern above —
+  this is a drag-and-drop hover-highlight timing race (`@dnd-kit/core`
+  `PointerSensor` recomputing collision on each mousemove step), not a
+  background-resource blip. Consistent with the analyst's own caution flag on
+  this exact scenario ("folder->general-list not pristine-confirmed... due to
+  scroll/virtualization obstacles"). Record further occurrences here if this
+  specific assertion times out again on this spec.
