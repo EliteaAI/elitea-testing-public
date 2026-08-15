@@ -3,8 +3,9 @@
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
 a time; last confirmed by: test-automation-engineer (combined analyst+
-implementer), ELITEA-2123/2127, 2026-08-15 (supersedes nothing below — new
+implementer), ELITEA-2128/2129, 2026-08-15 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: test-automation-engineer
+(combined analyst+implementer), ELITEA-2123/2127, 2026-08-15; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2122, 2026-08-15; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2121/2130, 2026-08-15; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2457, 2026-08-15; previous confirmer: test-automation-engineer
@@ -19,6 +20,66 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+
+## ELITEA-2128/2129 — folder-rename LENGTH boundary, confirms `FolderItem.jsx`
+## shares `MAX_CONVERSATION_LENGTH=50` truncation with `ConversationItem.jsx`,
+## `ready-for-automation` (new spec, zero existing coverage of this axis)
+- **Zero existing coverage of folder-rename LENGTH/truncation anywhere on the
+  trunk** — `test_chat_folder_rename_checkmark_validation.py` (ELITEA-2458 family)
+  only exercises the empty/2-char/unchanged/3-char-changed/special-char/
+  leading-space VALIDITY axis (regex + changed-state), never a name anywhere near
+  the 50-char length boundary. ELITEA-2128 (exact-50 acceptance) and ELITEA-2129
+  (51+ type / 70-char paste overflow) close that gap — mirrors the conversation-
+  rename precedent (`test_conversation_rename_length_boundaries.py`,
+  ELITEA-2101/2102/2103/2104) applied to the folder entity.
+- **Source-confirmed AND live-confirmed this session** (both, not source-only):
+  `FolderItem.jsx`'s `onChangeFolderName` (line ~180) does `event.target.value
+  .slice(0, MAX_CONVERSATION_LENGTH)` on every `onChange` — the EXACT SAME
+  constant/mechanism `ConversationItem.jsx`'s `onChangeConversationName` uses
+  (`constants.js:74`, `MAX_CONVERSATION_LENGTH = 50`). This was NOT assumed from
+  the conversation sibling — grep-confirmed independently in `FolderItem.jsx`'s
+  own source, then live-verified on BOTH the create-folder editor AND the actual
+  rename-existing-folder path (dot-menu → Rename): typing exactly 50 chars lands
+  all 50 (no truncation); typing a 51st char is silently dropped (value stays at
+  the first 50); pasting a 70-char clipboard string (real
+  `navigator.clipboard.writeText()` + `Control+V`/`Meta+V`, not DOM injection)
+  truncates to the first 50 identically — no separate `onPaste` handler exists on
+  the input (grep-confirmed), same "reached via the same onChange path" finding
+  ELITEA-2103/2104 already documented for conversations.
+- **Case-text drift found in ELITEA-2129's own step 2** (its Steps table, NOT a
+  cross-case drift like the "Edit"-vs-"Rename" one below): the Expected Result
+  column says "Only first **64** characters accepted; 65th is not entered" —
+  contradicts the case's own title ("...Beyond **50** Characters"), Test Data (a
+  70-char *paste* string), and steps 3-4 (both correctly say 50). Live execution
+  confirms 50 is correct and internally consistent; "64" is very likely a mix-up
+  with `ConversationNameRegExp`'s SEPARATE 3-64-char CHARSET ceiling (a different
+  gate — regex validity, not the length-slice truncation this step actually
+  tests). AFS asserts the live, self-consistent 50-char behavior per the
+  reverse-masking guard; recommend a case-text CLARIFICATION on the TMS case's
+  step 2 wording, not a product bug (see ELITEA-2129's AFS § Known Defects Found
+  for the full reasoning).
+- **No folder equivalent of `paste_conversation_name()`/`clear_conversation_name()`
+  existed before this session** — `ChatPage` only had these for the conversation
+  entity. ELITEA-2129's implementation adds `paste_folder_name()`/
+  `clear_folder_name()`, mirroring the conversation methods' exact idiom (real
+  clipboard write + platform-aware `Control+V`/`Meta+V` keypress; isolated
+  `.clear()` helper) rather than inlining either into the test body.
+- **`set_folder_name()`'s documented "append not replace" race reconfirmed live
+  AGAIN this session** (3rd/4th independent confirmation after ELITEA-2458's
+  original finding and the pollution it already left in the shared DEV project) —
+  a bare `Control+a` + typed text raced React's re-render and produced
+  `"<new-text>New folder"` (append, not replace) on the FIRST attempt of this
+  session, before switching to a proper select+delete clear. `set_folder_name()`'s
+  own existing `.clear()` call (not a bare `Control+a`) already avoids this — the
+  race only reproduces when that safeguard is bypassed, exactly as documented.
+- **Cleanup**: exploration folder (id 250, `at_w06_folder_orig` → renamed through
+  the type/paste-overflow sequence → deleted) via the UI's own Delete flow —
+  zero net pollution left by this session's exploration. A raw `fetch()` DELETE
+  to `dev.elitea.ai` from the `localhost:5173` origin was attempted first and
+  CORS-blocked (4 console ERROR entries, all this analyst's own probe, not
+  product errors, not reachable from the shipped test which uses
+  `ChatPage.delete_folder_via_api()` — that method already has the correct base
+  URL + auth-header fallback baked in, unlike an ad-hoc `fetch()`).
 
 ## ELITEA-2123/2127 — near-total duplicates of ELITEA-2459's already-merged
 ## special-chars/leading-space scenarios, `already-covered` (zero new code)
