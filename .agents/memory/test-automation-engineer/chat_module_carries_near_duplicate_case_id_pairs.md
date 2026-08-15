@@ -5,12 +5,15 @@ type: feedback
 ---
 
 The `chat-interface` TMS module (`onetest-ai-tm-Elitea/tests/automated-full-regression-ui/chat/`)
-has at least one confirmed instance of the same underlying flow being carried
-by two separate case-ID ranges with near-identical text: ELITEA-2118/2119/2120
+carries the same underlying flow under THREE separate case-ID
+clusters with near-identical text, confirmed so far: ELITEA-2118/2119/2120
 ("Folder Creation — default name saved / custom name saved / cancel
-discards") and ELITEA-2133/2134 ("Folder Creation with Custom Name via CHATS
-Header Icon" / "Folder Creation Cancel Discards New Folder"), differing only
-in the literal test-data folder name used.
+discards"), ELITEA-2133/2134 ("Folder Creation with Custom Name via CHATS
+Header Icon" / "Folder Creation Cancel Discards New Folder"), and ELITEA-2457
+("Create folder with custom name") — differing only in the literal test-data
+folder name used. **The pattern is NOT confined to adjacent ID ranges** —
+2457 sits far outside the 2118-2134 cluster, so ID proximity is not a
+reliable signal either way; only the flow DESCRIPTION tells you.
 
 **Before classifying a fresh chat-interface case as `ready-for-automation`:**
 1. Read `test-specs/chat-interface/_surface.md` — its section headers name the
