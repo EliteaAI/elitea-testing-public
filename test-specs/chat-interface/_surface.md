@@ -3,6 +3,11 @@
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
 a time; last confirmed by: test-automation-engineer (combined analyst+
+implementer), ELITEA-2175/2176, 2026-08-15 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: qa-engineer analyst,
+ELITEA-2171/2172, 2026-08-15
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: test-automation-engineer (combined analyst+
 implementer), ELITEA-2460, 2026-08-15 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: qa-engineer analyst,
 ELITEA-2461, 2026-08-15
@@ -38,7 +43,134 @@ qa-engineer analyst, ELITEA-2111, 2026-08-15;
 previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
-ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)).
+ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03))).
+
+## ELITEA-2175/2176 — Add users modal: middle-chip removal via X + cancel
+## with TWO pre-selected users, both `extend-existing` against ELITEA-2167's
+## covering file, ZERO new testids, one infrastructure gotcha found+fixed
+- **Neither case was `already-covered` despite two close near-neighbors
+  already proving the same mechanism CLASS** — `remove_add_users_chip()`
+  (ELITEA-2168) had exactly one prior caller, removing the LAST of 4 chips;
+  ELITEA-2175's own case data (3 chips, remove the MIDDLE one) is a distinct,
+  live-confirmed observable — proves the removal is keyed by chip identity,
+  not array position, and that BOTH surrounding selections survive in order.
+  Similarly, Cancel-discards-a-selection was already proven with exactly ONE
+  pre-selected chip (ELITEA-2167 Step 7, ELITEA-2168 Step 6);
+  ELITEA-2176's own data (Cancel with TWO pre-selected chips, against an
+  EXISTING conversation with a real participant baseline) is this digest's
+  first multi-item-Cancel proof. Both live-reconfirmed this session, not
+  assumed from the LAST-position/single-item precedents.
+- **Zero new testids for either case** — `add-users-remove-chip-{userId}`,
+  `add-users-chip-{userId}`, `add-users-cancel-button`,
+  `add-users-confirm-button`, `chat-participants-badge-button` /
+  `chat-participants-popper` are all already on both `main` and
+  `automation/testids` (fresh `git fetch origin` + `git grep` this session) —
+  confirmed by the two prior sessions (ELITEA-2167/2168) that established
+  this whole modal surface.
+- **Infrastructure gotcha found+fixed, reproduced 4/4 times**:
+  `_open_blank_conversation()` (the covering file's own existing helper,
+  single check — new-conversation greeting visible) is insufficient on this
+  shared dev backend. `ChatPage.navigate_to_chat()`'s own docstring already
+  documents that "the SPA may redirect to the last-viewed conversation
+  stored in the browser session" — this redirect can fire as a DELAYED
+  effect, AFTER the greeting and a momentary 0 message count are both
+  already observed, silently snapping the view back onto a pre-existing
+  conversation with real history (this session's own repeated landing spot:
+  `/chat/420`, "Review attached documents" — the SAME conversation the
+  ELITEA-2171/2172 section above documents as a shared-contention hot spot).
+  A parallel manual Playwright MCP session, driven slowly with pauses
+  between steps, reliably produced a genuinely blank conversation via the
+  identical `sidebar-create-button` click — isolating this as a headless/
+  fast-back-to-back-actions TIMING race, not a product defect and not
+  missing test data. Fix: an ADDITIVE sibling helper,
+  `_open_genuinely_blank_conversation()` (does NOT modify
+  `_open_blank_conversation()` or its existing ELITEA-2167 caller — Hard Rule
+  3), adds a settle window (1.5s) + re-check of BOTH message count AND URL
+  before proceeding. Used by both new test classes.
+- **Related finding, flagged NOT fixed (out of scope for this unit — a
+  shared-caller helper with an existing merged caller)**: the ORIGINAL,
+  already-merged `TestInviteUsersAddCancelClose` test (using the weaker
+  `_open_blank_conversation()`) now fails CONSISTENTLY (reproduced 2/2) in
+  the current live environment on this exact race — its own Step 1 assertion
+  (`assert not chat.is_participants_badge_visible(...)`) fails because it
+  lands on the restored conversation with participants. Not a regression
+  introduced by this session's own code (that helper/test were never
+  touched) — worth a follow-up fix-only dispatch to apply the same
+  settle+recheck guard to `_open_blank_conversation()` itself (which would
+  then need the shared-file regression protocol: enumerate + re-run every
+  caller before landing).
+- Both AFS files:
+  `test-specs/chat-interface/lextend_remove-preselected-user-via-chip-x_ELITEA-2175.md`,
+  `test-specs/chat-interface/lextend_cancel-add-users-modal-after-preselecting-users_ELITEA-2176.md`.
+
+## ELITEA-2171/2172 — Users-dropdown remove-control: Cancel-preserves-user
+## (`already-covered` vs merged ELITEA-2168) + owner-row-has-no-delete-control
+## (`ready-for-automation`, new observable, zero new testids)
+- **ELITEA-2171** ("Cancel Remove User Dialog Keeps User in Participants
+  List") is verbatim ELITEA-2168's own Step 10 (source
+  `test_team_users_mention_and_remove_participants.py` lines 560–576, merged
+  `origin/automation/base`) — hover a non-owner row, click delete, click
+  Cancel, verify badge count AND dropdown listing unchanged. Classified
+  `already-covered`, traceability AFS only.
+- **ELITEA-2172** ("Conversation Owner Cannot Be Removed") is a GENUINELY NEW
+  observable — ELITEA-2168's test removes two different non-owner
+  participants but never once hovers/asserts anything about the OWNER's own
+  row. Classified `ready-for-automation`.
+- **Mechanism, source- AND live-confirmed**: the product implements this as
+  "you cannot remove **yourself**", not an explicit "conversation owner"
+  role/flag. `UserMenu.jsx`'s per-row `isSelectable = selectable &&
+  user.entity_meta?.id !== currentUserId` (`currentUserId` = `state.user.id`,
+  the CURRENTLY LOGGED-IN session) gates the delete `IconButton`'s
+  hover-visibility CSS (`'&:hover #DeleteButton': { visibility: selectable ?
+  'visible' : 'hidden' }` — the `selectable` param `userItemStyles` receives
+  is actually the per-row `isSelectable`). The delete button is ALWAYS
+  present in the DOM (never conditionally rendered) — even for the
+  "un-removable" row — it just never becomes visible on hover. **Assert via
+  `not_to_be_visible()`, never `to_have_count(0)`** (same class of gotcha as
+  the ELITEA-2146/2147/2148 collapsed-folder-items note above — an
+  always-mounted, visibility-toggled node needs a visibility assertion, a
+  count-based one passes for the wrong reason). In THIS single-account
+  testing environment "yourself" and "the conversation's creator/owner"
+  coincide (only one real account exists, and it always creates the
+  conversations it opens) — asserting against it faithfully verifies the
+  case's own intent, this is a mechanism clarification, not a defect or a
+  case-text drift.
+- **Live-confirmed via Playwright MCP** (conversation `/chat/420`, badge
+  went 1→2 after adding Hrach Sargsyan): hovering the owner's row ("TB Test
+  Bot") produced NO "Remove user" accessible button in the post-hover
+  snapshot; hovering the SAME dropdown's non-owner row (Hrach Sargsyan)
+  IMMEDIATELY produced `button "Remove user"` — same session, same popover
+  instance, ruling out a stale-render artifact.
+- **Zero new testids needed for either case** — `chat-participants-badge-button`,
+  `chat-participant-row-{unique_id}` (dynamic, ELITEA-2168), and
+  `chat-participant-remove-button` are all already on BOTH `main` and
+  `automation/testids` (fresh `git fetch origin` + `git grep` this session).
+  Owner id resolution reuses the exact same `ConversationAPI.get_conversation()`
+  → `meta.user_name`/`entity_meta.id` mapping ELITEA-2168's test already
+  established for non-owner rows — just matched against `${TEST_USER}`'s own
+  display name instead of a searched-for name.
+- **Gotcha — running pytest concurrently with manual Playwright-MCP
+  exploration against the SAME localhost dev server risks cross-session
+  conversation contamination.** This session ran the merged ELITEA-2168
+  pytest test live (to reconfirm ELITEA-2171 unrelated to the AFS's own
+  manual repro) WHILE a manual Playwright-MCP browser was also open on a
+  DIFFERENT, shared conversation (`/chat/420`). Both pytest attempts failed
+  at their own Setup stage before reaching Step 10 (once on the
+  already-tracked #1082 stale-conversation flake, once on an "Add users"
+  search timeout) — and one of them appears to have landed on and added
+  participants (Daniyar Chambylov, Ihar Bylitski — ELITEA-2168's own SETUP
+  users) to `/chat/420` itself rather than a fresh conversation, mid-session.
+  Root cause not fully isolated (didn't chase which specific run did it —
+  pytest's own browser context is separate from the MCP one, so this is
+  server/backend-side conversation-list contention, not a shared browser
+  session), but the practical lesson holds regardless of exact mechanism:
+  **don't run pytest against localhost while a manual MCP exploration
+  session is also active on the same dev server** — either serialize them,
+  or expect to need extra cleanup on whichever conversation the manual
+  session was using. Recovered by restoring `/chat/420` to its original
+  1-participant state before ending the session.
+- Both AFS files: `test-specs/chat-interface/lcovered_cancel-remove-user-dialog-keeps-user-in-participants_ELITEA-2171.md`,
+  `test-specs/chat-interface/l2_conversation-owner-has-no-remove-control-in-users-dropdown_ELITEA-2172.md`.
 
 ## ELITEA-2460 — near-total duplicate of ELITEA-2148, `already-covered`
 ## (zero new code — the 3-observable covering test already proves all 5 steps)
@@ -2436,3 +2568,79 @@ needed.
   to become hidden before the next hover. Any FUTURE test that clicks a
   DISABLED context-menu item and then needs to interact with the same
   conversation again should apply the same explicit-close pattern.
+
+**Resolved/added during ELITEA-2169 combined analyst+implementer pass (batch
+chat-remaining-w10, 2026-08-15):** ELITEA-2169 ("Add Users as Conversation
+Participants") is a strict subset of ELITEA-2167's own 10-step "Add users"
+modal flow (already merged, `test_invite_users_add_persists_cancel_and_close_discard`)
+— classified `already-covered`, no new spec written. While live-reconfirming the
+covering test 3× back-to-back this session:
+- **Run 1** passed every step overlapping with ELITEA-2169 (menu → modal →
+  2 chips → Add → badge/popover show both) and only failed at the test's own
+  FINAL, unrelated side-channel console check, on a genuinely NEW React
+  `setState`-in-render warning (`UsersParticipantDropdown/index.jsx:30` setting
+  state on `CollapsedPerticapantsList` mid-render of the Participants panel) —
+  dedup-checked (distinct from #719's `sx`-on-svg and #625's Support-Assistant
+  setState warning) and filed as MINOR issue #1556.
+- **Runs 2–3** failed at the covering test's OWN Step 1 (stale conversation
+  reused instead of a genuinely blank one) — this is the already-tracked #1082
+  flake, reproducing here because back-to-back re-runs in one session leave no
+  cleanup pause between them (self-inflicted by the re-run methodology, not a
+  fresh-invocation symptom). Any future session re-running this covering test
+  repeatedly for reconfirmation should expect this and treat a Step-1 failure
+  on re-run N>1 as #1082 first, not a new regression, before investigating
+  further.
+
+## ELITEA-2173/2174 — Users-dropdown MENTION-BY-NAME-CLICK, NEW surface
+## distinct from ELITEA-2168's composer-typed-`"@"` path, family AFS, both
+## `ready-for-automation`, ZERO new testids, one CLARIFICATION filed (#1558)
+- **Genuinely different mechanism from ELITEA-2168's own mention steps 7/12,
+  confirmed by reading source BEFORE testing live** (interaction-discovery
+  ladder step 6). ELITEA-2168 mentions a user via the COMPOSER'S typed-`"@"`
+  popper (`UserMentionList.jsx`/`onSelectUserMention`, `ChatBox.jsx`). This
+  family clicks a participant's NAME ROW inside the Users PARTICIPANTS
+  DROPDOWN itself (`UserMenu.jsx`'s row `onClick` → `handleSelectUser` →
+  ELITEA-2168's own `onSelectParticipant` wrapper → `NewChat.jsx`'s
+  `onSelectThisParticipant` → `onSelectParticipant(foundParticipant, false)`,
+  `NewChat.jsx:575-594`) — a call chain that (mis-)reads at first glance like
+  `shouldMentionUser=false` should SKIP the mention insertion (the parameter's
+  literal name), but the row branch (`participant?.entity_name ===
+  ChatParticipantType.Users`) does `shouldMentionUser && mentionTarget
+  ?.mentionUser?.(...)` — false means the call is skipped ONLY when true is
+  needed elsewhere; **live confirmation was required and performed** (source
+  reading alone would have been ambiguous/wrong here — this is exactly why the
+  ladder's step 6 is "read source" not "trust source", the code path has a
+  second branch (`else if (participant === 'All users')`) with the same
+  `shouldMentionUser` gate that #1119 already proved broken for the FOOTER
+  item specifically). Live: clicking a row DOES insert `"@Name "` into the
+  composer correctly, for both a single mention (ELITEA-2173) and two
+  sequential mentions that correctly APPEND rather than replace (ELITEA-2174:
+  `"@Hrach Sargsyan @Levon Dadayan"` after two dropdown-reopen-click cycles).
+- **`fill()` silently destroys an in-progress mention** — appending `" hi"` to
+  a composer already containing `"@Hrach Sargsyan"` via Playwright's `.fill()`
+  REPLACES the whole value (mention lost entirely), not appends. Fix:
+  `click()` + `press("End")` + `press_sequentially(" hi")`. Not previously
+  documented in this digest because ELITEA-2168's own mention flow never hit
+  this exact failure mode via its own insertion mechanism.
+- **CLARIFICATION filed, [#1558](https://github.com/EliteaAI/elitea-testing-public/issues/1558)**:
+  ELITEA-2173's case text (step 3) expects the inserted `@mention` to be
+  "highlighted/formatted" — live product inserts plain, unstyled text (same as
+  the composer's own typed-`@` mechanism, which is ALSO plain text per
+  ELITEA-2168's AFS). Reverse-masking case-text drift, not a defect.
+- **Zero new testids needed** — the whole family reuses
+  `chat-participants-badge-button`, `chat-participant-row-user_{userId}_`
+  (dynamic, PARTICIPANT_ROW template), `chat-message-input`, `chat-send-button`,
+  `sidebar-create-button`, and the "Add users" modal handles, ALL already added
+  by ELITEA-2167/2168 and confirmed present on both `main` and
+  `automation/testids` (fresh `git fetch origin` this session). One new
+  page-object method only: `mention_user_via_participants_dropdown(user_id)` —
+  clicks the row directly (no hover needed; the row's hover-only delete icon is
+  `visibility:hidden` by default and does not intercept a plain click at the
+  row's center).
+- **Zero product defects on either case's own subject.** Console/network
+  side-channel checked throughout both live drives — only the two
+  already-documented noise sources (project-471 `secrets` 403, #719's
+  `sx`-on-svg warning) fired.
+- Family AFS:
+  `test-specs/chat-interface/l2_participants-dropdown-click-name-inserts-mention_ELITEA-2173.md`
+  (same `afs_path` for both ELITEA-2173 and ELITEA-2174).

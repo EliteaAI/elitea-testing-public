@@ -522,3 +522,24 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   resource this specific test's flow requests more consistently than others) —
   still short of a captured URL. Record a 4th occurrence's URL if one surfaces
   to convert from suspected to confirmed and enable a shared filter.
+- **Session-level heavy-load noise, chat-remaining wave-10 (2026-08-15)**: the
+  lead's own independent gate for wave-10 (participants management, new
+  surface) hit 3 DISTINCT conversation-timing flakes across 2 full-set gate
+  attempts, spanning both a pre-existing test (ELITEA-2167, unrelated to
+  wave-10's own diff) and one of wave-10's own new tests (ELITEA-2174) —
+  variously: `is_participants_badge_visible` true on a landed-stale
+  conversation (root-caused and properly fixed → linked to open #1082, see
+  wave-10's landed entry below), a badge-count mismatch after Cancel, an
+  add-users-dropdown search timeout (root-caused live: correctly excludes an
+  already-participant user off a stale landed conversation, same #1082
+  mechanism, fixed by swapping to the stronger
+  `_open_genuinely_blank_conversation()` guard), and finally that SAME
+  stronger guard itself exhausting its 3-attempt retry budget once. Every
+  occurrence not reproduced standalone. This session had ~6+ continuous hours
+  of heavy automated chat/participant churn (10 waves) against the shared DEV
+  backend by the time these hit — consistent with genuine session-level
+  backend strain rather than a code defect at each individual site. Distinct
+  from the per-test noise patterns above: this is a signal to watch backend
+  load/timing across an extended campaign session, not a single spec's flake.
+  Record further occurrences (and whether they correlate with session
+  duration) here.
