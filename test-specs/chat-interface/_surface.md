@@ -2529,3 +2529,57 @@ covering test 3× back-to-back this session:
   repeatedly for reconfirmation should expect this and treat a Step-1 failure
   on re-run N>1 as #1082 first, not a new regression, before investigating
   further.
+
+## ELITEA-2173/2174 — Users-dropdown MENTION-BY-NAME-CLICK, NEW surface
+## distinct from ELITEA-2168's composer-typed-`"@"` path, family AFS, both
+## `ready-for-automation`, ZERO new testids, one CLARIFICATION filed (#1558)
+- **Genuinely different mechanism from ELITEA-2168's own mention steps 7/12,
+  confirmed by reading source BEFORE testing live** (interaction-discovery
+  ladder step 6). ELITEA-2168 mentions a user via the COMPOSER'S typed-`"@"`
+  popper (`UserMentionList.jsx`/`onSelectUserMention`, `ChatBox.jsx`). This
+  family clicks a participant's NAME ROW inside the Users PARTICIPANTS
+  DROPDOWN itself (`UserMenu.jsx`'s row `onClick` → `handleSelectUser` →
+  ELITEA-2168's own `onSelectParticipant` wrapper → `NewChat.jsx`'s
+  `onSelectThisParticipant` → `onSelectParticipant(foundParticipant, false)`,
+  `NewChat.jsx:575-594`) — a call chain that (mis-)reads at first glance like
+  `shouldMentionUser=false` should SKIP the mention insertion (the parameter's
+  literal name), but the row branch (`participant?.entity_name ===
+  ChatParticipantType.Users`) does `shouldMentionUser && mentionTarget
+  ?.mentionUser?.(...)` — false means the call is skipped ONLY when true is
+  needed elsewhere; **live confirmation was required and performed** (source
+  reading alone would have been ambiguous/wrong here — this is exactly why the
+  ladder's step 6 is "read source" not "trust source", the code path has a
+  second branch (`else if (participant === 'All users')`) with the same
+  `shouldMentionUser` gate that #1119 already proved broken for the FOOTER
+  item specifically). Live: clicking a row DOES insert `"@Name "` into the
+  composer correctly, for both a single mention (ELITEA-2173) and two
+  sequential mentions that correctly APPEND rather than replace (ELITEA-2174:
+  `"@Hrach Sargsyan @Levon Dadayan"` after two dropdown-reopen-click cycles).
+- **`fill()` silently destroys an in-progress mention** — appending `" hi"` to
+  a composer already containing `"@Hrach Sargsyan"` via Playwright's `.fill()`
+  REPLACES the whole value (mention lost entirely), not appends. Fix:
+  `click()` + `press("End")` + `press_sequentially(" hi")`. Not previously
+  documented in this digest because ELITEA-2168's own mention flow never hit
+  this exact failure mode via its own insertion mechanism.
+- **CLARIFICATION filed, [#1558](https://github.com/EliteaAI/elitea-testing-public/issues/1558)**:
+  ELITEA-2173's case text (step 3) expects the inserted `@mention` to be
+  "highlighted/formatted" — live product inserts plain, unstyled text (same as
+  the composer's own typed-`@` mechanism, which is ALSO plain text per
+  ELITEA-2168's AFS). Reverse-masking case-text drift, not a defect.
+- **Zero new testids needed** — the whole family reuses
+  `chat-participants-badge-button`, `chat-participant-row-user_{userId}_`
+  (dynamic, PARTICIPANT_ROW template), `chat-message-input`, `chat-send-button`,
+  `sidebar-create-button`, and the "Add users" modal handles, ALL already added
+  by ELITEA-2167/2168 and confirmed present on both `main` and
+  `automation/testids` (fresh `git fetch origin` this session). One new
+  page-object method only: `mention_user_via_participants_dropdown(user_id)` —
+  clicks the row directly (no hover needed; the row's hover-only delete icon is
+  `visibility:hidden` by default and does not intercept a plain click at the
+  row's center).
+- **Zero product defects on either case's own subject.** Console/network
+  side-channel checked throughout both live drives — only the two
+  already-documented noise sources (project-471 `secrets` 403, #719's
+  `sx`-on-svg warning) fired.
+- Family AFS:
+  `test-specs/chat-interface/l2_participants-dropdown-click-name-inserts-mention_ELITEA-2173.md`
+  (same `afs_path` for both ELITEA-2173 and ELITEA-2174).
