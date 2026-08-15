@@ -67,3 +67,4 @@
 - [Concurrent MCP contaminates dev-token session](concurrent_mcp_session_contaminates_shared_devtoken_conversation.md) — never explore live + run pytest at once; re-run in isolation before blaming a defect
 - [Cut your branch FIRST on a batch dispatch](dispatch_tree_starts_on_trunk_cut_your_own_branch_first.md) — "tree is on trunk" = starting state, not commit target
 - [Sandbox project 400 for isolated conversation state](sandbox_project_400_for_isolated_conversation_state.md) — genuinely empty; use for exact-count preconditions instead of clearing a shared project
+- [Search query cache hit defeats expect_response](search_query_cache_hit_defeats_expect_response_wait.md) — re-querying an already-fetched value (incl. clear-to-initial) can skip the network entirely
