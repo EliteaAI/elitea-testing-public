@@ -66,3 +66,4 @@
 - [Build-with-AI suggestion nondeterminism](skill_suggestion_llm_nondeterminism_blocks_live_rewrite.md) — any suggested_* array can go empty across repeats; test 5-6× before trusting a live rewrite
 - [Concurrent MCP contaminates dev-token session](concurrent_mcp_session_contaminates_shared_devtoken_conversation.md) — never explore live + run pytest at once; re-run in isolation before blaming a defect
 - [Cut your branch FIRST on a batch dispatch](dispatch_tree_starts_on_trunk_cut_your_own_branch_first.md) — "tree is on trunk" = starting state, not commit target
+- [Sandbox project 400 for isolated conversation state](sandbox_project_400_for_isolated_conversation_state.md) — genuinely empty; use for exact-count preconditions instead of clearing a shared project

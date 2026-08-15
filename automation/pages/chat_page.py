@@ -1231,6 +1231,11 @@ class ChatPage(BasePage):
     # state / conversation list) as descendants.
     FOLDER_ITEM = '[data-testid="chat-folder-item-{}"]'
 
+    # Prefix-match selector enumerating every folder item regardless of id —
+    # same idiom as CONVERSATION_ITEM_PREFIX above. Used for "no folders
+    # present" count assertions (ELITEA-2117).
+    FOLDER_ITEM_PREFIX = '[data-testid^="chat-folder-item-"]'
+
     # Scoped sub-selectors — non-unique across simultaneously-rendered
     # folders, ALWAYS resolved via .locator() on a FOLDER_ITEM-scoped
     # element, never at page level.
@@ -3132,6 +3137,18 @@ class ChatPage(BasePage):
         """
         return self.page.locator(self.CONVERSATION_ITEM_PREFIX)
 
+    def get_folder_link_count(self) -> int:
+        """Get count of folder items rendered in the sidebar
+        (FOLDER_ITEM_PREFIX, page-wide, unscoped) — for "no folders
+        present" assertions (ELITEA-2117).
+
+        Returns:
+            Number of folder items found.
+        """
+        count = self.page.locator(self.FOLDER_ITEM_PREFIX).count()
+        logger.info(f"Folder link count: {count}")
+        return count
+
     @action("Click a conversation item")
     def click_conversation_item(self, conversation_id: str | int, timeout: int = 5000):
         """Click a conversation item row by id (e.g. a search result) to open it.
@@ -3763,6 +3780,50 @@ class ChatPage(BasePage):
         ) as resp_info:
             self.delete_confirm_button.click()
         return resp_info.value
+
+    # Scoped raw handle — #579-shape-1 sanctioned exception (third-party MUI
+    # internal node, ELITEA-2116): the backdrop is library-internal chrome
+    # with no app testid placeable on it, but it lives inside the real app
+    # testid `delete-confirm-dialog` (the MUI `Dialog` root itself carries
+    # that testid, and `MuiBackdrop-root` is its own direct child) — so it is
+    # scoped off that parent field, never a free-floating page-level handle.
+    # Do not extend this to any handle that COULD carry a testid.
+    DELETE_DIALOG_BACKDROP = ".MuiBackdrop-root"
+
+    def is_delete_dialog_backdrop_visible(self, timeout: int = 5000) -> bool:
+        """Return True if the delete-confirmation dialog's dimming backdrop is visible.
+
+        See ``DELETE_DIALOG_BACKDROP`` docstring for the scoped-raw-handle
+        justification (ELITEA-2116).
+        """
+        backdrop = self.delete_confirm_dialog.locator(self.DELETE_DIALOG_BACKDROP)
+        try:
+            backdrop.first.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    @action("Dismiss delete-confirmation dialog via outside click")
+    def dismiss_delete_dialog_via_outside_click(self, timeout: int = 5000):
+        """Dismiss the delete-confirmation dialog with a real click outside its Paper.
+
+        MUI's ``Dialog`` renders a ``MuiDialog-container`` that visually
+        spans the whole viewport and intercepts direct-locator clicks
+        anywhere inside it (confirmed live, ELITEA-2116: Playwright reports
+        "intercepts pointer events" attempting ``.click()`` on
+        ``.MuiBackdrop-root`` directly — the container paints above the
+        backdrop). The honest technique is a coordinate-based
+        ``page.mouse.click(x, y)`` at a point provably outside the dialog
+        Paper (the viewport's top-left corner, well clear of the centered
+        Paper for any reasonable viewport size) — a real Playwright mouse
+        event, not a ``page.evaluate()``/JS-dispatched substitution. This
+        correctly lands on ``MuiDialog-container``, which still triggers
+        MUI's ``onClose(reason='backdropClick')`` — exactly what the case's
+        own "click outside the modal" step asks for.
+        """
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
+        self.page.mouse.click(5, 5)
+        self.delete_confirm_dialog.wait_for(state="hidden", timeout=timeout)
 
     # ------------------------------------------------------------------
     # Internal Tools / Image Creation
