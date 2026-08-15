@@ -289,6 +289,158 @@ class TestPinFolderViaPinOnTop:
                 except Exception as exc:
                     logger.warning("Failed to delete folder_sibling %s: %s", folder_sibling_id, exc)
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2154_chat-pinned-folder-retains-all-conversations-after-pinning.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    def test_pin_folder_with_multiple_conversations_retains_all(self, page, conversation_api):
+        """ELITEA-2154: Chat – Pinned Folder Retains All Conversations After Pinning (l3, medium).
+
+        Extends ELITEA-2152's single-conversation pin coverage: seeds a folder
+        with THREE distinctly-named conversations (the case's own wording asks
+        for "multiple" conversations and to "note conversation names"), pins it
+        via the same real UI dot-menu flow, re-expands it, and verifies ALL
+        THREE conversations still resolve inside it — by id AND by exact name
+        text — so a hypothetical truncation/reorder bug that a single-item
+        check could not catch is exercised here.
+
+        Steps (AFS
+        test-specs/chat-interface/lextend_pinned-folder-retains-all-conversations_ELITEA-2154.md):
+        1. Navigate to Chats, expand folder_multi, note (read) each of
+           conv_a/conv_b/conv_c's rendered names — baseline.
+        2. Hover folder_multi, click its 3-dot menu, click "Pin on top".
+        3. Expand the pinned folder (force-click — disabled-ancestor gotcha).
+        4. Verify no conversations were lost — all 3 still present, by id and
+           by exact name text.
+        """
+        chat = ChatPage(page)
+        folder_multi_id = None
+        conv_ids: dict[str, int] = {}
+
+        console_messages = []
+
+        def _on_console(msg):
+            if msg.type == "error" and not _is_known_secrets_403(msg):
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
+
+        try:
+            with allure.step(
+                "Setup — create folder_multi via API, create 3 distinctly-"
+                "named conversations (conv_a/conv_b/conv_c) and move each "
+                "into folder_multi; navigate to chat and expand the folder"
+            ):
+                ts = int(time.time())
+                folder = conversation_api.create_folder(f"autotest_2154_folder_{ts}")
+                folder_multi_id = folder["id"]
+
+                names = {
+                    "conv_a": f"autotest_2154_conv_a_{ts}",
+                    "conv_b": f"autotest_2154_conv_b_{ts}",
+                    "conv_c": f"autotest_2154_conv_c_{ts}",
+                }
+                for key, name in names.items():
+                    conv = conversation_api.create_conversation(name)
+                    conv_ids[key] = conv["id"]
+                    conversation_api.move_conversation_to_folder(conv["id"], folder_multi_id)
+
+                chat.navigate_to_chat()
+                chat.wait_for_page_load()
+
+                folder_item = chat.get_folder_item(folder_multi_id)
+                folder_item.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+                assert not chat.is_folder_pinned(folder_multi_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"Freshly-seeded folder {folder_multi_id} should not start pinned"
+                )
+                logger.info(
+                    "Setup complete — folder_multi=%s conversations=%s",
+                    folder_multi_id, conv_ids,
+                )
+
+            with allure.step(
+                "Step 1 — Expand folder_multi and note (read) each "
+                "conversation's rendered name — baseline before pinning"
+            ):
+                chat.expand_folder(folder_multi_id, timeout=UI_ELEMENT_TIMEOUT)
+                for key, conv_id in conv_ids.items():
+                    assert chat.is_conversation_in_folder(
+                        folder_multi_id, conv_id, timeout=UI_ELEMENT_TIMEOUT,
+                    ), f"{key} ({conv_id}) should render inside folder_multi (baseline)"
+                    item_text = (
+                        folder_item.locator(chat.CONVERSATION_ITEM.format(conv_id))
+                        .first.text_content() or ""
+                    ).strip()
+                    assert item_text == names[key], (
+                        f"{key} ({conv_id}) baseline name text should read {names[key]!r}, "
+                        f"got {item_text!r}"
+                    )
+
+            with allure.step(
+                "Step 2 — Hover folder_multi, open its 3-dot menu, click "
+                "'Pin on top'"
+            ):
+                with page.expect_response(
+                    lambda r: "/folder/prompt_lib/" in r.url and r.request.method == "PATCH",
+                    timeout=NAVIGATION_TIMEOUT,
+                ) as pin_response_info:
+                    chat.pin_folder_via_menu(folder_multi_id, timeout=UI_ELEMENT_TIMEOUT)
+                pin_response = pin_response_info.value
+                assert pin_response.status == 200, (
+                    f"Pin PATCH should resolve 200, got {pin_response.status} "
+                    f"for {pin_response.url}"
+                )
+                assert chat.is_folder_pinned(folder_multi_id, timeout=UI_ELEMENT_TIMEOUT), (
+                    f"folder_multi {folder_multi_id} should carry data-pinned=\"true\" after pinning"
+                )
+
+            with allure.step(
+                "Step 3 — Expand the pinned folder (force-click required — "
+                "pinned-folder disabled-ancestor gotcha, ELITEA-2130/2152)"
+            ):
+                chat.expand_folder(folder_multi_id, timeout=UI_ELEMENT_TIMEOUT, force=True)
+
+            with allure.step(
+                "Step 4 — Verify no conversations were lost: all 3 still "
+                "present, by id and by exact name text"
+            ):
+                for key, conv_id in conv_ids.items():
+                    assert chat.is_conversation_in_folder(
+                        folder_multi_id, conv_id, timeout=UI_ELEMENT_TIMEOUT,
+                    ), f"{key} ({conv_id}) should still render inside folder_multi after pinning"
+                    item_text = (
+                        folder_item.locator(chat.CONVERSATION_ITEM.format(conv_id))
+                        .first.text_content() or ""
+                    ).strip()
+                    assert item_text == names[key], (
+                        f"{key} ({conv_id}) name text should still read {names[key]!r} "
+                        f"after pinning, got {item_text!r}"
+                    )
+
+            with allure.step(
+                "Side-channel check — no unexpected console errors across the full flow"
+            ):
+                assert not console_messages, (
+                    "Unexpected console errors during multi-conversation pin-folder flow: "
+                    f"{[m.text for m in console_messages]!r}"
+                )
+
+        finally:
+            for key, conv_id in conv_ids.items():
+                try:
+                    conversation_api.delete_conversation(conv_id)
+                    logger.info("Cleaned up %s %s", key, conv_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete %s %s: %s", key, conv_id, exc)
+            if folder_multi_id:
+                try:
+                    conversation_api.delete_folder(folder_multi_id)
+                    logger.info("Cleaned up folder_multi %s", folder_multi_id)
+                except Exception as exc:
+                    logger.warning("Failed to delete folder_multi %s: %s", folder_multi_id, exc)
+
 
 class TestUnpinFolderViaContextMenu:
     """ELITEA-2153: Chat – Unpin a Pinned Folder (l3, medium)."""
