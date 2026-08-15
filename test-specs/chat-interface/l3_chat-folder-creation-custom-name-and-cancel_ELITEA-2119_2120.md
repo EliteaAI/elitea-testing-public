@@ -170,9 +170,12 @@ claims match `FolderItem.jsx`'s actual create/cancel handling exactly).
   Lifecycle.
 
 ## Concrete Handles (discovered during exploration)
-No new handles needed — every testid and page-object method both
-scenarios require already exists, added by ELITEA-2132/ELITEA-2458 and
-confirmed live again this session:
+No new testids needed — every testid both scenarios require already exists,
+added by ELITEA-2132/ELITEA-2458 and confirmed live again this session. One
+new page-object METHOD was added during implementation (fix round 1,
+`automation/pages/chat_page.py:3186`) on top of the existing `FOLDER_ITEM_PREFIX`
+testid, to give ELITEA-2120's step 4 ("no folder named X exists") a
+non-brittle assertion instead of constructing a locator inline in the test:
 
 | Element | Testid handle | Provenance | Notes |
 |---|---|---|---|
@@ -181,11 +184,22 @@ confirmed live again this session:
 | Folder-name confirm (checkmark) button | `[data-testid="chat-folder-name-confirm-button"]` | on-`automation/testids` ✓ | `chat.folder_name_confirm_button`, `chat.is_folder_name_confirm_enabled()`. |
 | Folder-name cancel (X) button | `[data-testid="chat-folder-name-cancel-button"]` | on-`automation/testids` ✓ | `chat.folder_name_cancel_button`. |
 | Folder item row (dynamic, per id) | `[data-testid="chat-folder-item-{id}"]` | on-`automation/testids` ✓ | `chat.get_folder_item(folder_id)`. |
-| All folder items (prefix, count) | `[data-testid^="chat-folder-item-"]` (`FOLDER_ITEM_PREFIX`) | on-`automation/testids` ✓ | Used for the before/after count check (ELITEA-2120 step 5). |
+| All folder items (prefix, count) | `[data-testid^="chat-folder-item-"]` (`FOLDER_ITEM_PREFIX`) | on-`automation/testids` ✓ | Used for the before/after count check (ELITEA-2120 step 5), and as the base locator inside `get_folder_names_containing()`. |
 
 All handles verified live this session via direct DOM query
 (`document.querySelector`/`querySelectorAll('[data-testid="..."]')`) against
 the actual running app, not re-derived from the covering AFS's claims alone.
+
+**Added during ELITEA-2120 implementation (fix round 1):**
+`ChatPage.get_folder_names_containing(substring: str) -> list[str]`
+(`automation/pages/chat_page.py:3186`) — reads every rendered folder item
+(`FOLDER_ITEM_PREFIX`, page-wide, unscoped) and returns the text content of
+each one whose text contains `substring`. Used in ELITEA-2120 step 4 to
+assert `not matching_names` (no folder named `CANCEL_FOLDER_NAME` exists
+after cancel) — replaces an earlier in-test locator construction with a
+page-object method, keeping the abstraction-layer discipline (`.claude/rules/page-objects.md`)
+that all locators live only as page-object class fields/methods, never
+inline in spec files.
 
 ## Network Behavior
 - ELITEA-2119: `POST /elitea_core/folder/prompt_lib/399` -> `201`, response
@@ -208,11 +222,15 @@ None. Both scenarios were executable and confirmed live.
 ## Automation Hints
 - Framework: Playwright + pytest, testid-only `LocatorDescriptor`
   (`.agents/testing.md`).
-- Page object: `automation/pages/chat_page.py` — no changes needed, every
-  method/constant both scenarios require already exists
-  (`click_create_folder_button()`, `set_folder_name()`,
-  `is_folder_name_confirm_enabled()`, `get_folder_item()`,
-  `delete_folder_via_menu()`, `FOLDER_ITEM_PREFIX`).
+- Page object: `automation/pages/chat_page.py` — most methods/constants both
+  scenarios require already existed (`click_create_folder_button()`,
+  `set_folder_name()`, `is_folder_name_confirm_enabled()`,
+  `get_folder_item()`, `delete_folder_via_menu()`, `FOLDER_ITEM_PREFIX`). ONE
+  new method was added during implementation (fix round 1):
+  `get_folder_names_containing(substring)` (`automation/pages/chat_page.py:3186`)
+  — see § Concrete Handles above — so ELITEA-2120 step 4's "no folder named X
+  exists" check reads through a page-object method instead of constructing a
+  locator inline in the test.
 - New spec file: `automation/tests/ui/chat/test_chat_folder_creation_custom_name_and_cancel.py`,
   class `TestChatFolderCreationCustomNameAndCancel`, two independent test
   methods — one per case (not a single `pytest.mark.parametrize`, since the
