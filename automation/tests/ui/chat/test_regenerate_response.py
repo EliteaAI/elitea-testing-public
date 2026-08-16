@@ -36,14 +36,10 @@ backend; no ``page.route``/``page.evaluate``/mock is used (AFS §
 Fidelity Declaration).
 """
 
-import logging
-
 import allure
 import pytest
 from pages.chat_page import ChatPage
 from playwright.sync_api import expect
-
-logger = logging.getLogger("elitea.tests.chat")
 
 pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.regression, pytest.mark.new]
 
@@ -214,10 +210,13 @@ class TestRegenerateResponse:
         4. Click Regenerate on the last response; verify a new generation
            is genuinely triggered (the Stop control occupies the
            composer's send-slot — reused, identical signal to a normal
-           Send's mid-stream state, confirmed live), then wait for it to
-           complete and verify the action row is restored — left in a
-           clean, deterministic end state rather than an in-flight
-           generation (AFS § Axis 2 addition).
+           Send's mid-stream state, confirmed live) — and, as a HARD
+           assertion (fix round 1, review finding), that the regenerated
+           text genuinely differs from the pre-regenerate text, so a no-op
+           Regenerate cannot pass green — then wait for it to complete and
+           verify the action row is restored — left in a clean,
+           deterministic end state rather than an in-flight generation
+           (AFS § Axis 2 addition).
         """
         chat = ChatPage(page)
         console_issues = []
@@ -282,12 +281,26 @@ class TestRegenerateResponse:
                 "Regenerated response should be non-empty coherent content, "
                 f"got: {post_click_body!r}"
             )
-            if post_click_body == pre_click_body:
-                logger.warning(
-                    "Regenerated response text is identical to the "
-                    "pre-regenerate text — a coincidental LLM repeat, not "
-                    "asserted as a hard failure (see AFS § Axis 2)."
-                )
+            # Hard assertion (fix round 1, review finding): a Regenerate that
+            # no-ops and resurfaces the cached/identical text must FAIL this
+            # test, not merely log a warning — "click triggers a genuinely
+            # new generation" is this step's own claim (case text: "New
+            # generation triggered correctly"). A demoted `logger.warning`
+            # here is the No Defect Masking Rule's forbidden "demote expect()
+            # to log.info" shape regardless of how the AFS's Axis 2 framed
+            # the flake-avoidance rationale — see `.agents/testing.md`'s
+            # Fidelity policy ("the response is the oracle") for why the
+            # invariant itself must be asserted, not merely observed. A rare
+            # coincidental identical LLM repeat on a short, open-ended greeting
+            # prompt ("Hi"/"Hi again"/"One more hello") is accepted ordinary
+            # test flakiness, not masking — an occurrence here is signal to
+            # investigate (real no-op regression vs. genuine LLM coincidence),
+            # never something to silently swallow.
+            assert post_click_body != pre_click_body, (
+                "Regenerated response text is identical to the pre-regenerate "
+                "text — Regenerate should trigger a genuinely NEW LLM "
+                f"completion, not resurface cached/identical content: {post_click_body!r}"
+            )
 
         with allure.step("Side-channel check — no unexpected console/JS errors"):
             assert not console_issues and not page_errors, (
@@ -310,14 +323,19 @@ class TestRegenerateResponse:
            is visible.
         2. Click Regenerate; verify the previous response is replaced IN
            PLACE (message-item count unchanged, not a new appended item).
-        3. Verify a loading/streaming indicator appears (Stop control
-           occupies the composer's send-slot — reused ELITEA-2181/2182
-           contract).
+        3. Verify the model label and a loading/streaming indicator appear
+           (Stop control occupies the composer's send-slot, PLUS the full
+           RotatingMessages/Thought-accordion/model-chip sequence — reused
+           ELITEA-2181/2182 contract).
         4. Verify the user's previous message is byte-identical before and
            after.
         5. Wait for the new response to complete; verify it is non-empty
            coherent content (the response is the oracle — not asserted
-           against a hand-written string, AFS § Fidelity Declaration).
+           against a hand-written string, AFS § Fidelity Declaration) AND
+           that it genuinely differs from the pre-regenerate text (HARD
+           assertion — the case's own headline claim; a rare coincidental
+           identical LLM repeat is accepted ordinary flakiness, not a
+           reason to demote this to a log line).
         6. Verify Regenerate and the full action-icon row reappear.
         """
         chat = ChatPage(page)
@@ -353,10 +371,16 @@ class TestRegenerateResponse:
             chat.regenerate_action_button.click()
 
         with allure.step(
-            "Step 3 — Verify a loading/streaming indicator appears (Stop "
-            "control occupies the composer's send-slot)"
+            "Step 3 — Verify the model label and loading/streaming "
+            "indicator appear on the regenerating response (Stop control "
+            "occupies the composer's send-slot; RotatingMessages/Thought-"
+            "accordion/model-chip sequence, reused ELITEA-2181 contract — "
+            "AFS Coverage Map row 3)"
         ):
             expect(chat.stop_generation_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(chat.answer_loading_placeholder).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(chat.answer_thought_accordion).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(chat.answer_model_chip).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step(
             "Step 4 — Verify the user's previous message is unchanged "
@@ -382,12 +406,24 @@ class TestRegenerateResponse:
                 "Regenerated response should be non-empty coherent content, "
                 f"got: {post_click_body!r}"
             )
-            if post_click_body == pre_click_body:
-                logger.warning(
-                    "Regenerated response text is identical to the "
-                    "pre-regenerate text — a coincidental LLM repeat, not "
-                    "asserted as a hard failure (see AFS § Axis 2)."
-                )
+            # Hard assertion (fix round 1, review finding): this is
+            # ELITEA-2185's own HEADLINE claim ("Clicking Regenerate
+            # Generates a New Response") — demoting it to a `logger.warning`
+            # means a Regenerate that no-ops and returns cached/identical
+            # text passes this test green, which is exactly the No Defect
+            # Masking Rule's forbidden "demote expect() to log.info" shape.
+            # See `.agents/testing.md` § Fidelity policy ("the response is
+            # the oracle, not a payload you wrote") — the invariant this
+            # case exists to prove must be asserted, not merely observed.
+            # A rare coincidental identical LLM repeat on a short, open-ended
+            # prompt ("Hi there") is accepted ordinary test flakiness, not
+            # masking — a failure here is signal to investigate, never
+            # something to silently swallow.
+            assert post_click_body != pre_click_body, (
+                "Regenerated response text is identical to the pre-regenerate "
+                "text — Regenerate should generate a genuinely NEW LLM "
+                f"completion, not resurface cached/identical content: {post_click_body!r}"
+            )
 
         with allure.step(
             "Step 6 — Verify the user's message is STILL unchanged after "
