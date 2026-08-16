@@ -623,6 +623,25 @@ class ChatPage(BasePage):
         )
     )
 
+    # ELITEA-2184/2187: scoped sub-selector constants for the four
+    # hover-revealed action icons, for use chained off a SPECIFIC
+    # ``messages_container.nth(i)`` item — same idiom as the pre-existing
+    # ``MESSAGE_SENDER_NAME``/``MESSAGE_SENDER_AVATAR`` constants above. The
+    # bare fields above resolve PAGE-WIDE (``page.get_by_test_id(...)``),
+    # which throws a Playwright strict-mode violation once 2+ AI messages
+    # share a testid — confirmed live: ``chat-copy-button``/
+    # ``chat-read-out-button`` render on EVERY AI message, not just the
+    # last one. ``chat-regenerate-button``/``chat-delete-button`` are
+    # last-message-EXCLUSIVE by product design (confirmed live via a direct
+    # DOM count — conditionally rendered, not merely CSS-hover-hidden), so
+    # a bare field is safe there on a single-exchange page, but scoping is
+    # still required to assert their ABSENCE on one specific non-last
+    # message.
+    REGENERATE_ACTION_BUTTON = '[data-testid="chat-regenerate-button"]'
+    DELETE_ACTION_BUTTON = '[data-testid="chat-delete-button"]'
+    COPY_ACTION_BUTTON = '[data-testid="chat-copy-button"]'
+    READ_OUT_ACTION_BUTTON = '[data-testid="chat-read-out-button"]'
+
     # ------------------------------------------------------------------
     # Voice / TTS Controls
     # ------------------------------------------------------------------
