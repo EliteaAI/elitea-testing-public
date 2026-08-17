@@ -109,7 +109,7 @@ class TestCreateToolkitFromConversation:
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "chat/ELITEA-2083_chat-create-toolkit-from-conversation-close-canvas-and-verify-toolkit-added-as-participant.md",
+        "chat/canvas/ELITEA-2083_chat-create-toolkit-from-conversation-close-canvas-and-verify-toolkit-added-as-part.md",
         "onetest-ai Test Case link",
     )
     @pytest.mark.p2
@@ -226,7 +226,7 @@ class TestCreateToolkitFromConversation:
             # test_create_github_toolkit which does wait_for_load_state("networkidle")
             # + wait_for_timeout(1000) after credential selection.
             toolkit_detail.wait_for_network(timeout=NAVIGATION_TIMEOUT)
-            repo_field = page.locator(toolkit_form.TOOLKIT_FIELD_INPUT.format("repository"))
+            repo_field = toolkit_form.get_field_locator("repository")
             repo_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
 
             # force=True: after credential selection a MuiBox overlay

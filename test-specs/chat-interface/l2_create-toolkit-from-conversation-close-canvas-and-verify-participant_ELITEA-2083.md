@@ -39,8 +39,8 @@
    - **Action**: click `toolkit-canvas-close-button`. **Confirmed live**: first button in the canvas header; no dialog appears (toolbar is "saved" state — no unsaved changes). Canvas unmounts completely.
    - **Assert**: `toolkit-canvas-title` absent from DOM (or `toolkit-form-name-input` absent — confirms full unmount, same pattern as ELITEA-2085 step 10).
 3. Observe the PARTICIPANTS panel on the right side.
-   - **Action**: expand via `chat-participants-panel-toggle-button` (on-main ✓, confirmed live in prior chat-surface analysis).
-   - **Assert**: participants panel container visible.
+   - **Action**: collapse to badge-strip view via `chat-participants-panel-toggle-button` (on-main ✓, confirmed live in prior chat-surface analysis). `CollapsedPerticapantsList` — which hosts the `chat-participants-badge-{section}` testids asserted in steps 4-5 — renders only when the panel is in collapsed state (`data-expanded="false"`).
+   - **Assert**: participants panel toggle button has `data-expanded="false"` (i.e. panel is in collapsed/badge-strip state).
 4. Verify a "TOOLKITS" section is now present in the PARTICIPANTS panel.
    - **Assert**: `chat-participants-badge-toolkits` is visible. Source-confirmed: `CollapsedPerticapantsList.jsx` line 223 — `data-testid={\`chat-participants-badge-${entity.section}\`}` where `section: 'toolkits'` (line 55). Pattern confirmed by sibling MCP case (ELITEA-2085 step 11 — identical mechanism, `section: 'mcp'` → badge visible after canvas close).
 5. Verify "test1" toolkit is listed under TOOLKITS section with a toolkit icon.
@@ -119,4 +119,4 @@ None. All 5 case steps have confirmed handles; steps 4–5 are source-confirmed 
 
 ## Fidelity Declaration
 - **Transit substitution**: The test drives the toolkit creation flow (type picker → form fill → Create button) as transit to reach the "canvas open, toolkit saved" precondition. The case's own observable — canvas title text, close behavior, PARTICIPANTS badge — is still produced by the live system. This is declared transit substitution per `.agents/testing.md` § Fidelity policy.
-- No terminal substitution of any kind. No `page.route` / `route.fulfill` / `page.evaluate` in the test design.
+- No terminal substitution of any kind. No `page.route` / `route.fulfill`. Transit-only `locator.evaluate("el => { el.focus(); el.select(); }")` in `ToolkitCreationPage.fill_field(force=True)` — pure keyboard-event focus bypass for an invisible MUI overlay intercepting pointer events; no state is read from or fabricated by this call. Declared in that method's docstring.
