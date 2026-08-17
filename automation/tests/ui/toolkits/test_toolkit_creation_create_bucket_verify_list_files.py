@@ -99,7 +99,8 @@ pytestmark = [pytest.mark.ui, pytest.mark.regression, pytest.mark.toolkits, pyte
 # ---------------------------------------------------------------------------
 # Timeout constants (ms)
 # ---------------------------------------------------------------------------
-UI_ELEMENT_TIMEOUT = 10_000
+# Form loads in ~10 seconds (user verified) - increased from 10_000 to 20_000 for safety margin
+UI_ELEMENT_TIMEOUT = 20_000
 NAVIGATION_TIMEOUT = 15_000
 TOOL_RUN_TIMEOUT = 15_000
 DELETE_RESPONSE_TIMEOUT = 15_000
@@ -226,9 +227,6 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
     """
 
     @pytest.mark.p1
-    @pytest.mark.blocked
-    @pytest.mark.bug
-    @pytest.mark.skip(reason="Product bug #1575: Artifact toolkit creation form doesn't load")
     @allure.title(
         "Create an Artifact toolkit (creates a bucket as a side effect), "
         "run List files, verify the bucket in Artifacts"
@@ -389,6 +387,12 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                     "Every tool chip should carry data-selected='true' "
                     "(checkmarked) by default"
                 )
+
+                # Expand TOOLS section if collapsed (needed to access the MCP checkbox in Step 13)
+                tools_accordion = page.get_by_test_id("toolkit-tools-accordion-summary")
+                if tools_accordion.get_attribute("aria-expanded") == "false":
+                    tools_accordion.click()
+                    page.wait_for_timeout(500)  # Wait for accordion animation
 
             with allure.step(
                 "Step 13 — Verify the 'Make tools available by MCP' "
