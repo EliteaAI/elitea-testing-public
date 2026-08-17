@@ -1807,3 +1807,56 @@ Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
   prove the wrong thing"), but any case asserting an exact conversation/
   folder COUNT on project 399 must still seed+scope its own data, never
   count on the pre-existing set staying stable.
+
+## Toolkit-from-chat canvas — ELITEA-2080-2083 (2026-08-17)
+
+The one remaining unexplored sibling of the "Create New X" canvas family.
+`ToolkitEditor.jsx` wraps the same `BaseEditor`/`EditorHeader` chrome used
+by Agent/Pipeline/MCP canvases.
+
+- **Entry point** (`toolkits-menuitem` on-main ✓, `toolkits-create-new-button`
+  on-main ✓): same `PlusChatButton.jsx`/`PlusChatSubmenu.jsx` template pattern
+  as Pipeline and MCP canvases — `sectionKey="toolkits"`, static config line 47.
+- **Type picker** confirms live: GitLab type card resolves to
+  `toolkit-type-card-gitlab` (confirmed from the MCP analysis pattern —
+  `toolkit-type-card-{type}` naming). Category "Code Repositories" rendered
+  first in the picker. Selecting a type opens the configuration canvas.
+- **Canvas chrome testids — three were MISSING, added in this session:**
+  `ToolkitEditor.jsx` previously passed `isMcpTestIdScope ? 'mcp-canvas-*' : undefined`
+  for all three chrome testids — the `undefined` side left the non-MCP Toolkit
+  canvas completely testid-free on chrome elements. Added in commit
+  EliteaAI/EliteaUI@441333e1 on `automation/testids` (2026-08-17, ELITEA-2083):
+  - `toolkit-canvas-title` (title heading, line 250)
+  - `toolkit-canvas-close-button` (close button, line 251)
+  - `toolkit-canvas-create-button` (Create button via `CreateToolkitButton.jsx`, line 259)
+  These follow the same `isMcpTestIdScope ? 'mcp-canvas-*' : 'toolkit-canvas-*'`
+  conditional pattern. Human promotes to `main` from `automation/testids`.
+- **Canvas title observable (step 1 of ELITEA-2083)**: the heading level 6
+  (`data-testid="toolkit-canvas-title"`) reflects the toolkit name in the form
+  — confirmed live in exploration session snapshot (text "test1" appeared in
+  heading immediately when name was typed). The heading persists after save.
+- **Close button (step 2 of ELITEA-2083)**: with a SAVED toolkit (no unsaved
+  changes), clicking `toolkit-canvas-close-button` closes the canvas
+  DIRECTLY without a confirmation dialog. The discard confirmation dialog
+  ("Are you sure you want to discard changes?") only appears when there are
+  unsaved changes — confirmed live by observing the dialog when discarding
+  an unsaved form.
+- **PARTICIPANTS panel (steps 3-5 of ELITEA-2083)**: all handles confirmed
+  via source on `origin/main` (dynamic templates):
+  - `chat-participants-badge-toolkits` — `CollapsedPerticapantsList.jsx` line 223
+    template `chat-participants-badge-${entity.section}` where `section='toolkits'`
+    (line 55). On-main ✓.
+  - `chat-participants-badge-icon-toolkits` — same file line 235 template
+    `chat-participants-badge-icon-${entity.section}`. On-main ✓.
+  - These work identically to the already-live-confirmed MCP participant handles
+    (`chat-participants-badge-mcp` / `chat-participants-badge-icon-mcp`).
+- **Form fields inside the canvas**: same `ToolkitForm` / `ToolkitTypeSelector`
+  as standalone toolkit creation — `toolkit-form-name-input` and type-specific
+  fields. For GitHub toolkit: credential combobox (no consistent testid found —
+  MUI select, use label-based disambiguation); repository field via
+  `toolkit-field-repository-input` (confirmed from live DOM, `data-testid`
+  present on the input). `github_credential` fixture provides the credential
+  for automated tests.
+- **Pre-existing console noise**: issue #656 (CategorySection unique-key-prop
+  warning) fires on every type-picker render. Filter it alongside other
+  known-noise patterns.
