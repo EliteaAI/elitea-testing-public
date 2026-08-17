@@ -1,17 +1,47 @@
 "Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
-"passed","Mon Aug 17 16:23:05 UTC 2026","Mon Aug 17 16:23:12 UTC 2026","7501","tests.ui.chat","test_chat_interface","TestSearchAndErrorHandling","","","test_search_conversations_dialog","TC-CHAT-023: Search conversations."
-"passed","Mon Aug 17 16:16:39 UTC 2026","Mon Aug 17 16:18:44 UTC 2026","124628","tests.ui.artifacts","test_artifacts_multi_file","TestArtifactMultiFileDownload","","","Agent creates files at root and in subfolder — all visible and accessible","Agent creates files at root and under a sub-path — all visible and accessible.
+"skipped","Mon Aug 17 18:18:00 UTC 2026","Mon Aug 17 18:18:00 UTC 2026","0","tests.ui.chat","test_context_management","TestContextManagementSettings","","","test_context_budget_reflects_profile_max_tokens[32k_tokens]","Context Budget panel in chat shows the max tokens set in profile.
 
-        ELITEA-1327 regression: when an agent creates N files in a single tool call,
-        all N files must be downloadable via the UI.  Before the fix, only the last
-        file written would be persisted; all earlier files were silently lost.
+        Parameterized to verify:
+        - P1 (10,000 tokens): Standard value propagates correctly
+        - P2 (32,000 tokens): Updated value propagates (not cached)
+
+        Cleanup: deletes the created conversation via API.
         "
-"passed","Mon Aug 17 16:16:35 UTC 2026","Mon Aug 17 16:16:54 UTC 2026","19074","tests.ui.pipelines","test_pipeline_nodes","TestAddNode","","","test_add_human_in_the_loop_node_and_connect_to_end","PIPE-031: Add a HITL node and connect it to END."
-"passed","Mon Aug 17 16:19:08 UTC 2026","Mon Aug 17 16:19:23 UTC 2026","14517","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_visible_and_updates","Character counter appears when typing and updates in real-time.
-        TC-1685
-        Acceptance Criteria #1 (extended to Conversation Starters).
+"passed","Mon Aug 17 16:16:58 UTC 2026","Mon Aug 17 16:17:08 UTC 2026","9679","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_main_content_visible","The main content area should render after navigation."
+"passed","Mon Aug 17 16:19:26 UTC 2026","Mon Aug 17 16:19:42 UTC 2026","16815","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
 
-        Note: Counter only appears after typing, not initially.
+        Acceptance Criteria #2.
+        "
+"passed","Mon Aug 17 18:16:17 UTC 2026","Mon Aug 17 18:16:24 UTC 2026","6575","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_model_selector_opens_menu","TC-CHAT-010, TC-CHAT-020: Model selector shows current model and opens menu."
+"passed","Mon Aug 17 16:23:55 UTC 2026","Mon Aug 17 16:24:25 UTC 2026","30343","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_selection_from_chat","TC1: Voice Selection via TTS Controls in Chat.
+        TC-1918, TC-1915
+        "
+"passed","Mon Aug 17 16:23:03 UTC 2026","Mon Aug 17 16:23:51 UTC 2026","47627","tests.ui.agents","test_agent_with_github_toolkit","TestAddToolkitToAgent","","","test_add_toolkit_to_agent","Add a GitHub toolkit to an existing agent via the UI, then chat."
+"passed","Mon Aug 17 16:17:25 UTC 2026","Mon Aug 17 16:18:15 UTC 2026","50328","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestAgentCredentialIndicators","","","test_agent_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Agent."
+"passed","Mon Aug 17 16:24:19 UTC 2026","Mon Aug 17 16:24:56 UTC 2026","37630","tests.ui.agents","test_agent_with_github_toolkit","TestChatWithAgentToolkit","","","test_agent_chat_with_github_toolkit","Add toolkit to agent, chat via /chat, verify toolkit execution."
+"passed","Mon Aug 17 16:24:23 UTC 2026","Mon Aug 17 16:25:37 UTC 2026","74077","tests.ui.skills","test_remove_attached_skill_from_agent","TestRemoveAttachedSkillFromAgent","","","test_remove_attached_skill_from_agent","Create two Skills + an Agent, attach both, remove Skill B via the
+        hover-revealed remove control + confirmation dialog, and verify Skill
+        A remains attached while Skill B survives standalone.
+
+        Steps (AFS test-specs/skills/l3_remove-attached-skill-from-agent_ELITEA-1792.md):
+        1. Create Skill A and Skill B via UI.
+        2. Create an Agent.
+        3. Attach both Skills to the Agent (precondition for this case).
+        4. Locate the hover-revealed ""remove skill"" control for Skill B.
+        5. Click it; confirm the ""Remove skill?"" dialog; Skill B is removed
+           from the UI list while Skill A remains.
+        6. Confirm persistence via a full page reload (detach auto-saves via
+           API; no explicit agent-level Save is available for this action).
+        7. Reopen the Agent (same reload satisfies this — no separate
+           close/reopen gesture exists in the live flow); only Skill A is
+           attached.
+        8. Navigate directly to Skill B's detail page and to the Skills list;
+           Skill B still exists standalone (detached, not deleted).
+        "
+"passed","Mon Aug 17 16:17:29 UTC 2026","Mon Aug 17 16:17:50 UTC 2026","21547","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantMessaging","","","test_send_message_and_receive_response","User can send a message and receive AI response.
+
+        Covers: 3.2.1-3.2.7, 3.2.9
         "
 "passed","Mon Aug 17 16:25:01 UTC 2026","Mon Aug 17 16:25:37 UTC 2026","35806","tests.ui.agents","test_mcp_attach_via_tools_section","TestMcpAttachViaToolsSection","","","test_mcp_attach_via_tools_section","Attach a Remote MCP to an agent, verify persistence across reload,
         then remove it and verify removal persists too.
@@ -35,124 +65,47 @@
             agent_id: Fresh agent created by fixture (auto-cleanup).
             mcp_toolkit_with_tools: Fresh MCP toolkit created by fixture (auto-cleanup).
         "
-"passed","Mon Aug 17 16:21:21 UTC 2026","Mon Aug 17 16:21:32 UTC 2026","11126","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_multiple_conversation_starters_have_counters","Each conversation starter field has its own counter.
-        TC-1684
-        "
-"passed","Mon Aug 17 16:18:58 UTC 2026","Mon Aug 17 16:21:08 UTC 2026","129488","tests.ui.admin","test_guardrails_live_reload","TestBlockedToolLiveReload","","","test_blocked_tool_live_reload_case_insensitive","Verify blocked tool takes effect immediately with case-insensitive matching."
-"passed","Mon Aug 17 16:17:33 UTC 2026","Mon Aug 17 16:18:58 UTC 2026","84531","tests.ui.admin","test_guardrails_live_reload","TestBlockedToolkitLiveReload","","","test_blocked_toolkit_live_reload_case_insensitive","Verify blocked toolkit takes effect immediately with case-insensitive matching."
-"passed","Mon Aug 17 16:16:58 UTC 2026","Mon Aug 17 16:17:08 UTC 2026","9679","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_main_content_visible","The main content area should render after navigation."
-"passed","Mon Aug 17 16:17:25 UTC 2026","Mon Aug 17 16:18:15 UTC 2026","50328","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestAgentCredentialIndicators","","","test_agent_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Agent."
-"passed","Mon Aug 17 16:16:46 UTC 2026","Mon Aug 17 16:18:07 UTC 2026","80806","tests.ui.chat","test_agent_with_toolkit_chat","TestAgentWithToolkitInChat","","","test_agent_with_toolkit_executes_in_chat","Create agent with toolkit, add agent as participant in chat, verify toolkit executes.
-
-        The toolkit is attached to the agent (not the conversation directly).
-        This tests the agent-owns-toolkit execution path in real chat (/chat).
-        "
-"passed","Mon Aug 17 16:22:26 UTC 2026","Mon Aug 17 16:22:44 UTC 2026","17492","tests.ui.chat","test_chat_interface","TestContextAndSettings","","","test_edit_context_settings","TC-CHAT-019: Edit context settings."
-"passed","Mon Aug 17 16:21:42 UTC 2026","Mon Aug 17 16:22:23 UTC 2026","40808","tests.ui.agents","test_agent_remove_variable","TestAgentRemoveVariable","","","test_remove_variable_and_verify_removal_persists","Removing a {{variable}} reference from Instructions removes its
-        Variables row immediately (client-side, before Save), and the
-        removal persists after Save + a full-navigation reload, while other
-        variables remain intact."
-"passed","Mon Aug 17 16:26:57 UTC 2026","Mon Aug 17 16:27:41 UTC 2026","43973","tests.ui.skills","test_skill_tag_filter","TestSkillTagFilter","","","test_filter_skills_by_tag","Create 3 skills with shared/unique tags; verify tag-filter narrowing.
-
-        Steps (see AFS for full detail):
-        1. Capture baseline grid state; create Skill A (formatting, output),
-           Skill B (formatting, english), Skill C (translation); verify all
-           3 plus any pre-existing skills are visible with their own tags.
-        2. Filter by `formatting` (shared tag) — verify exactly Skill A and
-           Skill B are shown, Skill C is excluded.
-        3. Clear the filter, then filter by `translation` (unique tag) —
-           verify exactly Skill C is shown.
-        4. Clear the filter, then filter by `output` (unique tag) — verify
-           exactly Skill A is shown.
-        5. Clear the filter — verify the grid is restored to the baseline
-           plus the 3 new skills.
-        "
-"passed","Mon Aug 17 16:20:35 UTC 2026","Mon Aug 17 16:21:19 UTC 2026","44522","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_text_truncated_with_warning","Verify text over limit is truncated to 768 chars with warning.
-        TC-1686
-        "
-"passed","Mon Aug 17 16:22:14 UTC 2026","Mon Aug 17 16:22:25 UTC 2026","11210","tests.ui.chat","test_chat_interface","TestHashSearch","","","test_add_participant_via_hash_search","TC-CHAT-018: Add participant via # search and select option.
-
-        The hash search feature detects '#' via keydown events, so we must
-        use press_sequentially() instead of fill() to trigger it.
-        "
+"passed","Mon Aug 17 16:16:35 UTC 2026","Mon Aug 17 16:16:54 UTC 2026","19074","tests.ui.pipelines","test_pipeline_nodes","TestAddNode","","","test_add_human_in_the_loop_node_and_connect_to_end","PIPE-031: Add a HITL node and connect it to END."
+"passed","Mon Aug 17 18:17:52 UTC 2026","Mon Aug 17 18:18:00 UTC 2026","7204","tests.ui.chat","test_chat_interface","TestSearchAndErrorHandling","","","test_handle_message_send_failure","TC-CHAT-024: Handle message send failure gracefully."
 "passed","Mon Aug 17 16:16:50 UTC 2026","Mon Aug 17 16:17:24 UTC 2026","34707","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestPipelineCredentialIndicators","","","test_pipeline_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Pipeline."
-"passed","Mon Aug 17 16:19:44 UTC 2026","Mon Aug 17 16:20:33 UTC 2026","48772","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
-        TC-1689, TC-1685
+"passed","Mon Aug 17 16:21:10 UTC 2026","Mon Aug 17 16:23:00 UTC 2026","109561","tests.ui.skills","test_ghost_skill_after_agent_removed","TestGhostSkillAfterAgentRemoved","","","test_ghost_skill_not_shown_after_agent_participant_removed","Create a skill, attach it to an agent, add the agent as a chat
+        participant, confirm '~mention' shows the skill, dismiss, remove the
+        participant, and confirm the skill no longer appears in '~mention'
+        afterward.
+
+        Steps (AFS test-specs/skills/l3_ghost-skill-not-shown-after-agent-participant-removed_ELITEA-1793.md):
+        1. Create Skill, create Agent, attach the skill to the agent.
+        2. Open Chat, add the agent as a participant.
+        3. Type '~' — the ""Mention skill"" popper lists the attached skill.
+        4. Dismiss the popper with Escape without selecting anything.
+        5. Remove the agent from the chat's participants.
+        6. Type '~' again — the removed agent's skill should NOT be listed.
+        7. Control check: a fresh conversation that never had a participant
+           shows the correct ""No skills attached to this agent"" empty state.
         "
-"failed","Mon Aug 17 16:21:41 UTC 2026","Mon Aug 17 16:21:53 UTC 2026","11453","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_internal_tools_panel_shows_all_tools","TC-CHAT-012: Internal tools panel displays all available tools."
-"passed","Mon Aug 17 16:21:17 UTC 2026","Mon Aug 17 16:21:40 UTC 2026","23413","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_attach_files_button_sends_file_with_message","TC-CHAT-011: Attach file and send message with attachment."
+"passed","Mon Aug 17 18:17:38 UTC 2026","Mon Aug 17 18:17:44 UTC 2026","6365","tests.ui.chat","test_chat_interface","TestSidebarNavigation","","","test_navigate_to_agents_from_sidebar","TC-CHAT-022: Navigate to Agents from sidebar."
 "passed","Mon Aug 17 16:19:31 UTC 2026","Mon Aug 17 16:19:43 UTC 2026","11829","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantAttachments","","","test_attach_button_present_and_opens_picker","Attach button opens file picker dialog.
 
         Covers: 7.1.1, 7.1.2
         "
-"passed","Mon Aug 17 16:26:13 UTC 2026","Mon Aug 17 16:28:28 UTC 2026","135409","tests.ui.chat","test_image_creation","TestImageCreation","","","test_create_image[minimal_prompt]","Create image from text prompt and verify image appears in response."
-"skipped","Mon Aug 17 16:23:21 UTC 2026","Mon Aug 17 16:23:21 UTC 2026","0","tests.ui.chat","test_context_management","TestContextManagementSettings","","","test_context_budget_reflects_profile_max_tokens[32k_tokens]","Context Budget panel in chat shows the max tokens set in profile.
-
-        Parameterized to verify:
-        - P1 (10,000 tokens): Standard value propagates correctly
-        - P2 (32,000 tokens): Updated value propagates (not cached)
-
-        Cleanup: deletes the created conversation via API.
-        "
-"passed","Mon Aug 17 16:19:26 UTC 2026","Mon Aug 17 16:19:42 UTC 2026","16815","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
-        TC-1687
-
-        Acceptance Criteria #2.
-        "
-"passed","Mon Aug 17 16:21:33 UTC 2026","Mon Aug 17 16:21:41 UTC 2026","8431","tests.ui.agents","test_agent_create_button_navigation","","","","test_create_button_navigates_to_create_agent_page","Sidebar create-agent button navigates to an empty Create Agent form
-    with Save disabled by default (ELITEA-1870).
-
-    Read-only: no agent is created, edited, or deleted.
-    "
-"passed","Mon Aug 17 16:26:48 UTC 2026","Mon Aug 17 16:26:57 UTC 2026","8470","tests.ui.skills","test_skill_search","TestSkillSearch","","","test_search_skills_by_name","Search the Skills grid by partial name, exact name, a
-        non-existent name, then clear — verifying the grid's exact visible
-        set at each step (not just presence/absence of one name), so a
-        regression that only breaks the grid while leaving the separate
-        suggestions popover working would be caught.
-        "
-"passed","Mon Aug 17 16:18:22 UTC 2026","Mon Aug 17 16:19:05 UTC 2026","42803","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_text_truncated_with_warning","Verify text over limit is truncated to 768 chars with warning message.
-        TC-1686
-
-        Tests both collapsed mode and fullscreen mode.
-        "
 "passed","Mon Aug 17 16:16:19 UTC 2026","Mon Aug 17 16:16:49 UTC 2026","29760","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestToolkitCredentialIndicators","","","test_toolkit_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Toolkit."
-"passed","Mon Aug 17 16:18:09 UTC 2026","Mon Aug 17 16:18:18 UTC 2026","8809","tests.ui.chat","test_chat_interface","TestPageLoadAndRendering","","","test_chat_page_loads_with_functional_input","TC-CHAT-001, TC-CHAT-002: Chat page loads with functional message input."
-"passed","Mon Aug 17 16:17:51 UTC 2026","Mon Aug 17 16:18:18 UTC 2026","26645","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantNewSession","","","test_new_chat_creates_fresh_session","New Chat button starts a fresh support session.
+"passed","Mon Aug 17 18:16:24 UTC 2026","Mon Aug 17 18:16:49 UTC 2026","24696","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_attach_files_button_sends_file_with_message","TC-CHAT-011: Attach file and send message with attachment."
+"passed","Mon Aug 17 16:23:55 UTC 2026","Mon Aug 17 16:24:16 UTC 2026","20977","tests.ui.agents","test_agent_with_github_toolkit","TestRemoveToolkitFromAgent","","","test_remove_toolkit_from_agent","Add a toolkit, then remove it, and verify it's gone."
+"passed","Mon Aug 17 16:16:39 UTC 2026","Mon Aug 17 16:18:44 UTC 2026","124628","tests.ui.artifacts","test_artifacts_multi_file","TestArtifactMultiFileDownload","","","Agent creates files at root and in subfolder — all visible and accessible","Agent creates files at root and under a sub-path — all visible and accessible.
 
-        Covers: 3.5.1, 3.5.2
+        ELITEA-1327 regression: when an agent creates N files in a single tool call,
+        all N files must be downloadable via the UI.  Before the fix, only the last
+        file written would be persisted; all earlier files were silently lost.
+        "
+"passed","Mon Aug 17 16:21:42 UTC 2026","Mon Aug 17 16:22:23 UTC 2026","40808","tests.ui.agents","test_agent_remove_variable","TestAgentRemoveVariable","","","test_remove_variable_and_verify_removal_persists","Removing a {{variable}} reference from Instructions removes its
+        Variables row immediately (client-side, before Save), and the
+        removal persists after Save + a full-navigation reload, while other
+        variables remain intact."
+"passed","Mon Aug 17 16:19:15 UTC 2026","Mon Aug 17 16:19:31 UTC 2026","16385","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantViewModes","","","test_expand_collapse_fullview","Widget can expand to full view and collapse back.
 
-        Also covers ELITEA-1799's Expected Final State clause 3 (""previous
-        session preserved in history, not lost"") via a soft assertion —
-        known defect #607, stays red once the account's active conversation
-        exceeds the ~100-message-group threshold.
+        Covers: 2.3.1, 2.3.2, 2.3.3
         "
-"passed","Mon Aug 17 16:17:36 UTC 2026","Mon Aug 17 16:18:19 UTC 2026","43264","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
-        TC-1689, TC-1685
-
-        Acceptance Criteria #1 & #3: Counter visible in Full Screen mode,
-        warning displays at limit.
-        "
-"passed","Mon Aug 17 16:22:45 UTC 2026","Mon Aug 17 16:22:55 UTC 2026","9282","tests.ui.chat","test_chat_interface","TestSidebarNavigation","","","test_open_close_sidebar","TC-CHAT-021: Open/close sidebar drawer."
-"passed","Mon Aug 17 16:23:55 UTC 2026","Mon Aug 17 16:24:25 UTC 2026","30343","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_selection_from_chat","TC1: Voice Selection via TTS Controls in Chat.
-        TC-1918, TC-1915
-        "
-"passed","Mon Aug 17 16:16:49 UTC 2026","Mon Aug 17 16:17:02 UTC 2026","13233","tests.ui.agents","test_agent_back_navigation","","","","test_back_button_from_agent_detail_returns_to_intact_agents_list","Back button on agent detail page returns to Agents dashboard with
-    the list intact (ELITEA-1869).
-
-    Uses agent_id fixture to ensure at least one agent exists.
-    "
-"passed","Mon Aug 17 16:22:23 UTC 2026","Mon Aug 17 16:23:01 UTC 2026","37988","tests.ui.agents","test_agent_save_as_version_preserves_skills","TestAgentSaveAsVersionPreservesSkills","","","test_agent_save_as_version_preserves_skills","Create a Skill + Agent (both via UI), attach the Skill, Save As
-        Version, and verify the Skill is still attached under the new
-        version — confirmed both via the UI and a fresh API response."
-"passed","Mon Aug 17 16:25:39 UTC 2026","Mon Aug 17 16:25:56 UTC 2026","17059","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_preview_personalization","TC4: Voice Personalization Controls in Settings Page.
-        TC-1914
-        "
-"passed","Mon Aug 17 16:21:08 UTC 2026","Mon Aug 17 16:23:23 UTC 2026","135031","tests.ui.admin","test_guardrails_live_reload","TestSensitiveToolLiveReload","","","test_sensitive_tool_live_reload_case_insensitive","Verify sensitive tool triggers authorization dialog immediately after config change."
-"passed","Mon Aug 17 16:17:24 UTC 2026","Mon Aug 17 16:17:33 UTC 2026","9200","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
-        TC-1687
-
-        Acceptance Criteria #2: Counter turns red when 0 characters remain.
-        "
+"passed","Mon Aug 17 18:15:02 UTC 2026","Mon Aug 17 18:15:14 UTC 2026","12394","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_send_text_message","TC-CHAT-003, TC-CHAT-004: Send message and verify history."
 "passed","Mon Aug 17 16:25:37 UTC 2026","Mon Aug 17 16:26:10 UTC 2026","32561","tests.ui.skills","test_skill_agent_version_selector","TestAttachSkillToAgentWithVersionSelector","","","test_attach_skill_to_agent_with_version_selector","Create a skill + agent, attach the skill, and verify the version
         selector shows the default version, opens a real Versions menu, and
         persists across a full page reload.
@@ -172,18 +125,102 @@
         8. Confirm persistence via a full page reload (no explicit
            agent-level Save is available — attach is auto-saved via API).
         "
-"passed","Mon Aug 17 16:21:58 UTC 2026","Mon Aug 17 16:22:07 UTC 2026","8726","tests.ui.chat","test_chat_interface","TestHashSearch","","","test_hash_search_participants","TC-CHAT-017: Use # to search participants."
-"skipped","Mon Aug 17 16:23:21 UTC 2026","Mon Aug 17 16:23:21 UTC 2026","0","tests.ui.chat","test_context_management","TestContextManagementSettings","","","test_context_budget_reflects_profile_max_tokens[10k_tokens]","Context Budget panel in chat shows the max tokens set in profile.
+"passed","Mon Aug 17 16:21:33 UTC 2026","Mon Aug 17 16:21:41 UTC 2026","8431","tests.ui.agents","test_agent_create_button_navigation","","","","test_create_button_navigates_to_create_agent_page","Sidebar create-agent button navigates to an empty Create Agent form
+    with Save disabled by default (ELITEA-1870).
 
-        Parameterized to verify:
-        - P1 (10,000 tokens): Standard value propagates correctly
-        - P2 (32,000 tokens): Updated value propagates (not cached)
-
-        Cleanup: deletes the created conversation via API.
+    Read-only: no agent is created, edited, or deleted.
+    "
+"passed","Mon Aug 17 18:15:15 UTC 2026","Mon Aug 17 18:15:28 UTC 2026","13286","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_shift_enter_adds_new_line","TC-CHAT-006: Shift+Enter adds new line instead of sending."
+"passed","Mon Aug 17 18:20:58 UTC 2026","Mon Aug 17 18:23:03 UTC 2026","125115","tests.ui.chat","test_image_creation","TestImageCreation","","","test_create_image[minimal_prompt]","Create image from text prompt and verify image appears in response."
+"passed","Mon Aug 17 16:22:23 UTC 2026","Mon Aug 17 16:23:01 UTC 2026","37988","tests.ui.agents","test_agent_save_as_version_preserves_skills","TestAgentSaveAsVersionPreservesSkills","","","test_agent_save_as_version_preserves_skills","Create a Skill + Agent (both via UI), attach the Skill, Save As
+        Version, and verify the Skill is still attached under the new
+        version — confirmed both via the UI and a fresh API response."
+"failed","Mon Aug 17 18:16:50 UTC 2026","Mon Aug 17 18:16:57 UTC 2026","6754","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_internal_tools_panel_shows_all_tools","TC-CHAT-012: Internal tools panel displays all available tools."
+"passed","Mon Aug 17 16:17:33 UTC 2026","Mon Aug 17 16:18:58 UTC 2026","84531","tests.ui.admin","test_guardrails_live_reload","TestBlockedToolkitLiveReload","","","test_blocked_toolkit_live_reload_case_insensitive","Verify blocked toolkit takes effect immediately with case-insensitive matching."
+"passed","Mon Aug 17 16:18:58 UTC 2026","Mon Aug 17 16:21:08 UTC 2026","129488","tests.ui.admin","test_guardrails_live_reload","TestBlockedToolLiveReload","","","test_blocked_tool_live_reload_case_insensitive","Verify blocked tool takes effect immediately with case-insensitive matching."
+"passed","Mon Aug 17 18:14:55 UTC 2026","Mon Aug 17 18:15:01 UTC 2026","6238","tests.ui.chat","test_chat_interface","TestPageLoadAndRendering","","","test_chat_page_loads_with_functional_input","TC-CHAT-001, TC-CHAT-002: Chat page loads with functional message input."
+"passed","Mon Aug 17 16:26:48 UTC 2026","Mon Aug 17 16:26:57 UTC 2026","8470","tests.ui.skills","test_skill_search","TestSkillSearch","","","test_search_skills_by_name","Search the Skills grid by partial name, exact name, a
+        non-existent name, then clear — verifying the grid's exact visible
+        set at each step (not just presence/absence of one name), so a
+        regression that only breaks the grid while leaving the separate
+        suggestions popover working would be caught.
         "
-"passed","Mon Aug 17 16:17:04 UTC 2026","Mon Aug 17 16:17:20 UTC 2026","16307","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_visible_and_updates_realtime","Character counter appears when typing and updates in real-time.
-        TC-1688, TC-1685
-        Acceptance Criteria #1: Real-time character counter visible.
+"passed","Mon Aug 17 16:17:36 UTC 2026","Mon Aug 17 16:18:19 UTC 2026","43264","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+
+        Acceptance Criteria #1 & #3: Counter visible in Full Screen mode,
+        warning displays at limit.
+        "
+"passed","Mon Aug 17 16:25:39 UTC 2026","Mon Aug 17 16:25:56 UTC 2026","17059","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_preview_personalization","TC4: Voice Personalization Controls in Settings Page.
+        TC-1914
+        "
+"passed","Mon Aug 17 16:21:08 UTC 2026","Mon Aug 17 16:23:23 UTC 2026","135031","tests.ui.admin","test_guardrails_live_reload","TestSensitiveToolLiveReload","","","test_sensitive_tool_live_reload_case_insensitive","Verify sensitive tool triggers authorization dialog immediately after config change."
+"passed","Mon Aug 17 18:16:58 UTC 2026","Mon Aug 17 18:17:04 UTC 2026","6753","tests.ui.chat","test_chat_interface","TestHashSearch","","","test_hash_search_participants","TC-CHAT-017: Use # to search participants."
+"passed","Mon Aug 17 16:16:50 UTC 2026","Mon Aug 17 16:17:59 UTC 2026","69424","tests.ui.skills","test_agent_instructions_tilde_mention","TestTildeMentionListsOnlyAttachedSkills","","","test_tilde_mention_in_instructions_lists_only_attached_skills","Attach 2 of 3 distinct Skills to an Agent, then verify the ""~""
+        mention panel in the Instructions field is scoped to only the
+        attached 2 — the 3rd (unattached) Skill never appears, including
+        on a second, independent ""~"" trigger after clearing the field.
+
+        Steps (AFS test-specs/skills/l3_tilde-mention-lists-only-attached-skills_ELITEA-1791.md):
+        1. Confirm/create 3 distinct Skills (reuse a pre-existing one as
+           Skill A, looked up via API rather than assumed by name — same
+           environment-robustness rule as ELITEA-1790's cleanup note —
+           falling back to creating it fresh if none exists), create an
+           Agent, attach Skill A + Skill B, leave Skill C unattached.
+        2. Click the Instructions field — becomes focused/editable.
+        3-4. Type ""~"" — ""Mention skill"" panel appears, listing exactly
+           Skill A and Skill B; Skill C is asserted absent by exact-name
+           locator (not merely a row count).
+        5. Select Skill A — inserts ""~<skill-name>"" as plain text.
+        6. Select-all + delete, retype ""~"" — same 2-item scoped list
+           reappears; Skill C still absent (re-evaluated live).
+        "
+"passed","Mon Aug 17 16:18:18 UTC 2026","Mon Aug 17 16:19:13 UTC 2026","55641","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantHistory","","","test_history_restore_and_continue","User can restore a previous session and continue messaging.
+
+        Covers: 6.1.1, 6.2.1, 6.2.3
+        "
+"passed","Mon Aug 17 16:20:35 UTC 2026","Mon Aug 17 16:21:19 UTC 2026","44522","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_text_truncated_with_warning","Verify text over limit is truncated to 768 chars with warning.
+        TC-1686
+        "
+"passed","Mon Aug 17 18:17:45 UTC 2026","Mon Aug 17 18:17:51 UTC 2026","6287","tests.ui.chat","test_chat_interface","TestSearchAndErrorHandling","","","test_search_conversations_dialog","TC-CHAT-023: Search conversations."
+"passed","Mon Aug 17 16:16:49 UTC 2026","Mon Aug 17 16:17:02 UTC 2026","13233","tests.ui.agents","test_agent_back_navigation","","","","test_back_button_from_agent_detail_returns_to_intact_agents_list","Back button on agent detail page returns to Agents dashboard with
+    the list intact (ELITEA-1869).
+
+    Uses agent_id fixture to ensure at least one agent exists.
+    "
+"skipped","Mon Aug 17 18:15:49 UTC 2026","Mon Aug 17 18:16:15 UTC 2026","25446","tests.ui.chat","test_chat_interface","TestMessageActions","","","test_delete_message","TC-CHAT-009: Delete message."
+"passed","Mon Aug 17 16:20:43 UTC 2026","Mon Aug 17 16:21:09 UTC 2026","26064","tests.ui.skills","test_export_agent_no_nested_dependencies","TestExportAgentNoNestedDependencies","","","test_export_agent_no_nested_dependencies","Create an Agent with no attached Skills/sub-Agents but with an
+        external GitHub toolkit attached, export it via the actions overflow
+        menu, and verify the downloaded file's raw content: correct
+        frontmatter, no ``skills:`` key, instructions embedded verbatim, and
+        no leaked credential value anywhere in the file.
+
+        Steps (AFS
+        test-specs/skills/l3_export-agent-no-nested-dependencies_ELITEA-1894.md):
+        1. Create an Agent via UI (no Skills/sub-Agents attached).
+        2. Attach the pre-created GitHub toolkit to the Agent (case
+           precondition — ""no nested dependencies"" + a real credential to
+           prove non-leakage against).
+        3. Confirm the Agent detail view shows the toolkit attached and no
+           Skills (already satisfied by step 2).
+        4. Confirm the version dropdown shows the default `base` version
+           selected (single-version agent — see AFS § Blocked Steps).
+        5. Open the agent-actions overflow menu; click ""Export"" (VERSION
+           group); verify a file download is initiated.
+        6. Verify the downloaded file has a `.md`-suffixed name.
+        7. Read the downloaded file's raw content; verify the YAML
+           frontmatter (name, description, model settings) has NO
+           `skills:` key, and the instructions body is embedded verbatim.
+        8. Verify the file does NOT contain the raw GitHub token value nor
+           any credential-shaped substring — only the toolkit's non-secret
+           `elitea_title` reference.
+        "
+"passed","Mon Aug 17 16:24:26 UTC 2026","Mon Aug 17 16:25:03 UTC 2026","37407","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_speed_and_volume_controls","TC2: Speed and Volume Slider Adjustments.
+        TC-1917
+        "
+"passed","Mon Aug 17 16:16:36 UTC 2026","Mon Aug 17 16:16:56 UTC 2026","19255","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantLauncher","","","test_launcher_visible_and_opens_widget","Launcher is visible and opens Support Assistant widget.
+
+        Covers: 2.1.1, 2.2.1, 2.2.2
         "
 "passed","Mon Aug 17 16:25:57 UTC 2026","Mon Aug 17 16:26:13 UTC 2026","16732","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_settings_not_visible_by_default","TC5: Voice settings are NOT displayed in Chat by default.
 
@@ -197,25 +234,102 @@
         Related:
             - Bug: https://github.com/EliteaAI/elitea_issues/issues/5235
         "
-"passed","Mon Aug 17 16:18:55 UTC 2026","Mon Aug 17 16:19:25 UTC 2026","30719","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_shift_enter_adds_new_line","TC-CHAT-006: Shift+Enter adds new line instead of sending."
-"passed","Mon Aug 17 16:23:13 UTC 2026","Mon Aug 17 16:23:20 UTC 2026","7082","tests.ui.chat","test_chat_interface","TestSearchAndErrorHandling","","","test_handle_message_send_failure","TC-CHAT-024: Handle message send failure gracefully."
-"passed","Mon Aug 17 16:22:56 UTC 2026","Mon Aug 17 16:23:03 UTC 2026","7535","tests.ui.chat","test_chat_interface","TestSidebarNavigation","","","test_navigate_to_agents_from_sidebar","TC-CHAT-022: Navigate to Agents from sidebar."
-"passed","Mon Aug 17 16:16:47 UTC 2026","Mon Aug 17 16:16:58 UTC 2026","10460","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_page_loads","The home page should load without errors."
-"passed","Mon Aug 17 16:23:03 UTC 2026","Mon Aug 17 16:23:51 UTC 2026","47627","tests.ui.agents","test_agent_with_github_toolkit","TestAddToolkitToAgent","","","test_add_toolkit_to_agent","Add a GitHub toolkit to an existing agent via the UI, then chat."
-"passed","Mon Aug 17 16:18:22 UTC 2026","Mon Aug 17 16:18:52 UTC 2026","30298","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_send_text_message","TC-CHAT-003, TC-CHAT-004: Send message and verify history."
-"skipped","Mon Aug 17 16:20:21 UTC 2026","Mon Aug 17 16:21:02 UTC 2026","40736","tests.ui.chat","test_chat_interface","TestMessageActions","","","test_delete_message","TC-CHAT-009: Delete message."
-"passed","Mon Aug 17 16:24:26 UTC 2026","Mon Aug 17 16:25:03 UTC 2026","37407","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_speed_and_volume_controls","TC2: Speed and Volume Slider Adjustments.
-        TC-1917
+"passed","Mon Aug 17 16:16:56 UTC 2026","Mon Aug 17 16:17:28 UTC 2026","32155","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantLauncher","","","test_widget_state_persists_after_close_reopen","Conversation state persists when closing and reopening widget.
+
+        Covers: 2.2.3
         "
-"passed","Mon Aug 17 16:23:55 UTC 2026","Mon Aug 17 16:24:16 UTC 2026","20977","tests.ui.agents","test_agent_with_github_toolkit","TestRemoveToolkitFromAgent","","","test_remove_toolkit_from_agent","Add a toolkit, then remove it, and verify it's gone."
+"passed","Mon Aug 17 16:21:21 UTC 2026","Mon Aug 17 16:21:32 UTC 2026","11126","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_multiple_conversation_starters_have_counters","Each conversation starter field has its own counter.
+        TC-1684
+        "
+"passed","Mon Aug 17 16:26:57 UTC 2026","Mon Aug 17 16:27:41 UTC 2026","43973","tests.ui.skills","test_skill_tag_filter","TestSkillTagFilter","","","test_filter_skills_by_tag","Create 3 skills with shared/unique tags; verify tag-filter narrowing.
+
+        Steps (see AFS for full detail):
+        1. Capture baseline grid state; create Skill A (formatting, output),
+           Skill B (formatting, english), Skill C (translation); verify all
+           3 plus any pre-existing skills are visible with their own tags.
+        2. Filter by `formatting` (shared tag) — verify exactly Skill A and
+           Skill B are shown, Skill C is excluded.
+        3. Clear the filter, then filter by `translation` (unique tag) —
+           verify exactly Skill C is shown.
+        4. Clear the filter, then filter by `output` (unique tag) — verify
+           exactly Skill A is shown.
+        5. Clear the filter — verify the grid is restored to the baseline
+           plus the 3 new skills.
+        "
+"passed","Mon Aug 17 16:19:44 UTC 2026","Mon Aug 17 16:20:33 UTC 2026","48772","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+        "
+"passed","Mon Aug 17 18:15:29 UTC 2026","Mon Aug 17 18:15:35 UTC 2026","5948","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_cannot_send_empty_message","TC-CHAT-007: Cannot send empty message."
+"passed","Mon Aug 17 16:19:08 UTC 2026","Mon Aug 17 16:19:23 UTC 2026","14517","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_visible_and_updates","Character counter appears when typing and updates in real-time.
+        TC-1685
+        Acceptance Criteria #1 (extended to Conversation Starters).
+
+        Note: Counter only appears after typing, not initially.
+        "
+"passed","Mon Aug 17 18:17:06 UTC 2026","Mon Aug 17 18:17:13 UTC 2026","7019","tests.ui.chat","test_chat_interface","TestHashSearch","","","test_add_participant_via_hash_search","TC-CHAT-018: Add participant via # search and select option.
+
+        The hash search feature detects '#' via keydown events, so we must
+        use press_sequentially() instead of fill() to trigger it.
+        "
+"passed","Mon Aug 17 16:16:47 UTC 2026","Mon Aug 17 16:16:58 UTC 2026","10460","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_page_loads","The home page should load without errors."
 "passed","Mon Aug 17 16:25:03 UTC 2026","Mon Aug 17 16:25:38 UTC 2026","35155","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_settings_sync","TC3: Settings Synchronization from Personalization to Chat.
         TC-1916
         Personalization settings are baseline defaults that apply to Chat.
         Chat changes are temporary/session-only and do NOT sync back to Personalization.
         "
-"passed","Mon Aug 17 16:18:18 UTC 2026","Mon Aug 17 16:19:13 UTC 2026","55641","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantHistory","","","test_history_restore_and_continue","User can restore a previous session and continue messaging.
+"passed","Mon Aug 17 18:18:00 UTC 2026","Mon Aug 17 18:20:57 UTC 2026","176862","tests.ui.chat","test_image_creation","TestImageCreation","","","test_create_image[detailed_description]","Create image from text prompt and verify image appears in response."
+"passed","Mon Aug 17 16:17:59 UTC 2026","Mon Aug 17 16:20:39 UTC 2026","159327","tests.ui.skills","test_agent_max_five_skills_limit","TestAgentMaxFiveSkillsLimit","","","test_max_five_skills_attach_limit","Create 5 Skills + an Agent, attach all 5 Skills one at a time,
+        verify the add-skill control disables at 5/5 with a tooltip (rather
+        than a literal 6th-click rejection), and verify persistence via a
+        full page reload.
 
-        Covers: 6.1.1, 6.2.1, 6.2.3
+        Steps (AFS test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md):
+        1. Create 5 Skills via UI. A 6th distinct skill is looked up via the
+           project's existing skills (via ``skill_api``) rather than assumed
+           by name — any pre-existing skill satisfies the case's ""6 distinct
+           Skills"" precondition.
+        2. Create an Agent.
+        3. Skills section starts at 0/5, add-skill control enabled.
+        4-8. Attach Skills 1-5 one at a time; counter increments ""N/5 skills
+           added."" and a card renders after each attach.
+        9. Add-skill control becomes disabled the instant 5/5 is reached,
+           with an accessible tooltip — a 6th skill cannot be attached.
+        10. Confirm persistence via a full page reload (attach is
+           auto-saved via API; no explicit agent-level Save is available).
+        "
+"passed","Mon Aug 17 16:17:04 UTC 2026","Mon Aug 17 16:17:20 UTC 2026","16307","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_visible_and_updates_realtime","Character counter appears when typing and updates in real-time.
+        TC-1688, TC-1685
+        Acceptance Criteria #1: Real-time character counter visible.
+        "
+"passed","Mon Aug 17 18:17:30 UTC 2026","Mon Aug 17 18:17:37 UTC 2026","7296","tests.ui.chat","test_chat_interface","TestSidebarNavigation","","","test_open_close_sidebar","TC-CHAT-021: Open/close sidebar drawer."
+"skipped","Mon Aug 17 18:18:00 UTC 2026","Mon Aug 17 18:18:00 UTC 2026","0","tests.ui.chat","test_context_management","TestContextManagementSettings","","","test_context_budget_reflects_profile_max_tokens[10k_tokens]","Context Budget panel in chat shows the max tokens set in profile.
+
+        Parameterized to verify:
+        - P1 (10,000 tokens): Standard value propagates correctly
+        - P2 (32,000 tokens): Updated value propagates (not cached)
+
+        Cleanup: deletes the created conversation via API.
+        "
+"passed","Mon Aug 17 18:17:13 UTC 2026","Mon Aug 17 18:17:29 UTC 2026","15289","tests.ui.chat","test_chat_interface","TestContextAndSettings","","","test_edit_context_settings","TC-CHAT-019: Edit context settings."
+"passed","Mon Aug 17 18:15:36 UTC 2026","Mon Aug 17 18:15:49 UTC 2026","13162","tests.ui.chat","test_chat_interface","TestMessageActions","","","test_copy_message_to_clipboard","TC-CHAT-008: Copy message to clipboard."
+"passed","Mon Aug 17 18:13:53 UTC 2026","Mon Aug 17 18:14:53 UTC 2026","60003","tests.ui.chat","test_agent_with_toolkit_chat","TestAgentWithToolkitInChat","","","test_agent_with_toolkit_executes_in_chat","Create agent with toolkit, add agent as participant in chat, verify toolkit executes.
+
+        The toolkit is attached to the agent (not the conversation directly).
+        This tests the agent-owns-toolkit execution path in real chat (/chat).
+        "
+"passed","Mon Aug 17 16:17:51 UTC 2026","Mon Aug 17 16:18:18 UTC 2026","26645","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantNewSession","","","test_new_chat_creates_fresh_session","New Chat button starts a fresh support session.
+
+        Covers: 3.5.1, 3.5.2
+
+        Also covers ELITEA-1799's Expected Final State clause 3 (""previous
+        session preserved in history, not lost"") via a soft assertion —
+        known defect #607, stays red once the account's active conversation
+        exceeds the ~100-message-group threshold.
+        "
+"passed","Mon Aug 17 16:18:22 UTC 2026","Mon Aug 17 16:19:05 UTC 2026","42803","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_text_truncated_with_warning","Verify text over limit is truncated to 768 chars with warning message.
+        TC-1686
+
+        Tests both collapsed mode and fullscreen mode.
         "
 "passed","Mon Aug 17 16:23:00 UTC 2026","Mon Aug 17 16:24:23 UTC 2026","82515","tests.ui.skills","test_import_agent_recreates_skills_with_new_ids","TestImportAgentRecreatesSkillsWithNewIds","","","test_import_agent_recreates_skills_with_new_ids","Export an Agent with an attached Skill, import it, verify a new
         Skill entity (new unique ID) is created and correctly linked.
@@ -243,122 +357,8 @@
            import (Axis 2 additions — import must be purely additive).
         8. Edit + save the imported Agent; verify a clean save.
         "
-"passed","Mon Aug 17 16:16:36 UTC 2026","Mon Aug 17 16:16:56 UTC 2026","19255","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantLauncher","","","test_launcher_visible_and_opens_widget","Launcher is visible and opens Support Assistant widget.
+"passed","Mon Aug 17 16:17:24 UTC 2026","Mon Aug 17 16:17:33 UTC 2026","9200","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
 
-        Covers: 2.1.1, 2.2.1, 2.2.2
-        "
-"passed","Mon Aug 17 16:19:15 UTC 2026","Mon Aug 17 16:19:31 UTC 2026","16385","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantViewModes","","","test_expand_collapse_fullview","Widget can expand to full view and collapse back.
-
-        Covers: 2.3.1, 2.3.2, 2.3.3
-        "
-"passed","Mon Aug 17 16:24:19 UTC 2026","Mon Aug 17 16:24:56 UTC 2026","37630","tests.ui.agents","test_agent_with_github_toolkit","TestChatWithAgentToolkit","","","test_agent_chat_with_github_toolkit","Add toolkit to agent, chat via /chat, verify toolkit execution."
-"passed","Mon Aug 17 16:19:29 UTC 2026","Mon Aug 17 16:19:40 UTC 2026","11744","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_cannot_send_empty_message","TC-CHAT-007: Cannot send empty message."
-"passed","Mon Aug 17 16:16:56 UTC 2026","Mon Aug 17 16:17:28 UTC 2026","32155","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantLauncher","","","test_widget_state_persists_after_close_reopen","Conversation state persists when closing and reopening widget.
-
-        Covers: 2.2.3
-        "
-"passed","Mon Aug 17 16:17:59 UTC 2026","Mon Aug 17 16:20:39 UTC 2026","159327","tests.ui.skills","test_agent_max_five_skills_limit","TestAgentMaxFiveSkillsLimit","","","test_max_five_skills_attach_limit","Create 5 Skills + an Agent, attach all 5 Skills one at a time,
-        verify the add-skill control disables at 5/5 with a tooltip (rather
-        than a literal 6th-click rejection), and verify persistence via a
-        full page reload.
-
-        Steps (AFS test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md):
-        1. Create 5 Skills via UI. A 6th distinct skill is looked up via the
-           project's existing skills (via ``skill_api``) rather than assumed
-           by name — any pre-existing skill satisfies the case's ""6 distinct
-           Skills"" precondition.
-        2. Create an Agent.
-        3. Skills section starts at 0/5, add-skill control enabled.
-        4-8. Attach Skills 1-5 one at a time; counter increments ""N/5 skills
-           added."" and a card renders after each attach.
-        9. Add-skill control becomes disabled the instant 5/5 is reached,
-           with an accessible tooltip — a 6th skill cannot be attached.
-        10. Confirm persistence via a full page reload (attach is
-           auto-saved via API; no explicit agent-level Save is available).
-        "
-"passed","Mon Aug 17 16:21:04 UTC 2026","Mon Aug 17 16:21:13 UTC 2026","8799","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_model_selector_opens_menu","TC-CHAT-010, TC-CHAT-020: Model selector shows current model and opens menu."
-"passed","Mon Aug 17 16:23:21 UTC 2026","Mon Aug 17 16:26:11 UTC 2026","170435","tests.ui.chat","test_image_creation","TestImageCreation","","","test_create_image[detailed_description]","Create image from text prompt and verify image appears in response."
-"passed","Mon Aug 17 16:21:10 UTC 2026","Mon Aug 17 16:23:00 UTC 2026","109561","tests.ui.skills","test_ghost_skill_after_agent_removed","TestGhostSkillAfterAgentRemoved","","","test_ghost_skill_not_shown_after_agent_participant_removed","Create a skill, attach it to an agent, add the agent as a chat
-        participant, confirm '~mention' shows the skill, dismiss, remove the
-        participant, and confirm the skill no longer appears in '~mention'
-        afterward.
-
-        Steps (AFS test-specs/skills/l3_ghost-skill-not-shown-after-agent-participant-removed_ELITEA-1793.md):
-        1. Create Skill, create Agent, attach the skill to the agent.
-        2. Open Chat, add the agent as a participant.
-        3. Type '~' — the ""Mention skill"" popper lists the attached skill.
-        4. Dismiss the popper with Escape without selecting anything.
-        5. Remove the agent from the chat's participants.
-        6. Type '~' again — the removed agent's skill should NOT be listed.
-        7. Control check: a fresh conversation that never had a participant
-           shows the correct ""No skills attached to this agent"" empty state.
-        "
-"passed","Mon Aug 17 16:16:50 UTC 2026","Mon Aug 17 16:17:59 UTC 2026","69424","tests.ui.skills","test_agent_instructions_tilde_mention","TestTildeMentionListsOnlyAttachedSkills","","","test_tilde_mention_in_instructions_lists_only_attached_skills","Attach 2 of 3 distinct Skills to an Agent, then verify the ""~""
-        mention panel in the Instructions field is scoped to only the
-        attached 2 — the 3rd (unattached) Skill never appears, including
-        on a second, independent ""~"" trigger after clearing the field.
-
-        Steps (AFS test-specs/skills/l3_tilde-mention-lists-only-attached-skills_ELITEA-1791.md):
-        1. Confirm/create 3 distinct Skills (reuse a pre-existing one as
-           Skill A, looked up via API rather than assumed by name — same
-           environment-robustness rule as ELITEA-1790's cleanup note —
-           falling back to creating it fresh if none exists), create an
-           Agent, attach Skill A + Skill B, leave Skill C unattached.
-        2. Click the Instructions field — becomes focused/editable.
-        3-4. Type ""~"" — ""Mention skill"" panel appears, listing exactly
-           Skill A and Skill B; Skill C is asserted absent by exact-name
-           locator (not merely a row count).
-        5. Select Skill A — inserts ""~<skill-name>"" as plain text.
-        6. Select-all + delete, retype ""~"" — same 2-item scoped list
-           reappears; Skill C still absent (re-evaluated live).
-        "
-"passed","Mon Aug 17 16:24:23 UTC 2026","Mon Aug 17 16:25:37 UTC 2026","74077","tests.ui.skills","test_remove_attached_skill_from_agent","TestRemoveAttachedSkillFromAgent","","","test_remove_attached_skill_from_agent","Create two Skills + an Agent, attach both, remove Skill B via the
-        hover-revealed remove control + confirmation dialog, and verify Skill
-        A remains attached while Skill B survives standalone.
-
-        Steps (AFS test-specs/skills/l3_remove-attached-skill-from-agent_ELITEA-1792.md):
-        1. Create Skill A and Skill B via UI.
-        2. Create an Agent.
-        3. Attach both Skills to the Agent (precondition for this case).
-        4. Locate the hover-revealed ""remove skill"" control for Skill B.
-        5. Click it; confirm the ""Remove skill?"" dialog; Skill B is removed
-           from the UI list while Skill A remains.
-        6. Confirm persistence via a full page reload (detach auto-saves via
-           API; no explicit agent-level Save is available for this action).
-        7. Reopen the Agent (same reload satisfies this — no separate
-           close/reopen gesture exists in the live flow); only Skill A is
-           attached.
-        8. Navigate directly to Skill B's detail page and to the Skills list;
-           Skill B still exists standalone (detached, not deleted).
-        "
-"passed","Mon Aug 17 16:19:42 UTC 2026","Mon Aug 17 16:20:19 UTC 2026","37576","tests.ui.chat","test_chat_interface","TestMessageActions","","","test_copy_message_to_clipboard","TC-CHAT-008: Copy message to clipboard."
-"passed","Mon Aug 17 16:20:43 UTC 2026","Mon Aug 17 16:21:09 UTC 2026","26064","tests.ui.skills","test_export_agent_no_nested_dependencies","TestExportAgentNoNestedDependencies","","","test_export_agent_no_nested_dependencies","Create an Agent with no attached Skills/sub-Agents but with an
-        external GitHub toolkit attached, export it via the actions overflow
-        menu, and verify the downloaded file's raw content: correct
-        frontmatter, no ``skills:`` key, instructions embedded verbatim, and
-        no leaked credential value anywhere in the file.
-
-        Steps (AFS
-        test-specs/skills/l3_export-agent-no-nested-dependencies_ELITEA-1894.md):
-        1. Create an Agent via UI (no Skills/sub-Agents attached).
-        2. Attach the pre-created GitHub toolkit to the Agent (case
-           precondition — ""no nested dependencies"" + a real credential to
-           prove non-leakage against).
-        3. Confirm the Agent detail view shows the toolkit attached and no
-           Skills (already satisfied by step 2).
-        4. Confirm the version dropdown shows the default `base` version
-           selected (single-version agent — see AFS § Blocked Steps).
-        5. Open the agent-actions overflow menu; click ""Export"" (VERSION
-           group); verify a file download is initiated.
-        6. Verify the downloaded file has a `.md`-suffixed name.
-        7. Read the downloaded file's raw content; verify the YAML
-           frontmatter (name, description, model settings) has NO
-           `skills:` key, and the instructions body is embedded verbatim.
-        8. Verify the file does NOT contain the raw GitHub token value nor
-           any credential-shaped substring — only the toolkit's non-secret
-           `elitea_title` reference.
-        "
-"passed","Mon Aug 17 16:17:29 UTC 2026","Mon Aug 17 16:17:50 UTC 2026","21547","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantMessaging","","","test_send_message_and_receive_response","User can send a message and receive AI response.
-
-        Covers: 3.2.1-3.2.7, 3.2.9
+        Acceptance Criteria #2: Counter turns red when 0 characters remain.
         "
