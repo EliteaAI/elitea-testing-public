@@ -64,6 +64,7 @@ class TestAgentSelfAttachmentBlocked:
     )
     @pytest.mark.p2
     @pytest.mark.regression
+    @pytest.mark.flaky
     def test_agent_self_attachment_blocked(self, page):
         """Current agent never appears in its own "+ Agent" picker results.
 

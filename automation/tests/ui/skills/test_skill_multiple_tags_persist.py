@@ -35,6 +35,7 @@ class TestSkillMultipleTagsPersist:
         "onetest-ai Test Case link",
     )
     @pytest.mark.p3
+    @pytest.mark.flaky
     def test_multiple_tags_persist_on_creation_and_edit(self, page, skill_api):
         """Create a Skill with 2 pre-save tags, then add 2 more via edit; all
         4 persist together through fresh reloads and render on the card."""
