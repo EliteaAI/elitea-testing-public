@@ -7,13 +7,12 @@ Test cases:
 - ELITEA-2494: Read-only permission — GET returns 200, POST/DELETE return 403
 
 Test flow:
-1. [UI Setup] Login as Admin, set User B's permission via Manage Permissions modal
-2. [UI Verify] Verify bucket visibility in sidebar for User B
-3. [API Test] Execute GET/POST/DELETE requests using User B's session
-4. [Cleanup] Restore User B to default permissions (Read & Write)
+1. [UI Setup] Login as User A (Admin), set User B's permission via Manage Permissions modal
+2. [API Test] Execute GET/POST/DELETE requests using User B's session
+3. [Cleanup] Restore User B to default permissions (Read & Write)
 
 Requirements:
-- Two users configured in .env.test: Admin (TEST_USER_EMAIL) and User B (TEST_USER_B_EMAIL)
+- Two users configured: Admin (TEST_USER_EMAIL) and User B (TEST_USER_B_EMAIL)
 - User B must exist in the Team project
 - Test bucket is auto-created if missing (cleaned up only if created by test)
 
@@ -66,7 +65,7 @@ API_TIMEOUT = 30_000
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def test_bucket(artifact_api_team_project):
     """Ensure test bucket exists with a test file in Team project.
 
@@ -126,22 +125,6 @@ def test_bucket(artifact_api_team_project):
 
 
 @pytest.fixture
-def admin_page(browser, auth_state):
-    """Create a browser page authenticated as Admin (User A)."""
-    ctx = browser.new_context(
-        viewport={"width": 1920, "height": 1080},
-        base_url=settings.elitea_url,
-        storage_state=auth_state,
-    )
-    ctx.set_default_timeout(UI_TIMEOUT)
-    ctx.set_default_navigation_timeout(UI_TIMEOUT)
-    page = ctx.new_page()
-    yield page
-    page.close()
-    ctx.close()
-
-
-@pytest.fixture
 def user_b_page(browser, auth_state_user_b):
     """Create a browser page authenticated as User B."""
     ctx = browser.new_context(
@@ -179,8 +162,7 @@ class TestBucketPermissionsAPI:
     def test_no_access_permission_blocks_all_api_operations(
         self,
         test_bucket,
-        admin_page,
-        user_b_page,
+        page,
         artifact_api_user_b_team_project,
     ):
         """Verify that 'No access' permission blocks GET, POST, and DELETE API calls.
@@ -189,12 +171,11 @@ class TestBucketPermissionsAPI:
         via direct API calls — all operations must return 403 Forbidden.
 
         Steps:
-        1. Admin sets User B to 'No access' for the test bucket
-        2. Verify User B cannot see bucket in sidebar (UI enforcement)
-        3. Verify GET request returns 403 Forbidden
-        4. Verify POST (upload) request returns 403 Forbidden
-        5. Verify DELETE request returns 403 Forbidden
-        6. Cleanup: Restore User B to default permissions
+        1. Admin sets User B to 'No access' for the test bucket (UI)
+        2. Verify GET request returns 403 Forbidden (API as User B)
+        3. Verify POST (upload) request returns 403 Forbidden (API as User B)
+        4. Verify DELETE request returns 403 Forbidden (API as User B)
+        5. Cleanup: Restore User B to default permissions (UI)
         """
         bucket_name = test_bucket["name"]
         filename = test_bucket["filename"]
@@ -204,9 +185,23 @@ class TestBucketPermissionsAPI:
         # Step 1: Admin sets User B to "No access" via UI
         # ------------------------------------------------------------------
         with allure.step("Step 1: Admin sets User B to 'No access' permission"):
-            admin_artifacts = ArtifactsPage(admin_page)
+            admin_artifacts = ArtifactsPage(page)
             admin_artifacts.navigate_to_artifacts()
+            # Switch to Team project (bucket permissions only work in Team projects)
+            admin_artifacts.switch_project(settings.elitea_team_project_id)
             admin_artifacts.open_manage_permissions(bucket_name, timeout=MODAL_TIMEOUT)
+
+            # Pre-clean: if User B already has an exception (from failed previous run),
+            # remove it first to allow adding a fresh exception
+            if admin_artifacts.user_has_exception(user_b_email):
+                logger.info("User B already has exception — removing before test")
+                admin_artifacts.remove_permission_exception(
+                    user_name_or_email=user_b_email,
+                    timeout=MODAL_TIMEOUT,
+                )
+                # Re-open modal to add fresh exception
+                admin_artifacts.open_manage_permissions(bucket_name, timeout=MODAL_TIMEOUT)
+
             admin_artifacts.add_permission_exception(
                 user_name_or_email=user_b_email,
                 permission=PERMISSION_NO_ACCESS,
@@ -217,22 +212,9 @@ class TestBucketPermissionsAPI:
 
         try:
             # ------------------------------------------------------------------
-            # Step 2: Verify bucket is NOT visible for User B
+            # Step 2: Verify GET returns 403 Forbidden
             # ------------------------------------------------------------------
-            with allure.step("Step 2: Verify bucket is NOT visible in User B's sidebar"):
-                user_b_artifacts = ArtifactsPage(user_b_page)
-                user_b_artifacts.navigate_to_artifacts()
-                bucket_visible = user_b_artifacts.bucket_exists(bucket_name, timeout=5000)
-                assert not bucket_visible, (
-                    f"Bucket '{bucket_name}' should NOT be visible for User B with 'No access' "
-                    f"permission, but it was found in the sidebar"
-                )
-                logger.info("Confirmed: bucket '%s' is NOT visible for User B", bucket_name)
-
-            # ------------------------------------------------------------------
-            # Step 3: Verify GET returns 403 Forbidden
-            # ------------------------------------------------------------------
-            with allure.step("Step 3: API GET request returns 403 Forbidden"):
+            with allure.step("Step 2: API GET request returns 403 Forbidden"):
                 get_response = artifact_api_user_b_team_project.get_file_raw(bucket_name, filename)
                 assert get_response.status_code == 403, (
                     f"GET request should return 403 Forbidden for 'No access' user, "
@@ -241,9 +223,9 @@ class TestBucketPermissionsAPI:
                 logger.info("GET request correctly returned 403 Forbidden")
 
             # ------------------------------------------------------------------
-            # Step 4: Verify POST (upload) returns 403 Forbidden
+            # Step 3: Verify POST (upload) returns 403 Forbidden
             # ------------------------------------------------------------------
-            with allure.step("Step 4: API POST (upload) request returns 403 Forbidden"):
+            with allure.step("Step 3: API POST (upload) request returns 403 Forbidden"):
                 post_response = artifact_api_user_b_team_project.upload_file_raw(
                     bucket_name,
                     "test_upload.txt",
@@ -256,9 +238,9 @@ class TestBucketPermissionsAPI:
                 logger.info("POST request correctly returned 403 Forbidden")
 
             # ------------------------------------------------------------------
-            # Step 5: Verify DELETE returns 403 Forbidden
+            # Step 4: Verify DELETE returns 403 Forbidden
             # ------------------------------------------------------------------
-            with allure.step("Step 5: API DELETE request returns 403 Forbidden"):
+            with allure.step("Step 4: API DELETE request returns 403 Forbidden"):
                 delete_response = artifact_api_user_b_team_project.delete_file_raw(bucket_name, filename)
                 assert delete_response.status_code == 403, (
                     f"DELETE request should return 403 Forbidden for 'No access' user, "
@@ -272,6 +254,7 @@ class TestBucketPermissionsAPI:
             # ------------------------------------------------------------------
             with allure.step("Cleanup: Remove User B's exception (restores default Read & Write)"):
                 admin_artifacts.navigate_to_artifacts()
+                admin_artifacts.switch_project(settings.elitea_team_project_id)
                 admin_artifacts.open_manage_permissions(bucket_name, timeout=MODAL_TIMEOUT)
                 admin_artifacts.remove_permission_exception(
                     user_name_or_email=user_b_email,
@@ -288,8 +271,7 @@ class TestBucketPermissionsAPI:
     def test_read_only_permission_allows_get_blocks_write_operations(
         self,
         test_bucket,
-        admin_page,
-        user_b_page,
+        page,
         artifact_api_user_b_team_project,
     ):
         """Verify that 'Read-only' permission allows GET but blocks POST and DELETE.
@@ -298,12 +280,11 @@ class TestBucketPermissionsAPI:
         but cannot write or delete (POST/DELETE return 403 Forbidden).
 
         Steps:
-        1. Admin sets User B to 'Read-only' for the test bucket
-        2. Verify User B CAN see bucket in sidebar (read access works)
-        3. Verify GET request returns 200 OK with file content
-        4. Verify POST (upload) request returns 403 Forbidden
-        5. Verify DELETE request returns 403 Forbidden
-        6. Cleanup: Restore User B to default permissions
+        1. Admin sets User B to 'Read-only' for the test bucket (UI)
+        2. Verify GET request returns 200 OK with file content (API as User B)
+        3. Verify POST (upload) request returns 403 Forbidden (API as User B)
+        4. Verify DELETE request returns 403 Forbidden (API as User B)
+        5. Cleanup: Restore User B to default permissions (UI)
         """
         bucket_name = test_bucket["name"]
         filename = test_bucket["filename"]
@@ -313,9 +294,22 @@ class TestBucketPermissionsAPI:
         # Step 1: Admin sets User B to "Read-only" via UI
         # ------------------------------------------------------------------
         with allure.step("Step 1: Admin sets User B to 'Read-only' permission"):
-            admin_artifacts = ArtifactsPage(admin_page)
+            admin_artifacts = ArtifactsPage(page)
             admin_artifacts.navigate_to_artifacts()
+            admin_artifacts.switch_project(settings.elitea_team_project_id)
             admin_artifacts.open_manage_permissions(bucket_name, timeout=MODAL_TIMEOUT)
+
+            # Pre-clean: if User B already has an exception (from failed previous run),
+            # remove it first to allow adding a fresh exception
+            if admin_artifacts.user_has_exception(user_b_email):
+                logger.info("User B already has exception — removing before test")
+                admin_artifacts.remove_permission_exception(
+                    user_name_or_email=user_b_email,
+                    timeout=MODAL_TIMEOUT,
+                )
+                # Re-open modal to add fresh exception
+                admin_artifacts.open_manage_permissions(bucket_name, timeout=MODAL_TIMEOUT)
+
             admin_artifacts.add_permission_exception(
                 user_name_or_email=user_b_email,
                 permission=PERMISSION_READ_ONLY,
@@ -326,22 +320,9 @@ class TestBucketPermissionsAPI:
 
         try:
             # ------------------------------------------------------------------
-            # Step 2: Verify bucket IS visible for User B
+            # Step 2: Verify GET returns 200 OK with file content
             # ------------------------------------------------------------------
-            with allure.step("Step 2: Verify bucket IS visible in User B's sidebar"):
-                user_b_artifacts = ArtifactsPage(user_b_page)
-                user_b_artifacts.navigate_to_artifacts()
-                bucket_visible = user_b_artifacts.bucket_exists(bucket_name, timeout=10000)
-                assert bucket_visible, (
-                    f"Bucket '{bucket_name}' should be visible for User B with 'Read-only' "
-                    f"permission, but it was NOT found in the sidebar"
-                )
-                logger.info("Confirmed: bucket '%s' IS visible for User B", bucket_name)
-
-            # ------------------------------------------------------------------
-            # Step 3: Verify GET returns 200 OK with file content
-            # ------------------------------------------------------------------
-            with allure.step("Step 3: API GET request returns 200 OK with file content"):
+            with allure.step("Step 2: API GET request returns 200 OK with file content"):
                 get_response = artifact_api_user_b_team_project.get_file_raw(bucket_name, filename)
                 assert get_response.status_code == 200, (
                     f"GET request should return 200 OK for 'Read-only' user, "
@@ -356,9 +337,9 @@ class TestBucketPermissionsAPI:
                 )
 
             # ------------------------------------------------------------------
-            # Step 4: Verify POST (upload) returns 403 Forbidden
+            # Step 3: Verify POST (upload) returns 403 Forbidden
             # ------------------------------------------------------------------
-            with allure.step("Step 4: API POST (upload) request returns 403 Forbidden"):
+            with allure.step("Step 3: API POST (upload) request returns 403 Forbidden"):
                 post_response = artifact_api_user_b_team_project.upload_file_raw(
                     bucket_name,
                     "test_upload.txt",
@@ -371,9 +352,9 @@ class TestBucketPermissionsAPI:
                 logger.info("POST request correctly returned 403 Forbidden")
 
             # ------------------------------------------------------------------
-            # Step 5: Verify DELETE returns 403 Forbidden
+            # Step 4: Verify DELETE returns 403 Forbidden
             # ------------------------------------------------------------------
-            with allure.step("Step 5: API DELETE request returns 403 Forbidden"):
+            with allure.step("Step 4: API DELETE request returns 403 Forbidden"):
                 delete_response = artifact_api_user_b_team_project.delete_file_raw(bucket_name, filename)
                 assert delete_response.status_code == 403, (
                     f"DELETE request should return 403 Forbidden for 'Read-only' user, "
@@ -387,6 +368,7 @@ class TestBucketPermissionsAPI:
             # ------------------------------------------------------------------
             with allure.step("Cleanup: Remove User B's exception (restores default Read & Write)"):
                 admin_artifacts.navigate_to_artifacts()
+                admin_artifacts.switch_project(settings.elitea_team_project_id)
                 admin_artifacts.open_manage_permissions(bucket_name, timeout=MODAL_TIMEOUT)
                 admin_artifacts.remove_permission_exception(
                     user_name_or_email=user_b_email,

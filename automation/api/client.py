@@ -1421,6 +1421,21 @@ class ArtifactAPI:
         logger.debug("DELETE file (raw) %s filename=%s", url, filename)
         return self._session.delete(url, params=params)
 
+    def bucket_exists(self, bucket_name: str) -> bool:
+        """Check if a bucket exists by attempting to list its files.
+
+        Args:
+            bucket_name: Name of the bucket to check.
+
+        Returns:
+            True if bucket exists, False otherwise.
+        """
+        try:
+            self.list_bucket_files(bucket_name)
+            return True
+        except Exception:
+            return False
+
 
 class SkillAPI:
     """Manage skills via the Elitea API.

@@ -228,6 +228,9 @@ on:
         required: false
       TEST_USER_PASSWORD_10:
         required: false
+      # Team project ID for multi-user tests (bucket permissions, etc.)
+      ELITEA_TEAM_PROJECT_ID:
+        required: false
       GIT_HUB_TOKEN:
         required: false
       BITBUCKET_TOKEN:
@@ -442,6 +445,12 @@ jobs:
           ELITEA_API_TOKEN: ${{ secrets[format('TEST_USER_TOKEN_{0}', matrix.user_idx)] || secrets.ELITEA_API_TOKEN }}
           TEST_USER_EMAIL: ${{ secrets[format('TEST_USER_NAME_{0}', matrix.user_idx)] || secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets[format('TEST_USER_PASSWORD_{0}', matrix.user_idx)] || secrets.TEST_USER_PASSWORD }}
+          # Secondary user (User B) for multi-user tests - uses user 9 for all parallel jobs
+          # Note: Job 9 will have same user for primary and secondary, but no multi-user tests there yet
+          TEST_USER_B_EMAIL: ${{ secrets.TEST_USER_NAME_9 }}
+          TEST_USER_B_PASSWORD: ${{ secrets.TEST_USER_PASSWORD_9 }}
+          # Team project ID for multi-user permission tests
+          ELITEA_TEAM_PROJECT_ID: ${{ secrets.ELITEA_TEAM_PROJECT_ID }}
           GIT_HUB_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
           BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
           ADO_TOKEN: ${{ secrets.ADO_TOKEN }}
