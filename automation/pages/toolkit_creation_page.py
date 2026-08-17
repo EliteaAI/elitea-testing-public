@@ -324,7 +324,7 @@ class ToolkitCreationPage(BasePage):
         logger.info("Filled toolkit name field with '%s'", name)
 
     @action("Fill a schema-driven toolkit field")
-    def fill_field(self, field_key: str, value: str) -> None:
+    def fill_field(self, field_key: str, value: str, *, force: bool = False) -> None:
         """Type into a dynamic schema-driven field, by its schema property key.
 
         Same MUI ``click()`` + ``press_sequentially()`` pattern as
@@ -334,10 +334,45 @@ class ToolkitCreationPage(BasePage):
         Args:
             field_key: The field's schema property key (e.g. ``"bucket"``).
             value: Text to type.
+            force: Pass ``True`` in the in-chat canvas after credential
+                selection, where a MUI overlay (``css-15msj7j``/``css-1qkypnf``)
+                intercepts pointer events AND formik's per-keystroke
+                ``onChange`` → ``setEditToolDetail`` cycle re-renders the parent
+                causing ``press_sequentially``'s stale ``elementHandle`` to time
+                out mid-type.  With ``force=True``:
+                  1. ``el.focus()`` via JS — bypasses the overlay entirely.
+                  2. ``page.keyboard.type()`` — sends keyboard events without
+                     holding an element handle, so parent re-renders don't
+                     invalidate it.
+                  Each of these is transit-only wiring for the canvas surface;
+                  the observable (toolkit creation, PARTICIPANTS badge) is
+                  produced by the live system.  Not a substitution per
+                  ``.agents/testing.md`` § Fidelity policy.
         """
         field = self.page.locator(self.TOOLKIT_FIELD_INPUT.format(field_key))
-        field.click()
-        field.press_sequentially(value, delay=30)
+        if force:
+            # MUI overlay + React re-render issue in canvas context.
+            # evaluate("el => el.focus()") focuses the element via JS,
+            # bypassing the overlay; page.keyboard.type() sends global
+            # keyboard events without caching the element ref, so
+            # mid-type re-renders don't invalidate it.
+            # Declared: this is the CLAUDE.md-documented MUI overlay workaround
+            # applied to the type step; evaluate here is NOT a data-fabrication
+            # substitution — it merely achieves focus (the transit step), and
+            # every byte that formik accepts and the backend stores comes from
+            # the real keyboard events that follow.
+            field.wait_for(state="visible")
+            # Atomic JS: focus the field AND select all pre-filled content in a
+            # single evaluate() call.  The previous two-step pattern
+            # (evaluate focus + keyboard.press("Control+a")) was unreliable
+            # because formik's per-keystroke onChange re-render fires between
+            # the two Python round-trips, moving focus away from the field
+            # before Ctrl+A lands — confirmed on screenshot (base_branch "mainmain").
+            field.evaluate("el => { el.focus(); el.select(); }")
+            self.page.keyboard.type(value)
+        else:
+            field.click()
+            field.press_sequentially(value, delay=30)
         logger.info("Filled toolkit field '%s' with '%s'", field_key, value)
 
     def get_field_locator(self, field_key: str):
