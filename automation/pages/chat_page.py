@@ -11,12 +11,13 @@ import re
 import time
 from pathlib import Path
 
+from components.mui import Dialog
+from config import settings
 from playwright.sync_api import Page, expect
+from utils.actions import action
+
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor
-from components.mui import Dialog, Popper
-from utils.actions import action
-from config import settings
 
 logger = logging.getLogger("elitea.pages.chat")
 
@@ -463,6 +464,17 @@ class ChatPage(BasePage):
         ),
     )
 
+    toolkits_create_new_button = LocatorDescriptor(
+        testid="toolkits-create-new-button",
+        description=(
+            "'+ Create New Toolkit' item inside the Toolkits submenu (ELITEA-2083) "
+            "— same generic PlusChatSubmenu.jsx showCreateNew MenuItem as "
+            "agents_create_new_button/mcps_create_new_button, "
+            "templated ${sectionKey}-create-new-button (sectionKey='toolkits'). "
+            "On main ✓ — PlusChatSubmenu.jsx line 103."
+        ),
+    )
+
     # ------------------------------------------------------------------
     # In-message table/diagram edit-canvas entry points (ELITEA-2086/2088)
     # ------------------------------------------------------------------
@@ -859,6 +871,12 @@ class ChatPage(BasePage):
     # "Agents in this conversation" collapsed-participants badge — dynamic
     # per entity section (this case only ever calls ``.format("agents")``).
     PARTICIPANTS_BADGE = '[data-testid="chat-participants-badge-{}"]'
+
+    # Section icon inside the collapsed-participants badge (ELITEA-2083) —
+    # dynamic per entity section.  Source: CollapsedPerticapantsList.jsx
+    # line 235: data-testid={`chat-participants-badge-icon-${entity.section}`}.
+    # On main ✓.
+    PARTICIPANTS_BADGE_ICON = '[data-testid="chat-participants-badge-icon-{}"]'
 
     # The badge's clickable trigger IconButton — static, but only ever
     # resolved scoped under a ``PARTICIPANTS_BADGE`` container (multiple
@@ -1312,7 +1330,7 @@ class ChatPage(BasePage):
 
     def __init__(self, page: Page):
         super().__init__(page)
-        
+
     @action("Navigate to chat")
     def navigate_to_chat(self, conversation_id: str = None):
         """Navigate to chat page and wait until ready.
@@ -1412,7 +1430,7 @@ class ChatPage(BasePage):
                     break
                 _time.sleep(0.2)
             logger.info("Chat page loaded after spinner wait")
-        
+
     @action("Switch project")
     def switch_project(self, project_id: str, timeout: int = 10000):
         """Switch the active project via the sidebar project selector.
@@ -1491,7 +1509,7 @@ class ChatPage(BasePage):
             # intercept pointer events on the send button.
             self.send_button.wait_for(state="visible", timeout=5000)
             self.send_button.click(force=True, timeout=5000)
-            
+
     @action("Send multi-line message")
     def send_message_with_shift_enter(self, lines: list):
         """Send a multi-line message using Shift+Enter for line breaks.
@@ -1505,7 +1523,7 @@ class ChatPage(BasePage):
             if i < len(lines) - 1:
                 self.message_input.press("Shift+Enter")
         self.send_button.click(force=True)
-        
+
     def get_message_count(self) -> int:
         """Get the count of messages in the chat history.
 
@@ -1547,7 +1565,7 @@ class ChatPage(BasePage):
         after = self.chat_messages_scroll_container.evaluate("el => el.scrollTop")
         logger.info("Scrolled messages container: scrollTop %s -> %s", before, after)
         return before, after
-        
+
     @staticmethod
     def _extract_message_body(message_locator) -> str:
         """Extract the body text from a message ``<li>``, excluding headers.
@@ -1965,7 +1983,7 @@ class ChatPage(BasePage):
         """
         value = self.message_input.input_value()
         return len(value.strip()) == 0
-        
+
     def is_send_button_enabled(self) -> bool:
         """Check if send button is enabled.
 
@@ -1997,13 +2015,13 @@ class ChatPage(BasePage):
         starter_text = (tile.first.text_content() or "").strip()
         tile.first.click()
         return starter_text
-        
+
     @action("Clear chat history")
     def clear_chat_history(self):
         """Click the Clear chat history button."""
         logger.info("Clearing chat history")
         self.clear_history_button.click()
-        
+
     def click_model_selector(self):
         """Click the model selector to open model menu."""
         logger.info("Opening model selector")
@@ -2160,7 +2178,7 @@ class ChatPage(BasePage):
         if self.sidebar_toggle.is_visible():
             self.sidebar_toggle.click()
             self.page.wait_for_timeout(300)  # Allow animation
-        
+
     @action("Open Attach Files menu item")
     def open_attach_menuitem(self, timeout: int = 10000):
         """Open the plus menu and reveal the 'Attach Files' item inside it.
@@ -2472,13 +2490,13 @@ class ChatPage(BasePage):
 
         # Wait for deletion to complete
         self.page.wait_for_timeout(1000)
-        
+
     @action("Regenerate response")
     def regenerate_response(self):
         """Click regenerate button on last AI message."""
         logger.info("Regenerating AI response")
         self.regenerate_button.click()
-        
+
     @action("Search participants")
     def search_participants_with_hash(self, query: str):
         """Use # to search for participants to add.
@@ -2499,7 +2517,7 @@ class ChatPage(BasePage):
             '[class*="popper"], [class*="autocomplete"], [class*="mention"]',
             timeout=5000,
         )
-        
+
     @action("Select participant")
     def select_participant_from_search(self, participant_name: str):
         """Select a participant from # search results.
@@ -2510,12 +2528,12 @@ class ChatPage(BasePage):
         logger.info(f"Selecting participant: {participant_name}")
         option = self.page.get_by_role("option", name=participant_name).first
         option.click()
-        
+
     def edit_context_settings(self):
         """Open context settings dialog."""
         logger.info("Opening context settings")
         self.edit_context_button.click()
-        
+
     def toggle_internal_tools(self):
         """Toggle internal tools checkbox."""
         logger.info("Toggling internal tools")
@@ -2643,7 +2661,7 @@ class ChatPage(BasePage):
         search_btn = self.page.get_by_role("button", name="Search chats")
         search_btn.wait_for(state="visible", timeout=5000)
         search_btn.click()
-        
+
     def navigate_to_agents(self):
         """Navigate to Agents page via the sidebar drawer."""
         logger.info("Navigating to Agents")
@@ -2729,6 +2747,26 @@ class ChatPage(BasePage):
         self.mcps_create_new_button.wait_for(state="visible", timeout=timeout)
         self.mcps_create_new_button.click()
         logger.info("Create New MCP canvas opened")
+
+    @action("Open Create New Toolkit canvas")
+    def open_create_new_toolkit_canvas(self, timeout: int = 10000):
+        """Open the in-chat 'Create New Toolkit' canvas (ELITEA-2083).
+
+        Flow: click plus_menu_button -> HOVER toolkits_menuitem (reveals
+        the Toolkits submenu via onMouseEnter, same mechanism as
+        ``open_create_new_mcp_canvas``) -> click toolkits_create_new_button.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Create New Toolkit canvas via plus menu")
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.toolkits_menuitem.wait_for(state="visible", timeout=timeout)
+        self.toolkits_menuitem.hover()
+        self.toolkits_create_new_button.wait_for(state="visible", timeout=timeout)
+        self.toolkits_create_new_button.click()
+        logger.info("Create New Toolkit canvas opened")
 
     @action("Click table edit icon")
     def click_table_edit_icon(self, timeout: int = 10000):
@@ -2993,7 +3031,7 @@ class ChatPage(BasePage):
         except Exception:
             logger.info("No conversation items visible in list")
             return []
-        
+
         names = []
         for i in range(items.count()):
             try:
@@ -3003,7 +3041,7 @@ class ChatPage(BasePage):
             except Exception as e:
                 logger.debug(f"Failed to extract text from item {i}: {e}")
                 continue
-        
+
         logger.info(f"Found {len(names)} conversation(s): {names}")
         return names
 
@@ -3045,21 +3083,21 @@ class ChatPage(BasePage):
         """
         conv_id = str(conversation_id)
         logger.info("Selecting conversation by ID: %s", conv_id)
-        
+
         # Strategy 1: Try data attributes
         item = self.page.locator(
             f'[data-conversation-id="{conv_id}"], '
             f'[data-id="{conv_id}"], '
             f'[id*="conversation-{conv_id}"]'
         ).first
-        
+
         if item.count() > 0:
             logger.info("Found conversation via data attribute")
             item.wait_for(state="visible", timeout=timeout)
             item.click(force=True)
             self.wait_for_network(timeout=timeout)
             return
-        
+
         # Strategy 2: Look for href with /chat/{id}
         item = self.page.locator(f'a[href*="/chat/{conv_id}"]').first
         if item.count() > 0:
@@ -3068,7 +3106,7 @@ class ChatPage(BasePage):
             item.click(force=True)
             self.wait_for_network(timeout=timeout)
             return
-        
+
         # Strategy 3: JavaScript evaluation to find by href in onclick/data
         result = self.page.evaluate(f"""
             () => {{
@@ -3084,7 +3122,7 @@ class ChatPage(BasePage):
                 return null;
             }}
         """)
-        
+
         if result:
             logger.info("Found conversation via JS evaluation, clicking by text: %s", result)
             item = self.page.locator(f'text="{result}"').first
@@ -3092,7 +3130,7 @@ class ChatPage(BasePage):
             item.click(force=True)
             self.wait_for_network(timeout=timeout)
             return
-        
+
         raise AssertionError(
             f"Could not find conversation with ID {conv_id} in the sidebar. "
             "The conversation list may not have loaded, or the ID doesn't match any visible conversation."
