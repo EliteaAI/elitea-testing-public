@@ -41,3 +41,4 @@
 - ["blocked"+StructuredOutput note = near-certain false report](report_case_outcome_can_falsely_say_blocked_for_an_already_merged_case.md) — verify git, expect it actually merged (2×)
 - [NEVER call build_index for a routine back-write](build_index_regression_must_be_reverted_not_carried.md) — colliding ids make it destructive; surgical-edit by `path` (2×)
 - [Gate/report tail fails 2× = run gate yourself](workflow_internal_gate_two_failures_run_it_yourself.md) — scope by node-id, hand-write report from `result`
+- [Parallel fix dispatches collide on the shared clone](parallel_fix_dispatches_on_same_clone_collide_even_across_different_branches.md) — never dispatch 2+ code-touching agents in one reply, even to different branches; serialize

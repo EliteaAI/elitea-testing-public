@@ -1059,6 +1059,21 @@ class ChatPage(BasePage):
     # render their own submenu item.
     MOVE_TO_FOLDER_ITEM = '[data-testid="chat-move-to-folder-{}-menuitem"]'
 
+    # The "Move to" submenu's own MUI Menu popover Paper (ELITEA-2147
+    # implementer pass, EliteaAI/EliteaUI automation/testids commit
+    # 1787ad67 — DotMenu.jsx's nested <Menu> forwards this via
+    # slotProps={{paper: {'data-testid': ...}}}). Only one such submenu can
+    # be open at a time, so a single static testid is safe (confirmed at
+    # add-time per the AFS's own scoping caveat).
+    # Fix-round-1 (commit 1b35a0a2): the testid's origin moved from a
+    # hardcoded literal in DotMenu.jsx to a caller-supplied `submenuTestId`
+    # prop (only ConversationItem.jsx's "Move to" item passes it) — value
+    # and this locator are unchanged.
+    move_to_submenu_popover = LocatorDescriptor(
+        testid="chat-move-to-submenu-popover",
+        description="'Move to' submenu's own scrollable Menu popover Paper.",
+    )
+
     # Pin icon inside a conversation item — non-unique testid (the SAME
     # value renders once per pinned conversation), ALWAYS resolved scoped
     # inside a CONVERSATION_ITEM-scoped element, never at page level.
@@ -1113,6 +1128,20 @@ class ChatPage(BasePage):
         ),
     )
 
+    delete_confirm_title_icon = LocatorDescriptor(
+        testid="delete-confirm-title-icon",
+        description=(
+            "Delete-confirmation modal title's status icon (BaseModal.jsx "
+            "renderIconType(), e.g. the warning <svg> for a "
+            "'Remove user?' dialog, ELITEA-2193). Fix round 1: replaces the "
+            "prior #579-shape-1 raw ``svg`` tag selector — that exception "
+            "was a misclassification (the icon is first-party app JSX "
+            "render output via ModalConstants.MODAL_ICONS, not a "
+            "third-party-library-internal node), so a real testid was "
+            "added instead (EliteaAI/EliteaUI@7b359d32)."
+        ),
+    )
+
     delete_confirm_message = LocatorDescriptor(
         testid="delete-confirm-message",
         description="Delete-confirmation modal body text.",
@@ -1126,6 +1155,27 @@ class ChatPage(BasePage):
     delete_confirm_button = LocatorDescriptor(
         testid="delete-confirm-button",
         description="Delete (confirm) button inside the delete-confirmation modal.",
+    )
+
+    # "Make public" confirmation dialog (DotMenu.jsx's shared Modal.BaseModal
+    # branch — ELITEA-2188). Previously carried zero testids at all (AFS §
+    # Concrete Handles gap #1); testids added this implementation via
+    # caller-supplied dialogTestId/confirmButtonTestId/cancelButtonTestId
+    # props threaded through DotMenu.jsx, same precedent as
+    # delete_confirm_* above being a shared-component testid declared here.
+    make_public_confirm_dialog = LocatorDescriptor(
+        testid="chat-conversation-make-public-confirm-dialog",
+        description="'Public conversation?' confirmation modal container.",
+    )
+
+    make_public_confirm_button = LocatorDescriptor(
+        testid="chat-conversation-make-public-confirm-button",
+        description="'Make public' (confirm) button inside the make-public confirmation modal.",
+    )
+
+    make_public_cancel_button = LocatorDescriptor(
+        testid="chat-conversation-make-public-cancel-button",
+        description="Cancel button inside the make-public confirmation modal.",
     )
 
     # ------------------------------------------------------------------
@@ -1294,6 +1344,35 @@ class ChatPage(BasePage):
     FOLDER_ICON = '[data-testid="chat-folder-icon"]'
     FOLDER_EXPAND_ICON = '[data-testid="chat-folder-expand-icon"]'
     FOLDER_EMPTY_STATE = '[data-testid="chat-folder-empty-state"]'
+
+    # The sidebar's own scroll container (folders + pinned + date-grouped
+    # conversations ALL share this one container) — Conversations.jsx's
+    # ref={listRef} Box (ELITEA-2146 implementer pass, EliteaAI/EliteaUI
+    # automation/testids commit 1787ad67). Same "genuine overflow, not just
+    # CSS overflow-y" discipline as chat_messages_scroll_container above.
+    chat_conversation_list_scroll_container = LocatorDescriptor(
+        testid="chat-conversation-list-scroll-container",
+        description="Scrollable sidebar folder/conversation list container.",
+    )
+
+    # Drag-and-drop drop zones (ELITEA-2142/2143/2145) — testids + a
+    # data-drop-active boolean ADDED this implementation on the EXISTING
+    # outer ref={setNodeRef} Box each of DroppableFolderItem.jsx /
+    # DroppableGroupedArea.jsx already renders (zero new DOM nodes). Testid
+    # is the stable identity, data-drop-active carries
+    # shouldShowDropFeedback's state — state-via-data-attribute, not a
+    # state-switched testid (PR #581 ruling).
+    FOLDER_DROP_ZONE = '[data-testid="chat-folder-drop-zone-{}"]'
+
+    conversation_list_drop_zone = LocatorDescriptor(
+        testid="chat-conversation-list-drop-zone",
+        description=(
+            "Ungrouped/date-group area's droppable wrapper "
+            "(DroppableGroupedArea.jsx). Carries data-drop-active "
+            "reflecting the same shouldShowDropFeedback mechanism as "
+            "FOLDER_DROP_ZONE."
+        ),
+    )
 
     # Folder dot-menu "Delete" item — ADDED this implementation
     # (FolderItem.jsx's menuItems had no `key`, so DotMenu/BasicMenuItem
@@ -1565,6 +1644,213 @@ class ChatPage(BasePage):
         after = self.chat_messages_scroll_container.evaluate("el => el.scrollTop")
         logger.info("Scrolled messages container: scrollTop %s -> %s", before, after)
         return before, after
+
+    # ------------------------------------------------------------------
+    # Sidebar folder/conversation list scroll (ELITEA-2146) — mirrors the
+    # chat_messages_scroll_container trio above exactly; same "don't trust
+    # CSS overflow alone" discipline applied to the sidebar container.
+    # ------------------------------------------------------------------
+
+    def get_conversation_list_scroll_metrics(self) -> dict:
+        """Return scrollHeight/clientHeight/scrollTop for the sidebar list scroll container."""
+        return self.chat_conversation_list_scroll_container.evaluate(
+            "el => ({scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, "
+            "scrollTop: el.scrollTop})"
+        )
+
+    def is_conversation_list_scrollable(self) -> bool:
+        """Return True if the sidebar list genuinely overflows (scrollHeight > clientHeight)."""
+        metrics = self.get_conversation_list_scroll_metrics()
+        return metrics["scrollHeight"] > metrics["clientHeight"]
+
+    def scroll_conversation_list_container(self, delta_y: int = 200) -> tuple[int, int]:
+        """Perform a real scroll on the sidebar list container; return (scrollTop_before, scrollTop_after).
+
+        Same real-wheel-gesture idiom as :meth:`scroll_messages_container` —
+        never a synthetic ``el.scrollTop = N`` assignment in the shipped test.
+
+        Args:
+            delta_y: Vertical scroll delta in pixels (positive = scroll down).
+        """
+        before = self.chat_conversation_list_scroll_container.evaluate("el => el.scrollTop")
+        self.chat_conversation_list_scroll_container.hover()
+        self.page.mouse.wheel(0, delta_y)
+        self.page.wait_for_timeout(300)
+        after = self.chat_conversation_list_scroll_container.evaluate("el => el.scrollTop")
+        logger.info("Scrolled conversation list container: scrollTop %s -> %s", before, after)
+        return before, after
+
+    def is_folder_row_within_scroll_container(
+        self, folder_id: str | int, tolerance: int = 2
+    ) -> bool:
+        """Return True if *folder_id*'s row is fully within the sidebar
+        scroll container's own bounding box — proves a scrolled-to folder
+        row is genuinely reachable, not just that ``scrollTop`` moved
+        (ELITEA-2146 steps 4/5). Same containment-check idiom as
+        ``PipelineDetailPage.are_all_nodes_within_canvas_wrapper()``.
+
+        Args:
+            folder_id: Numeric folder id.
+            tolerance: Pixels of slack allowed on each edge (sub-pixel
+                rounding).
+        """
+        container_box = self.chat_conversation_list_scroll_container.bounding_box()
+        if not container_box:
+            raise ValueError("Could not get bounding box for chat_conversation_list_scroll_container")
+        row_box = self.get_folder_item(folder_id).bounding_box()
+        if not row_box:
+            raise ValueError(f"Could not get bounding box for folder {folder_id}")
+        top = container_box["y"] - tolerance
+        bottom = container_box["y"] + container_box["height"] + tolerance
+        return row_box["y"] >= top and (row_box["y"] + row_box["height"]) <= bottom
+
+    def get_folder_row_scroll_position(self, folder_id: str | int) -> str:
+        """Return ``"above"``, ``"within"``, or ``"below"`` describing
+        *folder_id*'s row position relative to the sidebar scroll
+        container's own bounding box (ELITEA-2146 implementer-pass
+        addition). Distinguishes the two DIFFERENT ways a row can be
+        outside the container's bounds — needed because
+        Conversations.jsx renders newest-created folders CLOSER TO THE
+        TOP (live-confirmed this pass), so "hidden" alone doesn't say
+        whether scrolling DOWN or UP is the direction that reveals a given
+        row.
+
+        Args:
+            folder_id: Numeric folder id.
+        """
+        container_box = self.chat_conversation_list_scroll_container.bounding_box()
+        if not container_box:
+            raise ValueError("Could not get bounding box for chat_conversation_list_scroll_container")
+        row_box = self.get_folder_item(folder_id).bounding_box()
+        if not row_box:
+            raise ValueError(f"Could not get bounding box for folder {folder_id}")
+        top = container_box["y"]
+        bottom = container_box["y"] + container_box["height"]
+        if row_box["y"] + row_box["height"] <= top:
+            return "above"
+        if row_box["y"] >= bottom:
+            return "below"
+        return "within"
+
+    def scroll_conversation_list_until_folder_visible(
+        self, folder_id: str | int, delta_y: int, max_attempts: int = 40
+    ) -> bool:
+        """Repeatedly wheel-scroll the sidebar list container via real
+        gestures until *folder_id*'s row falls within the container's own
+        bounding box, or ``scrollTop`` plateaus (genuinely can't scroll
+        further in that direction).
+
+        The sidebar container shares its scroll region with pinned
+        conversations AND the full date-grouped conversation list
+        (Conversations.jsx renders folders, then ``GroupedConversations``,
+        in the SAME ``ref={listRef}`` container) — on an account carrying
+        many conversations, the container's own absolute scroll extreme
+        sits well past the folder section, so "scroll to the container's
+        raw max" does not reliably land on any particular folder.
+        Scrolling with a check after every real gesture — stopping the
+        moment the target becomes reachable — is the honest equivalent
+        (ELITEA-2146 implementer-pass discovery; AFS amended accordingly).
+
+        Args:
+            folder_id: Numeric folder id to search for.
+            delta_y: Positive scrolls down, negative scrolls up.
+            max_attempts: Safety cap on the number of wheel gestures.
+
+        Returns:
+            True if the folder became reachable; False if the scroll
+            genuinely plateaued (bottomed/topped out) without reaching it.
+        """
+        if self.is_folder_row_within_scroll_container(folder_id):
+            return True
+        previous = self.chat_conversation_list_scroll_container.evaluate("el => el.scrollTop")
+        for _ in range(max_attempts):
+            _, current = self.scroll_conversation_list_container(delta_y=delta_y)
+            if self.is_folder_row_within_scroll_container(folder_id):
+                return True
+            if current == previous:
+                return False
+            previous = current
+        return False
+
+    def is_move_to_folder_item_within_submenu(
+        self, folder_id: str | int, tolerance: int = 2
+    ) -> bool:
+        """Return True if *folder_id*'s "Move to" submenu entry is fully
+        within the submenu popover's own bounding box (ELITEA-2147 step 3).
+        Same containment-check idiom as
+        :meth:`is_folder_row_within_scroll_container`.
+
+        Args:
+            folder_id: Numeric folder id.
+            tolerance: Pixels of slack allowed on each edge.
+        """
+        popover_box = self.move_to_submenu_popover.bounding_box()
+        if not popover_box:
+            raise ValueError("Could not get bounding box for move_to_submenu_popover")
+        item_box = self.get_move_to_folder_item(folder_id).bounding_box()
+        if not item_box:
+            raise ValueError(f"Could not get bounding box for move-to folder item {folder_id}")
+        top = popover_box["y"] - tolerance
+        bottom = popover_box["y"] + popover_box["height"] + tolerance
+        return item_box["y"] >= top and (item_box["y"] + item_box["height"]) <= bottom
+
+    def get_move_to_folder_item_scroll_position(self, folder_id: str | int) -> str:
+        """Return ``"above"``, ``"within"``, or ``"below"`` describing
+        *folder_id*'s "Move to" submenu entry position relative to the
+        popover's own bounding box. Same "above" vs "below" distinction as
+        :meth:`get_folder_row_scroll_position`, applied to the submenu
+        popover (ELITEA-2147 implementer-pass addition).
+
+        Args:
+            folder_id: Numeric folder id.
+        """
+        popover_box = self.move_to_submenu_popover.bounding_box()
+        if not popover_box:
+            raise ValueError("Could not get bounding box for move_to_submenu_popover")
+        item_box = self.get_move_to_folder_item(folder_id).bounding_box()
+        if not item_box:
+            raise ValueError(f"Could not get bounding box for move-to folder item {folder_id}")
+        top = popover_box["y"]
+        bottom = popover_box["y"] + popover_box["height"]
+        if item_box["y"] + item_box["height"] <= top:
+            return "above"
+        if item_box["y"] >= bottom:
+            return "below"
+        return "within"
+
+    def scroll_move_to_submenu_until_folder_visible(
+        self, folder_id: str | int, delta_y: int, max_attempts: int = 40
+    ) -> bool:
+        """Repeatedly wheel-scroll the open 'Move to' submenu popover via
+        real gestures until *folder_id*'s menuitem falls within the
+        popover's own bounding box, or ``scrollTop`` plateaus. Same
+        "check after every real gesture, don't assume the raw scroll
+        extreme lands on a specific item" idiom as
+        :meth:`scroll_conversation_list_until_folder_visible` (ELITEA-2147
+        implementer-pass discovery — the submenu enumerates ALL of the
+        account's folders, not just the seeded set, in an order this test
+        does not control).
+
+        Args:
+            folder_id: Numeric folder id to search for.
+            delta_y: Positive scrolls down, negative scrolls up.
+            max_attempts: Safety cap on the number of wheel gestures.
+
+        Returns:
+            True if the folder's menuitem became reachable; False if the
+            scroll genuinely plateaued without reaching it.
+        """
+        if self.is_move_to_folder_item_within_submenu(folder_id):
+            return True
+        previous = self.move_to_submenu_popover.evaluate("el => el.scrollTop")
+        for _ in range(max_attempts):
+            _, current = self.scroll_move_to_submenu(delta_y=delta_y)
+            if self.is_move_to_folder_item_within_submenu(folder_id):
+                return True
+            if current == previous:
+                return False
+            previous = current
+        return False
 
     @staticmethod
     def _extract_message_body(message_locator) -> str:
@@ -3700,6 +3986,71 @@ class ChatPage(BasePage):
         self.move_to_create_folder_menuitem.wait_for(state="visible", timeout=timeout)
         self.move_to_create_folder_menuitem.click()
 
+    @action("Select 'Back to the list' in 'Move to' submenu")
+    def select_move_to_back_to_list(self, timeout: int = 5000):
+        """Click 'Back to the list' inside the open 'Move to' submenu.
+
+        Moves the conversation out of its current folder into the general,
+        date-grouped list (ELITEA-2139/2140). Mirrors
+        ``select_move_to_folder()``/``select_move_to_create_folder()``'s
+        shape. The ``move_to_back_to_list_menuitem`` locator itself
+        pre-dates this method (added by ELITEA-2135's implementation) but
+        had zero callers until this method (canon ruling #511 — a
+        page-object field isn't "referenced" until something on an
+        executed test path calls it).
+
+        Fires ``PUT .../conversation/prompt_lib/{project_id}/{id}`` with
+        ``folder_id: null`` and unconditionally refreshes the
+        conversation's ``updated_at`` to "now" — live-confirmed this
+        unconditionally places the conversation in the "Today" date group
+        regardless of its recency before entering the folder (see
+        ``test-specs/chat-interface/_surface.md`` § ELITEA-2136/2138/2139/
+        2140/2141). Toast text is a DISTINCT template from the
+        move-INTO-a-folder toast: "Chat moved to ungrouped area
+        successfully" (no folder name, different verb phrase).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting 'Back to the list' in 'Move to' submenu")
+        self.move_to_back_to_list_menuitem.wait_for(state="visible", timeout=timeout)
+        self.move_to_back_to_list_menuitem.click()
+
+    # ------------------------------------------------------------------
+    # "Move to" submenu popover scroll (ELITEA-2147) — mirrors the
+    # chat_messages_scroll_container / chat_conversation_list_scroll_container
+    # trios exactly, applied to the submenu's own MUI Menu popover Paper.
+    # ------------------------------------------------------------------
+
+    def get_move_to_submenu_scroll_metrics(self) -> dict:
+        """Return scrollHeight/clientHeight/scrollTop for the open 'Move to' submenu popover."""
+        return self.move_to_submenu_popover.evaluate(
+            "el => ({scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, "
+            "scrollTop: el.scrollTop})"
+        )
+
+    def is_move_to_submenu_scrollable(self) -> bool:
+        """Return True if the open 'Move to' submenu popover genuinely overflows."""
+        metrics = self.get_move_to_submenu_scroll_metrics()
+        return metrics["scrollHeight"] > metrics["clientHeight"]
+
+    def scroll_move_to_submenu(self, delta_y: int = 200) -> tuple[int, int]:
+        """Perform a real scroll on the open 'Move to' submenu popover; return
+        (scrollTop_before, scrollTop_after). Same real-wheel-gesture idiom as
+        :meth:`scroll_messages_container` — never a synthetic ``el.scrollTop = N``
+        assignment in the shipped test.
+
+        Args:
+            delta_y: Vertical scroll delta in pixels (positive = scroll down).
+        """
+        before = self.move_to_submenu_popover.evaluate("el => el.scrollTop")
+        self.move_to_submenu_popover.hover()
+        self.page.mouse.wheel(0, delta_y)
+        self.page.wait_for_timeout(300)
+        after = self.move_to_submenu_popover.evaluate("el => el.scrollTop")
+        logger.info("Scrolled 'Move to' submenu popover: scrollTop %s -> %s", before, after)
+        return before, after
+
     @action("Set folder name in inline editor")
     def set_folder_name(self, name: str):
         """Replace the inline folder-name editor's value via keyboard events.
@@ -3926,6 +4277,27 @@ class ChatPage(BasePage):
             timeout=timeout,
         )
 
+    @action("Confirm make conversation public")
+    def confirm_make_public(self, conversation_id: str | int, timeout: int = 10000):
+        """Click the make-public-confirm button and return the PUT response
+        (ELITEA-2188 — AFS § Test Steps step 3, Axis 2 addition).
+
+        Waits for the network response so callers can assert its status
+        code (200) — proves the publicness change is server-persisted, not
+        just a client-side list re-render (same idiom as
+        ``confirm_delete_conversation()`` above).
+        """
+        with self.page.expect_response(
+            lambda r: (
+                r.request.method == "PUT"
+                and "/conversation/prompt_lib/" in r.url
+                and str(conversation_id) in r.url
+            ),
+            timeout=timeout,
+        ) as resp_info:
+            self.make_public_confirm_button.click()
+        return resp_info.value
+
     @action("Confirm delete conversation")
     def confirm_delete_conversation(self, conversation_id: str | int, timeout: int = 10000):
         """Click the delete-confirm button and return the DELETE response.
@@ -3988,6 +4360,35 @@ class ChatPage(BasePage):
         self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
         self.page.mouse.click(5, 5)
         self.delete_confirm_dialog.wait_for(state="hidden", timeout=timeout)
+
+    def get_delete_confirm_title_icon(self, timeout: int = 5000):
+        """Return the Locator for the status ``<svg>`` icon (e.g. the
+        orange warning icon) inside the 'Remove X?' confirmation dialog's
+        title (ELITEA-2193).
+
+        Fix round 1: previously a #579-shape-1 scoped-raw-handle exception
+        (a bare ``svg`` tag selector scoped off ``delete_confirm_title``).
+        That was a misclassification — the icon is first-party app JSX
+        render output (``BaseModal.jsx``'s ``renderIconType()``, backed by
+        ``ModalConstants.MODAL_ICONS`` → ``@/assets/*.svg?react`` — our own
+        icon components, not third-party-library-internal chrome), so a
+        real testid was genuinely placeable. Now resolves the
+        ``delete_confirm_title_icon`` ``LocatorDescriptor`` (testid
+        ``delete-confirm-title-icon``, added via
+        EliteaAI/EliteaUI@7b359d32). Caller asserts the icon's computed
+        styling, e.g. ``expect(icon).to_have_css("fill", "rgb(233, 121,
+        18)")`` — this method only resolves and waits for the handle, per
+        the page-object layer never owning assertions.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator for ``delete_confirm_title_icon``.
+        """
+        icon = self.delete_confirm_title_icon
+        icon.wait_for(state="visible", timeout=timeout)
+        return icon
 
     # ------------------------------------------------------------------
     # Internal Tools / Image Creation
@@ -5310,6 +5711,39 @@ class ChatPage(BasePage):
             "data-has-icon", "true" if expected_has_icon else "false", timeout=timeout,
         )
 
+    def wait_for_conversation_type(
+        self, conversation_id: str | int, expected_type: str, timeout: int = 10000,
+    ):
+        """Assert *conversation_id*'s sidebar multi-person icon wrapper settles
+        to ``data-conversation-type=<expected_type>`` (ELITEA-2188).
+
+        Sibling of ``wait_for_conversation_multi_user_icon()`` above, added
+        for this case's own observable — "public conversations show a
+        GREEN icon, private-with-users conversations show the DEFAULT
+        (non-green) icon" — which ``data-has-icon`` alone cannot
+        distinguish (it is ``"true"`` for BOTH ``public`` and
+        ``private_with_users``, per that method's own docstring). The
+        underlying color distinction lives only in the rendered ``<svg>``'s
+        raw ``fill`` attribute (``public`` -> ``theme.palette.status.published``,
+        ``private_with_users`` -> ``theme.palette.icon.fill.default``); per
+        the testid=identity/state=data-* ruling
+        (``.agents/testing.md`` § Locator policy), the compliant handle is
+        this NEW ``data-conversation-type`` attribute on the SAME
+        ``conversation-multi-user-icon`` testid, not a raw CSS/fill read.
+        ``expected_type`` is one of ``"public"``, ``"private_with_users"``,
+        ``"private_without_users"`` (``ConversationItem.jsx``'s own
+        ``getConversationType()`` values).
+
+        Uses ``expect().to_have_attribute()`` (auto-retrying) for the same
+        async-settle reason documented on
+        ``wait_for_conversation_multi_user_icon()`` above.
+        """
+        item = self.page.locator(self.CONVERSATION_ITEM.format(conversation_id))
+        icon_wrapper = item.locator(self.CONVERSATION_MULTI_USER_ICON)
+        expect(icon_wrapper).to_have_attribute(
+            "data-conversation-type", expected_type, timeout=timeout,
+        )
+
     new_conversation_greeting = LocatorDescriptor(
         testid="chat-new-conversation-greeting",
         description=(
@@ -6006,8 +6440,23 @@ class ChatPage(BasePage):
         # live this implementation) — reusing it as "already open" then
         # races that in-flight re-render. A fresh close+reopen forces a
         # clean re-render against current state.
+        #
+        # Close via a real outside CLICK, not ``dismiss_participants_popover()``'s
+        # Escape press — fix round 1, ELITEA-2193: this branch was previously
+        # DEAD CODE (no caller ever reached ``open_remove_user_dialog()`` with
+        # the "users" popper already open, so the Escape path was never
+        # actually exercised), until ``hover_participant_user_row()``
+        # (ELITEA-2172) started leaving the popper open on entry to this
+        # method. ``hover_participant_user_row()``'s own docstring documents
+        # — confirmed live, 100% reproducible, 3/3 local runs — that Escape
+        # has NO effect on ``chat-participants-popper``'s "users" instance;
+        # only a genuine click outside its DOM subtree fires MUI's
+        # ``ClickAwayListener``. Reuses that method's exact verified
+        # technique (a real ``page.mouse``-driven click on the
+        # ``chat_messages_scroll_container`` far corner) instead of the
+        # Escape press this branch used before it was ever actually hit.
         if self.participants_popper.is_visible():
-            self.dismiss_participants_popover()
+            self.chat_messages_scroll_container.click(position={"x": 10, "y": 10})
             self.participants_popper.wait_for(state="hidden", timeout=timeout)
         popper = self.open_participants_popover(section="users", timeout=timeout)
 
@@ -6055,6 +6504,121 @@ class ChatPage(BasePage):
             raise last_exc
 
         return Dialog.wait_for(self.page, timeout=timeout)
+
+    @action("Hover a Users-dropdown row and return its Remove-user button locator")
+    def hover_participant_user_row(self, user_id: int, timeout: int = 10000):
+        """Open a fresh 'Users' participants popover (closing one first if
+        already open via a real outside click), hover *user_id*'s row, and
+        return its scoped 'Remove user' button Locator WITHOUT clicking it
+        (ELITEA-2172).
+
+        Read-only sibling of ``open_remove_user_dialog()`` — that method
+        hovers, clicks the delete icon, and returns the confirmation dialog
+        for the caller to Remove/Cancel; this one stops right after the
+        hover so the CALLER asserts the button's visibility with a
+        web-first ``expect(...).to_be_visible()`` /
+        ``not_to_be_visible()`` — the correct shape here, since the button
+        is ALWAYS present in the DOM (never conditionally rendered) and
+        merely stays ``visibility: hidden`` when the row isn't removable
+        (``UserMenu.jsx``'s ``isSelectable``/``currentUserId`` self-check —
+        see AFS test-specs/chat-interface/
+        l2_conversation-owner-has-no-remove-control-in-users-dropdown_ELITEA-2172.md
+        step 2's mechanism note). A caller must never click through the
+        returned locator: the conversation owner's own row has no control
+        that does anything if clicked. Does not modify
+        ``open_remove_user_dialog()`` itself (additive-only — Hard Rule 3).
+
+        Close-if-already-open uses a real outside CLICK, not
+        ``dismiss_participants_popover()``'s Escape press — confirmed live
+        this implementation (100% reproducible, 3/3 local runs) that
+        Escape has NO effect on ``chat-participants-popper``'s "users"
+        instance; only a genuine click outside its DOM subtree fires
+        MUI's ``ClickAwayListener``. Same root cause and same fix shape as
+        the already-documented ``close_modules_panel()`` gotcha
+        ("Escape does NOT close it... only a click outside the popper...
+        does") — reuses that method's exact technique: a real
+        ``page.mouse``-driven click on the ``chat_messages_scroll_container``
+        far corner (top-left, well clear of the popper, which anchors
+        top-right).
+
+        Args:
+            user_id: The participant's ``entity_meta.id`` (platform user id).
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The row's scoped ``chat-participant-remove-button`` Locator,
+            post-hover. Assert visibility only — never click it.
+        """
+        logger.info("Hovering Users-dropdown row for user_id=%s (read-only)", user_id)
+        if self.participants_popper.is_visible():
+            self.chat_messages_scroll_container.click(position={"x": 10, "y": 10})
+            self.participants_popper.wait_for(state="hidden", timeout=timeout)
+        popper = self.open_participants_popover(section="users", timeout=timeout)
+
+        unique_id = f"user_{user_id}_"
+        row = popper.locator(self.PARTICIPANT_ROW.format(unique_id))
+
+        # Same residual-hover reset + force-hover rationale as
+        # ``open_remove_user_dialog()`` — the popper's row list keeps
+        # re-rendering (UserMenu.jsx's in-place ``sortedUsers.sort()``),
+        # so a plain (non-forced) hover's "wait until stable" pre-check
+        # can never be satisfied even though the element is genuinely
+        # actionable throughout.
+        self.page.mouse.move(0, 0)
+        row.hover(timeout=timeout, force=True)
+        self.page.wait_for_timeout(300)  # hover-reveal CSS transition
+
+        return row.locator(self.PARTICIPANT_REMOVE_BUTTON)
+
+    @action("Mention a user by clicking their name in the Users participants dropdown")
+    def mention_user_via_participants_dropdown(self, user_id: int, timeout: int = 10000) -> None:
+        """Open the 'Users' participants popover and click *user_id*'s NAME
+        row (not its hover-only delete icon) to insert an @mention into the
+        composer (ELITEA-2173/2174).
+
+        A genuinely different code path than ``open_user_mention_popper()``/
+        ``select_user_mention()`` (the composer's own typed-``"@"`` mention
+        popper, ``UserMentionList``/``onSelectUserMention``) — this method
+        exercises the Users dropdown's own row click: ``UserMenu.jsx``'s
+        row ``onClick`` → ``onSelectOption`` →
+        ``UsersParticipantDropdown``'s ``handleSelectUser`` →
+        ``NewChat.jsx``'s ``onSelectParticipant(participant, true)`` →
+        ``mentionTarget.mentionUser('@<name> ')``. Source-confirmed
+        (``UserMenu.jsx``/``NewChat.jsx``) before automating, per the
+        interaction-discovery ladder (``.agents/role-overrides.md``).
+
+        Reuses the SAME ``chat-participant-row-{uniqueId}`` testid family
+        ``open_remove_user_dialog()``/``hover_participant_user_row()``
+        already resolve (``uniqueId`` = ``user_{user_id}_`` — the trailing
+        project-id segment is always empty for "user" participants). Clicks
+        the row's own content Box directly — no hover needed: the row's
+        ``onClick`` fires on the whole content area, and the hover-only
+        delete icon stays ``visibility: hidden`` by default, so it never
+        intercepts a plain click at the row's center (confirmed live — AFS
+        § Automation Hints). Does not modify ``open_remove_user_dialog()``/
+        ``hover_participant_user_row()`` themselves (additive-only —
+        Hard Rule 3).
+
+        Selecting a row closes the popover automatically
+        (``UsersParticipantDropdown``'s ``handleSelectUser`` sets
+        ``open=false``) — a caller that needs a SECOND mention calls this
+        method again (it reopens the popover itself via
+        ``open_participants_popover()``), matching ELITEA-2174's own case
+        text ("Reopen USERS dropdown, click on user_2's name").
+
+        Args:
+            user_id: The participant's ``entity_meta.id`` (platform user id).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Mentioning user_id=%s via the Users participants dropdown row", user_id)
+        popper = self.open_participants_popover(section="users", timeout=timeout)
+
+        unique_id = f"user_{user_id}_"
+        row = popper.locator(self.PARTICIPANT_ROW.format(unique_id))
+        row.wait_for(state="visible", timeout=timeout)
+        row.click()
+
+        self.participants_popper.wait_for(state="hidden", timeout=timeout)
 
     @action("Open Mention skill popper")
     def open_mention_skill_popper(self, timeout: int = 10000):
@@ -6441,20 +7005,65 @@ class ChatPage(BasePage):
         return value == "true"
 
     @action("Expand folder")
-    def expand_folder(self, folder_id: str | int, timeout: int = 5000):
+    def expand_folder(self, folder_id: str | int, timeout: int = 5000, force: bool = False):
         """Click a folder row to expand it; waits for ``data-expanded`` to flip.
 
         Args:
             folder_id: Numeric folder id.
             timeout: Maximum wait time in milliseconds.
+            force: Bypass Playwright's actionability check — REQUIRED for a
+                PINNED folder (ELITEA-2152/2153 addition): its
+                ``DraggableFolderItem`` wrapper renders
+                ``isDragDisabled={isPinned}`` as a genuinely HTML-``disabled``
+                ancestor around the WHOLE row, which makes a plain click
+                time out ("element is not enabled") for a pinned folder
+                specifically — the same gotcha already documented for the
+                dot-menu button (``open_folder_context_menu``/
+                ``pin_folder_via_menu``). Defaults to ``False`` — identical
+                behavior to every existing caller of this method.
         """
-        logger.info("Expanding folder %s", folder_id)
-        self.get_folder_item(folder_id).click()
+        logger.info("Expanding folder %s (force=%s)", folder_id, force)
+        self.get_folder_item(folder_id).click(force=force)
         expanded_item = self.page.locator(
             f'{self.FOLDER_ITEM.format(folder_id)}[data-expanded="true"]'
         )
         expanded_item.wait_for(state="visible", timeout=timeout)
         logger.info("Folder %s expanded", folder_id)
+
+    @action("Collapse folder")
+    def collapse_folder(self, folder_id: str | int, timeout: int = 5000):
+        """Click an already-expanded folder's expand icon to collapse it;
+        waits for ``data-expanded`` to flip back to ``"false"``
+        (ELITEA-2148 addition).
+
+        Not safe to reach by calling :meth:`expand_folder` a second time —
+        that method waits for ``data-expanded="true"``, which is already
+        true going in, so it would return immediately without waiting for
+        the click's own effect.
+
+        Clicks the SCOPED ``FOLDER_EXPAND_ICON`` rather than
+        :meth:`get_folder_item`'s whole-row container (unlike
+        :meth:`expand_folder`, which safely clicks the whole row because a
+        COLLAPSED row's bounding box is just the header). ``FOLDER_ITEM``
+        scopes both the header AND the now-visible body (conversation
+        list/empty-state) as descendants — a plain click on the whole
+        container lands at its bounding-box CENTER, which for an EXPANDED
+        folder with body content can fall inside the body instead of the
+        header, live-confirmed to leave ``data-expanded="true"`` (the wait
+        below times out). The icon is always inside the header, so it's
+        the safe target for the collapse direction specifically.
+
+        Args:
+            folder_id: Numeric folder id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Collapsing folder %s", folder_id)
+        self.get_folder_item(folder_id).locator(self.FOLDER_EXPAND_ICON).click()
+        collapsed_item = self.page.locator(
+            f'{self.FOLDER_ITEM.format(folder_id)}[data-expanded="false"]'
+        )
+        collapsed_item.wait_for(state="visible", timeout=timeout)
+        logger.info("Folder %s collapsed", folder_id)
 
     def is_conversation_in_folder(
         self, folder_id: str | int, conversation_id: str | int, timeout: int = 5000,
@@ -6661,6 +7270,261 @@ class ChatPage(BasePage):
                 f"API delete of folder {folder_id} failed: "
                 f"{response.status} {response.text()}"
             )
+
+    # ------------------------------------------------------------------
+    # Conversation<->folder drag-and-drop (ELITEA-2142/2143/2145)
+    # ------------------------------------------------------------------
+    # Mechanism: @dnd-kit/core's PointerSensor (8px activation distance),
+    # NOT native HTML5 draggable/DragEvent — DraggableConversationItem.jsx
+    # (useDraggable) / DroppableFolderItem.jsx + DroppableGroupedArea.jsx
+    # (useDroppable). Real page.mouse gestures drive the real product code
+    # (confirmed live via network capture, test-specs/chat-interface/
+    # _surface.md § ELITEA-2142/2143/2144/2145) — do NOT reuse
+    # drag_and_drop_file()'s synthetic-DataTransfer-DragEvent technique,
+    # that is a DIFFERENT mechanism for a native OS file drag Playwright
+    # cannot otherwise produce; dnd-kit's PointerSensor listens for real
+    # pointer events, so a synthetic DragEvent here would never reach it.
+    #
+    # Exposed as composable primitives (start / move / release) rather
+    # than one monolithic "drag and drop" call, because the caller needs
+    # to wrap page.expect_response(...) around the RELEASE step
+    # specifically (the move PUT only fires on drop) and, for
+    # ELITEA-2143, needs to pause mid-gesture over each candidate folder
+    # to assert its FOLDER_DROP_ZONE's data-drop-active before continuing
+    # to the next one.
+
+    def get_folder_drop_zone(self, folder_id: str | int):
+        """Return the Locator for a folder's droppable drop-zone wrapper
+        (FOLDER_DROP_ZONE) — carries data-drop-active while a drag is
+        hovering it.
+
+        Args:
+            folder_id: Numeric folder id.
+        """
+        return self.page.locator(self.FOLDER_DROP_ZONE.format(folder_id))
+
+    def get_conversation_drag_opacity(self, conversation_id: str | int) -> float:
+        """Return the computed opacity of *conversation_id*'s draggable
+        wrapper (DraggableConversationItem.jsx's own inline ``style``,
+        NOT the CONVERSATION_ITEM testid element itself — the testid sits
+        on a CHILD Box, the opacity is set on the PARENT ``ref={setNodeRef}``
+        Box). 1.0 at rest, 0.5 while ``isDragging`` — no dedicated testid
+        for this transient state, per the AFS.
+
+        Args:
+            conversation_id: Numeric conversation id.
+        """
+        item = self.get_conversation_item(conversation_id)
+        value = item.evaluate("el => getComputedStyle(el.parentElement).opacity")
+        return float(value)
+
+    def wait_for_conversation_dragging(
+        self, conversation_id: str | int, expected: bool = True, timeout: int = 5000,
+    ) -> bool:
+        """Poll :meth:`get_conversation_drag_opacity` until it reaches the
+        dragging (0.5) or at-rest (1.0) value, or *timeout* elapses.
+
+        Args:
+            conversation_id: Numeric conversation id.
+            expected: True to wait for the dragging (0.5) opacity, False
+                to wait for the at-rest (1.0) opacity.
+            timeout: Maximum wait time in milliseconds.
+        """
+        target = 0.5 if expected else 1.0
+        deadline = time.monotonic() + timeout / 1000.0
+        while time.monotonic() < deadline:
+            try:
+                if abs(self.get_conversation_drag_opacity(conversation_id) - target) < 0.05:
+                    return True
+            except Exception:
+                pass
+            time.sleep(0.1)
+        return False
+
+    def _wait_for_pointer_target(self, locator, timeout: int = 5000):
+        """Poll until *locator*'s own DOM node is what
+        ``document.elementFromPoint()`` resolves to at its own
+        bounding-box center (or a descendant of it), returning that
+        settled ``(x, y)`` center.
+
+        Guards against a virtualization/layout race distinct from the
+        off-screen problem ``scroll_into_view_if_needed()`` fixes:
+        ``bounding_box()`` can report CORRECT coordinates for the element
+        itself (confirmed via ``getBoundingClientRect()`` matching) while a
+        DIFFERENT, stale-positioned row visually overlaps that exact pixel
+        and silently intercepts a raw ``page.mouse`` event there — this
+        shared DEV account's 65+ folders can still be settling their
+        layout (row heights shift as an accordion expands) right after an
+        ``expand_folder()`` call. Confirmed live this implementation via
+        ``document.elementFromPoint`` diffing: a conversation nested inside
+        a just-expanded folder measured the correct rect, but the pixel at
+        its center hit a DIFFERENT folder's collapsed header instead.
+
+        Args:
+            locator: Playwright Locator to settle onto its own pointer target.
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            RuntimeError: if the target never settles within *timeout*.
+        """
+        deadline = time.monotonic() + timeout / 1000.0
+        last_result = None
+        while time.monotonic() < deadline:
+            last_result = locator.evaluate(
+                """el => {
+                    const r = el.getBoundingClientRect();
+                    const x = r.x + r.width / 2;
+                    const y = r.y + r.height / 2;
+                    const hit = document.elementFromPoint(x, y);
+                    const settled = !!hit && (hit === el || el.contains(hit));
+                    return { x, y, settled };
+                }"""
+            )
+            if last_result["settled"]:
+                return last_result["x"], last_result["y"]
+            time.sleep(0.15)
+        raise RuntimeError(
+            f"Element did not settle onto its own pointer target within {timeout}ms "
+            f"(last measured center: {last_result})"
+        )
+
+    @action("Start dragging a conversation")
+    def start_conversation_drag(self, conversation_id: str | int, timeout: int = 5000):
+        """Press-and-hold on a conversation row and move a few px to cross
+        @dnd-kit's PointerSensor 8px activation distance, then wait for the
+        drag to actually activate (opacity transition) before returning.
+
+        Leaves the mouse button PRESSED — callers must eventually call
+        :meth:`release_drag` (directly or via a helper that calls it), even
+        on assertion failure, or the pressed button leaks into the NEXT
+        test's page state in the same browser context (confirmed live this
+        cluster's own exploration — see ``_surface.md``).
+
+        Args:
+            conversation_id: Numeric conversation id to start dragging.
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            RuntimeError: if the drag never activates within *timeout* —
+                releases the mouse button first so it never leaks.
+        """
+        logger.info("Starting drag of conversation %s", conversation_id)
+        item = self.get_conversation_item(conversation_id)
+        item.wait_for(state="visible", timeout=timeout)
+        # bounding_box() is viewport-relative — an item below the fold
+        # (this shared DEV account's sidebar routinely carries 65+ folders
+        # ahead of the conversation list, see _surface.md) reports a y far
+        # past the viewport height, and page.mouse.move() to that
+        # coordinate lands outside the rendered viewport, never reaching
+        # the element (confirmed live this implementation — the drag
+        # silently never activated). scroll_into_view_if_needed() first,
+        # same as every other id-scoped interaction in this file.
+        item.scroll_into_view_if_needed()
+        # Settle-check (see _wait_for_pointer_target docstring) — a
+        # DIFFERENT, stale-positioned row can visually overlap this item's
+        # own correct coordinates right after a folder expand.
+        start_x, start_y = self._wait_for_pointer_target(item, timeout=timeout)
+        self.page.mouse.move(start_x, start_y)
+        self.page.mouse.down()
+        # Cross the PointerSensor's 8px activation distance.
+        self.page.mouse.move(start_x + 12, start_y + 12, steps=3)
+        if not self.wait_for_conversation_dragging(conversation_id, expected=True, timeout=timeout):
+            self.page.mouse.up()
+            raise RuntimeError(
+                f"Conversation {conversation_id}: drag did not activate "
+                f"(opacity never reached 0.5) within {timeout}ms"
+            )
+        logger.info("Drag activated for conversation %s", conversation_id)
+
+    @action("Move the pressed drag pointer over a target element")
+    def move_drag_over_target(self, target_locator, iterations: int = 4, steps_per_move: int = 4):
+        """Move the ALREADY-PRESSED pointer (see :meth:`start_conversation_drag`)
+        toward *target_locator*'s center, re-measuring on EVERY iteration —
+        a stale captured position can miss (layout shifts, e.g. a source
+        folder's accordion collapsing mid-drag, move sibling elements a few
+        px during the gesture) or land on a DIFFERENT, stale-positioned
+        element that visually overlaps the correct coordinates (settle-
+        checked via :meth:`_wait_for_pointer_target` — both confirmed live,
+        see ``_surface.md``).
+
+        Args:
+            target_locator: Playwright Locator to move the pointer onto.
+            iterations: Number of re-measured move legs.
+            steps_per_move: ``steps=`` passed to each ``mouse.move()`` call.
+
+        Returns:
+            The last settled ``(x, y)`` center, or None if the target
+            never settled during any iteration.
+        """
+        last_center = None
+        for _ in range(iterations):
+            try:
+                target_locator.scroll_into_view_if_needed(timeout=2000)
+            except Exception:
+                pass
+            try:
+                cx, cy = self._wait_for_pointer_target(target_locator, timeout=2000)
+            except RuntimeError:
+                continue
+            last_center = (cx, cy)
+            self.page.mouse.move(cx, cy, steps=steps_per_move)
+        return last_center
+
+    @action("Release the pressed drag pointer")
+    def release_drag(self, timeout: int = 10000):
+        """Release the mouse button (completing whatever drop target the
+        pointer is currently over) and wait for network activity to settle.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the settle.
+        """
+        self.page.mouse.up()
+        self.wait_for_network(timeout=timeout)
+
+    @action("Abort a pressed drag without dropping")
+    def abort_drag(self):
+        """Best-effort mouse-up with no network wait — used from a
+        ``finally`` block to guarantee the button never leaks into the
+        NEXT test, even after a mid-drag assertion failure. Swallows
+        errors (the button may already be up).
+        """
+        try:
+            self.page.mouse.up()
+        except Exception:
+            pass
+
+    @action("Drag a conversation onto a folder and drop it")
+    def drag_conversation_to_folder(self, conversation_id: str | int, folder_id: str | int, timeout: int = 10000):
+        """Press, move onto *folder_id*, and release — the full gesture in
+        one call, for callers that don't need to wrap the drop's network
+        response (use :meth:`start_conversation_drag` +
+        :meth:`move_drag_over_target` + :meth:`release_drag` directly when
+        the caller needs to wrap ``page.expect_response(...)`` around the
+        release step specifically, e.g. ELITEA-2142's PUT assertion).
+
+        Args:
+            conversation_id: Numeric conversation id to drag.
+            folder_id: Numeric target folder id.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.start_conversation_drag(conversation_id, timeout=timeout)
+        self.move_drag_over_target(self.get_folder_item(folder_id), iterations=4, steps_per_move=4)
+        self.release_drag(timeout=timeout)
+
+    @action("Drag a conversation into the general/ungrouped list area")
+    def drag_conversation_to_general_list(self, conversation_id: str | int, timeout: int = 10000):
+        """Press, move onto the ungrouped drop-zone
+        (``conversation_list_drop_zone`` — ``DroppableGroupedArea``'s drop
+        target id is ``'ungrouped-conversations'`` per ``useDragAndDrop.js``),
+        and release.
+
+        Args:
+            conversation_id: Numeric conversation id to drag.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.start_conversation_drag(conversation_id, timeout=timeout)
+        self.move_drag_over_target(self.conversation_list_drop_zone, iterations=4, steps_per_move=4)
+        self.release_drag(timeout=timeout)
 
     @action("Open folder context menu")
     def open_folder_context_menu(self, folder_id: str | int, timeout: int = 5000):

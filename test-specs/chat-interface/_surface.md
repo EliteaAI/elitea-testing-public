@@ -2,8 +2,36 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: test-automation-engineer (combined analyst+
-implementer), ELITEA-2128/2129, 2026-08-15 (supersedes nothing below — new
+a time; last confirmed by: qa-engineer analyst, ELITEA-2192/2193/2194,
+2026-08-15 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: qa-engineer analyst, ELITEA-2189/2190/2191,
+2026-08-15 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: test-automation-engineer (combined analyst+
+implementer), ELITEA-2175/2176, 2026-08-15 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: qa-engineer analyst,
+ELITEA-2171/2172, 2026-08-15
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: test-automation-engineer (combined analyst+
+implementer), ELITEA-2460, 2026-08-15 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: qa-engineer analyst,
+ELITEA-2461, 2026-08-15
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: test-automation-engineer (combined analyst+
+implementer), ELITEA-2157/2158, 2026-08-15 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: test-automation-engineer
+(combined analyst+implementer), ELITEA-2155/2156, 2026-08-15 (supersedes nothing
+below — new section, other sections unchanged; previous confirmer: test-automation-engineer
+(combined analyst+implementer), ELITEA-2152/2153, 2026-08-15 (supersedes nothing
+below — new section, other sections unchanged; previous confirmer: qa-engineer analyst,
+ELITEA-2146/2147/2148,
+2026-08-15 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: qa-engineer analyst, ELITEA-2142/2143/2144/2145,
+2026-08-15 (supersedes nothing below — new section, other sections unchanged;
+previous confirmer: test-automation-engineer (combined analyst+
+implementer), ELITEA-2136/2138/2139/2140/2141, 2026-08-15 (supersedes nothing
+below — new section, other sections unchanged; previous confirmer:
+test-automation-engineer (combined analyst+implementer), ELITEA-2128/2129,
+2026-08-15 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2123/2127, 2026-08-15; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2122, 2026-08-15; previous confirmer: test-automation-engineer
@@ -19,7 +47,528 @@ qa-engineer analyst, ELITEA-2111, 2026-08-15;
 previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
-ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03).
+ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03))).
+
+## ELITEA-2192/2193/2194 — Users-dropdown remove-control family, round 2:
+## owner-attempt-toast is UNREACHABLE (clarification, not a defect), owner-
+## removes-non-owner GAINS 2 new assertions (tooltip text + warning icon),
+## Cancel-preserves-user is a 2nd-generation near-duplicate of ELITEA-2171
+- **All three `already-covered`/`extend-existing` against the SAME two covering tests this digest's
+  ELITEA-2171/2172 section already established** — `test_owner_has_no_remove_control_in_users_dropdown.py`
+  (ELITEA-2172) and `test_team_users_mention_and_remove_participants.py`
+  (ELITEA-2168). Zero new page-object methods needed; two new LIVE-CONFIRMED facts about existing,
+  already-testid'd surfaces.
+- **ELITEA-2192 ("Owner Cannot Be Removed") is `already-covered` against ELITEA-2172's test — but its
+  own step 4 ("attempt delete → red error toast 'Cannot delete author of the conversation'") is
+  UNREACHABLE via any real UI interaction, filed as a CLARIFICATION (not a defect).** Investigated via
+  `getComputedStyle` on the owner row's `#DeleteButton` (not hover-dependent): the delete icon is
+  ALWAYS in the DOM (never conditionally rendered) but `visibility: hidden` is its BASE state, and the
+  `&:hover` rule only flips it to `visible` when `isSelectable` is `true` for that row — permanently
+  `false` for the owner's own row. `visibility: hidden` (unlike `opacity: 0`/`pointer-events: none`
+  alone) removes an element from the browser's own hit-testing, so a genuine mouse click at that
+  screen position can never land on it — there is no code path by which a real user can "attempt" this
+  delete at all. `useDeleteParticipant.js` DOES wire a `toastError(...)` for a failed delete mutation
+  (so a server-side "cannot remove the author" guard, if any, would surface as a toast IF the request
+  were ever sent) — but since the request can never be triggered through the UI for the owner's own
+  row, that guard/toast is unreachable through the case's own described interaction. `grep -rn "Cannot
+  delete author" src/` → 0 hits anywhere in the frontend. Filed
+  [elitea-testing-public#1564](https://github.com/EliteaAI/elitea-testing-public/issues/1564).
+- **ELITEA-2193 ("Owner Can Remove Non-Owner via Confirm Dialog") is `extend-existing` against
+  ELITEA-2168's Step 8/9 — 2 gap assertions, both live-confirmed, zero defects.** The covering test's
+  `open_remove_user_dialog()` hovers-and-clicks in one motion and only asserts the dialog's BODY text;
+  it never separately checks (a) the delete icon's hover TOOLTIP text, or (b) the confirm dialog's
+  ICON. Both are genuinely new, additive assertions on the SAME existing call site:
+  1. **Tooltip = "Remove user"** — confirmed live via accessibility snapshot: hovering a non-owner row
+     produces `button "Remove user"`, matching `DeleteParticipantButton.jsx`'s MUI `Tooltip` `title`
+     prop (`` `Remove ${entityType}` ``, `entityType` resolves to `'user'` for Users-section rows).
+  2. **Orange warning icon** — confirmed live via `browser_evaluate`: `delete-confirm-title` (existing
+     testid, `ChatPage.delete_confirm_title`, previously UNUSED for icon inspection anywhere in the
+     suite — this case is its first icon-check caller) contains exactly one `<svg>` with computed
+     `fill: rgb(233, 121, 18)` — a genuine orange, matching `Modal.DeleteEntityModal`'s
+     `titleIcon={ModalConstants.MODAL_ICON_TYPE.warning}` prop.
+- **ELITEA-2194 ("Cancel Keeps User in List") is a SECOND near-duplicate TMS case of ELITEA-2171** —
+  same wording, same 3-step flow, different TMS ID, same covering test's Step 10. Live-reconfirmed a
+  SECOND time this session (different conversation/participant pair than ELITEA-2171's own repro) —
+  same result: Cancel closes the dialog, badge and popover listing both stay unchanged. Reinforces the
+  "near-duplicate TMS case ID" pattern this digest already documents recurring across the folder
+  surface (ELITEA-2460/2148, ELITEA-2461/2149+2151, ELITEA-2123/2127/2459) — now confirmed on the
+  Users-dropdown remove-control surface too.
+- **Zero new testids for all three cases** — every handle needed (`chat-participants-badge-button`,
+  `chat-participant-row-user_{userId}_`, `chat-participant-remove-button`, `delete-confirm-dialog`,
+  `delete-confirm-title`) already exists on both `main` and `automation/testids` (fresh `git fetch
+  origin` + `git grep` this session).
+- **Test-data reuse**: all three cases' live exploration this session reused ONE pre-existing
+  conversation from earlier in the same batch (`/chat/566` "HI Chat", owner "Test Bot" + non-owner
+  "Hrach Sargsyan") rather than seeding a fresh one — zero new conversations created, zero participants
+  actually removed (the one confirm dialog opened during exploration was Cancelled, not Removed, so the
+  conversation's state is unchanged from before this session).
+- All three AFS files:
+  `test-specs/chat-interface/lcovered_conversation-owner-cannot-be-removed-attempted-delete-toast_ELITEA-2192.md`,
+  `test-specs/chat-interface/lextend_owner-removes-non-owner-tooltip-and-warning-icon_ELITEA-2193.md`,
+  `test-specs/chat-interface/lcovered_cancel-remove-participant-dialog-keeps-user-in-list_ELITEA-2194.md`.
+
+## ELITEA-2175/2176 — Add users modal: middle-chip removal via X + cancel
+## with TWO pre-selected users, both `extend-existing` against ELITEA-2167's
+## covering file, ZERO new testids, one infrastructure gotcha found+fixed
+- **Neither case was `already-covered` despite two close near-neighbors
+  already proving the same mechanism CLASS** — `remove_add_users_chip()`
+  (ELITEA-2168) had exactly one prior caller, removing the LAST of 4 chips;
+  ELITEA-2175's own case data (3 chips, remove the MIDDLE one) is a distinct,
+  live-confirmed observable — proves the removal is keyed by chip identity,
+  not array position, and that BOTH surrounding selections survive in order.
+  Similarly, Cancel-discards-a-selection was already proven with exactly ONE
+  pre-selected chip (ELITEA-2167 Step 7, ELITEA-2168 Step 6);
+  ELITEA-2176's own data (Cancel with TWO pre-selected chips, against an
+  EXISTING conversation with a real participant baseline) is this digest's
+  first multi-item-Cancel proof. Both live-reconfirmed this session, not
+  assumed from the LAST-position/single-item precedents.
+- **Zero new testids for either case** — `add-users-remove-chip-{userId}`,
+  `add-users-chip-{userId}`, `add-users-cancel-button`,
+  `add-users-confirm-button`, `chat-participants-badge-button` /
+  `chat-participants-popper` are all already on both `main` and
+  `automation/testids` (fresh `git fetch origin` + `git grep` this session) —
+  confirmed by the two prior sessions (ELITEA-2167/2168) that established
+  this whole modal surface.
+- **Infrastructure gotcha found+fixed, reproduced 4/4 times**:
+  `_open_blank_conversation()` (the covering file's own existing helper,
+  single check — new-conversation greeting visible) is insufficient on this
+  shared dev backend. `ChatPage.navigate_to_chat()`'s own docstring already
+  documents that "the SPA may redirect to the last-viewed conversation
+  stored in the browser session" — this redirect can fire as a DELAYED
+  effect, AFTER the greeting and a momentary 0 message count are both
+  already observed, silently snapping the view back onto a pre-existing
+  conversation with real history (this session's own repeated landing spot:
+  `/chat/420`, "Review attached documents" — the SAME conversation the
+  ELITEA-2171/2172 section above documents as a shared-contention hot spot).
+  A parallel manual Playwright MCP session, driven slowly with pauses
+  between steps, reliably produced a genuinely blank conversation via the
+  identical `sidebar-create-button` click — isolating this as a headless/
+  fast-back-to-back-actions TIMING race, not a product defect and not
+  missing test data. Fix: an ADDITIVE sibling helper,
+  `_open_genuinely_blank_conversation()` (does NOT modify
+  `_open_blank_conversation()` or its existing ELITEA-2167 caller — Hard Rule
+  3), adds a settle window (1.5s) + re-check of BOTH message count AND URL
+  before proceeding. Used by both new test classes.
+- **Related finding, flagged NOT fixed (out of scope for this unit — a
+  shared-caller helper with an existing merged caller)**: the ORIGINAL,
+  already-merged `TestInviteUsersAddCancelClose` test (using the weaker
+  `_open_blank_conversation()`) now fails CONSISTENTLY (reproduced 2/2) in
+  the current live environment on this exact race — its own Step 1 assertion
+  (`assert not chat.is_participants_badge_visible(...)`) fails because it
+  lands on the restored conversation with participants. Not a regression
+  introduced by this session's own code (that helper/test were never
+  touched) — worth a follow-up fix-only dispatch to apply the same
+  settle+recheck guard to `_open_blank_conversation()` itself (which would
+  then need the shared-file regression protocol: enumerate + re-run every
+  caller before landing).
+- Both AFS files:
+  `test-specs/chat-interface/lextend_remove-preselected-user-via-chip-x_ELITEA-2175.md`,
+  `test-specs/chat-interface/lextend_cancel-add-users-modal-after-preselecting-users_ELITEA-2176.md`.
+
+## ELITEA-2171/2172 — Users-dropdown remove-control: Cancel-preserves-user
+## (`already-covered` vs merged ELITEA-2168) + owner-row-has-no-delete-control
+## (`ready-for-automation`, new observable, zero new testids)
+- **ELITEA-2171** ("Cancel Remove User Dialog Keeps User in Participants
+  List") is verbatim ELITEA-2168's own Step 10 (source
+  `test_team_users_mention_and_remove_participants.py` lines 560–576, merged
+  `origin/automation/base`) — hover a non-owner row, click delete, click
+  Cancel, verify badge count AND dropdown listing unchanged. Classified
+  `already-covered`, traceability AFS only.
+- **ELITEA-2172** ("Conversation Owner Cannot Be Removed") is a GENUINELY NEW
+  observable — ELITEA-2168's test removes two different non-owner
+  participants but never once hovers/asserts anything about the OWNER's own
+  row. Classified `ready-for-automation`.
+- **Mechanism, source- AND live-confirmed**: the product implements this as
+  "you cannot remove **yourself**", not an explicit "conversation owner"
+  role/flag. `UserMenu.jsx`'s per-row `isSelectable = selectable &&
+  user.entity_meta?.id !== currentUserId` (`currentUserId` = `state.user.id`,
+  the CURRENTLY LOGGED-IN session) gates the delete `IconButton`'s
+  hover-visibility CSS (`'&:hover #DeleteButton': { visibility: selectable ?
+  'visible' : 'hidden' }` — the `selectable` param `userItemStyles` receives
+  is actually the per-row `isSelectable`). The delete button is ALWAYS
+  present in the DOM (never conditionally rendered) — even for the
+  "un-removable" row — it just never becomes visible on hover. **Assert via
+  `not_to_be_visible()`, never `to_have_count(0)`** (same class of gotcha as
+  the ELITEA-2146/2147/2148 collapsed-folder-items note above — an
+  always-mounted, visibility-toggled node needs a visibility assertion, a
+  count-based one passes for the wrong reason). In THIS single-account
+  testing environment "yourself" and "the conversation's creator/owner"
+  coincide (only one real account exists, and it always creates the
+  conversations it opens) — asserting against it faithfully verifies the
+  case's own intent, this is a mechanism clarification, not a defect or a
+  case-text drift.
+- **Live-confirmed via Playwright MCP** (conversation `/chat/420`, badge
+  went 1→2 after adding Hrach Sargsyan): hovering the owner's row ("TB Test
+  Bot") produced NO "Remove user" accessible button in the post-hover
+  snapshot; hovering the SAME dropdown's non-owner row (Hrach Sargsyan)
+  IMMEDIATELY produced `button "Remove user"` — same session, same popover
+  instance, ruling out a stale-render artifact.
+- **Zero new testids needed for either case** — `chat-participants-badge-button`,
+  `chat-participant-row-{unique_id}` (dynamic, ELITEA-2168), and
+  `chat-participant-remove-button` are all already on BOTH `main` and
+  `automation/testids` (fresh `git fetch origin` + `git grep` this session).
+  Owner id resolution reuses the exact same `ConversationAPI.get_conversation()`
+  → `meta.user_name`/`entity_meta.id` mapping ELITEA-2168's test already
+  established for non-owner rows — just matched against `${TEST_USER}`'s own
+  display name instead of a searched-for name.
+- **Gotcha — running pytest concurrently with manual Playwright-MCP
+  exploration against the SAME localhost dev server risks cross-session
+  conversation contamination.** This session ran the merged ELITEA-2168
+  pytest test live (to reconfirm ELITEA-2171 unrelated to the AFS's own
+  manual repro) WHILE a manual Playwright-MCP browser was also open on a
+  DIFFERENT, shared conversation (`/chat/420`). Both pytest attempts failed
+  at their own Setup stage before reaching Step 10 (once on the
+  already-tracked #1082 stale-conversation flake, once on an "Add users"
+  search timeout) — and one of them appears to have landed on and added
+  participants (Daniyar Chambylov, Ihar Bylitski — ELITEA-2168's own SETUP
+  users) to `/chat/420` itself rather than a fresh conversation, mid-session.
+  Root cause not fully isolated (didn't chase which specific run did it —
+  pytest's own browser context is separate from the MCP one, so this is
+  server/backend-side conversation-list contention, not a shared browser
+  session), but the practical lesson holds regardless of exact mechanism:
+  **don't run pytest against localhost while a manual MCP exploration
+  session is also active on the same dev server** — either serialize them,
+  or expect to need extra cleanup on whichever conversation the manual
+  session was using. Recovered by restoring `/chat/420` to its original
+  1-participant state before ending the session.
+- Both AFS files: `test-specs/chat-interface/lcovered_cancel-remove-user-dialog-keeps-user-in-participants_ELITEA-2171.md`,
+  `test-specs/chat-interface/l2_conversation-owner-has-no-remove-control-in-users-dropdown_ELITEA-2172.md`.
+
+## ELITEA-2460 — near-total duplicate of ELITEA-2148, `already-covered`
+## (zero new code — the 3-observable covering test already proves all 5 steps)
+- ELITEA-2460's 5 granular steps (expand folder-with-conversations → conversations
+  listed → collapse → hidden → expand empty folder → "No conversations added")
+  decompose 1:1 onto the 3 compound observables
+  `test_folder_displays_conversations_or_empty_state` (ELITEA-2148, merged
+  `origin/automation/base` commit `d2b5d1aa`, PR #1545, chat-remaining wave-07)
+  already asserts. No gap — every case step maps onto an existing assertion,
+  and the covering test is stricter (exact empty-state string, visibility-based
+  not count-based collapse check).
+- Live-reconfirmed this session: re-ran the covering test standalone, PASSED,
+  `1 passed in 17.09s`.
+- AFS: `test-specs/chat-interface/lcovered_folder-displays-conversations-when-expanded-and-empty-state_ELITEA-2460.md`.
+- **Pattern reinforced (same class as ELITEA-2461/2457/2123/2127 below)**: this
+  module's near-duplicate case pattern also recurs on the expand/collapse/
+  empty-state surface — grep this digest by BEHAVIOUR ("empty state", "expand")
+  before assuming a fresh case needs new code.
+
+## ELITEA-2461 — near-total duplicate of ELITEA-2149 + ELITEA-2151 combined,
+## `already-covered` (zero new code, two-spec dedup)
+- ELITEA-2461's 5 steps decompose cleanly across two already-merged specs on this
+  same pin/panel-order surface: steps 1–4 (hover a Today/This Week/Older
+  conversation → 3-dot → Pin on top → moves out of its date group into the
+  pinned section → pin icon renders) are verbatim `test_pin_conversation_via_pin_on_top`
+  (ELITEA-2149); step 5 (full 4-tier panel order: pinned folders → pinned
+  conversations → unpinned folders → unpinned conversations by date group) is
+  verbatim `test_pinned_folder_and_conversation_render_above_unpinned_panel_order`
+  (ELITEA-2151) — the SAME covering test ELITEA-2159's dedup already used for its
+  own near-identical step-5 wording. This is the first case in this digest that
+  needed BOTH covering tests to close its own case, rather than just one.
+- Live-reconfirmed this session: re-ran both covering tests together
+  (`tests/ui/chat/test_pin_conversation.py::TestPinConversationViaPinOnTop::test_pin_conversation_via_pin_on_top`
+  + `::TestChatPanelOrderingPinnedFoldersAndConversations::test_pinned_folder_and_conversation_render_above_unpinned_panel_order`),
+  both PASSED, `2 passed in 45.98s`.
+- AFS: `test-specs/chat-interface/lcovered_pin-conversation-appears-above-folders-and-date-groups_ELITEA-2461.md`.
+- **Pattern reinforced (same as the ELITEA-2457/2123/2127 sections below)**: this
+  module's near-duplicate case pattern isn't confined to folder-creation/rename —
+  it recurs on the pin/panel-order surface too. Always grep this digest by
+  BEHAVIOUR ("pin", "panel order") before assuming a fresh case needs new code.
+
+## ELITEA-2146/2147/2148 — folder-list & submenu SCROLLABILITY, expand/collapse +
+## empty-state, ALL 3 ready-for-automation, TWO new testid gaps found, ZERO defects
+- **Sidebar list scroll container genuinely overflows once enough folders exist —
+  confirmed live, but at a viewport-dependent scale.** `Conversations.jsx`'s
+  `ref={listRef}` `Box` (line ~731, `overflowY: 'scroll'`, `height: 'calc(100% -
+  40px)'`) wraps pinned folders + pinned conversations + unpinned folders +
+  date-grouped conversations ALL in one shared container — there is no
+  folder-only scroll region, the whole sidebar list scrolls together. At the
+  CARRIED-OVER 1280×4000 viewport (leftover from the prior ELITEA-2142/2143/
+  2144/2145 session sharing this MCP browser instance) `scrollHeight ===
+  clientHeight === 3928` — NOT scrollable, a false negative trap for any future
+  session that inherits an oversized viewport. Resized to 1440×900:
+  `scrollHeight=2946` vs `clientHeight=828` (with the account's ambient 67
+  folders present) — genuinely overflowing. Collapsed folder row height
+  measured at 41px (folder `279`). **testid needed**: this container has NO
+  testid today — add one (e.g. `chat-conversation-list-scroll-container`) via
+  `add-data-testid`, same family as the existing `chat-messages-scroll-container`
+  precedent. Full spec: ELITEA-2146's AFS.
+- **"Move to" submenu's folder-list popover ALSO genuinely overflows, and is a
+  SEPARATE container from the sidebar** (MUI's own default `Menu`/Popover Paper
+  sizing — `overflow-y: auto`, `max-height: calc(100% - 96px)` — not bespoke
+  EliteaUI logic). With the submenu open and 67 ambient folders rendered:
+  popover Paper `scrollHeight=2781` vs `clientHeight=802`. Confirmed
+  FUNCTIONALLY wired, not just visually present: scrolled to the popover's max
+  `scrollTop`, clicked the then-revealed last folder item
+  (`chat-move-to-folder-88-menuitem` this run), and observed a real `PUT
+  .../elitea_core/conversation/prompt_lib/399/8152 → 200` — the scrolled-to
+  item genuinely moves the conversation. **testid needed**: the submenu's
+  `<Menu>` Paper (`DotMenu.jsx` line ~93, the nested `subMenuItems?.length &&`
+  branch) carries NO testid and NO `id` at all today (confirmed via DOM
+  inspection) — add via `slotProps={{ paper: { 'data-testid':
+  'chat-move-to-submenu-popover' } }}` (or equivalent MUI prop shape). Full
+  spec: ELITEA-2147's AFS.
+- **Expand/collapse + empty-state mechanism (ELITEA-2148) works exactly as
+  cased, but the case TITLE overclaims** — "Displays Conversation Count" implies
+  a numeric badge that does not exist anywhere (source-confirmed:
+  `FolderAccordionItem.jsx`/`FolderAccordion.jsx` never render `folder.total`/
+  `conversations.length` as visible text, only as internal pagination state).
+  The case's own numbered STEPS never ask for a count badge either — only
+  "expand and see the list" / "see the empty state" — and those match live
+  behavior exactly, so this is a title/scope mismatch, not case-text drift
+  worth a clarification filing. Live-confirmed: collapsed folder row's
+  conversation items stay MOUNTED in the DOM under MUI `Collapse`
+  (`.MuiCollapse-hidden` sets `visibility: hidden`, not `display:none`/unmount)
+  — a future test must assert via `not_to_be_visible()`, NOT `to_have_count(0)`
+  (the element IS still present, so a count-based assertion would pass for the
+  wrong reason — see `.agents/memory/qa-engineer/passing_assertion_may_prove_nothing.md`).
+  `chat-folder-empty-state` text reconfirmed: **"No conversations added"**
+  (folder `279`, this session).
+- **Page-object gap (method, not testid)**: no `collapse_folder()` exists.
+  `expand_folder()` isn't safe to call a second time to collapse (it waits for
+  `data-expanded="true"`, already true going in). Small addition needed,
+  mirrors `expand_folder()` waiting for `[data-expanded="false"]` instead.
+- **Reconfirms the ELITEA-2121/2130 pinned-folder disabled-ancestor gotcha**
+  (unrelated to any of these 3 cases' own seeded data, hit only because folder
+  `213` — a PINNED leftover exploration folder from that earlier session — was
+  tried first and both a plain Playwright click AND a raw `element.click()`
+  via `browser_evaluate` silently no-opped against it, "element is not
+  enabled" despite `.disabled === false`). Not a new defect — same
+  `isDragDisabled={isPinned}` ancestor already documented; switched to an
+  unpinned folder and the normal click worked immediately.
+- **Zero product defects found this pass** — all 3 cases' own subjects
+  (scrollability ×2, expand/collapse/empty-state ×1) work correctly and
+  genuinely on the real system, end to end, including a real network mutation
+  chosen specifically from a scrolled-to-only-reachable submenu item.
+
+## ELITEA-2142/2143/2144/2145 — drag-and-drop conversation<->folder, NEW
+## surface (`chat-conversation-drag-drop`), mechanism confirmed real,
+## TWO new defects filed (#1541 drop-target misresolution, #1542 missing
+## single-item toast), one direction not pristine-confirmed (scroll)
+- **Mechanism**: `@dnd-kit/core`'s `PointerSensor` (8px activation distance),
+  NOT native HTML5 `draggable`/`DragEvent`. `DraggableConversationItem.jsx`
+  (`useDraggable`, id = conversation numeric id) / `DraggableFolderItem.jsx`
+  (`useSortable`, id = `folder-{id}`, used for folder REORDERING, a separate
+  concern from conversation drops) / `DroppableFolderItem.jsx` +
+  `DroppableGroupedArea.jsx` (`useDroppable`, ids `folder-{id}` /
+  `'ungrouped-conversations'`). All logic in
+  `src/hooks/chat/useDragAndDrop.js`.
+- **Real Playwright mouse gestures DO drive the real product code — no
+  substitution needed for this whole family.** Confirmed via network capture:
+  a genuine multi-step `mouse.down()` → several `mouse.move(..., {steps:N})`
+  → `mouse.up()` sequence (or Playwright's own `locator.dragTo()`) fires a
+  real `PUT /elitea_core/conversation/prompt_lib/{project}/{id}`. A single
+  big-jump `dragTo()` with NO intermediate steps risks under-shooting the
+  8px `PointerSensor` activation distance or missing collision recompute —
+  use several `steps` per `mouse.move()` call and re-measure the target's
+  `boundingBox()` on every iteration (layout shifts — e.g. a source folder's
+  accordion collapsing mid-drag — move sibling elements a few px during the
+  gesture; a STALE captured target rect can miss).
+- **Hover-highlight over a candidate drop folder IS implemented and
+  CONFIRMED WORKING live** (screenshot evidence,
+  `.playwright-mcp/w07-mid-drag-hover-folderB.png`): `DroppableFolderItem`'s
+  `shouldShowDropFeedback` (`isOver && isActive && isValidDropTarget`) renders
+  a `2px dashed` primary-color overlay `Box` around the hovered folder. Same
+  mechanism/component (`DroppableGroupedArea`) exists for the ungrouped/
+  date-group drop area. **Neither overlay carries a testid today** —
+  `testid needed`: add a stable `data-testid` (e.g.
+  `chat-folder-drop-zone-{folder_id}` / `chat-conversation-list-drop-zone`)
+  PLUS a `data-drop-active` boolean attribute on the EXISTING outer
+  `ref={setNodeRef}` Box (the wrapper `DroppableFolderItem`/
+  `DroppableGroupedArea` already render, one level above the pre-existing
+  `chat-folder-item-{id}` testid) reflecting `shouldShowDropFeedback` —
+  state-via-`data-*`-attribute per this project's testid policy, NOT a
+  state-switched testid, and NOT the conditionally-mounted anonymous overlay
+  `Box` itself (that element mounts/unmounts with drag state, which is the
+  wrong node to carry an identity testid).
+- **CONFIRMED DEFECT, filed
+  [elitea-testing-public#1541](https://github.com/EliteaAI/elitea-testing-public/issues/1541)**:
+  dragging a conversation OUT OF one folder and dropping it ONTO another
+  folder does NOT move it there — it lands in the ungrouped/general list
+  (`folder_id: null`) instead, even though the target folder was correctly
+  highlighted (dashed border, confirmed via screenshot) right up to release.
+  Reproduced 3× this session, cleanest repro was a fresh page load + single
+  continuous gesture with the target's `boundingBox()` re-measured
+  immediately before `mouse.up()` (pristine-repro gate satisfied). Root
+  cause suspected in `handleDragEnd`'s `over.id` resolution vs. the
+  `getDropAreaState`-driven highlight diverging — not yet fix-verified, see
+  the issue for the exact source-line reasoning.
+- **CONFIRMED DEFECT (source-level, not live-UI-dependent), filed
+  [elitea-testing-public#1542](https://github.com/EliteaAI/elitea-testing-public/issues/1542)**:
+  `handleDragEnd`'s `toastSuccess(...)` call is gated behind
+  `currentDraggedItems.length > 1` — a SINGLE-conversation drag-and-drop
+  move NEVER shows a success toast, regardless of whether the move itself
+  succeeds. Contradicts both the TMS cases (ELITEA-2142/2144 each ask to
+  "verify a success toast confirms the move" for a single conversation) AND
+  the product's own precedent — the "Move to" CONTEXT-MENU flow (a
+  different code path, `test_move_conversation_to_folder.py`) DOES show a
+  toast for a single-item move (`Chat moved to "X" folder successfully`).
+- **NOT pristine-confirmed this session, due to environment obstacles, not
+  a defect claim**: the Today/date-group → folder direction specifically
+  (ELITEA-2142's own core assertion). This shared DEV account currently
+  carries **65+ orphaned folders** (known, already-tracked cleanup gap —
+  see the `#1309`/`#1310`/`#1533` testid-regression section below, which is
+  the root cause of the leaked `delete_folder_via_menu()` cleanup failures),
+  pushing the "Today" conversation list thousands of px below the folder
+  list and out of simultaneous viewport reach even at a 4000px-tall resize;
+  `@dnd-kit`'s autoscroll did not visibly engage for synthetic MCP pointer
+  input in the time available. Given `handleDragEnd`'s folder-branch code
+  is IDENTICAL for both directions (`droppedOnId.startsWith('folder-')` →
+  `onMoveToFolderConversation(conversation, targetFolder)`, regardless of
+  whether the drag started from `ungrouped` or another folder), there is a
+  real, non-trivial risk ELITEA-2142 hits the SAME #1541 defect — but this
+  was not independently proven for this exact direction. **Flagged as an
+  explicit build-time check** in ELITEA-2142's own AFS, not asserted as a
+  separate defect.
+- **Test-data hygiene note (not new — corroborates the already-documented
+  `#1309`/`#1310` sections below)**: `ConversationAPI` already has
+  `create_folder(name)` / `delete_folder(id)` /
+  `move_conversation_to_folder(conversation_id, folder_id)` (contrary to the
+  "no FolderAPI client exists yet" note in the ELITEA-2135 AFS/section
+  below — this has since been added; use it directly, don't re-add).
+  This session's own exploration folders/conversations (ids 301/302,
+  8404/8405) were deleted via these API methods before finishing — zero net
+  pollution added by this session.
+
+**Resolved/added during ELITEA-2142/2143/2145 implementation (implementer,
+2026-08-15):**
+- **`#1542` corrected — NOT a defect.** The analyst's source read covered
+  only `useDragAndDrop.js`'s own `toastSuccess(...)` call (gated to
+  `currentDraggedItems.length > 1`, a SEPARATE multi-select aggregate
+  toast). It missed that `handleDragEnd` also calls `await
+  onMoveToFolderConversation(...)` per item, and THAT hook
+  (`useMoveToFolderConversation.hooks.js`, shared with the "Move to" menu
+  flow) fires its own toast unconditionally on success. Live-confirmed a
+  single-item drag DOES show `Chat moved to "<folder>" folder successfully`.
+  Corrected via a comment on #1542 (left open, human disposition).
+- **Toast auto-dismisses before a multi-step verification chain finishes.**
+  Capture toast text IMMEDIATELY after the triggering action (same
+  `page.expect_response` block as the drop), not several steps later — a
+  step-6-style "verify toast" read that runs after 2+ intervening
+  assertions (folder-removal check, folder-expand) can find the toast
+  already gone. Same idiom `test_move_conversation_to_folder.py` already
+  uses; drag-and-drop tests need it explicitly because the case text lists
+  the toast check LAST.
+- **Drag gestures need TWO distinct guards before every `mouse.move()`/
+  `mouse.down()`, not just `scroll_into_view_if_needed()`:**
+  1. *Off-screen:* `bounding_box()` is viewport-relative; an item below the
+     fold (this shared DEV account's sidebar routinely carries 65+ folders
+     ahead of the conversation list) reports a y far past the viewport
+     height, and `page.mouse.move()` to that coordinate never reaches the
+     element (drag silently never activates, no error).
+  2. *Stale-position overlap (distinct from #1, more subtle):* even AFTER
+     scrolling, `bounding_box()` can report the CORRECT rect for an
+     element (matches `getBoundingClientRect()`) while a DIFFERENT,
+     stale-positioned row visually overlaps that exact pixel — reproduced
+     dragging a conversation OUT of a just-expanded folder: the physical
+     coordinate resolved (via `document.elementFromPoint`) to an UNRELATED
+     folder's collapsed header, not the conversation. A raw `page.mouse`
+     sequence has no actionability check (unlike `.click()`) and silently
+     presses on the wrong element. Fix: poll
+     `document.elementFromPoint(cx, cy) === el || el.contains(hit)` until
+     it settles before pressing/moving — `ChatPage._wait_for_pointer_target()`.
+     Both guards are now baked into `start_conversation_drag()` /
+     `move_drag_over_target()` — any FUTURE drag-and-drop page-object
+     method should reuse those two, not raw `bounding_box()` + `mouse.move()`.
+- **A conversation's OWN drag-opacity lives on its PARENT node, not the
+  testid'd element itself** — `DraggableConversationItem.jsx`'s Box (style
+  `opacity: isDragging ? 0.5 : 1`) wraps the `chat-conversation-item-{id}`
+  testid'd Box as its immediate child. Read via
+  `el => getComputedStyle(el.parentElement).opacity`, not the element's own
+  computed style. Same wrapper-vs-testid-node split applies to
+  `DraggableFolderItem.jsx` (used for folder reordering, not exercised by
+  this cluster's own cases).
+
+## ELITEA-2136/2138/2139/2140/2141 — "Move to" submenu family, extends
+## ELITEA-2135/2137/2138's own surface: back-to-list, folder-to-folder,
+## disabled self-entry, `updated_at` mechanism (all extend-existing, tag/gap-only)
+- **All 5 cases extend `test_move_conversation_to_folder.py`** (ELITEA-2135/2137,
+  merged `origin/automation/base` commit `37dbd948`) — purely additive: 2 tag-only/
+  small-insertion extensions (ELITEA-2136 onto ELITEA-2135's own test; ELITEA-2140
+  onto this session's own new ELITEA-2139 test) + 3 brand-new test methods
+  (ELITEA-2138, ELITEA-2139, ELITEA-2141), zero existing method bodies modified.
+- **`select_move_to_back_to_list()` did not exist before this session** — the
+  `move_to_back_to_list_menuitem` LOCATOR was added by ELITEA-2135's own
+  implementation but had ZERO callers (canon #511) until ELITEA-2139/2140's test.
+  New method mirrors `select_move_to_folder()`/`select_move_to_create_folder()`'s
+  shape exactly.
+- **"Back to the list" toast is a DISTINCT template** from the move-INTO-a-folder
+  toast (`Chat moved to "X" folder successfully`, `useMoveToFolderConversation.hooks.js`):
+  live-confirmed exact text `Chat moved to ungrouped area successfully` — no quoted
+  folder name (there isn't one), different verb phrase entirely. Don't assume the
+  same template with an empty/null substitution.
+- **Empirically confirmed the mechanism behind ELITEA-2140's "appears in Today"
+  claim, not just inferred from source**: the "Back to the list" `PUT
+  .../conversation/prompt_lib/{project}/{id}` unconditionally bumps `updated_at`
+  to the request's own timestamp, regardless of the conversation's prior recency
+  — verified on a conversation that had NEVER been touched between creation and
+  the move (its `updated_at` jumped from creation-time to move-time, ~1 minute
+  later, in the same response body). Date-group bucketing
+  (`DATE_GROUP_ORDER = ['today','this_week','older']`, EliteaUI
+  `conversationList.constants.js`) is server-side and keyed purely off
+  `updated_at` — folder membership (`folder_id`) and date-group bucket are
+  orthogonal fields with no memory of "which group before the folder move".
+  **Practical consequence**: there is no way to make a "moved back to list"
+  conversation land anywhere OTHER than Today via this flow — the mechanism is
+  origin-independent by construction, confirmed live not assumed.
+- **The API silently ignores caller-supplied `created_at`/`updated_at`** — live-
+  verified: `PUT` a conversation with `{"updated_at": "2020-01-01...",
+  "created_at": "2020-01-01..."}` returns `200` but the persisted timestamps are
+  UNCHANGED. **There is no test-accessible way to seed a genuinely-"Older"
+  conversation on demand** (no natural one existed live in the shared DEV
+  project either, at time of writing — only a populated "This Week" group, zero
+  Today, zero Older). Any case whose precondition specifically requires an
+  Older-origin fixture (ELITEA-2140 here) needs this same treatment: reason from
+  the live-confirmed mechanism instead of fabricating the precondition via
+  DB/`page.evaluate()` injection (which would be a fidelity-policy substitution).
+- **"Move to" submenu, when opened for a conversation ALREADY inside a folder,
+  lists that folder's OWN entry — DISABLED, not absent.** Live-confirmed via
+  `browser_snapshot` + `aria-disabled` read: `chat-move-to-folder-{own_id}-menuitem`
+  renders with `aria-disabled="true"` (self-move prevention) rather than being
+  filtered out of the list. A DIFFERENT folder's entry in the same submenu is a
+  normal enabled `menuitem`. Not previously documented — no prior case (2135/
+  2137) opened "Move to" on an already-in-a-folder conversation. Read via
+  `get_move_to_folder_item(folder_id).get_attribute("aria-disabled")` — no new
+  testid needed, same `MOVE_TO_FOLDER_ITEM` template ELITEA-2135 provisioned.
+- **Context-menu item SET differs for a folder-contained conversation** vs. the
+  flat-list 5-item set ELITEA-2114/2135 already document (`Rename, Move to,
+  Playback, Pin on top, Delete`): live-confirmed 6 items for an in-folder
+  conversation — `Rename, Move to, Playback, Duplicate, Pin on top (DISABLED),
+  Delete` — "Duplicate" present, "Pin on top" present-but-disabled rather than
+  absent (matches the already-documented `disabled: !isPinned &&
+  !!conversation.folder_id` rule under § Pin conversation, reconfirmed here from
+  the OTHER side — pin disabled specifically BECAUSE folder_id is set). None of
+  ELITEA-2136/2138/2139/2140/2141's own case steps require asserting this full
+  set, so no test in this pass encodes it — flagged here in case a future case
+  does (don't assume the flat-list 5-item set applies unconditionally).
+- **`.clear()` (Playwright's own method) correctly replaces the folder-name
+  editor's default value; a raw `Control+a`+`Backspace` sequence reproduces the
+  documented "append not replace" race AGAIN** (live-reconfirmed during
+  ELITEA-2138 exploration — typing "Sprint Chats" after `Control+a`+`Backspace`
+  produced `"Sprint ChatsNew folder"`, a REAL folder created with that wrong
+  name, id 293, cleaned up). `ChatPage.set_folder_name()`'s existing
+  implementation already uses `.clear()`, not a bare `Control+a` — reuse it
+  verbatim, do not hand-roll the input-clearing sequence for any new
+  folder/conversation-name editing code (same standing warning as the
+  ELITEA-2128/2129 section below).
+- **Folder-to-folder move fires the identical `PUT`+toast mechanism as
+  move-from-flat-list** (`folder_id` changes in the response body, toast is the
+  same `Chat moved to "X" folder successfully` template) — confirmed the prior
+  container (date group vs. another folder) makes no difference to the
+  move-INTO-a-folder mechanism; only "Back to the list" (moving OUT, to no
+  container) has the distinct toast/mechanism documented above.
+- **Setup for "conversation already inside a folder" is fastest via
+  `conversation_api.create_folder()` + `conversation_api.move_conversation_to_folder()`**
+  (both pre-existing on `ConversationAPI`, `api/client.py`) rather than the
+  UI-driven folder creation ELITEA-2135's own test uses — real API setup, not a
+  substitution (reaches a precondition state, doesn't fabricate the case's own
+  observable). Used for ELITEA-2139/2140/2141's setup this session; ELITEA-2136
+  reuses ELITEA-2135's existing UI-driven setup unmodified (extension, not a
+  fresh test).
+- **Cleanup**: all exploration conversations (4) and folders (4, ids 291-294)
+  created this session were deleted via `conversation_api.delete_conversation`/
+  `delete_folder` immediately after each probe — zero net pollution left by this
+  session's exploration (unlike several prior sessions documented elsewhere in
+  this digest).
 
 ## ELITEA-2128/2129 — folder-rename LENGTH boundary, confirms `FolderItem.jsx`
 ## shares `MAX_CONVERSATION_LENGTH=50` truncation with `ConversationItem.jsx`,
@@ -981,9 +1530,61 @@ handle ELITEA-2458 added was reused verbatim and all resolved correctly.
   (pinned conversation Y=56, well above "Today" heading Y=178–260 across
   repro runs) — a full 4-tier live check needs a seeded pinned FOLDER, which
   no case so far has needed; flagged as a follow-up opportunity, not done.
+
+  **Resolved during ELITEA-2151 implementation (combined analyst+implementer,
+  2026-08-15):** the follow-up above is now closed and LIVE-verified. Seeded
+  one pinned folder + one pinned conversation + one unpinned folder + one
+  unpinned conversation (all fresh, own IDs — no ambient-data dependency) and
+  asserted all 3 adjacent-tier boundaries (pinned-folder→pinned-conversation,
+  pinned-conversation→unpinned-folder, unpinned-folder→unpinned-conversation)
+  via bounding-box Y-position, plus the 2 non-adjacent "skip" pairs the
+  case's own Step 3 asks for directly. All 4 tiers behaved exactly as
+  `Conversations.jsx`'s source predicted on the FIRST live run — green,
+  zero reruns, zero new console errors, zero product defects. Folder-pin
+  wrapped in `page.expect_response()` for the PATCH (mirrors ELITEA-2121/
+  2130's own proven idiom); conversation-pin reused the bare click +
+  `is_conversation_pinned()` idiom ELITEA-2149's test already proves
+  reliable — no new flake risk introduced by combining both mechanisms in
+  one test. New test class appended to `test_pin_conversation.py`
+  (`TestChatPanelOrderingPinnedFoldersAndConversations`); zero existing
+  method bodies touched (verified: full 3-test file re-run green,
+  additive-only `git diff` grep empty). Zero new testid work — every handle
+  (`chat-folder-menu-pin-menuitem`, `data-pinned` on both folder/conversation
+  rows, `chat-folder-item-{id}`, `chat-conversation-item-{id}`) already
+  existed from prior sessions on this surface. See ELITEA-2151's AFS
+  (`test-specs/chat-interface/lextend_pinned-conversation-panel-ordering_ELITEA-2151.md`)
+  for the full reasoning.
 - No success toast on pin (`usePinConversation.hooks.js`'s
   `onPinConversation` only calls `toastError` on FAILURE) — don't wait for
   one.
+- **Resolved/added during ELITEA-2150 implementation:** unpin is the SAME
+  `chat-conversation-menu-pin-menuitem` testid, label flips to `"Unpin"`.
+  A PINNED conversation's row carries the same `aria-disabled="true"`
+  draggable-wrapper ancestor already documented above for pinned FOLDERS
+  (`isDragDisabled={isPinned}`) — confirmed live via `browser_evaluate`
+  DOM-chain inspection, a plain (non-forced) click on the scoped 3-dot menu
+  button times out ("element is not enabled") for a PINNED conversation
+  specifically. `ChatPage.open_conversation_context_menu()` already calls
+  `menu_button.click(force=True)` (pre-existing, ELITEA-2114) so this needs
+  no new workaround — but it's the first case to actually exercise a pinned
+  conversation's own context menu (ELITEA-2149 only ever opens the menu
+  BEFORE pinning), so record it here before someone "discovers" it again.
+  Unpin flips `data-pinned` `"true"`→`"false"` and `chat-pin-icon` count
+  `1`→`0`; the conversation reappears scoped inside its date group
+  (`is_conversation_in_group()`), same as any freshly-created conversation.
+
+  **ELITEA-2159 ("Left Panel Order Verified After Multiple Pin Actions",
+  combined analyst+implementer, batch chat-remaining-w09, 2026-08-15) is a
+  near-total duplicate of ELITEA-2151** — same 4-tier fixture (pinned folder,
+  pinned conversation not in a folder, unpinned folder, unpinned
+  conversation), same panel-order + same-type-ordering + folders-before-
+  conversations assertions, all already directly asserted by
+  `TestChatPanelOrderingPinnedFoldersAndConversations::test_pinned_folder_and_conversation_render_above_unpinned_panel_order`
+  (merged `origin/automation/base`). Classified `already-covered` (zero new
+  code) — live-reconfirmed by re-running the covering test this session
+  (`1 passed in 19.44s`), not assumed from the digest alone. See ELITEA-2159's
+  AFS (`test-specs/chat-interface/lcovered_left-panel-order-after-multiple-pin-actions_ELITEA-2159.md`)
+  for the full step-by-step dedup proof.
 
 ## Conversation search (ELITEA-2162)
 - `conversation-search-button` (on-main) opens `conversation-search-input`
@@ -1860,3 +2461,439 @@ by Agent/Pipeline/MCP canvases.
 - **Pre-existing console noise**: issue #656 (CategorySection unique-key-prop
   warning) fires on every type-picker render. Filter it alongside other
   known-noise patterns.
+## ELITEA-2462 — already-covered by ELITEA-2152 (word-for-word duplicate case text)
+
+- w09 analysis (2026-08-15): ELITEA-2462 ("Chat – Pin a folder and verify it appears at the
+  top of the left panel") is a verbatim re-authoring of ELITEA-2152's case text under a new
+  TMS id — same title, same objective, same 6-step sequence in the same order. Covering test
+  `test_pin_folder.py::TestPinFolderViaPinOnTop::test_pin_folder_via_pin_on_top` (merged to
+  `origin/automation/base`, PR #1552) asserts every one of ELITEA-2462's 6 steps 1:1.
+  Live-reconfirmed green this session (18.40s). AFS:
+  `lcovered_pin-a-folder-and-verify-it-appears-at-top-of-left-panel_ELITEA-2462.md`. No new
+  test written — `already-covered`, not `extend-existing`.
+
+## ELITEA-2152/2153 — Pin/Unpin a FOLDER's position/icon/conversations
+## (folder-pin surface's OWN subject, not incidental rename/ordering setup)
+
+- **First case whose OWN subject is the folder-pin action's position/visibility
+  effects** — ELITEA-2130 pins a folder only as setup for a RENAME test (never
+  checks position or conversations); ELITEA-2151 pins a folder only as setup
+  for a 4-tier ORDERING check against conversation rows (never captures a
+  folder's own before/after position or touches its conversations). Reuses
+  `pin_folder_via_menu()`, `is_folder_pinned()`, `get_folder_item()`,
+  `is_conversation_in_folder()` (all ELITEA-2121/2130) verbatim, plus ONE
+  additive change: `expand_folder(folder_id, timeout, force: bool = False)`
+  gained an optional `force` param (default `False`, zero behavior change for
+  ~15 existing callers) — see the expand-state bullet below for why.
+- **A folder's unpinned-list position is DETERMINISTIC and returns to its
+  pre-pin Y coordinate (within sub-pixel tolerance) on unpin** — live-confirmed
+  across a full pin→unpin round-trip on the SAME folder (id `1091`,
+  `w08_2152target`): baseline Y=138 (below unpinned sibling `1092` at Y=97) →
+  pin (`PATCH → 200`) → Y=56 (now ABOVE the sibling, whose own Y shifted to 178
+  as the list reflowed) → unpin (`PATCH → 200`, SAME endpoint/method, SAME
+  `chat-folder-menu-pin-menuitem` toggle) → Y returns to ~138, sibling back to
+  ~97 — the identical pre-pin layout, not merely "some unpinned position".
+  `getBoundingClientRect()` reads of an UNMOVED element can differ by a
+  fraction of a pixel between two calls (observed: 138.71875 vs 138 for the
+  exact same row) — assert with a ~2px tolerance, not `==`, or the test flakes
+  on zero real position change. This is a stronger, more diagnostic assertion
+  than a bare `data-pinned` flag check and is what ELITEA-2152/2153's AFS files
+  use for "folder moved from/returns to its original position".
+- **A folder created AFTER another one renders ABOVE it** in the default
+  `sort_by=updated_at&sort_order=desc&grouped=true` folder-list query — i.e.
+  most-recently-created/touched first. Useful for any case needing a
+  deterministic before-pin ordering baseline between two fresh sibling
+  folders without depending on ambient DEV-project data.
+- **CORRECTED finding — pinning (and unpinning) a folder DOES reset its
+  expand state; a bare live MCP read that says otherwise is racing the
+  settling re-render, not observing final state.** The first pass through
+  this exploration read `data-expanded="true"` immediately after a raw click
+  on the pin menu item and concluded expand state survives pinning — WRONG.
+  The implementer's pytest run, using a **web-first, polling assertion**
+  (`expect(locator).to_have_attribute(..., timeout=...)`) instead of a single
+  synchronous read, caught the SETTLED value: `data-expanded="false"` after
+  BOTH the pin and the unpin action, even though the folder was expanded
+  immediately beforehand in both cases. Root cause (structural, not a flake):
+  moving a folder's row between the pinned and unpinned list partitions is a
+  genuine remount, not an in-place reorder, so any local component state
+  (expand/collapse) resets to its default. Conversations are NOT lost —
+  re-expanding after the action (`expand_folder(..., force=True)` — the
+  pinned-folder disabled-ancestor gotcha applies to a plain click on the WHOLE
+  row here, not only the dot-menu button) shows them intact. **Methodological
+  lesson for future exploration on this surface**: a single MCP `evaluate()`
+  read immediately after a click proves only "not yet false" — it is not
+  evidence of the settled state. Reach for a genuinely time-separated re-check
+  (several tool round-trips later, or better, drive the actual pytest
+  assertion) before writing a persistence claim into an AFS. Not filed as a
+  product defect — the case's own wording ("shows its conversations WHEN
+  expanded") doesn't demand automatic persistence, and collapsing on a
+  structural list move is a defensible, common UI pattern.
+- **"Pin icon visible/removed" is asserted via `data-pinned`, per policy, not
+  a raw icon locator** — same equivalence ELITEA-2121/2130's AFS already
+  established (`isPinned && <PinIcon>` in `FolderAccordion.jsx`'s header has
+  no testid); re-confirmed live this session, not re-derived from scratch.
+- **Exploration-only console-warning artifact, NOT a product defect** (same
+  class already documented under ELITEA-2121/2130's "disabled-ancestor"
+  entry): driving the dot-menu button via a raw DOM `element.click()`
+  (`browser_evaluate`, since Playwright MCP's `browser_click` has no `force`
+  option) on a PINNED folder produced 4 transient React console warnings
+  (`Invalid prop 'expanded'/'in' of type object supplied to
+  ForwardRef(Accordion2)/(Collapse2)/Transition2`, `MUI: anchorEl prop
+  invalid`) — an artifact of bypassing React's synthetic-event path, not
+  reproduced by a real Playwright `.click(force=True)` (ELITEA-2130's own
+  test already runs that exact click pattern with 0 console errors observed).
+  Do not re-investigate this as a product bug if seen again during MCP-only
+  exploration on this surface; it does not occur under real pytest runs.
+- **Exploration folders left live, undeleted** (`w08_2152target` id
+  `1091`, `w08_2152sibling` id `1092`) — same accepted precedent as
+  ELITEA-2121/2130/2151 (folder-delete's UI testid is dead, tracked in
+  `#1309`; MCP-`fetch()` to the same-origin API also fails — confirmed again
+  this session, `TypeError: Failed to fetch` on a relative `/api/v2/...` POST
+  even though the identical request made via a real UI click succeeds, e.g.
+  request `#1917` `POST .../folder/prompt_lib/399 => 201`; not worth chasing
+  further given the already-extensive documented pollution). Both AFS files'
+  own implementations create/delete their OWN fixtures via
+  `conversation_api` (cookie-authenticated, not `page.evaluate`-`fetch()`),
+  so this does not affect the shipped tests' own cleanup.
+
+## ELITEA-2155/2156 — Pin/Unpin an EMPTY folder retains its empty state,
+## BOTH extend-existing onto `test_pin_folder.py` (ELITEA-2152/2153's
+## classes), ZERO defects, ZERO new handles
+
+- **Distinguishing axis vs ELITEA-2152/2153/2154 (which all seed a folder
+  WITH ≥1 conversation): this pair seeds a folder with ZERO conversations
+  and proves the pin/unpin mechanism doesn't special-case (or break on) the
+  empty-state rendering path across the already-documented pin/unpin-
+  triggered remount** (see the ELITEA-2152/2153 section above — pinning
+  moves a folder's row between list partitions, a genuine remount that
+  resets local expand state). Reused `get_folder_empty_state_text()`
+  verbatim — pre-existing on `ChatPage` since ELITEA-2148, first REUSED
+  (not just introduced) by this pair. No new page-object work at all: both
+  new test methods reuse every handle ELITEA-2148/2152/2153 already
+  established, with zero additions.
+- **Confirmed live, both directions, via a real `pytest` run (this WAS the
+  exploration — combined analyst+implementer session, executed once,
+  green)**: an empty folder's `chat-folder-empty-state` text ("No
+  conversations added") is byte-identical before pinning, after pinning
+  (re-expanded with `force=True`), and — for the unpin case — after
+  unpinning too. No blank body, no leftover/stale content, no console
+  error, on either transition. Zero product defects found.
+- **Landed as two new test methods in `test_pin_folder.py`** (not a new
+  file, not a family AFS) — `test_pin_empty_folder_retains_empty_state` in
+  `TestPinFolderViaPinOnTop` (ELITEA-2155), `test_unpin_empty_folder_retains_empty_state`
+  in `TestUnpinFolderViaContextMenu` (ELITEA-2156) — mirroring how
+  ELITEA-2154 extended the pin-side class. Each `extend-existing` AFS
+  targets the SAME-batch-trunk spec (merged-target rule: same-batch trunk is
+  a valid extend-existing target while `test_pin_folder.py` itself is not
+  yet on `origin/automation/base`).
+- **Cleanup**: both test methods' own `folder_empty` fixture is created and
+  deleted via `conversation_api.create_folder()`/`delete_folder()` — zero
+  net pollution added by this pair (distinct from the ELITEA-2152/2153
+  exploration folders left live above, which predate this pair's own
+  session and are unrelated to it).
+
+**Resolved/added during ELITEA-2155/2156 implementation (implementer,
+2026-08-15):** nothing new to resolve — both tests ran green on the first
+attempt, reusing 100% pre-existing handles/methods; no AFS amendment was
+needed.
+
+## ELITEA-2157/2158 — Pin on top DISABLED for an in-folder conversation,
+## ENABLED after "Move to" > "Back to the list"; family AFS, ZERO new
+## testids, ZERO defects
+- **Live-reconfirms, from BOTH sides in one session, the already-documented
+  `disabled: !isPinned && !!conversation.folder_id` rule** (`ConversationItem.jsx`
+  line 260) — first documented in `_surface.md` § ELITEA-2136/2138/2139/2140/2141
+  as a flagged-but-unencoded gap ("None of ELITEA-2136/2138/2139/2140/2141's own
+  case steps require asserting this full [in-folder menu item] set, so no test
+  in this pass encodes it"). This pair closes that gap.
+- **Reused an ambient leftover conversation for the live confirmation pass**
+  (`W08_2152_conv seed message`, id `8514`, inside folder `w08_2152target`/id
+  `1091`, both leftover fixtures from an earlier wave) rather than seeding new
+  data purely to eyeball the mechanism — same "leftover exploration data is
+  fair game for a quick live check, the test itself still seeds its own"
+  pattern already established for the pinned-folder ancestor gotcha (§
+  ELITEA-2146/2147/2148). The actual implemented test seeds its own
+  `folder`/`conv_target` via `conversation_api`, per usual.
+- **Testid renders unconditionally regardless of disabled state** —
+  source-confirmed: `DotMenu.jsx`'s `BasicMenuItem` sets
+  `data-testid={testId ? \`${testId}-menuitem\` : undefined}` unconditionally;
+  `disabled` is a separate MUI `MenuItem` prop rendered as `aria-disabled`.
+  So `chat-conversation-menu-pin-menuitem` is present-and-selectable either
+  way — the DISABLED check is a plain attribute read on the existing
+  testid-selected locator, no new locator needed.
+- **A forced click on the disabled item has no network side effect** —
+  live-confirmed: MUI's `ButtonBase` guards its own click handler internally
+  when `disabled`, so even `force=True` (which bypasses Playwright's
+  actionability check, not MUI's own guard) never fires the
+  `POST .../pin/prompt_lib/...` mutation. This is EliteaUI-independent MUI
+  behavior, not app-specific logic.
+- **In-folder context menu is a 6-item set** (`Rename, Move to, Playback,
+  Duplicate, Pin on top [disabled], Delete`), one more than the flat-list
+  5-item set ELITEA-2114/2149 document (`Duplicate` present, absent
+  outside a folder) — reconfirmed live this pass, matches the prior flag.
+- **Zero new testids, zero new page-object methods** — every handle and
+  every interaction/verification method needed already existed
+  (`expand_folder`, `is_conversation_in_folder`, `open_conversation_context_menu`,
+  `get_conversation_menu_item`, `open_move_to_submenu`,
+  `select_move_to_back_to_list`, `is_conversation_in_group`,
+  `is_conversation_pinned`, `get_pin_icon`, `click_conversation_menu_item`).
+- **Zero product defects found.** Both cases' mechanisms work exactly as
+  cased, end to end, live-confirmed (0 console errors across the repro).
+- **Landed as ONE new test method** (not two) in
+  `test_pin_conversation.py` — `test_pin_disabled_in_folder_then_moved_and_pinned`
+  in a new class `TestPinDisabledInFolderThenMovedAndPinned`, tagged with
+  both TMS IDs via two stacked `@allure.issue` decorators (same pattern
+  ELITEA-2139/2140's family test already uses) — ELITEA-2158's own
+  precondition (step 1) IS ELITEA-2157's entire subject, so one continuous
+  live flow on one seeded conversation honestly satisfies both cases' full
+  Pass/Fail criteria without re-deriving a second "conversation inside a
+  folder" fixture.
+
+**Resolved/added during ELITEA-2157/2158 implementation (implementer,
+2026-08-15):**
+- **The "Duplicate" context-menu item had NO `key` (and therefore no
+  testid) at all** — `DotMenu.jsx` maps `testId: item.key` for TOP-level
+  menu items (not just submenu items — confirmed by reading the same file
+  the earlier ELITEA-2135 pass read for submenu items), and the
+  `ConversationItem.jsx` object literal for "Duplicate" was the ONLY item
+  in the 7-item array missing a `key` (every sibling item — Rename, Move
+  to, Playback, Make public, Share, Pin, Delete — has one). The item
+  renders and works fine (confirmed via ARIA snapshot: `menuitem
+  "Duplicate"`), it's simply invisible to any `[data-testid^="chat-
+  conversation-menu-"]`-prefix-based count. Added `key:
+  'chat-conversation-menu-duplicate'` (one line, zero functional impact —
+  no new DOM node/hook/render-prop change) on `automation/testids`,
+  EliteaAI/EliteaUI commit `a53b9d4b`. Naming matches the existing
+  `chat-conversation-menu-{action}` family exactly.
+- **A forced click on a DISABLED MUI `MenuItem` leaves the menu OPEN** —
+  MUI's `ButtonBase` guards its own click handler when `disabled`, so the
+  menu's close-on-select trigger (which normally fires from the item's
+  own `onClick`) never runs either. Re-hovering the SAME conversation
+  immediately afterward (e.g. to open "Move to") hits the still-open
+  menu's invisible `MuiBackdrop` and times out ("subtree intercepts
+  pointer events") — this is NOT the same as the already-documented #1117
+  "Move to doesn't open on one click" defect; it's a distinct
+  after-a-disabled-click state that no prior test in this suite produced
+  (every other pin/move-to test only ever clicks ENABLED items, which
+  close the menu normally). Fix: explicit `page.keyboard.press("Escape")`
+  after a deliberately-disabled-item click, then wait for the shared
+  `FOLDER_CONTEXT_MENU_POPOVER` (`[data-testid="conversation-menu-menu"]`
+  — pre-existing constant, ELITEA-2146/2147 pass, first live caller here)
+  to become hidden before the next hover. Any FUTURE test that clicks a
+  DISABLED context-menu item and then needs to interact with the same
+  conversation again should apply the same explicit-close pattern.
+
+**Resolved/added during ELITEA-2169 combined analyst+implementer pass (batch
+chat-remaining-w10, 2026-08-15):** ELITEA-2169 ("Add Users as Conversation
+Participants") is a strict subset of ELITEA-2167's own 10-step "Add users"
+modal flow (already merged, `test_invite_users_add_persists_cancel_and_close_discard`)
+— classified `already-covered`, no new spec written. While live-reconfirming the
+covering test 3× back-to-back this session:
+- **Run 1** passed every step overlapping with ELITEA-2169 (menu → modal →
+  2 chips → Add → badge/popover show both) and only failed at the test's own
+  FINAL, unrelated side-channel console check, on a genuinely NEW React
+  `setState`-in-render warning (`UsersParticipantDropdown/index.jsx:30` setting
+  state on `CollapsedPerticapantsList` mid-render of the Participants panel) —
+  dedup-checked (distinct from #719's `sx`-on-svg and #625's Support-Assistant
+  setState warning) and filed as MINOR issue #1556.
+- **Runs 2–3** failed at the covering test's OWN Step 1 (stale conversation
+  reused instead of a genuinely blank one) — this is the already-tracked #1082
+  flake, reproducing here because back-to-back re-runs in one session leave no
+  cleanup pause between them (self-inflicted by the re-run methodology, not a
+  fresh-invocation symptom). Any future session re-running this covering test
+  repeatedly for reconfirmation should expect this and treat a Step-1 failure
+  on re-run N>1 as #1082 first, not a new regression, before investigating
+  further.
+
+## ELITEA-2173/2174 — Users-dropdown MENTION-BY-NAME-CLICK, NEW surface
+## distinct from ELITEA-2168's composer-typed-`"@"` path, family AFS, both
+## `ready-for-automation`, ZERO new testids, one CLARIFICATION filed (#1558)
+- **Genuinely different mechanism from ELITEA-2168's own mention steps 7/12,
+  confirmed by reading source BEFORE testing live** (interaction-discovery
+  ladder step 6). ELITEA-2168 mentions a user via the COMPOSER'S typed-`"@"`
+  popper (`UserMentionList.jsx`/`onSelectUserMention`, `ChatBox.jsx`). This
+  family clicks a participant's NAME ROW inside the Users PARTICIPANTS
+  DROPDOWN itself (`UserMenu.jsx`'s row `onClick` → `handleSelectUser` →
+  ELITEA-2168's own `onSelectParticipant` wrapper → `NewChat.jsx`'s
+  `onSelectThisParticipant` → `onSelectParticipant(foundParticipant, false)`,
+  `NewChat.jsx:575-594`) — a call chain that (mis-)reads at first glance like
+  `shouldMentionUser=false` should SKIP the mention insertion (the parameter's
+  literal name), but the row branch (`participant?.entity_name ===
+  ChatParticipantType.Users`) does `shouldMentionUser && mentionTarget
+  ?.mentionUser?.(...)` — false means the call is skipped ONLY when true is
+  needed elsewhere; **live confirmation was required and performed** (source
+  reading alone would have been ambiguous/wrong here — this is exactly why the
+  ladder's step 6 is "read source" not "trust source", the code path has a
+  second branch (`else if (participant === 'All users')`) with the same
+  `shouldMentionUser` gate that #1119 already proved broken for the FOOTER
+  item specifically). Live: clicking a row DOES insert `"@Name "` into the
+  composer correctly, for both a single mention (ELITEA-2173) and two
+  sequential mentions that correctly APPEND rather than replace (ELITEA-2174:
+  `"@Hrach Sargsyan @Levon Dadayan"` after two dropdown-reopen-click cycles).
+- **`fill()` silently destroys an in-progress mention** — appending `" hi"` to
+  a composer already containing `"@Hrach Sargsyan"` via Playwright's `.fill()`
+  REPLACES the whole value (mention lost entirely), not appends. Fix:
+  `click()` + `press("End")` + `press_sequentially(" hi")`. Not previously
+  documented in this digest because ELITEA-2168's own mention flow never hit
+  this exact failure mode via its own insertion mechanism.
+- **CLARIFICATION filed, [#1558](https://github.com/EliteaAI/elitea-testing-public/issues/1558)**:
+  ELITEA-2173's case text (step 3) expects the inserted `@mention` to be
+  "highlighted/formatted" — live product inserts plain, unstyled text (same as
+  the composer's own typed-`@` mechanism, which is ALSO plain text per
+  ELITEA-2168's AFS). Reverse-masking case-text drift, not a defect.
+- **Zero new testids needed** — the whole family reuses
+  `chat-participants-badge-button`, `chat-participant-row-user_{userId}_`
+  (dynamic, PARTICIPANT_ROW template), `chat-message-input`, `chat-send-button`,
+  `sidebar-create-button`, and the "Add users" modal handles, ALL already added
+  by ELITEA-2167/2168 and confirmed present on both `main` and
+  `automation/testids` (fresh `git fetch origin` this session). One new
+  page-object method only: `mention_user_via_participants_dropdown(user_id)` —
+  clicks the row directly (no hover needed; the row's hover-only delete icon is
+  `visibility:hidden` by default and does not intercept a plain click at the
+  row's center).
+- **Zero product defects on either case's own subject.** Console/network
+  side-channel checked throughout both live drives — only the two
+  already-documented noise sources (project-471 `secrets` 403, #719's
+  `sx`-on-svg warning) fired.
+- Family AFS:
+  `test-specs/chat-interface/l2_participants-dropdown-click-name-inserts-mention_ELITEA-2173.md`
+  (same `afs_path` for both ELITEA-2173 and ELITEA-2174).
+
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: qa-engineer analyst, ELITEA-2168, 2026-08-15)
+
+## "Make public" + multi-user icon color (ELITEA-2188, qa-engineer analyst, 2026-08-15)
+
+- **`conversation-multi-user-icon`'s color is the actual signal, `data-has-icon`
+  is presence-only.** The wrapper (`ConversationItem.jsx:419`, existing testid)
+  already carries `data-has-icon="true"/"false"` (ELITEA-2167), but that boolean
+  is `true` for BOTH `private_with_users` AND `public` — the GREEN-vs-default
+  distinction only lives in the child `<svg>`'s `fill` attribute
+  (`theme.palette.status.published` = `#2BD48D` for public vs
+  `theme.palette.icon.fill.default` = `#A9B7C1` for private-with-users;
+  confirmed live by making a real conversation public and reading both colors
+  via direct DOM query). **No `data-*` attribute yet distinguishes them** — a
+  genuine testid gap (not a defect), specced in
+  `l3_public-conversation-green-icon-in-chat-list_ELITEA-2188.md` § Concrete
+  Handles gap #2 as a new `data-conversation-type`/`data-public` attribute on
+  the SAME element (testid=identity, state=data-* ruling).
+- **The sharp negative control for "private = not green" is a WITH-PARTICIPANTS
+  private conversation, not a single-owner one.** A single-owner conversation
+  renders NO icon at all (`data-has-icon="false"`) — that only proves
+  presence/absence, not color. Use a private conversation that already has
+  `data-has-icon="true"` (2+ participants) as the negative control so the test
+  actually isolates "public vs private", matching what the case's own step 3
+  wording asks for.
+- **"Make public" confirmation dialog (`DotMenu.jsx`'s plain `Modal.BaseModal`
+  branch, lines 535–545) has ZERO testids** — confirmed live via direct DOM
+  read of the open dialog: no `data-testid` anywhere inside it. Root cause:
+  `BaseModal.jsx` accepts `data-testid`/`titleTestId`/`closeButtonTestId`/
+  `confirmButtonTestId`/`cancelButtonTestId` props, but `DotMenu.jsx`'s
+  `Modal.BaseModal` call never forwards any of them from `activeDialog.props`
+  (unlike the sibling `Modal.DeleteEntityModal` branch, which DOES carry
+  testids — `delete-confirm-dialog`/`delete-confirm-button`/etc.). This is a
+  SHARED gap: `BucketItem.jsx`'s "Delete bucket?" confirm (artifacts feature)
+  uses the exact same `alertTitle`/`confirmText`/no-`entityName` shape and has
+  the identical zero-testid problem — grepped, only these two call sites exist
+  (`grep -rn "alertTitle:" ../EliteaUI/src`). Fix threads new testid props
+  through `DotMenu.jsx`'s `activeDialog.props` the same way `alertTitle` etc.
+  already are — same caller-supplied-prop precedent as the existing
+  `submenuTestId` on the "Move to" item.
+- **`PUT /api/v2/elitea_core/conversation/prompt_lib/{project}/{id}`** with
+  `is_private: false` is the real endpoint behind "Make public" (`onEdit()` in
+  `handleMakePublic`, `ConversationItem.jsx:161-163`) — confirmed live,
+  `200 OK`. **No inverse UI action exists** — once public, `menuItems` filters
+  the "Make public" item out entirely and no "Make private" item is ever
+  added (`ConversationItem.jsx`'s `.filter(item => item.label !== 'Make
+  public')` at the end of the `menuItems` `useMemo`). A conversation made
+  public during live exploration CANNOT be reverted via the UI; a bare
+  `fetch()` PUT from the browser console also failed (`Failed to fetch` — the
+  real app call carries a bearer token not reachable from `localStorage`).
+  **Analyst/implementer consequence: always create a FRESH conversation for
+  this flow, never reuse an existing one you don't want permanently public.**
+  (Conversation id `420`, "Review attached documents" on project 471, is now
+  permanently public from this session's exploration — dev/local test data,
+  low-risk, left as-is.)
+
+## ELITEA-2189/2190/2191 (2026-08-15) — NO second user identity exists; every "non-owner" case on this surface is `blocked`
+
+- **Root cause (checked live, not assumed):** `.env.test` has exactly one UI
+  credential (`TEST_USER_EMAIL`/`TEST_USER_PASSWORD`), and localhost's
+  `auth_state` bypasses login entirely via a single static `VITE_DEV_TOKEN`
+  (`../EliteaUI/.env`, wired in `root.jsx`/`upload.js`/
+  `useArtifactContentFetch.hooks.js`/`SupportAssistant.jsx` — always the SAME
+  fixed identity, `author_id: 659` / "Test Bot"). There is no code path to
+  authenticate as a second identity on localhost, and no second credential
+  anywhere in the repo's test data.
+- **Confirmed empty second-owner conversation set**: `GET
+  /api/v2/elitea_core/folder/prompt_lib/471?sort_by=updated_at&sort_order=desc&grouped=true`
+  returns every conversation in project 471 with `author_id: 659` (this same
+  account) — no other-owned conversation, public or private, is currently
+  reachable. Conversation `420` (see the entry above — made public by a prior
+  analyst session) now 404s (`GET .../conversation/prompt_lib/471/420` →
+  `400 Bad Request`, "Conversation not found") — it was likely cleaned up by
+  a later run; do not assume it still exists as a fixture.
+- **"Invite Users" does NOT give you a second identity to log in as.** It adds
+  named users ("Hrach Sargsyan", "Levon Dadayan", "Mariam Hakobyan", …
+  ELITEA-2167 precedent) as **participants** of a conversation `${TEST_USER}`
+  still authors/owns. Those names come from a user-search endpoint with no
+  corresponding password/token this suite holds — don't mistake "can add as
+  participant" for "can view as".
+- **Any future case shaped "user B cannot see/edit/delete user A's X" on this
+  surface hits the identical wall.** Don't re-derive this from scratch —
+  check [Question #1563](https://github.com/EliteaAI/elitea-testing-public/issues/1563)
+  first (files ELITEA-2189/2190/2191 together as one shared-root-cause
+  question, precedent-matched to #1314's analogous editor/viewer RBAC-role
+  gap) for current status before spending a session re-confirming the same
+  blocker.
+- **Owner-side baseline handles ARE confirmed** (useful once unblocked):
+  `chat-copy-button`/`chat-regenerate-button` (real testids, ELITEA-2181) on
+  AI responses; accessible names "Read out" and "Delete" (no testid found for
+  the per-message Delete icon); user-message pencil icon has accessible name
+  "Edit the message and regenerate answer" with **no confirmed testid**
+  (distinct from `click_table_edit_icon`/`click_diagram_edit_icon`, which
+  target AI-generated table/diagram edit affordances, not user-message
+  editing — do not conflate). Conversation-level delete already has full
+  testid coverage via `delete-confirm-*` (ELITEA-2114) and
+  `CONVERSATION_MENU_ITEM_KEYS` includes `"delete"`.
+
+**Resolved/added during ELITEA-2188 implementation (2026-08-15):**
+- **Both testid gaps closed** on `automation/testids`
+  (EliteaAI/EliteaUI@7292e18f): `chat-conversation-make-public-confirm-dialog`
+  / `-confirm-button` / `-cancel-button` (threaded through `DotMenu.jsx` via
+  new caller-supplied `dialogTestId`/`confirmButtonTestId`/`cancelButtonTestId`
+  props, same precedent as `submenuTestId`); `data-conversation-type`
+  (`"public"`/`"private_with_users"`/`"private_without_users"`) added to the
+  existing `conversation-multi-user-icon` wrapper — asserted via new
+  `ChatPage.wait_for_conversation_type()`.
+- **Known, already-documented sidebar staleness defect
+  (EliteaAI/elitea-testing-public#989, same class as
+  `test_invite_users_add_cancel_close.py` Step 10) also fires on THIS case's
+  own observables** — confirmed live: `data-conversation-type` stayed
+  `"private_without_users"` for several seconds straight after an invited
+  participant's Send (well after the server had persisted it), and stayed
+  stale after making a conversation public too. The suite's established fix
+  (`page.reload()` before re-reading the sidebar icon state) is required in
+  BOTH places — right after conversation B's Send, and right after the
+  make-public confirm — not just the one place ELITEA-2167 already
+  documented it.
+- **A SECOND back-to-back `+Chat` click in one test (open blank -> send ->
+  open blank AGAIN for a second conversation) reliably hits the
+  #1082-class stale-conversation race** — the first click after a Send often
+  lands back on the just-sent conversation instead of a genuinely blank one.
+  The `_open_genuinely_blank_conversation`-style settle-and-retry guard
+  (already established in `test_invite_users_add_cancel_close.py`) is
+  needed for ANY test creating 2+ fresh conversations in one run, not only
+  the specific scenario that first surfaced it.
+- **New timing race found and fixed this pass**: right after
+  `click_add_users_confirm()`, the "Add users" modal's own MUI Dialog close
+  transition can still be resolving when the very next action targets the
+  composer's send button — `send_button.click(force=True, ...)` can fire
+  during that transition and be silently lost (message typed, never sent, no
+  navigation). Fix: `chat.add_users_dialog.wait_for(state="hidden", ...)`
+  before touching the composer. Add this wait to any future flow that sends
+  a message immediately after the Add-users confirm.
+- **Known defect EliteaAI/elitea-testing-public#719** (Add-users picker's
+  checkmark-icon `sx`-on-raw-svg console warning) re-confirmed on THIS case's
+  own conversation-B setup too (not just ELITEA-2167/2168's flows) — filtered
+  via the same `_is_known_checkicon_sx_svg_warning_719` idiom.

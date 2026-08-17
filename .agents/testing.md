@@ -480,3 +480,114 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   the failing resource URL** (not just the status code) so a shared filter can be
   written; until then, the standard response is: re-run once, and if the console-500
   doesn't reproduce, it's this pattern.
+- Known-noise entry (2026-08-15, chat-remaining wave-07, PR pending): 1 of 4
+  gate runs over the full 11-node-id set hit
+  `test_drag_drop_conversation_back_to_general_list` (ELITEA-2145) —
+  `expect(conversation_list_drop_zone).to_have_attribute("data-drop-active",
+  "true")` waited 10s (24 polls) and never saw the hover-highlight flip, timed
+  out on `"false"`. Passed clean standalone and in 3 consecutive full-file
+  re-runs immediately after. Distinct from the console-500 pattern above —
+  this is a drag-and-drop hover-highlight timing race (`@dnd-kit/core`
+  `PointerSensor` recomputing collision on each mousemove step), not a
+  background-resource blip. Consistent with the analyst's own caution flag on
+  this exact scenario ("folder->general-list not pristine-confirmed... due to
+  scroll/virtualization obstacles"). Record further occurrences here if this
+  specific assertion times out again on this spec.
+- **New noise flavor, first occurrence of a 404 variant (2026-08-15,
+  chat-remaining wave-08, PR #1552)**: the lead's own independent gate hit
+  `assert not console_messages` twice across 3 full-set gate attempts (7
+  runs total counting the workflow's own 3 internal + the lead's 4
+  independent) — `test_pin_empty_folder_retains_empty_state` (1st attempt)
+  and `test_unpin_conversation_via_context_menu` (3rd attempt), different
+  tests each time. Both carried the byte-identical message `"Failed to load
+  resource: the server responded with a status of 404 ()"` — same text twice
+  is a first for this class and suggests one specific static resource (a
+  font/icon, plausibly the same family as the Montserrat-font-404 entry
+  above) intermittently 404s, though the console API still doesn't expose a
+  URL to confirm. Neither occurrence reproduced standalone; 3 consecutive
+  clean full-set runs followed the 2nd occurrence before merge. Distinct
+  bucket from the confirmed 500-flavor recurring pattern above (404, not
+  500) — tracking separately per that pattern's own "different status code
+  ⇒ don't fold in blind" caution. If a URL-carrying occurrence surfaces
+  (e.g. via a `requestfailed` listener upgrade), capture it here to convert
+  this from suspected-font-asset to confirmed.
+- **404 variant, now confirmed (3 occurrences, chat-remaining wave-08/09,
+  2026-08-15)**: 3rd occurrence hit the SAME test as the wave-08 1st
+  occurrence — `test_pin_empty_folder_retains_empty_state` again, byte-identical
+  message, on the lead's 1st independent full-set gate attempt for wave-09 (11
+  node-ids, unchanged test — wave-09 added new classes to the same two files but
+  did not touch this test). Not reproduced standalone (15.86s clean); 3
+  consecutive clean 11/11 full-set runs followed before merge. Two-of-three
+  hits on the same test id strengthens the suspected-static-asset theory (a
+  resource this specific test's flow requests more consistently than others) —
+  still short of a captured URL. Record a 4th occurrence's URL if one surfaces
+  to convert from suspected to confirmed and enable a shared filter.
+- **Session-level heavy-load noise, chat-remaining wave-10 (2026-08-15)**: the
+  lead's own independent gate for wave-10 (participants management, new
+  surface) hit 3 DISTINCT conversation-timing flakes across 2 full-set gate
+  attempts, spanning both a pre-existing test (ELITEA-2167, unrelated to
+  wave-10's own diff) and one of wave-10's own new tests (ELITEA-2174) —
+  variously: `is_participants_badge_visible` true on a landed-stale
+  conversation (root-caused and properly fixed → linked to open #1082, see
+  wave-10's landed entry below), a badge-count mismatch after Cancel, an
+  add-users-dropdown search timeout (root-caused live: correctly excludes an
+  already-participant user off a stale landed conversation, same #1082
+  mechanism, fixed by swapping to the stronger
+  `_open_genuinely_blank_conversation()` guard), and finally that SAME
+  stronger guard itself exhausting its 3-attempt retry budget once. Every
+  occurrence not reproduced standalone. This session had ~6+ continuous hours
+  of heavy automated chat/participant churn (10 waves) against the shared DEV
+  backend by the time these hit — consistent with genuine session-level
+  backend strain rather than a code defect at each individual site. Distinct
+  from the per-test noise patterns above: this is a signal to watch backend
+  load/timing across an extended campaign session, not a single spec's flake.
+  Record further occurrences (and whether they correlate with session
+  duration) here.
+- **Sanctioned-RED, new spec signature (chat-remaining wave-11, 2026-08-16)**:
+  `test_team_users_mention_and_remove_participants.py::TestTeamUsersMentionAndRemoveParticipants::test_team_users_mention_and_remove_participants`
+  (ELITEA-2168, pre-existing, extended by wave-11's ELITEA-2193) now carries a
+  deterministic, single-cause, soft-asserted failure linked to already-open
+  #1119 ("All users" click doesn't insert "@Everyone "). Confirmed 3/3 across
+  the lead's own independent gate runs immediately after landing wave-11's
+  fixes (runs 1, 3, 4 of a 5-run investigation — see below). Merges RED going
+  forward on this signature per § Merge gate's sanctioned-RED exception; the
+  `# Known defect: #1119` comment + soft-assert are already in place in the
+  test. `test_public_conversation_green_icon.py` (ELITEA-2188, same gate run)
+  passed clean every single time.
+- **Known-noise entry (chat-remaining wave-11, 2026-08-16)**: 1 of 5 gate
+  attempts on the same pair above hit the already-confirmed recurring
+  console-500 pattern (unrelated-resource `Failed to load resource: ... 500`)
+  instead of the #1119 signature — non-reproducing on the immediately
+  following re-run (which returned to the #1119 signature). Consistent with
+  the existing recurring-pattern entry above; recorded as another occurrence,
+  not a new class.
+- **#1082 now 100% reproducible on `test_team_users_mention_and_remove_participants.py`
+  (ELITEA-2168's own file), chat-remaining wave-11, ELITEA-2193 implementation
+  (2026-08-15)**: 3 consecutive full-invocation runs (each also exhausting
+  pytest-rerunfailures' own 2 auto-reruns, so 9 total attempts) ALL failed
+  identically in Setup — `_open_blank_conversation()`'s 3-attempt retry never
+  escapes the same two stale, non-blank leftover conversations (`/chat/566`
+  "HI Chat", 5 participants; `/chat/564` "HI Chat", 3 participants — both
+  pre-dating this session, referenced by this wave's own AFS files as the
+  live-analysis targets) — `+Chat` keeps landing back on one of them rather
+  than a genuinely blank composer, so either the Setup's own
+  `initial_count == 0` assertion fails outright, or (once that happens to
+  read 0 message groups) the subsequent `search_and_select_add_user_verified`
+  step times out because the seed user is correctly *excluded* as an
+  already-existing participant of the stale conversation it actually landed
+  on. Root cause and fix pattern are already known — wave-10's entry above
+  links the SAME `#1082` mechanism to a **stronger guard**,
+  `_open_genuinely_blank_conversation()`, already implemented as a suite-local
+  helper in `test_invite_users_add_cancel_close.py` (ELITEA-2167's file) —
+  this file (`test_team_users_mention_and_remove_participants.py`, ELITEA-2168)
+  still has the weaker original guard and was not itself in scope for
+  ELITEA-2193 (a 2-assertion `extend-existing` on this file's Steps 8-9, not a
+  Setup fix — `_open_blank_conversation()` has 4 callers, out of scope to
+  modify under this ticket). ELITEA-2193's own 2 new assertions (tooltip
+  accessible name + warning-icon fill) were independently verified GREEN via
+  an isolated throwaway script driving the SAME live conversation `/chat/566`
+  directly (bypassing Setup) — both passed cleanly first try. Whoever next
+  touches this file's Setup should port the `_open_genuinely_blank_conversation()`
+  pattern from ELITEA-2167's file; until then, expect this spec's gate runs to
+  need a moment when `/chat/566`/`/chat/564` are the most-recently-touched
+  conversations in project 471.

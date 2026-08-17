@@ -81,3 +81,9 @@ DISTINCT caveat: the same admin-equivalent dev-token identity has non-uniform
 *permission scope* across projects for specific entity operations (e.g. agent-delete
 works in 399/400 but 403s in 471). That's about cross-project permission variance for
 ONE identity; this entry is about the absence of any lower-privilege identity at all.
+
+`no_second_user_identity_blocks_non_owner_cases.md` — a related but DISTINCT gap
+on the same axis (only one credential exists): that entry is "no lower-*role*
+identity"; this new one is "no *second person at all*" — a "non-owner cannot X on
+another user's Y" case needs a different HUMAN, not a different role, and hits the
+same `.env.test`/`VITE_DEV_TOKEN` wall for a different reason.

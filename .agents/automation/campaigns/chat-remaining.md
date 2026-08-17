@@ -52,11 +52,11 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | 04 | Conversation deletion + chat search (left-panel micro-UI) | 2115,2116,2117,2456,2163,2164,2165,2463 | 8 | **LANDED** — PR #1528, 7 automated/extended + 1 already-covered |
 | 05 | Folder creation | 2118,2119,2120,2133,2134,2457 | 6 | **LANDED** — PR #1532, 6/6 automated |
 | 06 | Folder rename | 2121,2122,2123,2124,2125,2126,2127,2128,2129,2130,2131 | 11 | **LANDED** — PR #1539, 7 automated/extended + 4 already-covered |
-| 07 | Move/drag conversation between folders + list scrolling | 2136,2138,2139,2140,2141,2142,2143,2144,2145,2146,2147,2148 | 12 | **IN PROGRESS** |
-| 08 | Pin/unpin — conversation & folder basics | 2150,2151,2152,2153,2154,2155,2156 | 7 | pending |
-| 09 | Pin/unpin — edge cases + newer duplicate-family cases | 2157,2158,2159,2160,2161,2461,2462,2460 | 8 | pending |
-| 10 | Team Project — participants management | 2169,2171,2172,2173,2174,2175,2176 | 7 | pending |
-| 11 | Team Project — public conversation / non-owner restrictions | 2188,2189,2190,2191,2192,2193,2194 | 7 | pending |
+| 07 | Move/drag conversation between folders + list scrolling | 2136,2138,2139,2140,2141,2142,2143,2144,2145,2146,2147,2148 | 12 | **LANDED** — PR #1545, 11/12 automated + 1 blocked (#1541) |
+| 08 | Pin/unpin — conversation & folder basics | 2150,2151,2152,2153,2154,2155,2156 | 7 | **LANDED** — PR #1552, 7/7 automated |
+| 09 | Pin/unpin — edge cases + newer duplicate-family cases | 2157,2158,2159,2160,2161,2461,2462,2460 | 8 | **LANDED** — PR #1555, 4/8 automated + 4/8 already-covered |
+| 10 | Team Project — participants management | 2169,2171,2172,2173,2174,2175,2176 | 7 | **LANDED** — PR #1561, 5/7 automated + 2/7 already-covered |
+| 11 | Team Project — public conversation / non-owner restrictions | 2188,2189,2190,2191,2192,2193,2194 | 7 | **LANDED (partial)** — PR #1566, 2/7 automated + 2/7 already-covered + 3/7 blocked (#1563) |
 | 12 | Message input + generation controls (stop/regenerate/send-button/starters) | 2177,2178,2179,2182,2183,2184,2185,2186,2187,2465,2466 | 11 | pending |
 | 13 | File attachments | 2195,2196,2198,2199,2201,2467 | 6 | pending |
 | 14 | Slash commands / # mentions / MCP dropdown | 2205,2206,2207,2208,2468,2469,2470 | 7 | pending |
@@ -150,10 +150,131 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   back-written (11 cases). Testids `chat-folder-menu-rename`/`-pin` (restored)
   confirmed NOT yet on `main`.
 
+- **wave-07 LANDED** — elitea-testing-public#1545, merged (`d2b5d1a`). 11/12
+  automated (ELITEA-2136/2138/2139/2140/2141 #1540, ELITEA-2142/2143/2145 #1543
+  [recovered], ELITEA-2146/2147/2148 #1544) + 1 blocked (ELITEA-2144 — real open
+  bug #1541, folder→folder drag-drop lands in ungrouped list, 3× pristine repro).
+  2139/2140 share one test (`TestMoveConversationBackToList`). Canon-gap question
+  #1546 filed distinguishing ELITEA-2140's precondition-as-narrative pattern
+  (automated) from wave-01's precondition-as-observable pattern (blocked). Two
+  more defects: #1533 (folder Rename menuitem testid regression, fixed same
+  session, sibling of #1309) and #1542 (drag-drop success-toast — filed then
+  self-corrected mid-triage: toast does fire via a different hook path than
+  first examined, left OPEN for human disposition rather than silently closed).
+  **Two process incidents, both self-caught and logged:** (1) PR #1543's second
+  internal review pass crashed on a harness bug (`StructuredOutput retry cap
+  exceeded`) after the one real reviewer finding had already been fixed; the
+  workflow's report writer mechanically labelled the 3 cases "blocked" on that
+  crash — not accepted at face value, verified the PR was still open with the
+  fix present, dispatched a fresh qa-engineer review, got `APPROVED` 0-blocking,
+  merged. (2) 3-way merge conflict during the trunk merge — 2 memory daily-logs
+  spliced directly (allowed path), `automation/pages/chat_page.py` (forbidden
+  path — two independent non-overlapping `LocatorDescriptor` additions at the
+  same insertion point) dispatched to test-automation-engineer for resolution,
+  verified clean before completing the merge myself. Gate: 11 node-ids, 3 full
+  independent runs; 1 flake on `test_drag_drop_conversation_back_to_general_list`
+  (`data-drop-active` hover-highlight timing race), not reproduced standalone or
+  in 3 subsequent clean full-set runs — recorded in `.agents/testing.md` §
+  Unconfirmed. TMS back-written (11 cases; ELITEA-2144 deliberately left
+  `draft`/`manual`, blocked by #1541). New testids: `chat-folder-drop-zone`,
+  `chat-conversation-list-drop-zone` (+`data-drop-active`),
+  `chat-conversation-list-scroll-container`, `chat-move-to-submenu-popover` —
+  EliteaAI/EliteaUI@86f4a564 + @1787ad67 (+rewired @1b35a0a2) on
+  `automation/testids`, confirmed NOT yet on `main`.
+
+- **wave-08 LANDED** — elitea-testing-public#1552, merged (`fb306056`). 7/7
+  automated (2/7 ready-for-automation: ELITEA-2152/2153; 5/7 extend-existing:
+  ELITEA-2150/2151/2154/2155/2156). Quality-flag response: extend-rate 5/7 >
+  0.5 triggered the workflow's own audit requirement; blind-audited 2 of the
+  5 extend-existing conclusions myself against case text + merged diff before
+  trusting the batch (ELITEA-2151's 4-tier panel-order claim, ELITEA-2154's
+  plural-conversations claim onto ELITEA-2152's single-conversation test) —
+  both genuine, sound. Gate: 2 non-reproducing console-404 flakes across the
+  lead's own 3 independent full-set attempts (different tests each time,
+  byte-identical message text), classified as a new flavor of the project's
+  known background-resource noise class (distinct from the confirmed 500
+  bucket, tracked separately) — 3 consecutive clean full-set runs followed
+  before merge. Recorded in `.agents/testing.md` § Unconfirmed. No new
+  testids (surface already covered by wave-06). TMS back-written (7 cases).
+
+- **wave-09 LANDED** — elitea-testing-public#1555, merged (`9fb2d9d9`). 4/8
+  automated (ELITEA-2157/2158 family, ELITEA-2160, ELITEA-2161) + 4/8
+  already-covered (ELITEA-2159→2151, ELITEA-2461→2149+2151 combined — first
+  case needing 2 covering specs, ELITEA-2462→2152 word-for-word TMS-side dup,
+  ELITEA-2460→2148 wave-07). Real product fix: "Duplicate" context-menu item
+  (`ConversationItem.jsx`) was the only item in its 7-item menu array missing
+  a `key` prop, leaving it testid-invisible — added
+  `key: 'chat-conversation-menu-duplicate'` (composes to `-menuitem` at
+  runtime via `DotMenu.jsx`), `EliteaAI/EliteaUI@a53b9d4b`. Reviewer caught a
+  real AFS/diff drift (AFS claimed "no new testids" while the shipped test
+  depended on this one) in round 1, fixed round 2. Quality-flag response:
+  extend-rate 6/8 — blind-audited 2 already-covered conclusions myself
+  (ELITEA-2462 vs 2152, ELITEA-2159 vs 2151), both genuine. Gate: 3rd
+  occurrence of the wave-08 404 console-noise flake (same test both times,
+  byte-identical message) — promoted from suspected to confirmed recurring
+  pattern in `.agents/testing.md`. 3 consecutive clean 11/11 full-set runs
+  before merge. New testid: `chat-conversation-menu-duplicate` — confirmed
+  NOT yet on `main` (composed-testid grep caveat applied — base key, not the
+  rendered `-menuitem` suffix). TMS back-written (8 cases).
+
+- **wave-10 LANDED** — elitea-testing-public#1561, merged (`84651741`). 5/7
+  automated (ELITEA-2172, 2173, 2174, 2175, 2176) + 2/7 already-covered
+  (ELITEA-2169→2167, ELITEA-2171→2168). First case touching Team Project
+  participants. **Workflow's internal gate was cut off mid-run** (0/3 banked,
+  5 units landed as `merged-ungated`, not failed) — resolved by running my
+  own independent gate directly rather than re-poking the cached workflow.
+  During that gate, hit + root-caused 2 real regressions on the PRE-EXISTING
+  ELITEA-2167 test (collateral gate scope, not one of wave-10's own cases):
+  (1) deterministic badge-visibility failure, soft-asserted + linked to
+  already-open #1082 (dispatched fix-only, not done by me directly per the
+  no-code-edits guardrail); (2) a second symptom (dropdown search timeout)
+  root-caused live as the SAME #1082 mechanism — search correctly excluding
+  an already-participant user off a stale landed conversation — fixed by
+  swapping to the stronger `_open_genuinely_blank_conversation()` guard.
+  3 distinct conversation-timing flakes total across 2 full-set gate
+  attempts, none reproducing standalone — new session-level heavy-load noise
+  category recorded in `.agents/testing.md` (6+ continuous hours of chat
+  churn this session). 3 consecutive clean 6/6 full-set runs before merge.
+  No new testids (fully reused from ELITEA-2167/2168). TMS back-written
+  (7 cases).
+
+- **wave-11 LANDED (partial)** — elitea-testing-public#1566, merged (`28aad778`).
+  2/7 automated (ELITEA-2188, ELITEA-2193) + 2/7 already-covered
+  (ELITEA-2192→2172, ELITEA-2194→2168 Step 10, same target as ELITEA-2171) +
+  3/7 genuinely blocked (ELITEA-2189/2190/2191 — no second test-user credential
+  exists on localhost; every conversation in Team project 471 confirmed live
+  via API to share one `author_id`; blocks any future "user B cannot see/edit/
+  delete user A's X" case on any surface — routed to question #1563, NOT
+  guessed around). Defect filed: #1564 (case-text clarification — owner-row
+  delete control is permanently `visibility:hidden`, unreachable via real
+  hit-testing; product is more protective than case text implies).
+  **Workflow's internal gate cut off mid-run** (0/3 banked, `merged-ungated`) —
+  resolved by running my own independent gate directly. During that gate:
+  fixed 2 real regressions on pre-existing tests (collateral scope) — ELITEA-
+  2188's own bare non-polling `is_visible()` dialog assertion, and ELITEA-2168's
+  Setup swapped to the stronger `_open_genuinely_blank_conversation()` guard
+  (same #1082 mechanism as wave-10). **New sanctioned-RED signature**: gate
+  scope's pre-existing ELITEA-2168 test now deterministically fails on a
+  soft-assert linked to already-open #1119 — confirmed identical 3/3 across 5
+  independent gate attempts (1 non-reproducing console-500 blip in between,
+  matching the already-documented noise pattern). Recorded explicitly in
+  `.agents/testing.md`. **Process incident, self-caught:** two parallel
+  fix-only dispatches collided on the shared working tree (both needed
+  different branch checkouts in the same physical clone simultaneously) —
+  recovered via `git stash`, zero work lost; logged as a durable lesson
+  (never parallel-dispatch code-touching agents onto the same clone, even
+  across different branches). New testids: `chat-conversation-make-public-
+  confirm-dialog`/`-confirm-button`/`-cancel-button` —
+  EliteaAI/EliteaUI@7292e18f on `automation/testids`, confirmed NOT yet on
+  `main`. TMS back-written (4 cases; 2189/2190/2191 deliberately left
+  `draft`/`manual`, blocked by #1563).
+
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-07** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w07`,
-  base=`origin/automation/base`, clusters `[2136,2138,2139,2140,2141]` (move-to-menu
-  family) + `[2142,2143,2144,2145]` (drag-drop family) + `[2146,2147,2148]`
-  (scrollable-list + conversation-count states). Task ID `wr8j06zz8`, Run ID
-  `wf_d5abbfc7-d70`.
+- **wave-12** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w12`,
+  base=`origin/automation/base`, cases 2177,2178,2179,2182,2183,2184,2185,2186,
+  2187,2465,2466 (11), clusters `[2177,2178,2465]` (conversation-starters family
+  — 2465 suspected near-dup of 2177 by title) + `[2179,2466]` (send-button
+  visibility, 2466 suspected near-dup of 2179) + `[2182,2183]` (stop-generation)
+  + `[2184,2185,2186,2187]` (regenerate family). Task ID `wiqn68nh8`, Run ID
+  `wf_6c4144bc-7d7`.
