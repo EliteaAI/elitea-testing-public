@@ -285,13 +285,14 @@ class TestCreateToolkitFromConversation:
                 expect(chat.message_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
             # ------------------------------------------------------------------
-            # Step 3 — expand PARTICIPANTS panel via toggle
+            # Step 3 — ensure PARTICIPANTS panel is in collapsed (badge-strip)
+            # state so the section badges are visible
             # ------------------------------------------------------------------
             with allure.step(
-                "Step 3 — Expand PARTICIPANTS panel via toggle button; "
-                "verify panel is expanded"
+                "Step 3 — Collapse PARTICIPANTS panel to badge-strip view; "
+                "verify panel is in collapsed state"
             ):
-                chat.expand_participants_panel_via_toggle(timeout=UI_ELEMENT_TIMEOUT)
+                chat.collapse_participants_panel_via_toggle(timeout=UI_ELEMENT_TIMEOUT)
 
             # ------------------------------------------------------------------
             # Step 4 — verify TOOLKITS section badge is present
