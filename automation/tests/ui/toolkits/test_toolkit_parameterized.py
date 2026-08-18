@@ -40,7 +40,8 @@ UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
 FORM_SAVE_TIMEOUT = 15_000
 AI_RESPONSE_TIMEOUT = 30_000
-TOOLKIT_EXECUTION_TIMEOUT = 60_000
+# Increased from 60s to 120s to handle external API variability (e.g., Confluence)
+TOOLKIT_EXECUTION_TIMEOUT = 120_000
 
 
 def _ts() -> str:
@@ -519,6 +520,16 @@ class TestChatWithToolkit:
 
         with allure.step("Step 5 — Verify response contains expected keywords"):
             last_msg = chat.get_last_message_text()
+
+            # Check for tool execution errors first
+            assert "authorization error" not in last_msg.lower(), (
+                f"Tool execution failed with authorization error. "
+                f"Check credentials in .env.test. Response: {last_msg[:500]}"
+            )
+            assert "error" not in last_msg.lower() or "no results" in last_msg.lower(), (
+                f"Tool execution returned an error. Response: {last_msg[:500]}"
+            )
+
             assert "thinking" not in last_msg.lower()
             assert any(kw in last_msg.lower() for kw in cfg.chat_response_keywords), (
                 f"Expected keywords {cfg.chat_response_keywords} in response: {last_msg[:500]}"
