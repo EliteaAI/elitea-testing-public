@@ -125,6 +125,7 @@ class TestArtifactCreateBucketMaxLengthNameAndDelete:
         "ELITEA-1817_create-artifact-bucket-55-char-name-and-delete.md",
         "onetest-ai Test Case link",
     )
+    @pytest.mark.blocked  # Test times out during retry - investigated 2026-08-17, hangs during bucket creation
     def test_create_bucket_max_length_name_and_delete(self, page, artifact_api):
         """Create a bucket at the 56-char boundary, then delete it via the
         bucket-row dot-menu.

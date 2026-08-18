@@ -81,7 +81,7 @@ class TestAnalyticsAgentDetailView:
         "settings-analytics/ELITEA-2321_clicking-an-agent-row-in-agents-tab-opens-the-agent-detail-view.md",
         "onetest-ai Test Case link",
     )
-    def test_agent_row_click_opens_detail_view(self, page):
+    def test_agent_row_click_opens_detail_view(self, page, analytics_empty_pipeline_id):
         """Clicking an agent/pipeline row swaps the Agents & Pipelines-tab
         table for the detail view; verifies title/back-arrow, the 8-card KPI
         set (order + Errors-color negative branch), the "Runs by Day" chart,

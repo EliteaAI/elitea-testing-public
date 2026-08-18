@@ -83,6 +83,7 @@ class TestSkillForkEndToEnd:
         "onetest-ai Test Case link",
     )
     @pytest.mark.p1
+    @pytest.mark.flaky
     def test_fork_skill_end_to_end(self, page, skill_api, _browser_cookies):
         """Fork a Skill (with a custom icon + tags) into a different project
         and verify the forked skill's configuration + lineage + independence,

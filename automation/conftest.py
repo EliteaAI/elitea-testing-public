@@ -77,6 +77,7 @@ from fixtures.data_fixtures import (
     pipeline_llm_printer_disconnected,
     pipeline_llm_printer_connected,
     clean_project_context,
+    analytics_empty_pipeline_id,
 )
 from fixtures.cleanup_fixtures import (
     cleanup_autotest_pipelines_at_end,
