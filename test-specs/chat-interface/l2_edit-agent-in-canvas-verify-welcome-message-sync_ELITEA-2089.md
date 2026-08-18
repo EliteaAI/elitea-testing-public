@@ -100,7 +100,7 @@ This confirms the canvas is in edit mode for an owned agent.
 
 **Assertion:**
 ```python
-expect(chat_page.participant_settings_button).to_contain_text("Editing...")
+expect(chat_page.chat_participant_settings_button).to_contain_text("Editing...")
 ```
 
 **Testids:** `chat-participant-settings-button`
@@ -209,7 +209,7 @@ expect(page).to_have_url(re.compile(r"/chat$"))
 
 **Assertion:**
 ```python
-expect(chat_page.participant_settings_button).not_to_contain_text("Editing...")
+expect(chat_page.chat_participant_settings_button).not_to_contain_text("Editing...")
 ```
 
 ---
@@ -302,7 +302,7 @@ None — all 14 steps executed against the live system without blockers.
 New `LocatorDescriptor` fields needed:
 ```python
 # In ChatPage
-participant_settings_button = LocatorDescriptor(testid="chat-participant-settings-button")
+chat_participant_settings_button = LocatorDescriptor(testid="chat-participant-settings-button")
 
 # In AgentCanvasPage (after agent-discard-button is added to EliteaUI)
 discard_button = LocatorDescriptor(testid="agent-discard-button")
