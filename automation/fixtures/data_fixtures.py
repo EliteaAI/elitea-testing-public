@@ -2482,3 +2482,43 @@ def clean_project_context(api: APIClient):
         _delete_project_context(api)
     except Exception as exc:
         logger.warning("Failed to delete Project Context in teardown: %s", exc)
+
+
+@pytest.fixture(scope="session")
+def analytics_empty_pipeline_id(pipeline_api: PipelineAPI):
+    """Create an empty pipeline for analytics testing.
+
+    This fixture creates a pipeline with NO tools (empty nodes list) to
+    satisfy the ELITEA-2321 precondition: the Analytics Agent Detail View
+    test needs a pipeline row to verify the "Tools panel empty state" —
+    an empty pipeline renders "No tool data" in the Tools panel while
+    populated pipelines render their tool usage.
+
+    The pipeline name starts with the expected prefix
+    "autotest_test_empty_pipeline" so the test can locate it in the
+    Agents & Pipelines table.
+
+    Yields:
+        int: Numeric pipeline ID
+
+    Example:
+        def test_agent_row_click_opens_detail_view(page, analytics_empty_pipeline_id):
+            analytics_page = AnalyticsPage(page)
+            analytics_page.navigate_to_analytics()
+            # Find row starting with "autotest_test_empty_pipeline"
+            analytics_page.click_pipeline_row("autotest_test_empty_pipeline")
+    """
+    name = "autotest_test_empty_pipeline"
+    description = "Analytics test — empty pipeline for Tools-panel empty-state verification"
+    pipeline = pipeline_api.create_pipeline(name, description, nodes=[])
+    pid = pipeline["id"]
+    logger.info("Created empty analytics pipeline %s (%s)", pid, name)
+
+    yield pid
+
+    # Cleanup: delete pipeline even if test fails
+    try:
+        pipeline_api.delete_pipeline(pid)
+        logger.info("Deleted analytics pipeline %s", pid)
+    except Exception as exc:
+        logger.warning("Failed to delete analytics pipeline %s: %s", pid, exc)

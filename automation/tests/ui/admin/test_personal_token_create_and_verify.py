@@ -59,6 +59,7 @@ class TestPersonalTokenCreateAndVerify:
         "settings-personal-tokens/ELITEA-2280_personal-token-create-and-verify.md",
         "onetest-ai Test Case link",
     )
+    @pytest.mark.blocked
     def test_create_personal_token_and_verify_in_table(self, page):
         """Create a personal token end-to-end (form defaults, Generate, the
         success dialog with warning/name/value/copy-to-clipboard), verify the

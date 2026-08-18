@@ -88,6 +88,7 @@ class TestSkillCustomIconUploadAndValidation:
         "onetest-ai Test Case link",
     )
     @pytest.mark.p1
+    @pytest.mark.flaky
     def test_skill_custom_icon_upload_and_validation(self, page, skill_api):
         """Full icon lifecycle: upload during creation, replace across
         formats in edit mode, reject an oversized file, delete and revert

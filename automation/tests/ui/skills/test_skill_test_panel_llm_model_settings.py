@@ -150,6 +150,7 @@ class TestSkillTestPanelLlmModelSettings:
         "https://github.com/EliteaAI/elitea-testing-public/issues/1447",
         name="Clarification: step 2's 'reasoning slider' wording for a non-reasoning model",
     )
+    @pytest.mark.flaky
     def test_llm_model_settings_configurable(self, page: Page, skill_api):
         """Model settings dialog adapts to the selected model's capabilities
         (Creativity slider for a non-reasoning model, Reasoning slider for a

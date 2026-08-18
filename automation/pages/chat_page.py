@@ -471,6 +471,17 @@ class ChatPage(BasePage):
         ),
     )
 
+    toolkits_create_new_button = LocatorDescriptor(
+        testid="toolkits-create-new-button",
+        description=(
+            "'+ Create New Toolkit' item inside the Toolkits submenu (ELITEA-2083) "
+            "— same generic PlusChatSubmenu.jsx showCreateNew MenuItem as "
+            "agents_create_new_button/mcps_create_new_button, "
+            "templated ${sectionKey}-create-new-button (sectionKey='toolkits'). "
+            "On main ✓ — PlusChatSubmenu.jsx line 103."
+        ),
+    )
+
     # ------------------------------------------------------------------
     # In-message table/diagram edit-canvas entry points (ELITEA-2086/2088)
     # ------------------------------------------------------------------
@@ -867,6 +878,12 @@ class ChatPage(BasePage):
     # "Agents in this conversation" collapsed-participants badge — dynamic
     # per entity section (this case only ever calls ``.format("agents")``).
     PARTICIPANTS_BADGE = '[data-testid="chat-participants-badge-{}"]'
+
+    # Section icon inside the collapsed-participants badge (ELITEA-2083) —
+    # dynamic per entity section.  Source: CollapsedPerticapantsList.jsx
+    # line 235: data-testid={`chat-participants-badge-icon-${entity.section}`}.
+    # On main ✓.
+    PARTICIPANTS_BADGE_ICON = '[data-testid="chat-participants-badge-icon-{}"]'
 
     # The badge's clickable trigger IconButton — static, but only ever
     # resolved scoped under a ``PARTICIPANTS_BADGE`` container (multiple
@@ -3023,6 +3040,26 @@ class ChatPage(BasePage):
         self.mcps_create_new_button.wait_for(state="visible", timeout=timeout)
         self.mcps_create_new_button.click()
         logger.info("Create New MCP canvas opened")
+
+    @action("Open Create New Toolkit canvas")
+    def open_create_new_toolkit_canvas(self, timeout: int = 10000):
+        """Open the in-chat 'Create New Toolkit' canvas (ELITEA-2083).
+
+        Flow: click plus_menu_button -> HOVER toolkits_menuitem (reveals
+        the Toolkits submenu via onMouseEnter, same mechanism as
+        ``open_create_new_mcp_canvas``) -> click toolkits_create_new_button.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Create New Toolkit canvas via plus menu")
+        self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+        self.plus_menu_button.click()
+        self.toolkits_menuitem.wait_for(state="visible", timeout=timeout)
+        self.toolkits_menuitem.hover()
+        self.toolkits_create_new_button.wait_for(state="visible", timeout=timeout)
+        self.toolkits_create_new_button.click()
+        logger.info("Create New Toolkit canvas opened")
 
     @action("Click table edit icon")
     def click_table_edit_icon(self, timeout: int = 10000):

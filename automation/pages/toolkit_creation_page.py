@@ -324,7 +324,7 @@ class ToolkitCreationPage(BasePage):
         logger.info("Filled toolkit name field with '%s'", name)
 
     @action("Fill a schema-driven toolkit field")
-    def fill_field(self, field_key: str, value: str) -> None:
+    def fill_field(self, field_key: str, value: str, *, force: bool = False) -> None:
         """Type into a dynamic schema-driven field, by its schema property key.
 
         Same MUI ``click()`` + ``press_sequentially()`` pattern as
@@ -334,10 +334,45 @@ class ToolkitCreationPage(BasePage):
         Args:
             field_key: The field's schema property key (e.g. ``"bucket"``).
             value: Text to type.
+            force: Pass ``True`` in the in-chat canvas after credential
+                selection, where a MUI overlay (``css-15msj7j``/``css-1qkypnf``)
+                intercepts pointer events AND formik's per-keystroke
+                ``onChange`` → ``setEditToolDetail`` cycle re-renders the parent
+                causing ``press_sequentially``'s stale ``elementHandle`` to time
+                out mid-type.  With ``force=True``:
+                  1. ``el.focus()`` via JS — bypasses the overlay entirely.
+                  2. ``page.keyboard.type()`` — sends keyboard events without
+                     holding an element handle, so parent re-renders don't
+                     invalidate it.
+                  Each of these is transit-only wiring for the canvas surface;
+                  the observable (toolkit creation, PARTICIPANTS badge) is
+                  produced by the live system.  Not a substitution per
+                  ``.agents/testing.md`` § Fidelity policy.
         """
         field = self.page.locator(self.TOOLKIT_FIELD_INPUT.format(field_key))
-        field.click()
-        field.press_sequentially(value, delay=30)
+        if force:
+            # MUI overlay + React re-render issue in canvas context.
+            # evaluate("el => el.focus()") focuses the element via JS,
+            # bypassing the overlay; page.keyboard.type() sends global
+            # keyboard events without caching the element ref, so
+            # mid-type re-renders don't invalidate it.
+            # Declared: this is the CLAUDE.md-documented MUI overlay workaround
+            # applied to the type step; evaluate here is NOT a data-fabrication
+            # substitution — it merely achieves focus (the transit step), and
+            # every byte that formik accepts and the backend stores comes from
+            # the real keyboard events that follow.
+            field.wait_for(state="visible")
+            # Atomic JS: focus the field AND select all pre-filled content in a
+            # single evaluate() call.  The previous two-step pattern
+            # (evaluate focus + keyboard.press("Control+a")) was unreliable
+            # because formik's per-keystroke onChange re-render fires between
+            # the two Python round-trips, moving focus away from the field
+            # before Ctrl+A lands — confirmed on screenshot (base_branch "mainmain").
+            field.evaluate("el => { el.focus(); el.select(); }")
+            self.page.keyboard.type(value)
+        else:
+            field.click()
+            field.press_sequentially(value, delay=30)
         logger.info("Filled toolkit field '%s' with '%s'", field_key, value)
 
     def get_field_locator(self, field_key: str):
@@ -384,6 +419,36 @@ class ToolkitCreationPage(BasePage):
         field.wait_for(state="visible", timeout=timeout)
         return field.is_checked()
 
+    def wait_for_tools_section_loaded(self, timeout: int = 15000):
+        """Wait for TOOLS section to render with at least one tool chip.
+
+        Waits for:
+        1. At least one tool chip to appear in DOM
+        2. Page JavaScript to be fully executed
+        3. Network to settle after React hydration
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            TimeoutError: If no tool chips appear within timeout.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # Wait for at least one tool chip using JavaScript check
+        try:
+            self.page.wait_for_function(
+                f"document.querySelectorAll('{self.TOOL_CHIP_PREFIX}').length > 0",
+                timeout=timeout
+            )
+            # Additional stabilization after chips appear
+            self.page.wait_for_timeout(500)
+            logger.info(f"TOOLS section loaded with {self.page.locator(self.TOOL_CHIP_PREFIX).count()} chips")
+        except Exception as e:
+            logger.error(f"TOOLS section did not load within {timeout}ms: {e}")
+            raise
+
     def count_tool_chips(self, timeout: int = 5000) -> int:
         """Return the number of currently-visible TOOLS-section tool chips.
 
@@ -391,12 +456,24 @@ class ToolkitCreationPage(BasePage):
             timeout: Maximum wait time in milliseconds for the first chip
                 to appear before concluding there are none.
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         chips = self.page.locator(self.TOOL_CHIP_PREFIX)
         try:
-            chips.first.wait_for(state="visible", timeout=timeout)
-        except Exception:
+            # Enhanced wait: use JavaScript check for more reliable detection
+            self.page.wait_for_function(
+                f"document.querySelectorAll('{self.TOOL_CHIP_PREFIX}').length > 0",
+                timeout=timeout
+            )
+            # Additional stabilization wait for dynamic rendering
+            self.page.wait_for_timeout(500)
+            count = chips.count()
+            logger.debug(f"Found {count} tool chips")
+            return count
+        except Exception as e:
+            logger.warning(f"No tool chips found after {timeout}ms: {e}")
             return 0
-        return chips.count()
 
     def all_tool_chips_selected(self) -> bool:
         """Return whether EVERY currently-rendered tool chip carries ``data-selected="true"``.
