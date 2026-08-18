@@ -665,6 +665,10 @@ class TestContextManagementToggle:
                 "blur; verify no invalid state, autosave PUT fires -> 200, "
                 "and the response body echoes the persisted value"
             ):
+                # Ensure the field is focused and wait for any debounce/validation from Step 5
+                profile.max_context_tokens_input.click()
+                page.wait_for_timeout(2000)
+
                 with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
                      page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
                     profile.type_max_context_tokens_raw("64000")
@@ -677,7 +681,13 @@ class TestContextManagementToggle:
                 expect(profile.max_context_tokens_input).not_to_have_attribute(
                     "aria-invalid", "true", timeout=UI_ELEMENT_TIMEOUT
                 )
-                persisted_value = autosave_response.json()["default_context_management"]["max_context_tokens"]
+
+                # Debug: Log the full response body to understand what we're receiving
+                response_body = autosave_response.json()
+                logger.info(f"Step 6 PUT response body: {response_body}")
+                persisted_value = response_body["default_context_management"]["max_context_tokens"]
+                logger.info(f"Step 6 persisted max_context_tokens value: {persisted_value}")
+
                 assert persisted_value == 64000, (
                     f"Autosave PUT response should echo the persisted Max "
                     f"Context Tokens value 64000, got {persisted_value}"
@@ -688,6 +698,10 @@ class TestContextManagementToggle:
                 "(read in Step 3) and blur; verify the autosave PUT returns "
                 "200 (leaves the shared ${TEST_USER} account as found)"
             ):
+                # Wait for Step 6's autosave to fully complete
+                profile.max_context_tokens_input.click()
+                page.wait_for_timeout(2000)
+
                 with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
                      page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
                     profile.type_max_context_tokens_raw(str(original_max_tokens))
