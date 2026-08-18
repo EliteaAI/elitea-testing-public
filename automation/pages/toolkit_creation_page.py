@@ -369,7 +369,22 @@ class ToolkitCreationPage(BasePage):
             field_key: The field's schema property key (e.g.
                 ``"available_by_mcp"``).
         """
-        return self.page.locator(self.TOOLKIT_FIELD_CHECKBOX_INPUT.format(field_key))
+        # TEMP FIX: testid doesn't exist yet — fallback to switch element
+        # Issue #1575 - the MCP field is actually a SWITCH, not a checkbox
+        testid_selector = self.TOOLKIT_FIELD_CHECKBOX_INPUT.format(field_key)
+        if self.page.locator(testid_selector).count() > 0:
+            return self.page.locator(testid_selector)
+
+        # Fallback for available_by_mcp: it's a switch role, not checkbox
+        # Located at bottom of TOOLS accordion with accessible name
+        if field_key == "available_by_mcp":
+            return self.page.get_by_role("switch", name="Enable MCP access for selected tools")
+
+        # For other fields, try generic fallback
+        return self.page.locator(
+            '[data-testid="toolkit-tools-accordion"] '
+            f'label:has-text("{field_key}") input'
+        ).first
 
     def is_checkbox_field_checked(self, field_key: str, timeout: int = 5000) -> bool:
         """Return whether a dynamic schema-driven checkbox field is currently checked.
