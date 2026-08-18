@@ -2,7 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2192/2193/2194,
+a time; last confirmed by: qa-engineer analyst, ELITEA-2089, 2026-08-18
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: qa-engineer analyst, ELITEA-2192/2193/2194,
 2026-08-15 (supersedes nothing below — new section, other sections unchanged;
 previous confirmer: qa-engineer analyst, ELITEA-2189/2190/2191,
 2026-08-15 (supersedes nothing below — new section, other sections unchanged;
@@ -2845,3 +2847,56 @@ confirmer: qa-engineer analyst, ELITEA-2168, 2026-08-15)
   checkmark-icon `sx`-on-raw-svg console warning) re-confirmed on THIS case's
   own conversation-B setup too (not just ELITEA-2167/2168's flows) — filtered
   via the same `_is_known_checkicon_sx_svg_warning_719` idiom.
+
+## Edit owned agent via chat canvas (ELITEA-2089, confirmed 2026-08-18)
+
+Canvas edit flow for an **owned** agent participant. Distinct from ELITEA-2075
+(read-only / public agent canvas) and ELITEA-2166 (create-new-agent canvas).
+
+### How the edit canvas opens
+
+1. Click `chat-participants-badge-button` (participants badge).
+2. Hover over the participant row (`chat-participant-row-application_{agent_id}_{project_id}` —
+   dynamic testid, hover to reveal actions).
+3. Click `chat-participant-edit-view-button` (pencil icon labelled "Edit agent").
+4. URL changes to `/chat?edited_participant_id={agent_id}`.
+5. Edit canvas slides in on the right.
+
+### "Editing..." chip state
+
+- `chat-participant-settings-button` (button in the composer chip) shows the text
+  `"Editing..."` when an owned agent's canvas is open, `"Viewing..."` for public agents.
+- Source: `AgentEditorPanel.jsx:291` — `{canEdit ? 'Editing...' : 'Viewing...'}`.
+- Assert via `expect(...).to_contain_text("Editing...")`.
+
+### Canvas chrome testids (all on main)
+
+| Element | testid |
+|---|---|
+| Close (X) | `agent-canvas-close-button` |
+| Title | `agent-canvas-title` |
+| Subtitle (version) | `agent-canvas-subtitle` |
+| Save | `agent-save-button` |
+| Discard | **MISSING — `agent-discard-button` needs adding** |
+
+### Welcome message field
+
+- `agent-welcome-message-input` (on main ✓) — the textarea.
+- After typing, `agent-save-button` and `agent-discard-button` become enabled.
+- Save fires `PUT /api/v2/elitea_core/application/prompt_lib/{project_id}/{agent_id}` → 201.
+- Success toast: `toast-message` contains `"The agent has been updated"`.
+
+### Known secondary 404 after Save
+
+After a successful save, a second call fires:
+`PUT entity_settings/prompt_lib/{project_id}/undefined/{agent_id}` → 404
+
+The `undefined` in the path is a missing parameter in AgentEditor.jsx (likely `folder_id`
+or `entity_type_id`). Does NOT affect the main save or the test outcome. Exclude
+`entity_settings` from console-error assertions in tests of this flow.
+
+### Sync verification path
+
+After saving and closing the canvas, navigate to `/agents/all/{agent_id}?viewMode=owner`.
+The Welcome message field (`agent-welcome-message-input`) shows the saved value — change
+is synchronised immediately.
