@@ -94,7 +94,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.regression, pytest.mark.toolkits, pytest.mark.new]
+pytestmark = [pytest.mark.ui, pytest.mark.regression, pytest.mark.toolkits]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (ms)
