@@ -256,7 +256,7 @@ class TestChatCanvasEditAgent:
                     lambda r: r.request.method == "PUT"
                     and "/application/prompt_lib/" in r.url
                 ) as save_resp_info:
-                    agent_form.save_button.evaluate("el => el.click()")
+                    agent_form.save_button.click(force=True)
                 save_response = save_resp_info.value
                 assert save_response.status == 201, (
                     f"Agent save PUT should return 201, got "
