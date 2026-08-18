@@ -669,25 +669,20 @@ class TestContextManagementToggle:
                 profile.max_context_tokens_input.click()
                 page.wait_for_timeout(2000)
 
-                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
-                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                # Only wait for PUT - GET is optional (only fires if there was prior saved state)
+                with page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
                     profile.type_max_context_tokens_raw("64000")
                 autosave_response = put_info.value
                 assert autosave_response.status == 200, (
                     f"Setting Max Context Tokens to 64000 (valid) should "
                     f"autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got {autosave_response.status}"
                 )
-                _ = get_info.value
                 expect(profile.max_context_tokens_input).not_to_have_attribute(
                     "aria-invalid", "true", timeout=UI_ELEMENT_TIMEOUT
                 )
 
-                # Debug: Log the full response body to understand what we're receiving
                 response_body = autosave_response.json()
-                logger.info(f"Step 6 PUT response body: {response_body}")
                 persisted_value = response_body["default_context_management"]["max_context_tokens"]
-                logger.info(f"Step 6 persisted max_context_tokens value: {persisted_value}")
-
                 assert persisted_value == 64000, (
                     f"Autosave PUT response should echo the persisted Max "
                     f"Context Tokens value 64000, got {persisted_value}"
@@ -702,8 +697,8 @@ class TestContextManagementToggle:
                 profile.max_context_tokens_input.click()
                 page.wait_for_timeout(2000)
 
-                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
-                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                # Only wait for PUT - GET is optional (only fires if there was prior saved state)
+                with page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
                     profile.type_max_context_tokens_raw(str(original_max_tokens))
                 restore_response = put_info.value
                 assert restore_response.status == 200, (
@@ -711,7 +706,6 @@ class TestContextManagementToggle:
                     f"should autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got "
                     f"{restore_response.status}"
                 )
-                _ = get_info.value
         finally:
             # Safety net (not a case step — no allure.step): if a mid-flow
             # assertion failed before Step 7 restored the value, restore it
