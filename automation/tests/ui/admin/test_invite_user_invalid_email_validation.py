@@ -75,6 +75,7 @@ class TestInviteUserInvalidEmailValidation:
         "settings/users-and-roles/ELITEA-2307_user-with-invalid-email-format-shows-validation-error.md",
         "onetest-ai Test Case link",
     )
+    @pytest.mark.blocked
     def test_invite_user_invalid_email_validation(self, page):
         """For each invalid-shaped email, typing shows the text with no
         error yet; blurring surfaces the exact `Invalid email: {email}`

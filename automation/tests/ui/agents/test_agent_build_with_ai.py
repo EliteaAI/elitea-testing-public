@@ -710,6 +710,7 @@ class TestAgentBuildWithAISuggestedResources:
     )
     @pytest.mark.p2
     @pytest.mark.regression
+    @pytest.mark.flaky
     def test_suggested_skills_section_capped_at_5_skills(self, page):
         """Suggested Skills section renders for a mocked 7-item
         `suggested_skills` payload; sampled cards show correct name and

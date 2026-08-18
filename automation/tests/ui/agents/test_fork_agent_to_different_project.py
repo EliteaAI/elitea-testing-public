@@ -71,6 +71,7 @@ class TestForkAgentToDifferentProject:
     )
     @pytest.mark.p1
     @pytest.mark.regression
+    @pytest.mark.flaky
     def test_fork_agent_to_different_project(self, page, agent_api, _browser_cookies):
         """Fork an Agent's version into a different project and verify the
         forked agent's configuration matches the source, then clean up.

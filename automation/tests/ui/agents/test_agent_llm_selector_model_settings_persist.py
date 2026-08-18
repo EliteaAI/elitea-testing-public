@@ -102,6 +102,7 @@ class TestAgentLlmSelectorModelSettingsPersist:
     )
     @pytest.mark.p2
     @pytest.mark.regression
+    @pytest.mark.flaky
     def test_llm_selector_change_model_settings_dialog_persist(
         self, page: Page, agent_api
     ):

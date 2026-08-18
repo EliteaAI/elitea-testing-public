@@ -96,8 +96,8 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------
     git_hub_token: str = ""
     github_base_url: str = "https://api.github.com"
-    git_repo: str = "EliteaAI/elitea-testing"
-    github_repo: str = "EliteaAI/elitea-testing"
+    git_repo: str = "EliteaAI/elitea-testing-public"
+    github_repo: str = "EliteaAI/elitea-testing-public"
 
     # ------------------------------------------------------------------
     # MCP (ELITEA-1954)
