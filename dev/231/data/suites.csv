@@ -1,0 +1,194 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Tue Aug 18 04:33:19 UTC 2026","Tue Aug 18 04:33:33 UTC 2026","14215","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAIGenerationFailureRetry","","","test_generation_failure_shows_error_and_allows_retry","Generation failure surfaces an error, preserves the prompt, and a
+        retry (via the same Generate button) succeeds once the service
+        recovers."
+"passed","Tue Aug 18 04:35:41 UTC 2026","Tue Aug 18 04:36:31 UTC 2026","49667","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAISelectedResourcesAttached","","","test_zero_selection_across_categories_attaches_nothing","Generating a draft with suggested resources rendered across
+        multiple categories simultaneously (Toolkit, MCP, Pipeline, Agent)
+        and clicking ""Create Agent"" with literally zero boxes checked
+        creates the agent via the base-create POST alone — no toolkit/
+        agent-relation/pipeline-relation/mcp-relation call ever fires, for
+        any category — and the created agent's Tools section and Skills
+        counter both confirm zero attachments across every category
+        (ELITEA-1908). Distinct from this class's per-item selective
+        coverage (ELITEA-1909/1911, which always select at least one item)
+        and from ELITEA-1914's ungated no-resources-rendered-at-all path —
+        this is the first test to assert a COMBINED all-category zero with
+        resources genuinely on offer."
+"broken","Tue Aug 18 04:33:24 UTC 2026","Tue Aug 18 04:33:53 UTC 2026","28633","tests.ui.admin","test_analytics_agents_pipelines_tab","TestAnalyticsAgentsPipelinesTab","","","test_agents_pipelines_tab_charts_and_activity_table","Agents & Pipelines tab renders its bar chart, area chart, and
+        Activity table (header + rows + pagination + row-click navigation)
+        against the ""Private"" fixture project, plus the 9-column
+        non-personal-project header branch via a project switch."
+"passed","Tue Aug 18 04:32:22 UTC 2026","Tue Aug 18 04:32:38 UTC 2026","16079","tests.ui.pipelines","test_pipeline_add_node_menu","","","","test_add_node_menu_lists_types_adds_node_and_dismisses","Add Node menu lists exactly 11 types in order; LLM selection adds a
+    node with config visible; Escape dismisses without adding a node."
+"passed","Tue Aug 18 04:35:07 UTC 2026","Tue Aug 18 04:35:34 UTC 2026","27406","tests.ui.pipelines","test_pipeline_advanced","TestMultiNodeTopology","","","test_save_multi_node_pipeline","PIPE-030b: Build a multi-node pipeline, save, and verify persistence."
+"failed","Tue Aug 18 04:34:19 UTC 2026","Tue Aug 18 04:34:53 UTC 2026","34068","tests.ui.toolkits","test_credential_duplicate_mismatch_validation","TestCredentialDuplicateMismatchValidation","","","test_credential_duplicate_and_empty_required_field_validation","Duplicate elitea_title is rejected with the exact backend message;
+        empty Display Name blocks Save; empty Access Token does NOT (known defect #1004)."
+"passed","Tue Aug 18 04:33:40 UTC 2026","Tue Aug 18 04:33:52 UTC 2026","12340","tests.ui.pipelines","test_pipeline_advanced","TestDiscardChanges","","","test_save_discard_button_states_toggle_on_edit_and_discard","ELITEA-2048: Save/Discard are disabled on a clean pipeline, become
+        enabled once the name is edited, and return to disabled after Discard
+        reverts the edit."
+"passed","Tue Aug 18 04:34:06 UTC 2026","Tue Aug 18 04:34:18 UTC 2026","12693","tests.ui.toolkits","test_credential_discard_changes","TestCredentialDiscardChanges","","","test_credential_discard_changes_reverts_display_name","Editing the Display Name and confirming Discard reverts the field."
+"passed","Tue Aug 18 04:32:47 UTC 2026","Tue Aug 18 04:34:02 UTC 2026","74769","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'new-bucket$'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Tue Aug 18 04:34:02 UTC 2026","Tue Aug 18 04:35:31 UTC 2026","88358","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'bucket_one'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Tue Aug 18 04:33:25 UTC 2026","Tue Aug 18 04:33:38 UTC 2026","12865","tests.ui.pipelines","test_pipeline_advanced","TestDiscardChanges","","","test_discard_reverts_name_change","PIPE-022: Edit name, click Discard, and verify original name restored."
+"broken","Tue Aug 18 04:31:50 UTC 2026","Tue Aug 18 04:31:50 UTC 2026","0","tests.ui.admin","test_analytics_agent_detail_view","TestAnalyticsAgentDetailView","","","test_agent_row_click_opens_detail_view","Clicking an agent/pipeline row swaps the Agents & Pipelines-tab
+        table for the detail view; verifies title/back-arrow, the 8-card KPI
+        set (order + Errors-color negative branch), the ""Runs by Day"" chart,
+        the Users/Tools panels (populated + empty-state Tools branch via a
+        second row), and back navigation back to the table with no new
+        network request."
+"passed","Tue Aug 18 04:34:43 UTC 2026","Tue Aug 18 04:35:04 UTC 2026","20593","tests.ui.pipelines","test_pipeline_advanced","TestMultiNodeTopology","","","test_three_node_chain","PIPE-030: Build a three-node chain: LLM → Code → END."
+"passed","Tue Aug 18 04:35:31 UTC 2026","Tue Aug 18 04:36:14 UTC 2026","43932","tests.ui.toolkits","test_credential_id_auto_generation","TestCredentialIdAutoGeneration","","","test_credential_id_auto_generation_and_url_stability","The ID field auto-generates from the Display Name and the URL id is stable across rename."
+"passed","Tue Aug 18 04:33:53 UTC 2026","Tue Aug 18 04:34:12 UTC 2026","19178","tests.ui.pipelines","test_pipeline_advanced","TestMakeEntrypoint","","","test_make_node_entrypoint","PIPE-024: Set a node as entrypoint via the three-dot menu."
+"passed","Tue Aug 18 04:34:20 UTC 2026","Tue Aug 18 04:35:19 UTC 2026","59472","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantHistory","","","test_history_restore_and_continue","User can restore a previous session and continue messaging.
+
+        Covers: 6.1.1, 6.2.1, 6.2.3
+        "
+"passed","Tue Aug 18 04:32:06 UTC 2026","Tue Aug 18 04:32:25 UTC 2026","18871","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_main_content_visible","The main content area should render after navigation."
+"broken","Tue Aug 18 04:33:45 UTC 2026","Tue Aug 18 04:34:04 UTC 2026","19186","tests.ui.toolkits","test_credential_create_private_from_toolkit_dropdown","TestCredentialCreatePrivateFromToolkitDropdown","","","test_create_private_credential_from_toolkit_dropdown","Create a private GitHub credential via a toolkit's Configuration dropdown
+        and verify it is linked, selectable, and scoped private to its creator."
+"passed","Tue Aug 18 04:33:42 UTC 2026","Tue Aug 18 04:34:20 UTC 2026","37421","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantNewSession","","","test_new_chat_creates_fresh_session","New Chat button starts a fresh support session.
+
+        Covers: 3.5.1, 3.5.2
+
+        Also covers ELITEA-1799's Expected Final State clause 3 (""previous
+        session preserved in history, not lost"") via a soft assertion —
+        known defect #607, stays red once the account's active conversation
+        exceeds the ~100-message-group threshold.
+        "
+"passed","Tue Aug 18 04:33:07 UTC 2026","Tue Aug 18 04:33:40 UTC 2026","33587","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantMessaging","","","test_send_message_and_receive_response","User can send a message and receive AI response.
+
+        Covers: 3.2.1-3.2.7, 3.2.9
+        "
+"passed","Tue Aug 18 04:32:07 UTC 2026","Tue Aug 18 04:33:53 UTC 2026","105650","tests.ui.skills","test_agent_instructions_tilde_mention","TestTildeMentionListsOnlyAttachedSkills","","","test_tilde_mention_in_instructions_lists_only_attached_skills","Attach 2 of 3 distinct Skills to an Agent, then verify the ""~""
+        mention panel in the Instructions field is scoped to only the
+        attached 2 — the 3rd (unattached) Skill never appears, including
+        on a second, independent ""~"" trigger after clearing the field.
+
+        Steps (AFS test-specs/skills/l3_tilde-mention-lists-only-attached-skills_ELITEA-1791.md):
+        1. Confirm/create 3 distinct Skills (reuse a pre-existing one as
+           Skill A, looked up via API rather than assumed by name — same
+           environment-robustness rule as ELITEA-1790's cleanup note —
+           falling back to creating it fresh if none exists), create an
+           Agent, attach Skill A + Skill B, leave Skill C unattached.
+        2. Click the Instructions field — becomes focused/editable.
+        3-4. Type ""~"" — ""Mention skill"" panel appears, listing exactly
+           Skill A and Skill B; Skill C is asserted absent by exact-name
+           locator (not merely a row count).
+        5. Select Skill A — inserts ""~<skill-name>"" as plain text.
+        6. Select-all + delete, retype ""~"" — same 2-item scoped list
+           reappears; Skill C still absent (re-evaluated live).
+        "
+"failed","Tue Aug 18 04:35:07 UTC 2026","Tue Aug 18 04:35:41 UTC 2026","33957","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAISelectedResourcesAttached","","","test_approve_with_no_resources_creates_agent_and_appears_in_list","Approving a plain draft — no suggested resources rendered at all —
+        creates the agent via the base-create POST only (no toolkit/agent/
+        skill relation calls), auto-navigates to the created agent's detail
+        page with the draft's content carried over and the Skills counter
+        reading zero, and the new agent is visible back on the Agents list.
+        Extends this class's create+navigate coverage (ELITEA-1909/1911) to
+        the ungated, no-resource-selection path (ELITEA-1914) — a distinct
+        network contract that click_approve_and_wait_for_creation()/
+        click_approve_and_wait_for_skill_creation() would hang on, since
+        neither association call ever fires for a plain draft (see
+        GenerateAgentModalPage.click_approve_and_wait_for_agent_created())."
+"passed","Tue Aug 18 04:34:10 UTC 2026","Tue Aug 18 04:34:31 UTC 2026","20665","tests.ui.admin","test_analytics_user_detail_view","TestAnalyticsUserDetailView","","","test_users_tab_row_click_opens_detail_view","Clicking a user row (non-null email, errors > 0) swaps the
+        Users-tab table for the detail view; verifies title/back-arrow, the
+        10-card KPI set (order + Errors-color contract, both branches), the
+        Daily Activity chart + hover tooltip, the three summary panels, and
+        back navigation back to the table with no new network request."
+"passed","Tue Aug 18 04:34:49 UTC 2026","Tue Aug 18 04:35:13 UTC 2026","24773","tests.ui.admin","test_guardrails_cleanup_only","","","","test_cleanup_before","Test cleanup BEFORE tests - removes any leftover blocked items."
+"passed","Tue Aug 18 04:36:15 UTC 2026","Tue Aug 18 04:36:57 UTC 2026","42659","tests.ui.toolkits","test_credential_pin_unpin","TestCredentialPinUnpin","","","test_credential_pin_moves_to_top_and_unpin_reverts","Pinning a credential moves it to the top of the list; unpinning reverts it."
+"passed","Tue Aug 18 04:33:56 UTC 2026","Tue Aug 18 04:34:10 UTC 2026","13880","tests.ui.admin","test_analytics_default_load","TestAnalyticsDefaultLoad","","","test_analytics_page_default_load","Header, date filter bar (4 presets, ""Last 24h"" active by default,
+        From/To 1 day apart), 7-tab bar with Overview selected, and the page
+        settling out of its loading state all render as specified."
+"passed","Tue Aug 18 04:34:53 UTC 2026","Tue Aug 18 04:35:30 UTC 2026","36760","tests.ui.toolkits","test_credential_edit_rename","TestCredentialEditRename","","","test_edit_credential_rename_persists_after_reload","Renaming a credential persists after reload; numeric URL id stays stable, ID field stays disabled."
+"passed","Tue Aug 18 04:32:08 UTC 2026","Tue Aug 18 04:32:30 UTC 2026","21098","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantLauncher","","","test_launcher_visible_and_opens_widget","Launcher is visible and opens Support Assistant widget.
+
+        Covers: 2.1.1, 2.2.1, 2.2.2
+        "
+"passed","Tue Aug 18 04:33:14 UTC 2026","Tue Aug 18 04:34:13 UTC 2026","59640","tests.ui.chat","test_agent_hub_start_conversation_no_starters","TestAgentHubStartConversationNoStarters","","","test_agent_hub_start_conversation_no_starters","A no-starters/no-welcome-message Catalog agent can be opened, chatted
+        with via ""Start Chat"", sent a message, and produces a visible reply —
+        with the sidebar and Context Budget counter reflecting the new
+        conversation."
+"passed","Tue Aug 18 04:31:48 UTC 2026","Tue Aug 18 04:32:46 UTC 2026","57410","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: '1bucket'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Tue Aug 18 04:31:53 UTC 2026","Tue Aug 18 04:32:06 UTC 2026","13089","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_page_loads","The home page should load without errors."
+"failed","Tue Aug 18 04:33:46 UTC 2026","Tue Aug 18 04:33:55 UTC 2026","8978","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAISuggestedResources","","","test_suggested_skills_section_capped_at_5_skills","Suggested Skills section renders for a mocked 7-item
+        `suggested_skills` payload; sampled cards show correct name and
+        description and are unselected by default. The card-count cap
+        (""never more than 5"", the case's stated Pass criterion) is asserted
+        via `expect.soft()` — it is a live-verified, deterministic product
+        defect (all 7 items render, not capped at 5), filed as
+        EliteaAI/elitea-testing-public#1317. See AFS:
+        test-specs/agents/lextend_build-with-ai-suggested-skills-section-shown-with-up-to-5-skills_ELITEA-1910.md
+        "
+"passed","Tue Aug 18 04:34:14 UTC 2026","Tue Aug 18 04:34:29 UTC 2026","14847","tests.ui.pipelines","test_pipeline_advanced","TestActionsMenu","","","test_three_dot_menu_lists_items","PIPE-028: The three-dot menu should contain expected items."
+"passed","Tue Aug 18 04:32:55 UTC 2026","Tue Aug 18 04:33:04 UTC 2026","8897","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_yaml_content_reflects_pipeline","PIPE-020: YAML content should reflect the pipeline structure."
+"passed","Tue Aug 18 04:34:30 UTC 2026","Tue Aug 18 04:34:42 UTC 2026","12041","tests.ui.pipelines","test_pipeline_advanced","TestActionsMenu","","","test_export_pipeline_if_available","PIPE-029: Export pipeline via menu (skips if not available)."
+"passed","Tue Aug 18 04:36:31 UTC 2026","Tue Aug 18 04:36:56 UTC 2026","24648","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAIDraftFieldPopulation","","","test_draft_fields_prepopulated_and_editable","Submitting a natural-language description populates all 5 review-
+        form fields (Name, Description, Instructions, Welcome Message, and
+        the Chat-starter inputs) with the generated draft's values, and every
+        one of those fields remains editable before ""Create Agent"" is
+        clicked."
+"passed","Tue Aug 18 04:35:41 UTC 2026","Tue Aug 18 04:36:03 UTC 2026","21711","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantAttachments","","","test_attach_button_present_and_opens_picker","Attach button opens file picker dialog.
+
+        Covers: 7.1.1, 7.1.2
+        "
+"passed","Tue Aug 18 04:35:21 UTC 2026","Tue Aug 18 04:35:41 UTC 2026","19797","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantViewModes","","","test_expand_collapse_fullview","Widget can expand to full view and collapse back.
+
+        Covers: 2.3.1, 2.3.2, 2.3.3
+        "
+"passed","Tue Aug 18 04:34:31 UTC 2026","Tue Aug 18 04:34:48 UTC 2026","17017","tests.ui.admin","test_analytics_users_activity_table","TestAnalyticsUsersActivityTable","","","test_users_tab_activity_table_columns_and_pagination","Users tab renders its ""User Activity"" panel with a matching user
+        count, a working search-by-email input, the correct 9-column table
+        (order + Errors-color contract), and single-page pagination controls."
+"passed","Tue Aug 18 04:32:26 UTC 2026","Tue Aug 18 04:32:46 UTC 2026","19583","tests.ui.toolkits","test_credential_create","TestCredentialCreate","","","test_create_github_credential_via_sidebar_button","Create a GitHub credential with Token auth via the sidebar ""+"" button
+        and verify it appears in the list with the correct name and type badge."
+"passed","Tue Aug 18 04:32:39 UTC 2026","Tue Aug 18 04:32:50 UTC 2026","11539","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_yaml_view_toggle","PIPE-019: Switch to YAML view and verify the editor is visible."
+"passed","Tue Aug 18 04:35:37 UTC 2026","Tue Aug 18 04:36:24 UTC 2026","47515","tests.ui.pipelines","test_pipeline_agent_node_integration","","","","test_agent_node_fresh_attach","Fresh-attach an Agent, add + configure an Agent node, save, verify reload persistence."
+"passed","Tue Aug 18 04:33:33 UTC 2026","Tue Aug 18 04:33:46 UTC 2026","13004","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAISuggestedResources","","","test_generated_draft_includes_suggested_resources_section","Submitting a description implying resource use surfaces a
+        Suggested Resources section in the review form: relevant
+        Toolkit/Agent/Pipeline/MCP suggestions are shown (each with a name,
+        and a description when the underlying resource has one), categories
+        with no suggestions render no section at all, and no suggestion is
+        pre-selected."
+"failed","Tue Aug 18 04:34:04 UTC 2026","Tue Aug 18 04:34:31 UTC 2026","27166","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAISelectedResourcesAttached","","","test_selected_suggested_resources_attached_and_non_selected_absent","Selecting one suggested Toolkit and one suggested Agent (leaving a
+        second suggested Agent unchecked) and clicking ""Create Agent""
+        attaches exactly the selected resources to the created agent's Tools
+        section; the deliberately-unselected Agent is absent."
+"broken","Tue Aug 18 04:34:14 UTC 2026","Tue Aug 18 04:36:11 UTC 2026","117393","tests.ui.chat","test_agent_hub_start_conversation_with_starters","TestAgentHubStartConversationWithStarters","","","test_agent_hub_start_conversation_with_starters","A starters-bearing Catalog agent can be opened, its starters used to
+        populate and send a message via ""Start Chat"", and the send produces a
+        visible ""Thought for N secs"" processing indicator with tool-call chips
+        plus a reply."
+"passed","Tue Aug 18 04:32:17 UTC 2026","Tue Aug 18 04:33:00 UTC 2026","43440","tests.ui.agents","test_agent_add_variables_persist_after_reload","TestAgentAddVariablesPersistAfterReload","","","test_add_two_variables_and_verify_they_persist_after_reload","Adding two {{variable}} references to Instructions, entering their
+        values, and saving persists both name+value pairs after a
+        full-navigation reload — asserted via both the DOM and the Save PUT
+        response body."
+"passed","Tue Aug 18 04:32:11 UTC 2026","Tue Aug 18 04:33:14 UTC 2026","62032","tests.ui.chat","test_agent_hub_participant_readonly_canvas_llm_override","TestAgentHubParticipantReadonlyCanvasLlmOverride","","","test_agent_hub_participant_readonly_canvas_llm_override","Catalog agent's in-chat settings canvas allows ONLY LLM model/settings
+        changes; Instructions/Tools/Save stay read-only; the LLM override is
+        conversation-local (never PUT to the agent) and persists across
+        closing/reopening the canvas."
+"passed","Tue Aug 18 04:33:01 UTC 2026","Tue Aug 18 04:33:16 UTC 2026","15254","tests.ui.agents","test_agent_back_navigation","","","","test_back_button_from_agent_detail_returns_to_intact_agents_list","Back button on agent detail page returns to Agents dashboard with
+    the list intact (ELITEA-1869).
+
+    Uses agent_id fixture to ensure at least one agent exists.
+    "
+"passed","Tue Aug 18 04:33:05 UTC 2026","Tue Aug 18 04:33:23 UTC 2026","18412","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_flow_yaml_round_trip","PIPE-021: Toggle Flow → YAML → Flow preserves the canvas."
+"passed","Tue Aug 18 04:32:30 UTC 2026","Tue Aug 18 04:33:06 UTC 2026","35642","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantLauncher","","","test_widget_state_persists_after_close_reopen","Conversation state persists when closing and reopening widget.
+
+        Covers: 2.2.3
+        "
+"passed","Tue Aug 18 04:35:19 UTC 2026","Tue Aug 18 04:35:43 UTC 2026","24511","tests.ui.admin","test_guardrails_cleanup_only","","","","test_cleanup_after","Test cleanup AFTER tests - removes any blocked items added during tests."
+"failed","Tue Aug 18 04:34:37 UTC 2026","Tue Aug 18 04:35:05 UTC 2026","27419","tests.ui.agents","test_agent_build_with_ai","TestAgentBuildWithAISelectedResourcesAttached","","","test_selected_suggested_skill_attached_and_non_selected_absent","Selecting one suggested Skill (leaving a second suggested Skill
+        unchecked) and clicking ""Create Agent"" attaches exactly the selected
+        Skill to the created agent's SKILLS section; the deliberately-
+        unselected Skill is absent. Extends this class's Toolkit/nested-Agent
+        coverage (ELITEA-1909) to the Skill suggested-resource type
+        (ELITEA-1911) — a genuinely distinct network contract
+        (GET+PATCH .../skill/prompt_lib/...) and a distinct accordion
+        (agent-skills-section, not agent-toolkits-section)."
