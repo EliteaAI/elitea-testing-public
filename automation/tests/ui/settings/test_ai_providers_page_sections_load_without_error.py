@@ -21,12 +21,13 @@ those tabs belong to a different page entirely (Settings -> General ->
 "AI Configurations" accordion, labelled "Basic"/"OpenAI Template" there, not
 "AI Configuration"/"OpenAI Template") — see AFS Coverage Map row 12.
 
-Vector Storage and AI Credentials currently have zero configured items in
-the shared `${TEST_USER}` project — both correctly render nothing at all
-(`ConfigurationSection.jsx` returns `null` for an empty section) rather than
-an empty-state placeholder. This is verified as correct empty-state
-behaviour (API 200 + zero items), not treated as a defect or a load failure,
-per the AFS's Reverse-masking guard.
+Vector Storage currently has zero configured items in the shared
+`${TEST_USER}` project and correctly renders nothing at all
+(`ConfigurationSection.jsx` returns `null` for an empty section). AI
+Credentials may be populated (if so, the section renders and is verified to
+have >=1 card) or empty (section hidden). Both states are valid — empty
+sections are verified as correct empty-state behaviour (API 200 + zero items),
+not treated as a defect or a load failure, per the AFS's Reverse-masking guard.
 
 Markers:
     - ui: requires browser
@@ -62,9 +63,9 @@ class TestAIProvidersPageSections:
     def test_ai_providers_page_sections_load_without_error(self, page):
         """Every populated section (LLMs/Embedding/Image Gen/ASR/TTS) renders with
         its default selector(s) and >=1 configuration card, in the expected
-        order; the two zero-config sections (Vector Storage/AI Credentials)
-        are correctly absent, not silently broken; zero console errors, zero
-        non-2xx across every configurations endpoint."""
+        order; Vector Storage (zero-config) is correctly absent; AI Credentials
+        is either rendered with >=1 card OR correctly absent if empty; zero
+        console errors, zero non-2xx across every configurations endpoint."""
         ai_providers_page = AIProvidersPage(page)
         console_errors = ai_providers_page.capture_console_errors()
         configurations_requests = ai_providers_page.capture_requests_matching(CONFIGURATIONS_URL_SUBSTRING)
@@ -199,11 +200,21 @@ class TestAIProvidersPageSections:
                 )
 
             with allure.step(
-                'Step 10 — Verify no "AI Credentials" accordion header is rendered '
-                "(the combined configurations request's 200 status is asserted "
-                "below, across every configurations endpoint fired during this test)"
+                'Step 10 — Verify "AI Credentials" section state '
+                "(either rendered with >=1 configuration OR correctly absent "
+                "if this project has zero AI credentials configured)"
             ):
-                expect(ai_providers_page.ai_credentials_section_header).to_have_count(0)
+                ai_credentials_count = ai_providers_page.ai_credentials_section_header.count()
+                if ai_credentials_count > 0:
+                    # Section is rendered - verify it has content
+                    count_before = ai_providers_page.get_configuration_card_count()
+                    ai_providers_page.expand_section(ai_providers_page.ai_credentials_section_header)
+                    count_after = ai_providers_page.get_configuration_card_count()
+                    assert count_after > count_before, (
+                        f"Expected the visible configuration card count to increase "
+                        f"after expanding AI Credentials, got {count_before} -> {count_after}"
+                    )
+                # If count is 0, section is correctly hidden (empty state)
 
             # Step 11 is decomposed across steps 4/5/7/8/9 above (each
             # populated section's own >=1-card check) — no separate block.
