@@ -794,18 +794,31 @@ class ChatPage(BasePage):
         )
     )
 
-    # Chat-area conversation-starter tile (NewConversationView.jsx's call site
-    # onto the shared EllipsisTextWithTooltip, ELITEA-2369 — the new-
-    # conversation landing view this case's flow actually renders through,
-    # confirmed via live exploration; NOT ChatConversationStarters.jsx, a
-    # different call site consumed only by the embedded ChatBox.jsx surface)
+    # Chat-area conversation-starter tile onto the shared EllipsisTextWithTooltip
     # — static testid, one per rendered tile; select a specific tile via
-    # .filter(has_text=...) (same idiom as PARTICIPANT_ROW_PREFIX above). Only
-    # this call site is wired (a caller-supplied `testId` prop, per the shared-
-    # component testid discipline) — ChatConversationStarters.jsx's own call
-    # site of the same shared component is intentionally left unwired (out of
-    # this case's executed code path, canon ruling #511).
+    # .filter(has_text=...) (same idiom as PARTICIPANT_ROW_PREFIX above). TWO
+    # wired call sites share this literal: NewConversationView.jsx (ELITEA-2369,
+    # the new-conversation landing view) and ChatConversationStarters.jsx
+    # (ELITEA-1886, the embedded ChatBox.jsx surface — mounted both on the
+    # agent-detail embedded chat AND on an existing /chat/{id} conversation
+    # after an agent participant is added mid-conversation, ELITEA-2177/2178/
+    # 2465, confirmed live — corrects this comment's earlier claim that the
+    # second call site was intentionally left unwired).
     CHAT_STARTER_TILE = '[data-testid="chat-conversation-starter-tile"]'
+
+    # Starter tile's own Tooltip popper content (ELITEA-2177/2465) — added
+    # this dispatch via a new `slotProps.tooltip` wire on the shared
+    # EllipsisTextWithTooltip's MUI Tooltip (EliteaAI/EliteaUI@c7e7f88e on
+    # automation/testids). Conditional on genuine visual truncation
+    # (`clientWidth < scrollWidth`, confirmed via source) — only mounts on
+    # hover of a tile whose text actually overflows; a short/non-truncated
+    # starter correctly shows none. A raw `[role="tooltip"]` selector is
+    # NOT a sanctioned #579 exception here (our own MUI usage, not a
+    # third-party widget) — this is the compliant testid-only replacement.
+    chat_starter_tile_tooltip_content = LocatorDescriptor(
+        testid="chat-conversation-starter-tile-tooltip",
+        description="Starter tile's hover tooltip popper content — full (untruncated) starter text.",
+    )
 
     # ------------------------------------------------------------------
     # HITL sensitive-action authorization card — direct toolkit call, no
@@ -891,6 +904,23 @@ class ChatPage(BasePage):
             "shown alongside switch_participant_button and "
             "chat_version_selector_trigger inside the same ButtonGroup. "
             "Opens the agent/pipeline settings canvas in-place."
+        ),
+    )
+
+    # Composer's "X" / remove-participant icon (ELITEA-2465) — AgentEditorPanel.jsx's
+    # standalone IconButton (aria-label="switch to model", tooltip "Switch to
+    # model"), sibling control OUTSIDE the ButtonGroup above. Two render
+    # branches (collapsed loading-skeleton view + full view) both carry this
+    # testid — same element identity either way. Added this dispatch
+    # (EliteaAI/EliteaUI@c1905706 on automation/testids); was a genuine gap,
+    # never previously wired.
+    chat_switch_to_model_button = LocatorDescriptor(
+        testid="chat-switch-to-model-button",
+        description=(
+            "Composer's 'Switch to model' icon button (CloseIcon/'X'), shown "
+            "alongside switch_participant_button once an agent/pipeline is "
+            "an active chat participant. Clicking it detaches the "
+            "participant and reverts the composer to the default LLM."
         ),
     )
 
@@ -2374,7 +2404,21 @@ class ChatPage(BasePage):
         starter_text = (tile.first.text_content() or "").strip()
         tile.first.click()
         return starter_text
-        
+
+    def hover_chat_starter_tile(self, match_text: str, timeout: int = 10000) -> str:
+        """Hover (without clicking) the chat-area starter tile whose text
+        CONTAINS *match_text* (ELITEA-2177/2465) — same tile-resolution
+        idiom as :meth:`click_chat_starter_tile`, but stops at the hover so
+        the CALLER can assert ``chat_starter_tile_tooltip_content`` (only
+        mounts on genuine visual truncation — AFS § Test Data). Returns the
+        tile's own full (stripped) text, same rationale as the click sibling.
+        """
+        tile = self.page.locator(self.CHAT_STARTER_TILE).filter(has_text=match_text)
+        tile.first.wait_for(state="visible", timeout=timeout)
+        starter_text = (tile.first.text_content() or "").strip()
+        tile.first.hover()
+        return starter_text
+
     @action("Clear chat history")
     def clear_chat_history(self):
         """Click the Clear chat history button."""
@@ -6354,6 +6398,28 @@ class ChatPage(BasePage):
         except Exception:
             return False
 
+    def wait_for_participants_badge_absent(self, section: str = "agents", timeout: int = 10000) -> None:
+        """Block until the participants badge for *section* actually
+        DISAPPEARS from the DOM (ELITEA-2178) — the genuine wait-for-a-
+        negative-transition counterpart to
+        :meth:`is_participants_badge_visible`.
+
+        ``is_participants_badge_visible()`` only waits for the badge to
+        become VISIBLE; called with ``assert not ...`` right after a removal
+        click it can read "still visible" a moment before the DOM update
+        actually lands (a positive-existence wait can't assert a negative
+        transition — same class of race as the project's own
+        ``positive_existence_wait_cant_assert_negative_transition.md``
+        lesson). This method waits on the correct state directly.
+
+        Args:
+            section: Entity section — "agents" (default), "pipelines",
+                "toolkits", "mcp", or "users".
+            timeout: Maximum wait time in milliseconds.
+        """
+        badge = self.page.locator(self.PARTICIPANTS_BADGE.format(section))
+        badge.first.wait_for(state="hidden", timeout=timeout)
+
     def get_participants_user_avatar_text(self, timeout: int = 5000) -> str:
         """Return the initials/text on the expanded PARTICIPANTS panel's USERS avatar.
 
@@ -6399,6 +6465,71 @@ class ChatPage(BasePage):
         """Press Escape to dismiss an open participants popper (ELITEA-2167) —
         same idiom as ``dismiss_mention_popper()``."""
         self.page.keyboard.press("Escape")
+
+    def hover_agent_participant_row(self, agent_id: int, timeout: int = 10000):
+        """Open the 'Agents' participants popover, hover *agent_id*'s row,
+        and return its scoped 'Remove agent' button Locator WITHOUT
+        clicking it (ELITEA-2178 step 2 — verify the hover-reveal icon's
+        accessible name before ever clicking through it).
+
+        Read-only sibling of ``remove_agent_participant()`` — that method
+        hovers, clicks the delete icon, and confirms removal in one call;
+        this one stops right after the hover so the CALLER can assert the
+        revealed button's accessible name / visibility with a web-first
+        check. Does not modify ``remove_agent_participant()`` itself
+        (additive-only — Hard Rule 3); duplicates its row-resolution +
+        hover mechanism intentionally (same shape as
+        ``hover_participant_user_row()`` vs ``open_remove_user_dialog()``).
+
+        Args:
+            agent_id: Numeric ID of the participant agent to hover.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The row's scoped ``chat-participant-remove-button`` Locator,
+            post-hover. Assert only — never click it (use
+            ``remove_agent_participant()`` to actually remove).
+        """
+        logger.info("Hovering Agents-popover row for agent_id=%s (read-only)", agent_id)
+        popper = self.open_participants_popover(timeout=timeout)
+
+        unique_id = f"application_{agent_id}_{settings.elitea_project_id}"
+        row = popper.locator(self.PARTICIPANT_ROW.format(unique_id))
+        row.wait_for(state="visible", timeout=timeout)
+        row.scroll_into_view_if_needed()
+        row.hover()
+        self.page.wait_for_timeout(300)  # hover-reveal CSS transition
+
+        remove_btn = row.locator(self.PARTICIPANT_REMOVE_BUTTON)
+        remove_btn.wait_for(state="visible", timeout=timeout)
+        return remove_btn
+
+    def get_agent_participant_row(self, popper, agent_id: int, timeout: int = 10000):
+        """Resolve an agent participant's row Locator inside an already-open
+        'Agents' participants popper, WITHOUT hovering or clicking it
+        (ELITEA-2465 step 5 — the caller only needs to assert the row's
+        content, e.g. that it contains the agent's name).
+
+        Read-only sibling of ``hover_agent_participant_row()`` /
+        ``remove_agent_participant()`` — same ``PARTICIPANT_ROW`` /
+        ``getChatParticipantUniqueId()`` resolution mechanism (agent unique
+        id = ``application_{agent_id}_{project_id}``), but stops right after
+        resolving the row so the caller can assert against it directly
+        instead of building the locator inline in the test.
+
+        Args:
+            popper: The open participants popper Locator, as returned by
+                ``open_participants_popover(section="agents")``.
+            agent_id: Numeric ID of the participant agent.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The row's ``chat-participant-row-{uniqueId}`` Locator.
+        """
+        unique_id = f"application_{agent_id}_{settings.elitea_project_id}"
+        row = popper.locator(self.PARTICIPANT_ROW.format(unique_id))
+        row.wait_for(state="visible", timeout=timeout)
+        return row
 
     @action("Remove agent participant from chat")
     def remove_agent_participant(self, agent_id: int, timeout: int = 10000):

@@ -46,3 +46,13 @@ the participant was already settled well before the starter click (the
 ELITEA-2369 chat-area-tile click, well after page load) have not shown this
 race — `force=True` there is probably fine, but prefer plain `.click()` on
 `chat-send-button` whenever the composer content was JUST set programmatically.
+
+**Recurrence 2 (ELITEA-2177/2465, 2026-08-16):** same exact shape on the
+mid-conversation "add agent via + menu, click a starter tile, click Send"
+flow (`/chat/{id}`, not the Agent Hub modal) — `force=True` right after
+`click_chat_starter_tile()` deterministically no-opped (composer text
+unchanged, no navigation to `/chat/{id}`, still on the pre-send landing view
+in the failure screenshot). Plain `.click()` fixed it, same as recurrence 1.
+Two independent flows now confirmed — treat "starter tile click then Send"
+as the trigger pattern generally, not just the Agent Hub modal's specific
+`setTimeout` combo.
