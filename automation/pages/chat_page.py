@@ -6413,6 +6413,33 @@ class ChatPage(BasePage):
         remove_btn.wait_for(state="visible", timeout=timeout)
         return remove_btn
 
+    def get_agent_participant_row(self, popper, agent_id: int, timeout: int = 10000):
+        """Resolve an agent participant's row Locator inside an already-open
+        'Agents' participants popper, WITHOUT hovering or clicking it
+        (ELITEA-2465 step 5 — the caller only needs to assert the row's
+        content, e.g. that it contains the agent's name).
+
+        Read-only sibling of ``hover_agent_participant_row()`` /
+        ``remove_agent_participant()`` — same ``PARTICIPANT_ROW`` /
+        ``getChatParticipantUniqueId()`` resolution mechanism (agent unique
+        id = ``application_{agent_id}_{project_id}``), but stops right after
+        resolving the row so the caller can assert against it directly
+        instead of building the locator inline in the test.
+
+        Args:
+            popper: The open participants popper Locator, as returned by
+                ``open_participants_popover(section="agents")``.
+            agent_id: Numeric ID of the participant agent.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The row's ``chat-participant-row-{uniqueId}`` Locator.
+        """
+        unique_id = f"application_{agent_id}_{settings.elitea_project_id}"
+        row = popper.locator(self.PARTICIPANT_ROW.format(unique_id))
+        row.wait_for(state="visible", timeout=timeout)
+        return row
+
     @action("Remove agent participant from chat")
     def remove_agent_participant(self, agent_id: int, timeout: int = 10000):
         """Remove the agent participant identified by *agent_id* from chat.

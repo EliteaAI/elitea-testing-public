@@ -62,6 +62,21 @@ New page-object surface added this dispatch (all additive, ``ChatPage``):
   composer's "X" icon (case step 4, ELITEA-2465's own subject).
 - ``chat_starter_tile_tooltip_content`` — new ``LocatorDescriptor`` for the
   starter tile's hover tooltip popper content.
+- ``get_agent_participant_row(popper, agent_id)`` — read-only sibling of
+  ``hover_agent_participant_row()`` / ``remove_agent_participant()``, added
+  during PR review (fix round) so ELITEA-2465 step 5's row-content assertion
+  resolves the row via a page-object method instead of building
+  ``popper.locator(PARTICIPANT_ROW.format(...))`` directly in the spec file.
+
+Review fix-round note (PR #1567): the ELITEA-2177 and ELITEA-2465 setups now
+send one message and wait for the reply BEFORE adding the agent, so the
+conversation is genuinely EXISTING/already-active when the agent is added —
+matching the AFS precondition (both AFS files were live-confirmed against an
+existing conversation with prior history, not a fresh/unsent one). Previously
+both tests added the agent immediately after ``_open_new_conversation()``,
+which only guarantees a brand-new, UNSENT conversation
+(``chat.new_conversation_greeting``) — a different precondition than the case
+text's "open a conversation" / AFS's "existing conversation" language.
 
 Testid gaps filled this implementation (``add-data-testid``, pushed to
 ``automation/testids``):
@@ -239,7 +254,12 @@ class TestChatAddAgentWithStartersToConversation:
 
         try:
             with allure.step(
-                "Setup — create a disposable agent with conversation starters; open a new conversation"
+                "Setup — create a disposable agent with conversation starters; open a "
+                "conversation and send one message so it is an EXISTING, already-active "
+                "conversation before the agent is added (AFS precondition: the case's own "
+                "'open a conversation' step targets an existing conversation with at least "
+                "one prior message, not a fresh/unsent one — confirmed live by the analyst "
+                "against a conversation that already had a system greeting exchange)"
             ):
                 agent_name = f"autotest_2177_{uuid.uuid4().hex[:8]}"
                 agent = agent_api.create_agent_full(
@@ -249,6 +269,10 @@ class TestChatAddAgentWithStartersToConversation:
                 chat.navigate_to_chat()
                 chat.wait_for_page_load()
                 _open_new_conversation(chat, timeout=NAVIGATION_TIMEOUT)
+                chat.send_message(SETUP_MESSAGE_TEXT)
+                chat.wait_for_ai_response(initial_count=0, timeout=AI_RESPONSE_TIMEOUT)
+                # The conversation only gets a real id once the first message
+                # is sent (bare /chat until then) — capture it AFTER send.
                 conv_id = _conv_id_from_url(page)
 
             with allure.step(
@@ -294,12 +318,15 @@ class TestChatAddAgentWithStartersToConversation:
 
             with allure.step(f"Step 3 — Click the conversation starter {CASE_STARTER_TEXT!r}"):
                 starter_text = chat.click_chat_starter_tile(CASE_STARTER_TEXT, timeout=UI_ELEMENT_TIMEOUT)
-
-            with allure.step("Step 4 — Verify text is editable and agent name/version still shown in input bar"):
+                # This IS step 3's own expected result ("Full text inserted in
+                # message field") — asserted here, not folded into step 4,
+                # so step-to-assertion attribution matches the case/AFS.
                 assert chat.message_input.input_value() == starter_text, (
                     f"Message input should be populated with the clicked starter's exact text "
                     f"{starter_text!r}, got {chat.message_input.input_value()!r}"
                 )
+
+            with allure.step("Step 4 — Verify text is editable and agent name/version still shown in input bar"):
                 assert chat.is_send_button_enabled(), (
                     "Send button should become enabled once the starter text populates the input"
                 )
@@ -325,9 +352,15 @@ class TestChatAddAgentWithStartersToConversation:
 
             with allure.step("Step 6 — Verify agent responds with reasoning/Thinking section and LLM model label"):
                 chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
-                thought_text = chat.answer_thought_accordion.text_content() or ""
+                # `.last` — the setup message (sent to establish an EXISTING
+                # conversation, see the Setup step) already produced one
+                # earlier accordion/chip pair; these testids are page-wide,
+                # not per-message, so scope to the most recent one (this
+                # step's own agent response) the same way get_last_message_text()
+                # scopes to messages_container.last.
+                thought_text = chat.answer_thought_accordion.last.text_content() or ""
                 assert "Thought for" in thought_text, f"Expected 'Thought for N secs' text, got: {thought_text!r}"
-                model_chip_text = (chat.answer_model_chip.text_content() or "").strip()
+                model_chip_text = (chat.answer_model_chip.last.text_content() or "").strip()
                 assert model_chip_text, "LLM model chip should show a non-empty model name"
                 reply_text = chat.get_last_message_text()
                 assert reply_text.strip(), "Agent reply text should be non-empty"
@@ -581,6 +614,17 @@ class TestChatAddAgentWithStartersAndSendViaStarter:
                 chat.navigate_to_chat()
                 chat.wait_for_page_load()
                 _open_new_conversation(chat, timeout=NAVIGATION_TIMEOUT)
+
+            with allure.step(
+                "Setup — send one message so the conversation is EXISTING/already-active "
+                "before the agent is added (AFS precondition, same live-confirmed reasoning "
+                "as ELITEA-2177 — this case's own text allows either an existing or a new "
+                "conversation, but the analyst confirmed live against an existing one)"
+            ):
+                chat.send_message(SETUP_MESSAGE_TEXT)
+                chat.wait_for_ai_response(initial_count=0, timeout=AI_RESPONSE_TIMEOUT)
+                # The conversation only gets a real id once the first message
+                # is sent (bare /chat until then) — capture it AFTER send.
                 conv_id = _conv_id_from_url(page)
 
             with allure.step("Step 2 — Verify the default LLM is shown in the input bar"):
@@ -614,8 +658,7 @@ class TestChatAddAgentWithStartersAndSendViaStarter:
                 assert "Agents" in (popper.text_content() or ""), (
                     "Participants popover should show an 'Agents' heading"
                 )
-                unique_id = f"application_{agent_id}_{settings.elitea_project_id}"
-                row = popper.locator(chat.PARTICIPANT_ROW.format(unique_id))
+                row = chat.get_agent_participant_row(popper, agent_id, timeout=UI_ELEMENT_TIMEOUT)
                 # The row renders a "Participant Name" loading-skeleton
                 # placeholder before its real content settles — a one-shot
                 # `wait_for(visible)` + `text_content()` read can catch that
@@ -646,6 +689,13 @@ class TestChatAddAgentWithStartersAndSendViaStarter:
                 page.mouse.move(0, 0)
 
             initial_count = chat.get_message_count()
+            # The Setup step's own message already produced one
+            # `chat-answer-thought-accordion` (a page-wide testid, not
+            # per-message) — capture its count here so Step 12 can wait for
+            # a genuinely NEW one to appear instead of a `.last.wait_for()`,
+            # which would trivially pass against the already-visible,
+            # already-settled setup-response accordion.
+            initial_accordion_count = chat.answer_thought_accordion.count()
 
             with allure.step(f"Step 8 — Click on the conversation starter {CASE_STARTER_TEXT!r}"):
                 starter_text = chat.click_chat_starter_tile(CASE_STARTER_TEXT, timeout=UI_ELEMENT_TIMEOUT)
@@ -675,19 +725,32 @@ class TestChatAddAgentWithStartersAndSendViaStarter:
                 )
 
             with allure.step("Step 12 — Verify the agent begins processing with a response generation indicator"):
-                chat.answer_thought_accordion.wait_for(state="visible", timeout=AI_RESPONSE_TIMEOUT)
+                # Wait for a genuinely NEW accordion (count increase), not
+                # `.last.wait_for(visible)` — the Setup step's own message
+                # (sent to establish an EXISTING conversation before the
+                # agent is added) already produced one earlier accordion
+                # that is already visible, which would make a bare
+                # `.last.wait_for()` pass instantly without ever confirming
+                # THIS step's own response actually started.
+                expect(chat.answer_thought_accordion).to_have_count(
+                    initial_accordion_count + 1, timeout=AI_RESPONSE_TIMEOUT
+                )
+                # `.last` — these testids are page-wide, not per-message, so
+                # scope to the most recent one (this step's own agent
+                # response), same idiom get_last_message_text() uses via
+                # messages_container.last.
                 # MUI's Accordion root (this testid) carries the global state
                 # class "Mui-expanded" while expanded — `aria-expanded` itself
                 # lives on the nested AccordionSummary button, a different
                 # element, so the class check is the correct signal on THIS
                 # testid'd element (confirmed via @mui/material source:
                 # generateUtilityClass's globalStateClasses map).
-                expect(chat.answer_thought_accordion).to_have_class(
+                expect(chat.answer_thought_accordion.last).to_have_class(
                     re.compile(r"Mui-expanded"), timeout=UI_ELEMENT_TIMEOUT
                 )
 
             with allure.step("Step 13 — Verify the LLM model label is shown on the agent's response"):
-                model_chip_text = (chat.answer_model_chip.text_content() or "").strip()
+                model_chip_text = (chat.answer_model_chip.last.text_content() or "").strip()
                 assert model_chip_text, "LLM model chip should show a non-empty model name"
 
             with allure.step('Step 14 — Verify the "Thinking" section is visible and expanding during generation'):
@@ -695,9 +758,9 @@ class TestChatAddAgentWithStartersAndSendViaStarter:
                 # case text's "Thinking section" = this project's "Thought for N
                 # secs" accordion (AFS Automation Hints). Re-assert both the text
                 # and the same "Mui-expanded" class signal step 12 used.
-                thought_text = chat.answer_thought_accordion.text_content() or ""
+                thought_text = chat.answer_thought_accordion.last.text_content() or ""
                 assert "Thought for" in thought_text, f"Expected 'Thought for N secs' text, got: {thought_text!r}"
-                expect(chat.answer_thought_accordion).to_have_class(
+                expect(chat.answer_thought_accordion.last).to_have_class(
                     re.compile(r"Mui-expanded"), timeout=UI_ELEMENT_TIMEOUT
                 )
 
