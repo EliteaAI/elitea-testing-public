@@ -8,6 +8,14 @@ the model + tool chips, and the response text following the chips.
 
 Spec: test-specs/chat-interface/l2_direct-toolkit-call-complete-flow_ELITEA-2215.md
 
+Extended (2026-08-19, extend-existing) to also cover ELITEA-2209 ("Chat –
+Tool Action Rendering – Verify Tool Call Displays in Thinking Steps When
+Toolkit Called Directly") — same live flow, one small gap: ELITEA-2209's
+step 1 requires confirming the toolkit lands in the PARTICIPANTS panel
+(toolkits section) and that no AGENTS section appears. The Setup step below
+now asserts both, immediately after adding the toolkit participant. See
+test-specs/chat-interface/lextend_direct-toolkit-call-participants-panel-verification_ELITEA-2209.md.
+
 CLARIFICATION (reverse-masking guard, all confirmed live — no product
 defect, case text is imprecise):
 1. The case describes the tool-call badge as dotted
@@ -162,12 +170,20 @@ def _is_known_secrets_403(msg) -> bool:
 
 
 class TestDirectToolkitCallCompleteFlow:
-    """ELITEA-2215: Chat – Tool Action and Output – Complete Flow from Direct Toolkit Call (l2, high)."""
+    """ELITEA-2215: Chat – Tool Action and Output – Complete Flow from Direct Toolkit Call (l2, high).
+
+    Also covers ELITEA-2209 (extend-existing, participants-panel Setup assertion).
+    """
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/"
         "ELITEA-2215_chat-tool-action-and-output-complete-flow-from-direct-toolkit-call.md",
         "onetest-ai Test Case link",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/"
+        "ELITEA-2209_chat-tool-action-rendering-tool-call-in-thinking-steps.md",
+        "onetest-ai Test Case link (ELITEA-2209, extended by this test — participants-panel gap)",
     )
     @allure.issue(
         "https://github.com/EliteaAI/elitea-testing-public/issues/1127",
@@ -180,7 +196,12 @@ class TestDirectToolkitCallCompleteFlow:
         """Full direct-toolkit-call flow: accordion -> chips -> response.
 
         Steps (AFS
-        test-specs/chat-interface/l2_direct-toolkit-call-complete-flow_ELITEA-2215.md):
+        test-specs/chat-interface/l2_direct-toolkit-call-complete-flow_ELITEA-2215.md,
+        extended per
+        test-specs/chat-interface/lextend_direct-toolkit-call-participants-panel-verification_ELITEA-2209.md):
+        0. (ELITEA-2209 gap) After adding the toolkit as sole participant,
+           verify the participants panel shows it under the toolkits section
+           and shows no agents section.
         1. Send the create-file message with the toolkit as sole participant;
            verify "Thought for X secs" appears.
         2. Wait for execution to settle, then classify the run against the
@@ -212,6 +233,21 @@ class TestDirectToolkitCallCompleteFlow:
 
         with allure.step("Setup — add the artifact toolkit as the only participant"):
             chat.add_toolkit_participant(toolkit_name)
+
+            # ELITEA-2209's own gap (extend-existing, AFS
+            # test-specs/chat-interface/lextend_direct-toolkit-call-participants-panel-verification_ELITEA-2209.md,
+            # step 1): confirm the toolkit landed in the PARTICIPANTS panel
+            # under the toolkits section, and that no AGENTS section
+            # appeared (no agent was added). Plain, unconditional asserts —
+            # deliberately NOT routed through the `soft_failures`/#1127
+            # classification below, since participants-panel rendering is
+            # unrelated to that known defect's mechanism.
+            assert chat.is_participants_badge_visible(section="toolkits"), (
+                "Expected a toolkits participants badge after adding the toolkit"
+            )
+            assert not chat.is_participants_badge_visible(section="agents"), (
+                "No agent was added — the agents participants badge must be absent"
+            )
 
         with allure.step(
             "Step 1 — Send 'create a file named test.txt' with the toolkit as "
