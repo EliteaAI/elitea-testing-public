@@ -11,6 +11,7 @@
 - [Autonomous skill invocation needs a nudge](autonomous_skill_invocation_nudge.md) — attach alone won't do it
 - [dnd-kit drag needs a settle-check](dnd_kit_drag_gesture_needs_settle_check.md) — scroll-into-view AND elementFromPoint poll, not just one
 - [chat-remaining-w03 case snapshots never existed](chat_remaining_w03_case_snapshots_never_existed.md) — read the TMS file directly, not a novel-ground signal
+- [Dynamic testid suffix collides with prefix selector](dynamic_testid_suffix_collides_with_prefix_selector.md) — `${itemId}-suffix` matches item's own `^=` prefix locator; add `:not()`
 
 - [Project briefing](project_briefing.md) — your slot, the six-phase loop, the ≤2-rerun budget, the Run Report
 - [Verify feature branch first](verify_feature_branch_before_first_commit.md) — `git branch --show-current` before any commit; dispatch starts you ON the trunk (5×)
@@ -74,3 +75,6 @@
 - [AFS-authorized soft assertion is still masking](afs_authorized_soft_assertion_is_still_masking.md) — AFS text can request a `logger.warning` instead of `assert`; No Defect Masking Rule wins
 - [Soft-assert/known-defect ≠ headline subject](soft_assert_known_defect_only_covers_isolated_not_headline_subject.md) — only covers one isolated step; case's own headline observable → blocked
 - [New testid can collide with existing `^=` prefix](new_dynamic_testid_can_collide_with_existing_prefix_matcher.md) — grep the prefix string before naming a sibling dynamic testid
+- [Hash-search Agent-Hub item's own project id](hash_search_agent_hub_item_uses_own_project_id_not_conversation.md) — `application_{id}_{project}` uses the AGENT's home project, not the conversation's
+- [EntityIcon avatar testid is conditional](entity_icon_avatar_testid_conditional_on_custom_icon.md) — `chat-participant-avatar` only exists for a custom icon image; use `chat-participant-icon` for any-icon
+- [Transient-message whole-string prefix hides real content](transient_message_whole_string_prefix_check_hides_real_content.md) — "Thought for X" + real content same message → check `_is_transient_message` per-line, not whole-string

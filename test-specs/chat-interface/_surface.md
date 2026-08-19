@@ -2,7 +2,15 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: test-automation-engineer (combined analyst+
+a time; last confirmed by: qa-engineer analyst, ELITEA-2208/2470, 2026-08-19
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: qa-engineer analyst, ELITEA-2207/2469, 2026-08-19
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: qa-engineer analyst, ELITEA-2206, 2026-08-19
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: qa-engineer analyst, ELITEA-2205/2468, 2026-08-19
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: test-automation-engineer (combined analyst+
 implementer), ELITEA-2198, 2026-08-19 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2196, 2026-08-19 (supersedes nothing
@@ -57,7 +65,302 @@ qa-engineer analyst, ELITEA-2111, 2026-08-15;
 previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
-ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)))).
+ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03))))))).
+
+## ELITEA-2208/2470 — `#` hash-search SELECT-A-PIPELINE adds it to
+## PARTICIPANTS + composer active-participant chip + pipeline responds,
+## family AFS, direct pipeline-flow sibling of ELITEA-2207/2469 (same
+## session), ZERO new testids, ZERO defects, TWO case-text clarifications
+## (mention is a composer CHIP not literal text; a dynamically-selected
+## ambient pipeline may respond with a genuine execution-error card)
+- **Same session as ELITEA-2207/2469 (this digest's section immediately below) —
+  reused ALL of its handles directly (`chat-switch-participant-button`,
+  `chat-participants-badge-{section}`, `chat-participant-row-{uniqueId}`,
+  `chat-participant-icon`, `chat-participant-remove-button`,
+  `delete-confirm-button`) plus ELITEA-2206's hash-search-item handles —
+  zero re-derivation needed for anything except the pipeline-specific
+  `uniqueId` prefix (below).**
+- **Pipeline participant `uniqueId` prefix is `pipeline_` (singular), NOT
+  `application_`** — confirmed via BOTH a live Playwright-generated locator
+  (`chat-participant-row-pipeline_8056_399`, from a real hover interaction)
+  AND source (`getChatParticipantUniqueId()` in
+  `EliteaUI/src/[fsd]/features/chat/participants/lib/helpers/participants.helpers.js`):
+  a participant's `entity_name` resolves to `ChatParticipantType.Pipelines`
+  (`'pipeline'`) whenever `entity_settings.agent_type === 'pipelines'`,
+  distinct from an agent's `'application'`. **`get_agent_participant_row()` /
+  `remove_agent_participant()` both hardcode the `application_` prefix and
+  cannot resolve a pipeline row as-is** — this family's implementation needs
+  an additive generalization (optional `entity_type` param, or a sibling
+  method), same shape as the `agent_project_id` param ELITEA-2207/2469 already
+  added to the same two methods for a different reason. Not yet built as of
+  this analysis pass — implementer's job, spec'd in the AFS's Automation Hints.
+- **Version-text shape DIFFERS from the agent family — do not reuse its
+  regex.** The agent family's popover row shows a "ver"/"vX.Y" auto-generated
+  string; a PIPELINE's row shows its own **version's literal NAME** instead
+  (e.g. "base" this session, both in the popover row text and in the
+  composer's own "version selector menu" button). Pipeline versions are
+  user-named (e.g. "base", "prod", "v2-experimental"), so
+  `re.match(r"v(er\b|\d)", ...)` would be a false constraint here — assert
+  only that a non-empty version-text remainder exists after the pipeline's
+  name.
+- **CASE-TEXT CLARIFICATION 1 (same pattern as ELITEA-2207/2469, reconfirmed
+  for pipelines) — the pipeline "mention" is NOT inserted as text into the
+  message input.** After clicking a pipeline card, `chat-message-input` stays
+  completely empty; the pipeline instead renders as a composer chip
+  (`chat-switch-participant-button`, accessible name "Switch Pipeline" this
+  session vs "Switch Agent" for the agent case — same physical testid, text
+  differs per active participant type).
+- **CASE-TEXT CLARIFICATION 2, pipeline-specific, NEW this session — a
+  dynamically-selected ambient pipeline may respond with a genuine
+  EXECUTION-ERROR card instead of a substantive answer, and that still
+  satisfies "the pipeline processes and responds."** Live-confirmed: selected
+  "AutoTest_Pipeline_probe_2020" (ambient DEV probe-test pipeline data),
+  sent "hello", received "Pipeline has no nodes to execute. Please add at
+  least one node to the pipeline before running it." — a REAL, complete,
+  non-transient response (Copy button present) genuinely produced by the
+  system (the pipeline genuinely attempted execution and correctly reported
+  its own empty-node precondition), attributed to the pipeline in the message
+  header, immediately followed by the PIPELINES badge still reading "1".
+  Not a substitution, not a defect. **Implementer implication**: assert
+  generically (message count grows by 2, response attributed to the selected
+  pipeline's name, badge persists) — never assert specific response TEXT,
+  since which ambient pipeline gets dynamically selected (and whether it has
+  configured nodes) is account-data-dependent.
+- **Zero new testids** — every handle needed already exists: pre-existing
+  `chat-switch-participant-button`/`chat-participants-badge-pipelines`
+  (section: 'pipelines', confirmed via `git grep` in
+  `CollapsedPerticapantsList.jsx`)/`chat-participant-row-{uniqueId}`/
+  `chat-participant-icon`/`chat-participant-remove-button` (all **on-`main`
+  or `automation/testids` ✓** per the same provenance ELITEA-2207/2469
+  already established) plus `chat-hash-search-item-{}_{}`/`{testId}-type`
+  from ELITEA-2206 — reused verbatim, zero pipeline-specific new testid.
+- **Account-data hazard reconfirmed a SECOND time this session, worse this
+  time**: bare `/chat` navigation left the composer blocked by a persistent
+  `MuiCircularProgress`/`MuiBox` overlay for 15+ seconds straight (>15 retry
+  cycles across two separate click attempts, never cleared) — same class as
+  ELITEA-2207/2469's own "8+ retry cycles" entry below, but this attempt
+  never resolved at all within the session's patience budget. Worked around
+  identically (navigate directly to an existing conversation id instead of
+  bare `/chat`); the shipped test's `conversation_id` fixture sidesteps this
+  by construction, same as the agent family.
+- **Cleanup performed live**: removed the added pipeline participant via
+  hover → "Remove pipeline" (note: accessible name is "Remove pipeline", NOT
+  "Remove agent" — same physical `chat-participant-remove-button` testid,
+  text is component-driven per entity type) → confirmed "Remove" in the
+  "Remove pipeline?" dialog (`delete-confirm-button`, same testid as the
+  agent family's "Remove agent?" dialog) — `chat-participants-badge-pipelines`
+  confirmed gone from the DOM afterward. Sent "hello" + the pipeline's
+  error-response remain in `/chat/9082`'s history (removing a participant
+  does not delete prior messages) — cosmetic only.
+- AFS (family, both TMS ids, same `afs_path`):
+  `test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md`.
+
+## ELITEA-2207/2469 — `#` hash-search SELECT-AN-AGENT adds it to PARTICIPANTS
+## + composer active-participant chip + agent responds, family AFS, ZERO new
+## testids (pure reuse of ELITEA-2206's just-landed hash-search handles +
+## pre-existing composer/participants-panel machinery), ZERO defects, ONE
+## case-text clarification (mention is a composer CHIP, not literal text in
+## the message field)
+- **Same session as ELITEA-2206 (this digest's section immediately below) —
+  reused its freshly-landed `chat-hash-search-item-{}_{}` /
+  `{testId}-type` testids directly, zero re-derivation needed.** Confirms the
+  digest's own "read the neighbours first" discipline pays off across units
+  in the SAME batch, not just across sessions.
+- **`test_add_participant_via_hash_search` (covering, merged) proves
+  open→select→close and NOTHING ELSE** — it clicks whatever the FIRST result
+  happens to be (agent or pipeline, unscoped) and asserts only that the
+  dropdown closes. It never opens the participants popover, never inspects
+  the composer, never sends a message. This family's entire subject —
+  participant-panel update, composer chip, message delivery, agent response,
+  participant persistence — is a clean, previously-untouched gap on the SAME
+  selection mechanism.
+- **CASE-TEXT CLARIFICATION, not a defect (reverse-masking guard) — the
+  agent "mention" is NOT inserted as text into the message input.** Both
+  cases say the agent name appears "in the message field" — live-confirmed
+  via screenshot this session: after clicking an agent card, `chat-message-input`
+  stays completely EMPTY (placeholder unchanged). Instead the selected agent
+  renders as a dedicated chip in the composer's control row
+  (`chat-switch-participant-button`, pre-existing testid + assertion helper
+  `is_agent_participant_in_composer()` from the ELITEA-1736 rework — already
+  in the page object, zero new code). This is the SAME established pattern
+  every other participant-mention family in this app uses (slash-mention
+  toolkit/MCP participants behave identically) — not specific to `#`-search,
+  not a regression. Assert the real composer-chip observable; the case
+  text's "message field" wording is the stale half.
+- **Live-confirmed end-to-end, zero substitution**: selected "Agent testing
+  skills" (agent-type card, `chat-hash-search-item-1_280`) on an existing
+  conversation (`/chat/9082`) → `chat-participants-badge-agents` badge
+  appeared (previously absent) → opened the popover → AGENTS section showed
+  the agent's name + a "ver" version control + a leading icon (row is the
+  SAME shared participant-row component the expanded panel uses, per
+  `PARTICIPANT_ROW`) → typed "hello", sent → message header showed "Test Bot
+  to Chat now Agent testing skills" (real send-to-participant attribution) →
+  agent replied "Hello! How can I help?" (full round-trip, Copy button
+  present, non-transient) → AGENTS badge still read "1" afterward (confirmed
+  a genuine `data-testid="chat-participants-badge-agents"` element read, not
+  assumed). Zero console errors throughout.
+- **Zero new testids** — every handle needed already exists: pre-existing
+  `chat-switch-participant-button`/`chat-participants-badge-agents`/
+  `chat-participant-row-{uniqueId}`/`chat-participant-remove-button` (all
+  **on-`main` ✓**, ELITEA-1736/1793 reworks) plus the just-landed
+  `chat-hash-search-item-{}_{}`/`{testId}-type` from this session's own
+  ELITEA-2206 unit (**on-`automation/testids` only**, awaiting human
+  cherry-pick same as ELITEA-2206's own row).
+- **Cleanup performed live**: removed the added agent participant via the
+  existing `remove_agent_participant(agent_id)` mechanism (hover → "Remove
+  agent" → confirm dialog) — badge confirmed gone from the DOM afterward
+  (matches `wait_for_participants_badge_absent()`'s documented "disappears
+  at count 0" contract). The sent "hello" + the agent's reply remain in
+  `/chat/9082`'s message history (removing a participant does not delete
+  prior messages — consistent with every other participant-removal
+  precedent already in this digest) — cosmetic only.
+- **Gotcha, NOT a product defect — heavy-account bare `/chat` hit a
+  persistent loading-spinner block this session.** Navigating to bare
+  `/chat` on this account (65+ folders, hundreds of conversations per the
+  sidebar) left a `MuiCircularProgress` overlay intercepting the composer
+  for 15+ seconds straight (8+ retry cycles, never resolved before this
+  session gave up and switched to an existing conversation instead).
+  Distinct from the already-documented "`/chat` bare redirects to
+  last-viewed conversation as a delayed effect" gotcha (ELITEA-2175/2176
+  section below) — this was a persistent BLOCKING overlay, not a silent
+  redirect. Worked around by navigating directly to an existing conversation
+  id instead of bare `/chat`. **Implementer implication**: the shipped test
+  should use the `conversation_id` fixture (fresh, API-seeded — navigates to
+  `/chat/{id}` directly, never touches the bare-`/chat` redirect/loading
+  path at all) rather than the ambient "new chat" screen, sidestepping this
+  entirely.
+- AFS (family, both TMS ids, same `afs_path`):
+  `test-specs/chat-interface/lextend_hash-search-select-agent-adds-participant-and-responds_ELITEA-2207.md`.
+
+**Resolved/added during ELITEA-2207/2469 implementation (test-automation-engineer):** the "Zero new
+testids" claim above held only for the ONE agent this exploration session happened to select
+("Agent testing skills", a current-project agent with a custom icon). The shipped test resolves the
+agent DYNAMICALLY (first agent-type card, per this AFS's own resilience requirement) instead of a fixed
+name, and the account's first agent-type `#` result is routinely Agent-Hub ("Public") sourced with NO
+custom icon — surfacing two gaps this exploration's one lucky pick didn't hit:
+- `chat-hash-search-item-{}_{}-name` (`EliteaAI/EliteaUI@840e251d`) — the name Typography in
+  `NewParticipantCard.jsx` had no testid; needed to read the dynamically-selected agent's exact name.
+- `chat-participant-icon` (`EliteaAI/EliteaUI@dd44ce90`) — the pre-existing `chat-participant-avatar`
+  testid is CONDITIONAL on the entity having a custom-uploaded icon (`EntityIcon.jsx`'s `imgTestId` only
+  applies to the `<img>` branch); an agent with no custom icon renders a testid-less fallback SVG. Added
+  an unconditional testid on `EntityIcon`'s own container instead — benefits BOTH the expanded-panel row
+  and this popover row (same shared `ParticipantItem.jsx` component).
+- **`application_{agent_id}_{project_id}` uses the AGENT's OWN home project, not the conversation's** —
+  this exploration's picked agent happened to live in the same project as the conversation, masking that
+  `get_agent_participant_row()`/`remove_agent_participant()`/`hover_agent_participant_row()` all hardcode
+  `settings.elitea_project_id`. An Agent-Hub-sourced agent's real participant row uses its OWN
+  `entity_meta.project_id` (the public project, e.g. `application_6_1`, not `application_6_399`).
+  `get_agent_participant_row()` gained a backward-compatible optional `agent_project_id` param (default
+  unchanged) rather than a body rewrite — additive, existing caller re-run and confirmed unaffected.
+  **Implementer implication for future dynamic-agent-selection tests on this surface**: never assume the
+  selected agent's project id equals `settings.elitea_project_id` — read it off the hash-search item's
+  own testid (`chat-hash-search-item-{project_id}_{id}`) instead.
+
+## ELITEA-2206 — `#` hash-search participant dropdown (agents+pipelines,
+## mixed sources), NEW surface for THIS digest (`chat-hash-search-participants`),
+## `extend-existing` against the pre-existing `TestHashSearch` class, TWO new
+## testid gaps found (container + dynamic item), ZERO defects
+- **First digest entry for the `#` hash-search feature** — distinct from the
+  `/`-slash-mention family (ELITEA-2202/2203/2204/2205/2468, toolkit/MCP
+  participants) and the `~`-skill-mention family. `#` opens a
+  `SearchResultList.jsx` → shared `NewParticipantList.jsx` panel listing
+  **agents AND pipelines** (not toolkits/MCPs/skills), titled literally
+  `"Search results"` (component's `title` prop — DOM text is sentence-case,
+  NOT all-caps; any CSS uppercase transform is visual only).
+- **A merged spec already exists for this feature under a DIFFERENT, older
+  TMS-id lineage** — `test_chat_interface.py::TestHashSearch` (2 methods,
+  `test_hash_search_participants` / `test_add_participant_via_hash_search`)
+  carries `@allure.issue` links to `ELITEA-0498`/`ELITEA-0501`, not
+  `ELITEA-2206`. Grepping this digest or `test-specs/` BY TMS ID would have
+  missed it entirely — found only by grepping the SUITE by behaviour
+  (`hash_search`) per this skill's own § 2b discipline. Confirms the standing
+  caution: search by observable/label, never by case id.
+- **Covering tests only prove OPEN + select-to-close** — never inspect a
+  single result card's own contents (subtitle text, icon, source label), and
+  never prove the click-away-without-selecting close path. Live-confirmed gap
+  assertions this session (bare `#` on an existing conversation, `/chat/9082`):
+  per-card subtitle is literally lowercase `agent`/`pipeline`
+  (`NewParticipantCard.jsx`'s `typeText`, case text says capitalized —
+  **case-text drift, clarification not defect**, assert the real value); every
+  card carries an icon (custom `img "elitea"` OR two-letter initials avatar,
+  never absent); a `"Public"` chip marks Agent-Hub/public-project items,
+  absent chip marks current-project items, BOTH present in one bare-`#`
+  result set (`useParticipants({ projectFilter: 'all', ... })` is the
+  mechanism — confirmed via source); clicking a definitely-outside element
+  (sidebar nav button) closes the dropdown via `ClickAwayListener`, entirely
+  independent of the covering test's select-to-close path.
+- **`get_hash_search_first_option()`'s DOM-heuristic card-matching is now
+  supersedable** — once the new `chat-hash-search-item-{project_id}_{id}`
+  testid lands, a future pass could replace this ~30-line best-effort
+  `xpath`/`filter()` heuristic with a real selector. NOT done as part of this
+  extension (Hard Rule: additive-only) — flagged for a future dedicated
+  migration pass, same class as the `automation/pages/` #25/#42 tech debt.
+- **Separate finding, NOT filed as a defect (existing merged code, unrelated
+  to this case's own scope)**: both covering tests wrap their core
+  dropdown-appears wait in `try/except: pytest.skip(...)` — a genuine product
+  regression on the `#`-search feature's core behavior would currently report
+  SKIPPED, not FAILED. Flagged for a future hardening pass, not touched here.
+- **Two new testid needs, both `needs-adding`** (neither on `main` nor
+  `automation/testids` — this is genuinely virgin ground, first case to touch
+  the `#`-search DOM at all): `chat-hash-search-results-list` (container) +
+  dynamic `chat-hash-search-item-{project_id}_{id}` (per-card). Both wired the
+  SAME way `SlashSuggestionList.jsx` already wires its own
+  `slash-mention-list`/`slash-mention-item-{}_{}` pair through the identical
+  shared `NewParticipantList.jsx` component (`containerTestId`/`getItemTestId`
+  props) — `SearchResultList.jsx` just doesn't forward them yet. Scope the
+  wiring to the `ChatBox.jsx` call site only (existing-conversation flow, the
+  one both covering tests and this extension exercise) — leave
+  `NewConversationView.jsx`'s own `SearchResultList` call site untouched, no
+  test in this family exercises it (canon #511).
+- AFS: `test-specs/chat-interface/lextend_hash-search-shows-agents-and-pipelines-from-all-sources_ELITEA-2206.md`.
+
+## ELITEA-2205/2468 — slash-mention MCP selection + available-tools panel,
+## family AFS, ZERO new testids (pure reuse of ELITEA-2202/2203/2204's
+## slash-mention surface), ONE new defect filed (#1596: zero-tool
+## toolkit/MCP still opens an empty "available tools" panel)
+- **`select_slash_mention_toolkit()` / `slash_mention_list` / `slash_mention_tool_list`
+  / `SLASH_MENTION_ITEM` / `SLASH_MENTION_TOOL_ITEM` (all from `ChatPage`, added
+  ELITEA-2202/2203/2204) work UNCHANGED for MCP participants — confirmed live
+  this pass, both for a 3-tool MCP (`mcp.deepwiki.com`) and a genuinely
+  zero-tool MCP.** `select_slash_mention_toolkit()`'s docstring already says
+  "toolkit/MCP card" — it is not toolkit-specific despite the name.
+- **`select_slash_mention_toolkit()` will TIMEOUT for a zero-tool
+  toolkit/MCP** — its wait strategy (ELITEA-2204's own fix) waits for the
+  first tool-item row to ATTACH, which never happens when the selected
+  participant has zero tools. A caller testing the zero-tools branch must
+  either inline the click + container-only wait, or the method needs an
+  additive `wait_for_first_tool: bool = True` parameter. Not yet fixed on
+  the page object as of this pass — next implementer's job.
+- **Defect [#1596](https://github.com/EliteaAI/elitea-testing-public/issues/1596):
+  a Toolkit/MCP with zero configured tools (`settings.available_mcp_tools`/
+  `selected_tools == []`) still opens the "{name} available tools" panel —
+  header renders, zero rows, no "no tools" empty-state message.** Root cause,
+  read from source: `SlashSuggestionList.jsx`'s early-return
+  (`if (!isToolsFetching && toolQuery && filteredTools.length === 0) return null;`)
+  only hides the panel when a **typed tool-name filter** matches nothing — it
+  does NOT cover "genuinely zero tools, no filter typed", so `<ToolList>`
+  (`ToolList.jsx`) always renders its header Box regardless of `tools.length`.
+  Applies identically to zero-tool Toolkit participants (same component, not
+  MCP-specific) — filed from the MCP case that names the expected "no tools ⇒
+  no panel" behavior explicitly. Deterministic (source-confirmed, no timing
+  involved), reproduced twice live (immediate + after a 2s settle).
+- **Creating a zero-tools MCP toolkit is trivial and honest**: `ToolkitAPI.
+  create_remote_mcp_toolkit(name=..., url=<any working MCP URL>, tools=[])` —
+  passing an empty `tools` list (instead of a `sync_mcp_tools()` result)
+  produces a real toolkit resource with `available_mcp_tools: []`. No new
+  fixture existed for this before this pass; suggested name
+  `mcp_toolkit_no_tools` (mirror `mcp_toolkit_with_tools`'s shape).
+- **The "disconnected" case-text variant collapses into the same UI code
+  path as "zero tools"** — `SlashSuggestionList.jsx`'s `availableTools` memo
+  reads `settings.available_mcp_tools` regardless of WHY it's empty (never
+  synced, or sync genuinely failed) — no separate "disconnected" UI branch
+  exists, confirmed via source read. One zero-tools fixture covers both
+  case-text wordings; no need to simulate a real unreachable MCP server.
+- **`onSlashSelectToolkit` / `onSlashCommitMention`
+  (`useSlashMention.hooks.js:80-145`) are fully participant-type-agnostic** —
+  no `isMcp` branching anywhere in either handler. The trailing-space-after-
+  tool-selection mechanism ELITEA-2204 confirmed live for Toolkits transfers
+  to MCPs by construction (same code path), not just by analogy.
 
 ## ELITEA-2196 — attachment chip CONTENTS (icon+X button+dark/light styling),
 ## ONE new testid (`chat-attachment-remove-chip-{index}`), zero defects
