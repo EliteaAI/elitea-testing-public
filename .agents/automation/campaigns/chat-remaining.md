@@ -58,7 +58,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | 10 | Team Project — participants management | 2169,2171,2172,2173,2174,2175,2176 | 7 | **LANDED** — PR #1561, 5/7 automated + 2/7 already-covered |
 | 11 | Team Project — public conversation / non-owner restrictions | 2188,2189,2190,2191,2192,2193,2194 | 7 | **LANDED (partial)** — PR #1566, 2/7 automated + 2/7 already-covered + 3/7 blocked (#1563) |
 | 12 | Message input + generation controls (stop/regenerate/send-button/starters) | 2177,2178,2179,2182,2183,2184,2185,2186,2187,2465,2466 | 11 | **LANDED (partial)** — PR #1586, 8/11 automated + 3/11 blocked (#1569) |
-| 13 | File attachments | 2195,2196,2198,2199,2201,2467 | 6 | pending |
+| 13 | File attachments | 2195,2196,2198,2199,2201,2467 | 6 | **LANDED** — PR #1595, 6/6 automated |
 | 14 | Slash commands / # mentions / MCP dropdown | 2205,2206,2207,2208,2468,2469,2470 | 7 | pending |
 | 15 | Tool call/output rendering + HITL + context management | 2209,2210,2216,2217,2471,2472,2473,2474 | 8 | pending |
 | 16 | Canvas creation (agent/pipeline/toolkit/MCP from conversation) — check ELITEA-2077 already-covered first | 2073,2074,2076,2077,2078,2081,2083,2084,2089 | 9 | pending |
@@ -299,26 +299,32 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   times per protocol (board read `Approved` on check, resumed with no new
   steering needed).
 
+- **wave-13 LANDED** — elitea-testing-public#1595, merged (`29e6dc831`). 6/6
+  automated via `batch-build.workflow.mjs` (Task `w7cun7ws7`/`wuls3aaxi`, Run ID
+  `wf_15496875-b7d`; workflow crashed once mid-gate-retry — StructuredOutput
+  failure — resumed clean, all 6 units replayed from cache). Cluster
+  `[2199,2467]` (attachment-preview family) confirmed genuine sibling pair, not
+  duplicate. 2 clarification issues filed for case-text drift (not product
+  bugs): #1589 (ELITEA-2196, "files begin uploading" — attach is 100%
+  client-side, zero network at selection), #1591 (ELITEA-2199/2467, case
+  implies type-specific icons — EliteaUI renders identical icon for every file
+  type). Batch's own internal gate went RED once on ELITEA-2201 — an
+  over-specified assertion (required ALL 4 attached filenames verbatim in the
+  LLM's prose reply; the model engaged with every file's content but varied
+  HOW it referenced each — not a product defect). Fixed via a per-file
+  marker-list technique (`[filename, embedded content token, short
+  paraphrase-resistant keyword]`, any-match per file) — iterated twice live
+  before landing on short, paraphrase-resistant markers; verified 3 consecutive
+  standalone green runs. Lead's own gate: 3/3 clean (102.44s/98.73s/100.53s).
+  New testids (all 3 confirmed NOT yet on `main`, 2 of 3 runtime-composed —
+  invisible to a literal grep, verified via file-diff instead per
+  `.agents/workflow.md`): `chat-attach-menuitem-button-icon` (computed
+  `${testId}-icon`, EliteaAI/EliteaUI@a17cb22d), `chat-attachment-remove-chip-
+  {index}` (EliteaAI/EliteaUI@43b81dc8 + renamed @7f29c3dc to avoid a
+  prefix-matcher collision), `chat-attachment-overflow-menu`
+  (EliteaAI/EliteaUI@feb9101a). TMS back-written (`5daa238`): 6 cases
+  `ready`/`automated`.
+
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-13** dispatching via `batch-build.workflow.mjs`. slug=`chat-remaining-w13`,
-  base=`origin/automation/base`, cases 2195,2196,2198,2199,2201,2467 (6),
-  cluster `[2199,2467]` (attachment-preview family — 2467 suspected
-  granularity-superset of 2199, adds truncation-for-long-names). Case snapshots
-  at `.agents/automation/chat-remaining-w13/cases/`. All 6 confirmed still
-  `draft`/`manual` in the TMS at intake (no dedup hits). Task ID `w7cun7ws7`,
-  Run ID `wf_15496875-b7d`. Workflow crashed once (gate-retry agent failed to
-  call StructuredOutput) — resumed clean via `resumeFromRunId`, Task ID
-  `wuls3aaxi`, all 6 units cached/replayed instantly. All 6 units merged into
-  `tests/batch-chat-remaining-w13` (PRs #1587/#1588/#1590/#1592/#1593), but the
-  batch's own gate went RED (1/1) on ELITEA-2201's AI-response-content
-  assertion — over-specified (required literal-substring match of ALL 4
-  attached filenames in the LLM's prose reply; the model engaged with all 4
-  files' content but phrased 3 by name + the 4th via its distinguishing token
-  in a summary sentence — not a product defect, an over-strict assertion vs.
-  what the case text actually asks: "Response references attached files",
-  not "names every file verbatim"). Dispatched a fix-only implementer to relax
-  the assertion technique (majority-match or per-file-token-match instead of
-  all-filenames-literal) and re-verify live 2+ times before trusting it (LLM
-  variance means one green isn't enough evidence here). Lead's own 3× gate not
-  yet run — pending this fix.
+- none — wave-13 closed, wave-14 not yet dispatched.
