@@ -306,4 +306,5 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   cluster `[2199,2467]` (attachment-preview family — 2467 suspected
   granularity-superset of 2199, adds truncation-for-long-names). Case snapshots
   at `.agents/automation/chat-remaining-w13/cases/`. All 6 confirmed still
-  `draft`/`manual` in the TMS at intake (no dedup hits).
+  `draft`/`manual` in the TMS at intake (no dedup hits). Task ID `w7cun7ws7`,
+  Run ID `wf_15496875-b7d`.
