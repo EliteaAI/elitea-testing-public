@@ -71,6 +71,7 @@ from fixtures.data_fixtures import (
     invalid_github_credential,
     github_toolkit_with_invalid_credential,
     mcp_toolkit_with_tools,
+    mcp_toolkit_no_tools,
     mcp_pipeline_with_toolkits,
     hitl_runtime_pipeline,
     pipeline_llm_code_end,

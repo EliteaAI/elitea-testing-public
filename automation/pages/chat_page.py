@@ -6403,7 +6403,9 @@ class ChatPage(BasePage):
         return [items.nth(i).get_attribute("data-testid") for i in range(items.count())]
 
     @action("Select toolkit from slash-mention dropdown")
-    def select_slash_mention_toolkit(self, project_id: int, toolkit_id: int, timeout: int = 10000):
+    def select_slash_mention_toolkit(
+        self, project_id: int, toolkit_id: int, timeout: int = 10000, wait_for_first_tool: bool = True,
+    ):
         """Click a toolkit/MCP card in the open slash-mention dropdown.
 
         Replaces the '/' fragment with '/{toolkit_name}' and opens the
@@ -6414,14 +6416,20 @@ class ChatPage(BasePage):
         ZERO tool-item testids, so waiting on container visibility alone
         races the fetch and reads an empty list, ELITEA-2204) -- waits for
         the first tool-item row to attach instead.
+
+        ``wait_for_first_tool=False`` (ELITEA-2205/2468 AFS caution)
+        SKIPS that first-row wait -- required for a zero-tools MCP/toolkit,
+        where no row will ever attach and the wait would time out. Only
+        the container's own visibility is awaited in that case.
         """
         item = self.get_slash_mention_item(project_id, toolkit_id)
         item.wait_for(state="visible", timeout=timeout)
         item.click()
         self.slash_mention_tool_list.wait_for(state="visible", timeout=timeout)
-        self.slash_mention_tool_list.locator(self.SLASH_MENTION_TOOL_ITEM_PREFIX).first.wait_for(
-            state="visible", timeout=timeout,
-        )
+        if wait_for_first_tool:
+            self.slash_mention_tool_list.locator(self.SLASH_MENTION_TOOL_ITEM_PREFIX).first.wait_for(
+                state="visible", timeout=timeout,
+            )
 
     @action("Select tool from available-tools list")
     def select_slash_mention_tool(self, tool_name: str, timeout: int = 10000):
@@ -6476,7 +6484,7 @@ class ChatPage(BasePage):
 
     @action("Add MCP participant via slash-menu toggle (same open popper)")
     def add_mcp_participant_via_slash_menu(
-        self, project_id: int, toolkit_id: int, timeout: int = 10000,
+        self, project_id: int, toolkit_id: int, timeout: int = 10000, open_plus_menu: bool = False,
     ):
         """Add an MCP as a chat participant via the plus menu's MCPs submenu
         toggle-switch row, WITHOUT closing the popper first (ELITEA-2203
@@ -6490,9 +6498,20 @@ class ChatPage(BasePage):
         Resolves the row directly by its dynamic testid, same
         no-search-needed reasoning as ``add_toolkit_participant_via_slash_menu``.
 
-        Call this directly after ``add_toolkit_participant_via_slash_menu``
-        (same open popper) -- do not close in between.
+        By default, call this directly after
+        ``add_toolkit_participant_via_slash_menu`` (same open popper) --
+        do not close in between.
+
+        ``open_plus_menu=True`` (ELITEA-2205/2468 addition) opens the plus
+        menu itself first (``plus_menu_button``) -- for an MCP-ONLY flow
+        with no preceding Toolkit participant call, where the popper isn't
+        open yet and ``mcps_menuitem`` wouldn't otherwise be visible.
+        Default ``False`` preserves ELITEA-2203's existing "same open
+        popper" contract unchanged for existing callers.
         """
+        if open_plus_menu:
+            self.plus_menu_button.wait_for(state="visible", timeout=timeout)
+            self.plus_menu_button.click()
         self.mcps_menuitem.wait_for(state="visible", timeout=timeout)
         self.mcps_menuitem.click()
         self.mcps_search_input.wait_for(state="visible", timeout=timeout)

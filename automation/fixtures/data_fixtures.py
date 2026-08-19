@@ -2128,6 +2128,51 @@ def mcp_toolkit_with_tools(toolkit_api: ToolkitAPI, request):
 
 
 @pytest.fixture
+def mcp_toolkit_no_tools(toolkit_api: ToolkitAPI, request):
+    """Create a throwaway Remote MCP toolkit with ZERO configured tools.
+
+    ELITEA-2205/2468 AFS § Test Data: an honest API-level precondition (a
+    real toolkit resource whose ``settings.available_mcp_tools`` /
+    ``settings.selected_tools`` are both ``[]``) — not a UI-observable
+    substitution. ``create_remote_mcp_toolkit(tools=[])`` is called with an
+    empty tool list directly (no ``sync_mcp_tools`` probe needed, unlike
+    ``mcp_toolkit_with_tools`` — there is nothing to sync). Confirmed live
+    (AFS): the UI-level code path for "toolkit has zero tools" and
+    "toolkit's ``available_mcp_tools`` came back empty because it's
+    disconnected" are identical, so this also stands in for the
+    "disconnected" case wording.
+
+    Yields:
+        dict: ``{"id": int, "name": str, "toolkit_name": str, "tools": [], "project_id": int}``
+    """
+    name = f"autotest_mcp_{request.node.name}_notools"[:32]
+    toolkit = toolkit_api.create_remote_mcp_toolkit(
+        name=name,
+        description=f"Auto-created zero-tools MCP for test {request.node.name}",
+        url=_MCP_DEEPWIKI_URL,
+        tools=[],
+    )
+    logger.info(
+        "Created zero-tools MCP toolkit %s (%s) for %s",
+        toolkit["id"], name, request.node.name,
+    )
+
+    yield {
+        "id": toolkit["id"],
+        "name": name,
+        "toolkit_name": toolkit.get("toolkit_name", name),
+        "tools": [],
+        "project_id": int(toolkit_api.project_id),
+    }
+
+    try:
+        toolkit_api.delete_toolkit(toolkit["id"])
+        logger.info("Deleted zero-tools MCP toolkit %s", toolkit["id"])
+    except Exception as exc:
+        logger.warning("Failed to delete zero-tools MCP toolkit %s: %s", toolkit["id"], exc)
+
+
+@pytest.fixture
 def mcp_pipeline_with_toolkits(
     mcp_toolkit_with_tools: dict, toolkit_api: ToolkitAPI, pipeline_api: PipelineAPI, request
 ):
