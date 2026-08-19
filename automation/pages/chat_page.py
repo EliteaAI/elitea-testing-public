@@ -409,6 +409,15 @@ class ChatPage(BasePage):
         description="'+N' overflow control in FileList.jsx; rendered only when hiddenAttachments.length > 0.",
     )
 
+    # The MUI Menu's own MenuList root (FileList.jsx slotProps.list) — this
+    # IS the role="menu" element (confirmed against @mui/material/Menu.js:
+    # slotProps.list maps directly onto MenuList, whose root renders
+    # role="menu"), not a page-level raw-role selector. ELITEA-2467 addition.
+    chat_attachment_overflow_menu = LocatorDescriptor(
+        testid="chat-attachment-overflow-menu",
+        description="MUI Menu's MenuList root (role='menu') for the '+N' overflow control.",
+    )
+
     # Per-hidden-attachment item inside the opened overflow Menu, dynamic by
     # actualIndex = maxItemsToShow + index. The Menu is NOT keepMounted —
     # items exist in the DOM only while it's open. ELITEA-2197/2200 addition.
@@ -2972,20 +2981,41 @@ class ChatPage(BasePage):
         not just that a menu happens to appear.
 
         Returns a dict with ``expanded_before``, ``expanded_after`` (the
-        button's ``aria-expanded`` attribute value, or ``None`` when absent)
+        button's ``aria-expanded`` attribute value, or ``None`` when absent),
+        ``menu_visible`` / ``menu_role`` (the opened MUI Menu's own
+        ``chat-attachment-overflow-menu`` element — this IS the
+        ``role="menu"`` node, not a derived proxy; AFS
+        ``lextend_attach-files-truncation-and-overflow-click-to-expand_
+        ELITEA-2467.md`` Coverage Map row 6 / Expected Results require this
+        as its own observable, distinct from item text and aria-expanded),
         and ``names`` (the hidden filenames, in render order). Returns all
-        ``None``/``[]`` if the overflow control isn't rendered.
+        falsy if the overflow control isn't rendered.
         """
         if self.chat_attachment_overflow_button.count() == 0:
-            return {"expanded_before": None, "expanded_after": None, "names": []}
+            return {
+                "expanded_before": None,
+                "expanded_after": None,
+                "menu_visible": False,
+                "menu_role": None,
+                "names": [],
+            }
         expanded_before = self.chat_attachment_overflow_button.get_attribute("aria-expanded")
         self.chat_attachment_overflow_button.click()
         items = self.page.locator(self.CHAT_ATTACHMENT_OVERFLOW_ITEM_PREFIX)
         items.first.wait_for(state="visible", timeout=timeout)
         expanded_after = self.chat_attachment_overflow_button.get_attribute("aria-expanded")
+        self.chat_attachment_overflow_menu.wait_for(state="visible", timeout=timeout)
+        menu_visible = self.chat_attachment_overflow_menu.is_visible()
+        menu_role = self.chat_attachment_overflow_menu.get_attribute("role")
         names = [(items.nth(i).text_content() or "").strip() for i in range(items.count())]
         self.page.keyboard.press("Escape")
-        return {"expanded_before": expanded_before, "expanded_after": expanded_after, "names": names}
+        return {
+            "expanded_before": expanded_before,
+            "expanded_after": expanded_after,
+            "menu_visible": menu_visible,
+            "menu_role": menu_role,
+            "names": names,
+        }
 
     @action("Copy message")
     def copy_message(self, message_index: int = -1):

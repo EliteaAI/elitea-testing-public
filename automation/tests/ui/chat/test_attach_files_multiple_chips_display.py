@@ -79,10 +79,13 @@ observable — existing tests (ELITEA-2196/2197) click the overflow button
 only as page-object plumbing (``get_overflow_attachment_names()``) to read
 hidden filenames for a total-count assertion; this is the first test to
 assert the interaction itself: ``aria-expanded`` flips to ``"true"`` on
-click, and the hidden filenames render in order — proving the control is a
-REAL, functioning expand action, not an inert count display. New
-page-object surface (additive, ``ChatPage``):
-``open_attachment_overflow_menu_and_read()``.
+click, a real MUI ``role="menu"`` element becomes visible, and the hidden
+filenames render in order — proving the control is a REAL, functioning
+expand action, not an inert count display. New page-object surface
+(additive, ``ChatPage``): ``open_attachment_overflow_menu_and_read()``,
+plus the ``chat_attachment_overflow_menu`` testid (``FileList.jsx``
+``slotProps.list`` — this IS the MUI ``MenuList`` root, i.e. the
+``role="menu"`` node itself, not a derived proxy).
 
 All new test methods below reuse ``attach_files_via_menu()`` /
 ``close_plus_menu_popper()`` / ``wait_for_attachment_chip_count()`` /
@@ -469,8 +472,10 @@ class TestAttachFilesMultipleChipsDisplay:
         its chip's name text genuinely, visually truncates (scrollWidth >
         clientWidth). Separately attach 7 files and verify the '+3'
         overflow indicator is a REAL, functioning click-to-expand control —
-        aria-expanded flips to 'true' on click, and the exact 3 hidden
-        filenames render in order — not an inert count display.
+        aria-expanded flips to 'true' on click, a real MUI role='menu'
+        element becomes visible (chat-attachment-overflow-menu testid added
+        this round, ELITEA-2467), and the exact 3 hidden filenames render in
+        order — not an inert count display.
         extend-existing onto this module (see module docstring)."""
         console_errors = []
         page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
@@ -530,9 +535,10 @@ class TestAttachFilesMultipleChipsDisplay:
 
         with allure.step(
             "Step 4-5 — Click the overflow indicator; verify it genuinely "
-            "expands (aria-expanded flips to 'true') and lists exactly the "
-            "3 hidden filenames, in order — a real click-to-expand "
-            "control, not an inert count display"
+            "expands (aria-expanded flips to 'true'), a real role='menu' "
+            "element becomes visible, and it lists exactly the 3 hidden "
+            "filenames, in order — a real click-to-expand control, not an "
+            "inert count display"
         ):
             result = chat.open_attachment_overflow_menu_and_read(timeout=UI_ELEMENT_TIMEOUT)
             assert result["expanded_before"] != "true", (
@@ -542,6 +548,14 @@ class TestAttachFilesMultipleChipsDisplay:
             assert result["expanded_after"] == "true", (
                 "Overflow button's aria-expanded should flip to 'true' "
                 f"after the click, got {result['expanded_after']!r}"
+            )
+            assert result["menu_visible"] is True, (
+                "Clicking the overflow indicator should open a visible "
+                f"menu, got menu_visible={result['menu_visible']!r}"
+            )
+            assert result["menu_role"] == "menu", (
+                "The opened overflow control should be a real MUI menu "
+                f"(role='menu'), got role={result['menu_role']!r}"
             )
             expected_hidden = overflow_file_names[4:]
             assert result["names"] == expected_hidden, (
