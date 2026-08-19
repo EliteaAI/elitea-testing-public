@@ -3745,3 +3745,40 @@ is synchronised immediately.
   `chat-message-item`, `send-button`) is pre-existing and on `main` (freshly
   re-verified this session).
 - AFS: `test-specs/chat-interface/l3_send-message-with-attachments-verify-included_ELITEA-2201.md`.
+
+## ELITEA-2209 — direct toolkit call, tool call in thinking steps — extend-existing
+## onto ELITEA-2215's merged spec (2026-08-19)
+
+- **Near-duplicate of ELITEA-2215** ("Chat – Tool Action and Output – Complete Flow
+  from Direct Toolkit Call", `test_direct_toolkit_call_complete_flow.py`, merged to
+  `automation/base`): same live flow (toolkit as sole participant, no agent, message
+  triggers a real tool call, "Thought for X secs" → thinking-steps chip). 2215's
+  merged test already proves 2209's steps 2-4 (thought accordion, auto-expanded
+  thinking steps, colon-separated `"{toolkit}: {tool}"` chip format — 2209's OWN
+  example `"aaa: create_file"` is already colon-separated despite its "dotted"
+  description, same drift 2215 already documented). **Only 2209's step 1 — "Toolkit
+  in PARTICIPANTS; no AGENTS section" — is unproven**: the covering test's Setup adds
+  the toolkit but never reads the participants panel. `extend-existing` targeting the
+  covering test, gap = one Setup-time assertion.
+- **Participants-badge mechanism, live-confirmed.** `chat-participants-badge-{section}`
+  (`ChatPage.is_participants_badge_visible(section=...)`, pre-existing, already used
+  by 3 other merged specs for `"toolkits"`/`"agents"`) is the correct handle — no new
+  testid needed. Confirmed live this pass: adding a toolkit as sole participant
+  renders the `toolkits`-section collapsed badge in the composer's top-right control
+  row; no `agents` badge renders. Screenshot:
+  `.playwright-mcp/page-2026-08-19T12-53-41-660Z.png` (probe used the seeded
+  `AutoTest Confluence Toolkit 1787` — see caution below).
+- **Caution (test-data, not a defect):** `AutoTest Confluence Toolkit 1787` (seeded
+  toolkit in project 399) is itself misconfigured — selecting it fires a `400` on
+  `GET .../toolkit_validator/prompt_lib/399/2945` and its badge renders in an
+  error/attention variant. Unrelated to this case's subject; don't reuse that toolkit
+  for the new assertion — reuse 2215's own `artifact_toolkit` fixture instead (already
+  confirmed properly configured by the covering test).
+- **2209's target is currently gate-excluded** (2215's test carries a soft-asserted,
+  confirmed-non-deterministic known defect, `elitea-testing-public#1127` — see
+  `.agents/testing.md` § Merge gate "Unconfirmed" history and the covering AFS's
+  fix-round-2 note). The new participants-panel assertion must be placed BEFORE the
+  message send / BEFORE the #1127 classification block, as a plain unconditional
+  assert — NOT routed through the existing `soft_failures` aggregation, since it's
+  mechanically unrelated to #1127.
+- AFS: `test-specs/chat-interface/lextend_direct-toolkit-call-participants-panel-verification_ELITEA-2209.md`.
