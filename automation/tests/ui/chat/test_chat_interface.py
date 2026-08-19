@@ -771,6 +771,16 @@ class TestHashSearch:
         execution-error card if it has no configured nodes; both cases'
         own expected result only asks that the pipeline "processes and
         responds" and "remains in PARTICIPANTS", never a specific content).
+
+        Also does NOT assert a "response attributed to <Pipeline Name>"
+        header string (AFS Axis 2, Clarification 3, fix-round correction):
+        ApplicationAnswer.jsx's response-header participant-name text
+        carries no testid on either `main` or `automation/testids`, and
+        the `conversation_id` fixture guarantees the pipeline is this
+        conversation's only participant, so Step 6's message-count growth
+        + PIPELINES-badge persistence already establish it was that
+        pipeline that responded -- neither case's own text asks for the
+        header string itself.
         """
         with allure.step("Step 1 — Create a new conversation; verify no PIPELINES in PARTICIPANTS"):
             chat = ChatPage(page)
