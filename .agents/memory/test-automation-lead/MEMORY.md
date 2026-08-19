@@ -42,3 +42,6 @@
 - [NEVER call build_index for a routine back-write](build_index_regression_must_be_reverted_not_carried.md) — colliding ids make it destructive; surgical-edit by `path` (2×)
 - [Gate/report tail fails 2× = run gate yourself](workflow_internal_gate_two_failures_run_it_yourself.md) — scope by node-id, hand-write report from `result`
 - [Parallel fix dispatches collide on the shared clone](parallel_fix_dispatches_on_same_clone_collide_even_across_different_branches.md) — never dispatch 2+ code-touching agents in one reply, even to different branches; serialize
+- [2+ different failure shapes = check an already-merged spec, then Playwright-MCP root-cause](reproducing_failure_across_different_signatures_and_an_already_merged_spec_means_environment_not_code.md) — before filing anything
+- [Long gate runs: `nohup cmd & disown` + poll log, not bare Bash](never_schedulewakeup_on_live_background_process.md) — survives harness restarts; ScheduleWakeup only safe with detached procs
+- [already-covered ≠ auto ready/automated](already_covered_tms_backwrite_needs_covering_test_health_check.md) — check covering test's exclusion markers + its own TMS status first
