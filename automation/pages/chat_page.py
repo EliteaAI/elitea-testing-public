@@ -3164,6 +3164,92 @@ class ChatPage(BasePage):
         menu.first.wait_for(state="visible", timeout=timeout)
         return menu
 
+    # ------------------------------------------------------------------
+    # '#' hash-search results list (ELITEA-2206) -- testid'd container +
+    # per-card item, mirroring the slash-mention wiring above. The
+    # pre-existing wait_for_hash_search_dropdown()/get_hash_search_first_option()/
+    # is_hash_search_dropdown_visible() raw-handle helpers below stay
+    # untouched (additive-only extension, .agents/role-overrides.md) -- they
+    # remain the mechanism for open/close, while the fields below are used
+    # only for the new per-card content assertions (subtitle, icon, "Public"
+    # chip, mixed-source check).
+    # ------------------------------------------------------------------
+
+    chat_hash_search_results_list = LocatorDescriptor(
+        testid="chat-hash-search-results-list",
+        description=(
+            "'#' hash-search results container (agents/pipelines mention "
+            "picker), shown while the composer contains a bare '#' or "
+            "'#query'. Renders 'Search results' as its title, then "
+            "participant cards or 'No matching results'."
+        ),
+    )
+
+    # Dynamic testid -- class-level template constant (.agents/testing.md §
+    # Locator policy). Format with (project_id, id), exact mirror of
+    # SLASH_MENTION_ITEM's own '{}_{}"' pattern above.
+    HASH_SEARCH_ITEM = '[data-testid="chat-hash-search-item-{}_{}"]'
+    HASH_SEARCH_ITEM_PREFIX = '[data-testid^="chat-hash-search-item-"]'
+    # Scoped sub-selectors, read off an item card testid parent -- CONTENT
+    # EXTRACTION off an already-testid-identified element, not a free-
+    # floating handle used to LOCATE a new independently-addressable
+    # target. Not "resolve by CSS instead of testid" -- these tag/class
+    # selectors never stand alone, they only ever run inside
+    # `.HASH_SEARCH_ITEM`'s testid scope. Two established project
+    # precedents for this exact shape (no new testid needed for either):
+    #  1. `.claude/rules/ui-tests.md`/mui-patterns.md's sanctioned
+    #     `_extract_message_body()` -- `message_locator.locator('p')` /
+    #     `.locator('.MuiTypography-bodyMedium')` scoped inside an
+    #     already-identified message row, for TEXT reads.
+    #  2. `chat_page.py`'s ELITEA-2196 `get_attachment_chip_computed_style()`
+    #     -- "has_file_icon" structural presence check scoped inside the
+    #     testid'd `chat-attachment-chip-{i}` parent, for ICON presence.
+    # AFS Concrete Handles table marks both "none needed / n/a" with this
+    # same citation -- the analyst (fidelity/handle authority for this
+    # case) already made this call, not improvised here.
+    HASH_SEARCH_ITEM_SUBTITLE = 'p, span'
+    HASH_SEARCH_ITEM_ICON = 'img, svg, .MuiAvatar-root'
+
+    def get_hash_search_item(self, project_id: int, participant_id: int):
+        """Return the Locator for a single '#' hash-search result card."""
+        return self.page.locator(self.HASH_SEARCH_ITEM.format(project_id, participant_id))
+
+    def get_hash_search_items(self):
+        """Return the Locator for ALL '#' hash-search result cards currently
+        rendered (prefix-count idiom, same as get_slash_mention_item_count())."""
+        return self.chat_hash_search_results_list.locator(self.HASH_SEARCH_ITEM_PREFIX)
+
+    def get_hash_search_item_subtitle(self, item) -> str:
+        """Read a hash-search item card's type subtitle text ('agent' /
+        'pipeline' / 'MCP'), scoped inside the card's own testid parent
+        (content extraction, not element location -- see
+        HASH_SEARCH_ITEM_SUBTITLE comment above for the sanctioned
+        `_extract_message_body()`-style precedent).
+
+        NewParticipantCard.jsx's bodyContainer renders name then type as
+        the two Typography children in fixed DOM order -- '.last' reads the
+        type (second) Typography, not the name (first).
+        """
+        return (item.locator(self.HASH_SEARCH_ITEM_SUBTITLE).last.text_content() or "").strip()
+
+    def hash_search_item_has_icon(self, item) -> bool:
+        """Structural presence check, scoped inside the card's own testid
+        parent (see HASH_SEARCH_ITEM_ICON comment above for the sanctioned
+        ELITEA-2196 attachment-chip-icon precedent): does this hash-search
+        item card have an icon/avatar element (custom img or initials-avatar
+        fallback -- always present, never absent, per this AFS's live
+        exploration)? Does NOT assert icon TYPE differs by participant type
+        -- not confirmed to hold on this card's actual render path (AFS
+        Extension-target discussion)."""
+        return item.locator(self.HASH_SEARCH_ITEM_ICON).count() > 0
+
+    def hash_search_item_has_public_label(self, item) -> bool:
+        """Whether this hash-search item card carries the literal 'Public'
+        chip (Agent Hub / public-project sourced item) -- a single-purpose,
+        always-same-text label read scoped inside the card's own testid
+        parent, same content-extraction idiom as the two methods above."""
+        return item.get_by_text("Public", exact=True).count() > 0
+
     def wait_for_hash_search_dropdown(self, timeout: int = 5000):
         """Wait for # mention search results panel to appear.
 
