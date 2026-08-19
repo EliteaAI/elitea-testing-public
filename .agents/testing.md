@@ -480,6 +480,15 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   the failing resource URL** (not just the status code) so a shared filter can be
   written; until then, the standard response is: re-run once, and if the console-500
   doesn't reproduce, it's this pattern.
+- Known-noise entry (2026-08-18/19, chat-remaining wave-12, PR #1567/#1568/#1571
+  merged into `tests/batch-chat-remaining-w12`): 1 of 5 lead-independent gate runs
+  over the full 8-node-id set (3 files: `test_chat_agent_starters_add_remove.py`,
+  `test_regenerate_response.py`, `test_streaming_response.py`) hit this pattern on
+  `test_regenerate_only_on_last_and_click_triggers_new_generation` (ELITEA-2184/
+  2185/2187 family) — byte-identical message, still no URL captured. Not reproduced
+  on the immediately following re-run nor the two after that (3 consecutive clean
+  8/8 runs followed). Another occurrence, not a new class; still short of the URL
+  needed to promote this to a shared filter.
 - Known-noise entry (2026-08-15, chat-remaining wave-07, PR pending): 1 of 4
   gate runs over the full 11-node-id set hit
   `test_drag_drop_conversation_back_to_general_list` (ELITEA-2145) —

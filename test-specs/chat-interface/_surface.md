@@ -4,7 +4,10 @@ Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
 a time; last confirmed by: qa-engineer analyst, ELITEA-2089, 2026-08-18
 (supersedes nothing below — new section, other sections unchanged; previous
-confirmer: qa-engineer analyst, ELITEA-2192/2193/2194,
+confirmer: test-automation-engineer (combined analyst+
+implementer), ELITEA-2179/2466, 2026-08-15 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: qa-engineer analyst,
+ELITEA-2192/2193/2194,
 2026-08-15 (supersedes nothing below — new section, other sections unchanged;
 previous confirmer: qa-engineer analyst, ELITEA-2189/2190/2191,
 2026-08-15 (supersedes nothing below — new section, other sections unchanged;
@@ -50,6 +53,79 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03))).
+
+## ELITEA-2179/2466 — composer send-button/waveform visibility toggle,
+## family AFS (2466 is a granular superset of 2179), FIVE new testids added,
+## `extend-existing` against the ELITEA-2181 streaming test
+- **SendButton.jsx renders exactly ONE of two mutually exclusive DOM
+  nodes in the composer's send-button slot, never a visibility toggle on a
+  shared node** — `chat-send-button` (real Send, when the input has text)
+  OR a waveform/"enter speaking mode" button (when empty, voice features
+  on). Source- AND live-confirmed: typing swaps `chat-send-button` 0->1 the
+  SAME tick the waveform testid's count swaps 1->0. While the response is
+  streaming, UserInput.jsx swaps the ENTIRE slot to a Stop control — neither
+  of the two idle-state buttons renders, confirmed live (`send_button.count()
+  == 0 AND voice_mode_button.count() == 0` immediately after Send, before
+  `wait_for_ai_response` returns).
+- **"Waveform reappears" (both cases' final step) resolves once generation
+  COMPLETES, not while the LLM is still streaming** — matches this page
+  object's own pre-existing `wait_for_generation_complete()` docstring
+  ("Speaking mode button appears when generation is complete... During
+  generation, a stop button is shown instead"). Treated as a wording
+  nuance/clarification in both AFS files, not a defect — the live,
+  self-consistent behavior is asserted (reverse-masking guard).
+- **`test_streaming_response_progressive_display` (ELITEA-2181, merged
+  `origin/automation/base`) already proves the CORE toggle** (absent when
+  empty -> visible on typing -> absent on Backspace -> Send clears input) as
+  its own Step 1 — but only via `send_button.count()==0/visible`, never a
+  positive assertion on WHAT renders in the empty-state slot. That gap (plus
+  ELITEA-2466's bottom-bar-inventory/focus-border/sender-name-avatar asks,
+  entirely untouched by the covering test) is what this family AFS closes —
+  landed as a new test METHOD in the same file/class, tagged with both TMS
+  IDs via two `@allure.issue` decorators, original method byte-identical.
+- **Five new testids, all `EliteaAI/EliteaUI` `automation/testids` only
+  (not yet on `main`, human cherry-pick pending)**:
+  - `chat-voice-mode-button` — `SendButton.jsx`'s speaking-mode-entry
+    branch (the waveform icon itself). `EliteaAI/EliteaUI@b84f4f8d`.
+  - `chat-voice-input-button` — `VoiceButton.jsx`'s mic button (a SEPARATE
+    feature from the waveform — this one dictates INTO the text field, the
+    waveform button enters a live speaking conversation).
+    `EliteaAI/EliteaUI@b84f4f8d`.
+  - `chat-composer-focus-border` + `data-focused` state attribute — on
+    `UserInput.jsx`'s PRE-EXISTING gradient-border `Box` (zero new DOM
+    node). Focus glow is a `box-shadow` + gradient-background effect, NOT a
+    literal CSS `border-color` — live-confirmed `boxShadow` flips
+    `"none"` <-> `"rgba(21, 255, 247, 0.2) 0px -5px 20px 0px"` (cyan) with
+    `data-focused`. `EliteaAI/EliteaUI@bfdc3148`.
+  - `chat-message-sender-name` / `chat-message-sender-avatar` — on
+    `UserMessage.jsx`'s header row (vertical-layout branch). Avatar wired
+    via `UserAvatar`'s PRE-EXISTING `testId` prop (zero new DOM node), name
+    on the existing `Typography`. `EliteaAI/EliteaUI@3762995c`.
+  - **Self-correction mid-session**: an initial 6th testid
+    (`llm-model-settings-button`) was added on `LLMModelSelector.jsx`'s
+    `field` variant — then live-verified (via `document.querySelectorAll`
+    against the running dev server) that the chat composer actually renders
+    the component's DEFAULT (non-`field`) variant, which already carries a
+    PRE-EXISTING `data-testid="model-settings-button"` with zero prior
+    page-object callers (canon #511 first caller). Reverted the unused
+    addition same-session (`EliteaAI/EliteaUI@293d3aee`) rather than
+    shipping dead instrumentation — verify a testid RENDERS on the actual
+    call site your test drives before assuming a component-source read is
+    enough; two nearly-identical variants of the same shared component can
+    diverge on which one a given page actually uses.
+- **`+` menu button (`plus-menu-button`) and the gear/settings button
+  (`model-settings-button`) were both ALREADY on `main`** (pre-existing,
+  zero prior `LocatorDescriptor`/page-object callers before this case —
+  canon #511 first callers, not new testids).
+- **Test-data note**: `/chat` (bare, no id) redirects unpredictably to the
+  LAST-VIEWED conversation rather than a genuinely blank one (same
+  documented gotcha as the ELITEA-2175/2176 section below) — this AFS's
+  shipped test uses the `conversation_id` fixture (fresh, API-seeded), same
+  as the covering ELITEA-2181 test, rather than the ambient "new chat"
+  screen this session used only for live handle-exploration via Playwright
+  MCP (not the shipped test's own path).
+- Family AFS (covers both TMS IDs, same `afs_path`):
+  `test-specs/chat-interface/lextend_composer-send-button-visibility-toggle_ELITEA-2179.md`.
 
 ## ELITEA-2192/2193/2194 — Users-dropdown remove-control family, round 2:
 ## owner-attempt-toast is UNREACHABLE (clarification, not a defect), owner-
@@ -2899,6 +2975,225 @@ confirmer: qa-engineer analyst, ELITEA-2168, 2026-08-15)
   checkmark-icon `sx`-on-raw-svg console warning) re-confirmed on THIS case's
   own conversation-B setup too (not just ELITEA-2167/2168's flows) — filtered
   via the same `_is_known_checkicon_sx_svg_warning_719` idiom.
+
+## Add/remove agent participant mid-conversation + conversation starters
+(ELITEA-2177/2178/2465, qa-engineer analyst, 2026-08-15) — `/chat/{id}`
+existing-conversation surface, NOT the Agent Hub / embedded-agent-detail
+surfaces ELITEA-2369/1886 already cover.
+
+- **`chat-conversation-starter-tile` renders on THIS surface too, already
+  wired, zero new testid needed.** `/chat/{id}`'s `NewChat.jsx` mounts the
+  SAME `ChatBox.jsx` → `ChatConversationStarters.jsx` tree ELITEA-1886 wired
+  the testid on (for the embedded `/agents/all/{id}` chat) — confirmed live:
+  adding an agent as a participant via the composer's "+ → Agents" flow on an
+  EXISTING conversation renders starter tiles carrying
+  `chat-conversation-starter-tile` with no additional wiring. `ChatPage`
+  already has `CHAT_STARTER_TILE` / `get_chat_starter_tiles()` /
+  `click_chat_starter_tile()` ready to use as-is.
+- **The tooltip on a starter tile is CONDITIONAL on genuine visual
+  truncation** (`EllipsisTextWithTooltip`'s `clientWidth < scrollWidth` check,
+  `src/components/ConversationStarters.jsx:218-223`) — a short starter (e.g.
+  the case-family's own "here is your task: Explain Exponential Backoff",
+  48 chars) does NOT truncate at this environment's rendered tile width and
+  correctly shows no tooltip on hover. Any case asserting the hover-tooltip
+  behavior needs a starter text long enough to actually overflow (~150+
+  chars confirmed to truncate reliably) — don't assume the case's own short
+  example starter will exercise this path.
+- **Plus-menu ("+") testids exist and are cleaner than the page object's
+  current raw handles** — confirmed live via `getByTestId` resolution:
+  `plus-menu-button`, `agents-menuitem` (same `-menuitem` suffix family as
+  `PLUS_MENU_ITEM_SUFFIX`), `agents-search-input`, and the dynamic per-row
+  `agents-menu-item-agent-{index}-{agent_id}`. `ChatPage.add_agent_participant()`
+  still uses `get_by_role("button", name="plus menu")` /
+  `get_by_placeholder("Search agents...")` / a raw `li[role="menuitem"]`
+  text-match — pre-existing tech debt (#25/#42 class), not touched this
+  dispatch since the method already works; a future refactor pass could
+  tighten it to the testids above.
+- **The composer's "X" / remove-participant icon has NO testid** —
+  `AgentEditorPanel.jsx`'s `IconButton` (`aria-label="switch to model"`,
+  tooltip "Switch to model", TWO render branches ~line 178 and ~line 294)
+  is genuinely missing `data-testid`, confirmed via source. `testid needed:
+  chat-switch-to-model-button` — real gap, not yet added (ELITEA-2465's own
+  case step 4 needs to verify this icon's presence).
+- **`reasoning_effort: "none"` passes agent-CREATE but 400s
+  participant-ADD.** `POST .../applications/prompt_lib/{project}` accepts
+  `llm_settings.reasoning_effort: "none"` silently (agent created, `201`,
+  bad value persisted) but
+  `POST .../elitea_core/participants/prompt_lib/{project}/{conv_id}` for
+  that same agent 400s:
+  `"Input should be 'low', 'medium' or 'high'"` (Pydantic literal-enum
+  validation on the participants endpoint only). Confirmed live this
+  dispatch — cost ~15 minutes of debugging until traced via the network
+  response body. Fixture guidance: omit `reasoning_effort` entirely (or set
+  a valid enum value) when creating a disposable agent that will be added as
+  a chat PARTICIPANT (not just used standalone) — this is a stricter check
+  than agent-creation's own validation, asymmetric between the two
+  endpoints.
+- **The Playwright MCP browser's default-active project is NOT guaranteed to
+  match `${ELITEA_PROJECT_ID}` (399, `Private`) from `.env.test`.** This
+  session's persistent browser profile opened on project 471 ("Elitea
+  Testing Team") by default — confirmed via the sidebar's project-id textbox
+  and via `GET .../applications/prompt_lib/{id}?...` calls literally
+  targeting different project ids. Data seeded via `AgentAPI`/Bearer-token
+  calls against project 399 was invisible in the UI's own agent search until
+  the project switcher was used to select "Private" (project 399) —
+  `participants`-add also 400s cross-project (targets the CONVERSATION's
+  project, not the agent's). Any future analyst/fixture on this surface:
+  confirm the UI session's ACTUAL active project (sidebar textbox, or force
+  `page.goto`/project-switcher-select at test start) rather than assuming
+  the config default is what's live in a persistent local browser profile.
+- **Removing an agent participant cleanly clears starters AND restores the
+  default LLM, confirmed via full reload (not just live DOM).** Deleting the
+  agent via API (`AgentAPI.delete_agent()`) also cleanly drops it as a
+  conversation participant server-side — post-reload, zero leftover chip,
+  zero leftover starter tiles, default LLM shown again, zero console errors.
+  Deleting a just-sent agent-response message item (via its own "Delete"
+  button) CASCADES to also remove the paired user message — confirmed live,
+  useful cleanup shortcut instead of deleting each message individually.
+- **Case-text drift (CLARIFICATION, not filed as a defect):** the
+  "Remove agent?" confirmation dialog reads
+  `"Are you sure to remove the {agent-name} agent from chat?"` — case text
+  (ELITEA-2178) says "...from **conversation**?". Live wording is correct/
+  current; assert "from chat".
+- **"Claude B" (the case-family's own example agent name, ELITEA-2177/2178/
+  2465) does not exist in either the `Private` (399) or "Elitea Testing
+  Team" (471) project** — confirmed via full agent listing in both. Use any
+  starters-bearing agent (the pre-existing Catalog "StarterComposer" agent,
+  4 starters configured, works for a quick manual check; a disposable
+  per-test agent via `AgentAPI.create_agent_full()` is the implementer's
+  correct choice for isolation).
+- **CONFIRMED DEFECT (issue #1569, 2/2 deterministic): clicking the Stop
+  control mid-generation wipes the ENTIRE message exchange, not just the
+  streaming response.** After Send → (while streaming) → click Stop, the
+  message list goes empty in the UI AND server-side — confirmed via
+  `GET .../conversation/prompt_lib/{project}/{conv_id}?messages_limit=10&
+  sort_order=desc` returning `"message_groups_count":0,"message_groups":[]`
+  even after a full page reload. Reproduced on two independent fresh
+  conversations (ELITEA-2182/2183 session). The input bar DOES restore
+  correctly (waveform reappears, input re-enabled) — only the transcript
+  wipe is the defect. A SUBSEQUENT send-and-respond cycle after Stop works
+  perfectly cleanly (ELITEA-2183 confirmed) — the defect is isolated to
+  "does the interrupted turn survive", not "is the composer left usable".
+- **The Stop control (`UserInput.jsx` ~line 552-562, `onClick={onStop}`,
+  `<StopIcon>`) has NO `data-testid` today** — `testid needed:
+  chat-stop-generation-button`, real gap (ELITEA-2182/2183's own subject).
+  It renders in the SAME footer slot the composer-send-button-toggle test
+  already proves is neither Send nor waveform during streaming
+  (`send_button.count()==0` AND `voice_mode_button.count()==0`) — that
+  test proves the Stop control occupies the slot by elimination but never
+  asserts on it directly.
+
+## ELITEA-2184/2185/2186/2187 (2026-08-15/16) — Regenerate exclusivity + click-replace behavior; #1569 re-confirmed a 3rd time
+
+**Resolved/added during ELITEA-2184/2185/2186/2187 implementation (combined
+analyst+implementer session):**
+
+- **Regenerate and Delete render ONLY for the last AI message — confirmed
+  via direct DOM query, not just hover/a11y-tree inspection.**
+  `document.querySelectorAll('[data-testid="chat-regenerate-button"]').length`
+  and the same for `chat-delete-button` return exactly **1** regardless of
+  how many AI messages exist in the conversation (confirmed with 2 AI
+  messages live) — the element is conditionally rendered
+  (`isLastMessage`-gated in `ApplicationAnswer.jsx`, same conditional
+  family as the already-documented `Answer` block's
+  `skill-test-last-response`/`chat-answer-content` split), not merely
+  CSS-hover-hidden on every message. This makes "Regenerate is exclusive to
+  the last response" a deterministic, non-hover-timing-dependent testid-
+  count assertion.
+- **Copy and Read-out render on EVERY AI message**, by contrast —
+  `chat-copy-button` returned **2** matches for the same 2-AI-message
+  conversation. Do not assume the 4 action icons share identical
+  last-message-exclusivity; only Regenerate + Delete are exclusive.
+- **The existing `regenerate_action_button`/`copy_action_button`/
+  `read_out_button`/`delete_action_button` `LocatorDescriptor` fields
+  resolve PAGE-WIDE** (`page.get_by_test_id(...)`, no scoping). Safe to use
+  bare only when the conversation has a single AI message (as
+  `test_streaming_response.py` does) — a 2+-AI-message conversation makes
+  `chat.copy_action_button`/`chat.read_out_button` throw a Playwright
+  strict-mode violation (multiple matches). Any test touching a
+  multi-exchange conversation needs the message-scoped constant variants
+  added this session (`REGENERATE_ACTION_BUTTON` etc., chained off a
+  specific `messages_container.nth(i)`).
+- **Clicking Regenerate reuses the IDENTICAL `chat-stop-generation-button`
+  control/testid as a normal Send's mid-stream state** — confirmed live:
+  the composer's send-slot shows the same orange Stop control (computed
+  `color: rgb(242, 153, 74)`) whether the in-flight generation came from a
+  fresh Send or a Regenerate click. No separate "regenerating" indicator
+  exists — reuse the existing `ChatPage.stop_generation_button` field
+  as-is for both flows.
+- **Regenerate replaces the last message's content IN PLACE** — the
+  message-item list count does NOT grow (confirmed: 4 items before, 4
+  items after a full regenerate-and-complete cycle on a 2-exchange
+  conversation); only the last item's body text and its internal "Thought
+  for `<n>` secs" accordion reset and re-stream. The new response text is
+  genuinely different from the pre-regenerate text (both real LLM
+  completions, observed live — not test-authored).
+- **Defect #1569 re-confirmed a THIRD time, independently** (ELITEA-2182/
+  2183 confirmed it 2/2; this session confirmed it again on a fresh,
+  unrelated conversation, using the CASE's own `"generate a poem"` prompt
+  rather than ELITEA-2182's prompt): clicking Stop mid-stream removes the
+  entire exchange (user message + partial AI reply), not just the
+  streaming response — the message list reverts to its pre-send state, and
+  the composer's input is silently refilled with the typed-but-unsent
+  text. This blocks ELITEA-2186 ("Regenerate After Stopped Generation")
+  entirely — its own precondition (a stopped response to hover over and
+  regenerate) cannot be constructed while #1569 is open. Do not re-attempt
+  ELITEA-2186 without first checking #1569's status — the WIP commit
+  observed on this same batch trunk for ELITEA-2182/2183 (`d2c3dcc2`,
+  "verification run in progress") suggests active work on the underlying
+  Stop-handling code at the time of this session.
+- **Update (2026-08-18): ELITEA-2182/2183 reclassified `blocked`** on the
+  wave-12 trunk — both tests hit #1569's own headline Stop-button subject
+  (not an isolated assertion), so no soft-assert workaround applies per
+  `.agents/role-overrides.md` § Declared-improvisation protocol ceiling.
+  Matches ELITEA-2186's existing `blocked` disposition above.
+
+## ELITEA-2177/2178/2465 (2026-08-15/16) — Add/remove agent participant mid-conversation + conversation starters
+
+**Resolved/added during ELITEA-2177/2178/2465 implementation:**
+- **`chat-switch-to-model-button` testid ADDED** (both `AgentEditorPanel.jsx`
+  render branches) — EliteaAI/EliteaUI@c1905706 on `automation/testids`. The
+  "no testid" gap this digest flagged above is now closed;
+  `ChatPage.chat_switch_to_model_button` is a real `LocatorDescriptor`.
+- **`chat-conversation-starter-tile-tooltip` testid ADDED** on the starter
+  tile's MUI Tooltip popper content, via a new `slotProps.tooltip` wire on
+  `EllipsisTextWithTooltip` (`src/components/ConversationStarters.jsx`) —
+  EliteaAI/EliteaUI@c7e7f88e. A raw `[role="tooltip"]` selector is NOT a
+  sanctioned #579 exception for our own MUI usage, so this was a genuine gap
+  too, not just a nice-to-have. `ChatPage.chat_starter_tile_tooltip_content`
+  + `hover_chat_starter_tile()` consume it.
+- **`chat-conversation-starter-tile` itself needed NO new wiring on this
+  surface** — confirmed live it already renders on the mid-conversation
+  add-agent flow via `ChatConversationStarters.jsx`'s call site (wired
+  ELITEA-1886, EliteaAI/EliteaUI@afb48435, 2026-08-07). `chat_page.py`
+  carried a STALE comment claiming that call site was "intentionally left
+  unwired" (written before the ELITEA-1886 dispatch); corrected in place
+  this implementation.
+- **`chat.send_button.click(force=True)` right after a starter-tile click
+  is a real, reproducible no-op here too** — same root cause as the
+  project's `chat_send_button_force_click_race.md` memory entry
+  (`disabledSend`'s dependency can still be mid-flap a moment after the
+  DOM `disabled` attribute already reads false; `force=True` bypasses
+  Playwright's actionability wait that would otherwise line up with the
+  settle). Plain (non-force) `.click()` is required for the "click a
+  starter tile, then click Send" sequence on THIS surface too — confirmed
+  by reproducing the no-op live before fixing it.
+- **`ChatPage.is_participants_badge_visible()` cannot prove a NEGATIVE
+  transition right after a removal click** — it only waits for VISIBLE, so
+  `assert not is_participants_badge_visible(...)` immediately after
+  clicking "Remove" can read "still visible" a moment before the DOM
+  update lands (confirmed live — a real, reproducible flake, not a
+  one-off). Added `ChatPage.wait_for_participants_badge_absent(section,
+  timeout)` — waits on `state="hidden"` directly — as the correct
+  post-removal check; reuse it instead of the bool-returning method for
+  any future "assert this badge is now gone" step.
+- **The participants-popover row (`PARTICIPANT_ROW`) renders a
+  "Participant Name" loading-skeleton placeholder before its real content
+  settles** — a one-shot `row.wait_for(state="visible")` +
+  `text_content()` read can catch that placeholder text instead of the
+  real agent name (confirmed live — reproducible). Use a web-first
+  `expect(row).to_contain_text(agent_name, timeout=...)` instead, which
+  retries until the real content lands.
 
 ## Edit owned agent via chat canvas (ELITEA-2089, confirmed 2026-08-18)
 
