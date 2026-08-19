@@ -2,7 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2205/2468, 2026-08-19
+a time; last confirmed by: qa-engineer analyst, ELITEA-2206, 2026-08-19
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: qa-engineer analyst, ELITEA-2205/2468, 2026-08-19
 (supersedes nothing below — new section, other sections unchanged; previous
 confirmer: test-automation-engineer (combined analyst+
 implementer), ELITEA-2198, 2026-08-19 (supersedes nothing below — new
@@ -59,7 +61,65 @@ qa-engineer analyst, ELITEA-2111, 2026-08-15;
 previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
-ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)))).
+ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03))))).
+
+## ELITEA-2206 — `#` hash-search participant dropdown (agents+pipelines,
+## mixed sources), NEW surface for THIS digest (`chat-hash-search-participants`),
+## `extend-existing` against the pre-existing `TestHashSearch` class, TWO new
+## testid gaps found (container + dynamic item), ZERO defects
+- **First digest entry for the `#` hash-search feature** — distinct from the
+  `/`-slash-mention family (ELITEA-2202/2203/2204/2205/2468, toolkit/MCP
+  participants) and the `~`-skill-mention family. `#` opens a
+  `SearchResultList.jsx` → shared `NewParticipantList.jsx` panel listing
+  **agents AND pipelines** (not toolkits/MCPs/skills), titled literally
+  `"Search results"` (component's `title` prop — DOM text is sentence-case,
+  NOT all-caps; any CSS uppercase transform is visual only).
+- **A merged spec already exists for this feature under a DIFFERENT, older
+  TMS-id lineage** — `test_chat_interface.py::TestHashSearch` (2 methods,
+  `test_hash_search_participants` / `test_add_participant_via_hash_search`)
+  carries `@allure.issue` links to `ELITEA-0498`/`ELITEA-0501`, not
+  `ELITEA-2206`. Grepping this digest or `test-specs/` BY TMS ID would have
+  missed it entirely — found only by grepping the SUITE by behaviour
+  (`hash_search`) per this skill's own § 2b discipline. Confirms the standing
+  caution: search by observable/label, never by case id.
+- **Covering tests only prove OPEN + select-to-close** — never inspect a
+  single result card's own contents (subtitle text, icon, source label), and
+  never prove the click-away-without-selecting close path. Live-confirmed gap
+  assertions this session (bare `#` on an existing conversation, `/chat/9082`):
+  per-card subtitle is literally lowercase `agent`/`pipeline`
+  (`NewParticipantCard.jsx`'s `typeText`, case text says capitalized —
+  **case-text drift, clarification not defect**, assert the real value); every
+  card carries an icon (custom `img "elitea"` OR two-letter initials avatar,
+  never absent); a `"Public"` chip marks Agent-Hub/public-project items,
+  absent chip marks current-project items, BOTH present in one bare-`#`
+  result set (`useParticipants({ projectFilter: 'all', ... })` is the
+  mechanism — confirmed via source); clicking a definitely-outside element
+  (sidebar nav button) closes the dropdown via `ClickAwayListener`, entirely
+  independent of the covering test's select-to-close path.
+- **`get_hash_search_first_option()`'s DOM-heuristic card-matching is now
+  supersedable** — once the new `chat-hash-search-item-{project_id}_{id}`
+  testid lands, a future pass could replace this ~30-line best-effort
+  `xpath`/`filter()` heuristic with a real selector. NOT done as part of this
+  extension (Hard Rule: additive-only) — flagged for a future dedicated
+  migration pass, same class as the `automation/pages/` #25/#42 tech debt.
+- **Separate finding, NOT filed as a defect (existing merged code, unrelated
+  to this case's own scope)**: both covering tests wrap their core
+  dropdown-appears wait in `try/except: pytest.skip(...)` — a genuine product
+  regression on the `#`-search feature's core behavior would currently report
+  SKIPPED, not FAILED. Flagged for a future hardening pass, not touched here.
+- **Two new testid needs, both `needs-adding`** (neither on `main` nor
+  `automation/testids` — this is genuinely virgin ground, first case to touch
+  the `#`-search DOM at all): `chat-hash-search-results-list` (container) +
+  dynamic `chat-hash-search-item-{project_id}_{id}` (per-card). Both wired the
+  SAME way `SlashSuggestionList.jsx` already wires its own
+  `slash-mention-list`/`slash-mention-item-{}_{}` pair through the identical
+  shared `NewParticipantList.jsx` component (`containerTestId`/`getItemTestId`
+  props) — `SearchResultList.jsx` just doesn't forward them yet. Scope the
+  wiring to the `ChatBox.jsx` call site only (existing-conversation flow, the
+  one both covering tests and this extension exercise) — leave
+  `NewConversationView.jsx`'s own `SearchResultList` call site untouched, no
+  test in this family exercises it (canon #511).
+- AFS: `test-specs/chat-interface/lextend_hash-search-shows-agents-and-pipelines-from-all-sources_ELITEA-2206.md`.
 
 ## ELITEA-2205/2468 — slash-mention MCP selection + available-tools panel,
 ## family AFS, ZERO new testids (pure reuse of ELITEA-2202/2203/2204's
