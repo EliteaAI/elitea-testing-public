@@ -40,7 +40,7 @@ jobs:
   test:
     uses: ./.github/workflows/test-ui-custom.yml
     with:
-      environment: dev
+      environment: dev-all
       suite: ${{ inputs.suite || 'all' }}
       custom_suites: ${{ inputs.custom_suites || '' }}
       parallel_jobs: ${{ inputs.parallel_jobs || '9' }}
