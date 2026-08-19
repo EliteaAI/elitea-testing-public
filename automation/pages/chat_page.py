@@ -284,6 +284,17 @@ class ChatPage(BasePage):
         ),
     )
 
+    context_budget_percentage = LocatorDescriptor(
+        testid="context-budget-percentage",
+        description=(
+            "Utilization-percentage display inside the Context Budget panel "
+            "(ContextBudgetProgress.jsx) — sibling Typography of "
+            "context-budget-tokens, e.g. '0%'. Testid added for ELITEA-2216 "
+            "(previously no handle existed; the tokens-display testid covers "
+            "only the '0 / 6 400 tokens' text, not the separate percentage)."
+        ),
+    )
+
     context_budget_messages_count = LocatorDescriptor(
         testid="context-budget-messages-count",
         description="Messages counter value inside the Context Budget panel (e.g. '4').",
@@ -370,6 +381,53 @@ class ChatPage(BasePage):
             "submitForm(); disabled until the form is dirty + valid. Saving "
             "does NOT auto-close the dialog (no onClose call in the submit "
             "handler) — close explicitly (e.g. Escape key) afterward."
+        ),
+    )
+
+    context_modal_management_toggle = LocatorDescriptor(
+        testid="context-modal-management-toggle",
+        description=(
+            "'Context Management' Switch inside the 'Edit context settings' "
+            "dialog title (ContextStrategyModalContent.jsx) — mirrors the "
+            "global Settings > Memory toggle's checked state. Testid added "
+            "for ELITEA-2216. Same shape as "
+            "UserProfileSettingsPage.context_management_toggle: the "
+            "data-testid lands on the MUI SwitchBase root span, not the "
+            "nested <input> — read the 'Mui-checked' class, don't call "
+            "is_checked()."
+        ),
+    )
+
+    context_modal_stat_tokens = LocatorDescriptor(
+        testid="context-modal-stat-tokens",
+        description=(
+            "Tokens stat value inside the 'Edit context settings' dialog "
+            "body (ContextBudgetStats.jsx's ContextStats component — used "
+            "ONLY inside this dialog, distinct from the sidebar panel's "
+            "context-budget-tokens). Text like '0 / 6 400' plus a separate "
+            "'0%' sibling Typography. Testid added for ELITEA-2216 — this "
+            "component previously had no testid on any stat value."
+        ),
+    )
+
+    context_modal_stat_messages = LocatorDescriptor(
+        testid="context-modal-stat-messages",
+        description=(
+            "Messages stat value inside the 'Edit context settings' dialog "
+            "body (ContextBudgetStats.jsx's ContextStats component). Testid "
+            "added for ELITEA-2216."
+        ),
+    )
+
+    context_modal_stat_percentage = LocatorDescriptor(
+        testid="context-modal-stat-percentage",
+        description=(
+            "Percentage suffix Typography next to the Tokens stat inside the "
+            "'Edit context settings' dialog body (ContextBudgetStats.jsx's "
+            "ContextStats component) — e.g. '0%'. Distinct handle from "
+            "context-modal-stat-tokens, which covers only the '0 / 6 400' "
+            "value text. Testid added for ELITEA-2216 (previously no handle "
+            "existed on this sibling Typography)."
         ),
     )
 
@@ -5658,6 +5716,16 @@ class ChatPage(BasePage):
             f"(last observed: {last_seen})"
         )
 
+    def get_context_budget_percentage_text(self) -> str:
+        """Return the raw utilization-percentage text from the Context Budget
+        panel (e.g. ``"0%"``).
+
+        Uses the dedicated ``context-budget-percentage`` testid — a sibling
+        Typography of ``context-budget-tokens``, added for ELITEA-2216.
+        """
+        text = self.context_budget_percentage.first.text_content() or ""
+        return text.strip()
+
     def get_context_budget_messages_count(self) -> str:
         """Return the Messages counter text from the Context Budget panel (e.g. "4").
 
@@ -5816,6 +5884,58 @@ class ChatPage(BasePage):
         self.page.keyboard.press("Escape")
         Dialog.wait_for_hidden(self.page, timeout=timeout)
         logger.info("Context settings dialog closed")
+
+    def is_context_modal_management_enabled(self) -> bool:
+        """Return True if the 'Edit context settings' dialog's own 'Context
+        Management' toggle is checked.
+
+        Requires ``edit_context_settings()`` to have been called first
+        (dialog open). Same shape as
+        ``UserProfileSettingsPage.is_context_management_enabled()`` — the
+        ``data-testid`` lands on the MUI SwitchBase root span, not the
+        nested ``<input>``, so ``is_checked()`` raises "Not a checkbox or
+        radio button" — read the ``Mui-checked`` class instead. ELITEA-2216.
+        """
+        class_attr = self.context_modal_management_toggle.get_attribute("class") or ""
+        checked = "Mui-checked" in class_attr
+        logger.info("Context modal management toggle enabled: %s", checked)
+        return checked
+
+    def get_context_modal_stat_tokens_text(self) -> str:
+        """Return the raw Tokens stat text from the 'Edit context settings'
+        dialog body (e.g. ``"0 / 6 400"``).
+
+        Requires ``edit_context_settings()`` to have been called first
+        (dialog open). Distinct handle from
+        ``get_context_budget_tokens_text()`` (sidebar panel) — this reads
+        the dialog's OWN ``context-modal-stat-tokens`` testid. ELITEA-2216.
+        """
+        text = self.context_modal_stat_tokens.first.text_content() or ""
+        return text.strip()
+
+    def get_context_modal_stat_messages_text(self) -> str:
+        """Return the raw Messages stat text from the 'Edit context settings'
+        dialog body (e.g. ``"0"``).
+
+        Requires ``edit_context_settings()`` to have been called first
+        (dialog open). Distinct handle from
+        ``get_context_budget_messages_count()`` (sidebar panel) — this reads
+        the dialog's OWN ``context-modal-stat-messages`` testid. ELITEA-2216.
+        """
+        text = self.context_modal_stat_messages.first.text_content() or ""
+        return text.strip()
+
+    def get_context_modal_stat_percentage_text(self) -> str:
+        """Return the raw percentage suffix text next to the Tokens stat in
+        the 'Edit context settings' dialog body (e.g. ``"0%"``).
+
+        Requires ``edit_context_settings()`` to have been called first
+        (dialog open). Distinct handle from
+        ``get_context_budget_percentage_text()`` (sidebar panel) — this reads
+        the dialog's OWN ``context-modal-stat-percentage`` testid. ELITEA-2216.
+        """
+        text = self.context_modal_stat_percentage.first.text_content() or ""
+        return text.strip()
 
     # ------------------------------------------------------------------
     # "Add users" modal (ELITEA-2167) — search/select/chip/Add/Cancel/Close
