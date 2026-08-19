@@ -301,4 +301,9 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- none — wave-12 closed, wave-13 not yet dispatched.
+- **wave-13** dispatching via `batch-build.workflow.mjs`. slug=`chat-remaining-w13`,
+  base=`origin/automation/base`, cases 2195,2196,2198,2199,2201,2467 (6),
+  cluster `[2199,2467]` (attachment-preview family — 2467 suspected
+  granularity-superset of 2199, adds truncation-for-long-names). Case snapshots
+  at `.agents/automation/chat-remaining-w13/cases/`. All 6 confirmed still
+  `draft`/`manual` in the TMS at intake (no dedup hits).
