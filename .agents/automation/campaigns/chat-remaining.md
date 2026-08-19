@@ -57,7 +57,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | 09 | Pin/unpin — edge cases + newer duplicate-family cases | 2157,2158,2159,2160,2161,2461,2462,2460 | 8 | **LANDED** — PR #1555, 4/8 automated + 4/8 already-covered |
 | 10 | Team Project — participants management | 2169,2171,2172,2173,2174,2175,2176 | 7 | **LANDED** — PR #1561, 5/7 automated + 2/7 already-covered |
 | 11 | Team Project — public conversation / non-owner restrictions | 2188,2189,2190,2191,2192,2193,2194 | 7 | **LANDED (partial)** — PR #1566, 2/7 automated + 2/7 already-covered + 3/7 blocked (#1563) |
-| 12 | Message input + generation controls (stop/regenerate/send-button/starters) | 2177,2178,2179,2182,2183,2184,2185,2186,2187,2465,2466 | 11 | pending |
+| 12 | Message input + generation controls (stop/regenerate/send-button/starters) | 2177,2178,2179,2182,2183,2184,2185,2186,2187,2465,2466 | 11 | **LANDED (partial)** — PR #1586, 8/11 automated + 3/11 blocked (#1569) |
 | 13 | File attachments | 2195,2196,2198,2199,2201,2467 | 6 | pending |
 | 14 | Slash commands / # mentions / MCP dropdown | 2205,2206,2207,2208,2468,2469,2470 | 7 | pending |
 | 15 | Tool call/output rendering + HITL + context management | 2209,2210,2216,2217,2471,2472,2473,2474 | 8 | pending |
@@ -269,12 +269,36 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   `main`. TMS back-written (4 cases; 2189/2190/2191 deliberately left
   `draft`/`manual`, blocked by #1563).
 
+- **wave-12 LANDED (partial)** — elitea-testing-public#1586, merged (`157c46d9d`).
+  8/11 automated: ELITEA-2177/2178/2465 (conversation-starters add/remove family,
+  `test_chat_agent_starters_add_remove.py`, PR #1567 fix round 1 then merged into
+  trunk), ELITEA-2179/2466 (composer send-button/waveform toggle family,
+  `test_streaming_response.py`), ELITEA-2184/2185/2187 (regenerate exclusivity +
+  click-replace family, `test_regenerate_response.py`, fix round 1). 3/11 blocked:
+  ELITEA-2182/2183/2186 — all downstream of open defect **#1569** ("Stop wipes
+  entire conversation", re-confirmed 4th/5th time this wave) and reclassified from
+  an initial WIP `ready-for-automation` attempt to `blocked` because the failure
+  hits each case's own headline Stop-button subject, not an isolated assertion
+  (soft-assert-known-defect workaround doesn't cover the headline subject per
+  `.agents/role-overrides.md` § Declared-improvisation protocol ceiling). Lead's
+  own gate: 5 independent runs on the full 8-node-id set — run 1 clean 8/8, run 2
+  hit the documented recurring console-500 noise pattern (7/8, 4th occurrence, no
+  URL captured — recorded in `.agents/testing.md`), runs 3–5 clean 8/8 × 3
+  consecutive. Trunk needed a large sync with `automation/base` before the PR
+  (unrelated support-assistant/toolkit batch work had landed meanwhile) — 3 merge
+  conflicts resolved (2 doc/memory, 1 real `chat_page.py` page-object conflict),
+  re-verified 8/8 green post-merge. New testids: `chat-stop-generation-button`,
+  `chat-message-sender-name`/`-avatar`, `chat-composer-focus-border`,
+  `chat-voice-mode-button`/`-input-button`, `chat-conversation-starter-tile-tooltip`,
+  `chat-switch-to-model-button` — all 6 confirmed NOT yet on `main` (pushed to
+  `automation/testids`); 6 other referenced testids were already on `main`. TMS
+  back-written (`3dcf7bb`, onetest-ai-tm-Elitea): 8 cases `ready`/`automated`;
+  ELITEA-2182/2183/2186 left `draft`/`manual`, blocked by #1569. Also: this
+  session hit the factory's own 3-session auto-park twice mid-wave (harness
+  restarts during long-running dispatches, not stalled work) — recovered both
+  times per protocol (board read `Approved` on check, resumed with no new
+  steering needed).
+
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-12** dispatched via `batch-build.workflow.mjs`. slug=`chat-remaining-w12`,
-  base=`origin/automation/base`, cases 2177,2178,2179,2182,2183,2184,2185,2186,
-  2187,2465,2466 (11), clusters `[2177,2178,2465]` (conversation-starters family
-  — 2465 suspected near-dup of 2177 by title) + `[2179,2466]` (send-button
-  visibility, 2466 suspected near-dup of 2179) + `[2182,2183]` (stop-generation)
-  + `[2184,2185,2186,2187]` (regenerate family). Task ID `wiqn68nh8`, Run ID
-  `wf_6c4144bc-7d7`.
+- none — wave-12 closed, wave-13 not yet dispatched.
