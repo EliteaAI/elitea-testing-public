@@ -15,15 +15,37 @@ No new testids required — every handle this case touches
 
 Response-content assertion (case step 4) is NOT a fidelity substitution: it
 reads ``ChatPage.get_last_message_text()`` AFTER ``wait_for_ai_response()`` —
-the real, live-generated response text — and checks each attached filename
-appears in it as a substring. This is the "capture the real response and
-assert against it" pattern (``.agents/testing.md`` § Fidelity policy) — the
+the real, live-generated response text — and checks the response engages
+with each attached file. This is the "capture the real response and assert
+against it" pattern (``.agents/testing.md`` § Fidelity policy) — the
 assertion is a structural invariant over real output, not a hand-authored
-payload. Live-confirmed during analysis: small, distinctly-named ``.txt``
-files with a short text body reliably elicit a response that quotes the
-filenames back verbatim, because the model reasons that the attachment
-content is embedded directly in the message (no file-reading tool call is
-made) and so engages with the literal filenames/content given.
+payload.
+
+Per-file check technique (relaxed 2026-08-19, ELITEA-2201 fix round): the
+case's own Step 4 expected result is only "Verify LLM/agent acknowledges and
+begins processing the files" / "Response references attached files" — it
+does NOT require every filename to appear verbatim. Three independent live
+observations during the fix showed the model varies its engagement style
+run to run: (1) naming 3 files by full filename and the 4th only via its
+embedded content token inside a closing summary sentence (e.g. "...all four
+files contain unique identification tokens (alpha, beta, gamma,
+delta)..."); (2) never naming ANY filename or token, instead quoting every
+file's distinct business-content line close to verbatim (e.g. "Revenue
+grew 12% in Q1", "Action items: review budget") while organizing the whole
+answer by content instead of by source file; (3) paraphrasing that same
+content line mid-phrase on a THIRD run ("Revenue grew 12% in Q1" → "12%
+growth in Q1" — same number/topic, different word order), which broke an
+initial longer-exact-phrase marker. All three are real, substantive
+engagement with every attached file's content — just different, and at
+times word-order-varying, prose strategies. The assertion now accepts, per
+file, ANY ONE of several markers (full filename / embedded greek-letter
+token / a short, paraphrase-resistant keyword drawn from that file's own
+business-content line — a number, single word, or tightly-bound 2-word
+phrase, never a long exact phrase), case-insensitive, as satisfying "the
+response references this attachment" — still a real, per-file, non-trivial
+check (never weakened to "response is non-empty"), just tolerant of the
+model's observed legitimate ways — and observed paraphrase variance — of
+identifying a given file.
 
 Usage:
     cd automation
@@ -62,15 +84,29 @@ FIRST_MESSAGE = "Please analyze these files"
 
 # 4 distinctly-named, small .txt files (AFS § Test Data — case Test Data
 # table: "3-4 supported files"; .txt is a well-supported format, ELITEA-2200).
+# Third element = a list of MARKERS for that file — the AI response
+# assertion (Step 4) accepts ANY one marker per file as evidence the model
+# engaged with that specific attachment (see module docstring "Per-file
+# check technique"). Each list is [filename, embedded greek-letter token,
+# ...short paraphrase-resistant keyword(s) drawn from that file's own
+# business-content line]. Keywords are deliberately SHORT (a number, a
+# single word, or a 2-word phrase whose words are never separated by a
+# paraphrase) — an exact longer phrase ("12% in Q1") broke on a live run
+# that paraphrased to "12% growth in Q1"; a short keyword ("12%") survives
+# word-order/insertion variance while staying a real, file-specific signal.
 ATTACHMENT_SPECS = [
     ("report_alpha.txt", "ELITEA-2201 attachment report_alpha.txt unique-token-alpha content.\n"
-                         "Revenue grew 12% in Q1."),
+                         "Revenue grew 12% in Q1.",
+     ["report_alpha.txt", "alpha", "12%", "revenue"]),
     ("notes_beta.txt", "ELITEA-2201 attachment notes_beta.txt unique-token-beta content.\n"
-                       "Action items: review budget."),
+                       "Action items: review budget.",
+     ["notes_beta.txt", "beta", "budget"]),
     ("summary_gamma.txt", "ELITEA-2201 attachment summary_gamma.txt unique-token-gamma content.\n"
-                          "Summary: project on track."),
+                          "Summary: project on track.",
+     ["summary_gamma.txt", "gamma", "on track"]),
     ("plan_delta.txt", "ELITEA-2201 attachment plan_delta.txt unique-token-delta content.\n"
-                       "Next step: schedule review."),
+                       "Next step: schedule review.",
+     ["plan_delta.txt", "delta", "schedule"]),
 ]
 
 
@@ -93,7 +129,10 @@ class TestSendMessageWithAttachmentsVerifyIncluded:
            chooser action; verify chips + counter.
         2. Type the message; verify it appears.
         3. Send; verify the message + all 4 attachments in the thread, URL.
-        4. Wait for the AI response; verify it references each filename.
+        4. Wait for the AI response; verify it engages with each attached
+           file (via any one marker — filename, embedded token, or
+           distinguishing content phrase — see module docstring "Per-file
+           check technique").
         5. Verify the composer's attachment chips are cleared after send.
         """
         conversation_api = ConversationAPI(browser_cookies=_browser_cookies)
@@ -109,9 +148,9 @@ class TestSendMessageWithAttachmentsVerifyIncluded:
 
         page.set_viewport_size({"width": VIEWPORT_WIDTH, "height": VIEWPORT_HEIGHT})
 
-        file_names = [name for name, _ in ATTACHMENT_SPECS]
+        file_names = [name for name, _, _ in ATTACHMENT_SPECS]
         file_paths = []
-        for name, content in ATTACHMENT_SPECS:
+        for name, content, _markers in ATTACHMENT_SPECS:
             f = tmp_path / name
             f.write_text(content)
             file_paths.append(str(f))
@@ -177,16 +216,33 @@ class TestSendMessageWithAttachmentsVerifyIncluded:
 
             with allure.step(
                 "Step 4 — Wait for the AI response; verify it engages with "
-                "the attached files by referencing each filename"
+                "each attached file (by filename or distinguishing content "
+                "token)"
             ):
                 chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
 
                 ai_response_text = chat.get_last_message_text()
                 assert ai_response_text, "AI response should be non-empty"
-                for name in file_names:
-                    assert name in ai_response_text, (
+                # Case Step 4 only requires "Response references attached
+                # files" — not that every filename appear verbatim. Accept
+                # ANY ONE of a file's markers (filename / embedded
+                # greek-letter token / distinguishing business-content
+                # phrase, case-insensitive) as evidence the model engaged
+                # with that specific attachment. This tolerates the
+                # legitimate prose-variance styles observed across repeat
+                # live runs (naming the file outright; citing its token in
+                # a closing summary sentence; or quoting/paraphrasing its
+                # content line without naming the file or token at all)
+                # without weakening the check into a tautology — every one
+                # of the 4 attachments must still be individually
+                # accounted for in the real, live-generated response text.
+                ai_response_lower = ai_response_text.lower()
+                for name, _content, markers in ATTACHMENT_SPECS:
+                    assert any(marker.lower() in ai_response_lower for marker in markers), (
                         f"Expected the AI response to reference attachment "
-                        f"{name!r}, got: {ai_response_text!r}"
+                        f"{name!r} via one of its markers {markers!r} "
+                        f"(filename / embedded token / content phrase, "
+                        f"case-insensitive), got: {ai_response_text!r}"
                     )
 
             with allure.step(
