@@ -2548,6 +2548,18 @@ a product defect (never observed via the real test suite's own fixtures).
   ("you have 588 buckets... which one?"), never a tool call, given the
   ambient bucket-count noise above. Naming the bucket explicitly in the
   message reliably reaches a real tool-call attempt (confirmed live twice).
+- **Duplicate manual TMS cases exist for this cluster (2026-08-19,
+  ELITEA-2471/2472/2473 vs ELITEA-2212/2213/2214).** Different TMS case IDs,
+  near-verbatim step tables, same trigger precondition ("conversation with
+  only a HITL toolkit participant"), same Authorize/Block/Block-with-Comment
+  buttons, same expected results — classified `already-covered` against the
+  merged `test_hitl_sensitive_action_authorization.py` (commit `ddaf8b31b`)
+  without re-execution (the underlying precondition needs `pytest.mark.guardrails`
+  + a deployed env anyway — not reachable on localhost regardless of case ID,
+  see the environment-limitation note above). **If another HITL-authorize/
+  block/block-with-comment-titled case appears under yet another ID, check
+  here first** — this TMS may contain more duplicate manual entries for the
+  same feature. See `test-specs/chat-interface/lcovered_hitl-*-duplicate-manual-case_ELITEA-247{1,2,3}.md`.
 
 ## In-chat "Create New X" canvas family — Pipeline/MCP (ELITEA-2079/2085, 2026-08-03)
 
