@@ -75,3 +75,5 @@
 - [AFS-authorized soft assertion is still masking](afs_authorized_soft_assertion_is_still_masking.md) — AFS text can request a `logger.warning` instead of `assert`; No Defect Masking Rule wins
 - [Soft-assert/known-defect ≠ headline subject](soft_assert_known_defect_only_covers_isolated_not_headline_subject.md) — only covers one isolated step; case's own headline observable → blocked
 - [New testid can collide with existing `^=` prefix](new_dynamic_testid_can_collide_with_existing_prefix_matcher.md) — grep the prefix string before naming a sibling dynamic testid
+- [Hash-search Agent-Hub item's own project id](hash_search_agent_hub_item_uses_own_project_id_not_conversation.md) — `application_{id}_{project}` uses the AGENT's home project, not the conversation's
+- [EntityIcon avatar testid is conditional](entity_icon_avatar_testid_conditional_on_custom_icon.md) — `chat-participant-avatar` only exists for a custom icon image; use `chat-participant-icon` for any-icon
