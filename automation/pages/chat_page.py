@@ -388,6 +388,15 @@ class ChatPage(BasePage):
     # Prefix match for "how many visible chips are rendered" — same
     # shared-suffix counting precedent as PLUS_MENU_ITEM_SUFFIX below.
     CHAT_ATTACHMENT_CHIP_PREFIX = '[data-testid^="chat-attachment-chip-"]'
+    # Per-chip remove (X) button, dynamic by the same render index as
+    # CHAT_ATTACHMENT_CHIP. ELITEA-2196 add-data-testid addition
+    # (EliteaAI/EliteaUI@7f29c3dc, automation/testids). NOT named
+    # "chat-attachment-chip-remove-{}" (the ELITEA-2197 AFS's original
+    # reservation) — that shares the "chat-attachment-chip-" prefix with
+    # CHAT_ATTACHMENT_CHIP_PREFIX below, so get_attachment_chip_count()
+    # (an existing, merged ELITEA-2197 caller) would double-count every
+    # remove button as an extra chip. Renamed with a distinct prefix.
+    CHAT_ATTACHMENT_CHIP_REMOVE = '[data-testid="chat-attachment-remove-chip-{}"]'
 
     # Composer drag-and-drop drop-zone (UserInput.jsx's outer Box, wraps
     # onDragOver/onDragLeave/onDrop). ELITEA-2091 add-data-testid addition —
@@ -2846,6 +2855,68 @@ class ChatPage(BasePage):
     def get_all_attached_file_names(self) -> list:
         """All attached filenames — visible chips + overflow menu contents."""
         return self.get_visible_attachment_names() + self.get_overflow_attachment_names()
+
+    def get_attachment_chip(self, index: int):
+        """Return the Locator for the visible attachment chip at `index`."""
+        return self.page.locator(self.CHAT_ATTACHMENT_CHIP.format(index))
+
+    def wait_for_attachment_chip_count(self, expected_count: int, timeout: int = 5000):
+        """Web-first assertion: wait until exactly `expected_count` visible
+        attachment chips are rendered (auto-retrying, unlike a bare
+        ``get_attachment_chip_count() == N`` read)."""
+        expect(self.page.locator(self.CHAT_ATTACHMENT_CHIP_PREFIX)).to_have_count(expected_count, timeout=timeout)
+
+    def get_attachment_chip_remove_button(self, index: int):
+        """Return the (X) remove-icon Locator for the visible chip at `index`.
+
+        FileList.jsx add-data-testid addition, ELITEA-2196 — dynamic by
+        render index (0-based, visible chips only; the overflow menu's own
+        remove control is a separate, un-testid'd node, out of scope here).
+        """
+        return self.page.locator(self.CHAT_ATTACHMENT_CHIP_REMOVE.format(index))
+
+    @action("Remove attachment chip via its X button")
+    def remove_attachment_chip(self, index: int, timeout: int = 5000):
+        """Click the (X) remove button on the visible chip at `index`."""
+        button = self.get_attachment_chip_remove_button(index)
+        button.wait_for(state="visible", timeout=timeout)
+        button.click()
+
+    def get_attachment_chip_visual_facts(self, index: int) -> dict:
+        """Read live-rendered facts about the visible chip at `index`.
+
+        A single ``.evaluate()`` scoped on the already-testid'd
+        ``chat-attachment-chip-{index}`` element — a read of real computed
+        state, not a substitute locator (same idiom as
+        ``chat.delete_confirm_button.evaluate("el => getComputedStyle(el)...")``
+        in ``test_delete_confirmation_modal_ui_validation.py``). Returns:
+
+        - ``background_color``: the chip's own computed ``background-color``
+          (a translucent overlay — composite against ``body_background_color``
+          for the actually-rendered color, see ELITEA-2196 AFS § Test Steps).
+        - ``body_background_color``: the app's own canvas background, read
+          from ``document.body`` for the compositing calculation above.
+        - ``name_color``: computed text color of the filename ``<span>``.
+        - ``has_file_icon``: whether the chip's first direct child is an
+          ``<svg>`` (the file-type icon) — a structural presence read, not a
+          new locator (no testid exists or is needed for this icon; same
+          "child icon count scoped under testid'd parent" precedent as the
+          model-selector's ``CheckedIcon`` check, `_surface.md`).
+        """
+        chip = self.page.locator(self.CHAT_ATTACHMENT_CHIP.format(index))
+        return chip.evaluate(
+            """el => {
+                const cs = getComputedStyle(el);
+                const nameEl = el.querySelector('span');
+                return {
+                    background_color: cs.backgroundColor,
+                    body_background_color: getComputedStyle(document.body).backgroundColor,
+                    name_color: nameEl ? getComputedStyle(nameEl).color : null,
+                    has_file_icon: el.children.length > 0
+                        && el.children[0].tagName.toLowerCase() === 'svg',
+                };
+            }"""
+        )
 
 
     @action("Copy message")

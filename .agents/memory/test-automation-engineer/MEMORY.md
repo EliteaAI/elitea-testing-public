@@ -73,3 +73,4 @@
 - [Chat folder list: shared scroll region, newest-first](chat_folder_list_shared_scroll_container_and_ordering.md) — never assume raw-scroll-max = last-created folder; check live position instead
 - [AFS-authorized soft assertion is still masking](afs_authorized_soft_assertion_is_still_masking.md) — AFS text can request a `logger.warning` instead of `assert`; No Defect Masking Rule wins
 - [Soft-assert/known-defect ≠ headline subject](soft_assert_known_defect_only_covers_isolated_not_headline_subject.md) — only covers one isolated step; case's own headline observable → blocked
+- [New testid can collide with existing `^=` prefix](new_dynamic_testid_can_collide_with_existing_prefix_matcher.md) — grep the prefix string before naming a sibling dynamic testid
