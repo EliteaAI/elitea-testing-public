@@ -307,4 +307,18 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   granularity-superset of 2199, adds truncation-for-long-names). Case snapshots
   at `.agents/automation/chat-remaining-w13/cases/`. All 6 confirmed still
   `draft`/`manual` in the TMS at intake (no dedup hits). Task ID `w7cun7ws7`,
-  Run ID `wf_15496875-b7d`.
+  Run ID `wf_15496875-b7d`. Workflow crashed once (gate-retry agent failed to
+  call StructuredOutput) — resumed clean via `resumeFromRunId`, Task ID
+  `wuls3aaxi`, all 6 units cached/replayed instantly. All 6 units merged into
+  `tests/batch-chat-remaining-w13` (PRs #1587/#1588/#1590/#1592/#1593), but the
+  batch's own gate went RED (1/1) on ELITEA-2201's AI-response-content
+  assertion — over-specified (required literal-substring match of ALL 4
+  attached filenames in the LLM's prose reply; the model engaged with all 4
+  files' content but phrased 3 by name + the 4th via its distinguishing token
+  in a summary sentence — not a product defect, an over-strict assertion vs.
+  what the case text actually asks: "Response references attached files",
+  not "names every file verbatim"). Dispatched a fix-only implementer to relax
+  the assertion technique (majority-match or per-file-token-match instead of
+  all-filenames-literal) and re-verify live 2+ times before trusting it (LLM
+  variance means one green isn't enough evidence here). Lead's own 3× gate not
+  yet run — pending this fix.
