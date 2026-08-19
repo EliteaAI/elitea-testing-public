@@ -361,4 +361,5 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   thinking step" may turn out family-related to 2209 during live analysis —
   not pre-clustered on title alone, left for the analyst to determine). Case
   snapshots at `.agents/automation/chat-remaining-w15/cases/`. All 8 confirmed
-  still `draft`/`manual` in the TMS at intake (no dedup hits).
+  still `draft`/`manual` in the TMS at intake (no dedup hits). Task ID
+  `wu07myvzj`, Run ID `wf_20aa7050-e86`.
