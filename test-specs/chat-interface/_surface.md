@@ -2,7 +2,12 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2089, 2026-08-18
+a time; last confirmed by: test-automation-engineer (combined analyst+
+implementer), ELITEA-2198, 2026-08-19 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: test-automation-engineer
+(combined analyst+implementer), ELITEA-2196, 2026-08-19 (supersedes nothing
+below — new section, other sections unchanged; previous confirmer: qa-engineer analyst,
+ELITEA-2089, 2026-08-18
 (supersedes nothing below — new section, other sections unchanged; previous
 confirmer: test-automation-engineer (combined analyst+
 implementer), ELITEA-2179/2466, 2026-08-15 (supersedes nothing below — new
@@ -52,7 +57,159 @@ qa-engineer analyst, ELITEA-2111, 2026-08-15;
 previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
-ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03))).
+ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)))).
+
+## ELITEA-2196 — attachment chip CONTENTS (icon+X button+dark/light styling),
+## ONE new testid (`chat-attachment-remove-chip-{index}`), zero defects
+- **First case in this cluster to assert the chip's own contents, not just
+  count/name.** ELITEA-2195 only checks the popper's counter/icon (no
+  attach happens); ELITEA-2197/2200 attach files and check COUNT + toast,
+  never a chip's icon/X-button/styling. This case closes that gap.
+- **`chat-attachment-remove-chip-{index}` added** on `FileList.jsx`'s
+  per-chip remove `Box` (line ~98, direct `data-testid` attribute — no
+  wrapper, no hook change, no MUI-internal replacement).
+  `EliteaAI/EliteaUI@7f29c3dc`, `automation/testids` only (not yet on
+  `main`). Live-confirmed via HMR: attribute present on all 4 chips,
+  `.click()` on it genuinely removes exactly that one chip (functional,
+  not just present) — reconfirmed a real `onDeleteFile` call, no
+  substitution.
+- **Naming pitfall, caught by the test's own first run (not just source
+  review) — record this pattern for any future dynamic testid added under
+  an existing `^=` PREFIX matcher.** The ELITEA-2197 AFS had reserved this
+  exact testid as `chat-attachment-chip-remove-{index}` — that name starts
+  with the SAME literal substring `ChatPage.CHAT_ATTACHMENT_CHIP_PREFIX`
+  (`[data-testid^="chat-attachment-chip-"]`) matches, so every remove
+  button silently became an extra "chip" to `get_attachment_chip_count()`
+  (an EXISTING, MERGED ELITEA-2197 caller) — live-confirmed: attaching 4
+  files resolved `CHAT_ATTACHMENT_CHIP_PREFIX`'s count to 8, not 4.
+  Renamed to `chat-attachment-remove-chip-{index}` (distinct prefix, zero
+  collision) and re-verified clean. **Lesson: before naming ANY new
+  dynamic testid in a family that already has a `^=` prefix constant, grep
+  for that prefix's existing string first** — a new testid literally
+  starting with an existing prefix constant is invisible at JSX-review
+  time (it looks like ordinary self-documenting naming) and only surfaces
+  as a silent over-count in a DIFFERENT, unrelated test's assertions.
+- **Chip structure, live-confirmed** (`getComputedStyle` + DOM read via
+  `.evaluate()` scoped on the already-testid'd `chat-attachment-chip-{i}`
+  parent — a read, not a new locator; same idiom as the pre-existing
+  `chat.delete_confirm_button.evaluate("el => getComputedStyle(el)...")`
+  pattern in `test_delete_confirmation_modal_ui_validation.py`): 3 direct
+  children in fixed order — `<svg>` (file-type icon, `AttachedFileIcon`) →
+  `<span>` (filename, `TypographyWithConditionalTooltip`) → `<div>` (remove
+  button, now testid'd). The file-type icon itself gets NO new testid —
+  its presence is verified structurally (`children[0].tagName === 'svg'`),
+  same precedent as the ELITEA-2091 model-selector `CheckedIcon` check
+  ("child icon count scoped under testid'd parent... no new testid
+  needed").
+- **"Dark background, light text" — the RAW `background-color` computed
+  value does NOT by itself read as dark.** Live-confirmed:
+  `getComputedStyle(chip).backgroundColor === "rgba(255, 255, 255, 0.1)"`
+  (a translucent WHITE overlay) — only dark once COMPOSITED over the app's
+  own near-black canvas (`document.body` computed background `rgb(14, 19,
+  29)`, confirmed no light/dark toggle affects this ambient session —
+  `useEliteATheme.hooks.js` resolves theme from `state.settings.mode`,
+  this session's resolved mode renders the dark palette). The shipped test
+  computes composited relative luminance (WCAG formula) rather than
+  asserting the misleading raw string. Filename text color is
+  unambiguously light on its own: `rgb(255, 255, 255)` (pure white),
+  confirmed identical across every chip.
+- **Chose 4 files, not 5, deliberately** — at the standard `1700×1100`
+  viewport (ELITEA-2197 precedent), `FileList.jsx`'s width-driven
+  `maxItemsToShow` renders exactly 4 as visible chips before overflowing a
+  5th into the "+N" bucket (reconfirmed live, same arithmetic ELITEA-2091
+  already documented). Using 4 keeps this case's "all files render as
+  chips in a horizontal row" observable unambiguous — the visible/overflow
+  split mechanism is ELITEA-2197's own dedicated scope, not re-derived
+  here. All 4 chips confirmed on one shared `y` coordinate (bounding-box
+  row check), `x` increasing left-to-right.
+- **Case-text clarification, not a defect**: case step 2 says "files begin
+  uploading" — live-confirmed (again, consistent with the already-filed
+  ELITEA-2197 Network Behavior finding) that attaching is 100%
+  client-side; zero network request fires at selection time. Chips
+  rendering immediately IS the correct, live, self-consistent observable
+  asserted instead (reverse-masking guard).
+- **HMR gotcha reconfirmed**: editing `FileList.jsx` (even an additive
+  `data-testid` line) triggered a full app remount, not just a component
+  hot-swap — composer/attachment state reset to empty. Expected and
+  harmless (add the testid FIRST, then attach files for the actual test
+  drive, not the other way around) — not a product defect.
+- AFS: `test-specs/chat-interface/l3_attach-files-multiple-chips-display_ELITEA-2196.md`.
+
+## ELITEA-2199/2467 — attachment chip icon genericity + long-name truncation +
+## "+N" overflow click-to-expand, both `extend-existing` against ELITEA-2196's
+## covering spec, ZERO new testids, ONE clarification (icon type-genericity, #1591)
+- **Icon does NOT vary by file type — confirmed via source AND live run.**
+  `FileList.jsx:88` (visible chips) and `:154` (overflow-menu items) both
+  render the exact same `AttachedFileIcon` SVG (`@/assets/attached-file-icon.svg`)
+  unconditionally — no branching on extension/MIME anywhere in the component.
+  Live-confirmed: attached `.png` + `.pdf` + `.txt` + a long `.txt` in one
+  conversation — all 4 chips' `<svg>` `outerHTML` byte-identical. Contrast:
+  the app DOES have a type-aware icon/preview system elsewhere
+  (`EliteaUI/src/slices/fileTypes.js` + the Artifacts feature's
+  `FilePreviewCanvas`) — `FileList.jsx` just doesn't reuse it. ELITEA-2199's
+  case text claims "type-appropriate icon" — **case-text drift, clarification
+  filed as issue #1591**, not a defect (no partial/broken type-icon wiring
+  found — reads as "never built this way", not a regression). ELITEA-2467's
+  case text only says "a file icon" (no type claim) — clarification does NOT
+  apply to that case.
+- **Truncation mechanism**: CSS `text-overflow: ellipsis` via the shared
+  `TypographyWithConditionalTooltip` component (`[fsd]/shared/ui/tooltip/`).
+  Live-confirmed on a 104-char filename at the standard 200px-wide chip
+  (~116px name column): `scrollWidth` 731px vs `clientWidth` 116px — genuine
+  visual truncation, not just a CSS rule with room to spare. The component
+  ALSO shows a hover tooltip with the full name when (and only when) genuinely
+  overflowing (`useTextOverflow` hook, same "conditional on real overflow"
+  precedent as the chat-starter-tile tooltip) — confirmed live via
+  `[role="tooltip"]`, but NOT made a required AFS assertion (no testid on
+  this particular tooltip instance yet; the `scrollWidth>clientWidth` check
+  alone fully satisfies both cases' literal "truncated with '...'" ask,
+  scope kept proportionate — see either AFS's Automation Hints if a future
+  case wants the tooltip asserted too, that would need a `testId` prop
+  threaded through the SHARED `TypographyWithConditionalTooltip` component,
+  set only at `FileList.jsx`'s call site, same pattern as the starter-tile's
+  own `slotProps.tooltip` wire).
+- **"+N" overflow button IS a real, functioning click-to-expand control** —
+  confirmed live: click sets `aria-expanded` `undefined` → `"true"` on
+  `chat-attachment-overflow-button` and opens a MUI `role="menu"` populated
+  by the existing `chat-attachment-overflow-item-{index}` testid'd items
+  (both testids pre-existing, ELITEA-2197, **on-main ✓**). At `1700×1100`
+  with 7 attached files: 4 visible chips + `"+3"` button; opening it lists
+  exactly `extra_file_5.txt`/`_6.txt`/`_7.txt` in order. Existing tests
+  (ELITEA-2196's `get_all_attached_file_names()`, ELITEA-2197's own test)
+  already click this button, but only as PLUMBING inside a helper to read
+  hidden names for a total-COUNT assertion — neither asserts the
+  click→expand INTERACTION itself as an observable. ELITEA-2467's case text
+  explicitly asks for exactly that ("the '+N' indicator is clickable to
+  expand or scroll") — genuine gap, first test to assert it directly.
+- Zero new testids for either case — `chat-attachment-chip-{index}`,
+  `chat-attachment-overflow-button`, `chat-attachment-overflow-item-{index}`
+  all confirmed **on-main ✓** via fresh `git fetch origin` this session.
+- AFS: `test-specs/chat-interface/lextend_attach-files-icon-genericity-and-truncation_ELITEA-2199.md`,
+  `test-specs/chat-interface/lextend_attach-files-truncation-and-overflow-click-to-expand_ELITEA-2467.md`.
+
+## ELITEA-2198 — sequential individual-removal (2nd X click), `extend-existing`
+## against ELITEA-2196's own covering spec, zero new testids, zero defects
+- **Resolved/added during ELITEA-2198 implementation:** the case's own steps
+  1-2 ("attach 4, click X on the first chip, verify 3 remain") are the exact
+  mechanism the ELITEA-2196 covering test already proves in its own Step 5.
+  The only genuinely new observable is steps 3-4: click X on a **second,
+  different** chip (index 0 again, post-renumbering) and verify exactly 2
+  remain with the correct filenames. Live-confirmed: `remove_attachment_chip()`
+  correctly renumbers and decrements on the SECOND click too — no ghost chip,
+  no wrong-file removal, no state carried over incorrectly from the first
+  removal. `get_visible_attachment_names()` after 2 sequential removals ==
+  `file_names[2:]` in original order (list-equality, not a bare count —
+  catches an off-by-one-after-renumbering class of bug a count-only check
+  would miss).
+- **Zero new testids, zero page-object additions** — every handle
+  (`CHAT_ATTACHMENT_CHIP_REMOVE`, `remove_attachment_chip()`,
+  `wait_for_attachment_chip_count()`, `get_visible_attachment_names()`) was
+  already added by the ELITEA-2196 implementation and is reused verbatim.
+- Implemented as a new sibling test method inside the SAME
+  `TestAttachFilesMultipleChipsDisplay` class (additive-only — the original
+  `test_attach_multiple_files_displays_chips_above_composer` is byte-identical;
+  verified via `git diff | grep -E '^-[^-]'` → empty).
+- AFS: `test-specs/chat-interface/lextend_attach-files-remove-individual-files-sequential_ELITEA-2198.md`.
 
 ## ELITEA-2179/2466 — composer send-button/waveform visibility toggle,
 ## family AFS (2466 is a granular superset of 2179), FIVE new testids added,
@@ -3247,3 +3404,41 @@ or `entity_type_id`). Does NOT affect the main save or the test outcome. Exclude
 After saving and closing the canvas, navigate to `/agents/all/{agent_id}?viewMode=owner`.
 The Welcome message field (`agent-welcome-message-input`) shows the saved value — change
 is synchronised immediately.
+
+## ELITEA-2201 — send message with attachments, AI response references filenames,
+## chips clear after send — zero new testids, ready-for-automation (2026-08-19)
+
+- **Genuine coverage gap vs the closest neighbour, ELITEA-2091** (Team-project +
+  drag-drop + LLM-switch, `test_create_new_conversation_team_project_attachments_and_llm.py`,
+  merged to `automation/base`): that test attaches + sends + verifies the message/
+  filenames land in the thread, but it NEVER waits for the actual AI response
+  content (only auto-naming) and NEVER checks the composer's attachment state
+  post-send. ELITEA-2201's own steps 4-5 (response acknowledges files; chips
+  cleared after send) are exactly the two things 2091 doesn't assert. Given how
+  different the two scenarios are otherwise (Team project + LLM-switch vs a plain
+  default-project send), this shipped as a NEW focused spec (`ready-for-automation`),
+  not an `extend-existing` graft onto 2091's file — see AFS § Metadata.
+- **Response-content assertion, live-confirmed workable.** Small, distinctly-named
+  `.txt` files (short text bodies) attached + `"Please analyze these files"` (case's
+  own verbatim message) reliably produce a response that quotes the filenames back
+  VERBATIM, in both the model's "Thinking" trace and its final Markdown answer —
+  confirmed live this session (`report_alpha.txt`/`notes_beta.txt`/`summary_gamma.txt`
+  all appeared in the response text). The model explicitly reasons "the content has
+  been embedded directly in the messages, so I don't need to use file reading tools"
+  — no toolkit/file-read call is made, attachment content rides in the message
+  payload itself. This is the "capture-the-real-response, assert-the-invariant"
+  fidelity pattern, NOT a fabricated payload (`.agents/testing.md` § Fidelity policy).
+- **Chips clear immediately on send** (confirmed live) — the composer's
+  `chat-attachment-chip-{index}` elements unmount and the "Attach Files (N left)"
+  counter resets to the full ceiling (`"10 left"`) the instant the message is sent,
+  well before the AI response starts streaming. `ChatPage.wait_for_attachment_chip_count(0)`
+  is the correct web-first wait (no race with the response).
+- **Same `#691` fixture caution as ELITEA-2091** — do not seed via the shared
+  `conversation_id` fixture when the test's first action is sending a UI message;
+  create fresh via `+Chat` and capture the real conv id from the post-send URL for
+  cleanup.
+- Zero new testids — every handle (`sidebar-create-button`, `plus-menu-button`,
+  `chat-attach-menuitem-button`, `chat-attachment-chip-{index}`, `chat-message-input`,
+  `chat-message-item`, `send-button`) is pre-existing and on `main` (freshly
+  re-verified this session).
+- AFS: `test-specs/chat-interface/l3_send-message-with-attachments-verify-included_ELITEA-2201.md`.

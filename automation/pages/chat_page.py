@@ -134,6 +134,18 @@ class ChatPage(BasePage):
         description="'Attach Files' menu item inside the open plus-menu popper.",
     )
 
+    # ELITEA-2195: the paperclip/attachment icon inside the same popper menu
+    # item. First-party app JSX (`AttachIcon`, `@/assets/attach-icon.svg?react`)
+    # — not third-party-library-internal chrome — so a real testid is placed
+    # rather than a #579 scoped-raw-handle exception (same reasoning as
+    # `delete_confirm_title_icon`). Threaded via the SAME `testId` prop the
+    # button itself already uses (`data-testid={`${testId}-icon`}` ->
+    # "chat-attach-menuitem-button-icon"), present only at this popper call site.
+    attach_files_menuitem_icon = LocatorDescriptor(
+        testid="chat-attach-menuitem-button-icon",
+        description="Paperclip/attachment icon inside the 'Attach Files' menu item.",
+    )
+
     # ------------------------------------------------------------------
     # Sidebar / drawer
     # ------------------------------------------------------------------
@@ -376,6 +388,15 @@ class ChatPage(BasePage):
     # Prefix match for "how many visible chips are rendered" — same
     # shared-suffix counting precedent as PLUS_MENU_ITEM_SUFFIX below.
     CHAT_ATTACHMENT_CHIP_PREFIX = '[data-testid^="chat-attachment-chip-"]'
+    # Per-chip remove (X) button, dynamic by the same render index as
+    # CHAT_ATTACHMENT_CHIP. ELITEA-2196 add-data-testid addition
+    # (EliteaAI/EliteaUI@7f29c3dc, automation/testids). NOT named
+    # "chat-attachment-chip-remove-{}" (the ELITEA-2197 AFS's original
+    # reservation) — that shares the "chat-attachment-chip-" prefix with
+    # CHAT_ATTACHMENT_CHIP_PREFIX below, so get_attachment_chip_count()
+    # (an existing, merged ELITEA-2197 caller) would double-count every
+    # remove button as an extra chip. Renamed with a distinct prefix.
+    CHAT_ATTACHMENT_CHIP_REMOVE = '[data-testid="chat-attachment-remove-chip-{}"]'
 
     # Composer drag-and-drop drop-zone (UserInput.jsx's outer Box, wraps
     # onDragOver/onDragLeave/onDrop). ELITEA-2091 add-data-testid addition —
@@ -386,6 +407,15 @@ class ChatPage(BasePage):
     chat_attachment_overflow_button = LocatorDescriptor(
         testid="chat-attachment-overflow-button",
         description="'+N' overflow control in FileList.jsx; rendered only when hiddenAttachments.length > 0.",
+    )
+
+    # The MUI Menu's own MenuList root (FileList.jsx slotProps.list) — this
+    # IS the role="menu" element (confirmed against @mui/material/Menu.js:
+    # slotProps.list maps directly onto MenuList, whose root renders
+    # role="menu"), not a page-level raw-role selector. ELITEA-2467 addition.
+    chat_attachment_overflow_menu = LocatorDescriptor(
+        testid="chat-attachment-overflow-menu",
+        description="MUI Menu's MenuList root (role='menu') for the '+N' overflow control.",
     )
 
     # Per-hidden-attachment item inside the opened overflow Menu, dynamic by
@@ -2835,6 +2865,157 @@ class ChatPage(BasePage):
         """All attached filenames — visible chips + overflow menu contents."""
         return self.get_visible_attachment_names() + self.get_overflow_attachment_names()
 
+    def get_attachment_chip(self, index: int):
+        """Return the Locator for the visible attachment chip at `index`."""
+        return self.page.locator(self.CHAT_ATTACHMENT_CHIP.format(index))
+
+    def wait_for_attachment_chip_count(self, expected_count: int, timeout: int = 5000):
+        """Web-first assertion: wait until exactly `expected_count` visible
+        attachment chips are rendered (auto-retrying, unlike a bare
+        ``get_attachment_chip_count() == N`` read)."""
+        expect(self.page.locator(self.CHAT_ATTACHMENT_CHIP_PREFIX)).to_have_count(expected_count, timeout=timeout)
+
+    def get_attachment_chip_remove_button(self, index: int):
+        """Return the (X) remove-icon Locator for the visible chip at `index`.
+
+        FileList.jsx add-data-testid addition, ELITEA-2196 — dynamic by
+        render index (0-based, visible chips only; the overflow menu's own
+        remove control is a separate, un-testid'd node, out of scope here).
+        """
+        return self.page.locator(self.CHAT_ATTACHMENT_CHIP_REMOVE.format(index))
+
+    @action("Remove attachment chip via its X button")
+    def remove_attachment_chip(self, index: int, timeout: int = 5000):
+        """Click the (X) remove button on the visible chip at `index`."""
+        button = self.get_attachment_chip_remove_button(index)
+        button.wait_for(state="visible", timeout=timeout)
+        button.click()
+
+    def get_attachment_chip_visual_facts(self, index: int) -> dict:
+        """Read live-rendered facts about the visible chip at `index`.
+
+        A single ``.evaluate()`` scoped on the already-testid'd
+        ``chat-attachment-chip-{index}`` element — a read of real computed
+        state, not a substitute locator (same idiom as
+        ``chat.delete_confirm_button.evaluate("el => getComputedStyle(el)...")``
+        in ``test_delete_confirmation_modal_ui_validation.py``). Returns:
+
+        - ``background_color``: the chip's own computed ``background-color``
+          (a translucent overlay — composite against ``body_background_color``
+          for the actually-rendered color, see ELITEA-2196 AFS § Test Steps).
+        - ``body_background_color``: the app's own canvas background, read
+          from ``document.body`` for the compositing calculation above.
+        - ``name_color``: computed text color of the filename ``<span>``.
+        - ``has_file_icon``: whether the chip's first direct child is an
+          ``<svg>`` (the file-type icon) — a structural presence read, not a
+          new locator (no testid exists or is needed for this icon; same
+          "child icon count scoped under testid'd parent" precedent as the
+          model-selector's ``CheckedIcon`` check, `_surface.md`).
+        """
+        chip = self.page.locator(self.CHAT_ATTACHMENT_CHIP.format(index))
+        return chip.evaluate(
+            """el => {
+                const cs = getComputedStyle(el);
+                const nameEl = el.querySelector('span');
+                return {
+                    background_color: cs.backgroundColor,
+                    body_background_color: getComputedStyle(document.body).backgroundColor,
+                    name_color: nameEl ? getComputedStyle(nameEl).color : null,
+                    has_file_icon: el.children.length > 0
+                        && el.children[0].tagName.toLowerCase() === 'svg',
+                };
+            }"""
+        )
+
+    def get_attachment_chip_icon_markup(self, index: int) -> str | None:
+        """Return the ``outerHTML`` of the visible chip's icon element (its
+        first child), scoped under the already-testid'd
+        ``chat-attachment-chip-{index}`` element — a structural read, not a
+        new locator (same idiom as :meth:`get_attachment_chip_visual_facts`'s
+        ``has_file_icon`` check).
+
+        Used to prove icon IDENTITY across chips attached from different
+        file types (AFS ``lextend_attach-files-icon-genericity-and-truncation_
+        ELITEA-2199.md`` step 3): ``FileList.jsx`` renders the same
+        ``AttachedFileIcon`` SVG unconditionally, regardless of
+        ``attachment`` type — no branching logic exists (issue #1591, the
+        case's own literal "type-appropriate icon" wording is case-text
+        drift). Returns ``None`` if the chip has no child (icon absent).
+        """
+        chip = self.page.locator(self.CHAT_ATTACHMENT_CHIP.format(index))
+        return chip.evaluate("el => el.children[0] ? el.children[0].outerHTML : null")
+
+    def get_attachment_chip_name_overflow_facts(self, index: int) -> dict:
+        """Return ``{scrollWidth, clientWidth}`` for the visible chip's
+        filename ``<span>``, scoped under the already-testid'd
+        ``chat-attachment-chip-{index}`` element — a genuine layout read
+        proving the CSS-ellipsis truncation (``TypographyWithConditional
+        Tooltip.jsx``) actually clips (``scrollWidth > clientWidth``), not
+        merely that the truncating CSS class is present (AFS ``lextend_
+        attach-files-icon-genericity-and-truncation_ELITEA-2199.md`` step 4 /
+        ``lextend_attach-files-truncation-and-overflow-click-to-expand_
+        ELITEA-2467.md`` step 2 — shared helper for both).
+        """
+        chip = self.page.locator(self.CHAT_ATTACHMENT_CHIP.format(index))
+        return chip.evaluate(
+            """el => {
+                const nameEl = el.querySelector('span');
+                return nameEl
+                    ? { scrollWidth: nameEl.scrollWidth, clientWidth: nameEl.clientWidth }
+                    : { scrollWidth: 0, clientWidth: 0 };
+            }"""
+        )
+
+    def open_attachment_overflow_menu_and_read(self, timeout: int = 5000) -> dict:
+        """Click the overflow ('+N') button and verify it is a REAL,
+        functioning click-to-expand control — not an inert count display
+        (AFS ``lextend_attach-files-truncation-and-overflow-click-to-expand_
+        ELITEA-2467.md`` steps 4-5).
+
+        Unlike :meth:`get_overflow_attachment_names` (which only consumes
+        the menu's side effect as plumbing to read hidden names), this
+        method explicitly captures the button's ``aria-expanded``
+        accessibility state before and after the click — proving the
+        control's own state machine works
+        (``FileList.jsx:117``, ``aria-expanded={open ? 'true' : undefined}``),
+        not just that a menu happens to appear.
+
+        Returns a dict with ``expanded_before``, ``expanded_after`` (the
+        button's ``aria-expanded`` attribute value, or ``None`` when absent),
+        ``menu_visible`` / ``menu_role`` (the opened MUI Menu's own
+        ``chat-attachment-overflow-menu`` element — this IS the
+        ``role="menu"`` node, not a derived proxy; AFS
+        ``lextend_attach-files-truncation-and-overflow-click-to-expand_
+        ELITEA-2467.md`` Coverage Map row 6 / Expected Results require this
+        as its own observable, distinct from item text and aria-expanded),
+        and ``names`` (the hidden filenames, in render order). Returns all
+        falsy if the overflow control isn't rendered.
+        """
+        if self.chat_attachment_overflow_button.count() == 0:
+            return {
+                "expanded_before": None,
+                "expanded_after": None,
+                "menu_visible": False,
+                "menu_role": None,
+                "names": [],
+            }
+        expanded_before = self.chat_attachment_overflow_button.get_attribute("aria-expanded")
+        self.chat_attachment_overflow_button.click()
+        items = self.page.locator(self.CHAT_ATTACHMENT_OVERFLOW_ITEM_PREFIX)
+        items.first.wait_for(state="visible", timeout=timeout)
+        expanded_after = self.chat_attachment_overflow_button.get_attribute("aria-expanded")
+        self.chat_attachment_overflow_menu.wait_for(state="visible", timeout=timeout)
+        menu_visible = self.chat_attachment_overflow_menu.is_visible()
+        menu_role = self.chat_attachment_overflow_menu.get_attribute("role")
+        names = [(items.nth(i).text_content() or "").strip() for i in range(items.count())]
+        self.page.keyboard.press("Escape")
+        return {
+            "expanded_before": expanded_before,
+            "expanded_after": expanded_after,
+            "menu_visible": menu_visible,
+            "menu_role": menu_role,
+            "names": names,
+        }
 
     @action("Copy message")
     def copy_message(self, message_index: int = -1):
