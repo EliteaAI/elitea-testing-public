@@ -59,7 +59,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | 11 | Team Project — public conversation / non-owner restrictions | 2188,2189,2190,2191,2192,2193,2194 | 7 | **LANDED (partial)** — PR #1566, 2/7 automated + 2/7 already-covered + 3/7 blocked (#1563) |
 | 12 | Message input + generation controls (stop/regenerate/send-button/starters) | 2177,2178,2179,2182,2183,2184,2185,2186,2187,2465,2466 | 11 | **LANDED (partial)** — PR #1586, 8/11 automated + 3/11 blocked (#1569) |
 | 13 | File attachments | 2195,2196,2198,2199,2201,2467 | 6 | **LANDED** — PR #1595, 6/6 automated |
-| 14 | Slash commands / # mentions / MCP dropdown | 2205,2206,2207,2208,2468,2469,2470 | 7 | pending |
+| 14 | Slash commands / # mentions / MCP dropdown | 2205,2206,2207,2208,2468,2469,2470 | 7 | **LANDED** — PR #1601, 7/7 automated (2 merged sanctioned-RED, #1596) |
 | 15 | Tool call/output rendering + HITL + context management | 2209,2210,2216,2217,2471,2472,2473,2474 | 8 | pending |
 | 16 | Canvas creation (agent/pipeline/toolkit/MCP from conversation) — check ELITEA-2077 already-covered first | 2073,2074,2076,2077,2078,2081,2083,2084,2089 | 9 | pending |
 
@@ -327,12 +327,26 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-14** dispatching via `batch-build.workflow.mjs`. slug=`chat-remaining-w14`,
-  base=`origin/automation/base`, cases 2205,2206,2207,2208,2468,2469,2470 (7),
-  clusters `[2205,2468]` (slash-command MCP selection, near-dup titles),
-  `[2207,2469]` (hash-mention agent selection, near-dup titles), `[2208,2470]`
-  (hash-mention pipeline selection, near-dup titles); 2206 (mentions-dropdown
-  display) standalone. Case snapshots at
-  `.agents/automation/chat-remaining-w14/cases/`. All 7 confirmed still
-  `draft`/`manual` in the TMS at intake (no dedup hits). Task ID `waevrn93w`,
-  Run ID `wf_6595674e-cc3`.
+- **wave-14 LANDED** — elitea-testing-public#1601, merged (`bceb5f8b5`). 7/7
+  automated via `batch-build.workflow.mjs` (Task `waevrn93w`, Run ID
+  `wf_6595674e-cc3`) — 5 clean + 2 merged sanctioned-RED (ELITEA-2205/2468's
+  `test_select_mcp_from_slash_mention_no_tools_shows_empty_panel`, deterministic
+  3/3, lead-verified independently, tied to open `bug` #1596: a zero-tools MCP
+  still opens an empty "available tools" panel instead of hiding it —
+  root-caused via source read of `SlashSuggestionList.jsx`'s hide-guard).
+  Clusters `[2205,2468]`/`[2207,2469]`/`[2208,2470]` all confirmed genuine
+  granularity-superset family pairs, not duplicates; 2206 standalone. Batch's
+  `chat_page.py` diff carried a real, wide-blast-radius bug fix
+  (`_is_transient_message()` whole-string → per-line prefix check, reached by
+  `wait_for_ai_response()`/`wait_for_message_content_stable()` across 6
+  non-chat spec files) — ran those 34 parametrized tests as a one-time
+  regression check: 24 passed, 8 skipped (expected, no gitlab/bitbucket test
+  data), 2 reruns recovered, 2 failures both `401 Bad credentials` from an
+  expired `GIT_HUB_TOKEN` test-data credential (unrelated environment issue,
+  no regression found). Lead's own gate: 3/3 clean on the 23-node-id main scope
+  (~295-302s each) + 3/3 independently-verified identical sanctioned-RED
+  signature. New testids (all 3 confirmed NOT yet on `main`, 1 of 3
+  runtime-composed): `chat-hash-search-results-list` + dynamic
+  `chat-hash-search-item-{project_id}_{id}` (EliteaAI/EliteaUI@7fe617e8),
+  name/type/icon sub-testids (@840e251d + @58d30f08), `chat-participant-icon`
+  (@dd44ce90). TMS back-written (`c04a2f8`): 7 cases `ready`/`automated`.
