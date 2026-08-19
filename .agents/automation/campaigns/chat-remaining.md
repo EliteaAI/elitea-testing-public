@@ -60,7 +60,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | 12 | Message input + generation controls (stop/regenerate/send-button/starters) | 2177,2178,2179,2182,2183,2184,2185,2186,2187,2465,2466 | 11 | **LANDED (partial)** — PR #1586, 8/11 automated + 3/11 blocked (#1569) |
 | 13 | File attachments | 2195,2196,2198,2199,2201,2467 | 6 | **LANDED** — PR #1595, 6/6 automated |
 | 14 | Slash commands / # mentions / MCP dropdown | 2205,2206,2207,2208,2468,2469,2470 | 7 | **LANDED** — PR #1601, 7/7 automated (2 merged sanctioned-RED, #1596) |
-| 15 | Tool call/output rendering + HITL + context management | 2209,2210,2216,2217,2471,2472,2473,2474 | 8 | pending |
+| 15 | Tool call/output rendering + HITL + context management | 2209,2210,2216,2217,2471,2472,2473,2474 | 8 | **LANDED (partial)** — PR #1608, 1/8 automated + 4/8 already-covered (TMS deferred) + 3/8 blocked (2 on #1127, 1 on env blocker #1607) |
 | 16 | Canvas creation (agent/pipeline/toolkit/MCP from conversation) — check ELITEA-2077 already-covered first | 2073,2074,2076,2077,2078,2081,2083,2084,2089 | 9 | pending |
 
 **Total: 127/127, verified unique + complete partition (no gaps, no dupes).**
@@ -325,8 +325,6 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   (EliteaAI/EliteaUI@feb9101a). TMS back-written (`5daa238`): 6 cases
   `ready`/`automated`.
 
-## In-flight run state (context-fragile — recorded immediately per doctrine)
-
 - **wave-14 LANDED** — elitea-testing-public#1601, merged (`bceb5f8b5`). 7/7
   automated via `batch-build.workflow.mjs` (Task `waevrn93w`, Run ID
   `wf_6595674e-cc3`) — 5 clean + 2 merged sanctioned-RED (ELITEA-2205/2468's
@@ -351,12 +349,41 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   name/type/icon sub-testids (@840e251d + @58d30f08), `chat-participant-icon`
   (@dd44ce90). TMS back-written (`c04a2f8`): 7 cases `ready`/`automated`.
 
+- **wave-15 LANDED (partial)** — elitea-testing-public#1608, merged (`b118d57f5`).
+  1/8 cleanly automated (ELITEA-2216, lead's own gate 3/3 clean). 4/8
+  already-covered (ELITEA-2471/2472/2473/2474, duplicates of ELITEA-2212/2213/
+  2214/2215) — AFS only; TMS back-write **deliberately deferred**, not silently
+  skipped: their covering tests are guardrails-marked (excluded from local
+  execution) or #1127-excluded, and their own originating cases (2211-2215,
+  outside this campaign's 127-case scope, merged by an earlier/different
+  session) are themselves still `draft`/`manual` — flagged for a human to
+  resolve as its own follow-up. 3/8 blocked: ELITEA-2209/2210 extend
+  `test_direct_toolkit_call_complete_flow.py`, already excluded from any gate
+  for open non-deterministic defect #1127 (2/5 fire rate, doesn't meet the
+  deterministic-3/3 sanctioned-RED bar). ELITEA-2217 blocked on a **newly
+  discovered environmental issue, not a code/product defect**: the DEV
+  project's shared LLM budget is exhausted (`project_budget_exceeded`) —
+  root-caused live via Playwright MCP (bypassed pytest entirely), confirmed
+  against the `context_analytics` API returning `current_tokens: 0` for a
+  conversation with 2 real rendered messages, and **reproduced the identical
+  signature on an already-merged, previously-passing spec**
+  (`test_context_auto_summarization.py`, ELITEA-2218, unrelated to this
+  wave's diff) — ruling out a wave-15 regression. Filed as question #1607 (not
+  a `bug` — this is an infra/ops constraint, not a code defect). Given this is
+  a session-wide, environment-level blocker that could affect wave-16 or any
+  future re-attempt of 2209/2210/2217 too, **stopping the campaign here** —
+  board moved to `Blocked`, waiting on #1607. New testids (all 7 confirmed NOT
+  yet on `main`): `context-modal-stat-messages`/`-percentage`/`-tokens`,
+  `context-modal-management-toggle` (EliteaAI/EliteaUI@69b103b2),
+  `context-budget-percentage` (@3ce289af), `context-modal-summarization-toggle`
+  (@69921d7c), `context-modal-stat-summaries` (@d1b3e8f0). TMS back-written
+  (`fe08e8b`): 1 case (`ELITEA-2216`) `ready`/`automated`.
+
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-15** dispatching via `batch-build.workflow.mjs`. slug=`chat-remaining-w15`,
-  base=`origin/automation/base`, cases 2209,2210,2216,2217,2471,2472,2473,2474
-  (8), cluster `[2471,2472,2473]` (HITL authorize/block/block-with-comment —
-  same interaction flow, 3 outcome variants, natural family); 2209, 2210, 2216,
+- none — session stopped, waiting on question elitea-testing-public#1607
+  (DEV shared LLM budget exhausted) before resuming wave-15's blocked cases or
+  starting wave-16 (43 cases → 34 remaining across waves 15-16).
   2217, 2474 standalone (2474 "complete flow from direct toolkit call in
   thinking step" may turn out family-related to 2209 during live analysis —
   not pre-clustered on title alone, left for the analyst to determine). Case
