@@ -59,6 +59,35 @@ if you touch this specific surface, not a new principle.**
   a target clearly outside the dropdown's bounding box (sidebar nav, message
   list of an existing conversation) instead.
 
+## After selecting a participant (ELITEA-2207/2469, same session)
+Clicking an agent/pipeline card does NOT insert any text into
+`chat-message-input` — the field stays completely empty. The selection
+instead renders as a composer-level active-participant chip
+(`chat-switch-participant-button`, pre-existing testid + helper
+`is_agent_participant_in_composer()` from the ELITEA-1736 rework) and adds a
+row to the `chat-participants-badge-agents`/popover PARTICIPANTS panel (also
+pre-existing, ELITEA-1793 rework — zero new testids needed for either). Both
+TMS cases word this as "agent name appears in the message field with #
+mention" — that phrasing is stale; assert the composer chip instead
+(reverse-masking guard, not a defect). Same pattern as every other
+participant-mention family in this app (slash-mention toolkit/MCP) — not
+`#`-specific.
+
+Sending a message afterward correctly targets the selected agent (header
+shows "to <Agent Name>"), the agent responds normally, and it remains a
+PARTICIPANTS-panel entry after the response completes — full round-trip
+confirmed live, zero defects.
+
+## Heavy-account bare `/chat` can hang on a loading overlay (not a redirect)
+Distinct from the already-known "bare `/chat` redirects to last-viewed
+conversation as a delayed effect" gotcha: on an account with 65+ folders /
+hundreds of conversations, bare `/chat` can leave a persistent
+`MuiCircularProgress` overlay intercepting the composer for 15+ seconds
+(8+ actionability retries, never resolved in this session). Navigating
+directly to an existing/fresh conversation id (`/chat/{id}`, e.g. via the
+`conversation_id` fixture) sidesteps this — it never touches the bare-`/chat`
+loading path at all.
+
 ## Testid gap (as of this pass)
 `SearchResultList.jsx` does NOT forward `containerTestId`/`getItemTestId` to
 `NewParticipantList.jsx` at all (unlike `SlashSuggestionList.jsx`, which

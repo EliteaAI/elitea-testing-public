@@ -2,7 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2206, 2026-08-19
+a time; last confirmed by: qa-engineer analyst, ELITEA-2207/2469, 2026-08-19
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: qa-engineer analyst, ELITEA-2206, 2026-08-19
 (supersedes nothing below — new section, other sections unchanged; previous
 confirmer: qa-engineer analyst, ELITEA-2205/2468, 2026-08-19
 (supersedes nothing below — new section, other sections unchanged; previous
@@ -61,7 +63,84 @@ qa-engineer analyst, ELITEA-2111, 2026-08-15;
 previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
-ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03))))).
+ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)))))).
+
+## ELITEA-2207/2469 — `#` hash-search SELECT-AN-AGENT adds it to PARTICIPANTS
+## + composer active-participant chip + agent responds, family AFS, ZERO new
+## testids (pure reuse of ELITEA-2206's just-landed hash-search handles +
+## pre-existing composer/participants-panel machinery), ZERO defects, ONE
+## case-text clarification (mention is a composer CHIP, not literal text in
+## the message field)
+- **Same session as ELITEA-2206 (this digest's section immediately below) —
+  reused its freshly-landed `chat-hash-search-item-{}_{}` /
+  `{testId}-type` testids directly, zero re-derivation needed.** Confirms the
+  digest's own "read the neighbours first" discipline pays off across units
+  in the SAME batch, not just across sessions.
+- **`test_add_participant_via_hash_search` (covering, merged) proves
+  open→select→close and NOTHING ELSE** — it clicks whatever the FIRST result
+  happens to be (agent or pipeline, unscoped) and asserts only that the
+  dropdown closes. It never opens the participants popover, never inspects
+  the composer, never sends a message. This family's entire subject —
+  participant-panel update, composer chip, message delivery, agent response,
+  participant persistence — is a clean, previously-untouched gap on the SAME
+  selection mechanism.
+- **CASE-TEXT CLARIFICATION, not a defect (reverse-masking guard) — the
+  agent "mention" is NOT inserted as text into the message input.** Both
+  cases say the agent name appears "in the message field" — live-confirmed
+  via screenshot this session: after clicking an agent card, `chat-message-input`
+  stays completely EMPTY (placeholder unchanged). Instead the selected agent
+  renders as a dedicated chip in the composer's control row
+  (`chat-switch-participant-button`, pre-existing testid + assertion helper
+  `is_agent_participant_in_composer()` from the ELITEA-1736 rework — already
+  in the page object, zero new code). This is the SAME established pattern
+  every other participant-mention family in this app uses (slash-mention
+  toolkit/MCP participants behave identically) — not specific to `#`-search,
+  not a regression. Assert the real composer-chip observable; the case
+  text's "message field" wording is the stale half.
+- **Live-confirmed end-to-end, zero substitution**: selected "Agent testing
+  skills" (agent-type card, `chat-hash-search-item-1_280`) on an existing
+  conversation (`/chat/9082`) → `chat-participants-badge-agents` badge
+  appeared (previously absent) → opened the popover → AGENTS section showed
+  the agent's name + a "ver" version control + a leading icon (row is the
+  SAME shared participant-row component the expanded panel uses, per
+  `PARTICIPANT_ROW`) → typed "hello", sent → message header showed "Test Bot
+  to Chat now Agent testing skills" (real send-to-participant attribution) →
+  agent replied "Hello! How can I help?" (full round-trip, Copy button
+  present, non-transient) → AGENTS badge still read "1" afterward (confirmed
+  a genuine `data-testid="chat-participants-badge-agents"` element read, not
+  assumed). Zero console errors throughout.
+- **Zero new testids** — every handle needed already exists: pre-existing
+  `chat-switch-participant-button`/`chat-participants-badge-agents`/
+  `chat-participant-row-{uniqueId}`/`chat-participant-remove-button` (all
+  **on-`main` ✓**, ELITEA-1736/1793 reworks) plus the just-landed
+  `chat-hash-search-item-{}_{}`/`{testId}-type` from this session's own
+  ELITEA-2206 unit (**on-`automation/testids` only**, awaiting human
+  cherry-pick same as ELITEA-2206's own row).
+- **Cleanup performed live**: removed the added agent participant via the
+  existing `remove_agent_participant(agent_id)` mechanism (hover → "Remove
+  agent" → confirm dialog) — badge confirmed gone from the DOM afterward
+  (matches `wait_for_participants_badge_absent()`'s documented "disappears
+  at count 0" contract). The sent "hello" + the agent's reply remain in
+  `/chat/9082`'s message history (removing a participant does not delete
+  prior messages — consistent with every other participant-removal
+  precedent already in this digest) — cosmetic only.
+- **Gotcha, NOT a product defect — heavy-account bare `/chat` hit a
+  persistent loading-spinner block this session.** Navigating to bare
+  `/chat` on this account (65+ folders, hundreds of conversations per the
+  sidebar) left a `MuiCircularProgress` overlay intercepting the composer
+  for 15+ seconds straight (8+ retry cycles, never resolved before this
+  session gave up and switched to an existing conversation instead).
+  Distinct from the already-documented "`/chat` bare redirects to
+  last-viewed conversation as a delayed effect" gotcha (ELITEA-2175/2176
+  section below) — this was a persistent BLOCKING overlay, not a silent
+  redirect. Worked around by navigating directly to an existing conversation
+  id instead of bare `/chat`. **Implementer implication**: the shipped test
+  should use the `conversation_id` fixture (fresh, API-seeded — navigates to
+  `/chat/{id}` directly, never touches the bare-`/chat` redirect/loading
+  path at all) rather than the ambient "new chat" screen, sidestepping this
+  entirely.
+- AFS (family, both TMS ids, same `afs_path`):
+  `test-specs/chat-interface/lextend_hash-search-select-agent-adds-participant-and-responds_ELITEA-2207.md`.
 
 ## ELITEA-2206 — `#` hash-search participant dropdown (agents+pipelines,
 ## mixed sources), NEW surface for THIS digest (`chat-hash-search-participants`),
