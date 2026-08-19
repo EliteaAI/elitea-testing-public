@@ -3404,3 +3404,41 @@ or `entity_type_id`). Does NOT affect the main save or the test outcome. Exclude
 After saving and closing the canvas, navigate to `/agents/all/{agent_id}?viewMode=owner`.
 The Welcome message field (`agent-welcome-message-input`) shows the saved value — change
 is synchronised immediately.
+
+## ELITEA-2201 — send message with attachments, AI response references filenames,
+## chips clear after send — zero new testids, ready-for-automation (2026-08-19)
+
+- **Genuine coverage gap vs the closest neighbour, ELITEA-2091** (Team-project +
+  drag-drop + LLM-switch, `test_create_new_conversation_team_project_attachments_and_llm.py`,
+  merged to `automation/base`): that test attaches + sends + verifies the message/
+  filenames land in the thread, but it NEVER waits for the actual AI response
+  content (only auto-naming) and NEVER checks the composer's attachment state
+  post-send. ELITEA-2201's own steps 4-5 (response acknowledges files; chips
+  cleared after send) are exactly the two things 2091 doesn't assert. Given how
+  different the two scenarios are otherwise (Team project + LLM-switch vs a plain
+  default-project send), this shipped as a NEW focused spec (`ready-for-automation`),
+  not an `extend-existing` graft onto 2091's file — see AFS § Metadata.
+- **Response-content assertion, live-confirmed workable.** Small, distinctly-named
+  `.txt` files (short text bodies) attached + `"Please analyze these files"` (case's
+  own verbatim message) reliably produce a response that quotes the filenames back
+  VERBATIM, in both the model's "Thinking" trace and its final Markdown answer —
+  confirmed live this session (`report_alpha.txt`/`notes_beta.txt`/`summary_gamma.txt`
+  all appeared in the response text). The model explicitly reasons "the content has
+  been embedded directly in the messages, so I don't need to use file reading tools"
+  — no toolkit/file-read call is made, attachment content rides in the message
+  payload itself. This is the "capture-the-real-response, assert-the-invariant"
+  fidelity pattern, NOT a fabricated payload (`.agents/testing.md` § Fidelity policy).
+- **Chips clear immediately on send** (confirmed live) — the composer's
+  `chat-attachment-chip-{index}` elements unmount and the "Attach Files (N left)"
+  counter resets to the full ceiling (`"10 left"`) the instant the message is sent,
+  well before the AI response starts streaming. `ChatPage.wait_for_attachment_chip_count(0)`
+  is the correct web-first wait (no race with the response).
+- **Same `#691` fixture caution as ELITEA-2091** — do not seed via the shared
+  `conversation_id` fixture when the test's first action is sending a UI message;
+  create fresh via `+Chat` and capture the real conv id from the post-send URL for
+  cleanup.
+- Zero new testids — every handle (`sidebar-create-button`, `plus-menu-button`,
+  `chat-attach-menuitem-button`, `chat-attachment-chip-{index}`, `chat-message-input`,
+  `chat-message-item`, `send-button`) is pre-existing and on `main` (freshly
+  re-verified this session).
+- AFS: `test-specs/chat-interface/l3_send-message-with-attachments-verify-included_ELITEA-2201.md`.
