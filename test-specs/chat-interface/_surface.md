@@ -135,6 +135,58 @@ ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)))).
   drive, not the other way around) — not a product defect.
 - AFS: `test-specs/chat-interface/l3_attach-files-multiple-chips-display_ELITEA-2196.md`.
 
+## ELITEA-2199/2467 — attachment chip icon genericity + long-name truncation +
+## "+N" overflow click-to-expand, both `extend-existing` against ELITEA-2196's
+## covering spec, ZERO new testids, ONE clarification (icon type-genericity, #1591)
+- **Icon does NOT vary by file type — confirmed via source AND live run.**
+  `FileList.jsx:88` (visible chips) and `:154` (overflow-menu items) both
+  render the exact same `AttachedFileIcon` SVG (`@/assets/attached-file-icon.svg`)
+  unconditionally — no branching on extension/MIME anywhere in the component.
+  Live-confirmed: attached `.png` + `.pdf` + `.txt` + a long `.txt` in one
+  conversation — all 4 chips' `<svg>` `outerHTML` byte-identical. Contrast:
+  the app DOES have a type-aware icon/preview system elsewhere
+  (`EliteaUI/src/slices/fileTypes.js` + the Artifacts feature's
+  `FilePreviewCanvas`) — `FileList.jsx` just doesn't reuse it. ELITEA-2199's
+  case text claims "type-appropriate icon" — **case-text drift, clarification
+  filed as issue #1591**, not a defect (no partial/broken type-icon wiring
+  found — reads as "never built this way", not a regression). ELITEA-2467's
+  case text only says "a file icon" (no type claim) — clarification does NOT
+  apply to that case.
+- **Truncation mechanism**: CSS `text-overflow: ellipsis` via the shared
+  `TypographyWithConditionalTooltip` component (`[fsd]/shared/ui/tooltip/`).
+  Live-confirmed on a 104-char filename at the standard 200px-wide chip
+  (~116px name column): `scrollWidth` 731px vs `clientWidth` 116px — genuine
+  visual truncation, not just a CSS rule with room to spare. The component
+  ALSO shows a hover tooltip with the full name when (and only when) genuinely
+  overflowing (`useTextOverflow` hook, same "conditional on real overflow"
+  precedent as the chat-starter-tile tooltip) — confirmed live via
+  `[role="tooltip"]`, but NOT made a required AFS assertion (no testid on
+  this particular tooltip instance yet; the `scrollWidth>clientWidth` check
+  alone fully satisfies both cases' literal "truncated with '...'" ask,
+  scope kept proportionate — see either AFS's Automation Hints if a future
+  case wants the tooltip asserted too, that would need a `testId` prop
+  threaded through the SHARED `TypographyWithConditionalTooltip` component,
+  set only at `FileList.jsx`'s call site, same pattern as the starter-tile's
+  own `slotProps.tooltip` wire).
+- **"+N" overflow button IS a real, functioning click-to-expand control** —
+  confirmed live: click sets `aria-expanded` `undefined` → `"true"` on
+  `chat-attachment-overflow-button` and opens a MUI `role="menu"` populated
+  by the existing `chat-attachment-overflow-item-{index}` testid'd items
+  (both testids pre-existing, ELITEA-2197, **on-main ✓**). At `1700×1100`
+  with 7 attached files: 4 visible chips + `"+3"` button; opening it lists
+  exactly `extra_file_5.txt`/`_6.txt`/`_7.txt` in order. Existing tests
+  (ELITEA-2196's `get_all_attached_file_names()`, ELITEA-2197's own test)
+  already click this button, but only as PLUMBING inside a helper to read
+  hidden names for a total-COUNT assertion — neither asserts the
+  click→expand INTERACTION itself as an observable. ELITEA-2467's case text
+  explicitly asks for exactly that ("the '+N' indicator is clickable to
+  expand or scroll") — genuine gap, first test to assert it directly.
+- Zero new testids for either case — `chat-attachment-chip-{index}`,
+  `chat-attachment-overflow-button`, `chat-attachment-overflow-item-{index}`
+  all confirmed **on-main ✓** via fresh `git fetch origin` this session.
+- AFS: `test-specs/chat-interface/lextend_attach-files-icon-genericity-and-truncation_ELITEA-2199.md`,
+  `test-specs/chat-interface/lextend_attach-files-truncation-and-overflow-click-to-expand_ELITEA-2467.md`.
+
 ## ELITEA-2198 — sequential individual-removal (2nd X click), `extend-existing`
 ## against ELITEA-2196's own covering spec, zero new testids, zero defects
 - **Resolved/added during ELITEA-2198 implementation:** the case's own steps
