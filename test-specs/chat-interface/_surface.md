@@ -3,8 +3,10 @@
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
 a time; last confirmed by: test-automation-engineer (combined analyst+
-implementer), ELITEA-2196, 2026-08-19 (supersedes nothing below — new
-section, other sections unchanged; previous confirmer: qa-engineer analyst,
+implementer), ELITEA-2198, 2026-08-19 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: test-automation-engineer
+(combined analyst+implementer), ELITEA-2196, 2026-08-19 (supersedes nothing
+below — new section, other sections unchanged; previous confirmer: qa-engineer analyst,
 ELITEA-2089, 2026-08-18
 (supersedes nothing below — new section, other sections unchanged; previous
 confirmer: test-automation-engineer (combined analyst+
@@ -132,6 +134,30 @@ ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)))).
   harmless (add the testid FIRST, then attach files for the actual test
   drive, not the other way around) — not a product defect.
 - AFS: `test-specs/chat-interface/l3_attach-files-multiple-chips-display_ELITEA-2196.md`.
+
+## ELITEA-2198 — sequential individual-removal (2nd X click), `extend-existing`
+## against ELITEA-2196's own covering spec, zero new testids, zero defects
+- **Resolved/added during ELITEA-2198 implementation:** the case's own steps
+  1-2 ("attach 4, click X on the first chip, verify 3 remain") are the exact
+  mechanism the ELITEA-2196 covering test already proves in its own Step 5.
+  The only genuinely new observable is steps 3-4: click X on a **second,
+  different** chip (index 0 again, post-renumbering) and verify exactly 2
+  remain with the correct filenames. Live-confirmed: `remove_attachment_chip()`
+  correctly renumbers and decrements on the SECOND click too — no ghost chip,
+  no wrong-file removal, no state carried over incorrectly from the first
+  removal. `get_visible_attachment_names()` after 2 sequential removals ==
+  `file_names[2:]` in original order (list-equality, not a bare count —
+  catches an off-by-one-after-renumbering class of bug a count-only check
+  would miss).
+- **Zero new testids, zero page-object additions** — every handle
+  (`CHAT_ATTACHMENT_CHIP_REMOVE`, `remove_attachment_chip()`,
+  `wait_for_attachment_chip_count()`, `get_visible_attachment_names()`) was
+  already added by the ELITEA-2196 implementation and is reused verbatim.
+- Implemented as a new sibling test method inside the SAME
+  `TestAttachFilesMultipleChipsDisplay` class (additive-only — the original
+  `test_attach_multiple_files_displays_chips_above_composer` is byte-identical;
+  verified via `git diff | grep -E '^-[^-]'` → empty).
+- AFS: `test-specs/chat-interface/lextend_attach-files-remove-individual-files-sequential_ELITEA-2198.md`.
 
 ## ELITEA-2179/2466 — composer send-button/waveform visibility toggle,
 ## family AFS (2466 is a granular superset of 2179), FIVE new testids added,
