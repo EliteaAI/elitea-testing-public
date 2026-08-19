@@ -2,7 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: test-automation-engineer (combined analyst+
+a time; last confirmed by: qa-engineer analyst, ELITEA-2205/2468, 2026-08-19
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: test-automation-engineer (combined analyst+
 implementer), ELITEA-2198, 2026-08-19 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: test-automation-engineer
 (combined analyst+implementer), ELITEA-2196, 2026-08-19 (supersedes nothing
@@ -58,6 +60,54 @@ previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)))).
+
+## ELITEA-2205/2468 — slash-mention MCP selection + available-tools panel,
+## family AFS, ZERO new testids (pure reuse of ELITEA-2202/2203/2204's
+## slash-mention surface), ONE new defect filed (#1596: zero-tool
+## toolkit/MCP still opens an empty "available tools" panel)
+- **`select_slash_mention_toolkit()` / `slash_mention_list` / `slash_mention_tool_list`
+  / `SLASH_MENTION_ITEM` / `SLASH_MENTION_TOOL_ITEM` (all from `ChatPage`, added
+  ELITEA-2202/2203/2204) work UNCHANGED for MCP participants — confirmed live
+  this pass, both for a 3-tool MCP (`mcp.deepwiki.com`) and a genuinely
+  zero-tool MCP.** `select_slash_mention_toolkit()`'s docstring already says
+  "toolkit/MCP card" — it is not toolkit-specific despite the name.
+- **`select_slash_mention_toolkit()` will TIMEOUT for a zero-tool
+  toolkit/MCP** — its wait strategy (ELITEA-2204's own fix) waits for the
+  first tool-item row to ATTACH, which never happens when the selected
+  participant has zero tools. A caller testing the zero-tools branch must
+  either inline the click + container-only wait, or the method needs an
+  additive `wait_for_first_tool: bool = True` parameter. Not yet fixed on
+  the page object as of this pass — next implementer's job.
+- **Defect [#1596](https://github.com/EliteaAI/elitea-testing-public/issues/1596):
+  a Toolkit/MCP with zero configured tools (`settings.available_mcp_tools`/
+  `selected_tools == []`) still opens the "{name} available tools" panel —
+  header renders, zero rows, no "no tools" empty-state message.** Root cause,
+  read from source: `SlashSuggestionList.jsx`'s early-return
+  (`if (!isToolsFetching && toolQuery && filteredTools.length === 0) return null;`)
+  only hides the panel when a **typed tool-name filter** matches nothing — it
+  does NOT cover "genuinely zero tools, no filter typed", so `<ToolList>`
+  (`ToolList.jsx`) always renders its header Box regardless of `tools.length`.
+  Applies identically to zero-tool Toolkit participants (same component, not
+  MCP-specific) — filed from the MCP case that names the expected "no tools ⇒
+  no panel" behavior explicitly. Deterministic (source-confirmed, no timing
+  involved), reproduced twice live (immediate + after a 2s settle).
+- **Creating a zero-tools MCP toolkit is trivial and honest**: `ToolkitAPI.
+  create_remote_mcp_toolkit(name=..., url=<any working MCP URL>, tools=[])` —
+  passing an empty `tools` list (instead of a `sync_mcp_tools()` result)
+  produces a real toolkit resource with `available_mcp_tools: []`. No new
+  fixture existed for this before this pass; suggested name
+  `mcp_toolkit_no_tools` (mirror `mcp_toolkit_with_tools`'s shape).
+- **The "disconnected" case-text variant collapses into the same UI code
+  path as "zero tools"** — `SlashSuggestionList.jsx`'s `availableTools` memo
+  reads `settings.available_mcp_tools` regardless of WHY it's empty (never
+  synced, or sync genuinely failed) — no separate "disconnected" UI branch
+  exists, confirmed via source read. One zero-tools fixture covers both
+  case-text wordings; no need to simulate a real unreachable MCP server.
+- **`onSlashSelectToolkit` / `onSlashCommitMention`
+  (`useSlashMention.hooks.js:80-145`) are fully participant-type-agnostic** —
+  no `isMcp` branching anywhere in either handler. The trailing-space-after-
+  tool-selection mechanism ELITEA-2204 confirmed live for Toolkits transfers
+  to MCPs by construction (same code path), not just by analogy.
 
 ## ELITEA-2196 — attachment chip CONTENTS (icon+X button+dark/light styling),
 ## ONE new testid (`chat-attachment-remove-chip-{index}`), zero defects
