@@ -2,7 +2,10 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2089, 2026-08-18
+a time; last confirmed by: test-automation-engineer (combined analyst+
+implementer), ELITEA-2196, 2026-08-19 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: qa-engineer analyst,
+ELITEA-2089, 2026-08-18
 (supersedes nothing below — new section, other sections unchanged; previous
 confirmer: test-automation-engineer (combined analyst+
 implementer), ELITEA-2179/2466, 2026-08-15 (supersedes nothing below — new
@@ -52,7 +55,68 @@ qa-engineer analyst, ELITEA-2111, 2026-08-15;
 previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
-ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03))).
+ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)))).
+
+## ELITEA-2196 — attachment chip CONTENTS (icon+X button+dark/light styling),
+## ONE new testid (`chat-attachment-chip-remove-{index}`, reserved by the
+## ELITEA-2197 AFS for exactly this sibling), zero defects
+- **First case in this cluster to assert the chip's own contents, not just
+  count/name.** ELITEA-2195 only checks the popper's counter/icon (no
+  attach happens); ELITEA-2197/2200 attach files and check COUNT + toast,
+  never a chip's icon/X-button/styling. This case closes that gap.
+- **`chat-attachment-chip-remove-{index}` added** on `FileList.jsx`'s
+  per-chip remove `Box` (line ~98, direct `data-testid` attribute — no
+  wrapper, no hook change, no MUI-internal replacement).
+  `EliteaAI/EliteaUI@43b81dc8`, `automation/testids` only (not yet on
+  `main`). Live-confirmed via HMR: attribute present on all 4 chips,
+  `.click()` on it genuinely removes exactly that one chip (functional,
+  not just present) — reconfirmed a real `onDeleteFile` call, no
+  substitution.
+- **Chip structure, live-confirmed** (`getComputedStyle` + DOM read via
+  `.evaluate()` scoped on the already-testid'd `chat-attachment-chip-{i}`
+  parent — a read, not a new locator; same idiom as the pre-existing
+  `chat.delete_confirm_button.evaluate("el => getComputedStyle(el)...")`
+  pattern in `test_delete_confirmation_modal_ui_validation.py`): 3 direct
+  children in fixed order — `<svg>` (file-type icon, `AttachedFileIcon`) →
+  `<span>` (filename, `TypographyWithConditionalTooltip`) → `<div>` (remove
+  button, now testid'd). The file-type icon itself gets NO new testid —
+  its presence is verified structurally (`children[0].tagName === 'svg'`),
+  same precedent as the ELITEA-2091 model-selector `CheckedIcon` check
+  ("child icon count scoped under testid'd parent... no new testid
+  needed").
+- **"Dark background, light text" — the RAW `background-color` computed
+  value does NOT by itself read as dark.** Live-confirmed:
+  `getComputedStyle(chip).backgroundColor === "rgba(255, 255, 255, 0.1)"`
+  (a translucent WHITE overlay) — only dark once COMPOSITED over the app's
+  own near-black canvas (`document.body` computed background `rgb(14, 19,
+  29)`, confirmed no light/dark toggle affects this ambient session —
+  `useEliteATheme.hooks.js` resolves theme from `state.settings.mode`,
+  this session's resolved mode renders the dark palette). The shipped test
+  computes composited relative luminance (WCAG formula) rather than
+  asserting the misleading raw string. Filename text color is
+  unambiguously light on its own: `rgb(255, 255, 255)` (pure white),
+  confirmed identical across every chip.
+- **Chose 4 files, not 5, deliberately** — at the standard `1700×1100`
+  viewport (ELITEA-2197 precedent), `FileList.jsx`'s width-driven
+  `maxItemsToShow` renders exactly 4 as visible chips before overflowing a
+  5th into the "+N" bucket (reconfirmed live, same arithmetic ELITEA-2091
+  already documented). Using 4 keeps this case's "all files render as
+  chips in a horizontal row" observable unambiguous — the visible/overflow
+  split mechanism is ELITEA-2197's own dedicated scope, not re-derived
+  here. All 4 chips confirmed on one shared `y` coordinate (bounding-box
+  row check), `x` increasing left-to-right.
+- **Case-text clarification, not a defect**: case step 2 says "files begin
+  uploading" — live-confirmed (again, consistent with the already-filed
+  ELITEA-2197 Network Behavior finding) that attaching is 100%
+  client-side; zero network request fires at selection time. Chips
+  rendering immediately IS the correct, live, self-consistent observable
+  asserted instead (reverse-masking guard).
+- **HMR gotcha reconfirmed**: editing `FileList.jsx` (even an additive
+  `data-testid` line) triggered a full app remount, not just a component
+  hot-swap — composer/attachment state reset to empty. Expected and
+  harmless (add the testid FIRST, then attach files for the actual test
+  drive, not the other way around) — not a product defect.
+- AFS: `test-specs/chat-interface/l3_attach-files-multiple-chips-display_ELITEA-2196.md`.
 
 ## ELITEA-2179/2466 — composer send-button/waveform visibility toggle,
 ## family AFS (2466 is a granular superset of 2179), FIVE new testids added,
