@@ -2,7 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2208/2470, 2026-08-19
+a time; last confirmed by: qa-engineer analyst, ELITEA-2217, 2026-08-19
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: qa-engineer analyst, ELITEA-2208/2470, 2026-08-19
 (supersedes nothing below — new section, other sections unchanged; previous
 confirmer: qa-engineer analyst, ELITEA-2207/2469, 2026-08-19
 (supersedes nothing below — new section, other sections unchanged; previous
@@ -65,7 +67,50 @@ qa-engineer analyst, ELITEA-2111, 2026-08-15;
 previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
-ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03))))))).
+ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)))))))).
+
+## ELITEA-2217 — Context Management ON / Auto-Summarization OFF: token
+## tracking continues past max (warning icon fires) but Summaries stays 0
+## and no "Summarizing" indicator ever appears; third leg of the
+## {2216, 2217, 2218} context-management family. ONE new testid needed,
+## ONE non-blocking product defect filed (#1605).
+- Settings > Memory (`/settings/memory`): `automatic-summarization-toggle`
+  (`UserProfileSettingsPage`) toggled OFF independently of
+  `context-management-toggle` (stays ON) — confirmed live both toggles
+  default ON for a fresh session; `disable_automatic_summarization()` /
+  `enable_automatic_summarization()` autosave correctly (`PUT
+  /api/v2/social/author/` → 200), same as the Context Management toggle.
+- Per-conversation "Edit context settings" dialog (`context-budget-edit-button`
+  → `ContextStrategyModalContent`): reused ELITEA-2218's low-threshold
+  technique (`context_modal_max_tokens_input` + `context_modal_save_button`)
+  to reach >100% utilization in ~5 long exchanges instead of the account's
+  full ~6,400-token default. **New product defect confirmed + filed (#1605,
+  non-blocking):** when Automatic Summarization is globally OFF, the
+  dialog's Target Summary Tokens field is correctly disabled but its STALE
+  value still cross-field-validates against a new Max Context Tokens value —
+  Save stays disabled unless the new Max Context Tokens is ≥ the frozen
+  Target Summary Tokens value. Workaround: read the live Target Summary
+  Tokens value first and pick a Max Context Tokens ≥ it (`5000` worked
+  against a `4096` frozen target this session), or configure the desired
+  low pair while summarization is still ON, then disable it after.
+  **Do not reuse `set_context_strategy_thresholds()` unmodified for this
+  case** — it also fills the disabled Target Summary Tokens field, which
+  Playwright errors on ("element is not enabled").
+- The dialog's OWN "Enable automatic summarization" switch
+  (`ContextStrategySummarization.jsx`) mirrors the global toggle's state and
+  disables its own child fields (Summarization Instructions, Target Summary
+  Tokens) when unchecked — confirmed live (`.checked === false`) — but
+  carries **NO testid** (confirmed via source read + a live
+  `querySelectorAll('[data-testid]')` sweep of the open dialog, zero hits),
+  unlike its sibling `context-modal-management-toggle` one section up in
+  the same dialog. `testid needed: context-modal-summarization-toggle`.
+- `context_budget_warning_icon`/`is_context_budget_warning_visible()` fires
+  identically whether Automatic Summarization is ON (ELITEA-2218) or OFF
+  (this case) — it is driven purely by utilization %, not by the
+  summarization flag. `chat-answer-model-chip` never reads "Summarizing the
+  chat history" when Automatic Summarization is OFF, confirmed by polling it
+  after all 5 sends (stays plain model-name text throughout).
+- Full AFS: `test-specs/chat-interface/l3_auto-summarization-disabled-no-trigger-at-max-tokens_ELITEA-2217.md`.
 
 ## ELITEA-2208/2470 — `#` hash-search SELECT-A-PIPELINE adds it to
 ## PARTICIPANTS + composer active-participant chip + pipeline responds,
@@ -2503,6 +2548,18 @@ a product defect (never observed via the real test suite's own fixtures).
   ("you have 588 buckets... which one?"), never a tool call, given the
   ambient bucket-count noise above. Naming the bucket explicitly in the
   message reliably reaches a real tool-call attempt (confirmed live twice).
+- **Duplicate manual TMS cases exist for this cluster (2026-08-19,
+  ELITEA-2471/2472/2473 vs ELITEA-2212/2213/2214).** Different TMS case IDs,
+  near-verbatim step tables, same trigger precondition ("conversation with
+  only a HITL toolkit participant"), same Authorize/Block/Block-with-Comment
+  buttons, same expected results — classified `already-covered` against the
+  merged `test_hitl_sensitive_action_authorization.py` (commit `ddaf8b31b`)
+  without re-execution (the underlying precondition needs `pytest.mark.guardrails`
+  + a deployed env anyway — not reachable on localhost regardless of case ID,
+  see the environment-limitation note above). **If another HITL-authorize/
+  block/block-with-comment-titled case appears under yet another ID, check
+  here first** — this TMS may contain more duplicate manual entries for the
+  same feature. See `test-specs/chat-interface/lcovered_hitl-*-duplicate-manual-case_ELITEA-247{1,2,3}.md`.
 
 ## In-chat "Create New X" canvas family — Pipeline/MCP (ELITEA-2079/2085, 2026-08-03)
 
@@ -3745,3 +3802,169 @@ is synchronised immediately.
   `chat-message-item`, `send-button`) is pre-existing and on `main` (freshly
   re-verified this session).
 - AFS: `test-specs/chat-interface/l3_send-message-with-attachments-verify-included_ELITEA-2201.md`.
+
+## ELITEA-2209 — direct toolkit call, tool call in thinking steps — extend-existing
+## onto ELITEA-2215's merged spec (2026-08-19)
+
+- **Near-duplicate of ELITEA-2215** ("Chat – Tool Action and Output – Complete Flow
+  from Direct Toolkit Call", `test_direct_toolkit_call_complete_flow.py`, merged to
+  `automation/base`): same live flow (toolkit as sole participant, no agent, message
+  triggers a real tool call, "Thought for X secs" → thinking-steps chip). 2215's
+  merged test already proves 2209's steps 2-4 (thought accordion, auto-expanded
+  thinking steps, colon-separated `"{toolkit}: {tool}"` chip format — 2209's OWN
+  example `"aaa: create_file"` is already colon-separated despite its "dotted"
+  description, same drift 2215 already documented). **Only 2209's step 1 — "Toolkit
+  in PARTICIPANTS; no AGENTS section" — is unproven**: the covering test's Setup adds
+  the toolkit but never reads the participants panel. `extend-existing` targeting the
+  covering test, gap = one Setup-time assertion.
+- **Participants-badge mechanism, live-confirmed.** `chat-participants-badge-{section}`
+  (`ChatPage.is_participants_badge_visible(section=...)`, pre-existing, already used
+  by 3 other merged specs for `"toolkits"`/`"agents"`) is the correct handle — no new
+  testid needed. Confirmed live this pass: adding a toolkit as sole participant
+  renders the `toolkits`-section collapsed badge in the composer's top-right control
+  row; no `agents` badge renders. Screenshot:
+  `.playwright-mcp/page-2026-08-19T12-53-41-660Z.png` (probe used the seeded
+  `AutoTest Confluence Toolkit 1787` — see caution below).
+- **Caution (test-data, not a defect):** `AutoTest Confluence Toolkit 1787` (seeded
+  toolkit in project 399) is itself misconfigured — selecting it fires a `400` on
+  `GET .../toolkit_validator/prompt_lib/399/2945` and its badge renders in an
+  error/attention variant. Unrelated to this case's subject; don't reuse that toolkit
+  for the new assertion — reuse 2215's own `artifact_toolkit` fixture instead (already
+  confirmed properly configured by the covering test).
+- **2209's target is currently gate-excluded** (2215's test carries a soft-asserted,
+  confirmed-non-deterministic known defect, `elitea-testing-public#1127` — see
+  `.agents/testing.md` § Merge gate "Unconfirmed" history and the covering AFS's
+  fix-round-2 note). The new participants-panel assertion must be placed BEFORE the
+  message send / BEFORE the #1127 classification block, as a plain unconditional
+  assert — NOT routed through the existing `soft_failures` aggregation, since it's
+  mechanically unrelated to #1127.
+- AFS: `test-specs/chat-interface/lextend_direct-toolkit-call-participants-panel-verification_ELITEA-2209.md`.
+
+## ELITEA-2210 — direct toolkit call, chip display — extend-existing (ZERO-DIFF) onto
+## the same ELITEA-2215/2209 covering spec (2026-08-19)
+
+- **Third case in this batch to land on the SAME `test_direct_toolkit_call_complete_flow.py`
+  covering spec.** ELITEA-2210's objective ("tool execution results display as chips when
+  toolkit called directly") is a near-verbatim restatement of ELITEA-2215's — different
+  example toolkit/tool (`'aaa'`/`delete_file` vs the covering spec's `artifact_toolkit`/
+  `create_file`), same mechanism. **No gap at all** (not even one assertion) — this is a
+  zero-diff extend: the covering spec's current trunk state (post-2209) already satisfies
+  every one of 2210's case elements unconditionally.
+- **Tool-agnosticism confirmed by reading `ActionView.jsx` directly** (not by re-running
+  live — the mechanism was already live-confirmed twice this batch by 2215/2209/2211):
+  `buildTitle()` (tool-chip text) is a plain `"{toolkitName}: {toolName}"` template with no
+  branching on tool name; `renderIcon()` branches on `toolkitType` only (never the specific
+  tool) via `getToolIconByType(toolkitType, ...)`. So `delete_file` and `create_file` on the
+  same `artifact`-type toolkit render through the byte-identical chip code path — a strong,
+  source-grounded basis for treating "different tool name" as pure DATA, not a new STEP/branch
+  worth its own test.
+- **Case-text pitfall inherited, not new:** 2210's own message
+  (`"use delete_file toolkit to remove from the bucket all files"`) is the EXACT string
+  ELITEA-2211's AFS already live-tested and found ambiguous ("the bucket" → LLM asks which of
+  588 buckets instead of calling the tool). Doesn't affect 2210's own disposition (zero-diff,
+  no new message-driving code), but worth knowing if anyone manually runs this case's literal
+  text later.
+- AFS: `test-specs/chat-interface/lextend_direct-toolkit-call-chip-tool-agnostic-verification_ELITEA-2210.md`.
+
+## ELITEA-2474 — direct toolkit call complete flow — already-covered, EXACT
+## duplicate of ELITEA-2215 (2026-08-19)
+
+- **Fourth case in this batch to reference the same `test_direct_toolkit_call_complete_flow.py`
+  covering spec — but unlike ELITEA-2209/2210 (genuine or data-variant gaps), ELITEA-2474 has
+  ZERO difference from ELITEA-2215.** Same toolkit-only-participant precondition, same literal
+  trigger message (`"create a file named test.txt"`), same tool (`create_file`), same chip/response
+  expectations — even the case-text phrasing "LLM model chip, toolkit chip, and tool call chip" is
+  a verbatim match of ELITEA-2215's own case text (quoted identically in its AFS's CLARIFICATION
+  note). This is a duplicate manual TMS case, not a data-variant or a genuine gap — classified
+  `already-covered`, not `extend-existing` (contrast with ELITEA-2210, which needed a NEW test
+  because it used a DIFFERENT tool, `delete_file`, requiring its own live proof per "coverage
+  judgments stand on your own execution" — ELITEA-2474 introduces no such variation).
+- **Step 6 ("chips horizontal in a row with icons and labels") is not a separate observable** — it's
+  inherent to the SAME `chat-answer-tool-chip`/`chat-answer-model-chip` elements the covering test
+  already asserts on: `ActionView.jsx`'s `styles.header` container is `display: 'flex'` (default row
+  direction, line 584) and each chip (`styles.toolkitBadge`, line 592) always renders an icon
+  (`iconContainer`, line 605) + label (`Typography`) — confirmed by reading the component this pass,
+  no conditional/variable layout a second assertion could catch differently.
+- No live re-execution performed for this dedup call (same precedent as ELITEA-2471/2472/2473 —
+  Rule-6 dedup is a source+file:line comparison, not a fresh execution mandate, when the covering
+  spec already live-executes the byte-identical flow).
+- Known defect `elitea-testing-public#1127` (non-deterministic, ~2/5) still applies identically —
+  not a new finding, doesn't affect the already-covered verdict.
+- AFS: `test-specs/chat-interface/lcovered_direct-toolkit-call-complete-flow-duplicate_ELITEA-2474.md`.
+
+## Context Management DISABLED — Context Budget widget stays at zero (ELITEA-2216)
+- Confirms and extends the ELITEA-2218/2374 digest entries above for the OPPOSITE
+  (disabled) global state: with Context Management OFF, the Context Budget widget
+  (collapsed `0%` indicator, expanded panel, AND the "Edit context settings" modal)
+  ALL show `0` for tokens/percentage/Messages/Summaries — confirmed live via a real
+  message + full AI response (~90s genuine generation), no context-management-specific
+  network call fires at all while disabled (the backend appears not to compute/track
+  budget usage when the setting is off, not merely hide a computed value).
+- **The collapsed-Participants-panel timing (panel not mounted pre-message, collapsed
+  by default post-message, `expand_participants_panel()` required) is IDENTICAL whether
+  Context Management is ON or OFF** — confirmed this is a general chat-composer
+  mechanism, not something the disabled/enabled state changes. Don't re-derive this per
+  state; it's the same `ChatPage.expand_participants_panel()` path either way.
+- **Account's live Max Context Tokens is `6400`, not the oft-cited case-text `64000`**
+  (confirmed via `/settings/memory` this session) — read the token ceiling dynamically
+  in any assertion, never hardcode either value; it's account-config, not a product
+  constant.
+- **The "Edit context settings" per-conversation modal (`context-budget-edit-button` →
+  `ContextStrategyModalContent`) is click-verified end-to-end for the first time this
+  session** (ELITEA-2218's AFS only source-reviewed it). Its header carries its OWN
+  "Context Management" toggle switch, mirroring the global setting (unchecked when
+  globally OFF); its Save button stays disabled with nothing dirty. Three collapsed
+  accordion sections inside ("Context Strategy & Token Management", "Summarization",
+  "User Instructions") were not expanded/explored this pass.
+- **`ChatPage.send_message()`'s send-button click is intercepted by a MUI overlay**
+  (confirmed live, standard `mui-patterns.md` pattern) — `use_enter=True` (Enter
+  keypress) is the reliable path; don't force-click the send button.
+- No collapsed-indicator-specific testid confirmed (the bare `0%` shown before
+  Participants-panel expansion) — `chat_page.py`'s own comment suggests this was
+  already investigated and found to lack a stable handle. Assert via the EXPANDED
+  panel's existing testids (`context-budget-tokens`/`-messages-count`/
+  `-summaries-count`) instead, which this case's core assertion already uses.
+- AFS: `test-specs/chat-interface/l3_context-management-disabled-widget-stays-zero_ELITEA-2216.md`.
+
+## Context Management ON, Auto-Summarization OFF — no summarization at max tokens (ELITEA-2217)
+
+**Resolved/added during ELITEA-2217 implementation:**
+- Added the missing `context-modal-summarization-toggle` testid to the "Edit
+  context settings" dialog's own "Enable automatic summarization" switch
+  (`ContextStrategySummarization.jsx`, `EliteaAI/EliteaUI@69921d7c`, pushed to
+  `automation/testids`) — the AFS's `testid needed` flag from analysis. Same
+  `Mui-checked` class-attribute read pattern as its sibling
+  `context-modal-management-toggle`.
+- Added `ChatPage.set_max_context_tokens_in_modal()` — a sibling of
+  `set_context_strategy_thresholds()` that touches ONLY Max Context Tokens +
+  Save, because `context_modal_target_summary_tokens_input` is genuinely
+  DISABLED (not just skippable) whenever Automatic Summarization is off, and
+  `press_sequentially()` against a disabled input raises. The disabled field
+  stays READABLE via `.input_value()` though — used to read the account's
+  live Target Summary Tokens value from inside the already-open modal
+  (sidesteps issue #1605) instead of navigating back to Settings > Memory.
+- **Live message-count variance vs the AFS's own live session**: the AFS's
+  analyst session crossed a 5,000-token Max Context Tokens threshold in 4
+  real long-prompt exchanges (127→5,301). This implementation's own live run
+  needed closer to the cap before crossing 100% utilization (used ~8 real
+  exchanges before the first genuinely reached >100%; a first cap of 8
+  undershot at 4,257/5,000 and had to be widened). Real LLM response-length
+  variance run-to-run — don't hardcode a tight message-count cap for this
+  family of tests; size it with headroom (this implementation settled on 15).
+- **New finding — sidebar vs modal stats can transiently disagree (not a
+  case-blocking defect, reported as a CLARIFICATION)**: `context-budget-*`
+  (sidebar panel) and `context-modal-stat-*` (the "Edit context settings"
+  dialog) are both rendered from the same `ContextStats`/`ContextBudgetProgress`
+  components but are populated via two SEPARATE subscriptions to the
+  conversation's stats — confirmed live this session that reading the
+  sidebar's percentage immediately before opening the dialog, then reading
+  the dialog's own percentage a moment later (no message sent in between),
+  can show two different values off the same underlying conversation (e.g.
+  114% vs 136%). Each panel is internally self-consistent (tokens/max/percent
+  agree with each other within that one panel); it's the TWO panels that can
+  briefly diverge. This implementation asserts each panel against its own
+  internal state, not cross-panel equality — cross-panel equality is NOT a
+  case requirement (the case's Step 7 only asks the modal to self-report 0
+  Summaries + toggle OFF). Worth a future analyst/reviewer's attention if a
+  case ever DOES require exact sidebar/modal parity.
+- AFS: `test-specs/chat-interface/l3_auto-summarization-disabled-no-trigger-at-max-tokens_ELITEA-2217.md`.

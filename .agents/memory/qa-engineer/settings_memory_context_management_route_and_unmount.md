@@ -45,4 +45,16 @@ Typing into the numeric fields does NOT autosave — that's a separate,
 already-filed, OPEN bug (EliteaAI/elitea-testing-public#1129) unrelated to
 toggle-only cases.
 
+**Chat-side effect of the global toggle (confirmed live 2026-08-19, ELITEA-2216,
+`chat-remaining-w15` batch):** with the toggle OFF, the chat Context Budget widget
+(collapsed `0%` indicator, expanded panel, AND the "Edit context settings" modal
+opened via `context-budget-edit-button`) all read literal `0` for
+tokens/percentage/Messages/Summaries — even after a real, complete AI exchange.
+No context-management-specific network call fires at all while disabled (backend
+doesn't compute/track usage when off, not merely hiding a computed value). The
+Context Budget panel's collapsed-by-default-behind-Participants-panel timing
+(`ChatPage.expand_participants_panel()` needed) is identical whether the setting
+is ON or OFF — not a disabled-state quirk. Full AFS:
+`test-specs/chat-interface/l3_context-management-disabled-widget-stays-zero_ELITEA-2216.md`.
+
 Full surface digest: `test-specs/settings-user-profile/_surface.md`.

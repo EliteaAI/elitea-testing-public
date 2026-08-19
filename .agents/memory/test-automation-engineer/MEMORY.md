@@ -12,6 +12,7 @@
 - [dnd-kit drag needs a settle-check](dnd_kit_drag_gesture_needs_settle_check.md) — scroll-into-view AND elementFromPoint poll, not just one
 - [chat-remaining-w03 case snapshots never existed](chat_remaining_w03_case_snapshots_never_existed.md) — read the TMS file directly, not a novel-ground signal
 - [Dynamic testid suffix collides with prefix selector](dynamic_testid_suffix_collides_with_prefix_selector.md) — `${itemId}-suffix` matches item's own `^=` prefix locator; add `:not()`
+- [Merged code ≠ proof of live execution](merged_code_is_not_proof_of_live_execution.md) — a guardrails/CI-only merged test can't cite as coverage proof either
 
 - [Project briefing](project_briefing.md) — your slot, the six-phase loop, the ≤2-rerun budget, the Run Report
 - [Verify feature branch first](verify_feature_branch_before_first_commit.md) — `git branch --show-current` before any commit; dispatch starts you ON the trunk (5×)
@@ -78,3 +79,4 @@
 - [Hash-search Agent-Hub item's own project id](hash_search_agent_hub_item_uses_own_project_id_not_conversation.md) — `application_{id}_{project}` uses the AGENT's home project, not the conversation's
 - [EntityIcon avatar testid is conditional](entity_icon_avatar_testid_conditional_on_custom_icon.md) — `chat-participant-avatar` only exists for a custom icon image; use `chat-participant-icon` for any-icon
 - [Transient-message whole-string prefix hides real content](transient_message_whole_string_prefix_check_hides_real_content.md) — "Thought for X" + real content same message → check `_is_transient_message` per-line, not whole-string
+- [MUI Portal dialog + shared testid reads wrong node](mui_portal_dialog_shared_testid_first_reads_wrong_node.md) — `.first` on a testid shared with an always-mounted panel behind a Portal dialog reads the background node
