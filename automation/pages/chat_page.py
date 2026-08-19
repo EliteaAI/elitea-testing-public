@@ -284,6 +284,17 @@ class ChatPage(BasePage):
         ),
     )
 
+    context_budget_percentage = LocatorDescriptor(
+        testid="context-budget-percentage",
+        description=(
+            "Utilization-percentage display inside the Context Budget panel "
+            "(ContextBudgetProgress.jsx) — sibling Typography of "
+            "context-budget-tokens, e.g. '0%'. Testid added for ELITEA-2216 "
+            "(previously no handle existed; the tokens-display testid covers "
+            "only the '0 / 6 400 tokens' text, not the separate percentage)."
+        ),
+    )
+
     context_budget_messages_count = LocatorDescriptor(
         testid="context-budget-messages-count",
         description="Messages counter value inside the Context Budget panel (e.g. '4').",
@@ -405,6 +416,18 @@ class ChatPage(BasePage):
             "Messages stat value inside the 'Edit context settings' dialog "
             "body (ContextBudgetStats.jsx's ContextStats component). Testid "
             "added for ELITEA-2216."
+        ),
+    )
+
+    context_modal_stat_percentage = LocatorDescriptor(
+        testid="context-modal-stat-percentage",
+        description=(
+            "Percentage suffix Typography next to the Tokens stat inside the "
+            "'Edit context settings' dialog body (ContextBudgetStats.jsx's "
+            "ContextStats component) — e.g. '0%'. Distinct handle from "
+            "context-modal-stat-tokens, which covers only the '0 / 6 400' "
+            "value text. Testid added for ELITEA-2216 (previously no handle "
+            "existed on this sibling Typography)."
         ),
     )
 
@@ -5693,6 +5716,16 @@ class ChatPage(BasePage):
             f"(last observed: {last_seen})"
         )
 
+    def get_context_budget_percentage_text(self) -> str:
+        """Return the raw utilization-percentage text from the Context Budget
+        panel (e.g. ``"0%"``).
+
+        Uses the dedicated ``context-budget-percentage`` testid — a sibling
+        Typography of ``context-budget-tokens``, added for ELITEA-2216.
+        """
+        text = self.context_budget_percentage.first.text_content() or ""
+        return text.strip()
+
     def get_context_budget_messages_count(self) -> str:
         """Return the Messages counter text from the Context Budget panel (e.g. "4").
 
@@ -5890,6 +5923,18 @@ class ChatPage(BasePage):
         the dialog's OWN ``context-modal-stat-messages`` testid. ELITEA-2216.
         """
         text = self.context_modal_stat_messages.first.text_content() or ""
+        return text.strip()
+
+    def get_context_modal_stat_percentage_text(self) -> str:
+        """Return the raw percentage suffix text next to the Tokens stat in
+        the 'Edit context settings' dialog body (e.g. ``"0%"``).
+
+        Requires ``edit_context_settings()`` to have been called first
+        (dialog open). Distinct handle from
+        ``get_context_budget_percentage_text()`` (sidebar panel) — this reads
+        the dialog's OWN ``context-modal-stat-percentage`` testid. ELITEA-2216.
+        """
+        text = self.context_modal_stat_percentage.first.text_content() or ""
         return text.strip()
 
     # ------------------------------------------------------------------

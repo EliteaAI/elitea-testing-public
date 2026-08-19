@@ -30,12 +30,29 @@ Testid gaps filled this implementation (``add-data-testid``, pushed to
   regardless of caller), not for Tokens/Messages, which this implementation
   amended (source-level exploration, Phase 2) before building.
 
+Testid gaps filled this fix round (review round 1 — the case's literal
+'0%' expected value, Steps 4/6/7, had never been asserted because no
+testid existed on the percentage element anywhere; ``add-data-testid``,
+pushed to ``automation/testids``, EliteaAI/EliteaUI@3ce289af):
+- ``context-budget-percentage`` — the utilization-percentage Typography in
+  the sidebar Context Budget panel (``ContextBudgetProgress.jsx``), a
+  sibling element of the already-testid'd ``context-budget-tokens`` value
+  (that testid covers only the "0 / 6 400 tokens" text, not the separate
+  "0%" percentage next to it).
+- ``context-modal-stat-percentage`` — the percentage suffix Typography next
+  to the Tokens stat inside the "Edit context settings" dialog
+  (``ContextBudgetStats.jsx``'s ``ContextStats`` component), a sibling of
+  ``context-modal-stat-tokens`` for the same reason.
+
 New page-object surface (``ChatPage``, all additive):
 - ``context_modal_management_toggle`` / ``context_modal_stat_tokens`` /
-  ``context_modal_stat_messages`` (LocatorDescriptors)
+  ``context_modal_stat_messages`` / ``context_budget_percentage`` /
+  ``context_modal_stat_percentage`` (LocatorDescriptors)
 - ``is_context_modal_management_enabled()`` /
   ``get_context_modal_stat_tokens_text()`` /
-  ``get_context_modal_stat_messages_text()``
+  ``get_context_modal_stat_messages_text()`` /
+  ``get_context_budget_percentage_text()`` /
+  ``get_context_modal_stat_percentage_text()``
 
 Live finding vs the case text (reported as a CLARIFICATION per the
 reverse-masking guard, not re-litigated here — already tracked): the case's
@@ -209,6 +226,11 @@ class TestContextManagementDisabledWidgetStaysZero:
                     f"complete AI exchange while Context Management is disabled "
                     f"— got {tokens_text!r}"
                 )
+                percentage_text = chat.get_context_budget_percentage_text()
+                assert percentage_text == "0%", (
+                    "Context Budget percentage should read '0%' after a real "
+                    f"AI exchange while Context Management is disabled — got {percentage_text!r}"
+                )
                 assert chat.get_context_budget_messages_count() == "0", (
                     "Context Budget Messages counter should stay '0' after a "
                     "real AI exchange while Context Management is disabled"
@@ -234,6 +256,10 @@ class TestContextManagementDisabledWidgetStaysZero:
                 modal_used_tokens = modal_tokens_text.split("/")[0].strip()
                 assert modal_used_tokens == "0", (
                     f"Modal Tokens stat should read '0' — got {modal_tokens_text!r}"
+                )
+                modal_percentage_text = chat.get_context_modal_stat_percentage_text()
+                assert modal_percentage_text == "0%", (
+                    f"Modal Tokens percentage should read '0%' — got {modal_percentage_text!r}"
                 )
                 assert chat.get_context_modal_stat_messages_text() == "0", (
                     "Modal Messages stat should read '0'"
