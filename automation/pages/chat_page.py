@@ -2918,6 +2918,74 @@ class ChatPage(BasePage):
             }"""
         )
 
+    def get_attachment_chip_icon_markup(self, index: int) -> str | None:
+        """Return the ``outerHTML`` of the visible chip's icon element (its
+        first child), scoped under the already-testid'd
+        ``chat-attachment-chip-{index}`` element — a structural read, not a
+        new locator (same idiom as :meth:`get_attachment_chip_visual_facts`'s
+        ``has_file_icon`` check).
+
+        Used to prove icon IDENTITY across chips attached from different
+        file types (AFS ``lextend_attach-files-icon-genericity-and-truncation_
+        ELITEA-2199.md`` step 3): ``FileList.jsx`` renders the same
+        ``AttachedFileIcon`` SVG unconditionally, regardless of
+        ``attachment`` type — no branching logic exists (issue #1591, the
+        case's own literal "type-appropriate icon" wording is case-text
+        drift). Returns ``None`` if the chip has no child (icon absent).
+        """
+        chip = self.page.locator(self.CHAT_ATTACHMENT_CHIP.format(index))
+        return chip.evaluate("el => el.children[0] ? el.children[0].outerHTML : null")
+
+    def get_attachment_chip_name_overflow_facts(self, index: int) -> dict:
+        """Return ``{scrollWidth, clientWidth}`` for the visible chip's
+        filename ``<span>``, scoped under the already-testid'd
+        ``chat-attachment-chip-{index}`` element — a genuine layout read
+        proving the CSS-ellipsis truncation (``TypographyWithConditional
+        Tooltip.jsx``) actually clips (``scrollWidth > clientWidth``), not
+        merely that the truncating CSS class is present (AFS ``lextend_
+        attach-files-icon-genericity-and-truncation_ELITEA-2199.md`` step 4 /
+        ``lextend_attach-files-truncation-and-overflow-click-to-expand_
+        ELITEA-2467.md`` step 2 — shared helper for both).
+        """
+        chip = self.page.locator(self.CHAT_ATTACHMENT_CHIP.format(index))
+        return chip.evaluate(
+            """el => {
+                const nameEl = el.querySelector('span');
+                return nameEl
+                    ? { scrollWidth: nameEl.scrollWidth, clientWidth: nameEl.clientWidth }
+                    : { scrollWidth: 0, clientWidth: 0 };
+            }"""
+        )
+
+    def open_attachment_overflow_menu_and_read(self, timeout: int = 5000) -> dict:
+        """Click the overflow ('+N') button and verify it is a REAL,
+        functioning click-to-expand control — not an inert count display
+        (AFS ``lextend_attach-files-truncation-and-overflow-click-to-expand_
+        ELITEA-2467.md`` steps 4-5).
+
+        Unlike :meth:`get_overflow_attachment_names` (which only consumes
+        the menu's side effect as plumbing to read hidden names), this
+        method explicitly captures the button's ``aria-expanded``
+        accessibility state before and after the click — proving the
+        control's own state machine works
+        (``FileList.jsx:117``, ``aria-expanded={open ? 'true' : undefined}``),
+        not just that a menu happens to appear.
+
+        Returns a dict with ``expanded_before``, ``expanded_after`` (the
+        button's ``aria-expanded`` attribute value, or ``None`` when absent)
+        and ``names`` (the hidden filenames, in render order). Returns all
+        ``None``/``[]`` if the overflow control isn't rendered.
+        """
+        if self.chat_attachment_overflow_button.count() == 0:
+            return {"expanded_before": None, "expanded_after": None, "names": []}
+        expanded_before = self.chat_attachment_overflow_button.get_attribute("aria-expanded")
+        self.chat_attachment_overflow_button.click()
+        items = self.page.locator(self.CHAT_ATTACHMENT_OVERFLOW_ITEM_PREFIX)
+        items.first.wait_for(state="visible", timeout=timeout)
+        expanded_after = self.chat_attachment_overflow_button.get_attribute("aria-expanded")
+        names = [(items.nth(i).text_content() or "").strip() for i in range(items.count())]
+        self.page.keyboard.press("Escape")
+        return {"expanded_before": expanded_before, "expanded_after": expanded_after, "names": names}
 
     @action("Copy message")
     def copy_message(self, message_index: int = -1):

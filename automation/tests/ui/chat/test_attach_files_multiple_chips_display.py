@@ -50,11 +50,51 @@ reuses ``CHAT_ATTACHMENT_CHIP_REMOVE`` / ``remove_attachment_chip()`` /
 original ELITEA-2196 implementation. This module's original test and its
 fixture usage are UNCHANGED.
 
+ELITEA-2199 (``extend-existing`` onto this module — AFS
+test-specs/chat-interface/lextend_attach-files-icon-genericity-and-truncation_ELITEA-2199.md)
+adds a SIBLING test below,
+``test_attach_files_of_different_types_shows_identical_icon_and_long_filename_truncates``.
+Covers two gaps: (a) attaching 3 genuinely different file types (.png/.pdf/.txt,
+not renamed .txt files) and verifying every chip renders the exact SAME icon
+markup — the live-confirmed, corrected observable that supersedes the case's
+literal "type-appropriate icon" wording (case-text clarification, issue
+#1591 — ``FileList.jsx`` renders one generic ``AttachedFileIcon`` for every
+attachment, no branching by type); (b) attaching a genuinely long filename
+(never exercised by this module's own short-filename fixtures) and verifying
+its chip's name text genuinely, visually truncates
+(``scrollWidth > clientWidth``, CSS ``text-overflow: ellipsis``). New
+page-object surface (additive, ``ChatPage``):
+``get_attachment_chip_icon_markup(index)``,
+``get_attachment_chip_name_overflow_facts(index)``.
+
+ELITEA-2467 (``extend-existing`` onto this module — AFS
+test-specs/chat-interface/lextend_attach-files-truncation-and-overflow-click-to-expand_ELITEA-2467.md)
+adds a SIBLING test below,
+``test_long_filename_truncates_and_overflow_indicator_click_expands``. Covers
+two gaps: (a) the same long-filename truncation observable as ELITEA-2199,
+verified independently on this case's own trigger (shared
+``get_attachment_chip_name_overflow_facts()`` helper, no duplication); (b)
+the "+N" overflow indicator's CLICK-TO-EXPAND interaction as its own
+observable — existing tests (ELITEA-2196/2197) click the overflow button
+only as page-object plumbing (``get_overflow_attachment_names()``) to read
+hidden filenames for a total-count assertion; this is the first test to
+assert the interaction itself: ``aria-expanded`` flips to ``"true"`` on
+click, and the hidden filenames render in order — proving the control is a
+REAL, functioning expand action, not an inert count display. New
+page-object surface (additive, ``ChatPage``):
+``open_attachment_overflow_menu_and_read()``.
+
+All new test methods below reuse ``attach_files_via_menu()`` /
+``close_plus_menu_popper()`` / ``wait_for_attachment_chip_count()`` /
+``remove_attachment_chip()`` verbatim (all pre-existing, ELITEA-2196/2197);
+this module's earlier tests and their fixture usage are UNCHANGED.
+
 Usage:
     cd automation
     pytest tests/ui/chat/test_attach_files_multiple_chips_display.py -v
 """
 
+import base64
 import logging
 import re
 
@@ -74,6 +114,27 @@ VIEWPORT_WIDTH = 1700
 VIEWPORT_HEIGHT = 1100
 
 FILE_COUNT = 4  # AFS: chosen so all 4 render as VISIBLE chips, zero overflow
+
+# ELITEA-2467 AFS § Test Data — confirmed live at VIEWPORT_WIDTH=1700: 7
+# attached files render as exactly 4 visible chips + a "+3" overflow bucket.
+OVERFLOW_FILE_COUNT = 7
+
+# ELITEA-2199/2467 AFS § Test Data — confirmed live: at the 200px-wide chip /
+# ~116px-wide name column, this filename's rendered scrollWidth (731px) is
+# far past its clientWidth (116px) — genuine CSS-ellipsis truncation, not
+# merely a short name that happens to fit.
+LONG_FILENAME = (
+    "this_is_a_genuinely_very_long_filename_that_should_definitely_get_"
+    "truncated_in_the_ui_chip_display.txt"
+)
+
+# ELITEA-2199 AFS § Test Data — a minimal, genuinely valid 1x1 PNG (not a
+# renamed .txt file) so the "different types" check exercises real
+# content, not just a swapped extension.
+_MINIMAL_PNG_B64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
+    "+A8AAQUBAScY42YAAAAASUVORK5CYII="
+)
 
 # Luminance thresholds (WCAG relative-luminance formula, 0=black..1=white).
 # Confirmed live this session: composited chip background ~0.03 (very dark),
@@ -304,6 +365,189 @@ class TestAttachFilesMultipleChipsDisplay:
                 remove_button = chat.get_attachment_chip_remove_button(i)
                 assert remove_button.count() == 1, f"Remaining chip {i} should have exactly one X (remove) button"
                 assert remove_button.is_visible(), f"Remaining chip {i}'s X (remove) button should be visible"
+
+        with allure.step("Side-channel check — no console/JS errors"):
+            assert not console_errors and not page_errors, (
+                f"Unexpected console errors: {[m.text for m in console_errors]}; "
+                f"page errors: {page_errors}"
+            )
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2199_chat-attachment-preview-verify-attached-files-display-with-filenames-and-icons.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p3
+    def test_attach_files_of_different_types_shows_identical_icon_and_long_filename_truncates(
+        self, page, conversation_id, tmp_path
+    ):
+        """ELITEA-2199: attach files of 3 genuinely different types
+        (.png/.pdf/.txt) — verify every chip renders the exact SAME icon
+        markup (case-text clarification, issue #1591: FileList.jsx renders
+        one generic icon for every attachment, no branching by type — NOT
+        the case's literal "type-appropriate icon" wording). Separately
+        attach a genuinely long filename and verify its chip's name text
+        genuinely, visually truncates (scrollWidth > clientWidth).
+        extend-existing onto this module (see module docstring)."""
+        console_errors = []
+        page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
+        page_errors = []
+        page.on("pageerror", lambda exc: page_errors.append(str(exc)))
+
+        page.set_viewport_size({"width": VIEWPORT_WIDTH, "height": VIEWPORT_HEIGHT})
+
+        png_path = tmp_path / "attachment_type_test.png"
+        png_path.write_bytes(base64.b64decode(_MINIMAL_PNG_B64))
+        pdf_path = tmp_path / "attachment_type_test.pdf"
+        pdf_path.write_bytes(b"%PDF-1.4\n%%EOF")
+        txt_path = tmp_path / "attachment_type_test.txt"
+        txt_path.write_text("Content of attachment_type_test.txt for ELITEA-2199.")
+        type_file_paths = [str(png_path), str(pdf_path), str(txt_path)]
+
+        long_file_path = tmp_path / LONG_FILENAME
+        long_file_path.write_text(f"Content of {LONG_FILENAME} for ELITEA-2199.")
+
+        chat = ChatPage(page)
+
+        with allure.step("Step 1 — Navigate to the conversation"):
+            chat.navigate_to_chat(conversation_id=conversation_id)
+
+        with allure.step(
+            "Step 2 — Click + > Attach Files, select 3 files of different "
+            "types (.png, .pdf, .txt) in a single file-chooser action"
+        ):
+            chat.attach_files_via_menu(type_file_paths, timeout=UI_ELEMENT_TIMEOUT)
+            chat.close_plus_menu_popper()
+            chat.wait_for_attachment_chip_count(3)
+
+        with allure.step(
+            "Step 3 — Verify all 3 chips render the exact same icon markup "
+            "— the live-confirmed invariant that supersedes the case's "
+            "literal 'type-appropriate icon' wording (issue #1591)"
+        ):
+            icon_markups = [chat.get_attachment_chip_icon_markup(i) for i in range(3)]
+            assert all(markup for markup in icon_markups), (
+                f"Every chip should render an icon element, got {icon_markups!r}"
+            )
+            assert len(set(icon_markups)) == 1, (
+                "Issue #1591: the product should render the exact same "
+                f"generic file-type icon for every attachment regardless of type, "
+                f"got distinct icon markups across chips: {icon_markups!r}"
+            )
+
+        with allure.step(
+            "Step 4 — In a separate attach action (fresh chip set), attach "
+            "the 1 long-filename file alone and verify its name genuinely "
+            "visually truncates"
+        ):
+            for _ in range(3):
+                chat.remove_attachment_chip(0)
+            chat.wait_for_attachment_chip_count(0)
+
+            chat.attach_files_via_menu(str(long_file_path), timeout=UI_ELEMENT_TIMEOUT)
+            chat.close_plus_menu_popper()
+            chat.wait_for_attachment_chip_count(1)
+
+            facts = chat.get_attachment_chip_name_overflow_facts(0)
+            assert facts["scrollWidth"] > facts["clientWidth"], (
+                "Long filename chip's name should genuinely visually "
+                f"truncate (scrollWidth > clientWidth), got {facts!r}"
+            )
+
+        with allure.step("Side-channel check — no console/JS errors"):
+            assert not console_errors and not page_errors, (
+                f"Unexpected console errors: {[m.text for m in console_errors]}; "
+                f"page errors: {page_errors}"
+            )
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2467_chat-attached-files-display-with-filenames-icons-and-truncation-for-long-names.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p3
+    def test_long_filename_truncates_and_overflow_indicator_click_expands(self, page, conversation_id, tmp_path):
+        """ELITEA-2467: attach a genuinely long filename alone and verify
+        its chip's name text genuinely, visually truncates (scrollWidth >
+        clientWidth). Separately attach 7 files and verify the '+3'
+        overflow indicator is a REAL, functioning click-to-expand control —
+        aria-expanded flips to 'true' on click, and the exact 3 hidden
+        filenames render in order — not an inert count display.
+        extend-existing onto this module (see module docstring)."""
+        console_errors = []
+        page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
+        page_errors = []
+        page.on("pageerror", lambda exc: page_errors.append(str(exc)))
+
+        page.set_viewport_size({"width": VIEWPORT_WIDTH, "height": VIEWPORT_HEIGHT})
+
+        long_file_path = tmp_path / LONG_FILENAME
+        long_file_path.write_text(f"Content of {LONG_FILENAME} for ELITEA-2467.")
+
+        overflow_file_paths = []
+        overflow_file_names = []
+        for i in range(1, OVERFLOW_FILE_COUNT + 1):
+            name = f"extra_file_{i}.txt"
+            f = tmp_path / name
+            f.write_text(f"Content of {name} for ELITEA-2467.")
+            overflow_file_paths.append(str(f))
+            overflow_file_names.append(name)
+
+        chat = ChatPage(page)
+
+        with allure.step("Step 1 — Navigate to the conversation"):
+            chat.navigate_to_chat(conversation_id=conversation_id)
+
+        with allure.step(
+            "Step 2 — Attach the 1 long-filename file alone; verify its "
+            "name genuinely visually truncates"
+        ):
+            chat.attach_files_via_menu(str(long_file_path), timeout=UI_ELEMENT_TIMEOUT)
+            chat.close_plus_menu_popper()
+            chat.wait_for_attachment_chip_count(1)
+
+            facts = chat.get_attachment_chip_name_overflow_facts(0)
+            assert facts["scrollWidth"] > facts["clientWidth"], (
+                "Long filename chip's name should genuinely visually "
+                f"truncate (scrollWidth > clientWidth), got {facts!r}"
+            )
+
+        with allure.step(
+            "Step 3 — In a fresh attach state, attach 7 distinct files; "
+            "verify 4 render as visible chips and the overflow button "
+            "shows '+3'"
+        ):
+            chat.remove_attachment_chip(0)
+            chat.wait_for_attachment_chip_count(0)
+
+            chat.attach_files_via_menu(overflow_file_paths, timeout=UI_ELEMENT_TIMEOUT)
+            chat.close_plus_menu_popper()
+            chat.wait_for_attachment_chip_count(4)
+            overflow_count = chat.get_attachment_overflow_count()
+            assert overflow_count == OVERFLOW_FILE_COUNT - 4, (
+                f"Expected '+{OVERFLOW_FILE_COUNT - 4}' overflow (4 visible + "
+                f"{OVERFLOW_FILE_COUNT - 4} hidden = {OVERFLOW_FILE_COUNT} total "
+                f"at {VIEWPORT_WIDTH}px), got overflow count {overflow_count}"
+            )
+
+        with allure.step(
+            "Step 4-5 — Click the overflow indicator; verify it genuinely "
+            "expands (aria-expanded flips to 'true') and lists exactly the "
+            "3 hidden filenames, in order — a real click-to-expand "
+            "control, not an inert count display"
+        ):
+            result = chat.open_attachment_overflow_menu_and_read(timeout=UI_ELEMENT_TIMEOUT)
+            assert result["expanded_before"] != "true", (
+                "Overflow button should not be expanded before the click, "
+                f"got {result['expanded_before']!r}"
+            )
+            assert result["expanded_after"] == "true", (
+                "Overflow button's aria-expanded should flip to 'true' "
+                f"after the click, got {result['expanded_after']!r}"
+            )
+            expected_hidden = overflow_file_names[4:]
+            assert result["names"] == expected_hidden, (
+                f"Expected hidden filenames {expected_hidden!r} in order, "
+                f"got {result['names']!r}"
+            )
 
         with allure.step("Side-channel check — no console/JS errors"):
             assert not console_errors and not page_errors, (
