@@ -667,7 +667,7 @@ class TestContextManagementToggle:
             ):
                 # Ensure the field is focused and wait for any debounce/validation from Step 5
                 profile.max_context_tokens_input.click()
-                page.wait_for_timeout(2000)
+                page.wait_for_timeout(5000)  # Increased from 2s to 5s for CI latency
 
                 # Only wait for PUT - GET is optional (only fires if there was prior saved state)
                 with page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
@@ -695,7 +695,7 @@ class TestContextManagementToggle:
             ):
                 # Wait for Step 6's autosave to fully complete
                 profile.max_context_tokens_input.click()
-                page.wait_for_timeout(2000)
+                page.wait_for_timeout(5000)  # Increased from 2s to 5s for CI latency
 
                 # Only wait for PUT - GET is optional (only fires if there was prior saved state)
                 with page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
