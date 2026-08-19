@@ -38,3 +38,22 @@ original case's precondition requires a deployed env (e.g. this cluster's
 `pytest.mark.guardrails` — Admin Guardrails route 404s on localhost), the
 duplicate inherits that same constraint regardless of its own TMS ID — don't
 try to force a localhost repro just because it's a "different" case.
+
+**Second confirmed occurrence, same batch (2026-08-19):** ELITEA-2474 ("Chat –
+Complete flow from direct toolkit call in thinking steps to output chip
+display") is an EXACT duplicate of ELITEA-2215 ("Chat – Tool Action and Output
+– Complete Flow from Direct Toolkit Call to Output Display") — same trigger
+message, same tool, same chip/response assertions, even a verbatim-matching
+chip-description phrase. Classified `already-covered` against the merged
+`test_direct_toolkit_call_complete_flow.py` with no new execution. **Contrast
+with a near-neighbour that is NOT a duplicate:** the same batch also hit
+ELITEA-2209 (genuine small gap — an explicit "no AGENTS section" assertion the
+covering test's Setup never checked → `extend-existing`) and ELITEA-2210
+(same mechanism but a DIFFERENT tool, `delete_file` vs `create_file` → still
+`extend-existing`, needed its own live-executed test per "coverage judgments
+stand on your own execution" — a data variant is not the same as a duplicate).
+The test that separates the three: does the candidate case differ from the
+covering spec in trigger DATA or an asserted STEP at all? Zero difference (not
+even data) → `already-covered`. A named data variant needing its own proof, or
+an explicit case-text assertion the covering spec's code never runs → at least
+`extend-existing`, even with a small gap.

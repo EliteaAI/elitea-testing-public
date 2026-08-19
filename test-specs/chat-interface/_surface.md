@@ -3866,6 +3866,32 @@ is synchronised immediately.
   text later.
 - AFS: `test-specs/chat-interface/lextend_direct-toolkit-call-chip-tool-agnostic-verification_ELITEA-2210.md`.
 
+## ELITEA-2474 — direct toolkit call complete flow — already-covered, EXACT
+## duplicate of ELITEA-2215 (2026-08-19)
+
+- **Fourth case in this batch to reference the same `test_direct_toolkit_call_complete_flow.py`
+  covering spec — but unlike ELITEA-2209/2210 (genuine or data-variant gaps), ELITEA-2474 has
+  ZERO difference from ELITEA-2215.** Same toolkit-only-participant precondition, same literal
+  trigger message (`"create a file named test.txt"`), same tool (`create_file`), same chip/response
+  expectations — even the case-text phrasing "LLM model chip, toolkit chip, and tool call chip" is
+  a verbatim match of ELITEA-2215's own case text (quoted identically in its AFS's CLARIFICATION
+  note). This is a duplicate manual TMS case, not a data-variant or a genuine gap — classified
+  `already-covered`, not `extend-existing` (contrast with ELITEA-2210, which needed a NEW test
+  because it used a DIFFERENT tool, `delete_file`, requiring its own live proof per "coverage
+  judgments stand on your own execution" — ELITEA-2474 introduces no such variation).
+- **Step 6 ("chips horizontal in a row with icons and labels") is not a separate observable** — it's
+  inherent to the SAME `chat-answer-tool-chip`/`chat-answer-model-chip` elements the covering test
+  already asserts on: `ActionView.jsx`'s `styles.header` container is `display: 'flex'` (default row
+  direction, line 584) and each chip (`styles.toolkitBadge`, line 592) always renders an icon
+  (`iconContainer`, line 605) + label (`Typography`) — confirmed by reading the component this pass,
+  no conditional/variable layout a second assertion could catch differently.
+- No live re-execution performed for this dedup call (same precedent as ELITEA-2471/2472/2473 —
+  Rule-6 dedup is a source+file:line comparison, not a fresh execution mandate, when the covering
+  spec already live-executes the byte-identical flow).
+- Known defect `elitea-testing-public#1127` (non-deterministic, ~2/5) still applies identically —
+  not a new finding, doesn't affect the already-covered verdict.
+- AFS: `test-specs/chat-interface/lcovered_direct-toolkit-call-complete-flow-duplicate_ELITEA-2474.md`.
+
 ## Context Management DISABLED — Context Budget widget stays at zero (ELITEA-2216)
 - Confirms and extends the ELITEA-2218/2374 digest entries above for the OPPOSITE
   (disabled) global state: with Context Management OFF, the Context Budget widget
