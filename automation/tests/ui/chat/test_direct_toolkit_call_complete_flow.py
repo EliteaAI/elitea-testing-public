@@ -173,6 +173,11 @@ class TestDirectToolkitCallCompleteFlow:
     """ELITEA-2215: Chat – Tool Action and Output – Complete Flow from Direct Toolkit Call (l2, high).
 
     Also covers ELITEA-2209 (extend-existing, participants-panel Setup assertion).
+
+    Also covers ELITEA-2210 (extend-existing, zero-diff — chip display is
+    tool-agnostic; every case element already asserted by this spec's current
+    state, see
+    test-specs/chat-interface/lextend_direct-toolkit-call-chip-tool-agnostic-verification_ELITEA-2210.md).
     """
 
     @allure.issue(
@@ -184,6 +189,12 @@ class TestDirectToolkitCallCompleteFlow:
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/"
         "ELITEA-2209_chat-tool-action-rendering-tool-call-in-thinking-steps.md",
         "onetest-ai Test Case link (ELITEA-2209, extended by this test — participants-panel gap)",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/"
+        "ELITEA-2210_chat-tool-output-rendering-tool-execution-results-display-as-chips.md",
+        "onetest-ai Test Case link (ELITEA-2210, zero-diff extension — chip display is tool-agnostic, "
+        "no new assertions needed)",
     )
     @allure.issue(
         "https://github.com/EliteaAI/elitea-testing-public/issues/1127",
@@ -211,6 +222,12 @@ class TestDirectToolkitCallCompleteFlow:
            CLARIFICATION 1), the model+tool chip set (per CLARIFICATION 2),
            and the response text following the chips.
            Known-defect path: soft-fail with the confirmed #1127 signature.
+
+        Also extended per
+        test-specs/chat-interface/lextend_direct-toolkit-call-chip-tool-agnostic-verification_ELITEA-2210.md
+        (zero-diff — ELITEA-2210's chip/icon/label assertions are already covered by Step 3
+        above; the tool-chip's text and icon render through a tool-agnostic code path, see
+        that AFS's "Tool-agnosticism argument" — no new step, no new assertion).
         """
         chat = ChatPage(page)
         toolkit_name = artifact_toolkit["name"]
