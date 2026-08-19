@@ -551,6 +551,7 @@ jobs:
           path: |
             automation/reports/report.html
             automation/reports/junit.xml
+            automation/reports/reruns.json
           retention-days: 14
           if-no-files-found: ignore
 
@@ -701,13 +702,30 @@ jobs:
 
           # Aggregate all JUnit XML files from parallel suite runs
           # Convert JUnit XML to TMS JSON format and determine status
+          # Merge rerun data from conftest.py's reruns.json (pytest-rerunfailures)
           python3 << 'EOF' > report.json
           import json, xml.etree.ElementTree as ET
           import glob
           import os
 
           items = []
-          total = passed = failed = skipped = reruns = 0
+          total = passed = failed = skipped = total_reruns = 0
+
+          # Load reruns.json from conftest.py hook (pytest-rerunfailures data)
+          # Format: {"nodeid": {"count": N, "messages": [...]}, ...}
+          reruns_data = {}
+          reruns_files = glob.glob("results/**/reruns.json", recursive=True)
+          if not reruns_files:
+              if os.path.exists("results/reruns.json"):
+                  reruns_files = ["results/reruns.json"]
+          for rf in reruns_files:
+              try:
+                  with open(rf) as f:
+                      data = json.load(f)
+                      reruns_data.update(data)
+                      print(f"Loaded {len(data)} rerun entries from {rf}", file=__import__('sys').stderr)
+              except Exception as e:
+                  print(f"Warning: Failed to load {rf}: {e}", file=__import__('sys').stderr)
 
           # Find all junit.xml files from parallel suite runs
           junit_files = glob.glob("results/**/junit.xml", recursive=True)
@@ -735,16 +753,28 @@ jobs:
                       else:
                           status, msg = "passed", ""
 
-                      # Capture reruns from pytest-rerunfailures
-                      rerun_elements = tc.findall("rerun")
-                      rerun_count = len(rerun_elements)
-                      rerun_messages = [r.get("message", "") for r in rerun_elements]
+                      # Look up rerun data by nodeid (pytest format: path::Class::method)
+                      # JUnit classname is dotted, need to construct nodeid
+                      # classname: tests.ui.agents.test_agent.TestAgent
+                      # name: test_method[param]
+                      # nodeid: tests/ui/agents/test_agent.py::TestAgent::test_method[param]
+                      nodeid = cls.replace(".", "/") + ".py::" + name.rsplit(".", 1)[-1] if cls else name
+                      # Also try with :: between class and method
+                      if "." in cls:
+                          parts = cls.rsplit(".", 1)
+                          nodeid_alt = parts[0].replace(".", "/") + ".py::" + parts[1] + "::" + name
+                      else:
+                          nodeid_alt = nodeid
+
+                      rerun_info = reruns_data.get(nodeid) or reruns_data.get(nodeid_alt) or {"count": 0, "messages": []}
+                      rerun_count = rerun_info.get("count", 0)
+                      rerun_messages = rerun_info.get("messages", [])
 
                       total += 1
                       passed += status == "passed"
                       failed += status == "failed"
                       skipped += status == "skipped"
-                      reruns += rerun_count
+                      total_reruns += rerun_count
                       items.append({
                           "code_ref": code_ref,
                           "name": name,
@@ -766,7 +796,7 @@ jobs:
               overall_status = "PASSED"
 
           out = {
-              "launch": {"total": total, "passed": passed, "failed": failed, "skipped": skipped, "reruns": reruns},
+              "launch": {"total": total, "passed": passed, "failed": failed, "skipped": skipped, "reruns": total_reruns},
               "items": items
           }
           print(json.dumps(out, indent=2, ensure_ascii=False))
