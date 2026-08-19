@@ -446,6 +446,29 @@ class ChatPage(BasePage):
         ),
     )
 
+    context_modal_stat_summaries = LocatorDescriptor(
+        testid="context-modal-stat-summaries",
+        description=(
+            "Summaries stat value inside the 'Edit context settings' dialog "
+            "body (ContextBudgetStats.jsx's ContextStats component, rendered "
+            "via the shared SummaryDetailsButton.jsx). Distinct handle from "
+            "context-budget-summaries-count (sidebar panel) — that testid was "
+            "previously hardcoded inside SummaryDetailsButton and rendered "
+            "IDENTICALLY in both the always-mounted sidebar panel AND this "
+            "dialog (a MUI Dialog with no disablePortal, so its content "
+            "mounts via React Portal to document.body AFTER the sidebar's "
+            "node), meaning a `.first` read against it from inside the open "
+            "dialog resolved to the sidebar's copy, not the dialog's own — "
+            "not a reliable read of what the modal itself displays. Fixed by "
+            "adding an optional `testId` prop to SummaryDetailsButton "
+            "(default preserves the sidebar's existing "
+            "context-budget-summaries-count testid unchanged) and wiring "
+            "this modal-unique value at the ContextBudgetStats.jsx call "
+            "site. Testid added for ELITEA-2217 fix-round-1 "
+            "(EliteaAI/EliteaUI@d1b3e8f0)."
+        ),
+    )
+
     plus_menu_button = LocatorDescriptor(
         testid="plus-menu-button",
         fallback=lambda page: page.get_by_role("button", name="plus menu"),
@@ -6009,6 +6032,26 @@ class ChatPage(BasePage):
         the dialog's OWN ``context-modal-stat-percentage`` testid. ELITEA-2216.
         """
         text = self.context_modal_stat_percentage.first.text_content() or ""
+        return text.strip()
+
+    def get_context_modal_stat_summaries_text(self) -> str:
+        """Return the raw Summaries stat text from the 'Edit context settings'
+        dialog body (e.g. ``"0"``).
+
+        Requires ``edit_context_settings()`` to have been called first
+        (dialog open). Distinct handle from
+        ``get_context_budget_summaries_count()`` (sidebar panel) — this reads
+        the dialog's OWN ``context-modal-stat-summaries`` testid rather than
+        the shared ``context-budget-summaries-count`` testid, which (per
+        source read of StyledDialog/ContextStrategyModal/SummaryDetailsButton/
+        ContextBudgetStatsDisplay/ContextBudgetStats) is rendered identically
+        by the always-mounted sidebar panel AND, before this fix, by the
+        dialog's own copy — a Portal-rendered MUI Dialog mounts after the
+        sidebar in DOM order, so a ``.first`` read against the shared testid
+        resolved to the sidebar's node, not the dialog's. ELITEA-2217
+        fix-round-1 (EliteaAI/EliteaUI@d1b3e8f0).
+        """
+        text = self.context_modal_stat_summaries.first.text_content() or ""
         return text.strip()
 
     # ------------------------------------------------------------------

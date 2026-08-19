@@ -40,6 +40,22 @@ New page-object surface (``ChatPage``, all additive):
   docstring — issue #1605 below).
 - ``is_context_modal_summarization_enabled()``
 
+Fix-round-1 testid (reviewer finding, ``add-data-testid``, pushed to
+``automation/testids``, EliteaAI/EliteaUI@d1b3e8f0):
+- ``context-modal-stat-summaries`` — the Summaries stat's value INSIDE the
+  "Edit context settings" dialog previously had no testid of its own; it
+  rendered via the shared ``SummaryDetailsButton.jsx`` component, which
+  hardcoded the SAME ``context-budget-summaries-count`` testid the
+  always-mounted sidebar panel uses. Since the dialog is a MUI Portal
+  (mounts to ``document.body`` after the sidebar's node), a ``.first`` read
+  against that shared testid from inside the open dialog resolved to the
+  sidebar's copy, not the dialog's own — not a reliable read of what the
+  modal itself displays (Step 7's actual requirement). Fixed by giving
+  ``SummaryDetailsButton`` an optional ``testId`` prop (default preserves
+  the sidebar's existing testid unchanged — zero behavior change there) and
+  wiring the modal's call site to ``context-modal-stat-summaries``. New
+  page-object getter: ``get_context_modal_stat_summaries_text()``.
+
 Known defect (does NOT block this case — documented workaround used):
 issue #1605 — with Automatic Summarization globally OFF, the "Edit context
 settings" dialog's cross-field validation still runs Max Context Tokens
@@ -356,10 +372,32 @@ class TestContextAutoSummarizationDisabled:
                 chat.edit_context_settings()
                 Dialog.wait_for(page, timeout=UI_ELEMENT_TIMEOUT)
 
-                assert chat.get_context_budget_summaries_count() == "0", (
-                    "Modal Summaries stat should read '0' (context-budget-"
-                    "summaries-count is shared between the sidebar panel and "
-                    "the modal via SummaryDetailsButton; both read '0' here)"
+                assert chat.get_context_modal_stat_summaries_text() == "0", (
+                    "Modal's own Summaries stat should read '0' — reads the "
+                    "dialog-unique context-modal-stat-summaries testid "
+                    "(ELITEA-2217 fix-round-1), not the shared "
+                    "context-budget-summaries-count testid, which a `.first` "
+                    "read would resolve to the still-mounted sidebar panel's "
+                    "node rather than this Portal-rendered dialog's own"
+                )
+                # REGRESSION GUARD (fix-round-1): before this fix,
+                # SummaryDetailsButton hardcoded the SAME
+                # context-budget-summaries-count testid inside the modal AND
+                # the sidebar, so exactly 2 nodes carried it while the dialog
+                # was open. The fix wires an optional `testId` prop (default
+                # unchanged) so the modal now renders its OWN
+                # context-modal-stat-summaries testid instead — asserting
+                # count()==1 on the shared testid here catches a regression
+                # to the old hardcoded/shared shape (it would read 2 again).
+                assert chat.context_budget_summaries_count.count() == 1, (
+                    "context-budget-summaries-count should resolve to exactly "
+                    "the sidebar panel's node while the dialog is open — a "
+                    "count of 2 means SummaryDetailsButton's modal instance "
+                    "regressed back to the shared/hardcoded testid"
+                )
+                assert chat.context_modal_stat_summaries.count() == 1, (
+                    "context-modal-stat-summaries should resolve to exactly "
+                    "one node (the dialog's own Summaries stat)"
                 )
                 modal_tokens_text = chat.get_context_modal_stat_tokens_text()
                 modal_percentage_text = chat.get_context_modal_stat_percentage_text()
