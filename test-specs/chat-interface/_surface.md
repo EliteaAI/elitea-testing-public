@@ -3887,3 +3887,46 @@ is synchronised immediately.
   panel's existing testids (`context-budget-tokens`/`-messages-count`/
   `-summaries-count`) instead, which this case's core assertion already uses.
 - AFS: `test-specs/chat-interface/l3_context-management-disabled-widget-stays-zero_ELITEA-2216.md`.
+
+## Context Management ON, Auto-Summarization OFF — no summarization at max tokens (ELITEA-2217)
+
+**Resolved/added during ELITEA-2217 implementation:**
+- Added the missing `context-modal-summarization-toggle` testid to the "Edit
+  context settings" dialog's own "Enable automatic summarization" switch
+  (`ContextStrategySummarization.jsx`, `EliteaAI/EliteaUI@69921d7c`, pushed to
+  `automation/testids`) — the AFS's `testid needed` flag from analysis. Same
+  `Mui-checked` class-attribute read pattern as its sibling
+  `context-modal-management-toggle`.
+- Added `ChatPage.set_max_context_tokens_in_modal()` — a sibling of
+  `set_context_strategy_thresholds()` that touches ONLY Max Context Tokens +
+  Save, because `context_modal_target_summary_tokens_input` is genuinely
+  DISABLED (not just skippable) whenever Automatic Summarization is off, and
+  `press_sequentially()` against a disabled input raises. The disabled field
+  stays READABLE via `.input_value()` though — used to read the account's
+  live Target Summary Tokens value from inside the already-open modal
+  (sidesteps issue #1605) instead of navigating back to Settings > Memory.
+- **Live message-count variance vs the AFS's own live session**: the AFS's
+  analyst session crossed a 5,000-token Max Context Tokens threshold in 4
+  real long-prompt exchanges (127→5,301). This implementation's own live run
+  needed closer to the cap before crossing 100% utilization (used ~8 real
+  exchanges before the first genuinely reached >100%; a first cap of 8
+  undershot at 4,257/5,000 and had to be widened). Real LLM response-length
+  variance run-to-run — don't hardcode a tight message-count cap for this
+  family of tests; size it with headroom (this implementation settled on 15).
+- **New finding — sidebar vs modal stats can transiently disagree (not a
+  case-blocking defect, reported as a CLARIFICATION)**: `context-budget-*`
+  (sidebar panel) and `context-modal-stat-*` (the "Edit context settings"
+  dialog) are both rendered from the same `ContextStats`/`ContextBudgetProgress`
+  components but are populated via two SEPARATE subscriptions to the
+  conversation's stats — confirmed live this session that reading the
+  sidebar's percentage immediately before opening the dialog, then reading
+  the dialog's own percentage a moment later (no message sent in between),
+  can show two different values off the same underlying conversation (e.g.
+  114% vs 136%). Each panel is internally self-consistent (tokens/max/percent
+  agree with each other within that one panel); it's the TWO panels that can
+  briefly diverge. This implementation asserts each panel against its own
+  internal state, not cross-panel equality — cross-panel equality is NOT a
+  case requirement (the case's Step 7 only asks the modal to self-report 0
+  Summaries + toggle OFF). Worth a future analyst/reviewer's attention if a
+  case ever DOES require exact sidebar/modal parity.
+- AFS: `test-specs/chat-interface/l3_auto-summarization-disabled-no-trigger-at-max-tokens_ELITEA-2217.md`.

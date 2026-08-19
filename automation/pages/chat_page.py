@@ -398,6 +398,21 @@ class ChatPage(BasePage):
         ),
     )
 
+    context_modal_summarization_toggle = LocatorDescriptor(
+        testid="context-modal-summarization-toggle",
+        description=(
+            "'Enable automatic summarization' Switch inside the 'Edit "
+            "context settings' dialog (ContextStrategySummarization.jsx) — "
+            "mirrors the global Settings > Memory Automatic Summarization "
+            "toggle's checked state. Testid added for ELITEA-2217 "
+            "(EliteaAI/EliteaUI@69921d7c) — this switch previously carried "
+            "no data-testid at all. Same shape as "
+            "context_modal_management_toggle: the data-testid lands on the "
+            "MUI SwitchBase root span, not the nested <input> — read the "
+            "'Mui-checked' class, don't call is_checked()."
+        ),
+    )
+
     context_modal_stat_tokens = LocatorDescriptor(
         testid="context-modal-stat-tokens",
         description=(
@@ -5872,6 +5887,65 @@ class ChatPage(BasePage):
         self.context_modal_save_button.click()
         self.wait_for_network()
         logger.info("Context strategy thresholds saved")
+
+    def set_max_context_tokens_in_modal(self, max_context_tokens: int) -> None:
+        """Set ONLY Max Context Tokens in the already-open 'Edit context
+        settings' dialog, then Save — skipping Target Summary Tokens and
+        Preserve Recent Messages entirely.
+
+        Sibling of :meth:`set_context_strategy_thresholds`, needed for
+        ELITEA-2217 (Automatic Summarization globally OFF): with
+        summarization disabled, ``context_modal_target_summary_tokens_input``
+        is DISABLED (``disabled={!isEnabled || !formData.enable_summarization}``,
+        ``ContextStrategySummarization.jsx``) — a Playwright
+        ``press_sequentially()`` call against a disabled input raises
+        "element is not enabled". :meth:`set_context_strategy_thresholds`
+        unconditionally fills that field, so it cannot be reused as-is when
+        Automatic Summarization is off; do NOT modify that method for this
+        case (it has other callers — ELITEA-2218 — that DO need all three
+        fields set while summarization is on).
+
+        Requires ``edit_context_settings()`` to have been called first
+        (dialog open). Uses click() + select_text() + Backspace +
+        press_sequentially() (never fill()) — same MUI/React onChange
+        requirement as the sibling method.
+
+        Args:
+            max_context_tokens: New Max Context Tokens value (project MIN
+                1000). Per issue #1605 (confirmed live, ELITEA-2217 AFS),
+                when Automatic Summarization is globally OFF the dialog's
+                cross-field validation still runs against the frozen
+                (disabled) Target Summary Tokens value — pass a value ≥ the
+                account's current Target Summary Tokens
+                (``UserProfileSettingsPage.get_target_summary_tokens()``) or
+                Save stays permanently disabled.
+        """
+        logger.info("Setting Max Context Tokens (only) to %d", max_context_tokens)
+        self.context_modal_max_tokens_input.click()
+        self.context_modal_max_tokens_input.select_text()
+        self.context_modal_max_tokens_input.press("Backspace")
+        self.context_modal_max_tokens_input.press_sequentially(str(max_context_tokens), delay=30)
+
+        self.context_modal_save_button.click()
+        self.wait_for_network()
+        logger.info("Max Context Tokens saved")
+
+    def is_context_modal_summarization_enabled(self) -> bool:
+        """Return True if the 'Edit context settings' dialog's own 'Enable
+        automatic summarization' toggle is checked.
+
+        Requires ``edit_context_settings()`` to have been called first
+        (dialog open). Same shape as
+        ``is_context_modal_management_enabled()`` — the ``data-testid``
+        lands on the MUI SwitchBase root span, not the nested ``<input>``,
+        so ``is_checked()`` raises "Not a checkbox or radio button" — read
+        the ``Mui-checked`` class instead. ELITEA-2217
+        (EliteaAI/EliteaUI@69921d7c).
+        """
+        class_attr = self.context_modal_summarization_toggle.get_attribute("class") or ""
+        checked = "Mui-checked" in class_attr
+        logger.info("Context modal summarization toggle enabled: %s", checked)
+        return checked
 
     def close_context_settings_dialog(self, timeout: int = 5000) -> None:
         """Close the 'Edit context settings' dialog via Escape.
