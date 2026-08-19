@@ -20,6 +20,25 @@ the exact chip text this case names, backend-verified via ArtifactAPI. See
 test-specs/chat-interface/lextend_direct-toolkit-call-chip-tool-agnostic-verification_ELITEA-2210.md
 for the amended Coverage Map.
 
+Fix round 2 (2026-08-19) — TestDirectToolkitCallDeleteFileChip's own classify
+step previously called pytest.fail()/raise AssertionError() immediately in
+both its branches, which made the class's "Side-channel check — no
+console/JS errors" step structurally unreachable on the #1127-confirmed
+branch — the one that has fired 3/3 observed runs. The AFS's Gap assertions
+section (rows 4-5) claims the console-error check as one of the new test's
+four assertions, but it had never actually executed. Fixed to mirror
+TestDirectToolkitCallCompleteFlow's own Step 2b shape exactly: the
+#1127-confirmed branch now appends to a deferred `soft_failures` list
+instead of failing immediately, the chip-verification step is guarded by
+`run_executed_correctly`, the Side-channel check runs unconditionally after
+it, and the deferred `pytest.fail()` (if any) happens last. The genuinely
+undiagnosed-disagreement branch is unchanged (still an immediate
+`raise AssertionError` — same shape the covering class also uses for that
+branch, a deliberate hard stop for a signal combination that does not match
+#1127's own confirmed signature). No change to what is asserted or to the
+#1127 classification logic itself — this is a control-flow-ordering fix, not
+a scope or fidelity change.
+
 Extended (2026-08-19, extend-existing) to also cover ELITEA-2209 ("Chat –
 Tool Action Rendering – Verify Tool Call Displays in Thinking Steps When
 Toolkit Called Directly") — same live flow, one small gap: ELITEA-2209's
@@ -436,13 +455,21 @@ class TestDirectToolkitCallDeleteFileChip:
     as a comment on the open issue
     (https://github.com/EliteaAI/elitea-testing-public/issues/1127#issuecomment-5342934194),
     not a new ticket (same tool-agnostic mechanism the issue already describes).
-    Per ``.agents/testing.md`` § Merge gate, 3/3 IDENTICAL failures tied to this
-    single, open, linked defect is the sanctioned-RED exception's own
-    deterministic bar — unlike the covering spec (2/5, does not meet the bar,
-    separately ``blocked`` for this wave), this test currently DOES qualify for
-    sanctioned-RED. It is left green-or-red UNSKIPPED (never ``pytest.skip``'d)
-    for the same reason ``GATE_EXCLUDED_REASON`` above documents, and is
-    excluded from the batch's N-consecutive-green hardening gate on that same
+    **Fix round 2 (2026-08-19) re-runs: 2 further consecutive occurrences,
+    same signature (5/5 total)** — confirm the deferred-failure restructuring
+    (see module docstring) didn't change the classification outcome, and
+    additionally prove the Side-channel console/JS-error check now actually
+    executes on this branch (Allure step ``Side-channel check — no
+    console/JS errors across the whole flow`` recorded ``passed`` before the
+    deferred ``pytest.fail`` fired) — the exact gap this fix round closes.
+    Per ``.agents/testing.md`` § Merge gate, 3/3 (now 5/5) IDENTICAL failures
+    tied to this single, open, linked defect is the sanctioned-RED
+    exception's own deterministic bar — unlike the covering spec (2/5, does
+    not meet the bar, separately ``blocked`` for this wave), this test
+    currently DOES qualify for sanctioned-RED. It is left green-or-red
+    UNSKIPPED (never ``pytest.skip``'d) for the same reason
+    ``GATE_EXCLUDED_REASON`` above documents, and is excluded from the
+    batch's N-consecutive-green hardening gate on that same
     sanctioned-RED basis. Re-evaluate (may flip to plain-green-required) once
     #1127 is fixed or this test accumulates a GREEN run.
     """
@@ -474,6 +501,7 @@ class TestDirectToolkitCallDeleteFileChip:
 
         console_issues = []
         page_errors = []
+        soft_failures = []
 
         def _on_console(msg):
             if msg.type == "error" and not _is_known_secrets_403(msg):
@@ -515,20 +543,34 @@ class TestDirectToolkitCallDeleteFileChip:
             if not tool_chip_rendered and not file_deleted:
                 # Confirmed #1127 signature: NEITHER the chip nor the real
                 # backend deletion happened — the model leaked tool-call
-                # intent as text instead of invoking the real tool.
+                # intent as text instead of invoking the real tool. Deferred
+                # (not an immediate pytest.fail) — same shape as
+                # TestDirectToolkitCallCompleteFlow's own Step 2b: this run
+                # still owes the Side-channel console/JS-error check below
+                # regardless of which known-defect path it took. Fix round 2
+                # (2026-08-19): an immediate pytest.fail() here previously
+                # made that check structurally unreachable on this exact
+                # branch — the one that has fired 3/3 observed runs — so the
+                # AFS's Gap-assertions console-error bullet had never
+                # actually executed. See module docstring.
                 last_text = chat.get_last_message_text()
-                pytest.fail(
+                soft_failures.append(
                     "Known defect https://github.com/EliteaAI/elitea-testing-public/issues/1127: "
                     f"direct toolkit-call flow leaked tool-call intent instead of executing — "
                     f"no '{expected_chip_text}' chip rendered AND ArtifactAPI confirms "
                     f"'{artifact_seeded_file}' was NOT deleted from bucket '{bucket_name}' "
                     f"(bucket contents: {bucket_files!r}). Response text: {last_text[:300]!r}"
                 )
-            if not (tool_chip_rendered and file_deleted):
+                run_executed_correctly = False
+            elif tool_chip_rendered and file_deleted:
+                # Both signals agree the flow executed for real this run.
+                run_executed_correctly = True
+            else:
                 # Disagreement between the two signals is NOT #1127's
                 # confirmed signature (that defect is "neither happened") —
-                # a new, undiagnosed defect and must stay a hard failure
-                # (reverse-masking guard).
+                # a new, undiagnosed defect and must stay a hard, uncaught
+                # failure (reverse-masking guard) — same immediate-raise
+                # shape as the covering spec's own disagreement branch.
                 raise AssertionError(
                     "Inconsistent execution signal — does NOT match Known defect #1127's "
                     f"confirmed signature (chip AND deletion both missing). Got: "
@@ -537,22 +579,30 @@ class TestDirectToolkitCallDeleteFileChip:
                     "undiagnosed defect and must be investigated, not classified as #1127."
                 )
 
-        with allure.step(
-            "Step — Verify the toolkit/tool chip renders 'toolkit_name: delete_file' "
-            "(ELITEA-2210's own case observable, live-executed) plus at least one "
-            "model chip. Icon: co-located in the same DOM subtree under the same "
-            "testid (ActionView.jsx's iconContainer sibling to the label) — see "
-            "this case's AFS 'Tool-agnosticism argument' for the source pointer; "
-            "chip-visible necessarily proves the icon rendered too, same treatment "
-            "the covering spec and ELITEA-2209's AFS already use"
-        ):
-            expect(chat.answer_tool_chip).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-            expect(chat.answer_tool_chip).to_have_count(1)
-            expect(chat.answer_tool_chip).to_contain_text(expected_chip_text)
-            assert chat.answer_model_chip.count() >= 1, "Expected at least one model chip"
+        if run_executed_correctly:
+            with allure.step(
+                "Step — Verify the toolkit/tool chip renders 'toolkit_name: delete_file' "
+                "(ELITEA-2210's own case observable, live-executed) plus at least one "
+                "model chip. Icon: co-located in the same DOM subtree under the same "
+                "testid (ActionView.jsx's iconContainer sibling to the label) — see "
+                "this case's AFS 'Tool-agnosticism argument' for the source pointer; "
+                "chip-visible necessarily proves the icon rendered too, same treatment "
+                "the covering spec and ELITEA-2209's AFS already use"
+            ):
+                expect(chat.answer_tool_chip).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                expect(chat.answer_tool_chip).to_have_count(1)
+                expect(chat.answer_tool_chip).to_contain_text(expected_chip_text)
+                assert chat.answer_model_chip.count() >= 1, "Expected at least one model chip"
 
         with allure.step("Side-channel check — no console/JS errors across the whole flow"):
             assert not console_issues and not page_errors, (
                 f"Unexpected console errors: {[m.text for m in console_issues]!r}; "
                 f"page errors: {page_errors!r}"
+            )
+
+        if soft_failures:
+            pytest.fail(
+                "Non-deterministic known defect observed this run (see module "
+                "docstring 'Fix round 1' note, TestDirectToolkitCallCompleteFlow):\n"
+                + "\n".join(soft_failures)
             )

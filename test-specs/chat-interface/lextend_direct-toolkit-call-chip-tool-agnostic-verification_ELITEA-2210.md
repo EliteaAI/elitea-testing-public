@@ -215,6 +215,22 @@ exception's own deterministic bar — this new test currently qualifies for sanc
 covering spec's own 2/5 create_file history, which does NOT meet the 3/3 bar and is separately
 `blocked` for this wave per its module docstring's "Fix round 2" note). See Run Report.
 
+**Fix round 2 (2026-08-19) — reviewer finding + fix.** Review correctly flagged that
+`TestDirectToolkitCallDeleteFileChip`'s classify step called `pytest.fail()`/`raise AssertionError()`
+immediately in both its branches, which made this test's own "Side-channel check — no console/JS
+errors" step (one of this AFS's Gap-assertions rows-4-5 bullets, § Gap assertions above) structurally
+unreachable on the #1127-confirmed branch — the branch that had fired 3/3 observed runs. The console
+check had therefore never actually executed, despite being claimed as covered. Fixed in
+`test_direct_toolkit_call_complete_flow.py` to mirror `TestDirectToolkitCallCompleteFlow`'s own Step 2b
+shape: the confirmed-#1127 branch now defers via a `soft_failures` list instead of failing immediately,
+the Side-channel check runs unconditionally before the deferred `pytest.fail()`. Re-ran live against
+localhost twice: **2 further consecutive occurrences of the same #1127 signature (5/5 total, still
+deterministic)** — and the Allure step report now shows "Side-channel check — no console/JS errors
+across the whole flow" as
+`passed`, confirming the assertion actually executes before the deferred failure. No change to what is
+asserted, the #1127 classification logic, or this AFS's Coverage Map/Gap-assertions scope — control-flow
+ordering only.
+
 ## Blocked Steps
 None.
 
