@@ -707,7 +707,7 @@ jobs:
           import os
 
           items = []
-          total = passed = failed = skipped = 0
+          total = passed = failed = skipped = reruns = 0
 
           # Find all junit.xml files from parallel suite runs
           junit_files = glob.glob("results/**/junit.xml", recursive=True)
@@ -734,16 +734,25 @@ jobs:
                           status, msg = "skipped", ""
                       else:
                           status, msg = "passed", ""
+
+                      # Capture reruns from pytest-rerunfailures
+                      reruns = tc.findall("rerun")
+                      rerun_count = len(reruns)
+                      rerun_messages = [r.get("message", "") for r in reruns]
+
                       total += 1
                       passed += status == "passed"
                       failed += status == "failed"
                       skipped += status == "skipped"
+                      reruns += rerun_count
                       items.append({
                           "code_ref": code_ref,
                           "name": name,
                           "status": status,
                           "duration_ms": dur,
-                          "failure_message": msg
+                          "failure_message": msg,
+                          "reruns": rerun_count,
+                          "rerun_messages": rerun_messages
                       })
               except Exception as e:
                   print(f"Warning: Failed to parse {junit_file}: {e}", file=__import__('sys').stderr)
@@ -757,7 +766,7 @@ jobs:
               overall_status = "PASSED"
 
           out = {
-              "launch": {"total": total, "passed": passed, "failed": failed, "skipped": skipped},
+              "launch": {"total": total, "passed": passed, "failed": failed, "skipped": skipped, "reruns": reruns},
               "items": items
           }
           print(json.dumps(out, indent=2, ensure_ascii=False))
