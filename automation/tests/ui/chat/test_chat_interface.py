@@ -59,6 +59,15 @@ pytestmark = [pytest.mark.ui]
 AI_RESPONSE_TIMEOUT = 30000   # AI message generation (may take 15s+ on cold starts)
 UI_ELEMENT_TIMEOUT = 5000     # buttons, dialogs, dropdowns
 NAVIGATION_TIMEOUT = 3000     # SPA route changes
+# A pipeline participant's response can take longer than a plain agent's
+# (multi-node graph execution / internal tool calls) -- live-confirmed
+# during ELITEA-2208/2470 implementation: a dynamically-selected ambient
+# pipeline's response was still showing the transient "Thought for less
+# than a second" status at AI_RESPONSE_TIMEOUT (30s), then completed
+# shortly after. Matches wait_for_ai_response()'s own docstring rationale
+# for its 60s default ("toolkit execution which may involve external API
+# calls").
+PIPELINE_RESPONSE_TIMEOUT = 60000
 
 
 class TestPageLoadAndRendering:
@@ -717,6 +726,149 @@ class TestHashSearch:
             )
             assert chat.is_participants_badge_visible(section="agents", timeout=UI_ELEMENT_TIMEOUT), (
                 "Agent should remain in PARTICIPANTS after responding"
+            )
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2208_chat-mentions-with-hash-select-pipeline-adds-to-participants.md",
+        "onetest-ai Test Case link (ELITEA-2208)",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2470_chat-select-pipeline-from-list-adds-it-to-participants-and-i.md",
+        "onetest-ai Test Case link (ELITEA-2470)",
+    )
+    @pytest.mark.p1
+    def test_add_pipeline_via_hash_search_joins_participants_and_responds(self, page, conversation_id):
+        """ELITEA-2208 / ELITEA-2470 (family — 2470 is a more granular
+        superset of the same flow 2208 describes; one live execution
+        satisfies both, same pattern as ELITEA-2207/2469).
+
+        extend-existing gap-fill on TestHashSearch (AFS:
+        test-specs/chat-interface/
+        lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md).
+        Direct pipeline-flow sibling of
+        ``test_add_agent_via_hash_search_joins_participants_and_responds`` --
+        same mechanism (open dropdown, scoped select, composer chip,
+        participants-panel section, popover row, send, respond, remain a
+        participant), but scoped to a PIPELINE-type card, PIPELINES
+        section, and the pipeline's own participant ``uniqueId`` prefix
+        (``pipeline_{id}_{project_id}``, NOT the agent's ``application_``
+        prefix -- confirmed by reading
+        ``participants.helpers.js``'s ``getChatParticipantUniqueId()``, AFS
+        Concrete Handles). ELITEA-2470's own extra granularity (Step 5 --
+        the popover row must show name, version, AND icon) is asserted in
+        Step 4 below, tagged for ELITEA-2470 specifically -- ELITEA-2208
+        only asks for the PIPELINES section to exist, which Step 3 already
+        covers.
+
+        No substitution: every assertion reads a value the live product
+        rendered off a real '#' selection + a real sent message on a
+        fresh, API-seeded conversation (conversation_id fixture) --
+        nothing fabricated or injected. The pipeline card is resolved
+        dynamically (the first PIPELINE-type result, never a hardcoded
+        name) for resilience against account data changes. Never asserts
+        the response's specific text (AFS Axis 2, Clarification 2 -- an
+        ambient probe pipeline may correctly respond with an
+        execution-error card if it has no configured nodes; both cases'
+        own expected result only asks that the pipeline "processes and
+        responds" and "remains in PARTICIPANTS", never a specific content).
+        """
+        with allure.step("Step 1 — Create a new conversation; verify no PIPELINES in PARTICIPANTS"):
+            chat = ChatPage(page)
+            chat.navigate_to_chat(conversation_id=conversation_id)
+            assert not chat.is_participants_badge_visible(section="pipelines", timeout=UI_ELEMENT_TIMEOUT), (
+                "A fresh conversation should show no PIPELINES section in PARTICIPANTS"
+            )
+
+        with allure.step("Step 2 — Type '#' and select the first PIPELINE-type card from the dropdown"):
+            chat.message_input.click()
+            chat.message_input.press_sequentially("#", delay=50)
+            try:
+                chat.wait_for_hash_search_dropdown(timeout=UI_ELEMENT_TIMEOUT)
+            except PlaywrightTimeoutError:
+                pytest.skip(
+                    "Hash search dropdown did not appear after typing '#' — "
+                    "# mention feature may be disabled in this environment"
+                )
+            expect(chat.get_hash_search_items().first).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+
+            items = chat.get_hash_search_items()
+            item_count = items.count()
+            pipeline_item = next(
+                (items.nth(i) for i in range(item_count)
+                 if chat.get_hash_search_item_subtitle(items.nth(i)) == "pipeline"),
+                None,
+            )
+            if pipeline_item is None:
+                pytest.skip("No 'pipeline'-type item available in the '#' results for this account")
+
+            pipeline_name = chat.get_hash_search_item_name(pipeline_item)
+            assert pipeline_name, "Resolved pipeline card should have a non-empty display name"
+            # The pipeline's OWN home project (entity_meta.project_id) --
+            # same "not necessarily the conversation's project" caveat the
+            # agent family already documents, since the '#' dropdown mixes
+            # current-project and Agent-Hub-sourced results in one set.
+            pipeline_project_id, pipeline_id = chat.get_hash_search_item_ids(pipeline_item)
+
+            pipeline_item.click()
+            chat.wait_for_network(timeout=UI_ELEMENT_TIMEOUT)
+            assert not chat.is_hash_search_dropdown_visible(), (
+                "Hash search dropdown should close after selecting the pipeline"
+            )
+
+        with allure.step(
+            "Step 3 — Verify the pipeline appears as the composer's active participant "
+            "and the PIPELINES section is added to PARTICIPANTS"
+        ):
+            assert chat.is_agent_participant_in_composer(pipeline_name, timeout=UI_ELEMENT_TIMEOUT), (
+                f"Composer should show {pipeline_name!r} as the active pipeline participant"
+            )
+            assert chat.is_participants_badge_visible(section="pipelines", timeout=UI_ELEMENT_TIMEOUT), (
+                "PIPELINES section should be added to PARTICIPANTS after selecting a pipeline"
+            )
+
+        with allure.step(
+            "Step 4 (ELITEA-2470) — Verify the PARTICIPANTS popover row shows "
+            "the pipeline's name, version, and icon"
+        ):
+            popper = chat.open_participants_popover(section="pipelines", timeout=UI_ELEMENT_TIMEOUT)
+            row = chat.get_agent_participant_row(
+                popper, pipeline_id, timeout=UI_ELEMENT_TIMEOUT,
+                agent_project_id=pipeline_project_id, entity_type="pipeline",
+            )
+            row_text = row.text_content() or ""
+            assert pipeline_name in row_text, (
+                f"Participants popover row should show the pipeline name {pipeline_name!r}, got {row_text!r}"
+            )
+            # Pipeline versions render their own NAME as a literal string
+            # (e.g. "base") -- NOT the agent family's "ver"/"vX.Y"
+            # auto-generated shape (AFS Automation Hints -- do not reuse
+            # the agent test's `re.match(r"v(er\b|\d)", ...)` regex here).
+            # Assert only that a non-empty version-text remainder exists
+            # after the pipeline's name.
+            version_text = row_text[len(pipeline_name):]
+            assert version_text.strip(), (
+                f"Participants popover row should show a version-name remainder after "
+                f"the pipeline name, got remainder {version_text!r} of full row text {row_text!r}"
+            )
+            assert chat.get_participant_icon(row, timeout=UI_ELEMENT_TIMEOUT).is_visible(), (
+                "Participants popover row should show the pipeline's icon"
+            )
+            chat.dismiss_participants_popover()
+
+        with allure.step("Step 5 — Type 'hello' and send the message"):
+            initial_count = chat.get_message_count()
+            chat.send_message("hello")
+
+        with allure.step("Step 6 — Verify the pipeline responds and remains in PARTICIPANTS"):
+            chat.wait_for_ai_response(initial_count=initial_count, timeout=PIPELINE_RESPONSE_TIMEOUT)
+            assert chat.get_message_count() >= initial_count + 2, (
+                "Message count should grow by the sent message + the pipeline's response "
+                "(the response may be a genuine execution-error card if the dynamically "
+                "selected ambient pipeline has no configured nodes -- AFS Axis 2, "
+                "Clarification 2 -- never assert on specific response text)"
+            )
+            assert chat.is_participants_badge_visible(section="pipelines", timeout=UI_ELEMENT_TIMEOUT), (
+                "Pipeline should remain in PARTICIPANTS after responding"
             )
 
 

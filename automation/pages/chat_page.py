@@ -2297,18 +2297,42 @@ class ChatPage(BasePage):
 
         Also detects dynamic status patterns like "Thought for X seconds"
         and "Packing its tools" which are streaming status indicators.
+
+        A "Thought for X seconds" (or "Packing its tools") header is only
+        transient WHILE IT IS THE ONLY BLOCK CONTENT so far — once the
+        real response (or an execution-error card) has rendered alongside
+        it in the same message body, ``_extract_message_body()`` joins
+        both into one multi-line string and a bare ``startswith("thought
+        for ")`` on the WHOLE joined text stays true forever, so a message
+        that has genuinely finished generating (thought summary + final
+        answer/error, both real ``<p>``/``<li>`` block elements under the
+        SAME message ``<li>``) was misclassified as still-transient —
+        confirmed live during ELITEA-2208/2470 implementation: a pipeline
+        participant's response rendered as "Thought for less than a
+        second" (collapsed reasoning summary) immediately followed by a
+        real error card ("Pipeline has no nodes to execute...") in the
+        SAME message, and ``wait_for_ai_response`` timed out at 60s
+        because the joined text still started with "thought for ", even
+        though the Copy button and the error card were both already
+        fully rendered. Checked per-LINE (``_extract_message_body`` joins
+        block elements with ``\\n``) so a genuinely still-generating
+        message (only the status line, nothing else yet) is still caught.
         """
         normalized = text.replace("\xa0", " ").lower().strip()
         # Check exact matches against TRANSIENT_MESSAGES
         if normalized.rstrip(".…") in self.TRANSIENT_MESSAGES or \
            normalized in self.TRANSIENT_MESSAGES:
             return True
-        # Check dynamic patterns (streaming status indicators)
-        if normalized.startswith("thought for "):
-            return True
-        if "packing" in normalized and "tool" in normalized:
-            return True
-        return False
+        lines = [line for line in normalized.split("\n") if line.strip()]
+        if not lines:
+            return False
+        # Check dynamic patterns (streaming status indicators) — transient
+        # only while every line present so far IS one of these status
+        # indicators; real content on ANY line means the response landed.
+        return all(
+            line.startswith("thought for ") or ("packing" in line and "tool" in line)
+            for line in lines
+        )
 
     def wait_for_message_content_stable(
         self, stable_duration_ms: int = 2000, timeout: int = 30000
@@ -3204,21 +3228,38 @@ class ChatPage(BasePage):
     # Locator policy). Format with (project_id, id), exact mirror of
     # SLASH_MENTION_ITEM's own '{}_{}"' pattern above.
     HASH_SEARCH_ITEM = '[data-testid="chat-hash-search-item-{}_{}"]'
-    # The three per-card sub-testids below (added in NewParticipantCard.jsx,
-    # EliteaAI/EliteaUI@58d30f08, ELITEA-2206 fix round 1) are each DERIVED
-    # from the card's own testid as `{testId}-type` / `-icon` / `-public-
-    # label` -- so they ALSO start with the literal "chat-hash-search-item-"
-    # prefix. A bare `^="chat-hash-search-item-"` prefix selector therefore
-    # matches the nested sub-elements too (188 hits instead of ~6 cards on
-    # live verification, one card's -type/-icon/-public-label counted as 3
-    # extra "items"), corrupting `get_hash_search_items()`'s indices. The
+    # The per-card sub-testids below (added in NewParticipantCard.jsx,
+    # EliteaAI/EliteaUI@58d30f08 for -type/-icon/-public-label, ELITEA-2206
+    # fix round 1; EliteaAI/EliteaUI@840e251d for -name, ELITEA-2207/2469
+    # family unit) are each DERIVED from the card's own testid as
+    # `{testId}-type` / `-icon` / `-public-label` / `-name` -- so they ALSO
+    # start with the literal "chat-hash-search-item-" prefix. A bare
+    # `^="chat-hash-search-item-"` prefix selector therefore matches the
+    # nested sub-elements too (188 hits instead of ~6 cards on live
+    # verification, one card's -type/-icon/-public-label counted as 3 extra
+    # "items"), corrupting `get_hash_search_items()`'s indices. The
     # exclusion below is the fix -- still testid-exact-match only, no raw
     # tag/class selector.
+    #
+    # -name exclusion added during ELITEA-2208/2470 implementation: the
+    # `-name` sub-testid (EliteaAI/EliteaUI@840e251d) was added AFTER this
+    # exclusion list was first written and was never folded in, so every
+    # card's `-name` child still matched the bare prefix and doubled
+    # `get_hash_search_items()`'s reported count (card + its own `-name`
+    # child, alternating even/odd indices). Live-confirmed this session:
+    # a genexpr scanning for the first PIPELINE-type card hit index 1 (a
+    # `-name` leaf, no `-type` child of its own) before reaching the next
+    # real card, raising a `Locator.text_content` TimeoutError inside
+    # `get_hash_search_item_subtitle()`. The prior AGENT-scoped test never
+    # surfaced this because its first real card already happened to be
+    # agent-type (index 0), so the loop never advanced into an odd,
+    # `-name`-only index.
     HASH_SEARCH_ITEM_PREFIX = (
         '[data-testid^="chat-hash-search-item-"]'
         ':not([data-testid$="-type"])'
         ':not([data-testid$="-icon"])'
         ':not([data-testid$="-public-label"])'
+        ':not([data-testid$="-name"])'
     )
     # Scoped sub-selectors, one per per-card real testid added to
     # NewParticipantCard.jsx (EliteaAI/EliteaUI@58d30f08, ELITEA-2206 fix
@@ -6950,11 +6991,13 @@ class ChatPage(BasePage):
 
     def get_agent_participant_row(
         self, popper, agent_id: int, timeout: int = 10000, agent_project_id: int | None = None,
+        entity_type: str = "application",
     ):
-        """Resolve an agent participant's row Locator inside an already-open
-        'Agents' participants popper, WITHOUT hovering or clicking it
-        (ELITEA-2465 step 5 — the caller only needs to assert the row's
-        content, e.g. that it contains the agent's name).
+        """Resolve an agent (or, via *entity_type*, another participant
+        kind's) row Locator inside an already-open participants popper,
+        WITHOUT hovering or clicking it (ELITEA-2465 step 5 — the caller
+        only needs to assert the row's content, e.g. that it contains the
+        agent's name).
 
         Read-only sibling of ``hover_agent_participant_row()`` /
         ``remove_agent_participant()`` — same ``PARTICIPANT_ROW`` /
@@ -6965,10 +7008,12 @@ class ChatPage(BasePage):
 
         Args:
             popper: The open participants popper Locator, as returned by
-                ``open_participants_popover(section="agents")``.
-            agent_id: Numeric ID of the participant agent.
+                ``open_participants_popover(section="agents")`` (or
+                ``section="pipelines"`` when ``entity_type="pipeline"``).
+            agent_id: Numeric ID of the participant (agent id, or the
+                pipeline id when ``entity_type="pipeline"``).
             timeout: Maximum wait time in milliseconds.
-            agent_project_id: The agent's OWN home project id (``entity_meta.project_id``
+            agent_project_id: The participant's OWN home project id (``entity_meta.project_id``
                 in ``getChatParticipantUniqueId()``), defaulting to
                 ``settings.elitea_project_id`` (the conversation's own project) for
                 backward compatibility with every existing caller. Pass this
@@ -6980,16 +7025,29 @@ class ChatPage(BasePage):
                 first agent-type result is frequently Agent-Hub-sourced, e.g.
                 ``chat-hash-search-item-1_6`` -> participant row
                 ``application_6_1``, NOT ``application_6_{settings.elitea_project_id}``).
+            entity_type: The ``getChatParticipantUniqueId()`` entity-name
+                prefix — ``"application"`` (default, unchanged for every
+                existing agent caller) or ``"pipeline"`` (ELITEA-2208/2470
+                family unit — a pipeline participant's unique id is
+                ``pipeline_{id}_{project_id}``, confirmed via
+                ``participants.helpers.js``'s ``entity_settings.agent_type
+                === 'pipelines'`` branch, NOT the agent's ``application_``
+                prefix).
         """
         project_id = agent_project_id if agent_project_id is not None else settings.elitea_project_id
-        unique_id = f"application_{agent_id}_{project_id}"
+        unique_id = f"{entity_type}_{agent_id}_{project_id}"
         row = popper.locator(self.PARTICIPANT_ROW.format(unique_id))
         row.wait_for(state="visible", timeout=timeout)
         return row
 
     @action("Remove agent participant from chat")
-    def remove_agent_participant(self, agent_id: int, timeout: int = 10000):
-        """Remove the agent participant identified by *agent_id* from chat.
+    def remove_agent_participant(
+        self, agent_id: int, timeout: int = 10000,
+        section: str = "agents", entity_type: str = "application",
+        agent_project_id: int | None = None,
+    ):
+        """Remove the agent (or, via *entity_type*/*section*, another
+        participant kind's) participant identified by *agent_id* from chat.
 
         Opens the participants popper, resolves the participant row
         directly via its dynamic ``chat-participant-row-{uniqueId}``
@@ -7006,13 +7064,25 @@ class ChatPage(BasePage):
         text-and-ancestor-walk and accessible-name-based handles.
 
         Args:
-            agent_id: Numeric ID of the participant agent to remove.
+            agent_id: Numeric ID of the participant (agent id, or the
+                pipeline id when ``entity_type="pipeline"``) to remove.
             timeout: Maximum wait time in milliseconds.
+            section: Which participants badge/popover to open —
+                ``"agents"`` (default, unchanged for every existing
+                caller) or ``"pipelines"`` (ELITEA-2208/2470 family unit).
+            entity_type: The ``getChatParticipantUniqueId()`` entity-name
+                prefix — ``"application"`` (default, unchanged) or
+                ``"pipeline"`` — see :meth:`get_agent_participant_row`
+                for the same parameter's rationale.
+            agent_project_id: The participant's OWN home project id,
+                defaulting to ``settings.elitea_project_id`` for backward
+                compatibility — see :meth:`get_agent_participant_row`.
         """
-        logger.info("Removing agent participant id=%s from chat", agent_id)
-        popper = self.open_participants_popover(timeout=timeout)
+        logger.info("Removing %s participant id=%s from chat", entity_type, agent_id)
+        popper = self.open_participants_popover(timeout=timeout, section=section)
 
-        unique_id = f"application_{agent_id}_{settings.elitea_project_id}"
+        project_id = agent_project_id if agent_project_id is not None else settings.elitea_project_id
+        unique_id = f"{entity_type}_{agent_id}_{project_id}"
         row = popper.locator(self.PARTICIPANT_ROW.format(unique_id))
         row.wait_for(state="visible", timeout=timeout)
         row.scroll_into_view_if_needed()
@@ -7032,7 +7102,7 @@ class ChatPage(BasePage):
         # agent-detail Skills card remove control, ELITEA-1792 implementer
         # memory) — reset before any subsequent hover-reveal check.
         self.page.mouse.move(0, 0)
-        logger.info("Agent participant id=%s removed from chat", agent_id)
+        logger.info("%s participant id=%s removed from chat", entity_type, agent_id)
 
     @action("Open Remove-user confirmation for a Users-dropdown row")
     def open_remove_user_dialog(self, user_id: int, timeout: int = 10000):
