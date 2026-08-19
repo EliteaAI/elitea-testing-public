@@ -3808,3 +3808,37 @@ is synchronised immediately.
   no new message-driving code), but worth knowing if anyone manually runs this case's literal
   text later.
 - AFS: `test-specs/chat-interface/lextend_direct-toolkit-call-chip-tool-agnostic-verification_ELITEA-2210.md`.
+
+## Context Management DISABLED — Context Budget widget stays at zero (ELITEA-2216)
+- Confirms and extends the ELITEA-2218/2374 digest entries above for the OPPOSITE
+  (disabled) global state: with Context Management OFF, the Context Budget widget
+  (collapsed `0%` indicator, expanded panel, AND the "Edit context settings" modal)
+  ALL show `0` for tokens/percentage/Messages/Summaries — confirmed live via a real
+  message + full AI response (~90s genuine generation), no context-management-specific
+  network call fires at all while disabled (the backend appears not to compute/track
+  budget usage when the setting is off, not merely hide a computed value).
+- **The collapsed-Participants-panel timing (panel not mounted pre-message, collapsed
+  by default post-message, `expand_participants_panel()` required) is IDENTICAL whether
+  Context Management is ON or OFF** — confirmed this is a general chat-composer
+  mechanism, not something the disabled/enabled state changes. Don't re-derive this per
+  state; it's the same `ChatPage.expand_participants_panel()` path either way.
+- **Account's live Max Context Tokens is `6400`, not the oft-cited case-text `64000`**
+  (confirmed via `/settings/memory` this session) — read the token ceiling dynamically
+  in any assertion, never hardcode either value; it's account-config, not a product
+  constant.
+- **The "Edit context settings" per-conversation modal (`context-budget-edit-button` →
+  `ContextStrategyModalContent`) is click-verified end-to-end for the first time this
+  session** (ELITEA-2218's AFS only source-reviewed it). Its header carries its OWN
+  "Context Management" toggle switch, mirroring the global setting (unchecked when
+  globally OFF); its Save button stays disabled with nothing dirty. Three collapsed
+  accordion sections inside ("Context Strategy & Token Management", "Summarization",
+  "User Instructions") were not expanded/explored this pass.
+- **`ChatPage.send_message()`'s send-button click is intercepted by a MUI overlay**
+  (confirmed live, standard `mui-patterns.md` pattern) — `use_enter=True` (Enter
+  keypress) is the reliable path; don't force-click the send button.
+- No collapsed-indicator-specific testid confirmed (the bare `0%` shown before
+  Participants-panel expansion) — `chat_page.py`'s own comment suggests this was
+  already investigated and found to lack a stable handle. Assert via the EXPANDED
+  panel's existing testids (`context-budget-tokens`/`-messages-count`/
+  `-summaries-count`) instead, which this case's core assertion already uses.
+- AFS: `test-specs/chat-interface/l3_context-management-disabled-widget-stays-zero_ELITEA-2216.md`.
