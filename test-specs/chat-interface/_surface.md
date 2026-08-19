@@ -3782,3 +3782,29 @@ is synchronised immediately.
   assert — NOT routed through the existing `soft_failures` aggregation, since it's
   mechanically unrelated to #1127.
 - AFS: `test-specs/chat-interface/lextend_direct-toolkit-call-participants-panel-verification_ELITEA-2209.md`.
+
+## ELITEA-2210 — direct toolkit call, chip display — extend-existing (ZERO-DIFF) onto
+## the same ELITEA-2215/2209 covering spec (2026-08-19)
+
+- **Third case in this batch to land on the SAME `test_direct_toolkit_call_complete_flow.py`
+  covering spec.** ELITEA-2210's objective ("tool execution results display as chips when
+  toolkit called directly") is a near-verbatim restatement of ELITEA-2215's — different
+  example toolkit/tool (`'aaa'`/`delete_file` vs the covering spec's `artifact_toolkit`/
+  `create_file`), same mechanism. **No gap at all** (not even one assertion) — this is a
+  zero-diff extend: the covering spec's current trunk state (post-2209) already satisfies
+  every one of 2210's case elements unconditionally.
+- **Tool-agnosticism confirmed by reading `ActionView.jsx` directly** (not by re-running
+  live — the mechanism was already live-confirmed twice this batch by 2215/2209/2211):
+  `buildTitle()` (tool-chip text) is a plain `"{toolkitName}: {toolName}"` template with no
+  branching on tool name; `renderIcon()` branches on `toolkitType` only (never the specific
+  tool) via `getToolIconByType(toolkitType, ...)`. So `delete_file` and `create_file` on the
+  same `artifact`-type toolkit render through the byte-identical chip code path — a strong,
+  source-grounded basis for treating "different tool name" as pure DATA, not a new STEP/branch
+  worth its own test.
+- **Case-text pitfall inherited, not new:** 2210's own message
+  (`"use delete_file toolkit to remove from the bucket all files"`) is the EXACT string
+  ELITEA-2211's AFS already live-tested and found ambiguous ("the bucket" → LLM asks which of
+  588 buckets instead of calling the tool). Doesn't affect 2210's own disposition (zero-diff,
+  no new message-driving code), but worth knowing if anyone manually runs this case's literal
+  text later.
+- AFS: `test-specs/chat-interface/lextend_direct-toolkit-call-chip-tool-agnostic-verification_ELITEA-2210.md`.
