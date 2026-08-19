@@ -134,6 +134,18 @@ class ChatPage(BasePage):
         description="'Attach Files' menu item inside the open plus-menu popper.",
     )
 
+    # ELITEA-2195: the paperclip/attachment icon inside the same popper menu
+    # item. First-party app JSX (`AttachIcon`, `@/assets/attach-icon.svg?react`)
+    # — not third-party-library-internal chrome — so a real testid is placed
+    # rather than a #579 scoped-raw-handle exception (same reasoning as
+    # `delete_confirm_title_icon`). Threaded via the SAME `testId` prop the
+    # button itself already uses (`data-testid={`${testId}-icon`}` ->
+    # "chat-attach-menuitem-button-icon"), present only at this popper call site.
+    attach_files_menuitem_icon = LocatorDescriptor(
+        testid="chat-attach-menuitem-button-icon",
+        description="Paperclip/attachment icon inside the 'Attach Files' menu item.",
+    )
+
     # ------------------------------------------------------------------
     # Sidebar / drawer
     # ------------------------------------------------------------------
