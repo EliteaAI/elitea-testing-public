@@ -58,20 +58,35 @@ ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
 ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)))).
 
 ## ELITEA-2196 — attachment chip CONTENTS (icon+X button+dark/light styling),
-## ONE new testid (`chat-attachment-chip-remove-{index}`, reserved by the
-## ELITEA-2197 AFS for exactly this sibling), zero defects
+## ONE new testid (`chat-attachment-remove-chip-{index}`), zero defects
 - **First case in this cluster to assert the chip's own contents, not just
   count/name.** ELITEA-2195 only checks the popper's counter/icon (no
   attach happens); ELITEA-2197/2200 attach files and check COUNT + toast,
   never a chip's icon/X-button/styling. This case closes that gap.
-- **`chat-attachment-chip-remove-{index}` added** on `FileList.jsx`'s
+- **`chat-attachment-remove-chip-{index}` added** on `FileList.jsx`'s
   per-chip remove `Box` (line ~98, direct `data-testid` attribute — no
   wrapper, no hook change, no MUI-internal replacement).
-  `EliteaAI/EliteaUI@43b81dc8`, `automation/testids` only (not yet on
+  `EliteaAI/EliteaUI@7f29c3dc`, `automation/testids` only (not yet on
   `main`). Live-confirmed via HMR: attribute present on all 4 chips,
   `.click()` on it genuinely removes exactly that one chip (functional,
   not just present) — reconfirmed a real `onDeleteFile` call, no
   substitution.
+- **Naming pitfall, caught by the test's own first run (not just source
+  review) — record this pattern for any future dynamic testid added under
+  an existing `^=` PREFIX matcher.** The ELITEA-2197 AFS had reserved this
+  exact testid as `chat-attachment-chip-remove-{index}` — that name starts
+  with the SAME literal substring `ChatPage.CHAT_ATTACHMENT_CHIP_PREFIX`
+  (`[data-testid^="chat-attachment-chip-"]`) matches, so every remove
+  button silently became an extra "chip" to `get_attachment_chip_count()`
+  (an EXISTING, MERGED ELITEA-2197 caller) — live-confirmed: attaching 4
+  files resolved `CHAT_ATTACHMENT_CHIP_PREFIX`'s count to 8, not 4.
+  Renamed to `chat-attachment-remove-chip-{index}` (distinct prefix, zero
+  collision) and re-verified clean. **Lesson: before naming ANY new
+  dynamic testid in a family that already has a `^=` prefix constant, grep
+  for that prefix's existing string first** — a new testid literally
+  starting with an existing prefix constant is invisible at JSX-review
+  time (it looks like ordinary self-documenting naming) and only surfaces
+  as a silent over-count in a DIFFERENT, unrelated test's assertions.
 - **Chip structure, live-confirmed** (`getComputedStyle` + DOM read via
   `.evaluate()` scoped on the already-testid'd `chat-attachment-chip-{i}`
   parent — a read, not a new locator; same idiom as the pre-existing
