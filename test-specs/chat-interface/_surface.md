@@ -2,7 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2208/2470, 2026-08-19
+a time; last confirmed by: qa-engineer analyst, ELITEA-2217, 2026-08-19
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: qa-engineer analyst, ELITEA-2208/2470, 2026-08-19
 (supersedes nothing below — new section, other sections unchanged; previous
 confirmer: qa-engineer analyst, ELITEA-2207/2469, 2026-08-19
 (supersedes nothing below — new section, other sections unchanged; previous
@@ -65,7 +67,50 @@ qa-engineer analyst, ELITEA-2111, 2026-08-15;
 previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
-ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03))))))).
+ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)))))))).
+
+## ELITEA-2217 — Context Management ON / Auto-Summarization OFF: token
+## tracking continues past max (warning icon fires) but Summaries stays 0
+## and no "Summarizing" indicator ever appears; third leg of the
+## {2216, 2217, 2218} context-management family. ONE new testid needed,
+## ONE non-blocking product defect filed (#1605).
+- Settings > Memory (`/settings/memory`): `automatic-summarization-toggle`
+  (`UserProfileSettingsPage`) toggled OFF independently of
+  `context-management-toggle` (stays ON) — confirmed live both toggles
+  default ON for a fresh session; `disable_automatic_summarization()` /
+  `enable_automatic_summarization()` autosave correctly (`PUT
+  /api/v2/social/author/` → 200), same as the Context Management toggle.
+- Per-conversation "Edit context settings" dialog (`context-budget-edit-button`
+  → `ContextStrategyModalContent`): reused ELITEA-2218's low-threshold
+  technique (`context_modal_max_tokens_input` + `context_modal_save_button`)
+  to reach >100% utilization in ~5 long exchanges instead of the account's
+  full ~6,400-token default. **New product defect confirmed + filed (#1605,
+  non-blocking):** when Automatic Summarization is globally OFF, the
+  dialog's Target Summary Tokens field is correctly disabled but its STALE
+  value still cross-field-validates against a new Max Context Tokens value —
+  Save stays disabled unless the new Max Context Tokens is ≥ the frozen
+  Target Summary Tokens value. Workaround: read the live Target Summary
+  Tokens value first and pick a Max Context Tokens ≥ it (`5000` worked
+  against a `4096` frozen target this session), or configure the desired
+  low pair while summarization is still ON, then disable it after.
+  **Do not reuse `set_context_strategy_thresholds()` unmodified for this
+  case** — it also fills the disabled Target Summary Tokens field, which
+  Playwright errors on ("element is not enabled").
+- The dialog's OWN "Enable automatic summarization" switch
+  (`ContextStrategySummarization.jsx`) mirrors the global toggle's state and
+  disables its own child fields (Summarization Instructions, Target Summary
+  Tokens) when unchecked — confirmed live (`.checked === false`) — but
+  carries **NO testid** (confirmed via source read + a live
+  `querySelectorAll('[data-testid]')` sweep of the open dialog, zero hits),
+  unlike its sibling `context-modal-management-toggle` one section up in
+  the same dialog. `testid needed: context-modal-summarization-toggle`.
+- `context_budget_warning_icon`/`is_context_budget_warning_visible()` fires
+  identically whether Automatic Summarization is ON (ELITEA-2218) or OFF
+  (this case) — it is driven purely by utilization %, not by the
+  summarization flag. `chat-answer-model-chip` never reads "Summarizing the
+  chat history" when Automatic Summarization is OFF, confirmed by polling it
+  after all 5 sends (stays plain model-name text throughout).
+- Full AFS: `test-specs/chat-interface/l3_auto-summarization-disabled-no-trigger-at-max-tokens_ELITEA-2217.md`.
 
 ## ELITEA-2208/2470 — `#` hash-search SELECT-A-PIPELINE adds it to
 ## PARTICIPANTS + composer active-participant chip + pipeline responds,
