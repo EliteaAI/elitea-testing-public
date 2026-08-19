@@ -474,6 +474,116 @@ class TestHashSearch:
                 "Hash search dropdown should close after selecting an option"
             )
 
+    @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2206_chat-mentions-with-hash-displays-all-available-agents-and-pipelines.md", "onetest-ai Test Case link")
+    @pytest.mark.p2
+    def test_hash_search_shows_agents_and_pipelines_from_all_sources(self, page, conversation_id):
+        """ELITEA-2206: '#' shows all available agents/pipelines from all sources.
+
+        extend-existing gap-fill on TestHashSearch (AFS:
+        test-specs/chat-interface/lextend_hash-search-shows-agents-and-pipelines-from-all-sources_ELITEA-2206.md).
+        The covering tests above already prove the dropdown OPENS on '#' and
+        CLOSES on selection -- this test only adds the three assertions
+        ELITEA-2206's own steps ask for that neither covering test makes:
+        per-card type subtitle + icon presence split by agent/pipeline
+        (Steps 2-3), a mixed current-project + Agent-Hub result set in one
+        query (Step 4), and the click-away-WITHOUT-selecting close path
+        (the other half of Step 5).
+
+        No substitution: every assertion reads a value the live product
+        rendered off a real '#'/'#pipe' query on an existing conversation
+        (ambient DEV data, no seeding) -- nothing fabricated or injected.
+        """
+        with allure.step("Step 1 — Navigate to chat page and type '#' to open the search results dropdown"):
+            chat = ChatPage(page)
+            chat.navigate_to_chat(conversation_id=conversation_id)
+            chat.message_input.click()
+            chat.message_input.press_sequentially("#", delay=50)
+            try:
+                chat.wait_for_hash_search_dropdown(timeout=UI_ELEMENT_TIMEOUT)
+            except PlaywrightTimeoutError:
+                pytest.skip(
+                    "Hash search dropdown did not appear after typing '#' — "
+                    "# mention feature may be disabled in this environment"
+                )
+            expect(chat.chat_hash_search_results_list).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(chat.get_hash_search_items().first).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+
+        with allure.step("Step 2 — Verify agent items show 'agent' subtitle and an icon"):
+            items = chat.get_hash_search_items()
+            item_count = items.count()
+            assert item_count > 0, "Hash search results should contain at least one item for a bare '#' query"
+
+            agent_item = next(
+                (items.nth(i) for i in range(item_count)
+                 if chat.get_hash_search_item_subtitle(items.nth(i)) == "agent"),
+                None,
+            )
+            assert agent_item is not None, "Expected at least one 'agent' item in the '#' results"
+            assert chat.hash_search_item_has_icon(agent_item), (
+                "Agent item card should render an icon/avatar element"
+            )
+
+        with allure.step("Step 3 — Verify pipeline items show 'pipeline' subtitle and an icon"):
+            pipeline_item = next(
+                (items.nth(i) for i in range(item_count)
+                 if chat.get_hash_search_item_subtitle(items.nth(i)) == "pipeline"),
+                None,
+            )
+
+            if pipeline_item is None:
+                # Bare '#' page didn't surface a pipeline card — fall back to
+                # a query prefix confirmed live to return one (AFS Automation
+                # Hints), scoped to this sub-assertion only.
+                chat.message_input.click()
+                chat.message_input.press("Control+a")
+                chat.message_input.press("Backspace")
+                chat.message_input.press_sequentially("#pipe", delay=50)
+                chat.wait_for_hash_search_dropdown(timeout=UI_ELEMENT_TIMEOUT)
+                expect(chat.get_hash_search_items().first).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                pipe_items = chat.get_hash_search_items()
+                pipe_count = pipe_items.count()
+                pipeline_item = next(
+                    (pipe_items.nth(i) for i in range(pipe_count)
+                     if chat.get_hash_search_item_subtitle(pipe_items.nth(i)) == "pipeline"),
+                    None,
+                )
+                assert pipeline_item is not None, "Expected at least one 'pipeline' item for '#pipe'"
+                assert chat.hash_search_item_has_icon(pipeline_item), (
+                    "Pipeline item card should render an icon/avatar element"
+                )
+
+                # Restore the bare '#' query — Steps 4-5 assert the original
+                # unscoped result set.
+                chat.message_input.click()
+                chat.message_input.press("Control+a")
+                chat.message_input.press("Backspace")
+                chat.message_input.press_sequentially("#", delay=50)
+                chat.wait_for_hash_search_dropdown(timeout=UI_ELEMENT_TIMEOUT)
+                expect(chat.get_hash_search_items().first).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                items = chat.get_hash_search_items()
+                item_count = items.count()
+            else:
+                assert chat.hash_search_item_has_icon(pipeline_item), (
+                    "Pipeline item card should render an icon/avatar element"
+                )
+
+        with allure.step("Step 4 — Verify results mix current-project and Agent Hub sources"):
+            has_public = any(
+                chat.hash_search_item_has_public_label(items.nth(i)) for i in range(item_count)
+            )
+            has_non_public = any(
+                not chat.hash_search_item_has_public_label(items.nth(i)) for i in range(item_count)
+            )
+            assert has_public, "Expected at least one Agent Hub ('Public') item in the '#' results"
+            assert has_non_public, "Expected at least one current-project (non-'Public') item in the '#' results"
+
+        with allure.step("Step 5 — Press elsewhere (no selection) closes the dropdown"):
+            chat.messages_list.click(position={"x": 10, "y": 10})
+            chat.chat_hash_search_results_list.wait_for(state="detached", timeout=UI_ELEMENT_TIMEOUT)
+            assert not chat.is_hash_search_dropdown_visible(), (
+                "Hash search dropdown should close after clicking away without selecting"
+            )
+
 
 class TestContextAndSettings:
     """TC-CHAT-019 to TC-CHAT-020: Context and settings tests."""

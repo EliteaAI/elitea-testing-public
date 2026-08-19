@@ -3164,6 +3164,105 @@ class ChatPage(BasePage):
         menu.first.wait_for(state="visible", timeout=timeout)
         return menu
 
+    # ------------------------------------------------------------------
+    # '#' hash-search results list (ELITEA-2206) -- testid'd container +
+    # per-card item, mirroring the slash-mention wiring above. The
+    # pre-existing wait_for_hash_search_dropdown()/get_hash_search_first_option()/
+    # is_hash_search_dropdown_visible() raw-handle helpers below stay
+    # untouched (additive-only extension, .agents/role-overrides.md) -- they
+    # remain the mechanism for open/close, while the fields below are used
+    # only for the new per-card content assertions (subtitle, icon, "Public"
+    # chip, mixed-source check).
+    # ------------------------------------------------------------------
+
+    chat_hash_search_results_list = LocatorDescriptor(
+        testid="chat-hash-search-results-list",
+        description=(
+            "'#' hash-search results container (agents/pipelines mention "
+            "picker), shown while the composer contains a bare '#' or "
+            "'#query'. Renders 'Search results' as its title, then "
+            "participant cards or 'No matching results'."
+        ),
+    )
+
+    # Dynamic testid -- class-level template constant (.agents/testing.md §
+    # Locator policy). Format with (project_id, id), exact mirror of
+    # SLASH_MENTION_ITEM's own '{}_{}"' pattern above.
+    HASH_SEARCH_ITEM = '[data-testid="chat-hash-search-item-{}_{}"]'
+    # The three per-card sub-testids below (added in NewParticipantCard.jsx,
+    # EliteaAI/EliteaUI@58d30f08, ELITEA-2206 fix round 1) are each DERIVED
+    # from the card's own testid as `{testId}-type` / `-icon` / `-public-
+    # label` -- so they ALSO start with the literal "chat-hash-search-item-"
+    # prefix. A bare `^="chat-hash-search-item-"` prefix selector therefore
+    # matches the nested sub-elements too (188 hits instead of ~6 cards on
+    # live verification, one card's -type/-icon/-public-label counted as 3
+    # extra "items"), corrupting `get_hash_search_items()`'s indices. The
+    # exclusion below is the fix -- still testid-exact-match only, no raw
+    # tag/class selector.
+    HASH_SEARCH_ITEM_PREFIX = (
+        '[data-testid^="chat-hash-search-item-"]'
+        ':not([data-testid$="-type"])'
+        ':not([data-testid$="-icon"])'
+        ':not([data-testid$="-public-label"])'
+    )
+    # Scoped sub-selectors, one per per-card real testid added to
+    # NewParticipantCard.jsx (EliteaAI/EliteaUI@58d30f08, ELITEA-2206 fix
+    # round 1) -- `{testId}-type` / `{testId}-icon` / `{testId}-public-label`,
+    # each derived at the JSX call site from the SAME caller-supplied `testId`
+    # prop that already backs `.HASH_SEARCH_ITEM`, never a hardcoded literal.
+    # Round-1 review correctly rejected the prior 'p, span' / 'img, svg,
+    # .MuiAvatar-root' raw tag/class selectors here: the cited "sanctioned
+    # precedent" (`_extract_message_body()`, ELITEA-2196 icon check) is
+    # exactly the shape `.agents/testing.md` § Locator policy disclaims for
+    # NEW code ("Existing raw handles ... are tracked tech debt ... Never
+    # cite neighbors to justify a new raw handle") -- missing testid is work
+    # to do (add-data-testid), never a rung-down. Testid-exact-match only.
+    HASH_SEARCH_ITEM_TYPE = '[data-testid="{}-type"]'
+    HASH_SEARCH_ITEM_ICON = '[data-testid="{}-icon"]'
+    HASH_SEARCH_ITEM_PUBLIC_LABEL = '[data-testid="{}-public-label"]'
+
+    def get_hash_search_item(self, project_id: int, participant_id: int):
+        """Return the Locator for a single '#' hash-search result card."""
+        return self.page.locator(self.HASH_SEARCH_ITEM.format(project_id, participant_id))
+
+    def get_hash_search_items(self):
+        """Return the Locator for ALL '#' hash-search result cards currently
+        rendered (prefix-count idiom, same as get_slash_mention_item_count())."""
+        return self.chat_hash_search_results_list.locator(self.HASH_SEARCH_ITEM_PREFIX)
+
+    def get_hash_search_item_subtitle(self, item) -> str:
+        """Read a hash-search item card's type subtitle text ('agent' /
+        'pipeline' / 'MCP'), via the card's own `{testId}-type` testid
+        (EliteaAI/EliteaUI@58d30f08) -- exact-match, so it is immune to the
+        sibling 'Public' label Typography that shadowed the prior unscoped
+        'p, span'.last read on Agent-Hub-sourced cards (both are
+        Typography children that can render as <p>/<span>; the raw
+        selector could not tell them apart).
+
+        `item` is the card's own `.HASH_SEARCH_ITEM`-testid'd Locator, so
+        its own `data-testid` attribute IS the `{testId}` half of the
+        template -- read it, then scope the child testid off it.
+        """
+        item_testid = item.get_attribute("data-testid")
+        subtitle = item.locator(self.HASH_SEARCH_ITEM_TYPE.format(item_testid))
+        return (subtitle.text_content() or "").strip()
+
+    def hash_search_item_has_icon(self, item) -> bool:
+        """Does this hash-search item card have its `{testId}-icon` element
+        (EliteaAI/EliteaUI@58d30f08 -- EntityIcon's root, always present,
+        never absent, per this AFS's live exploration)? Does NOT assert
+        icon TYPE differs by participant type -- not confirmed to hold on
+        this card's actual render path (AFS Extension-target discussion)."""
+        item_testid = item.get_attribute("data-testid")
+        return item.locator(self.HASH_SEARCH_ITEM_ICON.format(item_testid)).count() > 0
+
+    def hash_search_item_has_public_label(self, item) -> bool:
+        """Whether this hash-search item card carries its `{testId}-public-
+        label` element (EliteaAI/EliteaUI@58d30f08 -- Agent Hub / public-
+        project sourced item)."""
+        item_testid = item.get_attribute("data-testid")
+        return item.locator(self.HASH_SEARCH_ITEM_PUBLIC_LABEL.format(item_testid)).count() > 0
+
     def wait_for_hash_search_dropdown(self, timeout: int = 5000):
         """Wait for # mention search results panel to appear.
 

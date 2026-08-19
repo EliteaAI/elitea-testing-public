@@ -11,6 +11,7 @@
 - [Autonomous skill invocation needs a nudge](autonomous_skill_invocation_nudge.md) — attach alone won't do it
 - [dnd-kit drag needs a settle-check](dnd_kit_drag_gesture_needs_settle_check.md) — scroll-into-view AND elementFromPoint poll, not just one
 - [chat-remaining-w03 case snapshots never existed](chat_remaining_w03_case_snapshots_never_existed.md) — read the TMS file directly, not a novel-ground signal
+- [Dynamic testid suffix collides with prefix selector](dynamic_testid_suffix_collides_with_prefix_selector.md) — `${itemId}-suffix` matches item's own `^=` prefix locator; add `:not()`
 
 - [Project briefing](project_briefing.md) — your slot, the six-phase loop, the ≤2-rerun budget, the Run Report
 - [Verify feature branch first](verify_feature_branch_before_first_commit.md) — `git branch --show-current` before any commit; dispatch starts you ON the trunk (5×)
