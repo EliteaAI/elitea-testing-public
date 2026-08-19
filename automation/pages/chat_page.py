@@ -3189,26 +3189,37 @@ class ChatPage(BasePage):
     # Locator policy). Format with (project_id, id), exact mirror of
     # SLASH_MENTION_ITEM's own '{}_{}"' pattern above.
     HASH_SEARCH_ITEM = '[data-testid="chat-hash-search-item-{}_{}"]'
-    HASH_SEARCH_ITEM_PREFIX = '[data-testid^="chat-hash-search-item-"]'
-    # Scoped sub-selectors, read off an item card testid parent -- CONTENT
-    # EXTRACTION off an already-testid-identified element, not a free-
-    # floating handle used to LOCATE a new independently-addressable
-    # target. Not "resolve by CSS instead of testid" -- these tag/class
-    # selectors never stand alone, they only ever run inside
-    # `.HASH_SEARCH_ITEM`'s testid scope. Two established project
-    # precedents for this exact shape (no new testid needed for either):
-    #  1. `.claude/rules/ui-tests.md`/mui-patterns.md's sanctioned
-    #     `_extract_message_body()` -- `message_locator.locator('p')` /
-    #     `.locator('.MuiTypography-bodyMedium')` scoped inside an
-    #     already-identified message row, for TEXT reads.
-    #  2. `chat_page.py`'s ELITEA-2196 `get_attachment_chip_computed_style()`
-    #     -- "has_file_icon" structural presence check scoped inside the
-    #     testid'd `chat-attachment-chip-{i}` parent, for ICON presence.
-    # AFS Concrete Handles table marks both "none needed / n/a" with this
-    # same citation -- the analyst (fidelity/handle authority for this
-    # case) already made this call, not improvised here.
-    HASH_SEARCH_ITEM_SUBTITLE = 'p, span'
-    HASH_SEARCH_ITEM_ICON = 'img, svg, .MuiAvatar-root'
+    # The three per-card sub-testids below (added in NewParticipantCard.jsx,
+    # EliteaAI/EliteaUI@58d30f08, ELITEA-2206 fix round 1) are each DERIVED
+    # from the card's own testid as `{testId}-type` / `-icon` / `-public-
+    # label` -- so they ALSO start with the literal "chat-hash-search-item-"
+    # prefix. A bare `^="chat-hash-search-item-"` prefix selector therefore
+    # matches the nested sub-elements too (188 hits instead of ~6 cards on
+    # live verification, one card's -type/-icon/-public-label counted as 3
+    # extra "items"), corrupting `get_hash_search_items()`'s indices. The
+    # exclusion below is the fix -- still testid-exact-match only, no raw
+    # tag/class selector.
+    HASH_SEARCH_ITEM_PREFIX = (
+        '[data-testid^="chat-hash-search-item-"]'
+        ':not([data-testid$="-type"])'
+        ':not([data-testid$="-icon"])'
+        ':not([data-testid$="-public-label"])'
+    )
+    # Scoped sub-selectors, one per per-card real testid added to
+    # NewParticipantCard.jsx (EliteaAI/EliteaUI@58d30f08, ELITEA-2206 fix
+    # round 1) -- `{testId}-type` / `{testId}-icon` / `{testId}-public-label`,
+    # each derived at the JSX call site from the SAME caller-supplied `testId`
+    # prop that already backs `.HASH_SEARCH_ITEM`, never a hardcoded literal.
+    # Round-1 review correctly rejected the prior 'p, span' / 'img, svg,
+    # .MuiAvatar-root' raw tag/class selectors here: the cited "sanctioned
+    # precedent" (`_extract_message_body()`, ELITEA-2196 icon check) is
+    # exactly the shape `.agents/testing.md` § Locator policy disclaims for
+    # NEW code ("Existing raw handles ... are tracked tech debt ... Never
+    # cite neighbors to justify a new raw handle") -- missing testid is work
+    # to do (add-data-testid), never a rung-down. Testid-exact-match only.
+    HASH_SEARCH_ITEM_TYPE = '[data-testid="{}-type"]'
+    HASH_SEARCH_ITEM_ICON = '[data-testid="{}-icon"]'
+    HASH_SEARCH_ITEM_PUBLIC_LABEL = '[data-testid="{}-public-label"]'
 
     def get_hash_search_item(self, project_id: int, participant_id: int):
         """Return the Locator for a single '#' hash-search result card."""
@@ -3221,34 +3232,36 @@ class ChatPage(BasePage):
 
     def get_hash_search_item_subtitle(self, item) -> str:
         """Read a hash-search item card's type subtitle text ('agent' /
-        'pipeline' / 'MCP'), scoped inside the card's own testid parent
-        (content extraction, not element location -- see
-        HASH_SEARCH_ITEM_SUBTITLE comment above for the sanctioned
-        `_extract_message_body()`-style precedent).
+        'pipeline' / 'MCP'), via the card's own `{testId}-type` testid
+        (EliteaAI/EliteaUI@58d30f08) -- exact-match, so it is immune to the
+        sibling 'Public' label Typography that shadowed the prior unscoped
+        'p, span'.last read on Agent-Hub-sourced cards (both are
+        Typography children that can render as <p>/<span>; the raw
+        selector could not tell them apart).
 
-        NewParticipantCard.jsx's bodyContainer renders name then type as
-        the two Typography children in fixed DOM order -- '.last' reads the
-        type (second) Typography, not the name (first).
+        `item` is the card's own `.HASH_SEARCH_ITEM`-testid'd Locator, so
+        its own `data-testid` attribute IS the `{testId}` half of the
+        template -- read it, then scope the child testid off it.
         """
-        return (item.locator(self.HASH_SEARCH_ITEM_SUBTITLE).last.text_content() or "").strip()
+        item_testid = item.get_attribute("data-testid")
+        subtitle = item.locator(self.HASH_SEARCH_ITEM_TYPE.format(item_testid))
+        return (subtitle.text_content() or "").strip()
 
     def hash_search_item_has_icon(self, item) -> bool:
-        """Structural presence check, scoped inside the card's own testid
-        parent (see HASH_SEARCH_ITEM_ICON comment above for the sanctioned
-        ELITEA-2196 attachment-chip-icon precedent): does this hash-search
-        item card have an icon/avatar element (custom img or initials-avatar
-        fallback -- always present, never absent, per this AFS's live
-        exploration)? Does NOT assert icon TYPE differs by participant type
-        -- not confirmed to hold on this card's actual render path (AFS
-        Extension-target discussion)."""
-        return item.locator(self.HASH_SEARCH_ITEM_ICON).count() > 0
+        """Does this hash-search item card have its `{testId}-icon` element
+        (EliteaAI/EliteaUI@58d30f08 -- EntityIcon's root, always present,
+        never absent, per this AFS's live exploration)? Does NOT assert
+        icon TYPE differs by participant type -- not confirmed to hold on
+        this card's actual render path (AFS Extension-target discussion)."""
+        item_testid = item.get_attribute("data-testid")
+        return item.locator(self.HASH_SEARCH_ITEM_ICON.format(item_testid)).count() > 0
 
     def hash_search_item_has_public_label(self, item) -> bool:
-        """Whether this hash-search item card carries the literal 'Public'
-        chip (Agent Hub / public-project sourced item) -- a single-purpose,
-        always-same-text label read scoped inside the card's own testid
-        parent, same content-extraction idiom as the two methods above."""
-        return item.get_by_text("Public", exact=True).count() > 0
+        """Whether this hash-search item card carries its `{testId}-public-
+        label` element (EliteaAI/EliteaUI@58d30f08 -- Agent Hub / public-
+        project sourced item)."""
+        item_testid = item.get_attribute("data-testid")
+        return item.locator(self.HASH_SEARCH_ITEM_PUBLIC_LABEL.format(item_testid)).count() > 0
 
     def wait_for_hash_search_dropdown(self, timeout: int = 5000):
         """Wait for # mention search results panel to appear.
