@@ -2,7 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2207/2469, 2026-08-19
+a time; last confirmed by: qa-engineer analyst, ELITEA-2208/2470, 2026-08-19
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: qa-engineer analyst, ELITEA-2207/2469, 2026-08-19
 (supersedes nothing below — new section, other sections unchanged; previous
 confirmer: qa-engineer analyst, ELITEA-2206, 2026-08-19
 (supersedes nothing below — new section, other sections unchanged; previous
@@ -63,7 +65,95 @@ qa-engineer analyst, ELITEA-2111, 2026-08-15;
 previous confirmer: ELITEA-2105/2106/2107/2108/2109, 2026-08-15;
 ELITEA-2103/2104, 2026-08-14; ELITEA-2101/2102, 2026-08-14;
 ELITEA-2100, 2026-08-14; ELITEA-2099, 2026-08-14; ELITEA-2091, 2026-08-14;
-ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)))))).
+ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03))))))).
+
+## ELITEA-2208/2470 — `#` hash-search SELECT-A-PIPELINE adds it to
+## PARTICIPANTS + composer active-participant chip + pipeline responds,
+## family AFS, direct pipeline-flow sibling of ELITEA-2207/2469 (same
+## session), ZERO new testids, ZERO defects, TWO case-text clarifications
+## (mention is a composer CHIP not literal text; a dynamically-selected
+## ambient pipeline may respond with a genuine execution-error card)
+- **Same session as ELITEA-2207/2469 (this digest's section immediately below) —
+  reused ALL of its handles directly (`chat-switch-participant-button`,
+  `chat-participants-badge-{section}`, `chat-participant-row-{uniqueId}`,
+  `chat-participant-icon`, `chat-participant-remove-button`,
+  `delete-confirm-button`) plus ELITEA-2206's hash-search-item handles —
+  zero re-derivation needed for anything except the pipeline-specific
+  `uniqueId` prefix (below).**
+- **Pipeline participant `uniqueId` prefix is `pipeline_` (singular), NOT
+  `application_`** — confirmed via BOTH a live Playwright-generated locator
+  (`chat-participant-row-pipeline_8056_399`, from a real hover interaction)
+  AND source (`getChatParticipantUniqueId()` in
+  `EliteaUI/src/[fsd]/features/chat/participants/lib/helpers/participants.helpers.js`):
+  a participant's `entity_name` resolves to `ChatParticipantType.Pipelines`
+  (`'pipeline'`) whenever `entity_settings.agent_type === 'pipelines'`,
+  distinct from an agent's `'application'`. **`get_agent_participant_row()` /
+  `remove_agent_participant()` both hardcode the `application_` prefix and
+  cannot resolve a pipeline row as-is** — this family's implementation needs
+  an additive generalization (optional `entity_type` param, or a sibling
+  method), same shape as the `agent_project_id` param ELITEA-2207/2469 already
+  added to the same two methods for a different reason. Not yet built as of
+  this analysis pass — implementer's job, spec'd in the AFS's Automation Hints.
+- **Version-text shape DIFFERS from the agent family — do not reuse its
+  regex.** The agent family's popover row shows a "ver"/"vX.Y" auto-generated
+  string; a PIPELINE's row shows its own **version's literal NAME** instead
+  (e.g. "base" this session, both in the popover row text and in the
+  composer's own "version selector menu" button). Pipeline versions are
+  user-named (e.g. "base", "prod", "v2-experimental"), so
+  `re.match(r"v(er\b|\d)", ...)` would be a false constraint here — assert
+  only that a non-empty version-text remainder exists after the pipeline's
+  name.
+- **CASE-TEXT CLARIFICATION 1 (same pattern as ELITEA-2207/2469, reconfirmed
+  for pipelines) — the pipeline "mention" is NOT inserted as text into the
+  message input.** After clicking a pipeline card, `chat-message-input` stays
+  completely empty; the pipeline instead renders as a composer chip
+  (`chat-switch-participant-button`, accessible name "Switch Pipeline" this
+  session vs "Switch Agent" for the agent case — same physical testid, text
+  differs per active participant type).
+- **CASE-TEXT CLARIFICATION 2, pipeline-specific, NEW this session — a
+  dynamically-selected ambient pipeline may respond with a genuine
+  EXECUTION-ERROR card instead of a substantive answer, and that still
+  satisfies "the pipeline processes and responds."** Live-confirmed: selected
+  "AutoTest_Pipeline_probe_2020" (ambient DEV probe-test pipeline data),
+  sent "hello", received "Pipeline has no nodes to execute. Please add at
+  least one node to the pipeline before running it." — a REAL, complete,
+  non-transient response (Copy button present) genuinely produced by the
+  system (the pipeline genuinely attempted execution and correctly reported
+  its own empty-node precondition), attributed to the pipeline in the message
+  header, immediately followed by the PIPELINES badge still reading "1".
+  Not a substitution, not a defect. **Implementer implication**: assert
+  generically (message count grows by 2, response attributed to the selected
+  pipeline's name, badge persists) — never assert specific response TEXT,
+  since which ambient pipeline gets dynamically selected (and whether it has
+  configured nodes) is account-data-dependent.
+- **Zero new testids** — every handle needed already exists: pre-existing
+  `chat-switch-participant-button`/`chat-participants-badge-pipelines`
+  (section: 'pipelines', confirmed via `git grep` in
+  `CollapsedPerticapantsList.jsx`)/`chat-participant-row-{uniqueId}`/
+  `chat-participant-icon`/`chat-participant-remove-button` (all **on-`main`
+  or `automation/testids` ✓** per the same provenance ELITEA-2207/2469
+  already established) plus `chat-hash-search-item-{}_{}`/`{testId}-type`
+  from ELITEA-2206 — reused verbatim, zero pipeline-specific new testid.
+- **Account-data hazard reconfirmed a SECOND time this session, worse this
+  time**: bare `/chat` navigation left the composer blocked by a persistent
+  `MuiCircularProgress`/`MuiBox` overlay for 15+ seconds straight (>15 retry
+  cycles across two separate click attempts, never cleared) — same class as
+  ELITEA-2207/2469's own "8+ retry cycles" entry below, but this attempt
+  never resolved at all within the session's patience budget. Worked around
+  identically (navigate directly to an existing conversation id instead of
+  bare `/chat`); the shipped test's `conversation_id` fixture sidesteps this
+  by construction, same as the agent family.
+- **Cleanup performed live**: removed the added pipeline participant via
+  hover → "Remove pipeline" (note: accessible name is "Remove pipeline", NOT
+  "Remove agent" — same physical `chat-participant-remove-button` testid,
+  text is component-driven per entity type) → confirmed "Remove" in the
+  "Remove pipeline?" dialog (`delete-confirm-button`, same testid as the
+  agent family's "Remove agent?" dialog) — `chat-participants-badge-pipelines`
+  confirmed gone from the DOM afterward. Sent "hello" + the pipeline's
+  error-response remain in `/chat/9082`'s history (removing a participant
+  does not delete prior messages) — cosmetic only.
+- AFS (family, both TMS ids, same `afs_path`):
+  `test-specs/chat-interface/lextend_hash-search-select-pipeline-adds-participant-and-responds_ELITEA-2208.md`.
 
 ## ELITEA-2207/2469 — `#` hash-search SELECT-AN-AGENT adds it to PARTICIPANTS
 ## + composer active-participant chip + agent responds, family AFS, ZERO new
