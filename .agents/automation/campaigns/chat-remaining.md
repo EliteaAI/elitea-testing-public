@@ -327,4 +327,11 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- none — wave-13 closed, wave-14 not yet dispatched.
+- **wave-14** dispatching via `batch-build.workflow.mjs`. slug=`chat-remaining-w14`,
+  base=`origin/automation/base`, cases 2205,2206,2207,2208,2468,2469,2470 (7),
+  clusters `[2205,2468]` (slash-command MCP selection, near-dup titles),
+  `[2207,2469]` (hash-mention agent selection, near-dup titles), `[2208,2470]`
+  (hash-mention pipeline selection, near-dup titles); 2206 (mentions-dropdown
+  display) standalone. Case snapshots at
+  `.agents/automation/chat-remaining-w14/cases/`. All 7 confirmed still
+  `draft`/`manual` in the TMS at intake (no dedup hits).
