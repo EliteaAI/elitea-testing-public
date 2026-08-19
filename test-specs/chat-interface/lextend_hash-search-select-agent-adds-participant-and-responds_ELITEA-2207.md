@@ -191,6 +191,39 @@ chat-hash-search-item-{}_{}-type        testids:YES (EliteaAI/EliteaUI@58d30f08,
 No genuinely new testid is needed for this family — every handle either already exists on `main`, or was
 already added by the ELITEA-2206 unit earlier in this same batch/session.
 
+**Resolved/added during ELITEA-2207/2469 implementation:** two additional testids WERE needed after all —
+the claim above proved slightly optimistic once implementation actually needed to READ dynamic values
+(name, project id) rather than only assert presence:
+- `chat-hash-search-item-{}_{}-name` (`EliteaAI/EliteaUI@840e251d`) — `NewParticipantCard.jsx`'s name
+  Typography had no testid at all. Implementation needs the selected agent's exact display name
+  dynamically (never hardcode, per this AFS's own Automation Hints) to assert it in the composer chip
+  and the participants-popover row — unscoped `item.text_content()` concatenates name+type+optional
+  "Public" label with no separator, too brittle to parse. Same call-site-derived-from-`testId` mechanism
+  as the sibling `-type`/`-icon`/`-public-label` testids ELITEA-2206 already added to this exact component.
+- `chat-participant-icon` (`EliteaAI/EliteaUI@dd44ce90`) — `ParticipantItem.jsx`'s existing
+  `chat-participant-avatar` testid (`PARTICIPANT_AVATAR`) turned out to be CONDITIONAL: reading
+  `EntityIcon.jsx`, `imgTestId` only lands on the rendered `<img>` when the entity has a custom-uploaded
+  icon (`icon?.url`); an entity with no custom icon (e.g. this session's dynamically-resolved "AA" agent)
+  renders a generic `EntityTypeIcon` fallback with NO testid at all, so ELITEA-2469 Step 5's "row shows an
+  icon" assertion could not use `PARTICIPANT_AVATAR` reliably. Added `data-testid="chat-participant-icon"`
+  on `EntityIcon`'s own container `Box`, which renders UNCONDITIONALLY regardless of image-vs-fallback —
+  page-object constant `PARTICIPANT_ICON` + method `get_participant_icon()`. Same shared
+  `ParticipantItem.jsx` component backs both the EXPANDED PARTICIPANTS panel row and the collapsed
+  participants-popover row (`CollapsedParticipantsDropdown.jsx` imports it), so this fix benefits both
+  surfaces, not just this family's own popover-row assertion.
+
+**Also resolved: `application_{agent_id}_{project_id}` uses the AGENT's OWN home project, not the
+conversation's.** `get_agent_participant_row()`/`remove_agent_participant()`/`hover_agent_participant_row()`
+all hardcoded `settings.elitea_project_id` — correct only when the selected agent's home project equals
+the conversation's project. Live-confirmed this session: the '#' dropdown's first agent-type result is
+routinely an Agent-Hub ("Public") sourced agent whose `entity_meta.project_id` is the PUBLIC project (1
+in this env), not `settings.elitea_project_id` (399) — e.g. `chat-hash-search-item-1_6` ("AA") produces
+participant row `application_6_1`, NOT `application_6_399`. Added an optional `agent_project_id` parameter
+to `get_agent_participant_row()` (default unchanged = `settings.elitea_project_id`, so every existing
+caller keeps identical behavior — additive/backward-compatible, Hard Rule 3's escape clause; re-ran the
+one other existing caller, `test_add_agent_with_starters_and_send_via_starter`, PASSED after the change)
+so a caller can pass the item's own project id when the selected participant may be Agent-Hub-sourced.
+
 ## Network Behavior
 - Selecting a participant via `#` is client-side state (no network call at selection time) — same
   "no network call at keystroke/click time" pattern this digest already documents for the sibling

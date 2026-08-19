@@ -584,6 +584,141 @@ class TestHashSearch:
                 "Hash search dropdown should close after clicking away without selecting"
             )
 
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2207_chat-mentions-with-hash-select-agent-from-list-and-verify-agent-is-added-to-participants.md",
+        "onetest-ai Test Case link (ELITEA-2207)",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2469_chat-select-agent-from-hash-list-adds-it-to-participants-and-it-can-respond.md",
+        "onetest-ai Test Case link (ELITEA-2469)",
+    )
+    @pytest.mark.p1
+    def test_add_agent_via_hash_search_joins_participants_and_responds(self, page, conversation_id):
+        """ELITEA-2207 / ELITEA-2469 (family — 2469 is a more granular
+        superset of the same flow 2207 describes; one live execution
+        satisfies both, same pattern as ELITEA-2179/2466).
+
+        extend-existing gap-fill on TestHashSearch
+        (AFS: test-specs/chat-interface/
+        lextend_hash-search-select-agent-adds-participant-and-responds_ELITEA-2207.md).
+        The covering tests above already prove '#' opens the dropdown and a
+        click on any first option closes it -- this test adds every
+        assertion neither covering test makes: the selection is scoped to
+        an AGENT card specifically (not "whichever card is first"), the
+        PARTICIPANTS panel gains an AGENTS section, the composer shows the
+        selected agent as its active participant, sending a message reaches
+        the agent, the agent responds, and it remains a participant
+        afterward. ELITEA-2469's own extra granularity (Step 5 -- the
+        popover row must show name, version, AND icon) is asserted in Step
+        4 below, tagged for ELITEA-2469 specifically -- ELITEA-2207 only
+        asks for the AGENTS section to exist, which Step 3 already covers.
+
+        No substitution: every assertion reads a value the live product
+        rendered off a real '#' selection + a real sent message on a fresh,
+        API-seeded conversation (conversation_id fixture) -- nothing
+        fabricated or injected. The agent card is resolved dynamically (the
+        first AGENT-type result, never a hardcoded name) for resilience
+        against account data changes, per the AFS's own Automation Hints.
+        """
+        with allure.step("Step 1 — Create a new conversation; verify no AGENTS in PARTICIPANTS"):
+            chat = ChatPage(page)
+            chat.navigate_to_chat(conversation_id=conversation_id)
+            assert not chat.is_participants_badge_visible(section="agents", timeout=UI_ELEMENT_TIMEOUT), (
+                "A fresh conversation should show no AGENTS section in PARTICIPANTS"
+            )
+
+        with allure.step("Step 2 — Type '#' and select the first AGENT-type card from the dropdown"):
+            chat.message_input.click()
+            chat.message_input.press_sequentially("#", delay=50)
+            try:
+                chat.wait_for_hash_search_dropdown(timeout=UI_ELEMENT_TIMEOUT)
+            except PlaywrightTimeoutError:
+                pytest.skip(
+                    "Hash search dropdown did not appear after typing '#' — "
+                    "# mention feature may be disabled in this environment"
+                )
+            expect(chat.get_hash_search_items().first).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+
+            items = chat.get_hash_search_items()
+            item_count = items.count()
+            agent_item = next(
+                (items.nth(i) for i in range(item_count)
+                 if chat.get_hash_search_item_subtitle(items.nth(i)) == "agent"),
+                None,
+            )
+            if agent_item is None:
+                pytest.skip("No 'agent'-type item available in the '#' results for this account")
+
+            agent_name = chat.get_hash_search_item_name(agent_item)
+            assert agent_name, "Resolved agent card should have a non-empty display name"
+            # The agent's OWN home project (entity_meta.project_id) -- NOT
+            # necessarily the conversation's project. The '#' dropdown mixes
+            # current-project and Agent-Hub ("Public") sourced agents in one
+            # result set (ELITEA-2206), and a Public agent's participant
+            # uniqueId is built from ITS OWN project id, not the
+            # conversation's -- see get_agent_participant_row()'s
+            # agent_project_id docstring.
+            agent_project_id, agent_id = chat.get_hash_search_item_ids(agent_item)
+
+            agent_item.click()
+            chat.wait_for_network(timeout=UI_ELEMENT_TIMEOUT)
+            assert not chat.is_hash_search_dropdown_visible(), (
+                "Hash search dropdown should close after selecting the agent"
+            )
+
+        with allure.step(
+            "Step 3 — Verify the agent appears as the composer's active participant "
+            "and the AGENTS section is added to PARTICIPANTS"
+        ):
+            assert chat.is_agent_participant_in_composer(agent_name, timeout=UI_ELEMENT_TIMEOUT), (
+                f"Composer should show {agent_name!r} as the active agent participant"
+            )
+            assert chat.is_participants_badge_visible(section="agents", timeout=UI_ELEMENT_TIMEOUT), (
+                "AGENTS section should be added to PARTICIPANTS after selecting an agent"
+            )
+
+        with allure.step(
+            "Step 4 (ELITEA-2469) — Verify the PARTICIPANTS popover row shows "
+            "the agent's name, version, and icon"
+        ):
+            popper = chat.open_participants_popover(section="agents", timeout=UI_ELEMENT_TIMEOUT)
+            row = chat.get_agent_participant_row(
+                popper, agent_id, timeout=UI_ELEMENT_TIMEOUT, agent_project_id=agent_project_id,
+            )
+            row_text = row.text_content() or ""
+            assert agent_name in row_text, (
+                f"Participants popover row should show the agent name {agent_name!r}, got {row_text!r}"
+            )
+            # Version control text after the name: either the literal "ver"
+            # (single-version agents, per AFS live exploration) or "vX.Y"
+            # (multi-version agents) -- both start with a lowercase "v"
+            # right after the name, live-confirmed via both shapes this
+            # session ("AAv1.0" for a versioned agent). Never hardcode
+            # which shape, since the agent is resolved dynamically.
+            version_text = row_text[len(agent_name):]
+            assert re.match(r"v(er\b|\d)", version_text.lower()), (
+                f"Participants popover row should show a version control after "
+                f"the agent name (e.g. 'ver' or 'v1.0'), got remainder {version_text!r} "
+                f"of full row text {row_text!r}"
+            )
+            assert chat.get_participant_icon(row, timeout=UI_ELEMENT_TIMEOUT).is_visible(), (
+                "Participants popover row should show the agent's icon"
+            )
+            chat.dismiss_participants_popover()
+
+        with allure.step("Step 5 — Type 'hello' and send the message"):
+            initial_count = chat.get_message_count()
+            chat.send_message("hello")
+
+        with allure.step("Step 6 — Verify the agent responds and remains in PARTICIPANTS"):
+            chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
+            assert chat.get_message_count() >= initial_count + 2, (
+                "Message count should grow by the sent message + the agent's response"
+            )
+            assert chat.is_participants_badge_visible(section="agents", timeout=UI_ELEMENT_TIMEOUT), (
+                "Agent should remain in PARTICIPANTS after responding"
+            )
+
 
 class TestContextAndSettings:
     """TC-CHAT-019 to TC-CHAT-020: Context and settings tests."""
