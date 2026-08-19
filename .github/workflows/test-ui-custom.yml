@@ -736,9 +736,9 @@ jobs:
                           status, msg = "passed", ""
 
                       # Capture reruns from pytest-rerunfailures
-                      reruns = tc.findall("rerun")
-                      rerun_count = len(reruns)
-                      rerun_messages = [r.get("message", "") for r in reruns]
+                      rerun_elements = tc.findall("rerun")
+                      rerun_count = len(rerun_elements)
+                      rerun_messages = [r.get("message", "") for r in rerun_elements]
 
                       total += 1
                       passed += status == "passed"
