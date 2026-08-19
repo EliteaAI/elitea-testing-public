@@ -8,12 +8,14 @@ background and light (white) filename text.
 
 Spec: test-specs/chat-interface/l3_attach-files-multiple-chips-display_ELITEA-2196.md
 
-Case-text clarification (AFS § Coverage Map, step 2): the case's own "files
-begin uploading" wording does not describe a live, observable event —
-attaching is entirely client-side (confirmed live, no network request fires
-at selection time, same finding already documented by the merged
-ELITEA-2197 AFS). The real, self-consistent observable — the chips render
-immediately — is what this test asserts instead.
+Case-text clarification (AFS § Coverage Map, step 2; filed as issue #1589
+— a dedicated ticket for THIS case's own mismatch, distinct from #1122
+which covers the same finding for the sibling ELITEA-2197 case): the
+case's own "files begin uploading" wording does not describe a live,
+observable event — attaching is entirely client-side (confirmed live, no
+network request fires at selection time, same finding already documented
+by the merged ELITEA-2197 AFS). The real, self-consistent observable — the
+chips render immediately — is what this test asserts instead.
 
 Testid gap filled this implementation (``add-data-testid``, pushed to
 ``automation/testids``, EliteaAI/EliteaUI@7f29c3dc):
