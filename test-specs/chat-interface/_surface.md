@@ -2,7 +2,9 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: test-automation-engineer (combined analyst+
+a time; last confirmed by: qa-engineer analyst, ELITEA-2089, 2026-08-18
+(supersedes nothing below — new section, other sections unchanged; previous
+confirmer: test-automation-engineer (combined analyst+
 implementer), ELITEA-2179/2466, 2026-08-15 (supersedes nothing below — new
 section, other sections unchanged; previous confirmer: qa-engineer analyst,
 ELITEA-2192/2193/2194,
@@ -2485,6 +2487,58 @@ Toolkits, MCPs (no "Invite Users" — Team-project-only, per the existing
   folder COUNT on project 399 must still seed+scope its own data, never
   count on the pre-existing set staying stable.
 
+## Toolkit-from-chat canvas — ELITEA-2080-2083 (2026-08-17)
+
+The one remaining unexplored sibling of the "Create New X" canvas family.
+`ToolkitEditor.jsx` wraps the same `BaseEditor`/`EditorHeader` chrome used
+by Agent/Pipeline/MCP canvases.
+
+- **Entry point** (`toolkits-menuitem` on-main ✓, `toolkits-create-new-button`
+  on-main ✓): same `PlusChatButton.jsx`/`PlusChatSubmenu.jsx` template pattern
+  as Pipeline and MCP canvases — `sectionKey="toolkits"`, static config line 47.
+- **Type picker** confirms live: GitLab type card resolves to
+  `toolkit-type-card-gitlab` (confirmed from the MCP analysis pattern —
+  `toolkit-type-card-{type}` naming). Category "Code Repositories" rendered
+  first in the picker. Selecting a type opens the configuration canvas.
+- **Canvas chrome testids — three were MISSING, added in this session:**
+  `ToolkitEditor.jsx` previously passed `isMcpTestIdScope ? 'mcp-canvas-*' : undefined`
+  for all three chrome testids — the `undefined` side left the non-MCP Toolkit
+  canvas completely testid-free on chrome elements. Added in commit
+  EliteaAI/EliteaUI@441333e1 on `automation/testids` (2026-08-17, ELITEA-2083):
+  - `toolkit-canvas-title` (title heading, line 250)
+  - `toolkit-canvas-close-button` (close button, line 251)
+  - `toolkit-canvas-create-button` (Create button via `CreateToolkitButton.jsx`, line 259)
+  These follow the same `isMcpTestIdScope ? 'mcp-canvas-*' : 'toolkit-canvas-*'`
+  conditional pattern. Human promotes to `main` from `automation/testids`.
+- **Canvas title observable (step 1 of ELITEA-2083)**: the heading level 6
+  (`data-testid="toolkit-canvas-title"`) reflects the toolkit name in the form
+  — confirmed live in exploration session snapshot (text "test1" appeared in
+  heading immediately when name was typed). The heading persists after save.
+- **Close button (step 2 of ELITEA-2083)**: with a SAVED toolkit (no unsaved
+  changes), clicking `toolkit-canvas-close-button` closes the canvas
+  DIRECTLY without a confirmation dialog. The discard confirmation dialog
+  ("Are you sure you want to discard changes?") only appears when there are
+  unsaved changes — confirmed live by observing the dialog when discarding
+  an unsaved form.
+- **PARTICIPANTS panel (steps 3-5 of ELITEA-2083)**: all handles confirmed
+  via source on `origin/main` (dynamic templates):
+  - `chat-participants-badge-toolkits` — `CollapsedPerticapantsList.jsx` line 223
+    template `chat-participants-badge-${entity.section}` where `section='toolkits'`
+    (line 55). On-main ✓.
+  - `chat-participants-badge-icon-toolkits` — same file line 235 template
+    `chat-participants-badge-icon-${entity.section}`. On-main ✓.
+  - These work identically to the already-live-confirmed MCP participant handles
+    (`chat-participants-badge-mcp` / `chat-participants-badge-icon-mcp`).
+- **Form fields inside the canvas**: same `ToolkitForm` / `ToolkitTypeSelector`
+  as standalone toolkit creation — `toolkit-form-name-input` and type-specific
+  fields. For GitHub toolkit: credential combobox (no consistent testid found —
+  MUI select, use label-based disambiguation); repository field via
+  `toolkit-field-repository-input` (confirmed from live DOM, `data-testid`
+  present on the input). `github_credential` fixture provides the credential
+  for automated tests.
+- **Pre-existing console noise**: issue #656 (CategorySection unique-key-prop
+  warning) fires on every type-picker render. Filter it alongside other
+  known-noise patterns.
 ## ELITEA-2462 — already-covered by ELITEA-2152 (word-for-word duplicate case text)
 
 - w09 analysis (2026-08-15): ELITEA-2462 ("Chat – Pin a folder and verify it appears at the
@@ -3140,3 +3194,56 @@ analyst+implementer session):**
   real agent name (confirmed live — reproducible). Use a web-first
   `expect(row).to_contain_text(agent_name, timeout=...)` instead, which
   retries until the real content lands.
+
+## Edit owned agent via chat canvas (ELITEA-2089, confirmed 2026-08-18)
+
+Canvas edit flow for an **owned** agent participant. Distinct from ELITEA-2075
+(read-only / public agent canvas) and ELITEA-2166 (create-new-agent canvas).
+
+### How the edit canvas opens
+
+1. Click `chat-participants-badge-button` (participants badge).
+2. Hover over the participant row (`chat-participant-row-application_{agent_id}_{project_id}` —
+   dynamic testid, hover to reveal actions).
+3. Click `chat-participant-edit-view-button` (pencil icon labelled "Edit agent").
+4. URL changes to `/chat?edited_participant_id={agent_id}`.
+5. Edit canvas slides in on the right.
+
+### "Editing..." chip state
+
+- `chat-participant-settings-button` (button in the composer chip) shows the text
+  `"Editing..."` when an owned agent's canvas is open, `"Viewing..."` for public agents.
+- Source: `AgentEditorPanel.jsx:291` — `{canEdit ? 'Editing...' : 'Viewing...'}`.
+- Assert via `expect(...).to_contain_text("Editing...")`.
+
+### Canvas chrome testids (all on main)
+
+| Element | testid |
+|---|---|
+| Close (X) | `agent-canvas-close-button` |
+| Title | `agent-canvas-title` |
+| Subtitle (version) | `agent-canvas-subtitle` |
+| Save | `agent-save-button` |
+| Discard | **MISSING — `agent-discard-button` needs adding** |
+
+### Welcome message field
+
+- `agent-welcome-message-input` (on main ✓) — the textarea.
+- After typing, `agent-save-button` and `agent-discard-button` become enabled.
+- Save fires `PUT /api/v2/elitea_core/application/prompt_lib/{project_id}/{agent_id}` → 201.
+- Success toast: `toast-message` contains `"The agent has been updated"`.
+
+### Known secondary 404 after Save
+
+After a successful save, a second call fires:
+`PUT entity_settings/prompt_lib/{project_id}/undefined/{agent_id}` → 404
+
+The `undefined` in the path is a missing parameter in AgentEditor.jsx (likely `folder_id`
+or `entity_type_id`). Does NOT affect the main save or the test outcome. Exclude
+`entity_settings` from console-error assertions in tests of this flow.
+
+### Sync verification path
+
+After saving and closing the canvas, navigate to `/agents/all/{agent_id}?viewMode=owner`.
+The Welcome message field (`agent-welcome-message-input`) shows the saved value — change
+is synchronised immediately.

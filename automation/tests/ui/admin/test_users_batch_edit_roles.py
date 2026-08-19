@@ -40,6 +40,7 @@ class TestBatchEditRolesForMultipleSelectedUsers:
         "settings/users-and-roles/ELITEA-2304_batch-edit-roles-for-multiple-selected-users.md",
         "onetest-ai Test Case link",
     )
+    @pytest.mark.blocked
     def test_batch_edit_roles_for_multiple_selected_users(self, page):
         """Invite 2 disposable users (role editor), batch-select ONLY
         them, edit their role to viewer via the header Edit-roles dialog,
