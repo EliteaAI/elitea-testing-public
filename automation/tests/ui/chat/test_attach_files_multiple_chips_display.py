@@ -36,6 +36,20 @@ New page-object surface (``ChatPage``, additive):
 
 Known defects: none for this case.
 
+ELITEA-2198 (``extend-existing`` onto this module — AFS
+test-specs/chat-interface/lextend_attach-files-remove-individual-files-sequential_ELITEA-2198.md)
+adds a SIBLING test below,
+``test_attach_files_then_remove_two_individually_sequentially``. It covers the
+gap this module's original test never exercises: a SECOND sequential
+individual removal (click X on chip 0, then click X on the next chip 0 after
+renumbering), verifying removal keeps decrementing/renumbering correctly
+across repeated clicks — not just once — and that the exact two SURVIVING
+filenames (not just a count) are the ones never clicked. Zero new testids —
+reuses ``CHAT_ATTACHMENT_CHIP_REMOVE`` / ``remove_attachment_chip()`` /
+``wait_for_attachment_chip_count()`` verbatim, all added by this module's
+original ELITEA-2196 implementation. This module's original test and its
+fixture usage are UNCHANGED.
+
 Usage:
     cd automation
     pytest tests/ui/chat/test_attach_files_multiple_chips_display.py -v
@@ -212,6 +226,84 @@ class TestAttachFilesMultipleChipsDisplay:
                     f"Chip {i} filename text should be light (luminance > "
                     f"{LIGHT_LUMINANCE_MIN}), got {name_luminance:.3f} (color={facts['name_color']!r})"
                 )
+
+        with allure.step("Side-channel check — no console/JS errors"):
+            assert not console_errors and not page_errors, (
+                f"Unexpected console errors: {[m.text for m in console_errors]}; "
+                f"page errors: {page_errors}"
+            )
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2198_chat-attachment-removal-remove-individual-files-by-clicking-x-button.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p3
+    def test_attach_files_then_remove_two_individually_sequentially(self, page, conversation_id, tmp_path):
+        """ELITEA-2198: attach 4 files, remove chip 0, then remove a SECOND
+        (different) chip — verify individual removal keeps working correctly
+        across two consecutive clicks, not just the first one, and that the
+        exact two surviving filenames (never a bare count) are the ones never
+        clicked (extend-existing onto this module — see module docstring)."""
+        console_errors = []
+        page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
+        page_errors = []
+        page.on("pageerror", lambda exc: page_errors.append(str(exc)))
+
+        page.set_viewport_size({"width": VIEWPORT_WIDTH, "height": VIEWPORT_HEIGHT})
+
+        file_paths = []
+        file_names = []
+        for i in range(1, FILE_COUNT + 1):
+            name = f"testfile_seqrm_{i}.txt"
+            f = tmp_path / name
+            f.write_text(f"Content of {name} for ELITEA-2198.")
+            file_paths.append(str(f))
+            file_names.append(name)
+
+        chat = ChatPage(page)
+
+        with allure.step("Step 1 — Attach 4 files; verify all 4 chips shown"):
+            chat.navigate_to_chat(conversation_id=conversation_id)
+            chat.attach_files_via_menu(file_paths, timeout=UI_ELEMENT_TIMEOUT)
+            chat.close_plus_menu_popper()
+            chat.wait_for_attachment_chip_count(FILE_COUNT)
+            assert chat.get_visible_attachment_names() == file_names, (
+                f"Expected all 4 chips {file_names!r} visible after attaching, "
+                f"got {chat.get_visible_attachment_names()!r}"
+            )
+
+        with allure.step("Step 2 — Click X on the first file chip; verify it is removed and 3 remain"):
+            chat.remove_attachment_chip(0)
+            chat.wait_for_attachment_chip_count(FILE_COUNT - 1)
+            remaining_after_first = chat.get_visible_attachment_names()
+            assert remaining_after_first == file_names[1:], (
+                f"Expected {file_names[1:]!r} after removing the first chip, got {remaining_after_first!r}"
+            )
+
+        with allure.step(
+            "Step 3 — Click X on another (different) chip; verify that file is "
+            "removed and exactly 2 remain (the gap ELITEA-2196's own test never "
+            "exercises: a SECOND sequential individual removal)"
+        ):
+            chat.remove_attachment_chip(0)  # chips renumbered after step 2; index 0 is now testfile_seqrm_2
+            chat.wait_for_attachment_chip_count(FILE_COUNT - 2)
+            remaining_after_second = chat.get_visible_attachment_names()
+            assert remaining_after_second == file_names[2:], (
+                f"Expected {file_names[2:]!r} after removing a second chip, got {remaining_after_second!r}"
+            )
+
+        with allure.step(
+            "Step 4 — Verify the remaining files are still shown correctly: 2 "
+            "chips visible, each with its own filename and a functioning X button"
+        ):
+            assert chat.get_visible_attachment_names() == file_names[2:], (
+                "Remaining chips should still show the exact 2 files that were "
+                "never clicked, in original order"
+            )
+            for i in range(FILE_COUNT - 2):
+                remove_button = chat.get_attachment_chip_remove_button(i)
+                assert remove_button.count() == 1, f"Remaining chip {i} should have exactly one X (remove) button"
+                assert remove_button.is_visible(), f"Remaining chip {i}'s X (remove) button should be visible"
 
         with allure.step("Side-channel check — no console/JS errors"):
             assert not console_errors and not page_errors, (
