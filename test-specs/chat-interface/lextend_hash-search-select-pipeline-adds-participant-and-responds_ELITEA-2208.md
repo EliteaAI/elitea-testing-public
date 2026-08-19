@@ -151,7 +151,7 @@ select click. Classified `extend-existing`, not `ready-for-automation`.
 | Pipeline name appears "in message field" with # mention | mention visible | **GAP + Clarification** | `is_agent_participant_in_composer(pipeline_name)` on `chat-switch-participant-button` (accessible name "Switch Pipeline"; NOT literal text in `chat-message-input` — see Clarification) | **extend — gap assertion, case-text drift noted** |
 | PIPELINES section added to PARTICIPANTS | PIPELINES section + row visible | **GAP** | `is_participants_badge_visible(section="pipelines")` → True; `open_participants_popover(section="pipelines")` shows a row | **extend — gap assertion** |
 | (ELITEA-2470 only) row shows name, version, icon | all 3 sub-elements present | **GAP** | scoped read inside the popover's participant row (name text, version-name text, `chat-participant-icon` element) | **extend — gap assertion, ELITEA-2470 only** |
-| Type a message and send | message sent to the pipeline | **GAP** | `send_message("hello")`; header shows "to \<Pipeline Name\>" attribution | **extend — gap assertion** |
+| Type a message and send | message sent to the pipeline | **GAP** | `send_message("hello")` — sent-to-the-pipeline is established by construction (the pipeline is this conversation's only participant after Step 2's selection, per the `conversation_id` fixture's guaranteed-zero-participants start) and confirmed generically by the next row's message-count growth; no testid exists on the AI/pipeline response header to assert a literal "to \<Pipeline Name\>" attribution string (fix-round correction — see Axis 2, Clarification 3) | **extend — gap assertion** |
 | Pipeline processes and responds | response rendered (real or a genuine execution-error card — see Clarification) | **GAP** | `wait_for_ai_response(initial_count)` — Copy button + non-transient content | **extend — gap assertion** |
 | Pipeline remains in PARTICIPANTS after response | PIPELINES badge still shows the pipeline | **GAP** | `is_participants_badge_visible(section="pipelines")` still True post-response | **extend — gap assertion** |
 
@@ -194,6 +194,24 @@ Disposition key: `asserted` / `already-covered` / `clarification` / `blocked` / 
   the implementer must NOT reuse ELITEA-2207/2469's `re.match(r"v(er\b|\d)", ...)` regex for the pipeline
   row; assert only that a non-empty version-text remainder exists after the pipeline's name, not that it
   matches a "v..." shape.
+- **Clarification 3, not a defect (fix-round correction, PR #1600 review)**: the "Type a message and send"
+  Coverage Map row originally claimed the shipped test would assert "header shows 'to \<Pipeline Name\>'
+  attribution" — copy-pasted verbatim from the sibling ELITEA-2207/2469 AFS's own row for the same shape
+  (which itself never got implemented in that AFS's covering test either — confirmed by reading
+  `test_add_agent_via_hash_search_joins_participants_and_responds`, PR #1599, already merged). Checked
+  `EliteaUI/src/[fsd]/features/chat/ui/chat-box/ApplicationAnswer.jsx` directly (fresh `git fetch origin`,
+  both `main` and `automation/testids`): the response header's participant-name Typography and its "\<name\>
+  to Message" text (visible in Axis 2, Clarification 2's screenshot) carry **no testid** — only
+  `chat-message-item` (the whole-item container), `chat-answer-content`, and the four hover-action buttons
+  do. Per this project's testid-only locator policy, there is no compliant way to assert that string today.
+  Neither case's own text asks for it (ELITEA-2208 Step 3 / ELITEA-2470 Step 7 both say only "pipeline
+  processes and responds; remains in PARTICIPANTS") — and because the `conversation_id` fixture guarantees
+  the pipeline is the conversation's ONLY participant, the message-count-grew-by-2 + PIPELINES-badge-persists
+  assertions the shipped test already makes are sufficient to establish it was that pipeline that responded.
+  Corrected the Coverage Map row and Automation Hints wording to match what is actually (and honestly)
+  asserted, rather than filing a `testid needed` request for a string neither case asks to see — a genuinely
+  new testid on a shared response-header component is out of scope for this fix and would need its own
+  case-driven justification if ever required.
 - **Account-data hazard, precondition-relevant**: bare `/chat` navigation on this account hit a persistent
   loading-spinner overlay blocking the composer for >15s (65+ sidebar folders, same artifact the
   ELITEA-2207/2469 AFS already flagged) — worked around via an existing-conversation URL for live
@@ -319,8 +337,12 @@ None.
 - For the send+response step: capture `initial_count = get_message_count()` before `send_message("hello")`,
   then `wait_for_ai_response(initial_count)` — standard pattern already used by every other message-send
   test in this file. **Do not assert on the response's specific text** (Axis 2, Clarification 2) — assert
-  only that the message count grew by 2 (sent + response) and that the response list item is attributed to
-  the selected pipeline's name, exactly as the agent family's own Step 6 does generically.
+  only that the message count grew by 2 (sent + response) and that the PIPELINES badge still shows the
+  pipeline afterward, exactly as the agent family's own Step 6 does. **Do NOT add a separate "response
+  attributed to \<Pipeline Name\>" assertion** (Axis 2, Clarification 3, fix-round correction): the
+  response header's participant-name text carries no testid in `ApplicationAnswer.jsx` (checked live,
+  neither `main` nor `automation/testids`), neither case asks for it, and the `conversation_id` fixture's
+  single-participant guarantee makes message-count growth + badge persistence sufficient on its own.
 - Cleanup: whichever removal method the implementer builds (see the page-object generalization bullet
   above), call it in a `finally`/fixture-teardown style if the test seeds via UI-selection rather than an
   API precondition — optional, not a correctness requirement, since the `conversation_id` fixture deletes
