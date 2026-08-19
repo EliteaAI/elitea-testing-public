@@ -79,3 +79,4 @@
 - [Hash-search Agent-Hub item's own project id](hash_search_agent_hub_item_uses_own_project_id_not_conversation.md) — `application_{id}_{project}` uses the AGENT's home project, not the conversation's
 - [EntityIcon avatar testid is conditional](entity_icon_avatar_testid_conditional_on_custom_icon.md) — `chat-participant-avatar` only exists for a custom icon image; use `chat-participant-icon` for any-icon
 - [Transient-message whole-string prefix hides real content](transient_message_whole_string_prefix_check_hides_real_content.md) — "Thought for X" + real content same message → check `_is_transient_message` per-line, not whole-string
+- [MUI Portal dialog + shared testid reads wrong node](mui_portal_dialog_shared_testid_first_reads_wrong_node.md) — `.first` on a testid shared with an always-mounted panel behind a Portal dialog reads the background node

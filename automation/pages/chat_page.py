@@ -398,6 +398,21 @@ class ChatPage(BasePage):
         ),
     )
 
+    context_modal_summarization_toggle = LocatorDescriptor(
+        testid="context-modal-summarization-toggle",
+        description=(
+            "'Enable automatic summarization' Switch inside the 'Edit "
+            "context settings' dialog (ContextStrategySummarization.jsx) — "
+            "mirrors the global Settings > Memory Automatic Summarization "
+            "toggle's checked state. Testid added for ELITEA-2217 "
+            "(EliteaAI/EliteaUI@69921d7c) — this switch previously carried "
+            "no data-testid at all. Same shape as "
+            "context_modal_management_toggle: the data-testid lands on the "
+            "MUI SwitchBase root span, not the nested <input> — read the "
+            "'Mui-checked' class, don't call is_checked()."
+        ),
+    )
+
     context_modal_stat_tokens = LocatorDescriptor(
         testid="context-modal-stat-tokens",
         description=(
@@ -428,6 +443,29 @@ class ChatPage(BasePage):
             "context-modal-stat-tokens, which covers only the '0 / 6 400' "
             "value text. Testid added for ELITEA-2216 (previously no handle "
             "existed on this sibling Typography)."
+        ),
+    )
+
+    context_modal_stat_summaries = LocatorDescriptor(
+        testid="context-modal-stat-summaries",
+        description=(
+            "Summaries stat value inside the 'Edit context settings' dialog "
+            "body (ContextBudgetStats.jsx's ContextStats component, rendered "
+            "via the shared SummaryDetailsButton.jsx). Distinct handle from "
+            "context-budget-summaries-count (sidebar panel) — that testid was "
+            "previously hardcoded inside SummaryDetailsButton and rendered "
+            "IDENTICALLY in both the always-mounted sidebar panel AND this "
+            "dialog (a MUI Dialog with no disablePortal, so its content "
+            "mounts via React Portal to document.body AFTER the sidebar's "
+            "node), meaning a `.first` read against it from inside the open "
+            "dialog resolved to the sidebar's copy, not the dialog's own — "
+            "not a reliable read of what the modal itself displays. Fixed by "
+            "adding an optional `testId` prop to SummaryDetailsButton "
+            "(default preserves the sidebar's existing "
+            "context-budget-summaries-count testid unchanged) and wiring "
+            "this modal-unique value at the ContextBudgetStats.jsx call "
+            "site. Testid added for ELITEA-2217 fix-round-1 "
+            "(EliteaAI/EliteaUI@d1b3e8f0)."
         ),
     )
 
@@ -5873,6 +5911,65 @@ class ChatPage(BasePage):
         self.wait_for_network()
         logger.info("Context strategy thresholds saved")
 
+    def set_max_context_tokens_in_modal(self, max_context_tokens: int) -> None:
+        """Set ONLY Max Context Tokens in the already-open 'Edit context
+        settings' dialog, then Save — skipping Target Summary Tokens and
+        Preserve Recent Messages entirely.
+
+        Sibling of :meth:`set_context_strategy_thresholds`, needed for
+        ELITEA-2217 (Automatic Summarization globally OFF): with
+        summarization disabled, ``context_modal_target_summary_tokens_input``
+        is DISABLED (``disabled={!isEnabled || !formData.enable_summarization}``,
+        ``ContextStrategySummarization.jsx``) — a Playwright
+        ``press_sequentially()`` call against a disabled input raises
+        "element is not enabled". :meth:`set_context_strategy_thresholds`
+        unconditionally fills that field, so it cannot be reused as-is when
+        Automatic Summarization is off; do NOT modify that method for this
+        case (it has other callers — ELITEA-2218 — that DO need all three
+        fields set while summarization is on).
+
+        Requires ``edit_context_settings()`` to have been called first
+        (dialog open). Uses click() + select_text() + Backspace +
+        press_sequentially() (never fill()) — same MUI/React onChange
+        requirement as the sibling method.
+
+        Args:
+            max_context_tokens: New Max Context Tokens value (project MIN
+                1000). Per issue #1605 (confirmed live, ELITEA-2217 AFS),
+                when Automatic Summarization is globally OFF the dialog's
+                cross-field validation still runs against the frozen
+                (disabled) Target Summary Tokens value — pass a value ≥ the
+                account's current Target Summary Tokens
+                (``UserProfileSettingsPage.get_target_summary_tokens()``) or
+                Save stays permanently disabled.
+        """
+        logger.info("Setting Max Context Tokens (only) to %d", max_context_tokens)
+        self.context_modal_max_tokens_input.click()
+        self.context_modal_max_tokens_input.select_text()
+        self.context_modal_max_tokens_input.press("Backspace")
+        self.context_modal_max_tokens_input.press_sequentially(str(max_context_tokens), delay=30)
+
+        self.context_modal_save_button.click()
+        self.wait_for_network()
+        logger.info("Max Context Tokens saved")
+
+    def is_context_modal_summarization_enabled(self) -> bool:
+        """Return True if the 'Edit context settings' dialog's own 'Enable
+        automatic summarization' toggle is checked.
+
+        Requires ``edit_context_settings()`` to have been called first
+        (dialog open). Same shape as
+        ``is_context_modal_management_enabled()`` — the ``data-testid``
+        lands on the MUI SwitchBase root span, not the nested ``<input>``,
+        so ``is_checked()`` raises "Not a checkbox or radio button" — read
+        the ``Mui-checked`` class instead. ELITEA-2217
+        (EliteaAI/EliteaUI@69921d7c).
+        """
+        class_attr = self.context_modal_summarization_toggle.get_attribute("class") or ""
+        checked = "Mui-checked" in class_attr
+        logger.info("Context modal summarization toggle enabled: %s", checked)
+        return checked
+
     def close_context_settings_dialog(self, timeout: int = 5000) -> None:
         """Close the 'Edit context settings' dialog via Escape.
 
@@ -5935,6 +6032,26 @@ class ChatPage(BasePage):
         the dialog's OWN ``context-modal-stat-percentage`` testid. ELITEA-2216.
         """
         text = self.context_modal_stat_percentage.first.text_content() or ""
+        return text.strip()
+
+    def get_context_modal_stat_summaries_text(self) -> str:
+        """Return the raw Summaries stat text from the 'Edit context settings'
+        dialog body (e.g. ``"0"``).
+
+        Requires ``edit_context_settings()`` to have been called first
+        (dialog open). Distinct handle from
+        ``get_context_budget_summaries_count()`` (sidebar panel) — this reads
+        the dialog's OWN ``context-modal-stat-summaries`` testid rather than
+        the shared ``context-budget-summaries-count`` testid, which (per
+        source read of StyledDialog/ContextStrategyModal/SummaryDetailsButton/
+        ContextBudgetStatsDisplay/ContextBudgetStats) is rendered identically
+        by the always-mounted sidebar panel AND, before this fix, by the
+        dialog's own copy — a Portal-rendered MUI Dialog mounts after the
+        sidebar in DOM order, so a ``.first`` read against the shared testid
+        resolved to the sidebar's node, not the dialog's. ELITEA-2217
+        fix-round-1 (EliteaAI/EliteaUI@d1b3e8f0).
+        """
+        text = self.context_modal_stat_summaries.first.text_content() or ""
         return text.strip()
 
     # ------------------------------------------------------------------
