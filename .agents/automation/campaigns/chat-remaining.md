@@ -350,3 +350,15 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   `chat-hash-search-item-{project_id}_{id}` (EliteaAI/EliteaUI@7fe617e8),
   name/type/icon sub-testids (@840e251d + @58d30f08), `chat-participant-icon`
   (@dd44ce90). TMS back-written (`c04a2f8`): 7 cases `ready`/`automated`.
+
+## In-flight run state (context-fragile — recorded immediately per doctrine)
+
+- **wave-15** dispatching via `batch-build.workflow.mjs`. slug=`chat-remaining-w15`,
+  base=`origin/automation/base`, cases 2209,2210,2216,2217,2471,2472,2473,2474
+  (8), cluster `[2471,2472,2473]` (HITL authorize/block/block-with-comment —
+  same interaction flow, 3 outcome variants, natural family); 2209, 2210, 2216,
+  2217, 2474 standalone (2474 "complete flow from direct toolkit call in
+  thinking step" may turn out family-related to 2209 during live analysis —
+  not pre-clustered on title alone, left for the analyst to determine). Case
+  snapshots at `.agents/automation/chat-remaining-w15/cases/`. All 8 confirmed
+  still `draft`/`manual` in the TMS at intake (no dedup hits).
