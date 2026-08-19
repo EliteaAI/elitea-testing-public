@@ -334,4 +334,5 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   (hash-mention pipeline selection, near-dup titles); 2206 (mentions-dropdown
   display) standalone. Case snapshots at
   `.agents/automation/chat-remaining-w14/cases/`. All 7 confirmed still
-  `draft`/`manual` in the TMS at intake (no dedup hits).
+  `draft`/`manual` in the TMS at intake (no dedup hits). Task ID `waevrn93w`,
+  Run ID `wf_6595674e-cc3`.
