@@ -142,6 +142,30 @@ ELITEA-2458, 2026-08-07; ELITEA-2086/2087/2088, 2026-08-03)))))).
 - AFS (family, both TMS ids, same `afs_path`):
   `test-specs/chat-interface/lextend_hash-search-select-agent-adds-participant-and-responds_ELITEA-2207.md`.
 
+**Resolved/added during ELITEA-2207/2469 implementation (test-automation-engineer):** the "Zero new
+testids" claim above held only for the ONE agent this exploration session happened to select
+("Agent testing skills", a current-project agent with a custom icon). The shipped test resolves the
+agent DYNAMICALLY (first agent-type card, per this AFS's own resilience requirement) instead of a fixed
+name, and the account's first agent-type `#` result is routinely Agent-Hub ("Public") sourced with NO
+custom icon — surfacing two gaps this exploration's one lucky pick didn't hit:
+- `chat-hash-search-item-{}_{}-name` (`EliteaAI/EliteaUI@840e251d`) — the name Typography in
+  `NewParticipantCard.jsx` had no testid; needed to read the dynamically-selected agent's exact name.
+- `chat-participant-icon` (`EliteaAI/EliteaUI@dd44ce90`) — the pre-existing `chat-participant-avatar`
+  testid is CONDITIONAL on the entity having a custom-uploaded icon (`EntityIcon.jsx`'s `imgTestId` only
+  applies to the `<img>` branch); an agent with no custom icon renders a testid-less fallback SVG. Added
+  an unconditional testid on `EntityIcon`'s own container instead — benefits BOTH the expanded-panel row
+  and this popover row (same shared `ParticipantItem.jsx` component).
+- **`application_{agent_id}_{project_id}` uses the AGENT's OWN home project, not the conversation's** —
+  this exploration's picked agent happened to live in the same project as the conversation, masking that
+  `get_agent_participant_row()`/`remove_agent_participant()`/`hover_agent_participant_row()` all hardcode
+  `settings.elitea_project_id`. An Agent-Hub-sourced agent's real participant row uses its OWN
+  `entity_meta.project_id` (the public project, e.g. `application_6_1`, not `application_6_399`).
+  `get_agent_participant_row()` gained a backward-compatible optional `agent_project_id` param (default
+  unchanged) rather than a body rewrite — additive, existing caller re-run and confirmed unaffected.
+  **Implementer implication for future dynamic-agent-selection tests on this surface**: never assume the
+  selected agent's project id equals `settings.elitea_project_id` — read it off the hash-search item's
+  own testid (`chat-hash-search-item-{project_id}_{id}`) instead.
+
 ## ELITEA-2206 — `#` hash-search participant dropdown (agents+pipelines,
 ## mixed sources), NEW surface for THIS digest (`chat-hash-search-participants`),
 ## `extend-existing` against the pre-existing `TestHashSearch` class, TWO new

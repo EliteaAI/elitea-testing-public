@@ -1105,6 +1105,21 @@ class ChatPage(BasePage):
     # code path).
     PARTICIPANT_AVATAR = '[data-testid="chat-participant-avatar"]'
 
+    # EntityIcon's own OUTER container inside a participant row
+    # (EliteaAI/EliteaUI@dd44ce90, ELITEA-2207/2469 family unit) — UNLIKE
+    # PARTICIPANT_AVATAR above (only present when the participant has a
+    # custom-uploaded icon image, per EntityIcon.jsx's `icon?.url` branch),
+    # this testid is on the icon's container Box and renders unconditionally
+    # -- present whether the entity shows a custom image OR the generic
+    # per-type fallback SVG (EntityTypeIcon). Live-confirmed this session:
+    # an agent with no custom icon ("AA") has NO `chat-participant-avatar`
+    # element at all, so an icon-presence check must use this testid, not
+    # PARTICIPANT_AVATAR. Same shared ParticipantItem.jsx component backs
+    # both the EXPANDED PARTICIPANTS panel row and the collapsed
+    # participants-popover row (CollapsedParticipantsDropdown.jsx reuses it),
+    # so this testid is usable in both contexts.
+    PARTICIPANT_ICON = '[data-testid="chat-participant-icon"]'
+
     # ------------------------------------------------------------------
     # Users participant type (ELITEA-2095) — independent of the Agent/
     # Pipeline/Toolkit/MCP participant work above (different participant
@@ -3220,10 +3235,37 @@ class ChatPage(BasePage):
     HASH_SEARCH_ITEM_TYPE = '[data-testid="{}-type"]'
     HASH_SEARCH_ITEM_ICON = '[data-testid="{}-icon"]'
     HASH_SEARCH_ITEM_PUBLIC_LABEL = '[data-testid="{}-public-label"]'
+    # {testId}-name -- added to NewParticipantCard.jsx (EliteaAI/EliteaUI@840e251d,
+    # ELITEA-2207/2469 family unit) for THIS family's own need: reading the
+    # selected agent's exact display name to assert it in the composer chip
+    # (is_agent_participant_in_composer) and the participants-popover row,
+    # without hardcoding a name or scraping unscoped item.text_content() (which
+    # concatenates name + type + optional "Public" label with no separator).
+    # Same call-site-derived-from-testId mechanism as the -type/-icon/
+    # -public-label siblings above -- never a hardcoded literal.
+    HASH_SEARCH_ITEM_NAME = '[data-testid="{}-name"]'
 
     def get_hash_search_item(self, project_id: int, participant_id: int):
         """Return the Locator for a single '#' hash-search result card."""
         return self.page.locator(self.HASH_SEARCH_ITEM.format(project_id, participant_id))
+
+    def get_hash_search_item_ids(self, item) -> tuple[int, int]:
+        """Parse ``(project_id, participant_id)`` out of a hash-search item
+        card's own dynamic testid (``chat-hash-search-item-{project_id}_{id}``,
+        the exact template ``HASH_SEARCH_ITEM`` formats with). For an agent-
+        type card, ``participant_id`` IS the agent id used elsewhere in this
+        page object (e.g. ``remove_agent_participant``'s ``agent_id`` param,
+        and the ``application_{agent_id}_{project_id}`` participant-row
+        unique id) -- confirmed live this session (AFS Concrete Handles:
+        ``chat-hash-search-item-1_280`` selected agent id 280 in project 1).
+        Added for ELITEA-2207/2469 -- the first caller that needs the ids
+        programmatically rather than only asserting the card exists.
+        """
+        item_testid = item.get_attribute("data-testid") or ""
+        match = re.match(r"chat-hash-search-item-(\d+)_(\d+)$", item_testid)
+        if not match:
+            raise ValueError(f"Could not parse project_id/participant_id from testid {item_testid!r}")
+        return int(match.group(1)), int(match.group(2))
 
     def get_hash_search_items(self):
         """Return the Locator for ALL '#' hash-search result cards currently
@@ -3246,6 +3288,19 @@ class ChatPage(BasePage):
         item_testid = item.get_attribute("data-testid")
         subtitle = item.locator(self.HASH_SEARCH_ITEM_TYPE.format(item_testid))
         return (subtitle.text_content() or "").strip()
+
+    def get_hash_search_item_name(self, item) -> str:
+        """Read a hash-search item card's display name, via the card's own
+        `{testId}-name` testid (EliteaAI/EliteaUI@840e251d, ELITEA-2207/2469) --
+        exact-match, same scoped-child-testid idiom as
+        :meth:`get_hash_search_item_subtitle`. Used to resolve the selected
+        agent's real name dynamically (never hardcode a name -- AFS
+        Automation Hints) so it can be asserted against the composer chip
+        and the participants-popover row afterward.
+        """
+        item_testid = item.get_attribute("data-testid")
+        name = item.locator(self.HASH_SEARCH_ITEM_NAME.format(item_testid))
+        return (name.text_content() or "").strip()
 
     def hash_search_item_has_icon(self, item) -> bool:
         """Does this hash-search item card have its `{testId}-icon` element
@@ -5398,6 +5453,19 @@ class ChatPage(BasePage):
         avatar.wait_for(state="visible", timeout=timeout)
         return avatar
 
+    def get_participant_icon(self, participant_row, timeout: int = 10000):
+        """Return the icon container Locator scoped inside *participant_row*,
+        testid-based (``PARTICIPANT_ICON``, EliteaAI/EliteaUI@dd44ce90,
+        ELITEA-2207/2469). UNLIKE :meth:`get_participant_avatar` (only
+        present for a custom-uploaded icon image), this is present
+        UNCONDITIONALLY -- use this for a generic "does this row show an
+        icon" check; use :meth:`get_participant_avatar` only when the
+        participant is known to have a custom icon image.
+        """
+        icon = participant_row.locator(self.PARTICIPANT_ICON)
+        icon.wait_for(state="visible", timeout=timeout)
+        return icon
+
     @action("Open agent participant settings (View settings / Edit agent)")
     def open_agent_participant_settings(self, participant_name: str, timeout: int = 10000):
         """Hover the participant row matching *participant_name* in the
@@ -6880,7 +6948,9 @@ class ChatPage(BasePage):
         remove_btn.wait_for(state="visible", timeout=timeout)
         return remove_btn
 
-    def get_agent_participant_row(self, popper, agent_id: int, timeout: int = 10000):
+    def get_agent_participant_row(
+        self, popper, agent_id: int, timeout: int = 10000, agent_project_id: int | None = None,
+    ):
         """Resolve an agent participant's row Locator inside an already-open
         'Agents' participants popper, WITHOUT hovering or clicking it
         (ELITEA-2465 step 5 — the caller only needs to assert the row's
@@ -6898,11 +6968,21 @@ class ChatPage(BasePage):
                 ``open_participants_popover(section="agents")``.
             agent_id: Numeric ID of the participant agent.
             timeout: Maximum wait time in milliseconds.
-
-        Returns:
-            The row's ``chat-participant-row-{uniqueId}`` Locator.
+            agent_project_id: The agent's OWN home project id (``entity_meta.project_id``
+                in ``getChatParticipantUniqueId()``), defaulting to
+                ``settings.elitea_project_id`` (the conversation's own project) for
+                backward compatibility with every existing caller. Pass this
+                explicitly when the participant may be sourced from a DIFFERENT
+                project than the conversation -- e.g. an Agent-Hub / "Public"
+                agent selected via '#' hash-search, whose ``entity_meta.project_id``
+                is the PUBLIC project, not ``settings.elitea_project_id``
+                (ELITEA-2207/2469 family unit -- live-confirmed: the '#' dropdown's
+                first agent-type result is frequently Agent-Hub-sourced, e.g.
+                ``chat-hash-search-item-1_6`` -> participant row
+                ``application_6_1``, NOT ``application_6_{settings.elitea_project_id}``).
         """
-        unique_id = f"application_{agent_id}_{settings.elitea_project_id}"
+        project_id = agent_project_id if agent_project_id is not None else settings.elitea_project_id
+        unique_id = f"application_{agent_id}_{project_id}"
         row = popper.locator(self.PARTICIPANT_ROW.format(unique_id))
         row.wait_for(state="visible", timeout=timeout)
         return row
