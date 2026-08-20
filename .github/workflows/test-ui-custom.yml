@@ -823,13 +823,12 @@ jobs:
           FILENAME="junit-${RUN_ID}.json"
 
           # Push via GitHub API (no checkout required)
-          # Use file-based approach to avoid "Argument list too long" for large reports
-          base64 -w0 report.json > report.b64
-          jq -n --arg msg "results: ingest ${RUN_ID}" --rawfile content report.b64 \
-            '{message: $msg, content: $content, branch: "main"}' | \
+          CONTENT=$(base64 -w0 report.json)
           gh api repos/EliteaAI/onetest-ai-tm-Elitea/contents/reports/automated/${FILENAME} \
-            -X PUT --input -
-          rm -f report.b64
+            -X PUT \
+            -f message="results: ingest ${RUN_ID}" \
+            -f content="${CONTENT}" \
+            -f branch="main"
 
           echo "✓ Pushed to EliteaAI/onetest-ai-tm-Elitea/reports/automated/${FILENAME}"
 
