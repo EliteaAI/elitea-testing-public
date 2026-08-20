@@ -486,7 +486,7 @@
       "automation_test_id": "tests.ui.agent_hub.test_agent_hub_close_agent_detail_modal.TestAgentHubCloseAgentDetailModal.test_agent_hub_close_agent_detail_modal",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "ui"
@@ -496,7 +496,7 @@
       "automation_test_id": "tests.ui.agent_hub.test_agent_hub_copy_link_from_modal.TestAgentHubCopyLinkFromModal.test_copy_link_from_modal_navigates_to_agent",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "ui"
@@ -506,7 +506,7 @@
       "automation_test_id": "tests.ui.agent_hub.test_agent_hub_filter_multiple_categories.TestAgentHubFilterMultipleCategories.test_agent_hub_filter_by_multiple_categories",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p1",
         "regression",
         "ui"
@@ -516,7 +516,7 @@
       "automation_test_id": "tests.ui.agent_hub.test_agent_hub_filter_single_category.TestAgentHubFilterSingleCategory.test_agent_hub_filter_by_single_category",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "ui"
@@ -526,7 +526,7 @@
       "automation_test_id": "tests.ui.agent_hub.test_agent_hub_like_agent_from_modal.TestAgentHubLikeAgentFromModal.test_agent_hub_like_agent_from_modal",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "ui"
@@ -536,7 +536,7 @@
       "automation_test_id": "tests.ui.agent_hub.test_agent_hub_like_agent_list_view.TestAgentHubLikeAgentListView.test_agent_hub_like_agent_from_list_view",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "ui"
@@ -566,7 +566,7 @@
       "automation_test_id": "tests.ui.agent_hub.test_agent_hub_open_agent_detail_modal.TestAgentHubOpenAgentDetailModal.test_agent_hub_open_agent_detail_modal",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "ui"
@@ -576,7 +576,7 @@
       "automation_test_id": "tests.ui.agent_hub.test_agent_hub_page_loads_private_project.TestAgentHubPageLoadsPrivateProject.test_agent_hub_page_loads_private_project",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p1",
         "regression",
         "ui"
@@ -596,7 +596,7 @@
       "automation_test_id": "tests.ui.agent_hub.test_agent_hub_search_bar_filters_in_real_time.TestAgentHubSearchBarFiltersInRealTime.test_agent_hub_search_bar_filters_in_real_time",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "ui"
@@ -606,7 +606,7 @@
       "automation_test_id": "tests.ui.agent_hub.test_agent_hub_start_conversation_creates_new_chat.TestAgentHubStartConversationCreatesNewChat.test_agent_hub_start_conversation_creates_new_chat",
       "markers": [
         "chat",
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "ui"
