@@ -3059,6 +3059,55 @@ by Agent/Pipeline/MCP canvases.
 - **Pre-existing console noise**: issue #656 (CategorySection unique-key-prop
   warning) fires on every type-picker render. Filter it alongside other
   known-noise patterns.
+
+### ELITEA-2081 — Toolkit/MCP canvas Discard button + confirm modal added (2026-08-20, combined analyst+implementer)
+
+Extends the section above with the Discard side of the Toolkit-from-chat
+canvas flow — same gap ELITEA-2076 found and fixed for the sibling Pipeline
+canvas (`test-specs/chat-interface/l2_pipeline-discard-changes-clears-canvas_ELITEA-2076.md`).
+`ToolkitEditor.jsx` already had a working `handleDiscard` wired to
+`BaseEditor`'s `onDiscard` (both create-mode and edit-mode branches), but
+never supplied `discardButtonTestId`/`discardModalTestId`/
+`discardConfirmButtonTestId` at its `<BaseEditor>` call site — those three
+props were already threaded end-to-end through `BaseEditor.jsx` →
+`EditorHeader.jsx` → `Button.DiscardButton` by ELITEA-2076's fix, so only
+the call-site wiring was missing.
+
+- **Three testids added**, `EliteaAI/EliteaUI@bc08563f` on `automation/testids`
+  (awaiting human promotion to `main`): `toolkit-canvas-discard-button`,
+  `toolkit-canvas-discard-confirm-modal`, `toolkit-canvas-discard-confirm-button`.
+  Same `isMcpTestIdScope ? 'mcp-canvas-discard-*' : 'toolkit-canvas-discard-*'`
+  conditional pattern as the pre-existing title/close/create testids — the
+  `mcp-canvas-discard-*` mirrors did not exist anywhere before this session.
+- **Discard is gated on Formik's `dirty` state** (`disabled={!isFormDirty && !isYamlCodeDirty}`
+  in `EditorHeader.jsx`) — for the Toolkit canvas, `isYamlCodeDirty` is always
+  false (a Pipeline-only concept from `useIsPipelineYamlCodeDirty`), so typing
+  into the Name field alone is sufficient to enable Discard. **No type-complete
+  form is needed** — selecting a type + typing a Name dirties the form; no
+  credential, no repository field, no `github_credential` fixture dependency
+  (unlike ELITEA-2083's create-then-close flow, which needs a fully valid,
+  saveable form).
+- **Create-mode Discard reverts to the type-picker, not to a blank form** —
+  confirmed live: `handleDiscard()`'s `isCreating` branch does
+  `setEditToolDetail(null); setFormikInitialValues({ type: '' })`, so
+  confirming Discard un-selects the type entirely — the canvas title reverts
+  from `"New GitHub Toolkit"` back to `"New Toolkit"` and a
+  `toolkit-type-card-*` grid reappears, all while the canvas panel itself
+  stays mounted/open. This is the live-confirmed shape of "canvas cleared"
+  for THIS canvas — distinct from the Pipeline canvas's Discard (ELITEA-2076),
+  which only resets the Name/Description fields back to `""` on the SAME
+  form, never un-selecting anything (Pipeline has no type-picker step).
+- **Post-discard, the X-close button closes DIRECTLY, no confirmation** —
+  confirming Discard resets `BaseEditor`'s `isDirty` to `false`
+  (`onDiscard?.(); setIsDirty?.(false);`), so `handleCancel`'s
+  `isDirty && !isPublic` guard is false on the very next X click. Same
+  "no unsaved changes → direct close" rule already documented above for the
+  SAVED-toolkit case — now confirmed to extend to the discarded/cleared case
+  too.
+- **No product defect found** — this flow behaves exactly as ELITEA-2080/2081's
+  case text describes; zero clarifications needed.
+- AFS: `test-specs/chat-interface/l2_create-toolkit-from-conversation-close-canvas-without-saving_ELITEA-2081.md`.
+
 ## ELITEA-2462 — already-covered by ELITEA-2152 (word-for-word duplicate case text)
 
 - w09 analysis (2026-08-15): ELITEA-2462 ("Chat – Pin a folder and verify it appears at the
