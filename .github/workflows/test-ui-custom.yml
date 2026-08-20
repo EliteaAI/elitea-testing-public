@@ -882,7 +882,9 @@ jobs:
 
           # Load all junit reports (last 20 for trend)
           reports = []
-          for f in sorted(glob.glob("reports/automated/junit-RUN-*.json"))[-20:]:
+          excluded = []
+          all_files = sorted(glob.glob("reports/automated/junit-RUN-*.json"))[-20:]
+          for f in all_files:
               try:
                   with open(f) as fp:
                       data = json.load(fp)
@@ -901,7 +903,7 @@ jobs:
                           short_name = name[:15]
 
                       launch = data.get("launch", {})
-                      reports.append({
+                      entry = {
                           "name": short_name,
                           "full_name": name,
                           "total": launch.get("total", 0),
@@ -910,9 +912,20 @@ jobs:
                           "skipped": launch.get("skipped", 0),
                           "reruns": launch.get("reruns", 0),
                           "file": os.path.basename(f)
-                      })
+                      }
+                      # Validate numeric fields are integers (skip report if not)
+                      for field in ("total", "passed", "failed", "skipped", "reruns"):
+                          if not isinstance(entry[field], int):
+                              raise TypeError(f"Field '{field}' must be int, got {type(entry[field]).__name__}")
+                      reports.append(entry)
               except Exception as e:
-                  print(f"Warning: {f}: {e}", file=__import__('sys').stderr)
+                  excluded.append((os.path.basename(f), str(e)))
+
+          # Print statistics
+          import sys
+          print(f"Files available: {len(all_files)}, included: {len(reports)}, excluded: {len(excluded)}", file=sys.stderr)
+          for fname, reason in excluded:
+              print(f"  - {fname}: {reason}", file=sys.stderr)
 
           if not reports:
               print("# Test Dashboard\n\nNo test reports found yet.")
