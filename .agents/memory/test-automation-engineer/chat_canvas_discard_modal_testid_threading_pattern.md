@@ -22,18 +22,22 @@ pre-existing `discardButtonTestId` (added by ELITEA-2089 for the Agent
 canvas's header Discard button, but ELITEA-2089 never clicked it or needed
 the modal).
 
-**Supplied ONLY at `PipelineEditor.jsx`'s call site so far**
+**Supplied at two call sites now.** `PipelineEditor.jsx`
 (`pipeline-canvas-discard-button` / `pipeline-canvas-discard-confirm-modal`
-/ `pipeline-canvas-discard-confirm-button`, `EliteaAI/EliteaUI@d4edc6e5`).
-The sibling `AgentEditor.jsx` (has `discardButtonTestId="agent-discard-button"`
-already, but NOT the two new modal props) and `ToolkitEditor.jsx`
-(Toolkit/MCP canvases — has neither) do NOT yet supply
-`discardModalTestId`/`discardConfirmButtonTestId`. If a future case
-(ELITEA-2080-2083 Toolkit-from-chat family, or any case that needs to click
-Discard-and-confirm on the Agent/MCP canvas) needs the confirm modal's
-testid, the props already exist end-to-end in `BaseEditor.jsx`/
-`EditorHeader.jsx` — just add the three-line call-site addition (mirrors
-`PipelineEditor.jsx`'s), don't re-derive the threading from scratch.
+/ `pipeline-canvas-discard-confirm-button`, `EliteaAI/EliteaUI@d4edc6e5`,
+ELITEA-2076) and, as of ELITEA-2081 (`EliteaAI/EliteaUI@bc08563f`),
+`ToolkitEditor.jsx` — `toolkit-canvas-discard-*` / `mcp-canvas-discard-*`
+(same `isMcpTestIdScope` conditional as its other three chrome testids).
+Confirmed live for Toolkit: create-mode Discard reverts to the type-picker
+(`setEditToolDetail(null)`), NOT to a blank form on the same type — distinct
+from Pipeline's Discard, which only resets Name/Description on the SAME
+form. The sibling `AgentEditor.jsx` (has `discardButtonTestId=
+"agent-discard-button"` already, but NOT the two new modal props) still does
+NOT supply `discardModalTestId`/`discardConfirmButtonTestId`. If a future
+case needs to click Discard-and-confirm on the Agent canvas, the props
+already exist end-to-end in `BaseEditor.jsx`/`EditorHeader.jsx` — just add
+the three-line call-site addition (mirrors `PipelineEditor.jsx`'s /
+`ToolkitEditor.jsx`'s), don't re-derive the threading from scratch.
 
 The confirmation dialog's body text (both Agent and Pipeline paths, same
 `DiscardButton.jsx` default `alertContent`) is literally "Are you sure you
