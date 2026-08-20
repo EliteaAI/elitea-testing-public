@@ -25,12 +25,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd automation
           pip install -e ".[reporting]"
 
       - name: Build test index
+        working-directory: automation
         run: |
-          cd automation
           python scripts/build_test_index.py --path tests --out index.json
           echo "Indexed $(jq '.tests | length' index.json) tests"
 
