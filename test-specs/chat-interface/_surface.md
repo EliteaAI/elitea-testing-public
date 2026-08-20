@@ -3712,6 +3712,58 @@ analyst+implementer session):**
   `expect(row).to_contain_text(agent_name, timeout=...)` instead, which
   retries until the real content lands.
 
+## ELITEA-2073/2074 (2026-08-20) — Build-with-AI Cancel-then-Generate in chat canvas; generated agent's Save/starters
+
+- **`generate-agent-cancel-button` works identically inside the chat canvas
+  as on the standalone `/agents/create` page** — confirmed live: Cancel on
+  the prompt step removes `generate-agent-modal` from the DOM immediately,
+  leaves `agent-name-input` empty, canvas title stays "Create New Agent".
+  Re-opening the SAME modal right after (`generate-agent-open-button`
+  clicked a second time) resets `generate-agent-prompt-input` to `""` — no
+  stale text survives a Cancel+reopen cycle. Neither ELITEA-1917 (Cancel,
+  but on `/agents/create`) nor ELITEA-1920 (canvas, but never exercises
+  Cancel) had proven this specific combination before.
+- **`Anthropic Claude 4.5 Sonnet` "generate an echo agent" draft is
+  reproducible in SHAPE but not in exact CONTENT across separate
+  generations** — two independent live generations this session (same
+  prompt) both produced `name: "Echo Agent"` and exactly 4 conversation
+  starters, but the starters' literal text differed. Any case built on a
+  Build-with-AI-generated agent must capture the actually-rendered content
+  at run time and assert against THAT, never a literal example string —
+  see the ELITEA-2074 AFS § Test Data for the full drift writeup (the
+  case's own "Echo this: Hello, world!" example is never what actually
+  renders).
+- **The generated Echo Agent's own instructions explicitly permit (and
+  demonstrably add) an `"Echo:"` prefix** — instructions text: *"You may
+  add a brief prefix like 'You said:' or 'Echo:' to make it clear you're
+  echoing, but otherwise preserve their exact words."* Live replies this
+  session: `"Echo: Hello, Echo Agent!"` and `"Echo: . Can you repeat this
+  message?"` (sent texts: `"Hello, Echo Agent!"` /
+  `"Can you repeat this message?"`). Any exact-equality assertion against
+  the sent text on a Build-with-AI-generated "echo" agent will false-fail
+  on this correct, per-instructions behavior — assert `sent_text in
+  reply_text` (containment), not equality.
+- **`agent-save-button` is genuinely DISABLED immediately after a
+  Build-with-AI Create-Agent completes** — confirmed live
+  (`.disabled === true`, same for `agent-discard-button`) — because the
+  single `POST .../applications/prompt_lib/{project}` the Create-Agent
+  click fires already persists the FULL generated config (name,
+  instructions, welcome message, starters); there is nothing left dirty to
+  save. Any case whose precondition is "an agent was just generated via
+  Build with AI" should expect Save disabled, not clickable — clicking a
+  disabled MUI button is a no-op (no toast, no network call).
+- **Starter tiles remain fully clickable/functional after the conversation
+  acquires a real server-side id** (post-first-send) — confirmed live: the
+  same 4-tile set (`chat-conversation-starter-tile`) was still present and
+  clickable for a SECOND starter after the first send/reply cycle
+  completed, same conversation, no reload needed.
+- **Console note:** the pre-existing, already-documented `disableUnderline`
+  React-prop warning (`test-specs/agents/_surface.md`,
+  `test-specs/skills/_surface.md`) fires on `GenerateAgentReviewForm.jsx`'s
+  Name field for the AGENT flow too (not just Skill) — same baseline noise,
+  not a new finding, exclude from console-error assertions on any
+  Build-with-AI review-form case.
+
 ## Edit owned agent via chat canvas (ELITEA-2089, confirmed 2026-08-18)
 
 Canvas edit flow for an **owned** agent participant. Distinct from ELITEA-2075
