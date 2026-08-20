@@ -1,9 +1,0 @@
-WARNING  elitea.api_auth:api_auth.py:123 Missing elitea-staging_auth_session cookie
-ERROR    elitea.steps:actions.py:49 Step failed: Remove empty toolkit blocks from Sensitive Action Tools — Locator.wait_for: Timeout 5000ms exceeded.
-Call log:
-  - waiting for locator("text=\"Sensitive Actions\"").first to be visible
-
-ERROR    elitea.api:client.py:1103 Failed to create credential: status=400 body={"error": "Credential with ID 'guardrails_test_credential' already exists", "field": "elitea_title"}
-ERROR    elitea.steps:actions.py:49 Step failed: Remove empty toolkit blocks from Sensitive Action Tools — Locator.wait_for: Timeout 5000ms exceeded.
-Call log:
-  - waiting for locator("text=\"Sensitive Actions\"").first to be visible

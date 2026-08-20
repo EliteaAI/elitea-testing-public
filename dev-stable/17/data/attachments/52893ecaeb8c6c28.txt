@@ -1,2 +1,0 @@
-WARNING  elitea.api_auth:api_auth.py:123 Missing elitea-staging_auth_session cookie
-WARNING  elitea.automation.fixtures.cleanup:cleanup_fixtures.py:81   Failed to delete pipeline 118: 400 Client Error: Bad Request for url: https://dev.elitea.ai/api/v2/elitea_core/application/prompt_lib/580/118 — headers: {'Content-Length': '51', 'Content-Type': 'application/json', 'Date': 'Wed, 19 Aug 2026 23:27:13 GMT', 'Vary': 'Cookie'} — body: {'ok': False, 'error': 'Application is not found'}
