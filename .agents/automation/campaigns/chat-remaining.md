@@ -414,4 +414,5 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   `test_create_toolkit_from_conversation.py` — close-without-saving is the
   natural negative counterpart to 2083's close-and-verify-added — left for
   the analyst, not pre-clustered). Case snapshots at
-  `.agents/automation/chat-remaining-w16/cases/`.
+  `.agents/automation/chat-remaining-w16/cases/`. Task ID `w2x3rhp62`, Run ID
+  `wf_adc9544a-691`.
