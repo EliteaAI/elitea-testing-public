@@ -139,10 +139,16 @@ direct testid-scoped `evaluate()`/`click()`/`type()` calls against
       documented, reconfirmed live for the AI-generated-agent path too).
 14. Verify the canvas shows Name "Echo Agent", populated Description and
     Instructions.
-    - **Verify — PASSES.** `agent-canvas-title` transitions to `"Echo
-      Agent"` (confirmed live) — the case's own plain-language claim,
-      satisfied via the same title-transition contract ELITEA-1920/2166
-      already proved (the General-accordion `agent-name-input`/
+    - **Verify — PASSES.** `agent-canvas-title` transitions to the review
+      form's own generated Name (`"Echo Agent"` both live generations this
+      session, but the implementation asserts it dynamically —
+      `created_agent_name` captured live off the create-POST response body,
+      per `.agents/testing.md` § "How to test a NONDETERMINISTIC producer
+      without substituting it" — never a hardcoded literal, since the LLM
+      is not guaranteed to name the agent identically on a future run) —
+      the case's own plain-language claim, satisfied via the same
+      title-transition contract ELITEA-1920/2166 already proved (the
+      General-accordion `agent-name-input`/
       `agent-description-input` fields are collapsed/not queried directly
       here; the canvas title IS the case's own "shows Name" claim, same
       assertion shape ELITEA-1920 uses for its own equivalent step).
@@ -181,7 +187,7 @@ noise; zero unexpected network 4xx/5xx.
 | 11 Type + click Generate | loading indicator shown | step 11 | `generate-agent-loading-indicator` present | asserted |
 | 12 Wait for generation | confirmation dialog w/ Name/Description/Instructions + Back/Create buttons | step 12 | review-form fields populated, both buttons present | asserted |
 | 13 Click Create Agent | dialog closes, canvas populates | step 13 | create POST 201, URL stays on `/chat` | asserted |
-| 14 Canvas shows Name "Echo Agent", populated Description/Instructions | condition holds | step 14 | `agent-canvas-title` === "Echo Agent" | asserted |
+| 14 Canvas shows Name "Echo Agent", populated Description/Instructions | condition holds | step 14 | `agent-canvas-title` === `created_agent_name` (dynamic, captured off the create-POST response — not a hardcoded "Echo Agent" literal) | asserted *(sync note: "Echo Agent" was this session's live value on both runs, not a guaranteed literal — see step 14 rationale)* |
 | 15 Agent in "Editing..." state | condition holds | step 15 | `chat-participant-settings-button` text === "Editing..." | asserted |
 
 ### Axis 2 — Analyst/implementer additions
@@ -219,3 +225,29 @@ noise; zero unexpected network 4xx/5xx.
 | Approve/Back buttons | `GenerateAgentModalPage.approve_button` / `.back_button` | on-main ✓ | n/a |
 | Agent Name field (empty-check, step 9) | `AgentFormPage.name_input` (`agent-name-input`) | on-main ✓ | n/a |
 | "Editing..." chip | `ChatPage.chat_participant_settings_button` (documented in `test-specs/chat-interface/_surface.md` § ELITEA-2089) | on-main ✓ | n/a |
+
+## AFS Amendment (2026-08-20, fix round 1 — reviewer findings)
+
+A fresh reviewer session returned `CHANGES_REQUESTED`; two of the findings touched this AFS:
+
+**Finding — the console-error side-channel was documented (§ Expected Results: "zero console
+errors beyond the pre-existing... baseline noise") but never automated.** The sibling case's
+own test (`test_generated_echo_agent_save_close_and_starters.py`, ELITEA-2074) already
+implements a `page.on("console", _on_console)` handler + a dedicated "Side-channel check" step;
+this case's test did not. **Resolution**: ported the identical idiom into
+`test_build_with_ai_cancel_then_generate_echo_agent.py` — the same `disableUnderline` exclusion
+(step 12's own already-documented baseline noise), the same handler registered before the `try`
+block, and the same final `assert not console_messages` step. The Expected Results claim is now
+backed by a real assertion.
+
+**Finding — step 14's Verify text and Coverage Map row asserted a hardcoded `"Echo Agent"`
+literal, but the implementation always asserted `created_agent_name` (dynamic, captured off the
+create-POST response body).** This AFS's own live evidence never claimed the name is guaranteed
+— `"Echo Agent"` was simply what this session's two live generations happened to produce for the
+prompt `"generate an echo agent"`. Per `.agents/testing.md` § "How to test a NONDETERMINISTIC
+producer without substituting it," asserting the dynamic value the system actually produced (not
+a value the analyst wrote down) is the correct, durable assertion — the *implementation* was
+already right; the AFS's documentation was stale relative to it. **Resolution**: step 14's
+Verify text and the Coverage Map row 14 disposition above are amended to describe the dynamic
+assertion, so the AFS now matches what the code has always done — no code change was needed
+here, only the docs sync.
