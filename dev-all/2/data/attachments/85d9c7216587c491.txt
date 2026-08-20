@@ -1,0 +1,37 @@
+[CLEANUP] Running guardrails cleanup BEFORE tests
+[CLEANUP] Starting guardrails cleanup...
+[CLEANUP] Navigated to guardrails page
+[CLEANUP] Cleaning up blocked toolkits
+[CLEANUP] Currently blocked toolkits: []
+[CLEANUP] Checking toolkit 'github': blocked=False
+[CLEANUP] Checking toolkit 'github': blocked=False
+[CLEANUP] Checking toolkit 'GITHUB': blocked=False
+[CLEANUP] Checking toolkit 'Github': blocked=False
+[CLEANUP] Cleaning up blocked tools
+[CLEANUP] Removing empty toolkit containers
+[CLEANUP] Removed empty toolkit containers
+[CLEANUP] Cleaning up sensitive tools
+[CLEANUP] Could not remove sensitive tool get_ISSUE: Locator.wait_for: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator("text=\"Sensitive Actions\"").first to be visible
+
+[CLEANUP] Could not remove sensitive tool get_issue: Locator.wait_for: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator("text=\"Sensitive Actions\"").first to be visible
+
+[CLEANUP] Could not remove sensitive tool GET_ISSUE: Locator.wait_for: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator("text=\"Sensitive Actions\"").first to be visible
+
+[CLEANUP] Could not remove sensitive tool Get_Issue: Locator.wait_for: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator("text=\"Sensitive Actions\"").first to be visible
+
+[CLEANUP] Removing empty toolkit blocks from Sensitive Action Tools
+[CLEANUP] Removing empty sensitive toolkit blocks
+[CLEANUP] Could not remove empty sensitive toolkit blocks: Locator.wait_for: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator("text=\"Sensitive Actions\"").first to be visible
+
+[CLEANUP] Checking if save is needed
+[CLEANUP] No changes to save (Save button not enabled)
