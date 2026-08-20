@@ -80,8 +80,16 @@ def main():
 
     # Run pytest in collection-only mode with our plugin
     # -q for quiet output, --collect-only to skip execution
+    # -p no:rerunfailures disables the rerun plugin to avoid missing dependency errors
+    # --override-ini clears addopts to avoid picking up rerun options from pytest.ini
     exit_code = pytest.main(
-        ['--collect-only', '-q', '--ignore=tests/unit', args.path],
+        [
+            '--collect-only', '-q',
+            '--ignore=tests/unit',
+            '-p', 'no:rerunfailures',
+            '-o', 'addopts=',
+            args.path
+        ],
         plugins=[collector]
     )
 
