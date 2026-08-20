@@ -44,6 +44,23 @@ Nothing in an AFS is true because it is written down. Two mechanical duties:
   normal viewport. Confirming the CLARIFICATION-vs-bug classification is
   internally consistent is NOT confirming its premise is true.
 
+## Seen 12×
+
+- PR #1610/ELITEA-2076 (Chat — pipeline canvas Discard clears data) — Coverage
+  Map row for case step 4 ("Verify canvas header shows 'Create New Pipeline'
+  with X, Discard, Save") reads "Covered by: step 4 · Asserted where: heading
+  text + 3 header controls present, Discard/Save start disabled ·
+  Disposition: asserted." Grepped the shipped test
+  (`test_pipeline_discard_changes_clears_canvas.py`) for the heading/title
+  string across the whole file: zero hits. The Step-4 `allure.step` block
+  only asserts the 3 header controls (`close_button`/`discard_button`/
+  `save_button` visible+disabled) — the "heading text" half of the same
+  Coverage Map cell was never written, even though the AFS's own Step 4 prose
+  states "confirmed live: heading text exactly 'Create New Pipeline'." Same
+  species as PR #698/ELITEA-2132 R2 below (a row asserted N clauses, code
+  asserted N-1) — reviewer caught it only by re-deriving what the cell
+  claimed and grepping the literal string, not by trusting "asserted."
+
 ## Seen 11×
 
 - PR #1553/ELITEA-2157+2158 — AFS's own Concrete Handles table states verbatim
