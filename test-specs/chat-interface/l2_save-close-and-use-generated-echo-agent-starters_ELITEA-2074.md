@@ -105,9 +105,17 @@ was actually sent to it.
 1. Verify the agent canvas shows the generated "Echo Agent" configuration
    with LLM model displayed.
    - **Verify — PASSES (Setup, reusing ELITEA-2073's own step 12-14
-     findings).** `agent-canvas-title` = "Echo Agent";
-     `Anthropic Claude 4.5 Sonnet` model shown in the canvas's own Model
-     Selector Menu region (confirmed live).
+     findings).** `agent-canvas-title` transitions to `created_agent_name`
+     — this session's live value was `"Echo Agent"` on both generations,
+     but the implementation asserts the title dynamically against the
+     name actually returned by the create-POST response, not a hardcoded
+     literal (same sync as ELITEA-2073's AFS step 14, since both cases
+     share the same generate-flow precondition). Model text: the canvas's
+     own Model Selector Menu region (`ChatPage.model_selector_name`, the
+     shared composer instance) shows a non-empty LLM model name —
+     `"Anthropic Claude 4.5 Sonnet"` this session, asserted as
+     non-empty/visible rather than a literal string (the selected/default
+     model is not something this case's flow controls or predicts).
 2. Scroll down to view WELCOME MESSAGE and CHAT STARTERS sections.
    - **Verify — PASSES.** Both accordion sections render with populated
      content (Welcome Message textbox non-empty, 4 Starter textboxes
@@ -263,3 +271,37 @@ zero unexpected network 4xx/5xx.
 | Conversation starter tiles | `ChatPage.CHAT_STARTER_TILE` / `.get_chat_starter_tiles()` / `.click_chat_starter_tile()` | on-main ✓ | n/a |
 | Message input / Send | `ChatPage.message_input` / `.send_button` | on-main ✓ | n/a |
 | AI reply text | `ChatPage.wait_for_ai_response()` + `_extract_message_body(messages_container.nth(i))` | on-main ✓ | n/a |
+
+## AFS Amendment (2026-08-20, fix round 1 — reviewer findings)
+
+A fresh reviewer session returned `CHANGES_REQUESTED`; findings touching this AFS:
+
+**Finding — step 1's Verify text asserted a hardcoded `"Echo Agent"` literal for the canvas
+title, and a hardcoded `"Anthropic Claude 4.5 Sonnet"` literal for the model, while the
+implementation always asserted the canvas title dynamically (`created_agent_name`) and never
+asserted the model text at all.** Two distinct issues, both resolved:
+1. **Title** — same drift as ELITEA-2073's AFS step 14 (both cases share the generate-flow
+   precondition): `"Echo Agent"` is this session's live value, not a guarantee. Step 1's Verify
+   text above is amended to describe the dynamic `created_agent_name` assertion the code has
+   always made — docs sync only, no code change.
+2. **Model** — the implementation had NO assertion on the model text at all (a real gap, not a
+   docs-only drift). `test_generated_echo_agent_save_close_and_starters.py` now asserts
+   `chat.model_selector_name` is visible and non-empty (same idiom as
+   `test_chat_agent_starters_add_remove.py`'s own LLM-label check), and step 1's Verify text
+   above documents that as a non-empty/visible check rather than a literal model-name string
+   (the selected/default model is not something this case's own flow controls or predicts).
+
+**Finding — step 2's Coverage Map row already claimed `asserted` via "textareas non-empty," but
+the implementation only checked the accordion HEADERS' visibility, never the field CONTENT.**
+Resolution: the test now also asserts `agent_form.welcome_message_input.input_value()` is
+non-empty and every `agent_form.conversation_starter_inputs.nth(i).input_value()` is non-empty —
+the Coverage Map's existing "asserted" disposition is now actually backed by the code, matching
+what this AFS already documented as PASSES.
+
+**Finding — steps 10-11 indexed `starter_texts[1]` unconditionally, which raises an
+uncaught `IndexError` (not a readable test failure) if a run's data-dependent generation
+produces only 1 starter** — `MIN_STARTER_COUNT = 1` explicitly permits that outcome per step 3's
+own bounded-count rationale. Resolution: step 10 now asserts `starter_count >= 2` first, with a
+message naming this as a genuinely data-dependent outcome (not a defect) before indexing. No
+scope change — this only replaces an opaque crash with an honest, attributed assertion failure
+for the same underlying data-dependent edge case step 3 already accounts for.
