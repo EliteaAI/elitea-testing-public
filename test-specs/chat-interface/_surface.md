@@ -2,7 +2,10 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2217, 2026-08-19
+a time; last confirmed by: test-automation-engineer (combined analyst+
+implementer), ELITEA-2078, 2026-08-20 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: qa-engineer analyst,
+ELITEA-2217, 2026-08-19
 (supersedes nothing below — new section, other sections unchanged; previous
 confirmer: qa-engineer analyst, ELITEA-2208/2470, 2026-08-19
 (supersedes nothing below — new section, other sections unchanged; previous
@@ -4116,3 +4119,48 @@ or verified Discard's *enabled* state without clicking it (2089's AFS/test).
 - **No product defect found** — this flow behaves exactly as the case
   describes; zero clarifications needed.
 - AFS: `test-specs/chat-interface/l2_pipeline-create-save-basic-configuration_ELITEA-2077.md`.
+
+## ELITEA-2078 — Pipeline Flow Editor "Add LLM Node, Discard Changes, Verify
+## Node is Removed" (2026-08-20, combined analyst+implementer)
+
+Extends the "In-chat 'Create New X' canvas family" section above — the
+Flow-graph-dirty-state Discard flow, one layer deeper than ELITEA-2076
+(which only ever dirtied the header form's Name/Description fields).
+
+- **`PipelineEditor.jsx`'s Discard is gated on `totalDirty = isDirty ||
+  isYamlDirty`, not just the Formik form.** `isYamlDirty` comes from
+  `EditorPanel`'s `useIsPipelineYamlCodeDirty()` via a `setYamlDirty` prop —
+  adding a node on the Flow tab flips it, which enables the SAME
+  `pipeline-canvas-discard-button` header button ELITEA-2076 already added
+  (no new testid needed). Confirmed live: Discard/Save both read `disabled`
+  immediately after the Flow Editor tab opens on a fresh pipeline, and both
+  become enabled the instant the LLM node is added.
+- **`handleDiscard()` (`PipelineEditor.jsx`) reverts the FLOW GRAPH, not
+  just form fields**: `dispatch(actions.resetPipeline())` +
+  `dispatch(editorActions.resetPipelineEditor())`, alongside the
+  Formik-field reset ELITEA-2076 already documented. Confirmed live: after
+  confirming Discard, the canvas returns to exactly the pre-add state
+  (`get_node_count()==1`, `get_node_ids()==["END"]`), and the header
+  Discard/Save buttons re-disable.
+- **Zero network calls fire between adding the node and the post-discard
+  state** — confirmed live via network capture (only the create-mode
+  `POST .../applications/prompt_lib/399` → `201` and its hydration `GET`s
+  fire during Setup; nothing fires for add-node or discard). Same "Discard
+  never touches the server" finding as ELITEA-2076, now confirmed to
+  extend to Flow-graph changes.
+- **Add Node menu's 11-item set matches the case's own list exactly, live-
+  confirmed AND source-traced**: `AddNodeMenu.jsx`'s `getVisibleNodeTypes()`
+  filters `FlowEditorConstants.PipelineNodeTypes` down to 11 by excluding
+  `DeprecatedConstants.DeprecatedOrInvisibleNode` (Tool, Function, Pipeline,
+  Condition, Loop, LoopFromTool — deprecated — plus End, Ghost, Default —
+  invisible). Menu renders alphabetically by display label: Agent, Code,
+  Custom, Decision, Human-in-the-loop, LLM, MCP, Printer, Router, State
+  modifier, Toolkit. The compliant testid-based methods
+  (`get_add_node_menu_items()` / `select_add_node_menu_item(internal_type)`,
+  ELITEA-2030) are preferred over the older `add_node(display_name)` — the
+  latter still chains a raw `button.MuiIconButton-colorPrimary` CSS handle
+  + `get_by_role("menuitem")`, kept only for its existing ELITEA-2079
+  caller, not a pattern to imitate in new code.
+- **No product defect found** — this flow behaves exactly as the case
+  describes; zero clarifications needed.
+- AFS: `test-specs/chat-interface/l2_pipeline-flow-editor-add-llm-node-discard-changes_ELITEA-2078.md`.
