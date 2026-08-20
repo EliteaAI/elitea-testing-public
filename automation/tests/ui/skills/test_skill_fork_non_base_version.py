@@ -55,6 +55,7 @@ class TestSkillForkNonBaseVersion:
         "onetest-ai Test Case link",
     )
     @pytest.mark.p2
+    @pytest.mark.flaky
     def test_fork_non_base_skill_version(self, page, skill_api, _browser_cookies):
         """Create a second skill version with distinct content, fork it
         while active, and verify the forked copy carries THAT version's

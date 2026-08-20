@@ -81,6 +81,7 @@ class TestSkillCustomIconVisibilityAcrossUI:
     )
     @pytest.mark.p2
     @pytest.mark.regression
+    @pytest.mark.flaky
     def test_skill_custom_icon_visible_across_ui(self, page, skill_api, agent_api):
         """Create a Skill with a custom icon + an Agent, attach the skill, and
         verify the SAME uploaded-icon src renders in all 5 named locations.

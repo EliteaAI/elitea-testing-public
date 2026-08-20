@@ -39,6 +39,7 @@ class TestSkillCardViewFields:
         "onetest-ai Test Case link",
     )
     @pytest.mark.p2
+    @pytest.mark.flaky
     def test_skill_card_shows_icon_name_description_and_tags(self, page, skill_api):
         """Create a skill with name/description/tag; verify its card shows
         icon, name, description-on-hover, and tag(s) in the default Card view."""

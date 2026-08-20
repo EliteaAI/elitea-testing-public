@@ -1,9 +1,7 @@
-name: UI Tests DEV
-run-name: UI Tests DEV [${{ inputs.ref || 'main' }}] [${{ inputs.custom_suites || inputs.suite || 'all' }}]
+name: UI Tests DEV Unstable
+run-name: UI Tests DEV Unstable [${{ inputs.ref || 'main' }}] [${{ inputs.custom_suites || inputs.suite || 'all' }}]
 
 on:
-  schedule:
-    - cron: '0 23 * * *'
   workflow_dispatch:
     inputs:
       suite:
@@ -12,17 +10,17 @@ on:
         options: [all, agents, admin, artifacts, chat, pipelines, skills, smoke, support_assistant, toolkits, voice]
         default: all
       custom_suites:
-        description: 'Custom suites (comma-separated). Default: 10 baseline suites. Use "all" to discover all suites.'
+        description: 'Custom suites (comma-separated). Leave empty to discover all suites dynamically.'
         type: string
-        default: 'admin,agents,artifacts,chat,pipelines,skills,smoke,support_assistant,toolkits,voice'
+        default: ''
       parallel_jobs:
         description: 'Number of parallel runners (1-9)'
         type: choice
         options: ['1', '2', '3', '4', '5', '6', '7', '8', '9']
         default: '9'
       markers:
-        description: 'Pytest markers (default excludes new tests; use "new" for new only, "all" for all tests)'
-        default: 'not new'
+        description: 'Pytest markers (default: unstable tests only - includes new OR blocked OR flaky)'
+        default: 'new or blocked or flaky'
       ref:
         description: 'Git branch/tag/SHA'
         type: string
@@ -40,15 +38,15 @@ jobs:
   test:
     uses: ./.github/workflows/test-ui-custom.yml
     with:
-      environment: dev
+      environment: dev-unstable
       suite: ${{ inputs.suite || 'all' }}
-      custom_suites: ${{ inputs.custom_suites || 'admin,agents,artifacts,chat,pipelines,skills,smoke,support_assistant,toolkits,voice' }}
+      custom_suites: ${{ inputs.custom_suites || '' }}
       parallel_jobs: ${{ inputs.parallel_jobs || '9' }}
-      markers: ${{ inputs.markers || 'not new' }}
+      markers: ${{ inputs.markers || 'new or blocked or flaky' }}
       ref: ${{ inputs.ref || 'main' }}
-      publish_to_tms: ${{ github.event_name == 'schedule' || inputs.publish_to_tms }}
-      tms_report_suffix: ${{ github.event_name == 'schedule' && 'scheduled' || inputs.tms_report_suffix || '' }}
-      update_correlation: true
+      publish_to_tms: ${{ inputs.publish_to_tms }}
+      tms_report_suffix: ${{ inputs.tms_report_suffix || '' }}
+      update_correlation: false
     secrets:
       ELITEA_URL: ${{ secrets.ELITEA_URL_DEV }}
       ELITEA_API_BASE: ${{ secrets.ELITEA_API_BASE_DEV }}
@@ -99,8 +97,6 @@ jobs:
       TEST_USER_PASSWORD_9: ${{ secrets.TEST_USER_PASSWORD_9 }}
       TEST_USER_NAME_10: ${{ secrets.TEST_USER_NAME_10 }}
       TEST_USER_PASSWORD_10: ${{ secrets.TEST_USER_PASSWORD_10 }}
-      # Team project ID for multi-user permission tests
-      ELITEA_TEAM_PROJECT_ID: ${{ secrets.ELITEA_TEAM_PROJECT_ID_DEV }}
       GIT_HUB_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
       BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
       ADO_TOKEN: ${{ secrets.ADO_TOKEN }}

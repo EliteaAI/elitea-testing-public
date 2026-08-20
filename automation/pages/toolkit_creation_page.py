@@ -369,7 +369,22 @@ class ToolkitCreationPage(BasePage):
             field_key: The field's schema property key (e.g.
                 ``"available_by_mcp"``).
         """
-        return self.page.locator(self.TOOLKIT_FIELD_CHECKBOX_INPUT.format(field_key))
+        # TEMP FIX: testid doesn't exist yet — fallback to switch element
+        # Issue #1575 - the MCP field is actually a SWITCH, not a checkbox
+        testid_selector = self.TOOLKIT_FIELD_CHECKBOX_INPUT.format(field_key)
+        if self.page.locator(testid_selector).count() > 0:
+            return self.page.locator(testid_selector)
+
+        # Fallback for available_by_mcp: it's a switch role, not checkbox
+        # Located at bottom of TOOLS accordion with accessible name
+        if field_key == "available_by_mcp":
+            return self.page.get_by_role("switch", name="Enable MCP access for selected tools")
+
+        # For other fields, try generic fallback
+        return self.page.locator(
+            '[data-testid="toolkit-tools-accordion"] '
+            f'label:has-text("{field_key}") input'
+        ).first
 
     def is_checkbox_field_checked(self, field_key: str, timeout: int = 5000) -> bool:
         """Return whether a dynamic schema-driven checkbox field is currently checked.
@@ -384,6 +399,36 @@ class ToolkitCreationPage(BasePage):
         field.wait_for(state="visible", timeout=timeout)
         return field.is_checked()
 
+    def wait_for_tools_section_loaded(self, timeout: int = 15000):
+        """Wait for TOOLS section to render with at least one tool chip.
+
+        Waits for:
+        1. At least one tool chip to appear in DOM
+        2. Page JavaScript to be fully executed
+        3. Network to settle after React hydration
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            TimeoutError: If no tool chips appear within timeout.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # Wait for at least one tool chip using JavaScript check
+        try:
+            self.page.wait_for_function(
+                f"document.querySelectorAll('{self.TOOL_CHIP_PREFIX}').length > 0",
+                timeout=timeout
+            )
+            # Additional stabilization after chips appear
+            self.page.wait_for_timeout(500)
+            logger.info(f"TOOLS section loaded with {self.page.locator(self.TOOL_CHIP_PREFIX).count()} chips")
+        except Exception as e:
+            logger.error(f"TOOLS section did not load within {timeout}ms: {e}")
+            raise
+
     def count_tool_chips(self, timeout: int = 5000) -> int:
         """Return the number of currently-visible TOOLS-section tool chips.
 
@@ -391,12 +436,24 @@ class ToolkitCreationPage(BasePage):
             timeout: Maximum wait time in milliseconds for the first chip
                 to appear before concluding there are none.
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         chips = self.page.locator(self.TOOL_CHIP_PREFIX)
         try:
-            chips.first.wait_for(state="visible", timeout=timeout)
-        except Exception:
+            # Enhanced wait: use JavaScript check for more reliable detection
+            self.page.wait_for_function(
+                f"document.querySelectorAll('{self.TOOL_CHIP_PREFIX}').length > 0",
+                timeout=timeout
+            )
+            # Additional stabilization wait for dynamic rendering
+            self.page.wait_for_timeout(500)
+            count = chips.count()
+            logger.debug(f"Found {count} tool chips")
+            return count
+        except Exception as e:
+            logger.warning(f"No tool chips found after {timeout}ms: {e}")
             return 0
-        return chips.count()
 
     def all_tool_chips_selected(self) -> bool:
         """Return whether EVERY currently-rendered tool chip carries ``data-selected="true"``.
