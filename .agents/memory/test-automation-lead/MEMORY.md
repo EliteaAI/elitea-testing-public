@@ -45,3 +45,6 @@
 - [2+ different failure shapes = check an already-merged spec, then Playwright-MCP root-cause](reproducing_failure_across_different_signatures_and_an_already_merged_spec_means_environment_not_code.md) — before filing anything
 - [Long gate runs: `nohup cmd & disown` + poll log, not bare Bash](never_schedulewakeup_on_live_background_process.md) — survives harness restarts; ScheduleWakeup only safe with detached procs
 - [already-covered ≠ auto ready/automated](already_covered_tms_backwrite_needs_covering_test_health_check.md) — check covering test's exclusion markers + its own TMS status first
+- [Campaign close: SUM per-wave numbers, don't eyeball the tally](campaign_closure_tally_must_be_summed_not_estimated.md)
+- [Testid grep "no" on shared/ternary components is untrustworthy](testid_promotability_grep_misses_multiline_ternary_composed_values.md) — confirm via file-diff (2×)
+- [Before ANY commit on the shared clone, check current branch first](campaign_doc_edit_lost_during_concurrent_workflow_subagent_git_ops.md) — a Workflow may have switched it (2×)
