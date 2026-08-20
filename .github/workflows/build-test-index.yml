@@ -1,0 +1,43 @@
+name: Build Test Index
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "automation/tests/ui/**"
+      - "automation/tests/api/**"
+      - "automation/scripts/build_test_index.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd automation
+          pip install pytest pytest-playwright allure-pytest pytest-rerunfailures pytest-xdist pytest-base-url
+
+      - name: Build test index
+        run: |
+          cd automation
+          python scripts/build_test_index.py --path tests --out index.json
+          echo "Indexed $(jq '.tests | length' index.json) tests"
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add automation/index.json
+          git diff --cached --quiet || git commit -m "chore: rebuild automation/index.json"
+          git push
