@@ -49,3 +49,22 @@ names a step — it has to survive being traced to an actual DOM handle.
   Coverage Map row → table).
 - `afs_is_a_work_order_not_gospel.md` — general principle this is a
   corollary of.
+
+## Multi-handle rows: check EVERY handle a row names, not just one (ELITEA-2081, PR #1613, fix round 1)
+
+A narrower variant, caught at review not before: a Coverage Map row can name
+TWO handles for one disposition (`"canvas chrome (toolkit-canvas-close-button,
+toolkit-canvas-title) absent from the DOM"`). Round 1 asserted the title-hidden
+check but silently dropped the close-button-hidden check — both handles were
+correctly identified in the AFS row, but only one made it into code, and the
+row still read `asserted` because it was scanned for "is there an assertion
+here" rather than "is there an assertion for EACH named handle here". Same PR
+also had a separate page-object construction-site slip (an inline
+`page.locator(Page.TESTID_TEMPLATE.format(...))` where a compliant wrapper
+method — `get_type_card()` — already existed and simply wasn't called).
+
+**Self-review addition:** when a Coverage Map row's "Asserted where" or the
+step's own Verify clause lists multiple testids in one sentence, grep the diff
+for every one of them individually before calling the row covered — don't
+stop at the first handle that happens to already be near your other
+assertions in that step's block.
