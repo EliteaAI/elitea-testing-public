@@ -4071,3 +4071,48 @@ or verified Discard's *enabled* state without clicking it (2089's AFS/test).
 - **No product defect found** — this flow behaves exactly as the case
   describes; zero clarifications needed.
 - AFS: `test-specs/chat-interface/l2_pipeline-discard-changes-clears-canvas_ELITEA-2076.md`.
+
+## ELITEA-2077 — Create Pipeline from Conversation, Save Basic Configuration
+(2026-08-20, combined analyst+implementer slot)
+
+- **`pipeline-canvas-subtitle` testid added** — closes the LAST remaining
+  gap in the four-way canvas-chrome testid family documented above
+  (title/close/discard were fixed by ELITEA-2076/2079; subtitle was the one
+  nobody had needed yet). `PipelineEditor.jsx`'s `<BaseEditor>` call now
+  supplies `subtitleTestId="pipeline-canvas-subtitle"` (the prop already
+  existed end-to-end, same shape as `titleTestId` — `AgentEditor.jsx` already
+  supplies its own `agent-canvas-subtitle`). Pushed to `automation/testids`
+  (`EliteaAI/EliteaUI@7b1e2c5a`). Renders `"base"` (the version name) next to
+  the canvas title once a real (non-create-mode) pipeline is open.
+- **Composer chip is a THREE-way split, not two** — `chat-switch-participant-button`
+  (name, e.g. `"test-pipeline"`) and `chat-version-selector-trigger` (version,
+  e.g. `"base"`) are the two elements ELITEA-2079's AFS already documented, but
+  the case's "Editing..." status text lives on a THIRD sibling button in the
+  same `ButtonGroup`: `chat-participant-settings-button` (pre-existing testid,
+  added by ELITEA-2362 for its click target, never previously asserted for its
+  TEXT). Confirmed via a full DOM text-node walk — `/editing/i` matches nowhere
+  else on the page immediately post-save. Any case asserting the "Editing..."
+  status should read THIS element, not try to find the text inside the
+  name/version chips.
+- **ADVANCED section is expanded by default in CREATE mode, no click needed**
+  — `agent-canvas-section-advanced` (on-main), containing `pipeline-step-limit-input`
+  pre-filled `"25"`, is visible immediately once the create-mode canvas opens
+  (no accordion-expand interaction required, unlike `EDITOR NOTES` elsewhere
+  on the standalone detail page). The case's "model chip" is the composer
+  form's own Model Selector group (`model-selector-button`/`model-selector-name`),
+  rendered in the same panel — assert non-empty text only, the display name is
+  environment-dependent (`.agents/testing.md` § Known issues).
+- **Dev-server HMR staleness — confirmed live, worth flagging for future
+  sessions.** A long-idle `npm run dev` process on port 5173 stopped picking
+  up file-watcher events for at least the `PipelineEditor.jsx` edit above — the
+  new testid was committed, pushed, and present on disk, yet 3 consecutive
+  live create-pipeline flows (across a full page navigation) kept rendering
+  the OLD build (`curl http://localhost:5173/src/<file>.jsx` also served stale
+  transformed source, confirming it wasn't a browser cache issue). A hard
+  restart (`kill` the stale `vite`/`npm run dev` PIDs bound to :5173, relaunch)
+  fixed it immediately. If a testid you just added reads absent live despite a
+  full reload and no console/network error explains it, `curl` the served
+  source for that file before concluding the JSX itself is wrong.
+- **No product defect found** — this flow behaves exactly as the case
+  describes; zero clarifications needed.
+- AFS: `test-specs/chat-interface/l2_pipeline-create-save-basic-configuration_ELITEA-2077.md`.
