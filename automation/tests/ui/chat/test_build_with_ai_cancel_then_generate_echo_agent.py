@@ -94,6 +94,19 @@ class TestBuildWithAICancelThenGenerateEchoAgent:
         modal = GenerateAgentModalPage(page)
 
         agent_id = None
+
+        console_messages = []
+
+        def _on_console(msg):
+            # Excludes the pre-existing, already-documented `disableUnderline`
+            # React-prop warning on GenerateAgentReviewForm.jsx (AFS § step 12
+            # / Expected Results; test-specs/agents/_surface.md,
+            # test-specs/skills/_surface.md carry the same baseline entry).
+            if msg.type == "error" and "disableUnderline" not in msg.text:
+                console_messages.append(msg)
+
+        page.on("console", _on_console)
+
         try:
             with allure.step("Setup — navigate to chat and open a fresh conversation"):
                 chat.navigate_to_chat()
@@ -220,6 +233,9 @@ class TestBuildWithAICancelThenGenerateEchoAgent:
                 expect(chat.chat_participant_settings_button).to_contain_text(
                     "Editing...", timeout=UI_ELEMENT_TIMEOUT
                 )
+
+            with allure.step("Side-channel check — zero console errors across the whole flow"):
+                assert not console_messages, f"Unexpected console errors: {console_messages}"
         finally:
             with allure.step("Cleanup — delete the created agent"):
                 # No message was ever sent in this flow, so the conversation

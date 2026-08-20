@@ -154,6 +154,14 @@ class TestGeneratedEchoAgentSaveCloseAndStarters:
                 "with LLM model displayed"
             ):
                 expect(agent_canvas.title).to_have_text(created_agent_name, timeout=UI_ELEMENT_TIMEOUT)
+                # Same idiom as test_chat_agent_starters_add_remove.py's own
+                # LLM-label check — assert non-empty, not a literal model
+                # name (the selected/default model is not something this
+                # case's own flow controls or predicts).
+                expect(chat.model_selector_name).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                assert (chat.model_selector_name.text_content() or "").strip(), (
+                    "Model selector should show a non-empty LLM model name in the canvas"
+                )
 
             with allure.step(
                 "Step 2 — Scroll to view WELCOME MESSAGE and CHAT STARTERS "
@@ -165,6 +173,28 @@ class TestGeneratedEchoAgentSaveCloseAndStarters:
                 expect(agent_canvas.get_section_header("chat-starters")).to_be_visible(
                     timeout=UI_ELEMENT_TIMEOUT
                 )
+                # "Populated" means non-empty CONTENT, not merely a visible
+                # header — assert the actual field values Build with AI wrote.
+                # Web-first (retrying), not a one-shot input_value() read:
+                # same async-settle gotcha already confirmed for Save/
+                # Discard's disabled state right after Create-Agent (memory:
+                # build_with_ai_post_create_save_discard_disabled_state_
+                # settles_async.md) — the canvas's own form fields re-
+                # hydrate from the just-created agent a moment after the
+                # create POST resolves, and a bare .input_value() read can
+                # catch the pre-hydration empty state (confirmed live: R1
+                # caught a transient empty Welcome Message this way).
+                expect(agent_form.welcome_message_input).not_to_have_value(
+                    "", timeout=UI_ELEMENT_TIMEOUT
+                )
+                starter_input_count = agent_form.conversation_starter_inputs.count()
+                assert starter_input_count > 0, (
+                    "Chat Starters section should have at least one generated starter input"
+                )
+                for i in range(starter_input_count):
+                    expect(agent_form.conversation_starter_inputs.nth(i)).not_to_have_value(
+                        "", timeout=UI_ELEMENT_TIMEOUT
+                    )
 
             with allure.step(
                 "Step 3 — Verify conversation starter buttons are displayed "
@@ -245,6 +275,17 @@ class TestGeneratedEchoAgentSaveCloseAndStarters:
                 )
 
             with allure.step("Step 10 — Click the second conversation starter; verify it is sent"):
+                # MIN_STARTER_COUNT permits a data-dependent generation of
+                # only 1 starter (AFS step 3 rationale) — in that case steps
+                # 10-11 genuinely cannot run. Fail with a clear, attributed
+                # message rather than a bare IndexError on starter_texts[1].
+                assert starter_count >= 2, (
+                    f"Steps 10-11 require a second generated conversation starter to "
+                    f"click, but this run's Build-with-AI draft produced only "
+                    f"{starter_count} (bounded {MIN_STARTER_COUNT}-{MAX_STARTER_COUNT} "
+                    "per AFS step 3 rationale — a genuinely data-dependent outcome, "
+                    "not a defect)"
+                )
                 initial_count = chat.get_message_count()
                 second_starter_text = chat.click_chat_starter_tile(starter_texts[1], timeout=UI_ELEMENT_TIMEOUT)
                 assert chat.message_input.input_value() == second_starter_text
