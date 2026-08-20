@@ -122,12 +122,22 @@ class TestPipelineFlowEditorDiscardLlmNode:
 
         pipeline_id = None
         console_messages = []
+        write_requests = []
 
         def _on_console(msg):
             if msg.type == "error" and not _is_known_secrets_403(msg):
                 console_messages.append(msg)
 
+        def _on_response(resp):
+            # AFS § Network Behavior / Coverage Map row 9: Discard is a purely
+            # client-side Redux reset — zero POST/PUT calls should fire once
+            # this listener is attached (right after Setup's own create-mode
+            # Save, which is awaited and off-list before we get here).
+            if resp.request.method in ("POST", "PUT"):
+                write_requests.append(f"{resp.request.method} {resp.url}")
+
         page.on("console", _on_console)
+        page.on("response", _on_response)
 
         try:
             with allure.step(
@@ -146,7 +156,10 @@ class TestPipelineFlowEditorDiscardLlmNode:
                 with page.expect_response(
                     lambda r: r.request.method in ("POST", "PUT")
                     and "/applications/prompt_lib/" in r.url
-                ) as create_resp_info:
+                ) as create_resp_info, page.expect_response(
+                    lambda r: r.request.method == "POST"
+                    and "/participants/prompt_lib/" in r.url
+                ) as add_participant_resp_info:
                     pipeline_detail.save_button.click()
                 create_response = create_resp_info.value
                 assert create_response.status == 201, (
@@ -159,6 +172,26 @@ class TestPipelineFlowEditorDiscardLlmNode:
                     f"Expected a numeric pipeline id in the creation "
                     f"response, got: {created_pipeline!r}"
                 )
+                # The create-mode Save also synchronously triggers
+                # usePipelineCreation.js's onPipelineCreated -> addNewParticipants(),
+                # which POSTs the new pipeline onto the conversation as a
+                # PIPELINES participant (chat.api.js's addParticipantIntoConversation).
+                # Await it explicitly so it can't race into the write-request
+                # log below — it belongs to Setup's own precondition-replication
+                # traffic, not to the Steps 4-9 add-node/discard flow.
+                add_participant_response = add_participant_resp_info.value
+                assert add_participant_response.status in (200, 201), (
+                    f"Pipeline-as-participant request should resolve "
+                    f"200/201, got {add_participant_response.status} for "
+                    f"{add_participant_response.url}"
+                )
+                # Setup's own create-mode Save (+ its participant-add side
+                # effect, now settled above) are legitimate POSTs — drop them
+                # from the write-request log so the AFS's "zero network call"
+                # claim (Coverage Map row 9 / § Network Behavior) is checked
+                # only across Steps 1-9 (add-node through Discard-confirm),
+                # not against Setup's own precondition-replication traffic.
+                write_requests.clear()
 
             with allure.step(
                 'Step 1 — Verify the "test-pipeline" canvas is open with '
@@ -238,6 +271,12 @@ class TestPipelineFlowEditorDiscardLlmNode:
 
             with allure.step('Step 9 — Click "Discard" to confirm'):
                 pipeline_canvas.confirm_discard(timeout=UI_ELEMENT_TIMEOUT)
+                assert not write_requests, (
+                    "Discard should revert the Flow graph via a purely "
+                    "client-side Redux reset — expected zero POST/PUT "
+                    "network calls between adding the LLM node (step 6) and "
+                    f"the post-discard state, but observed: {write_requests!r}"
+                )
 
             with allure.step('Step 10 — Verify only the "End" node remains on the canvas'):
                 assert pipeline_detail.get_node_count() == 1, (
