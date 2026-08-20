@@ -2,7 +2,10 @@
 
 Handle cache for live-confirmed handles/quirks on the Chat surface (`/chat`).
 Not a substitute for execution — verify a handle as you use it. One writer at
-a time; last confirmed by: qa-engineer analyst, ELITEA-2217, 2026-08-19
+a time; last confirmed by: test-automation-engineer (combined analyst+
+implementer), ELITEA-2078, 2026-08-20 (supersedes nothing below — new
+section, other sections unchanged; previous confirmer: qa-engineer analyst,
+ELITEA-2217, 2026-08-19
 (supersedes nothing below — new section, other sections unchanged; previous
 confirmer: qa-engineer analyst, ELITEA-2208/2470, 2026-08-19
 (supersedes nothing below — new section, other sections unchanged; previous
@@ -3056,6 +3059,55 @@ by Agent/Pipeline/MCP canvases.
 - **Pre-existing console noise**: issue #656 (CategorySection unique-key-prop
   warning) fires on every type-picker render. Filter it alongside other
   known-noise patterns.
+
+### ELITEA-2081 — Toolkit/MCP canvas Discard button + confirm modal added (2026-08-20, combined analyst+implementer)
+
+Extends the section above with the Discard side of the Toolkit-from-chat
+canvas flow — same gap ELITEA-2076 found and fixed for the sibling Pipeline
+canvas (`test-specs/chat-interface/l2_pipeline-discard-changes-clears-canvas_ELITEA-2076.md`).
+`ToolkitEditor.jsx` already had a working `handleDiscard` wired to
+`BaseEditor`'s `onDiscard` (both create-mode and edit-mode branches), but
+never supplied `discardButtonTestId`/`discardModalTestId`/
+`discardConfirmButtonTestId` at its `<BaseEditor>` call site — those three
+props were already threaded end-to-end through `BaseEditor.jsx` →
+`EditorHeader.jsx` → `Button.DiscardButton` by ELITEA-2076's fix, so only
+the call-site wiring was missing.
+
+- **Three testids added**, `EliteaAI/EliteaUI@bc08563f` on `automation/testids`
+  (awaiting human promotion to `main`): `toolkit-canvas-discard-button`,
+  `toolkit-canvas-discard-confirm-modal`, `toolkit-canvas-discard-confirm-button`.
+  Same `isMcpTestIdScope ? 'mcp-canvas-discard-*' : 'toolkit-canvas-discard-*'`
+  conditional pattern as the pre-existing title/close/create testids — the
+  `mcp-canvas-discard-*` mirrors did not exist anywhere before this session.
+- **Discard is gated on Formik's `dirty` state** (`disabled={!isFormDirty && !isYamlCodeDirty}`
+  in `EditorHeader.jsx`) — for the Toolkit canvas, `isYamlCodeDirty` is always
+  false (a Pipeline-only concept from `useIsPipelineYamlCodeDirty`), so typing
+  into the Name field alone is sufficient to enable Discard. **No type-complete
+  form is needed** — selecting a type + typing a Name dirties the form; no
+  credential, no repository field, no `github_credential` fixture dependency
+  (unlike ELITEA-2083's create-then-close flow, which needs a fully valid,
+  saveable form).
+- **Create-mode Discard reverts to the type-picker, not to a blank form** —
+  confirmed live: `handleDiscard()`'s `isCreating` branch does
+  `setEditToolDetail(null); setFormikInitialValues({ type: '' })`, so
+  confirming Discard un-selects the type entirely — the canvas title reverts
+  from `"New GitHub Toolkit"` back to `"New Toolkit"` and a
+  `toolkit-type-card-*` grid reappears, all while the canvas panel itself
+  stays mounted/open. This is the live-confirmed shape of "canvas cleared"
+  for THIS canvas — distinct from the Pipeline canvas's Discard (ELITEA-2076),
+  which only resets the Name/Description fields back to `""` on the SAME
+  form, never un-selecting anything (Pipeline has no type-picker step).
+- **Post-discard, the X-close button closes DIRECTLY, no confirmation** —
+  confirming Discard resets `BaseEditor`'s `isDirty` to `false`
+  (`onDiscard?.(); setIsDirty?.(false);`), so `handleCancel`'s
+  `isDirty && !isPublic` guard is false on the very next X click. Same
+  "no unsaved changes → direct close" rule already documented above for the
+  SAVED-toolkit case — now confirmed to extend to the discarded/cleared case
+  too.
+- **No product defect found** — this flow behaves exactly as ELITEA-2080/2081's
+  case text describes; zero clarifications needed.
+- AFS: `test-specs/chat-interface/l2_create-toolkit-from-conversation-close-canvas-without-saving_ELITEA-2081.md`.
+
 ## ELITEA-2462 — already-covered by ELITEA-2152 (word-for-word duplicate case text)
 
 - w09 analysis (2026-08-15): ELITEA-2462 ("Chat – Pin a folder and verify it appears at the
@@ -3712,6 +3764,65 @@ analyst+implementer session):**
   `expect(row).to_contain_text(agent_name, timeout=...)` instead, which
   retries until the real content lands.
 
+## ELITEA-2073/2074 (2026-08-20) — Build-with-AI Cancel-then-Generate in chat canvas; generated agent's Save/starters
+
+- **`generate-agent-cancel-button` works identically inside the chat canvas
+  as on the standalone `/agents/create` page** — confirmed live: Cancel on
+  the prompt step removes `generate-agent-modal` from the DOM immediately,
+  leaves `agent-name-input` empty, canvas title stays "Create New Agent".
+  Re-opening the SAME modal right after (`generate-agent-open-button`
+  clicked a second time) resets `generate-agent-prompt-input` to `""` — no
+  stale text survives a Cancel+reopen cycle. Neither ELITEA-1917 (Cancel,
+  but on `/agents/create`) nor ELITEA-1920 (canvas, but never exercises
+  Cancel) had proven this specific combination before.
+- **`Anthropic Claude 4.5 Sonnet` "generate an echo agent" draft is
+  reproducible in SHAPE but not in exact CONTENT across separate
+  generations** — two independent live generations this session (same
+  prompt) both produced `name: "Echo Agent"` and exactly 4 conversation
+  starters, but the starters' literal text differed. Any case built on a
+  Build-with-AI-generated agent must capture the actually-rendered content
+  at run time and assert against THAT, never a literal example string —
+  see the ELITEA-2074 AFS § Test Data for the full drift writeup (the
+  case's own "Echo this: Hello, world!" example is never what actually
+  renders).
+- **The generated Echo Agent's own instructions explicitly permit (and
+  demonstrably add) an `"Echo:"` prefix** — instructions text: *"You may
+  add a brief prefix like 'You said:' or 'Echo:' to make it clear you're
+  echoing, but otherwise preserve their exact words."* Live replies this
+  session: `"Echo: Hello, Echo Agent!"` and `"Echo: . Can you repeat this
+  message?"` (sent texts: `"Hello, Echo Agent!"` /
+  `"Can you repeat this message?"`). Any exact-equality assertion against
+  the sent text on a Build-with-AI-generated "echo" agent will false-fail
+  on this correct, per-instructions behavior — assert `sent_text in
+  reply_text` (containment), not equality.
+- **`agent-save-button` is genuinely DISABLED immediately after a
+  Build-with-AI Create-Agent completes** — confirmed live
+  (`.disabled === true`, same for `agent-discard-button`) — because the
+  single `POST .../applications/prompt_lib/{project}` the Create-Agent
+  click fires already persists the FULL generated config (name,
+  instructions, welcome message, starters); there is nothing left dirty to
+  save. Any case whose precondition is "an agent was just generated via
+  Build with AI" should expect Save disabled, not clickable — clicking a
+  disabled MUI button is a no-op (no toast, no network call).
+  **Implementation gotcha (ELITEA-2074, confirmed via a real pytest run,
+  R1 rerun):** the disabled state settles ASYNCHRONOUSLY right after the
+  create POST resolves — a one-shot `Locator.is_disabled()` read caught a
+  transient `False` (still enabled) once in automated execution, even
+  though two independent MCP/live-browser explorations both read `True`
+  immediately. Use the web-first, retrying `expect(locator).to_be_disabled(
+  timeout=...)` for this check, never a bare `.is_disabled()` snapshot read.
+- **Starter tiles remain fully clickable/functional after the conversation
+  acquires a real server-side id** (post-first-send) — confirmed live: the
+  same 4-tile set (`chat-conversation-starter-tile`) was still present and
+  clickable for a SECOND starter after the first send/reply cycle
+  completed, same conversation, no reload needed.
+- **Console note:** the pre-existing, already-documented `disableUnderline`
+  React-prop warning (`test-specs/agents/_surface.md`,
+  `test-specs/skills/_surface.md`) fires on `GenerateAgentReviewForm.jsx`'s
+  Name field for the AGENT flow too (not just Skill) — same baseline noise,
+  not a new finding, exclude from console-error assertions on any
+  Build-with-AI review-form case.
+
 ## Edit owned agent via chat canvas (ELITEA-2089, confirmed 2026-08-18)
 
 Canvas edit flow for an **owned** agent participant. Distinct from ELITEA-2075
@@ -3968,3 +4079,137 @@ is synchronised immediately.
   Summaries + toggle OFF). Worth a future analyst/reviewer's attention if a
   case ever DOES require exact sidebar/modal parity.
 - AFS: `test-specs/chat-interface/l3_auto-summarization-disabled-no-trigger-at-max-tokens_ELITEA-2217.md`.
+
+## ELITEA-2076 — In-chat "Create New Pipeline" canvas Discard flow (2026-08-20,
+## combined analyst+implementer)
+
+Extends the "In-chat 'Create New X' canvas family" section above with the
+Discard side of the flow — ELITEA-2079/2089 only ever exercised Save (2079)
+or verified Discard's *enabled* state without clicking it (2089's AFS/test).
+
+- **THREE new testids added this session** (`EliteaAI/EliteaUI@d4edc6e5`,
+  `automation/testids` only — awaiting human promotion to `main`):
+  `pipeline-canvas-discard-button`, `pipeline-canvas-discard-confirm-modal`,
+  `pipeline-canvas-discard-confirm-button`. `BaseEditor.jsx`/`EditorHeader.jsx`
+  already rendered `Button.DiscardButton` unconditionally when `!isPublic`
+  (with a pre-existing `discardButtonTestId` prop path, added for
+  ELITEA-2089's Agent-canvas Discard but never wired at `PipelineEditor.jsx`'s
+  own `<BaseEditor>` call site). `Button.DiscardButton` (`DiscardButton.jsx`)
+  itself already supports `modalDataTestId`/`confirmButtonDataTestId` props
+  (proven live by `CredentialsTabBar.jsx`'s direct usage), but
+  `EditorHeader.jsx`'s own call only ever forwarded `dataTestId` — never the
+  modal/confirm-button testids. Fix: two new optional props,
+  `discardModalTestId`/`discardConfirmButtonTestId`, threaded
+  `BaseEditor.jsx` → `EditorHeader.jsx` → the existing `Button.DiscardButton`
+  props, supplied ONLY at `PipelineEditor.jsx`'s call site — sibling
+  Agent/MCP chat canvases (`AgentEditor.jsx`/`ToolkitEditor.jsx`) unaffected
+  (optional, caller-supplied props).
+- **Confirmation dialog is genuinely a confirm-before-discard step, not a
+  no-op** — confirmed live: clicking the (now-enabled, once dirty) Discard
+  button opens a `Warning`-titled `BaseModal` with body text `"Are you sure
+  you want to discard changes?"` and its own "Discard" confirm button.
+  Confirming it: (a) Formik `resetForm()`s the Name/Description fields back
+  to `""`, (b) re-disables the header Discard button (form no longer dirty),
+  (c) fires **zero** `POST`/`PUT` to `/applications/prompt_lib/{project}` at
+  any point in the whole flow — the Discard path never touches the create
+  endpoint (only pre-existing `GET .../applications/prompt_lib/399?...`
+  list-refresh calls fire, from opening the `+` menu's Pipelines submenu,
+  same background calls ELITEA-2079 also observes).
+- **`chat-participants-badge-pipelines` absence is the correct negative
+  assertion** for "no pipeline was created" (case step 10) — same
+  already-documented idiom (`ChatPage.is_participants_badge_visible`) used
+  elsewhere in this suite for "no X participant" cases
+  (`test_slash_mention_empty_state.py`, `test_direct_toolkit_call_complete_flow.py`).
+- **No product defect found** — this flow behaves exactly as the case
+  describes; zero clarifications needed.
+- AFS: `test-specs/chat-interface/l2_pipeline-discard-changes-clears-canvas_ELITEA-2076.md`.
+
+## ELITEA-2077 — Create Pipeline from Conversation, Save Basic Configuration
+(2026-08-20, combined analyst+implementer slot)
+
+- **`pipeline-canvas-subtitle` testid added** — closes the LAST remaining
+  gap in the four-way canvas-chrome testid family documented above
+  (title/close/discard were fixed by ELITEA-2076/2079; subtitle was the one
+  nobody had needed yet). `PipelineEditor.jsx`'s `<BaseEditor>` call now
+  supplies `subtitleTestId="pipeline-canvas-subtitle"` (the prop already
+  existed end-to-end, same shape as `titleTestId` — `AgentEditor.jsx` already
+  supplies its own `agent-canvas-subtitle`). Pushed to `automation/testids`
+  (`EliteaAI/EliteaUI@7b1e2c5a`). Renders `"base"` (the version name) next to
+  the canvas title once a real (non-create-mode) pipeline is open.
+- **Composer chip is a THREE-way split, not two** — `chat-switch-participant-button`
+  (name, e.g. `"test-pipeline"`) and `chat-version-selector-trigger` (version,
+  e.g. `"base"`) are the two elements ELITEA-2079's AFS already documented, but
+  the case's "Editing..." status text lives on a THIRD sibling button in the
+  same `ButtonGroup`: `chat-participant-settings-button` (pre-existing testid,
+  added by ELITEA-2362 for its click target, never previously asserted for its
+  TEXT). Confirmed via a full DOM text-node walk — `/editing/i` matches nowhere
+  else on the page immediately post-save. Any case asserting the "Editing..."
+  status should read THIS element, not try to find the text inside the
+  name/version chips.
+- **ADVANCED section is expanded by default in CREATE mode, no click needed**
+  — `agent-canvas-section-advanced` (on-main), containing `pipeline-step-limit-input`
+  pre-filled `"25"`, is visible immediately once the create-mode canvas opens
+  (no accordion-expand interaction required, unlike `EDITOR NOTES` elsewhere
+  on the standalone detail page). The case's "model chip" is the composer
+  form's own Model Selector group (`model-selector-button`/`model-selector-name`),
+  rendered in the same panel — assert non-empty text only, the display name is
+  environment-dependent (`.agents/testing.md` § Known issues).
+- **Dev-server HMR staleness — confirmed live, worth flagging for future
+  sessions.** A long-idle `npm run dev` process on port 5173 stopped picking
+  up file-watcher events for at least the `PipelineEditor.jsx` edit above — the
+  new testid was committed, pushed, and present on disk, yet 3 consecutive
+  live create-pipeline flows (across a full page navigation) kept rendering
+  the OLD build (`curl http://localhost:5173/src/<file>.jsx` also served stale
+  transformed source, confirming it wasn't a browser cache issue). A hard
+  restart (`kill` the stale `vite`/`npm run dev` PIDs bound to :5173, relaunch)
+  fixed it immediately. If a testid you just added reads absent live despite a
+  full reload and no console/network error explains it, `curl` the served
+  source for that file before concluding the JSX itself is wrong.
+- **No product defect found** — this flow behaves exactly as the case
+  describes; zero clarifications needed.
+- AFS: `test-specs/chat-interface/l2_pipeline-create-save-basic-configuration_ELITEA-2077.md`.
+
+## ELITEA-2078 — Pipeline Flow Editor "Add LLM Node, Discard Changes, Verify
+## Node is Removed" (2026-08-20, combined analyst+implementer)
+
+Extends the "In-chat 'Create New X' canvas family" section above — the
+Flow-graph-dirty-state Discard flow, one layer deeper than ELITEA-2076
+(which only ever dirtied the header form's Name/Description fields).
+
+- **`PipelineEditor.jsx`'s Discard is gated on `totalDirty = isDirty ||
+  isYamlDirty`, not just the Formik form.** `isYamlDirty` comes from
+  `EditorPanel`'s `useIsPipelineYamlCodeDirty()` via a `setYamlDirty` prop —
+  adding a node on the Flow tab flips it, which enables the SAME
+  `pipeline-canvas-discard-button` header button ELITEA-2076 already added
+  (no new testid needed). Confirmed live: Discard/Save both read `disabled`
+  immediately after the Flow Editor tab opens on a fresh pipeline, and both
+  become enabled the instant the LLM node is added.
+- **`handleDiscard()` (`PipelineEditor.jsx`) reverts the FLOW GRAPH, not
+  just form fields**: `dispatch(actions.resetPipeline())` +
+  `dispatch(editorActions.resetPipelineEditor())`, alongside the
+  Formik-field reset ELITEA-2076 already documented. Confirmed live: after
+  confirming Discard, the canvas returns to exactly the pre-add state
+  (`get_node_count()==1`, `get_node_ids()==["END"]`), and the header
+  Discard/Save buttons re-disable.
+- **Zero network calls fire between adding the node and the post-discard
+  state** — confirmed live via network capture (only the create-mode
+  `POST .../applications/prompt_lib/399` → `201` and its hydration `GET`s
+  fire during Setup; nothing fires for add-node or discard). Same "Discard
+  never touches the server" finding as ELITEA-2076, now confirmed to
+  extend to Flow-graph changes.
+- **Add Node menu's 11-item set matches the case's own list exactly, live-
+  confirmed AND source-traced**: `AddNodeMenu.jsx`'s `getVisibleNodeTypes()`
+  filters `FlowEditorConstants.PipelineNodeTypes` down to 11 by excluding
+  `DeprecatedConstants.DeprecatedOrInvisibleNode` (Tool, Function, Pipeline,
+  Condition, Loop, LoopFromTool — deprecated — plus End, Ghost, Default —
+  invisible). Menu renders alphabetically by display label: Agent, Code,
+  Custom, Decision, Human-in-the-loop, LLM, MCP, Printer, Router, State
+  modifier, Toolkit. The compliant testid-based methods
+  (`get_add_node_menu_items()` / `select_add_node_menu_item(internal_type)`,
+  ELITEA-2030) are preferred over the older `add_node(display_name)` — the
+  latter still chains a raw `button.MuiIconButton-colorPrimary` CSS handle
+  + `get_by_role("menuitem")`, kept only for its existing ELITEA-2079
+  caller, not a pattern to imitate in new code.
+- **No product defect found** — this flow behaves exactly as the case
+  describes; zero clarifications needed.
+- AFS: `test-specs/chat-interface/l2_pipeline-flow-editor-add-llm-node-discard-changes_ELITEA-2078.md`.

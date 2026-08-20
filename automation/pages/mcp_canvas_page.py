@@ -18,6 +18,21 @@ This page object owns only the canvas-specific chrome that has no
 button (all threaded as ``isMCP``-conditional optional props on components
 shared with the plain-Toolkit creation path — see AFS Concrete Handles /
 declared improvisation).
+
+ELITEA-2084 — ``discard_button``/``discard_confirm_modal``/
+``discard_confirm_button`` added, mirroring ``ToolkitCanvasPage``'s ELITEA-2081
+shape 1:1 (same ``Button.DiscardButton``/``BaseModal`` components,
+``isMcpTestIdScope``-conditional call site in ``ToolkitEditor.jsx``). The three
+testid strings already existed on ``automation/testids`` before this change —
+added as the MCP-branch mirror during ELITEA-2081's own Toolkit-canvas Discard
+implementation (commit ``EliteaAI/EliteaUI@bc08563f``); this page object simply
+never referenced them until now. No new ``add-data-testid`` work was required
+(AFS test-specs/chat-interface/
+l2_create-mcp-from-conversation-discard-changes_ELITEA-2084.md, Concrete
+Handles). Confirming Discard on a freshly-selected, never-created MCP type
+reverts the WHOLE canvas to the type-picker (``ToolkitEditor.jsx``'s
+``handleDiscard`` creation-mode branch resets ``editToolDetail`` to ``null``
+unconditionally, regardless of ``isMCP``) — not merely blank form fields.
 """
 
 import logging
@@ -63,6 +78,25 @@ class McpCanvasPage(BasePage):
         ),
     )
 
+    discard_button = LocatorDescriptor(
+        testid="mcp-canvas-discard-button",
+        description=(
+            "Discard button in the MCP canvas header. Disabled until the "
+            "form is dirty. Clicking it opens discard_confirm_modal "
+            "(ELITEA-2084)."
+        ),
+    )
+
+    discard_confirm_modal = LocatorDescriptor(
+        testid="mcp-canvas-discard-confirm-modal",
+        description="Discard confirmation modal (BaseModal) opened by discard_button.",
+    )
+
+    discard_confirm_button = LocatorDescriptor(
+        testid="mcp-canvas-discard-confirm-button",
+        description="Discard button inside the confirmation modal.",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -77,3 +111,23 @@ class McpCanvasPage(BasePage):
         logger.info("Closing MCP canvas")
         self.close_button.wait_for(state="visible", timeout=timeout)
         self.close_button.click()
+
+    def is_discard_enabled(self, timeout: int = 5000) -> bool:
+        """Return True if the canvas header's Discard button is enabled (form is dirty)."""
+        self.discard_button.wait_for(state="visible", timeout=timeout)
+        return self.discard_button.is_enabled()
+
+    @action("Click Discard on MCP canvas")
+    def click_discard(self, timeout: int = 5000) -> None:
+        """Click the canvas header's Discard button, opening the confirmation modal (ELITEA-2084)."""
+        logger.info("Clicking Discard on MCP canvas")
+        self.discard_button.wait_for(state="visible", timeout=timeout)
+        self.discard_button.click()
+        self.discard_confirm_modal.wait_for(state="visible", timeout=timeout)
+
+    @action("Confirm discard on MCP canvas")
+    def confirm_discard(self, timeout: int = 5000) -> None:
+        """Click Discard inside the confirmation modal and wait for it to close (ELITEA-2084)."""
+        logger.info("Confirming discard on MCP canvas")
+        self.discard_confirm_button.click()
+        self.discard_confirm_modal.wait_for(state="detached", timeout=timeout)

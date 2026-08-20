@@ -28,13 +28,14 @@ type: feedback
 back.** A round-1 grep that listed a line as "compliant" under the testid
 filter is exactly how a POM violation rides unflagged into round 2.
 
-## Seen 5× (3 construction-site, 2 mechanism)
+## Seen 6× (4 construction-site, 2 mechanism)
 
 - PR #620/ELITEA-1955 — self-check claimed 1 hit; the same grep found 3, two of them `.locator()` calls in `test_pipeline_mcp_node_empty_toolkit_before_attach.py`, both testid-anchored and both blocking.
 - PR #643/ELITEA-1808 — `ARTIFACTS_TREE_ITEM`, a correctly-declared page-object constant, had its only consumer in the spec file (siblings `BUCKET_ROW` / `BUCKET_MENU_BUTTON` were correctly wrapped in methods).
 - PR #670/ELITEA-1866 R2 — three `page.locator(ToolkitTestSettingsPage.X)` calls in a test body, carried over unflagged from round 1's "compliant" list.
 - PR #537/ELITEA-1974 — `credentials_list_page.py` raw `ENTITY_CARD_*_SELECTOR` constants + `page.locator()` instead of `LocatorDescriptor`.
 - PR #545/ELITEA-1869 — `agents_list_page.get_agent_card_names()` same bypass, different file.
+- PR #1613/ELITEA-2081 — `test_close_toolkit_canvas_without_saving.py:213`, `page.locator(toolkit_form.TOOLKIT_TYPE_CARD.format("github"))` in the test body, even though `ToolkitCreationPage.get_type_card(type_key)` already exists as the wrapper for this exact dynamic-testid template (its own docstring says so). The implementer's self-check grep ran the § Reviewer testid-identity grep only (0 hits reported, technically true — the constant resolves to `[data-testid=`) and missed construction-site entirely.
 
 See also: mechanical_grep_passes_non_testid_but_spec_file_locators_still_violate_pom.md ·
 elitea_1808_pom_construction_site_not_selector_source_reviewer_check.md ·

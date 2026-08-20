@@ -13,6 +13,7 @@
 - [chat-remaining-w03 case snapshots never existed](chat_remaining_w03_case_snapshots_never_existed.md) — read the TMS file directly, not a novel-ground signal
 - [Dynamic testid suffix collides with prefix selector](dynamic_testid_suffix_collides_with_prefix_selector.md) — `${itemId}-suffix` matches item's own `^=` prefix locator; add `:not()`
 - [Merged code ≠ proof of live execution](merged_code_is_not_proof_of_live_execution.md) — a guardrails/CI-only merged test can't cite as coverage proof either
+- [Build-with-AI post-create reads settle async](build_with_ai_post_create_save_discard_disabled_state_settles_async.md) — Save/Discard state AND form field values; always `expect()`, never a one-shot read (2×)
 
 - [Project briefing](project_briefing.md) — your slot, the six-phase loop, the ≤2-rerun budget, the Run Report
 - [Verify feature branch first](verify_feature_branch_before_first_commit.md) — `git branch --show-current` before any commit; dispatch starts you ON the trunk (5×)
@@ -80,3 +81,5 @@
 - [EntityIcon avatar testid is conditional](entity_icon_avatar_testid_conditional_on_custom_icon.md) — `chat-participant-avatar` only exists for a custom icon image; use `chat-participant-icon` for any-icon
 - [Transient-message whole-string prefix hides real content](transient_message_whole_string_prefix_check_hides_real_content.md) — "Thought for X" + real content same message → check `_is_transient_message` per-line, not whole-string
 - [MUI Portal dialog + shared testid reads wrong node](mui_portal_dialog_shared_testid_first_reads_wrong_node.md) — `.first` on a testid shared with an always-mounted panel behind a Portal dialog reads the background node
+- [Chat-canvas Discard modal testid threading](chat_canvas_discard_modal_testid_threading_pattern.md) — BaseEditor/EditorHeader already support it; only PipelineEditor.jsx supplies it so far
+- [Dev server HMR can hard-stop, not just lag](dev_server_hmr_can_hard_stop_not_just_lag.md) — curl the served source before blaming your JSX; restart if stale
