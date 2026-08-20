@@ -67,7 +67,7 @@ def main():
     parser.add_argument(
         '--path',
         default='tests/ui',
-        help='Test path to collect (default: tests/ui)'
+        help='Test path to collect (default: tests/ui, UI tests only)'
     )
     parser.add_argument(
         '--out',

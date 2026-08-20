@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - "automation/tests/ui/**"
-      - "automation/tests/api/**"
       - "automation/scripts/build_test_index.py"
   workflow_dispatch:
 
@@ -30,8 +29,8 @@ jobs:
       - name: Build test index
         working-directory: automation
         run: |
-          python scripts/build_test_index.py --path tests --out index.json
-          echo "Indexed $(jq '.tests | length' index.json) tests"
+          python scripts/build_test_index.py --path tests/ui --out index.json
+          echo "Indexed $(jq '.tests | length' index.json) UI tests"
 
       - name: Commit if changed
         run: |
