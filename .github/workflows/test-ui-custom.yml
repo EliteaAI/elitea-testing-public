@@ -1017,6 +1017,11 @@ jobs:
           cat reports/dashboard.md
 
           # Generate coverage analysis comparing automation/index.json with TMS index_automated.json
+          # Fetch automation index from main repo (not checked out in this job)
+          curl -sL -H "Authorization: token ${{ secrets.GIT_HUB_TOKEN }}" \
+            "https://raw.githubusercontent.com/EliteaAI/elitea-testing-public/main/automation/index.json" \
+            -o /tmp/automation_index.json || echo '{"tests":[]}' > /tmp/automation_index.json
+
           python3 << 'COVERAGE_EOF' >> reports/dashboard.md
           import json
           import os
@@ -1024,8 +1029,8 @@ jobs:
           print("\n---\n")
           print("## TMS Coverage Analysis\n")
 
-          # Load automation index (from elitea-testing-public repo)
-          automation_index_path = "../automation/index.json"
+          # Load automation index (fetched from elitea-testing-public repo)
+          automation_index_path = "/tmp/automation_index.json"
           tms_index_path = "index_automated.json"
 
           if not os.path.exists(automation_index_path):
