@@ -3752,6 +3752,13 @@ analyst+implementer session):**
   save. Any case whose precondition is "an agent was just generated via
   Build with AI" should expect Save disabled, not clickable — clicking a
   disabled MUI button is a no-op (no toast, no network call).
+  **Implementation gotcha (ELITEA-2074, confirmed via a real pytest run,
+  R1 rerun):** the disabled state settles ASYNCHRONOUSLY right after the
+  create POST resolves — a one-shot `Locator.is_disabled()` read caught a
+  transient `False` (still enabled) once in automated execution, even
+  though two independent MCP/live-browser explorations both read `True`
+  immediately. Use the web-first, retrying `expect(locator).to_be_disabled(
+  timeout=...)` for this check, never a bare `.is_disabled()` snapshot read.
 - **Starter tiles remain fully clickable/functional after the conversation
   acquires a real server-side id** (post-first-send) — confirmed live: the
   same 4-tile set (`chat-conversation-starter-tile`) was still present and
