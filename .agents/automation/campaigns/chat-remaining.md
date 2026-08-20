@@ -394,6 +394,24 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- none — wave-15 fully closed. Board → In Progress. Next: wave-16 (Canvas
-  creation, 9 cases: 2073,2074,2076,2077,2078,2081,2083,2084,2089 — check
-  ELITEA-2077 already-covered first per the campaign's own intake note).
+- **wave-16** intake found 2 of the planned 9 cases already done by
+  unrelated/earlier work (NOT this campaign's own dispatches): ELITEA-2083
+  (`ready`/`automated`, PR #1576, `test_create_toolkit_from_conversation.py`)
+  and ELITEA-2089 (`ready`/`automated`, PR #1580,
+  `test_chat_canvas_edit_agent.py`) — both cleanly TMS-backwritten already,
+  no action needed. Net-new intake: 7 cases (2073,2074,2076,2077,2078,
+  2081,2084). ELITEA-2077 flagged per the campaign's own earlier note: an
+  existing merged test
+  (`test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py::test_add_llm_node_save_pipeline_and_verify_participant`,
+  sanctioned-RED on open #1039) lists `case_ids: ["ELITEA-2079","ELITEA-2077"]`
+  in an old batch report, though the file's own docstring says "ELITEA-2077/
+  2078 are not yet automated" — contradiction left for the analyst to
+  resolve (already-covered vs net-new), not decided by the lead. All 7
+  confirmed still `draft`/`manual` at intake (no dedup hits). Dispatching via
+  `batch-build.workflow.mjs`, cluster `[2073,2074]` (agent-build-with-AI
+  cancel vs save, same canvas flow); 2076/2077/2078/2081/2084 standalone
+  (2081 may turn out extend-existing onto ELITEA-2083's own
+  `test_create_toolkit_from_conversation.py` — close-without-saving is the
+  natural negative counterpart to 2083's close-and-verify-added — left for
+  the analyst, not pre-clustered). Case snapshots at
+  `.agents/automation/chat-remaining-w16/cases/`.
