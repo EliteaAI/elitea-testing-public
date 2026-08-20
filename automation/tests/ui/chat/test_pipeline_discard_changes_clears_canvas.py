@@ -33,6 +33,19 @@ Testid gaps filled this implementation (``add-data-testid``, pushed to
   ``PipelineEditor.jsx``'s call site — the sibling Agent/MCP chat canvases
   are unaffected since the new props are optional and caller-supplied.
 
+Fix round 1 (review): Coverage Map step-4 claimed the canvas heading text
+was asserted, but no such assertion shipped and no testid existed for the
+title ``Typography``. Filled the gap the same way as the Discard testids
+above — ``pipeline-canvas-title`` supplies ``EditorHeader.jsx``'s
+pre-existing optional ``titleTestId`` prop (already forwarded by
+``BaseEditor.jsx``; sibling canvases already supply it —
+``agent-canvas-title``, ``toolkit-canvas-title``/``mcp-canvas-title``) at
+``PipelineEditor.jsx``'s call site (``EliteaAI/EliteaUI@93dc5667``). Also
+wrapped the trailing console-error side-channel check in its own
+``allure.step`` (idiom: "Side-channel check — ...", matching
+``test_invite_users_add_cancel_close.py`` et al.) — it was previously
+unwrapped, violating the mandatory step-reporting rule.
+
 No product defect found — this flow behaves exactly as the case describes.
 """
 
@@ -137,6 +150,7 @@ class TestPipelineDiscardChangesClearsCanvas:
             'Step 4 — Verify canvas header shows "Create New Pipeline" with '
             "X, Discard, and Save buttons — Discard/Save start disabled"
         ):
+            expect(pipeline_canvas.title).to_have_text("Create New Pipeline", timeout=UI_ELEMENT_TIMEOUT)
             expect(pipeline_canvas.close_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
             expect(pipeline_canvas.discard_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
             expect(pipeline_canvas.discard_button).to_be_disabled(timeout=UI_ELEMENT_TIMEOUT)
@@ -192,7 +206,8 @@ class TestPipelineDiscardChangesClearsCanvas:
                 "not have created a pipeline"
             )
 
-        assert not console_messages, (
-            f"Unexpected console errors during the discard flow: "
-            f"{[m.text for m in console_messages]}"
-        )
+        with allure.step("Side-channel check — no unexpected console errors across the full flow"):
+            assert not console_messages, (
+                f"Unexpected console errors during the discard flow: "
+                f"{[m.text for m in console_messages]}"
+            )

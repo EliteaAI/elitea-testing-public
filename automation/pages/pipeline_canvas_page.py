@@ -61,6 +61,16 @@ logger = logging.getLogger("elitea.pages.pipeline_canvas")
 class PipelineCanvasPage(BasePage):
     """Page object for the in-chat 'Create New Pipeline' canvas panel."""
 
+    title = LocatorDescriptor(
+        testid="pipeline-canvas-title",
+        description=(
+            "Canvas header title Typography ('Create New Pipeline' in create "
+            "mode) — threaded as BaseEditor/EditorHeader's optional "
+            "titleTestId prop, same shape as AgentCanvasPage.title / "
+            "ToolkitCanvasPage.title (ELITEA-2076 fix-round-1 add-data-testid)."
+        ),
+    )
+
     close_button = LocatorDescriptor(
         testid="pipeline-canvas-close-button",
         description=(
