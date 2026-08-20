@@ -527,6 +527,7 @@ class TestContextManagementToggle:
                 )
                 profile.set_target_summary_tokens(original_target_tokens)
 
+    @pytest.mark.blocked
     def test_max_context_tokens_rejects_non_numeric_and_negative_input(self, page):
         """Max Context Tokens rejects non-numeric/negative input client-side (ELITEA-2391).
 
