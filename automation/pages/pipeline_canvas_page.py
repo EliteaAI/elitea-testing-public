@@ -81,6 +81,18 @@ class PipelineCanvasPage(BasePage):
         ),
     )
 
+    subtitle = LocatorDescriptor(
+        testid="pipeline-canvas-subtitle",
+        description=(
+            "Canvas header subtitle Typography — the version name (e.g. "
+            "'base') rendered next to the title once a real (non-create-mode) "
+            "pipeline is open. Threaded as BaseEditor/EditorHeader's optional "
+            "subtitleTestId prop, same shape as title/close_button above and "
+            "as AgentCanvasPage's own 'agent-canvas-subtitle' "
+            "(ELITEA-2077 add-data-testid)."
+        ),
+    )
+
     configuration_tab = LocatorDescriptor(
         testid="pipeline-canvas-tab-configuration",
         description=(
