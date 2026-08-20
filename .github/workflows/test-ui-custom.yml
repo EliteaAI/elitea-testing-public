@@ -756,7 +756,7 @@ jobs:
                       if f is not None or e is not None:
                           el = f if f is not None else e
                           status = "failed"
-                          msg = ((el.get("message") or "") + " " + (el.text or "")).strip()[:2000]  # Truncate large tracebacks
+                          msg = ((el.get("message") or "") + " " + (el.text or "")).strip()[:500]  # Truncate large tracebacks
                       elif sk is not None:
                           status, msg = "skipped", ""
                       else:
