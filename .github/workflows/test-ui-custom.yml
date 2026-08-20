@@ -1016,6 +1016,101 @@ jobs:
           echo "✓ Generated reports/dashboard.md"
           cat reports/dashboard.md
 
+          # Generate coverage analysis comparing automation/index.json with TMS index_automated.json
+          python3 << 'COVERAGE_EOF' >> reports/dashboard.md
+          import json
+          import os
+
+          print("\n---\n")
+          print("## TMS Coverage Analysis\n")
+
+          # Load automation index (from elitea-testing-public repo)
+          automation_index_path = "../automation/index.json"
+          tms_index_path = "index_automated.json"
+
+          if not os.path.exists(automation_index_path):
+              print("_Automation index not found. Run `build-test-index` workflow first._")
+              exit(0)
+
+          if not os.path.exists(tms_index_path):
+              print("_TMS index not found._")
+              exit(0)
+
+          with open(automation_index_path) as f:
+              automation_data = json.load(f)
+          with open(tms_index_path) as f:
+              tms_data = json.load(f)
+
+          # Extract test IDs
+          automation_ids = set(t["automation_test_id"] for t in automation_data.get("tests", []))
+
+          # TMS cases have automation_test_id as a list
+          tms_ids = set()
+          tms_case_map = {}  # test_id -> case info
+          for case in tms_data.get("cases", []):
+              for test_id in case.get("automation_test_id", []):
+                  tms_ids.add(test_id)
+                  tms_case_map[test_id] = {"id": case["id"], "title": case["title"], "status": case.get("status", "")}
+
+          # Calculate differences
+          in_automation_not_tms = automation_ids - tms_ids  # Tests without TMS cases
+          in_tms_not_automation = tms_ids - automation_ids  # Orphan TMS refs (case exists but test doesn't)
+          linked = automation_ids & tms_ids  # Properly linked
+
+          # Summary stats
+          print("| Metric | Count |")
+          print("|--------|-------|")
+          print(f"| Tests in automation | {len(automation_ids)} |")
+          print(f"| Tests linked to TMS cases | {len(linked)} |")
+          print(f"| Tests without TMS case | {len(in_automation_not_tms)} |")
+          print(f"| Orphan TMS refs (test missing) | {len(in_tms_not_automation)} |")
+          coverage = len(linked) / len(automation_ids) * 100 if automation_ids else 0
+          print(f"| **TMS Coverage** | **{coverage:.1f}%** |")
+          print()
+
+          # Coverage pie chart
+          print("```mermaid")
+          print("pie showData")
+          print(f'    title "TMS Linkage ({len(automation_ids)} tests)"')
+          print(f'    "Linked to TMS" : {len(linked)}')
+          print(f'    "No TMS case" : {len(in_automation_not_tms)}')
+          print("```\n")
+
+          # Tests without TMS cases (show top 15)
+          if in_automation_not_tms:
+              print("### Tests Without TMS Case\n")
+              print("_Tests that exist in automation but have no linked TMS case._\n")
+              print("<details>")
+              print(f"<summary>Show {len(in_automation_not_tms)} unlinked tests</summary>\n")
+              for test_id in sorted(in_automation_not_tms)[:50]:
+                  # Shorten for display
+                  short = test_id.replace("tests.ui.", "").replace("tests.api.", "api/")
+                  print(f"- `{short}`")
+              if len(in_automation_not_tms) > 50:
+                  print(f"- _... and {len(in_automation_not_tms) - 50} more_")
+              print("\n</details>\n")
+
+          # Orphan TMS refs (show top 15)
+          if in_tms_not_automation:
+              print("### Orphan TMS References\n")
+              print("_TMS cases reference tests that don't exist in automation (renamed/deleted?)._\n")
+              print("<details>")
+              print(f"<summary>Show {len(in_tms_not_automation)} orphan refs</summary>\n")
+              for test_id in sorted(in_tms_not_automation)[:50]:
+                  case = tms_case_map.get(test_id, {})
+                  case_id = case.get("id", "?")
+                  short = test_id.replace("tests.ui.", "").replace("tests.api.", "api/")
+                  print(f"- `{short}` ({case_id})")
+              if len(in_tms_not_automation) > 50:
+                  print(f"- _... and {len(in_tms_not_automation) - 50} more_")
+              print("\n</details>\n")
+
+          print("---")
+          print(f"_Compared `automation/index.json` ({len(automation_ids)} tests) with `index_automated.json` ({len(tms_ids)} refs)_")
+          COVERAGE_EOF
+
+          echo "✓ Appended TMS coverage analysis"
+
           git add reports/dashboard.md
           git diff --cached --quiet || \
             git commit -m "dashboard: update test metrics"
