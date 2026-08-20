@@ -3203,7 +3203,7 @@
     {
       "automation_test_id": "tests.ui.skills.test_export_agent_with_attached_skills.TestExportAgentWithAttachedSkills.test_export_agent_with_attached_skills",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "skills",
@@ -3355,7 +3355,7 @@
     {
       "automation_test_id": "tests.ui.skills.test_skill_copy_link.TestSkillCopyLink.test_copy_link_copies_valid_url_to_correct_skill_and_version",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "skills",
@@ -3387,7 +3387,7 @@
     {
       "automation_test_id": "tests.ui.skills.test_skill_export_import.TestSkillExportImport.test_export_and_import_skill_base_version",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "skills",
@@ -3397,7 +3397,7 @@
     {
       "automation_test_id": "tests.ui.skills.test_skill_export_import.TestSkillExportImportNonBaseVersion.test_import_skill_non_base_version",
       "markers": [
-        "new",
+        "new_verified",
         "p3",
         "regression",
         "skills",
@@ -3407,7 +3407,7 @@
     {
       "automation_test_id": "tests.ui.skills.test_skill_export_import.TestSkillImportMissingFrontmatter.test_import_skill_missing_frontmatter_shows_validation_error",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "skills",
@@ -3497,7 +3497,7 @@
     {
       "automation_test_id": "tests.ui.skills.test_skill_pin_unpin.TestSkillPinUnpin.test_skill_pin_moves_to_top_and_unpin_reverts",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "skills",
@@ -3546,7 +3546,7 @@
     {
       "automation_test_id": "tests.ui.skills.test_skill_test_panel_no_new_conversation.TestSkillTestPanelNoNewConversation.test_test_panel_does_not_create_new_chat_conversation",
       "markers": [
-        "new",
+        "new_verified",
         "p3",
         "regression",
         "skills",
@@ -3556,7 +3556,7 @@
     {
       "automation_test_id": "tests.ui.skills.test_skill_test_panel_response_actions.TestSkillTestPanelResponseActions.test_test_panel_response_actions_enabled",
       "markers": [
-        "new",
+        "new_verified",
         "p3",
         "regression",
         "skills",
@@ -3566,7 +3566,7 @@
     {
       "automation_test_id": "tests.ui.skills.test_skill_test_panel_version_instructions.TestSkillTestPanelVersionInstructions.test_test_panel_uses_selected_skill_version_instructions",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "skills",
@@ -3576,7 +3576,7 @@
     {
       "automation_test_id": "tests.ui.skills.test_skill_version_set_default.TestSkillVersionSetDefault.test_version_dropdown_set_default_shows_control_and_confirmation",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "skills",
