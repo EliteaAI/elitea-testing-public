@@ -35,19 +35,10 @@ class ArtifactsPage(BasePage):
     and renders the file table on the right.
 
     URL: /artifacts, /artifacts?bucket={bucket_name}
+
+    Inherits from BasePage:
+    - project_selector_trigger, SELECT_OPTION, switch_project() for project switching
     """
-
-    # ------------------------------------------------------------------
-    # Sidebar project selector (shared testid, used across all pages)
-    # ------------------------------------------------------------------
-
-    project_selector_trigger = LocatorDescriptor(
-        testid="project-selector-trigger-combobox",
-        description="Sidebar project selector combobox trigger.",
-    )
-
-    # Dynamic testid for project-selector dropdown options
-    SELECT_OPTION = '[data-testid="select-option-{}"]'
 
     # ------------------------------------------------------------------
     # Left panel — bucket list
@@ -723,28 +714,6 @@ class ArtifactsPage(BasePage):
     # ------------------------------------------------------------------
     # Navigation
     # ------------------------------------------------------------------
-
-    @action("Switch project")
-    def switch_project(self, project_id: str | int, timeout: int = 10000) -> None:
-        """Switch the active project via the sidebar project selector.
-
-        Opens the ``project_selector_trigger`` combobox and clicks the
-        option matching *project_id*, resolved via the dynamic
-        ``SELECT_OPTION`` template — same pattern as other page objects.
-
-        Args:
-            project_id: Numeric id of the target project (string or int).
-            timeout: Maximum wait time in milliseconds.
-        """
-        logger.info("Switching active project to id=%s", project_id)
-        self.project_selector_trigger.click()
-        option = self.page.locator(self.SELECT_OPTION.format(project_id))
-        option.wait_for(state="visible", timeout=timeout)
-        option.click()
-        self.wait_for_network(timeout=timeout)
-        # Wait for bucket list to reload after project switch
-        self.page.wait_for_timeout(1000)
-        logger.info("Switched to project id=%s", project_id)
 
     @action("Navigate to Artifacts")
     def navigate_to_artifacts(self) -> None:

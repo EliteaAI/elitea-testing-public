@@ -8,6 +8,8 @@ import logging
 from playwright.sync_api import Page
 
 from config import settings
+from .locator_descriptor import LocatorDescriptor
+from utils.actions import action
 
 logger = logging.getLogger("elitea.pages")
 
@@ -91,8 +93,42 @@ class BasePage:
         page: Playwright ``Page`` instance.
     """
 
+    # ------------------------------------------------------------------
+    # Sidebar project selector (shared testid, used across all pages)
+    # ------------------------------------------------------------------
+
+    project_selector_trigger = LocatorDescriptor(
+        testid="project-selector-trigger-combobox",
+        description="Sidebar project selector combobox trigger.",
+    )
+
+    # Dynamic testid for project-selector dropdown options
+    SELECT_OPTION = '[data-testid="select-option-{}"]'
+
     def __init__(self, page: Page):
         self.page = page
+
+    @action("Switch project")
+    def switch_project(self, project_id: str | int, timeout: int = 10000) -> None:
+        """Switch the active project via the sidebar project selector.
+
+        Opens the ``project_selector_trigger`` combobox and clicks the
+        option matching *project_id*, resolved via the dynamic
+        ``SELECT_OPTION`` template — same pattern as other page objects.
+
+        Args:
+            project_id: Numeric id of the target project (string or int).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Switching active project to id=%s", project_id)
+        self.project_selector_trigger.click()
+        option = self.page.locator(self.SELECT_OPTION.format(project_id))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        self.wait_for_network(timeout=timeout)
+        # Wait for page content to reload after project switch
+        self.page.wait_for_timeout(1000)
+        logger.info("Switched to project id=%s", project_id)
 
     def navigate(self, path: str) -> None:
         """Navigate to *path* relative to ``app_base_url``.

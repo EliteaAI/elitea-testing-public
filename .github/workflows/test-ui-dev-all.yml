@@ -99,8 +99,8 @@ jobs:
       TEST_USER_PASSWORD_9: ${{ secrets.TEST_USER_PASSWORD_9 }}
       TEST_USER_NAME_10: ${{ secrets.TEST_USER_NAME_10 }}
       TEST_USER_PASSWORD_10: ${{ secrets.TEST_USER_PASSWORD_10 }}
-      # Team project ID for multi-user permission tests
-      ELITEA_TEAM_PROJECT_ID: ${{ secrets.ELITEA_TEAM_PROJECT_ID_DEV }}
+      # Team project ID for multi-user permission tests (global vars, not env-specific)
+      ELITEA_TEAM_PROJECT_ID: ${{ vars.ELITEA_TEAM_PROJECT_ID }}
       GIT_HUB_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
       BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
       ADO_TOKEN: ${{ secrets.ADO_TOKEN }}
