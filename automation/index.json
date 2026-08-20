@@ -666,7 +666,7 @@
       "automation_test_id": "tests.ui.agents.test_agent_add_variables_persist_after_reload.TestAgentAddVariablesPersistAfterReload.test_add_two_variables_and_verify_they_persist_after_reload",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p3",
         "regression",
         "ui"
@@ -826,7 +826,7 @@
       "automation_test_id": "tests.ui.agents.test_agent_build_with_ai_role_visibility.TestAgentBuildWithAIButtonRoleVisibility.test_build_with_ai_button_visible_for_admin_role",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "ui"
@@ -909,7 +909,7 @@
       "automation_test_id": "tests.ui.agents.test_agent_copy_version_link.TestAgentCopyVersionLink.test_copy_version_link_produces_version_specific_url",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "ui"
@@ -928,7 +928,7 @@
       "automation_test_id": "tests.ui.agents.test_agent_embedded_chat_conversation_starter_chips.TestConversationStarterChipsVisibleAndClickable.test_conversation_starter_chips_visible_and_clickable",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "ui"
@@ -938,7 +938,7 @@
       "automation_test_id": "tests.ui.agents.test_agent_embedded_chat_send_message.TestAgentEmbeddedChatSendMessage.test_send_message_via_enter_and_verify_non_empty_response",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p1",
         "regression",
         "ui"
@@ -948,7 +948,7 @@
       "automation_test_id": "tests.ui.agents.test_agent_embedded_chat_shift_enter.TestAgentEmbeddedChatShiftEnter.test_shift_enter_new_line_enter_sends",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p1",
         "regression",
         "ui"
@@ -958,7 +958,7 @@
       "automation_test_id": "tests.ui.agents.test_agent_icon_management.TestAgentIconManagement.test_agent_icon_change_persists_on_list_card",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p3",
         "regression",
         "ui"
@@ -1209,7 +1209,7 @@
       "automation_test_id": "tests.ui.agents.test_agent_name_character_limit.test_agent_name_truncated_at_32_characters",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p3",
         "regression",
         "ui"
@@ -1219,7 +1219,7 @@
       "automation_test_id": "tests.ui.agents.test_agent_publish_unpublish_version.TestAgentPublishUnpublishVersion.test_publish_draft_version_then_unpublish_reverts_to_draft",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p1",
         "regression",
         "ui"
@@ -1248,7 +1248,7 @@
       "automation_test_id": "tests.ui.agents.test_agent_save_as_version.TestAgentSaveAsVersion.test_save_as_version_creates_named_version_visible_in_dropdown",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p0",
         "regression",
         "ui"
@@ -1278,7 +1278,7 @@
       "automation_test_id": "tests.ui.agents.test_agent_version_selector_order.TestAgentVersionSelectorOrder.test_version_selector_lists_versions_in_correct_order",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p1",
         "regression",
         "ui"
@@ -1315,7 +1315,7 @@
       "automation_test_id": "tests.ui.agents.test_build_with_ai_skill_from_agent.TestBuildWithAISkillFromAgent.test_build_with_ai_skill_auto_attaches_and_redirects_to_agent",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p1",
         "regression",
         "ui"
@@ -1336,7 +1336,7 @@
       "automation_test_id": "tests.ui.agents.test_import_agent_valid_md_file.TestImportAgentValidMdFile.test_import_agent_valid_md_file",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p1",
         "regression",
         "ui"
@@ -1346,7 +1346,7 @@
       "automation_test_id": "tests.ui.agents.test_import_agent_zip_nested_agent_dependencies.TestImportAgentZipNestedAgentDependencies.test_import_agent_zip_nested_agent_dependencies",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "ui"
