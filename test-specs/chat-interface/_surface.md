@@ -4027,3 +4027,47 @@ is synchronised immediately.
   Summaries + toggle OFF). Worth a future analyst/reviewer's attention if a
   case ever DOES require exact sidebar/modal parity.
 - AFS: `test-specs/chat-interface/l3_auto-summarization-disabled-no-trigger-at-max-tokens_ELITEA-2217.md`.
+
+## ELITEA-2076 — In-chat "Create New Pipeline" canvas Discard flow (2026-08-20,
+## combined analyst+implementer)
+
+Extends the "In-chat 'Create New X' canvas family" section above with the
+Discard side of the flow — ELITEA-2079/2089 only ever exercised Save (2079)
+or verified Discard's *enabled* state without clicking it (2089's AFS/test).
+
+- **THREE new testids added this session** (`EliteaAI/EliteaUI@d4edc6e5`,
+  `automation/testids` only — awaiting human promotion to `main`):
+  `pipeline-canvas-discard-button`, `pipeline-canvas-discard-confirm-modal`,
+  `pipeline-canvas-discard-confirm-button`. `BaseEditor.jsx`/`EditorHeader.jsx`
+  already rendered `Button.DiscardButton` unconditionally when `!isPublic`
+  (with a pre-existing `discardButtonTestId` prop path, added for
+  ELITEA-2089's Agent-canvas Discard but never wired at `PipelineEditor.jsx`'s
+  own `<BaseEditor>` call site). `Button.DiscardButton` (`DiscardButton.jsx`)
+  itself already supports `modalDataTestId`/`confirmButtonDataTestId` props
+  (proven live by `CredentialsTabBar.jsx`'s direct usage), but
+  `EditorHeader.jsx`'s own call only ever forwarded `dataTestId` — never the
+  modal/confirm-button testids. Fix: two new optional props,
+  `discardModalTestId`/`discardConfirmButtonTestId`, threaded
+  `BaseEditor.jsx` → `EditorHeader.jsx` → the existing `Button.DiscardButton`
+  props, supplied ONLY at `PipelineEditor.jsx`'s call site — sibling
+  Agent/MCP chat canvases (`AgentEditor.jsx`/`ToolkitEditor.jsx`) unaffected
+  (optional, caller-supplied props).
+- **Confirmation dialog is genuinely a confirm-before-discard step, not a
+  no-op** — confirmed live: clicking the (now-enabled, once dirty) Discard
+  button opens a `Warning`-titled `BaseModal` with body text `"Are you sure
+  you want to discard changes?"` and its own "Discard" confirm button.
+  Confirming it: (a) Formik `resetForm()`s the Name/Description fields back
+  to `""`, (b) re-disables the header Discard button (form no longer dirty),
+  (c) fires **zero** `POST`/`PUT` to `/applications/prompt_lib/{project}` at
+  any point in the whole flow — the Discard path never touches the create
+  endpoint (only pre-existing `GET .../applications/prompt_lib/399?...`
+  list-refresh calls fire, from opening the `+` menu's Pipelines submenu,
+  same background calls ELITEA-2079 also observes).
+- **`chat-participants-badge-pipelines` absence is the correct negative
+  assertion** for "no pipeline was created" (case step 10) — same
+  already-documented idiom (`ChatPage.is_participants_badge_visible`) used
+  elsewhere in this suite for "no X participant" cases
+  (`test_slash_mention_empty_state.py`, `test_direct_toolkit_call_complete_flow.py`).
+- **No product defect found** — this flow behaves exactly as the case
+  describes; zero clarifications needed.
+- AFS: `test-specs/chat-interface/l2_pipeline-discard-changes-clears-canvas_ELITEA-2076.md`.
