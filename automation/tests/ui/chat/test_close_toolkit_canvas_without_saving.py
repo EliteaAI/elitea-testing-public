@@ -210,7 +210,7 @@ class TestCloseToolkitCanvasWithoutSaving:
             expect(toolkit_canvas.close_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
             expect(toolkit_canvas.title).to_have_text("New Toolkit", timeout=UI_ELEMENT_TIMEOUT)
             expect(toolkit_form.name_input).to_be_hidden(timeout=UI_ELEMENT_TIMEOUT)
-            github_type_card = page.locator(toolkit_form.TOOLKIT_TYPE_CARD.format("github"))
+            github_type_card = toolkit_form.get_type_card("github")
             expect(github_type_card).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
         # ------------------------------------------------------------------
@@ -224,6 +224,7 @@ class TestCloseToolkitCanvasWithoutSaving:
         # Step 3 — verify the conversation view is displayed
         # ------------------------------------------------------------------
         with allure.step("Step 3 — Verify the conversation view is displayed"):
+            expect(toolkit_canvas.close_button).to_be_hidden(timeout=UI_ELEMENT_TIMEOUT)
             expect(chat.message_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
         # ------------------------------------------------------------------
