@@ -35,6 +35,9 @@ class ArtifactsPage(BasePage):
     and renders the file table on the right.
 
     URL: /artifacts, /artifacts?bucket={bucket_name}
+
+    Inherits from BasePage:
+    - project_selector_trigger, SELECT_OPTION, switch_project() for project switching
     """
 
     # ------------------------------------------------------------------
@@ -2368,6 +2371,305 @@ class ArtifactsPage(BasePage):
             return True
         except Exception:
             return False
+
+    # ------------------------------------------------------------------
+    # Bucket permissions management
+    # ------------------------------------------------------------------
+
+    # Dynamic testid templates for bucket row and menu button
+    BUCKET_ROW_TESTID = '[data-testid="artifacts-bucket-row-{}"]'
+    BUCKET_MENU_BUTTON_TESTID = '[data-testid="bucket-menu-{}-menu-button"]'
+
+    @action("Open Manage Permissions modal")
+    def open_manage_permissions(self, bucket_name: str, timeout: int = 10000) -> None:
+        """Open the Manage Permissions modal for a bucket via its DotMenu.
+
+        LOCATOR: The bucket row has testid 'artifacts-bucket-row-{name}'.
+        The menu button appears on hover with testid 'bucket-menu-{name}-menu-button'.
+
+        Args:
+            bucket_name: Name of the bucket to manage permissions for.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Manage Permissions for bucket '%s'", bucket_name)
+
+        # Find the bucket row by testid
+        bucket_row = self.page.locator(self.BUCKET_ROW_TESTID.format(bucket_name))
+        bucket_row.wait_for(state="attached", timeout=timeout)
+
+        # Scroll into view and hover to reveal DotMenu
+        bucket_row.scroll_into_view_if_needed()
+        bucket_row.hover()
+        self.page.wait_for_timeout(500)
+
+        # Click the DotMenu button (appears on hover)
+        menu_btn = self.page.locator(self.BUCKET_MENU_BUTTON_TESTID.format(bucket_name))
+        menu_btn.wait_for(state="visible", timeout=timeout)
+        menu_btn.click(force=True)
+        self.page.wait_for_timeout(300)
+
+        # Click "Manage permissions" menu item
+        manage_perms_item = self.page.get_by_role("menuitem", name="Manage permissions")
+        manage_perms_item.wait_for(state="visible", timeout=timeout)
+        manage_perms_item.click()
+
+        # Wait for modal to open
+        self._wait_for_permissions_modal(timeout=timeout)
+        logger.info("Manage Permissions modal opened for '%s'", bucket_name)
+
+    def _wait_for_permissions_modal(self, timeout: int = 10000) -> None:
+        """Wait for the Manage Permissions modal to be visible."""
+        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
+        modal.wait_for(state="visible", timeout=timeout)
+
+    @action("Add permission exception")
+    def add_permission_exception(
+        self,
+        user_name_or_email: str,
+        permission: str,
+        timeout: int = 15000,
+    ) -> None:
+        """Add a user exception in the Manage Permissions modal.
+
+        The modal must already be open (call open_manage_permissions first).
+
+        LOCATOR: Two scenarios for "Add" button:
+        - Empty exceptions list: "Add Exceptions" button (variant="special", with + icon)
+        - Existing exceptions: Small + button with aria-label="Add exception"
+
+        Args:
+            user_name_or_email: User's name or email to search for.
+            permission: Permission level - "Read-only" or "No access".
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Adding permission exception: user=%s, permission=%s",
+                    user_name_or_email, permission)
+
+        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
+        modal.wait_for(state="visible", timeout=timeout)
+
+        # Wait for modal content to fully render
+        self.page.wait_for_timeout(1000)
+
+        # Two button variants depending on whether exceptions exist:
+        # 1. Empty list: "Add Exceptions" button (MuiButton-special with startIcon)
+        # 2. Has exceptions: + button with aria-label="Add exception"
+        add_exceptions_btn = modal.locator('button:has-text("Add Exceptions")')
+        add_exception_btn = modal.locator('button[aria-label="Add exception"]')
+
+        if add_exceptions_btn.count() > 0:
+            add_exceptions_btn.first.scroll_into_view_if_needed()
+            self.page.wait_for_timeout(300)
+            add_exceptions_btn.first.click(force=True)
+        elif add_exception_btn.count() > 0:
+            add_exception_btn.first.scroll_into_view_if_needed()
+            self.page.wait_for_timeout(300)
+            add_exception_btn.first.click(force=True)
+        else:
+            raise Exception("Could not find Add Exceptions or Add exception button")
+
+        self.page.wait_for_timeout(500)
+
+        # Wait for Add exceptions dialog
+        # Use exact text match for heading to distinguish from parent modal's button
+        add_dialog = self.page.locator('[role="dialog"]').filter(
+            has=self.page.locator('span:text-is("Add exceptions")')
+        )
+        add_dialog.wait_for(state="visible", timeout=timeout)
+
+        # Type user name in the autocomplete search (Users field)
+        user_input = add_dialog.locator('input').first
+        user_input.click()
+        user_input.fill(user_name_or_email)
+        self.page.wait_for_timeout(500)
+
+        # Select user from dropdown
+        user_option = self.page.locator(f'[role="option"]:has-text("{user_name_or_email}")').first
+        user_option.wait_for(state="visible", timeout=timeout)
+        user_option.click()
+        self.page.wait_for_timeout(300)
+
+        # Click on dialog header to close user dropdown before opening Permissions
+        dialog_header = add_dialog.locator('h2').first
+        dialog_header.click()
+        self.page.wait_for_timeout(300)
+
+        # Click on Permissions dropdown to open it
+        # The combobox has id="simple-select-Permissions"
+        permissions_dropdown = add_dialog.locator('#simple-select-Permissions')
+        permissions_dropdown.click()
+        self.page.wait_for_timeout(300)
+
+        # Map permission display names to testid values
+        # Options: select-option-read ("Read-only"), select-option-no_access ("No access"),
+        #          select-option-read_write ("Read/write (default)")
+        permission_testid_map = {
+            "Read-only": "select-option-read",
+            "No access": "select-option-no_access",
+            "Read/write (default)": "select-option-read_write",
+        }
+        testid = permission_testid_map.get(permission)
+        if not testid:
+            raise ValueError(f"Unknown permission '{permission}'. Valid: {list(permission_testid_map.keys())}")
+
+        # Select permission option by testid
+        perm_option = self.page.locator(f'[data-testid="{testid}"]')
+        perm_option.wait_for(state="visible", timeout=timeout)
+        perm_option.click()
+        self.page.wait_for_timeout(300)
+
+        # Click Save button
+        save_btn = add_dialog.get_by_role("button", name="Save")
+        save_btn.click()
+
+        # Wait for dialog to close
+        add_dialog.wait_for(state="hidden", timeout=timeout)
+        logger.info("Added permission exception for '%s': %s", user_name_or_email, permission)
+
+    @action("Edit permission exception")
+    def edit_permission_exception(
+        self,
+        user_name_or_email: str,
+        new_permission: str,
+        timeout: int = 15000,
+    ) -> None:
+        """Edit an existing user exception in the Manage Permissions modal.
+
+        The modal must already be open (call open_manage_permissions first).
+
+        Args:
+            user_name_or_email: User's name or email to edit.
+            new_permission: New permission level - "Read/write (default)",
+                "Read-only", or "No access".
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Editing permission exception: user=%s, new_permission=%s",
+                    user_name_or_email, new_permission)
+
+        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
+
+        # Find the user row and click edit button
+        user_row = modal.locator(f'div:has-text("{user_name_or_email}")').first
+        user_row.hover()
+        self.page.wait_for_timeout(300)
+
+        edit_btn = user_row.locator('button').filter(has=self.page.locator('svg')).last
+        edit_btn.click(force=True)
+        self.page.wait_for_timeout(500)
+
+        # Wait for Edit dialog
+        edit_dialog = self.page.locator('[role="dialog"]:has-text("Edit exception")')
+        edit_dialog.wait_for(state="visible", timeout=timeout)
+
+        # Select new permission
+        permission_select = edit_dialog.locator('[role="combobox"], select').first
+        if permission_select.count() == 0:
+            permission_select = edit_dialog.get_by_label("Permissions")
+        permission_select.click()
+        self.page.wait_for_timeout(300)
+
+        # Select permission option
+        perm_option = self.page.locator(f'[role="option"]:has-text("{new_permission}")').first
+        perm_option.wait_for(state="visible", timeout=timeout)
+        perm_option.click()
+        self.page.wait_for_timeout(300)
+
+        # Click Save button
+        save_btn = edit_dialog.get_by_role("button", name="Save")
+        save_btn.click()
+
+        # Wait for dialog to close
+        edit_dialog.wait_for(state="hidden", timeout=timeout)
+        logger.info("Edited permission for '%s' to: %s", user_name_or_email, new_permission)
+
+    @action("Remove permission exception")
+    def remove_permission_exception(
+        self,
+        user_name_or_email: str,
+        timeout: int = 15000,
+    ) -> None:
+        """Remove a user exception by setting their permission to Read/write (default).
+
+        The modal must already be open (call open_manage_permissions first).
+        This effectively restores the user to default permissions.
+
+        Flow:
+        1. Find the user row and click Edit exception (pencil icon)
+        2. In the edit dialog, select "Read/write (default)" permission
+        3. Click Save
+
+        Args:
+            user_name_or_email: User's name or email to restore to default.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Restoring default permission for user=%s", user_name_or_email)
+
+        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
+        modal.wait_for(state="visible", timeout=timeout)
+
+        # Find the user row in exceptions table
+        user_row = modal.locator(f'tr:has-text("{user_name_or_email}")').first
+        if user_row.count() == 0:
+            user_row = modal.locator(f'div:has-text("{user_name_or_email}")').first
+
+        user_row.wait_for(state="visible", timeout=timeout)
+
+        # Click Edit exception button (pencil icon with aria-label="Edit exception")
+        edit_btn = user_row.locator('button').filter(
+            has=self.page.locator('svg')
+        ).first
+        # Or find by parent span with aria-label
+        edit_wrapper = user_row.locator('[aria-label="Edit exception"] button').first
+        if edit_wrapper.count() > 0:
+            edit_wrapper.click()
+        else:
+            edit_btn.click()
+        self.page.wait_for_timeout(500)
+
+        # Wait for Edit exception dialog
+        edit_dialog = self.page.locator('[role="dialog"]').filter(
+            has=self.page.locator('span:text-is("Edit exception")')
+        )
+        edit_dialog.wait_for(state="visible", timeout=timeout)
+
+        # Click on Permissions dropdown
+        permissions_dropdown = edit_dialog.locator('#simple-select-Permissions')
+        permissions_dropdown.click()
+        self.page.wait_for_timeout(300)
+
+        # Select "Read/write (default)" option by testid
+        read_write_option = self.page.locator('[data-testid="select-option-read_write"]')
+        read_write_option.wait_for(state="visible", timeout=timeout)
+        read_write_option.click()
+        self.page.wait_for_timeout(300)
+
+        # Click Save button
+        save_btn = edit_dialog.get_by_role("button", name="Save")
+        save_btn.click()
+
+        # Wait for dialog to close
+        edit_dialog.wait_for(state="hidden", timeout=timeout)
+        self.page.wait_for_timeout(500)
+        logger.info("Restored default permission for '%s'", user_name_or_email)
+
+    def user_has_exception(self, user_name_or_email: str) -> bool:
+        """Check if user already has an exception in the open Manage Permissions modal."""
+        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
+        user_row = modal.locator(f':text("{user_name_or_email}")')
+        return user_row.count() > 0
+
+    @action("Close Manage Permissions modal")
+    def close_manage_permissions_modal(self, timeout: int = 5000) -> None:
+        """Close the Manage Permissions modal by clicking the X button."""
+        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
+        close_btn = modal.locator('button[aria-label="close"], button:has-text("×")').first
+        if close_btn.count() == 0:
+            # Try clicking outside the modal or pressing Escape
+            self.page.keyboard.press("Escape")
+        else:
+            close_btn.click()
+        modal.wait_for(state="hidden", timeout=timeout)
+        logger.info("Manage Permissions modal closed")
 
     # ------------------------------------------------------------------
     # Main-panel breadcrumb header helpers (ELITEA-1824)

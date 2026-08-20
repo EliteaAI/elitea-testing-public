@@ -21,6 +21,8 @@ logger = logging.getLogger("elitea.automation.fixtures.session")
 ELITEA_URL = settings.elitea_url
 TEST_USER_EMAIL = settings.test_user_email
 TEST_USER_PASSWORD = settings.test_user_password
+TEST_USER_B_EMAIL = settings.test_user_b_email
+TEST_USER_B_PASSWORD = settings.test_user_b_password
 
 
 @pytest.fixture(scope="session")
@@ -124,4 +126,51 @@ def auth_state(browser: Browser):
         logger.error("API authentication failed: %s", e)
         pytest.skip(
             f"Authentication failed — check TEST_USER_EMAIL and TEST_USER_PASSWORD: {e}"
+        )
+
+
+@pytest.fixture(scope="session")
+def auth_state_user_b(browser: Browser):
+    """Login as secondary test user (User B) for multi-user tests.
+
+    Similar to auth_state but for the secondary user. Used in tests that require
+    two different users (e.g., bucket permission tests, sharing scenarios).
+
+    Args:
+        browser: Playwright browser instance (required for type checking)
+
+    Returns:
+        dict: Browser storage state for User B
+
+    Raises:
+        pytest.skip: If User B credentials are not configured or auth fails
+    """
+    if not TEST_USER_B_EMAIL or not TEST_USER_B_PASSWORD:
+        pytest.skip(
+            "Secondary user (User B) not configured — set TEST_USER_B_EMAIL and "
+            "TEST_USER_B_PASSWORD in .env.test for multi-user tests"
+        )
+
+    # Check if running on localhost
+    is_localhost = "localhost" in ELITEA_URL or "127.0.0.1" in ELITEA_URL
+    if is_localhost:
+        logger.info("Localhost detected — cannot test multi-user scenarios without deployed env")
+        pytest.skip("Multi-user tests require deployed environment (not localhost)")
+
+    from api_auth import get_playwright_storage_state
+
+    try:
+        auth_url = settings.elitea_auth_url
+        logger.info("Authenticating User B via API against %s", auth_url)
+        storage_state = get_playwright_storage_state(
+            base_url=auth_url,
+            username=TEST_USER_B_EMAIL,
+            password=TEST_USER_B_PASSWORD,
+        )
+        logger.info("Successfully authenticated User B (user: %s)", TEST_USER_B_EMAIL)
+        return storage_state
+    except Exception as e:
+        logger.error("User B authentication failed: %s", e)
+        pytest.skip(
+            f"User B authentication failed — check TEST_USER_B_EMAIL and TEST_USER_B_PASSWORD: {e}"
         )

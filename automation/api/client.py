@@ -1364,6 +1364,78 @@ class ArtifactAPI:
         """Close the underlying HTTP session."""
         self._session.close()
 
+    # -------------------------------------------------------------------------
+    # Permission enforcement test helpers (return response, don't raise)
+    # -------------------------------------------------------------------------
+
+    def get_file_raw(self, bucket_name: str, file_key: str) -> "requests.Response":
+        """GET a file without raising on error status — for permission testing.
+
+        Args:
+            bucket_name: Name of the bucket.
+            file_key: Full key of the file.
+
+        Returns:
+            Raw requests.Response object (check .status_code).
+        """
+        url = (
+            f"{self.base_url}/artifacts/artifact/default"
+            f"/{self.project_id}/{bucket_name}/{file_key}"
+        )
+        logger.debug("GET file (raw) %s", url)
+        return self._session.get(url)
+
+    def upload_file_raw(
+        self,
+        bucket_name: str,
+        filename: str,
+        content: bytes,
+    ) -> "requests.Response":
+        """POST (upload) a file without raising on error — for permission testing.
+
+        Args:
+            bucket_name: Name of the bucket.
+            filename: Name for the uploaded file.
+            content: File content as bytes.
+
+        Returns:
+            Raw requests.Response object (check .status_code).
+        """
+        url = f"{self.base_url}/artifacts/artifacts/default/{self.project_id}/{bucket_name}"
+        files = {"file": (filename, content)}
+        logger.debug("POST file (raw) %s filename=%s", url, filename)
+        return self._session.post(url, files=files)
+
+    def delete_file_raw(self, bucket_name: str, filename: str) -> "requests.Response":
+        """DELETE a file without raising on error — for permission testing.
+
+        Args:
+            bucket_name: Name of the bucket.
+            filename: Name of the file to delete.
+
+        Returns:
+            Raw requests.Response object (check .status_code).
+        """
+        url = f"{self.base_url}/artifacts/artifact/default/{self.project_id}/{bucket_name}"
+        params = {"filename": filename}
+        logger.debug("DELETE file (raw) %s filename=%s", url, filename)
+        return self._session.delete(url, params=params)
+
+    def bucket_exists(self, bucket_name: str) -> bool:
+        """Check if a bucket exists by attempting to list its files.
+
+        Args:
+            bucket_name: Name of the bucket to check.
+
+        Returns:
+            True if bucket exists, False otherwise.
+        """
+        try:
+            self.list_bucket_files(bucket_name)
+            return True
+        except Exception:
+            return False
+
 
 class SkillAPI:
     """Manage skills via the Elitea API.

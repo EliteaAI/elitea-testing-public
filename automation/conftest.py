@@ -26,13 +26,18 @@ from fixtures.session_fixtures import (
     test_run_id,
     browser,
     auth_state,
+    auth_state_user_b,
 )
 from fixtures.api_fixtures import (
     api,
     _browser_cookies,
+    _browser_cookies_user_b,
     conversation_api,
     agent_api,
     artifact_api,
+    artifact_api_user_b,
+    artifact_api_team_project,
+    artifact_api_user_b_team_project,
     credential_api,
     skill_api,
     toolkit_api,
@@ -405,14 +410,25 @@ def page(context: BrowserContext) -> Page:
 
 
 @pytest.fixture(autouse=True)
-def dismiss_banner_after_navigation(page: Page, request):
+def dismiss_banner_after_navigation(request):
     """Dismiss deployment/maintenance banners after navigation.
 
     Banners (e.g., "Release 2.0.5 - Deployment") overlay the top of the page
     and intercept clicks on form fields. This fixture wraps page.goto() and
     page.reload() to automatically dismiss banners after navigation.
+
+    NOTE: Only activates for tests that use the standard `page` fixture.
+    Tests using custom page fixtures (e.g., admin_page, user_b_page) should
+    call dismiss_banner_if_present() explicitly via their page objects.
     """
+    # Skip if test doesn't use the standard `page` fixture
+    if "page" not in request.fixturenames:
+        yield
+        return
+
     from pages.base_page import BasePage
+
+    page = request.getfixturevalue("page")
 
     def _dismiss_banner():
         base = BasePage(page)
@@ -465,7 +481,7 @@ def pytest_runtest_makereport(item, call):
 
     # Try to find a page fixture in this test
     pg: Page | None = None
-    for fixture_name in ("page", "test_page"):
+    for fixture_name in ("page", "test_page", "user_b_page"):
         if fixture_name in item.funcargs:
             pg = item.funcargs[fixture_name]
             break
