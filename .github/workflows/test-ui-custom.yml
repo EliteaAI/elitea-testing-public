@@ -880,6 +880,20 @@ jobs:
       - name: Generate test dashboard
         if: always() && inputs.update_correlation == true
         run: |
+          # Build RUN_ID (same logic as correlation step)
+          DATE=$(date +%Y-%m-%d)
+          ENV_NAME="${{ needs.test.outputs.env-name }}"
+          SUITE="${{ inputs.custom_suites != '' && inputs.custom_suites || inputs.suite }}"
+          SUITE_UPPER=$(echo "$SUITE" | tr '[:lower:]' '[:upper:]' | tr ',' '-')
+          SUFFIX="${{ inputs.tms_report_suffix }}"
+          STATUS=$(cat status.txt)
+          RUN_ID="RUN-ELITEA-${DATE}-${{ github.run_number }}-${ENV_NAME^^}-${SUITE_UPPER}"
+          if [ -n "$SUFFIX" ]; then
+            RUN_ID="${RUN_ID}-$(echo "$SUFFIX" | tr '[:lower:]' '[:upper:]')"
+          fi
+          RUN_ID="${RUN_ID}-${STATUS}"
+          echo "RUN_ID=${RUN_ID}"
+
           cd tms
 
           # Generate dashboard.md with Mermaid charts from junit-RUN-*.json files
@@ -1116,7 +1130,75 @@ jobs:
 
           echo "✓ Appended TMS coverage analysis"
 
-          git add reports/dashboard.md
+          # Generate JSON dashboard snapshot for historical tracking
+          RUN_ID="${RUN_ID}"  # From outer shell
+          python3 << SNAPSHOT_EOF > "reports/automated/dashboard-${RUN_ID}.json"
+          import json
+          import glob
+          import os
+          from datetime import datetime, timezone
+
+          # Load latest junit report
+          all_files = sorted(glob.glob("reports/automated/junit-RUN-*.json"))
+          latest_file = all_files[-1] if all_files else None
+
+          latest_run = {}
+          if latest_file:
+              with open(latest_file) as f:
+                  data = json.load(f)
+                  launch = data.get("launch", {})
+                  latest_run = {
+                      "file": os.path.basename(latest_file),
+                      "total": launch.get("total", 0),
+                      "passed": launch.get("passed", 0),
+                      "failed": launch.get("failed", 0),
+                      "skipped": launch.get("skipped", 0),
+                      "reruns": launch.get("reruns", 0),
+                      "pass_rate": round(launch.get("passed", 0) / launch.get("total", 1) * 100, 1)
+                  }
+
+          # Load TMS coverage data
+          automation_index_path = "/tmp/automation_index.json"
+          tms_index_path = "index_automated.json"
+
+          tms_coverage = {}
+          if os.path.exists(automation_index_path) and os.path.exists(tms_index_path):
+              with open(automation_index_path) as f:
+                  automation_data = json.load(f)
+              with open(tms_index_path) as f:
+                  tms_data = json.load(f)
+
+              automation_ids = set(t["automation_test_id"] for t in automation_data.get("tests", []))
+              tms_ids = set()
+              for case in tms_data.get("cases", []):
+                  for test_id in case.get("automation_test_id", []):
+                      tms_ids.add(test_id)
+
+              linked = automation_ids & tms_ids
+              coverage = round(len(linked) / len(automation_ids) * 100, 1) if automation_ids else 0
+
+              tms_coverage = {
+                  "automation_tests": len(automation_ids),
+                  "tms_refs": len(tms_ids),
+                  "linked": len(linked),
+                  "tests_without_tms": len(automation_ids - tms_ids),
+                  "orphan_tms_refs": len(tms_ids - automation_ids),
+                  "coverage_pct": coverage
+              }
+
+          snapshot = {
+              "run_id": "${RUN_ID}",
+              "generated_at": datetime.now(timezone.utc).isoformat(),
+              "latest_run": latest_run,
+              "tms_coverage": tms_coverage
+          }
+
+          print(json.dumps(snapshot, indent=2))
+          SNAPSHOT_EOF
+
+          echo "✓ Generated reports/automated/dashboard-${RUN_ID}.json"
+
+          git add reports/dashboard.md "reports/automated/dashboard-${RUN_ID}.json"
           git diff --cached --quiet || \
-            git commit -m "dashboard: update test metrics"
+            git commit -m "dashboard: update test metrics for ${RUN_ID}"
           git push
