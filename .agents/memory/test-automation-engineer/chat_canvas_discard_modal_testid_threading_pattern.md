@@ -39,6 +39,22 @@ already exist end-to-end in `BaseEditor.jsx`/`EditorHeader.jsx` — just add
 the three-line call-site addition (mirrors `PipelineEditor.jsx`'s /
 `ToolkitEditor.jsx`'s), don't re-derive the threading from scratch.
 
+**ELITEA-2084 confirmed the MCP mirror was ALREADY LIVE, not just planned.**
+Because `ToolkitEditor.jsx` is ONE component serving both Toolkit and MCP
+(disambiguated only by `isMcpTestIdScope`), ELITEA-2081's single call-site
+edit produced `mcp-canvas-discard-button`/`-confirm-modal`/`-confirm-button`
+for free — confirmed live via a `page.evaluate` DOM probe (found, clickable,
+worked end-to-end) BEFORE any `add-data-testid` was attempted. `McpCanvasPage`
+itself had NOT yet been given the matching `LocatorDescriptor` fields though —
+that gap (page object lagging the JSX) is now closed. **Lesson: when a
+gap-check turns up a "testid needed" in a page object that's a MCP/Toolkit-
+scoped variant of something JUST fixed for its sibling, check the live DOM
+first — the `isMcpTestIdScope`-conditional call site may have already
+delivered it as a side effect.** Also confirmed: MCP's create-mode Discard
+behaves identically to Toolkit's (reverts the WHOLE canvas to the
+type-picker, `setEditToolDetail(null)` is unconditional on `isMCP`) —
+expected, since it's the exact same `handleDiscard` function.
+
 The confirmation dialog's body text (both Agent and Pipeline paths, same
 `DiscardButton.jsx` default `alertContent`) is literally "Are you sure you
 want to discard changes?" (`ModalConstants.WARNING_MESSAGES.DISCARD_CHANGES`),
