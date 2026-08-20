@@ -25,7 +25,7 @@ import allure
 import pytest
 from pages.agent_form_page import AgentFormPage
 
-pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new]
+pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new_verified]
 
 FORM_LOAD_TIMEOUT = 15000
 MAX_NAME_LENGTH = 32  # EliteaUI src/common/constants.js

@@ -47,7 +47,7 @@ from pages.agent_detail_page import AgentDetailPage
 from pages.agent_form_page import AgentFormPage
 from pages.agents_list_page import AgentsListPage
 
-pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new]
+pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new_verified]
 
 UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
