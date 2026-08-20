@@ -4,7 +4,8 @@
 elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to automate"
 
 ## State
-- Stage: **IN PROGRESS — wave-01 starting**
+- Stage: **COMPLETE — 16/16 waves landed** (99 automated / 18 already-covered
+  / 10 blocked = 127; see § Campaign complete for the full tally)
 - Conductor: none — plain sequential `batch-build` waves. Foundation is null and already
   evidenced: `automation/pages/` has 4 chat page objects (`chat_page.py`,
   `chat_canvas_page.py`, `chat_diagram_canvas_page.py`, `chat_table_canvas_page.py`) and
@@ -61,7 +62,7 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
 | 13 | File attachments | 2195,2196,2198,2199,2201,2467 | 6 | **LANDED** — PR #1595, 6/6 automated |
 | 14 | Slash commands / # mentions / MCP dropdown | 2205,2206,2207,2208,2468,2469,2470 | 7 | **LANDED** — PR #1601, 7/7 automated (2 merged sanctioned-RED, #1596) |
 | 15 | Tool call/output rendering + HITL + context management | 2209,2210,2216,2217,2471,2472,2473,2474 | 8 | **LANDED** — PR #1608, 4/8 automated (2216, 2209, 2217, 2474) + 3/8 already-covered (2471/2472/2473, TMS deferred — guardrails-excluded covering test) + 1/8 blocked (2210, #1127, confirmed genuinely separate from the resolved env blocker #1607) |
-| 16 | Canvas creation (agent/pipeline/toolkit/MCP from conversation) — check ELITEA-2077 already-covered first | 2073,2074,2076,2077,2078,2081,2083,2084,2089 | 9 | pending |
+| 16 | Canvas creation (agent/pipeline/toolkit/MCP from conversation) — check ELITEA-2077 already-covered first | 2073,2074,2076,2077,2078,2081,2083,2084,2089 | 9 | **LANDED** — PR #1615, 7/9 automated (2083/2089 already done by earlier/unrelated work) |
 
 **Total: 127/127, verified unique + complete partition (no gaps, no dupes).**
 
@@ -392,27 +393,53 @@ elitea-testing-public#1393 — "[Automate][chat] 127 remaining test cases to aut
   automated + 3/8 already-covered (TMS deferred, guardrails) + 1/8 blocked
   (#1127).**
 
+- **wave-16 LANDED — FINAL WAVE** — elitea-testing-public#1615, merged
+  (`f2c6faba8`). Intake found 2 of the planned 9 cases already done by
+  unrelated/earlier work (NOT this campaign's own dispatches): ELITEA-2083
+  (PR #1576) and ELITEA-2089 (PR #1580), both cleanly TMS-backwritten
+  already. 7/7 net-new cases automated (2073,2074,2076,2077,2078,2081,2084)
+  — 4 needed one fix round each (AFS-coverage-map gaps, all closed).
+  ELITEA-2077's flagged coverage question resolved cleanly by the analyst:
+  a prior batch's `case_ids` tag cited it alongside ELITEA-2079 for the
+  same test, but ELITEA-2079 only uses pipeline-creation as *setup* before
+  its own subject (adding an LLM node), while ELITEA-2077's own subject
+  *is* the create-and-save flow — genuinely distinct, not an overlap; the
+  old tag was a loose cross-reference. Lead's own gate: 3/3 clean
+  (208.83s/190.37s/189.56s) on top of the workflow's own 3/3 clean
+  (208.39s/202.75s/194.24s). New testids (11, all confirmed NOT yet on
+  `main` — 6 of them multi-line ternary-composed, invisible to a
+  single-line grep, verified via file-diff per `.agents/workflow.md`):
+  `pipeline-canvas-title` (@93dc5667), `pipeline-canvas-discard-*` ×3
+  (@d4edc6e5), `pipeline-canvas-subtitle` (@7b1e2c5a), `mcp-canvas-discard-*`
+  ×3 + `toolkit-canvas-discard-*` ×3 (@bc08563f, shared `ToolkitEditor.jsx`
+  `isMcpTestIdScope` ternary, both scopes in one commit). TMS back-written
+  (`4a0c07a`): 7 cases `ready`/`automated`.
+
+## Campaign complete — final tally (verified, sums to exactly 127)
+
+| Disposition | Count |
+|---|---:|
+| ✅ Automated (incl. 1 sanctioned-RED signature, #1596) | **99** |
+| 🔁 Already-covered by existing/adjacent tests | **18** |
+| 🚫 Genuinely blocked on open product defects | **10** |
+| **Total** | **127** |
+
+Blocked (10): ELITEA-2096/2097 (question #1511), ELITEA-2189/2190/2191
+(#1563), ELITEA-2182/2183/2186 (#1569), ELITEA-2210 (#1127).
+
+Open follow-ups for a human, out of this campaign's own scope:
+- Product defects/questions filed and still open: #1511, #1563, #1569,
+  #1127, #1596, #1591, #1589.
+- TMS-backwrite gap: ELITEA-2211-2215 have merged test code (earlier/
+  different session) but were never TMS-backwritten.
+- Suite-health pointer: `#1082` (stale-conversation-landing recurring
+  pattern) — the real fix is a clean/rotating identity per chat test
+  instead of one shared account; PR #1577 (bucket-permissions, unrelated
+  feature) independently built the exact reusable shape (config-driven
+  secondary user + its own `auth_state_user_b` fixture) worth lifting.
+
+16/16 waves landed. Card → `Ready`.
+
 ## In-flight run state (context-fragile — recorded immediately per doctrine)
 
-- **wave-16** intake found 2 of the planned 9 cases already done by
-  unrelated/earlier work (NOT this campaign's own dispatches): ELITEA-2083
-  (`ready`/`automated`, PR #1576, `test_create_toolkit_from_conversation.py`)
-  and ELITEA-2089 (`ready`/`automated`, PR #1580,
-  `test_chat_canvas_edit_agent.py`) — both cleanly TMS-backwritten already,
-  no action needed. Net-new intake: 7 cases (2073,2074,2076,2077,2078,
-  2081,2084). ELITEA-2077 flagged per the campaign's own earlier note: an
-  existing merged test
-  (`test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py::test_add_llm_node_save_pipeline_and_verify_participant`,
-  sanctioned-RED on open #1039) lists `case_ids: ["ELITEA-2079","ELITEA-2077"]`
-  in an old batch report, though the file's own docstring says "ELITEA-2077/
-  2078 are not yet automated" — contradiction left for the analyst to
-  resolve (already-covered vs net-new), not decided by the lead. All 7
-  confirmed still `draft`/`manual` at intake (no dedup hits). Dispatching via
-  `batch-build.workflow.mjs`, cluster `[2073,2074]` (agent-build-with-AI
-  cancel vs save, same canvas flow); 2076/2077/2078/2081/2084 standalone
-  (2081 may turn out extend-existing onto ELITEA-2083's own
-  `test_create_toolkit_from_conversation.py` — close-without-saving is the
-  natural negative counterpart to 2083's close-and-verify-added — left for
-  the analyst, not pre-clustered). Case snapshots at
-  `.agents/automation/chat-remaining-w16/cases/`. Task ID `w2x3rhp62`, Run ID
-  `wf_adc9544a-691`.
+- none — campaign complete.
