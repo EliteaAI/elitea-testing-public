@@ -1,0 +1,8 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Click '+ Artifact Bucket' button — Locator.wait_for: Timeout 15000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("artifacts-bucket-name-input") to be visible
+    - waiting for "https://dev.elitea.ai/app/artifacts/create-bucket" navigation to finish...
+    - navigated to "https://dev.elitea.ai/app/artifacts/create-bucket"
+ERROR    elitea.steps:actions.py:49 Step failed: Navigate to Artifacts — Locator.wait_for: Timeout 15000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("artifacts-buckets-heading") to be visible
