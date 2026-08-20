@@ -600,3 +600,15 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   pattern from ELITEA-2167's file; until then, expect this spec's gate runs to
   need a moment when `/chat/566`/`/chat/564` are the most-recently-touched
   conversations in project 471.
+- **Suite-health pointer (2026-08-20, not yet actioned):** `#1082`'s root
+  cause is that every chat test shares ONE test-user account, whose
+  conversation history just keeps accumulating across runs — the actual fix
+  is a clean/rotating identity per test, not another guard on top of
+  `_open_blank_conversation()`. PR #1577 (bucket-permissions API tests,
+  OPEN, unrelated feature) independently built exactly the reusable
+  infrastructure shape this would need: a config-driven secondary test user
+  (`TEST_USER_B_EMAIL`/`PASSWORD`), its own `auth_state_user_b` session
+  fixture, and per-user API client fixtures. Worth lifting that pattern
+  (not the PR itself — different purpose) into a chat-dedicated
+  rotating-user fixture the next time `#1082` gets prioritized, instead of
+  re-deriving the same shape from scratch.
