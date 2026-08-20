@@ -1,144 +1,8 @@
 "Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
-"passed","Thu Aug 20 10:02:32 UTC 2026","Thu Aug 20 10:03:07 UTC 2026","34847","tests.ui.artifacts","test_artifacts_delete_subfolder_checkbox","TestArtifactDeleteSubfolderCheckbox","","","Selecting 2 individual files via checkbox (partial selection) drives the header checkbox indeterminate and deletes only those files","Checking 2 file checkboxes (partial selection) drives the header
-        'select all' checkbox into the INDETERMINATE state, leaves sibling
-        folder checkboxes unchecked, and deleting via the toolbar removes
-        only the 2 selected files — subfolders completely unaffected.
-
-        Own fresh `artifact_bucket` instance (function-scoped fixture) —
-        deliberately NOT sharing state with `test_delete_subfolder_via_checkbox`
-        above, since that test's own core assertion (a1 gets deleted) directly
-        conflicts with this test's own precondition (a1 must survive).
+"passed","Thu Aug 20 10:00:01 UTC 2026","Thu Aug 20 10:00:17 UTC 2026","15894","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_visible_and_updates_realtime","Character counter appears when typing and updates in real-time.
+        TC-1688, TC-1685
+        Acceptance Criteria #1: Real-time character counter visible.
         "
-"skipped","Thu Aug 20 10:15:12 UTC 2026","Thu Aug 20 10:15:12 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[gitlab]","Add toolkit to chat, send a message, verify tool execution."
-"passed","Thu Aug 20 10:03:45 UTC 2026","Thu Aug 20 10:03:54 UTC 2026","9608","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_cannot_send_empty_message","TC-CHAT-007: Cannot send empty message."
-"passed","Thu Aug 20 10:12:24 UTC 2026","Thu Aug 20 10:12:40 UTC 2026","15534","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[github]","Create a toolkit through the UI form for any toolkit type."
-"passed","Thu Aug 20 10:07:12 UTC 2026","Thu Aug 20 10:07:23 UTC 2026","10603","tests.ui.chat","test_chat_interface","TestSidebarNavigation","","","test_navigate_to_agents_from_sidebar","TC-CHAT-022: Navigate to Agents from sidebar."
-"skipped","Thu Aug 20 10:15:13 UTC 2026","Thu Aug 20 10:15:13 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[bitbucket]","Add toolkit to chat, send a message, verify tool execution."
-"passed","Thu Aug 20 10:01:53 UTC 2026","Thu Aug 20 10:02:09 UTC 2026","15909","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_visible_and_updates","Character counter appears when typing and updates in real-time.
-        TC-1685
-        Acceptance Criteria #1 (extended to Conversation Starters).
-
-        Note: Counter only appears after typing, not initially.
-        "
-"passed","Thu Aug 20 10:05:13 UTC 2026","Thu Aug 20 10:05:30 UTC 2026","16669","tests.ui.artifacts","test_artifacts_file_preview_image_restricted_controls","TestArtifactFilePreviewImageRestrictedControls","","","Image file opens directly as image preview with inactive/absent edit controls","An image file renders directly, with edit controls absent or disabled."
-"passed","Thu Aug 20 10:15:15 UTC 2026","Thu Aug 20 10:15:39 UTC 2026","24271","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[confluence]","Add toolkit to chat, send a message, verify tool execution."
-"passed","Thu Aug 20 10:10:05 UTC 2026","Thu Aug 20 10:10:33 UTC 2026","28032","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestPipelineCredentialIndicators","","","test_pipeline_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Pipeline."
-"passed","Thu Aug 20 10:06:39 UTC 2026","Thu Aug 20 10:07:00 UTC 2026","20426","tests.ui.chat","test_chat_interface","TestContextAndSettings","","","test_edit_context_settings","TC-CHAT-019: Edit context settings."
-"passed","Thu Aug 20 09:59:38 UTC 2026","Thu Aug 20 09:59:53 UTC 2026","15527","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_main_content_visible","The main content area should render after navigation."
-"passed","Thu Aug 20 10:00:25 UTC 2026","Thu Aug 20 10:00:53 UTC 2026","27757","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantLauncher","","","test_widget_state_persists_after_close_reopen","Conversation state persists when closing and reopening widget.
-
-        Covers: 2.2.3
-        "
-"passed","Thu Aug 20 10:00:53 UTC 2026","Thu Aug 20 10:01:10 UTC 2026","16743","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantMessaging","","","test_send_message_and_receive_response","User can send a message and receive AI response.
-
-        Covers: 3.2.1-3.2.7, 3.2.9
-        "
-"passed","Thu Aug 20 10:03:26 UTC 2026","Thu Aug 20 10:03:37 UTC 2026","11411","tests.ui.agents","test_agent_create_button_navigation","","","","test_create_button_navigates_to_create_agent_page","Sidebar create-agent button navigates to an empty Create Agent form
-    with Save disabled by default (ELITEA-1870).
-
-    Read-only: no agent is created, edited, or deleted.
-    "
-"passed","Thu Aug 20 10:04:26 UTC 2026","Thu Aug 20 10:04:44 UTC 2026","18229","tests.ui.artifacts","test_artifacts_file_preview_actions_dropdown","TestArtifactFilePreviewActionsDropdown","","","Editor panel's actions dropdown contains Copy Content, Download, Delete and each works correctly","The editor panel's dropdown shows the right items and each action works."
-"passed","Thu Aug 20 10:03:10 UTC 2026","Thu Aug 20 10:03:27 UTC 2026","17401","tests.ui.artifacts","test_artifacts_download_multiple_files_zip","TestArtifactDownloadMultipleFilesZip","","","Selecting 2 files via checkbox and clicking 'Download files' downloads them as a ZIP with a live progress dialog","Selecting 2 files and clicking 'Download files' produces a ZIP.
-
-        Read-only from the bucket's perspective at the end: the bucket is
-        mutated exactly once (seeded with 4 files under ``a1/``) — the
-        minimal state this observable inherently requires (workflow skill
-        Hard Rule 10) — then every assertion reads that state without
-        further mutation.
-        "
-"passed","Thu Aug 20 10:10:30 UTC 2026","Thu Aug 20 10:13:02 UTC 2026","152171","tests.ui.chat","test_image_creation","TestImageCreation","","","test_create_image[minimal_prompt]","Create image from text prompt and verify image appears in response."
-"passed","Thu Aug 20 09:59:22 UTC 2026","Thu Aug 20 09:59:41 UTC 2026","19232","tests.ui.settings","test_ai_providers_page_sections_load_without_error","TestAIProvidersPageSections","","","test_ai_providers_page_sections_load_without_error","Every populated section (LLMs/Embedding/Image Gen/ASR/TTS) renders with
-        its default selector(s) and >=1 configuration card, in the expected
-        order; Vector Storage (zero-config) is correctly absent; AI Credentials
-        is either rendered with >=1 card OR correctly absent if empty; zero
-        console errors, zero non-2xx across every configurations endpoint."
-"passed","Thu Aug 20 10:06:48 UTC 2026","Thu Aug 20 10:07:38 UTC 2026","49875","tests.ui.agents","test_agent_with_github_toolkit","TestChatWithAgentToolkit","","","test_agent_chat_with_github_toolkit","Add toolkit to agent, chat via /chat, verify toolkit execution."
-"passed","Thu Aug 20 10:09:52 UTC 2026","Thu Aug 20 10:10:23 UTC 2026","31136","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_settings_sync","TC3: Settings Synchronization from Personalization to Chat.
-        TC-1916
-        Personalization settings are baseline defaults that apply to Chat.
-        Chat changes are temporary/session-only and do NOT sync back to Personalization.
-        "
-"skipped","Thu Aug 20 10:12:54 UTC 2026","Thu Aug 20 10:12:54 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[gitlab]","Create a toolkit through the UI form for any toolkit type."
-"passed","Thu Aug 20 10:01:15 UTC 2026","Thu Aug 20 10:01:44 UTC 2026","28746","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'bucket one'","Run once per Test Data row — ``case_id`` ties a failure back to
-        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
-        regression never masks its healthy siblings.
-        "
-"passed","Thu Aug 20 10:04:22 UTC 2026","Thu Aug 20 10:05:25 UTC 2026","63250","tests.ui.agents","test_agent_save_as_version_preserves_skills","TestAgentSaveAsVersionPreservesSkills","","","test_agent_save_as_version_preserves_skills","Create a Skill + Agent (both via UI), attach the Skill, Save As
-        Version, and verify the Skill is still attached under the new
-        version — confirmed both via the UI and a fresh API response."
-"passed","Thu Aug 20 10:06:03 UTC 2026","Thu Aug 20 10:06:11 UTC 2026","7361","tests.ui.artifacts","test_artifacts_file_preview_open_editor_ui","TestArtifactFilePreviewOpenEditorUI","","","Opening a supported text file via the View/Edit icon shows the full editor UI","Opening a file via the View/Edit icon renders the full editor UI contract."
-"passed","Thu Aug 20 10:00:19 UTC 2026","Thu Aug 20 10:00:37 UTC 2026","17464","tests.ui.settings","test_context_management_toggle","TestContextManagementToggle","","","test_target_summary_tokens_range_validation","Target Summary Tokens rejects values outside [100, 4096] client-side (ELITEA-2378).
-
-        Distinct observable from ``test_automatic_summarization_toggle_enables_disables_own_fields``
-        (ELITEA-2377): that test drives the Automatic Summarization toggle and
-        observes Target Summary Tokens' visible/enabled state as a SIDE EFFECT
-        of the toggle. This test drives Target Summary Tokens' OWN value and
-        observes its client-side min/max range validation (100-4096 — Yup
-        schema ``profileValidationSchema.summary_llm_settings.max_tokens`` in
-        ``src/[fsd]/features/settings/lib/helpers/profile.helpers.js``,
-        limits sourced from ``VALIDATION_LIMITS.MAX_TOKENS`` in
-        ``src/[fsd]/widgets/context-budget/lib/constants.js``): an out-of-range
-        value flips ``aria-invalid=""true""`` and BLOCKS the autosave submit
-        (``useFormikAutoSaveOnBlur`` calls ``validateForm()`` before
-        ``submitForm()`` and returns early on errors); an in-range value
-        autosaves normally.
-
-        AFS: test-specs/settings-user-profile/
-        lextend_target-summary-tokens-range-validation_ELITEA-2378.md
-        "
-"passed","Thu Aug 20 10:03:57 UTC 2026","Thu Aug 20 10:04:28 UTC 2026","31622","tests.ui.chat","test_chat_interface","TestMessageActions","","","test_copy_message_to_clipboard","TC-CHAT-008: Copy message to clipboard."
-"passed","Thu Aug 20 10:12:55 UTC 2026","Thu Aug 20 10:13:10 UTC 2026","14782","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[confluence]","Create a toolkit through the UI form for any toolkit type."
-"passed","Thu Aug 20 10:10:34 UTC 2026","Thu Aug 20 10:11:22 UTC 2026","47912","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestAgentCredentialIndicators","","","test_agent_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Agent."
-"passed","Thu Aug 20 10:07:28 UTC 2026","Thu Aug 20 10:07:53 UTC 2026","24930","tests.ui.artifacts","test_artifacts_upload_duplicate_cancel","TestArtifactUploadDuplicateCancel","","","Cancel in 'Resolve duplicates' modal aborts entire upload, including the non-duplicate file","Cancel in the duplicate-resolution modal stops the WHOLE upload.
-
-        Read-only from the fresh bucket's perspective at the end: the bucket
-        is deliberately mutated once (seeded with sample.txt) so the
-        duplicate can be triggered at all — this is the minimal state the
-        observable inherently requires (workflow skill Hard Rule 10) — then
-        the test proves that mutation is the ONLY one that ever lands.
-        "
-"passed","Thu Aug 20 10:02:05 UTC 2026","Thu Aug 20 10:02:29 UTC 2026","23934","tests.ui.artifacts","test_artifacts_delete_subfolder_checkbox","TestArtifactDeleteSubfolderCheckbox","","","Selecting a subfolder via checkbox and confirming toolbar delete removes the folder and its contents; other items unaffected","Deleting a subfolder via checkbox removes it and its contents only.
-
-        Bucket is mutated exactly once at setup (seeded with 5 keys — the
-        minimal fresh state this observable inherently requires, since the
-        case's own purpose is destructive: deleting part of the bucket's
-        contents; workflow skill Hard Rule 10) — every assertion afterward
-        reads that state (plus the one delete mutation the case itself
-        drives) without further seeding.
-        "
-"passed","Thu Aug 20 10:03:10 UTC 2026","Thu Aug 20 10:03:25 UTC 2026","15003","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_multiple_conversation_starters_have_counters","Each conversation starter field has its own counter.
-        TC-1684
-        "
-"passed","Thu Aug 20 09:59:28 UTC 2026","Thu Aug 20 10:00:59 UTC 2026","90773","tests.ui.skills","test_agent_instructions_tilde_mention","TestTildeMentionListsOnlyAttachedSkills","","","test_tilde_mention_in_instructions_lists_only_attached_skills","Attach 2 of 3 distinct Skills to an Agent, then verify the ""~""
-        mention panel in the Instructions field is scoped to only the
-        attached 2 — the 3rd (unattached) Skill never appears, including
-        on a second, independent ""~"" trigger after clearing the field.
-
-        Steps (AFS test-specs/skills/l3_tilde-mention-lists-only-attached-skills_ELITEA-1791.md):
-        1. Confirm/create 3 distinct Skills (reuse a pre-existing one as
-           Skill A, looked up via API rather than assumed by name — same
-           environment-robustness rule as ELITEA-1790's cleanup note —
-           falling back to creating it fresh if none exists), create an
-           Agent, attach Skill A + Skill B, leave Skill C unattached.
-        2. Click the Instructions field — becomes focused/editable.
-        3-4. Type ""~"" — ""Mention skill"" panel appears, listing exactly
-           Skill A and Skill B; Skill C is asserted absent by exact-name
-           locator (not merely a row count).
-        5. Select Skill A — inserts ""~<skill-name>"" as plain text.
-        6. Select-all + delete, retype ""~"" — same 2-item scoped list
-           reappears; Skill C still absent (re-evaluated live).
-        "
-"skipped","Thu Aug 20 10:13:50 UTC 2026","Thu Aug 20 10:13:50 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[gitlab]","Run a tool via the Test Settings panel on the toolkit detail page."
-"passed","Thu Aug 20 10:04:47 UTC 2026","Thu Aug 20 10:05:10 UTC 2026","23041","tests.ui.artifacts","test_artifacts_file_preview_edit_save","TestArtifactFilePreviewEditSave","","","Editing file content and saving persists the change","Editing content and clicking Save persists the change to the backend."
-"passed","Thu Aug 20 10:02:36 UTC 2026","Thu Aug 20 10:02:48 UTC 2026","11368","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantAttachments","","","test_attach_button_present_and_opens_picker","Attach button opens file picker dialog.
-
-        Covers: 7.1.1, 7.1.2
-        "
-"passed","Thu Aug 20 10:02:26 UTC 2026","Thu Aug 20 10:03:09 UTC 2026","42678","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
-        TC-1689, TC-1685
-        "
-"passed","Thu Aug 20 10:07:32 UTC 2026","Thu Aug 20 10:07:41 UTC 2026","9004","tests.ui.chat","test_chat_interface","TestSearchAndErrorHandling","","","test_handle_message_send_failure","TC-CHAT-024: Handle message send failure gracefully."
 "passed","Thu Aug 20 10:00:37 UTC 2026","Thu Aug 20 10:01:12 UTC 2026","34640","tests.ui.settings","test_set_llm_model_default_high_low_tier","TestSetLLMModelTiers","","","test_set_llm_model_default_high_low_tier","Selecting a different model for the LLMs section's Default tier
         updates the selector text immediately (no Save action), swaps the
         ""Default"" badge from the old model's card to the new model's card,
@@ -146,127 +10,27 @@
         High-tier and Low-tier show the same selector+badge mechanics but do
         NOT change the new-chat composer's model (case-text drift, see module
         docstring). Original values are restored in a finally block."
-"passed","Thu Aug 20 10:13:02 UTC 2026","Thu Aug 20 10:13:24 UTC 2026","21871","tests.ui.chat","test_open_existing_conversation_from_this_week_section","TestOpenExistingConversationFromThisWeekSection","","","test_open_existing_conversation_from_this_week_section","Verify This Week section is collapsed by default and expanding it
-        allows clicking a conversation which displays full history and active input.
+"passed","Thu Aug 20 09:59:38 UTC 2026","Thu Aug 20 09:59:57 UTC 2026","18813","tests.ui.agents","test_agent_back_navigation","","","","test_back_button_from_agent_detail_returns_to_intact_agents_list","Back button on agent detail page returns to Agents dashboard with
+    the list intact (ELITEA-1869).
 
-        Steps (from AFS):
-        1. Navigate to the Chats page
-        2. Locate the This Week section and verify it is collapsed by default
-        3. Click the This Week section header to expand it
-        4. Click on a conversation from the This Week list
-        5. Verify the message input field is active and ready for input
-        6. Verify the correct model or agent name is displayed in the input bar
-        7. Verify the PARTICIPANTS panel reflects the correct participant
-
-        Setup: Ensure at least one conversation exists in ""This Week"" section.
-        "
-"passed","Thu Aug 20 10:07:41 UTC 2026","Thu Aug 20 10:08:16 UTC 2026","35183","tests.ui.skills","test_skill_agent_version_selector","TestAttachSkillToAgentWithVersionSelector","","","test_attach_skill_to_agent_with_version_selector","Create a skill + agent, attach the skill, and verify the version
-        selector shows the default version, opens a real Versions menu, and
-        persists across a full page reload.
-
-        Steps (AFS test-specs/skills/l3_attach-skill-to-agent-with-version-selector_ELITEA-1789.md):
-        1. Create a Skill with a saved `base` version.
-        2. Create an Agent.
-        3. Locate the Skills attachment section (expanded by default).
-        4-5. Attach the Skill; verify the counter updates and the card renders.
-        6. Verify the attached Skill card shows a version selector, and that
-           clicking it (via a correctly-scoped `.version-text` locator, NOT a
-           role-based one) opens a real ""Versions"" menu — hard-asserted
-           functional flow per the AFS (known defect #46 is a handle-quality/
-           accessibility gap, not a flaky functional failure).
-        7. Confirm the default version (`base`) is shown pre-selected, both
-           on the card and as the sole entry in the opened Versions menu.
-        8. Confirm persistence via a full page reload (no explicit
-           agent-level Save is available — attach is auto-saved via API).
-        "
-"passed","Thu Aug 20 10:08:42 UTC 2026","Thu Aug 20 10:08:56 UTC 2026","14030","tests.ui.artifacts","test_artifacts_upload_multiple_files","TestArtifactsUploadMultipleFiles","","","Upload multiple files at once via the toolbar upload button","Select 3 files in one native-picker call, upload, verify metadata.
-
-        Read-only from the fresh bucket's perspective going in — the bucket
-        itself is the test's own mutation (via ``artifact_bucket``, deleted
-        in its own teardown), the minimal state this observable inherently
-        requires (workflow skill Hard Rule 10): the case's own subject IS
-        the multi-file upload, so there is no pre-existing empty bucket to
-        assert against read-only.
-        "
-"passed","Thu Aug 20 10:02:12 UTC 2026","Thu Aug 20 10:02:24 UTC 2026","12138","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
-        TC-1687
-
-        Acceptance Criteria #2.
-        "
-"passed","Thu Aug 20 10:09:21 UTC 2026","Thu Aug 20 10:09:51 UTC 2026","30305","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_speed_and_volume_controls","TC2: Speed and Volume Slider Adjustments.
-        TC-1917
-        "
-"passed","Thu Aug 20 10:00:01 UTC 2026","Thu Aug 20 10:00:17 UTC 2026","15894","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_visible_and_updates_realtime","Character counter appears when typing and updates in real-time.
-        TC-1688, TC-1685
-        Acceptance Criteria #1: Real-time character counter visible.
-        "
-"skipped","Thu Aug 20 10:12:02 UTC 2026","Thu Aug 20 10:12:02 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[gitlab]","Create a credential through the UI form for any toolkit type."
-"passed","Thu Aug 20 10:03:10 UTC 2026","Thu Aug 20 10:04:48 UTC 2026","98158","tests.ui.skills","test_ghost_skill_after_agent_removed","TestGhostSkillAfterAgentRemoved","","","test_ghost_skill_not_shown_after_agent_participant_removed","Create a skill, attach it to an agent, add the agent as a chat
-        participant, confirm '~mention' shows the skill, dismiss, remove the
-        participant, and confirm the skill no longer appears in '~mention'
-        afterward.
-
-        Steps (AFS test-specs/skills/l3_ghost-skill-not-shown-after-agent-participant-removed_ELITEA-1793.md):
-        1. Create Skill, create Agent, attach the skill to the agent.
-        2. Open Chat, add the agent as a participant.
-        3. Type '~' — the ""Mention skill"" popper lists the attached skill.
-        4. Dismiss the popper with Escape without selecting anything.
-        5. Remove the agent from the chat's participants.
-        6. Type '~' again — the removed agent's skill should NOT be listed.
-        7. Control check: a fresh conversation that never had a participant
-           shows the correct ""No skills attached to this agent"" empty state.
-        "
-"passed","Thu Aug 20 10:03:30 UTC 2026","Thu Aug 20 10:03:38 UTC 2026","8301","tests.ui.artifacts","test_artifacts_download_single_file_dropdown","TestArtifactDownloadSingleFileDropdown","","","Single file downloads immediately via the actions dropdown, with no ZIP packaging","Downloading via the dropdown's 'Download' item is immediate, no ZIP.
-
-        Read-only from the bucket's perspective at the end: the bucket is
-        mutated exactly once (seeded with ``a1/sample.txt``) — the minimal
-        state this observable inherently requires (workflow skill Hard
-        Rule 10) — then every assertion reads that state without further
-        mutation (Delete is verified visible, never clicked).
-        "
-"passed","Thu Aug 20 09:59:32 UTC 2026","Thu Aug 20 09:59:50 UTC 2026","18018","tests.ui.pipelines","test_pipeline_nodes","TestAddNode","","","test_add_human_in_the_loop_node_and_connect_to_end","PIPE-031: Add a HITL node and connect it to END."
-"passed","Thu Aug 20 10:05:27 UTC 2026","Thu Aug 20 10:06:24 UTC 2026","56258","tests.ui.agents","test_agent_with_github_toolkit","TestAddToolkitToAgent","","","test_add_toolkit_to_agent","Add a GitHub toolkit to an existing agent via the UI, then chat."
-"passed","Thu Aug 20 10:10:40 UTC 2026","Thu Aug 20 10:10:58 UTC 2026","17985","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_settings_not_visible_by_default","TC5: Voice settings are NOT displayed in Chat by default.
-
-        Regression test for bug #5235: Read-out control was inappropriately
-        visible in default Chat window state.
-
-        Expected:
-            Voice settings controls should only appear when Read-out and
-            Voice mode features are explicitly activated.
-
-        Related:
-            - Bug: https://github.com/EliteaAI/elitea_issues/issues/5235
-        "
-"passed","Thu Aug 20 10:01:10 UTC 2026","Thu Aug 20 10:01:32 UTC 2026","21990","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantNewSession","","","test_new_chat_creates_fresh_session","New Chat button starts a fresh support session.
-
-        Covers: 3.5.1, 3.5.2
-
-        Also covers ELITEA-1799's Expected Final State clause 3 (""previous
-        session preserved in history, not lost"") via a soft assertion —
-        known defect #607, stays red once the account's active conversation
-        exceeds the ~100-message-group threshold.
-        "
+    Uses agent_id fixture to ensure at least one agent exists.
+    "
 "passed","Thu Aug 20 10:14:47 UTC 2026","Thu Aug 20 10:15:12 UTC 2026","24391","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[jira]","Add toolkit to chat, send a message, verify tool execution."
-"passed","Thu Aug 20 10:02:21 UTC 2026","Thu Aug 20 10:02:36 UTC 2026","15221","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantViewModes","","","test_expand_collapse_fullview","Widget can expand to full view and collapse back.
+"passed","Thu Aug 20 10:00:25 UTC 2026","Thu Aug 20 10:00:53 UTC 2026","27757","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantLauncher","","","test_widget_state_persists_after_close_reopen","Conversation state persists when closing and reopening widget.
 
-        Covers: 2.3.1, 2.3.2, 2.3.3
+        Covers: 2.2.3
         "
-"passed","Thu Aug 20 10:08:21 UTC 2026","Thu Aug 20 10:08:35 UTC 2026","13597","tests.ui.toolkits","test_credential_required_fields_validation","TestCredentialRequiredFieldsValidation","","","test_create_credential_required_fields_validation","Save reflects required-field state; Display Name clearing is a known defect."
-"passed","Thu Aug 20 10:01:45 UTC 2026","Thu Aug 20 10:02:04 UTC 2026","18837","tests.ui.artifacts","test_artifacts_create_bucket_upload_file","TestArtifactCreateBucketAndUploadFile","","","Create a bucket via the '+ Artifact Bucket' form and upload a file via the bucket-row dot-menu","Create a bucket via the form, upload a file via the bucket-menu.
+"passed","Thu Aug 20 10:03:26 UTC 2026","Thu Aug 20 10:03:37 UTC 2026","11411","tests.ui.agents","test_agent_create_button_navigation","","","","test_create_button_navigates_to_create_agent_page","Sidebar create-agent button navigates to an empty Create Agent form
+    with Save disabled by default (ELITEA-1870).
 
-        The bucket is the test's own mutation (created via the UI, deleted
-        in teardown) — the minimal state this observable inherently
-        requires (workflow skill Hard Rule 10): the case's own subject IS
-        bucket creation, so there is no pre-existing stable bucket to
-        assert against read-only.
-        "
-"passed","Thu Aug 20 10:07:01 UTC 2026","Thu Aug 20 10:07:11 UTC 2026","9399","tests.ui.chat","test_chat_interface","TestSidebarNavigation","","","test_open_close_sidebar","TC-CHAT-021: Open/close sidebar drawer."
-"passed","Thu Aug 20 10:06:15 UTC 2026","Thu Aug 20 10:07:26 UTC 2026","71195","tests.ui.artifacts","test_artifacts_multi_file","TestArtifactMultiFileDownload","","","Agent creates files at root and in subfolder — all visible and accessible","Agent creates files at root and under a sub-path — all visible and accessible.
+    Read-only: no agent is created, edited, or deleted.
+    "
+"passed","Thu Aug 20 10:07:54 UTC 2026","Thu Aug 20 10:08:09 UTC 2026","15056","tests.ui.artifacts","test_artifacts_upload_duplicate_detected_modal","TestArtifactUploadDuplicateDetectedModal","","","Uploading a same-named file opens the 'Resolve duplicates' modal with the correct message, filename, and all four action buttons","Uploading a same-named file opens 'Resolve duplicates' with full content.
 
-        ELITEA-1327 regression: when an agent creates N files in a single tool call,
-        all N files must be downloadable via the UI.  Before the fix, only the last
-        file written would be persisted; all earlier files were silently lost.
+        Read-only from the bucket's perspective: the bucket is seeded once
+        with the duplicate-detection target, then the test never mutates
+        state further — it only inspects the modal that opens (workflow
+        skill Hard Rule 10 — minimal mutation for the observable).
         "
 "passed","Thu Aug 20 10:06:20 UTC 2026","Thu Aug 20 10:07:41 UTC 2026","80370","tests.ui.skills","test_remove_attached_skill_from_agent","TestRemoveAttachedSkillFromAgent","","","test_remove_attached_skill_from_agent","Create two Skills + an Agent, attach both, remove Skill B via the
         hover-revealed remove control + confirmation dialog, and verify Skill
@@ -287,58 +51,161 @@
         8. Navigate directly to Skill B's detail page and to the Skills list;
            Skill B still exists standalone (detached, not deleted).
         "
-"passed","Thu Aug 20 10:08:56 UTC 2026","Thu Aug 20 10:09:05 UTC 2026","9251","tests.ui.skills","test_skill_search","TestSkillSearch","","","test_search_skills_by_name","Search the Skills grid by partial name, exact name, a
-        non-existent name, then clear — verifying the grid's exact visible
-        set at each step (not just presence/absence of one name), so a
-        regression that only breaks the grid while leaving the separate
-        suggestions popover working would be caught.
+"passed","Thu Aug 20 11:11:45 UTC 2026","Thu Aug 20 11:11:51 UTC 2026","5977","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_model_selector_opens_menu","TC-CHAT-010, TC-CHAT-020: Model selector shows current model and opens menu."
+"passed","Thu Aug 20 11:12:33 UTC 2026","Thu Aug 20 11:12:47 UTC 2026","14404","tests.ui.chat","test_chat_interface","TestContextAndSettings","","","test_edit_context_settings","TC-CHAT-019: Edit context settings."
+"passed","Thu Aug 20 11:11:09 UTC 2026","Thu Aug 20 11:11:24 UTC 2026","14615","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_send_text_message","TC-CHAT-003, TC-CHAT-004: Send message and verify history."
+"passed","Thu Aug 20 10:10:23 UTC 2026","Thu Aug 20 10:10:40 UTC 2026","16678","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_preview_personalization","TC4: Voice Personalization Controls in Settings Page.
+        TC-1914
         "
-"passed","Thu Aug 20 10:14:10 UTC 2026","Thu Aug 20 10:14:46 UTC 2026","35837","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[github]","Add toolkit to chat, send a message, verify tool execution."
-"passed","Thu Aug 20 10:06:27 UTC 2026","Thu Aug 20 10:06:44 UTC 2026","17893","tests.ui.agents","test_agent_with_github_toolkit","TestRemoveToolkitFromAgent","","","test_remove_toolkit_from_agent","Add a toolkit, then remove it, and verify it's gone."
-"passed","Thu Aug 20 10:00:17 UTC 2026","Thu Aug 20 10:00:48 UTC 2026","30567","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'new-bucket$'","Run once per Test Data row — ``case_id`` ties a failure back to
-        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
-        regression never masks its healthy siblings.
-        "
-"failed","Thu Aug 20 10:05:43 UTC 2026","Thu Aug 20 10:06:10 UTC 2026","26825","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_attach_files_button_sends_file_with_message","TC-CHAT-011: Attach file and send message with attachment."
-"passed","Thu Aug 20 10:00:59 UTC 2026","Thu Aug 20 10:03:10 UTC 2026","130763","tests.ui.skills","test_agent_max_five_skills_limit","TestAgentMaxFiveSkillsLimit","","","test_max_five_skills_attach_limit","Create 5 Skills + an Agent, attach all 5 Skills one at a time,
-        verify the add-skill control disables at 5/5 with a tooltip (rather
-        than a literal 6th-click rejection), and verify persistence via a
-        full page reload.
+"passed","Thu Aug 20 10:00:11 UTC 2026","Thu Aug 20 10:00:25 UTC 2026","13948","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantLauncher","","","test_launcher_visible_and_opens_widget","Launcher is visible and opens Support Assistant widget.
 
-        Steps (AFS test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md):
-        1. Create 5 Skills via UI. A 6th distinct skill is looked up via the
-           project's existing skills (via ``skill_api``) rather than assumed
-           by name — any pre-existing skill satisfies the case's ""6 distinct
-           Skills"" precondition.
-        2. Create an Agent.
-        3. Skills section starts at 0/5, add-skill control enabled.
-        4-8. Attach Skills 1-5 one at a time; counter increments ""N/5 skills
-           added."" and a card renders after each attach.
-        9. Add-skill control becomes disabled the instant 5/5 is reached,
-           with an accessible tooltip — a 6th skill cannot be attached.
-        10. Confirm persistence via a full page reload (attach is
-           auto-saved via API; no explicit agent-level Save is available).
+        Covers: 2.1.1, 2.2.1, 2.2.2
         "
-"passed","Thu Aug 20 10:11:25 UTC 2026","Thu Aug 20 10:11:40 UTC 2026","15231","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[github]","Create a credential through the UI form for any toolkit type."
-"passed","Thu Aug 20 10:13:13 UTC 2026","Thu Aug 20 10:13:31 UTC 2026","18397","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[github]","Run a tool via the Test Settings panel on the toolkit detail page."
-"passed","Thu Aug 20 10:01:32 UTC 2026","Thu Aug 20 10:03:02 UTC 2026","90000","tests.ui.chat","test_agent_with_toolkit_chat","TestAgentWithToolkitInChat","","","test_agent_with_toolkit_executes_in_chat","Create agent with toolkit, add agent as participant in chat, verify toolkit executes.
+"failed","Thu Aug 20 11:11:51 UTC 2026","Thu Aug 20 11:12:10 UTC 2026","18892","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_attach_files_button_sends_file_with_message","TC-CHAT-011: Attach file and send message with attachment."
+"passed","Thu Aug 20 10:12:55 UTC 2026","Thu Aug 20 10:13:10 UTC 2026","14782","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[confluence]","Create a toolkit through the UI form for any toolkit type."
+"passed","Thu Aug 20 11:12:11 UTC 2026","Thu Aug 20 11:12:18 UTC 2026","6965","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_internal_tools_panel_shows_all_tools","TC-CHAT-012: Internal tools panel displays all available tools."
+"passed","Thu Aug 20 10:07:41 UTC 2026","Thu Aug 20 10:08:16 UTC 2026","35183","tests.ui.skills","test_skill_agent_version_selector","TestAttachSkillToAgentWithVersionSelector","","","test_attach_skill_to_agent_with_version_selector","Create a skill + agent, attach the skill, and verify the version
+        selector shows the default version, opens a real Versions menu, and
+        persists across a full page reload.
+
+        Steps (AFS test-specs/skills/l3_attach-skill-to-agent-with-version-selector_ELITEA-1789.md):
+        1. Create a Skill with a saved `base` version.
+        2. Create an Agent.
+        3. Locate the Skills attachment section (expanded by default).
+        4-5. Attach the Skill; verify the counter updates and the card renders.
+        6. Verify the attached Skill card shows a version selector, and that
+           clicking it (via a correctly-scoped `.version-text` locator, NOT a
+           role-based one) opens a real ""Versions"" menu — hard-asserted
+           functional flow per the AFS (known defect #46 is a handle-quality/
+           accessibility gap, not a flaky functional failure).
+        7. Confirm the default version (`base`) is shown pre-selected, both
+           on the card and as the sole entry in the opened Versions menu.
+        8. Confirm persistence via a full page reload (no explicit
+           agent-level Save is available — attach is auto-saved via API).
+        "
+"passed","Thu Aug 20 10:01:14 UTC 2026","Thu Aug 20 10:01:52 UTC 2026","38101","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_text_truncated_with_warning","Verify text over limit is truncated to 768 chars with warning message.
+        TC-1686
+
+        Tests both collapsed mode and fullscreen mode.
+        "
+"passed","Thu Aug 20 11:13:02 UTC 2026","Thu Aug 20 11:13:08 UTC 2026","5827","tests.ui.chat","test_chat_interface","TestSearchAndErrorHandling","","","test_search_conversations_dialog","TC-CHAT-023: Search conversations."
+"passed","Thu Aug 20 11:12:26 UTC 2026","Thu Aug 20 11:12:32 UTC 2026","6491","tests.ui.chat","test_chat_interface","TestHashSearch","","","test_add_participant_via_hash_search","TC-CHAT-018: Add participant via # search and select option.
+
+        The hash search feature detects '#' via keydown events, so we must
+        use press_sequentially() instead of fill() to trigger it.
+        "
+"skipped","Thu Aug 20 10:12:02 UTC 2026","Thu Aug 20 10:12:02 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[gitlab]","Create a credential through the UI form for any toolkit type."
+"passed","Thu Aug 20 11:09:56 UTC 2026","Thu Aug 20 11:11:00 UTC 2026","64110","tests.ui.chat","test_agent_with_toolkit_chat","TestAgentWithToolkitInChat","","","test_agent_with_toolkit_executes_in_chat","Create agent with toolkit, add agent as participant in chat, verify toolkit executes.
 
         The toolkit is attached to the agent (not the conversation directly).
         This tests the agent-owns-toolkit execution path in real chat (/chat).
         "
+"passed","Thu Aug 20 10:06:15 UTC 2026","Thu Aug 20 10:07:26 UTC 2026","71195","tests.ui.artifacts","test_artifacts_multi_file","TestArtifactMultiFileDownload","","","Agent creates files at root and in subfolder — all visible and accessible","Agent creates files at root and under a sub-path — all visible and accessible.
+
+        ELITEA-1327 regression: when an agent creates N files in a single tool call,
+        all N files must be downloadable via the UI.  Before the fix, only the last
+        file written would be persisted; all earlier files were silently lost.
+        "
+"passed","Thu Aug 20 10:00:01 UTC 2026","Thu Aug 20 10:00:19 UTC 2026","17617","tests.ui.settings","test_context_management_toggle","TestContextManagementToggle","","","test_automatic_summarization_toggle_enables_disables_own_fields","Toggling Automatic Summarization OFF disables its own fields; ON re-enables them (ELITEA-2377).
+
+        Distinct observable from ``test_context_management_toggle_enables_disables_fields``
+        (ELITEA-2374): that test drives the *parent* Context Management toggle
+        and observes the Automatic Summarization sub-section mount/unmount as
+        a unit from the OUTSIDE. This test drives the Automatic Summarization
+        toggle itself and observes its own two children (Summarization
+        Instructions, Target Summary Tokens) — a DIFFERENT disable mechanism:
+        a real ``disabled`` prop (``MemorySummarization.jsx``), not a
+        conditional unmount. Fields stay mounted; assert
+        ``to_be_disabled()`` / ``to_be_enabled()``, never ``to_have_count(0)``.
+
+        AFS: test-specs/settings-user-profile/
+        lextend_automatic-summarization-toggle-enables-disables-fields_ELITEA-2377.md
+        "
+"passed","Thu Aug 20 10:01:45 UTC 2026","Thu Aug 20 10:02:04 UTC 2026","18837","tests.ui.artifacts","test_artifacts_create_bucket_upload_file","TestArtifactCreateBucketAndUploadFile","","","Create a bucket via the '+ Artifact Bucket' form and upload a file via the bucket-row dot-menu","Create a bucket via the form, upload a file via the bucket-menu.
+
+        The bucket is the test's own mutation (created via the UI, deleted
+        in teardown) — the minimal state this observable inherently
+        requires (workflow skill Hard Rule 10): the case's own subject IS
+        bucket creation, so there is no pre-existing stable bucket to
+        assert against read-only.
+        "
+"passed","Thu Aug 20 11:13:09 UTC 2026","Thu Aug 20 11:13:15 UTC 2026","5955","tests.ui.chat","test_chat_interface","TestSearchAndErrorHandling","","","test_handle_message_send_failure","TC-CHAT-024: Handle message send failure gracefully."
+"passed","Thu Aug 20 09:59:38 UTC 2026","Thu Aug 20 10:00:04 UTC 2026","25721","tests.ui.help_center","test_help_center_sidebar_tour","TestHelpCenterSidebarTour","","","test_sidebar_interactive_tour_completes_via_next",""
+"passed","Thu Aug 20 10:03:38 UTC 2026","Thu Aug 20 10:04:21 UTC 2026","43646","tests.ui.agents","test_agent_remove_variable","TestAgentRemoveVariable","","","test_remove_variable_and_verify_removal_persists","Removing a {{variable}} reference from Instructions removes its
+        Variables row immediately (client-side, before Save), and the
+        removal persists after Save + a full-navigation reload, while other
+        variables remain intact."
+"passed","Thu Aug 20 11:12:48 UTC 2026","Thu Aug 20 11:12:55 UTC 2026","6573","tests.ui.chat","test_chat_interface","TestSidebarNavigation","","","test_open_close_sidebar","TC-CHAT-021: Open/close sidebar drawer."
+"passed","Thu Aug 20 10:03:10 UTC 2026","Thu Aug 20 10:03:27 UTC 2026","17401","tests.ui.artifacts","test_artifacts_download_multiple_files_zip","TestArtifactDownloadMultipleFilesZip","","","Selecting 2 files via checkbox and clicking 'Download files' downloads them as a ZIP with a live progress dialog","Selecting 2 files and clicking 'Download files' produces a ZIP.
+
+        Read-only from the bucket's perspective at the end: the bucket is
+        mutated exactly once (seeded with 4 files under ``a1/``) — the
+        minimal state this observable inherently requires (workflow skill
+        Hard Rule 10) — then every assertion reads that state without
+        further mutation.
+        "
+"passed","Thu Aug 20 10:04:22 UTC 2026","Thu Aug 20 10:05:25 UTC 2026","63250","tests.ui.agents","test_agent_save_as_version_preserves_skills","TestAgentSaveAsVersionPreservesSkills","","","test_agent_save_as_version_preserves_skills","Create a Skill + Agent (both via UI), attach the Skill, Save As
+        Version, and verify the Skill is still attached under the new
+        version — confirmed both via the UI and a fresh API response."
+"passed","Thu Aug 20 10:00:17 UTC 2026","Thu Aug 20 10:00:48 UTC 2026","30567","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'new-bucket$'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Thu Aug 20 10:02:05 UTC 2026","Thu Aug 20 10:02:29 UTC 2026","23934","tests.ui.artifacts","test_artifacts_delete_subfolder_checkbox","TestArtifactDeleteSubfolderCheckbox","","","Selecting a subfolder via checkbox and confirming toolbar delete removes the folder and its contents; other items unaffected","Deleting a subfolder via checkbox removes it and its contents only.
+
+        Bucket is mutated exactly once at setup (seeded with 5 keys — the
+        minimal fresh state this observable inherently requires, since the
+        case's own purpose is destructive: deleting part of the bucket's
+        contents; workflow skill Hard Rule 10) — every assertion afterward
+        reads that state (plus the one delete mutation the case itself
+        drives) without further seeding.
+        "
+"passed","Thu Aug 20 10:05:27 UTC 2026","Thu Aug 20 10:06:24 UTC 2026","56258","tests.ui.agents","test_agent_with_github_toolkit","TestAddToolkitToAgent","","","test_add_toolkit_to_agent","Add a GitHub toolkit to an existing agent via the UI, then chat."
 "passed","Thu Aug 20 10:08:56 UTC 2026","Thu Aug 20 10:09:21 UTC 2026","24241","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_selection_from_chat","TC1: Voice Selection via TTS Controls in Chat.
         TC-1918, TC-1915
         "
-"passed","Thu Aug 20 09:59:38 UTC 2026","Thu Aug 20 09:59:57 UTC 2026","18813","tests.ui.agents","test_agent_back_navigation","","","","test_back_button_from_agent_detail_returns_to_intact_agents_list","Back button on agent detail page returns to Agents dashboard with
-    the list intact (ELITEA-1869).
+"passed","Thu Aug 20 10:09:52 UTC 2026","Thu Aug 20 10:10:23 UTC 2026","31136","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_settings_sync","TC3: Settings Synchronization from Personalization to Chat.
+        TC-1916
+        Personalization settings are baseline defaults that apply to Chat.
+        Chat changes are temporary/session-only and do NOT sync back to Personalization.
+        "
+"passed","Thu Aug 20 10:00:19 UTC 2026","Thu Aug 20 10:00:37 UTC 2026","17464","tests.ui.settings","test_context_management_toggle","TestContextManagementToggle","","","test_target_summary_tokens_range_validation","Target Summary Tokens rejects values outside [100, 4096] client-side (ELITEA-2378).
 
-    Uses agent_id fixture to ensure at least one agent exists.
-    "
-"passed","Thu Aug 20 10:12:41 UTC 2026","Thu Aug 20 10:12:53 UTC 2026","12614","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[jira]","Create a toolkit through the UI form for any toolkit type."
-"passed","Thu Aug 20 09:59:21 UTC 2026","Thu Aug 20 09:59:37 UTC 2026","16710","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_page_loads","The home page should load without errors."
-"passed","Thu Aug 20 10:04:31 UTC 2026","Thu Aug 20 10:04:43 UTC 2026","11755","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_model_selector_opens_menu","TC-CHAT-010, TC-CHAT-020: Model selector shows current model and opens menu."
-"passed","Thu Aug 20 10:06:12 UTC 2026","Thu Aug 20 10:06:20 UTC 2026","8163","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_internal_tools_panel_shows_all_tools","TC-CHAT-012: Internal tools panel displays all available tools."
-"skipped","Thu Aug 20 10:07:41 UTC 2026","Thu Aug 20 10:07:41 UTC 2026","0","tests.ui.chat","test_context_management","TestContextManagementSettings","","","test_context_budget_reflects_profile_max_tokens[10k_tokens]","Context Budget panel in chat shows the max tokens set in profile.
+        Distinct observable from ``test_automatic_summarization_toggle_enables_disables_own_fields``
+        (ELITEA-2377): that test drives the Automatic Summarization toggle and
+        observes Target Summary Tokens' visible/enabled state as a SIDE EFFECT
+        of the toggle. This test drives Target Summary Tokens' OWN value and
+        observes its client-side min/max range validation (100-4096 — Yup
+        schema ``profileValidationSchema.summary_llm_settings.max_tokens`` in
+        ``src/[fsd]/features/settings/lib/helpers/profile.helpers.js``,
+        limits sourced from ``VALIDATION_LIMITS.MAX_TOKENS`` in
+        ``src/[fsd]/widgets/context-budget/lib/constants.js``): an out-of-range
+        value flips ``aria-invalid=""true""`` and BLOCKS the autosave submit
+        (``useFormikAutoSaveOnBlur`` calls ``validateForm()`` before
+        ``submitForm()`` and returns early on errors); an in-range value
+        autosaves normally.
+
+        AFS: test-specs/settings-user-profile/
+        lextend_target-summary-tokens-range-validation_ELITEA-2378.md
+        "
+"passed","Thu Aug 20 10:12:03 UTC 2026","Thu Aug 20 10:12:23 UTC 2026","20468","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[confluence]","Create a credential through the UI form for any toolkit type."
+"passed","Thu Aug 20 10:08:26 UTC 2026","Thu Aug 20 10:08:41 UTC 2026","14860","tests.ui.artifacts","test_artifacts_upload_duplicate_skip","TestArtifactUploadDuplicateSkip","","","'Skip' in 'Resolve duplicates' uploads only the non-duplicate file, leaves the duplicate untouched","Skip uploads ONLY the non-duplicate file; the duplicate is never touched."
+"passed","Thu Aug 20 09:59:22 UTC 2026","Thu Aug 20 09:59:41 UTC 2026","19232","tests.ui.settings","test_ai_providers_page_sections_load_without_error","TestAIProvidersPageSections","","","test_ai_providers_page_sections_load_without_error","Every populated section (LLMs/Embedding/Image Gen/ASR/TTS) renders with
+        its default selector(s) and >=1 configuration card, in the expected
+        order; Vector Storage (zero-config) is correctly absent; AI Credentials
+        is either rendered with >=1 card OR correctly absent if empty; zero
+        console errors, zero non-2xx across every configurations endpoint."
+"passed","Thu Aug 20 10:02:32 UTC 2026","Thu Aug 20 10:03:07 UTC 2026","34847","tests.ui.artifacts","test_artifacts_delete_subfolder_checkbox","TestArtifactDeleteSubfolderCheckbox","","","Selecting 2 individual files via checkbox (partial selection) drives the header checkbox indeterminate and deletes only those files","Checking 2 file checkboxes (partial selection) drives the header
+        'select all' checkbox into the INDETERMINATE state, leaves sibling
+        folder checkboxes unchecked, and deleting via the toolbar removes
+        only the 2 selected files — subfolders completely unaffected.
+
+        Own fresh `artifact_bucket` instance (function-scoped fixture) —
+        deliberately NOT sharing state with `test_delete_subfolder_via_checkbox`
+        above, since that test's own core assertion (a1 gets deleted) directly
+        conflicts with this test's own precondition (a1 must survive).
+        "
+"skipped","Thu Aug 20 11:13:15 UTC 2026","Thu Aug 20 11:13:15 UTC 2026","0","tests.ui.chat","test_context_management","TestContextManagementSettings","","","test_context_budget_reflects_profile_max_tokens[10k_tokens]","Context Budget panel in chat shows the max tokens set in profile.
 
         Parameterized to verify:
         - P1 (10,000 tokens): Standard value propagates correctly
@@ -346,26 +213,143 @@
 
         Cleanup: deletes the created conversation via API.
         "
-"passed","Thu Aug 20 10:00:49 UTC 2026","Thu Aug 20 10:01:14 UTC 2026","25075","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'bucket_one'","Run once per Test Data row — ``case_id`` ties a failure back to
+"passed","Thu Aug 20 11:11:02 UTC 2026","Thu Aug 20 11:11:08 UTC 2026","6372","tests.ui.chat","test_chat_interface","TestPageLoadAndRendering","","","test_chat_page_loads_with_functional_input","TC-CHAT-001, TC-CHAT-002: Chat page loads with functional message input."
+"passed","Thu Aug 20 09:59:40 UTC 2026","Thu Aug 20 09:59:54 UTC 2026","13726","tests.ui.agent_hub","test_agent_hub_trending_category","TestAgentHubTrendingCategory","","","test_agent_hub_trending_category_displays_agents","Verify Trending category filter shows agents when selected.
+
+        Steps:
+        1. Navigate to Agent Hub (Catalog)
+        2. Click the Trending category filter chip
+        3. Verify the filter is highlighted/active
+        4. Verify agents are displayed under Trending section
+        5. Verify the section header ""Trending"" is visible
+        "
+"passed","Thu Aug 20 11:13:15 UTC 2026","Thu Aug 20 11:16:05 UTC 2026","169838","tests.ui.chat","test_image_creation","TestImageCreation","","","test_create_image[detailed_description]","Create image from text prompt and verify image appears in response."
+"passed","Thu Aug 20 09:59:28 UTC 2026","Thu Aug 20 10:00:59 UTC 2026","90773","tests.ui.skills","test_agent_instructions_tilde_mention","TestTildeMentionListsOnlyAttachedSkills","","","test_tilde_mention_in_instructions_lists_only_attached_skills","Attach 2 of 3 distinct Skills to an Agent, then verify the ""~""
+        mention panel in the Instructions field is scoped to only the
+        attached 2 — the 3rd (unattached) Skill never appears, including
+        on a second, independent ""~"" trigger after clearing the field.
+
+        Steps (AFS test-specs/skills/l3_tilde-mention-lists-only-attached-skills_ELITEA-1791.md):
+        1. Confirm/create 3 distinct Skills (reuse a pre-existing one as
+           Skill A, looked up via API rather than assumed by name — same
+           environment-robustness rule as ELITEA-1790's cleanup note —
+           falling back to creating it fresh if none exists), create an
+           Agent, attach Skill A + Skill B, leave Skill C unattached.
+        2. Click the Instructions field — becomes focused/editable.
+        3-4. Type ""~"" — ""Mention skill"" panel appears, listing exactly
+           Skill A and Skill B; Skill C is asserted absent by exact-name
+           locator (not merely a row count).
+        5. Select Skill A — inserts ""~<skill-name>"" as plain text.
+        6. Select-all + delete, retype ""~"" — same 2-item scoped list
+           reappears; Skill C still absent (re-evaluated live).
+        "
+"skipped","Thu Aug 20 10:13:50 UTC 2026","Thu Aug 20 10:13:50 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[gitlab]","Run a tool via the Test Settings panel on the toolkit detail page."
+"skipped","Thu Aug 20 10:15:13 UTC 2026","Thu Aug 20 10:15:13 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[bitbucket]","Add toolkit to chat, send a message, verify tool execution."
+"passed","Thu Aug 20 10:11:25 UTC 2026","Thu Aug 20 10:11:40 UTC 2026","15231","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[github]","Create a credential through the UI form for any toolkit type."
+"passed","Thu Aug 20 09:59:38 UTC 2026","Thu Aug 20 09:59:53 UTC 2026","15527","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_main_content_visible","The main content area should render after navigation."
+"passed","Thu Aug 20 10:11:40 UTC 2026","Thu Aug 20 10:12:01 UTC 2026","20851","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[jira]","Create a credential through the UI form for any toolkit type."
+"passed","Thu Aug 20 10:02:26 UTC 2026","Thu Aug 20 10:03:09 UTC 2026","42678","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+        "
+"passed","Thu Aug 20 10:06:27 UTC 2026","Thu Aug 20 10:06:44 UTC 2026","17893","tests.ui.agents","test_agent_with_github_toolkit","TestRemoveToolkitFromAgent","","","test_remove_toolkit_from_agent","Add a toolkit, then remove it, and verify it's gone."
+"passed","Thu Aug 20 10:07:28 UTC 2026","Thu Aug 20 10:07:53 UTC 2026","24930","tests.ui.artifacts","test_artifacts_upload_duplicate_cancel","TestArtifactUploadDuplicateCancel","","","Cancel in 'Resolve duplicates' modal aborts entire upload, including the non-duplicate file","Cancel in the duplicate-resolution modal stops the WHOLE upload.
+
+        Read-only from the fresh bucket's perspective at the end: the bucket
+        is deliberately mutated once (seeded with sample.txt) so the
+        duplicate can be triggered at all — this is the minimal state the
+        observable inherently requires (workflow skill Hard Rule 10) — then
+        the test proves that mutation is the ONLY one that ever lands.
+        "
+"passed","Thu Aug 20 10:06:03 UTC 2026","Thu Aug 20 10:06:11 UTC 2026","7361","tests.ui.artifacts","test_artifacts_file_preview_open_editor_ui","TestArtifactFilePreviewOpenEditorUI","","","Opening a supported text file via the View/Edit icon shows the full editor UI","Opening a file via the View/Edit icon renders the full editor UI contract."
+"passed","Thu Aug 20 10:10:05 UTC 2026","Thu Aug 20 10:10:33 UTC 2026","28032","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestPipelineCredentialIndicators","","","test_pipeline_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Pipeline."
+"passed","Thu Aug 20 09:59:54 UTC 2026","Thu Aug 20 10:00:11 UTC 2026","16513","tests.ui.agent_hub","test_empty_state","TestCatalogEmptyState","","","Empty state displays when search matches no agents","Verify that when a search term matches zero agents, the 'No agents found' and 'Try adjusting your search terms' messages display. Page heading, search input, tabs, and filter rail remain visible and functional. No agent cards present."
+"passed","Thu Aug 20 10:08:21 UTC 2026","Thu Aug 20 10:08:35 UTC 2026","13597","tests.ui.toolkits","test_credential_required_fields_validation","TestCredentialRequiredFieldsValidation","","","test_create_credential_required_fields_validation","Save reflects required-field state; Display Name clearing is a known defect."
+"passed","Thu Aug 20 10:06:48 UTC 2026","Thu Aug 20 10:07:38 UTC 2026","49875","tests.ui.agents","test_agent_with_github_toolkit","TestChatWithAgentToolkit","","","test_agent_chat_with_github_toolkit","Add toolkit to agent, chat via /chat, verify toolkit execution."
+"passed","Thu Aug 20 10:00:30 UTC 2026","Thu Aug 20 10:01:12 UTC 2026","41262","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+
+        Acceptance Criteria #1 & #3: Counter visible in Full Screen mode,
+        warning displays at limit.
+        "
+"passed","Thu Aug 20 10:04:47 UTC 2026","Thu Aug 20 10:05:10 UTC 2026","23041","tests.ui.artifacts","test_artifacts_file_preview_edit_save","TestArtifactFilePreviewEditSave","","","Editing file content and saving persists the change","Editing content and clicking Save persists the change to the backend."
+"passed","Thu Aug 20 10:09:06 UTC 2026","Thu Aug 20 10:09:52 UTC 2026","46685","tests.ui.skills","test_skill_tag_filter","TestSkillTagFilter","","","test_filter_skills_by_tag","Create 3 skills with shared/unique tags; verify tag-filter narrowing.
+
+        Steps (see AFS for full detail):
+        1. Capture baseline grid state; create Skill A (formatting, output),
+           Skill B (formatting, english), Skill C (translation); verify all
+           3 plus any pre-existing skills are visible with their own tags.
+        2. Filter by `formatting` (shared tag) — verify exactly Skill A and
+           Skill B are shown, Skill C is excluded.
+        3. Clear the filter, then filter by `translation` (unique tag) —
+           verify exactly Skill C is shown.
+        4. Clear the filter, then filter by `output` (unique tag) — verify
+           exactly Skill A is shown.
+        5. Clear the filter — verify the grid is restored to the baseline
+           plus the 3 new skills.
+        "
+"passed","Thu Aug 20 10:09:36 UTC 2026","Thu Aug 20 10:10:04 UTC 2026","27748","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestToolkitCredentialIndicators","","","test_toolkit_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Toolkit."
+"passed","Thu Aug 20 09:59:32 UTC 2026","Thu Aug 20 09:59:50 UTC 2026","18018","tests.ui.pipelines","test_pipeline_nodes","TestAddNode","","","test_add_human_in_the_loop_node_and_connect_to_end","PIPE-031: Add a HITL node and connect it to END."
+"passed","Thu Aug 20 10:05:45 UTC 2026","Thu Aug 20 10:06:02 UTC 2026","17396","tests.ui.artifacts","test_artifacts_file_preview_markdown_raw_edit_save","TestArtifactFilePreviewMarkdownRawEditSave","","","Markdown file Raw tab enables editing; Save persists and Preview auto-shows the change","Raw tab enables editing; Save persists the change and re-shows it in Preview."
+"passed","Thu Aug 20 10:10:34 UTC 2026","Thu Aug 20 10:11:22 UTC 2026","47912","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestAgentCredentialIndicators","","","test_agent_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Agent."
+"passed","Thu Aug 20 10:08:42 UTC 2026","Thu Aug 20 10:08:56 UTC 2026","14030","tests.ui.artifacts","test_artifacts_upload_multiple_files","TestArtifactsUploadMultipleFiles","","","Upload multiple files at once via the toolbar upload button","Select 3 files in one native-picker call, upload, verify metadata.
+
+        Read-only from the fresh bucket's perspective going in — the bucket
+        itself is the test's own mutation (via ``artifact_bucket``, deleted
+        in its own teardown), the minimal state this observable inherently
+        requires (workflow skill Hard Rule 10): the case's own subject IS
+        the multi-file upload, so there is no pre-existing empty bucket to
+        assert against read-only.
+        "
+"passed","Thu Aug 20 10:01:53 UTC 2026","Thu Aug 20 10:02:09 UTC 2026","15909","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_visible_and_updates","Character counter appears when typing and updates in real-time.
+        TC-1685
+        Acceptance Criteria #1 (extended to Conversation Starters).
+
+        Note: Counter only appears after typing, not initially.
+        "
+"skipped","Thu Aug 20 10:12:54 UTC 2026","Thu Aug 20 10:12:54 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[gitlab]","Create a toolkit through the UI form for any toolkit type."
+"passed","Thu Aug 20 10:14:10 UTC 2026","Thu Aug 20 10:14:46 UTC 2026","35837","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[github]","Add toolkit to chat, send a message, verify tool execution."
+"passed","Thu Aug 20 10:03:10 UTC 2026","Thu Aug 20 10:04:48 UTC 2026","98158","tests.ui.skills","test_ghost_skill_after_agent_removed","TestGhostSkillAfterAgentRemoved","","","test_ghost_skill_not_shown_after_agent_participant_removed","Create a skill, attach it to an agent, add the agent as a chat
+        participant, confirm '~mention' shows the skill, dismiss, remove the
+        participant, and confirm the skill no longer appears in '~mention'
+        afterward.
+
+        Steps (AFS test-specs/skills/l3_ghost-skill-not-shown-after-agent-participant-removed_ELITEA-1793.md):
+        1. Create Skill, create Agent, attach the skill to the agent.
+        2. Open Chat, add the agent as a participant.
+        3. Type '~' — the ""Mention skill"" popper lists the attached skill.
+        4. Dismiss the popper with Escape without selecting anything.
+        5. Remove the agent from the chat's participants.
+        6. Type '~' again — the removed agent's skill should NOT be listed.
+        7. Control check: a fresh conversation that never had a participant
+           shows the correct ""No skills attached to this agent"" empty state.
+        "
+"skipped","Thu Aug 20 11:13:15 UTC 2026","Thu Aug 20 11:13:15 UTC 2026","0","tests.ui.chat","test_context_management","TestContextManagementSettings","","","test_context_budget_reflects_profile_max_tokens[32k_tokens]","Context Budget panel in chat shows the max tokens set in profile.
+
+        Parameterized to verify:
+        - P1 (10,000 tokens): Standard value propagates correctly
+        - P2 (32,000 tokens): Updated value propagates (not cached)
+
+        Cleanup: deletes the created conversation via API.
+        "
+"skipped","Thu Aug 20 10:13:51 UTC 2026","Thu Aug 20 10:13:51 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[bitbucket]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Thu Aug 20 10:13:52 UTC 2026","Thu Aug 20 10:14:08 UTC 2026","16034","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[confluence]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Thu Aug 20 11:16:06 UTC 2026","Thu Aug 20 11:18:18 UTC 2026","132058","tests.ui.chat","test_image_creation","TestImageCreation","","","test_create_image[minimal_prompt]","Create image from text prompt and verify image appears in response."
+"passed","Thu Aug 20 10:12:41 UTC 2026","Thu Aug 20 10:12:53 UTC 2026","12614","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[jira]","Create a toolkit through the UI form for any toolkit type."
+"passed","Thu Aug 20 09:59:38 UTC 2026","Thu Aug 20 10:00:16 UTC 2026","37874","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: '1bucket'","Run once per Test Data row — ``case_id`` ties a failure back to
         its originating case (ELITEA-1811 or ELITEA-1814) so one row's
         regression never masks its healthy siblings.
         "
-"passed","Thu Aug 20 10:08:26 UTC 2026","Thu Aug 20 10:08:41 UTC 2026","14860","tests.ui.artifacts","test_artifacts_upload_duplicate_skip","TestArtifactUploadDuplicateSkip","","","'Skip' in 'Resolve duplicates' uploads only the non-duplicate file, leaves the duplicate untouched","Skip uploads ONLY the non-duplicate file; the duplicate is never touched."
-"passed","Thu Aug 20 10:00:19 UTC 2026","Thu Aug 20 10:00:29 UTC 2026","9899","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
-        TC-1687
-
-        Acceptance Criteria #2: Counter turns red when 0 characters remain.
+"passed","Thu Aug 20 10:03:10 UTC 2026","Thu Aug 20 10:03:25 UTC 2026","15003","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_multiple_conversation_starters_have_counters","Each conversation starter field has its own counter.
+        TC-1684
         "
-"passed","Thu Aug 20 10:01:14 UTC 2026","Thu Aug 20 10:01:52 UTC 2026","38101","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_text_truncated_with_warning","Verify text over limit is truncated to 768 chars with warning message.
-        TC-1686
+"skipped","Thu Aug 20 10:12:02 UTC 2026","Thu Aug 20 10:12:02 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[bitbucket]","Create a credential through the UI form for any toolkit type."
+"passed","Thu Aug 20 09:59:42 UTC 2026","Thu Aug 20 10:00:01 UTC 2026","19463","tests.ui.settings","test_context_management_toggle","TestContextManagementToggle","","","test_context_management_toggle_enables_disables_fields","Toggling Context Management OFF unmounts token fields + summarization; ON restores them.
 
-        Tests both collapsed mode and fullscreen mode.
+        Steps map 1:1 to the AFS steps (see module docstring for the AFS path).
         "
-"passed","Thu Aug 20 10:06:21 UTC 2026","Thu Aug 20 10:06:28 UTC 2026","7471","tests.ui.chat","test_chat_interface","TestHashSearch","","","test_hash_search_participants","TC-CHAT-017: Use # to search participants."
-"passed","Thu Aug 20 10:01:32 UTC 2026","Thu Aug 20 10:02:20 UTC 2026","47629","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantHistory","","","test_history_restore_and_continue","User can restore a previous session and continue messaging.
-
-        Covers: 6.1.1, 6.2.1, 6.2.3
-        "
+"passed","Thu Aug 20 10:05:33 UTC 2026","Thu Aug 20 10:05:43 UTC 2026","9781","tests.ui.artifacts","test_artifacts_file_preview_markdown_default_mode","TestArtifactFilePreviewMarkdownDefaultMode","","","Markdown file opens in Preview mode by default with Save/Discard inactive","A Markdown file opens with Preview active, rendered, editing blocked."
+"passed","Thu Aug 20 11:11:24 UTC 2026","Thu Aug 20 11:11:30 UTC 2026","5895","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_cannot_send_empty_message","TC-CHAT-007: Cannot send empty message."
+"skipped","Thu Aug 20 10:15:12 UTC 2026","Thu Aug 20 10:15:12 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[gitlab]","Add toolkit to chat, send a message, verify tool execution."
 "passed","Thu Aug 20 10:04:49 UTC 2026","Thu Aug 20 10:06:20 UTC 2026","91022","tests.ui.skills","test_import_agent_recreates_skills_with_new_ids","TestImportAgentRecreatesSkillsWithNewIds","","","test_import_agent_recreates_skills_with_new_ids","Export an Agent with an attached Skill, import it, verify a new
         Skill entity (new unique ID) is created and correctly linked.
 
@@ -392,47 +376,24 @@
            import (Axis 2 additions — import must be purely additive).
         8. Edit + save the imported Agent; verify a clean save.
         "
-"passed","Thu Aug 20 10:03:17 UTC 2026","Thu Aug 20 10:03:39 UTC 2026","22070","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_send_text_message","TC-CHAT-003, TC-CHAT-004: Send message and verify history."
-"skipped","Thu Aug 20 10:12:54 UTC 2026","Thu Aug 20 10:12:54 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[bitbucket]","Create a toolkit through the UI form for any toolkit type."
-"passed","Thu Aug 20 09:59:38 UTC 2026","Thu Aug 20 10:00:04 UTC 2026","25721","tests.ui.help_center","test_help_center_sidebar_tour","TestHelpCenterSidebarTour","","","test_sidebar_interactive_tour_completes_via_next",""
-"skipped","Thu Aug 20 10:07:41 UTC 2026","Thu Aug 20 10:07:41 UTC 2026","0","tests.ui.chat","test_context_management","TestContextManagementSettings","","","test_context_budget_reflects_profile_max_tokens[32k_tokens]","Context Budget panel in chat shows the max tokens set in profile.
-
-        Parameterized to verify:
-        - P1 (10,000 tokens): Standard value propagates correctly
-        - P2 (32,000 tokens): Updated value propagates (not cached)
-
-        Cleanup: deletes the created conversation via API.
+"passed","Thu Aug 20 10:08:35 UTC 2026","Thu Aug 20 10:09:36 UTC 2026","60283","tests.ui.toolkits","test_toolkit_creation_create_bucket_verify_list_files","TestToolkitCreationCreateBucketVerifyListFiles","","","Create an Artifact toolkit (creates a bucket as a side effect), run List files, verify the bucket in Artifacts","Create my-artifact-toolkit/new-bucket via the Save path, verify
+        List files, verify the new bucket in Artifacts — with mandatory
+        pre/post cleanup for the case's own literal test data.
         "
-"passed","Thu Aug 20 10:05:33 UTC 2026","Thu Aug 20 10:05:43 UTC 2026","9781","tests.ui.artifacts","test_artifacts_file_preview_markdown_default_mode","TestArtifactFilePreviewMarkdownDefaultMode","","","Markdown file opens in Preview mode by default with Save/Discard inactive","A Markdown file opens with Preview active, rendered, editing blocked."
-"passed","Thu Aug 20 10:08:11 UTC 2026","Thu Aug 20 10:08:25 UTC 2026","14478","tests.ui.artifacts","test_artifacts_upload_duplicate_keep_both","TestArtifactUploadDuplicateKeepBoth","","","'Keep both' in 'Resolve duplicates' saves both the original and a renamed copy with distinct timestamps","Keep both uploads a renamed copy; the original duplicate is never re-touched."
-"passed","Thu Aug 20 10:09:36 UTC 2026","Thu Aug 20 10:10:04 UTC 2026","27748","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestToolkitCredentialIndicators","","","test_toolkit_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Toolkit."
-"passed","Thu Aug 20 10:12:03 UTC 2026","Thu Aug 20 10:12:23 UTC 2026","20468","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[confluence]","Create a credential through the UI form for any toolkit type."
-"passed","Thu Aug 20 10:00:30 UTC 2026","Thu Aug 20 10:01:12 UTC 2026","41262","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
-        TC-1689, TC-1685
+"passed","Thu Aug 20 10:02:12 UTC 2026","Thu Aug 20 10:02:24 UTC 2026","12138","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
 
-        Acceptance Criteria #1 & #3: Counter visible in Full Screen mode,
-        warning displays at limit.
+        Acceptance Criteria #2.
         "
-"passed","Thu Aug 20 09:59:42 UTC 2026","Thu Aug 20 10:00:01 UTC 2026","19463","tests.ui.settings","test_context_management_toggle","TestContextManagementToggle","","","test_context_management_toggle_enables_disables_fields","Toggling Context Management OFF unmounts token fields + summarization; ON restores them.
+"passed","Thu Aug 20 10:01:15 UTC 2026","Thu Aug 20 10:01:44 UTC 2026","28746","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'bucket one'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Thu Aug 20 10:02:36 UTC 2026","Thu Aug 20 10:02:48 UTC 2026","11368","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantAttachments","","","test_attach_button_present_and_opens_picker","Attach button opens file picker dialog.
 
-        Steps map 1:1 to the AFS steps (see module docstring for the AFS path).
+        Covers: 7.1.1, 7.1.2
         "
-"passed","Thu Aug 20 10:05:45 UTC 2026","Thu Aug 20 10:06:02 UTC 2026","17396","tests.ui.artifacts","test_artifacts_file_preview_markdown_raw_edit_save","TestArtifactFilePreviewMarkdownRawEditSave","","","Markdown file Raw tab enables editing; Save persists and Preview auto-shows the change","Raw tab enables editing; Save persists the change and re-shows it in Preview."
-"passed","Thu Aug 20 10:09:06 UTC 2026","Thu Aug 20 10:09:52 UTC 2026","46685","tests.ui.skills","test_skill_tag_filter","TestSkillTagFilter","","","test_filter_skills_by_tag","Create 3 skills with shared/unique tags; verify tag-filter narrowing.
-
-        Steps (see AFS for full detail):
-        1. Capture baseline grid state; create Skill A (formatting, output),
-           Skill B (formatting, english), Skill C (translation); verify all
-           3 plus any pre-existing skills are visible with their own tags.
-        2. Filter by `formatting` (shared tag) — verify exactly Skill A and
-           Skill B are shown, Skill C is excluded.
-        3. Clear the filter, then filter by `translation` (unique tag) —
-           verify exactly Skill C is shown.
-        4. Clear the filter, then filter by `output` (unique tag) — verify
-           exactly Skill A is shown.
-        5. Clear the filter — verify the grid is restored to the baseline
-           plus the 3 new skills.
-        "
+"passed","Thu Aug 20 10:04:26 UTC 2026","Thu Aug 20 10:04:44 UTC 2026","18229","tests.ui.artifacts","test_artifacts_file_preview_actions_dropdown","TestArtifactFilePreviewActionsDropdown","","","Editor panel's actions dropdown contains Copy Content, Download, Delete and each works correctly","The editor panel's dropdown shows the right items and each action works."
 "passed","Thu Aug 20 10:03:39 UTC 2026","Thu Aug 20 10:04:25 UTC 2026","45638","tests.ui.artifacts","test_artifacts_duplicate_bucket_name","TestArtifactDuplicateBucketName","","","Duplicate bucket name is rejected; no duplicate is created","Attempting to create a bucket with a colliding name is rejected.
 
         The precondition bucket is a genuine mutation the observable
@@ -443,56 +404,54 @@
         creations on the identical code path the case exercises (not the
         ``artifact_bucket`` API fixture).
         "
-"passed","Thu Aug 20 10:07:42 UTC 2026","Thu Aug 20 10:10:29 UTC 2026","166539","tests.ui.chat","test_image_creation","TestImageCreation","","","test_create_image[detailed_description]","Create image from text prompt and verify image appears in response."
-"passed","Thu Aug 20 10:10:23 UTC 2026","Thu Aug 20 10:10:40 UTC 2026","16678","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_preview_personalization","TC4: Voice Personalization Controls in Settings Page.
-        TC-1914
+"passed","Thu Aug 20 10:09:21 UTC 2026","Thu Aug 20 10:09:51 UTC 2026","30305","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_speed_and_volume_controls","TC2: Speed and Volume Slider Adjustments.
+        TC-1917
         "
-"skipped","Thu Aug 20 10:12:02 UTC 2026","Thu Aug 20 10:12:02 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[bitbucket]","Create a credential through the UI form for any toolkit type."
-"passed","Thu Aug 20 10:00:01 UTC 2026","Thu Aug 20 10:00:19 UTC 2026","17617","tests.ui.settings","test_context_management_toggle","TestContextManagementToggle","","","test_automatic_summarization_toggle_enables_disables_own_fields","Toggling Automatic Summarization OFF disables its own fields; ON re-enables them (ELITEA-2377).
+"passed","Thu Aug 20 11:11:31 UTC 2026","Thu Aug 20 11:11:44 UTC 2026","13260","tests.ui.chat","test_chat_interface","TestMessageActions","","","test_copy_message_to_clipboard","TC-CHAT-008: Copy message to clipboard."
+"passed","Thu Aug 20 11:18:19 UTC 2026","Thu Aug 20 11:18:41 UTC 2026","21998","tests.ui.chat","test_open_existing_conversation_from_this_week_section","TestOpenExistingConversationFromThisWeekSection","","","test_open_existing_conversation_from_this_week_section","Verify This Week section is collapsed by default and expanding it
+        allows clicking a conversation which displays full history and active input.
 
-        Distinct observable from ``test_context_management_toggle_enables_disables_fields``
-        (ELITEA-2374): that test drives the *parent* Context Management toggle
-        and observes the Automatic Summarization sub-section mount/unmount as
-        a unit from the OUTSIDE. This test drives the Automatic Summarization
-        toggle itself and observes its own two children (Summarization
-        Instructions, Target Summary Tokens) — a DIFFERENT disable mechanism:
-        a real ``disabled`` prop (``MemorySummarization.jsx``), not a
-        conditional unmount. Fields stay mounted; assert
-        ``to_be_disabled()`` / ``to_be_enabled()``, never ``to_have_count(0)``.
+        Steps (from AFS):
+        1. Navigate to the Chats page
+        2. Locate the This Week section and verify it is collapsed by default
+        3. Click the This Week section header to expand it
+        4. Click on a conversation from the This Week list
+        5. Verify the message input field is active and ready for input
+        6. Verify the correct model or agent name is displayed in the input bar
+        7. Verify the PARTICIPANTS panel reflects the correct participant
 
-        AFS: test-specs/settings-user-profile/
-        lextend_automatic-summarization-toggle-enables-disables-fields_ELITEA-2377.md
+        Setup: Ensure at least one conversation exists in ""This Week"" section.
         "
-"passed","Thu Aug 20 10:13:33 UTC 2026","Thu Aug 20 10:13:50 UTC 2026","16516","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[jira]","Run a tool via the Test Settings panel on the toolkit detail page."
-"passed","Thu Aug 20 10:07:24 UTC 2026","Thu Aug 20 10:07:30 UTC 2026","5772","tests.ui.chat","test_chat_interface","TestSearchAndErrorHandling","","","test_search_conversations_dialog","TC-CHAT-023: Search conversations."
-"passed","Thu Aug 20 09:59:38 UTC 2026","Thu Aug 20 10:00:16 UTC 2026","37874","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: '1bucket'","Run once per Test Data row — ``case_id`` ties a failure back to
+"passed","Thu Aug 20 10:01:10 UTC 2026","Thu Aug 20 10:01:32 UTC 2026","21990","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantNewSession","","","test_new_chat_creates_fresh_session","New Chat button starts a fresh support session.
+
+        Covers: 3.5.1, 3.5.2
+
+        Also covers ELITEA-1799's Expected Final State clause 3 (""previous
+        session preserved in history, not lost"") via a soft assertion —
+        known defect #607, stays red once the account's active conversation
+        exceeds the ~100-message-group threshold.
+        "
+"passed","Thu Aug 20 10:00:49 UTC 2026","Thu Aug 20 10:01:14 UTC 2026","25075","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'bucket_one'","Run once per Test Data row — ``case_id`` ties a failure back to
         its originating case (ELITEA-1811 or ELITEA-1814) so one row's
         regression never masks its healthy siblings.
         "
-"passed","Thu Aug 20 10:06:30 UTC 2026","Thu Aug 20 10:06:36 UTC 2026","6057","tests.ui.chat","test_chat_interface","TestHashSearch","","","test_add_participant_via_hash_search","TC-CHAT-018: Add participant via # search and select option.
+"passed","Thu Aug 20 10:00:53 UTC 2026","Thu Aug 20 10:01:10 UTC 2026","16743","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantMessaging","","","test_send_message_and_receive_response","User can send a message and receive AI response.
 
-        The hash search feature detects '#' via keydown events, so we must
-        use press_sequentially() instead of fill() to trigger it.
+        Covers: 3.2.1-3.2.7, 3.2.9
         "
-"passed","Thu Aug 20 10:11:40 UTC 2026","Thu Aug 20 10:12:01 UTC 2026","20851","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[jira]","Create a credential through the UI form for any toolkit type."
-"skipped","Thu Aug 20 10:13:51 UTC 2026","Thu Aug 20 10:13:51 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[bitbucket]","Run a tool via the Test Settings panel on the toolkit detail page."
-"passed","Thu Aug 20 09:59:40 UTC 2026","Thu Aug 20 09:59:54 UTC 2026","13726","tests.ui.agent_hub","test_agent_hub_trending_category","TestAgentHubTrendingCategory","","","test_agent_hub_trending_category_displays_agents","Verify Trending category filter shows agents when selected.
+"passed","Thu Aug 20 10:05:13 UTC 2026","Thu Aug 20 10:05:30 UTC 2026","16669","tests.ui.artifacts","test_artifacts_file_preview_image_restricted_controls","TestArtifactFilePreviewImageRestrictedControls","","","Image file opens directly as image preview with inactive/absent edit controls","An image file renders directly, with edit controls absent or disabled."
+"passed","Thu Aug 20 10:03:30 UTC 2026","Thu Aug 20 10:03:38 UTC 2026","8301","tests.ui.artifacts","test_artifacts_download_single_file_dropdown","TestArtifactDownloadSingleFileDropdown","","","Single file downloads immediately via the actions dropdown, with no ZIP packaging","Downloading via the dropdown's 'Download' item is immediate, no ZIP.
 
-        Steps:
-        1. Navigate to Agent Hub (Catalog)
-        2. Click the Trending category filter chip
-        3. Verify the filter is highlighted/active
-        4. Verify agents are displayed under Trending section
-        5. Verify the section header ""Trending"" is visible
+        Read-only from the bucket's perspective at the end: the bucket is
+        mutated exactly once (seeded with ``a1/sample.txt``) — the minimal
+        state this observable inherently requires (workflow skill Hard
+        Rule 10) — then every assertion reads that state without further
+        mutation (Delete is verified visible, never clicked).
         "
-"passed","Thu Aug 20 10:08:35 UTC 2026","Thu Aug 20 10:09:36 UTC 2026","60283","tests.ui.toolkits","test_toolkit_creation_create_bucket_verify_list_files","TestToolkitCreationCreateBucketVerifyListFiles","","","Create an Artifact toolkit (creates a bucket as a side effect), run List files, verify the bucket in Artifacts","Create my-artifact-toolkit/new-bucket via the Save path, verify
-        List files, verify the new bucket in Artifacts — with mandatory
-        pre/post cleanup for the case's own literal test data.
-        "
-"passed","Thu Aug 20 10:00:11 UTC 2026","Thu Aug 20 10:00:25 UTC 2026","13948","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantLauncher","","","test_launcher_visible_and_opens_widget","Launcher is visible and opens Support Assistant widget.
-
-        Covers: 2.1.1, 2.2.1, 2.2.2
-        "
+"passed","Thu Aug 20 10:13:33 UTC 2026","Thu Aug 20 10:13:50 UTC 2026","16516","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[jira]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Thu Aug 20 10:15:15 UTC 2026","Thu Aug 20 10:15:39 UTC 2026","24271","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[confluence]","Add toolkit to chat, send a message, verify tool execution."
+"skipped","Thu Aug 20 10:12:54 UTC 2026","Thu Aug 20 10:12:54 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[bitbucket]","Create a toolkit through the UI form for any toolkit type."
+"passed","Thu Aug 20 10:08:11 UTC 2026","Thu Aug 20 10:08:25 UTC 2026","14478","tests.ui.artifacts","test_artifacts_upload_duplicate_keep_both","TestArtifactUploadDuplicateKeepBoth","","","'Keep both' in 'Resolve duplicates' saves both the original and a renamed copy with distinct timestamps","Keep both uploads a renamed copy; the original duplicate is never re-touched."
 "passed","Thu Aug 20 10:07:44 UTC 2026","Thu Aug 20 10:08:20 UTC 2026","36705","tests.ui.agents","test_mcp_attach_via_tools_section","TestMcpAttachViaToolsSection","","","test_mcp_attach_via_tools_section","Attach a Remote MCP to an agent, verify persistence across reload,
         then remove it and verify removal persists too.
 
@@ -515,17 +474,58 @@
             agent_id: Fresh agent created by fixture (auto-cleanup).
             mcp_toolkit_with_tools: Fresh MCP toolkit created by fixture (auto-cleanup).
         "
-"passed","Thu Aug 20 09:59:54 UTC 2026","Thu Aug 20 10:00:11 UTC 2026","16513","tests.ui.agent_hub","test_empty_state","TestCatalogEmptyState","","","Empty state displays when search matches no agents","Verify that when a search term matches zero agents, the 'No agents found' and 'Try adjusting your search terms' messages display. Page heading, search input, tabs, and filter rail remain visible and functional. No agent cards present."
-"passed","Thu Aug 20 10:07:54 UTC 2026","Thu Aug 20 10:08:09 UTC 2026","15056","tests.ui.artifacts","test_artifacts_upload_duplicate_detected_modal","TestArtifactUploadDuplicateDetectedModal","","","Uploading a same-named file opens the 'Resolve duplicates' modal with the correct message, filename, and all four action buttons","Uploading a same-named file opens 'Resolve duplicates' with full content.
+"passed","Thu Aug 20 10:00:59 UTC 2026","Thu Aug 20 10:03:10 UTC 2026","130763","tests.ui.skills","test_agent_max_five_skills_limit","TestAgentMaxFiveSkillsLimit","","","test_max_five_skills_attach_limit","Create 5 Skills + an Agent, attach all 5 Skills one at a time,
+        verify the add-skill control disables at 5/5 with a tooltip (rather
+        than a literal 6th-click rejection), and verify persistence via a
+        full page reload.
 
-        Read-only from the bucket's perspective: the bucket is seeded once
-        with the duplicate-detection target, then the test never mutates
-        state further — it only inspects the modal that opens (workflow
-        skill Hard Rule 10 — minimal mutation for the observable).
+        Steps (AFS test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md):
+        1. Create 5 Skills via UI. A 6th distinct skill is looked up via the
+           project's existing skills (via ``skill_api``) rather than assumed
+           by name — any pre-existing skill satisfies the case's ""6 distinct
+           Skills"" precondition.
+        2. Create an Agent.
+        3. Skills section starts at 0/5, add-skill control enabled.
+        4-8. Attach Skills 1-5 one at a time; counter increments ""N/5 skills
+           added."" and a card renders after each attach.
+        9. Add-skill control becomes disabled the instant 5/5 is reached,
+           with an accessible tooltip — a 6th skill cannot be attached.
+        10. Confirm persistence via a full page reload (attach is
+           auto-saved via API; no explicit agent-level Save is available).
         "
-"passed","Thu Aug 20 10:13:52 UTC 2026","Thu Aug 20 10:14:08 UTC 2026","16034","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[confluence]","Run a tool via the Test Settings panel on the toolkit detail page."
-"passed","Thu Aug 20 10:03:06 UTC 2026","Thu Aug 20 10:03:13 UTC 2026","7141","tests.ui.chat","test_chat_interface","TestPageLoadAndRendering","","","test_chat_page_loads_with_functional_input","TC-CHAT-001, TC-CHAT-002: Chat page loads with functional message input."
-"passed","Thu Aug 20 10:03:38 UTC 2026","Thu Aug 20 10:04:21 UTC 2026","43646","tests.ui.agents","test_agent_remove_variable","TestAgentRemoveVariable","","","test_remove_variable_and_verify_removal_persists","Removing a {{variable}} reference from Instructions removes its
-        Variables row immediately (client-side, before Save), and the
-        removal persists after Save + a full-navigation reload, while other
-        variables remain intact."
+"passed","Thu Aug 20 10:02:21 UTC 2026","Thu Aug 20 10:02:36 UTC 2026","15221","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantViewModes","","","test_expand_collapse_fullview","Widget can expand to full view and collapse back.
+
+        Covers: 2.3.1, 2.3.2, 2.3.3
+        "
+"passed","Thu Aug 20 10:08:56 UTC 2026","Thu Aug 20 10:09:05 UTC 2026","9251","tests.ui.skills","test_skill_search","TestSkillSearch","","","test_search_skills_by_name","Search the Skills grid by partial name, exact name, a
+        non-existent name, then clear — verifying the grid's exact visible
+        set at each step (not just presence/absence of one name), so a
+        regression that only breaks the grid while leaving the separate
+        suggestions popover working would be caught.
+        "
+"passed","Thu Aug 20 11:12:55 UTC 2026","Thu Aug 20 11:13:01 UTC 2026","5899","tests.ui.chat","test_chat_interface","TestSidebarNavigation","","","test_navigate_to_agents_from_sidebar","TC-CHAT-022: Navigate to Agents from sidebar."
+"passed","Thu Aug 20 10:13:13 UTC 2026","Thu Aug 20 10:13:31 UTC 2026","18397","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[github]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Thu Aug 20 11:12:19 UTC 2026","Thu Aug 20 11:12:25 UTC 2026","6161","tests.ui.chat","test_chat_interface","TestHashSearch","","","test_hash_search_participants","TC-CHAT-017: Use # to search participants."
+"passed","Thu Aug 20 10:00:19 UTC 2026","Thu Aug 20 10:00:29 UTC 2026","9899","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
+
+        Acceptance Criteria #2: Counter turns red when 0 characters remain.
+        "
+"passed","Thu Aug 20 10:01:32 UTC 2026","Thu Aug 20 10:02:20 UTC 2026","47629","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantHistory","","","test_history_restore_and_continue","User can restore a previous session and continue messaging.
+
+        Covers: 6.1.1, 6.2.1, 6.2.3
+        "
+"passed","Thu Aug 20 10:12:24 UTC 2026","Thu Aug 20 10:12:40 UTC 2026","15534","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[github]","Create a toolkit through the UI form for any toolkit type."
+"passed","Thu Aug 20 09:59:21 UTC 2026","Thu Aug 20 09:59:37 UTC 2026","16710","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_page_loads","The home page should load without errors."
+"passed","Thu Aug 20 10:10:40 UTC 2026","Thu Aug 20 10:10:58 UTC 2026","17985","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_settings_not_visible_by_default","TC5: Voice settings are NOT displayed in Chat by default.
+
+        Regression test for bug #5235: Read-out control was inappropriately
+        visible in default Chat window state.
+
+        Expected:
+            Voice settings controls should only appear when Read-out and
+            Voice mode features are explicitly activated.
+
+        Related:
+            - Bug: https://github.com/EliteaAI/elitea_issues/issues/5235
+        "
