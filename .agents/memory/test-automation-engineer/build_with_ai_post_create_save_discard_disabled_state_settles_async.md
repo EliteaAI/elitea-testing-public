@@ -1,31 +1,39 @@
 ---
-name: Build-with-AI post-create Save/Discard disabled state settles async
-description: Right after a Build-with-AI Create-Agent POST, Save/Discard disabled state needs a web-first expect(), not a one-shot is_disabled() read
+name: Build-with-AI post-create canvas reads settle async
+description: Right after a Build-with-AI Create-Agent POST, ANY canvas read (Save/Discard disabled, form field values) needs a web-first expect(), never a one-shot read
 type: feedback
 ---
 
-ELITEA-2073/2074 (wave-16): after Build-with-AI's "Create Agent" click
-resolves (`POST .../applications/prompt_lib/{project}` -> 201), the canvas's
-`agent-save-button` / `agent-discard-button` are correctly DISABLED — the
-create POST already persisted the full generated config (name,
-instructions, welcome message, starters), so there is nothing dirty to
-save. Confirmed via two independent live MCP explorations (both read
-`disabled === true` immediately).
+ELITEA-2073/2074 (wave-16, + fix round 1): after Build-with-AI's "Create
+Agent" click resolves (`POST .../applications/prompt_lib/{project}` ->
+201), the canvas re-hydrates from the just-created agent — and every part
+of that hydration is ASYNCHRONOUS relative to the create-POST response
+landing. Two independent instances confirmed so far, same root cause:
 
-**But the disabled state settles ASYNCHRONOUSLY** right after the create
-response lands — a real pytest run using a one-shot
-`agent_canvas.discard_button.is_disabled()` read caught a transient
-`False` once (R1 failure), even though the same flow read `True`
-immediately in manual/MCP exploration. Switching to the web-first,
-retrying `expect(locator).to_be_disabled(timeout=...)` fixed it on the
-next run (R2 green).
+1. **Save/Discard disabled state.** `agent-save-button` /
+   `agent-discard-button` are correctly DISABLED post-create (nothing left
+   dirty — the create POST already persisted the full config). A one-shot
+   `agent_canvas.discard_button.is_disabled()` read caught a transient
+   `False` once (R1 failure) even though manual/MCP exploration always
+   read `True` immediately. Fix: `expect(locator).to_be_disabled(timeout=...)`.
+2. **Form field values (Welcome Message / Conversation Starters).** The
+   canvas's own `agent-welcome-message-input` / `agent-conversation-
+   starter-input` fields re-hydrate from the created agent a moment AFTER
+   the create response lands — even though the chat-area starter TILES
+   (a different data source, populated from the create response itself)
+   are already visible at the same instant. A one-shot
+   `.input_value()` read caught a transient empty string (fix-round-1
+   fix). Fix: `expect(locator).not_to_have_value("", timeout=...)`.
 
-**Rule:** any assertion on Save/Discard's disabled state immediately after
-a Build-with-AI Create-Agent flow (agent OR skill review-form approve) must
-use `expect(...).to_be_disabled()`, never a bare `.is_disabled()` snapshot
-read — same discipline the project already applies to
+**Rule:** ANY assertion reading canvas state (button disabled/enabled,
+field values, counts) immediately after a Build-with-AI Create-Agent flow
+(agent OR skill review-form approve) must use a web-first, retrying
+`expect(...)` assertion — never a bare `.is_disabled()` / `.input_value()`
+/ `.count()` snapshot read. Same discipline the project already applies to
 `wait_for_participants_badge_absent` (a one-shot bool-returning check can
-catch pre-settle DOM state).
+catch pre-settle DOM state). If a NEW kind of post-create canvas read
+starts flaking, suspect this same hydration race before anything else and
+add a third bullet here rather than opening a new entry.
 
 Also confirmed this session: the generated Echo Agent's own instructions
 explicitly permit (and demonstrably add) an `"Echo:"` prefix on its echo
