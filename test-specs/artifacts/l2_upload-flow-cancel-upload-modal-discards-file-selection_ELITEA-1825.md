@@ -79,13 +79,18 @@ with a fresh `git fetch origin` in `../EliteaUI`.
 | Path field (read-only prefix) | `artifacts-upload-path-input` | `get_upload_path_normalized_prefix()` (`:2232`) — strips the two `​` MUI zero-width spaces the raw `text_content()` carries | on-main ✓ |
 | Path field (editable input) | `artifacts-upload-path-input-field` | `get_upload_path_typed_value()` (`:2249`) | on-main ✓ |
 | Modal description line | `artifacts-upload-path-description-text` | `get_upload_path_description_text()` (`:2287`) | on-main ✓ |
-| Modal **Cancel** button | `artifacts-upload-path-cancel-button` | **testid needed** — new `LocatorDescriptor` + a `click_upload_path_cancel_button()` action | **needs-adding** |
+| Modal **Cancel** button | `artifacts-upload-path-cancel-button` | `ArtifactsPage.upload_path_cancel_button` / `click_upload_path_cancel_button()` (added for this case) | **added during implementation** — attribute-only on the pre-existing `Button.BaseBtn`, EliteaAI/EliteaUI@6d360e82 on `automation/testids`; human cherry-pick to `main` pending |
 | Modal Upload button (not clicked here; used only to prove the pair) | `artifacts-upload-path-upload-button` | `click_upload_path_upload_button()` | on-main ✓ |
 | Success toast | `toast-message` | `success_toast_message` (`:391`) | on-main ✓ |
 | File list container | `artifacts-file-list` | `file_exists()` / `get_file_names()` (`:1710`, `:1815`) | on-main ✓ |
 | Pagination counter | `artifacts-pagination-page-info` | `get_pagination_info_text()` (`:3537`) — **prefer this over `get_total_file_count_from_pagination()` (`:1792`), which is a pre-existing raw-CSS handle (tech debt #25/#42)** | on `automation/testids` only (added by the ELITEA-1803 cluster, EliteaAI/EliteaUI@6449a5c4) — human cherry-pick to `main` pending |
 
-### testid needed: `artifacts-upload-path-cancel-button`
+### testid added during implementation: `artifacts-upload-path-cancel-button`
+
+**Resolved (ELITEA-1825 implementation, 2026-08-21):** added as EliteaAI/EliteaUI@6d360e82 on
+`automation/testids` — a single `data-testid` attribute on the pre-existing Cancel
+`Button.BaseBtn`; the three `add-data-testid` § 5.5 zero-functional-impact greps return 0
+hits. Original analysis below.
 `../EliteaUI/src/pages/Artifacts/component/UploadPathDialog.jsx` — the `actions` fragment
 renders two `Button.BaseBtn`s; the second (Upload) already carries
 `data-testid="artifacts-upload-path-upload-button"`, the first (Cancel, `onClick={handleCancel}`)
@@ -99,7 +104,8 @@ literally "Click Cancel", and Escape exercises MUI's `onClose` rather than the b
 
 ## Test Steps
 
-Marker set: `@pytest.mark.p2 @pytest.mark.artifacts @pytest.mark.regression @pytest.mark.ui`.
+Marker set (amended at implementation): `@pytest.mark.p2 @pytest.mark.regression @pytest.mark.ui @pytest.mark.new`. There is **no `artifacts` marker** in
+`automation/pytest.ini` (the artifacts specs are selected by directory, not by a feature marker), so the AFS's proposed `@pytest.mark.artifacts` would fail strict marker validation; `new` is the project's marker for a spec not yet validated on a deployed env, matching every sibling artifacts spec.
 Each step in its own `with allure.step("Step N — …")`.
 
 1. **Setup (preconditions, not a case step)** — `artifact_bucket` fixture; seed `seed.txt`
@@ -117,8 +123,9 @@ Each step in its own `with allure.step("Step N — …")`.
    re-confirmed live) and files are set the moment it resolves. A chooser that never
    opened raises a timeout here, which IS the assertion for case steps 3–5.
 5. **Step 7** — `wait_for_upload_path_dialog()`.
-   *Verify*: dialog visible; `get_upload_path_normalized_prefix()` contains
-   `f"{bucket_name}/"` (live raw read: `'Path​{bucket}/​'`);
+   *Verify*: dialog visible; `get_upload_path_normalized_prefix()` **equals**
+   `f"{bucket_name}/"` (implementation strengthened `contains` -> equality: the
+   normalized read returns exactly the prefix, verified green) (live raw read: `'Path​{bucket}/​'`);
    `get_upload_path_typed_value() == ""`; description text equals the no-prefix wording
    (live: `Files will be uploaded to the selected bucket. Optionally, enter a folder path
    to organize your files. Use "/" to create nested folder(s).`).
@@ -140,6 +147,12 @@ Each step in its own `with allure.step("Step N — …")`.
 10. **Step 11** — `expect(success_toast_message).to_have_count(0, timeout=…)` (live: 0
     toasts, checked ~2.5 s after Cancel).
 11. **Side channel** — assert no `console` errors were emitted during the flow (live: none).
+
+**Implementation ordering amendment (ELITEA-1825, 2026-08-21):** step 11's toast-absence
+check runs **before** step 10's page reload, not after. A reload erases a toast that did
+fire, which would destroy the very evidence the assertion exists to find. The in-place
+table checks of step 10 still precede it; only the reload half moves after step 11. The
+Axis-2 A2-3 dialog-reopen probe closes its dialog via Cancel so no test leaves a modal open.
 
 ## Expected Results
 - The "Upload files to ..." modal opens on file selection with the Path field pre-filled

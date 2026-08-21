@@ -361,7 +361,7 @@ the element whose background the case observes.
 
 | Element | Testid / handle | Where | Notes |
 |---|---|---|---|
-| "Upload files to ..." modal — **Cancel** button | **NO TESTID** → `artifacts-upload-path-cancel-button` needed | `src/pages/Artifacts/component/UploadPathDialog.jsx`, `actions` fragment | The sibling Upload button already has `artifacts-upload-path-upload-button`; Cancel has nothing. Live enumeration of the dialog's buttons: `[('', None), ('Cancel', None), ('Upload', 'artifacts-upload-path-upload-button')]` — the first, unlabelled one is the modal's X control (also untagged). Attribute-only add, zero functional impact |
+| "Upload files to ..." modal — **Cancel** button | `artifacts-upload-path-cancel-button` (**Resolved/added during ELITEA-1825 implementation, 2026-08-21** — EliteaAI/EliteaUI@6d360e82 on `automation/testids`, attribute-only; page object: `ArtifactsPage.upload_path_cancel_button` / `click_upload_path_cancel_button()`) | `src/pages/Artifacts/component/UploadPathDialog.jsx`, `actions` fragment | The sibling Upload button already has `artifacts-upload-path-upload-button`; Cancel has nothing. Live enumeration of the dialog's buttons: `[('', None), ('Cancel', None), ('Upload', 'artifacts-upload-path-upload-button')]` — the first, unlabelled one is the modal's X control (also untagged). Attribute-only add, zero functional impact |
 | Path field prefix raw text | `artifacts-upload-path-input` | same | raw `text_content()` is `'Path​{bucket}/​'` — MUI wraps the label + adornment with zero-width spaces; use `ArtifactsPage.get_upload_path_normalized_prefix()`, never a raw equality on `text_content()` |
 | Upload-dialog description (no prefix / bucket root) | `artifacts-upload-path-description-text` | same | exact live wording at bucket root: `Files will be uploaded to the selected bucket. Optionally, enter a folder path to organize your files. Use "/" to create nested folder(s).` |
 
@@ -388,3 +388,27 @@ the element whose background the case observes.
   try: drop the script into `automation/tests/ui/artifacts/`, run it with the project
   pytest (the repo-root `/tmp` path fails — `pages` is not importable from there), delete
   it afterwards. One full case run cost ~69 s.
+
+## Resolved/added during ELITEA-1825 implementation (2026-08-21, implementer slot)
+
+- **`artifacts-upload-path-cancel-button` now exists** (EliteaAI/EliteaUI@6d360e82, on
+  `automation/testids`; NOT yet on `main` — human cherry-pick pending). The digest row above
+  is updated. Attribute-only on the pre-existing `Button.BaseBtn`; all three
+  `add-data-testid` § 5.5 zero-functional-impact greps returned 0 hits.
+- **New page-object members** on `ArtifactsPage` (all additive):
+  `upload_path_cancel_button`, `click_upload_path_cancel_button()`,
+  `wait_for_upload_path_dialog_closed()`, and `fill_upload_path(folder_path)` (types into
+  `artifacts-upload-path-input-field`; the read-only prefix adornment is untouched).
+- **Cancel's runtime behaviour, confirmed green:** clicking Cancel fires **zero** requests
+  matching `artifacts`, closes the dialog, and resets the dialog's own folder-path state —
+  re-opening the upload dialog shows an EMPTY editable Path segment even after
+  `probe-folder` was typed before cancelling. The read-only prefix returns to
+  `{bucket}/`.
+- **`get_upload_path_normalized_prefix()` equals `f"{bucket}/"` exactly** at bucket root —
+  a `contains` check is unnecessarily weak; the normalization already strips the MUI label
+  and both zero-width spaces.
+- **EliteaUI commits are hook-gated:** `commitlint` rejects any subject without an
+  `[EL-XXXX]` ticket token — `[ELITEA-1825]` FAILS, `[EL-1825]` passes. `lint-staged`
+  (eslint --fix + prettier) also runs on staged JSX.
+- **Timing baseline:** the full ELITEA-1825 spec (bucket seed + upload dialog + cancel +
+  reload + dialog reopen) runs in **~70 s** headless.

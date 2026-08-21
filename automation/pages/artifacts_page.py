@@ -321,6 +321,17 @@ class ArtifactsPage(BasePage):
         "client-side duplicate detection against the bucket's already-fetched listing",
     )
 
+    upload_path_cancel_button = LocatorDescriptor(
+        testid="artifacts-upload-path-cancel-button",
+        description="'Cancel' button inside the 'Upload files to ...' dialog "
+        "(ELITEA-1825 — testid added to the pre-existing Button.BaseBtn in "
+        "UploadPathDialog.jsx, attribute-only, EliteaAI/EliteaUI@6d360e82). Its "
+        "onClick is `handleCancel` — the SAME handler BaseModal wires to onClose "
+        "for Escape — but ELITEA-1825's step 8 is literally 'Click Cancel', so the "
+        "button itself is the subject; :meth:`close_upload_path_dialog` remains the "
+        "Escape variant kept for ELITEA-1824's #649 workaround.",
+    )
+
     # ELITEA-1835: separate description Typography (distinct DOM node from
     # upload_path_input above) — reads a GENERIC, bucket-name-free string at
     # bucket root and only interpolates the bucket name once a subfolder is
@@ -2317,6 +2328,52 @@ class ArtifactsPage(BasePage):
         duplicates" dialog opens purely from local state.
         """
         self.upload_path_upload_button.click()
+
+    @action("Cancel the 'Upload files to ...' dialog")
+    def click_upload_path_cancel_button(self) -> None:
+        """Click 'Cancel' in the 'Upload files to ...' dialog (ELITEA-1825).
+
+        Abandons the upload attempt BEFORE 'Upload' is ever pressed — a
+        different product path from :meth:`click_resolve_duplicates_cancel_button`
+        (which cancels the *second*, duplicate-resolution dialog). Confirmed
+        live: ``handleCancel`` clears the dialog's own folder-path state and
+        closes it without firing any network request.
+
+        Does not wait for the dialog to disappear — call
+        :meth:`wait_for_upload_path_dialog_closed` next.
+        """
+        self.upload_path_cancel_button.click()
+
+    def wait_for_upload_path_dialog_closed(self, timeout: int = 10000) -> None:
+        """Wait for the 'Upload files to ...' dialog to become hidden.
+
+        Additive sibling of :meth:`wait_for_upload_path_dialog`, mirroring
+        :meth:`wait_for_resolve_duplicates_dialog_closed`'s shape — used
+        after :meth:`click_upload_path_cancel_button` (ELITEA-1825).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.upload_path_dialog.wait_for(state="hidden", timeout=timeout)
+        logger.info("'Upload files to ...' dialog closed")
+
+    @action("Type a folder path in the upload-path dialog")
+    def fill_upload_path(self, folder_path: str, timeout: int = 5000) -> None:
+        """Type *folder_path* into the editable Path segment (ELITEA-1825).
+
+        Writes to :attr:`upload_path_input_field` — the native ``<input>``
+        holding the user-typed suffix; the bucket/currentPrefix portion in
+        front of it is a read-only ``InputAdornment`` and is unaffected.
+        Read the value back with :meth:`get_upload_path_typed_value`.
+
+        Args:
+            folder_path: Folder path to type (e.g. ``"probe-folder"``).
+            timeout: Maximum wait time in milliseconds for the input to be
+                visible before typing.
+        """
+        self.upload_path_input_field.wait_for(state="visible", timeout=timeout)
+        self.upload_path_input_field.fill(folder_path)
+        logger.info("Typed upload folder path %r", folder_path)
 
     def click_upload_path_upload_button_and_capture_response(self, timeout: int = 15000):
         """Click 'Upload' and return the matching PUT response (ELITEA-1808).
