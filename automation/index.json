@@ -72,7 +72,6 @@
       "automation_test_id": "tests.ui.admin.test_guardrails_live_reload.TestBlockedToolLiveReload.test_blocked_tool_live_reload_case_insensitive",
       "markers": [
         "admin",
-        "blocked",
         "guardrails",
         "p0",
         "ui"
@@ -82,7 +81,6 @@
       "automation_test_id": "tests.ui.admin.test_guardrails_live_reload.TestBlockedToolkitLiveReload.test_blocked_toolkit_live_reload_case_insensitive",
       "markers": [
         "admin",
-        "blocked",
         "guardrails",
         "p0",
         "ui"
@@ -92,7 +90,6 @@
       "automation_test_id": "tests.ui.admin.test_guardrails_live_reload.TestSensitiveToolLiveReload.test_sensitive_tool_live_reload_case_insensitive",
       "markers": [
         "admin",
-        "blocked",
         "guardrails",
         "p0",
         "ui"
