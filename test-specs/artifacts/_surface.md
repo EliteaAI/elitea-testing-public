@@ -739,3 +739,8 @@ specs reference are on `automation/testids` only — `delete-confirm-title-icon`
 (EliteaAI/EliteaUI@08d9bb4f) and the runtime-composed `artifacts-bucket-tree-empty-label-*`
 (`BucketContent.jsx:87`, invisible to a bare-substring grep of `main`). Verified 2026-08-22 with a
 fresh `git fetch origin` + the two-stage `-i`/`[:=]` grep on both refs.
+
+**`get_file_row_text()` is FILE-row-only (ELITEA-1849/1850, 2026-08-22).** It is anchored on
+`artifacts-file-row`; a folder row renders as `artifacts-folder-row`, so calling it with `a1` /
+`folder-a` times out at 10 s (cost one rerun on this cluster). Folders also carry no Type/Size
+metadata to snapshot — assert their presence via `get_file_names()` and the left-panel tree instead.

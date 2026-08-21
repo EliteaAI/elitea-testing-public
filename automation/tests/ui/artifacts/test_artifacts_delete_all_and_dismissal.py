@@ -82,6 +82,11 @@ FOLDER_2 = "folder-a"
 FILE_1 = "sample.md"
 FILE_2 = "sample - Copy.md"
 ALL_ITEMS = {FOLDER_1, FOLDER_2, FILE_1, FILE_2}
+# The byte-for-byte row snapshots cover the FILE rows only: `get_file_row_text`
+# is anchored on `artifacts-file-row`, and a folder renders as
+# `artifacts-folder-row` with no Type/Size metadata to compare. The folders
+# are covered by the name-set assertion and by the left-tree check.
+FILE_ITEMS = {FILE_1, FILE_2}
 
 FOLDER_1_KEY = f"{FOLDER_1}/file1.txt"
 FOLDER_2_KEY = f"{FOLDER_2}/placeholder.txt"
@@ -371,8 +376,8 @@ class TestArtifactDeleteAllAndDismissal:
 
         with allure.step(
             "Step 1 — Navigate to the bucket (folds case steps 1-2); verify "
-            "all 4 items are listed and snapshot each row's text for the "
-            "byte-for-byte post-cancel comparison"
+            "all 4 items are listed and snapshot the two FILE rows' text for "
+            "the byte-for-byte post-cancel comparison"
         ):
             artifacts_page.navigate_to_bucket(bucket_name, timeout=NAVIGATION_TIMEOUT)
             artifacts_page.wait_for_file_count(4, timeout=NAVIGATION_TIMEOUT)
@@ -383,7 +388,7 @@ class TestArtifactDeleteAllAndDismissal:
             assert artifacts_page.get_pagination_info_text() == EXPECTED_PAGINATION
             rows_before = {
                 name: artifacts_page.get_file_row_text(name, timeout=UI_ELEMENT_TIMEOUT)
-                for name in sorted(ALL_ITEMS)
+                for name in sorted(FILE_ITEMS)
             }
 
         with allure.step(
@@ -436,7 +441,7 @@ class TestArtifactDeleteAllAndDismissal:
 
         with allure.step(
             "Step 6 — Verify all 4 items remain in the file table unchanged "
-            "(names, per-row text byte-for-byte) and pagination still reads "
+            "(names, and the file rows' text byte-for-byte) and pagination still reads "
             "'1 - 4 of 4'"
         ):
             file_names_after = set(artifacts_page.get_file_names(timeout=UI_ELEMENT_TIMEOUT))
@@ -445,7 +450,7 @@ class TestArtifactDeleteAllAndDismissal:
             )
             rows_after = {
                 name: artifacts_page.get_file_row_text(name, timeout=UI_ELEMENT_TIMEOUT)
-                for name in sorted(ALL_ITEMS)
+                for name in sorted(FILE_ITEMS)
             }
             assert rows_after == rows_before, (
                 "Row text changed after Cancel — expected byte-for-byte "
@@ -540,7 +545,7 @@ class TestArtifactDeleteAllAndDismissal:
 
         with allure.step(
             "Step 1 — Navigate to the bucket (folds case steps 1-2); verify "
-            "all 4 items are listed and snapshot each row's text"
+            "all 4 items are listed and snapshot the two FILE rows' text"
         ):
             artifacts_page.navigate_to_bucket(bucket_name, timeout=NAVIGATION_TIMEOUT)
             artifacts_page.wait_for_file_count(4, timeout=NAVIGATION_TIMEOUT)
@@ -551,7 +556,7 @@ class TestArtifactDeleteAllAndDismissal:
             assert artifacts_page.get_pagination_info_text() == EXPECTED_PAGINATION
             rows_before = {
                 name: artifacts_page.get_file_row_text(name, timeout=UI_ELEMENT_TIMEOUT)
-                for name in sorted(ALL_ITEMS)
+                for name in sorted(FILE_ITEMS)
             }
 
         with allure.step(
@@ -630,7 +635,7 @@ class TestArtifactDeleteAllAndDismissal:
             )
             rows_after = {
                 name: artifacts_page.get_file_row_text(name, timeout=UI_ELEMENT_TIMEOUT)
-                for name in sorted(ALL_ITEMS)
+                for name in sorted(FILE_ITEMS)
             }
             assert rows_after == rows_before, (
                 "Row text changed after closing the modal with X — expected "

@@ -48,7 +48,7 @@ Fresh `artifact_bucket` seeded exactly as ELITEA-1848/1849 (4 top-level items). 
 | 6 | Click the X (`delete-confirm-close-button`) | — |
 | 7 | Observe the modal | hidden |
 | 8 | Wait out a full toast window (3 s) on `toast-message` | never becomes visible (detector proven by the sibling ELITEA-1848 test in the same file) |
-| 9 | Read the table and every checkbox | same 4 names, each row's text byte-identical to the pre-X snapshot; `sample.md`/`sample - Copy.md` still checked, `a1`/`folder-a` still unchecked; header still indeterminate; pagination still `1 - 4 of 4` |
+| 9 | Read the table and every checkbox | same 4 names, both FILE rows' text byte-identical to the pre-X snapshot (`get_file_row_text()` is `artifacts-file-row`-anchored — folders carry no Type/Size metadata and are covered by the name set); `sample.md`/`sample - Copy.md` still checked, `a1`/`folder-a` still unchecked; header still indeterminate; pagination still `1 - 4 of 4` |
 | + | Independent ground truth (Axis 2) | zero DELETE requests captured; `ArtifactAPI.list_bucket_files` still returns all 4 seeded keys |
 
 ## Expected Results
@@ -68,7 +68,7 @@ prior selection survives the dismissal exactly as it was.
 | Step 6 (click the X) | asserted | Step 4 |
 | Step 7 (modal closes immediately) | asserted | Step 4 — `to_be_hidden`; "immediately" is bounded by the assertion's own timeout, not measured as a duration |
 | Step 8 (no success notification) | asserted | Step 5 — 3 s wait-for-visible that must time out |
-| Step 9 (items unchanged AND still checked) | asserted | Step 6 — name set, per-row byte-for-byte text, and the full checkbox-state map |
+| Step 9 (items unchanged AND still checked) | asserted | Step 6 — name set (all 4), byte-for-byte row text (the 2 file rows), and the full checkbox-state map |
 
 ### Axis 2 — Observables asserted beyond the case
 | Addition | Why grounded |
