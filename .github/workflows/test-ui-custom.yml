@@ -337,17 +337,70 @@ jobs:
           SUITE_COUNT=${#SUITE_ARRAY[@]}
           echo "Total suites: $SUITE_COUNT"
 
-          # Distribute suites across users (round-robin, max MAX_USERS jobs)
-          # Each user_idx gets suites: idx, idx+MAX_USERS, idx+2*MAX_USERS, ...
-          # This ensures max MAX_USERS parallel jobs, each with unique credentials
+          # Distribute suites across users using weighted load-balancing
+          # (greedy bin-packing: assign each suite to the executor with minimum current load)
+          # This replaces round-robin to better balance execution time across executors
+
+          # Step 1: Count test files per suite (only when checkout happened)
+          declare -A SUITE_SIZES
+          if [ "${{ inputs.suite }}" = "all" ] && [ -z "${{ inputs.custom_suites }}" ]; then
+            echo "Counting test files per suite for load-balanced distribution..."
+            for suite in "${SUITE_ARRAY[@]}"; do
+              count=$(find "automation/tests/ui/$suite" -type f -name 'test_*.py' 2>/dev/null | wc -l | tr -d ' ')
+              SUITE_SIZES[$suite]=$count
+              echo "  $suite: $count test files"
+            done
+          else
+            # No checkout available (single suite or custom list) - fall back to equal weights
+            echo "Using equal weights (no checkout available for counting)"
+            for suite in "${SUITE_ARRAY[@]}"; do
+              SUITE_SIZES[$suite]=10
+            done
+          fi
+
+          # Step 2: Sort suites by size (largest first) for greedy assignment
+          SORTED_SUITES=()
+          while IFS= read -r line; do
+            SORTED_SUITES+=("$line")
+          done < <(
+            for suite in "${SUITE_ARRAY[@]}"; do
+              echo "${SUITE_SIZES[$suite]} $suite"
+            done | sort -rn | awk '{print $2}'
+          )
+
+          # Step 3: Assign each suite to executor with minimum load (greedy bin-packing)
           declare -A USER_SUITES
-          for i in "${!SUITE_ARRAY[@]}"; do
-            suite="${SUITE_ARRAY[$i]}"
-            user_idx=$(( (i % MAX_USERS) + 1 ))
-            if [ -z "${USER_SUITES[$user_idx]}" ]; then
-              USER_SUITES[$user_idx]="$suite"
+          declare -A EXECUTOR_LOADS
+          for i in $(seq 1 $MAX_USERS); do
+            EXECUTOR_LOADS[$i]=0
+          done
+
+          for suite in "${SORTED_SUITES[@]}"; do
+            # Find executor with minimum load
+            min_load=999999
+            min_executor=1
+            for i in $(seq 1 $MAX_USERS); do
+              load=${EXECUTOR_LOADS[$i]:-0}
+              if [ $load -lt $min_load ]; then
+                min_load=$load
+                min_executor=$i
+              fi
+            done
+
+            # Assign suite to that executor
+            if [ -z "${USER_SUITES[$min_executor]}" ]; then
+              USER_SUITES[$min_executor]="$suite"
             else
-              USER_SUITES[$user_idx]="${USER_SUITES[$user_idx]},$suite"
+              USER_SUITES[$min_executor]="${USER_SUITES[$min_executor]},$suite"
+            fi
+            EXECUTOR_LOADS[$min_executor]=$(( ${EXECUTOR_LOADS[$min_executor]} + ${SUITE_SIZES[$suite]} ))
+          done
+
+          # Log final distribution
+          echo "Final distribution (test files per executor):"
+          for i in $(seq 1 $MAX_USERS); do
+            if [ -n "${USER_SUITES[$i]}" ]; then
+              echo "  Executor $i: ${EXECUTOR_LOADS[$i]} files - ${USER_SUITES[$i]}"
             fi
           done
 
