@@ -168,6 +168,40 @@ class ArtifactsPage(BasePage):
         "bulk-delete flow, reused here from the bucket dot-menu entry point.",
     )
 
+    bucket_menu_pin_menuitem = LocatorDescriptor(
+        testid="bucket-menu-pin-menuitem",
+        description="Pin/unpin item inside a bucket row's dot-menu dropdown "
+        "(ELITEA-1820/1821) — testid added live to BucketItem.jsx's menuItems "
+        "array (a `key: 'bucket-menu-pin'` field, the same DotMenu mechanism as "
+        "the sibling 'bucket-menu-upload-files'/'bucket-menu-delete' keys). ONE "
+        "testid serves BOTH states on purpose: the item is a single live "
+        "element whose LABEL flips (`isPinned ? 'Unpin from top' : 'Pin to "
+        "top'`), and .agents/testing.md § Locator policy (PR #581 ruling) "
+        "requires a testid to be stable identity, never state — a "
+        "bucket-menu-pin / bucket-menu-unpin pair would be the outlawed shape. "
+        "Read the state from the dropdown's label text "
+        "(:meth:`get_bucket_menu_items_text`).",
+    )
+
+    # Dynamic testid template — the pin icon rendered next to a PINNED
+    # bucket's name (ELITEA-1820/1821). Added live to BucketItem.jsx's
+    # `isPinned && (...)` wrapper Box (no new DOM node — a pure attribute on
+    # the Box that already wrapped that button).
+    #
+    # The row renders a SECOND, hover-only pin button under
+    # `!isPinned && isHovering`; it is deliberately left UNTAGGED (canon
+    # ruling #511 — testids go only on elements a test's executed path calls),
+    # which is exactly what keeps ELITEA-1821's absence assertion honest:
+    # hovering an unpinned row can never produce a false positive here.
+    BUCKET_PIN_INDICATOR = '[data-testid="artifacts-bucket-pin-indicator-{}"]'
+
+    # Prefix (any-bucket) variant of BUCKET_PIN_INDICATOR — the project-wide
+    # "is anything pinned?" probe. Used both as ELITEA-1820/1821's
+    # precondition check (the case's "alphanumeric order" claim only holds
+    # while nothing is pinned) and as ELITEA-1821's post-unpin assertion that
+    # no OTHER bucket was pinned by mistake.
+    BUCKET_PIN_INDICATOR_ANY_SELECTOR = '[data-testid^="artifacts-bucket-pin-indicator-"]'
+
     # Dynamic testid template — left-panel tree node for a file/folder, keyed
     # by its full relative path (e.g. 'test.txt', or 'a1/sample.txt' when
     # nested in a subfolder). FileTreeItem.jsx.
@@ -3609,13 +3643,150 @@ class ArtifactsPage(BasePage):
         self.bucket_info_tooltip_content.wait_for(state="visible", timeout=timeout)
         return (self.bucket_info_tooltip_content.text_content() or "").strip()
 
+    # ------------------------------------------------------------------
+    # Bucket pin / unpin flow (ELITEA-1820, ELITEA-1821)
+    # ------------------------------------------------------------------
+
+    def hover_bucket_row(self, bucket_name: str, timeout: int = 10000) -> None:
+        """Hover a bucket row so its 3-dot actions trigger becomes visible.
+
+        Split out of :meth:`open_bucket_menu` (which hovers and clicks in one
+        go) because ELITEA-1820's Test Step 4 asserts the hover-reveal on its
+        own: the trigger's container is ``display:none`` until the row is
+        hovered (``BucketItem.jsx``'s ``menuContainer``).
+
+        Args:
+            bucket_name: Exact name of the bucket row to hover.
+            timeout: Maximum wait time in milliseconds for the row.
+        """
+        row = self.page.locator(self.BUCKET_ROW.format(bucket_name))
+        row.wait_for(state="visible", timeout=timeout)
+        row.hover()
+        logger.info("Hovered bucket row '%s'", bucket_name)
+
+    def bucket_menu_button(self, bucket_name: str) -> Locator:
+        """Return the bucket row's 3-dot actions trigger locator.
+
+        Args:
+            bucket_name: Exact bucket name.
+
+        Returns:
+            Locator for :attr:`BUCKET_MENU_BUTTON` for that bucket.
+        """
+        return self.page.locator(self.BUCKET_MENU_BUTTON.format(bucket_name))
+
+    def bucket_menu_container(self, bucket_name: str) -> Locator:
+        """Return the bucket row's opened dot-menu dropdown container locator.
+
+        Args:
+            bucket_name: Exact bucket name.
+
+        Returns:
+            Locator for :attr:`BUCKET_MENU_CONTAINER` for that bucket.
+        """
+        return self.page.locator(self.BUCKET_MENU_CONTAINER.format(bucket_name))
+
+    def bucket_pin_indicator(self, bucket_name: str) -> Locator:
+        """Return the pin icon shown beside a PINNED bucket's name.
+
+        Args:
+            bucket_name: Exact bucket name.
+
+        Returns:
+            Locator for :attr:`BUCKET_PIN_INDICATOR` for that bucket (count 0
+            while the bucket is unpinned — the element is gated on
+            ``isPinned``).
+        """
+        return self.page.locator(self.BUCKET_PIN_INDICATOR.format(bucket_name))
+
+    def bucket_row(self, bucket_name: str) -> Locator:
+        """Return one bucket's row locator, by exact bucket name.
+
+        Public accessor over :attr:`BUCKET_ROW` so specs assert a row's
+        presence/visibility through the page object's auto-retrying
+        ``expect(...)`` instead of building the selector themselves.
+
+        Args:
+            bucket_name: Exact bucket name.
+
+        Returns:
+            Locator for that bucket's ``artifacts-bucket-row-{name}`` element.
+        """
+        return self.page.locator(self.BUCKET_ROW.format(bucket_name))
+
+    def first_bucket_row(self) -> Locator:
+        """Return the FIRST bucket row currently rendered in the left panel.
+
+        Pinned buckets are rendered in their own list above the unpinned list
+        (``BucketsListContent.jsx``), so "the first rendered row" is exactly
+        the case's "top of the bucket list, above all unpinned buckets".
+
+        Returned as a locator (rather than a name read through
+        :meth:`get_rendered_bucket_names`) so specs can assert position with a
+        web-first, auto-retrying
+        ``expect(...).to_have_attribute("data-testid", ...)`` — the bucket list
+        re-renders ~8-10 s after the pin request returns 200, and a retrying
+        assertion is how that is waited out without a sleep.
+
+        Returns:
+            Locator for the first ``artifacts-bucket-row-*`` element.
+        """
+        return self.page.locator(self.BUCKET_ROW_ANY_SELECTOR).first
+
+    def any_bucket_pin_indicator(self) -> Locator:
+        """Return a locator matching EVERY rendered pin icon in the panel.
+
+        Returns:
+            Locator for :attr:`BUCKET_PIN_INDICATOR_ANY_SELECTOR` — count 0
+            means no bucket in the project is pinned.
+        """
+        return self.page.locator(self.BUCKET_PIN_INDICATOR_ANY_SELECTOR)
+
+    @action("Click bucket-menu pin/unpin item")
+    def click_bucket_menu_pin_item(self, timeout: int = 15000) -> int:
+        """Click the open bucket-menu's 'Pin to top' / 'Unpin from top' item.
+
+        Call :meth:`open_bucket_menu` first — same "caller opens, this clicks"
+        division of responsibility as :meth:`click_bucket_menu_delete_item`.
+
+        Wraps the click in ``expect_response`` for the pin mutation
+        (``PATCH /artifacts/buckets/default/{project}?name={bucket}``, body
+        ``{"is_pinned": <bool>}`` — ``EliteaUI/src/api/artifacts.js``'s
+        ``updateBucketPin``) and returns its status, so a caller can assert the
+        flag actually reached the backend. That matters here: the bucket list
+        re-renders roughly 8-10 seconds AFTER the 200 (live-measured,
+        ``test-specs/artifacts/_surface.md``), so the request and the DOM are
+        genuinely two separate observables.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the PATCH response.
+
+        Returns:
+            The pin request's HTTP status code.
+        """
+        with self.page.expect_response(
+            lambda r: "artifacts/buckets/default" in r.url and r.request.method == "PATCH",
+            timeout=timeout,
+        ) as response_info:
+            self.bucket_menu_pin_menuitem.click()
+        status = response_info.value.status
+        logger.info("Clicked bucket-menu pin/unpin item — PATCH returned %s", status)
+        return status
+
     def get_rendered_bucket_names(self) -> list[str]:
         """Return the distinct bucket names currently rendered in the left panel.
 
         Reads each row's own ``artifacts-bucket-row-{name}`` testid and
-        de-duplicates: a PINNED bucket is rendered twice by
-        ``BucketsListContent.jsx`` (once in the pinned list, once in the full
-        list), so a raw row count would over-count it.
+        de-duplicates defensively.
+
+        CORRECTED 2026-08-21 (ELITEA-1820/1821 live analysis): the earlier
+        claim here — that a PINNED bucket is rendered twice — is wrong.
+        ``BucketsPanel.jsx`` splits the list into ``pinnedBuckets`` and
+        ``unpinnedBuckets`` and ``BucketsListContent.jsx`` renders the pinned
+        list ABOVE the unpinned one, so each bucket appears exactly ONCE, with
+        pinned buckets first. The de-duplication is kept as a cheap guard, and
+        the returned ORDER (pinned first, then the unpinned buckets in
+        alphanumeric order) is what ELITEA-1820/1821 assert against.
 
         This is the oracle ELITEA-1803/1805 use for the left-panel footer's
         "Buckets: N" stat — ``BucketsPanel.jsx`` feeds the footer

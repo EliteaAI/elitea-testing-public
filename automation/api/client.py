@@ -12,6 +12,7 @@ Usage::
 
 import logging
 from typing import Optional
+from urllib.parse import quote
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -1342,6 +1343,36 @@ class ArtifactAPI:
             url_id = self._buckets_url(bucket_id)
             logger.debug("DELETE bucket 404 — retrying with id format %s", url_id)
             resp = self._session.delete(url_id)
+        _raise_for_status(resp)
+
+    def set_bucket_pinned(self, bucket_name: str, is_pinned: bool) -> None:
+        """Set (or clear) a bucket's "pinned to top" flag.
+
+        Mirrors the UI's own pin mutation exactly — ``PATCH
+        /artifacts/buckets/default/{project_id}?name={bucket}`` with body
+        ``{"is_pinned": <bool>}`` (``EliteaUI/src/api/artifacts.js``'s
+        ``updateBucketPin``). Note the QUERY-string bucket form: the
+        path-segment form used by :meth:`delete_bucket` is not what this
+        endpoint accepts.
+
+        Added for the ELITEA-1820/1821 pin/unpin tests' TEARDOWN — a leaked
+        *pinned* bucket would sit at the top of every project member's
+        bucket list forever (bucket deletion itself is unreliable, see
+        ``#636``), so those tests clear the flag before deleting. It is
+        cleanup, never an observable: both tests pin and unpin through the
+        UI, which is what they verify.
+
+        Args:
+            bucket_name: Name of the bucket to pin/unpin.
+            is_pinned: ``True`` to pin to top, ``False`` to unpin.
+        """
+        url = f"{self._buckets_url()}?name={quote(bucket_name)}"
+        logger.debug("PATCH bucket pin %s is_pinned=%s", url, is_pinned)
+        resp = self._session.patch(
+            url,
+            json={"is_pinned": is_pinned},
+            headers={"Content-Type": "application/json"},
+        )
         _raise_for_status(resp)
 
     def list_bucket_files(self, bucket_name: str) -> list[str]:
