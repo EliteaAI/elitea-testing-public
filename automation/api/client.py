@@ -1344,6 +1344,29 @@ class ArtifactAPI:
             resp = self._session.delete(url_id)
         _raise_for_status(resp)
 
+    def list_buckets(self) -> list[dict]:
+        """List every bucket in the project.
+
+        Uses the same ``GET /artifacts/buckets/default/{project_id}`` endpoint
+        the Artifacts page itself calls to populate the left panel — so the
+        returned count is the system's own answer for the left-panel footer's
+        "Buckets: N" stat (ELITEA-1803/1805 cross-check the rendered number
+        against it rather than a literal, which the ``#636`` bucket leak makes
+        false within minutes).
+
+        Returns:
+            List of bucket dicts as returned by the API (``rows`` unwrapped
+            when the response is paginated).
+        """
+        url = self._buckets_url()
+        logger.debug("LIST buckets %s", url)
+        resp = self._session.get(url)
+        _raise_for_status(resp)
+        data = resp.json()
+        if isinstance(data, dict):
+            return data.get("rows", [])
+        return data
+
     def list_bucket_files(self, bucket_name: str) -> list[str]:
         """List all file keys in a bucket via the S3 listing API.
 

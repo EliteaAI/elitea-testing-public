@@ -74,7 +74,6 @@
   next disabled.
 - Back on page 1: identical to the initial state (10 rows, same names, counter
   and arrow states restored).
-- No console errors.
 
 ## Coverage Map
 
@@ -108,7 +107,7 @@
 - Assert the **exact name sets** per page (steps 13/20), not just row counts —
   the case only counts rows, but a pagination bug that renders the right count
   of the wrong slice would pass a count-only check.
-- Assert **no console errors** — standard side-channel discipline.
+- **NOT asserted: console errors.** The AFS's original Axis-2 addition ("assert no console errors") was dropped during implementation (Phase-2 amendment): `.agents/testing.md` § Unconfirmed records a **confirmed recurring** environmental pattern on this project where `assert not console_messages` intermittently fails on an unrelated background resource returning 500 (3+ occurrences) or 404 (3 occurrences, one repeat on the same spec). Adding that assertion here would import a known flake class into three rendering tests that otherwise have no timing surface. Recorded rather than silently skipped.
 
 ## Fidelity Declaration
 

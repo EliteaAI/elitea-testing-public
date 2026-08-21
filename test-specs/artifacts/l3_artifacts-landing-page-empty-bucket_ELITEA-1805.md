@@ -72,7 +72,6 @@
 - The toolbar icon set and the left-panel footer stats render exactly as for a
   non-empty bucket.
 - The bucket-info tooltip reports `Number of files: 0`.
-- No console errors.
 
 ## Coverage Map
 
@@ -102,7 +101,7 @@
   `totalRows === 0`; a regression that renders `0 - 0 of 0` would be a real bug.
 - Cross-check the footer bucket count against the API (same reasoning as
   ELITEA-1803).
-- Assert **no console errors**.
+- **NOT asserted: console errors.** The AFS's original Axis-2 addition ("assert no console errors") was dropped during implementation (Phase-2 amendment): `.agents/testing.md` § Unconfirmed records a **confirmed recurring** environmental pattern on this project where `assert not console_messages` intermittently fails on an unrelated background resource returning 500 (3+ occurrences) or 404 (3 occurrences, one repeat on the same spec). Adding that assertion here would import a known flake class into three rendering tests that otherwise have no timing surface. Recorded rather than silently skipped.
 - NOT asserted: the empty-state SVG icon itself has no testid and no accessible
   name (`ArtifactTableNoFiles.jsx` renders it as an `sx`-styled `Box`
   component). Adding a testid for a purely decorative icon inside a block whose

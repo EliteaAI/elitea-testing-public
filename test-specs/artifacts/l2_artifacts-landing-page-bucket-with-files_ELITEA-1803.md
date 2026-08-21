@@ -83,7 +83,6 @@
   stats, main-panel header, the 5-column file table with a correctly-populated
   row, the toolbar icon set, and pagination reading `1 - 1 of 1` with **both**
   arrows present and disabled.
-- No console errors during the flow.
 
 ## Coverage Map
 
@@ -116,7 +115,7 @@
 - Assert the bucket's own empty-tree label is ABSENT (step 5) — the positive
   case's mirror of ELITEA-1805's assertion; cheap, and it catches the
   render-both-states regression.
-- Assert **no console errors** — standard side-channel discipline.
+- **NOT asserted: console errors.** The AFS's original Axis-2 addition ("assert no console errors") was dropped during implementation (Phase-2 amendment): `.agents/testing.md` § Unconfirmed records a **confirmed recurring** environmental pattern on this project where `assert not console_messages` intermittently fails on an unrelated background resource returning 500 (3+ occurrences) or 404 (3 occurrences, one repeat on the same spec). Adding that assertion here would import a known flake class into three rendering tests that otherwise have no timing surface. Recorded rather than silently skipped.
 
 ## Fidelity Declaration
 
