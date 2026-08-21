@@ -1130,109 +1130,12 @@ jobs:
 
           echo "✓ Appended TMS coverage analysis"
 
-          # Generate JSON dashboard (reports/dashboard.json) with full historical data
-          python3 << SNAPSHOT_EOF > reports/dashboard.json
-          import json
-          import glob
-          import os
-          from datetime import datetime, timezone
-
-          # Load all junit reports (last 20 for trend) - same as markdown dashboard
-          runs = []
-          all_files = sorted(glob.glob("reports/automated/junit-RUN-*.json"))[-20:]
-          for f in all_files:
-              try:
-                  with open(f) as fp:
-                      data = json.load(fp)
-                      name = os.path.basename(f).replace("junit-", "").replace(".json", "")
-                      parts = name.split("-")
-                      if len(parts) >= 7:
-                          try:
-                              month = datetime.strptime(f"{parts[3]}-{parts[4]}-{parts[5]}", "%Y-%m-%d").strftime("%b%d")
-                          except:
-                              month = f"{parts[4]}-{parts[5]}"
-                          short_name = f"{month}-{parts[6]}-{parts[7]}"
-                      else:
-                          short_name = name[:15]
-
-                      launch = data.get("launch", {})
-                      total = launch.get("total", 0)
-                      passed = launch.get("passed", 0)
-                      entry = {
-                          "name": short_name,
-                          "full_name": name,
-                          "file": os.path.basename(f),
-                          "total": total,
-                          "passed": passed,
-                          "failed": launch.get("failed", 0),
-                          "skipped": launch.get("skipped", 0),
-                          "reruns": launch.get("reruns", 0),
-                          "pass_rate": round(passed / total * 100, 1) if total > 0 else 0
-                      }
-                      runs.append(entry)
-              except Exception as e:
-                  pass
-
-          # Load TMS coverage data
-          automation_index_path = "/tmp/automation_index.json"
-          tms_index_path = "index_automated.json"
-
-          tms_coverage = {}
-          tests_without_tms = []
-          orphan_tms_refs = []
-
-          if os.path.exists(automation_index_path) and os.path.exists(tms_index_path):
-              with open(automation_index_path) as f:
-                  automation_data = json.load(f)
-              with open(tms_index_path) as f:
-                  tms_data = json.load(f)
-
-              automation_ids = set(t["automation_test_id"] for t in automation_data.get("tests", []))
-              tms_ids = set()
-              tms_case_map = {}
-              for case in tms_data.get("cases", []):
-                  for test_id in case.get("automation_test_id", []):
-                      tms_ids.add(test_id)
-                      tms_case_map[test_id] = {"id": case["id"], "title": case["title"]}
-
-              linked = automation_ids & tms_ids
-              in_automation_not_tms = sorted(automation_ids - tms_ids)
-              in_tms_not_automation = sorted(tms_ids - automation_ids)
-
-              coverage = round(len(linked) / len(automation_ids) * 100, 1) if automation_ids else 0
-
-              tms_coverage = {
-                  "automation_tests": len(automation_ids),
-                  "tms_refs": len(tms_ids),
-                  "linked": len(linked),
-                  "tests_without_tms_count": len(in_automation_not_tms),
-                  "orphan_tms_refs_count": len(in_tms_not_automation),
-                  "coverage_pct": coverage
-              }
-              tests_without_tms = in_automation_not_tms
-              orphan_tms_refs = [{"test_id": t, "case_id": tms_case_map.get(t, {}).get("id", "?")} for t in in_tms_not_automation]
-
-          snapshot = {
-              "run_id": "${RUN_ID}",
-              "generated_at": datetime.now(timezone.utc).isoformat(),
-              "latest_run": runs[-1] if runs else {},
-              "runs": runs,
-              "tms_coverage": tms_coverage,
-              "tests_without_tms": tests_without_tms,
-              "orphan_tms_refs": orphan_tms_refs
-          }
-
-          print(json.dumps(snapshot, indent=2))
-          SNAPSHOT_EOF
-
-          echo "✓ Generated reports/dashboard.json"
-
-          # Copy to historical dashboards folder
+          # Copy dashboard.md to historical dashboards folder
           mkdir -p reports/dashboards
-          cp reports/dashboard.json "reports/dashboards/dashboard-${RUN_ID}.json"
-          echo "✓ Copied to reports/dashboards/dashboard-${RUN_ID}.json"
+          cp reports/dashboard.md "reports/dashboards/dashboard-${RUN_ID}.md"
+          echo "✓ Copied to reports/dashboards/dashboard-${RUN_ID}.md"
 
-          git add reports/dashboard.md reports/dashboard.json "reports/dashboards/dashboard-${RUN_ID}.json"
+          git add reports/dashboard.md "reports/dashboards/dashboard-${RUN_ID}.md"
           git diff --cached --quiet || \
             git commit -m "dashboard: update test metrics for ${RUN_ID}"
           git push
