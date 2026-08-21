@@ -3038,6 +3038,26 @@ class ArtifactsPage(BasePage):
         logger.info("Breadcrumb folder crumbs: %s", names)
         return names
 
+    @action("Click breadcrumb bucket crumb (main panel header)")
+    def click_breadcrumb_bucket_label(self, timeout: int = 10000) -> None:
+        """Click the bucket crumb in the main-panel breadcrumb (ELITEA-1837).
+
+        Navigates back to the bucket ROOT from inside a subfolder: the
+        product clears ``currentPrefix`` and drops the ``folder`` query
+        param, leaving ``?bucket=<name>``.
+
+        NOTE: ``ArtifactTableToolbar.jsx`` wires this label's ``onClick``
+        **only while a folder prefix is active** — at bucket root the crumb
+        is deliberately inert, so calling this there is a no-op click, not
+        an error.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.breadcrumb_bucket_label.wait_for(state="visible", timeout=timeout)
+        self.breadcrumb_bucket_label.click(timeout=timeout)
+        logger.info("Clicked the breadcrumb bucket crumb (back to bucket root)")
+
     # ------------------------------------------------------------------
     # File preview/edit editor panel (ELITEA-1851/1852/1856)
     # ------------------------------------------------------------------
