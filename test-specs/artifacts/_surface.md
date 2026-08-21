@@ -105,3 +105,60 @@ CodeMirror, no toggle) or the IMAGE branch — both are genuinely new surface.
   sessions (ELITEA-1880/1993, ELITEA-2004/2010, ELITEA-1828/1829/1831, and
   this one). See `.agents/memory/qa-engineer/no_playwright_mcp_use_sync_playwright_script.md`
   — go straight to a `playwright.sync_api` scratch script, don't retry `ToolSearch`.
+
+## Confirmed handles (as of ELITEA-1803/1804/1805/1806 cluster, 2026-08-21)
+
+Artifacts **landing page chrome** — left-panel header/footer/storage selector,
+the file-table column headers, and the pagination controls. All of these were
+untagged before this run; the testids below were added on
+EliteaAI/EliteaUI@6449a5c4 (`automation/testids`, human cherry-pick to `main`
+pending).
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Storage-provider row | `artifacts-storage-selector` (+ `-arrow`) | `Components/BucketStorageSelector.jsx` | text reads `Elitea S3 storage` |
+| Left-panel footer — bucket count | `artifacts-buckets-footer-count` | `Components/BucketFooter.jsx` | `text_content()` is `Buckets:757` — label + value are two sibling `<Typography>`s inside the testid'd Box, **no whitespace between them**; match with `Buckets:\s*(\d+)`. The number is NOT stable (the `#636` leak keeps adding buckets) — cross-check against the API's own bucket list instead of a literal |
+| Left-panel footer — total size | `artifacts-buckets-footer-size` | same | `Size:254.8 MB` |
+| Bucket's empty-tree label | `artifacts-bucket-tree-empty-label-{bucketName}` (**dynamic**) | `Components/BucketContent.jsx` | had to be bucket-parameterized: `BucketContent` is a SIBLING of `BucketItem` inside an untagged wrapper `<Box>`, so it cannot be CSS-scoped under `artifacts-bucket-row-{name}`, and several buckets can be expanded at once |
+| Bucket-info (i) icon — main panel toolbar | `artifacts-bucket-info-button` | `component/BucketInfoTooltip.jsx` (mounted from `ArtifactTableToolbar.jsx`) | **This — not the left-panel bucket name — is where the Retention Policy / Number of files tooltip lives.** ELITEA-1805's case text says "hover the bucket name in the left panel"; that element only has a conditional overflow tooltip repeating the name. Filed `EliteaAI/elitea-testing-public#1617` |
+| Bucket-info tooltip content | `artifacts-bucket-info-tooltip-content` | same | opens on **hover** (same activation as #669's field tooltip). Text: `Retention Policy:1 YearNumber of files:1` — labels/values are sibling Typographies, no whitespace |
+| File-table column headers | `artifacts-file-table-column-header-{field}` | `component/ArtifactTable.jsx` wires the shared `GridTableHeader`'s existing `columnTestIdPrefix` prop | fields are `name`, `fileType`, `size`, **`modified`** (label "Last update" — the field key is NOT `lastUpdate`), `actions`. Width-gated: `modified` hides below a 900px table width — set viewport 1600x900 |
+| Pagination — page info | `artifacts-pagination-page-info` | `component/ArtifactTable.jsx` → shared `GridTablePagination` `pageInfoTestId` | `1 - 1 of 1` / `1 - 10 of 12` / `11 - 12 of 12` |
+| Pagination — prev / next | `artifacts-pagination-prev-button` / `-next-button` | same | `prevButtonTestId` prop was **added** to the shared component this run (`nextButtonTestId` already existed). Both are real `disabled` attributes — assert with `is_disabled()` |
+| Pagination — rows per page | `artifacts-pagination-page-size-select-combobox` | same, via a new `pageSizeSelectTestId` prop → `SingleSelect` derives the `-combobox` suffix | default text `10` |
+| Whole pagination footer | — | `GridTablePagination` returns `null` when `totalRows === 0` | an empty bucket has NO pagination block at all (count 0), not a `0 - 0 of 0` |
+
+### Landing-page behaviours confirmed live (2026-08-21)
+- **`/artifacts` auto-selects (and expands) a bucket** when the URL carries no
+  `?bucket=` param. Consequence: any page-wide count of "empty tree label" or
+  "tree item" elements is polluted by that auto-selected bucket — always scope
+  per bucket.
+- Empty bucket: 0 file rows, 0 column headers, 0 pagination block, but the
+  toolbar (search/upload/download/delete) and the footer stats still render.
+- Single-file bucket: `1 - 1 of 1`, **both** arrows present and disabled.
+- 12-file bucket: page 1 = 10 rows / `1 - 10 of 12` / prev disabled / next
+  enabled; page 2 = 2 rows / `11 - 12 of 12` / prev enabled / next disabled.
+  Default sort is name-ascending, so zero-pad seeded filenames
+  (`file-01 … file-12`) if the page slices are asserted by name.
+- Row text for a `.txt` file: `sample.txtText120 B21-08-2026, 05:43 PM`
+  (Type column renders `Text`; timestamp format `DD-MM-YYYY, HH:MM AM/PM`).
+
+### ELITEA-1806 (no-buckets empty state) is BLOCKED — do not retry blind
+Bucket counts measured via `GET /artifacts/buckets/default/{pid}` for every
+project the selector offers: 399 Private **759**, 406 Bugs & Features **4**,
+25 Elitea Development **19**, 471 Elitea Testing Team **13**, 400 UI Testing
+**2**. No empty project exists, the suite has no project create/delete client,
+and emptying a shared project is destructive. Faking the buckets response would
+be a terminal substitution of the very thing the case observes. Needs a human
+decision (dedicated empty project / project-lifecycle API / manual-only) — see
+`test-specs/artifacts/l3_artifacts-landing-page-no-buckets_ELITEA-1806.md`.
+
+### Gotchas added this run
+- **Vite HMR did NOT pick up an edit under `src/[fsd]/`** (bracketed FSD
+  directories). The dev server kept serving the pre-edit module — verified by
+  `curl -s 'http://localhost:5173/src/%5Bfsd%5D/entities/grid-table/ui/GridTablePagination.jsx' | grep <new-prop>`
+  returning 0 hits while the file on disk had it. Edits under
+  `src/pages/…` in the SAME commit HMR'd fine. **Restart `npm run dev` after
+  touching anything under `src/[fsd]/`**, and verify with that curl before
+  concluding "the testid does not render".
+- The project's `Private`/399 bucket leak (`#636`) is now at **759** buckets.
