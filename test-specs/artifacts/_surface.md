@@ -327,7 +327,7 @@ the element whose background the case observes.
 | Bucket row background (hover observable) | `artifacts-bucket-row-{name}` + `expect(...).to_have_css("background-color", …)` | `BucketItem.jsx`'s root Box | a computed-style assertion on a testid-anchored locator — **no `evaluate()`**, Playwright's web-first `to_have_css`/`not_to_have_css` retries until the style settles |
 | Row selection state | `data-selected="true|false"` on the same row | same | pre-existing (`is_bucket_selected()`); the filter that keeps hover targets honest |
 | "Park the cursor off every row" | `ArtifactsPage.move_mouse_off_bucket_list()` — `mouse.move()` to the right of `artifacts-buckets-scroll-container`'s box | added this run | `hover_buckets_panel()` moves onto the panel CENTRE, which lands ON a row — wrong primitive for "cursor away from the bucket list" |
-| Row locator for assertions | `ArtifactsPage.bucket_row(name) -> Locator` | added this run | specs may not build locators (`.agents/testing.md` § Locator policy); this accessor is how a spec gets the row for `to_have_css` |
+| Row locator for assertions | `ArtifactsPage.bucket_row(name) -> Locator` | **pre-existing** (ELITEA-1820/1821) | specs may not build locators (`.agents/testing.md` § Locator policy); this accessor is how a spec gets the row for `to_have_css` — reused as-is, nothing added |
 
 ### Hover behaviours confirmed live (2026-08-21)
 - **Hover is React state, not a CSS `:hover` rule.** `BucketItem.jsx` keeps

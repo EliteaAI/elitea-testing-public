@@ -3916,6 +3916,23 @@ class ArtifactsPage(BasePage):
         box = self._buckets_scroll_container_box()
         self.page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
 
+    @action("Move the cursor off the bucket list")
+    def move_mouse_off_bucket_list(self) -> None:
+        """Park the mouse cursor clear of every bucket row (ELITEA-1823 Step 3).
+
+        Deliberately NOT :meth:`hover_buckets_panel`, which moves to the
+        container's CENTRE — that lands *on* a bucket row and would highlight
+        it. This moves to a point to the RIGHT of the scroll container's own
+        box (the main file panel), so no ``BucketItem`` is under the cursor and
+        every row's ``onMouseLeave`` has fired.
+
+        The offset is measured from the container's testid-anchored bounding
+        box rather than hardcoded: the panel's width changes with the viewport
+        and with the sidebar's collapsed state.
+        """
+        box = self._buckets_scroll_container_box()
+        self.page.mouse.move(box["x"] + box["width"] + 200, box["y"] + box["height"] / 2)
+
     @action("Wheel-scroll the buckets panel")
     def wheel_buckets_panel(self, delta_y: int) -> None:
         """Dispatch one wheel event over the buckets panel.
