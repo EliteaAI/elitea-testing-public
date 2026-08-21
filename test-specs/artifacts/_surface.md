@@ -503,3 +503,41 @@ merged `test_artifacts_file_preview_edit_save.py:71-97`. Two gotchas that come w
   **Before running a spec that depends on a testid you just added, curl the module off the
   dev server and confirm the string is there** — it is one cheap command against a ~60 s
   red run plus its reruns.
+
+## Confirmed handles (as of ELITEA-1834 bucket-actions upload-to-subfolder, 2026-08-21)
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Bucket row 3-dot menu button | `bucket-menu-{bucket}-menu-button` (`ArtifactsPage.BUCKET_MENU_BUTTON`) | composed at runtime by `DotMenu.jsx:354` (`data-testid={id ? \`${id}-menu-button\` : undefined}`) | **invisible to a `data-testid`-literal grep** — the string never appears whole in source |
+| Bucket menu "Upload files" item | `bucket-menu-upload-files-menuitem` | `BucketItem.jsx:153` supplies `key: 'bucket-menu-upload-files'`; `DotMenu.jsx:57` appends `-menuitem` | same grep blind spot |
+| File / folder rows | `artifacts-file-row` / `artifacts-folder-row` inside `artifacts-file-list` | `ArtifactTable.jsx:521-526` (ternary, no `data-testid=` token on the value line) | same grep blind spot |
+| Upload-dialog description at a SUBFOLDER | `artifacts-upload-path-description-text` | `UploadPathDialog.jsx:33-41` | wording differs from bucket root: `Files will be uploaded to "{bucket}/{prefix}". Optionally, enter a subfolder path (relative to current location). Leave empty to upload to the current folder.` — the root wording (generic, bucket-name-free, per #674) is the `!currentPrefix` branch |
+
+### Bucket-actions upload behaviours confirmed live (2026-08-21, ELITEA-1834)
+- **The bucket 3-dot menu's "Upload files" targets the CURRENT SELECTION, not the bucket
+  root.** With subfolder `a1` selected in the tree, the dialog pre-fills `{bucket}/a1/`, the
+  PUT goes to `/artifacts/s3/{bucket}/a1/sample.txt` (200), the view stays on `{bucket} > a1`
+  and the root listing keeps showing only the `a1` folder row. Mechanism: `Artifacts.jsx:95`'s
+  single `currentPrefix` state; `BucketItem.jsx:96` `handleUploadClick` never resets it;
+  `UploadPathDialog.jsx:94` renders `{bucket}/{currentPrefix}`.
+- ⚠ **Two TMS cases contradict here.** ELITEA-1834 calls that behaviour CORRECT; ELITEA-1824
+  (→ open bug **#649**, soft-asserted in
+  `test_artifacts_upload_three_options_verify_selection.py`) calls the identical state a
+  defect. Filed **#1629** (`question` + `case-text-drift`) for a human ruling. Anyone touching
+  either spec should read #1629 first rather than "fixing" one to match the other.
+- **Tree selection is exclusive:** selecting `a1/` flips the bucket row's own
+  `data-selected` to `false`; `is_tree_item_selected("a1/")` is the highlight oracle.
+- **Coming back to root from inside a subfolder is one `click_bucket_row()`** — it both
+  navigates to root and leaves the tree expanded (no toggle-collapse observed on this path;
+  the #651 toggle caveat still applies when the bucket is ALREADY the active root selection,
+  so guard with `is_tree_item_visible("a1/")` + conditional second click).
+- **Seeding a subfolder for a test:** empty-state upload + `fill_upload_path("a1")`. Use a
+  seed filename ≠ the case's own upload file, or the "Resolve duplicates" dialog fires and
+  derails the upload-path dialog assertions.
+- ⚠ **The closure-record two-stage testid grep produces FALSE "not on main" rows** for
+  runtime-composed and ternary/`key:`-wired testids (three of them in this case's set —
+  table above). Read the `git grep` hits rather than filtering them when a handle you have
+  *used live* reports absent.
+- Playwright MCP again NOT attempted (8th consecutive session per the digest gotcha); one
+  throwaway pytest spec in `automation/tests/ui/artifacts/` ran the whole 18-step case in
+  **34 s**, zero console errors.
