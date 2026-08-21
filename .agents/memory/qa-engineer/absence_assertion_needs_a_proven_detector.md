@@ -32,4 +32,29 @@ Had no such positive-case spec existed, the correct verdict is not CHANGES_REQUE
 assertion itself but a demand for the detector's proof — e.g. a same-spec positive control,
 or a cited live observation of the event firing.
 
+## Second axis: `to_have_count(0)` is NOT auto-retrying in the useful direction
+
+Playwright's web-first assertions poll until the condition becomes TRUE. For an
+absence assertion the condition is true at the FIRST poll, so a `timeout=` on it
+buys nothing — `expect(toast).to_have_count(0, timeout=3000)` returns in
+milliseconds and cannot see a toast that renders 300 ms later. An AFS that calls
+such an assertion "auto-retrying, and correct in both directions" is wrong on the
+second half (seen on ELITEA-1845, `test_artifacts_delete_single_file_dropdown.py`).
+
+What makes it real evidence, in order of preference:
+1. a **settle point** the product must pass before the absence can be concluded —
+   assert the absence AFTER a condition that only completes once the product has
+   had its chance to emit (a network response, the post-action list re-render);
+2. mind the **other** window — a toast auto-dismisses, so an absence asserted too
+   late is vacuous again; the assertion belongs inside the interval where the
+   positive case WOULD be visible;
+3. plus the detector proof above (a positive control on the same locator — for
+   ELITEA-1845 the sibling ELITEA-1844 in the same file asserts the same
+   `success_toast_message` has text after a real delete, so the detector is proven).
+
+Independent invariants asserted afterwards (row text unchanged, storage listing
+intact) protect the case's overall verdict, which is why this is a strength
+finding rather than masking — but they do not cover the "spurious toast, no
+mutation" shape the step itself names.
+
 Related: [[afs_axis2_claim_needs_grep_not_just_row_presence]]
