@@ -1664,6 +1664,59 @@ class ArtifactsPage(BasePage):
         except Exception:
             return False
 
+    # Poll interval for the tree-node geometry settle wait (below).
+    TREE_ITEM_STABLE_POLL_INTERVAL_MS = 100
+
+    def wait_for_tree_item_stable(
+        self,
+        item_key: str,
+        timeout: int = 5000,
+        settle_samples: int = 2,
+    ) -> bool:
+        """Wait until a left-panel tree node stops moving (ELITEA-1836).
+
+        Expanding a folder animates MUI's ``Collapse`` (~300 ms), during
+        which every node inside it slides into place. A click that lands
+        while that enter-transition is still running interrupts it and
+        leaves the subtree mounted — the folder never collapses (product
+        defect #1631; measured 3/3 failures without this wait, 18/18
+        successes with the transition finished).
+
+        A condition wait polled against the geometry the product renders —
+        the same shape as :meth:`wait_until_bucket_row_within_panel`, and
+        the reason a fixed sleep is not used.
+
+        Args:
+            item_key: Full relative key of the tree node to watch (e.g.
+                ``"a1/f2.txt"`` — watch the LAST node of an expanding
+                subtree, it settles last).
+            timeout: Maximum wait in milliseconds.
+            settle_samples: Consecutive identical position reads required.
+
+        Returns:
+            ``True`` once the node's position repeated ``settle_samples``
+            times, ``False`` if the timeout expired first.
+        """
+        item = self.page.locator(self.ARTIFACTS_TREE_ITEM.format(item_key))
+        deadline = time.monotonic() + timeout / 1000
+        previous: tuple[float, float] | None = None
+        stable = 0
+        while True:
+            box = item.bounding_box()
+            current = None if box is None else (round(box["x"], 1), round(box["y"], 1))
+            if current is not None and current == previous:
+                stable += 1
+                if stable >= settle_samples:
+                    logger.info("Tree node '%s' settled at %s", item_key, current)
+                    return True
+            else:
+                stable = 0
+            previous = current
+            if time.monotonic() >= deadline:
+                logger.warning("Tree node '%s' never settled within %sms", item_key, timeout)
+                return False
+            self.page.wait_for_timeout(self.TREE_ITEM_STABLE_POLL_INTERVAL_MS)
+
     @action("Click tree item (left panel)")
     def click_tree_item(self, item_key: str, timeout: int = 10000) -> None:
         """Click a left-panel tree node by its full relative key (ELITEA-1824).

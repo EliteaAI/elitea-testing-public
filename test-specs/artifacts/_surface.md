@@ -595,16 +595,22 @@ element these three cases touch already carries one.
   does **not** reset the breadcrumb or the URL — after the collapse click the
   header still reads `bucket > a1`, the URL still carries `&folder=a1`, and the
   main panel still lists the subfolder's files. Only the tree branch closes.
-- **⚠ Race — a rapid second click does not collapse (product defect `#1631`).**
-  Expand-click → collapse-click with no wait between them failed to collapse
-  **2 of 5** live attempts; with any real assertion in between (the case's own
-  Step 4 breadcrumb/table checks) it collapsed **5/5**, and 7/7 in two earlier
-  probes. Likely mechanism: `BucketContent.jsx`'s `isFetching` early-return
-  ("Loading files…") unmounts the whole `FileTreeItem` subtree, which then
-  re-initialises `useState(shouldAutoExpand)` from `expandedPaths` — still
-  containing the folder, because the collapse click keeps `currentPrefix` on it.
-  **Rule for any tree test: never fire two tree clicks back-to-back; assert the
-  intermediate state first.**
+- **⚠ A collapse click fired during the expand ANIMATION is lost — permanently
+  (product defect `#1631`).** Mechanism, pinned down during the ELITEA-1836
+  implementation: the click interrupts MUI `Collapse`'s ~300 ms **enter**
+  transition, `onExited` never fires, and `unmountOnExit` therefore never
+  unmounts the children — the folder stays open for good, not just for a moment.
+  **No network request is involved** (request capture across the window: empty),
+  so the earlier "`isFetching` remount" hypothesis recorded on first analysis was
+  **wrong**; corrected here and on the issue.
+  Measured: **3/3 failures** with the collapse click inside the transition
+  window, **18/18 successes** once it had finished (plus 12/12 in two earlier
+  probes; a 200 ms gap is borderline, 500 ms+ reliable).
+  **Rule for any tree test: never fire two tree clicks back-to-back — wait for
+  the subtree to stop moving** with
+  `ArtifactsPage.wait_for_tree_item_stable("<last child key>")` (added with
+  ELITEA-1836; polled geometry, same shape as
+  `wait_until_bucket_row_within_panel`, no sleep).
 - **URL shapes:** bucket root `?bucket=<name>`; inside a subfolder
   `?bucket=<name>&folder=a1` — the `folder` param carries **no** trailing slash
   even though the prefix and the tree key do (`Artifacts.jsx`:
@@ -631,6 +637,9 @@ element these three cases touch already carries one.
   `ArtifactAPI.create_bucket` with its own try/except teardown — `{A}-b` sorts
   immediately after A in the alphanumeric list, so both rows land in the same
   scroll band of a 760-bucket panel.
+- **Page-object additions this run:** `click_breadcrumb_bucket_label()` (clicks
+  the `artifacts-breadcrumb-bucket-label` crumb → back to bucket root) and
+  `wait_for_tree_item_stable(item_key)` (the expand-animation settle wait above).
 - Playwright MCP again NOT attempted (9th consecutive session per the digest
   gotcha) — all three cases were executed live via throwaway pytest specs under
   `automation/tests/ui/artifacts/` driving the framework's `page`/`auth_state`

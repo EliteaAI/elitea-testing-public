@@ -48,9 +48,10 @@
 **No new testid is needed and none was added.** Every element this case touches
 already carries one.
 
-**Page-object gap:** none for this case — `click_tree_item` / `is_tree_item_visible`
-/ `is_tree_item_selected` / `tree_item` (locator accessor for `expect(...)`) all
-exist.
+**Page-object gap (settled during implementation):** the tree accessors
+`click_tree_item` / `is_tree_item_visible` / `is_tree_item_selected` / `tree_item`
+all pre-exist. One helper was **added**: `wait_for_tree_item_stable(item_key)` —
+the geometry condition wait described under § Test Steps.
 
 ## Test Steps
 
@@ -79,12 +80,16 @@ exist.
 6. *Assert (final tree state)*: the tree shows the bucket row plus `a1/`, still
    visible and still collapsed — `a1/` visible, its two children count 0.
 
-**Ordering discipline (load-bearing, see § Findings / `#1631`):** Step 4's
-assertions must run **between** the two `a1/` clicks. A collapse click fired
-immediately after the expand click is discarded 2 times in 5 (measured); with
-Step 4's assertions in between it collapsed 5/5 (and 7/7 in two earlier probes).
-The case's own step order is what makes the test deterministic — do not "optimise"
-Step 4 to after Step 5.
+**Ordering + settle discipline (load-bearing, see § Findings / `#1631`):**
+Step 4's assertions run **between** the two `a1/` clicks, and Step 4 ends with a
+**geometry condition wait** — `ArtifactsPage.wait_for_tree_item_stable("a1/f2.txt")`
+(added with this case) — that returns once the last expanded child's position has
+repeated twice. A collapse click that lands inside MUI `Collapse`'s ~300 ms enter
+transition interrupts it and leaves the subtree mounted, so the folder never
+collapses: measured **3/3 failures** without the wait and **18/18 successes**
+once the transition has finished. It is a polled condition wait (the shape
+`wait_until_bucket_row_within_panel` already uses in this page object), never a
+sleep, and it weakens nothing — Step 5 still requires ONE click to collapse.
 
 Each step is wrapped in `with allure.step("Step N — …")`.
 
@@ -146,13 +151,18 @@ Each step is wrapped in `with allure.step("Step N — …")`.
 None.
 
 ## Findings
-- **Product defect (MINOR, does not block automation):** a rapid second click on
-  a subfolder fails to collapse it — 2 of 5 live attempts with no wait between
-  the expand and collapse clicks; 5/5 collapse when the case's own Step-4
-  assertions run in between. Likely mechanism: `BucketContent.jsx`'s
-  `isFetching` early-return unmounts the `FileTreeItem` subtree, which then
-  re-initialises `isExpanded` from `expandedPaths` (still containing the folder).
-  Filed `EliteaAI/elitea-testing-public#1631`.
+- **Product defect (MINOR, does not block automation):** a second click that
+  lands while the folder is still animating open does not collapse it — the
+  subtree stays mounted permanently. Mechanism, pinned down during
+  implementation: the click interrupts MUI `Collapse`'s ~300 ms **enter**
+  transition, whose `onExited` then never fires, so `unmountOnExit` never
+  unmounts the children. Measured: 3/3 failures when the collapse click followed
+  the expand click within the transition window; 18/18 successes once it had
+  finished (and 12/12 in two earlier probes), with **zero** network requests in
+  the window — so the earlier "`isFetching` remount" hypothesis in the first
+  version of this AFS was wrong and is corrected here and on the issue.
+  Filed `EliteaAI/elitea-testing-public#1631`; user impact is a fast
+  double-click on a folder leaving it open.
 - **Case-text nuance (no filing):** Step 4 says "the main panel header updates on
   expansion". It updates on *selection* — the same click that expands also sets
   `currentPrefix`, and a collapse click keeps the header where it is. Nothing in
@@ -166,7 +176,10 @@ Executed live against a seeded bucket with `a1/f1.txt`, `a1/f2.txt`, `root.txt`:
   (`is_tree_item_selected("a1/") == True`), bucket row `data-selected` → `false`
   (tree selection is exclusive), breadcrumb `<bucket>` + `['a1']`, URL
   `?bucket=<name>&folder=a1`, main panel `['f2.txt', 'f1.txt']` (Steps 3-4 ✓).
-- After clicking `a1/` again: child count 1 → **0** at t≈300 ms, `a1/` still
-  visible and selected, `root.txt` still visible; breadcrumb and URL unchanged
-  (Steps 5-6 ✓). Reproduced 3/3 in probe 2 and 4/4 in probe 3 with a settle.
+- After clicking `a1/` again (once the expand transition finished): child count
+  1 → **0** at t≈300 ms, `a1/` still visible and selected, `root.txt` still
+  visible; breadcrumb and URL unchanged (Steps 5-6 ✓). Reproduced 3/3 in probe 2,
+  4/4 in probe 3, and 18/18 across three 6-round series in the mechanism probe.
 - Console errors during the full flow: none.
+- **Implementation run (2026-08-21):** the spec is GREEN — 1/1 standalone and
+  3/3 as part of this unit's three specs (77.8 s wall for all three).

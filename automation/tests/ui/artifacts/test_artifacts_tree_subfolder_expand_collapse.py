@@ -195,6 +195,16 @@ class TestArtifactsTreeSubfolderExpandCollapse:
             ) == set(CHILD_FILES), (
                 f"Main panel should list the subfolder's files {CHILD_FILES}"
             )
+            # Let the expand animation finish BEFORE the next tree click.
+            # A click landing inside MUI `Collapse`'s ~300 ms enter transition
+            # interrupts it and leaves the subtree mounted, so the folder never
+            # collapses (product defect #1631 — measured 3/3 failures without
+            # this wait, 18/18 successes with the transition finished). This is
+            # a geometry condition wait, not a sleep, and it weakens nothing:
+            # step 5 still requires ONE click to collapse.
+            assert artifacts_page.wait_for_tree_item_stable(
+                f"{SUBFOLDER_KEY}{CHILD_FILES[-1]}", timeout=UI_ELEMENT_TIMEOUT,
+            ), "The expanded subtree never stopped moving"
 
         with allure.step(
             f"Step 5 — Click subfolder '{SUBFOLDER_NAME}' again: it collapses "
