@@ -1,3 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to Agent Hub (Catalog) — Locator.wait_for: Timeout 15000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("catalog-page-heading") to be visible

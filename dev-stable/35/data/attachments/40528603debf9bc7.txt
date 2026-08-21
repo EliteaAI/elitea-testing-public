@@ -1,7 +1,0 @@
-WARNING  elitea.api_auth:api_auth.py:123 Missing elitea-staging_auth_session cookie
-ERROR    elitea.steps:actions.py:49 Step failed: Add agent participant — Locator.wait_for: Timeout 10000ms exceeded.
-Call log:
-  - waiting for locator("li[role=\"menuitem\"]:has-text(\"autotest_\")").first to be visible
-ERROR    elitea.steps:actions.py:49 Step failed: Add agent participant — Locator.wait_for: Timeout 10000ms exceeded.
-Call log:
-  - waiting for locator("li[role=\"menuitem\"]:has-text(\"autotest_\")").first to be visible
