@@ -123,13 +123,17 @@ Live-confirmed behaviour; step numbers map to the TMS case.
 | Upload-path dialog + Upload button | `artifacts-upload-path-dialog`, `artifacts-upload-path-upload-button` | on-main ✓ | |
 | Resolve-duplicates dialog | `artifacts-resolve-duplicates-dialog` | on-`automation/testids` only (EliteaAI/EliteaUI@918b8b22) | human cherry-pick to `main` pending |
 | Duplicate filename row | `artifacts-resolve-duplicates-filename` | on-`automation/testids` only (@918b8b22) | |
-| **X (close) icon** | **testid needed**: `artifacts-resolve-duplicates-close-button` | needs-adding | Live enumeration of the dialog's buttons: `[('', None, 'Close'), ('Cancel', 'artifacts-resolve-duplicates-cancel-button', None), ('Skip', …), ('Replace', …), ('Keep both', …)]` — the X is the first, label-less button and carries **no** `data-testid`. `Modal.BaseModal` already accepts a caller-supplied **`closeButtonTestId`** prop (`src/[fsd]/shared/ui/modal/BaseModal.jsx:35`, applied at line 154 as `data-testid={closeButtonTestId}`); `DuplicateResolutionDialog.jsx` simply doesn't pass it. Add `closeButtonTestId="artifacts-resolve-duplicates-close-button"` to that `<Modal.BaseModal …>` call. Prop-only, zero functional impact (no new DOM node, no new hook, no removed line). Caller-supplied prop on a shared component = the compliant shape per `.agents/testing.md` § Locator policy |
+| **X (close) icon** | `artifacts-resolve-duplicates-close-button` | **ADDED during implementation** — on-`automation/testids` only (EliteaAI/EliteaUI@bbb329c4); human cherry-pick to `main` pending | Live enumeration of the dialog's buttons: `[('', None, 'Close'), ('Cancel', 'artifacts-resolve-duplicates-cancel-button', None), ('Skip', …), ('Replace', …), ('Keep both', …)]` — the X is the first, label-less button and carries **no** `data-testid`. `Modal.BaseModal` already accepts a caller-supplied **`closeButtonTestId`** prop (`src/[fsd]/shared/ui/modal/BaseModal.jsx:35`, applied at line 154 as `data-testid={closeButtonTestId}`); `DuplicateResolutionDialog.jsx` simply doesn't pass it. Add `closeButtonTestId="artifacts-resolve-duplicates-close-button"` to that `<Modal.BaseModal …>` call. Prop-only, zero functional impact (no new DOM node, no new hook, no removed line). Caller-supplied prop on a shared component = the compliant shape per `.agents/testing.md` § Locator policy |
 | Success toast | `artifacts-success-toast-message` (`success_toast_message`) | on-main ✓ | asserted with `to_have_count(0)` on a short polled window (ELITEA-1832's `TOAST_ABSENCE_POLL_TIMEOUT` pattern) |
 | Bucket listing / metadata / content | `artifact_api.list_bucket_files` / `get_file_metadata` / `get_file` | n/a (API) | server-side oracle |
 
-**Page-object work:** add `resolve_duplicates_close_button` (`LocatorDescriptor(testid=…)`,
-class field) and `click_resolve_duplicates_close_button()` to `ArtifactsPage`, mirroring
-`click_resolve_duplicates_cancel_button()` (`artifacts_page.py:2430`).
+**Page-object work (SHIPPED):** `resolve_duplicates_close_button`
+(`LocatorDescriptor(testid="artifacts-resolve-duplicates-close-button")`, class field) and
+`click_resolve_duplicates_close_button()` were added to `ArtifactsPage`, mirroring
+`click_resolve_duplicates_cancel_button()`. The testid itself was added by passing the
+shared `Modal.BaseModal`'s already-existing `closeButtonTestId` prop from
+`DuplicateResolutionDialog.jsx` exactly as this section specified — prop-only, no new DOM
+node, no new hook, no removed line (EliteaAI/EliteaUI@bbb329c4).
 **Do not** substitute `Escape` or a backdrop click — they reach the same `onClose` handler,
 but the case's step 8 literally says "click the X icon", and the digest already records this
 exact fidelity boundary for the sibling upload dialog (ELITEA-1825).
