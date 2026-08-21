@@ -281,3 +281,37 @@ fallback), both of which **404**. The UI deletes via the **query** form
 deleted live with it, all **200**. Fixing `delete_bucket` is a shared-client
 change with many callers (out of scope for a case); reported to the lead as a
 suite-health item.
+
+## Confirmed handles (as of ELITEA-1822 bucket-list scrolling, 2026-08-21)
+
+Left-panel **scrolling** surface — the BUCKETS list's scroll container, plus how
+it responds to the mouse wheel and to arrow keys.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Buckets list scroll container | `artifacts-buckets-scroll-container` | **added this run** — `BucketsPanel.jsx`'s `bucketListOuterContainer` Box, EliteaAI/EliteaUI@3c96bc4b (`automation/testids`, human cherry-pick pending) | attribute-only edit; this is the element with `overflowY: auto` and the one the case means by "the bucket list panel" |
+| "Is this row scrolled into view?" | `ArtifactsPage.is_bucket_row_within_panel(name)` — compares the row's `bounding_box()` with the container's | added this run | **`is_visible()` is the wrong oracle here**: a row clipped by the `overflow: auto` container still has a box and no `visibility: hidden`, so Playwright reports it visible even when it is 30 000 px below the fold |
+
+### Bucket-list scrolling behaviours confirmed live (2026-08-21)
+- **No virtualisation.** All 768 buckets are real DOM rows: container
+  `scrollHeight` 30792 vs `clientHeight` 755 at viewport 1600x900, row height
+  40 px. Any "scroll to the last bucket" step is therefore reachable, just long
+  (six `mouse.wheel(0, 5000)` from the top).
+- **Mouse wheel works in both directions** and needs a preceding
+  `page.mouse.move()` onto the container (the wheel goes to whatever is under
+  the cursor). One `wheel(0, 500)` ≈ 500 px.
+- **Arrow keys DO scroll the panel** — ~38.7 px per `ArrowDown`/`ArrowUp` —
+  after a plain click inside the container, even though the container carries no
+  `tabIndex` and `document.activeElement` stays `BODY`. Chromium keeps the
+  clicked scroll container as the keyboard scroll target. Do **not** conclude
+  "keyboard scrolling is unsupported" from the missing `onKeyDown`/`tabIndex` in
+  the source.
+- **Click into the panel at the LEFT PADDING GUTTER** (`x + 6`, the container
+  has `padding: 1rem` while rows start 16 px in) — a click on a bucket row would
+  select and expand that bucket instead. Verified live: the gutter click leaves
+  the URL unchanged and selects nothing.
+- The initial `scrollTop` is **not always 0**: `SimpleBucketList.jsx` does a
+  one-shot `scrollIntoView` for the URL-selected bucket, and a fresh
+  `/artifacts` load auto-selects one (measured `scrollTop` 16 on arrival). Never
+  assume the list starts pinned to the top — assert the top-alignment you want
+  after scrolling there.
