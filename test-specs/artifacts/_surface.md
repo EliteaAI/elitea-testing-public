@@ -348,7 +348,7 @@ the element whose background the case observes.
   change. Since `/artifacts` auto-selects the first bucket on a param-less load,
   "hover the first bucket in the list" is a trap — always pick rows with
   `data-selected="false"`. (Case ELITEA-1823's Step 4 says "the first bucket";
-  filed as a clarification, `EliteaAI/elitea-testing-public#1624`.)
+  filed as a clarification, `EliteaAI/elitea-testing-public#1623`.)
 - A hovered row also gains a hover-only pin button and its dot-menu container
   flips to `display:flex` (both deliberately out of ELITEA-1823's scope — the
   dot-menu reveal is ELITEA-1820's assertion).

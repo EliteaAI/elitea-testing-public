@@ -160,7 +160,7 @@ None.
   tester (or a test) hovering the literal first row sees *no* background change
   and could file a false "hover highlight broken" bug. Live-measured: selected
   row `aa` stayed `rgba(41, 184, 245, 0.15)` while hovered. Filed as a
-  clarification (see the run's findings) so the TMS case says "the first bucket
+  clarification, `EliteaAI/elitea-testing-public#1623`, so the TMS case says "the first bucket
   that is not the currently selected one".
 
 ## Live-execution evidence (2026-08-21, localhost:5173, project Private/399)
