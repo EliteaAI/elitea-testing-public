@@ -80,8 +80,10 @@
 
 ## Expected Results
 - Page 1: 10 rows, `1 - 10 of 12`, prev disabled, next enabled.
-- Page 2: 2 rows (`file-11.txt`, `file-12.txt`), `11 - 12 of 12`, prev enabled,
-  next disabled.
+- Page 2: 2 rows, `11 - 12 of 12`, prev enabled, next disabled. The two rows
+  are asserted as a PARTITION (disjoint from page 1, union == the 12 seeded
+  names), NOT as the named slice `file-11.txt`/`file-12.txt` — the table's
+  default order is not name-ascending (Phase-2 amendment, step 13).
 - Back on page 1: identical to the initial state (10 rows, same names, counter
   and arrow states restored).
 

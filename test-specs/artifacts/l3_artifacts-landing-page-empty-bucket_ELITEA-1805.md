@@ -99,7 +99,7 @@
 | 7 No file table / rows in main panel | none | step 7 | row count 0 AND column-header count 0 | asserted |
 | 8 Centre empty state: icon + message + Upload files button | all present | step 8 | `artifacts-empty-state` text + empty-state upload button | asserted *(the icon is a non-testid SVG inside the same block — its presence is implied by the block; not separately asserted, see Axis 2)* |
 | 9 Search bar + upload/download/delete icons | present | step 9 | 4 testids | asserted |
-| 10 Footer "Buckets: N Size: X MB" | correct | step 10 | regex + API cross-check | asserted |
+| 10 Footer "Buckets: N Size: X MB" | correct | step 10 | count: footer N == the panel's DISTINCT rendered bucket rows (`get_rendered_bucket_names()`); size: shape only (`Size:\s*\d+(\.\d+)?\s*[KMG]?B`) | asserted *(count against an oracle; size shape-only — no race-free total-size oracle exists)* |
 | 11 Hover bucket name → tooltip Retention Policy / Number of files: 0 | tooltip with correct content | step 11 | hover the main-panel info icon; tooltip content text | asserted *(CLARIFICATION #1617 — content asserted as specified, location corrected to the live one)* |
 
 ### Axis 2 — Analyst additions

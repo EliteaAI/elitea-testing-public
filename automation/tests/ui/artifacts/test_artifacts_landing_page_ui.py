@@ -8,8 +8,10 @@ renders for a given bucket state — same surface, three data preconditions:
   five-column file table with a correctly populated row, the toolbar icon
   set, and single-page pagination (``1 - 1 of 1``, both arrows disabled).
 - **ELITEA-1804** — bucket with 12 files: page-size default, 10 rows on
-  page 1, counter/arrow states across next → last page → prev, and the
-  exact file slice shown on each page.
+  page 1, counter/arrow states across next → last page → prev, and the page
+  PARTITION (page 2 disjoint from page 1, union == the seeded set). The
+  table's default order is NOT name-ascending, so no named slice is claimed
+  — see the step-13 comment.
 - **ELITEA-1805** — empty bucket: the empty state in BOTH panels, the
   absence of the file table AND of the pagination block, and the
   bucket-info tooltip reporting ``Number of files: 0``.
@@ -36,9 +38,11 @@ only**, declared in each AFS's § Fidelity Declaration. Every value asserted
 below (footer stats, table contents, counters, arrow states, tooltip text)
 is produced and rendered by the product from its own listing responses;
 nothing is read off the seeding calls. The footer's bucket count is
-cross-checked against the API's own bucket list rather than a literal,
-because the project's bucket total drifts constantly (known teardown leak
-#636).
+cross-checked against the left panel's own DISTINCT rendered bucket rows
+rather than a literal, because the project's bucket total drifts constantly
+(known teardown leak #636). An API cross-check was tried first and measured
+racy — the buckets listing is eventually consistent (760 rendered vs 762
+returned) — see ``ArtifactsPage.get_rendered_bucket_names()``.
 
 AFS:
     test-specs/artifacts/l2_artifacts-landing-page-bucket-with-files_ELITEA-1803.md
@@ -94,9 +98,10 @@ SINGLE_FILE_NAME = "sample.txt"
 SINGLE_FILE_CONTENT = b"Sample text content for the ELITEA-1803 landing-page test.\n"
 SINGLE_FILE_TYPE_LABEL = "Text"
 
-# Zero-padded on purpose: the file table sorts by name ascending, so padding is
-# what makes "page 1 = 01..10, page 2 = 11..12" deterministic (unpadded names
-# would sort lexicographically and scramble the slices).
+# Zero-padded for fixed-width, readable names only. The file table's default
+# order is NOT name-ascending — confirmed live: the listing arrives in
+# modification order and same-second uploads tie — so no page-to-name mapping
+# may be assumed. Step 13 asserts the sort-independent PARTITION instead.
 PAGINATION_FILE_COUNT = 12
 PAGE_SIZE = 10
 
@@ -234,8 +239,11 @@ class TestArtifactsLandingPageUI:
     @allure.description(
         "Verifies the file table paginates a 12-file bucket correctly: 10 "
         "rows and '1 - 10 of 12' on page 1 with prev disabled and next "
-        "enabled, '11 - 12 of 12' with the last two files and next disabled "
-        "on page 2, and a full restoration of page 1 after clicking prev."
+        "enabled, '11 - 12 of 12' with the remaining 2 rows and next disabled "
+        "on page 2 — asserted as a PARTITION (page 2 disjoint from page 1, "
+        "union == the 12 seeded files), not a named slice, because the "
+        "table's default order is not name-ascending — and a full "
+        "restoration of page 1 after clicking prev."
     )
     def test_landing_page_pagination_more_than_ten_files(
         self, page, artifact_bucket, artifact_api

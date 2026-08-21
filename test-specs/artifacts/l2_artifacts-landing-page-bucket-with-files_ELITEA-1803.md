@@ -27,9 +27,12 @@
 
 ### stable / read-only
 - The left-panel footer's bucket count + total size are read-only observables of
-  the whole project; the test cross-checks the rendered count against the
-  **API's own bucket list** for the same project (system-produced oracle, not a
-  hard-coded number — the project accumulates buckets, see #636).
+  the whole project; the test cross-checks the footer count against the **left
+  panel's own DISTINCT rendered bucket rows** (system-produced oracle, not a
+  hard-coded number — the project accumulates buckets, see #636). *Phase-2
+  amendment: an `ArtifactAPI.list_buckets()` oracle was tried first and proved
+  racy — the buckets listing is eventually consistent (760 rendered vs 762
+  returned). See step 10.*
 
 ## Test Steps
 1. Navigate to `/artifacts`, wait for page load
@@ -110,7 +113,7 @@
 | 7 File table with 5 columns | all five present | step 7 | 5 column-header testids + exact labels | asserted |
 | 8 Row: checkbox, name, type, size, timestamp, actions icon | all present with correct shapes | step 8 | row text + checkbox + actions testids | asserted *(formats, not the case's literal PNG values — different file)* |
 | 9 Search bar + upload/download/delete icons top-right | all present | step 9 | 4 testids visible | asserted |
-| 10 Footer "Buckets: N Size: X MB" reflects actual values | correct count + size | step 10 | regex + API cross-check | asserted |
+| 10 Footer "Buckets: N Size: X MB" reflects actual values | correct count + size | step 10 | count: footer N == the panel's DISTINCT rendered bucket rows (`get_rendered_bucket_names()`); size: shape only (`Size:\s*\d+(\.\d+)?\s*[KMG]?B`) | asserted *(count against an oracle; size shape-only — no race-free total-size oracle exists)* |
 | 11 "Rows per page" defaults to 10 | default 10 | step 11 | combobox text == `10` | asserted |
 | 12 Pagination shows correct range/total | `1 - 1 of 1` | step 12 | page-info text | asserted |
 | 13 Prev/next arrows present | both present | step 13 | both testids visible | asserted |

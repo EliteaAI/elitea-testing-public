@@ -83,3 +83,4 @@
 - [MUI Portal dialog + shared testid reads wrong node](mui_portal_dialog_shared_testid_first_reads_wrong_node.md) — `.first` on a testid shared with an always-mounted panel behind a Portal dialog reads the background node
 - [Chat-canvas Discard modal testid threading](chat_canvas_discard_modal_testid_threading_pattern.md) — BaseEditor/EditorHeader already support it; only PipelineEditor.jsx supplies it so far
 - [Dev server HMR can hard-stop, not just lag](dev_server_hmr_can_hard_stop_not_just_lag.md) — curl the served source before blaming your JSX; restart if stale
+- [Phase-2 amendment sweep covers code + digest](phase2_amendment_sweep_must_cover_code_and_digest.md) — grep the disproven claim across the whole diff

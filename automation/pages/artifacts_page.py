@@ -754,7 +754,11 @@ class ArtifactsPage(BasePage):
         "<Typography> nodes inside this Box, so text_content() has NO space "
         "between them ('Buckets:757') — match with r'Buckets:\\s*(\\d+)'. "
         "The number is not stable across runs (leaked autotest buckets, "
-        "#636) — cross-check it against ArtifactAPI.list_buckets().",
+        "#636) — cross-check it against "
+        ":meth:`ArtifactsPage.get_rendered_bucket_names` (the panel's own "
+        "DISTINCT rendered rows). An ArtifactAPI.list_buckets() cross-check "
+        "was tried first and measured racy: the buckets listing is "
+        "eventually consistent.",
     )
 
     buckets_footer_size = LocatorDescriptor(
@@ -3562,6 +3566,11 @@ class ArtifactsPage(BasePage):
         consistent — measured 760 rendered against 762 from
         ``GET /artifacts/buckets/default/{project}`` seconds after creating
         buckets.)
+
+        Read-only DOM observation: ``evaluate_all`` here only READS each
+        node's own ``data-testid``; it injects nothing and mutates nothing, so
+        it is not a substitution under the fidelity policy. It is used instead
+        of N per-element round-trips because the panel renders 750+ rows.
 
         Returns:
             De-duplicated bucket names, in render order.
