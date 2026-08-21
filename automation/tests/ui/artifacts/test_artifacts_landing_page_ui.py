@@ -145,8 +145,6 @@ class TestArtifactsLandingPageUI:
         bucket = artifact_bucket["name"]
 
         artifact_api.upload_file(bucket, SINGLE_FILE_NAME, SINGLE_FILE_CONTENT)
-        # The system's own answer for the footer's "Buckets: N" stat.
-        api_bucket_count = len(artifact_api.list_buckets())
 
         with allure.step("Step 1 — Navigate to the Artifacts section"):
             artifacts_page.navigate_to_artifacts()
@@ -205,8 +203,10 @@ class TestArtifactsLandingPageUI:
             footer_count_text = artifacts_page.get_buckets_footer_count_text()
             match = FOOTER_COUNT_PATTERN.search(footer_count_text)
             assert match, f"Footer bucket count not in 'Buckets: N' shape: {footer_count_text!r}"
-            assert int(match.group(1)) == api_bucket_count, (
-                f"Footer shows {match.group(1)} buckets, API lists {api_bucket_count}"
+            rendered_buckets = artifacts_page.get_rendered_bucket_names()
+            assert int(match.group(1)) == len(rendered_buckets), (
+                f"Footer claims {match.group(1)} buckets, the left panel renders "
+                f"{len(rendered_buckets)}"
             )
             footer_size_text = artifacts_page.get_buckets_footer_size_text()
             assert FOOTER_SIZE_PATTERN.search(footer_size_text), (
@@ -249,10 +249,9 @@ class TestArtifactsLandingPageUI:
                 bucket, _pagination_file_name(index), b"x" * (100 * index)
             )
 
-        first_page_names = [_pagination_file_name(i) for i in range(1, PAGE_SIZE + 1)]
-        last_page_names = [
-            _pagination_file_name(i) for i in range(PAGE_SIZE + 1, PAGINATION_FILE_COUNT + 1)
-        ]
+        seeded_names = {
+            _pagination_file_name(i) for i in range(1, PAGINATION_FILE_COUNT + 1)
+        }
 
         with allure.step("Step 1 — Navigate to the Artifacts section"):
             artifacts_page.navigate_to_artifacts()
@@ -279,6 +278,10 @@ class TestArtifactsLandingPageUI:
 
         with allure.step("Step 6 — Exactly 10 rows are shown on the first page"):
             expect(artifacts_page.file_rows()).to_have_count(PAGE_SIZE)
+            first_page_names = set(artifacts_page.get_file_names())
+            assert first_page_names <= seeded_names, (
+                f"Page 1 shows files that were never seeded: {first_page_names - seeded_names}"
+            )
 
         with allure.step("Step 7 — Pagination counter reads '1 - 10 of 12'"):
             assert artifacts_page.get_pagination_info_text() == (
@@ -303,7 +306,21 @@ class TestArtifactsLandingPageUI:
             expect(artifacts_page.pagination_prev_button).to_be_enabled()
 
         with allure.step("Step 13 — The table shows the remaining files, and none of page 1's"):
-            assert sorted(artifacts_page.get_file_names()) == sorted(last_page_names)
+            last_page_names = set(artifacts_page.get_file_names())
+            # The table's default order is NOT name-ascending (confirmed live —
+            # the listing comes back in modification order, and same-second
+            # uploads tie), so the contract asserted here is the PARTITION,
+            # which is what "the next set of files" actually means: page 2 is
+            # disjoint from page 1 and together they are exactly the 12 seeded
+            # files.
+            assert not (last_page_names & first_page_names), (
+                f"Page 2 repeats files from page 1: {last_page_names & first_page_names}"
+            )
+            assert first_page_names | last_page_names == seeded_names, (
+                "Pages 1+2 are not exactly the seeded file set: missing "
+                f"{seeded_names - (first_page_names | last_page_names)}, unexpected "
+                f"{(first_page_names | last_page_names) - seeded_names}"
+            )
 
         with allure.step("Step 14 — Next arrow is disabled: 12 files means this IS the last page"):
             expect(artifacts_page.pagination_next_button).to_be_disabled()
@@ -329,7 +346,9 @@ class TestArtifactsLandingPageUI:
 
         with allure.step("Step 20 — 10 rows are shown again, and they are page 1's files"):
             expect(artifacts_page.file_rows()).to_have_count(PAGE_SIZE)
-            assert sorted(artifacts_page.get_file_names()) == sorted(first_page_names)
+            assert set(artifacts_page.get_file_names()) == first_page_names, (
+                "Returning to page 1 shows a different set of files than it did before"
+            )
 
     @pytest.mark.p2
     @allure.title("ELITEA-1805 — Landing page renders the empty state for a bucket with no files")
@@ -341,12 +360,10 @@ class TestArtifactsLandingPageUI:
         "toolbar icons and footer stats, and the bucket-info tooltip "
         "reporting 'Number of files: 0'."
     )
-    def test_landing_page_empty_bucket(self, page, artifact_bucket, artifact_api):
+    def test_landing_page_empty_bucket(self, page, artifact_bucket):
         page.set_viewport_size({"width": VIEWPORT_WIDTH, "height": VIEWPORT_HEIGHT})
         artifacts_page = ArtifactsPage(page)
         bucket = artifact_bucket["name"]  # fresh fixture bucket — empty by construction
-
-        api_bucket_count = len(artifact_api.list_buckets())
 
         with allure.step("Step 1 — Navigate to the Artifacts section"):
             artifacts_page.navigate_to_artifacts()
@@ -399,8 +416,10 @@ class TestArtifactsLandingPageUI:
             footer_count_text = artifacts_page.get_buckets_footer_count_text()
             match = FOOTER_COUNT_PATTERN.search(footer_count_text)
             assert match, f"Footer bucket count not in 'Buckets: N' shape: {footer_count_text!r}"
-            assert int(match.group(1)) == api_bucket_count, (
-                f"Footer shows {match.group(1)} buckets, API lists {api_bucket_count}"
+            rendered_buckets = artifacts_page.get_rendered_bucket_names()
+            assert int(match.group(1)) == len(rendered_buckets), (
+                f"Footer claims {match.group(1)} buckets, the left panel renders "
+                f"{len(rendered_buckets)}"
             )
             footer_size_text = artifacts_page.get_buckets_footer_size_text()
             assert FOOTER_SIZE_PATTERN.search(footer_size_text), (

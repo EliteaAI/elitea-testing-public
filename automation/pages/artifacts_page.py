@@ -3546,6 +3546,37 @@ class ArtifactsPage(BasePage):
         self.bucket_info_tooltip_content.wait_for(state="visible", timeout=timeout)
         return (self.bucket_info_tooltip_content.text_content() or "").strip()
 
+    def get_rendered_bucket_names(self) -> list[str]:
+        """Return the distinct bucket names currently rendered in the left panel.
+
+        Reads each row's own ``artifacts-bucket-row-{name}`` testid and
+        de-duplicates: a PINNED bucket is rendered twice by
+        ``BucketsListContent.jsx`` (once in the pinned list, once in the full
+        list), so a raw row count would over-count it.
+
+        This is the oracle ELITEA-1803/1805 use for the left-panel footer's
+        "Buckets: N" stat — ``BucketsPanel.jsx`` feeds the footer
+        ``bucketCount={buckets?.length}``, the same array the list renders, so
+        footer and list must agree within one snapshot. (An API cross-check
+        was tried first and proved racy: the buckets listing is eventually
+        consistent — measured 760 rendered against 762 from
+        ``GET /artifacts/buckets/default/{project}`` seconds after creating
+        buckets.)
+
+        Returns:
+            De-duplicated bucket names, in render order.
+        """
+        prefix = "artifacts-bucket-row-"
+        names: list[str] = []
+        for testid in self.page.locator(self.BUCKET_ROW_ANY_SELECTOR).evaluate_all(
+            "nodes => nodes.map(n => n.getAttribute('data-testid'))"
+        ):
+            if testid and testid.startswith(prefix):
+                name = testid[len(prefix):]
+                if name not in names:
+                    names.append(name)
+        return names
+
     def file_rows(self) -> Locator:
         """Return a locator for every rendered file/folder row.
 

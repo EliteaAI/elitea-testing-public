@@ -138,8 +138,10 @@ pending).
 - Single-file bucket: `1 - 1 of 1`, **both** arrows present and disabled.
 - 12-file bucket: page 1 = 10 rows / `1 - 10 of 12` / prev disabled / next
   enabled; page 2 = 2 rows / `11 - 12 of 12` / prev enabled / next disabled.
-  Default sort is name-ascending, so zero-pad seeded filenames
-  (`file-01 … file-12`) if the page slices are asserted by name.
+  **The default order is NOT name-ascending** — after seeding `file-01 …
+  file-12` via `ArtifactAPI.upload_file`, page 2 came back as `file-02.txt`,
+  `file-03.txt` (modification-order listing, same-second uploads tie). Assert
+  the page PARTITION (disjoint pages, union == seeded set), never a named slice.
 - Row text for a `.txt` file: `sample.txtText120 B21-08-2026, 05:43 PM`
   (Type column renders `Text`; timestamp format `DD-MM-YYYY, HH:MM AM/PM`).
 
@@ -162,3 +164,13 @@ decision (dedicated empty project / project-lifecycle API / manual-only) — see
   touching anything under `src/[fsd]/`**, and verify with that curl before
   concluding "the testid does not render".
 - The project's `Private`/399 bucket leak (`#636`) is now at **759** buckets.
+
+### Footer "Buckets: N" — use the rendered list as the oracle, not the API
+`BucketsPanel.jsx` feeds `BucketFooter` `bucketCount={buckets?.length}` — the
+same array the list renders. An API cross-check
+(`GET /artifacts/buckets/default/{project}`) is **racy**: the listing is
+eventually consistent, measured live at 760 rendered vs 762 from the API
+seconds after creating buckets. Compare the footer against the panel's own
+DISTINCT rendered rows instead (`ArtifactsPage.get_rendered_bucket_names()`) —
+distinct, because a PINNED bucket is rendered twice (`BucketsListContent.jsx`
+renders the pinned list AND the full list).

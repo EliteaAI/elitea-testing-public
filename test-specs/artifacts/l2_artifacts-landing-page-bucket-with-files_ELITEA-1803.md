@@ -63,8 +63,18 @@
      `artifacts-download-files-button`, `artifacts-delete-files-button` all visible
 10. Verify the left-panel footer
     - **Verify**: `artifacts-buckets-footer-count` text matches `Buckets:\s*(\d+)`
-      and the captured number equals the API's bucket count for the project;
-      `artifacts-buckets-footer-size` matches `Size:\s*[\d.]+\s*[KMG]?B`
+      and the captured number equals the number of DISTINCT bucket rows the
+      left panel actually renders; `artifacts-buckets-footer-size` matches
+      `Size:\s*[\d.]+\s*[KMG]?B`
+    - **Implementation amendment (Phase 2):** the oracle was originally the
+      API's own bucket list. That proved **racy** — the buckets listing is
+      eventually consistent, measured live as 760 rendered vs 762 returned by
+      `GET /artifacts/buckets/default/399` seconds after creating buckets. The
+      footer is fed `bucketCount={buckets?.length}` from the SAME array the
+      list renders (`BucketsPanel.jsx`), so footer-vs-list is the race-free
+      form of the same check, still entirely product-produced. Distinct names
+      are counted because a PINNED bucket renders twice
+      (`BucketsListContent.jsx` renders the pinned list AND the full list).
 11. Verify the rows-per-page control
     - **Verify**: `artifacts-pagination-page-size-select-combobox` reads `10`
 12. Verify the pagination counter
@@ -108,10 +118,11 @@
 | 15 Next disabled when all files fit one page | disabled | step 15 | `is_disabled()` True | asserted |
 
 ### Axis 2 — Analyst additions
-- Cross-check the footer bucket count against the **API's** bucket list rather
-  than a hard-coded number — the case says "reflecting the actual number of
-  buckets"; a literal would be false within minutes (the project accumulates
-  leaked `autotest-*` buckets, #636).
+- Cross-check the footer bucket count against the **left panel's own rendered
+  bucket rows** rather than a hard-coded number — the case says "reflecting the
+  actual number of buckets"; a literal would be false within minutes (the
+  project accumulates leaked `autotest-*` buckets, #636). See step 10's
+  implementation amendment for why the API is NOT the oracle here.
 - Assert the bucket's own empty-tree label is ABSENT (step 5) — the positive
   case's mirror of ELITEA-1805's assertion; cheap, and it catches the
   render-both-states regression.

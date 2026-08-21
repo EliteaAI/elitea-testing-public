@@ -49,9 +49,19 @@
    - **Verify**: `artifacts-file-search-input`, `artifacts-upload-files-button`,
      `artifacts-download-files-button`, `artifacts-delete-files-button` all visible
 10. Verify the left-panel footer
-    - **Verify**: `artifacts-buckets-footer-count` matches `Buckets:\s*(\d+)`
-      with the number equal to the API's bucket count for the project;
-      `artifacts-buckets-footer-size` matches `Size:\s*[\d.]+\s*[KMG]?B`
+    - **Verify**: `artifacts-buckets-footer-count` text matches `Buckets:\s*(\d+)`
+      and the captured number equals the number of DISTINCT bucket rows the
+      left panel actually renders; `artifacts-buckets-footer-size` matches
+      `Size:\s*[\d.]+\s*[KMG]?B`
+    - **Implementation amendment (Phase 2):** the oracle was originally the
+      API's own bucket list. That proved **racy** — the buckets listing is
+      eventually consistent, measured live as 760 rendered vs 762 returned by
+      `GET /artifacts/buckets/default/399` seconds after creating buckets. The
+      footer is fed `bucketCount={buckets?.length}` from the SAME array the
+      list renders (`BucketsPanel.jsx`), so footer-vs-list is the race-free
+      form of the same check, still entirely product-produced. Distinct names
+      are counted because a PINNED bucket renders twice
+      (`BucketsListContent.jsx` renders the pinned list AND the full list).
 11. Hover the main-panel **info (i) icon** (`artifacts-bucket-info-button`)
     - **Verify**: `artifacts-bucket-info-tooltip-content` appears containing
       `Retention Policy:` (with a non-empty value) and `Number of files:` `0`
@@ -99,8 +109,8 @@
 - Assert the **pagination footer is absent** (`artifacts-pagination-page-info`
   count 0) — live-confirmed `GridTablePagination` returns `null` at
   `totalRows === 0`; a regression that renders `0 - 0 of 0` would be a real bug.
-- Cross-check the footer bucket count against the API (same reasoning as
-  ELITEA-1803).
+- Cross-check the footer bucket count against the left panel's own rendered
+  bucket rows (same reasoning, and same Phase-2 amendment, as ELITEA-1803).
 - **NOT asserted: console errors.** The AFS's original Axis-2 addition ("assert no console errors") was dropped during implementation (Phase-2 amendment): `.agents/testing.md` § Unconfirmed records a **confirmed recurring** environmental pattern on this project where `assert not console_messages` intermittently fails on an unrelated background resource returning 500 (3+ occurrences) or 404 (3 occurrences, one repeat on the same spec). Adding that assertion here would import a known flake class into three rendering tests that otherwise have no timing surface. Recorded rather than silently skipped.
 - NOT asserted: the empty-state SVG icon itself has no testid and no accessible
   name (`ArtifactTableNoFiles.jsx` renders it as an `sx`-styled `Box`
