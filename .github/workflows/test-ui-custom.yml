@@ -1155,9 +1155,7 @@ jobs:
               print("<details>")
               print(f"<summary>Show {len(in_automation_not_tms)} unlinked tests</summary>\n")
               for test_id in sorted(in_automation_not_tms):
-                  # Shorten for display
-                  short = test_id.replace("tests.ui.", "").replace("tests.api.", "api/")
-                  print(f"- `{short}`")
+                  print(f"- `{test_id}`")
               print("\n</details>\n")
 
           # Orphan TMS refs (full list)
@@ -1169,8 +1167,7 @@ jobs:
               for test_id in sorted(in_tms_not_automation):
                   case = tms_case_map.get(test_id, {})
                   case_id = case.get("id", "?")
-                  short = test_id.replace("tests.ui.", "").replace("tests.api.", "api/")
-                  print(f"- `{short}` ({case_id})")
+                  print(f"- `{test_id}` ({case_id})")
               print("\n</details>\n")
 
           print("---")
