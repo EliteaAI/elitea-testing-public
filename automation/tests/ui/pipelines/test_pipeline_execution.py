@@ -32,7 +32,7 @@ from pages.pipeline_detail_page import PipelineDetailPage
 from pages.pipelines_list_page import PipelinesListPage
 import allure
 
-pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.new]
+pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.new_verified]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)
