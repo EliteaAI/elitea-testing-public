@@ -420,7 +420,6 @@ class TestBlockedToolkitLiveReload:
     )
     @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5199", name="Issue #5199")
     @pytest.mark.p0
-    @pytest.mark.blocked  # DEV environment persistent state - enhanced cleanup still insufficient
     def test_blocked_toolkit_live_reload_case_insensitive(
         self,
         page: Page,
@@ -526,7 +525,6 @@ class TestBlockedToolLiveReload:
     )
     @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5199", name="Issue #5199")
     @pytest.mark.p0
-    @pytest.mark.blocked
     def test_blocked_tool_live_reload_case_insensitive(
         self,
         page: Page,
@@ -662,7 +660,6 @@ class TestSensitiveToolLiveReload:
     )
     @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5199", name="Issue #5199")
     @pytest.mark.p0
-    @pytest.mark.blocked  # DEV environment persistent state - enhanced cleanup still insufficient
     def test_sensitive_tool_live_reload_case_insensitive(
         self,
         page: Page,
