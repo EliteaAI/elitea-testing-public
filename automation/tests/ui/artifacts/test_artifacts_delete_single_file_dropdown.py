@@ -124,7 +124,7 @@ class TestArtifactDeleteSingleFileDropdown:
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
         "automated-full-regression-ui/artifacts/"
-        "ELITEA-1844_delete-flow-delete-single-file-via-actions-dropdown.md",
+        "ELITEA-1844_delete-flow-single-file-actions-dropdown.md",
         "onetest-ai Test Case link",
     )
     def test_delete_single_file_via_dropdown(self, page, artifact_api, artifact_bucket):
@@ -315,8 +315,7 @@ class TestArtifactDeleteSingleFileDropdownCancel:
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
         "automated-full-regression-ui/artifacts/"
-        "ELITEA-1845_delete-flow-delete-single-file-via-actions-dropdown-cancel"
-        "-keeps-file-intact.md",
+        "ELITEA-1845_delete-flow-single-file-cancel-keeps-file.md",
         "onetest-ai Test Case link",
     )
     def test_cancel_delete_keeps_file_intact(self, page, artifact_api, artifact_bucket):
