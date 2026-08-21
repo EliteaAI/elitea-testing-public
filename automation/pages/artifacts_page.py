@@ -16,6 +16,7 @@ Actions:
 """
 
 import logging
+import time
 import urllib.parse
 from playwright.sync_api import Download, Locator, Page, expect
 
@@ -167,6 +168,40 @@ class ArtifactsPage(BasePage):
         "SAME component ELITEA-1847 already testid'd for the file/folder "
         "bulk-delete flow, reused here from the bucket dot-menu entry point.",
     )
+
+    bucket_menu_pin_menuitem = LocatorDescriptor(
+        testid="bucket-menu-pin-menuitem",
+        description="Pin/unpin item inside a bucket row's dot-menu dropdown "
+        "(ELITEA-1820/1821) — testid added live to BucketItem.jsx's menuItems "
+        "array (a `key: 'bucket-menu-pin'` field, the same DotMenu mechanism as "
+        "the sibling 'bucket-menu-upload-files'/'bucket-menu-delete' keys). ONE "
+        "testid serves BOTH states on purpose: the item is a single live "
+        "element whose LABEL flips (`isPinned ? 'Unpin from top' : 'Pin to "
+        "top'`), and .agents/testing.md § Locator policy (PR #581 ruling) "
+        "requires a testid to be stable identity, never state — a "
+        "bucket-menu-pin / bucket-menu-unpin pair would be the outlawed shape. "
+        "Read the state from the dropdown's label text "
+        "(:meth:`get_bucket_menu_items_text`).",
+    )
+
+    # Dynamic testid template — the pin icon rendered next to a PINNED
+    # bucket's name (ELITEA-1820/1821). Added live to BucketItem.jsx's
+    # `isPinned && (...)` wrapper Box (no new DOM node — a pure attribute on
+    # the Box that already wrapped that button).
+    #
+    # The row renders a SECOND, hover-only pin button under
+    # `!isPinned && isHovering`; it is deliberately left UNTAGGED (canon
+    # ruling #511 — testids go only on elements a test's executed path calls),
+    # which is exactly what keeps ELITEA-1821's absence assertion honest:
+    # hovering an unpinned row can never produce a false positive here.
+    BUCKET_PIN_INDICATOR = '[data-testid="artifacts-bucket-pin-indicator-{}"]'
+
+    # Prefix (any-bucket) variant of BUCKET_PIN_INDICATOR — the project-wide
+    # "is anything pinned?" probe. Used both as ELITEA-1820/1821's
+    # precondition check (the case's "alphanumeric order" claim only holds
+    # while nothing is pinned) and as ELITEA-1821's post-unpin assertion that
+    # no OTHER bucket was pinned by mistake.
+    BUCKET_PIN_INDICATOR_ANY_SELECTOR = '[data-testid^="artifacts-bucket-pin-indicator-"]'
 
     # Dynamic testid template — left-panel tree node for a file/folder, keyed
     # by its full relative path (e.g. 'test.txt', or 'a1/sample.txt' when
@@ -371,6 +406,12 @@ class ArtifactsPage(BasePage):
     # ArtifactTable.jsx), even for files nested in a subfolder.
     ARTIFACT_ACTIONS_MENU_BUTTON = '[data-testid="artifact-actions-{}-menu-button"]'
 
+    # Prefix+suffix (any-row) variant of ARTIFACT_ACTIONS_MENU_BUTTON — every
+    # rendered file-row actions trigger, regardless of row id (ELITEA-1803).
+    ARTIFACT_ACTIONS_MENU_BUTTON_ANY_SELECTOR = (
+        '[data-testid^="artifact-actions-"][data-testid$="-menu-button"]'
+    )
+
     download_menu_item = LocatorDescriptor(
         testid="artifacts-file-download-menuitem",
         description="'Download' item inside a file row's dot-menu dropdown",
@@ -402,6 +443,14 @@ class ArtifactsPage(BasePage):
     # at ArtifactTable.jsx's call site, per the AFS's shared-component
     # testid ruling).
     ARTIFACT_FILE_CHECKBOX = '[data-testid="artifacts-file-checkbox-{}"]'
+
+    # Prefix (any-row) variant of ARTIFACT_FILE_CHECKBOX — every rendered
+    # file-row selection checkbox, regardless of row id. Same
+    # `[data-testid^="…"]` shape already established by
+    # :attr:`BUCKET_ROW_ANY_SELECTOR`. Used by ELITEA-1803 to assert that a
+    # file row carries its checkbox without needing to know the row's
+    # server-assigned id.
+    ARTIFACT_FILE_CHECKBOX_ANY_SELECTOR = '[data-testid^="artifacts-file-checkbox-"]'
 
     select_all_checkbox = LocatorDescriptor(
         testid="artifacts-select-all-checkbox",
@@ -703,6 +752,160 @@ class ArtifactsPage(BasePage):
     # direct parent). Used to target ONE specific known line for editing
     # (ELITEA-1858) rather than blind Control+Home-based nav.
     CM_LINE = ".cm-line"
+
+    # ------------------------------------------------------------------
+    # Landing-page chrome — left-panel storage selector + footer
+    # (ELITEA-1803/1804/1805)
+    # ------------------------------------------------------------------
+
+    buckets_panel_toggle_button = LocatorDescriptor(
+        testid="artifacts-buckets-panel-toggle-button",
+        description="The BUCKETS left panel's collapse/expand control in the "
+        "panel header (BucketHeader.jsx). ONE element whose icon flips "
+        "between '<<' (expanded) and '>>' (collapsed); the icons are "
+        "untagged SVGs, so the state rides a `data-collapsed=\"true|false\"` "
+        "attribute on this same element per .agents/testing.md § Locator "
+        "policy (PR #581 ruling). Collapsing UNMOUNTS the heading, the "
+        "storage selector and the footer (all gated on `!collapsed`) while "
+        "the bucket ROWS merely become invisible "
+        "(`display: collapsed ? 'none' : 'flex'`). Testid added for "
+        "ELITEA-1807 (EliteaAI/EliteaUI@9062dff0).",
+    )
+
+    buckets_heading = LocatorDescriptor(
+        testid="artifacts-buckets-heading",
+        description="'Buckets' heading in the left-panel header. The DOM text "
+        "is 'Buckets' — case texts writing 'BUCKETS' describe the CSS "
+        "text-transform, not the content. (The testid itself is pre-existing "
+        "and already used inline by :meth:`wait_for_page_load`; this field is "
+        "the class-level handle ELITEA-1803 asserts the TEXT through.)",
+    )
+
+    storage_selector = LocatorDescriptor(
+        testid="artifacts-storage-selector",
+        description="Storage-provider row above the bucket list "
+        "(BucketStorageSelector.jsx) — reads the active storage's name, "
+        "'Elitea S3 storage' on this environment. New testid added for "
+        "ELITEA-1803 (EliteaAI/EliteaUI@6449a5c4).",
+    )
+
+    storage_selector_arrow = LocatorDescriptor(
+        testid="artifacts-storage-selector-arrow",
+        description="Dropdown (chevron) icon inside the storage-provider row "
+        "— a DIFFERENT node from :attr:`storage_selector` (the row's own "
+        "container). ELITEA-1803 step 3 asserts both.",
+    )
+
+    buckets_footer_count = LocatorDescriptor(
+        testid="artifacts-buckets-footer-count",
+        description="'Buckets: N' stat in the left-panel footer "
+        "(BucketFooter.jsx). NOTE: label and value are two sibling "
+        "<Typography> nodes inside this Box, so text_content() has NO space "
+        "between them ('Buckets:757') — match with r'Buckets:\\s*(\\d+)'. "
+        "The number is not stable across runs (leaked autotest buckets, "
+        "#636) — cross-check it against "
+        ":meth:`ArtifactsPage.get_rendered_bucket_names` (the panel's own "
+        "DISTINCT rendered rows). An ArtifactAPI.list_buckets() cross-check "
+        "was tried first and measured racy: the buckets listing is "
+        "eventually consistent.",
+    )
+
+    buckets_scroll_container = LocatorDescriptor(
+        testid="artifacts-buckets-scroll-container",
+        description="The BUCKETS left panel's SCROLLABLE Box "
+        "(BucketsPanel.jsx's `bucketListOuterContainer`, `overflowY: auto`) — "
+        "the element ELITEA-1822 calls 'the bucket list panel'. Hover it "
+        "before dispatching a wheel event (the wheel goes to whatever is "
+        "under the cursor) and click its LEFT PADDING GUTTER, never a row, "
+        "to give the keyboard a scroll target without selecting a bucket. "
+        "Added for ELITEA-1822 on EliteaAI/EliteaUI@3c96bc4b.",
+    )
+
+    buckets_footer_size = LocatorDescriptor(
+        testid="artifacts-buckets-footer-size",
+        description="'Size: X MB' stat in the left-panel footer "
+        "(BucketFooter.jsx) — same two-Typography shape as "
+        ":attr:`buckets_footer_count`.",
+    )
+
+    # ------------------------------------------------------------------
+    # Main-panel bucket-info tooltip (ELITEA-1805)
+    # ------------------------------------------------------------------
+
+    bucket_info_button = LocatorDescriptor(
+        testid="artifacts-bucket-info-button",
+        description="Info (i) icon next to the bucket name in the MAIN-panel "
+        "toolbar (BucketInfoTooltip.jsx via ArtifactTableToolbar.jsx). This — "
+        "not the left-panel bucket name — is what reveals the Retention "
+        "Policy / Number of files tooltip; the left-panel name only carries a "
+        "conditional overflow tooltip repeating the name (case-text "
+        "CLARIFICATION #1617). Opens on HOVER, not click (same activation as "
+        "the toolkit-form field tooltip, #669).",
+    )
+
+    bucket_info_tooltip_content = LocatorDescriptor(
+        testid="artifacts-bucket-info-tooltip-content",
+        description="Content box of the bucket-info tooltip — renders "
+        "'Retention Policy: <value>' and 'Number of files: <n>'. Labels and "
+        "values are sibling <Typography> nodes, so text_content() reads "
+        "'Retention Policy:1 YearNumber of files:0' (no separating "
+        "whitespace).",
+    )
+
+    # ------------------------------------------------------------------
+    # File-table column headers + pagination (ELITEA-1803/1804/1805)
+    # ------------------------------------------------------------------
+
+    # Dynamic testid template — one per column, keyed by the column's FIELD
+    # name (not its visible label): name / fileType / size / modified /
+    # actions. 'modified' is the "Last update" column — the field key is NOT
+    # 'lastUpdate'. Wired via the shared GridTableHeader's pre-existing
+    # `columnTestIdPrefix` prop (ArtifactTable.jsx), so no feature-scoped
+    # testid is hardcoded in the shared component.
+    FILE_TABLE_COLUMN_HEADER = '[data-testid="artifacts-file-table-column-header-{}"]'
+
+    # Prefix (any-column) variant of FILE_TABLE_COLUMN_HEADER — matches every
+    # rendered column header. Used to prove the file TABLE itself is absent
+    # for an empty bucket (ELITEA-1805 step 7), which "no file rows" alone
+    # does not.
+    FILE_TABLE_COLUMN_HEADER_ANY = '[data-testid^="artifacts-file-table-column-header-"]'
+
+    # Dynamic testid template — the "No files in this bucket" label rendered
+    # in the LEFT-panel tree under an expanded, empty bucket
+    # (BucketContent.jsx). Bucket-parameterized by necessity: BucketContent is
+    # a SIBLING of the bucket row (BucketItem), inside an untagged wrapper, so
+    # it cannot be scoped under artifacts-bucket-row-{name}; and several
+    # buckets can be expanded at once (/artifacts auto-selects and expands one
+    # on landing), so a page-wide count is never 0.
+    BUCKET_TREE_EMPTY_LABEL = '[data-testid="artifacts-bucket-tree-empty-label-{}"]'
+
+    pagination_page_info = LocatorDescriptor(
+        testid="artifacts-pagination-page-info",
+        description="'{start} - {end} of {total}' counter at the bottom of the "
+        "file table (shared GridTablePagination's pageInfoTestId prop, wired "
+        "from ArtifactTable.jsx). ABSENT entirely when the bucket has no files "
+        "— GridTablePagination returns null at totalRows === 0.",
+    )
+
+    pagination_prev_button = LocatorDescriptor(
+        testid="artifacts-pagination-prev-button",
+        description="Previous-page arrow. Carries a real `disabled` attribute "
+        "on the first page — assert with is_disabled(), never by CSS opacity.",
+    )
+
+    pagination_next_button = LocatorDescriptor(
+        testid="artifacts-pagination-next-button",
+        description="Next-page arrow. Carries a real `disabled` attribute on "
+        "the last page (and on a single-page bucket).",
+    )
+
+    pagination_page_size_combobox = LocatorDescriptor(
+        testid="artifacts-pagination-page-size-select-combobox",
+        description="'Rows per page' select's clickable combobox — the shared "
+        "SingleSelect derives this '-combobox' suffix from the root "
+        "'artifacts-pagination-page-size-select' testid (same shape as "
+        ":attr:`bucket_retention_measure_combobox`). Defaults to '10'.",
+    )
 
     # ------------------------------------------------------------------
     # Init
@@ -3267,3 +3470,570 @@ class ArtifactsPage(BasePage):
         self.page.keyboard.press("End")
         self.page.keyboard.type(append_text)
         logger.info("Appended %r to the CodeMirror line containing %r", append_text, match_text)
+
+    # ------------------------------------------------------------------
+    # Landing-page chrome / pagination readers (ELITEA-1803/1804/1805)
+    # ------------------------------------------------------------------
+
+    def get_buckets_footer_count_text(self, timeout: int = 10000) -> str:
+        """Return the left-panel footer's 'Buckets: N' text.
+
+        Args:
+            timeout: How long to wait for the footer stat.
+
+        Returns:
+            Raw text content, e.g. ``"Buckets:757"`` (no separating space —
+            label and value are sibling Typography nodes).
+        """
+        self.buckets_footer_count.wait_for(state="visible", timeout=timeout)
+        return (self.buckets_footer_count.text_content() or "").strip()
+
+    def get_buckets_footer_size_text(self, timeout: int = 10000) -> str:
+        """Return the left-panel footer's 'Size: X' text.
+
+        Args:
+            timeout: How long to wait for the footer stat.
+
+        Returns:
+            Raw text content, e.g. ``"Size:254.8 MB"``.
+        """
+        self.buckets_footer_size.wait_for(state="visible", timeout=timeout)
+        return (self.buckets_footer_size.text_content() or "").strip()
+
+    def column_header(self, field: str) -> Locator:
+        """Return the file-table column header for *field*.
+
+        Args:
+            field: Column FIELD name — ``name``, ``fileType``, ``size``,
+                ``modified`` (the "Last update" column) or ``actions``.
+
+        Returns:
+            Locator for that column's header cell.
+        """
+        return self.page.locator(self.FILE_TABLE_COLUMN_HEADER.format(field))
+
+    def get_column_header_count(self) -> int:
+        """Return how many file-table column headers are rendered.
+
+        Zero means the file TABLE itself is not rendered (empty bucket), which
+        is a stronger statement than "no file rows".
+
+        Returns:
+            Number of rendered column headers.
+        """
+        return self.page.locator(self.FILE_TABLE_COLUMN_HEADER_ANY).count()
+
+    def bucket_tree_empty_label(self, bucket_name: str) -> Locator:
+        """Return the left-tree "No files in this bucket" label for *bucket_name*.
+
+        Args:
+            bucket_name: Name of the bucket whose subtree is inspected.
+
+        Returns:
+            Locator for that bucket's own empty-tree label.
+        """
+        return self.page.locator(self.BUCKET_TREE_EMPTY_LABEL.format(bucket_name))
+
+    def get_pagination_info_text(self, timeout: int = 10000) -> str:
+        """Return the pagination counter text (e.g. ``"1 - 10 of 12"``).
+
+        Args:
+            timeout: How long to wait for the counter.
+
+        Returns:
+            Trimmed counter text.
+        """
+        self.pagination_page_info.wait_for(state="visible", timeout=timeout)
+        return (self.pagination_page_info.text_content() or "").strip()
+
+    def get_rows_per_page_value(self, timeout: int = 10000) -> str:
+        """Return the current 'Rows per page' value (e.g. ``"10"``).
+
+        Args:
+            timeout: How long to wait for the combobox.
+
+        Returns:
+            Trimmed combobox text.
+        """
+        self.pagination_page_size_combobox.wait_for(state="visible", timeout=timeout)
+        return (self.pagination_page_size_combobox.text_content() or "").strip()
+
+    def any_bucket_row(self) -> Locator:
+        """Return the first currently-rendered bucket row (any bucket).
+
+        Uses the shared testid PREFIX (:attr:`BUCKET_ROW_ANY_SELECTOR`) — the
+        caller cares only that the left panel is rendering a bucket list, not
+        which bucket. Visibility, not count, is the meaningful check for a
+        collapsed panel: the rows stay in the DOM behind ``display: none``
+        (ELITEA-1807).
+
+        Returns:
+            Locator for the first matching bucket row.
+        """
+        return self.page.locator(self.BUCKET_ROW_ANY_SELECTOR).first
+
+    def is_buckets_panel_collapsed(self) -> bool:
+        """Return whether the BUCKETS left panel is currently collapsed.
+
+        Reads the ``data-collapsed`` state attribute off
+        :attr:`buckets_panel_toggle_button`, which the product renders from
+        the same ``collapsed`` value that chooses the ``<<``/``>>`` icon.
+
+        Returns:
+            ``True`` when the panel is collapsed.
+        """
+        return self.buckets_panel_toggle_button.get_attribute("data-collapsed") == "true"
+
+    @action("Toggle BUCKETS panel")
+    def toggle_buckets_panel(self, timeout: int = 10000) -> bool:
+        """Click the BUCKETS panel collapse/expand control and wait for the flip.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The panel's collapsed state AFTER the toggle.
+        """
+        toggle = self.buckets_panel_toggle_button
+        toggle.wait_for(state="visible", timeout=timeout)
+        expected = "false" if self.is_buckets_panel_collapsed() else "true"
+        toggle.click()
+        # Condition wait on the product's own state attribute — never a sleep.
+        expect(toggle).to_have_attribute("data-collapsed", expected, timeout=timeout)
+        logger.info("Toggled BUCKETS panel: collapsed=%s", expected)
+        return expected == "true"
+
+    @action("Go to next file page")
+    def click_pagination_next(self, timeout: int = 10000) -> None:
+        """Click the next-page arrow and wait for the table to re-render.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.pagination_next_button.wait_for(state="visible", timeout=timeout)
+        self.pagination_next_button.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Clicked pagination next")
+
+    @action("Go to previous file page")
+    def click_pagination_prev(self, timeout: int = 10000) -> None:
+        """Click the previous-page arrow and wait for the table to re-render.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.pagination_prev_button.wait_for(state="visible", timeout=timeout)
+        self.pagination_prev_button.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Clicked pagination prev")
+
+    @action("Hover bucket info icon")
+    def hover_bucket_info_icon(self, timeout: int = 10000) -> None:
+        """Hover the main-panel bucket-info (i) icon to reveal its tooltip.
+
+        The tooltip opens on HOVER, not click (CLARIFICATION #1617 / #669).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.bucket_info_button.wait_for(state="visible", timeout=timeout)
+        self.bucket_info_button.hover()
+        self.bucket_info_tooltip_content.wait_for(state="visible", timeout=timeout)
+        logger.info("Bucket-info tooltip opened")
+
+    def get_bucket_info_tooltip_text(self, timeout: int = 10000) -> str:
+        """Return the bucket-info tooltip's text content.
+
+        Args:
+            timeout: How long to wait for the tooltip content.
+
+        Returns:
+            e.g. ``"Retention Policy:1 YearNumber of files:0"`` — labels and
+            values are sibling Typography nodes, so there is no separating
+            whitespace.
+        """
+        self.bucket_info_tooltip_content.wait_for(state="visible", timeout=timeout)
+        return (self.bucket_info_tooltip_content.text_content() or "").strip()
+
+    # ------------------------------------------------------------------
+    # Bucket pin / unpin flow (ELITEA-1820, ELITEA-1821)
+    # ------------------------------------------------------------------
+
+    def hover_bucket_row(self, bucket_name: str, timeout: int = 10000) -> None:
+        """Hover a bucket row so its 3-dot actions trigger becomes visible.
+
+        Split out of :meth:`open_bucket_menu` (which hovers and clicks in one
+        go) because ELITEA-1820's Test Step 4 asserts the hover-reveal on its
+        own: the trigger's container is ``display:none`` until the row is
+        hovered (``BucketItem.jsx``'s ``menuContainer``).
+
+        Args:
+            bucket_name: Exact name of the bucket row to hover.
+            timeout: Maximum wait time in milliseconds for the row.
+        """
+        row = self.page.locator(self.BUCKET_ROW.format(bucket_name))
+        row.wait_for(state="visible", timeout=timeout)
+        row.hover()
+        logger.info("Hovered bucket row '%s'", bucket_name)
+
+    def bucket_menu_button(self, bucket_name: str) -> Locator:
+        """Return the bucket row's 3-dot actions trigger locator.
+
+        Args:
+            bucket_name: Exact bucket name.
+
+        Returns:
+            Locator for :attr:`BUCKET_MENU_BUTTON` for that bucket.
+        """
+        return self.page.locator(self.BUCKET_MENU_BUTTON.format(bucket_name))
+
+    def bucket_menu_container(self, bucket_name: str) -> Locator:
+        """Return the bucket row's opened dot-menu dropdown container locator.
+
+        Args:
+            bucket_name: Exact bucket name.
+
+        Returns:
+            Locator for :attr:`BUCKET_MENU_CONTAINER` for that bucket.
+        """
+        return self.page.locator(self.BUCKET_MENU_CONTAINER.format(bucket_name))
+
+    def bucket_pin_indicator(self, bucket_name: str) -> Locator:
+        """Return the pin icon shown beside a PINNED bucket's name.
+
+        Args:
+            bucket_name: Exact bucket name.
+
+        Returns:
+            Locator for :attr:`BUCKET_PIN_INDICATOR` for that bucket (count 0
+            while the bucket is unpinned — the element is gated on
+            ``isPinned``).
+        """
+        return self.page.locator(self.BUCKET_PIN_INDICATOR.format(bucket_name))
+
+    def bucket_row(self, bucket_name: str) -> Locator:
+        """Return one bucket's row locator, by exact bucket name.
+
+        Public accessor over :attr:`BUCKET_ROW` so specs assert a row's
+        presence/visibility through the page object's auto-retrying
+        ``expect(...)`` instead of building the selector themselves.
+
+        Args:
+            bucket_name: Exact bucket name.
+
+        Returns:
+            Locator for that bucket's ``artifacts-bucket-row-{name}`` element.
+        """
+        return self.page.locator(self.BUCKET_ROW.format(bucket_name))
+
+    def first_bucket_row(self) -> Locator:
+        """Return the FIRST bucket row currently rendered in the left panel.
+
+        Pinned buckets are rendered in their own list above the unpinned list
+        (``BucketsListContent.jsx``), so "the first rendered row" is exactly
+        the case's "top of the bucket list, above all unpinned buckets".
+
+        Returned as a locator (rather than a name read through
+        :meth:`get_rendered_bucket_names`) so specs can assert position with a
+        web-first, auto-retrying
+        ``expect(...).to_have_attribute("data-testid", ...)`` — the bucket list
+        re-renders ~8-10 s after the pin request returns 200, and a retrying
+        assertion is how that is waited out without a sleep.
+
+        Returns:
+            Locator for the first ``artifacts-bucket-row-*`` element.
+        """
+        return self.page.locator(self.BUCKET_ROW_ANY_SELECTOR).first
+
+    def any_bucket_pin_indicator(self) -> Locator:
+        """Return a locator matching EVERY rendered pin icon in the panel.
+
+        Returns:
+            Locator for :attr:`BUCKET_PIN_INDICATOR_ANY_SELECTOR` — count 0
+            means no bucket in the project is pinned.
+        """
+        return self.page.locator(self.BUCKET_PIN_INDICATOR_ANY_SELECTOR)
+
+    @action("Click bucket-menu pin/unpin item")
+    def click_bucket_menu_pin_item(self, timeout: int = 15000) -> int:
+        """Click the open bucket-menu's 'Pin to top' / 'Unpin from top' item.
+
+        Call :meth:`open_bucket_menu` first — same "caller opens, this clicks"
+        division of responsibility as :meth:`click_bucket_menu_delete_item`.
+
+        Wraps the click in ``expect_response`` for the pin mutation
+        (``PATCH /artifacts/buckets/default/{project}?name={bucket}``, body
+        ``{"is_pinned": <bool>}`` — ``EliteaUI/src/api/artifacts.js``'s
+        ``updateBucketPin``) and returns its status, so a caller can assert the
+        flag actually reached the backend. That matters here: the bucket list
+        re-renders roughly 8-10 seconds AFTER the 200 (live-measured,
+        ``test-specs/artifacts/_surface.md``), so the request and the DOM are
+        genuinely two separate observables.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the PATCH response.
+
+        Returns:
+            The pin request's HTTP status code.
+        """
+        with self.page.expect_response(
+            lambda r: "artifacts/buckets/default" in r.url and r.request.method == "PATCH",
+            timeout=timeout,
+        ) as response_info:
+            self.bucket_menu_pin_menuitem.click()
+        status = response_info.value.status
+        logger.info("Clicked bucket-menu pin/unpin item — PATCH returned %s", status)
+        return status
+
+    def get_rendered_bucket_names(self) -> list[str]:
+        """Return the distinct bucket names currently rendered in the left panel.
+
+        Reads each row's own ``artifacts-bucket-row-{name}`` testid and
+        de-duplicates defensively.
+
+        CORRECTED 2026-08-21 (ELITEA-1820/1821 live analysis): the earlier
+        claim here — that a PINNED bucket is rendered twice — is wrong.
+        ``BucketsPanel.jsx`` splits the list into ``pinnedBuckets`` and
+        ``unpinnedBuckets`` and ``BucketsListContent.jsx`` renders the pinned
+        list ABOVE the unpinned one, so each bucket appears exactly ONCE, with
+        pinned buckets first. The de-duplication is kept as a cheap guard, and
+        the returned ORDER (pinned first, then the unpinned buckets in
+        alphanumeric order) is what ELITEA-1820/1821 assert against.
+
+        This is the oracle ELITEA-1803/1805 use for the left-panel footer's
+        "Buckets: N" stat — ``BucketsPanel.jsx`` feeds the footer
+        ``bucketCount={buckets?.length}``, the same array the list renders, so
+        footer and list must agree within one snapshot. (An API cross-check
+        was tried first and proved racy: the buckets listing is eventually
+        consistent — measured 760 rendered against 762 from
+        ``GET /artifacts/buckets/default/{project}`` seconds after creating
+        buckets.)
+
+        Read-only DOM observation: ``evaluate_all`` here only READS each
+        node's own ``data-testid``; it injects nothing and mutates nothing, so
+        it is not a substitution under the fidelity policy. It is used instead
+        of N per-element round-trips because the panel renders 750+ rows.
+
+        Returns:
+            De-duplicated bucket names, in render order.
+        """
+        prefix = "artifacts-bucket-row-"
+        names: list[str] = []
+        for testid in self.page.locator(self.BUCKET_ROW_ANY_SELECTOR).evaluate_all(
+            "nodes => nodes.map(n => n.getAttribute('data-testid'))"
+        ):
+            if testid and testid.startswith(prefix):
+                name = testid[len(prefix):]
+                if name not in names:
+                    names.append(name)
+        return names
+
+    def file_rows(self) -> Locator:
+        """Return a locator for every rendered file/folder row.
+
+        Public accessor over the pre-existing :meth:`_file_rows` so specs
+        assert row counts through the page object (``expect(...)``'s
+        auto-retry) instead of constructing locators themselves.
+
+        Returns:
+            Locator for the file/folder row collection.
+        """
+        return self._file_rows()
+
+    def file_row_checkboxes(self) -> Locator:
+        """Return a locator for every rendered file-row selection checkbox.
+
+        Returns:
+            Locator matching :attr:`ARTIFACT_FILE_CHECKBOX_ANY_SELECTOR`.
+        """
+        return self.page.locator(self.ARTIFACT_FILE_CHECKBOX_ANY_SELECTOR)
+
+    def file_row_action_buttons(self) -> Locator:
+        """Return a locator for every rendered file-row actions (dot-menu) trigger.
+
+        Returns:
+            Locator matching :attr:`ARTIFACT_ACTIONS_MENU_BUTTON_ANY_SELECTOR`.
+        """
+        return self.page.locator(self.ARTIFACT_ACTIONS_MENU_BUTTON_ANY_SELECTOR)
+
+    def tree_item(self, item_key: str) -> Locator:
+        """Return the left-panel tree node for *item_key*.
+
+        Locator-returning sibling of the pre-existing
+        :meth:`is_tree_item_visible` / :meth:`click_tree_item`, for specs that
+        want ``expect(...)``'s auto-retrying assertions on the node.
+
+        Args:
+            item_key: Full relative path of the file/folder (e.g.
+                ``"sample.txt"`` or ``"a1/sample.txt"``).
+
+        Returns:
+            Locator for that tree node.
+        """
+        return self.page.locator(self.ARTIFACTS_TREE_ITEM.format(item_key))
+
+    # ------------------------------------------------------------------
+    # Buckets-list scrolling (ELITEA-1822)
+    # ------------------------------------------------------------------
+
+    #: Horizontal offset (px) into the scroll container used to click "into the
+    #: bucket list panel" without hitting a row. The container has `padding:
+    #: 1rem`, so 6px from its left edge is always empty gutter — live-verified
+    #: (ELITEA-1822): the click leaves the URL unchanged and selects no bucket.
+    BUCKETS_PANEL_GUTTER_CLICK_X = 6
+
+    #: Poll interval (ms) for the scroll condition waits below. `mouse.wheel()`
+    #: dispatches the event without waiting for the scroll to be applied, so
+    #: the settle is a POLL on the product's own rendered geometry — not a
+    #: fixed sleep standing in for a wait.
+    BUCKETS_SCROLL_POLL_INTERVAL_MS = 100
+
+    def _buckets_scroll_container_box(self) -> dict[str, float]:
+        """Return the buckets scroll container's bounding box.
+
+        Returns:
+            The container's ``bounding_box()`` dict.
+
+        Raises:
+            AssertionError: If the container is not rendered.
+        """
+        box = self.buckets_scroll_container.bounding_box()
+        if box is None:
+            raise AssertionError(
+                "Buckets scroll container (artifacts-buckets-scroll-container) "
+                "is not rendered — is the BUCKETS panel collapsed?"
+            )
+        return box
+
+    @action("Place the cursor over the buckets panel")
+    def hover_buckets_panel(self) -> None:
+        """Move the mouse to the centre of the buckets scroll container.
+
+        Required before :meth:`wheel_buckets_panel`: a wheel event is delivered
+        to whatever sits under the cursor, so without this the page (or the
+        file table) would scroll instead of the bucket list.
+        """
+        box = self._buckets_scroll_container_box()
+        self.page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+
+    @action("Move the cursor off the bucket list")
+    def move_mouse_off_bucket_list(self) -> None:
+        """Park the mouse cursor clear of every bucket row (ELITEA-1823 Step 3).
+
+        Deliberately NOT :meth:`hover_buckets_panel`, which moves to the
+        container's CENTRE — that lands *on* a bucket row and would highlight
+        it. This moves to a point to the RIGHT of the scroll container's own
+        box (the main file panel), so no ``BucketItem`` is under the cursor and
+        every row's ``onMouseLeave`` has fired.
+
+        The offset is measured from the container's testid-anchored bounding
+        box rather than hardcoded: the panel's width changes with the viewport
+        and with the sidebar's collapsed state.
+        """
+        box = self._buckets_scroll_container_box()
+        self.page.mouse.move(box["x"] + box["width"] + 200, box["y"] + box["height"] / 2)
+
+    @action("Wheel-scroll the buckets panel")
+    def wheel_buckets_panel(self, delta_y: int) -> None:
+        """Dispatch one wheel event over the buckets panel.
+
+        Args:
+            delta_y: Wheel delta in px — positive scrolls down, negative up.
+        """
+        self.page.mouse.wheel(0, delta_y)
+
+    @action("Click into the buckets panel")
+    def click_into_buckets_panel(self) -> None:
+        """Click the buckets panel's empty left gutter.
+
+        Gives the keyboard a scroll target (Chromium keeps the clicked scroll
+        container as the arrow-key scroll target even though the container
+        carries no ``tabIndex``) WITHOUT selecting a bucket — clicking a row
+        would select and expand it, which is a different interaction than the
+        one under test.
+        """
+        box = self._buckets_scroll_container_box()
+        self.page.mouse.click(
+            box["x"] + self.BUCKETS_PANEL_GUTTER_CLICK_X,
+            box["y"] + box["height"] - self.BUCKETS_PANEL_GUTTER_CLICK_X,
+        )
+
+    @action("Press a key to scroll the buckets panel")
+    def press_key_in_buckets_panel(self, key: str) -> None:
+        """Press *key* with the buckets panel as the keyboard scroll target.
+
+        Args:
+            key: Playwright key name, e.g. ``"ArrowDown"`` / ``"ArrowUp"``.
+        """
+        self.page.keyboard.press(key)
+
+    def bucket_row_offset_from_panel_top(self, bucket_name: str) -> float | None:
+        """Return how far *bucket_name*'s row sits below the panel's top edge.
+
+        Args:
+            bucket_name: Bucket whose row to measure.
+
+        Returns:
+            ``row_top - container_top`` in px (negative when the row is
+            scrolled above the panel's visible band), or ``None`` when the row
+            has no bounding box.
+        """
+        row_box = self.page.locator(self.BUCKET_ROW.format(bucket_name)).bounding_box()
+        if row_box is None:
+            return None
+        return row_box["y"] - self._buckets_scroll_container_box()["y"]
+
+    def is_bucket_row_within_panel(self, bucket_name: str, tolerance: float = 1.0) -> bool:
+        """Return whether *bucket_name*'s row is fully inside the panel's visible band.
+
+        ``is_visible()`` is the WRONG oracle for this question: a row clipped by
+        the container's ``overflow: auto`` still has a bounding box and no
+        ``visibility: hidden``, so Playwright reports it visible even when it
+        sits 30 000 px below the fold (live-measured, ELITEA-1822). Comparing
+        the row's own box against the container's is what actually answers
+        "can the user see this bucket right now?".
+
+        Args:
+            bucket_name: Bucket whose row to test.
+            tolerance: Sub-pixel slack (px) for the edge comparisons.
+
+        Returns:
+            ``True`` when the whole row lies between the container's top and
+            bottom edges; ``False`` when it is clipped away or not rendered.
+        """
+        row_box = self.page.locator(self.BUCKET_ROW.format(bucket_name)).bounding_box()
+        if row_box is None:
+            return False
+        container = self._buckets_scroll_container_box()
+        return (
+            row_box["y"] >= container["y"] - tolerance
+            and row_box["y"] + row_box["height"] <= container["y"] + container["height"] + tolerance
+        )
+
+    def wait_until_bucket_row_within_panel(
+        self,
+        bucket_name: str,
+        expected: bool = True,
+        timeout: int = 5000,
+    ) -> bool:
+        """Wait for *bucket_name*'s row to be (or stop being) inside the panel.
+
+        A condition wait, polled against the geometry the product renders —
+        needed because ``mouse.wheel()`` returns before the scroll is applied.
+
+        Args:
+            bucket_name: Bucket whose row to watch.
+            expected: Wait for the row to be inside (``True``) or outside
+                (``False``) the panel's visible band.
+            timeout: Maximum wait in milliseconds.
+
+        Returns:
+            ``True`` if the condition held before the timeout, else ``False``.
+        """
+        deadline = time.monotonic() + timeout / 1000
+        while True:
+            if self.is_bucket_row_within_panel(bucket_name) is expected:
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            self.page.wait_for_timeout(self.BUCKETS_SCROLL_POLL_INTERVAL_MS)
