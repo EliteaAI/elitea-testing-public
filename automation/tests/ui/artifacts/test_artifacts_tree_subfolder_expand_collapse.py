@@ -7,16 +7,21 @@ header to ``bucket > a1``; clicking the same subfolder again collapses it (the
 child nodes are removed from the DOM) while the subfolder itself stays listed
 under its bucket.
 
-Ordering discipline (load-bearing — do NOT reorder):
-    The two ``a1/`` clicks are separated by the case's own Step-4 assertions.
-    A collapse click fired immediately after the expand click is silently
-    discarded 2 times in 5 (measured live) — ``BucketContent.jsx``'s
-    ``isFetching`` early-return unmounts the ``FileTreeItem`` subtree, which
-    re-initialises ``isExpanded`` from ``expandedPaths``. Filed as MINOR
-    product defect https://github.com/EliteaAI/elitea-testing-public/issues/1631.
-    With the intermediate assertions in place the collapse was reliable
-    (5/5, plus 7/7 in two earlier probes), so this test asserts the correct
-    behaviour with hard assertions and no masking.
+Ordering + settle discipline (load-bearing — do NOT reorder):
+    The two ``a1/`` clicks are separated by the case's own Step-4 assertions,
+    and Step 4 ends with ``ArtifactsPage.wait_for_tree_item_stable()`` — a
+    polled geometry wait that returns once the last expanded child node has
+    stopped moving. A collapse click that lands inside MUI ``Collapse``'s
+    ~300 ms *enter* transition interrupts it, ``onExited`` never fires, and
+    ``unmountOnExit`` therefore never unmounts the children, so the folder
+    stays open permanently. Measured: 3/3 failures with the collapse click
+    inside the transition window, 18/18 successes once it had finished, and
+    ZERO network requests across that window — so the ``isFetching``-remount
+    mechanism guessed on first analysis was wrong and has been retracted
+    (see the AFS § Findings and ``_surface.md``). Filed as MINOR product
+    defect https://github.com/EliteaAI/elitea-testing-public/issues/1631.
+    The settle wait is a condition wait, never a sleep, and it weakens
+    nothing: step 5 still requires ONE click to collapse, asserted hard.
 
 Test flow:
 Setup (transit, not case steps) — a fresh bucket via the ``artifact_bucket``
@@ -32,7 +37,8 @@ is the state the case's Step 6 describes.
 3. Click ``a1`` — both child files appear as tree nodes; ``a1`` is the
    selected tree node.
 4. The main-panel header reads ``bucket > a1`` and the panel lists the
-   subfolder's files.
+   subfolder's files; then wait for the expanded subtree to stop moving
+   (see "Ordering + settle discipline" above).
 5. Click ``a1`` again — both child nodes are removed from the tree.
 6. The tree still shows the bucket with ``a1`` listed, now collapsed.
 
@@ -98,7 +104,7 @@ class TestArtifactsTreeSubfolderExpandCollapse:
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
         "automated-full-regression-ui/artifacts/"
-        "ELITEA-1836_file-tree-behavior-subfolder-expands-and-collapses.md",
+        "ELITEA-1836_file-tree-subfolder-expands-collapses-on-click.md",
         "onetest-ai Test Case link",
     )
     def test_subfolder_expands_and_collapses_on_click(

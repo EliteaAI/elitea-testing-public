@@ -87,7 +87,7 @@ class TestArtifactsTreeBreadcrumbNavigation:
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
         "automated-full-regression-ui/artifacts/"
-        "ELITEA-1837_file-tree-behavior-breadcrumb-path-updates.md",
+        "ELITEA-1837_file-tree-breadcrumb-updates-on-navigation.md",
         "onetest-ai Test Case link",
     )
     def test_breadcrumb_and_url_update_on_navigation(

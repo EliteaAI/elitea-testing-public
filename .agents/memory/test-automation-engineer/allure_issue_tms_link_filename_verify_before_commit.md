@@ -1,55 +1,55 @@
 ---
-name: allure.issue TMS link filename — verify before commit, don't hand-type
-description: An @allure.issue TMS case URL typo (dropped a word from the filename) 404'd and survived one implementer round unaddressed; verify + add a guard test.
+name: allure.issue TMS link filename — resolve it on disk, never derive it
+description: TMS case slugs are named independently of AFS/case titles; derived @allure.issue URLs 404. Resolve on disk before committing; 115/420 suite links are dead.
 type: feedback
+aliases: [allure issue link, TMS case link 404, dead test case link]
+tags: [area/traceability, type/gotcha]
+updated: 2026-08-21
 ---
 
-## What happened (ELITEA-2609, PR #1475)
+## The rule
 
-The `@allure.issue(...)` decorator on `test_skill_explicit_and_autonomous_
-invocation_coexistence` (`automation/tests/ui/skills/test_skill_agent_interaction.py`)
-pointed at `skills/ELITEA-2609_skill-explicit-autonomous-invocation-coexistence.md`
-— hand-typed from the case title, missing the "and-" the real filename has:
-`skills/ELITEA-2609_skill-explicit-and-autonomous-coexistence.md`. The link
-404'd. Flagged by reviewer round 1, **not fixed in the first "fix round"
-response** (no diff touched it) — cost a whole extra round.
+**Never derive a TMS case filename** — not from the case title, not from the AFS
+filename, not from a sibling spec's URL shape. TMS slugs are named
+*independently* of both. Resolve the real name on disk before typing it into an
+`@allure.issue` URL (the sibling clone is mandatory per `.agents/architecture.md`
+— no network needed):
 
-## Fix + durable guard
+```bash
+ls ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/<feature>/ | grep -i <ELITEA-id>
+```
 
-1. **Never hand-type a TMS case filename into an `@allure.issue` URL.**
-   Verify it exists first:
-   ```bash
-   env -u GITHUB_TOKEN gh api repos/EliteaAI/onetest-ai-tm-Elitea/contents/tests/automated-full-regression-ui/<feature>/<exact-filename>.md --jq '.name'
-   ```
-   or `ls ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/<feature>/ | grep -i <id>`
-   — the sibling clone is on disk (`.agents/architecture.md`), no network needed.
-2. **When a reviewer flags this class of finding, grep the PR diff for the
-   exact string before claiming it's fixed** — an "addressed" round with no
-   line touching the decorator is indistinguishable from a skip, and the
-   reviewer (correctly) treats it as one.
-3. Added a standing regression guard:
-   `automation/tests/unit/test_skill_agent_interaction_allure_issue_links.py`
-   — parses every `@allure.issue` TMS URL in that spec via `ast` (handles
-   adjacent-string-literal URL wrapping) and asserts the path resolves in
-   the sibling `onetest-ai-tm-Elitea` clone. Pattern is copy-pasteable to
-   any other spec file that accumulates multiple `@allure.issue` links.
+And when a reviewer flags this class, **grep your own diff for the exact string
+before claiming it fixed** — an "addressed" round with no line touching the
+decorator reads as a skip, and reviewers treat it as one.
 
-## Recurrence #3 (ELITEA-2612, PR #1479, 2026-08-12)
+## Why it keeps happening (4 occurrences, all caught at review, never by a run)
 
-Same class, third time: `@allure.issue` on
-`test_skill_edit_with_ai_navigation_error_handling.py` pointed at
-`skills/ELITEA-2612_edit-with-ai-navigation-error-handling.md` (mirroring the
-AFS filename `l3_edit-with-ai-navigation-error-handling_ELITEA-2612.md`) but
-the real onetest-ai-tm-Elitea file is
-`skills/ELITEA-2612_edit-with-ai-skill-navigation-and-errors.md` — a
-**different slug from the AFS filename**, not just a typo. Also missed on the
-first fix-round pass (finding came back "not addressed" — no diff line touched
-it), same failure mode as recurrence #1. **The reusable lesson given 3
-occurrences: never assume the TMS case slug matches the AFS filename slug —
-they're independently named.** Always resolve the real filename with
-`ls ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/<feature>/ | grep -i <id>`
-(or the `gh api` equivalent) and paste it in, never derive it from the AFS
-name or the case title. A repo-wide guard (one parametrized unit test walking
-every spec file's `@allure.issue` decorators, instead of one bespoke test per
-spec) would close this class for good — worth proposing to the orchestrator
-next time this recurs.
+A dead link never fails a test — it only 404s in an Allure report — so nothing
+in the loop catches it except a human reviewer. The four:
+
+| Case | Derived from | Real slug differed by |
+|---|---|---|
+| ELITEA-2609 (PR #1475) | case title, hand-typed | missing `and-` |
+| ELITEA-2612 (PR #1479) | the **AFS** filename slug | a wholly different slug |
+| ELITEA-1836/1837/1838 (2026-08-21) | an invented `…file-tree-behavior-…` shape applied to all three | three different real slugs |
+
+Occurrences #1 and #2 also survived the first fix round untouched — the
+expensive failure mode.
+
+## Standing guards (copy the pattern, one file per spec-set)
+
+- `automation/tests/unit/test_skill_agent_interaction_allure_issue_links.py`
+- `automation/tests/unit/test_artifacts_tree_specs_allure_issue_links.py`
+
+Both parse `@allure.issue` URLs with `ast` (handles adjacent-string-literal URL
+wrapping), assert each path resolves in the sibling clone, and skip cleanly when
+the clone is absent.
+
+## Suite-wide scale — measured 2026-08-21, against freshly fetched `origin/main`
+
+**115 of 420 `@allure.issue` TMS links across 282 specs do not resolve** (~27%).
+This is a pre-existing, suite-wide traceability debt, not one unit's mistake, and
+per-spec guard files will never close it. The fix is one **parametrized repo-wide
+guard** walking every spec's decorators — proposed to the lead as a tech-task;
+until it exists, the manual `ls | grep` above is the only defence.

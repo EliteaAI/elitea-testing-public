@@ -105,7 +105,7 @@ class TestArtifactsTreeSwitchBetweenBuckets:
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
         "automated-full-regression-ui/artifacts/"
-        "ELITEA-1838_file-tree-behavior-switching-between-buckets.md",
+        "ELITEA-1838_file-tree-switching-between-buckets.md",
         "onetest-ai Test Case link",
     )
     def test_switching_buckets_updates_tree_and_main_panel(
