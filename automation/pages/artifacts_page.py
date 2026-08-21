@@ -618,7 +618,12 @@ class ArtifactsPage(BasePage):
         testid="delete-confirm-title-icon",
         description="Warning (destructive) icon rendered next to the "
         "delete-confirmation modal's title — a first-party SVG asset, NOT a "
-        "#579 exception (see ELITEA-2193's correction; testid added there).",
+        "#579 exception (see ELITEA-2193's correction; testid added there). "
+        "PROVENANCE: EliteaAI/EliteaUI@7b359d32, on `automation/testids` ONLY "
+        "— NOT yet cherry-picked to main (verified 2026-08-22). Pre-existing for "
+        "ELITEA-1844, but still pending human promotion, so this spec is red on "
+        "any deployed env until it lands (prop-wired via BaseModal's "
+        "`titleIconTestId`, so a bare-substring grep of main does not see it).",
     )
 
     delete_confirm_entity_name = LocatorDescriptor(

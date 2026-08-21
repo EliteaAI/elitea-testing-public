@@ -12,7 +12,9 @@
   defect. Two case-text drifts found (confirmation message + success toast) — handled by the
   reverse-masking guard (assert the live contract) and filed as CLARIFICATION
   [#1638](https://github.com/EliteaAI/elitea-testing-public/issues/1638), sibling of #659/#660.
-  Two additive testids were needed and added (see § Concrete Handles).
+  Two additive testids were needed and added by this case — but **THREE** are pending human
+  cherry-pick to `main` (the third, `delete-confirm-title-icon`, was added by EL-2193 and never
+  promoted; corrected in fix round 1 — see § Concrete Handles).
 
 ## Overlap check vs existing automation
 - `test_artifacts_delete_subfolder_checkbox.py` (ELITEA-1847 + ELITEA-1846) deletes via the **row
@@ -106,16 +108,52 @@ items are untouched in both the UI and S3 storage.
 accumulate; not this case's to fix). The case's own delete is the only mutation the test drives.
 
 ## Concrete Handles (discovered during exploration)
-Provenance verified 2026-08-22 after `cd ../EliteaUI && git fetch origin`.
+Provenance **re-verified 2026-08-22 (fix round 1)** with the two-ref grep from
+`.agents/workflow.md` § Closure record, after `cd ../EliteaUI && git fetch origin` — run for
+EVERY row, not only the ones this case added. The first pass asserted `on-main ✓` for
+`delete-confirm-title-icon` on the strength of it being *pre-existing on localhost*; that is a
+false test, because the dev server serves `automation/testids`, which accumulates every testid the
+team ever added. Verbatim output of the corrected run:
+
+```
+delete-confirm-dialog              main:YES  testids:YES
+delete-confirm-title               main:YES  testids:YES
+delete-confirm-title-icon          main:no   testids:YES     <-- corrected (was on-main ✓)
+delete-confirm-message             main:YES  testids:YES
+delete-confirm-entity-name         main:no   testids:YES
+delete-confirm-close-button        main:no   testids:YES
+delete-confirm-cancel-button       main:YES  testids:YES
+delete-confirm-button              main:YES  testids:YES
+toast-message                      main:YES  testids:YES
+```
+
+Four handles read `main:no testids:no` under the bare-substring grep because they are
+**composed or prop-wired**, which stage 1 cannot see (`.agents/workflow.md` § Closure record's
+runtime-composed caveat). Each was resolved caller-side instead, by diffing the component between
+the two refs — all four are identical on `origin/main` and `origin/automation/testids`, i.e.
+genuinely on main:
+
+| Handle | Where it is composed | Both refs identical? |
+|---|---|---|
+| `artifact-actions-{name}-menu-button` | `ArtifactRowActions.jsx:94` `id={`artifact-actions-${row.id}`}` → `DotMenu.jsx:354` `` data-testid={`${id}-menu-button`} `` | ✓ (file byte-identical on both refs) |
+| `artifact-actions-{name}-menu` | same `id` → `DotMenu.jsx:371` `` data-testid={`${id}-menu`} `` | ✓ |
+| `artifacts-file-download-menuitem` / `artifacts-file-delete-menuitem` | `ArtifactRowActions.jsx:48,56` `key: 'artifacts-file-download' / 'artifacts-file-delete'` → `DotMenu.jsx:57` `` data-testid={`${testId}-menuitem`} `` | ✓ |
+| `artifacts-file-row` | `ArtifactTable.jsx:525` `data-testid={row.type === FOLDER ? 'artifacts-folder-row' : 'artifacts-file-row'}` | ✓ |
+
+**Pending human cherry-pick to `main`: THREE testids** — `delete-confirm-entity-name`,
+`delete-confirm-close-button` (both added by this case) and `delete-confirm-title-icon` (added by
+EL-2193, never promoted). Until all three land on `main`, this spec is green on localhost and red
+on any deployed env.
 
 | Element | Handle | Provenance |
 |---|---|---|
 | Row actions dot-menu trigger | `ArtifactsPage.ARTIFACT_ACTIONS_MENU_BUTTON` → `artifact-actions-{name}-menu-button` | on-main ✓ |
+| Row actions dropdown **container** (the MUI Menu itself — scopes the item-label read so a different mounted menu can't be picked up) | `ArtifactsPage.ARTIFACT_ACTIONS_MENU` → `artifact-actions-{name}-menu` | on-main ✓ (composed — see the caller-side table above); **new class constant added this run** in `artifacts_page.py`, no JSX change |
 | Dropdown `Download` item | `artifacts-file-download-menuitem` | on-main ✓ |
 | Dropdown `Delete` item | `artifacts-file-delete-menuitem` | on-main ✓ |
 | Confirmation dialog root | `delete-confirm-dialog` | on-main ✓ |
 | Dialog title | `delete-confirm-title` | on-main ✓ |
-| Dialog warning icon | `delete-confirm-title-icon` | on-main ✓ |
+| Dialog warning icon | `delete-confirm-title-icon` | **on `automation/testids` only (awaiting human promotion to `main`)** — EliteaAI/EliteaUI@7b359d32, added 2026-08-15 for a *different* case (EL-2193); pre-existing for this case, but never cherry-picked to `main` |
 | Dialog message | `delete-confirm-message` | on-main ✓ |
 | Dialog emphasised entity name | `delete-confirm-entity-name` | **added this run** — EliteaAI/EliteaUI@e59d0c97 on `automation/testids` (attribute-only add on the existing `<Typography component="span">`) |
 | Dialog X (close) | `delete-confirm-close-button` | **added this run** — EliteaAI/EliteaUI@08d9bb4f on `automation/testids` (prop-only: `DeleteEntityModal` now forwards `closeButtonTestId` to `Modal.BaseModal`, which already accepted it) |
@@ -123,6 +161,7 @@ Provenance verified 2026-08-22 after `cd ../EliteaUI && git fetch origin`.
 | Dialog `Delete` | `delete-confirm-button` | on-main ✓ |
 | Success toast | `toast-message` | on-main ✓ |
 | Pagination label | `ArtifactsPage.get_pagination_info_text()` | existing |
+| File-table row (drives `get_file_names()`, `wait_for_file_count()` and ELITEA-1845's byte-for-byte `get_file_row_text()` snapshot) | `ArtifactsPage.ARTIFACT_FILE_ROW` → `artifacts-file-row` | on-main ✓ (ternary-wired — see the caller-side table above); existing constant |
 | Left-panel tree item | `ArtifactsPage.is_tree_item_visible(name)` | existing |
 
 ## Network Behavior
