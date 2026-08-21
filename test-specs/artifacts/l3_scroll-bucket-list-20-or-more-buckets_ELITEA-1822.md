@@ -52,33 +52,47 @@ scroll container's — both located by testid — because a row scrolled out of 
 2. **Read the rendered bucket list** (`get_rendered_bucket_names()`).
    *Assert*: ≥ 20 distinct bucket rows (the case's Step 2/3 expected result).
    Snapshot `first = names[0]`, `last = names[-1]`.
-3. **Find the fold**: scan the rows from index 15 forward for the first one
-   NOT fully inside the container's visible band → `below_fold`.
-   *Assert*: `below_fold` exists and is out of band, while `first` is in band —
-   i.e. the list really is longer than the panel (there is something to scroll to).
+3. *(implementation note — the shipped spec folds steps 3 and 4 into one
+   `allure.step`, because both need the cursor already over the panel.)*
 4. **Place the cursor over the bucket list panel** — `page.mouse.move()` to the
-   centre of `artifacts-buckets-scroll-container`.
+   centre of `artifacts-buckets-scroll-container`. Then, as **setup** (not an
+   assertion): wheel UP (`0, -5000`, ≤ 40 steps) until the first bucket is in
+   view, because `/artifacts` auto-selects a bucket and
+   `SimpleBucketList.jsx` scrolls it into view, so the list does not reliably
+   start at its top and the case's Steps 4-6 presume it does. This uses the
+   product's own scrolling — nothing is injected. Then **find the fold**: scan
+   `names[15:80]` for the first row NOT fully inside the container's visible band
+   → `below_fold`.
+   *Assert*: the first bucket is in the visible band, and `below_fold` exists —
+   i.e. the list really is longer than the panel (there is something to scroll to).
 5. **Scroll down one wheel notch** (`page.mouse.wheel(0, 500)`).
    *Assert*: `below_fold` is now inside the visible band **and** `first` has
    left it — the list scrolled down and buckets further in the list became visible.
-6. **Keep wheeling down** (`0, 5000` per step, ≤ 30 steps) until `last` is
+6. **Keep wheeling down** (`0, 5000` per step, ≤ 40 steps) until `last` is
    inside the band.
    *Assert*: `last` (the final bucket of 768) is inside the visible band — the
    whole list is reachable by wheel.
 7. **Scroll back up one wheel notch** (`0, -500`).
    *Assert*: `last` has left the band — the list scrolled up.
-8. **Keep wheeling up** (`0, -5000`, ≤ 30 steps) until `first` is inside the band.
-   *Assert*: `first` is inside the band and its top edge sits within one row
-   height of the container's top — the first bucket is back at the top.
+8. **Keep wheeling up** (`0, -5000`, ≤ 40 steps) until `first` is inside the band.
+   *Assert*: `first` is inside the band and its top edge sits within 56 px
+   (the container's 16 px padding + one 40 px row) of the container's top — the
+   first bucket is back at the top.
 9. **Click into the bucket list panel** at the container's left padding gutter
    (x + 6 px), which contains no row — verified live: the URL does not change
-   and no bucket is selected. Then **press `ArrowDown`** until `below_fold`
-   enters the band (≤ 60 presses, ~38.7 px per press measured live).
+   and no bucket is selected (the spec asserts the URL is unchanged). Then
+   **press `ArrowDown`** until `below_fold` enters the band (≤ 80 presses,
+   ~38.7 px per press measured live).
    *Assert*: `below_fold` is in band and `first` has left it — the list scrolls
    down under keyboard control.
-10. **Press `ArrowUp`** until `first` is back in the band (≤ 60 presses).
-    *Assert*: `first` is in band with its top edge within one row height of the
+10. **Press `ArrowUp`** until `first` is back in the band (≤ 80 presses).
+    *Assert*: `first` is in band with its top edge within 56 px of the
     container's top — the list scrolled back up to the first listed bucket.
+
+Every scroll assertion settles through
+`ArtifactsPage.wait_until_bucket_row_within_panel()` — a polled condition wait on
+the product's rendered geometry, because `mouse.wheel()` returns before the
+scroll is applied. No fixed sleep stands in for a wait.
 
 Each step is wrapped in `with allure.step("Step N — …")`.
 
@@ -102,7 +116,7 @@ Each step is wrapped in `with allure.step("Step N — …")`.
 | 1 Navigate to Artifacts | Artifacts page loads | step 1 | heading visible + ≥1 bucket row | asserted |
 | 2 Bucket list displayed / create if <20 | ≥20 buckets present | step 2 | same count assertion | asserted |
 | 3 At least 20 buckets present | 20+ listed | step 2 | `>= 20` distinct rows | asserted |
-| 4 Cursor over the bucket list panel | cursor over the list | step 4 | `mouse.move()` onto the container's own testid box (precondition for the wheel events that follow — a wheel with the cursor elsewhere would scroll something else) | covered |
+| 4 Cursor over the bucket list panel | cursor over the list | step 4 (also carries the top-of-list setup scroll) | `mouse.move()` onto the container's own testid box (precondition for the wheel events that follow — a wheel with the cursor elsewhere would scroll something else) | covered |
 | 5 Scroll down with the wheel | list scrolls, further buckets visible | step 5 | `below_fold` enters band, `first` leaves it | asserted |
 | 6 Continue until the last bucket is visible | all buckets reachable | step 6 | `last` (bucket #768) inside the band | asserted |
 | 7 Scroll back up with the wheel | list scrolls up | step 7 | `last` leaves the band | asserted |
@@ -127,6 +141,7 @@ Each step is wrapped in `with allure.step("Step N — …")`.
   bucket row would select and expand a bucket — a different interaction than
   the case describes, and one that would make the later assertions read a
   different DOM.
+- **The list is wheeled to its top before Step 4's assertions** (declared setup, not a substitution — it scrolls via the product's own wheel handling). Without it the case's "scroll down from the top" premise is at the mercy of which bucket `/artifacts` auto-selected.
 - **`below_fold` is discovered live, never hardcoded to an index.** Row height
   and panel height are theme/viewport dependent; the test scans for the first
   out-of-band row so it stays correct if either changes.

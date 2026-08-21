@@ -16,6 +16,7 @@ Actions:
 """
 
 import logging
+import time
 import urllib.parse
 from playwright.sync_api import Download, Locator, Page, expect
 
@@ -807,6 +808,17 @@ class ArtifactsPage(BasePage):
         "DISTINCT rendered rows). An ArtifactAPI.list_buckets() cross-check "
         "was tried first and measured racy: the buckets listing is "
         "eventually consistent.",
+    )
+
+    buckets_scroll_container = LocatorDescriptor(
+        testid="artifacts-buckets-scroll-container",
+        description="The BUCKETS left panel's SCROLLABLE Box "
+        "(BucketsPanel.jsx's `bucketListOuterContainer`, `overflowY: auto`) — "
+        "the element ELITEA-1822 calls 'the bucket list panel'. Hover it "
+        "before dispatching a wheel event (the wheel goes to whatever is "
+        "under the cursor) and click its LEFT PADDING GUTTER, never a row, "
+        "to give the keyboard a scroll target without selecting a bucket. "
+        "Added for ELITEA-1822 on EliteaAI/EliteaUI@3c96bc4b.",
     )
 
     buckets_footer_size = LocatorDescriptor(
@@ -3859,3 +3871,152 @@ class ArtifactsPage(BasePage):
             Locator for that tree node.
         """
         return self.page.locator(self.ARTIFACTS_TREE_ITEM.format(item_key))
+
+    # ------------------------------------------------------------------
+    # Buckets-list scrolling (ELITEA-1822)
+    # ------------------------------------------------------------------
+
+    #: Horizontal offset (px) into the scroll container used to click "into the
+    #: bucket list panel" without hitting a row. The container has `padding:
+    #: 1rem`, so 6px from its left edge is always empty gutter — live-verified
+    #: (ELITEA-1822): the click leaves the URL unchanged and selects no bucket.
+    BUCKETS_PANEL_GUTTER_CLICK_X = 6
+
+    #: Poll interval (ms) for the scroll condition waits below. `mouse.wheel()`
+    #: dispatches the event without waiting for the scroll to be applied, so
+    #: the settle is a POLL on the product's own rendered geometry — not a
+    #: fixed sleep standing in for a wait.
+    BUCKETS_SCROLL_POLL_INTERVAL_MS = 100
+
+    def _buckets_scroll_container_box(self) -> dict[str, float]:
+        """Return the buckets scroll container's bounding box.
+
+        Returns:
+            The container's ``bounding_box()`` dict.
+
+        Raises:
+            AssertionError: If the container is not rendered.
+        """
+        box = self.buckets_scroll_container.bounding_box()
+        if box is None:
+            raise AssertionError(
+                "Buckets scroll container (artifacts-buckets-scroll-container) "
+                "is not rendered — is the BUCKETS panel collapsed?"
+            )
+        return box
+
+    @action("Place the cursor over the buckets panel")
+    def hover_buckets_panel(self) -> None:
+        """Move the mouse to the centre of the buckets scroll container.
+
+        Required before :meth:`wheel_buckets_panel`: a wheel event is delivered
+        to whatever sits under the cursor, so without this the page (or the
+        file table) would scroll instead of the bucket list.
+        """
+        box = self._buckets_scroll_container_box()
+        self.page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+
+    @action("Wheel-scroll the buckets panel")
+    def wheel_buckets_panel(self, delta_y: int) -> None:
+        """Dispatch one wheel event over the buckets panel.
+
+        Args:
+            delta_y: Wheel delta in px — positive scrolls down, negative up.
+        """
+        self.page.mouse.wheel(0, delta_y)
+
+    @action("Click into the buckets panel")
+    def click_into_buckets_panel(self) -> None:
+        """Click the buckets panel's empty left gutter.
+
+        Gives the keyboard a scroll target (Chromium keeps the clicked scroll
+        container as the arrow-key scroll target even though the container
+        carries no ``tabIndex``) WITHOUT selecting a bucket — clicking a row
+        would select and expand it, which is a different interaction than the
+        one under test.
+        """
+        box = self._buckets_scroll_container_box()
+        self.page.mouse.click(
+            box["x"] + self.BUCKETS_PANEL_GUTTER_CLICK_X,
+            box["y"] + box["height"] - self.BUCKETS_PANEL_GUTTER_CLICK_X,
+        )
+
+    @action("Press a key to scroll the buckets panel")
+    def press_key_in_buckets_panel(self, key: str) -> None:
+        """Press *key* with the buckets panel as the keyboard scroll target.
+
+        Args:
+            key: Playwright key name, e.g. ``"ArrowDown"`` / ``"ArrowUp"``.
+        """
+        self.page.keyboard.press(key)
+
+    def bucket_row_offset_from_panel_top(self, bucket_name: str) -> float | None:
+        """Return how far *bucket_name*'s row sits below the panel's top edge.
+
+        Args:
+            bucket_name: Bucket whose row to measure.
+
+        Returns:
+            ``row_top - container_top`` in px (negative when the row is
+            scrolled above the panel's visible band), or ``None`` when the row
+            has no bounding box.
+        """
+        row_box = self.page.locator(self.BUCKET_ROW.format(bucket_name)).bounding_box()
+        if row_box is None:
+            return None
+        return row_box["y"] - self._buckets_scroll_container_box()["y"]
+
+    def is_bucket_row_within_panel(self, bucket_name: str, tolerance: float = 1.0) -> bool:
+        """Return whether *bucket_name*'s row is fully inside the panel's visible band.
+
+        ``is_visible()`` is the WRONG oracle for this question: a row clipped by
+        the container's ``overflow: auto`` still has a bounding box and no
+        ``visibility: hidden``, so Playwright reports it visible even when it
+        sits 30 000 px below the fold (live-measured, ELITEA-1822). Comparing
+        the row's own box against the container's is what actually answers
+        "can the user see this bucket right now?".
+
+        Args:
+            bucket_name: Bucket whose row to test.
+            tolerance: Sub-pixel slack (px) for the edge comparisons.
+
+        Returns:
+            ``True`` when the whole row lies between the container's top and
+            bottom edges; ``False`` when it is clipped away or not rendered.
+        """
+        row_box = self.page.locator(self.BUCKET_ROW.format(bucket_name)).bounding_box()
+        if row_box is None:
+            return False
+        container = self._buckets_scroll_container_box()
+        return (
+            row_box["y"] >= container["y"] - tolerance
+            and row_box["y"] + row_box["height"] <= container["y"] + container["height"] + tolerance
+        )
+
+    def wait_until_bucket_row_within_panel(
+        self,
+        bucket_name: str,
+        expected: bool = True,
+        timeout: int = 5000,
+    ) -> bool:
+        """Wait for *bucket_name*'s row to be (or stop being) inside the panel.
+
+        A condition wait, polled against the geometry the product renders —
+        needed because ``mouse.wheel()`` returns before the scroll is applied.
+
+        Args:
+            bucket_name: Bucket whose row to watch.
+            expected: Wait for the row to be inside (``True``) or outside
+                (``False``) the panel's visible band.
+            timeout: Maximum wait in milliseconds.
+
+        Returns:
+            ``True`` if the condition held before the timeout, else ``False``.
+        """
+        deadline = time.monotonic() + timeout / 1000
+        while True:
+            if self.is_bucket_row_within_panel(bucket_name) is expected:
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            self.page.wait_for_timeout(self.BUCKETS_SCROLL_POLL_INTERVAL_MS)
