@@ -229,4 +229,7 @@ of the shipped spec.
   already closed — allow a generous timeout (10 s) and never assert dialog-hidden and toast-visible
   in the same expectation.
 - Markers: `ui`, `regression`, `p2` (medium priority — matches l3), `artifacts`.
-- Timing baseline (live, instrumented): ~35-45 s per parameterized row including bucket seed.
+- Timing baseline: **61 s for both parameterized rows** (~30 s/row incl. bucket seed + the 6 s
+  no-download observation window) — measured on the shipped spec's first green run, 2026-08-21.
+- Shipped constants (implementer, unchanged intent): `ROUTE_DELAY_SECONDS = 1.2`,
+  `NO_DOWNLOAD_OBSERVATION_SECONDS = 6.0`, `TOAST_TIMEOUT = 15_000`.

@@ -16,13 +16,15 @@ Actions:
 """
 
 import logging
+import re
 import time
 import urllib.parse
+
 from playwright.sync_api import Download, Locator, Page, expect
+from utils.actions import action
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
-from utils.actions import action
 
 logger = logging.getLogger("elitea.pages.artifacts")
 
@@ -519,6 +521,19 @@ class ArtifactsPage(BasePage):
         description="'Cancel' button inside the ZIP-download progress dialog "
         "(ELITEA-1840) — visibility-only in this case, never clicked "
         "(Cancel-flow testing is out of scope)",
+    )
+
+    zip_download_progress_close_button = LocatorDescriptor(
+        testid="artifacts-zip-download-progress-close-button",
+        description="X (close) icon button in the ZIP-download progress "
+        "dialog's header (ELITEA-1843 — new testid, implementer; "
+        "EliteaAI/EliteaUI@b93c631b on automation/testids). Prop-only add: "
+        "`ZipDownloadProgressDialog.jsx` now passes `closeButtonTestId` to "
+        "`Modal.BaseModal`, which already accepted and applied it "
+        "(BaseModal.jsx:35,154) — zero functional impact, same shape as "
+        "ELITEA-1833's `artifacts-resolve-duplicates-close-button`. Wired to "
+        "the SAME `onCancel` handler as "
+        ":attr:`zip_download_progress_cancel_button` (source-confirmed).",
     )
 
     # ------------------------------------------------------------------
@@ -2107,6 +2122,99 @@ class ArtifactsPage(BasePage):
         """
         self.download_files_tooltip.wait_for(state="visible", timeout=timeout)
         return self.download_files_tooltip.get_attribute("aria-label") or ""
+
+    # ------------------------------------------------------------------
+    # ZIP-download progress dialog — cancel flow (ELITEA-1842 / ELITEA-1843)
+    # ------------------------------------------------------------------
+
+    def click_zip_download_cancel_button(self, timeout: int = 10000) -> None:
+        """Click the ZIP-progress dialog's 'Cancel' button (ELITEA-1842).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.zip_download_progress_cancel_button.wait_for(state="visible", timeout=timeout)
+        self.zip_download_progress_cancel_button.click()
+        logger.info("Clicked ZIP-download progress dialog 'Cancel' button")
+
+    def click_zip_download_close_button(self, timeout: int = 10000) -> None:
+        """Click the ZIP-progress dialog's X (close) icon (ELITEA-1843).
+
+        Hits the SAME ``onCancel`` handler as
+        :meth:`click_zip_download_cancel_button` — ``ZipDownloadProgressDialog``
+        passes one ``onCancel`` to both ``BaseModal``'s ``onClose`` (X /
+        backdrop / Escape) and the Cancel button's ``onClick``
+        (source-confirmed + live-confirmed identical outcomes).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.zip_download_progress_close_button.wait_for(state="visible", timeout=timeout)
+        self.zip_download_progress_close_button.click()
+        logger.info("Clicked ZIP-download progress dialog X (close) button")
+
+    def wait_for_zip_progress_at_least(
+        self, current: int, timeout: int = 30000, poll_interval_ms: int = 100
+    ) -> dict:
+        """Poll the ZIP-progress dialog until its counter reaches ``current``.
+
+        The honest replacement for "click Cancel at some arbitrary moment":
+        both ELITEA-1842 and ELITEA-1843 require the cancel to land while the
+        download is genuinely IN PROGRESS, so the test must observe the
+        product reporting real per-file progress before acting.
+
+        Reads only attributes/text of already testid-anchored locators (the
+        same technique :meth:`is_file_checkbox_checked` uses for
+        ``Mui-checked``) — no new raw handles.
+
+        Note: a ``"0 of N files"`` precursor frame (no current-file label yet)
+        precedes the first completion, and a ``"0 of 0 files"`` /
+        ``aria-valuenow="NaN"`` reset frame fires for one tick immediately
+        before the dialog unmounts on a COMPLETED download (ELITEA-1841) —
+        neither satisfies this wait.
+
+        Args:
+            current: Minimum ``current`` value the counter must report.
+            timeout: Maximum wait time in milliseconds.
+            poll_interval_ms: Sampling interval in milliseconds.
+
+        Returns:
+            Dict with ``current``, ``total``, ``valuenow`` and
+            ``current_file`` as observed on the satisfying frame.
+
+        Raises:
+            AssertionError: If the counter never reached ``current`` in time.
+        """
+        deadline = time.monotonic() + (timeout / 1000)
+        last_seen = None
+        while time.monotonic() < deadline:
+            try:
+                counter_text = (
+                    self.zip_download_progress_counter.text_content() or ""
+                ).strip()
+                match = re.match(r"^(\d+) of (\d+) files$", counter_text)
+                if match and int(match.group(1)) >= current:
+                    frame = {
+                        "current": int(match.group(1)),
+                        "total": int(match.group(2)),
+                        "valuenow": self.zip_download_progress_bar.get_attribute(
+                            "aria-valuenow"
+                        ),
+                        "current_file": (
+                            self.zip_download_progress_current_file.text_content() or ""
+                        ).strip(),
+                    }
+                    logger.info("ZIP progress reached %s: %s", counter_text, frame)
+                    return frame
+                last_seen = counter_text or last_seen
+            except Exception as exc:  # transient DOM read during a re-render
+                logger.debug("ZIP progress poll sample skipped: %s", exc)
+            time.sleep(poll_interval_ms / 1000)
+
+        raise AssertionError(
+            f"ZIP progress counter never reached '{current} of N files' within "
+            f"{timeout}ms (last seen: {last_seen!r})"
+        )
 
     # ------------------------------------------------------------------
     # Bulk delete flow (ELITEA-1847)
