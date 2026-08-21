@@ -159,7 +159,7 @@ Do **not** assert `ui_cell_after != ui_cell_before` — it is a latent flake. As
 | Resolve-duplicates dialog | `artifacts-resolve-duplicates-dialog` | on-`automation/testids` only (EliteaAI/EliteaUI@918b8b22) | human cherry-pick to `main` pending |
 | Duplicate filename row | `artifacts-resolve-duplicates-filename` | on-`automation/testids` only (@918b8b22) | `get_resolve_duplicates_filenames()` |
 | Dialog message text | `artifacts-resolve-duplicates-message-text` | on-`automation/testids` only (@918b8b22) | singular wording for exactly 1 duplicate |
-| **Replace** button | `artifacts-resolve-duplicates-replace-button` | on-`automation/testids` only (@918b8b22) | **exists, but no page-object method yet** — add `click_resolve_duplicates_replace_button()` mirroring `click_resolve_duplicates_keep_both_button()` (`artifacts_page.py:2452`). The `LocatorDescriptor` field already exists (`artifacts_page.py:384`) |
+| **Replace** button | `artifacts-resolve-duplicates-replace-button` | on-`automation/testids` only (@918b8b22) | **SHIPPED**: `click_resolve_duplicates_replace_button()` was added to `ArtifactsPage`, mirroring `click_resolve_duplicates_keep_both_button()`, over the pre-existing `resolve_duplicates_replace_button` descriptor. No new testid was needed |
 | File row | `artifacts-file-row` | on-main ✓ | `ArtifactTable.jsx:526`. Count it with an auto-waiting assertion — a bare `.count()` immediately after navigation read `0` while the list was still hydrating (observed live) |
 | File row **Last update** value | `ArtifactsPage.get_file_row_text(filename)` + regex (**established merged pattern — do NOT add a new handle**) | on-main ✓ | The cell has **no per-cell testid** — `ArtifactTable.jsx` renders data cells through the shared generic `GridTableRowDataCell`. The project already settled this: `get_file_row_text` (`artifacts_page.py:1848`) reads the whole row's text off the existing testid-anchored row locator, and the merged `test_artifacts_file_preview_edit_save.py:71-97` parses the timestamp out of it with `LAST_UPDATE_TIMESTAMP_RE = r"\d{2}-\d{2}-\d{4}, \d{2}:\d{2} [AP]M"` + `"%d-%m-%Y, %I:%M %p"`. **Reuse that helper's shape verbatim** — it is testid-compliant (no new selector) and reviewed. |
 | File-table column headers | `artifacts-file-table-column-header-{field}` (`modified` = "Last update") | on-`automation/testids` (per `_surface.md` L125) | field key is `modified`, NOT `lastUpdate`. Only needed if the spec asserts the header itself |
@@ -169,6 +169,23 @@ Do **not** assert `ui_cell_after != ui_cell_before` — it is a latent flake. As
 **Scope note — this case needs NO new testid.** Every element it touches already carries one, and the single un-tagged value (the Last-update cell) has a merged, reviewed, testid-compliant read path (above). Adding `dataCellTestIdPrefix` to `ArtifactTable` was considered and **rejected**: the prop is a single prefix that would tag all four data cells at once, three of which this test never touches — a blanket add, against `.agents/testing.md` § Locator policy ("testids go ONLY on elements tests actually touch"). The only page-object addition required is `click_resolve_duplicates_replace_button()` over the **already-existing** `resolve_duplicates_replace_button` descriptor.
 
 **Viewport (load-bearing for steps 3/13).** The `modified` column is width-gated (`hideBelow: 900` on the table's own width, `ArtifactTable.jsx:63`). It rendered fine at the framework default 1366x768 in the analyst run, but the merged `test_artifacts_upload_path_cancel.py:86-88,153` documents clipping below ~1600 px and sets `page.set_viewport_size({"width": 1600, "height": 900})`. **Follow that merged pattern** — don't rely on the default being wide enough.
+
+### Implementation note — how steps 3 / 13 read the "Last update" cell (SHIPPED)
+
+The caveat's three assertions ship exactly as written. Two mechanics worth recording,
+both decided at implementation time:
+
+- The spec parses the cell with the merged `LAST_UPDATE_TIMESTAMP_RE` regex shape from
+  `test_artifacts_file_preview_edit_save.py`, but keeps the matched **string** rather than
+  a parsed `datetime`, and compares it for **equality** against the API's own
+  `lastModified` rendered through `dd-MM-yyyy, hh:mm a` in local time. That is caveat
+  point 2 ("the API response is the oracle") in its most direct form — the test writes no
+  expected timestamp of its own, in either direction.
+- Reading the row's text with a single-shot `get_file_row_text()` immediately after the
+  Replace PUT **races the table refetch**. A new additive page-object helper,
+  `ArtifactsPage.wait_for_file_row_to_contain_text()`, wraps Playwright's auto-retrying
+  `expect(...).to_contain_text()` over the same testid-anchored `ARTIFACT_FILE_ROW` class
+  constant (no new selector, no sleep) and is awaited before the row is read.
 
 ## Network Behavior
 | Moment | Requests (confirmed live, 2/2 runs) |

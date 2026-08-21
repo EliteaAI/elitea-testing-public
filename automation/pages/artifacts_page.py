@@ -394,6 +394,16 @@ class ArtifactsPage(BasePage):
         "original untouched (ELITEA-1828/1831).",
     )
 
+    resolve_duplicates_close_button = LocatorDescriptor(
+        testid="artifacts-resolve-duplicates-close-button",
+        description="X (close) icon in the top-right corner of the 'Resolve duplicates' "
+        "dialog (ELITEA-1833 — new testid, implementer: passes the shared "
+        "Modal.BaseModal's existing closeButtonTestId prop from "
+        "DuplicateResolutionDialog.jsx). Dismisses the whole upload interaction — "
+        "nothing is uploaded and the parent 'Upload files to ...' dialog does NOT "
+        "re-appear.",
+    )
+
     # ------------------------------------------------------------------
     # Success toast (app-wide generic component, reused across features —
     # see skills_list_page.SkillsListPage.import_success_toast_message)
@@ -1873,6 +1883,29 @@ class ArtifactsPage(BasePage):
         logger.info("Row text for '%s': %r", filename, text)
         return text
 
+    def wait_for_file_row_to_contain_text(
+        self, filename: str, expected_text: str, timeout: int = 10000,
+    ) -> None:
+        """Wait until a named file row renders *expected_text* (ELITEA-1830).
+
+        Auto-retrying sibling of :meth:`get_file_row_text` for values the
+        row only shows AFTER a backend round-trip has landed and the table
+        has refetched (e.g. the 'Last update' / 'Size' cells following an
+        overwrite) — a single-shot ``text_content()`` read there races the
+        refetch. Uses the same testid-anchored row locator
+        (:attr:`ARTIFACT_FILE_ROW` class constant) + ``.filter(has_text=...)``
+        disambiguation, so no new selector is introduced, and Playwright's
+        own auto-retrying ``expect`` rather than a sleep.
+
+        Args:
+            filename: Exact file name identifying the row.
+            expected_text: Substring the row's rendered text must contain.
+            timeout: Maximum wait time in milliseconds.
+        """
+        row = self.page.locator(self.ARTIFACT_FILE_ROW).filter(has_text=filename).first
+        expect(row).to_contain_text(expected_text, timeout=timeout)
+        logger.info("File row '%s' now renders %r", filename, expected_text)
+
     # ------------------------------------------------------------------
     # Per-row checkbox selection (ELITEA-1840)
     # ------------------------------------------------------------------
@@ -2459,6 +2492,34 @@ class ArtifactsPage(BasePage):
         duplicate's path is never re-touched.
         """
         self.resolve_duplicates_keep_both_button.click()
+
+    @action("Replace duplicate resolution (overwrites the existing file in place)")
+    def click_resolve_duplicates_replace_button(self) -> None:
+        """Click 'Replace' in the 'Resolve duplicates' dialog.
+
+        Overwrites the existing file IN PLACE — confirmed live (ELITEA-1830):
+        fires exactly one PUT to the ORIGINAL key (no delete-then-create, no
+        '- Copy' variant), so exactly one entry remains in the bucket, with a
+        strictly newer 'lastModified' and the replacement file's bytes/size.
+        """
+        self.resolve_duplicates_replace_button.click()
+
+    @action("Close duplicate resolution dialog via the X icon")
+    def click_resolve_duplicates_close_button(self) -> None:
+        """Click the X (close) icon in the 'Resolve duplicates' dialog header.
+
+        Confirmed live (ELITEA-1833): dismisses the ENTIRE upload interaction
+        with zero network requests — nothing is uploaded, no success toast
+        fires, the original file is untouched, and the parent 'Upload files
+        to ...' dialog does not re-appear.
+
+        Distinct CONTROL from :meth:`click_resolve_duplicates_cancel_button`
+        even though the current build wires both to the same ``onCancel``
+        handler (``DuplicateResolutionDialog.jsx`` passes it to both
+        ``BaseModal``'s ``onClose`` and the Cancel button's ``onClick``) —
+        the wiring can change without either case changing.
+        """
+        self.resolve_duplicates_close_button.click()
 
     def wait_for_resolve_duplicates_dialog_closed(self, timeout: int = 10000) -> None:
         """Wait for the 'Resolve duplicates' dialog to be hidden/removed after Cancel.

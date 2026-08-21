@@ -467,3 +467,39 @@ merged `test_artifacts_file_preview_edit_save.py:71-97`. Two gotchas that come w
   `playwright.sync_api`-style throwaway **pytest** spec dropped into
   `automation/tests/ui/artifacts/`, run with the project pytest and `-s` prints, worked first
   try. Both cases in one invocation cost **111 s**.
+
+## Resolved/added during ELITEA-1830 + ELITEA-1833 implementation (implementer, 2026-08-21)
+
+- **New testid — `artifacts-resolve-duplicates-close-button`** (the X in the "Resolve
+  duplicates" dialog header). Added by passing the shared `Modal.BaseModal`'s
+  already-existing `closeButtonTestId` prop from `DuplicateResolutionDialog.jsx`
+  (EliteaAI/EliteaUI@bbb329c4, `automation/testids`; human cherry-pick to `main` pending).
+  Prop-only — no new DOM node, no new hook, no removed line. That prop already has ~10
+  merged consumers, so it is the sanctioned shape for ANY `BaseModal` X icon: pass
+  `closeButtonTestId`, never wrap the header or add a node.
+- **The Replace button is no longer un-exercised.** ELITEA-1830 clicks it and confirms the
+  overwrite semantics the earlier digest row asked for: exactly **one** PUT, to the
+  **original** key (`/artifacts/s3/{bucket}/sample.txt`), no delete-then-create and no
+  `- Copy` key; the bucket keeps exactly one entry; `lastModified` is strictly newer and
+  `size`/bytes are the replacement's. Page objects: `click_resolve_duplicates_replace_button()`
+  and `click_resolve_duplicates_close_button()` now exist alongside Cancel/Skip/Keep-both.
+- **`.click_resolve_duplicates_close_button()` and Cancel hit the same handler today.**
+  `DuplicateResolutionDialog.jsx` passes one `onCancel` to both `BaseModal`'s `onClose`
+  (X / backdrop / Escape) and the Cancel button's `onClick`. Live-confirmed identical
+  outcome: dialog closes, **zero** network requests, no toast, original untouched — and the
+  parent "Upload files to ..." dialog does **not** re-appear (the X does not fall back a step).
+- **Reading the "Last update" cell right after a write races the table refetch.** New
+  additive helper `ArtifactsPage.wait_for_file_row_to_contain_text(filename, text)` wraps
+  an auto-retrying `expect(...).to_contain_text()` over the existing `ARTIFACT_FILE_ROW`
+  class constant. Use it before `get_file_row_text()` whenever the value under assertion
+  only lands after a backend round-trip. The Size cell's rendered form for sub-KB files is
+  exactly `f"{bytes} B"` (`src/utils/filePreview.js` `formatFileSize`).
+- **Dev-server staleness gotcha — cost one full red run.** After committing a NEW testid to
+  `../EliteaUI` on `automation/testids`, the very next pytest run still saw a DOM without it
+  (`Locator.click` timed out with only `- waiting for get_by_test_id(...)` in the call log —
+  i.e. never attached), twice, including pytest-rerunfailures' own reruns. A `curl -s
+  http://localhost:5173/src/<path-to-edited>.jsx | grep -c <testid>` afterwards showed the
+  Vite dev server serving the edit correctly, and the identical spec then passed first try.
+  **Before running a spec that depends on a testid you just added, curl the module off the
+  dev server and confirm the string is there** — it is one cheap command against a ~60 s
+  red run plus its reruns.
