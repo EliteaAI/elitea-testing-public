@@ -315,3 +315,44 @@ it responds to the mouse wheel and to arrow keys.
   `/artifacts` load auto-selects one (measured `scrollTop` 16 on arrival). Never
   assume the list starts pinned to the top — assert the top-alignment you want
   after scrolling there.
+
+## Confirmed handles (as of ELITEA-1823 bucket hover highlight, 2026-08-21)
+
+Left-panel bucket-row **hover highlight**. No testid was added this run — the
+row's pre-existing `artifacts-bucket-row-{name}` is both the hover target and
+the element whose background the case observes.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Bucket row background (hover observable) | `artifacts-bucket-row-{name}` + `expect(...).to_have_css("background-color", …)` | `BucketItem.jsx`'s root Box | a computed-style assertion on a testid-anchored locator — **no `evaluate()`**, Playwright's web-first `to_have_css`/`not_to_have_css` retries until the style settles |
+| Row selection state | `data-selected="true|false"` on the same row | same | pre-existing (`is_bucket_selected()`); the filter that keeps hover targets honest |
+| "Park the cursor off every row" | `ArtifactsPage.move_mouse_off_bucket_list()` — `mouse.move()` to the right of `artifacts-buckets-scroll-container`'s box | added this run | `hover_buckets_panel()` moves onto the panel CENTRE, which lands ON a row — wrong primitive for "cursor away from the bucket list" |
+| Row locator for assertions | `ArtifactsPage.bucket_row(name) -> Locator` | added this run | specs may not build locators (`.agents/testing.md` § Locator policy); this accessor is how a spec gets the row for `to_have_css` |
+
+### Hover behaviours confirmed live (2026-08-21)
+- **Hover is React state, not a CSS `:hover` rule.** `BucketItem.jsx` keeps
+  `isHovering` in `useState`, set by `onMouseEnter`/`onMouseLeave` on the row's
+  root Box, and `bucketItemStyles.getBackgroundColor()` reads it. Consequences:
+  a real pointer move is required (`Locator.hover()` works; dispatching a
+  synthetic event on a parent does not), and the **single-highlight invariant is
+  structural** — one flag per row, cleared on leave.
+- **Background colours, measured live (dark theme):** default
+  `rgba(0, 0, 0, 0)` (`conversation.normal: 'transparent'`), hovered
+  `rgba(255, 255, 255, 0.06)` (`white6`), selected `rgba(41, 184, 245, 0.15)`
+  (`blue15`). `normal` is `'transparent'` in **both** palettes
+  (`darkPalette.js:352` / `lightPalette.js:350`), so "row is in its default
+  appearance" is theme-independent; the hover literal is **not** (light theme
+  uses `dark6`) — assert default-vs-not-default, never the hover literal.
+- **`isActive` beats `isHovering`**: `getBackgroundColor()` returns the selected
+  colour first, so hovering the **selected** bucket produces NO background
+  change. Since `/artifacts` auto-selects the first bucket on a param-less load,
+  "hover the first bucket in the list" is a trap — always pick rows with
+  `data-selected="false"`. (Case ELITEA-1823's Step 4 says "the first bucket";
+  filed as a clarification, `EliteaAI/elitea-testing-public#1624`.)
+- A hovered row also gains a hover-only pin button and its dot-menu container
+  flips to `display:flex` (both deliberately out of ELITEA-1823's scope — the
+  dot-menu reveal is ELITEA-1820's assertion).
+- Playwright MCP again not used (6th consecutive session per the gotcha above) —
+  live execution ran as a throwaway pytest spec under
+  `automation/tests/ui/artifacts/` driving the framework's own `page`/`auth_state`
+  fixtures with `-s` prints.
