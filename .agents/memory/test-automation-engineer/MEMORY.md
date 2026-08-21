@@ -84,3 +84,5 @@
 - [Chat-canvas Discard modal testid threading](chat_canvas_discard_modal_testid_threading_pattern.md) — BaseEditor/EditorHeader already support it; only PipelineEditor.jsx supplies it so far
 - [Dev server HMR can hard-stop, not just lag](dev_server_hmr_can_hard_stop_not_just_lag.md) — curl the served source before blaming your JSX; restart if stale
 - [Phase-2 amendment sweep covers code + digest](phase2_amendment_sweep_must_cover_code_and_digest.md) — grep the disproven claim across the whole diff
+- [New testid may not be served yet](new_testid_may_not_be_served_yet_curl_before_running.md) — curl :5173 first
+- [Re-dispatch of an already-merged unit](redispatch_of_already_merged_unit_verify_dont_rebuild.md) — empty `trunk..branch` = merged-not-missing as often as never-started; check trunk merges first

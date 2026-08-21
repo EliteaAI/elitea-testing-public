@@ -356,3 +356,291 @@ the element whose background the case observes.
   live execution ran as a throwaway pytest spec under
   `automation/tests/ui/artifacts/` driving the framework's own `page`/`auth_state`
   fixtures with `-s` prints.
+
+## Confirmed handles (as of ELITEA-1825 upload-path Cancel, 2026-08-21)
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| "Upload files to ..." modal — **Cancel** button | `artifacts-upload-path-cancel-button` (**Resolved/added during ELITEA-1825 implementation, 2026-08-21** — EliteaAI/EliteaUI@6d360e82 on `automation/testids`, attribute-only; page object: `ArtifactsPage.upload_path_cancel_button` / `click_upload_path_cancel_button()`) | `src/pages/Artifacts/component/UploadPathDialog.jsx`, `actions` fragment | The sibling Upload button already has `artifacts-upload-path-upload-button`; Cancel has nothing. Live enumeration of the dialog's buttons: `[('', None), ('Cancel', None), ('Upload', 'artifacts-upload-path-upload-button')]` — the first, unlabelled one is the modal's X control (also untagged). Attribute-only add, zero functional impact |
+| Path field prefix raw text | `artifacts-upload-path-input` | same | raw `text_content()` is `'Path​{bucket}/​'` — MUI wraps the label + adornment with zero-width spaces; use `ArtifactsPage.get_upload_path_normalized_prefix()`, never a raw equality on `text_content()` |
+| Upload-dialog description (no prefix / bucket root) | `artifacts-upload-path-description-text` | same | exact live wording at bucket root: `Files will be uploaded to the selected bucket. Optionally, enter a folder path to organize your files. Use "/" to create nested folder(s).` |
+
+### Upload-path-dialog Cancel behaviours confirmed live (2026-08-21)
+- **Cancel fires ZERO network requests** — capture on `"artifacts"` across the click and
+  the modal close returned `[]`. Cancel aborts before any PUT, so "nothing uploaded" can be
+  asserted positively, not only by absence in the table.
+- **Cancel resets the dialog's own state**: `handleCancel` = `setFolderPath('') ; onClose()`.
+  Typing `probe-folder` into the Path field, cancelling, and re-opening the dialog returns
+  `typed=''`. Useful Axis-2 observable for any "discard" case on this modal.
+- **No toast at all on Cancel** (`toast-message` count 0), and the file table is identical
+  before and after a page reload — the reload is the cheap way to make the server the
+  oracle rather than an un-refreshed client listing.
+- **Escape ≠ Cancel for case fidelity.** `ArtifactsPage.close_upload_path_dialog()`
+  (ELITEA-1824) presses Escape, which reaches the same `handleCancel` through MUI's
+  `onClose`. Fine as a workaround/transit; NOT acceptable when a case's step literally says
+  "Click Cancel" — that needs the button testid.
+- `get_total_file_count_from_pagination()` (`artifacts_page.py:1792`) is a **raw-CSS**
+  handle (`main *:has-text("of "):not(:has(*))`) — pre-existing tech debt. Prefer
+  `get_pagination_info_text()` on `artifacts-pagination-page-info` (on `automation/testids`,
+  not yet on `main`).
+- Playwright MCP was NOT attempted this session — the digest's own gotcha (4 consecutive
+  unreachable sessions) plus the `playwright.sync_api` scratch-script pattern worked first
+  try: drop the script into `automation/tests/ui/artifacts/`, run it with the project
+  pytest (the repo-root `/tmp` path fails — `pages` is not importable from there), delete
+  it afterwards. One full case run cost ~69 s.
+
+## Resolved/added during ELITEA-1825 implementation (2026-08-21, implementer slot)
+
+- **`artifacts-upload-path-cancel-button` now exists** (EliteaAI/EliteaUI@6d360e82, on
+  `automation/testids`; NOT yet on `main` — human cherry-pick pending). The digest row above
+  is updated. Attribute-only on the pre-existing `Button.BaseBtn`; all three
+  `add-data-testid` § 5.5 zero-functional-impact greps returned 0 hits.
+- **New page-object members** on `ArtifactsPage` (all additive):
+  `upload_path_cancel_button`, `click_upload_path_cancel_button()`,
+  `wait_for_upload_path_dialog_closed()`, and `fill_upload_path(folder_path)` (types into
+  `artifacts-upload-path-input-field`; the read-only prefix adornment is untouched).
+- **Cancel's runtime behaviour, confirmed green:** clicking Cancel fires **zero** requests
+  matching `artifacts`, closes the dialog, and resets the dialog's own folder-path state —
+  re-opening the upload dialog shows an EMPTY editable Path segment even after
+  `probe-folder` was typed before cancelling. The read-only prefix returns to
+  `{bucket}/`.
+- **`get_upload_path_normalized_prefix()` equals `f"{bucket}/"` exactly** at bucket root —
+  a `contains` check is unnecessarily weak; the normalization already strips the MUI label
+  and both zero-width spaces.
+- **EliteaUI commits are hook-gated:** `commitlint` rejects any subject without an
+  `[EL-XXXX]` ticket token — `[ELITEA-1825]` FAILS, `[EL-1825]` passes. `lint-staged`
+  (eslint --fix + prettier) also runs on staged JSX.
+- **Timing baseline:** the full ELITEA-1825 spec (bucket seed + upload dialog + cancel +
+  reload + dialog reopen) runs in **~70 s** headless.
+
+## Confirmed handles (as of ELITEA-1830/1833 duplicate Replace + X-close cluster, 2026-08-21)
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| "Resolve duplicates" modal — **Replace** button | `artifacts-resolve-duplicates-replace-button` | `DuplicateResolutionDialog.jsx` (EliteaAI/EliteaUI@918b8b22, `automation/testids`) | **Now exercised live (ELITEA-1830)** — retires the digest's earlier "not yet exercised by any case" caveat. Semantics confirmed: overwrites **in place** — exactly ONE `PUT /artifacts/s3/{bucket}/{name}?project_id=N` to the SAME key (no delete-then-create, no second key), then a `GET …&format=json` refetch. `LocatorDescriptor` field exists (`artifacts_page.py:384`); **no `click_…()` method yet** — add one mirroring `click_resolve_duplicates_keep_both_button()` |
+| "Resolve duplicates" modal — **X (close)** icon | **testid needed**: `artifacts-resolve-duplicates-close-button` | `DuplicateResolutionDialog.jsx`'s `Modal.BaseModal` call | The X exists and is visible but carries **no** testid. Live button enumeration inside the dialog root: `[('', None, 'Close'), ('Cancel', 'artifacts-resolve-duplicates-cancel-button', None), ('Skip', …), ('Replace', …), ('Keep both', …)]` — the X is the first, label-less one (`aria-label="Close"`). `Modal.BaseModal` **already accepts** `closeButtonTestId` (`src/[fsd]/shared/ui/modal/BaseModal.jsx:35`, applied line 154); the dialog just never passes it. Prop-only add, zero functional impact |
+
+### Duplicate-resolution behaviours confirmed live (2026-08-21)
+- **Replace (ELITEA-1830):** one PUT to the original key → success toast
+  `Your file(s) have been successfully uploaded!` → exactly one row remains
+  (`list_bucket_files` len 1, no `- Copy` variant) → `lastModified` strictly newer
+  (`17:40:37Z` → `17:41:10Z`), `size` `32 B` → `58 B`, content byte-equal to the uploaded
+  bytes. Zero console errors.
+- **X close (ELITEA-1833):** the X is wired to the SAME `onCancel` handler as the Cancel
+  button (`DuplicateResolutionDialog.jsx` passes `onCancel` to both `Modal.BaseModal`'s
+  `onClose` and the Cancel button's `onClick`). Live: **zero** `artifacts` requests from the
+  click onward, dialog closes, **the parent "Upload files to …" dialog does NOT re-open**
+  (count 0 — X dismisses the whole interaction, it does not step back), no toast, file count
+  1 before and after a reload, `lastModified`/`size`/content all byte-identical.
+- **Duplicate detection remains purely client-side** — 0 network requests between the
+  Upload click and the modal, reconfirmed 3/3 runs this session.
+
+### ⚠ Correction to an earlier digest-era claim: the "Last update" column DOES exist
+Some older artifacts specs' prose (ELITEA-1831/1832 step text) says there is "no UI-visible
+timestamp column" and reads timestamps only from the S3 JSON listing. **That is wrong and
+already superseded** — `ArtifactTable.jsx:58-66` renders a `modified` column labelled
+**"Last update"**, and it was read live this session straight off the row:
+`'sample.txt\nText\n32 B\n21-08-2026, 08:40 PM'`. The correct current pattern is
+`ArtifactsPage.get_file_row_text()` (`artifacts_page.py:1848`) + the regex/parse helper in the
+merged `test_artifacts_file_preview_edit_save.py:71-97`. Two gotchas that come with it:
+- **Minute granularity, local time.** Format is `dd-MM-yyyy, hh:mm a`
+  (`ArtifactTable.jsx:50`); UTC `17:41:10Z` renders as `08:41 PM` at UTC+3. A write that
+  lands in the same minute as its baseline renders an **identical string** — never assert
+  `ui_after != ui_before` on a fast flow; assert the API `lastModified` delta and use the UI
+  cell for a carries-it-through equality.
+- **Width-gated** (`hideBelow: 900` on table width). It rendered at the framework default
+  1366x768 this session, but the merged `test_artifacts_upload_path_cancel.py:86-88,153`
+  documents clipping below ~1600 px and sets `set_viewport_size(1600x900)` — follow that.
+- **No per-cell testid, and that is settled**: adding `dataCellTestIdPrefix` to
+  `ArtifactTable` would tag all four data cells at once (single prefix prop) — a blanket add
+  against the scope rule. Row-text + regex is the sanctioned read.
+
+### Gotchas added this run
+- `page.locator('[data-testid="artifacts-file-row"]').count()` read **0** immediately after
+  `navigate_to_bucket()` while the row's `inner_text()` (auto-waiting) returned the full row
+  — the list is still hydrating. **Use auto-waiting assertions / `expect(...)`, never a bare
+  `.count()` right after navigation.**
+- The file table is a **CSS-grid of divs**, not an HTML `<table>`: `table thead th` /
+  `table tbody tr` match **nothing**. Probing scripts must target `artifacts-file-row` /
+  `artifacts-file-list`.
+- Playwright MCP again NOT attempted (7th consecutive session per the gotcha above) — the
+  `playwright.sync_api`-style throwaway **pytest** spec dropped into
+  `automation/tests/ui/artifacts/`, run with the project pytest and `-s` prints, worked first
+  try. Both cases in one invocation cost **111 s**.
+
+## Resolved/added during ELITEA-1830 + ELITEA-1833 implementation (implementer, 2026-08-21)
+
+- **New testid — `artifacts-resolve-duplicates-close-button`** (the X in the "Resolve
+  duplicates" dialog header). Added by passing the shared `Modal.BaseModal`'s
+  already-existing `closeButtonTestId` prop from `DuplicateResolutionDialog.jsx`
+  (EliteaAI/EliteaUI@bbb329c4, `automation/testids`; human cherry-pick to `main` pending).
+  Prop-only — no new DOM node, no new hook, no removed line. That prop already has ~10
+  merged consumers, so it is the sanctioned shape for ANY `BaseModal` X icon: pass
+  `closeButtonTestId`, never wrap the header or add a node.
+- **The Replace button is no longer un-exercised.** ELITEA-1830 clicks it and confirms the
+  overwrite semantics the earlier digest row asked for: exactly **one** PUT, to the
+  **original** key (`/artifacts/s3/{bucket}/sample.txt`), no delete-then-create and no
+  `- Copy` key; the bucket keeps exactly one entry; `lastModified` is strictly newer and
+  `size`/bytes are the replacement's. Page objects: `click_resolve_duplicates_replace_button()`
+  and `click_resolve_duplicates_close_button()` now exist alongside Cancel/Skip/Keep-both.
+- **`.click_resolve_duplicates_close_button()` and Cancel hit the same handler today.**
+  `DuplicateResolutionDialog.jsx` passes one `onCancel` to both `BaseModal`'s `onClose`
+  (X / backdrop / Escape) and the Cancel button's `onClick`. Live-confirmed identical
+  outcome: dialog closes, **zero** network requests, no toast, original untouched — and the
+  parent "Upload files to ..." dialog does **not** re-appear (the X does not fall back a step).
+- **Reading the "Last update" cell right after a write races the table refetch.** New
+  additive helper `ArtifactsPage.wait_for_file_row_to_contain_text(filename, text)` wraps
+  an auto-retrying `expect(...).to_contain_text()` over the existing `ARTIFACT_FILE_ROW`
+  class constant. Use it before `get_file_row_text()` whenever the value under assertion
+  only lands after a backend round-trip. The Size cell's rendered form for sub-KB files is
+  exactly `f"{bytes} B"` (`src/utils/filePreview.js` `formatFileSize`).
+- **Dev-server staleness gotcha — cost one full red run.** After committing a NEW testid to
+  `../EliteaUI` on `automation/testids`, the very next pytest run still saw a DOM without it
+  (`Locator.click` timed out with only `- waiting for get_by_test_id(...)` in the call log —
+  i.e. never attached), twice, including pytest-rerunfailures' own reruns. A `curl -s
+  http://localhost:5173/src/<path-to-edited>.jsx | grep -c <testid>` afterwards showed the
+  Vite dev server serving the edit correctly, and the identical spec then passed first try.
+  **Before running a spec that depends on a testid you just added, curl the module off the
+  dev server and confirm the string is there** — it is one cheap command against a ~60 s
+  red run plus its reruns.
+
+## Confirmed handles (as of ELITEA-1834 bucket-actions upload-to-subfolder, 2026-08-21)
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Bucket row 3-dot menu button | `bucket-menu-{bucket}-menu-button` (`ArtifactsPage.BUCKET_MENU_BUTTON`) | composed at runtime by `DotMenu.jsx:354` (`data-testid={id ? \`${id}-menu-button\` : undefined}`) | **invisible to a `data-testid`-literal grep** — the string never appears whole in source |
+| Bucket menu "Upload files" item | `bucket-menu-upload-files-menuitem` | `BucketItem.jsx:153` supplies `key: 'bucket-menu-upload-files'`; `DotMenu.jsx:57` appends `-menuitem` | same grep blind spot |
+| File / folder rows | `artifacts-file-row` / `artifacts-folder-row` inside `artifacts-file-list` | `ArtifactTable.jsx:521-526` (ternary, no `data-testid=` token on the value line) | same grep blind spot |
+| Upload-dialog description at a SUBFOLDER | `artifacts-upload-path-description-text` | `UploadPathDialog.jsx:33-41` | wording differs from bucket root: `Files will be uploaded to "{bucket}/{prefix}". Optionally, enter a subfolder path (relative to current location). Leave empty to upload to the current folder.` — the root wording (generic, bucket-name-free, per #674) is the `!currentPrefix` branch |
+
+### Bucket-actions upload behaviours confirmed live (2026-08-21, ELITEA-1834)
+- **The bucket 3-dot menu's "Upload files" targets the CURRENT SELECTION, not the bucket
+  root.** With subfolder `a1` selected in the tree, the dialog pre-fills `{bucket}/a1/`, the
+  PUT goes to `/artifacts/s3/{bucket}/a1/sample.txt` (200), the view stays on `{bucket} > a1`
+  and the root listing keeps showing only the `a1` folder row. Mechanism: `Artifacts.jsx:95`'s
+  single `currentPrefix` state; `BucketItem.jsx:96` `handleUploadClick` never resets it;
+  `UploadPathDialog.jsx:94` renders `{bucket}/{currentPrefix}`.
+- ⚠ **Two TMS cases contradict here.** ELITEA-1834 calls that behaviour CORRECT; ELITEA-1824
+  (→ open bug **#649**, soft-asserted in
+  `test_artifacts_upload_three_options_verify_selection.py`) calls the identical state a
+  defect. Filed **#1629** (`question` + `case-text-drift`) for a human ruling. Anyone touching
+  either spec should read #1629 first rather than "fixing" one to match the other.
+- **Tree selection is exclusive:** selecting `a1/` flips the bucket row's own
+  `data-selected` to `false`; `is_tree_item_selected("a1/")` is the highlight oracle.
+- **Coming back to root from inside a subfolder is one `click_bucket_row()`** — it both
+  navigates to root and leaves the tree expanded (no toggle-collapse observed on this path;
+  the #651 toggle caveat still applies when the bucket is ALREADY the active root selection,
+  so guard with `is_tree_item_visible("a1/")` + conditional second click).
+- **Seeding a subfolder for a test:** empty-state upload + `fill_upload_path("a1")`. Use a
+  seed filename ≠ the case's own upload file, or the "Resolve duplicates" dialog fires and
+  derails the upload-path dialog assertions.
+- ⚠ **The closure-record two-stage testid grep produces FALSE "not on main" rows** for
+  runtime-composed and ternary/`key:`-wired testids (three of them in this case's set —
+  table above). Read the `git grep` hits rather than filtering them when a handle you have
+  *used live* reports absent.
+- Playwright MCP again NOT attempted (8th consecutive session per the digest gotcha); one
+  throwaway pytest spec in `automation/tests/ui/artifacts/` ran the whole 18-step case in
+  **34 s**, zero console errors.
+
+## Resolved/confirmed during ELITEA-1834 implementation (test-automation-engineer, 2026-08-21)
+
+- **Every handle in ELITEA-1834's AFS held exactly as documented** — the whole
+  bucket-menu → upload-path-dialog → subfolder-listing flow ran green on the
+  first attempt with **zero page-object changes**. `click_bucket_row`,
+  `is_bucket_selected`, `click_tree_item`, `is_tree_item_selected`,
+  `is_tree_item_visible`, `hover_bucket_row`, `open_bucket_menu`,
+  `click_bucket_menu_upload_files_item`, `wait_for_upload_path_dialog`,
+  `get_upload_path_normalized_prefix`, `get_upload_path_typed_value`,
+  `get_upload_path_description_text`,
+  `click_upload_path_upload_button_and_capture_response`, the breadcrumb
+  getters, `wait_for_file_count`, `get_file_names`, `get_file_row_text` all
+  cover this surface end-to-end today.
+- **The bucket-actions "Upload files" entry point is now asserted BOTH ways in
+  the merged suite — this is deliberate, not a duplication to collapse.**
+  `test_artifacts_upload_to_selected_subfolder.py` (ELITEA-1834) hard-asserts
+  the dialog prefix `{bucket}/a1/` as CORRECT while `a1` is selected;
+  `test_artifacts_upload_three_options_verify_selection.py` (ELITEA-1824)
+  soft-asserts the opposite (`{bucket}/`) as KNOWN DEFECT #649 at the same DOM
+  node. One `currentPrefix` machine state, two case texts with opposite
+  expectations — filed for a human ruling as CLARIFICATION #1629. Whoever
+  resolves #1629 must touch BOTH specs; do not "align" one to the other before
+  that ruling lands.
+- **`artifacts` is NOT a registered pytest marker** (`automation/pytest.ini`) —
+  no artifacts spec uses one. Feature scoping is by directory
+  (`tests/ui/artifacts/`); the marker set for a new artifacts spec is
+  `ui, regression, p<pri>, new`.
+- **`a1/`-seeding gotcha reconfirmed:** the seed file must NOT be named
+  `sample.txt` when `sample.txt` is the case's own upload subject — the second
+  upload would raise the "Resolve duplicates" dialog instead of the
+  "Upload files to ..." dialog. `seed.txt` used here.
+
+## Confirmed handles (as of ELITEA-1836/1837/1838 file-tree cluster, 2026-08-21)
+
+Left-panel **file-tree behaviour** — subfolder expand/collapse, breadcrumb + URL
+navigation, and bucket switching. **No testid was added this run** — every
+element these three cases touch already carries one.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Tree node (folder or file) | `artifacts-tree-item-{key}` (`ArtifactsPage.ARTIFACTS_TREE_ITEM`) | `Components/FileTreeItem.jsx:107` | key = the item's FULL relative key: a folder is `a1/` (trailing slash), a nested file is `a1/f1.txt`. Keys are bucket-relative, so two buckets with same-named files produce colliding keys — give seeded buckets distinct filenames |
+| Tree node selection | `data-selected="true\|false"` on the same node | same | `is_tree_item_selected()`; selection is EXCLUSIVE — selecting `a1/` flips the bucket row's own `data-selected` to `false` |
+| "Bucket is expanded" observable | the bucket's own tree nodes exist at all | `SimpleBucketList.jsx:89` renders `{isExpanded && <BucketContent …>}` | there is NO `data-expanded` on the bucket row and none is needed — a collapsed bucket has ZERO tree nodes in the DOM |
+| "Subfolder is expanded" observable | the folder's CHILD tree nodes exist | `FileTreeItem.jsx`'s `<Collapse in={isExpanded} unmountOnExit>` | children unmount ~300 ms after the collapse click (MUI transition) — assert with `to_have_count(0)`, never a fixed sleep |
+| Breadcrumb bucket crumb (clickable root link) | `artifacts-breadcrumb-bucket-label` + `ArtifactsPage.click_breadcrumb_bucket_label()` (**added during this run's implementation**) | `component/ArtifactTableToolbar.jsx:65` | `onClick` is wired **only while `currentPrefix` is truthy** — at bucket root the crumb is inert (not a bug) |
+
+### File-tree behaviours confirmed live (2026-08-21)
+- **Subfolder click toggles expansion AND (re)selects the folder.**
+  `FileTreeItem.handleSelect` does `setIsExpanded(prev => !prev)` **and** calls
+  `onSelectFolder(item.key)` on BOTH clicks. Consequence: collapsing a subfolder
+  does **not** reset the breadcrumb or the URL — after the collapse click the
+  header still reads `bucket > a1`, the URL still carries `&folder=a1`, and the
+  main panel still lists the subfolder's files. Only the tree branch closes.
+- **⚠ A collapse click fired during the expand ANIMATION is lost — permanently
+  (product defect `#1631`).** Mechanism, pinned down during the ELITEA-1836
+  implementation: the click interrupts MUI `Collapse`'s ~300 ms **enter**
+  transition, `onExited` never fires, and `unmountOnExit` therefore never
+  unmounts the children — the folder stays open for good, not just for a moment.
+  **No network request is involved** (request capture across the window: empty),
+  so the earlier "`isFetching` remount" hypothesis recorded on first analysis was
+  **wrong**; corrected here and on the issue.
+  Measured: **3/3 failures** with the collapse click inside the transition
+  window, **18/18 successes** once it had finished (plus 12/12 in two earlier
+  probes; a 200 ms gap is borderline, 500 ms+ reliable).
+  **Rule for any tree test: never fire two tree clicks back-to-back — wait for
+  the subtree to stop moving** with
+  `ArtifactsPage.wait_for_tree_item_stable("<last child key>")` (added with
+  ELITEA-1836; polled geometry, same shape as
+  `wait_until_bucket_row_within_panel`, no sleep).
+- **URL shapes:** bucket root `?bucket=<name>`; inside a subfolder
+  `?bucket=<name>&folder=a1` — the `folder` param carries **no** trailing slash
+  even though the prefix and the tree key do (`Artifacts.jsx`:
+  `normalizedPrefix.replace(/\/$/, '')`). Assert anchored, not by substring: a
+  stale `&folder=…` survives a `"bucket=<name>" in url` check.
+- **Breadcrumb-root click returns to root without collapsing the tree** — the
+  `a1/` subtree stays rendered; only `data-selected` clears and `currentPrefix`
+  resets.
+- **Switching buckets never collapses the previous one.** Expansion lives in
+  `BucketsListContent.jsx`'s `expandedBuckets` map, only ever set `true` for the
+  newly selected bucket and toggled solely by clicking an ALREADY-active row
+  (the `#651` behaviour). Live: bucket A's tree nodes stayed visible with
+  `data-selected="false"` while B was selected.
+- **Returning to a bucket restores the BUCKET's expansion but not a subfolder's**
+  — `BucketContent` remounts and `FileTreeItem` re-initialises from
+  `expandedPaths`, empty once the bucket click reset `currentPrefix`. Not a
+  regression; not asserted by any of these three cases.
+- **`/artifacts` auto-selects the alphabetically-first bucket** on a param-less
+  load — measured live as never an `autotest-…` one, but every spec here asserts
+  `is_bucket_selected(bucket) is False` before its first bucket click so the
+  `#651` toggle trap can never be entered silently.
+- **Two-bucket seeding pattern (ELITEA-1838):** take bucket A from the
+  `artifact_bucket` fixture and create B as `f"{A}-b"` via
+  `ArtifactAPI.create_bucket` with its own try/except teardown — `{A}-b` sorts
+  immediately after A in the alphanumeric list, so both rows land in the same
+  scroll band of a 760-bucket panel.
+- **Page-object additions this run:** `click_breadcrumb_bucket_label()` (clicks
+  the `artifacts-breadcrumb-bucket-label` crumb → back to bucket root) and
+  `wait_for_tree_item_stable(item_key)` (the expand-animation settle wait above).
+- Playwright MCP again NOT attempted (9th consecutive session per the digest
+  gotcha) — all three cases were executed live via throwaway pytest specs under
+  `automation/tests/ui/artifacts/` driving the framework's `page`/`auth_state`
+  fixtures with `-s` prints (4 probe runs, 38-64 s each), then deleted.

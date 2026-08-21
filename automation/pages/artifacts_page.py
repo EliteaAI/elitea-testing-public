@@ -321,6 +321,17 @@ class ArtifactsPage(BasePage):
         "client-side duplicate detection against the bucket's already-fetched listing",
     )
 
+    upload_path_cancel_button = LocatorDescriptor(
+        testid="artifacts-upload-path-cancel-button",
+        description="'Cancel' button inside the 'Upload files to ...' dialog "
+        "(ELITEA-1825 — testid added to the pre-existing Button.BaseBtn in "
+        "UploadPathDialog.jsx, attribute-only, EliteaAI/EliteaUI@6d360e82). Its "
+        "onClick is `handleCancel` — the SAME handler BaseModal wires to onClose "
+        "for Escape — but ELITEA-1825's step 8 is literally 'Click Cancel', so the "
+        "button itself is the subject; :meth:`close_upload_path_dialog` remains the "
+        "Escape variant kept for ELITEA-1824's #649 workaround.",
+    )
+
     # ELITEA-1835: separate description Typography (distinct DOM node from
     # upload_path_input above) — reads a GENERIC, bucket-name-free string at
     # bucket root and only interpolates the bucket name once a subfolder is
@@ -381,6 +392,16 @@ class ArtifactsPage(BasePage):
         description="'Keep both' button inside the 'Resolve duplicates' dialog — uploads "
         "the new file under a renamed '{baseName} - Copy{extension}' key, leaves the "
         "original untouched (ELITEA-1828/1831).",
+    )
+
+    resolve_duplicates_close_button = LocatorDescriptor(
+        testid="artifacts-resolve-duplicates-close-button",
+        description="X (close) icon in the top-right corner of the 'Resolve duplicates' "
+        "dialog (ELITEA-1833 — new testid, implementer: passes the shared "
+        "Modal.BaseModal's existing closeButtonTestId prop from "
+        "DuplicateResolutionDialog.jsx). Dismisses the whole upload interaction — "
+        "nothing is uploaded and the parent 'Upload files to ...' dialog does NOT "
+        "re-appear.",
     )
 
     # ------------------------------------------------------------------
@@ -1643,6 +1664,59 @@ class ArtifactsPage(BasePage):
         except Exception:
             return False
 
+    # Poll interval for the tree-node geometry settle wait (below).
+    TREE_ITEM_STABLE_POLL_INTERVAL_MS = 100
+
+    def wait_for_tree_item_stable(
+        self,
+        item_key: str,
+        timeout: int = 5000,
+        settle_samples: int = 2,
+    ) -> bool:
+        """Wait until a left-panel tree node stops moving (ELITEA-1836).
+
+        Expanding a folder animates MUI's ``Collapse`` (~300 ms), during
+        which every node inside it slides into place. A click that lands
+        while that enter-transition is still running interrupts it and
+        leaves the subtree mounted — the folder never collapses (product
+        defect #1631; measured 3/3 failures without this wait, 18/18
+        successes with the transition finished).
+
+        A condition wait polled against the geometry the product renders —
+        the same shape as :meth:`wait_until_bucket_row_within_panel`, and
+        the reason a fixed sleep is not used.
+
+        Args:
+            item_key: Full relative key of the tree node to watch (e.g.
+                ``"a1/f2.txt"`` — watch the LAST node of an expanding
+                subtree, it settles last).
+            timeout: Maximum wait in milliseconds.
+            settle_samples: Consecutive identical position reads required.
+
+        Returns:
+            ``True`` once the node's position repeated ``settle_samples``
+            times, ``False`` if the timeout expired first.
+        """
+        item = self.page.locator(self.ARTIFACTS_TREE_ITEM.format(item_key))
+        deadline = time.monotonic() + timeout / 1000
+        previous: tuple[float, float] | None = None
+        stable = 0
+        while True:
+            box = item.bounding_box()
+            current = None if box is None else (round(box["x"], 1), round(box["y"], 1))
+            if current is not None and current == previous:
+                stable += 1
+                if stable >= settle_samples:
+                    logger.info("Tree node '%s' settled at %s", item_key, current)
+                    return True
+            else:
+                stable = 0
+            previous = current
+            if time.monotonic() >= deadline:
+                logger.warning("Tree node '%s' never settled within %sms", item_key, timeout)
+                return False
+            self.page.wait_for_timeout(self.TREE_ITEM_STABLE_POLL_INTERVAL_MS)
+
     @action("Click tree item (left panel)")
     def click_tree_item(self, item_key: str, timeout: int = 10000) -> None:
         """Click a left-panel tree node by its full relative key (ELITEA-1824).
@@ -1861,6 +1935,29 @@ class ArtifactsPage(BasePage):
         text = (row.text_content() or "").strip()
         logger.info("Row text for '%s': %r", filename, text)
         return text
+
+    def wait_for_file_row_to_contain_text(
+        self, filename: str, expected_text: str, timeout: int = 10000,
+    ) -> None:
+        """Wait until a named file row renders *expected_text* (ELITEA-1830).
+
+        Auto-retrying sibling of :meth:`get_file_row_text` for values the
+        row only shows AFTER a backend round-trip has landed and the table
+        has refetched (e.g. the 'Last update' / 'Size' cells following an
+        overwrite) — a single-shot ``text_content()`` read there races the
+        refetch. Uses the same testid-anchored row locator
+        (:attr:`ARTIFACT_FILE_ROW` class constant) + ``.filter(has_text=...)``
+        disambiguation, so no new selector is introduced, and Playwright's
+        own auto-retrying ``expect`` rather than a sleep.
+
+        Args:
+            filename: Exact file name identifying the row.
+            expected_text: Substring the row's rendered text must contain.
+            timeout: Maximum wait time in milliseconds.
+        """
+        row = self.page.locator(self.ARTIFACT_FILE_ROW).filter(has_text=filename).first
+        expect(row).to_contain_text(expected_text, timeout=timeout)
+        logger.info("File row '%s' now renders %r", filename, expected_text)
 
     # ------------------------------------------------------------------
     # Per-row checkbox selection (ELITEA-1840)
@@ -2318,6 +2415,52 @@ class ArtifactsPage(BasePage):
         """
         self.upload_path_upload_button.click()
 
+    @action("Cancel the 'Upload files to ...' dialog")
+    def click_upload_path_cancel_button(self) -> None:
+        """Click 'Cancel' in the 'Upload files to ...' dialog (ELITEA-1825).
+
+        Abandons the upload attempt BEFORE 'Upload' is ever pressed — a
+        different product path from :meth:`click_resolve_duplicates_cancel_button`
+        (which cancels the *second*, duplicate-resolution dialog). Confirmed
+        live: ``handleCancel`` clears the dialog's own folder-path state and
+        closes it without firing any network request.
+
+        Does not wait for the dialog to disappear — call
+        :meth:`wait_for_upload_path_dialog_closed` next.
+        """
+        self.upload_path_cancel_button.click()
+
+    def wait_for_upload_path_dialog_closed(self, timeout: int = 10000) -> None:
+        """Wait for the 'Upload files to ...' dialog to become hidden.
+
+        Additive sibling of :meth:`wait_for_upload_path_dialog`, mirroring
+        :meth:`wait_for_resolve_duplicates_dialog_closed`'s shape — used
+        after :meth:`click_upload_path_cancel_button` (ELITEA-1825).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.upload_path_dialog.wait_for(state="hidden", timeout=timeout)
+        logger.info("'Upload files to ...' dialog closed")
+
+    @action("Type a folder path in the upload-path dialog")
+    def fill_upload_path(self, folder_path: str, timeout: int = 5000) -> None:
+        """Type *folder_path* into the editable Path segment (ELITEA-1825).
+
+        Writes to :attr:`upload_path_input_field` — the native ``<input>``
+        holding the user-typed suffix; the bucket/currentPrefix portion in
+        front of it is a read-only ``InputAdornment`` and is unaffected.
+        Read the value back with :meth:`get_upload_path_typed_value`.
+
+        Args:
+            folder_path: Folder path to type (e.g. ``"probe-folder"``).
+            timeout: Maximum wait time in milliseconds for the input to be
+                visible before typing.
+        """
+        self.upload_path_input_field.wait_for(state="visible", timeout=timeout)
+        self.upload_path_input_field.fill(folder_path)
+        logger.info("Typed upload folder path %r", folder_path)
+
     def click_upload_path_upload_button_and_capture_response(self, timeout: int = 15000):
         """Click 'Upload' and return the matching PUT response (ELITEA-1808).
 
@@ -2402,6 +2545,34 @@ class ArtifactsPage(BasePage):
         duplicate's path is never re-touched.
         """
         self.resolve_duplicates_keep_both_button.click()
+
+    @action("Replace duplicate resolution (overwrites the existing file in place)")
+    def click_resolve_duplicates_replace_button(self) -> None:
+        """Click 'Replace' in the 'Resolve duplicates' dialog.
+
+        Overwrites the existing file IN PLACE — confirmed live (ELITEA-1830):
+        fires exactly one PUT to the ORIGINAL key (no delete-then-create, no
+        '- Copy' variant), so exactly one entry remains in the bucket, with a
+        strictly newer 'lastModified' and the replacement file's bytes/size.
+        """
+        self.resolve_duplicates_replace_button.click()
+
+    @action("Close duplicate resolution dialog via the X icon")
+    def click_resolve_duplicates_close_button(self) -> None:
+        """Click the X (close) icon in the 'Resolve duplicates' dialog header.
+
+        Confirmed live (ELITEA-1833): dismisses the ENTIRE upload interaction
+        with zero network requests — nothing is uploaded, no success toast
+        fires, the original file is untouched, and the parent 'Upload files
+        to ...' dialog does not re-appear.
+
+        Distinct CONTROL from :meth:`click_resolve_duplicates_cancel_button`
+        even though the current build wires both to the same ``onCancel``
+        handler (``DuplicateResolutionDialog.jsx`` passes it to both
+        ``BaseModal``'s ``onClose`` and the Cancel button's ``onClick``) —
+        the wiring can change without either case changing.
+        """
+        self.resolve_duplicates_close_button.click()
 
     def wait_for_resolve_duplicates_dialog_closed(self, timeout: int = 10000) -> None:
         """Wait for the 'Resolve duplicates' dialog to be hidden/removed after Cancel.
@@ -2919,6 +3090,26 @@ class ArtifactsPage(BasePage):
         names = [(labels.nth(i).text_content() or "").strip() for i in range(count)]
         logger.info("Breadcrumb folder crumbs: %s", names)
         return names
+
+    @action("Click breadcrumb bucket crumb (main panel header)")
+    def click_breadcrumb_bucket_label(self, timeout: int = 10000) -> None:
+        """Click the bucket crumb in the main-panel breadcrumb (ELITEA-1837).
+
+        Navigates back to the bucket ROOT from inside a subfolder: the
+        product clears ``currentPrefix`` and drops the ``folder`` query
+        param, leaving ``?bucket=<name>``.
+
+        NOTE: ``ArtifactTableToolbar.jsx`` wires this label's ``onClick``
+        **only while a folder prefix is active** — at bucket root the crumb
+        is deliberately inert, so calling this there is a no-op click, not
+        an error.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.breadcrumb_bucket_label.wait_for(state="visible", timeout=timeout)
+        self.breadcrumb_bucket_label.click(timeout=timeout)
+        logger.info("Clicked the breadcrumb bucket crumb (back to bucket root)")
 
     # ------------------------------------------------------------------
     # File preview/edit editor panel (ELITEA-1851/1852/1856)
