@@ -87,9 +87,21 @@ None beyond the `artifact_bucket` fixture teardown — this case mutates nothing
 cancelled), so its final state is its seeded state.
 
 ## Concrete Handles (discovered during exploration)
-Same table as ELITEA-1844's § Concrete Handles; this case additionally *drives*
-`delete-confirm-cancel-button` (on-main ✓, EliteaAI/EliteaUI@bf4a13ad) and never touches
-`delete-confirm-button`.
+Same table as ELITEA-1844's § Concrete Handles (**amended in fix round 1** — re-verified with the
+two-ref grep for every row, plus caller-side diffs for the composed/prop-wired handles). This case
+additionally *drives*:
+
+| Element | Handle | Provenance |
+|---|---|---|
+| Modal `Cancel` | `delete-confirm-cancel-button` | on-main ✓ — EliteaAI/EliteaUI@bf4a13ad |
+| File-table row, read twice for the byte-for-byte metadata snapshot (`get_file_row_text()`) | `ArtifactsPage.ARTIFACT_FILE_ROW` → `artifacts-file-row` | on-main ✓ (ternary-wired in `ArtifactTable.jsx:525`, identical on both refs) |
+
+…and never touches `delete-confirm-button`.
+
+**Promotability note:** this case's own handles are all on `main`, but it ships in the SAME spec
+file as ELITEA-1844, whose three testids are not (`delete-confirm-entity-name`,
+`delete-confirm-close-button`, `delete-confirm-title-icon`). The closure record's promotability
+row is therefore file-scoped, not case-scoped: THREE testids pending human cherry-pick.
 
 ## Network Behavior
 Zero requests fire on the Cancel path — `onClose` only resets local modal state
