@@ -541,3 +541,35 @@ merged `test_artifacts_file_preview_edit_save.py:71-97`. Two gotchas that come w
 - Playwright MCP again NOT attempted (8th consecutive session per the digest gotcha); one
   throwaway pytest spec in `automation/tests/ui/artifacts/` ran the whole 18-step case in
   **34 s**, zero console errors.
+
+## Resolved/confirmed during ELITEA-1834 implementation (test-automation-engineer, 2026-08-21)
+
+- **Every handle in ELITEA-1834's AFS held exactly as documented** — the whole
+  bucket-menu → upload-path-dialog → subfolder-listing flow ran green on the
+  first attempt with **zero page-object changes**. `click_bucket_row`,
+  `is_bucket_selected`, `click_tree_item`, `is_tree_item_selected`,
+  `is_tree_item_visible`, `hover_bucket_row`, `open_bucket_menu`,
+  `click_bucket_menu_upload_files_item`, `wait_for_upload_path_dialog`,
+  `get_upload_path_normalized_prefix`, `get_upload_path_typed_value`,
+  `get_upload_path_description_text`,
+  `click_upload_path_upload_button_and_capture_response`, the breadcrumb
+  getters, `wait_for_file_count`, `get_file_names`, `get_file_row_text` all
+  cover this surface end-to-end today.
+- **The bucket-actions "Upload files" entry point is now asserted BOTH ways in
+  the merged suite — this is deliberate, not a duplication to collapse.**
+  `test_artifacts_upload_to_selected_subfolder.py` (ELITEA-1834) hard-asserts
+  the dialog prefix `{bucket}/a1/` as CORRECT while `a1` is selected;
+  `test_artifacts_upload_three_options_verify_selection.py` (ELITEA-1824)
+  soft-asserts the opposite (`{bucket}/`) as KNOWN DEFECT #649 at the same DOM
+  node. One `currentPrefix` machine state, two case texts with opposite
+  expectations — filed for a human ruling as CLARIFICATION #1629. Whoever
+  resolves #1629 must touch BOTH specs; do not "align" one to the other before
+  that ruling lands.
+- **`artifacts` is NOT a registered pytest marker** (`automation/pytest.ini`) —
+  no artifacts spec uses one. Feature scoping is by directory
+  (`tests/ui/artifacts/`); the marker set for a new artifacts spec is
+  `ui, regression, p<pri>, new`.
+- **`a1/`-seeding gotcha reconfirmed:** the seed file must NOT be named
+  `sample.txt` when `sample.txt` is the case's own upload subject — the second
+  upload would raise the "Resolve duplicates" dialog instead of the
+  "Upload files to ..." dialog. `seed.txt` used here.

@@ -11,6 +11,10 @@
   project `Private` / `project_id=399`), 2026-08-21
 - **User set**: `${TEST_USER}` (on localhost `auth_state` skips login via `VITE_DEV_TOKEN`)
 - **Analyst**: qa-engineer, analyst slot, batch `artifacts-w02`
+- **Shipped as**: `automation/tests/ui/artifacts/test_artifacts_upload_to_selected_subfolder.py`
+  ::`TestArtifactUploadToSelectedSubfolder::test_upload_via_bucket_actions_lands_in_selected_subfolder`
+  — implemented exactly to this AFS, zero handle drift, GREEN 1/1 first run (51.3 s,
+  zero console errors, no page-object changes needed).
 - **Status**: **ready-for-automation** — all 18 case steps executed live end-to-end in one
   pytest scratch run (34 s, zero console errors, every expected result matched exactly).
 - **Filed this run**: [#1629](https://github.com/EliteaAI/elitea-testing-public/issues/1629)
@@ -112,7 +116,13 @@ All confirmed live this session. **Provenance** column per `.agents/role-overrid
 
 ## Test Steps
 
-Marker set: `ui`, `regression`, `p2` (case priority medium), `artifacts`.
+Marker set as SHIPPED: `ui`, `regression`, `p2` (case priority medium), `new`.
+*(Amended by the implementer: this AFS originally listed an `artifacts` marker —
+no such marker is registered in `automation/pytest.ini` (no artifacts spec uses one),
+so it would only raise an unknown-marker warning. `new` is the suite's own
+"added on `automation/base`, not yet validated on a deployed env" marker, matching
+the sibling upload specs `test_artifacts_upload_path_cancel.py` /
+`test_artifacts_upload_three_options_verify_selection.py`.)*
 Each step wrapped in `with allure.step("Step N — ...")`.
 
 | # | Action | Assert (observed live) |
