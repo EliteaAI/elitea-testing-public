@@ -46,6 +46,9 @@ Workflow({
     // quotaResume: false                   — set true ONLY when resuming after an account-ceiling halt
     // fixRounds: 8                         — runaway backstop for the review/fix loop, not the control
     // mergeModel / reporterModel: "haiku"  — the two deliberate cheap-tier slots
+    // gateModel: null                      — gate agent tier; the script does the mechanics
+    //                                        (run, time, record), so haiku is viable — but the
+    //                                        blast-radius diff read is judgment, so default inherits
     // gateN: 3                             — consecutive deterministic greens the gate demands
     // gateCmd: null                        — suite command; null → the gate agent resolves it from .agents/testing.md
     // integrationBranch: "tests/batch-<slug>"
@@ -153,8 +156,12 @@ Dropping the gate's worktree **removed** work rather than adding it: a worktree
 carries only tracked files, so the suite arrived there without its env file and
 without dependencies, and `gate-case.mjs` had to carry env-resolution, symlink
 repair and a `--fix-env` flag to undo that. The real checkout has all of it
-already. One guard replaces the lot: the gate **refuses to run on a dirty tree**,
-because checking a branch out would drag or lose work in progress.
+already. One guard replaces the lot — and it is **precise, not blanket**
+(reworked 2026-08-17): the gate refuses only dirt that matters — a dirty path
+among the files it is proving (the base…branch diff), or one git itself
+refuses to overwrite on checkout/merge (reported by exact path). Unrelated
+noise — logs, configs, other bundles' state — never blocks; it rides the
+verdict record as `carriedDirt`.
 
 **The cost, stated plainly.** Gating no longer overlaps the next batch's build —
 wall clock goes from `max(build, gate)` to `build + gate`. That is real: in one
@@ -379,7 +386,7 @@ prose. Keep these if you ever fork it:
    makes access explicit and deterministic on every path.
    Both workers ship an inline browser-server definition (subagent-scoped,
    one at a time under the serial pipeline); the per-project lists are seeded
-   at Step 6.8 (`seeding-a-project` → agent-tools-wiring § Claude Code).
+   at Step 6.8 (`seeding-automation-project` → agent-tools-wiring § Claude Code).
 6. **Analyst tiering — the standalone analyst is for novel ground**
    (`tiering: 'auto'` default; `'off'` restores always-analyst). One cheap
    triage dispatch (haiku, read-only) routes each unit: surfaces whose
@@ -390,7 +397,30 @@ prose. Keep these if you ever fork it:
    Conservative twice over: triage routes to the analyst on any doubt, and
    the combined slot returns `needs-analyst` before writing anything when
    the ground turns out novel, falling back to the normal chain at the cost
-   of one dispatch.
+   of one dispatch. A third route, **`manual-qa-verified`**, covers repos
+   that also run the manual-qa bundle: a unit whose every case has a
+   manual-qa run record with verdict PASS plus its authored case file goes
+   to a combined slot that derives the AFS **from that evidence** (no live
+   re-run — the case was already executed; run age does not matter; the run
+   id becomes the AFS's execution provenance) — same `needs-analyst` escape
+   on thin evidence, and the gate still proves the result N× either way.
+   Playbook § Manual-qa-verified carries the full rule.
+
+7. **A stalled slot costs its unit, never the run** (field-measured
+   2026-08-17, quota-throttled Bedrock). The harness stall-kills a subagent
+   whose model stream stops making progress and retries it blind; when every
+   attempt stalls, `agent()` THROWS (`agent stalled on all N attempts`)
+   rather than returning null — and uncaught, that throw killed a whole run
+   with its report unwritten while one slot burned 11 attempts. Every script
+   now catches it: the unit is recorded **`infra-stalled`** (an ENVIRONMENT
+   verdict — provider quota or stream stability, nothing about the case; see
+   playbook § A dispatched slot that stalls), consecutive stalls feed the
+   same breaker as agent-died, the batch continues, and the report always
+   lands. The other half is the workers' CHECKPOINT DISCIPLINE: a retry
+   inherits only what is committed, so implementer/combined dispatches check
+   for a killed attempt's branch first and commit per milestone — which is
+   what makes the harness's blind retries incremental instead of 11×
+   from-scratch.
 
 ## Hooks & memory (verified 2026-07-20)
 

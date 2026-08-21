@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { join, dirname } from 'node:path';
 
 // The workflow script runs only inside Claude Code's Workflow runtime, which
 // wraps the body in an async function and provides agent/pipeline/parallel/
@@ -175,7 +176,7 @@ test('no concurrency at all: a plain sequential loop over units', () => {
   // one unit fully finishes before the next begins — analysis (combined or
   // analyst-routed) awaited inline, then the build, all inside one loop body
   assert.match(text, /for \(const unit of UNITS\) \{\n\s*phase\('Analysis'\)/);
-  assert.match(text, /const c = await runCombined\(unit\)/);
+  assert.match(text, /const c = await runCombined\(unit, /);
   // None of the concurrency machinery may come back.
   assert.doesNotMatch(text, /Promise\.all/);
   assert.doesNotMatch(text, /buildChain/);
@@ -237,6 +238,18 @@ test('cost levers: snapshot-first, digest, breaker, arg-only overrides, tiering'
   // Reviewer model comes from args or the AGENT.md frontmatter — no literal floor.
   assert.match(text, /A\.reviewerModel \?\? A\.workerModel\) \? \{ model:/);
   assert.match(text, /extendImplementerModel/);
+  // Gate agent tier is arg-only too — the script does the mechanics, so a
+  // cheap tier is viable, but nothing hardcodes it.
+  assert.match(text, /A\.gateModel \? \{ model: A\.gateModel \}/);
+});
+
+// An in-repo case body (manual-qa TC files, committed md) is never copied into
+// cases/ — its path rides cases[].path and every prompt's SRC() resolves to it.
+// Git supplies the version-of-record the snapshot copy existed for.
+test('in-repo case sources: cases[].path replaces the snapshot copy in every prompt', () => {
+  assert.match(text, /CASE_PATH = new Map\(CASES\.map/);
+  assert.match(text, /\{id, title\?, path\?\}/, 'the args contract names path');
+  assert.match(text, /source file IS the\n?\s*\/\/ snapshot/);
 });
 
 // Only the build chain runs git. Analysts run in PARALLEL with a build that owns
@@ -385,7 +398,7 @@ test('the trunk is created only when it exists nowhere', () => {
 });
 
 test('case PRs target the trunk, and ONE PR takes the trunk to base', () => {
-  assert.match(text, /Open your PR against \$\{TRUNK\}, NOT against \$\{BASE\}/);
+  assert.match(text, /open yours against \$\{TRUNK\}, NOT against \$\{BASE\}/);
   assert.match(text, /one PR takes the trunk to \$\{BASE\} after the gate/);
   // What is gated and what lands are the same object.
   assert.match(text, /one PR from \$\{gateBranch\} to \$\{BASE\}/);
@@ -542,7 +555,7 @@ test('every agent phase is one meta declares', () => {
 test('the trunk is ensured by the analyst, before anything commits to it', () => {
   assert.match(text, /FIRST make sure you are on the batch trunk/);
   assert.match(text, /git rev-parse --verify \$\{TRUNK\}/);
-  assert.match(text, /if it exists NOWHERE, create and push it/);
+  assert.match(text, /if it exists NOWHERE, create it/);
   assert.match(text, /Never -B a trunk that already exists/);
 });
 
@@ -651,13 +664,13 @@ test('analyst tiering: triage routes mapped units to a combined slot, conservati
   assert.match(text, /model: A\.triageModel \?\? 'haiku', effort: 'low', schema: TRIAGE_SCHEMA/);
   // doubt routes to the analyst, and the cost asymmetry is stated where the choice is made
   assert.match(text, /your own doubt — routes 'analyst'/);
-  assert.match(text, /a wasted analyst dispatch costs one dispatch; a combined slot on novel ground costs a bad AFS/);
+  assert.match(text, /a wasted analyst dispatch costs one dispatch; a shortcut on shaky ground costs a bad AFS/);
   // the combined slot's escape hatch fires BEFORE any write, and falls back cleanly
   assert.match(text, /return status needs-analyst with why in notes and STOP/);
   assert.match(text, /if \(c === 'fallback'\) u = await runAnalyst\(unit\)/);
   // the combined slot still executes live and still lands the AFS on the trunk first
   assert.match(text, /the digest speeds travel, it never replaces execution/);
-  assert.match(text, /push BEFORE you start building/);
+  assert.match(text, /BEFORE you start building/);
   // a dead triage costs nothing — the conservative route is the default route
   assert.match(text, /triage agent died — every unit takes the standalone analyst/);
   // the pre-built path skips the implement dispatch but not review/merge/gate
@@ -722,4 +735,120 @@ test('R2 cap counts reruns per root cause, with the total as fallback', () => {
   assert.match(text, /causes not reported/);
   // both dispatch prompts carry the per-cause contract
   assert.match(text, /one short root-cause label per rerun/);
+});
+
+// Field incident (AutomationBundleDemo1, 2026-08-17): the implementer dispatch
+// DIED AT SPAWN in a no-remote repo — its prompt unconditionally commanded
+// `git push -u origin` + "open the PR" while the repo's profile said no-remote/
+// no-PR, and the contradiction got the dispatch refused before its first turn
+// (agent() → null → every case blocked). Every push/PR instruction must defer
+// to .agents/profile.md § Automation PR policy. The lead field-patched the
+// installed copy and the same dispatch then ran fine; this pins the port.
+test('no unconditional push/PR imperatives — every one defers to the PR policy', () => {
+  assert.doesNotMatch(text, /&& git push -u origin/, 'trunk creation must not chain an unconditional push');
+  const campaign = readFileSync(join(dirname(FILE), 'batch-campaign.workflow.mjs'), 'utf8');
+  assert.doesNotMatch(campaign, /&& git push -u origin/);
+  for (const [name, src] of [['build', text], ['campaign', campaign]]) {
+    for (const m of src.matchAll(/open (?:the|your) PR|git push (?:-u )?origin/gi)) {
+      const ctx = src.slice(Math.max(0, m.index - 600), m.index + 400);
+      assert.match(ctx, /Automation PR policy|where the project uses|ONLY if this project|local-only/i,
+        `${name}: push/PR imperative without policy deference near: …${src.slice(m.index, m.index + 80)}…`);
+    }
+  }
+});
+
+// The manual-qa-verified route: when the manual-qa bundle already EXECUTED a
+// case live (their test-runner, per-step verdicts, screenshots), re-running it
+// in the analyst slot pays the most expensive dispatch twice. Triage routes
+// such units straight to a combined build that derives the AFS from the
+// manual-qa evidence — with the same needs-analyst escape as novel ground.
+test('manual-qa-verified route: triage offers it, evidence rides the schema, the slot forbids re-execution and inventions', () => {
+  assert.match(text, /'manual-qa-verified'\]/, 'route is in the triage schema enum');
+  assert.match(text, /evidence: \{ type: 'array'/, 'evidence paths ride the triage return');
+  assert.match(text, /run record with verdict PASS/, 'PASS-only eligibility');
+  assert.match(text, /FAIL\/flaky\/blocked run never qualifies/);
+  assert.match(text, /prefer 'manual-qa-verified'/, 'when both shortcuts qualify, the cheaper one wins');
+  assert.match(text, /do NOT re-run it in a browser/, 'the slot must not pay the live run twice');
+  assert.match(text, /FROM THE EVIDENCE, no live execution/);
+  assert.match(text, /exists NOWHERE in the evidence is a needs-analyst reason, never an invention/);
+  assert.match(text, /manual-qa run id as the AFS/);
+  assert.match(text, /combined-mq/, 'distinct dispatch label for attribution');
+});
+
+// Stall-retry exhaustion THROWS out of agent() ("agent stalled on all N
+// attempts") instead of returning null. Field case 2026-08-17 (quota-throttled
+// Bedrock): one combined slot burned 11 attempts across two runs — every kill
+// dead air right after a completed tool_result, one attempt with zero model
+// tokens — and the uncaught throw killed the whole run, report unwritten.
+// A stall says nothing about the case, so it gets its own outcome and the
+// batch keeps going.
+test('a stalled slot costs its unit as infra-stalled, never the run', () => {
+  assert.match(text, /const isStall = \(e\) => \/stall\/i\.test/);
+  // analysis dispatches (the site that actually threw in the field) are wrapped
+  assert.match(text, /try \{\n\s*if \(route === 'combined' \|\| route === 'manual-qa-verified'\)/);
+  assert.match(text, /\? \{ outcome: 'infra-stalled', note: stallNote\('analysis', e\) \}/);
+  // a stall is an environment fact and feeds the same breaker as agent-died
+  assert.match(text, /breakerCount\('agent-died', String\(e\?\.message \?\? e\)\)/);
+  // the build catch distinguishes stall (infra-stalled) from other throws (blocked)
+  assert.match(text, /record\(id, \{ outcome: 'infra-stalled', note: stallNote\('build', e\) \}\)/);
+  assert.match(text, /build failed:/);
+  // triage, gate and reporter are guarded too — null-safe paths already exist
+  assert.match(text, /try \{ await runTriage\(\) \} catch/);
+  assert.match(text, /merged units stay merged-ungated; re-run the gate/);
+  assert.match(text, /report writer threw/);
+  // and the report flags the environment loudly
+  assert.match(text, /case\(s\) infra-stalled/);
+});
+
+// A killed slot is retried with the SAME prompt and no memory of the attempt
+// that died — a retry inherits ONLY what is committed. The 11-attempt field
+// case re-implemented from scratch every time because nothing had landed on
+// the case branch.
+test('checkpoint discipline rides both build-capable dispatches', () => {
+  assert.match(text, /const CHECKPOINT_RULE =/);
+  assert.match(text, /retry inherits ONLY what is committed/);
+  assert.match(text, /Never silently restart on a branch that already has work/);
+  // policy-deferential push, same shape the push/PR test enforces
+  assert.match(text, /push after the first commit and then per /);
+  assert.match(text, /milestone ONLY if this project pushes to a remote/);
+  // injected into the combined slot's build half AND the implementer dispatch
+  const sites = [...text.matchAll(/CHECKPOINT_RULE \+/g)];
+  assert.ok(sites.length >= 2, `CHECKPOINT_RULE must ride combined + implementer, found ${sites.length} site(s)`);
+});
+
+// Sleep-poll hygiene (field 2026-08-17): chained sleeps inside one call died
+// at their own cap (exit 143), losing the tail already read; long blind first
+// sleeps hid early failures for minutes.
+test('the long-jobs rule pins one bounded sleep per call, early first look, no chains', () => {
+  assert.match(text, /ONE `sleep <n>; <tail the output file>` per call/);
+  assert.match(text, /Make the FIRST poll short/);
+  assert.match(text, /NEVER chain sleeps inside one/);
+});
+
+// Field case 2026-08-18 (my-qa-project demo): triage was shown the cluster
+// "TC-001 + TC-002", chose manual-qa-verified CORRECTLY, and returned it as
+// two per-case rows — the old exact-key guard silently dropped both and the
+// cluster fell to the analyst default (a live-browser dispatch for exactly
+// the unit the shortcut exists to save). Routes are now reassembled by case
+// coverage: unanimous route across every member shortcuts the unit; foreign
+// ids do nothing; partials/disagreements stay on the analyst default, loudly.
+test('triage routes survive per-case row splits: coverage votes, unanimity, loud logs', () => {
+  assert.match(text, /const unitOf = new Map\(\)/);
+  assert.match(text, /const votes = new Map\(\)/);
+  assert.match(text, /v\.size !== ids\.length\) continue/, 'partial coverage falls back to the analyst');
+  assert.match(text, /routes\.size !== 1\) continue/, 'disagreeing members fall back to the analyst');
+  assert.match(text, /naming no pending case — ignored/, 'hallucinated ids are logged, not silently eaten');
+  assert.match(text, /reassembled by coverage \(unanimous route required\)/);
+  // and the prompt now forbids the split explicitly
+  assert.match(text, /ONE entry with ids \["A","B"\], never two entries/);
+});
+
+// Field case 2026-08-18: one dispatch re-invoked the Skill tool for 10 skills
+// its frontmatter already preloads — ~25k tokens of duplicate context in a
+// slot that ended the run at 97% of its window. Confirming presence means
+// CHECKING the context, never re-pasting it.
+test('the preamble forbids re-loading preloaded skills via the Skill tool', () => {
+  assert.match(text, /confirming means CHECKING your context/);
+  assert.match(text, /NEVER re-invoking the Skill tool for a skill you already carry/);
+  assert.match(text, /genuinely ABSENT from your context/);
 });

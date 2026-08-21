@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildRunCommand, summarize, gateNote } from './gate-case.mjs';
+import { buildRunCommand, summarize, gateNote, batchSlugOfBranch, appendGateRecord } from './gate-case.mjs';
 
 const SCRIPT = fileURLToPath(new URL('./gate-case.mjs', import.meta.url));
 
@@ -120,6 +120,95 @@ test('a local-only branch still gates, and the note says what was proved', () =>
     // This fixture has no remote at all, and the note says exactly that rather
     // than naming a remote that does not exist.
     assert.match(out.note, /not on any remote/);
+    // The verdict landed as a script-authored record the moment it existed —
+    // no report write-back required for "the gate ran green" to be on disk.
+    const rec = JSON.parse(readFileSync(join(dir, '.agents', 'automation', 'x', 'gate-runs.jsonl'), 'utf8').trim());
+    assert.equal(rec.verdict, 'green');
+    assert.equal(rec.consecutiveGreen, 2);
+    assert.equal(rec.branch, 'tests/batch-x');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+// Dirt policy (reworked 2026-08-17, field case: a foreign bundle's debug log
+// and installer-touched configs blocked gates that had nothing to do with
+// them). Unrelated dirt — telemetry, logs, foreign bundles' state, stray
+// files — never blocks; it rides the verdict record as carriedDirt. What DOES
+// refuse: a dirty path among the files the gate is about (base...branch diff)
+// — the run would prove the dirt, not the branch.
+test('unrelated dirt is carried, not refused; dirt on the gated files refuses', () => {
+  const { dir, g } = repo();
+  try {
+    g('checkout', '-q', '-b', 'tests/batch-t');
+    writeFileSync(join(dir, 'w.txt'), 'w'); g('add', '.'); g('commit', '-qm', 'work');
+    g('checkout', '-q', 'main');
+    // mid-run bookkeeping + a foreign bundle's log + a random stray file
+    execFileSync('mkdir', ['-p', join(dir, '.agents', 'telemetry', 'automation', 'scopes')]);
+    writeFileSync(join(dir, '.agents', 'telemetry', 'automation', 'scopes', 's1.json'), '{}');
+    writeFileSync(join(dir, 'benchmark-debug.log'), 'noise');
+    writeFileSync(join(dir, 'src.txt'), 'uncommitted but unrelated');
+    const ok = runGate(dir, ['--branch', 'tests/batch-t', '--base', 'main', '--cmd', 'true', '--n', '1']);
+    assert.equal(ok.verdict, 'green', 'unrelated dirt does not block the gate');
+    // telemetry dir exists in this fixture → the record lands on the telemetry side
+    const recs = readFileSync(join(dir, '.agents', 'telemetry', 'automation', 'gate-runs', 't.jsonl'), 'utf8')
+      .trim().split('\n').map((l) => JSON.parse(l));
+    const rec = recs[recs.length - 1];
+    assert.ok(rec.carriedDirt.includes('src.txt'), 'the record names what the tree carried');
+    // …but dirt on a file the branch itself changes = the proof would be dirty
+    writeFileSync(join(dir, 'w.txt'), 'LOCAL JUNK'); // w.txt is what the branch adds
+    const bad = runGate(dir, ['--branch', 'tests/batch-t', '--base', 'main', '--cmd', 'true', '--n', '1']);
+    assert.match(bad.notes, /overlap the very files this gate proves/);
+    assert.match(bad.notes, /w\.txt/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+// The mechanical net: a local change git itself refuses to overwrite (a path
+// the BASE moved after the branch was cut — not in the base...branch diff, so
+// the proof check passes) surfaces as git's own victim list, never a generic
+// "setup failed".
+test('a checkout/merge blocked by local changes names the exact victim paths', () => {
+  const { dir, g } = repo();
+  try {
+    writeFileSync(join(dir, 'shared.txt'), 'v1'); g('add', '.'); g('commit', '-qm', 'shared v1');
+    g('checkout', '-q', '-b', 'tests/batch-m');
+    writeFileSync(join(dir, 'w.txt'), 'w'); g('add', '.'); g('commit', '-qm', 'work');
+    g('checkout', '-q', 'main');
+    writeFileSync(join(dir, 'shared.txt'), 'v2'); g('add', '.'); g('commit', '-qm', 'base moves shared');
+    writeFileSync(join(dir, 'shared.txt'), 'LOCAL EDIT'); // dirty, collides with checkout of the branch
+    const res = runGate(dir, ['--branch', 'tests/batch-m', '--base', 'main', '--cmd', 'true', '--n', '1']);
+    assert.notEqual(res.verdict, 'green');
+    assert.match(res.notes, /blocked by local changes to: .*shared\.txt/);
+    assert.match(res.notes, /stash BY PATH/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('batchSlugOfBranch + appendGateRecord: slug from the trunk, --batch override, _gates fallback', () => {
+  assert.equal(batchSlugOfBranch('tests/batch-skills-w3'), 'skills-w3');
+  assert.equal(batchSlugOfBranch('tests/ELITEA-2312-users-tab'), null);
+  const dir = mkdtempSync(join(tmpdir(), 'gate-rec-'));
+  try {
+    const result = { branch: 'tests/ELITEA-1-x', base: 'main', n: 3, verdict: 'red', consecutiveGreen: 1, seconds: [2.5] };
+    const withBatch = appendGateRecord(dir, result, { batch: 'b9', now: '2026-08-12T10:00:00Z' });
+    assert.ok(withBatch.endsWith(join('b9', 'gate-runs.jsonl')));
+    const fallback = appendGateRecord(dir, result, { now: '2026-08-12T10:01:00Z' });
+    assert.ok(fallback.endsWith(join('_gates', 'gate-runs.jsonl')), 'unassignable verdicts land, never vanish');
+    const rec = JSON.parse(readFileSync(withBatch, 'utf8').trim());
+    assert.equal(rec.verdict, 'red');
+    assert.deepEqual(rec.seconds, [2.5]);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+// Once the telemetry area exists, mid-run verdicts must land THERE — an append
+// into the batch dir after close modifies a committed file, and git checkout
+// then refuses the branch switch the next gate run needs.
+test('appendGateRecord: prefers telemetry/gate-runs/<slug>.jsonl when the telemetry dir exists', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gate-tel-'));
+  try {
+    execFileSync('mkdir', ['-p', join(dir, '.agents', 'telemetry', 'automation')]);
+    const result = { branch: 'tests/batch-w7', base: 'main', n: 3, verdict: 'green', consecutiveGreen: 3, seconds: [1.1] };
+    const file = appendGateRecord(dir, result, { now: '2026-08-14T10:00:00Z' });
+    assert.ok(file.endsWith(join('telemetry', 'automation', 'gate-runs', 'w7.jsonl')), `landed at ${file}`);
+    const rec = JSON.parse(readFileSync(file, 'utf8').trim());
+    assert.equal(rec.verdict, 'green');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -190,8 +279,14 @@ test('a conflicting base merge is aborted — the tree is left clean, not mid-me
     const res = runGate(dir, ['--branch', 'tests/TC-9-x', '--base', 'main', '--cmd', 'node -e 1']);
     assert.equal(res.verdict, 'conflict');
     assert.ok(res.conflictFiles.includes('a.txt'));
-    const status = execFileSync('git', ['status', '--porcelain'], { cwd: dir, encoding: 'utf8' }).trim();
-    assert.equal(status, '', 'the half-merge was aborted; nothing is left unmerged');
+    // The verdict record is the ONE tolerated leftover — everything else clean.
+    const status = execFileSync('git', ['status', '--porcelain', '-uall'], { cwd: dir, encoding: 'utf8' })
+      .trim().split('\n').filter(Boolean)
+      .filter((l) => !/gate-runs\.jsonl$/.test(l));
+    assert.deepEqual(status, [], 'the half-merge was aborted; nothing is left unmerged');
+    // …and that leftover must not deadlock the next run's dirty check.
+    const again = runGate(dir, ['--branch', 'tests/TC-9-x', '--base', 'main', '--cmd', 'node -e 1']);
+    assert.equal(again.verdict, 'conflict', 'second run proceeds past the dirty check to the same verdict');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
