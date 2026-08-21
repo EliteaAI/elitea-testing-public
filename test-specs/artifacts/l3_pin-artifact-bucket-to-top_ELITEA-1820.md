@@ -145,6 +145,14 @@ can never produce a false positive, because the hover button carries no testid.
   server-side flag; a UI-only assertion would pass on an optimistic render that
   never reached the backend. (Live-relevant: the UI's own re-render lags the 200
   by ~8-10 s, so the two really are separate observables here.)
+- **The actions icon is asserted ABSENT before the hover** (step 4): the
+  trigger's container is `display:none` until hover, so `not_to_be_visible()`
+  → hover → `to_be_visible()` proves the hover *reveal* the case describes,
+  where a bare post-hover visibility check would also pass on an
+  always-visible icon.
+- **The rest of the list is compared element-wise to the pre-pin baseline**
+  (step 9), not merely re-checked for sortedness: pinning must lift exactly one
+  bucket out of the list and disturb nothing else.
 - **NOT asserted: console errors.** `.agents/testing.md` § Unconfirmed records a
   confirmed recurring environmental console-500/404 flake class on this project;
   importing it here would buy noise, not signal.

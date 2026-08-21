@@ -128,6 +128,9 @@ state is read from the label the case itself names. This case asserts the
 - **PATCH 200 asserted for both the pin and the unpin** — the flag is persisted
   server-side and the UI's re-render lags it by ~8-10 s, so DOM-only assertions
   would not prove the state reached the backend.
+- **The target's presence in the baseline is asserted** (step 1) before any
+  ordering claim is made about it, so a seeding failure surfaces as itself
+  rather than as a confusing ordering mismatch.
 - **NOT asserted: console errors** — same reasoning as ELITEA-1820 (known
   recurring environmental console-500/404 class, `.agents/testing.md`
   § Unconfirmed).
