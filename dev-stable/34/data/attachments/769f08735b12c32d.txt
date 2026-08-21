@@ -1,6 +1,0 @@
-ERROR    elitea.steps:actions.py:62 Step failed (screenshot unavailable): Navigate to create skill — Page.goto: Timeout 30000ms exceeded.
-Call log:
-  - navigating to "https://dev.elitea.ai/app/skills/create", waiting until "domcontentloaded"
-ERROR    elitea.steps:actions.py:62 Step failed (screenshot unavailable): Navigate to create skill — Page.goto: Timeout 30000ms exceeded.
-Call log:
-  - navigating to "https://dev.elitea.ai/app/skills/create", waiting until "domcontentloaded"
