@@ -1,0 +1,3 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Navigate to agents list — Page.goto: net::ERR_ABORTED at https://dev.elitea.ai/app/agents/all
+Call log:
+  - navigating to "https://dev.elitea.ai/app/agents/all", waiting until "domcontentloaded"
