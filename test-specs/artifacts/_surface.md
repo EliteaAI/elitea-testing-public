@@ -709,3 +709,33 @@ old text, and both locators resolved to count=0) until `npm run dev` was killed 
 Under OneDrive the file watcher is not reliable — if a freshly added testid resolves to 0 elements,
 `curl -s "http://localhost:5173/src/<path>" | grep <testid>` first, and restart the dev server
 before doubting the JSX edit.
+
+## Bulk delete — SELECT-ALL branch + modal dismissal (ELITEA-1848 / 1849 / 1850, 2026-08-22)
+
+First session to click the header **select-all** checkbox and the delete modal's **X**. Everything
+below was observed live in one clean run (3 flows, 0 console errors, first attempt).
+
+| Element / fact | Value | Notes |
+|---|---|---|
+| Header select-all checkbox | `artifacts-select-all-checkbox` → `click_select_all_checkbox()` | on-main ✓. First test to actually CLICK it (ELITEA-1841/1846 only read its state). All 4 rows — folders included — become checked; header goes `Mui-checked`, `indeterminate` False. |
+| Toolbar tooltip, all rows selected | **`Delete all files`** | `ArtifactTableToolbar.jsx:157` — `Delete ${rowSelectionModel.length === totalRows ? 'all files' : 'selected files'}`. Read off the wrapper's `aria-label`, no hover. |
+| Modal message, all rows selected | **`Are you sure to delete the all files?`** | `name='all files'` + `DeleteEntityModal`'s fixed prefix `'Are you sure to delete the '` ⇒ ungrammatical. Cases say `Are you sure to delete all files?`. CLARIFICATION #1640 (sibling of #659). `delete-confirm-entity-name` = `all files`. |
+| Bulk-delete success toast | `The selected files have been successfully deleted.` | `ArtifactTable.jsx:431` — **same string whether the selection is partial or complete**; there is no "all files" toast variant. Cases' `The artifacts have been deleted successfully` exists nowhere in source (exact dup of #660, commented not re-filed). |
+| DELETE on a full selection | `DELETE …/artifacts/artifacts/default/{project}/{bucket}?fname[]=…` → 200, `fname[]` = the 4 **expanded** storage keys | folders expand to their underlying files (`a1/file1.txt`, `folder-a/placeholder.txt`), never a bare `a1/` prefix — same expansion ELITEA-1847 proved for a single folder. |
+| Emptied-bucket state | right panel `artifacts-empty-state` = `No files in this bucket`; left tree `artifacts-bucket-tree-empty-label-{bucket}` = same text; bucket row still listed; `list_bucket_files()` = `[]` | both panels carry the identical string (`ArtifactTable.jsx:504`, `BucketContent.jsx:89`). Deleting every file does NOT delete the bucket. |
+| Modal X (close) | `delete-confirm-close-button` → **`click_delete_close_button()` added by ELITEA-1850** | first time DRIVEN (ELITEA-1844 only asserted presence). Same single `onClose` handler as Cancel (`DeleteEntityModal` passes one to both `BaseModal.onClose` and the Cancel button). |
+| Dismissal (Cancel **or** X) side-effects | **none** | zero DELETE requests captured, zero `toast-message` elements over a 3 s window, all rows + pagination + tree unchanged, storage listing intact — and **the selection is RETAINED**: all 4 checkboxes still checked after Cancel; the 2-of-4 partial selection still checked (header still indeterminate) after X. Selection lives in `ArtifactTable`'s `rowSelectionModel`, which the modal never touches. |
+
+**Absence-assertion idiom for this surface (reviewer finding on ELITEA-1845):** assert "no toast" by
+waiting for it to APPEAR and requiring the wait to time out —
+`pytest.raises(PlaywrightTimeoutError)` around `success_toast_message.wait_for(state="visible",
+timeout=3000)`. `to_have_count(0)` is true at the first poll and cannot see a toast that renders
+300 ms later. The detector is proven inside the same spec file by ELITEA-1848, which asserts the
+same locator carries text after a real delete.
+
+**Testid promotability for this cluster:** no new testid was needed, but FOUR of the ones these
+specs reference are on `automation/testids` only — `delete-confirm-title-icon` (EliteaAI/EliteaUI@7b359d32),
+`delete-confirm-entity-name` (EliteaAI/EliteaUI@e59d0c97), `delete-confirm-close-button`
+(EliteaAI/EliteaUI@08d9bb4f) and the runtime-composed `artifacts-bucket-tree-empty-label-*`
+(`BucketContent.jsx:87`, invisible to a bare-substring grep of `main`). Verified 2026-08-22 with a
+fresh `git fetch origin` + the two-stage `-i`/`[:=]` grep on both refs.
