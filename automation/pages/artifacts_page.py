@@ -723,6 +723,20 @@ class ArtifactsPage(BasePage):
     # (ELITEA-1803/1804/1805)
     # ------------------------------------------------------------------
 
+    buckets_panel_toggle_button = LocatorDescriptor(
+        testid="artifacts-buckets-panel-toggle-button",
+        description="The BUCKETS left panel's collapse/expand control in the "
+        "panel header (BucketHeader.jsx). ONE element whose icon flips "
+        "between '<<' (expanded) and '>>' (collapsed); the icons are "
+        "untagged SVGs, so the state rides a `data-collapsed=\"true|false\"` "
+        "attribute on this same element per .agents/testing.md § Locator "
+        "policy (PR #581 ruling). Collapsing UNMOUNTS the heading, the "
+        "storage selector and the footer (all gated on `!collapsed`) while "
+        "the bucket ROWS merely become invisible "
+        "(`display: collapsed ? 'none' : 'flex'`). Testid added for "
+        "ELITEA-1807 (EliteaAI/EliteaUI@9062dff0).",
+    )
+
     buckets_heading = LocatorDescriptor(
         testid="artifacts-buckets-heading",
         description="'Buckets' heading in the left-panel header. The DOM text "
@@ -3497,6 +3511,51 @@ class ArtifactsPage(BasePage):
         """
         self.pagination_page_size_combobox.wait_for(state="visible", timeout=timeout)
         return (self.pagination_page_size_combobox.text_content() or "").strip()
+
+    def any_bucket_row(self) -> Locator:
+        """Return the first currently-rendered bucket row (any bucket).
+
+        Uses the shared testid PREFIX (:attr:`BUCKET_ROW_ANY_SELECTOR`) — the
+        caller cares only that the left panel is rendering a bucket list, not
+        which bucket. Visibility, not count, is the meaningful check for a
+        collapsed panel: the rows stay in the DOM behind ``display: none``
+        (ELITEA-1807).
+
+        Returns:
+            Locator for the first matching bucket row.
+        """
+        return self.page.locator(self.BUCKET_ROW_ANY_SELECTOR).first
+
+    def is_buckets_panel_collapsed(self) -> bool:
+        """Return whether the BUCKETS left panel is currently collapsed.
+
+        Reads the ``data-collapsed`` state attribute off
+        :attr:`buckets_panel_toggle_button`, which the product renders from
+        the same ``collapsed`` value that chooses the ``<<``/``>>`` icon.
+
+        Returns:
+            ``True`` when the panel is collapsed.
+        """
+        return self.buckets_panel_toggle_button.get_attribute("data-collapsed") == "true"
+
+    @action("Toggle BUCKETS panel")
+    def toggle_buckets_panel(self, timeout: int = 10000) -> bool:
+        """Click the BUCKETS panel collapse/expand control and wait for the flip.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The panel's collapsed state AFTER the toggle.
+        """
+        toggle = self.buckets_panel_toggle_button
+        toggle.wait_for(state="visible", timeout=timeout)
+        expected = "false" if self.is_buckets_panel_collapsed() else "true"
+        toggle.click()
+        # Condition wait on the product's own state attribute — never a sleep.
+        expect(toggle).to_have_attribute("data-collapsed", expected, timeout=timeout)
+        logger.info("Toggled BUCKETS panel: collapsed=%s", expected)
+        return expected == "true"
 
     @action("Go to next file page")
     def click_pagination_next(self, timeout: int = 10000) -> None:
