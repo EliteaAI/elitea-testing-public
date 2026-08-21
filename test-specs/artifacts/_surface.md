@@ -644,3 +644,44 @@ element these three cases touch already carries one.
   gotcha) — all three cases were executed live via throwaway pytest specs under
   `automation/tests/ui/artifacts/` driving the framework's `page`/`auth_state`
   fixtures with `-s` prints (4 probe runs, 38-64 s each), then deleted.
+
+## ZIP-download progress dialog — CANCEL flow (ELITEA-1842 / ELITEA-1843, 2026-08-21)
+
+First session to actually CLICK the progress dialog's controls (ELITEA-1840/1841 asserted the
+Cancel button's visibility only and declared the flow out of scope).
+
+| Element | Handle | Notes |
+|---|---|---|
+| Dialog **X (close)** button | `artifacts-zip-download-progress-close-button` (**added during ELITEA-1843 implementation, 2026-08-21** — EliteaAI/EliteaUI@b93c631b on `automation/testids`) | Prop-only add: `ZipDownloadProgressDialog.jsx` now passes `closeButtonTestId` to `BaseModal`, which already accepted and applied it (`BaseModal.jsx:35,154`). No new DOM node, no hook, no removal. Page object: `ArtifactsPage.zip_download_progress_close_button` / `click_zip_download_close_button()` |
+| Dialog **Cancel** button | `artifacts-zip-download-progress-cancel-button` | pre-existing (ELITEA-1840); page object: `click_zip_download_cancel_button()` |
+
+**Cancel behaviours confirmed live (both controls, 2026-08-21):**
+- **X and Cancel are the SAME handler.** `ZipDownloadProgressDialog.jsx` passes one `onCancel`
+  to both `BaseModal`'s `onClose` (X / backdrop / Escape) and the Cancel button's `onClick` —
+  the same shape `DuplicateResolutionDialog` uses (ELITEA-1832/1833).
+- **Order of effects:** the dialog unmounts **synchronously** on click (`cancelZipDownload`
+  sets `isOpen:false`), while the `Download cancelled` toast (`toast-message`, `toastInfo`)
+  arrives only once the aborted in-flight `fetch` rejects with `AbortError` and
+  `downloadArtifactsAsZip` maps it to `onCancel()`. Live: toast first seen ~2.0-2.1 s after the
+  click **in the instrumented run** (inflated by a 1500 ms pre-fetch delay wrapper). Never assert
+  dialog-hidden and toast-visible as one expectation; give the toast a generous timeout.
+- **No ZIP is ever saved after a cancel** — `downloadArtifactsAsZip` only creates the blob +
+  `anchor.download` AFTER the whole per-file loop completes, so an abort mid-loop cannot produce
+  one. Live-instrumented `HTMLAnchorElement.prototype.click` capture: `[]` in both runs.
+- **Selection + table are untouched** by cancel (selection lives in `ArtifactTable` state):
+  4-of-4 and 3-of-3 checkboxes still `Mui-checked`, all 4 rows still listed, 0 console errors.
+- **Making "in progress" observable:** with small files the whole flow finishes in <2 s. Use
+  `page.route("**/artifact/default/**")` + a delayed `route.continue_()` (1000-1500 ms), poll the
+  counter until `1 of N files`, then click. This is timing control, not substitution
+  (`.agents/testing.md` § Fidelity policy) — same technique ELITEA-1841 ships.
+- **`aria-valuenow` at `1 of N`:** `25` for N=4, `33` for N=3 (integer `current/total*100`).
+  A `0 of N files` / `valuenow="0"` precursor frame precedes the first completion, and the
+  current-file label is absent until the first file is in flight.
+
+**Gotcha — Vite does NOT pick up EliteaUI edits on this OneDrive checkout (2026-08-21).** After
+committing a testid, the dev server kept serving the STALE transform: a plain
+`curl http://localhost:5173/src/.../X.jsx` showed no change (a `?t=<ts>` cache-buster showed the
+new code), and a full browser reload still rendered the old component. `touch` did not help — the
+file watcher never fires on OneDrive-backed paths. **Restart the dev server** (`kill` the vite pid,
+`npm run dev`) after any EliteaUI edit, and verify with
+`curl -s http://localhost:5173/src/<path> | grep -c <testid>` before blaming the JSX.
