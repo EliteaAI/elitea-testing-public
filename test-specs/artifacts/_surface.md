@@ -356,3 +356,35 @@ the element whose background the case observes.
   live execution ran as a throwaway pytest spec under
   `automation/tests/ui/artifacts/` driving the framework's own `page`/`auth_state`
   fixtures with `-s` prints.
+
+## Confirmed handles (as of ELITEA-1825 upload-path Cancel, 2026-08-21)
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| "Upload files to ..." modal — **Cancel** button | **NO TESTID** → `artifacts-upload-path-cancel-button` needed | `src/pages/Artifacts/component/UploadPathDialog.jsx`, `actions` fragment | The sibling Upload button already has `artifacts-upload-path-upload-button`; Cancel has nothing. Live enumeration of the dialog's buttons: `[('', None), ('Cancel', None), ('Upload', 'artifacts-upload-path-upload-button')]` — the first, unlabelled one is the modal's X control (also untagged). Attribute-only add, zero functional impact |
+| Path field prefix raw text | `artifacts-upload-path-input` | same | raw `text_content()` is `'Path​{bucket}/​'` — MUI wraps the label + adornment with zero-width spaces; use `ArtifactsPage.get_upload_path_normalized_prefix()`, never a raw equality on `text_content()` |
+| Upload-dialog description (no prefix / bucket root) | `artifacts-upload-path-description-text` | same | exact live wording at bucket root: `Files will be uploaded to the selected bucket. Optionally, enter a folder path to organize your files. Use "/" to create nested folder(s).` |
+
+### Upload-path-dialog Cancel behaviours confirmed live (2026-08-21)
+- **Cancel fires ZERO network requests** — capture on `"artifacts"` across the click and
+  the modal close returned `[]`. Cancel aborts before any PUT, so "nothing uploaded" can be
+  asserted positively, not only by absence in the table.
+- **Cancel resets the dialog's own state**: `handleCancel` = `setFolderPath('') ; onClose()`.
+  Typing `probe-folder` into the Path field, cancelling, and re-opening the dialog returns
+  `typed=''`. Useful Axis-2 observable for any "discard" case on this modal.
+- **No toast at all on Cancel** (`toast-message` count 0), and the file table is identical
+  before and after a page reload — the reload is the cheap way to make the server the
+  oracle rather than an un-refreshed client listing.
+- **Escape ≠ Cancel for case fidelity.** `ArtifactsPage.close_upload_path_dialog()`
+  (ELITEA-1824) presses Escape, which reaches the same `handleCancel` through MUI's
+  `onClose`. Fine as a workaround/transit; NOT acceptable when a case's step literally says
+  "Click Cancel" — that needs the button testid.
+- `get_total_file_count_from_pagination()` (`artifacts_page.py:1792`) is a **raw-CSS**
+  handle (`main *:has-text("of "):not(:has(*))`) — pre-existing tech debt. Prefer
+  `get_pagination_info_text()` on `artifacts-pagination-page-info` (on `automation/testids`,
+  not yet on `main`).
+- Playwright MCP was NOT attempted this session — the digest's own gotcha (4 consecutive
+  unreachable sessions) plus the `playwright.sync_api` scratch-script pattern worked first
+  try: drop the script into `automation/tests/ui/artifacts/`, run it with the project
+  pytest (the repo-root `/tmp` path fails — `pages` is not importable from there), delete
+  it afterwards. One full case run cost ~69 s.
