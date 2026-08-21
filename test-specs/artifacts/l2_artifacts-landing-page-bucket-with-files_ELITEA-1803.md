@@ -27,9 +27,12 @@
 
 ### stable / read-only
 - The left-panel footer's bucket count + total size are read-only observables of
-  the whole project; the test cross-checks the rendered count against the
-  **API's own bucket list** for the same project (system-produced oracle, not a
-  hard-coded number — the project accumulates buckets, see #636).
+  the whole project; the test cross-checks the footer count against the **left
+  panel's own DISTINCT rendered bucket rows** (system-produced oracle, not a
+  hard-coded number — the project accumulates buckets, see #636). *Phase-2
+  amendment: an `ArtifactAPI.list_buckets()` oracle was tried first and proved
+  racy — the buckets listing is eventually consistent (760 rendered vs 762
+  returned). See step 10.*
 
 ## Test Steps
 1. Navigate to `/artifacts`, wait for page load
@@ -63,8 +66,18 @@
      `artifacts-download-files-button`, `artifacts-delete-files-button` all visible
 10. Verify the left-panel footer
     - **Verify**: `artifacts-buckets-footer-count` text matches `Buckets:\s*(\d+)`
-      and the captured number equals the API's bucket count for the project;
-      `artifacts-buckets-footer-size` matches `Size:\s*[\d.]+\s*[KMG]?B`
+      and the captured number equals the number of DISTINCT bucket rows the
+      left panel actually renders; `artifacts-buckets-footer-size` matches
+      `Size:\s*[\d.]+\s*[KMG]?B`
+    - **Implementation amendment (Phase 2):** the oracle was originally the
+      API's own bucket list. That proved **racy** — the buckets listing is
+      eventually consistent, measured live as 760 rendered vs 762 returned by
+      `GET /artifacts/buckets/default/399` seconds after creating buckets. The
+      footer is fed `bucketCount={buckets?.length}` from the SAME array the
+      list renders (`BucketsPanel.jsx`), so footer-vs-list is the race-free
+      form of the same check, still entirely product-produced. Distinct names
+      are counted because a PINNED bucket renders twice
+      (`BucketsListContent.jsx` renders the pinned list AND the full list).
 11. Verify the rows-per-page control
     - **Verify**: `artifacts-pagination-page-size-select-combobox` reads `10`
 12. Verify the pagination counter
@@ -83,7 +96,6 @@
   stats, main-panel header, the 5-column file table with a correctly-populated
   row, the toolbar icon set, and pagination reading `1 - 1 of 1` with **both**
   arrows present and disabled.
-- No console errors during the flow.
 
 ## Coverage Map
 
@@ -101,7 +113,7 @@
 | 7 File table with 5 columns | all five present | step 7 | 5 column-header testids + exact labels | asserted |
 | 8 Row: checkbox, name, type, size, timestamp, actions icon | all present with correct shapes | step 8 | row text + checkbox + actions testids | asserted *(formats, not the case's literal PNG values — different file)* |
 | 9 Search bar + upload/download/delete icons top-right | all present | step 9 | 4 testids visible | asserted |
-| 10 Footer "Buckets: N Size: X MB" reflects actual values | correct count + size | step 10 | regex + API cross-check | asserted |
+| 10 Footer "Buckets: N Size: X MB" reflects actual values | correct count + size | step 10 | count: footer N == the panel's DISTINCT rendered bucket rows (`get_rendered_bucket_names()`); size: shape only (`Size:\s*\d+(\.\d+)?\s*[KMG]?B`) | asserted *(count against an oracle; size shape-only — no race-free total-size oracle exists)* |
 | 11 "Rows per page" defaults to 10 | default 10 | step 11 | combobox text == `10` | asserted |
 | 12 Pagination shows correct range/total | `1 - 1 of 1` | step 12 | page-info text | asserted |
 | 13 Prev/next arrows present | both present | step 13 | both testids visible | asserted |
@@ -109,14 +121,15 @@
 | 15 Next disabled when all files fit one page | disabled | step 15 | `is_disabled()` True | asserted |
 
 ### Axis 2 — Analyst additions
-- Cross-check the footer bucket count against the **API's** bucket list rather
-  than a hard-coded number — the case says "reflecting the actual number of
-  buckets"; a literal would be false within minutes (the project accumulates
-  leaked `autotest-*` buckets, #636).
+- Cross-check the footer bucket count against the **left panel's own rendered
+  bucket rows** rather than a hard-coded number — the case says "reflecting the
+  actual number of buckets"; a literal would be false within minutes (the
+  project accumulates leaked `autotest-*` buckets, #636). See step 10's
+  implementation amendment for why the API is NOT the oracle here.
 - Assert the bucket's own empty-tree label is ABSENT (step 5) — the positive
   case's mirror of ELITEA-1805's assertion; cheap, and it catches the
   render-both-states regression.
-- Assert **no console errors** — standard side-channel discipline.
+- **NOT asserted: console errors.** The AFS's original Axis-2 addition ("assert no console errors") was dropped during implementation (Phase-2 amendment): `.agents/testing.md` § Unconfirmed records a **confirmed recurring** environmental pattern on this project where `assert not console_messages` intermittently fails on an unrelated background resource returning 500 (3+ occurrences) or 404 (3 occurrences, one repeat on the same spec). Adding that assertion here would import a known flake class into three rendering tests that otherwise have no timing surface. Recorded rather than silently skipped.
 
 ## Fidelity Declaration
 

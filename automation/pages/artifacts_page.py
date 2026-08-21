@@ -371,6 +371,12 @@ class ArtifactsPage(BasePage):
     # ArtifactTable.jsx), even for files nested in a subfolder.
     ARTIFACT_ACTIONS_MENU_BUTTON = '[data-testid="artifact-actions-{}-menu-button"]'
 
+    # Prefix+suffix (any-row) variant of ARTIFACT_ACTIONS_MENU_BUTTON — every
+    # rendered file-row actions trigger, regardless of row id (ELITEA-1803).
+    ARTIFACT_ACTIONS_MENU_BUTTON_ANY_SELECTOR = (
+        '[data-testid^="artifact-actions-"][data-testid$="-menu-button"]'
+    )
+
     download_menu_item = LocatorDescriptor(
         testid="artifacts-file-download-menuitem",
         description="'Download' item inside a file row's dot-menu dropdown",
@@ -402,6 +408,14 @@ class ArtifactsPage(BasePage):
     # at ArtifactTable.jsx's call site, per the AFS's shared-component
     # testid ruling).
     ARTIFACT_FILE_CHECKBOX = '[data-testid="artifacts-file-checkbox-{}"]'
+
+    # Prefix (any-row) variant of ARTIFACT_FILE_CHECKBOX — every rendered
+    # file-row selection checkbox, regardless of row id. Same
+    # `[data-testid^="…"]` shape already established by
+    # :attr:`BUCKET_ROW_ANY_SELECTOR`. Used by ELITEA-1803 to assert that a
+    # file row carries its checkbox without needing to know the row's
+    # server-assigned id.
+    ARTIFACT_FILE_CHECKBOX_ANY_SELECTOR = '[data-testid^="artifacts-file-checkbox-"]'
 
     select_all_checkbox = LocatorDescriptor(
         testid="artifacts-select-all-checkbox",
@@ -703,6 +717,135 @@ class ArtifactsPage(BasePage):
     # direct parent). Used to target ONE specific known line for editing
     # (ELITEA-1858) rather than blind Control+Home-based nav.
     CM_LINE = ".cm-line"
+
+    # ------------------------------------------------------------------
+    # Landing-page chrome — left-panel storage selector + footer
+    # (ELITEA-1803/1804/1805)
+    # ------------------------------------------------------------------
+
+    buckets_heading = LocatorDescriptor(
+        testid="artifacts-buckets-heading",
+        description="'Buckets' heading in the left-panel header. The DOM text "
+        "is 'Buckets' — case texts writing 'BUCKETS' describe the CSS "
+        "text-transform, not the content. (The testid itself is pre-existing "
+        "and already used inline by :meth:`wait_for_page_load`; this field is "
+        "the class-level handle ELITEA-1803 asserts the TEXT through.)",
+    )
+
+    storage_selector = LocatorDescriptor(
+        testid="artifacts-storage-selector",
+        description="Storage-provider row above the bucket list "
+        "(BucketStorageSelector.jsx) — reads the active storage's name, "
+        "'Elitea S3 storage' on this environment. New testid added for "
+        "ELITEA-1803 (EliteaAI/EliteaUI@6449a5c4).",
+    )
+
+    storage_selector_arrow = LocatorDescriptor(
+        testid="artifacts-storage-selector-arrow",
+        description="Dropdown (chevron) icon inside the storage-provider row "
+        "— a DIFFERENT node from :attr:`storage_selector` (the row's own "
+        "container). ELITEA-1803 step 3 asserts both.",
+    )
+
+    buckets_footer_count = LocatorDescriptor(
+        testid="artifacts-buckets-footer-count",
+        description="'Buckets: N' stat in the left-panel footer "
+        "(BucketFooter.jsx). NOTE: label and value are two sibling "
+        "<Typography> nodes inside this Box, so text_content() has NO space "
+        "between them ('Buckets:757') — match with r'Buckets:\\s*(\\d+)'. "
+        "The number is not stable across runs (leaked autotest buckets, "
+        "#636) — cross-check it against "
+        ":meth:`ArtifactsPage.get_rendered_bucket_names` (the panel's own "
+        "DISTINCT rendered rows). An ArtifactAPI.list_buckets() cross-check "
+        "was tried first and measured racy: the buckets listing is "
+        "eventually consistent.",
+    )
+
+    buckets_footer_size = LocatorDescriptor(
+        testid="artifacts-buckets-footer-size",
+        description="'Size: X MB' stat in the left-panel footer "
+        "(BucketFooter.jsx) — same two-Typography shape as "
+        ":attr:`buckets_footer_count`.",
+    )
+
+    # ------------------------------------------------------------------
+    # Main-panel bucket-info tooltip (ELITEA-1805)
+    # ------------------------------------------------------------------
+
+    bucket_info_button = LocatorDescriptor(
+        testid="artifacts-bucket-info-button",
+        description="Info (i) icon next to the bucket name in the MAIN-panel "
+        "toolbar (BucketInfoTooltip.jsx via ArtifactTableToolbar.jsx). This — "
+        "not the left-panel bucket name — is what reveals the Retention "
+        "Policy / Number of files tooltip; the left-panel name only carries a "
+        "conditional overflow tooltip repeating the name (case-text "
+        "CLARIFICATION #1617). Opens on HOVER, not click (same activation as "
+        "the toolkit-form field tooltip, #669).",
+    )
+
+    bucket_info_tooltip_content = LocatorDescriptor(
+        testid="artifacts-bucket-info-tooltip-content",
+        description="Content box of the bucket-info tooltip — renders "
+        "'Retention Policy: <value>' and 'Number of files: <n>'. Labels and "
+        "values are sibling <Typography> nodes, so text_content() reads "
+        "'Retention Policy:1 YearNumber of files:0' (no separating "
+        "whitespace).",
+    )
+
+    # ------------------------------------------------------------------
+    # File-table column headers + pagination (ELITEA-1803/1804/1805)
+    # ------------------------------------------------------------------
+
+    # Dynamic testid template — one per column, keyed by the column's FIELD
+    # name (not its visible label): name / fileType / size / modified /
+    # actions. 'modified' is the "Last update" column — the field key is NOT
+    # 'lastUpdate'. Wired via the shared GridTableHeader's pre-existing
+    # `columnTestIdPrefix` prop (ArtifactTable.jsx), so no feature-scoped
+    # testid is hardcoded in the shared component.
+    FILE_TABLE_COLUMN_HEADER = '[data-testid="artifacts-file-table-column-header-{}"]'
+
+    # Prefix (any-column) variant of FILE_TABLE_COLUMN_HEADER — matches every
+    # rendered column header. Used to prove the file TABLE itself is absent
+    # for an empty bucket (ELITEA-1805 step 7), which "no file rows" alone
+    # does not.
+    FILE_TABLE_COLUMN_HEADER_ANY = '[data-testid^="artifacts-file-table-column-header-"]'
+
+    # Dynamic testid template — the "No files in this bucket" label rendered
+    # in the LEFT-panel tree under an expanded, empty bucket
+    # (BucketContent.jsx). Bucket-parameterized by necessity: BucketContent is
+    # a SIBLING of the bucket row (BucketItem), inside an untagged wrapper, so
+    # it cannot be scoped under artifacts-bucket-row-{name}; and several
+    # buckets can be expanded at once (/artifacts auto-selects and expands one
+    # on landing), so a page-wide count is never 0.
+    BUCKET_TREE_EMPTY_LABEL = '[data-testid="artifacts-bucket-tree-empty-label-{}"]'
+
+    pagination_page_info = LocatorDescriptor(
+        testid="artifacts-pagination-page-info",
+        description="'{start} - {end} of {total}' counter at the bottom of the "
+        "file table (shared GridTablePagination's pageInfoTestId prop, wired "
+        "from ArtifactTable.jsx). ABSENT entirely when the bucket has no files "
+        "— GridTablePagination returns null at totalRows === 0.",
+    )
+
+    pagination_prev_button = LocatorDescriptor(
+        testid="artifacts-pagination-prev-button",
+        description="Previous-page arrow. Carries a real `disabled` attribute "
+        "on the first page — assert with is_disabled(), never by CSS opacity.",
+    )
+
+    pagination_next_button = LocatorDescriptor(
+        testid="artifacts-pagination-next-button",
+        description="Next-page arrow. Carries a real `disabled` attribute on "
+        "the last page (and on a single-page bucket).",
+    )
+
+    pagination_page_size_combobox = LocatorDescriptor(
+        testid="artifacts-pagination-page-size-select-combobox",
+        description="'Rows per page' select's clickable combobox — the shared "
+        "SingleSelect derives this '-combobox' suffix from the root "
+        "'artifacts-pagination-page-size-select' testid (same shape as "
+        ":attr:`bucket_retention_measure_combobox`). Defaults to '10'.",
+    )
 
     # ------------------------------------------------------------------
     # Init
@@ -3267,3 +3410,222 @@ class ArtifactsPage(BasePage):
         self.page.keyboard.press("End")
         self.page.keyboard.type(append_text)
         logger.info("Appended %r to the CodeMirror line containing %r", append_text, match_text)
+
+    # ------------------------------------------------------------------
+    # Landing-page chrome / pagination readers (ELITEA-1803/1804/1805)
+    # ------------------------------------------------------------------
+
+    def get_buckets_footer_count_text(self, timeout: int = 10000) -> str:
+        """Return the left-panel footer's 'Buckets: N' text.
+
+        Args:
+            timeout: How long to wait for the footer stat.
+
+        Returns:
+            Raw text content, e.g. ``"Buckets:757"`` (no separating space —
+            label and value are sibling Typography nodes).
+        """
+        self.buckets_footer_count.wait_for(state="visible", timeout=timeout)
+        return (self.buckets_footer_count.text_content() or "").strip()
+
+    def get_buckets_footer_size_text(self, timeout: int = 10000) -> str:
+        """Return the left-panel footer's 'Size: X' text.
+
+        Args:
+            timeout: How long to wait for the footer stat.
+
+        Returns:
+            Raw text content, e.g. ``"Size:254.8 MB"``.
+        """
+        self.buckets_footer_size.wait_for(state="visible", timeout=timeout)
+        return (self.buckets_footer_size.text_content() or "").strip()
+
+    def column_header(self, field: str) -> Locator:
+        """Return the file-table column header for *field*.
+
+        Args:
+            field: Column FIELD name — ``name``, ``fileType``, ``size``,
+                ``modified`` (the "Last update" column) or ``actions``.
+
+        Returns:
+            Locator for that column's header cell.
+        """
+        return self.page.locator(self.FILE_TABLE_COLUMN_HEADER.format(field))
+
+    def get_column_header_count(self) -> int:
+        """Return how many file-table column headers are rendered.
+
+        Zero means the file TABLE itself is not rendered (empty bucket), which
+        is a stronger statement than "no file rows".
+
+        Returns:
+            Number of rendered column headers.
+        """
+        return self.page.locator(self.FILE_TABLE_COLUMN_HEADER_ANY).count()
+
+    def bucket_tree_empty_label(self, bucket_name: str) -> Locator:
+        """Return the left-tree "No files in this bucket" label for *bucket_name*.
+
+        Args:
+            bucket_name: Name of the bucket whose subtree is inspected.
+
+        Returns:
+            Locator for that bucket's own empty-tree label.
+        """
+        return self.page.locator(self.BUCKET_TREE_EMPTY_LABEL.format(bucket_name))
+
+    def get_pagination_info_text(self, timeout: int = 10000) -> str:
+        """Return the pagination counter text (e.g. ``"1 - 10 of 12"``).
+
+        Args:
+            timeout: How long to wait for the counter.
+
+        Returns:
+            Trimmed counter text.
+        """
+        self.pagination_page_info.wait_for(state="visible", timeout=timeout)
+        return (self.pagination_page_info.text_content() or "").strip()
+
+    def get_rows_per_page_value(self, timeout: int = 10000) -> str:
+        """Return the current 'Rows per page' value (e.g. ``"10"``).
+
+        Args:
+            timeout: How long to wait for the combobox.
+
+        Returns:
+            Trimmed combobox text.
+        """
+        self.pagination_page_size_combobox.wait_for(state="visible", timeout=timeout)
+        return (self.pagination_page_size_combobox.text_content() or "").strip()
+
+    @action("Go to next file page")
+    def click_pagination_next(self, timeout: int = 10000) -> None:
+        """Click the next-page arrow and wait for the table to re-render.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.pagination_next_button.wait_for(state="visible", timeout=timeout)
+        self.pagination_next_button.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Clicked pagination next")
+
+    @action("Go to previous file page")
+    def click_pagination_prev(self, timeout: int = 10000) -> None:
+        """Click the previous-page arrow and wait for the table to re-render.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.pagination_prev_button.wait_for(state="visible", timeout=timeout)
+        self.pagination_prev_button.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Clicked pagination prev")
+
+    @action("Hover bucket info icon")
+    def hover_bucket_info_icon(self, timeout: int = 10000) -> None:
+        """Hover the main-panel bucket-info (i) icon to reveal its tooltip.
+
+        The tooltip opens on HOVER, not click (CLARIFICATION #1617 / #669).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.bucket_info_button.wait_for(state="visible", timeout=timeout)
+        self.bucket_info_button.hover()
+        self.bucket_info_tooltip_content.wait_for(state="visible", timeout=timeout)
+        logger.info("Bucket-info tooltip opened")
+
+    def get_bucket_info_tooltip_text(self, timeout: int = 10000) -> str:
+        """Return the bucket-info tooltip's text content.
+
+        Args:
+            timeout: How long to wait for the tooltip content.
+
+        Returns:
+            e.g. ``"Retention Policy:1 YearNumber of files:0"`` — labels and
+            values are sibling Typography nodes, so there is no separating
+            whitespace.
+        """
+        self.bucket_info_tooltip_content.wait_for(state="visible", timeout=timeout)
+        return (self.bucket_info_tooltip_content.text_content() or "").strip()
+
+    def get_rendered_bucket_names(self) -> list[str]:
+        """Return the distinct bucket names currently rendered in the left panel.
+
+        Reads each row's own ``artifacts-bucket-row-{name}`` testid and
+        de-duplicates: a PINNED bucket is rendered twice by
+        ``BucketsListContent.jsx`` (once in the pinned list, once in the full
+        list), so a raw row count would over-count it.
+
+        This is the oracle ELITEA-1803/1805 use for the left-panel footer's
+        "Buckets: N" stat — ``BucketsPanel.jsx`` feeds the footer
+        ``bucketCount={buckets?.length}``, the same array the list renders, so
+        footer and list must agree within one snapshot. (An API cross-check
+        was tried first and proved racy: the buckets listing is eventually
+        consistent — measured 760 rendered against 762 from
+        ``GET /artifacts/buckets/default/{project}`` seconds after creating
+        buckets.)
+
+        Read-only DOM observation: ``evaluate_all`` here only READS each
+        node's own ``data-testid``; it injects nothing and mutates nothing, so
+        it is not a substitution under the fidelity policy. It is used instead
+        of N per-element round-trips because the panel renders 750+ rows.
+
+        Returns:
+            De-duplicated bucket names, in render order.
+        """
+        prefix = "artifacts-bucket-row-"
+        names: list[str] = []
+        for testid in self.page.locator(self.BUCKET_ROW_ANY_SELECTOR).evaluate_all(
+            "nodes => nodes.map(n => n.getAttribute('data-testid'))"
+        ):
+            if testid and testid.startswith(prefix):
+                name = testid[len(prefix):]
+                if name not in names:
+                    names.append(name)
+        return names
+
+    def file_rows(self) -> Locator:
+        """Return a locator for every rendered file/folder row.
+
+        Public accessor over the pre-existing :meth:`_file_rows` so specs
+        assert row counts through the page object (``expect(...)``'s
+        auto-retry) instead of constructing locators themselves.
+
+        Returns:
+            Locator for the file/folder row collection.
+        """
+        return self._file_rows()
+
+    def file_row_checkboxes(self) -> Locator:
+        """Return a locator for every rendered file-row selection checkbox.
+
+        Returns:
+            Locator matching :attr:`ARTIFACT_FILE_CHECKBOX_ANY_SELECTOR`.
+        """
+        return self.page.locator(self.ARTIFACT_FILE_CHECKBOX_ANY_SELECTOR)
+
+    def file_row_action_buttons(self) -> Locator:
+        """Return a locator for every rendered file-row actions (dot-menu) trigger.
+
+        Returns:
+            Locator matching :attr:`ARTIFACT_ACTIONS_MENU_BUTTON_ANY_SELECTOR`.
+        """
+        return self.page.locator(self.ARTIFACT_ACTIONS_MENU_BUTTON_ANY_SELECTOR)
+
+    def tree_item(self, item_key: str) -> Locator:
+        """Return the left-panel tree node for *item_key*.
+
+        Locator-returning sibling of the pre-existing
+        :meth:`is_tree_item_visible` / :meth:`click_tree_item`, for specs that
+        want ``expect(...)``'s auto-retrying assertions on the node.
+
+        Args:
+            item_key: Full relative path of the file/folder (e.g.
+                ``"sample.txt"`` or ``"a1/sample.txt"``).
+
+        Returns:
+            Locator for that tree node.
+        """
+        return self.page.locator(self.ARTIFACTS_TREE_ITEM.format(item_key))
