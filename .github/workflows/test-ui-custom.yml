@@ -1148,33 +1148,29 @@ jobs:
           print(f'    "No TMS case" : {len(in_automation_not_tms)}')
           print("```\n")
 
-          # Tests without TMS cases (show top 15)
+          # Tests without TMS cases (full list)
           if in_automation_not_tms:
               print("### Tests Without TMS Case\n")
               print("_Tests that exist in automation but have no linked TMS case._\n")
               print("<details>")
               print(f"<summary>Show {len(in_automation_not_tms)} unlinked tests</summary>\n")
-              for test_id in sorted(in_automation_not_tms)[:50]:
+              for test_id in sorted(in_automation_not_tms):
                   # Shorten for display
                   short = test_id.replace("tests.ui.", "").replace("tests.api.", "api/")
                   print(f"- `{short}`")
-              if len(in_automation_not_tms) > 50:
-                  print(f"- _... and {len(in_automation_not_tms) - 50} more_")
               print("\n</details>\n")
 
-          # Orphan TMS refs (show top 15)
+          # Orphan TMS refs (full list)
           if in_tms_not_automation:
               print("### Orphan TMS References\n")
               print("_TMS cases reference tests that don't exist in automation (renamed/deleted?)._\n")
               print("<details>")
               print(f"<summary>Show {len(in_tms_not_automation)} orphan refs</summary>\n")
-              for test_id in sorted(in_tms_not_automation)[:50]:
+              for test_id in sorted(in_tms_not_automation):
                   case = tms_case_map.get(test_id, {})
                   case_id = case.get("id", "?")
                   short = test_id.replace("tests.ui.", "").replace("tests.api.", "api/")
                   print(f"- `{short}` ({case_id})")
-              if len(in_tms_not_automation) > 50:
-                  print(f"- _... and {len(in_tms_not_automation) - 50} more_")
               print("\n</details>\n")
 
           print("---")
