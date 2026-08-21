@@ -573,3 +573,65 @@ merged `test_artifacts_file_preview_edit_save.py:71-97`. Two gotchas that come w
   `sample.txt` when `sample.txt` is the case's own upload subject — the second
   upload would raise the "Resolve duplicates" dialog instead of the
   "Upload files to ..." dialog. `seed.txt` used here.
+
+## Confirmed handles (as of ELITEA-1836/1837/1838 file-tree cluster, 2026-08-21)
+
+Left-panel **file-tree behaviour** — subfolder expand/collapse, breadcrumb + URL
+navigation, and bucket switching. **No testid was added this run** — every
+element these three cases touch already carries one.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Tree node (folder or file) | `artifacts-tree-item-{key}` (`ArtifactsPage.ARTIFACTS_TREE_ITEM`) | `Components/FileTreeItem.jsx:107` | key = the item's FULL relative key: a folder is `a1/` (trailing slash), a nested file is `a1/f1.txt`. Keys are bucket-relative, so two buckets with same-named files produce colliding keys — give seeded buckets distinct filenames |
+| Tree node selection | `data-selected="true\|false"` on the same node | same | `is_tree_item_selected()`; selection is EXCLUSIVE — selecting `a1/` flips the bucket row's own `data-selected` to `false` |
+| "Bucket is expanded" observable | the bucket's own tree nodes exist at all | `SimpleBucketList.jsx:89` renders `{isExpanded && <BucketContent …>}` | there is NO `data-expanded` on the bucket row and none is needed — a collapsed bucket has ZERO tree nodes in the DOM |
+| "Subfolder is expanded" observable | the folder's CHILD tree nodes exist | `FileTreeItem.jsx`'s `<Collapse in={isExpanded} unmountOnExit>` | children unmount ~300 ms after the collapse click (MUI transition) — assert with `to_have_count(0)`, never a fixed sleep |
+| Breadcrumb bucket crumb (clickable root link) | `artifacts-breadcrumb-bucket-label` + `ArtifactsPage.click_breadcrumb_bucket_label()` (**added during this run's implementation**) | `component/ArtifactTableToolbar.jsx:65` | `onClick` is wired **only while `currentPrefix` is truthy** — at bucket root the crumb is inert (not a bug) |
+
+### File-tree behaviours confirmed live (2026-08-21)
+- **Subfolder click toggles expansion AND (re)selects the folder.**
+  `FileTreeItem.handleSelect` does `setIsExpanded(prev => !prev)` **and** calls
+  `onSelectFolder(item.key)` on BOTH clicks. Consequence: collapsing a subfolder
+  does **not** reset the breadcrumb or the URL — after the collapse click the
+  header still reads `bucket > a1`, the URL still carries `&folder=a1`, and the
+  main panel still lists the subfolder's files. Only the tree branch closes.
+- **⚠ Race — a rapid second click does not collapse (product defect `#1631`).**
+  Expand-click → collapse-click with no wait between them failed to collapse
+  **2 of 5** live attempts; with any real assertion in between (the case's own
+  Step 4 breadcrumb/table checks) it collapsed **5/5**, and 7/7 in two earlier
+  probes. Likely mechanism: `BucketContent.jsx`'s `isFetching` early-return
+  ("Loading files…") unmounts the whole `FileTreeItem` subtree, which then
+  re-initialises `useState(shouldAutoExpand)` from `expandedPaths` — still
+  containing the folder, because the collapse click keeps `currentPrefix` on it.
+  **Rule for any tree test: never fire two tree clicks back-to-back; assert the
+  intermediate state first.**
+- **URL shapes:** bucket root `?bucket=<name>`; inside a subfolder
+  `?bucket=<name>&folder=a1` — the `folder` param carries **no** trailing slash
+  even though the prefix and the tree key do (`Artifacts.jsx`:
+  `normalizedPrefix.replace(/\/$/, '')`). Assert anchored, not by substring: a
+  stale `&folder=…` survives a `"bucket=<name>" in url` check.
+- **Breadcrumb-root click returns to root without collapsing the tree** — the
+  `a1/` subtree stays rendered; only `data-selected` clears and `currentPrefix`
+  resets.
+- **Switching buckets never collapses the previous one.** Expansion lives in
+  `BucketsListContent.jsx`'s `expandedBuckets` map, only ever set `true` for the
+  newly selected bucket and toggled solely by clicking an ALREADY-active row
+  (the `#651` behaviour). Live: bucket A's tree nodes stayed visible with
+  `data-selected="false"` while B was selected.
+- **Returning to a bucket restores the BUCKET's expansion but not a subfolder's**
+  — `BucketContent` remounts and `FileTreeItem` re-initialises from
+  `expandedPaths`, empty once the bucket click reset `currentPrefix`. Not a
+  regression; not asserted by any of these three cases.
+- **`/artifacts` auto-selects the alphabetically-first bucket** on a param-less
+  load — measured live as never an `autotest-…` one, but every spec here asserts
+  `is_bucket_selected(bucket) is False` before its first bucket click so the
+  `#651` toggle trap can never be entered silently.
+- **Two-bucket seeding pattern (ELITEA-1838):** take bucket A from the
+  `artifact_bucket` fixture and create B as `f"{A}-b"` via
+  `ArtifactAPI.create_bucket` with its own try/except teardown — `{A}-b` sorts
+  immediately after A in the alphanumeric list, so both rows land in the same
+  scroll band of a 760-bucket panel.
+- Playwright MCP again NOT attempted (9th consecutive session per the digest
+  gotcha) — all three cases were executed live via throwaway pytest specs under
+  `automation/tests/ui/artifacts/` driving the framework's `page`/`auth_state`
+  fixtures with `-s` prints (4 probe runs, 38-64 s each), then deleted.
