@@ -225,3 +225,59 @@ pending).
 - This case needs **no seeding at all** — the precondition ("at least one bucket")
   is satisfied by the project's existing 766 buckets, so it is fully read-only and
   adds nothing to the `#636` bucket leak.
+
+## Confirmed handles (as of ELITEA-1820/1821 pin/unpin cluster, 2026-08-21)
+
+Bucket **pin/unpin** surface — the left panel's per-bucket dot-menu pin item and
+the pin indicator next to a pinned bucket's name. Testids added on
+`automation/testids` (human cherry-pick to `main` pending).
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Dot-menu pin item | `bucket-menu-pin-menuitem` | **added this run** — `key: 'bucket-menu-pin'` on `BucketItem.jsx`'s menu item; `DotMenu` turns a top-level item's `key` into `data-testid="{key}-menuitem"` | ONE testid for BOTH states — the label is `isPinned ? 'Unpin from top' : 'Pin to top'` (PR #581: testid = identity, label/`data-*` = state). Do NOT split it into pin/unpin testids. |
+| Pin icon beside a pinned bucket | `artifacts-bucket-pin-indicator-{name}` (**dynamic**) | **added this run** — `BucketItem.jsx`'s `isPinned &&` wrapper `<Box>` | The row renders a SECOND, hover-only pin button under `!isPinned && isHovering`; it is deliberately left **untagged** (#511 — not on any test's executed path), which is what keeps `to_have_count(0)` absence assertions honest while hovering. |
+| Any pin indicator | `[data-testid^="artifacts-bucket-pin-indicator-"]` | same | project-wide "nothing is pinned" check |
+| Pin/unpin request | `PATCH /artifacts/buckets/default/{projectId}?name={bucket}` body `{"is_pinned": bool}` | `src/api/artifacts.js` `updateBucketPin` | returns 200 immediately; the LIST lags it (below) |
+| Bucket dot-menu text, unpinned | `Upload filesRenamePin to topDelete` | `get_bucket_menu_items_text()` | personal project (399) hides Share / Manage permissions (`isPersonalProject`) — a TEAM project's menu has 6 items |
+| Bucket dot-menu text, pinned | `Upload filesRenameUnpin from topDelete` | same | |
+
+### Bucket-list ordering — settled live (2026-08-21)
+- **The rendered list is ALPHANUMERIC.** All 766 rendered names were exactly
+  `== sorted(names)` once nothing was pinned. `SimpleBucketList.jsx` calls
+  `sortBucketsByRecent`, but the listing payload has no usable
+  `updated_at`/`created_at`, so every comparison is `NaN`, the sort is a no-op,
+  and the backend's alphanumeric order survives. Assert the observable
+  (alphanumeric), not the mechanism — a payload change could make the code's
+  recency intent real.
+- **Pinned buckets render in their own list ABOVE the unpinned list**
+  (`BucketsListContent.jsx`); `BucketsPanel.jsx` splits `pinnedBuckets` /
+  `unpinnedBuckets`, so a pinned bucket is rendered **ONCE**, not twice.
+  **Corrects** the ELITEA-1803-era claim in the § Footer section above and in
+  `ArtifactsPage.get_rendered_bucket_names()`'s docstring ("rendered twice") —
+  the de-duplication there is harmless but the stated reason was wrong.
+- Consequence: a **leaked pinned bucket permanently sits at the top of the list
+  for every project member** and breaks any "first item" assertion. Both pin
+  cases clear the flag in teardown (`ArtifactAPI.set_bucket_pinned`, added this
+  run) BEFORE deleting.
+
+### Pin/unpin behaviours confirmed live (2026-08-21)
+- **The bucket list lags the pin PATCH by ~8-10 s** (10 s pin, 8 s unpin,
+  measured by 2-second polling; no intervening
+  `GET .../artifacts/buckets/default/{pid}` was observed on the wire). Not filed
+  as a defect — the state does arrive and no case sets a timing expectation —
+  but every post-click assertion needs a generous condition wait (30 s), never a
+  short one.
+- **While the list is stale, the dot-menu is stale too**: it still reads "Pin to
+  top" for an already-pinned bucket, and clicking it sends `is_pinned: true`
+  again instead of unpinning. Always wait for the pinned state to RENDER before
+  re-opening the menu.
+- Pinning is persisted server-side and survives a reload.
+
+### `#636` bucket leak — probable root cause found (2026-08-21)
+`ArtifactAPI.delete_bucket` deletes via the **path** form
+`/artifacts/buckets/default/{pid}/{bucket}` (and a `p--{pid}.{bucket}`
+fallback), both of which **404**. The UI deletes via the **query** form
+`/artifacts/buckets/default/{pid}?name={bucket}` — 10 leaked buckets were
+deleted live with it, all **200**. Fixing `delete_bucket` is a shared-client
+change with many callers (out of scope for a case); reported to the lead as a
+suite-health item.
