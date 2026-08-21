@@ -1130,9 +1130,8 @@ jobs:
 
           echo "✓ Appended TMS coverage analysis"
 
-          # Generate JSON dashboard snapshot for historical tracking
-          RUN_ID="${RUN_ID}"  # From outer shell
-          python3 << SNAPSHOT_EOF > "reports/automated/dashboard-${RUN_ID}.json"
+          # Generate JSON dashboard (reports/dashboard.json)
+          python3 << SNAPSHOT_EOF > reports/dashboard.json
           import json
           import glob
           import os
@@ -1196,9 +1195,14 @@ jobs:
           print(json.dumps(snapshot, indent=2))
           SNAPSHOT_EOF
 
-          echo "✓ Generated reports/automated/dashboard-${RUN_ID}.json"
+          echo "✓ Generated reports/dashboard.json"
 
-          git add reports/dashboard.md "reports/automated/dashboard-${RUN_ID}.json"
+          # Copy to historical dashboards folder
+          mkdir -p reports/dashboards
+          cp reports/dashboard.json "reports/dashboards/dashboard-${RUN_ID}.json"
+          echo "✓ Copied to reports/dashboards/dashboard-${RUN_ID}.json"
+
+          git add reports/dashboard.md reports/dashboard.json "reports/dashboards/dashboard-${RUN_ID}.json"
           git diff --cached --quiet || \
             git commit -m "dashboard: update test metrics for ${RUN_ID}"
           git push
