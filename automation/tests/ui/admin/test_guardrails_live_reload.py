@@ -53,9 +53,9 @@ CHAT_RESPONSE_TIMEOUT = 30000
 # ---------------------------------------------------------------------------
 # Test Data
 # ---------------------------------------------------------------------------
-TEST_TOOLKIT = "github"
-TEST_TOOL = "get_ISSUE"
-GITHUB_BRANCH = "main"
+TEST_TOOLKIT = "jira"
+TEST_TOOL = "search_using_jql"  # For blocked tool test - simple JQL query, no issue key needed
+TEST_SENSITIVE_TOOL = "list_projects"  # For sensitive tool test - zero parameters, pure read-only
 
 
 # ---------------------------------------------------------------------------
@@ -101,29 +101,30 @@ def module_agent_api(module_browser_cookies):
 
 @pytest.fixture(scope="module")
 def guardrails_test_credential(module_credential_api: CredentialAPI):
-    """Create GitHub credential for the entire test module.
+    """Create JIRA credential for the entire test module.
 
     Created once before all tests, deleted after all tests complete.
     """
-    if not settings.git_hub_token:
-        pytest.skip("GIT_HUB_TOKEN not set in .env.test")
+    if not settings.jira_api_key or not settings.jira_username:
+        pytest.skip("JIRA_API_KEY or JIRA_USERNAME not set in .env.test")
 
     name = "guardrails_test_credential"
     # elitea_title should match display_name (no prefix needed)
-    cred = module_credential_api.create_github_credential(
+    cred = module_credential_api.create_jira_credential(
         display_name=name,
-        base_url=settings.github_base_url,
-        token=settings.git_hub_token,
+        base_url=settings.jira_base_url,
+        username=settings.jira_username,
+        api_key=settings.jira_api_key,
         elitea_title=name,
     )
-    logger.info("Created GitHub credential %s (elitea_title=%s) for guardrails tests",
+    logger.info("Created JIRA credential %s (elitea_title=%s) for guardrails tests",
                 cred["id"], cred["elitea_title"])
 
     yield {"id": cred["id"], "elitea_title": cred["elitea_title"]}
 
     try:
         module_credential_api.delete_credential(cred["id"])
-        logger.info("Deleted GitHub credential %s", cred["id"])
+        logger.info("Deleted JIRA credential %s", cred["id"])
     except Exception as exc:
         logger.warning("Failed to delete credential %s: %s", cred["id"], exc)
 
@@ -133,48 +134,47 @@ def guardrails_test_toolkit(
     guardrails_test_credential: dict,
     module_toolkit_api: ToolkitAPI,
 ):
-    """Create GitHub toolkit for the entire test module.
+    """Create JIRA toolkit for the entire test module.
 
     Created once before all tests, deleted after all tests complete.
     Includes tools list to enable specific tools (by default API creates toolkit without tools).
 
-    Skips all tests if GitHub toolkit is not available in this deployment.
+    Tools selected to minimize parallel execution conflicts:
+    - list_projects: Zero parameters, pure read-only, NOT used in other suites
+    - search_using_jql: Single JQL parameter, read-only, NOT used in other suites
+
+    Both tools are sufficient for all 3 test cases:
+    - Blocked toolkit test: blocks entire JIRA toolkit
+    - Blocked tool test: blocks search_using_jql specifically
+    - Sensitive tool test: marks list_projects as sensitive
     """
-    name = "guardrails_test_github_toolkit"
+    name = "guardrails_test_jira_toolkit"
 
     # Use create_toolkit with selected_tools inside settings
     toolkit_settings = {
-        "github_configuration": {
+        "jira_configuration": {
             "elitea_title": guardrails_test_credential["elitea_title"],
             "private": True,
         },
-        "repository": settings.git_repo,
-        "active_branch": GITHUB_BRANCH,
-        "base_branch": GITHUB_BRANCH,
         "selected_tools": [
-            "get_issues",
-            "get_issue",
-            "create_issue",
-            "comment_on_issue",
-            "list_branches_in_repo",
-            "get_pull_request",
-            "create_pull_request",
+            "list_projects",     # For sensitive tool test - zero parameters
+            "search_using_jql",  # For blocked tool test - simple JQL query
         ],
     }
 
     toolkit = module_toolkit_api.create_toolkit(
         name=name,
-        description="GitHub toolkit for guardrails live-reload tests",
-        toolkit_type="github",
+        description="JIRA toolkit for guardrails live-reload tests",
+        toolkit_type="jira",
         settings=toolkit_settings,
     )
-    logger.info("Created GitHub toolkit %s for guardrails tests", toolkit["id"])
+    logger.info("Created JIRA toolkit %s for guardrails tests", toolkit["id"])
 
     yield {"id": toolkit["id"], "name": name}
 
     try:
         module_toolkit_api.delete_toolkit(toolkit["id"])
-        logger.info("Deleted GitHub toolkit %s", toolkit["id"])
+        logger.info("Deleted JIRA toolkit %s", toolkit["id"])
     except Exception as exc:
         logger.warning("Failed to delete toolkit %s: %s", toolkit["id"], exc)
 
@@ -186,7 +186,7 @@ def guardrails_test_agent(
     browser: Browser,
     auth_state,
 ):
-    """Create agent with GitHub toolkit for the entire test module.
+    """Create agent with JIRA toolkit for the entire test module.
 
     The toolkit is attached via UI (AgentDetailPage.add_toolkit) because
     the API doesn't support attaching toolkits directly during creation.
@@ -195,14 +195,15 @@ def guardrails_test_agent(
     """
     name = "guardrails_test_agent"
     description = "Agent for guardrails live-reload tests"
-    instructions = """You are a helpful assistant with access to GitHub tools.
+    instructions = """You are a helpful assistant with access to JIRA tools.
 
-IMPORTANT: When asked to perform any GitHub-related task, you MUST use the
+IMPORTANT: When asked to perform any JIRA-related task, you MUST use the
 available tools to fulfill the request. Execute tools directly and return
 the actual results.
 
 For example:
-- If asked about issues, use get_issue to fetch real issue data
+- If asked to list projects, use list_projects tool
+- If asked to search issues, use search_using_jql tool with JQL query
 - Always execute tools rather than explaining how to use them manually"""
 
     agent = module_agent_api.create_agent(name, description, instructions)
@@ -275,7 +276,7 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
                 print(f"[CLEANUP] Could not get blocked toolkits list: {e}")
                 blocked_list = []
 
-            for toolkit in [TEST_TOOLKIT, "github", "GITHUB", "Github"]:
+            for toolkit in [TEST_TOOLKIT, "JIRA", "Jira"]:
                 try:
                     is_blocked = guardrails.is_toolkit_blocked(toolkit)
                     print(f"[CLEANUP] Checking toolkit '{toolkit}': blocked={is_blocked}")
@@ -290,7 +291,7 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
             # Remove blocked tools
             print("[CLEANUP] Cleaning up blocked tools")
             logger.info("Cleaning up blocked tools")
-            for tool in [TEST_TOOL, "get_issue", "GET_ISSUE", "Get_Issue"]:
+            for tool in [TEST_TOOL, TEST_SENSITIVE_TOOL, "list_projects", "search_using_jql"]:
                 try:
                     if guardrails.is_tool_blocked(tool):
                         guardrails.remove_blocked_tool(tool)
@@ -312,7 +313,7 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
             # Remove sensitive tools
             print("[CLEANUP] Cleaning up sensitive tools")
             logger.info("Cleaning up sensitive tools")
-            for tool in [TEST_TOOL, "get_issue", "GET_ISSUE", "Get_Issue"]:
+            for tool in [TEST_TOOL, TEST_SENSITIVE_TOOL, "list_projects", "search_using_jql"]:
                 try:
                     if guardrails.is_tool_in_sensitive_list(tool, TEST_TOOLKIT):
                         guardrails.remove_sensitive_tool(tool)
@@ -434,7 +435,7 @@ class TestBlockedToolkitLiveReload:
             guardrails = GuardrailsAdminPage(admin_page)
             guardrails.navigate_to_guardrails()
 
-        with allure.step("Step 2 — Verify github toolkit is NOT blocked initially"):
+        with allure.step("Step 2 — Verify JIRA toolkit is NOT blocked initially"):
             assert not guardrails.is_toolkit_blocked(TEST_TOOLKIT), (
                 f"{TEST_TOOLKIT} toolkit should NOT be blocked initially"
             )
@@ -449,7 +450,7 @@ class TestBlockedToolkitLiveReload:
             toolkit_name = guardrails_test_agent["toolkit_name"]
             initial_count = agent_page._embedded_chat_messages().count()
             agent_page.send_chat_message(
-                f"Use {toolkit_name} toolkit to get issue #1 from {settings.git_repo}. Execute the tool."
+                "List all JIRA projects available. Execute the tool."
             )
             agent_page.wait_for_chat_response(
                 initial_count=initial_count,
@@ -464,7 +465,7 @@ class TestBlockedToolkitLiveReload:
                 "Tool should execute successfully before blocking"
             )
 
-        with allure.step("Step 4 — Add github toolkit to blocked list in Admin UI"):
+        with allure.step("Step 4 — Add JIRA toolkit to blocked list in Admin UI"):
             guardrails.add_blocked_toolkit(TEST_TOOLKIT)
 
         with allure.step("Step 5 — Save and verify no pylon reload banner"):
@@ -488,7 +489,7 @@ class TestBlockedToolkitLiveReload:
             )
             logger.info("Blocked toolkit indicator visible for '%s'", toolkit_name)
 
-        with allure.step("Step 7 — Remove github from blocked list and save"):
+        with allure.step("Step 7 — Remove JIRA from blocked list and save"):
             try:
                 guardrails.remove_blocked_toolkit(TEST_TOOLKIT)
                 guardrails.save_configuration()
@@ -539,7 +540,7 @@ class TestBlockedToolLiveReload:
             guardrails = GuardrailsAdminPage(admin_page)
             guardrails.navigate_to_guardrails()
 
-        with allure.step("Step 2 — Ensure get_issue tool is NOT blocked (cleanup if needed)"):
+        with allure.step("Step 2 — Ensure search_using_jql tool is NOT blocked (cleanup if needed)"):
             # Self-healing: remove blocked tool if left over from previous run
             # Retry up to 2 times in case first cleanup fails
             for attempt in range(2):
@@ -566,13 +567,13 @@ class TestBlockedToolLiveReload:
                 "Blocked Tools should NOT have 'Reload required' badge"
             )
 
-        with allure.step("Step 3 — Open agent chat and verify get_issue executes"):
+        with allure.step("Step 3 — Open agent chat and verify search_using_jql executes"):
             agent_page = AgentDetailPage(page)
             agent_page.navigate(agent_id)
 
             initial_count = agent_page._embedded_chat_messages().count()
             agent_page.send_chat_message(
-                f"Use get_issue tool to get issue #1 from {settings.git_repo}. Execute the tool."
+                'Search for issues in TEST project using JQL query: project = TEST. Execute the tool.'
             )
             agent_page.wait_for_chat_response(
                 initial_count=initial_count,
@@ -584,10 +585,10 @@ class TestBlockedToolLiveReload:
             logger.info("Response before blocking: %s", response1[:300] if response1 else "(empty)")
             assert response1, "AI response should not be empty"
             assert "blocked" not in response1.lower() and "not available" not in response1.lower(), (
-                "get_issue tool should execute successfully before blocking"
+                "search_using_jql tool should execute successfully before blocking"
             )
 
-        with allure.step("Step 4 — Block get_issue tool in Admin UI"):
+        with allure.step("Step 4 — Block search_using_jql tool in Admin UI"):
             guardrails.add_blocked_tool(TEST_TOOLKIT, TEST_TOOL)
 
         with allure.step("Step 5 — Save and verify no pylon reload banner"):
@@ -596,7 +597,7 @@ class TestBlockedToolLiveReload:
                 "Should NOT show pylon reload banner after save"
             )
 
-        with allure.step("Step 6 — Verify get_issue is blocked"):
+        with allure.step("Step 6 — Verify search_using_jql is blocked"):
             agent_page.navigate(agent_id)
             page.reload()
             agent_page.wait_for_page_load()
@@ -609,7 +610,7 @@ class TestBlockedToolLiveReload:
         with allure.step("Step 7 — Verify other tools in toolkit still work"):
             initial_count = 0
             agent_page.send_chat_message(
-                f"Does branch 'main' exist in {settings.git_repo}? Just answer yes or no."
+                "List all JIRA projects. Execute the tool."
             )
             agent_page.wait_for_chat_response(
                 initial_count=initial_count,
@@ -620,11 +621,11 @@ class TestBlockedToolLiveReload:
             response3 = agent_page.get_last_chat_response_text()
             logger.info("Response for other tool: %s", response3[:200] if response3 else "(empty)")
             assert response3, "AI response should not be empty"
-            assert "yes" in response3.lower() or "main" in response3.lower() or "exist" in response3.lower(), (
+            assert "project" in response3.lower() or "jira" in response3.lower(), (
                 "Other tools in the toolkit should still work"
             )
 
-        with allure.step("Step 8 — Unblock get_issue and verify it works again"):
+        with allure.step("Step 8 — Unblock search_using_jql and verify it works again"):
             try:
                 guardrails.remove_blocked_tool(TEST_TOOL)
                 guardrails.save_configuration()
@@ -675,18 +676,18 @@ class TestSensitiveToolLiveReload:
             guardrails = GuardrailsAdminPage(admin_page)
             guardrails.navigate_to_guardrails()
 
-        with allure.step("Step 2 — Ensure get_issue is NOT in Sensitive Action Tools (cleanup if needed)"):
+        with allure.step("Step 2 — Ensure list_projects is NOT in Sensitive Action Tools (cleanup if needed)"):
             # Self-healing: remove sensitive tool if left over from previous run
             # Retry up to 3 times with more aggressive cleanup
             for attempt in range(3):
-                if not guardrails.is_tool_in_sensitive_list(TEST_TOOL, TEST_TOOLKIT):
-                    logger.info("Tool '%s' confirmed NOT in sensitive list", TEST_TOOL)
+                if not guardrails.is_tool_in_sensitive_list(TEST_SENSITIVE_TOOL, TEST_TOOLKIT):
+                    logger.info("Tool '%s' confirmed NOT in sensitive list", TEST_SENSITIVE_TOOL)
                     break
                 logger.warning(
-                    "Tool '%s' found in sensitive list - cleanup attempt %d/3", TEST_TOOL, attempt + 1
+                    "Tool '%s' found in sensitive list - cleanup attempt %d/3", TEST_SENSITIVE_TOOL, attempt + 1
                 )
                 try:
-                    guardrails.remove_sensitive_tool(TEST_TOOL)
+                    guardrails.remove_sensitive_tool(TEST_SENSITIVE_TOOL)
                     guardrails.remove_empty_sensitive_toolkit_blocks()
                     guardrails.save_configuration(timeout=15000)
                     # Wait longer for backend to persist the change
@@ -701,27 +702,27 @@ class TestSensitiveToolLiveReload:
                     guardrails.wait_for_page_load()
 
             # Final verification after all cleanup attempts
-            tool_still_in_list = guardrails.is_tool_in_sensitive_list(TEST_TOOL, TEST_TOOLKIT)
+            tool_still_in_list = guardrails.is_tool_in_sensitive_list(TEST_SENSITIVE_TOOL, TEST_TOOLKIT)
             if tool_still_in_list:
                 # If cleanup failed after 3 attempts, this might be a deeper state issue
                 # Log the state but don't fail the test - let Step 3 reveal if it's actually blocking
                 logger.error(
                     "WARNING: Tool '%s' still in sensitive list after 3 cleanup attempts. "
                     "This may indicate persistent state. Continuing test to verify actual behavior.",
-                    TEST_TOOL
+                    TEST_SENSITIVE_TOOL
                 )
 
             assert not guardrails.has_reload_required_badge("Sensitive Action Tools"), (
                 "Sensitive Action Tools should NOT have 'Reload required' badge"
             )
 
-        with allure.step("Step 3 — Verify get_issue executes WITHOUT authorization dialog"):
+        with allure.step("Step 3 — Verify list_projects executes WITHOUT authorization dialog"):
             agent_page = AgentDetailPage(page)
             agent_page.navigate(agent_id)
 
             initial_count = agent_page._embedded_chat_messages().count()
             agent_page.send_chat_message(
-                f"Use get_issue tool to get issue #1 from {settings.git_repo}. Execute the tool."
+                "List all JIRA projects available. Execute the tool."
             )
             agent_page.wait_for_chat_response(
                 initial_count=initial_count,
@@ -739,7 +740,7 @@ class TestSensitiveToolLiveReload:
                 logger.warning(
                     "Tool '%s' is still in sensitive list after cleanup. "
                     "Skipping authorization assertion - DEV environment may have persistent state.",
-                    TEST_TOOL
+                    TEST_SENSITIVE_TOOL
                 )
             else:
                 # Tool was successfully removed, should execute without authorization
@@ -747,8 +748,8 @@ class TestSensitiveToolLiveReload:
                     "Tool should execute without authorization before marking sensitive"
                 )
 
-        with allure.step("Step 4 — Add get_issue to Sensitive Action Tools in Admin UI"):
-            guardrails.add_sensitive_tool(TEST_TOOLKIT, TEST_TOOL)
+        with allure.step("Step 4 — Add list_projects to Sensitive Action Tools in Admin UI"):
+            guardrails.add_sensitive_tool(TEST_TOOLKIT, TEST_SENSITIVE_TOOL)
 
         with allure.step("Step 5 — Save and verify no pylon reload banner"):
             guardrails.save_configuration()
@@ -756,14 +757,14 @@ class TestSensitiveToolLiveReload:
                 "Should NOT show pylon reload banner after save"
             )
 
-        with allure.step("Step 6 — Trigger get_issue and verify authorization dialog appears"):
+        with allure.step("Step 6 — Trigger list_projects and verify authorization dialog appears"):
             agent_page.navigate(agent_id)
             page.reload()
             agent_page.wait_for_page_load()
 
             initial_count2 = agent_page._embedded_chat_messages().count()
             agent_page.send_chat_message(
-                f"Use get_issue tool to get issue #1 from {settings.git_repo}. Execute the tool."
+                "List all JIRA projects available. Execute the tool."
             )
 
             auth_appeared = agent_page.wait_for_sensitive_action_authorization(
@@ -785,14 +786,14 @@ class TestSensitiveToolLiveReload:
 
         with allure.step("Step 7 — Remove from sensitive list and verify dialog no longer appears"):
             try:
-                guardrails.remove_sensitive_tool(TEST_TOOL)
+                guardrails.remove_sensitive_tool(TEST_SENSITIVE_TOOL)
                 guardrails.save_configuration()
 
                 agent_page.navigate(agent_id)
 
                 initial_count3 = agent_page._embedded_chat_messages().count()
                 agent_page.send_chat_message(
-                    f"Use get_issue tool to get issue #1 from {settings.git_repo}. Execute the tool."
+                    "List all JIRA projects available. Execute the tool."
                 )
                 agent_page.wait_for_chat_response(
                     initial_count=initial_count3,
@@ -804,7 +805,7 @@ class TestSensitiveToolLiveReload:
                 logger.info("Response after removing from sensitive: %s", response3[:300] if response3 else "(empty)")
             finally:
                 try:
-                    guardrails.remove_sensitive_tool(TEST_TOOL)
+                    guardrails.remove_sensitive_tool(TEST_SENSITIVE_TOOL)
                     guardrails.save_configuration()
                 except Exception:
                     pass

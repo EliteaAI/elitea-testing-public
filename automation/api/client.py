@@ -1108,6 +1108,55 @@ class CredentialAPI:
         _raise_for_status(resp)
         return resp.json()
 
+    def create_jira_credential(
+        self, display_name: str, base_url: str, username: str, api_key: str, elitea_title: Optional[str] = None
+    ) -> dict:
+        """Create a JIRA credential and return its JSON representation.
+
+        Args:
+            display_name: Human-readable name for the credential.
+            base_url: JIRA base URL (e.g. ``https://your-domain.atlassian.net``).
+            username: JIRA username (email).
+            api_key: JIRA API key/token.
+            elitea_title: Optional unique identifier (auto-generated with timestamp if not provided).
+
+        Returns:
+            Dict with ``id``, ``elitea_title``, ``label`` (display name), etc.
+        """
+        import time
+        url = self._credentials_url()
+        # Auto-generate unique elitea_title if not provided
+        if not elitea_title:
+            timestamp = str(int(time.time() * 1000))  # millisecond precision
+            safe_name = display_name.replace(' ', '_').replace('-', '_').lower()[:30]
+            title = f"jira_{safe_name}_{timestamp}"
+        else:
+            title = elitea_title
+
+        payload = {
+            "type": "jira",
+            "elitea_title": title,
+            "label": display_name,
+            "data": {
+                "base_url": base_url,
+                "username": username,
+                "api_key": api_key,
+            },
+            "shared": False,
+        }
+        logger.debug("CREATE jira credential %s name=%s title=%s", url, display_name, title)
+        resp = self._session.post(
+            url, json=payload, headers={"Content-Type": "application/json"}
+        )
+        if not resp.ok:
+            logger.error(
+                "Failed to create credential: status=%s body=%s",
+                resp.status_code,
+                resp.text[:500],
+            )
+        _raise_for_status(resp)
+        return resp.json()
+
     def create_credential(self, payload: dict) -> dict:
         """Create a credential of any type using a raw payload dict.
 
