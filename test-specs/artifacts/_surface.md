@@ -685,3 +685,27 @@ new code), and a full browser reload still rendered the old component. `touch` d
 file watcher never fires on OneDrive-backed paths. **Restart the dev server** (`kill` the vite pid,
 `npm run dev`) after any EliteaUI edit, and verify with
 `curl -s http://localhost:5173/src/<path> | grep -c <testid>` before blaming the JSX.
+
+## Confirmed handles (as of ELITEA-1844/1845 cluster, 2026-08-22)
+
+Row-level **single-file delete via the actions dropdown** — a third, distinct
+delete path alongside ELITEA-1847's bulk checkbox+toolbar delete and
+ELITEA-1856's file-preview-editor delete.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Dropdown `Delete` item (row) | `artifacts-file-delete-menuitem` | `ArtifactRowActions.jsx` | **Now clicked live (ELITEA-1844)** — retires ELITEA-1839's "visibility-only, never clicked" caveat. Opens the shared `DeleteEntityModal` via `DotMenu`'s `ActionWithDialog`. |
+| Confirmation message (row delete) | `delete-confirm-message` → `"Are you sure to delete the {name}? It can't be restored."` | `DeleteEntityModal.jsx` (`textContent` default `'Are you sure to delete the '` + `ArtifactRowActions.jsx`'s `inlineExtraContent: "? It can't be restored."`) | note the **"the"** — the cases' own text drops it (CLARIFICATION #1638, sibling of #659/#664). Distinct from the bulk path's `"Are you sure to delete the selected files?"`. |
+| Emphasised entity name in the message | `delete-confirm-entity-name` | **added 2026-08-22**, EliteaAI/EliteaUI@e59d0c97 (`automation/testids`) | the "highlighted in blue" span (`palette.text.deleteAlertEntityName`); attribute-only add on an existing `<Typography component="span">`. Colour itself is not testid-assertable — assert this element's text. |
+| Modal X (close) icon | `delete-confirm-close-button` | **added 2026-08-22**, EliteaAI/EliteaUI@08d9bb4f (`automation/testids`) | prop-only: `DeleteEntityModal` now forwards `closeButtonTestId` to `Modal.BaseModal` (which already accepted it, `BaseModal.jsx:35,154`). `showCloseButton` defaults `true`, so the X was always rendered — it just had `data-testid={undefined}`. |
+| Modal `Cancel` button | `delete-confirm-cancel-button` | `DeleteEntityModal.jsx:103` | **on `origin/main`** (EliteaAI/EliteaUI@bf4a13ad). This CORRECTS the standing note at `artifacts_page.py` (ELITEA-1847 block) claiming Cancel "carries no testid, confirmed absent" — stale since the 2026-08-12 promotion. First driven live by ELITEA-1845. |
+| Single-file DELETE endpoint | `DELETE /api/v2/artifacts/artifact/default/{projectId}/{bucket}?filename={name}` | `src/api/artifacts.js:125` (`deleteArtifact`) | **SINGULAR** — `ArtifactsPage.confirm_delete()`'s `expect_response` matcher (`"artifacts/artifacts" in r.url`) does NOT match it. ELITEA-1844 adds the additive sibling `confirm_delete_single_artifact()`. A *folder* row's dropdown delete would still take the plural path (`ArtifactTable.jsx:347-370`). |
+| Single-file delete success toast | `"The {name} file has been successfully deleted."` | `ArtifactTable.jsx:433` | third distinct wording on this surface: bulk = `"The selected files have been successfully deleted."`, editor = `"File deleted successfully"`. Cases' `"The artifacts have been deleted successfully"` exists nowhere in source (#1638). |
+| Post-delete settle | `wait_for_file_count(n)` then read | — | `deleteArtifact` invalidates `TAG_ARTIFACTS` + `TAG_BUCKETS`; the table and the left tree refetch asynchronously. Live-confirmed: tree item for the deleted file disappears, sibling `sample - Copy.md` stays. |
+
+**Vite HMR missed a `src/` edit this session (2026-08-22).** Two testids committed on
+`automation/testids` were served WITHOUT the change (`curl` of the transformed module showed the
+old text, and both locators resolved to count=0) until `npm run dev` was killed and restarted.
+Under OneDrive the file watcher is not reliable — if a freshly added testid resolves to 0 elements,
+`curl -s "http://localhost:5173/src/<path>" | grep <testid>` first, and restart the dev server
+before doubting the JSX edit.
