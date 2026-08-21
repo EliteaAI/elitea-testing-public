@@ -2483,6 +2483,24 @@ class ArtifactsPage(BasePage):
         self.delete_confirm_cancel_button.click()
         logger.info("'Cancel' clicked in the delete-confirmation modal")
 
+    @action("Close delete-confirmation modal via X")
+    def click_delete_close_button(self, timeout: int = 10000) -> None:
+        """Click the X (close) icon in the delete-confirmation modal (ELITEA-1850).
+
+        Additive sibling of :meth:`click_delete_cancel_button` — ``DeleteEntityModal``
+        passes ONE ``onClose`` handler to both ``Modal.BaseModal`` (the X, the
+        backdrop and Escape) and the ``Cancel`` button, so this control has the
+        same zero-side-effect semantics: no network request, and the file
+        table's ``rowSelectionModel`` (hence every checked checkbox) is left
+        untouched. Confirmed live 2026-08-22.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the X icon.
+        """
+        self.delete_confirm_close_button.wait_for(state="visible", timeout=timeout)
+        self.delete_confirm_close_button.click()
+        logger.info("X (close) clicked in the delete-confirmation modal")
+
     # CORRECTED (ELITEA-1845, 2026-08-22): the note below is STALE. The
     # shared DeleteEntityModal's Cancel button DOES carry a testid
     # (`delete-confirm-cancel-button`, DeleteEntityModal.jsx:103) and it is on

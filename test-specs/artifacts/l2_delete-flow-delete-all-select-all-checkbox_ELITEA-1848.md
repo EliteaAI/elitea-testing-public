@@ -95,7 +95,7 @@ left-panel tree.
 | Step 7 (tooltip `Delete all files`) | asserted | Step 4 |
 | Step 8 (click Delete all files icon → modal) | asserted | Step 5 |
 | Step 9 (modal: warning icon, title, message, "all files" highlighted, X, Cancel, Delete) | asserted | Step 6 — each element individually; the message is the LIVE string (CLARIFICATION) |
-| Step 10 (click Delete) | asserted | Step 7 — plus the DELETE response status + `fname[]` contents |
+| Step 10 (click Delete) | asserted | Step 7 — plus the DELETE response status, `fname[]` contents, and that exactly ONE DELETE request fired |
 | Step 11 (modal closes) | asserted | Step 8 |
 | Step 12 (green success notification, exact text) | asserted | Step 9 — LIVE text (#660); "green" is a `toastSuccess` severity not exposed as a testid-assertable attribute, so the exact text is the observable |
 | Step 13 (file table empty) | asserted | Step 10 |
@@ -109,6 +109,7 @@ left-panel tree.
 | DELETE response 200 + `fname[]` == the 4 expanded storage keys | the case says "all files and folders deleted"; only the request payload proves the folders were expanded to their real S3 keys (this storage has no folder objects) rather than sent as bare prefixes |
 | `ArtifactAPI.list_bucket_files(bucket) == []` | an empty table can also mean "the table failed to refetch"; storage is the independent producer of the case's own claim |
 | header checkbox **not** indeterminate (Step 3) | discriminates "fully checked" from "partially checked", which the case's step 6 wording ("fully filled") is exactly about |
+| exactly one DELETE request captured (`page.on("request", …)`) | the Test Steps row above specifies **one** bulk DELETE; a per-key fan-out (4 requests) would satisfy the status + `fname[]` assertions and still be a different, un-asserted product behaviour |
 | no console errors | project-wide side-channel check |
 
 ## Cleanup

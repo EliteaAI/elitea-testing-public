@@ -42,7 +42,7 @@ NOT chained onto ELITEA-1848's bucket, whose test empties it.
 | # | Action | Expected (live-verified 2026-08-22) |
 |---|---|---|
 | 1-2 | Navigate to the seeded bucket | 4 rows, pagination `1 - 4 of 4` |
-| — | Snapshot each row's text | used for the byte-for-byte post-cancel comparison |
+| — | Snapshot the two FILE rows' text (`sample.md`, `sample - Copy.md`) | used for the byte-for-byte post-cancel comparison. `get_file_row_text()` is anchored on `artifacts-file-row`; a folder renders as `artifacts-folder-row` and carries no Type/Size metadata, so the folders are covered by the name-set assertion + the left-tree check instead |
 | 3 | Click the header `Select all` checkbox | — |
 | 4 | Read the checkbox states | all 4 `True`, header fully checked |
 | 5 | Click the toolbar delete icon | `delete-confirm-dialog` visible |
@@ -50,7 +50,7 @@ NOT chained onto ELITEA-1848's bucket, whose test empties it.
 | 7 | Click `Cancel` (`delete-confirm-cancel-button`) | — |
 | 8 | Observe the modal | hidden |
 | 9 | Wait out a full toast window (3 s) on `toast-message` | never becomes visible (detector proven by the sibling ELITEA-1848 test in the same file, which sees the same locator carry text after a real delete) |
-| 10 | Read the file table | same 4 names; every row's text byte-identical to the pre-cancel snapshot |
+| 10 | Read the file table | same 4 names; both FILE rows' text byte-identical to the pre-cancel snapshot |
 | 11 | Read the pagination label | still `1 - 4 of 4` |
 | 12 | Read the left-panel tree | `a1/`, `folder-a/`, `sample.md`, `sample - Copy.md` all still present |
 | + | Independent ground truth (Axis 2) | zero DELETE requests captured on the page; `ArtifactAPI.list_bucket_files` still returns all 4 seeded keys |
@@ -74,7 +74,7 @@ storage keys) intact, pagination unchanged, left tree unchanged, and the selecti
 | Step 7 (click Cancel) | asserted | Step 4 |
 | Step 8 (modal closes) | asserted | Step 4 — `to_be_hidden` |
 | Step 9 (no success notification) | asserted | Step 5 — 3 s wait-for-visible that must time out |
-| Step 10 (all 4 items remain unchanged) | asserted | Step 6 — name set + per-row byte-for-byte text |
+| Step 10 (all 4 items remain unchanged) | asserted | Step 6 — name set (all 4) + byte-for-byte row text (the 2 file rows) |
 | Step 11 (pagination still `1 - 4 of 4`) | asserted | Step 6 |
 | Step 12 (left tree unchanged) | asserted | Step 7 — all 4 tree items still visible |
 

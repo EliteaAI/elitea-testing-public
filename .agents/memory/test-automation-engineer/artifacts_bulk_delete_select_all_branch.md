@@ -32,3 +32,9 @@ Delete-all leaves the bucket in the list, with `No files in this bucket` in BOTH
 runtime-composed, so a bare grep of EliteaUI `main` never finds it).
 
 Related: [[absence_assertion_needs_a_proven_detector]]
+
+## `get_file_row_text()` only sees FILE rows
+
+It is anchored on `artifacts-file-row`. A folder is `artifacts-folder-row`, so passing `a1` /
+`folder-a` times out at 10 s (cost one rerun on ELITEA-1849/1850). Folders carry no Type/Size
+metadata anyway — assert them via `get_file_names()` + the left-panel tree.
