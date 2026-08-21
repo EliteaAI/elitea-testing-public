@@ -15,7 +15,7 @@ entry as a prompt to look at the app, not as a fact. One writer at a time
 | Save button (New Bucket form) | `artifacts-bucket-save-button` | `bucket_save_button` field | **never carries a `disabled` attribute for an invalid-but-nonempty, ≤56-char name** — its `disabled` prop only checks `isCreating/isUpdating/!name/name.length===0/name.length>56`, never the regex (`CreateBucket.jsx:292-298`). For the happy path, `click_bucket_save_button()` wraps the click in `page.expect_response` for the `POST .../artifacts/buckets` — **do not reuse that helper for an invalid name**, no request ever fires and it hangs for its timeout. |
 | Bucket name validation rule | n/a (client-side yup) | `CreateBucket.jsx:22-30` | `^[a-zA-Z][a-zA-Z0-9-]*$`, max 56 chars; single shared error message `"Name should start with a letter and contain only letters, numbers, and hyphen"` for EVERY violation of the regex (leading digit, `$`, `_`, space — all produce byte-identical text) |
 | Inline validation message | **testid needed: `artifacts-bucket-name-helper-text`** | not yet added | MUI `<TextField>` helperText renders NO `data-testid` today; fix shape: `FormHelperTextProps={{ 'data-testid': 'artifacts-bucket-name-helper-text' }}` (or `slotProps.formHelperText`, precedent: `GenerateSkillReviewForm.jsx`) |
-| "Click 'Artifacts'" (return nav) | no testid — use `ArtifactsPage.navigate_to_artifacts()` (direct URL nav) | n/a | Sidebar nav entries (`SidebarBody.jsx`/`SidebarMenuItem.jsx`) are a SHARED component with NO `data-testid` on any item; threading one through is out of proportion to a single-click case need (confirmed independently by both ELITEA-1809 and ELITEA-1811/1814 analysis) |
+| "Click 'Artifacts'" (return nav) | `sidebar-menu-item-artifacts` — or `ArtifactsPage.navigate_to_artifacts()` (direct URL nav) | n/a | **CORRECTED 2026-08-21 (ELITEA-1807):** the 2026-08-02 claim that sidebar nav entries carry NO `data-testid` is no longer true — `SidebarBody.jsx` passes `testId={\`sidebar-menu-item-${i.value}\`}` to every item. See the ELITEA-1807 section below for the full list. Direct URL nav remains the cheaper transit for a "return to Artifacts" step. |
 | Bucket-not-in-list check | `ArtifactsPage.bucket_exists(name)` | pre-existing, raw `get_by_text` (tech debt #25/#42) | reused as-is, not a new handle |
 
 ## Confirmed handles (as of ELITEA-1828/1829/1831 cluster analysis, 2026-08-02)
@@ -174,3 +174,54 @@ seconds after creating buckets. Compare the footer against the panel's own
 DISTINCT rendered rows instead (`ArtifactsPage.get_rendered_bucket_names()`) —
 distinct, because a PINNED bucket is rendered twice (`BucketsListContent.jsx`
 renders the pinned list AND the full list).
+
+## Confirmed handles (as of ELITEA-1807, 2026-08-21)
+
+Panel **collapse/expand** chrome — the BUCKETS left panel's `<<`/`>>` control
+and the global navigation sidebar's `<`/`>` control. Testids added on
+EliteaAI/EliteaUI@9062dff0 (`automation/testids`, human cherry-pick to `main`
+pending).
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| BUCKETS panel collapse/expand toggle | `artifacts-buckets-panel-toggle-button` + `data-collapsed="true|false"` | `Components/BucketHeader.jsx` | ONE element whose icon flips (`DoubleLeftIcon`↔`DoubleRightIcon`); the icons are untagged SVGs, so state rides the `data-collapsed` attribute per the PR #581 ruling — asserting it IS asserting the icon swap |
+| Sidebar collapse/expand toggle | `sidebar-collapse-toggle-button` + `data-collapsed="true|false"` | `src/[fsd]/widgets/sidebar-root/ui/Sidebar.jsx` | same shape; the control is a fixed-position circular `Box`, NOT inside the drawer |
+| Sidebar nav items | `sidebar-menu-item-{value}` — `chat`, `agents`, `pipelines`, `skills`, `toolkits`, `mcps`, `credentials`, `applications`, `artifacts` | `SidebarBody.jsx` | **pre-existing** — `SidebarMenuItem` already takes a `testId` prop and `SidebarBody` already supplies it. Supersedes the older ELITEA-1809/1811 digest row claiming sidebar nav items carry NO testid: that is no longer true. |
+| Sidebar Settings button | `sidebar-settings-button` | `ui/button/SettingsButton.jsx` → shared `SidebarButton` | added via a new caller-supplied `testId` prop on the SHARED `SidebarButton` (the compliant shared-component shape) — other SidebarButton consumers stay untagged |
+| Sidebar Agent HUB button | `sidebar-agent-hub-button` | `ui/button/AgentHubButton.jsx` | its label is **`Catalog`**, not "Agent HUB" |
+
+### Collapse/expand behaviours confirmed live (2026-08-21)
+- **BUCKETS collapsed** → `artifacts-buckets-heading`, `artifacts-storage-selector`
+  and `artifacts-buckets-footer-count` are **unmounted** (count 0 — all three are
+  gated on `!collapsed` in `BucketsPanel.jsx`/`BucketHeader.jsx`), while the bucket
+  ROWS stay in the DOM and merely go invisible (`bucketListOuterContainer` has
+  `display: collapsed ? 'none' : 'flex'`). Assert count 0 for the former and
+  **not-visible** for the latter — mixing them up gives a test that passes for the
+  wrong reason.
+- **Sidebar collapsed** → every `sidebar-menu-item-*` (and Settings / Agent HUB)
+  stays visible as an icon, but its label `<Typography>` is unmounted
+  (`showLabel={!sideBarCollapsed}`), so `text_content()` becomes `''`. Icon-only
+  mode is therefore "same elements, empty text", never "elements gone".
+- **The two panels are genuinely independent**, verified in both directions and
+  from both starting states (sidebar collapsed while BUCKETS toggles twice, and
+  BUCKETS collapsed while the sidebar toggles twice) — no state leaked either way.
+- **Sidebar state is redux + `localStorage['sideBarCollapsed']` (write-only)**:
+  `settings.js` writes the key but initialises `sideBarCollapsed: ''` (expanded)
+  on load, so a collapsed sidebar does **not** survive a page load and cannot leak
+  into a later test. Within one page session it does persist across SPA navigation.
+- Live sidebar labels for the automation user: `Chats, Agents, Pipelines, Skills,
+  Toolkits & Indexes, MCPs, Credentials, Applications, Artifacts` + `Settings` +
+  `Catalog`. Case ELITEA-1807 says "Toolkits" and "Agent HUB" — stale copy, filed
+  `EliteaAI/elitea-testing-public#1619` (sibling of #1208).
+- **`src/[fsd]/` HMR gap reconfirmed** (the gotcha above): after editing
+  `Sidebar.jsx`/`SidebarButton.jsx` the dev server had to be restarted
+  (`npm run dev`) before the testids appeared; the `src/pages/Artifacts/…` edit in
+  the same commit was live immediately. Verify with
+  `curl -s 'http://localhost:5173/src/%5Bfsd%5D/…' | grep <testid>`.
+- **Playwright MCP was NOT used** (5th consecutive session per the gotcha above):
+  live execution ran as a throwaway pytest spec under `automation/tests/ui/artifacts/`
+  driving the framework's own `page`/`auth_state` fixtures with `-s` prints — cheaper
+  than a standalone `sync_playwright` script because auth and config come for free.
+- This case needs **no seeding at all** — the precondition ("at least one bucket")
+  is satisfied by the project's existing 766 buckets, so it is fully read-only and
+  adds nothing to the `#636` bucket leak.
