@@ -1,0 +1,1 @@
+WARNING  elitea.tests.skills:test_skill_test_panel_llm_model_settings.py:130 Shared fixture skill 'elitea-1735-skill-underscore' not found — creating disposable fallback 'elitea-2436-model-settings-f6d64a6b'
