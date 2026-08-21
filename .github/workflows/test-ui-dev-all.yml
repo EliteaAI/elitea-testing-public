@@ -2,8 +2,6 @@ name: UI Tests DEV All
 run-name: UI Tests DEV All [${{ inputs.ref || 'main' }}] [${{ inputs.custom_suites || inputs.suite || 'all' }}]
 
 on:
-  schedule:
-    - cron: '0 23 * * *'
   workflow_dispatch:
     inputs:
       suite:
@@ -46,8 +44,8 @@ jobs:
       parallel_jobs: ${{ inputs.parallel_jobs || '9' }}
       markers: ${{ inputs.markers || 'all' }}
       ref: ${{ inputs.ref || 'main' }}
-      publish_to_tms: ${{ github.event_name == 'schedule' || inputs.publish_to_tms }}
-      tms_report_suffix: ${{ github.event_name == 'schedule' && 'scheduled' || inputs.tms_report_suffix || '' }}
+      publish_to_tms: ${{ inputs.publish_to_tms }}
+      tms_report_suffix: ${{ inputs.tms_report_suffix || '' }}
       update_correlation: true
     secrets:
       ELITEA_URL: ${{ secrets.ELITEA_URL_DEV }}
