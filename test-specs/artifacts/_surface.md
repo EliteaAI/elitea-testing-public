@@ -412,3 +412,58 @@ the element whose background the case observes.
   (eslint --fix + prettier) also runs on staged JSX.
 - **Timing baseline:** the full ELITEA-1825 spec (bucket seed + upload dialog + cancel +
   reload + dialog reopen) runs in **~70 s** headless.
+
+## Confirmed handles (as of ELITEA-1830/1833 duplicate Replace + X-close cluster, 2026-08-21)
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| "Resolve duplicates" modal — **Replace** button | `artifacts-resolve-duplicates-replace-button` | `DuplicateResolutionDialog.jsx` (EliteaAI/EliteaUI@918b8b22, `automation/testids`) | **Now exercised live (ELITEA-1830)** — retires the digest's earlier "not yet exercised by any case" caveat. Semantics confirmed: overwrites **in place** — exactly ONE `PUT /artifacts/s3/{bucket}/{name}?project_id=N` to the SAME key (no delete-then-create, no second key), then a `GET …&format=json` refetch. `LocatorDescriptor` field exists (`artifacts_page.py:384`); **no `click_…()` method yet** — add one mirroring `click_resolve_duplicates_keep_both_button()` |
+| "Resolve duplicates" modal — **X (close)** icon | **testid needed**: `artifacts-resolve-duplicates-close-button` | `DuplicateResolutionDialog.jsx`'s `Modal.BaseModal` call | The X exists and is visible but carries **no** testid. Live button enumeration inside the dialog root: `[('', None, 'Close'), ('Cancel', 'artifacts-resolve-duplicates-cancel-button', None), ('Skip', …), ('Replace', …), ('Keep both', …)]` — the X is the first, label-less one (`aria-label="Close"`). `Modal.BaseModal` **already accepts** `closeButtonTestId` (`src/[fsd]/shared/ui/modal/BaseModal.jsx:35`, applied line 154); the dialog just never passes it. Prop-only add, zero functional impact |
+
+### Duplicate-resolution behaviours confirmed live (2026-08-21)
+- **Replace (ELITEA-1830):** one PUT to the original key → success toast
+  `Your file(s) have been successfully uploaded!` → exactly one row remains
+  (`list_bucket_files` len 1, no `- Copy` variant) → `lastModified` strictly newer
+  (`17:40:37Z` → `17:41:10Z`), `size` `32 B` → `58 B`, content byte-equal to the uploaded
+  bytes. Zero console errors.
+- **X close (ELITEA-1833):** the X is wired to the SAME `onCancel` handler as the Cancel
+  button (`DuplicateResolutionDialog.jsx` passes `onCancel` to both `Modal.BaseModal`'s
+  `onClose` and the Cancel button's `onClick`). Live: **zero** `artifacts` requests from the
+  click onward, dialog closes, **the parent "Upload files to …" dialog does NOT re-open**
+  (count 0 — X dismisses the whole interaction, it does not step back), no toast, file count
+  1 before and after a reload, `lastModified`/`size`/content all byte-identical.
+- **Duplicate detection remains purely client-side** — 0 network requests between the
+  Upload click and the modal, reconfirmed 3/3 runs this session.
+
+### ⚠ Correction to an earlier digest-era claim: the "Last update" column DOES exist
+Some older artifacts specs' prose (ELITEA-1831/1832 step text) says there is "no UI-visible
+timestamp column" and reads timestamps only from the S3 JSON listing. **That is wrong and
+already superseded** — `ArtifactTable.jsx:58-66` renders a `modified` column labelled
+**"Last update"**, and it was read live this session straight off the row:
+`'sample.txt\nText\n32 B\n21-08-2026, 08:40 PM'`. The correct current pattern is
+`ArtifactsPage.get_file_row_text()` (`artifacts_page.py:1848`) + the regex/parse helper in the
+merged `test_artifacts_file_preview_edit_save.py:71-97`. Two gotchas that come with it:
+- **Minute granularity, local time.** Format is `dd-MM-yyyy, hh:mm a`
+  (`ArtifactTable.jsx:50`); UTC `17:41:10Z` renders as `08:41 PM` at UTC+3. A write that
+  lands in the same minute as its baseline renders an **identical string** — never assert
+  `ui_after != ui_before` on a fast flow; assert the API `lastModified` delta and use the UI
+  cell for a carries-it-through equality.
+- **Width-gated** (`hideBelow: 900` on table width). It rendered at the framework default
+  1366x768 this session, but the merged `test_artifacts_upload_path_cancel.py:86-88,153`
+  documents clipping below ~1600 px and sets `set_viewport_size(1600x900)` — follow that.
+- **No per-cell testid, and that is settled**: adding `dataCellTestIdPrefix` to
+  `ArtifactTable` would tag all four data cells at once (single prefix prop) — a blanket add
+  against the scope rule. Row-text + regex is the sanctioned read.
+
+### Gotchas added this run
+- `page.locator('[data-testid="artifacts-file-row"]').count()` read **0** immediately after
+  `navigate_to_bucket()` while the row's `inner_text()` (auto-waiting) returned the full row
+  — the list is still hydrating. **Use auto-waiting assertions / `expect(...)`, never a bare
+  `.count()` right after navigation.**
+- The file table is a **CSS-grid of divs**, not an HTML `<table>`: `table thead th` /
+  `table tbody tr` match **nothing**. Probing scripts must target `artifacts-file-row` /
+  `artifacts-file-list`.
+- Playwright MCP again NOT attempted (7th consecutive session per the gotcha above) — the
+  `playwright.sync_api`-style throwaway **pytest** spec dropped into
+  `automation/tests/ui/artifacts/`, run with the project pytest and `-s` prints, worked first
+  try. Both cases in one invocation cost **111 s**.
