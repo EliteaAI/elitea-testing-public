@@ -139,7 +139,7 @@ class TestArtifactDeleteAllAndDismissal:
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
         "automated-full-regression-ui/artifacts/"
-        "ELITEA-1848_delete-flow-delete-all-select-all-checkbox.md",
+        "ELITEA-1848_delete-flow-all-files-select-all-checkbox.md",
         "onetest-ai Test Case link",
     )
     def test_delete_all_files_via_select_all(self, page, artifact_api, artifact_bucket):
@@ -157,6 +157,16 @@ class TestArtifactDeleteAllAndDismissal:
         page.on(
             "console",
             lambda msg: console_errors.append(msg) if msg.type == "error" else None,
+        )
+        # Same capture shape as the two dismissal tests below, which assert
+        # ZERO DELETEs; here it is what makes Step 7's "exactly one DELETE"
+        # a real assertion rather than a claim in the step title. The AFS
+        # (Test Steps, step 10) specifies "one DELETE …" — the bulk endpoint
+        # must batch all 4 keys into a single request, never fan out per key.
+        delete_requests = []
+        page.on(
+            "request",
+            lambda req: delete_requests.append(req.url) if req.method == "DELETE" else None,
         )
 
         _seed_bucket(artifact_api, bucket_name)
@@ -268,6 +278,14 @@ class TestArtifactDeleteAllAndDismissal:
             assert fname_values == ALL_KEYS, (
                 f"Expected DELETE fname[] params to be exactly the expanded "
                 f"keys {ALL_KEYS}, got {fname_values}"
+            )
+            # The "exactly one" half of this step's claim: the bulk endpoint
+            # batches every selected key into a single request. A per-key
+            # fan-out (4 DELETEs) would satisfy the two assertions above and
+            # still be a different, un-asserted product behaviour.
+            assert delete_requests == [response.url], (
+                f"Expected exactly one DELETE request ({response.url}), "
+                f"captured {len(delete_requests)}: {delete_requests}"
             )
 
         with allure.step("Step 8 — Verify the modal closes"):
@@ -509,7 +527,7 @@ class TestArtifactDeleteAllAndDismissal:
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
         "automated-full-regression-ui/artifacts/"
-        "ELITEA-1850_delete-flow-close-x-on-delete-confirmation.md",
+        "ELITEA-1850_delete-flow-close-x-modal-keeps-items.md",
         "onetest-ai Test Case link",
     )
     def test_close_x_on_delete_confirmation_keeps_items_intact(
