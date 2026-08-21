@@ -16,13 +16,15 @@ Actions:
 """
 
 import logging
+import re
 import time
 import urllib.parse
+
 from playwright.sync_api import Download, Locator, Page, expect
+from utils.actions import action
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
-from utils.actions import action
 
 logger = logging.getLogger("elitea.pages.artifacts")
 
@@ -441,7 +443,25 @@ class ArtifactsPage(BasePage):
     delete_menu_item = LocatorDescriptor(
         testid="artifacts-file-delete-menuitem",
         description="'Delete' item inside a file row's dot-menu dropdown — "
-        "visibility-only in ELITEA-1839, never clicked",
+        "visibility-only in ELITEA-1839; first CLICKED by ELITEA-1844, which "
+        "opens the shared :attr:`delete_confirm_dialog` via DotMenu's "
+        "ActionWithDialog wrapper",
+    )
+
+    # Dynamic testid template — the WHOLE MUI Menu container of a file row's
+    # dot-menu dropdown (ELITEA-1844). Same `${id}-menu` DotMenu convention as
+    # :attr:`file_preview_overflow_menu_container`; parameter is the row's base
+    # name, identical identity semantics to
+    # :attr:`ARTIFACT_ACTIONS_MENU_BUTTON`.
+    ARTIFACT_ACTIONS_MENU = '[data-testid="artifact-actions-{}-menu"]'
+
+    # Scoped sub-selector — the per-item testid'd MenuItems inside a file row's
+    # dropdown (ELITEA-1844). Comma-separated CSS selector list returns matches
+    # in DOM (render) order regardless of clause order, same shape and reasoning
+    # as :attr:`EDITOR_MENU_ITEM_SELECTOR`.
+    ROW_ACTIONS_MENU_ITEM_SELECTOR = (
+        '[data-testid="artifacts-file-download-menuitem"], '
+        '[data-testid="artifacts-file-delete-menuitem"]'
     )
 
     zip_download_progress_dialog = LocatorDescriptor(
@@ -521,6 +541,19 @@ class ArtifactsPage(BasePage):
         "(Cancel-flow testing is out of scope)",
     )
 
+    zip_download_progress_close_button = LocatorDescriptor(
+        testid="artifacts-zip-download-progress-close-button",
+        description="X (close) icon button in the ZIP-download progress "
+        "dialog's header (ELITEA-1843 — new testid, implementer; "
+        "EliteaAI/EliteaUI@b93c631b on automation/testids). Prop-only add: "
+        "`ZipDownloadProgressDialog.jsx` now passes `closeButtonTestId` to "
+        "`Modal.BaseModal`, which already accepted and applied it "
+        "(BaseModal.jsx:35,154) — zero functional impact, same shape as "
+        "ELITEA-1833's `artifacts-resolve-duplicates-close-button`. Wired to "
+        "the SAME `onCancel` handler as "
+        ":attr:`zip_download_progress_cancel_button` (source-confirmed).",
+    )
+
     # ------------------------------------------------------------------
     # Bulk delete flow (ELITEA-1847)
     # ------------------------------------------------------------------
@@ -568,6 +601,56 @@ class ArtifactsPage(BasePage):
         description="'Delete' (confirm) button inside the delete-confirmation "
         "modal (DeleteEntityModal.jsx) — do not confuse with "
         ":attr:`delete_files_button`, the toolbar icon that OPENS this modal.",
+    )
+
+    # ------------------------------------------------------------------
+    # Delete-confirmation modal — remaining elements (ELITEA-1844 / 1845)
+    # ------------------------------------------------------------------
+
+    delete_confirm_title = LocatorDescriptor(
+        testid="delete-confirm-title",
+        description="Delete-confirmation modal's title wrapper "
+        "(DeleteEntityModal.jsx -> BaseModal `titleTestId`), text "
+        "'Delete confirmation'. Pre-existing, on origin/main.",
+    )
+
+    delete_confirm_title_icon = LocatorDescriptor(
+        testid="delete-confirm-title-icon",
+        description="Warning (destructive) icon rendered next to the "
+        "delete-confirmation modal's title — a first-party SVG asset, NOT a "
+        "#579 exception (see ELITEA-2193's correction; testid added there). "
+        "PROVENANCE: EliteaAI/EliteaUI@7b359d32, on `automation/testids` ONLY "
+        "— NOT yet cherry-picked to main (verified 2026-08-22). Pre-existing for "
+        "ELITEA-1844, but still pending human promotion, so this spec is red on "
+        "any deployed env until it lands (prop-wired via BaseModal's "
+        "`titleIconTestId`, so a bare-substring grep of main does not see it).",
+    )
+
+    delete_confirm_entity_name = LocatorDescriptor(
+        testid="delete-confirm-entity-name",
+        description="The emphasised entity-name span inside "
+        ":attr:`delete_confirm_message` — the 'highlighted in blue' file name "
+        "(palette.text.deleteAlertEntityName). ELITEA-1844: new testid, "
+        "attribute-only add on the existing <Typography component='span'> "
+        "(EliteaAI/EliteaUI@e59d0c97, automation/testids). The COLOUR itself "
+        "is not testid-assertable; this element's text is what is asserted.",
+    )
+
+    delete_confirm_close_button = LocatorDescriptor(
+        testid="delete-confirm-close-button",
+        description="X (close) icon in the delete-confirmation modal's header "
+        "(ELITEA-1844: new testid — DeleteEntityModal.jsx now forwards "
+        "`closeButtonTestId` to Modal.BaseModal, which already accepted and "
+        "applied it (BaseModal.jsx:35,154); prop-only, zero functional "
+        "impact. EliteaAI/EliteaUI@08d9bb4f, automation/testids).",
+    )
+
+    delete_confirm_cancel_button = LocatorDescriptor(
+        testid="delete-confirm-cancel-button",
+        description="'Cancel' button inside the delete-confirmation modal "
+        "(DeleteEntityModal.jsx:103) — PRE-EXISTING and on origin/main "
+        "(EliteaAI/EliteaUI@bf4a13ad). First driven by ELITEA-1845; see the "
+        "corrected note at the end of the bulk-delete method block.",
     )
 
     # ------------------------------------------------------------------
@@ -2109,6 +2192,99 @@ class ArtifactsPage(BasePage):
         return self.download_files_tooltip.get_attribute("aria-label") or ""
 
     # ------------------------------------------------------------------
+    # ZIP-download progress dialog — cancel flow (ELITEA-1842 / ELITEA-1843)
+    # ------------------------------------------------------------------
+
+    def click_zip_download_cancel_button(self, timeout: int = 10000) -> None:
+        """Click the ZIP-progress dialog's 'Cancel' button (ELITEA-1842).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.zip_download_progress_cancel_button.wait_for(state="visible", timeout=timeout)
+        self.zip_download_progress_cancel_button.click()
+        logger.info("Clicked ZIP-download progress dialog 'Cancel' button")
+
+    def click_zip_download_close_button(self, timeout: int = 10000) -> None:
+        """Click the ZIP-progress dialog's X (close) icon (ELITEA-1843).
+
+        Hits the SAME ``onCancel`` handler as
+        :meth:`click_zip_download_cancel_button` — ``ZipDownloadProgressDialog``
+        passes one ``onCancel`` to both ``BaseModal``'s ``onClose`` (X /
+        backdrop / Escape) and the Cancel button's ``onClick``
+        (source-confirmed + live-confirmed identical outcomes).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.zip_download_progress_close_button.wait_for(state="visible", timeout=timeout)
+        self.zip_download_progress_close_button.click()
+        logger.info("Clicked ZIP-download progress dialog X (close) button")
+
+    def wait_for_zip_progress_at_least(
+        self, current: int, timeout: int = 30000, poll_interval_ms: int = 100
+    ) -> dict:
+        """Poll the ZIP-progress dialog until its counter reaches ``current``.
+
+        The honest replacement for "click Cancel at some arbitrary moment":
+        both ELITEA-1842 and ELITEA-1843 require the cancel to land while the
+        download is genuinely IN PROGRESS, so the test must observe the
+        product reporting real per-file progress before acting.
+
+        Reads only attributes/text of already testid-anchored locators (the
+        same technique :meth:`is_file_checkbox_checked` uses for
+        ``Mui-checked``) — no new raw handles.
+
+        Note: a ``"0 of N files"`` precursor frame (no current-file label yet)
+        precedes the first completion, and a ``"0 of 0 files"`` /
+        ``aria-valuenow="NaN"`` reset frame fires for one tick immediately
+        before the dialog unmounts on a COMPLETED download (ELITEA-1841) —
+        neither satisfies this wait.
+
+        Args:
+            current: Minimum ``current`` value the counter must report.
+            timeout: Maximum wait time in milliseconds.
+            poll_interval_ms: Sampling interval in milliseconds.
+
+        Returns:
+            Dict with ``current``, ``total``, ``valuenow`` and
+            ``current_file`` as observed on the satisfying frame.
+
+        Raises:
+            AssertionError: If the counter never reached ``current`` in time.
+        """
+        deadline = time.monotonic() + (timeout / 1000)
+        last_seen = None
+        while time.monotonic() < deadline:
+            try:
+                counter_text = (
+                    self.zip_download_progress_counter.text_content() or ""
+                ).strip()
+                match = re.match(r"^(\d+) of (\d+) files$", counter_text)
+                if match and int(match.group(1)) >= current:
+                    frame = {
+                        "current": int(match.group(1)),
+                        "total": int(match.group(2)),
+                        "valuenow": self.zip_download_progress_bar.get_attribute(
+                            "aria-valuenow"
+                        ),
+                        "current_file": (
+                            self.zip_download_progress_current_file.text_content() or ""
+                        ).strip(),
+                    }
+                    logger.info("ZIP progress reached %s: %s", counter_text, frame)
+                    return frame
+                last_seen = counter_text or last_seen
+            except Exception as exc:  # transient DOM read during a re-render
+                logger.debug("ZIP progress poll sample skipped: %s", exc)
+            time.sleep(poll_interval_ms / 1000)
+
+        raise AssertionError(
+            f"ZIP progress counter never reached '{current} of N files' within "
+            f"{timeout}ms (last seen: {last_seen!r})"
+        )
+
+    # ------------------------------------------------------------------
     # Bulk delete flow (ELITEA-1847)
     # ------------------------------------------------------------------
 
@@ -2217,6 +2393,123 @@ class ArtifactsPage(BasePage):
             self.delete_confirm_button.click()
         return response_info.value
 
+    @action("Read a file row's actions dropdown item labels")
+    def get_file_actions_menu_item_labels(
+        self, filename: str, timeout: int = 10000,
+    ) -> list[str]:
+        """Return the OPEN row dropdown's item labels, in DOM (render) order.
+
+        Scoped to the row's own menu container
+        (:attr:`ARTIFACT_ACTIONS_MENU`) via
+        :attr:`ROW_ACTIONS_MENU_ITEM_SELECTOR` — a data-testid-based sub-
+        selector, not a raw ``[role="menuitem"]`` lookup — so the read stays
+        inside this project's testid-only locator policy and cannot pick up a
+        different menu that happens to be mounted. Call
+        :meth:`open_file_actions_menu` first.
+
+        Args:
+            filename: Exact base file name whose dropdown is open.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            List of the dropdown's item labels in render order, e.g.
+            ``["Download", "Delete"]`` for a file row (ELITEA-1844).
+        """
+        menu = self.page.locator(self.ARTIFACT_ACTIONS_MENU.format(filename))
+        menu.wait_for(state="visible", timeout=timeout)
+        items = menu.locator(self.ROW_ACTIONS_MENU_ITEM_SELECTOR)
+        items.first.wait_for(state="visible", timeout=timeout)
+        labels = [(items.nth(i).text_content() or "").strip() for i in range(items.count())]
+        logger.info("Row actions menu items for '%s' (in order): %s", filename, labels)
+        return labels
+
+    @action("Click 'Delete' in a file row's actions dropdown")
+    def click_delete_menu_item(self, timeout: int = 10000) -> None:
+        """Click the open row dropdown's 'Delete' item and wait for the modal.
+
+        Sibling of :meth:`click_download_menu_item` (ELITEA-1839), which was
+        deliberately download-only. DotMenu wraps this item in
+        ``ActionWithDialog``, so the click opens the shared
+        :attr:`delete_confirm_dialog` instead of deleting immediately
+        (confirmed live, ELITEA-1844).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the item to be
+                visible and for the confirmation modal to appear.
+        """
+        self.delete_menu_item.wait_for(state="visible", timeout=timeout)
+        self.delete_menu_item.click()
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("'Delete' clicked in the row actions dropdown; confirmation modal open")
+
+    @action("Confirm delete of a single file (delete-confirmation modal)")
+    def confirm_delete_single_artifact(self, timeout: int = 15000):
+        """Click 'Delete' in the modal and return the SINGLE-file DELETE response.
+
+        Third sibling of :meth:`confirm_delete` (bulk files/folders,
+        ``/artifacts/artifacts/…?fname[]=…``) and
+        :meth:`confirm_delete_bucket` (``/artifacts/buckets/…``). A FILE row's
+        dropdown delete drives RTK's ``deleteArtifact`` (SINGULAR) instead —
+        ``DELETE /artifacts/artifact/default/{projectId}/{bucket}?filename=…``
+        (``src/api/artifacts.js:125``, confirmed live ELITEA-1844) — which
+        :meth:`confirm_delete`'s ``"artifacts/artifacts"`` matcher never
+        matches. Both existing methods stay byte-identical.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the response.
+
+        Returns:
+            Playwright ``Response`` object for the matching DELETE request.
+        """
+        with self.page.expect_response(
+            lambda r: "artifacts/artifact/" in r.url and r.request.method == "DELETE",
+            timeout=timeout,
+        ) as response_info:
+            self.delete_confirm_button.click()
+        return response_info.value
+
+    @action("Cancel delete (delete-confirmation modal)")
+    def click_delete_cancel_button(self, timeout: int = 10000) -> None:
+        """Click 'Cancel' in the delete-confirmation modal (ELITEA-1845).
+
+        Fires no network request — ``DeleteEntityModal``'s ``onClose`` only
+        resets local modal state (confirmed live: zero requests, the file and
+        its metadata untouched).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the button.
+        """
+        self.delete_confirm_cancel_button.wait_for(state="visible", timeout=timeout)
+        self.delete_confirm_cancel_button.click()
+        logger.info("'Cancel' clicked in the delete-confirmation modal")
+
+    @action("Close delete-confirmation modal via X")
+    def click_delete_close_button(self, timeout: int = 10000) -> None:
+        """Click the X (close) icon in the delete-confirmation modal (ELITEA-1850).
+
+        Additive sibling of :meth:`click_delete_cancel_button` — ``DeleteEntityModal``
+        passes ONE ``onClose`` handler to both ``Modal.BaseModal`` (the X, the
+        backdrop and Escape) and the ``Cancel`` button, so this control has the
+        same zero-side-effect semantics: no network request, and the file
+        table's ``rowSelectionModel`` (hence every checked checkbox) is left
+        untouched. Confirmed live 2026-08-22.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the X icon.
+        """
+        self.delete_confirm_close_button.wait_for(state="visible", timeout=timeout)
+        self.delete_confirm_close_button.click()
+        logger.info("X (close) clicked in the delete-confirmation modal")
+
+    # CORRECTED (ELITEA-1845, 2026-08-22): the note below is STALE. The
+    # shared DeleteEntityModal's Cancel button DOES carry a testid
+    # (`delete-confirm-cancel-button`, DeleteEntityModal.jsx:103) and it is on
+    # origin/main (EliteaAI/EliteaUI@bf4a13ad, promoted 2026-08-12 — after the
+    # note was written). ELITEA-1845 drives it via
+    # :meth:`click_delete_cancel_button` below, with no raw handle involved.
+    # The note is kept for the record; only its "no testid exists" premise is
+    # wrong — its locator-policy reasoning still stands.
+    #
     # Note (ELITEA-1847): the AFS's Axis-2 "cancel-path regression guard"
     # (select a row, open the modal, click Cancel, confirm zero network +
     # item still present) was verified live during analyst exploration via

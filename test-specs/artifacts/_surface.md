@@ -644,3 +644,103 @@ element these three cases touch already carries one.
   gotcha) — all three cases were executed live via throwaway pytest specs under
   `automation/tests/ui/artifacts/` driving the framework's `page`/`auth_state`
   fixtures with `-s` prints (4 probe runs, 38-64 s each), then deleted.
+
+## ZIP-download progress dialog — CANCEL flow (ELITEA-1842 / ELITEA-1843, 2026-08-21)
+
+First session to actually CLICK the progress dialog's controls (ELITEA-1840/1841 asserted the
+Cancel button's visibility only and declared the flow out of scope).
+
+| Element | Handle | Notes |
+|---|---|---|
+| Dialog **X (close)** button | `artifacts-zip-download-progress-close-button` (**added during ELITEA-1843 implementation, 2026-08-21** — EliteaAI/EliteaUI@b93c631b on `automation/testids`) | Prop-only add: `ZipDownloadProgressDialog.jsx` now passes `closeButtonTestId` to `BaseModal`, which already accepted and applied it (`BaseModal.jsx:35,154`). No new DOM node, no hook, no removal. Page object: `ArtifactsPage.zip_download_progress_close_button` / `click_zip_download_close_button()` |
+| Dialog **Cancel** button | `artifacts-zip-download-progress-cancel-button` | pre-existing (ELITEA-1840); page object: `click_zip_download_cancel_button()` |
+
+**Cancel behaviours confirmed live (both controls, 2026-08-21):**
+- **X and Cancel are the SAME handler.** `ZipDownloadProgressDialog.jsx` passes one `onCancel`
+  to both `BaseModal`'s `onClose` (X / backdrop / Escape) and the Cancel button's `onClick` —
+  the same shape `DuplicateResolutionDialog` uses (ELITEA-1832/1833).
+- **Order of effects:** the dialog unmounts **synchronously** on click (`cancelZipDownload`
+  sets `isOpen:false`), while the `Download cancelled` toast (`toast-message`, `toastInfo`)
+  arrives only once the aborted in-flight `fetch` rejects with `AbortError` and
+  `downloadArtifactsAsZip` maps it to `onCancel()`. Live: toast first seen ~2.0-2.1 s after the
+  click **in the instrumented run** (inflated by a 1500 ms pre-fetch delay wrapper). Never assert
+  dialog-hidden and toast-visible as one expectation; give the toast a generous timeout.
+- **No ZIP is ever saved after a cancel** — `downloadArtifactsAsZip` only creates the blob +
+  `anchor.download` AFTER the whole per-file loop completes, so an abort mid-loop cannot produce
+  one. Live-instrumented `HTMLAnchorElement.prototype.click` capture: `[]` in both runs.
+- **Selection + table are untouched** by cancel (selection lives in `ArtifactTable` state):
+  4-of-4 and 3-of-3 checkboxes still `Mui-checked`, all 4 rows still listed, 0 console errors.
+- **Making "in progress" observable:** with small files the whole flow finishes in <2 s. Use
+  `page.route("**/artifact/default/**")` + a delayed `route.continue_()` (1000-1500 ms), poll the
+  counter until `1 of N files`, then click. This is timing control, not substitution
+  (`.agents/testing.md` § Fidelity policy) — same technique ELITEA-1841 ships.
+- **`aria-valuenow` at `1 of N`:** `25` for N=4, `33` for N=3 (integer `current/total*100`).
+  A `0 of N files` / `valuenow="0"` precursor frame precedes the first completion, and the
+  current-file label is absent until the first file is in flight.
+
+**Gotcha — Vite does NOT pick up EliteaUI edits on this OneDrive checkout (2026-08-21).** After
+committing a testid, the dev server kept serving the STALE transform: a plain
+`curl http://localhost:5173/src/.../X.jsx` showed no change (a `?t=<ts>` cache-buster showed the
+new code), and a full browser reload still rendered the old component. `touch` did not help — the
+file watcher never fires on OneDrive-backed paths. **Restart the dev server** (`kill` the vite pid,
+`npm run dev`) after any EliteaUI edit, and verify with
+`curl -s http://localhost:5173/src/<path> | grep -c <testid>` before blaming the JSX.
+
+## Confirmed handles (as of ELITEA-1844/1845 cluster, 2026-08-22)
+
+Row-level **single-file delete via the actions dropdown** — a third, distinct
+delete path alongside ELITEA-1847's bulk checkbox+toolbar delete and
+ELITEA-1856's file-preview-editor delete.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Dropdown `Delete` item (row) | `artifacts-file-delete-menuitem` | `ArtifactRowActions.jsx` | **Now clicked live (ELITEA-1844)** — retires ELITEA-1839's "visibility-only, never clicked" caveat. Opens the shared `DeleteEntityModal` via `DotMenu`'s `ActionWithDialog`. |
+| Confirmation message (row delete) | `delete-confirm-message` → `"Are you sure to delete the {name}? It can't be restored."` | `DeleteEntityModal.jsx` (`textContent` default `'Are you sure to delete the '` + `ArtifactRowActions.jsx`'s `inlineExtraContent: "? It can't be restored."`) | note the **"the"** — the cases' own text drops it (CLARIFICATION #1638, sibling of #659/#664). Distinct from the bulk path's `"Are you sure to delete the selected files?"`. |
+| Emphasised entity name in the message | `delete-confirm-entity-name` | **added 2026-08-22**, EliteaAI/EliteaUI@e59d0c97 (`automation/testids`) | the "highlighted in blue" span (`palette.text.deleteAlertEntityName`); attribute-only add on an existing `<Typography component="span">`. Colour itself is not testid-assertable — assert this element's text. |
+| Modal X (close) icon | `delete-confirm-close-button` | **added 2026-08-22**, EliteaAI/EliteaUI@08d9bb4f (`automation/testids`) | prop-only: `DeleteEntityModal` now forwards `closeButtonTestId` to `Modal.BaseModal` (which already accepted it, `BaseModal.jsx:35,154`). `showCloseButton` defaults `true`, so the X was always rendered — it just had `data-testid={undefined}`. |
+| Modal `Cancel` button | `delete-confirm-cancel-button` | `DeleteEntityModal.jsx:103` | **on `origin/main`** (EliteaAI/EliteaUI@bf4a13ad). This CORRECTS the standing note at `artifacts_page.py` (ELITEA-1847 block) claiming Cancel "carries no testid, confirmed absent" — stale since the 2026-08-12 promotion. First driven live by ELITEA-1845. |
+| Single-file DELETE endpoint | `DELETE /api/v2/artifacts/artifact/default/{projectId}/{bucket}?filename={name}` | `src/api/artifacts.js:125` (`deleteArtifact`) | **SINGULAR** — `ArtifactsPage.confirm_delete()`'s `expect_response` matcher (`"artifacts/artifacts" in r.url`) does NOT match it. ELITEA-1844 adds the additive sibling `confirm_delete_single_artifact()`. A *folder* row's dropdown delete would still take the plural path (`ArtifactTable.jsx:347-370`). |
+| Single-file delete success toast | `"The {name} file has been successfully deleted."` | `ArtifactTable.jsx:433` | third distinct wording on this surface: bulk = `"The selected files have been successfully deleted."`, editor = `"File deleted successfully"`. Cases' `"The artifacts have been deleted successfully"` exists nowhere in source (#1638). |
+| Post-delete settle | `wait_for_file_count(n)` then read | — | `deleteArtifact` invalidates `TAG_ARTIFACTS` + `TAG_BUCKETS`; the table and the left tree refetch asynchronously. Live-confirmed: tree item for the deleted file disappears, sibling `sample - Copy.md` stays. |
+
+**Vite HMR missed a `src/` edit this session (2026-08-22).** Two testids committed on
+`automation/testids` were served WITHOUT the change (`curl` of the transformed module showed the
+old text, and both locators resolved to count=0) until `npm run dev` was killed and restarted.
+Under OneDrive the file watcher is not reliable — if a freshly added testid resolves to 0 elements,
+`curl -s "http://localhost:5173/src/<path>" | grep <testid>` first, and restart the dev server
+before doubting the JSX edit.
+
+## Bulk delete — SELECT-ALL branch + modal dismissal (ELITEA-1848 / 1849 / 1850, 2026-08-22)
+
+First session to click the header **select-all** checkbox and the delete modal's **X**. Everything
+below was observed live in one clean run (3 flows, 0 console errors, first attempt).
+
+| Element / fact | Value | Notes |
+|---|---|---|
+| Header select-all checkbox | `artifacts-select-all-checkbox` → `click_select_all_checkbox()` | on-main ✓. First test to actually CLICK it (ELITEA-1841/1846 only read its state). All 4 rows — folders included — become checked; header goes `Mui-checked`, `indeterminate` False. |
+| Toolbar tooltip, all rows selected | **`Delete all files`** | `ArtifactTableToolbar.jsx:157` — `Delete ${rowSelectionModel.length === totalRows ? 'all files' : 'selected files'}`. Read off the wrapper's `aria-label`, no hover. |
+| Modal message, all rows selected | **`Are you sure to delete the all files?`** | `name='all files'` + `DeleteEntityModal`'s fixed prefix `'Are you sure to delete the '` ⇒ ungrammatical. Cases say `Are you sure to delete all files?`. CLARIFICATION #1640 (sibling of #659). `delete-confirm-entity-name` = `all files`. |
+| Bulk-delete success toast | `The selected files have been successfully deleted.` | `ArtifactTable.jsx:431` — **same string whether the selection is partial or complete**; there is no "all files" toast variant. Cases' `The artifacts have been deleted successfully` exists nowhere in source (exact dup of #660, commented not re-filed). |
+| DELETE on a full selection | `DELETE …/artifacts/artifacts/default/{project}/{bucket}?fname[]=…` → 200, `fname[]` = the 4 **expanded** storage keys | folders expand to their underlying files (`a1/file1.txt`, `folder-a/placeholder.txt`), never a bare `a1/` prefix — same expansion ELITEA-1847 proved for a single folder. |
+| Emptied-bucket state | right panel `artifacts-empty-state` = `No files in this bucket`; left tree `artifacts-bucket-tree-empty-label-{bucket}` = same text; bucket row still listed; `list_bucket_files()` = `[]` | both panels carry the identical string (`ArtifactTable.jsx:504`, `BucketContent.jsx:89`). Deleting every file does NOT delete the bucket. |
+| Modal X (close) | `delete-confirm-close-button` → **`click_delete_close_button()` added by ELITEA-1850** | first time DRIVEN (ELITEA-1844 only asserted presence). Same single `onClose` handler as Cancel (`DeleteEntityModal` passes one to both `BaseModal.onClose` and the Cancel button). |
+| Dismissal (Cancel **or** X) side-effects | **none** | zero DELETE requests captured, zero `toast-message` elements over a 3 s window, all rows + pagination + tree unchanged, storage listing intact — and **the selection is RETAINED**: all 4 checkboxes still checked after Cancel; the 2-of-4 partial selection still checked (header still indeterminate) after X. Selection lives in `ArtifactTable`'s `rowSelectionModel`, which the modal never touches. |
+
+**Absence-assertion idiom for this surface (reviewer finding on ELITEA-1845):** assert "no toast" by
+waiting for it to APPEAR and requiring the wait to time out —
+`pytest.raises(PlaywrightTimeoutError)` around `success_toast_message.wait_for(state="visible",
+timeout=3000)`. `to_have_count(0)` is true at the first poll and cannot see a toast that renders
+300 ms later. The detector is proven inside the same spec file by ELITEA-1848, which asserts the
+same locator carries text after a real delete.
+
+**Testid promotability for this cluster:** no new testid was needed, but FOUR of the ones these
+specs reference are on `automation/testids` only — `delete-confirm-title-icon` (EliteaAI/EliteaUI@7b359d32),
+`delete-confirm-entity-name` (EliteaAI/EliteaUI@e59d0c97), `delete-confirm-close-button`
+(EliteaAI/EliteaUI@08d9bb4f) and the runtime-composed `artifacts-bucket-tree-empty-label-*`
+(`BucketContent.jsx:87`, invisible to a bare-substring grep of `main`). Verified 2026-08-22 with a
+fresh `git fetch origin` + the two-stage `-i`/`[:=]` grep on both refs.
+
+**`get_file_row_text()` is FILE-row-only (ELITEA-1849/1850, 2026-08-22).** It is anchored on
+`artifacts-file-row`; a folder row renders as `artifacts-folder-row`, so calling it with `a1` /
+`folder-a` times out at 10 s (cost one rerun on this cluster). Folders also carry no Type/Size
+metadata to snapshot — assert their presence via `get_file_names()` and the left-panel tree instead.
