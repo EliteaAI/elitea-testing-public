@@ -47,7 +47,7 @@ from playwright.sync_api import Page
 
 logger = logging.getLogger("elitea.tests.agents")
 
-pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.regression, pytest.mark.p2, pytest.mark.new]
+pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.regression, pytest.mark.p2, pytest.mark.new_verified]
 
 UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000

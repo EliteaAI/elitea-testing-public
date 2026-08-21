@@ -1170,6 +1170,55 @@ class CredentialAPI:
         _raise_for_status(resp)
         return resp.json()
 
+    def create_jira_credential(
+        self, display_name: str, base_url: str, username: str, api_key: str, elitea_title: Optional[str] = None
+    ) -> dict:
+        """Create a JIRA credential and return its JSON representation.
+
+        Args:
+            display_name: Human-readable name for the credential.
+            base_url: JIRA base URL (e.g. ``https://your-domain.atlassian.net``).
+            username: JIRA username (email).
+            api_key: JIRA API key/token.
+            elitea_title: Optional unique identifier (auto-generated with timestamp if not provided).
+
+        Returns:
+            Dict with ``id``, ``elitea_title``, ``label`` (display name), etc.
+        """
+        import time
+        url = self._credentials_url()
+        # Auto-generate unique elitea_title if not provided
+        if not elitea_title:
+            timestamp = str(int(time.time() * 1000))  # millisecond precision
+            safe_name = display_name.replace(' ', '_').replace('-', '_').lower()[:30]
+            title = f"jira_{safe_name}_{timestamp}"
+        else:
+            title = elitea_title
+
+        payload = {
+            "type": "jira",
+            "elitea_title": title,
+            "label": display_name,
+            "data": {
+                "base_url": base_url,
+                "username": username,
+                "api_key": api_key,
+            },
+            "shared": False,
+        }
+        logger.debug("CREATE jira credential %s name=%s title=%s", url, display_name, title)
+        resp = self._session.post(
+            url, json=payload, headers={"Content-Type": "application/json"}
+        )
+        if not resp.ok:
+            logger.error(
+                "Failed to create credential: status=%s body=%s",
+                resp.status_code,
+                resp.text[:500],
+            )
+        _raise_for_status(resp)
+        return resp.json()
+
     def create_credential(self, payload: dict) -> dict:
         """Create a credential of any type using a raw payload dict.
 
@@ -1425,6 +1474,78 @@ class ArtifactAPI:
     def close(self):
         """Close the underlying HTTP session."""
         self._session.close()
+
+    # -------------------------------------------------------------------------
+    # Permission enforcement test helpers (return response, don't raise)
+    # -------------------------------------------------------------------------
+
+    def get_file_raw(self, bucket_name: str, file_key: str) -> "requests.Response":
+        """GET a file without raising on error status — for permission testing.
+
+        Args:
+            bucket_name: Name of the bucket.
+            file_key: Full key of the file.
+
+        Returns:
+            Raw requests.Response object (check .status_code).
+        """
+        url = (
+            f"{self.base_url}/artifacts/artifact/default"
+            f"/{self.project_id}/{bucket_name}/{file_key}"
+        )
+        logger.debug("GET file (raw) %s", url)
+        return self._session.get(url)
+
+    def upload_file_raw(
+        self,
+        bucket_name: str,
+        filename: str,
+        content: bytes,
+    ) -> "requests.Response":
+        """POST (upload) a file without raising on error — for permission testing.
+
+        Args:
+            bucket_name: Name of the bucket.
+            filename: Name for the uploaded file.
+            content: File content as bytes.
+
+        Returns:
+            Raw requests.Response object (check .status_code).
+        """
+        url = f"{self.base_url}/artifacts/artifacts/default/{self.project_id}/{bucket_name}"
+        files = {"file": (filename, content)}
+        logger.debug("POST file (raw) %s filename=%s", url, filename)
+        return self._session.post(url, files=files)
+
+    def delete_file_raw(self, bucket_name: str, filename: str) -> "requests.Response":
+        """DELETE a file without raising on error — for permission testing.
+
+        Args:
+            bucket_name: Name of the bucket.
+            filename: Name of the file to delete.
+
+        Returns:
+            Raw requests.Response object (check .status_code).
+        """
+        url = f"{self.base_url}/artifacts/artifact/default/{self.project_id}/{bucket_name}"
+        params = {"filename": filename}
+        logger.debug("DELETE file (raw) %s filename=%s", url, filename)
+        return self._session.delete(url, params=params)
+
+    def bucket_exists(self, bucket_name: str) -> bool:
+        """Check if a bucket exists by attempting to list its files.
+
+        Args:
+            bucket_name: Name of the bucket to check.
+
+        Returns:
+            True if bucket exists, False otherwise.
+        """
+        try:
+            self.list_bucket_files(bucket_name)
+            return True
+        except Exception:
+            return False
 
 
 class SkillAPI:

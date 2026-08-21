@@ -2,8 +2,6 @@ name: UI Tests DEV All
 run-name: UI Tests DEV All [${{ inputs.ref || 'main' }}] [${{ inputs.custom_suites || inputs.suite || 'all' }}]
 
 on:
-  schedule:
-    - cron: '0 23 * * *'
   workflow_dispatch:
     inputs:
       suite:
@@ -12,9 +10,9 @@ on:
         options: [all, agents, admin, artifacts, chat, pipelines, skills, smoke, support_assistant, toolkits, voice]
         default: all
       custom_suites:
-        description: 'Custom suites (comma-separated). Default: 10 baseline suites. Use "all" to discover all suites.'
+        description: 'Custom suites (comma-separated). Leave empty to discover all suites dynamically.'
         type: string
-        default: 'admin,agents,artifacts,chat,pipelines,skills,smoke,support_assistant,toolkits,voice'
+        default: ''
       parallel_jobs:
         description: 'Number of parallel runners (1-9)'
         type: choice
@@ -40,14 +38,14 @@ jobs:
   test:
     uses: ./.github/workflows/test-ui-custom.yml
     with:
-      environment: dev
+      environment: dev-all
       suite: ${{ inputs.suite || 'all' }}
-      custom_suites: ${{ inputs.custom_suites || 'admin,agents,artifacts,chat,pipelines,skills,smoke,support_assistant,toolkits,voice' }}
+      custom_suites: ${{ inputs.custom_suites || '' }}
       parallel_jobs: ${{ inputs.parallel_jobs || '9' }}
       markers: ${{ inputs.markers || 'all' }}
       ref: ${{ inputs.ref || 'main' }}
-      publish_to_tms: ${{ github.event_name == 'schedule' || inputs.publish_to_tms }}
-      tms_report_suffix: ${{ github.event_name == 'schedule' && 'scheduled' || inputs.tms_report_suffix || '' }}
+      publish_to_tms: ${{ inputs.publish_to_tms }}
+      tms_report_suffix: ${{ inputs.tms_report_suffix || '' }}
       update_correlation: true
     secrets:
       ELITEA_URL: ${{ secrets.ELITEA_URL_DEV }}
@@ -99,6 +97,8 @@ jobs:
       TEST_USER_PASSWORD_9: ${{ secrets.TEST_USER_PASSWORD_9 }}
       TEST_USER_NAME_10: ${{ secrets.TEST_USER_NAME_10 }}
       TEST_USER_PASSWORD_10: ${{ secrets.TEST_USER_PASSWORD_10 }}
+      # Team project ID for multi-user permission tests (global vars, not env-specific)
+      ELITEA_TEAM_PROJECT_ID: ${{ vars.ELITEA_TEAM_PROJECT_ID }}
       GIT_HUB_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
       BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
       ADO_TOKEN: ${{ secrets.ADO_TOKEN }}

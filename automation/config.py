@@ -19,7 +19,9 @@ Usage::
 """
 
 from pathlib import Path
+from typing import Optional
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -41,6 +43,17 @@ class Settings(BaseSettings):
     elitea_api_base: str = ""
     elitea_api_token: str = ""
     elitea_project_id: int = 0
+    # Team project ID for multi-user tests (bucket permissions, sharing)
+    # Team projects have "Manage permissions" feature, unlike private projects
+    elitea_team_project_id: Optional[int] = 0
+
+    @field_validator('elitea_team_project_id', mode='before')
+    @classmethod
+    def parse_team_project_id(cls, v):
+        """Handle empty string from CI environment variables."""
+        if v == '' or v is None:
+            return 0
+        return int(v)
     # URL prefix for the React app routes.  On deployed environments (DEV/STAGE/NEXT)
     # the React Router has basename="/app", so all routes are under /app.
     # On localhost the Vite dev server has no basename, so the prefix is empty.
@@ -79,6 +92,11 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------
     test_user_email: str = ""
     test_user_password: str = ""
+
+    # Secondary user for multi-user tests (bucket permissions, sharing, etc.)
+    # This user should exist in the Team project with limited/no admin rights
+    test_user_b_email: str = ""
+    test_user_b_password: str = ""
 
     # ------------------------------------------------------------------
     # Browser

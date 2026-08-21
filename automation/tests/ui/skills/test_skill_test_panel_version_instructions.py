@@ -21,7 +21,7 @@ from pages.skills_list_page import SkillsListPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
+pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.p2, pytest.mark.regression, pytest.mark.new_verified]
 
 FORM_SAVE_TIMEOUT = 15_000
 AI_RESPONSE_TIMEOUT = 30_000

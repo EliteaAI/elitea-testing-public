@@ -21,7 +21,7 @@ from pages.agent_detail_page import AgentDetailPage
 from playwright.sync_api import Page, expect
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new]
+pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new_verified]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)

@@ -28,7 +28,7 @@ from playwright.sync_api import Page, Response
 from config import settings
 from pages.agent_detail_page import AgentDetailPage
 
-pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new]
+pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new_verified]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)
