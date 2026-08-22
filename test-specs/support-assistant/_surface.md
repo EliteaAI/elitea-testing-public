@@ -302,3 +302,39 @@ Source: `../elitea_assistant/src/components/chat/ChatHeader.tsx` (panel) +
 33. **Case-text clarification #1649** (label `question`) records ELITEA-2423's two case-text
     imprecisions (the GET trigger in Step 4, the disabled index-0 item in Step 5) — product is correct
     in both.
+
+## Resolved/added during ELITEA-2423 implementation (2026-08-22, test-automation-engineer)
+
+**All three history testids in the table above now EXIST** — `EliteaAI/elitea_assistant@7413180` on its
+`automation/testids` branch (attributes only, no new DOM node / hook / state):
+`support-assistant-history-button`, `support-assistant-history-dropdown`,
+`support-assistant-history-item`. Not on either repo's `main` — a human cherry-picks. Bind via
+`SupportAssistantPage.history_toggle_button` / `.history_dropdown` / `.history_items`, the class
+constant `HISTORY_ITEM_OPENABLE`, and the helpers `open_history_via_testid()`,
+`get_history_item_count_via_testid()`, `first_openable_history_item()`. The pre-policy `history_button`
+`fallback=` field and the legacy `open_history()` / `get_history_session_count()` /
+`select_history_session()` helpers are untouched for their existing callers — note the testid field is
+named `history_toggle_button` precisely to avoid colliding with it.
+
+34. **The history button only EXISTS while the widget is open** — it lives in the widget header
+    (`ChatHeader.tsx`), which is not mounted when the widget is closed. Combined with quirk 29 (the
+    widget does not auto-open after a reload), this means `expect(history_toggle_button).to_be_enabled()`
+    — the honest "conversation list has loaded" wait of quirk 27 — **cannot be used as the post-reload
+    settle**: it fails `element(s) not found`. Order is: `page.reload()` →
+    `expect(sidebar_launcher).to_be_visible()` (app shell back) → reopen the widget →
+    *then* `expect(history_toggle_button).to_be_enabled()`. The page-level `page.on("response")`
+    collector keeps recording the list requests throughout, so the statuses are still asserted at the
+    step the case puts them in. Cost one rerun.
+
+35. **Selecting a history entry CLEARS the message list before the fetched conversation renders** — the
+    list is transiently EMPTY between the click and the `GET /conversation/{uuid}` render. Any
+    `.count()` baseline read in that window returns 0, and an absence assertion
+    (`to_have_count(0)` on a message text) is satisfied vacuously by it. Settle first with
+    `expect(message_copy_buttons).not_to_have_count(0)` — every conversation holds at least the
+    assistant greeting, whose copy button only renders when complete (quirks 9/10) — and only then
+    read baselines or assert absence. Cost one rerun (a 0 baseline made the next step expect 1 copy
+    button where 4 was correct).
+
+36. **Runtime for the full six-step spec: 92.6 s headless** (two live replies, two full page reloads,
+    one conversation switch) — comfortably inside the AFS's 110-150 s estimate. Reply latencies this
+    run were at the fast end of the 31-135 s band again.

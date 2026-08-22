@@ -180,6 +180,33 @@ class SupportAssistantPage(BasePage):
     USER_MESSAGE_ITEM = '[data-testid="support-assistant-message-item"][data-role="user"]'
     MESSAGE_BUBBLE = '[data-testid="support-assistant-message-bubble"]'
 
+    # ELITEA-2423 — conversation-history panel. Testids live in the connected
+    # first-party repo EliteaAI/elitea_assistant
+    # (EliteaAI/elitea_assistant@7413180 on its ``automation/testids`` branch),
+    # ``src/components/chat/ChatHeader.tsx``.
+    history_toggle_button = LocatorDescriptor(
+        testid="support-assistant-history-button",
+        description="Support Assistant conversation-history toggle button"
+    )
+
+    history_dropdown = LocatorDescriptor(
+        testid="support-assistant-history-dropdown",
+        description="Support Assistant conversation-history dropdown panel"
+    )
+
+    history_items = LocatorDescriptor(
+        testid="support-assistant-history-item",
+        description="Support Assistant conversation-history entries (repeated)"
+    )
+
+    # An item is rendered ``disabled`` exactly when it IS the currently-open
+    # conversation (``ChatHeader.tsx``:
+    # ``disabled={conversation.uuid === currentConversationId}``). The native
+    # attribute already encodes that state, so no second testid and no extra
+    # ``data-*`` attribute is needed — filter on it from a class constant
+    # (.agents/testing.md § Locator policy).
+    HISTORY_ITEM_OPENABLE = '[data-testid="support-assistant-history-item"]:not([disabled])'
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -734,3 +761,54 @@ class SupportAssistantPage(BasePage):
             Playwright Locator for the matching user message items
         """
         return self.page.locator(self.USER_MESSAGE_ITEM).filter(has_text=text)
+
+    # ------------------------------------------------------------------
+    # Conversation-history helpers (ELITEA-2423) — additive.
+    #
+    # The legacy :meth:`open_history`, :meth:`get_history_session_count` and
+    # :meth:`select_history_session` build ``button.elitea-assistant-history-item``
+    # locators inside their bodies (pre-policy tech debt #25/#42); they are left
+    # byte-identical for their existing callers.
+    # ------------------------------------------------------------------
+
+    @action("Open Support Assistant conversation history")
+    def open_history_via_testid(self, timeout: int = 10000):
+        """Open the history dropdown using the testid-based handles.
+
+        The caller is expected to have already asserted that
+        :attr:`history_toggle_button` is enabled — the button is ``disabled``
+        while ``history.length === 0`` (``ChatHeader.tsx``), which makes that
+        assertion the honest "the conversation list has loaded" wait on this
+        surface rather than a network or timing heuristic.
+
+        Args:
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Opening Support Assistant conversation history")
+        self.history_toggle_button.click(timeout=timeout)
+        self.history_dropdown.wait_for(state="visible", timeout=timeout)
+
+    def get_history_item_count_via_testid(self) -> int:
+        """Count the conversation entries listed in the history dropdown.
+
+        History is shared test-account data that other runs add to, so this is
+        a BASELINE to compare against itself across a refresh — never an
+        absolute expectation.
+
+        Returns:
+            Number of history entries currently rendered
+        """
+        return self.history_items.count()
+
+    def first_openable_history_item(self):
+        """Locator for the first history entry that can actually be opened.
+
+        Entries are ``disabled`` when they are the currently-open conversation,
+        so "open a previous session" means the first ``:not([disabled])`` entry
+        — clicking index 0 right after a page refresh is a no-op, because the
+        widget auto-restores the list's first conversation.
+
+        Returns:
+            Playwright Locator for the first enabled history entry
+        """
+        return self.page.locator(self.HISTORY_ITEM_OPENABLE).first
