@@ -353,3 +353,90 @@ For the CREATE form the correct condition is the form's own render signal:
 `GET /configurations/available/` resolves. `navigate_to_type()` still uses
 `wait_for_page_load()`/`networkidle` for its four pre-existing callers; prefer
 `open_type_form()` in new work on this form.
+
+## Credential form — Secret/Password field toggle + secret-vault dropdown — confirmed live 2026-08-22 (ELITEA-1968 / ELITEA-1969)
+
+Both flows executed end-to-end against `localhost:5173`, project 399
+("Private", which IS this identity's `personal_project_id`). No product defects
+found; four **case-text** divergences recorded (see the two AFS files).
+
+### The field: `SecretField.jsx` (shared, `[fsd]/shared/ui/secret-field/`)
+
+Rendered for every schema property marked secret — GitHub `access_token` under
+`Token` auth, Jira/Confluence `api_key`, etc. Two mutually-exclusive modes,
+switched by a `ToggleButtonGroup`:
+
+| Mode | Renders | Handles |
+|---|---|---|
+| `password` (**the default** — `useState(toggleOptions[1].value)`) | native `<input type="password">` | `toolkit-field-{key}-input-field` |
+| `secret` | a `SingleSelect` over the project's secret vault | `toolkit-field-{key}-input-combobox` |
+
+- Both toggle buttons carry `aria-pressed` — mode state is assertable
+  testid-only, no CSS sniffing: `…-input-toggle-secret` / `…-input-toggle-password`.
+- **Switching modes CLEARS the value** (`handleToggleTab` → `onChange(e, '')` +
+  `setRawPasswordInput('')`). Don't write a test that expects a value to survive
+  a round trip through the other mode.
+- The vault query is `skip`-gated on the mode: `GET /secrets/secrets/default/{project}`
+  fires only when the field first enters Secret mode, then RTK-Query-caches.
+- A field bound to `{{secret.<name>}}` auto-lands in Secret mode on load
+  (`handleSwitchToSecretTab`), unless the referenced secret no longer resolves.
+
+### The dropdown (open the combobox with a REAL click)
+
+```
+ul[role="listbox"]
+  [data-testid="select-group-header-Create"]            → renders "CREATE"  (CSS uppercase)
+  [data-testid="select-option-__create_private_secret__"]
+  [data-testid="select-group-header-Saved Secrets"]     → renders "SAVED SECRETS"
+      + refresh button  [data-testid="{field-testid}-refresh-secrets-button"]   ← ADDED 2026-08-22
+  [data-testid="select-option-{{secret.<name>}}"]  ×N   → option TEXT is the bare name
+```
+
+- The saved option's **value** is the template `{{secret.<name>}}`; the
+  combobox **displays** the bare name. Assert both — a UI showing the right
+  name while storing the wrong value passes a text-only check.
+- **The CREATE option's label is project-scope-dependent:**
+  `personal_project_id === selectedProjectId ? 'New Private Secret' : 'New Project Secret'`.
+  On the automation default project (399 = personal) it reads **"New Private
+  Secret"**. Its testid and behaviour are identical in both scopes. Both
+  ELITEA-1968 and ELITEA-1969 case texts say "New Project Secret" — a case-text
+  clarification, not a bug.
+- The CREATE group renders at all only when the identity holds
+  `PERMISSIONS.secrets.create`; without it `createSecretsOptions` is `[]` and
+  the entire group is absent from the DOM.
+- **Clicking the CREATE option opens a NEW TAB** —
+  `window.open('{basename}/{projectId}/settings/secrets?createSecret=1', '_blank')`.
+  Not an in-page navigation. Capture it with `context.expect_page()`.
+  The originating tab keeps its dropdown **OPEN** (the #1047 `skipNextCloseRef`
+  mechanism) — convenient, but assert it rather than assume it.
+- `?createSecret=1` **auto-opens the inline create row** on the secrets page
+  (same `addSecretRow()` the "+" button calls) and `secrets-add-button` is then
+  `disabled`. A test cannot "click +" after arriving this way.
+- The MUI menu will NOT close from a JS `document.body.click()` — use a real
+  Playwright click, `Escape`, or select an option.
+
+### Testids added during ELITEA-1968/1969 (EliteaAI/EliteaUI@29214bf1, `automation/testids`, awaiting human cherry-pick to `main`)
+
+Attribute-only, no functional change:
+- `{field-testid}-refresh-secrets-button` — `SecretField.jsx`, derived from the
+  caller's `data-testid` exactly like the existing `-field` / `-toggle-*`
+  derivations, so the shared component hardcodes no feature-scoped testid and a
+  page with several secret fields keeps one unique handle per field.
+- `secret-column-header-{name,secretValue,actions}` — `SecretsTable.jsx` now
+  passes `GridTableHeader`'s already-supported `columnTestIdPrefix="secret"`
+  (identical mechanism to `TokensTable.jsx`'s `personal-token-*`). Side effect:
+  `secret-sort-icon-name` also renders, unreferenced — same precedent as
+  `credentials-table-sort-icon-*`.
+
+### Project 471 is NOT a usable substitute for the personal project here
+Evaluated live and rejected: it carries **zero** secrets (nothing to select for
+ELITEA-1968 step 5 without seeding a shared team project), and its
+`/settings/secrets` reproduces known defect **#1203** ("Maximum update depth
+exceeded", hundreds of console errors per mount). #1203 was re-confirmed on
+project 399 too — it is page-wide, not project-specific.
+
+### Unsaved-form `beforeunload` trap
+Once anything on the credential create form is touched, `page.goto()` /
+`reload()` raises a `beforeunload` dialog. Playwright auto-dismisses dialogs by
+default in the pytest suite, but an MCP-driven exploration session must handle
+it explicitly or the navigation hangs to timeout.
