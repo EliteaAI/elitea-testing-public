@@ -287,8 +287,20 @@ string is green on run 1 and red on runs 2..N, failing the lead's 3× merge gate
 Deterministic, single-cause, source-confirmed (`chat.types.ts:1-11` `TMessage` has no
 attachment field; `chat.hook.ts:492-495` pushes `{id, role, content, timestamp}` only;
 `MessageItem.tsx` renders no attachment element). Affects Step 6 alone; soft-asserted with
-the correct expected behaviour. Every other step hard-asserts and passes, so this spec is
-**not** sanctioned-RED overall — it is green today except for one soft failure.
+the correct expected behaviour. Every other step hard-asserts and passes.
+
+**This spec IS sanctioned-RED** (`.agents/testing.md` § Merge gate) — the pytest outcome
+is **FAILED**, not "green with a soft failure". `expect.soft()` is not a warning here:
+pytest-playwright 0.8.0 wraps every test in `playwright._impl._assertions._soft_scope()`,
+collects each soft-assertion error, and re-raises it (as an `ExceptionGroup` when there is
+more than one) at the end of `pytest_runtest_call`
+(`.venv/lib/python3.13/site-packages/pytest_playwright/pytest_playwright.py:45,101-116`,
+verified in-venv 2026-08-22). So the spec fails deterministically, 3/3, on the identical
+`#1653` signature, and merges RED under the sanctioned-RED exception — single-cause,
+tied to OPEN #1653, linked in the test. **The lead must record the exception (and which
+member fired) in the closure record**, and the case is `blocked-on-#1653`, not
+`automated`, until the indicator ships. The soft assert is the project's sanctioned way
+to keep that red *visible*; it is not masking.
 
 **#1584 — refuted, left OPEN with a refutation comment.** Agents never close issues; a
 human closes it. Do not treat it as a blocker for this case.

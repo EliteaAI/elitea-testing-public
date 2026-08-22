@@ -43,6 +43,15 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
   its deterministic gate, and staying red in CI is the correct signal until the
   product fix ships. Anything else red — flaky, multi-cause, no linked defect —
   blocks. Record the exception explicitly in the closure record.
+  - **`expect.soft` failures ARE reds — there is no "green except for a soft
+    failure" (verified in-venv 2026-08-22, ELITEA-2421/PR #1654).** pytest-playwright
+    0.8.0 wraps every test in `playwright._impl._assertions._soft_scope()`, collects
+    each soft-assertion error and re-raises it (`ExceptionGroup` if >1) at the end of
+    `pytest_runtest_call` (`pytest_playwright.py:45,101-119`) — **pytest outcome
+    FAILED**. So a spec carrying one `expect.soft()` + `# Known defect: #N` **is**
+    sanctioned-RED and owes a closure-record entry; its case stays `blocked-on-#N`,
+    never `automated`. Any AFS / Run Report sentence claiming otherwise mis-steers
+    this gate. (The soft assert is not masking — it is how the red stays visible.)
   - **Closed-set variant (2026-07-18, ELITEA-1892/#615):** "single-cause" does
     not require literally one defect ID to fire every run. A gate run may
     legitimately show any subset of a **closed, enumerable set** of known
