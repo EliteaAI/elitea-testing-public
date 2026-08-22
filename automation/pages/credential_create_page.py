@@ -80,7 +80,9 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
     # (`SingleSelect.jsx` SelectDisplayProps); the native password <input>
     # (`FIELD_SECRET_INPUT`) is absent in that mode, and vice versa.
     FIELD_SECRET_COMBOBOX = '[data-testid="toolkit-field-{}-input-combobox"]'
-    FIELD_SECRET_INPUT = '[data-testid="toolkit-field-{}-input-field"]'
+    # FIELD_SECRET_INPUT + secret_native_input() moved to
+    # CredentialFormFieldsMixin for ELITEA-1970 (the credential DETAIL page
+    # renders the same secret fields); inherited here unchanged.
     # "Saved Secrets" group-header refresh button — caller-derived testid added
     # for ELITEA-1969 (EliteaAI/EliteaUI@29214bf1).
     FIELD_SECRET_REFRESH_BUTTON = (
@@ -106,17 +108,6 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
     # here is the literal double brace the testid itself carries.
     SECRET_SAVED_OPTION_PREFIX = '[data-testid^="select-option-{{secret."]'
 
-    test_connection_button = LocatorDescriptor(
-        testid="credential-form-test-connection-button",
-        description=(
-            "Test connection button (CredentialForm.jsx). Disabled when the "
-            "credential type's schema carries has_test_connection: false "
-            "(Postman, of the ELITEA-1967 set) or when the type's "
-            "check_connection.enabled_when fields are unset. Testid added for "
-            "ELITEA-1967."
-        ),
-    )
-
     # ------------------------------------------------------------------
     # Create-form fields
     # ------------------------------------------------------------------
@@ -140,15 +131,6 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
             "api_key_input, relabeled for GitHub's Token auth)."
         ),
     )
-    api_error_message = LocatorDescriptor(
-        testid="credential-form-api-error-message",
-        description=(
-            "Server-side API error text rendered below the form on a failed "
-            "Save (CredentialForm.jsx) — e.g. the duplicate-elitea_title "
-            "400 message. Testid added for ELITEA-1978."
-        ),
-    )
-
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -320,11 +302,6 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
         """Return the Secret-mode select display node of secret field
         *field_key* (present only while the field is in ``secret`` mode)."""
         return self.page.locator(self.FIELD_SECRET_COMBOBOX.format(field_key))
-
-    def secret_native_input(self, field_key: str) -> Locator:
-        """Return the Password-mode native ``<input type="password">`` of
-        secret field *field_key* (present only in ``password`` mode)."""
-        return self.page.locator(self.FIELD_SECRET_INPUT.format(field_key))
 
     def open_secret_dropdown(self, field_key: str) -> None:
         """Open the Secret-mode vault dropdown of secret field *field_key*.
