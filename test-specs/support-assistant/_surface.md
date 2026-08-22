@@ -441,3 +441,34 @@ with it.
     (`MessageItem.tsx:35-43`, `alt="User avatar"`, rendered for every user message), not a
     partial attachment indicator. Anyone re-triaging #1653 off the failure output should not
     read that node as evidence the feature is half-shipped.
+
+48. **The assistant REFUSES to relay opaque identifiers out of an attachment — do not build
+    a "plant a token, ask for it back" oracle on this surface.** Quirk 39's recipe
+    (planting `The secret project codename is ZEPHYR-4417.` and asking for it back) worked
+    once during ELITEA-2421 analysis and then failed to reproduce twice during its
+    implementation, both times with an explicit guardrail refusal:
+    *"I can't help extract or repeat secret codename values from attachments."* and, after
+    the wording was neutralised to `Build identifier: <TOKEN>`,
+    *"I can't help extract or repeat secret identifiers from attachments."* The word
+    *"secret"* is **not** the trigger — the guardrail keys on relaying an opaque
+    **identifier** out of an attachment.
+
+    **The working shape: plant an ordinary-prose FACT and ask a comprehension question.**
+    Shipped in `test_support_assistant_attachment_send.py`: the file reads
+    `The project mascot is the {word}.` (per-run word from a 10-item list) and the prompt is
+    *"According to the attached file, what is the project mascot? Answer with the single
+    word."* — green twice consecutively. The oracle is exactly as strong (the word exists
+    only inside the upload) and it does not collide with the guardrail.
+
+    **This supersedes quirk 39's recipe, not its conclusion:** the assistant demonstrably
+    DOES read attached files — it answers questions about their content, it just will not
+    echo identifiers. `#1584` stays refuted.
+
+    **Gate caution:** any Step-7-style assertion here rides a live LLM guardrail that has
+    already proven non-reproducible once. A refusal on a gate run is this mechanism, not an
+    attachment-pipeline regression — the upload status, the `support_predict` frame and the
+    composer-chip lifecycle are all product-produced and independent of it.
+
+49. **Spec runtime for the full attachment flow: 55-65 s headless** across four runs
+    (upload + one live reply), against a 90-120 s estimate. The 200 s reply timeout stays —
+    the 31-135 s band's variance is the risk, not its mean.

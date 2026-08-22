@@ -853,6 +853,29 @@ class SupportAssistantPage(BasePage):
             self.attach_file_button.click(timeout=timeout)
         fc_info.value.set_files(file_path)
 
+    def user_message_items(self):
+        """Locator for every user message item in the conversation.
+
+        Composed from the existing :attr:`USER_MESSAGE_ITEM` class constant —
+        no new handle. The plural counterpart to :meth:`last_user_item`, for
+        callers that assert a count delta rather than inspect the newest item.
+
+        Returns:
+            Playwright Locator for all ``data-role="user"`` message items
+        """
+        return self.page.locator(self.USER_MESSAGE_ITEM)
+
+    def get_user_message_item_count(self) -> int:
+        """Count the user message items currently rendered.
+
+        The widget restores the previous session on open, so this is a
+        BASELINE to diff against — never an absolute expectation.
+
+        Returns:
+            Number of user message items rendered in the conversation
+        """
+        return self.user_message_items().count()
+
     def get_attachment_chip_count(self) -> int:
         """Count the attachment chips currently staged in the composer.
 

@@ -159,8 +159,8 @@ origin of false bug #1581).
 | Field | Value | Notes |
 |---|---|---|
 | Attachment | `test-results/ELITEA-2421-attachment.txt`, written by the test into `tmp_path` | `.txt` is in `ALLOWED_EXTENSIONS`; well under the 5 MB single-shot threshold |
-| File content | must embed a **unique token**, e.g. `The secret project codename is ZEPHYR-4417.` | The token is the Step-7 oracle — generate it per-run (e.g. `ZEPHYR-{uuid4().hex[:6].upper()}`) so a restored conversation can never satisfy the assertion accidentally |
-| Message | `Read the attached file and reply with ONLY the secret project codename it contains.` | Sharper than the case's literal *"Summarize the content of this file"*, whose free-form summary has no deterministic observable. See § Declared improvisation. |
+| File content | **SHIPPED:** `The project mascot is the {word}.` in a short prose handbook, `{word}` chosen per run from a 10-item list. *(The originally specced `The secret project codename is ZEPHYR-4417.` is refused by the assistant — see § Amended during implementation item 4.)* | The planted word is the Step-7 oracle: it exists only inside the uploaded file, so the reply can carry it only by reading the upload |
+| Message | **SHIPPED:** `According to the attached file, what is the project mascot? Answer with the single word.` | Sharper than the case's literal *"Summarize the content of this file"*, whose free-form summary has no deterministic observable. See § Declared improvisation. |
 
 ---
 
@@ -233,11 +233,41 @@ document-grounded answer, which sits at the slow end). Estimated spec runtime **
    sleep and no polling helper. (Source-confirmed this run; the AFS listed the four Step-5
    observables without ordering them.)
 
-3. **Actual spec runtime: 57.9 s headless** (single live reply at the fast end of the
-   31-135 s band), against the 90-120 s estimate. The 200 s reply timeout is kept — the
-   band's variance, not its mean, is the risk.
+4. **§ Declared improvisation's "plant a unique token" oracle is REFUTED AS WRITTEN — the
+   assistant refuses to relay opaque identifiers out of an attachment.** The analyst's
+   single successful observation (`ZEPHYR-4417` returned) did **not** reproduce: two
+   consecutive implementation runs got an explicit safety refusal instead —
 
-4. **The `img` element inside the sent user message is the user AVATAR**
+   > *"I can't help extract or repeat secret codename values from attachments."*
+   > *"I can't help extract or repeat secret identifiers from attachments."*
+
+   The second refusal followed **neutral** wording (`Build identifier: <TOKEN>` /
+   "reply with ONLY the build identifier"), which rules out the word *"secret"* as the
+   trigger — the guardrail keys on **relaying an opaque identifier out of an
+   attachment**, whatever it is called.
+
+   **Shipped oracle instead — same strength, no guardrail collision:** plant an
+   ordinary-prose fact and ask a comprehension question. The file reads
+   `The project mascot is the {word}.` (word chosen per run from a 10-item list) and the
+   prompt is *"According to the attached file, what is the project mascot? Answer with
+   the single word."* The word still exists **only** inside the uploaded file, so the
+   reply can contain it only by reading the upload — the case's observable is preserved
+   and the assertion stays deterministic. Verified green twice consecutively.
+
+   This is a **how** change inside the implementer's Phase-2 latitude (the AFS's own
+   improvisation is "make the content-grounding deterministic"; only its *example
+   payload* was unusable), not a change to what is verified. **It does confirm the
+   assistant genuinely processes attachment content** — it answers about the file, it
+   just will not echo identifiers — so #1584 stays refuted.
+
+   **Gate risk to note:** this oracle rides a live LLM guardrail whose behaviour already
+   proved non-reproducible once. If the 3x merge gate sees a refusal, that is this
+   mechanism, not a regression in the attachment pipeline (Steps 1-5 are all
+   product-produced and independent of it).
+
+5. **Actual spec runtime: 55-65 s headless** across four runs (the estimate said 90-120 s).
+
+6. **The `img` element inside the sent user message is the user AVATAR**
    (`MessageItem.tsx:35-43`, `alt="User avatar"`), not an attachment affordance. Noted
    because the Step-6 failure's aria snapshot shows it and it could be misread as a
    partial indicator on a future triage. **#1653 stands as written.**
