@@ -184,10 +184,10 @@ class-level `LocatorDescriptor(testid=…)` field or an UPPER_CASE `[data-testid
 | 3 | Message input | `support-assistant-message-input` | same commit as (2). Field `message_input_field` exists. |
 | 4 | Send button | `support-assistant-send-button` | same commit as (2). Field `send_message_button` exists. |
 | 5 | Message item wrapper | `support-assistant-message-item` | same commit as (2). Field `message_items` exists. |
-| 6 | **Copy-to-clipboard button on a response** | **`testid needed: support-assistant-message-copy-button`** | **needs-adding** — `../elitea_assistant/src/components/shared/CopyButton.tsx:19-26` |
-| 7 | **Copied-state flag on that same button** | **`state attribute needed: data-copied="true" \| "false"`** | **needs-adding** — same element as (6) |
-| 8 | **Assistant/user message bubble** | **`testid needed: support-assistant-message-bubble`** | **needs-adding** — `../elitea_assistant/src/components/chat/MessageItem.tsx:49-51` |
-| 9 | **Role flag on the message item wrapper** | **`state attribute needed: data-role="assistant" \| "user"`** | **needs-adding** — `MessageItem.tsx:22-25`, same element that already carries (5) |
+| 6 | **Copy-to-clipboard button on a response** | `support-assistant-message-copy-button` | **ADDED during implementation** — EliteaAI/elitea_assistant@216da01 on `automation/testids` (`src/components/shared/CopyButton.tsx`, caller-supplied `testId` prop wired at `MessageItem.tsx`). Field `message_copy_buttons`. |
+| 7 | Copied-state flag on that same button | `data-copied="true" \| "false"` | **ADDED during implementation** — same commit / element as (6). Constants `MESSAGE_COPY_BUTTON_COPIED` / `_IDLE`. |
+| 8 | Assistant/user message bubble | `support-assistant-message-bubble` | **ADDED during implementation** — EliteaAI/elitea_assistant@216da01 (`MessageItem.tsx`). Field `message_bubbles`, constant `MESSAGE_BUBBLE`. |
+| 9 | Role flag on the message item wrapper | `data-role="assistant" \| "user"` | **ADDED during implementation** — same commit; same element as (5). Constants `ASSISTANT_MESSAGE_ITEM` / `USER_MESSAGE_ITEM`. |
 
 ### How rows 6–9 must be added (canon-compliant shapes — do not improvise)
 
@@ -244,23 +244,25 @@ introduced, no hook is added — the § Zero-functional-impact reviewer greps mu
 
 ### Page-object shape expected on `SupportAssistantPage`
 
+**As shipped** on `automation/pages/support_assistant_page.py` (additive — the legacy
+`fallback=` fields are untouched for their existing callers):
+
 ```python
-message_copy_buttons = LocatorDescriptor(
-    testid="support-assistant-message-copy-button",
-    description="Copy-to-clipboard button on a completed assistant response bubble",
-)
-message_bubbles = LocatorDescriptor(
-    testid="support-assistant-message-bubble",
-    description="Message bubble (user or assistant) inside a message item",
-)
+message_copy_buttons = LocatorDescriptor(testid="support-assistant-message-copy-button", ...)
+message_bubbles      = LocatorDescriptor(testid="support-assistant-message-bubble", ...)
 
 # UPPER_CASE class constants for the scoped / state-filtered forms
+MESSAGE_COPY_BUTTON        = '[data-testid="support-assistant-message-copy-button"]'
 MESSAGE_COPY_BUTTON_COPIED = '[data-testid="support-assistant-message-copy-button"][data-copied="true"]'
 MESSAGE_COPY_BUTTON_IDLE   = '[data-testid="support-assistant-message-copy-button"][data-copied="false"]'
 ASSISTANT_MESSAGE_ITEM     = '[data-testid="support-assistant-message-item"][data-role="assistant"]'
 USER_MESSAGE_ITEM          = '[data-testid="support-assistant-message-item"][data-role="user"]'
 MESSAGE_BUBBLE             = '[data-testid="support-assistant-message-bubble"]'
 ```
+
+Helpers shipped alongside them: `get_copy_button_count()`, `last_assistant_item()`,
+`last_user_item()`, `copy_button_in(item)`, `bubble_in(item)`, `send_message_via_testid(text)`,
+plus `BasePage.clear_clipboard()`.
 
 No raw selector may be chained off these. Nothing is constructed in a method body except
 `self.page.locator(self.CONSTANT)`, which is the sanctioned dynamic/scoped shape.
@@ -272,10 +274,13 @@ No raw selector may be chained off these. Nothing is constructed in a method bod
 The copy button renders only when the assistant message is finished
 (`message.content && !isStreaming && !isAnimating`, `MessageItem.tsx:70-73`). So:
 
+**As shipped** — a plain auto-retrying assertion, no `wait_for_function`, no `page.evaluate`
+(the analyst's original JS recipe is unnecessary: exactly one reply is expected, so the target
+count is known):
+
 ```python
-baseline = page.locator(MESSAGE_COPY_BUTTON).count()   # NOT zero — the New-chat greeting has one
-page.wait_for_function("(n)=>document.querySelectorAll('[data-testid=\"support-assistant-message-copy-button\"]').length>n",
-                       arg=baseline, timeout=180_000)
+copy_baseline = support_page.get_copy_button_count()   # NOT zero — the New-chat greeting has one
+expect(support_page.message_copy_buttons).to_have_count(copy_baseline + 1, timeout=180_000)
 ```
 
 - **Baseline, never absolute.** A fresh chat already shows 1 copy button (the greeting). Digest quirk 2.
@@ -306,8 +311,9 @@ Never hand-write an expected string.
 Three assertions, in this order:
 
 1. **Something was copied, and it was the response.**
-   Clear the clipboard *before* the click (`page.evaluate("() => navigator.clipboard.writeText('')")` —
-   the exact pattern `help_center_page.py:130` already uses), then after the click assert the clipboard
+   Clear the clipboard *before* the click (shipped as `BasePage.clear_clipboard()`, which wraps the
+   exact `page.evaluate("() => navigator.clipboard.writeText('')")` pattern `help_center_page.py:130`
+   already uses), then after the click assert the clipboard
    is non-empty and is **not** the user's prompt:
    ```python
    clip = support_assistant.get_clipboard_text()      # BasePage.get_clipboard_text(), line 468
@@ -422,3 +428,15 @@ None.
 - Clipboard = `message.content` (markdown source).
 - A **New chat** already contains 1 assistant greeting (hence 1 copy button) — always work off a baseline.
 - Reply latency this run: 69.6 s.
+
+## Implementation record (2026-08-22, test-automation-engineer)
+
+- Spec: `automation/tests/ui/support_assistant/test_support_assistant_copy_response.py`
+  (`TestSupportAssistantCopyResponse::test_copy_assistant_response_to_clipboard`).
+- Testids of rows 6-9 added in **EliteaAI/elitea_assistant@216da01** on its `automation/testids`
+  branch (attributes + one optional `testId` prop only — no new hook, node or state). Pushed;
+  a human cherry-picks to that repo's `main`, then EliteaUI bumps the git-dependency.
+- Ran GREEN 1/1 first attempt, 85.7 s, zero reruns. Reply latency in that run ~70 s, consistent
+  with the digest's 33-135 s band — the 180 s wait is the right size.
+- Provenance grep on the diff returns exactly one hit, `clear_clipboard`'s
+  `navigator.clipboard.writeText('')`, disposed in § Fidelity Declaration as precondition hygiene.
