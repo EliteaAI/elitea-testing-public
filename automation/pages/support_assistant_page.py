@@ -11,8 +11,10 @@ The Support Assistant is a reusable chatbot plugin that:
 """
 
 import base64
+import json
 import logging
 import mimetypes
+import re
 import time
 from pathlib import Path
 from playwright.sync_api import Page
@@ -238,6 +240,17 @@ class SupportAssistantPage(BasePage):
     drop_overlay = LocatorDescriptor(
         testid="support-assistant-drop-overlay",
         description='"Drop files here" affordance shown while a file drag is over the composer'
+    )
+
+    # ELITEA-2424 — the "New chat" header button. Testid added in the
+    # connected first-party repo EliteaAI/elitea_assistant
+    # (EliteaAI/elitea_assistant@583b5dd on its ``automation/testids`` branch),
+    # ``src/components/chat/ChatHeader.tsx``. The legacy :attr:`new_chat_button`
+    # field above resolves the same button by ``aria-label`` (pre-policy tech
+    # debt #25/#42) and is left byte-identical for its existing callers.
+    new_chat_button_testid = LocatorDescriptor(
+        testid="support-assistant-new-chat-button",
+        description="Widget header 'New chat' button (starts a fresh conversation)"
     )
 
     # An item is rendered ``disabled`` exactly when it IS the currently-open
@@ -1028,3 +1041,154 @@ class SupportAssistantPage(BasePage):
         """
         logger.info("Dropping file on Support Assistant composer: %s", file_path)
         self._dispatch_drag_events(file_path, ["dragenter", "dragover", "drop"], timeout)
+
+    # ------------------------------------------------------------------
+    # Assistant context payload — outbound Socket.IO frame capture
+    # (ELITEA-2424 / ELITEA-2425) — additive.
+    #
+    # EliteaUI builds ``support_assistant_context`` in
+    # ``src/[fsd]/widgets/support-assistant/lib/hooks/useAssistantContext.hooks.js``
+    # and hands it to ``<EliteaAssistant supportAssistantContext={...}>``; the
+    # assistant emits it with every message from ``src/lib/hooks/chat.hook.ts``.
+    #
+    # Fidelity: ``page.on("websocket")`` is PASSIVE OBSERVATION — no
+    # ``route``/``fulfill``, nothing intercepted, delayed, rewritten or
+    # fabricated. It is the same class of evidence as reading a response body
+    # (.agents/testing.md § Fidelity policy).
+    # ------------------------------------------------------------------
+
+    #: Socket.IO event carrying a user message plus the assistant context.
+    SUPPORT_PREDICT_EVENT = "support_predict"
+    #: Socket.IO event carrying the Support Assistant's own DEPLOYMENT project.
+    CHAT_ENTER_ROOM_EVENT = "chat_enter_room"
+
+    #: Socket.IO packet framing: ``42["event", {...}]`` — a numeric prefix
+    #: followed by the JSON ``[event, payload]`` array.
+    _SOCKET_IO_FRAME = re.compile(r"^\d+(\[.*\])$", re.S)
+
+    def capture_sent_socket_frames(self) -> list:
+        """Start collecting every frame the page SENDS on any websocket.
+
+        Must be called BEFORE the first navigation: ``page.on("websocket")``
+        only fires for sockets opened after the listener is attached.
+
+        Returns:
+            The live list the listener appends to (grows as frames are sent)
+        """
+        frames: list = []
+        self.page.on(
+            "websocket",
+            lambda ws: ws.on("framesent", lambda payload: frames.append(payload)),
+        )
+        return frames
+
+    @classmethod
+    def _decode_socket_frame(cls, frame) -> tuple:
+        """Decode one Socket.IO frame into ``(event, payload)``.
+
+        Args:
+            frame: Raw frame text (non-JSON control frames are ignored)
+
+        Returns:
+            ``(event_name, payload)`` or ``(None, None)`` when the frame is not
+            an event packet
+        """
+        if not isinstance(frame, str):
+            return (None, None)
+        match = cls._SOCKET_IO_FRAME.match(frame)
+        if match is None:
+            return (None, None)
+        try:
+            decoded = json.loads(match.group(1))
+        except ValueError:
+            return (None, None)
+        if not isinstance(decoded, list) or len(decoded) < 2:
+            return (None, None)
+        return (decoded[0], decoded[1])
+
+    @classmethod
+    def last_frame_payload(cls, frames: list, event: str):
+        """Payload of the most recent *event* frame in *frames*.
+
+        Args:
+            frames: List returned by :meth:`capture_sent_socket_frames`
+            event: Socket.IO event name to look for
+
+        Returns:
+            The payload dict, or ``None`` when the event was never sent
+        """
+        for frame in reversed(list(frames)):
+            name, payload = cls._decode_socket_frame(frame)
+            if name == event and isinstance(payload, dict):
+                return payload
+        return None
+
+    @classmethod
+    def last_assistant_context(cls, frames: list) -> dict:
+        """``support_assistant_context`` of the most recent sent message.
+
+        Args:
+            frames: List returned by :meth:`capture_sent_socket_frames`
+
+        Returns:
+            The context dict the product sent, or ``{}`` when no
+            ``support_predict`` frame was captured. ``filterDefined`` in the
+            builder hook DROPS undefined keys, so callers read optional entity
+            fields with ``.get(...)`` rather than assuming they exist.
+        """
+        payload = cls.last_frame_payload(frames, cls.SUPPORT_PREDICT_EVENT)
+        if not payload:
+            return {}
+        context = payload.get("support_assistant_context")
+        return context if isinstance(context, dict) else {}
+
+    @classmethod
+    def last_enter_room_project_id(cls, frames: list):
+        """Project id on the most recent ``chat_enter_room`` frame.
+
+        This is the Support Assistant's OWN deployment project (observed 536),
+        which is not one of the acting user's selectable projects — the
+        mechanical form of ELITEA-2424's "NOT the internal Support Assistant
+        deployment project" clause.
+
+        Args:
+            frames: List returned by :meth:`capture_sent_socket_frames`
+
+        Returns:
+            The deployment project id, or ``None`` when the frame is absent
+        """
+        payload = cls.last_frame_payload(frames, cls.CHAT_ENTER_ROOM_EVENT)
+        return payload.get("project_id") if payload else None
+
+    @action("Start new Support Assistant chat")
+    def start_new_chat_via_testid(self, timeout: int = 15000):
+        """Start a fresh conversation using the testid-based header button.
+
+        Additive counterpart to the legacy :meth:`start_new_chat`, which
+        resolves the button by ``aria-label`` and waits on a fixed 1 s timer
+        (pre-policy tech debt #25/#42) — that method is left byte-identical for
+        its existing callers.
+
+        The wait is the product's own signal rather than a timer: a fresh
+        session is not empty — the assistant posts a greeting, and a copy
+        button renders only on a COMPLETED assistant message, so waiting for
+        the first copy button guarantees the greeting has landed before a
+        caller takes its baseline count.
+
+        Args:
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Starting a new Support Assistant chat")
+        self.new_chat_button_testid.click(timeout=timeout)
+        self.message_copy_buttons.first.wait_for(state="visible", timeout=timeout)
+
+    def get_last_assistant_text(self) -> str:
+        """Rendered text of the most recent assistant reply.
+
+        Composed from the existing :meth:`last_assistant_item` /
+        :meth:`bubble_in` helpers — no new handle.
+
+        Returns:
+            The reply bubble's rendered text
+        """
+        return self.bubble_in(self.last_assistant_item()).inner_text()

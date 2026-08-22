@@ -649,3 +649,50 @@ questions, 2/2 page questions and 1/1 entity question. A dedicated `page.on("res
 page load + widget open + a full round trip recorded **zero** `status >= 400` responses. Two console
 403s appeared in a longer multi-page probe (settings + project switching) without blocking any
 answer; the console API exposes no URL for them. Issue left OPEN with a non-repro comment.
+
+## Resolved/added during ELITEA-2424 + ELITEA-2425 implementation (2026-08-22, test-automation-engineer)
+
+57. **`support-assistant-new-chat-button` now EXISTS** — EliteaAI/elitea_assistant@583b5dd on its
+    `automation/testids` (`src/components/chat/ChatHeader.tsx`, attribute-only on the existing
+    "New chat" `<button>`). Closes the `needs-adding` row both AFS files carried. A **dev-server
+    restart was required again** before Vite served it (quirk 44, now **5-for-5**): kill vite,
+    `rm -rf EliteaUI/node_modules/.vite`, restart with `VITE_ASSISTANT_LOCAL=1 npm run dev`.
+    Page-object field: `SupportAssistantPage.new_chat_button_testid` +
+    `start_new_chat_via_testid()`, whose wait is the greeting's copy button becoming visible (a
+    fresh session is never empty — quirk 10) rather than the legacy fixed 1 s timer.
+
+58. **The open widget BLOCKS the project selector *and* the sidebar launcher.** With the widget
+    open, `[data-testid="select-option-<id>"]` cannot be clicked — Playwright reports
+    `<h2 …elitea-assistant-header-title> … subtree intercepts pointer events` — and clicking
+    `sidebar-support-assistant-button` a second time to toggle the widget shut fails the same way
+    (`div.elitea-assistant-input-row` intercepts; the widget's bottom-left overlay container covers
+    the launcher). The widget's Close button carries **no testid**, and adding one for an element
+    no case asserts would breach the testid-scope rule. **The clean move is a full page load**
+    (`page.goto`), which unmounts the widget (consistent with quirks 29/30) — that is what
+    ELITEA-2424 does between its two project rounds.
+
+59. **Project-selector trigger text is three lines** — avatar letter, `Project:` label, then the
+    name: `"U\nProject:\nUI Testing"`. The NAME is the **last line**. Dropdown options are one or
+    two lines (`"E\nElitea Testing Team"`, `"Bugs & Features"`) — same last-line rule.
+
+60. **`project-general-section` + `networkidle` is NOT a sufficient wait after a project switch.**
+    Both settle while the sidebar trigger still shows the PREVIOUS project — a switch A→B read back
+    `'UI Testing'` (the old value) and failed the round-2 assertion. The deterministic, product-
+    produced signal: read the project NAME off the dropdown option *before* clicking it, then
+    `expect(trigger).to_contain_text(that_name)`. Shipped as
+    `SettingsProjectGeneralPage.switch_project()` (`automation/pages/settings_project_general_page.py`
+    — new page object; none existed for Settings ▸ General).
+
+61. **Agent detail URL carries query params**: clicking the first `entity-card-name` lands on
+    `/agents/all/9433?viewMode=owner&name=Echo%20Agent`. Parse the id from `urlparse(url).path`;
+    `current_page` in the context payload is the **pathname only** (`/agents/all/9433`).
+    Shipped as `AgentsListPage.open_first_agent()` (additive — the legacy `select_agent(name)`
+    resolves cards by a raw `text=` locator and keeps its callers byte-identical).
+
+62. **The context payload behaved exactly as analysed, on the FIRST run of both specs.** Frames
+    captured passively via `page.on("websocket")` (armed before the first `goto`); event name
+    `support_predict`; `chat_enter_room.project_id == 536` (the deployment project) vs the user's
+    selected project in `support_assistant_context.project_id`. Live durations, headless:
+    ELITEA-2424 **170.0 s** (2 LLM round trips), ELITEA-2425 **247.9 s** (3 round trips) —
+    the widest per-test runtimes on this surface so far. `#1585` again did **not** reproduce
+    (5 questions, 5 correct answers, zero console errors across both specs).

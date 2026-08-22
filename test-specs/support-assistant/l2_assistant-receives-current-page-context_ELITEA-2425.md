@@ -85,7 +85,7 @@ from the payload. Gate on the agent-detail form being populated, not on a timer.
 | Copy button on a completed reply — **the reply-ready signal** | `support-assistant-message-copy-button` | elitea_assistant `src/components/shared/CopyButton.tsx` | on `automation/testids` (EliteaAI/elitea_assistant@216da01) |
 | Agent card name in the list (repeated) | `entity-card-name` | EliteaUI | **pre-existing** |
 | Agent name on the detail page (the entity-name ground truth) | `agent-name-input` | EliteaUI | **pre-existing** |
-| "New chat" button (optional, see § Test Data) | **testid needed: `support-assistant-new-chat-button`** | elitea_assistant `src/components/chat/ChatHeader.tsx:83` (`aria-label="New chat"` only) | **needs-adding** in the connected repo (canon #705) on ITS `automation/testids` |
+| "New chat" button | `support-assistant-new-chat-button` | elitea_assistant `src/components/chat/ChatHeader.tsx` | **ADDED during ELITEA-2424 implementation** — EliteaAI/elitea_assistant@583b5dd on its `automation/testids` (canon #705) |
 
 ### Provenance verification (fresh `git fetch origin` in both repos, 2026-08-22)
 
@@ -104,7 +104,8 @@ support-assistant-message-input            main:no   testids:YES
 support-assistant-send-button              main:no   testids:YES
 support-assistant-message-item             main:no   testids:YES
 support-assistant-message-copy-button      main:no   testids:YES
-support-assistant-new-chat-button          main:no   testids:no      <- needs adding
+support-assistant-new-chat-button          main:no   testids:YES     <- ADDED during implementation
+                                                                        (EliteaAI/elitea_assistant@583b5dd, 2026-08-22)
 ```
 
 Consequence for the closure record: the widget testids are on `automation/testids` in **both**
@@ -234,7 +235,14 @@ the reply text contains it.
 **Step 7 — Agent detail page + entity question.**
 `goto("/agents/all")`, click the first `entity-card-name`, and capture
 `agent_name = agent_name_input.input_value()` and `agent_id = int(path.rsplit("/", 1)[-1])` from the
-URL. **Wait for `agent-name-input` to hold a non-empty value before opening the widget** — that is
+URL.
+
+> **Amended 2026-08-22 (implementer, Phase 2 — shipped truth).** The detail URL carries query
+> params (`/agents/all/9433?viewMode=owner&name=Echo%20Agent`), so the id must be parsed from
+> `urlparse(url).path`, not from the raw URL string. Shipped as
+> `AgentsListPage.open_first_agent()` (additive), which clicks the shared `entity-card-name` testid
+> and returns the parsed id — the legacy `select_agent(name)` resolves cards by a raw `text=`
+> locator and is left byte-identical for its callers. **Wait for `agent-name-input` to hold a non-empty value before opening the widget** — that is
 the observable proxy for "the `applicationDetails` query resolved", which is what populates
 `current_entity_name` (see § Executive Summary).
 Re-open the widget, ask the entity question, wait on the copy-button delta, then assert on the last
