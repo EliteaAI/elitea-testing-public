@@ -114,7 +114,11 @@
   Prev on the first page and Next on the last.
 - Next/Prev move between disjoint row sets and return to the original set.
 - Switching back to Card view restores the card layout and the same credentials.
-- No console errors (excluding the suite's already-filed #518 / #554 filters).
+- No console errors. Only the #554 prompt_lib-404 filter is applied (closed
+  2026-08-11 as a local-UI/test-client artifact, pinned to that exact URL
+  shape). The suite's `#518` `<CredentialsList>`-crash filter is deliberately
+  NOT reused: #518 is CLOSED as NOT REPRODUCIBLE, so that signature is now a
+  regression of the component under test and must fail the test.
 
 ## Coverage Map
 

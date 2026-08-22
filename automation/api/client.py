@@ -1124,6 +1124,21 @@ class CredentialAPI:
         logger.info("list_all_credentials: fetched %d credentials", len(all_items))
         return all_items
 
+    def list_credential_types(self) -> list[str]:
+        """Return the credential type keys present in the project.
+
+        Reads ``GET /configurations/types/{project_id}`` — the SAME endpoint
+        that backs the credentials list page's right-hand TYPES filter panel,
+        so it is the honest oracle for "which type chips should the panel
+        render" (ELITEA-1966). Returns only types for which at least one
+        credential exists, e.g. ``["github", "jira", "s3_api_credentials"]``.
+        """
+        url = f"{self.base_url}/configurations/types/{self.project_id}"
+        logger.debug("LIST credential types %s", url)
+        resp = self._session.get(url)
+        _raise_for_status(resp)
+        return resp.json().get("rows", [])
+
     def create_github_credential(
         self, display_name: str, base_url: str, token: str, elitea_title: Optional[str] = None
     ) -> dict:
