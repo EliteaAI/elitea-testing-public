@@ -223,3 +223,24 @@ Bind via `SupportAssistantPage.message_copy_buttons` / `.message_bubbles` and th
     dev-server infrastructure, unrelated to the app. Filter console assertions to
     `type == "error"` **and** exclude those two URL patterns. Every navigation and action of
     the ELITEA-2422 run itself reported `0 errors`.
+
+24. **Resolved/added during ELITEA-2422 implementation (2026-08-22, test-automation-engineer):
+    text-based "is my message still there" assertions need a BASELINE too, not just counts.**
+    The widget restores the previous session and the support-assistant specs deliberately
+    leave their messages behind (no teardown — quirk 2/10 plus every merged spec's § Cleanup),
+    so on the **second** run of the same spec the exact message string it sends is *already*
+    in the restored conversation. `expect(item_with_text(MSG)).to_have_count(1)` is therefore
+    green on run 1 and red on runs 2..N — exactly the shape that survives an implementer's
+    single local run and then fails the lead's 3× merge gate. Shipped form: take
+    `baseline_named = user_message_item_with_text(MSG).count()` right after the widget opens,
+    assert `baseline_named + 1`. Same strength, deterministic. Generalise it: on this surface
+    **every** conversation observable is a delta — items, copy buttons, and message text alike.
+    Helper `SupportAssistantPage.user_message_item_with_text()` exists for this (additive,
+    composed from the `USER_MESSAGE_ITEM` constant).
+
+25. **Resolved/added during ELITEA-2422 implementation:** an in-app sidebar round trip
+    (`/chat` → `/agents/all` → `/chat`) with the widget open costs **nothing** in test time and
+    needs **no re-settle wait** — the widget's DOM is never torn down (quirk 19), so assert
+    directly after `page.wait_for_url(...)`; no `wait_for_timeout`, no `networkidle`, no
+    re-open. Full spec runtime with two live replies: **77.8 s** headless (matches the AFS's
+    70-90 s estimate).

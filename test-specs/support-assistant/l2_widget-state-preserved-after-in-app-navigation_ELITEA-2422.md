@@ -268,11 +268,23 @@ Both must be composed from the **existing UPPER_CASE class constants** — no ne
    **no launcher click in between**. This is the strong form; do not weaken it to
    "reopen then check" (§ Known Deviations).
 2. **Same session, not a fresh one.** After the follow-up reply lands, assert the
-   pre-navigation user message is *still present*:
-   `expect(page.locator(USER_MESSAGE_ITEM_with_text("Navigation persistence test"))).to_have_count(1)`
-   **and** the item count equals `baseline + 4` (2 pairs). A reset session would render only
-   the follow-up pair (plus a greeting) and this fails — which is precisely the regression
-   the case exists to catch. Counting alone is not enough; assert on the *text* too.
+   pre-navigation user message is *still present*, **and** the item count equals
+   `baseline + 4` (2 pairs). A reset session would render only the follow-up pair (plus a
+   greeting) and this fails — which is precisely the regression the case exists to catch.
+   Counting alone is not enough; assert on the *text* too.
+
+   **Amended at implementation (2026-08-22, shipped form):** the text assertion is a
+   **delta, not an absolute** — `to_have_count(1)` would flake from the second run onward.
+   This spec leaves its messages behind by design (§ Cleanup) and the widget restores the
+   previous session, so a prior run's copy of `Navigation persistence test` is already in
+   the conversation the test opens with. The shipped form takes a third baseline right
+   after the widget opens —
+   `baseline_first_message = support_page.user_message_item_with_text(FIRST_MESSAGE).count()`
+   — and asserts `to_have_count(baseline_first_message + 1)` at Steps 4, 6 and 7. Same
+   claim, same strength, deterministic across the 3× merge gate. This is the
+   "baselines, not absolutes" rule below applied to the text assertion as well as the counts.
+   The helper `user_message_item_with_text()` was added to `SupportAssistantPage`
+   (additive, composed from the existing `USER_MESSAGE_ITEM` constant — no new handle).
 
 ### Baselines, not absolutes
 
@@ -313,10 +325,10 @@ runtime around 70-90 s.
 | 1 Open the Support Assistant widget on the Chat page | Page/section loads successfully | Navigate `/chat`, click `sidebar_launcher` | `expect(widget).to_be_visible()`, `expect(widget_header_title).to_have_text("ELITEA Support")` | covered |
 | 2 Send "Navigation persistence test", wait for a response | Completes without error, expected UI state | `set_message_text(...)` → `expect(send_message_button).to_be_enabled()` → click | `expect(message_copy_buttons).to_have_count(baseline_copies+1, timeout=180_000)`; `expect(message_items).to_have_count(baseline_items+2)`; last user bubble text == the sent string | covered |
 | 3 Navigate to Agents via the sidebar (do not close the widget) | Page/section loads successfully | click `sidebar_menu_item("agents")` | `page.wait_for_url("**/agents/all")` | covered |
-| 4 Widget still open (or reopenable) with the conversation intact | Condition holds | no launcher click | `expect(widget).to_be_visible()`; `expect(message_items).to_have_count(baseline_items+2)`; `expect(message_copy_buttons).to_have_count(baseline_copies+1)`; pre-nav user message text still present | covered — **strengthened**, see Axis 2 / Known Deviations |
+| 4 Widget still open (or reopenable) with the conversation intact | Condition holds | no launcher click | `expect(widget).to_be_visible()`; `expect(message_input_field).to_be_visible()`; `expect(message_items).to_have_count(baseline_items+2)`; `expect(message_copy_buttons).to_have_count(baseline_copies+1)`; `expect(user_message_item_with_text("Navigation persistence test")).to_have_count(baseline_first_message+1)` | covered — **strengthened**, see Axis 2 / Known Deviations |
 | 5 Navigate back to the Chat page | Page/section loads successfully | click `sidebar_menu_item("chat")` | `page.wait_for_url("**/chat")` | covered |
 | 6 Open the widget if it closed — previous session messages still visible | Page/section loads successfully | no reopen needed (assert it never closed) | `expect(widget).to_be_visible()`; item/copy counts unchanged; pre-nav user message text present | covered |
-| 7 Send a follow-up; assistant responds in the same session | Completes without error, expected UI state | `send_message_via_testid("Follow-up after navigation")` | `expect(message_copy_buttons).to_have_count(baseline_copies+2, timeout=180_000)`; `expect(message_items).to_have_count(baseline_items+4)`; **and** the Step-2 user message is still rendered (same-session proof) | covered |
+| 7 Send a follow-up; assistant responds in the same session | Completes without error, expected UI state | `send_message_via_testid("Follow-up after navigation")` | `expect(message_copy_buttons).to_have_count(baseline_copies+2, timeout=180_000)`; `expect(message_items).to_have_count(baseline_items+4)`; last user bubble text; input cleared; **and** the Step-2 user message is still rendered at `baseline_first_message+1` (same-session proof) | covered |
 | Expected final state — follow-up answered in the same session | — | Step 7 assertions | same as above | covered |
 
 ### Axis 2 — observables asserted BEYOND the case
@@ -371,3 +383,30 @@ None. All 7 steps executed end-to-end against the live system.
    `sidebar-menu-item-chat` → `/chat`, `sidebar-menu-item-agents` → `/agents/all`.
 3. Reply latency sample 2026-08-22: **31.0 s** twice for short prompts — the fast end of the
    digest's 33-135 s band, but still far above 120 s-is-generous thinking. Keep 180 s.
+
+
+---
+
+## Implementation record (2026-08-22, test-automation-engineer)
+
+- **Shipped spec:** `automation/tests/ui/support_assistant/test_support_assistant_navigation_persistence.py`
+  → `TestSupportAssistantNavigationPersistence::test_widget_state_preserved_after_in_app_navigation`
+  (8 `allure.step` blocks — the case's 7 steps plus the console side-channel check).
+- **Result:** GREEN 1/1 first run, **77.8 s**, 0 reruns, headless against `http://localhost:5173`.
+  Both live replies landed inside the 180 s budget; the AFS's 70-90 s runtime estimate held.
+- **Page-object change:** one additive helper, `SupportAssistantPage.user_message_item_with_text()`,
+  composed from the existing `USER_MESSAGE_ITEM` class constant. The AFS's other optional
+  suggestion (`get_message_texts()`) was **not** added — nothing in the shipped assertions
+  needs it, and Rule 7 (reuse before create) says don't ship an unused helper.
+- **No new testids.** Every handle already existed on the integration branches, exactly as the
+  Handles Reference states; the provenance rows were not re-derived and remain the analyst's
+  verified data (`main:no · testids:YES` for all 10 rows ⇒ localhost-green, deployed-red until
+  a human cherry-picks).
+- **Mechanical self-checks on `git diff tests/batch-support-assistant-w01...HEAD -- automation/`:**
+  fidelity grep (`.mock_|page.route(|route.fulfill(|monkeypatch|.evaluate(`) → **0 hits**;
+  locator grep → **1 hit**, `self.page.locator(self.USER_MESSAGE_ITEM).filter(has_text=text)`,
+  compliant via the UPPER_CASE `[data-testid=` class constant (one-hop); removals grep
+  (`^-[^-]`) → **0** — purely additive.
+- **Console filter as shipped:** `msg.type == "error"` **and** not
+  (`ERR_CONNECTION_REFUSED` and (`@vite/client` or `/socket.io/`)) — the digest-quirk-21
+  dev-server noise only; every other console error still fails the test.

@@ -710,3 +710,27 @@ class SupportAssistantPage(BasePage):
         logger.info("Sending Support Assistant message: %s", text[:50])
         self.set_message_text(text)
         self.send_message_button.click(timeout=timeout)
+
+    # ------------------------------------------------------------------
+    # Navigation-persistence helpers (ELITEA-2422) — additive.
+    # ------------------------------------------------------------------
+
+    def user_message_item_with_text(self, text: str):
+        """Locator for the user message item(s) carrying *text*.
+
+        Composed from the existing :attr:`USER_MESSAGE_ITEM` class constant —
+        no new handle. Used as a same-session proof: after an in-app route
+        change the message a test sent BEFORE navigating must still be
+        rendered, which a reset session would not satisfy.
+
+        The widget restores whatever conversation the test user already has,
+        so a prior run's copy of *text* may already be present. Callers take a
+        baseline count first and assert a delta, never an absolute.
+
+        Args:
+            text: Substring to match against the item's rendered text
+
+        Returns:
+            Playwright Locator for the matching user message items
+        """
+        return self.page.locator(self.USER_MESSAGE_ITEM).filter(has_text=text)
