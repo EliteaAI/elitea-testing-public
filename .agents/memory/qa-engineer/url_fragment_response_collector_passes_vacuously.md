@@ -34,3 +34,14 @@ the filename). If one exists, this is a strength finding, not a false green.
 First seen: ELITEA-2421 / PR #1654 (support-assistant attachment send).
 
 Related: [[expect_soft_failure_is_a_real_red]]
+
+## Second occurrence, a different producer (2026-08-22, ELITEA-2420)
+
+The same `"/attachments/"` fragment also matches the **Vite dev server's own
+module URLs** on this surface — `…/src/components/chat/attachments/AttachmentChip.tsx?t=…`,
+`…/AttachmentProgress.tsx`, `…/AttachmentIcon.tsx`, `…/index.tsx`, all `200`.
+Captured verbatim during the ELITEA-2420 live run alongside the single real
+`201`. So the collector can be non-empty with zero real uploads even on run 1
+of a fresh conversation — restored-conversation GETs are not the only way this
+goes vacuous. Filter on the full API path
+(`/api/v2/support_assistant/attachments/`) as well as the method.

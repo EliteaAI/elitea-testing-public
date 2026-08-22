@@ -472,3 +472,70 @@ with it.
 49. **Spec runtime for the full attachment flow: 55-65 s headless** across four runs
     (upload + one live reply), against a 90-120 s estimate. The 200 s reply timeout stays —
     the 31-135 s band's variance is the risk, not its mean.
+
+## Drag-and-drop attachment (verified live 2026-08-22, ELITEA-2420 run)
+
+Source: `../elitea_assistant/src/components/chat/MessageInput.tsx:44-50, 105-108, 146-170, 192-199`
++ `src/theme/styles/input.css:13-28`.
+
+| Element | Current raw handle | Testid |
+|---|---|---|
+| Drop zone (owns `onDragEnter/Over/Leave/Drop`) | `.elitea-assistant-input-area` (`:192`) | **needed:** `support-assistant-drop-zone` |
+| Drag-over overlay ("Drop files here") | `.elitea-assistant-drop-overlay` (`:199`, rendered only while `isDragOver`) | **needed:** `support-assistant-drop-overlay` |
+
+50. **Drag-and-drop is fully implemented — and ONLY on the composer, not the "chat area".**
+    The four drag handlers sit on the input-area div; the message list
+    (`.elitea-assistant-messages`) is its **sibling**, so events there never reach them. Probed
+    live: `dragenter` + `drop` on the message list → overlay 0, chips 0, no reaction at all.
+    Any case text saying "drop onto the chat area" means the composer — clarification **#1655**.
+    On `dragenter` carrying `Files`: overlay renders `"Drop files here"` and the input area gains
+    `elitea-assistant-input-area--drag-over` (which hides its own children via CSS
+    `visibility: hidden`). `dragleave` reverts it (a `dragCounterRef` balances enter/leave), and
+    the `drop` dismisses the overlay and stages a normal attachment chip — from there the flow is
+    byte-identical to the attach-button path (quirks 37/38/41/43).
+
+51. **The working file-drop recipe (verified green, full flow, 70.7 s).** There is no OS-level
+    file drag available to Playwright, so build the `DataTransfer` in-page **once** and deliver
+    each phase to the drop zone:
+    ```js
+    // page.evaluate_handle — one handle, reused for every phase
+    const dt = new DataTransfer();
+    dt.items.add(new File([content], name, {type: 'text/plain'}));
+    ```
+    then dispatch `new DragEvent(phase, {bubbles: true, cancelable: true, dataTransfer})` on it.
+    The event **must bubble** — React listens at the root container. Each phase may build its own
+    `DataTransfer`: `handleDragEnter` reads only `types.includes('Files')`, `handleDragLeave` reads
+    nothing (it decrements `dragCounterRef`), `handleDrop` reads `.files`. **There is already a
+    merged precedent for the whole technique** — `ChatPage.drag_and_drop_file()`
+    (`automation/pages/chat_page.py:2855-2910`, base64 → `Uint8Array` → `File` → `DataTransfer`,
+    dispatched at a testid'd drop zone) — mirror it rather than re-deriving, but expose the phases
+    separately so a test can assert the overlay reverting on `dragleave`. Drove overlay → chip →
+    upload → predict → reply green in one pass. This is **transit** substitution (the input gesture only) —
+    every observable stays product-produced.
+
+52. **An attachment alone does NOT enable Send (extends quirk 41 with the live measurement).**
+    After a drop into an empty composer, `send.is_disabled() == True`; typing flipped it to
+    `False` immediately. `isSendDisabled = disabled || isUploading || !attachmentsValid ||
+    !text.trim()` (`:105-108`). Case texts that assert "Send becomes enabled" right after
+    attaching are stale — assert the pair (disabled attachment-only, enabled after typing).
+
+53. **⚠️ A `page.on("response")` collector keyed on the bare fragment `"/attachments/"` matches
+    the Vite dev server's OWN module URLs** — `…/src/components/chat/attachments/AttachmentChip.tsx?t=…`,
+    `…/AttachmentProgress.tsx`, `…/AttachmentIcon.tsx`, `…/index.tsx`, all `200`. Observed
+    verbatim in the ELITEA-2420 run. So `assert upload_statuses` on that fragment can be
+    **non-empty with zero real uploads**, and `all(status < 300)` passes on those `200`s too.
+    Always filter on the full **`/api/v2/support_assistant/attachments/`**. The merged
+    `test_support_assistant_attachment_send.py:196-202` (ELITEA-2421) uses the short fragment —
+    currently still green because the real `201` is present, but the assertion is weaker than it
+    reads. Same class as the URL-fragment vacuity lesson from ELITEA-2421's own review.
+
+54. **#1653 reproduces identically on the drop path** — the sent user bubble carries only the
+    prompt text, no attachment indicator. It is deliberately NOT re-asserted by ELITEA-2420's spec:
+    ELITEA-2421's spec owns that soft red, and duplicating it would add a second permanent red for
+    one defect with no new information.
+
+55. **Digest size, flagged not actioned (2026-08-22):** this file is ~475 lines and past the
+    comfortable single-read smell. A split into an index + per-subarea files (launcher/widget,
+    messaging, history, attachments, navigation) is due — deferred because
+    `support-assistant-w02` is in flight and several sibling AFS files reference this path.
+    Whoever analyses this surface first *after* the batch closes should do the split.
