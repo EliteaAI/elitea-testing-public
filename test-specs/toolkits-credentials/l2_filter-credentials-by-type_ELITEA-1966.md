@@ -206,6 +206,19 @@ plus `click_type_filter(type_label)` (click + wait for the filtered
    covers "a filter is active". Recorded so a future case that DOES need chip
    state knows it is a UI change, not a locator problem.
 
+### Implementer-phase addendum — discovered during automation
+
+3. **Render race on filter REMOVAL (not a defect — a wait-strategy fact).**
+   The list `GET` that follows a filter removal (chip toggle-off or
+   "Clear all") resolves *before* React has re-rendered the cards, so a
+   synchronous read immediately after `wait_for_network()` can legitimately
+   observe an EMPTY grid — this is exactly what the first implementation run
+   hit at step 5 (`got: []`). Settled deterministically in
+   `CredentialsListPage._settle_unfiltered_list()`: network settle **plus**
+   `entity_card.first.wait_for(state="visible")`. Never a sleep. The
+   *applying* direction (chip click → filtered list) did not show this — the
+   `type=`-predicated response wait plus network settle was sufficient.
+
 ## Blocked Steps
 None — all 5 case steps executed and observed live end-to-end on 2026-08-22.
 

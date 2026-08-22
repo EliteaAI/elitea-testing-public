@@ -449,7 +449,7 @@ class CredentialsListPage(BasePage):
             timeout=SEARCH_RESPONSE_TIMEOUT,
         ):
             self.type_filter_chip(type_label).click()
-        self.wait_for_network()
+        self._settle_unfiltered_list()
 
     def clear_all_type_filters(self) -> None:
         """Click the TYPES panel's 'Clear all' button and settle on the
@@ -464,7 +464,25 @@ class CredentialsListPage(BasePage):
             timeout=SEARCH_RESPONSE_TIMEOUT,
         ):
             self.tags_clear_all_button.click()
+        self._settle_unfiltered_list()
+
+    def _settle_unfiltered_list(self) -> None:
+        """Wait for the restored, unfiltered card list to actually render.
+
+        Removing a type filter resolves its list ``GET`` before React has
+        re-rendered the cards, so a synchronous read right after the response
+        can legitimately see an EMPTY grid (observed on the first run of
+        ELITEA-1966 — step 5 read ``[]``). Settling on the network plus the
+        first card's visibility is the deterministic signal, never a sleep.
+
+        Callers are the two "filter removed" paths, where the project is
+        known to hold at least the credentials the test itself seeded — so
+        "at least one card renders" is a safe settle condition here, and is
+        NOT a general-purpose list wait (see :meth:`reload_list`, which
+        deliberately does not wait for a card).
+        """
         self.wait_for_network()
+        self.entity_card.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
 
     def get_visible_type_badges(self) -> list[str]:
         """Return the type-badge text of every currently rendered card.

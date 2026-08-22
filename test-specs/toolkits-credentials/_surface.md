@@ -201,6 +201,11 @@ defects found in either.
 - **Chip selected-state is NOT assertable**: `StyledChip`'s `isSelected` is a
   styled-prop filtered out of the DOM (CSS background only) — no `data-*`, no
   `aria-pressed`. A future case needing it requires a UI change, not a locator.
+- **Removing a filter has a render race**: the follow-up list `GET` resolves
+  before the cards re-render, so a synchronous card read right after it can see
+  an EMPTY grid (hit on ELITEA-1966's first run). Settle on network **plus**
+  `entity-card` first-visible (`CredentialsListPage._settle_unfiltered_list()`).
+  The applying direction does not show it.
 - `CredentialsList.jsx`'s empty-project redirect explicitly short-circuits while
   a type filter is active (`hasTypeFilter`), so a zero-match filter does NOT
   bounce to `/credentials/create-credential` (unlike the zero-match SEARCH path,
