@@ -261,6 +261,34 @@ class SupportAssistantPage(BasePage):
     # (.agents/testing.md § Locator policy).
     HISTORY_ITEM_OPENABLE = '[data-testid="support-assistant-history-item"]:not([disabled])'
 
+    # ELITEA-2426 — expand-during-generation handles. All four testids added in
+    # the connected first-party repo EliteaAI/elitea_assistant
+    # (EliteaAI/elitea_assistant@0e3fcc1 on its ``automation/testids`` branch).
+    # The legacy :attr:`expand_button` / :attr:`collapse_button` fields above
+    # resolve the same toggle by ``aria-label`` (pre-policy tech debt #25/#42)
+    # and are left byte-identical for their existing callers.
+    expand_toggle_button = LocatorDescriptor(
+        testid="support-assistant-expand-button",
+        description="Widget header expand/collapse toggle (aria-label is 'Expand chat' in BOTH states)"
+    )
+
+    stop_generation_button = LocatorDescriptor(
+        testid="support-assistant-stop-button",
+        description="'Stop generation' button — rendered only while a reply is in flight"
+    )
+
+    status_message = LocatorDescriptor(
+        testid="support-assistant-status-message",
+        description="In-flight status line above the assistant bubble ('Starting up...', ...)"
+    )
+
+    # Expanded state is a ``data-*`` attribute on the element that already
+    # carries the widget testid — the shape .agents/testing.md § Locator policy
+    # requires (PR #581 ruling), never a state-switched testid value. Composed
+    # at call time from UPPER_CASE class constants, the sanctioned form.
+    WIDGET_EXPANDED = '[data-testid="support-assistant-widget"][data-expanded="true"]'
+    WIDGET_COMPACT = '[data-testid="support-assistant-widget"][data-expanded="false"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -1210,3 +1238,106 @@ class SupportAssistantPage(BasePage):
             The reply bubble's rendered text
         """
         return self.bubble_in(self.last_assistant_item()).inner_text()
+
+    # ------------------------------------------------------------------
+    # Expand-during-generation helpers (ELITEA-2426) — additive.
+    # ------------------------------------------------------------------
+
+    def expanded_widget(self):
+        """Locator matching the widget only while it is in full-view mode.
+
+        Reads the product-rendered ``data-expanded`` state attribute rather
+        than the legacy ``--expanded`` modifier class that
+        :meth:`is_fullview_mode` greps (kept byte-identical for its callers).
+
+        Returns:
+            Playwright Locator for the expanded widget
+        """
+        return self.page.locator(self.WIDGET_EXPANDED)
+
+    def compact_widget(self):
+        """Locator matching the widget only while it is in compact mode.
+
+        Returns:
+            Playwright Locator for the non-expanded widget
+        """
+        return self.page.locator(self.WIDGET_COMPACT)
+
+    @action("Toggle Support Assistant full view")
+    def toggle_fullview_via_testid(self, timeout: int = 10000):
+        """Click the header expand/collapse toggle using its testid.
+
+        Additive counterpart to the legacy :meth:`expand_to_fullview` /
+        :meth:`collapse_to_widget`, which bind the ``aria-label`` field and
+        then sleep 500 ms for the animation. No sleep here: the caller asserts
+        the product's own ``data-expanded`` state attribute instead, which
+        Playwright polls (the geometry is animated and would read a
+        mid-transition value — AFS § How this surface works, point 5).
+
+        Args:
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Toggling Support Assistant full view")
+        self.expand_toggle_button.click(timeout=timeout)
+
+    def assistant_message_items(self):
+        """Locator for every assistant message item in the conversation.
+
+        Composed from the existing :attr:`ASSISTANT_MESSAGE_ITEM` class
+        constant — no new handle. The plural counterpart to
+        :meth:`last_assistant_item`, for callers asserting a count delta.
+
+        Returns:
+            Playwright Locator for all ``data-role="assistant"`` items
+        """
+        return self.page.locator(self.ASSISTANT_MESSAGE_ITEM)
+
+    def get_assistant_message_item_count(self) -> int:
+        """Count the assistant message items currently rendered.
+
+        The item mounts as soon as the request is sent (before any content
+        exists), so this is an IDENTITY signal — "is it still the same single
+        message?" — never a reply-ready one. A fresh session already has the
+        greeting, so diff against a baseline.
+
+        Returns:
+            Number of assistant message items rendered
+        """
+        return self.assistant_message_items().count()
+
+    def get_last_assistant_text_or_empty(self) -> str:
+        """Rendered text of the newest assistant bubble, ``""`` when absent.
+
+        While a reply is in flight and a status message is showing, the bubble
+        is not rendered at all (``MessageItem.tsx``: ``showBubble = role ===
+        'user' || content || (!hasStatusMessage && isStreaming)``), so the
+        strict :meth:`get_last_assistant_text` would raise. This tolerant form
+        is what an in-flight snapshot needs: "no bubble yet" and "an empty
+        bubble" are the same observation — zero rendered characters.
+
+        Returns:
+            The newest assistant bubble's text, or ``""`` when none is rendered
+        """
+        bubble = self.bubble_in(self.last_assistant_item())
+        if bubble.count() == 0:
+            return ""
+        return bubble.inner_text()
+
+    @classmethod
+    def count_frames(cls, frames: list, event: str) -> int:
+        """How many *event* frames the page has SENT so far.
+
+        The protocol-level proof that a re-render did not re-issue the
+        request: one send must produce exactly one ``support_predict`` frame
+        for the whole flow.
+
+        Args:
+            frames: List returned by :meth:`capture_sent_socket_frames`
+            event: Socket.IO event name to count
+
+        Returns:
+            Number of matching event frames captured
+        """
+        return sum(
+            1 for frame in list(frames) if cls._decode_socket_frame(frame)[0] == event
+        )

@@ -161,24 +161,27 @@ fresh `git fetch origin` in **both** repos on 2026-08-22.
 |---|---|---|---|---|
 | 1 | Sidebar launcher | `sidebar-support-assistant-button` | EliteaUI — `on automation/testids only (awaiting human promotion to main)` | Step 1 |
 | 2 | Widget window | `support-assistant-widget` | elitea_assistant — `on automation/testids only` | Steps 1, 3, 6 |
-| 3 | **Expanded state** | **`testid needed`: add `data-expanded={expanded}`** to the element that already carries `support-assistant-widget` (`ChatWindow.tsx:71-72`); filter as `[data-testid="support-assistant-widget"][data-expanded="true"]` | `needs-adding` | Steps 3, 6 |
+| 3 | **Expanded state** | `[data-testid="support-assistant-widget"][data-expanded="true"]` — page-object constants `WIDGET_EXPANDED` / `WIDGET_COMPACT` | elitea_assistant — **ADDED during implementation**, `on automation/testids only` (EliteaAI/elitea_assistant@0e3fcc1, `ChatWindow.tsx`) | Steps 1, 3, 6 |
 | 4 | New chat | `support-assistant-new-chat-button` | elitea_assistant — `on automation/testids only` | Step 1 |
 | 5 | Message input | `support-assistant-message-input` | elitea_assistant — `on automation/testids only` | Step 2 |
 | 6 | Send button | `support-assistant-send-button` | elitea_assistant — `on automation/testids only` | Step 2 |
-| 7 | **Expand toggle** | **`testid needed`: `support-assistant-expand-button`** — `ChatHeader.tsx:129-134`, the `<button class="elitea-assistant-header-action" aria-label="Expand chat">` inside the `Tooltip` | `needs-adding` | Step 3 |
-| 8 | **Stop generation** | **`testid needed`: `support-assistant-stop-button`** — `MessageInput.tsx:298-306`, rendered only while `isStreaming` | `needs-adding` | Steps 2, 3, 4, 6 |
-| 9 | **Status message** | **`testid needed`: `support-assistant-status-message`** — `StatusMessage` rendered at `MessageItem.tsx:48`; live class today is `.elitea-assistant-status-message` | `needs-adding` | Steps 2, 4 |
+| 7 | **Expand toggle** | `support-assistant-expand-button` | elitea_assistant — **ADDED during implementation**, `on automation/testids only` (EliteaAI/elitea_assistant@0e3fcc1, `ChatHeader.tsx`) | Step 3 |
+| 8 | **Stop generation** | `support-assistant-stop-button` | elitea_assistant — **ADDED during implementation**, `on automation/testids only` (EliteaAI/elitea_assistant@0e3fcc1, `MessageInput.tsx`) | Steps 2, 3, 4, 6 |
+| 9 | **Status message** | `support-assistant-status-message` | elitea_assistant — **ADDED during implementation**, `on automation/testids only` (EliteaAI/elitea_assistant@0e3fcc1, `StatusMessage.tsx`) | Step 2 |
 | 10 | Message item (assistant) | `support-assistant-message-item` + `[data-role="assistant"]` (attribute already present, `MessageItem.tsx:25`) | elitea_assistant — `on automation/testids only` | Steps 2, 4, 5 |
 | 11 | Message bubble | `support-assistant-message-bubble` | elitea_assistant — `on automation/testids only` | Steps 5, 6 |
 | 12 | Copy button (reply-complete signal) | `support-assistant-message-copy-button` | elitea_assistant — `on automation/testids only` | Steps 1, 6 |
 
-**Four `needs-adding` rows (#3, #7, #8, #9)** — all in the **connected first-party repo**
+**Four rows (#3, #7, #8, #9) were `needs-adding` at analysis and were ADDED during implementation**
+(EliteaAI/elitea_assistant@0e3fcc1) — all in the **connected first-party repo**
 `../elitea_assistant` (canon #705: *not* a #579 third-party waiver), on its own `automation/testids`
 branch, attribute-only additions with zero functional impact. Row #3 is a `data-*` **state attribute**
 on an element that already has a stable testid — the shape `.agents/testing.md` § Locator policy
 requires (PR #581 ruling), never a state-switched testid. The existing page object reads the
-`--expanded` **CSS modifier class** instead (`support_assistant_page.py:289-303`, `is_fullview_mode()`,
-a legacy raw-class read); once `data-expanded` exists, prefer the attribute filter for this spec.
+`--expanded` **CSS modifier class** instead (`support_assistant_page.py`, `is_fullview_mode()`,
+a legacy raw-class read); it is left byte-identical for its callers, and the shipped spec uses the
+new `data-expanded` attribute filter. A **dev-server restart was required** before Vite served the
+four new attributes (digest quirk 44, now 6-for-6).
 
 **Non-DOM handle — WebSocket frames.** Event name `support_predict`
 (`chat.constants.ts:3`). Capture passively, armed before the first navigation:
@@ -227,7 +230,13 @@ predicts = [f for f in frames if '"support_predict"' in f]
    `support-assistant-send-button`.
    *Assert*: `support-assistant-stop-button` becomes visible (timeout 60 s) — generation is in
    flight; the status message is visible; assistant item count = baseline + 1; the in-flight
-   bubble's text is captured as `pre_expand_text` (empty today — captured, not assumed).
+   bubble's text is captured as `pre_expand_text` (captured, not assumed).
+   **Correction found at implementation time:** while a status message is showing, the bubble is
+   **not rendered at all** — `MessageItem.tsx:19`,
+   `showBubble = role === 'user' || content || (!hasStatusMessage && isStreaming)`. A strict
+   `inner_text()` read therefore RAISES rather than returning `""`. The shipped spec uses the
+   tolerant `get_last_assistant_text_or_empty()` helper ("no bubble yet" and "an empty bubble" are
+   the same observation: zero rendered characters).
 3. **Expand while in flight** — click `support-assistant-expand-button`.
    *Assert*: widget `data-expanded="true"`.
 4. **Not restarted** — immediately after the click, still inside the generation window:
@@ -241,6 +250,18 @@ predicts = [f for f in frames if '"support_predict"' in f]
    *Assert*: final bubble text is non-empty (`len > 100`) and still `.startswith(pre_expand_text)`;
    widget **still** `data-expanded="true"`; Stop button gone; total `support_predict` frames == **1**;
    assistant item count = baseline + 1; no console errors.
+
+---
+
+## Shipped Implementation (added 2026-08-22 by the implementer)
+
+| Artefact | Where |
+|---|---|
+| Spec | `automation/tests/ui/support_assistant/test_support_assistant_expand_during_streaming.py` |
+| Test id (Form C) | `tests.ui.support_assistant.test_support_assistant_expand_during_streaming.TestSupportAssistantExpandDuringStreaming.test_expand_during_generation_does_not_restart_response` |
+| Page-object additions | `SupportAssistantPage`: `expand_toggle_button`, `stop_generation_button`, `status_message`, `WIDGET_EXPANDED`, `WIDGET_COMPACT`, `expanded_widget()`, `compact_widget()`, `toggle_fullview_via_testid()`, `assistant_message_items()`, `get_assistant_message_item_count()`, `get_last_assistant_text_or_empty()`, `count_frames()` — all **additive**, zero removals |
+| Testids | EliteaAI/elitea_assistant@0e3fcc1 on `automation/testids` (4 attributes) |
+| Local run | GREEN 1/1, 86.96 s, 0 reruns |
 
 ---
 

@@ -810,3 +810,27 @@ Supersedes and explains quirk 5 ("no token streaming") with the mechanism, and a
     **72.5 s** and **86.6 s** for a "list all toolkits in detail" prompt; full spec runtime
     ~95-110 s headless. Use 240 s for the completion wait (copy-button delta), 60 s for the
     Stop-button appearance.
+
+**Resolved/added during ELITEA-2426 implementation (2026-08-22):** the four `needs-adding` testids
+quirks 71-73 record now EXIST on `elitea_assistant`'s `automation/testids`
+(EliteaAI/elitea_assistant@0e3fcc1) — `support-assistant-expand-button` (`ChatHeader.tsx`),
+`support-assistant-stop-button` (`MessageInput.tsx`), `support-assistant-status-message`
+(`StatusMessage.tsx`), and `data-expanded={String(expanded)}` on the element already carrying
+`support-assistant-widget` (`ChatWindow.tsx`). Page-object handles:
+`SupportAssistantPage.expand_toggle_button` / `.stop_generation_button` / `.status_message` and the
+class constants `WIDGET_EXPANDED` / `WIDGET_COMPACT`. Quirk 44 held again (**6-for-6**): a
+dev-server restart (`kill` vite PIDs, `rm -rf EliteaUI/node_modules/.vite`, restart with
+`VITE_ASSISTANT_LOCAL=1 npm run dev`) was required before Vite served them.
+
+75. **While a status message is showing, the assistant bubble is NOT RENDERED AT ALL** — it is not
+    an empty bubble. `MessageItem.tsx:19`:
+    `showBubble = message.role === 'user' || message.content || (!hasStatusMessage && message.isStreaming)`.
+    Because an in-flight assistant message has a `statusMessage` and no `content`, all three
+    disjuncts are false and the `support-assistant-message-bubble` node is absent. Consequence for
+    any spec sampling in-flight text: a strict `bubble.inner_text()` **raises** rather than
+    returning `""`. Use `SupportAssistantPage.get_last_assistant_text_or_empty()`
+    (added ELITEA-2426), which treats "no bubble yet" and "an empty bubble" as the same
+    observation — zero rendered characters. *(This corrects the ELITEA-2426 AFS's implied "the
+    in-flight bubble holds 0 characters": the analyst's `page.evaluate` probe read `textContent`
+    off a `querySelector` that returned `null`, which reads as `''` in JS but is an exception in
+    Playwright's strict locator API.)*
