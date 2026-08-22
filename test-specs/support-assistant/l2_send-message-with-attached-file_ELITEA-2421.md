@@ -101,8 +101,8 @@ Locators are **testid-only**, as class-level `LocatorDescriptor` fields
 | 4 | Send button | `support-assistant-send-button` | elitea_assistant | on `automation/testids` only |
 | 5 | Message item (`data-role` filter) | `support-assistant-message-item` | elitea_assistant | on `automation/testids` only |
 | 6 | Copy button (reply-complete signal) | `support-assistant-message-copy-button` | elitea_assistant | on `automation/testids` only |
-| 7 | **Attach file button** | **`support-assistant-attach-button`** | elitea_assistant | **needs-adding** |
-| 8 | **Attachment chip (composer)** | **`support-assistant-attachment-chip`** | elitea_assistant | **needs-adding** |
+| 7 | **Attach file button** | **`support-assistant-attach-button`** | elitea_assistant | ✅ added during implementation — EliteaAI/elitea_assistant@1960c8e on `automation/testids` only |
+| 8 | **Attachment chip (composer)** | **`support-assistant-attachment-chip`** | elitea_assistant | ✅ added during implementation — EliteaAI/elitea_assistant@1960c8e on `automation/testids` only |
 
 Rows 1-6 are already bound on `SupportAssistantPage` as `sidebar_launcher`, `widget`,
 `message_input_field`, `send_message_button`, `message_items`, `message_copy_buttons`,
@@ -212,6 +212,35 @@ sees sockets opened afterwards):
 **Timing.** Reply latency measured **73.7 s** this run — inside the surface's 31-135 s
 band. Use a **200 s** reply timeout (this case waits for an *upload plus* a
 document-grounded answer, which sits at the slow end). Estimated spec runtime **90-120 s**.
+
+---
+
+## Amended during implementation (2026-08-22, test-automation-engineer)
+
+1. **Rows 7-8 of § Handles Reference now EXIST** — added exactly where this AFS placed
+   them, as pure attribute adds (EliteaAI/elitea_assistant@1960c8e, `automation/testids`
+   only; a human cherry-picks to that repo's `main`). Bound as the additive class-level
+   fields `SupportAssistantPage.attach_file_button` / `.attachment_chips` with the helpers
+   `attach_file_via_testid()` / `get_attachment_chip_count()`.
+
+2. **Step 5's chip-count assertion is also the flow's synchronisation point**, and the
+   spec relies on that ordering rather than adding a wait. `handleSend`
+   (`chat.hook.ts:483-540`) awaits `startUpload` FIRST, then pushes the user message,
+   then calls `emitPredict`, and only then `clearAttachments()`. So
+   `expect(attachment_chips).to_have_count(0)` is a DOM signal that both the upload
+   response and the predict frame have already been observed — which is why the spec
+   reads the collected `upload_statuses` / `predict_frames` immediately after it, with no
+   sleep and no polling helper. (Source-confirmed this run; the AFS listed the four Step-5
+   observables without ordering them.)
+
+3. **Actual spec runtime: 57.9 s headless** (single live reply at the fast end of the
+   31-135 s band), against the 90-120 s estimate. The 200 s reply timeout is kept — the
+   band's variance, not its mean, is the risk.
+
+4. **The `img` element inside the sent user message is the user AVATAR**
+   (`MessageItem.tsx:35-43`, `alt="User avatar"`), not an attachment affordance. Noted
+   because the Step-6 failure's aria snapshot shows it and it could be misread as a
+   partial indicator on a future triage. **#1653 stands as written.**
 
 ## Cleanup
 

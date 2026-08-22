@@ -395,3 +395,49 @@ Source: `../elitea_assistant/src/components/chat/MessageInput.tsx`,
     *"Echo: …"* reply and its `"Elitea Assistant"` widget title (live title is **"ELITEA Support"**)
     both fail to reproduce. **Treat every finding from that 2026-08-18 support-assistant pass as
     unverified until re-run.**
+
+## Resolved/added during ELITEA-2421 implementation (2026-08-22, test-automation-engineer)
+
+**Both attachment testids in the table above now EXIST** — `EliteaAI/elitea_assistant@1960c8e`
+on its `automation/testids` branch (pure attribute adds; no new DOM node, hook, state or
+removal): `support-assistant-attach-button` (`MessageInput.tsx`) and
+`support-assistant-attachment-chip` (`AttachmentChip.tsx`). Not on that repo's `main` — a human
+cherry-picks. Bind via `SupportAssistantPage.attach_file_button` / `.attachment_chips` plus the
+helpers `attach_file_via_testid()` and `get_attachment_chip_count()`. The pre-policy
+`attach_button` `fallback=` field and the legacy `attach_file()` helper are untouched for their
+existing callers — the testid field is named `attach_file_button` precisely to avoid colliding
+with it.
+
+43. **The composer chip clearing is the whole flow's synchronisation point — no sleep, no
+    polling helper needed.** `handleSend` (`chat.hook.ts:483-540`) runs in a fixed order:
+    `await startUpload(...)` → push the user message into `setMessages` → `emitPredict(...)`
+    → `clearAttachments()`. `clearAttachments` is **last**, so
+    `expect(attachment_chips).to_have_count(0)` is a DOM-observable proof that the upload
+    response AND the outbound `support_predict` frame have already occurred. Read
+    `page.on("response")` / `ws.on("framesent")` collector lists immediately after that
+    assertion and they are deterministically populated. This is what makes an
+    "assert the network evidence" step honest without a timer — the alternative (polling a
+    Python list) has no auto-retry and would need a sleep.
+
+44. **Quirk 7/18 (stale Vite modules under OneDrive) reproduced a THIRD time** after adding
+    the two testids above — `curl` of the `@fs`-served `MessageInput.tsx` returned the
+    pre-edit module while the existing `support-assistant-message-input` testid in the SAME
+    file was served fine, so the diagnostic must grep for the NEW attribute specifically, not
+    just "does this module load". Same fix (kill `npm run dev` + `vite` + `esbuild` PIDs,
+    `rm -rf EliteaUI/node_modules/.vite`, restart, re-curl). Now 3 for 3 — **budget the
+    restart, do not treat it as a surprise.**
+
+45. **The connected repo runs a lint-staged pre-commit hook** (`prettier --write` +
+    `eslint --fix` on `src/**/*.{ts,tsx}`). It reformats staged files and re-stages them, so a
+    testid commit there may land differently formatted than written. Harmless, but re-read the
+    file after committing rather than assuming the diff you authored is the diff that shipped.
+
+46. **The assistant genuinely reads attached file content — re-confirmed** (quirk 39, second
+    independent run): planted token returned verbatim, full spec **57.9 s** headless including
+    the live reply. `#1584`'s "attachments are an unimplemented stub" claim is disproved twice
+    over now.
+
+47. **#1653's aria snapshot contains an `img` — it is the user AVATAR**
+    (`MessageItem.tsx:35-43`, `alt="User avatar"`, rendered for every user message), not a
+    partial attachment indicator. Anyone re-triaging #1653 off the failure output should not
+    read that node as evidence the feature is half-shipped.
