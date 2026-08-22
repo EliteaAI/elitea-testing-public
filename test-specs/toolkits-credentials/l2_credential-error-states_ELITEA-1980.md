@@ -258,11 +258,18 @@ None — all six steps executed live end-to-end on `localhost:5173`, project 399
   `set_access_token()` / `set_base_url()`, `CredentialsListPage.click_credential_card()`
   / `card_by_name()`, `CredentialDetailPage.wait_for_page_load()` /
   `get_credential_id_from_url()`, and the shared mixin's
-  `test_connection_button` / `success_toast()` / `FIELD_HELPER_TEXT`. The only
-  addition is a generic `field_helper_text(field_key)` on
+  `test_connection_button` / `success_toast()` / `FIELD_HELPER_TEXT`. Shipped
+  additions: a generic `field_helper_text(field_key)` on
   `CredentialFormFieldsMixin` (`secret_field_helper_text` stays byte-identical
-  for its ELITEA-1970 caller — additive-only on a shared-caller file), plus a
-  small `NotFoundPage` page object for `page-not-found`.
+  for its ELITEA-1970 caller — additive-only on a shared-caller file);
+  `FIELD_INPUT` + `field()` PROMOTED into that mixin from `CredentialCreatePage`
+  so the detail route can read a field's `aria-invalid` (inherited — every
+  existing caller unchanged; all 4 affected specs re-run green); and a
+  `NotFoundPage` page object for `page-not-found`, whose `open_route()` skips
+  `BasePage.navigate()`'s 30 s `networkidle` wait.
+- **`set_base_url()` APPENDS** (click + `press_sequentially`) and Github's Base
+  Url ships pre-filled — call `clear_base_url()` first, or step 3 posts
+  `https://api.github.comhttp://unreachable.example.invalid`. Cost one run.
 - Wrap **both** Test-connection clicks in `page.expect_response()` on
   `check_connection` — the round trip is 1–4 s and the assertion needs the body.
 - Wrap the step-5 navigation in `page.expect_response()` on
