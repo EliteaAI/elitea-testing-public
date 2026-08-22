@@ -77,8 +77,14 @@ grammar — the spec addresses it by schema key, so the row swap in divergence
 
 ## Test Data
 ### generate-per-test (created in test, deleted in teardown via the API)
-- **Display Name**: `autotest_cred_testconn_${timestamp}` — timestamped per
-  this feature's established collision-avoidance convention (ELITEA-1964/1976/1978).
+- **Display Name**: `autotest_cred_conn_${timestamp}` — timestamped per this
+  feature's established collision-avoidance convention (ELITEA-1964/1976/1978),
+  and deliberately SHORT: the Display Name input carries a real
+  `maxLength = MAX_NAME_LENGTH = 32` (`EliteaUI/src/common/constants.js`,
+  applied at `ToolBaseProperty.jsx:589` for `k === 'label'`), so a longer name
+  is **silently truncated by the field** — the create response then carries the
+  truncated `label`/`elitea_title` and every later lookup by name misses.
+  Found the expensive way on this case's first run (33-char name → 32 stored).
 - **Credential type**: `jira` (see divergence #1).
 - **Valid secret**: `settings.jira_api_key` + `settings.jira_username` +
   `settings.jira_base_url` — never logged, never asserted on, only typed.
@@ -208,6 +214,13 @@ None — all five steps executed live end-to-end on the Jira vehicle
 
 ## Automation Hints
 - `pytestmark`: `ui`, `credentials`, `p3`, `regression`, `new`.
+- Page objects: the three `CredentialForm.jsx` handles this case needs on the
+  DETAIL page (`test_connection_button`, `api_error_message`,
+  `FIELD_SECRET_INPUT`/`secret_native_input`) were declared only on
+  `CredentialCreatePage`; they are **promoted** into the shared
+  `CredentialFormFieldsMixin` (the `id_input` precedent) rather than duplicated,
+  so one testid still lives in exactly one file. Both page objects inherit the
+  mixin, so every existing caller is unchanged — re-run evidence in the PR.
 - The credential type + field key + credential values live in ONE
   module-level constant block, so `#1673`'s fix is a one-row re-point.
 - Use `page.expect_response()` on `check_connection` around BOTH clicks — the
