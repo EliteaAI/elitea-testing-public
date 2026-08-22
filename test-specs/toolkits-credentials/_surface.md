@@ -173,3 +173,74 @@ needed — verified by driving the flow live on `localhost:5173`, project 399):
   for presence AND absence assertions, and `CredentialDetailPage` gained the
   delete-menu + `DeleteEntityModal` handles plus `open_delete_dialog()` /
   `fill_delete_confirm_name()` / `confirm_delete(id)`.
+
+## Credentials LIST page — type filter + view toggle — confirmed live 2026-08-22 (ELITEA-1966 / ELITEA-1973)
+
+Both flows executed end-to-end against `localhost:5173`, project 399. No product
+defects found in either.
+
+### Right-hand TYPES panel (type filter, ELITEA-1966)
+
+- Rendered by the **shared** `Categories.jsx` via `CredentialsTypesPanel.jsx`.
+  Chips: `[data-testid="tags-panel-chip-{Label}"]`, clear-all:
+  `[data-testid="tags-panel-clear-all"]`, empty state:
+  `[data-testid="tags-panel-empty-state"]`. Chips + clear-all are **on `main`**.
+- **The panel is data-derived, not a fixed vocabulary.** Its source is
+  `GET /configurations/types/{project}` which returns ONLY types actually
+  present: with one `s3_api_credentials` credential the panel showed exactly one
+  chip. **A type-filter test MUST seed its own typed credentials** — Github /
+  Jira / Confluence simply do not exist in project 399 by default.
+- Chip label = `CredentialNameHelpers.extraCredentialName(type)`:
+  `github`→`Github`, `jira`→`Jira`, `confluence`→`Confluence`,
+  `s3_api_credentials`→`S3 api credentials`.
+- Click = direct activation (no debounce/Enter): mutates URL `?tags[]=Github`
+  (`useCredentialTypes`), then `useLoadAllCredentials` maps label→raw type and
+  re-fetches server-side with `&type=github`. Selection is a **toggle** —
+  clicking the selected chip clears it. `tags-panel-clear-all` renders ONLY
+  while ≥1 chip is selected, so it doubles as the "a filter is active" signal.
+- **Chip selected-state is NOT assertable**: `StyledChip`'s `isSelected` is a
+  styled-prop filtered out of the DOM (CSS background only) — no `data-*`, no
+  `aria-pressed`. A future case needing it requires a UI change, not a locator.
+- `CredentialsList.jsx`'s empty-project redirect explicitly short-circuits while
+  a type filter is active (`hasTypeFilter`), so a zero-match filter does NOT
+  bounce to `/credentials/create-credential` (unlike the zero-match SEARCH path,
+  defect #551).
+
+### Card/Table view toggle + table pagination (ELITEA-1973)
+
+- Toggle buttons are the **cross-page shared** `agent-table-view-button` /
+  `agent-card-view-button` (misnamed `agent-` prefix — elitea-testing-public#521),
+  both **on `main`**; state read via `aria-pressed`. URL-driven:
+  fresh nav has NO `?view=`, table → `?view=table`, back → `?view=cards`.
+- Table view for credentials renders exactly 5 columns:
+  `Name & Description | Type | Authors | Created | Actions`.
+- **Testids added during ELITEA-1973** (EliteaAI/EliteaUI@84446b15, on
+  `automation/testids`, awaiting human cherry-pick to `main`) — attribute-only:
+  - `credentials-table-column-header-{name,type,author,created_at,actions}`
+    (extends `DataTable.jsx`'s existing `columnTestIdPrefix` mcp-branch)
+  - `credentials-table-row-name` (mirrors `mcp-table-row-name` in
+    `DataTableNameCell.jsx`)
+  - `credentials-pagination-{page-info,prev-button,next-button}` (wires
+    `GridTablePagination`'s already-supported props, gated on `isCredentials`)
+  - Side effect of the shared prefix prop: `credentials-table-sort-icon-*` also
+    appears (unreferenced — same as the pre-existing `mcp-table-sort-icon-*`).
+  - `pageSizeSelectTestId` deliberately left unwired (nothing references it yet).
+- **Pagination needs >20 rows to be observable**: `GridTablePagination` disables
+  BOTH arrows when `total <= pageSize` (default 20). Verified with 22
+  credentials: `1 - 20 of 22` → Next → `21 - 22 of 22` → Prev → `1 - 20 of 22`.
+  Page changes do NOT put a page param in the URL.
+- Credentials table rows are **server-paged, not client-sliced**: `DataTable`'s
+  `visibleRows` skips the `.slice()` for `isCredentials`/`isToolkits`/`isMCPs`.
+- Cheapest honest seeding for a >20 precondition: `credential_api.create_credential`
+  with `{"type":"github","data":{"base_url":"https://api.github.com"}}` — no
+  token, no secret; ~20 POSTs run in a few seconds. Top up to 21 rather than
+  seeding a fixed count (read-only-by-default on whatever already exists).
+
+### Vite HMR caveat (cost 3 turns, 2026-08-22)
+
+After editing `../EliteaUI/src`, the dev server on this OneDrive-backed clone did
+**not** pick the change up on `page.goto()` alone — the transformed module was
+stale twice in a row. `touch`-ing the edited files and then doing an in-page
+`location.reload()` served the new module. If a freshly added testid is "missing"
+from the DOM, verify the served module first
+(`fetch('/src/…jsx?t='+Date.now())` and grep it) before doubting the edit.
