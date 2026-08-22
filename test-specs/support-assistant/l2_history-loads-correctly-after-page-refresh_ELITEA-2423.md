@@ -177,7 +177,9 @@ first one", which would silently tolerate a second-call 500.
   known dev-server noise (`Module "stream" has been externalized`, `@vite/client` /
   `socket.io` `ERR_CONNECTION_REFUSED`) did not fire in this headless run, but the spec should still
   filter to `type == "error"` and exclude those two URL patterns (digest quirks 6/23).
-- **No non-200 support_assistant call of any kind** — `NON-200 SA CALLS: []`.
+- **No non-200 support_assistant call of any kind** — `NON-200 SA CALLS: []`. Shipped in the spec as a
+  blanket `page.on("response")` collector over `/api/v2/support_assistant/` (any endpoint, any method),
+  asserted `== []` in the side-channel block.
 - Sending is a **WebSocket** frame, not a POST (digest quirk 8) — do not look for a POST.
 
 ---
@@ -334,6 +336,20 @@ conversation, and this suite leaves its data behind:
    Step 3.
 5. The whole thing **repeats**: second send + second reload → still 200, history item count unchanged —
    Step 6.
+6. The case's closing pass criterion, **three channels, all required** (side-channel block after Step 6):
+   no `/api/v2/support_assistant/` response of any endpoint or method was non-200, **and** no app console
+   error fired, **and** no uncaught page error fired. They are independent failure modes — an HTTP error
+   the widget swallows leaves the console clean, a client-side exception during history hydration leaves
+   every request 200, and an uncaught exception never reaches the `console` listener at all — so none
+   substitutes for another. (`pageerror` added in the same fix round: the row's own criterion is "no
+   errors", and a console-only listener does not see the uncaught-exception class.) **Shipped as a second `page.on("response")` collector** deliberately wider
+   than `LIST_URL_RE`/`DETAIL_URL_RE`: an endpoint this flow does not issue *today* erroring during
+   hydration is exactly what the criterion guards, and an enumerated pattern would not see it. The
+   collector records **every** support_assistant response, not only the failures, so the block asserts
+   `support_assistant_calls` is non-empty *before* filtering — a pattern that silently stops matching (API
+   version bump, path rename) would otherwise make the sweep vacuously green, which is the same failure
+   class as arming the list collector on the History click (§ How this surface actually works, fact 1).
+   *(Added in fix round 1 — the first implementation shipped only the console half of this row.)*
 
 ### Cleanup
 
@@ -372,7 +388,7 @@ including exploration overhead).
 | Step 5 — previous session listed **and can be opened** | condition holds | item count ≥ 1; click first `:not([disabled])` item → `GET /conversation/{uuid}` 200 + message list changes | Step 5 block | covered — "openable" means an **enabled** item; index 0 is the restored current conversation and is `disabled` by design |
 | Step 6 — repeat: send another message, refresh, history still loads | no errors | second reply, second reload, list responses all 200, history item count unchanged, panel reopens | Step 6 block | covered |
 | Expected final state | history still loads without errors | Steps 4-6 assertions + zero console errors | Steps 4-6 | covered |
-| Pass criterion "no errors in any step" | — | `NON-200 SA CALLS == []` + console-error assertion (filtered per digest quirks 6/23) | side-channel block | covered |
+| Pass criterion "no errors in any step" | — | **two independent checks, both shipped:** (a) blanket sweep — every `/api/v2/support_assistant/` response of any method/endpoint has status 200 (`non_200_calls == []`); (b) console-error assertion (filtered per digest quirks 6/23); (c) `pageerror` assertion — uncaught exceptions never reach the console listener | `allure.step("Side channels — …")`, the block after Step 6 — both asserted over the whole run, because the criterion is whole-run | covered |
 
 ### Axis 2 — observables asserted BEYOND the case
 

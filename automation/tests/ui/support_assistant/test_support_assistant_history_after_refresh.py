@@ -9,6 +9,10 @@ session from it, then repeats the send-and-refresh cycle — asserting that ever
 ``GET /api/v2/support_assistant/conversations/`` the reloads trigger comes back
 200 (never 500) and that the history panel keeps loading.
 
+The case's closing pass criterion ("no errors in any step") is asserted as two
+independent side channels over the whole run: no ``support_assistant`` HTTP call
+of any kind returned non-200, and no app console error was logged.
+
 Two source facts shape this spec (both confirmed live, AFS § How this surface
 actually works):
 
@@ -82,6 +86,14 @@ WIDGET_TITLE = "ELITEA Support"
 LIST_URL_RE = re.compile(r"/api/v2/support_assistant/conversations/?(?:\?|$)")
 DETAIL_URL_RE = re.compile(r"/api/v2/support_assistant/conversation/[^/?]+")
 
+# Every Support Assistant HTTP call, whatever the endpoint — the blanket sweep
+# behind the case's "no errors in any step" pass criterion. Deliberately wider
+# than the two patterns above: config/, conversations/ and conversation/{uuid}
+# are the ones this flow is known to issue, but a NEW endpoint erroring during
+# history hydration is exactly the regression the criterion exists to catch, and
+# a pattern enumerating today's endpoints would not see it.
+SUPPORT_ASSISTANT_URL_RE = re.compile(r"/api/v2/support_assistant/")
+
 # Vite HMR and the dev server's own polling socket log ERR_CONNECTION_REFUSED
 # entries unrelated to the app (surface digest quirk 23). Only these two are
 # excluded — every other console error still fails the test.
@@ -113,6 +125,12 @@ class TestSupportAssistantHistoryAfterRefresh:
             if msg.type == "error" and not _is_dev_server_noise(msg.text)
             else None,
         )
+        # An uncaught exception during history hydration never reaches the
+        # console listener, so the console channel alone would not see the very
+        # failure mode this case names. Both are registered before Step 1 — a
+        # listener armed mid-flow cannot observe the loads that precede it.
+        page_errors: list[str] = []
+        page.on("pageerror", lambda error: page_errors.append(str(error)))
 
         # Collect every conversation-LIST response, rather than waiting for one:
         # the request is issued by the page-load mount effect (twice under
@@ -124,6 +142,26 @@ class TestSupportAssistantHistoryAfterRefresh:
                 list_statuses.append(response.status)
 
         page.on("response", _record_list_response)
+
+        # Blanket sweep over EVERY support_assistant call the run makes (page
+        # loads, both reloads, both live replies, the history open and the
+        # session switch). The live analysis run recorded zero non-200 responses
+        # across the identical flow, so anything non-200 captured here is a real
+        # error — asserted in the side-channel block at the end.
+        #
+        # Every response is recorded, not just the failures, so the block can
+        # first prove the sweep SAW something: a filter that silently stops
+        # matching (an API version bump, a path rename) would otherwise turn
+        # this check vacuously green and take the case's pass criterion with it.
+        support_assistant_calls: list[tuple[int, str, str]] = []
+
+        def _record_support_assistant_response(response):
+            if SUPPORT_ASSISTANT_URL_RE.search(response.url):
+                support_assistant_calls.append(
+                    (response.status, response.request.method, response.url)
+                )
+
+        page.on("response", _record_support_assistant_response)
 
         support_page = SupportAssistantPage(page)
 
@@ -312,4 +350,27 @@ class TestSupportAssistantHistoryAfterRefresh:
             # ordered by creation rather than by last activity, so the session
             # opened in Step 5 is not the one restored (AFS § Known Deviations 3).
 
+        with allure.step(
+            "Side channels — no support_assistant call errored, console stayed clean"
+        ):
+            # The case's pass criterion is "no errors in any step", and that is
+            # three independent channels, not one: an HTTP error the UI swallows
+            # leaves nothing in the console, a client-side exception during
+            # history hydration leaves every request 200, and an uncaught
+            # exception never reaches the console listener at all. All three are
+            # asserted over the whole run, because the criterion is whole-run.
+            assert support_assistant_calls, (
+                "the support_assistant response sweep captured nothing at all — "
+                f"{SUPPORT_ASSISTANT_URL_RE.pattern} no longer matches the product's "
+                "endpoints, so the status check below would pass vacuously"
+            )
+            non_200_calls = [
+                f"{status} {method} {url}"
+                for status, method, url in support_assistant_calls
+                if status != 200
+            ]
+            assert non_200_calls == [], (
+                f"support_assistant HTTP calls did not all return 200: {non_200_calls}"
+            )
             assert console_errors == [], f"Unexpected console errors: {console_errors}"
+            assert page_errors == [], f"Uncaught page errors: {page_errors}"
