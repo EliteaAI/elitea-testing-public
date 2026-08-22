@@ -15,9 +15,8 @@ l1_credential-pin-unpin_ELITEA-1974.md, Concrete Handles).
 
 import logging
 
-from playwright.sync_api import Locator, Page, Response
-
 from config import settings
+from playwright.sync_api import Locator, Page, Response
 
 from .base_page import BasePage
 from .credentials_list_recovery import recover_from_credentials_list_crash
@@ -97,6 +96,86 @@ class CredentialsListPage(BasePage):
     # search within a single filtered card (get_type_badge()). Same pattern
     # as SkillsListPage.CARD_TAG_CHIP.
     ENTITY_CARD_TAG_CHIP_SELECTOR = '[data-testid="entity-card-tag-chip"]'
+
+    # Collection locator over EVERY visible card's type badge — the same
+    # testid ENTITY_CARD_TAG_CHIP_SELECTOR scopes per-card, read page-wide
+    # here so a type-filter assertion can prove EVERY rendered card matches
+    # the selected type (ELITEA-1966), not just one named card.
+    entity_card_tag_chip = LocatorDescriptor(
+        testid="entity-card-tag-chip",
+        description="Credential card type badge — collection locator, one per visible card",
+    )
+
+    # --- Right-hand TYPES filter panel (shared Categories.jsx) ------------
+    # The panel is DATA-DERIVED: GET /configurations/types/{project} returns
+    # only the types actually present in the project, so the chip set varies
+    # with the data (ELITEA-1966 AFS § Preconditions).
+    #
+    # Parameterized template — chip label filled in per-call, per the
+    # dynamic-testid convention (.claude/rules/page-objects.md). The label is
+    # the humanised type name the panel renders ("Github", "Jira",
+    # "S3 api credentials"), NOT the raw type key.
+    TYPE_FILTER_CHIP = '[data-testid="tags-panel-chip-{}"]'
+
+    tags_clear_all_button = LocatorDescriptor(
+        testid="tags-panel-clear-all",
+        description=(
+            "TYPES panel 'Clear all' button — rendered ONLY while at least one "
+            "type chip is selected, so its presence is the product's own "
+            "'a filter is active' signal (Categories.jsx showClearButton)"
+        ),
+    )
+
+    # --- Card / Table view toggle (shared, cross-page) --------------------
+    # Misnamed `agent-` prefix on a shared component — see
+    # elitea-testing-public#521; McpListPage uses the same two testids.
+    table_view_button = LocatorDescriptor(
+        testid="agent-table-view-button",
+        description="Switch to table view (shared toggle, misnamed — see elitea-testing-public#521)",
+    )
+    card_view_button = LocatorDescriptor(
+        testid="agent-card-view-button",
+        description="Switch to card view (shared toggle, misnamed — see elitea-testing-public#521)",
+    )
+
+    # --- Table view (?view=table) ----------------------------------------
+    # Testids added for ELITEA-1973 (EliteaAI/EliteaUI@84446b15): DataTable.jsx
+    # now passes columnTestIdPrefix='credentials-table' and the
+    # GridTablePagination testid props when cardType is a credentials list.
+    table_row_name = LocatorDescriptor(
+        testid="credentials-table-row-name",
+        description="Credential name cell in table-view rows — collection locator, one per row",
+    )
+
+    # Parameterized template for the five table column headers — same shape
+    # as McpListPage.TABLE_COLUMN_HEADER_TESTID. DataTable.jsx renders
+    # `data-testid="credentials-table-column-header-{field}"` on each header
+    # cell once columnTestIdPrefix is set for credentials.
+    TABLE_COLUMN_HEADER = '[data-testid="credentials-table-column-header-{}"]'
+
+    #: The five credentials table columns, in DOM order — (field, label).
+    #: Mirrors McpListPage.TABLE_COLUMNS. `field` is the column id
+    #: DataTable.jsx builds the header testid from.
+    TABLE_COLUMNS = (
+        ("name", "Name & Description"),
+        ("type", "Type"),
+        ("author", "Authors"),
+        ("created_at", "Created"),
+        ("actions", "Actions"),
+    )
+
+    pagination_page_info = LocatorDescriptor(
+        testid="credentials-pagination-page-info",
+        description="Table pagination info text — '{start} - {end} of {total}'",
+    )
+    pagination_prev_button = LocatorDescriptor(
+        testid="credentials-pagination-prev-button",
+        description="Table pagination 'previous page' arrow (disabled on the first page)",
+    )
+    pagination_next_button = LocatorDescriptor(
+        testid="credentials-pagination-next-button",
+        description="Table pagination 'next page' arrow (disabled on the last page)",
+    )
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -213,7 +292,7 @@ class CredentialsListPage(BasePage):
         Returns:
             The matched Playwright ``Response``.
         """
-        pattern = f"/social/pin/prompt_lib/"
+        pattern = "/social/pin/prompt_lib/"
         with self.page.expect_response(
             lambda r: pattern in r.url and r.url.rstrip("/").endswith(f"/configuration/{credential_id}")
         ) as response_info:
@@ -302,3 +381,166 @@ class CredentialsListPage(BasePage):
         if badge.count() == 0:
             return ""
         return badge.first.text_content() or ""
+
+    # ------------------------------------------------------------------
+    # Type filter (right-hand TYPES panel) — ELITEA-1966
+    # ------------------------------------------------------------------
+
+    def type_filter_chip(self, type_label: str) -> Locator:
+        """Return the TYPES-panel chip locator for *type_label*.
+
+        Args:
+            type_label: The humanised type name the panel renders
+                (``"Github"``, ``"Jira"``, ``"S3 api credentials"``) — the
+                product derives it from the raw type key via
+                ``CredentialNameHelpers.extraCredentialName``.
+        """
+        return self.page.locator(self.TYPE_FILTER_CHIP.format(type_label))
+
+    def click_type_filter(self, type_label: str, raw_type: str) -> Response:
+        """Click the *type_label* chip and wait for the re-filtered list GET.
+
+        Clicking a chip is a direct-activation control (no debounce, no
+        Enter): it rewrites the URL's ``tags[]`` param, which re-drives
+        ``useLoadAllCredentials`` with a server-side ``type=`` query
+        parameter. Waiting on that response — never a fixed sleep — is the
+        deterministic signal that the product has re-filtered.
+
+        Note the response predicate matches on *raw_type* (``github``), not
+        the chip label (``Github``): the UI maps label -> raw type against
+        ``GET /configurations/types/{project}`` before querying.
+
+        Args:
+            type_label: Chip label to click (e.g. ``"Github"``).
+            raw_type: The raw type key the request carries (e.g. ``"github"``).
+
+        Returns:
+            The matched Playwright ``Response``.
+        """
+        with self.page.expect_response(
+            lambda r: (
+                f"/configurations/configurations/{settings.elitea_project_id}" in r.url
+                and f"type={raw_type}" in r.url
+                and r.request.method == "GET"
+            ),
+            timeout=SEARCH_RESPONSE_TIMEOUT,
+        ) as response_info:
+            self.type_filter_chip(type_label).click()
+        response = response_info.value
+        # The React re-render lands a task tick after the response resolves —
+        # same race clear_search()/search() already handle.
+        self.wait_for_network()
+        return response
+
+    def remove_type_filter(self, type_label: str) -> None:
+        """Click an already-selected chip to toggle it OFF, then settle.
+
+        The de-selected state fires an UNFILTERED list GET (no ``type=``
+        param), so it cannot use :meth:`click_type_filter`'s predicate;
+        settle on the credentials-list GET instead.
+        """
+        with self.page.expect_response(
+            lambda r: (
+                f"/configurations/configurations/{settings.elitea_project_id}" in r.url
+                and "section=credentials" in r.url
+                and "type=" not in r.url
+                and r.request.method == "GET"
+            ),
+            timeout=SEARCH_RESPONSE_TIMEOUT,
+        ):
+            self.type_filter_chip(type_label).click()
+        self.wait_for_network()
+
+    def clear_all_type_filters(self) -> None:
+        """Click the TYPES panel's 'Clear all' button and settle on the
+        unfiltered list GET."""
+        with self.page.expect_response(
+            lambda r: (
+                f"/configurations/configurations/{settings.elitea_project_id}" in r.url
+                and "section=credentials" in r.url
+                and "type=" not in r.url
+                and r.request.method == "GET"
+            ),
+            timeout=SEARCH_RESPONSE_TIMEOUT,
+        ):
+            self.tags_clear_all_button.click()
+        self.wait_for_network()
+
+    def get_visible_type_badges(self) -> list[str]:
+        """Return the type-badge text of every currently rendered card.
+
+        Used to prove a type filter narrowed by TYPE (every badge matches),
+        not merely that the card count dropped.
+        """
+        badges = self.entity_card_tag_chip
+        return [(badges.nth(i).text_content() or "").strip() for i in range(badges.count())]
+
+    def get_card_names(self) -> list[str]:
+        """Return the display names of every currently rendered credential card."""
+        names = self.entity_card_name
+        return [(names.nth(i).text_content() or "").strip() for i in range(names.count())]
+
+    # ------------------------------------------------------------------
+    # Card / Table view toggle + table pagination — ELITEA-1973
+    # ------------------------------------------------------------------
+
+    def _wait_for_list_response(self, action) -> Response:
+        """Run *action* and wait for the credentials-list GET it triggers."""
+        with self.page.expect_response(
+            lambda r: (
+                f"/configurations/configurations/{settings.elitea_project_id}" in r.url
+                and "section=credentials" in r.url
+                and r.request.method == "GET"
+            ),
+            timeout=SEARCH_RESPONSE_TIMEOUT,
+        ) as response_info:
+            action()
+        response = response_info.value
+        self.wait_for_network()
+        return response
+
+    def switch_to_table_view(self) -> Response:
+        """Click the Table view button and wait for the table's list GET.
+
+        ``force=True`` mirrors :class:`McpListPage`'s handling of the same
+        shared MUI toggle group, whose ripple overlay can intercept a
+        pointer event mid re-render.
+        """
+        return self._wait_for_list_response(lambda: self.table_view_button.click(force=True))
+
+    def switch_to_card_view(self) -> Response:
+        """Click the Card view button and wait for the card list's GET."""
+        return self._wait_for_list_response(lambda: self.card_view_button.click(force=True))
+
+    def is_table_view_active(self) -> bool:
+        """Whether the Table view button reports itself pressed (aria-pressed)."""
+        return self.table_view_button.get_attribute("aria-pressed") == "true"
+
+    def is_card_view_active(self) -> bool:
+        """Whether the Card view button reports itself pressed (aria-pressed)."""
+        return self.card_view_button.get_attribute("aria-pressed") == "true"
+
+    def get_table_row_names(self) -> list[str]:
+        """Return the credential names of every currently rendered table row."""
+        rows = self.table_row_name
+        return [(rows.nth(i).text_content() or "").strip() for i in range(rows.count())]
+
+    def get_table_column_header(self, field: str) -> Locator:
+        """Return the table column-header locator for *field*.
+
+        *field* is the column id (``name``/``type``/``author``/``created_at``/
+        ``actions``) — see :attr:`TABLE_COLUMNS`.
+        """
+        return self.page.locator(self.TABLE_COLUMN_HEADER.format(field))
+
+    def get_page_info(self) -> str:
+        """Return the pagination footer text, e.g. ``'1 - 20 of 22'``."""
+        return (self.pagination_page_info.text_content() or "").strip()
+
+    def click_next_page(self) -> Response:
+        """Click the pagination 'next page' arrow and wait for its list GET."""
+        return self._wait_for_list_response(lambda: self.pagination_next_button.click())
+
+    def click_prev_page(self) -> Response:
+        """Click the pagination 'previous page' arrow and wait for its list GET."""
+        return self._wait_for_list_response(lambda: self.pagination_prev_button.click())
