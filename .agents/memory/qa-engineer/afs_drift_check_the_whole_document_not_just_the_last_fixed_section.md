@@ -72,3 +72,14 @@ independent of which section a prior finding happened to catch it in.
 CHANGES_REQUESTED, round 4. Doc-only fix (same shape as round 3) — zero
 functional/test-code risk, 2/2 independent live runs green both times.
 Posted: https://github.com/EliteaAI/elitea-testing-public/pull/643#issuecomment-5014729353
+
+## Recurrence — PR #1674 / ELITEA-1970 (2026-08-22, static review)
+
+Test-DATA flavour, not a handle: the implementer hit a real product cap
+(Display Name `maxLength=32` silently truncates) and amended § Test Data to a
+shorter generated name — but § Test Steps step 1 still spelled out the OLD,
+33-char name. The AFS now contradicts itself, and the stale copy is the exact
+value known to break, so the next re-point (this case is parked on #1673 to
+move back to Github) would copy the broken one. **Check: grep the AFS for the
+literal value you just saw amended — an amended constant almost always appears
+in two places (§ Test Data and § Test Steps).**
