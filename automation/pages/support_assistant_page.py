@@ -114,6 +114,99 @@ class SupportAssistantPage(BasePage):
         description="Messages container area"
     )
 
+    # ------------------------------------------------------------------
+    # Testid-only locators (policy-compliant — .agents/testing.md § Locator
+    # policy). Added for ELITEA-2418; the ``fallback=`` fields above are
+    # pre-policy tech debt (#25/#42) kept for their existing callers.
+    #
+    # Testid provenance: ``sidebar-support-assistant-button`` lives in
+    # EliteaUI (``src/[fsd]/widgets/sidebar-root/ui/SidebarBody.jsx``); the
+    # ``support-assistant-*`` ones live in the connected first-party repo
+    # ``EliteaAI/elitea_assistant`` (canon #705), aliased into the local dev
+    # server by ``VITE_ASSISTANT_LOCAL=1``.
+    # ------------------------------------------------------------------
+
+    sidebar_launcher = LocatorDescriptor(
+        testid="sidebar-support-assistant-button",
+        description="Sidebar Support Assistant launcher (the element owning onClick)"
+    )
+
+    widget = LocatorDescriptor(
+        testid="support-assistant-widget",
+        description="Support Assistant widget window"
+    )
+
+    widget_header_title = LocatorDescriptor(
+        testid="support-assistant-widget-title",
+        description="Support Assistant widget header title"
+    )
+
+    message_input_field = LocatorDescriptor(
+        testid="support-assistant-message-input",
+        description="Support Assistant message input textarea"
+    )
+
+    send_message_button = LocatorDescriptor(
+        testid="support-assistant-send-button",
+        description="Support Assistant Send message button"
+    )
+
+    message_items = LocatorDescriptor(
+        testid="support-assistant-message-item",
+        description="Support Assistant conversation message items (repeated)"
+    )
+
+    # ELITEA-2419 — copy-to-clipboard affordance on assistant responses.
+    # Testids live in the connected first-party repo EliteaAI/elitea_assistant
+    # (EliteaAI/elitea_assistant@216da01 on its ``automation/testids`` branch).
+    message_copy_buttons = LocatorDescriptor(
+        testid="support-assistant-message-copy-button",
+        description="Copy-to-clipboard button on a completed assistant response bubble"
+    )
+
+    message_bubbles = LocatorDescriptor(
+        testid="support-assistant-message-bubble",
+        description="Message bubble (user or assistant) inside a message item"
+    )
+
+    # Scoped / state-filtered forms of the testids above. UPPER_CASE class
+    # constants are the sanctioned shape for a selector that must be composed
+    # at call time (.agents/testing.md § Locator policy) — the copied state is
+    # a ``data-*`` attribute, never a second testid value.
+    MESSAGE_COPY_BUTTON = '[data-testid="support-assistant-message-copy-button"]'
+    MESSAGE_COPY_BUTTON_COPIED = '[data-testid="support-assistant-message-copy-button"][data-copied="true"]'
+    MESSAGE_COPY_BUTTON_IDLE = '[data-testid="support-assistant-message-copy-button"][data-copied="false"]'
+    ASSISTANT_MESSAGE_ITEM = '[data-testid="support-assistant-message-item"][data-role="assistant"]'
+    USER_MESSAGE_ITEM = '[data-testid="support-assistant-message-item"][data-role="user"]'
+    MESSAGE_BUBBLE = '[data-testid="support-assistant-message-bubble"]'
+
+    # ELITEA-2423 — conversation-history panel. Testids live in the connected
+    # first-party repo EliteaAI/elitea_assistant
+    # (EliteaAI/elitea_assistant@7413180 on its ``automation/testids`` branch),
+    # ``src/components/chat/ChatHeader.tsx``.
+    history_toggle_button = LocatorDescriptor(
+        testid="support-assistant-history-button",
+        description="Support Assistant conversation-history toggle button"
+    )
+
+    history_dropdown = LocatorDescriptor(
+        testid="support-assistant-history-dropdown",
+        description="Support Assistant conversation-history dropdown panel"
+    )
+
+    history_items = LocatorDescriptor(
+        testid="support-assistant-history-item",
+        description="Support Assistant conversation-history entries (repeated)"
+    )
+
+    # An item is rendered ``disabled`` exactly when it IS the currently-open
+    # conversation (``ChatHeader.tsx``:
+    # ``disabled={conversation.uuid === currentConversationId}``). The native
+    # attribute already encodes that state, so no second testid and no extra
+    # ``data-*`` attribute is needed — filter on it from a class constant
+    # (.agents/testing.md § Locator policy).
+    HISTORY_ITEM_OPENABLE = '[data-testid="support-assistant-history-item"]:not([disabled])'
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -524,3 +617,198 @@ class SupportAssistantPage(BasePage):
             input_locator = self.page.get_by_placeholder("Type a message...")
         input_locator.wait_for(state="visible", timeout=timeout)
         logger.info("Widget ready")
+
+    # ------------------------------------------------------------------
+    # Testid-based helpers (ELITEA-2418) — additive; the legacy helpers above
+    # keep their existing callers byte-identical.
+    # ------------------------------------------------------------------
+
+    @action("Open Support Assistant via sidebar launcher")
+    def open_widget_via_sidebar(self, timeout: int = 10000):
+        """Open the widget with a REAL pointer click on the sidebar launcher.
+
+        Distinct from :meth:`open_widget`, which JS-clicks the floating button.
+        A native click on ``button.elitea-assistant-button`` is intercepted by
+        the MUI Tooltip clone; the sidebar wrapper is the element that actually
+        carries ``onClick={onToggleAssistant}``, so clicking it is the genuine
+        user-equivalent gesture (no ``page.evaluate``).
+
+        Args:
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Opening Support Assistant widget via sidebar launcher")
+        self.sidebar_launcher.click()
+        self.widget_header_title.wait_for(state="visible", timeout=timeout)
+        self.message_input_field.wait_for(state="visible", timeout=timeout)
+        logger.info("Support Assistant widget opened")
+
+    def get_message_item_count(self) -> int:
+        """Count conversation message items via their testid.
+
+        The widget restores the previous session on open, so this is a
+        BASELINE to diff against — never expect an absolute value.
+
+        Returns:
+            Number of message items currently rendered
+        """
+        return self.message_items.count()
+
+    @action("Set Support Assistant input text")
+    def set_message_text(self, text: str):
+        """Replace the input content with ``text`` using real input events.
+
+        ``fill`` dispatches the events React's controlled ``<textarea>``
+        actually listens to; assigning ``value`` directly does not update
+        component state (see #1581 — a false defect produced exactly that way).
+
+        Args:
+            text: Text to place in the input (``""`` clears it)
+        """
+        self.message_input_field.fill(text)
+
+    # ------------------------------------------------------------------
+    # Copy-to-clipboard helpers (ELITEA-2419) — additive.
+    # ------------------------------------------------------------------
+
+    def get_copy_button_count(self) -> int:
+        """Count the copy-to-clipboard buttons currently rendered.
+
+        A copy button exists only on a COMPLETED assistant message
+        (``MessageItem.tsx``: ``!isStreaming && !isAnimating``), which makes
+        this count the most accurate "reply finished" signal on this surface.
+        A fresh chat already has one (the greeting), so this is always a
+        BASELINE to diff against — never an absolute expectation.
+
+        Returns:
+            Number of copy buttons rendered in the conversation
+        """
+        return self.message_copy_buttons.count()
+
+    def last_assistant_item(self):
+        """Locator for the most recent assistant message item.
+
+        Returns:
+            Playwright Locator for the last ``data-role="assistant"`` item
+        """
+        return self.page.locator(self.ASSISTANT_MESSAGE_ITEM).last
+
+    def last_user_item(self):
+        """Locator for the most recent user message item.
+
+        Returns:
+            Playwright Locator for the last ``data-role="user"`` item
+        """
+        return self.page.locator(self.USER_MESSAGE_ITEM).last
+
+    def copy_button_in(self, message_item):
+        """Locator for the copy button inside a given message item.
+
+        Args:
+            message_item: A message-item Locator (see :meth:`last_assistant_item`)
+
+        Returns:
+            Playwright Locator scoped to that item's copy button
+        """
+        return message_item.locator(self.MESSAGE_COPY_BUTTON)
+
+    def bubble_in(self, message_item):
+        """Locator for the message bubble inside a given message item.
+
+        Args:
+            message_item: A message-item Locator
+
+        Returns:
+            Playwright Locator scoped to that item's bubble
+        """
+        return message_item.locator(self.MESSAGE_BUBBLE)
+
+    @action("Send Support Assistant message")
+    def send_message_via_testid(self, text: str, timeout: int = 10000):
+        """Type ``text`` and click Send using the testid-based handles.
+
+        Additive counterpart to the legacy :meth:`send_message`, which builds
+        raw locators inside its body (pre-policy tech debt #25/#42) and is kept
+        byte-identical for its existing callers.
+
+        Args:
+            text: Message text to send
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Sending Support Assistant message: %s", text[:50])
+        self.set_message_text(text)
+        self.send_message_button.click(timeout=timeout)
+
+    # ------------------------------------------------------------------
+    # Navigation-persistence helpers (ELITEA-2422) — additive.
+    # ------------------------------------------------------------------
+
+    def user_message_item_with_text(self, text: str):
+        """Locator for the user message item(s) carrying *text*.
+
+        Composed from the existing :attr:`USER_MESSAGE_ITEM` class constant —
+        no new handle. Used as a same-session proof: after an in-app route
+        change the message a test sent BEFORE navigating must still be
+        rendered, which a reset session would not satisfy.
+
+        The widget restores whatever conversation the test user already has,
+        so a prior run's copy of *text* may already be present. Callers take a
+        baseline count first and assert a delta, never an absolute.
+
+        Args:
+            text: Substring to match against the item's rendered text
+
+        Returns:
+            Playwright Locator for the matching user message items
+        """
+        return self.page.locator(self.USER_MESSAGE_ITEM).filter(has_text=text)
+
+    # ------------------------------------------------------------------
+    # Conversation-history helpers (ELITEA-2423) — additive.
+    #
+    # The legacy :meth:`open_history`, :meth:`get_history_session_count` and
+    # :meth:`select_history_session` build ``button.elitea-assistant-history-item``
+    # locators inside their bodies (pre-policy tech debt #25/#42); they are left
+    # byte-identical for their existing callers.
+    # ------------------------------------------------------------------
+
+    @action("Open Support Assistant conversation history")
+    def open_history_via_testid(self, timeout: int = 10000):
+        """Open the history dropdown using the testid-based handles.
+
+        The caller is expected to have already asserted that
+        :attr:`history_toggle_button` is enabled — the button is ``disabled``
+        while ``history.length === 0`` (``ChatHeader.tsx``), which makes that
+        assertion the honest "the conversation list has loaded" wait on this
+        surface rather than a network or timing heuristic.
+
+        Args:
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Opening Support Assistant conversation history")
+        self.history_toggle_button.click(timeout=timeout)
+        self.history_dropdown.wait_for(state="visible", timeout=timeout)
+
+    def get_history_item_count_via_testid(self) -> int:
+        """Count the conversation entries listed in the history dropdown.
+
+        History is shared test-account data that other runs add to, so this is
+        a BASELINE to compare against itself across a refresh — never an
+        absolute expectation.
+
+        Returns:
+            Number of history entries currently rendered
+        """
+        return self.history_items.count()
+
+    def first_openable_history_item(self):
+        """Locator for the first history entry that can actually be opened.
+
+        Entries are ``disabled`` when they are the currently-open conversation,
+        so "open a previous session" means the first ``:not([disabled])`` entry
+        — clicking index 0 right after a page refresh is a no-op, because the
+        widget auto-restores the list's first conversation.
+
+        Returns:
+            Playwright Locator for the first enabled history entry
+        """
+        return self.page.locator(self.HISTORY_ITEM_OPENABLE).first
