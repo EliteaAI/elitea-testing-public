@@ -156,6 +156,30 @@ class SupportAssistantPage(BasePage):
         description="Support Assistant conversation message items (repeated)"
     )
 
+    # ELITEA-2419 — copy-to-clipboard affordance on assistant responses.
+    # Testids live in the connected first-party repo EliteaAI/elitea_assistant
+    # (EliteaAI/elitea_assistant@216da01 on its ``automation/testids`` branch).
+    message_copy_buttons = LocatorDescriptor(
+        testid="support-assistant-message-copy-button",
+        description="Copy-to-clipboard button on a completed assistant response bubble"
+    )
+
+    message_bubbles = LocatorDescriptor(
+        testid="support-assistant-message-bubble",
+        description="Message bubble (user or assistant) inside a message item"
+    )
+
+    # Scoped / state-filtered forms of the testids above. UPPER_CASE class
+    # constants are the sanctioned shape for a selector that must be composed
+    # at call time (.agents/testing.md § Locator policy) — the copied state is
+    # a ``data-*`` attribute, never a second testid value.
+    MESSAGE_COPY_BUTTON = '[data-testid="support-assistant-message-copy-button"]'
+    MESSAGE_COPY_BUTTON_COPIED = '[data-testid="support-assistant-message-copy-button"][data-copied="true"]'
+    MESSAGE_COPY_BUTTON_IDLE = '[data-testid="support-assistant-message-copy-button"][data-copied="false"]'
+    ASSISTANT_MESSAGE_ITEM = '[data-testid="support-assistant-message-item"][data-role="assistant"]'
+    USER_MESSAGE_ITEM = '[data-testid="support-assistant-message-item"][data-role="user"]'
+    MESSAGE_BUBBLE = '[data-testid="support-assistant-message-bubble"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -614,3 +638,75 @@ class SupportAssistantPage(BasePage):
             text: Text to place in the input (``""`` clears it)
         """
         self.message_input_field.fill(text)
+
+    # ------------------------------------------------------------------
+    # Copy-to-clipboard helpers (ELITEA-2419) — additive.
+    # ------------------------------------------------------------------
+
+    def get_copy_button_count(self) -> int:
+        """Count the copy-to-clipboard buttons currently rendered.
+
+        A copy button exists only on a COMPLETED assistant message
+        (``MessageItem.tsx``: ``!isStreaming && !isAnimating``), which makes
+        this count the most accurate "reply finished" signal on this surface.
+        A fresh chat already has one (the greeting), so this is always a
+        BASELINE to diff against — never an absolute expectation.
+
+        Returns:
+            Number of copy buttons rendered in the conversation
+        """
+        return self.message_copy_buttons.count()
+
+    def last_assistant_item(self):
+        """Locator for the most recent assistant message item.
+
+        Returns:
+            Playwright Locator for the last ``data-role="assistant"`` item
+        """
+        return self.page.locator(self.ASSISTANT_MESSAGE_ITEM).last
+
+    def last_user_item(self):
+        """Locator for the most recent user message item.
+
+        Returns:
+            Playwright Locator for the last ``data-role="user"`` item
+        """
+        return self.page.locator(self.USER_MESSAGE_ITEM).last
+
+    def copy_button_in(self, message_item):
+        """Locator for the copy button inside a given message item.
+
+        Args:
+            message_item: A message-item Locator (see :meth:`last_assistant_item`)
+
+        Returns:
+            Playwright Locator scoped to that item's copy button
+        """
+        return message_item.locator(self.MESSAGE_COPY_BUTTON)
+
+    def bubble_in(self, message_item):
+        """Locator for the message bubble inside a given message item.
+
+        Args:
+            message_item: A message-item Locator
+
+        Returns:
+            Playwright Locator scoped to that item's bubble
+        """
+        return message_item.locator(self.MESSAGE_BUBBLE)
+
+    @action("Send Support Assistant message")
+    def send_message_via_testid(self, text: str, timeout: int = 10000):
+        """Type ``text`` and click Send using the testid-based handles.
+
+        Additive counterpart to the legacy :meth:`send_message`, which builds
+        raw locators inside its body (pre-policy tech debt #25/#42) and is kept
+        byte-identical for its existing callers.
+
+        Args:
+            text: Message text to send
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Sending Support Assistant message: %s", text[:50])
+        self.set_message_text(text)
+        self.send_message_button.click(timeout=timeout)
