@@ -23,11 +23,12 @@ import time
 
 import allure
 import pytest
+from playwright.sync_api import expect
+
 from config import settings
 from pages.credential_create_page import CredentialCreatePage
 from pages.credential_detail_page import CredentialDetailPage
 from pages.credentials_list_page import CredentialsListPage
-from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 

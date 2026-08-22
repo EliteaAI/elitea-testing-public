@@ -15,8 +15,9 @@ l1_credential-pin-unpin_ELITEA-1974.md, Concrete Handles).
 
 import logging
 
-from config import settings
 from playwright.sync_api import Locator, Page, Response
+
+from config import settings
 
 from .base_page import BasePage
 from .credentials_list_recovery import recover_from_credentials_list_crash
@@ -262,9 +263,23 @@ class CredentialsListPage(BasePage):
         to appear (unlike :meth:`navigate`): the point of the reload may be to
         assert a card is GONE, and the project may legitimately be left with
         zero credentials. Still runs the shared ``#518`` crash recovery.
+
+        Settles on the credentials-list GET response rather than on
+        ``networkidle`` — this page keeps background traffic going after the
+        list itself has loaded, so ``wait_for_load_state("networkidle")``
+        timed out non-deterministically here (observed once on a first
+        implementation run, ELITEA-1964); the list fetch is the deterministic
+        signal that the reloaded page has real server data to render.
         """
-        self.page.reload(wait_until="domcontentloaded")
-        self.wait_for_network()
+        with self.page.expect_response(
+            lambda r: (
+                f"/configurations/configurations/{settings.elitea_project_id}" in r.url
+                and "section=credentials" in r.url
+                and r.request.method == "GET"
+            ),
+            timeout=SEARCH_RESPONSE_TIMEOUT,
+        ):
+            self.page.reload(wait_until="domcontentloaded")
         recover_from_credentials_list_crash(self.page)
 
     def get_type_badge(self, display_name: str) -> str:

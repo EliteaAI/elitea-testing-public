@@ -163,3 +163,13 @@ needed — verified by driving the flow live on `localhost:5173`, project 399):
   type + Display Name only. Base Url ships pre-filled and **Anonymous** is the
   default auth, so Save enables with just the name — no `GIT_HUB_TOKEN`, no
   `pytest.skip` path, no secret typed. Confirmed live (`POST` → 200).
+- **Resolved/added during ELITEA-1964 implementation:** `/credentials/all` does
+  NOT reliably settle to `networkidle` — `page.reload()` +
+  `wait_for_load_state("networkidle", 15s)` timed out once in two runs on a
+  fully-rendered page (background traffic keeps the network busy). Settle on the
+  list `GET .../configurations/configurations/{project}?...&section=credentials...`
+  response instead; `CredentialsListPage.reload_list()` now does exactly that.
+  `CredentialsListPage.card_by_name()` (name-filtered `entity-card`) was added
+  for presence AND absence assertions, and `CredentialDetailPage` gained the
+  delete-menu + `DeleteEntityModal` handles plus `open_delete_dialog()` /
+  `fill_delete_confirm_name()` / `confirm_delete(id)`.
