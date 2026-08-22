@@ -180,3 +180,46 @@ Bind via `SupportAssistantPage.message_copy_buttons` / `.message_bubbles` and th
     still served the pre-edit module. Same fix worked — kill the `npm run dev` + `vite` + `esbuild`
     PIDs, `rm -rf EliteaUI/node_modules/.vite`, restart, re-curl until the new attribute appears.
     **Budget one restart into every dispatch that adds a testid on this surface.**
+
+## In-app navigation & widget mount point (verified live 2026-08-22, ELITEA-2422 run)
+
+19. **The widget is mounted at APP-SHELL level, outside the routed subtree.**
+    `../EliteaUI/src/[fsd]/widgets/support-assistant/ui/SupportAssistant.jsx:33-44` renders
+    `<EliteaAssistant>` as a *sibling* of `children({ onToggleAssistant })`. Consequence,
+    confirmed live across `/chat` → `/agents/all` → `/chat`: React-Router navigation **neither
+    unmounts nor closes** the widget, and the conversation is **not re-fetched** — message
+    items, `data-role`s, texts and copy-button count are byte-identical before and after.
+    So any case text hedging *"or can be reopened via the launcher"* is weaker than the live
+    contract: assert the strong form (still open, **no reopen click**). Never write a
+    conditional reopen — a branch that never executes is untested code that masks a regression
+    to a routed mount.
+
+20. **Sidebar navigation is testid-addressable and already wired.** `BasePage.sidebar_menu_item(value)`
+    (`automation/pages/base_page.py:143-190`) uses the dynamic-testid template
+    `SIDEBAR_MENU_ITEM = '[data-testid="sidebar-menu-item-{}"]'`, fed by
+    `SidebarBody.jsx:272` `testId={\`sidebar-menu-item-${i.value}\`}`. Enumerated live, the
+    `value`s are: `chat` (→ `/chat`), `agents` (→ `/agents/all`), `pipelines`, `skills`,
+    `toolkits`, `mcps`, `credentials`, `applications`, `artifacts`. Plus
+    `sidebar-toggle`, `sidebar-create-button`, `sidebar-settings-button`,
+    `sidebar-agent-hub-button`, `sidebar-support-assistant-button`,
+    `sidebar-collapse-toggle-button`. **None of these are on EliteaUI `main`** (fresh
+    `git fetch origin` + two-stage grep, 2026-08-22) — `automation/testids` only.
+    After a sidebar click, wait on `page.wait_for_url("**/agents/all")`, **not**
+    `networkidle`: it is a client-side route change.
+
+21. **`#1581` is a false bug — do NOT let it block a case again.** It blocked the 2026-08-18
+    ELITEA-2422 analysis at Step 2 (`defect-found`, commit `a77917f1f`) purely because the
+    analyst typed with synthetic `input.value = …` (quirk 4). Re-verified non-reproducing a
+    **third** time in the 2026-08-22 run: real `fill` → `send button disabled: false`
+    immediately, both messages sent and answered. The issue is still OPEN awaiting a human
+    close. **Any support-assistant AFS that cites #1581 as blocking is stale — re-run it.**
+
+22. **Reply-latency sample 2026-08-22: 31.0 s and 31.0 s** for short prompts (fast end of the
+    33-135 s band in quirk 5/15). Keep the 180 s wait; the variance, not the mean, is the risk.
+
+23. **Console noise, extended.** Beyond the `Module "stream" has been externalized` warning
+    (quirk 6), the dev session accumulates `ws://localhost:5173/ @vite/client` and
+    `/socket.io/?EIO=4&transport=polling` **`ERR_CONNECTION_REFUSED`** errors — Vite HMR and
+    dev-server infrastructure, unrelated to the app. Filter console assertions to
+    `type == "error"` **and** exclude those two URL patterns. Every navigation and action of
+    the ELITEA-2422 run itself reported `0 errors`.

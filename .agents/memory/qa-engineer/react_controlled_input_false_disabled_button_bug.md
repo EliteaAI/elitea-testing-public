@@ -36,4 +36,17 @@ false bug that then justified a soft-assert + sanctioned-RED plan for a fully gr
 `handleSend`, which early-returns on empty trim. Live: empty/`" "`/`"   "` → disabled and zero
 POSTs on Enter; `"Hello"` and `"  hi  "` → enabled (the `disabled` attribute is removed).
 
+## Blast radius: a false bug is inherited, not re-checked (2026-08-22)
+
+#1581 did not stop at ELITEA-2418. The 2026-08-18 **ELITEA-2422** analysis (widget state
+preserved after in-app navigation) hit the same synthetic-typing wall, cited #1581 as a
+blocking defect, and committed a `defect-found` AFS (`a77917f1f`) — a fully working case
+parked for four days. Re-run 2026-08-22 with real typing: Send enabled instantly, both
+messages sent and answered, all 7 steps green.
+
+**Rule:** when you pick up a case whose prior AFS is `defect-found`, **re-verify the blocking
+defect first** — never inherit it. And a defect that already carries "does not reproduce"
+comments (as #1581 did, twice) is not a blocker for anyone. #1581 is still OPEN awaiting a
+human close; agents never close issues.
+
 Related: [[support_assistant_launcher_click_quirk]] · [[support_assistant_response_latency_and_no_streaming]]
