@@ -115,8 +115,11 @@ recorded so nobody re-derives it.
 - Selection is a **toggle** — clicking the selected chip again clears it.
 - Removing all filters restores the full, unfiltered list.
 - "Clear all" (`tags-panel-clear-all`) renders only while ≥1 type is selected.
-- No console errors at any step (excluding the already-filed, OPEN #518 /
-  #554 credential-list noise this suite already filters).
+- No console errors at any step. Only the #554 prompt_lib-404 filter is
+  applied (closed 2026-08-11 as a local-UI/test-client artifact, pinned to
+  that exact URL shape). The suite's `#518` `<CredentialsList>`-crash filter
+  is deliberately NOT reused: #518 is CLOSED as NOT REPRODUCIBLE, so that
+  signature is now a regression of the component under test.
 
 ## Coverage Map
 
@@ -231,5 +234,8 @@ None — all 5 case steps executed and observed live end-to-end on 2026-08-22.
   `type=`; then `wait_for_network()` before reading card state (the React
   re-render lands a tick after the response, exactly as
   `CredentialsListPage.search()` already handles).
-- Console filter: reuse this suite's existing `#518` / `#554` filters —
-  `/credentials/all` is loaded here too.
+- Console filter: reuse ONLY this suite's `#554` prompt_lib-404 filter —
+  `/credentials/all` is loaded here too. Do NOT copy forward the `#518`
+  `<CredentialsList>`-crash filter: #518 is CLOSED (NOT REPRODUCIBLE,
+  2026-08-11) and it would mask a crash of the component under test.
+  `tests/unit/test_credentials_console_filters_scope.py` pins this.

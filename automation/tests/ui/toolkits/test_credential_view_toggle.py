@@ -43,22 +43,15 @@ REQUIRED_CREDENTIAL_COUNT = DEFAULT_PAGE_SIZE + 1
 PAGE_INFO_RE = re.compile(r"^\s*(\d+)\s*-\s*(\d+)\s+of\s+(\d+)\s*$")
 
 
-def _is_known_518_warning(msg) -> bool:
-    """Filter the pre-existing, already-filed, OPEN CredentialsList.jsx
-    double-``onRefetch()`` crash (elitea-testing-public#518) — the filter
-    ``test_credential_create.py`` / ``test_credential_delete.py`` established."""
-    text = msg.text
-    return (
-        "Cannot refetch a query that has not been started yet" in text
-        or ("above error occurred" in text and "<CredentialsList>" in text)
-    )
-
-
 def _is_known_554_warning(msg) -> bool:
-    """Filter the OPEN, already-filed elitea-testing-public#554 — the
-    right-panel toolkit-types query can fire before ``useSelectedProjectId()``
-    resolves, collapsing its URL to ``.../toolkits/prompt_lib/`` (no id) and
-    404-ing. Pinned to that exact URL shape, not a blanket 404 ignore."""
+    """Filter elitea-testing-public#554 (CLOSED 2026-08-11, product-owner
+    verdict: reproducible only against a local UI / test-client artifact,
+    not a backend defect, no action items). The right-panel toolkit-types
+    query can fire before ``useSelectedProjectId()`` resolves, collapsing
+    its URL to ``.../toolkits/prompt_lib/`` (no id) and 404-ing. Filtering
+    it is a local-environment allowance, NOT a product-defect waiver — it
+    is pinned to that exact URL shape, never a blanket 404 ignore, and it
+    can match nothing this case renders or asserts."""
     location_url = (msg.location or {}).get("url", "")
     return "404" in msg.text and location_url.rstrip("/").endswith("/toolkits/prompt_lib")
 
@@ -88,11 +81,7 @@ class TestCredentialViewToggle:
         console_messages = []
 
         def _on_console(msg):
-            if (
-                msg.type in ("error", "warning")
-                and not _is_known_518_warning(msg)
-                and not _is_known_554_warning(msg)
-            ):
+            if msg.type in ("error", "warning") and not _is_known_554_warning(msg):
                 console_messages.append(msg)
 
         list_page = CredentialsListPage(page)
