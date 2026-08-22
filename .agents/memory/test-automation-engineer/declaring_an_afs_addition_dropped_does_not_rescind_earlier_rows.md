@@ -40,15 +40,23 @@ The asymmetry that makes this a repeat offender: adding an assertion touches one
 place (the code); dropping one touches five, and only the code half is visible
 in a diff review of the test.
 
-## Pinning it
+## Do NOT pin it with a unit test (round-2 blocker)
 
-`automation/tests/unit/test_afs_1968_dropped_assertion_consistency.py` pins the
-pair bidirectionally — while the AFS says DROPPED, no § Test Steps / § Coverage
-Map row may present the token as asserted, and the spec's executable code may
-not reference it either. Scoping matters: § Concrete Handles legitimately
-carries `{{secret.<name>}}` inside the option's own **testid**
-(`select-option-{{secret.<name>}}`), so the guard reads the coverage tables
-only. Restoring the assertion for real means deleting the declaration, which
-turns both halves of the guard off together.
+The obvious follow-up — a `tests/unit/` guard pinning the AFS and the spec to
+each other — was written in round 1 and **blocked in round 2**: it regexed the
+AFS markdown for the literal phrase `**Dropped Axis-2 addition (declared).**`
+and scanned its table rows. That is **doc-lint, not coverage**:
+
+- a reword, rename or move of the AFS reds the pytest suite with no product
+  cause, and the merge gate cannot classify that red (not sanctioned-RED — no
+  open defect — so it simply blocks);
+- the inverse branch is a trap: delete the declaration and the test starts
+  *demanding* a coverage row claiming the assertion;
+- it appears in no AFS Coverage Map, so it is an undeclared artifact.
+
+**The finding "the AFS over-claims an assertion" is closed by editing the AFS**
+(plus the spec docstring / allure labels that repeat it). Nothing else is owed.
+Real AFS/spec doc-lint, if the team wants it, is a canon `question` card and a
+lint step outside the product test suite — never a `tests/unit` test.
 
 Related: [[secret_field_vault_dropdown]]
