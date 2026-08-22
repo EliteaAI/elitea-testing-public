@@ -759,3 +759,54 @@ section covers what an entry actually *renders*. Source:
       visible, which a *stale* copy button from the previous conversation can satisfy while the list
       is still clearing; the exact count (quirk 10: a New chat has exactly one greeting) cannot be.
       Worth porting to any spec that takes a baseline right after a New chat.
+
+## Generation lifecycle — what "streaming" actually looks like (verified live 2026-08-22, ELITEA-2426 run)
+
+Supersedes and explains quirk 5 ("no token streaming") with the mechanism, and adds the in-flight handles.
+
+70. **The Support Assistant renders NO partial text, ever.** The assistant bubble holds **0 chars**
+    for the whole generation window, then jumps to the complete answer in a single sample. Measured
+    twice at 150 ms sampling: 0 → **474** chars (run 1), 0 → **707** chars (run 2), with the copy
+    button appearing in that same sample. Cause, read in source: this is an **agent**, so the backend
+    emits `agent_llm_chunk` → `chat.hook.ts:258-266` maps it to a **statusMessage only, never
+    content**, then one terminal `agent_response` assigns the whole body
+    (`:268-281`, `content: responseContent, isStreaming: false`). The token-append branch
+    (`chunk`/`AIMessageChunk` → `content: m.content + chunk`, `:238-250`) is unreachable here.
+    The client typewriter (`AnimatedMessage` + `useTypewriter`, 3 chars/16 ms ≈ 187 chars/s) is
+    **dead code on this surface** — `isAnimating` is only ever assigned `false` (`:71`, `:302`),
+    never `true`. **Any case asking to observe progressive/token arrival here is case-text drift**
+    (ELITEA-2426 → clarification #1662), not a product defect.
+
+71. **The two in-flight signals (use these, not text length):**
+    - **Stop generation button** replaces Send while `isStreaming` — `MessageInput.tsx:298-306`,
+      `button[aria-label="Stop generation"]`, **no testid** (`needs-adding`:
+      `support-assistant-stop-button`). Cleanest "generation in flight" gate; observed visible from
+      t≈3.9 s to completion.
+    - **Status message** — `StatusMessage` at `MessageItem.tsx:48`, class
+      `.elitea-assistant-status-message`, **no testid** (`needs-adding`:
+      `support-assistant-status-message`). Text observed: `Starting up...`, `Looking things up...`,
+      `Consulting knowledge base...`, `Writing response...` (NB the words are joined by **NBSP**,
+      `\xa0`, not spaces). **It cycles and revisits earlier values** — `Looking things up...` fired
+      three times in one 91 s run — so never assert progression or a specific string.
+
+72. **Expanding mid-generation is safe by construction, and it was verified live.** Expand is a pure
+    className toggle on the same node (`ChatWindow.tsx:71`), driven from `EliteaAssistant.tsx:78/145`;
+    the chat state lives above `ChatWindow` and `MessageItem` is `memo`'d, so nothing unmounts.
+    Live: expand at t=8.07 s (Stop visible, status `Starting up...`) → generation continued another
+    **82 s** and completed normally in full view; **exactly 1** `support_predict` frame for the whole
+    flow; assistant item count never changed; text length never decreased across 463 samples; widget
+    never flipped back to compact; 0 console errors.
+
+73. **Expand geometry is ANIMATED — assert the state signal, not pixels.** Immediately after the
+    click the widget measures `684×644`, settling `716×674` → `720×678` (viewport 1920×1080).
+    The digest's earlier `720×678` figure is the *settled* value only. The expand button's
+    `aria-label` stays `"Expand chat"` in both states (`ChatHeader.tsx:133`) — **no testid**
+    (`needs-adding`: `support-assistant-expand-button`). The widget's expanded state is currently
+    only a CSS modifier class (`elitea-assistant-window--expanded`); the policy-compliant shape is a
+    **`data-expanded` attribute** on the element that already carries `support-assistant-widget`
+    (`ChatWindow.tsx:71-72`) — specced as `needs-adding` by ELITEA-2426.
+
+74. **Generation is SLOW on this surface — plan timeouts accordingly.** Send→content measured
+    **72.5 s** and **86.6 s** for a "list all toolkits in detail" prompt; full spec runtime
+    ~95-110 s headless. Use 240 s for the completion wait (copy-button delta), 60 s for the
+    Stop-button appearance.
