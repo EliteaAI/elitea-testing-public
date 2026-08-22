@@ -210,6 +210,9 @@ def test_credential_error_states(page, credential_api):
             observed_messages.append(("Step 2 (invalid token)", auth_message))
 
         with allure.step(f"Step 3 — Set an unreachable Base Url ({UNREACHABLE_BASE_URL}) and Save"):
+            # set_base_url() appends (click + press_sequentially); the field already
+            # holds Github's schema default, so clear it first.
+            create_page.clear_base_url()
             create_page.set_base_url(UNREACHABLE_BASE_URL)
             assert create_page.base_url_input.input_value() == UNREACHABLE_BASE_URL, (
                 f"Base Url should read {UNREACHABLE_BASE_URL!r} after filling, got "

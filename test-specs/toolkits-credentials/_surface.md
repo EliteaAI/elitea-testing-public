@@ -667,5 +667,17 @@ an endpoint-specific filter.
 
 **Resolved/added during ELITEA-1980 implementation:** `CredentialFormFieldsMixin`
 gained `field_helper_text(field_key)` (generic; `secret_field_helper_text` left
-byte-identical for its ELITEA-1970 caller), and `pages/not_found_page.py`
-(`NotFoundPage`) was added for the shared 404 state.
+byte-identical for its ELITEA-1970 caller), `FIELD_INPUT` + `field()` were
+PROMOTED into that mixin from `CredentialCreatePage` (the detail route renders
+the same `ToolBaseProperty` fields; all 4 affected specs re-run green), and
+`pages/not_found_page.py` (`NotFoundPage`) was added for the shared 404 state —
+with `open_route()`, a `domcontentloaded`-only navigation, because
+`BasePage.navigate()` burns 30 s on a `networkidle` these routes never reach.
+
+**`CredentialCreatePage.set_base_url()` APPENDS, it does not replace** (click +
+`press_sequentially`) — and Github's Base Url ships pre-filled
+(`https://api.github.com`), so setting a different one without
+`clear_base_url()` first produces
+`https://api.github.comhttp://unreachable.example.invalid`. Cost one run on
+ELITEA-1980. Same shape as `set_username`/`set_api_key`; only
+`set_display_name()` does select-all + type.
