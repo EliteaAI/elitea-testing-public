@@ -33,6 +33,9 @@ attributes — every handle below is a grandfathered raw fallback, tech debt to 
 | Attach button | `button[aria-label="Attach file"]` | — |
 | Close | `button[aria-label="Close chat"]` | — |
 | Typing indicator | `.elitea-assistant-typing-indicator` (3 × `.elitea-assistant-typing-dot`) | — |
+| Message bubble (inside an item) | `.elitea-assistant-message--assistant` / `--user` | `support-assistant-message-bubble` |
+| Copy-to-clipboard button (assistant responses only) | `button[aria-label="Copy to clipboard"]` (parent `.elitea-assistant-tooltip-trigger`) | `support-assistant-message-copy-button` (+ `data-copied`) |
+| Tooltip popup (on hover) | `.elitea-assistant-tooltip` → text "Copy to clipboard" | — |
 
 ## Quirks that cost time
 
@@ -99,3 +102,46 @@ Not yet on either repo's `main` — a human cherry-picks. Bind to them via the c
    proof of "no message sent" — assert on outbound Socket.IO frames (`page.on("websocket")` +
    `ws.on("framesent")`, look for `predict` in the payload). Register the listener BEFORE
    navigation: `page.on("websocket")` only fires for sockets opened after it is attached.
+
+
+## Copy-to-clipboard on assistant responses (verified live 2026-08-22, ELITEA-2419 run)
+
+Source: `../elitea_assistant/src/components/shared/CopyButton.tsx`, rendered from
+`src/components/chat/MessageItem.tsx:73`.
+
+9. **The copy button is the response-COMPLETE signal.** `MessageItem.tsx:70-73` renders it only for
+   `role === 'assistant' && content && !isStreaming && !isAnimating`. Waiting on
+   `copy-button count > baseline` is the cheapest and most accurate "reply finished" wait on this
+   surface — better than a message-count delta, which fires while the message is still streaming.
+   `SupportAssistantPage.wait_for_response()` already uses it internally.
+
+10. **A "New chat" is NOT empty — it starts with 1 assistant greeting**, therefore 1 copy button.
+    Always capture a baseline count; never assert an absolute one (same shape as quirk 2).
+
+11. **The copy confirmation is an SVG PATH swap that self-reverts after exactly 2000 ms.**
+    `CopyIcon` → `CheckIcon`; `aria-label` (`"Copy to clipboard"`) and `className`
+    (`elitea-assistant-header-action`) are **unchanged**, and the **tooltip text never becomes
+    "Copied"** — it stays "Copy to clipboard" before and after the click. So there is no way to assert
+    the copied state today except by diffing SVG path data. That is why ELITEA-2419's AFS requests a
+    `data-copied="true|false"` state attribute on the button (`CopyButton.tsx:11-15` already holds the
+    `copied` state — the attribute only reflects it, no new hook/DOM). Assert it *immediately* after the
+    click; a clipboard read + paste round-trip can burn the 2 s window.
+
+12. **The clipboard receives the RAW MARKDOWN, not the rendered text.**
+    `navigator.clipboard.writeText(message.content)`. Observed: clipboard held
+    `**Need more help?**` and `---` where the bubble renders `<strong>` and `<hr>`. A
+    `clipboard == bubble.inner_text()` assertion **will fail**. Compare on a normalised basis (strip
+    `[*_`#]`, drop `---` lines, collapse whitespace) or anchor on the first paragraph.
+    The **paste round-trip is exact**, though: `Ctrl/Cmd+V` into the widget input reproduces the
+    clipboard byte-for-byte, so `to_have_value(clipboard_text)` is a safe strict assertion.
+
+13. **Clipboard permissions are already granted** — `automation/conftest.py:303` sets
+    `permissions=["clipboard-read", "clipboard-write"]` on every context. `BasePage.get_clipboard_text()`
+    (line 468) reads it. Clearing the clipboard before a copy click is precondition hygiene, not a
+    fidelity substitution — precedent `automation/pages/help_center_page.py:130`.
+
+14. **The user's own bubble has no copy button** — confirmed live, the user bubble is a bare
+    `<div class="… --user">text</div>` with no children. Useful absence assertion.
+
+15. Reply latency sample 2026-08-22: **69.6 s** for "Explain in one sentence what an AI agent is"
+    (in the digest's recorded 33-135 s band). Use a **180 s** wait on this surface; 120 s is tight.
