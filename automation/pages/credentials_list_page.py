@@ -15,9 +15,8 @@ l1_credential-pin-unpin_ELITEA-1974.md, Concrete Handles).
 
 import logging
 
-from playwright.sync_api import Locator, Page, Response
-
 from config import settings
+from playwright.sync_api import Locator, Page, Response
 
 from .base_page import BasePage
 from .credentials_list_recovery import recover_from_credentials_list_crash
@@ -243,6 +242,30 @@ class CredentialsListPage(BasePage):
         card = self.entity_card.filter(has_text=display_name)
         card.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         card.first.click()
+
+    def card_by_name(self, display_name: str) -> Locator:
+        """Return the credential-card locator filtered to *display_name*.
+
+        Chains ``.filter(has_text=...)`` off the ``entity-card`` testid
+        collection (same shape as :meth:`click_credential_card` /
+        :meth:`get_type_badge`) so callers can make presence AND absence
+        assertions — e.g. ``expect(card_by_name(n)).to_have_count(0)`` after
+        a delete (ELITEA-1964).
+        """
+        return self.entity_card.filter(has_text=display_name)
+
+    def reload_list(self) -> None:
+        """Reload ``/credentials/all`` in place and wait for it to settle.
+
+        Used where the case itself asks for a page reload (ELITEA-1964 step 7)
+        rather than a fresh navigation. Deliberately does NOT wait for a card
+        to appear (unlike :meth:`navigate`): the point of the reload may be to
+        assert a card is GONE, and the project may legitimately be left with
+        zero credentials. Still runs the shared ``#518`` crash recovery.
+        """
+        self.page.reload(wait_until="domcontentloaded")
+        self.wait_for_network()
+        recover_from_credentials_list_crash(self.page)
 
     def get_type_badge(self, display_name: str) -> str:
         """Return the type-badge text (e.g. "Github") on the card matching *display_name*.
