@@ -460,3 +460,82 @@ Once anything on the credential create form is touched, `page.goto()` /
 `reload()` raises a `beforeunload` dialog. Playwright auto-dismisses dialogs by
 default in the pytest suite, but an MCP-driven exploration session must handle
 it explicitly or the navigation hangs to timeout.
+
+## Credential "Test connection" — confirmed live 2026-08-22 (ELITEA-1970)
+
+Whole flow driven end-to-end on `localhost:5173`, project 399. **No product
+defects.** One test-environment finding (`#1673`) and one plausible-looking
+non-defect ruled out (secret round-trip, below).
+
+### The mechanism (type-agnostic)
+
+`CredentialForm.jsx` → `useCreateConfiguration.onTestConnection` →
+`POST /configurations/check_connection/{project}/{type}`:
+
+| Outcome | HTTP | Body | UI |
+|---|---|---|---|
+| success | **200** | `{"success": true}` | success toast `The connection is OK!` (`toast-alert[data-severity="success"]` + `toast-message`) |
+| failure | **400** | `{"success": false, "message": "<service reason>"}` | **inline** error on the offending field: `aria-invalid="true"` + helper text carrying the backend `message` **verbatim** |
+
+Which surface the failure lands on is decided by
+`credentialError.helpers.js#extractInformationFromCredentialError`: it maps
+the message onto schema keys (title/description/value/key substring match,
+plus `authentication` → any secret field, plus `url` → any `*url*` key). Any
+mapped key ⇒ per-field `validationErrorMessages` + `showValidation`. **Only
+when nothing maps** does it fall back to the global
+`credential-form-api-error-message` banner. An auth failure always maps, so
+that banner stays ABSENT for a bad token — assert accordingly.
+Note the mapping is deliberately loose: `Authentication failed: Invalid
+username or API key` lit up BOTH `api_key` and `username` on Jira (two
+identical helper texts) — count helper texts per FIELD, never globally.
+
+### Testid added during ELITEA-1970 (EliteaAI/EliteaUI@58955184, `automation/testids`, awaiting human cherry-pick to `main`)
+
+- `{field-testid}-helper-text` — `SecretField.jsx`, caller-derived from
+  `inputProps['data-testid']` exactly like the existing `-field` /
+  `-toggle-*` / `-refresh-secrets-button` derivations, wired through MUI v7
+  `slotProps.formHelperText`. Attribute-only (one `const`, one slotProps
+  entry) — no new node, no hook, no behaviour change. Benefits every secret
+  field in the app, not just credentials.
+- Still missing (nobody has needed it): the same handle on the **plain**
+  (non-secret) fields' helper text, which `ToolBaseProperty` renders through
+  its own `TextField`/`FormInput` path.
+
+### NOT a defect — the saved-secret round trip (ruled out, don't re-file)
+
+Saving a credential turns its secret into a vault template:
+`data.api_key == "{{secret.<uuid4hex>}}"` (`GET /configurations/configuration/{project}/{id}`).
+On the detail page that field renders in **password** mode showing the
+**bare uuid name** (not the template, and not Secret mode — the auto-created
+entry isn't in the visible vault, so `handleSwitchToSecretTab` doesn't take).
+Test connection then posts that bare name. It looks broken and is not: the
+backend resolves it — with valid Jira data the post-save detail-page test
+returns `{"success": true}` and the OK toast.
+
+### `GIT_HUB_TOKEN` is EXPIRED (`#1673`, `question`) — plan around it
+
+`.env.test`'s `GIT_HUB_TOKEN` returns **401** from `https://api.github.com/user`
+(both `Bearer` and `token` schemes). Consequences for this surface:
+
+- Any case needing a **successful** GitHub connection is not producible today;
+  ELITEA-1970 was executed and automated on **Jira** instead (declared in its AFS).
+- GitHub cases that only need the credential to EXIST are unaffected —
+  Anonymous auth still passes: `POST check_connection/{p}/github` with just
+  `{"base_url": "https://api.github.com"}` → `{"success": true}`.
+- The `JIRA_*` trio in `.env.test` **is valid** (verified via
+  `check_connection/{p}/jira` → `{"success": true}`) — it is the cheapest
+  honest "working credential" on this surface. `POSTMAN_*`, `CONFLUENCE_*`,
+  `ADO_*`, `BITBUCKET_*` exist too but were not validated.
+- Cheap one-call validity probe for any type, no browser:
+  `curl -XPOST -H "Authorization: Bearer $ELITEA_API_TOKEN" -d '<data>' \
+   "$ELITEA_API_BASE/configurations/check_connection/399/<type>"`.
+
+### Vite transform cache — worse than the caveat above (cost 3 turns)
+
+After editing `SecretField.jsx`, `touch` + in-page reload was **not** enough:
+a plain `GET /src/…/SecretField.jsx` returned the OLD transform while
+`GET …?t=<now>` returned the new one, so the browser (which requests without
+the query) kept running stale code and the new testid resolved 0 times.
+Fix that worked: kill the dev server, `rm -rf node_modules/.vite`, restart.
+Verify with `curl -s http://localhost:5173/src/... | grep -c <new-testid>`
+**without** a cache-busting query before blaming your edit.
