@@ -27,10 +27,9 @@ Usage::
 
 import allure
 import pytest
-from playwright.sync_api import expect
-
 from pages.chat_page import ChatPage
 from pages.support_assistant_page import SupportAssistantPage
+from playwright.sync_api import expect
 
 pytestmark = [
     pytest.mark.p2,
