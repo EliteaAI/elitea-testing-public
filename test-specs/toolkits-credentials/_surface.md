@@ -14,11 +14,51 @@ dropdown, credential-create form) on a new case; update after your own run.
 | 406 | Bugs & Features | team | READ only (403 on `configurations.configuration.create` / `models.applications.tools.create`) |
 | 25 | Elitea Development | team | READ only (same 403 pattern, not individually re-verified) |
 | 471 | Elitea Testing Team | team | READ only (confirmed via live 403) |
-| 400 | UI Testing | team | READ only (same 403 pattern, not individually re-verified) |
+| 400 | UI Testing | team | **WRITE — credentials CRUD confirmed** (see correction below) |
 
 Project switch (UI): `[data-testid="project-selector-trigger"]` → click →
 `[data-testid="select-option-{project_id}"]`. Switch persists across
 `page.goto()` within the same browser context (localStorage-backed).
+
+**CORRECTION (2026-08-22, ELITEA-1977):** the "400 = READ only" row above was
+never individually verified and was **wrong**. Live-probed all four team
+projects with a real `POST /configurations/configurations/{p}`:
+471 → **403**, 406 → **403**, 25 → **403**, **400 → 200** (credential created,
+probe deleted). Project **400 "UI Testing" is the ONE team project this
+identity can create credentials in** — and therefore the only project where a
+*project-scoped* create flow (`{"kind":"create_action","private":false}`) can
+be executed end-to-end. It is already wired as `settings.users_team_project_id`
+(`config.py:207`, `USERS_TEAM_PROJECT_ID=400` in `.env.test`) — use the setting,
+never a literal. Toolkit writes are permitted there too (`PUT` returns a 400
+validation error, not a 403). Caveat: project 400 contains **zero toolkits of
+any type** and only one (s3) credential, so any case needing a toolkit there
+must seed it (transit) — `POST /elitea_core/tools/prompt_lib/400` requires a
+valid `settings.github_configuration` dict, so seed a Github credential first.
+
+**Project-scope discriminator: `project_id`, NOT `shared`.** A credential
+created in team project 400 comes back `shared: false`, exactly like a private
+one — `shared` marks cross-project sharing, not scope. The dropdown's own
+classification is `private = isConfigurationPersonal`
+(`CredentialsSelect.jsx:249`), i.e. "row came from `personal_project_id`", so a
+project credential renders as `select-option-{"kind":"saved","elitea_title":
+"…","private":false}` and its `"private":true` twin does not exist (count 0).
+The saved list itself is `GET /configurations/configurations/{selectedProjectId}`
+(`useOriginalConfigurations`, `src/hooks/useConfigurations.js`) — membership-
+scoped, which is the mechanism behind "visible to all project members".
+
+**After clicking "Refresh the configurations" the option list RE-MOUNTS.** A
+synchronous `option.is_visible()` immediately after the refresh returns
+`False` while `text_content()` on the same locator resolves fine (auto-wait).
+Use web-first `expect(option).to_be_visible()` — observed live during
+ELITEA-1977.
+
+**Toolkit-form Save on a project-400 toolkit stayed DISABLED** (fresh load,
+after a credential selection, and after a Description edit); in one earlier
+probe where it was enabled, clicking it left the persisted
+`github_configuration` unchanged. Not a permission wall (API `PUT` → 400
+validation, not 403). Not chased — no case in this batch saves a toolkit; the
+interaction-discovery ladder was not exhausted, so it is a **note**, not a
+filed bug. Anyone writing a toolkit-form-save case starts here.
 
 **Why the project matters for `CredentialsSelect`:** `Create_Project_Title`
 option only renders when `selectedProjectId != personal_project_id`
