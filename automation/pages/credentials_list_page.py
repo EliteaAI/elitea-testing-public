@@ -244,6 +244,44 @@ class CredentialsListPage(BasePage):
         card.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         card.first.click()
 
+    def card_by_name(self, display_name: str) -> Locator:
+        """Return the credential-card locator filtered to *display_name*.
+
+        Chains ``.filter(has_text=...)`` off the ``entity-card`` testid
+        collection (same shape as :meth:`click_credential_card` /
+        :meth:`get_type_badge`) so callers can make presence AND absence
+        assertions — e.g. ``expect(card_by_name(n)).to_have_count(0)`` after
+        a delete (ELITEA-1964).
+        """
+        return self.entity_card.filter(has_text=display_name)
+
+    def reload_list(self) -> None:
+        """Reload ``/credentials/all`` in place and wait for it to settle.
+
+        Used where the case itself asks for a page reload (ELITEA-1964 step 7)
+        rather than a fresh navigation. Deliberately does NOT wait for a card
+        to appear (unlike :meth:`navigate`): the point of the reload may be to
+        assert a card is GONE, and the project may legitimately be left with
+        zero credentials. Still runs the shared ``#518`` crash recovery.
+
+        Settles on the credentials-list GET response rather than on
+        ``networkidle`` — this page keeps background traffic going after the
+        list itself has loaded, so ``wait_for_load_state("networkidle")``
+        timed out non-deterministically here (observed once on a first
+        implementation run, ELITEA-1964); the list fetch is the deterministic
+        signal that the reloaded page has real server data to render.
+        """
+        with self.page.expect_response(
+            lambda r: (
+                f"/configurations/configurations/{settings.elitea_project_id}" in r.url
+                and "section=credentials" in r.url
+                and r.request.method == "GET"
+            ),
+            timeout=SEARCH_RESPONSE_TIMEOUT,
+        ):
+            self.page.reload(wait_until="domcontentloaded")
+        recover_from_credentials_list_crash(self.page)
+
     def get_type_badge(self, display_name: str) -> str:
         """Return the type-badge text (e.g. "Github") on the card matching *display_name*.
 

@@ -192,3 +192,10 @@ None — all 7 case steps executed live end-to-end, all passed.
   once and wait on the DELETE response, not on a fixed delay.
 - After confirming, the app performs a client-side `navigate(..., {replace:true})`
   back to `/credentials/all` — wait on the URL, not on network idle alone.
+- **`/credentials/all` does not reliably reach `networkidle`** (implementation
+  finding, ELITEA-1964): a `page.reload()` + `wait_for_load_state("networkidle",
+  15s)` timed out on one of two implementation runs while the page itself was
+  fully rendered. Step 7's reload settles on the credentials-list
+  `GET .../configurations/configurations/{project}?...&section=credentials...`
+  response instead (`CredentialsListPage.reload_list()`), which is the
+  deterministic signal that the reloaded page has real server data.
