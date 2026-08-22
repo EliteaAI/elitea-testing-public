@@ -120,3 +120,46 @@ NOT a blank/empty field, it's a red mismatched-value + helper-text pair.
   dropdown) — none are locked to Raw-JSON-only. Left OPEN (not closed by
   this analyst — closure is human-only per `.agents/profile.md`); flagged
   as a note for the report so a human can verify + close.
+
+## Credential DELETE flow (detail page three-dot menu) — confirmed live 2026-08-22 (ELITEA-1964)
+
+Full path, all testids **pre-existing on `main`** (no `add-data-testid` work
+needed — verified by driving the flow live on `localhost:5173`, project 399):
+
+```
+/credentials/all/{id}
+  [data-testid="controls-menu-button"]            → opens [data-testid="controls-menu"]
+    [data-testid="pin-toggle-credential-menuitem"]  "Pin to top"
+    [data-testid="delete-credentials-menuitem"]     "Delete"      ← auto-derived by DotMenu.jsx
+                                                                    from item key 'delete-credentials'
+  → [data-testid="delete-confirm-dialog"]          (shared DeleteEntityModal.jsx)
+      delete-confirm-title          "Delete confirmation"
+      delete-confirm-message        "Are you sure to delete the {name}? Enter the name to complete the action."
+      delete-confirm-entity-name    "{name}"
+      delete-confirm-name-input     ← MUI TextField WRAPPER div, not the <input>
+      delete-confirm-button         disabled until the typed name === entity name exactly
+      delete-confirm-cancel-button
+```
+
+- **Type-to-confirm is mandatory here**: `CredentialsControls.jsx` sets
+  `shouldRequestInputName: true` on the Delete item, so the confirm button
+  stays disabled until the exact Display Name is typed.
+- **`skipConfirmation` escape hatch:** `DotMenu.jsx` calls
+  `useDeleteConfirmationDisabled()`, which reads the project secret
+  `disable_confirmation_delete_mode`. If that secret exists **and** equals
+  `"true"`, the dialog is **skipped entirely** and delete fires immediately.
+  Not set on project 399 today (dialog confirmed rendering), but any test
+  asserting the dialog depends on it staying unset.
+- **Network:** `DELETE /configurations/configuration/{project}/{id}` → **204**
+  (singular `configuration` segment; the plural one is the list endpoint).
+  Then the app `navigate(..., {replace:true})`s back to `/credentials/all`.
+- **Known defect `#1666`** (filed 2026-08-22 by the ELITEA-1964 pass, sibling of
+  `#1330`): immediately after the 204 the app re-fetches the deleted id —
+  `GET /configurations/configuration/{project}/{id}` → **404**, a visible
+  console error inside the happy path. Cosmetic; any "no console errors"
+  side-channel over a delete flow needs an endpoint-specific filter linked to
+  `#1666`.
+- **Cheapest honest credential to create for a delete/cleanup case:** Github
+  type + Display Name only. Base Url ships pre-filled and **Anonymous** is the
+  default auth, so Save enables with just the name — no `GIT_HUB_TOKEN`, no
+  `pytest.skip` path, no secret typed. Confirmed live (`POST` → 200).
