@@ -205,8 +205,6 @@ class SupportAssistantPage(BasePage):
     # attribute already encodes that state, so no second testid and no extra
     # ``data-*`` attribute is needed — filter on it from a class constant
     # (.agents/testing.md § Locator policy).
-    HISTORY_ITEM = '[data-testid="support-assistant-history-item"]'
-    HISTORY_ITEM_CURRENT = '[data-testid="support-assistant-history-item"][disabled]'
     HISTORY_ITEM_OPENABLE = '[data-testid="support-assistant-history-item"]:not([disabled])'
 
     def __init__(self, page: Page):

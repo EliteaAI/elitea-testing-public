@@ -195,9 +195,9 @@ fresh `git fetch origin` in **both** repos on 2026-08-22 (two-stage grep, `-i` +
 | 4 | Send button | `support-assistant-send-button` | `on automation/testids only` (elitea_assistant) |
 | 5 | Message item | `support-assistant-message-item` (+ `data-role="user"|"assistant"`) | `on automation/testids only` (elitea_assistant) |
 | 6 | Copy button (reply-complete signal) | `support-assistant-message-copy-button` | `on automation/testids only` (elitea_assistant) |
-| 7 | **History button** | **`testid needed: support-assistant-history-button`** | `needs-adding` |
-| 8 | **History dropdown** | **`testid needed: support-assistant-history-dropdown`** | `needs-adding` |
-| 9 | **History item (repeated)** | **`testid needed: support-assistant-history-item`** | `needs-adding` |
+| 7 | **History button** | `support-assistant-history-button` | **added during implementation** — EliteaAI/elitea_assistant@7413180 on `automation/testids` |
+| 8 | **History dropdown** | `support-assistant-history-dropdown` | **added during implementation** — EliteaAI/elitea_assistant@7413180 on `automation/testids` |
+| 9 | **History item (repeated)** | `support-assistant-history-item` | **added during implementation** — EliteaAI/elitea_assistant@7413180 on `automation/testids` |
 
 Verification output (pasted, not summarised):
 
@@ -230,10 +230,14 @@ already carries the native `disabled` attribute, derived from `conversation.uuid
 (`ChatHeader.tsx:113`). Filter on it from a class constant:
 
 ```python
-HISTORY_ITEM          = '[data-testid="support-assistant-history-item"]'
-HISTORY_ITEM_CURRENT  = '[data-testid="support-assistant-history-item"][disabled]'
 HISTORY_ITEM_OPENABLE = '[data-testid="support-assistant-history-item"]:not([disabled])'
 ```
+
+**Shipped:** only `HISTORY_ITEM_OPENABLE` was added. The plain and `[disabled]` variants had no call
+site on the executed path — the unfiltered form is already served by the `history_items`
+`LocatorDescriptor`, and nothing needs to address the *current* entry — so shipping them would have
+been dead code. The testid itself is still referenced on the executed path (count assertions +
+the openable filter), so it is not an orphan.
 
 That is testid-keyed locating with a native-attribute filter — the sanctioned shape, and it costs the
 product nothing.
@@ -256,10 +260,15 @@ HISTORY_ITEM_CURRENT  = '[data-testid="support-assistant-history-item"][disabled
 HISTORY_ITEM_OPENABLE = '[data-testid="support-assistant-history-item"]:not([disabled])'
 ```
 
-plus thin helpers: `open_history_via_testid()`, `get_history_item_count_via_testid()`,
-`open_first_openable_history_session()` (clicks `HISTORY_ITEM_OPENABLE` first match),
-`close_history_dropdown()` (click-outside — the dropdown closes on outside pointerdown,
-`ChatHeader.tsx:36-46`).
+plus thin helpers. **Shipped names** (implementation, 2026-08-22): `open_history_via_testid()`,
+`get_history_item_count_via_testid()`, and `first_openable_history_item()` — which returns the
+`HISTORY_ITEM_OPENABLE` first-match *locator* rather than clicking it, so the spec can wrap the click in
+`page.expect_response(...)` to capture the `GET /conversation/{uuid}` status. `close_history_dropdown()`
+was **not** shipped: selecting an entry closes the dropdown by itself, so a click-outside helper had no
+call site.
+
+Shipped field names avoid colliding with the pre-policy `history_button` fallback field (kept
+byte-identical for its callers): `history_toggle_button`, `history_dropdown`, `history_items`.
 
 Already available and reusable as-is: `open_widget_via_sidebar()`, `set_message_text()`,
 `send_message_via_testid()`, `get_copy_button_count()`, `get_message_item_count()`,
@@ -294,11 +303,11 @@ this case exists to catch.
 
 | Wait for | Condition |
 |---|---|
-| History list loaded after a (re)load | `expect(history_button).to_be_enabled()` — it is `disabled` until `history.length > 0` (`ChatHeader.tsx:100`). This IS the case's observable, and it is the cheapest honest wait on this surface. |
+| History list loaded after a (re)load | `expect(history_toggle_button).to_be_enabled()` — it is `disabled` until `history.length > 0` (`ChatHeader.tsx:100`). This IS the case's observable, and it is the cheapest honest wait on this surface. **Placement corrected at implementation time:** the button lives in the widget *header*, which is not mounted while the widget is closed — and the widget does not auto-open after a reload (quirk 29). So this wait cannot sit immediately after `page.reload()` (it fails `element(s) not found`); it belongs *after* the widget is reopened, i.e. in the Step 4 block. The reload itself is settled on `expect(sidebar_launcher).to_be_visible()` (the app shell is back), and the list statuses — collected by the page-level `response` handler — are asserted in Step 4 where the case puts them. |
 | Widget open | `expect(widget).to_be_visible()` |
 | Assistant reply complete | `expect(message_copy_buttons).to_have_count(baseline + 1, timeout=180_000)` — the copy button renders only when `!isStreaming && !isAnimating` (digest quirks 9/17). Measured **32.3 s / 31.8 s** this run; the 33-135 s band still holds, keep **180 s**. |
 | History dropdown open | `expect(history_dropdown).to_be_visible()` |
-| Session switched (Step 5) | `expect(message_items).not_to_have_count(count_before)` — the list swaps (14 → 4 live). Pair it with the `GET /conversation/{uuid}` 200 capture. |
+| Session switched (Step 5) | **Shipped, corrected:** selecting an entry CLEARS the message list before the fetched conversation renders, so the list is transiently empty and any read taken in that window sees 0 (this cost one rerun — a baseline of 0 made Step 6 expect 1 copy button where 4 were correct). Settle first with `expect(message_copy_buttons).not_to_have_count(0)` — every conversation holds at least the assistant greeting — then assert the swap with `expect(user_message_item_with_text(MSG1)).to_have_count(0)`, which is deterministic where `not_to_have_count(count_before)` is not (another conversation may hold the same number of messages) and which the transient empty list can no longer satisfy. Paired with the `GET /conversation/{uuid}` 200 capture via `page.expect_response`. |
 
 No `wait_for_timeout`, no `networkidle` (the reload is a real navigation, but the assistant's own fetches
 resolve independently — gate on the history button, not on the network being quiet).

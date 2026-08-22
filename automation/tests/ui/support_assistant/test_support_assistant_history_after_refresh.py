@@ -166,19 +166,10 @@ class TestSupportAssistantHistoryAfterRefresh:
         with allure.step("Step 2 — Refresh the browser page"):
             list_statuses.clear()
             page.reload(wait_until="domcontentloaded", timeout=RELOAD_TIMEOUT)
-            # The list request is fired by the mount effect, so wait on the
-            # product's own "history has loaded" signal rather than the network:
-            # the History button is disabled until ``history.length > 0``.
-            expect(support_page.history_toggle_button).to_be_enabled(
-                timeout=WIDGET_TIMEOUT
-            )
-            assert list_statuses, (
-                "no GET /api/v2/support_assistant/conversations/ observed across the reload"
-            )
-            assert all(status == 200 for status in list_statuses), (
-                f"conversation-list request failed after refresh: {list_statuses}"
-            )
-            first_refresh_statuses = list(list_statuses)
+            # The reload completed and the app shell is back. The conversation-
+            # list request it triggers is asserted in Step 4, where the case puts
+            # it — the collector above is already recording it.
+            expect(support_page.sidebar_launcher).to_be_visible(timeout=WIDGET_TIMEOUT)
 
         with allure.step("Step 3 — After the reload, open the Support Assistant widget"):
             # The widget does NOT auto-open after a reload (surface digest quirk
@@ -203,13 +194,26 @@ class TestSupportAssistantHistoryAfterRefresh:
         with allure.step(
             "Step 4 — Open the History panel; the conversation-list request returned 200"
         ):
-            # The case's own assertion. The statuses were captured around the
-            # reload in Step 2 because that is where the product issues the
-            # request — arming a collector on this click would capture nothing.
-            assert all(status == 200 for status in first_refresh_statuses), (
-                "GET /api/v2/support_assistant/conversations/ did not return 200 after the "
-                f"refresh: {first_refresh_statuses}"
+            # The History button is ``disabled`` until ``history.length > 0``, so
+            # this is the product's own "the conversation list has loaded" signal
+            # — no networkidle, no sleep. It is asserted here rather than right
+            # after the reload because the widget header, and with it the button,
+            # is only mounted once the widget is open (digest quirk 29).
+            expect(support_page.history_toggle_button).to_be_enabled(
+                timeout=WIDGET_TIMEOUT
             )
+
+            # The case's own assertion. The statuses were captured around the
+            # reload because that is where the product issues the request —
+            # arming a collector on this click would capture nothing.
+            assert list_statuses, (
+                "no GET /api/v2/support_assistant/conversations/ observed across the reload"
+            )
+            assert all(status == 200 for status in list_statuses), (
+                "GET /api/v2/support_assistant/conversations/ did not return 200 after the "
+                f"refresh: {list_statuses}"
+            )
+
             support_page.open_history_via_testid(timeout=EXPECT_TIMEOUT)
             expect(support_page.history_dropdown).to_be_visible(timeout=EXPECT_TIMEOUT)
             history_count_before = support_page.get_history_item_count_via_testid()
@@ -237,21 +241,33 @@ class TestSupportAssistantHistoryAfterRefresh:
                 f"{detail_response.value.status} for {detail_response.value.url}"
             )
 
-            # The conversation really swapped: the run-unique probe message
-            # belongs to the session we just left, so it must be gone. This is
-            # deterministic where a message-count change is not — another
-            # conversation may happen to hold the same number of messages.
-            expect(
-                support_page.user_message_item_with_text(first_message)
-            ).to_have_count(0, timeout=EXPECT_TIMEOUT)
             expect(support_page.history_dropdown).not_to_be_visible(
                 timeout=EXPECT_TIMEOUT
             )
+            # Selecting a conversation CLEARS the message list before the fetched
+            # one renders, so the list is transiently empty. Wait that out before
+            # reading anything off it: every conversation on this surface holds at
+            # least the assistant greeting, and a copy button exists only on a
+            # completed assistant message (digest quirks 9/10).
+            expect(support_page.message_copy_buttons).not_to_have_count(
+                0, timeout=EXPECT_TIMEOUT
+            )
+
+            # The conversation really swapped: the run-unique probe message
+            # belongs to the session we just left, so it must be gone. Asserted
+            # after the settle above, or the transient empty list would satisfy
+            # it without anything having loaded. Deterministic where a
+            # message-count change is not — another conversation may happen to
+            # hold the same number of messages.
+            expect(
+                support_page.user_message_item_with_text(first_message)
+            ).to_have_count(0, timeout=EXPECT_TIMEOUT)
 
         with allure.step(
             "Step 6 — Send another message, refresh again, verify history still loads"
         ):
             # Fresh baselines: this is a different conversation from Step 1's.
+            # Safe to read now — Step 5 waited out the swap's transient empty list.
             items_in_opened_session = support_page.get_message_item_count()
             copies_in_opened_session = support_page.get_copy_button_count()
 
@@ -268,6 +284,10 @@ class TestSupportAssistantHistoryAfterRefresh:
 
             list_statuses.clear()
             page.reload(wait_until="domcontentloaded", timeout=RELOAD_TIMEOUT)
+            expect(support_page.sidebar_launcher).to_be_visible(timeout=WIDGET_TIMEOUT)
+
+            support_page.open_widget_via_sidebar(timeout=WIDGET_TIMEOUT)
+            expect(support_page.widget).to_be_visible(timeout=EXPECT_TIMEOUT)
             expect(support_page.history_toggle_button).to_be_enabled(
                 timeout=WIDGET_TIMEOUT
             )
@@ -279,8 +299,6 @@ class TestSupportAssistantHistoryAfterRefresh:
                 f"conversation-list request failed after the second refresh: {list_statuses}"
             )
 
-            support_page.open_widget_via_sidebar(timeout=WIDGET_TIMEOUT)
-            expect(support_page.widget).to_be_visible(timeout=EXPECT_TIMEOUT)
             support_page.open_history_via_testid(timeout=EXPECT_TIMEOUT)
             expect(support_page.history_dropdown).to_be_visible(timeout=EXPECT_TIMEOUT)
             # "Still loads" must not be satisfiable by a panel that lost its
