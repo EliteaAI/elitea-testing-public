@@ -140,9 +140,10 @@ class TestCredentialSecretPasswordToggle:
             expect(create_page.secret_saved_group_header).to_be_visible(
                 timeout=UI_TIMEOUT
             )
-            # Rendered text is uppercased by CSS text-transform; inner_text()
-            # returns the transformed form.
-            expect(create_page.secret_saved_group_header).to_have_text("SAVED SECRETS")
+            # The group header's underlying string is "Saved Secrets"; the
+            # all-caps rendering is CSS `text-transform` only, and `to_have_text`
+            # reads textContent, not the transformed form.
+            expect(create_page.secret_saved_group_header).to_have_text("Saved Secrets")
             saved_option_count = create_page.saved_secret_options.count()
             assert saved_option_count >= 1, (
                 "Expected at least one saved secret in the vault dropdown "
@@ -157,7 +158,7 @@ class TestCredentialSecretPasswordToggle:
             expect(create_page.secret_create_group_header).to_be_visible(
                 timeout=UI_TIMEOUT
             )
-            expect(create_page.secret_create_group_header).to_have_text("CREATE")
+            expect(create_page.secret_create_group_header).to_have_text("Create")
             expect(create_page.secret_create_option).to_be_visible(timeout=UI_TIMEOUT)
             expect(create_page.secret_create_option).to_have_text(
                 CREATE_OPTION_LABEL_PERSONAL_PROJECT
@@ -247,13 +248,13 @@ class TestCredentialSecretPasswordToggle:
                 "SECRETS list; record the saved-option count as the baseline"
             ):
                 expect(create_page.secret_create_group_header).to_have_text(
-                    "CREATE", timeout=UI_TIMEOUT
+                    "Create", timeout=UI_TIMEOUT
                 )
                 expect(create_page.secret_create_option).to_be_visible(
                     timeout=UI_TIMEOUT
                 )
                 expect(create_page.secret_saved_group_header).to_have_text(
-                    "SAVED SECRETS", timeout=UI_TIMEOUT
+                    "Saved Secrets", timeout=UI_TIMEOUT
                 )
                 baseline_option_count = create_page.saved_secret_options.count()
                 assert baseline_option_count >= 1, (

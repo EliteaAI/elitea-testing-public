@@ -414,6 +414,26 @@ ul[role="listbox"]
   `disabled`. A test cannot "click +" after arriving this way.
 - The MUI menu will NOT close from a JS `document.body.click()` — use a real
   Playwright click, `Escape`, or select an option.
+- **The group headers render BEFORE the vault list resolves.** `useSecretsListQuery`
+  is `skip`-gated on the field's mode, so the first entry into Secret mode opens a
+  menu with both headers present and an EMPTY group body. Wait on the first
+  saved-secret option, never on the header alone (cost one rerun, ELITEA-1968);
+  `networkidle` remains unusable on these routes.
+- **Assert the group headers' UNDERLYING strings** (`Create` / `Saved Secrets`).
+  The all-caps rendering is CSS `text-transform`; Playwright's `to_have_text`
+  reads `textContent` and never sees it — while a browser-console `innerText`
+  probe DOES return `CREATE` / `SAVED SECRETS` and will mislead you (cost one
+  rerun, ELITEA-1968/1969).
+
+### Open testid gap — the Secret-mode select's bound VALUE
+The combobox DISPLAYS the secret's bare name; the `{{secret.<name>}}` template it
+actually stores lives on MUI's hidden `MuiSelect-nativeInput`, which carries **no
+testid**. `SingleSelect.jsx` forwards an `inputProps` prop to `<Select>`, but that
+does not reach the native input on this MUI version (tried live 2026-08-22 and
+reverted). Wiring it needs `slotProps.htmlInput` on the shared `SingleSelect` —
+a bigger shared-component change than ELITEA-1968 warranted, so the value
+assertion was dropped there. Pick this up if a case needs to prove
+displayed-name-vs-stored-value.
 
 ### Testids added during ELITEA-1968/1969 (EliteaAI/EliteaUI@29214bf1, `automation/testids`, awaiting human cherry-pick to `main`)
 

@@ -329,13 +329,24 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
     def open_secret_dropdown(self, field_key: str) -> None:
         """Open the Secret-mode vault dropdown of secret field *field_key*.
 
-        Waits on the "Saved Secrets" group header rather than a network idle —
-        the vault query (``GET /secrets/secrets/default/{project}``) is
-        ``skip``-gated on the field's mode and RTK-Query-cached afterwards, so
-        the rendered group header is the only reliable open signal.
+        Waits on the first SAVED-SECRETS *option*, not on a network idle and not
+        on the group header. The vault query
+        (``GET /secrets/secrets/default/{project}``) is ``skip``-gated on the
+        field's mode, so on the first entry into Secret mode the menu opens
+        BEFORE the list resolves: the group headers render immediately while the
+        group body is still an empty placeholder. Waiting on the header alone
+        therefore returns an open-but-empty dropdown (cost one rerun,
+        ELITEA-1968). ``networkidle`` is unusable on the credentials routes
+        (`.agents/testing.md`, ELITEA-1964/1967).
+
+        Assumes the case's own precondition — at least one saved secret exists
+        in the project's vault.
         """
         self.secret_combobox(field_key).click()
         self.secret_saved_group_header.wait_for(
+            state="visible", timeout=UI_ELEMENT_TIMEOUT
+        )
+        self.saved_secret_options.first.wait_for(
             state="visible", timeout=UI_ELEMENT_TIMEOUT
         )
 

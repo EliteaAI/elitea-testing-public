@@ -46,8 +46,8 @@ case's own steps produce.
 |---|---|---|
 | 1 | Navigate to `/credentials/create-credential/github`; select the `Token` auth radio | The Access Token secret field renders: wrapper `toolkit-field-access_token-input`, native input `toolkit-field-access_token-input-field` |
 | 2 | Read the Secret/Password toggle beside the token field | Both toggle buttons present and visible: `…-input-toggle-secret` and `…-input-toggle-password` |
-| 3 | Click `Secret`, then open the select | `Secret` becomes `aria-pressed="true"`, `Password` `"false"`; the native password input is gone and a combobox `…-input-combobox` renders. Opening it shows group header `select-group-header-Saved Secrets` (rendered text `SAVED SECRETS`) with ≥1 saved-secret option |
-| 4 | Read the CREATE section of the same open dropdown | Group header `select-group-header-Create` (rendered `CREATE`) is present, carrying option `select-option-__create_private_secret__`. **On the personal project its label reads `New Private Secret`, not the case's "New Project Secret"** — see § Case-text divergence |
+| 3 | Click `Secret`, then open the select | `Secret` becomes `aria-pressed="true"`, `Password` `"false"`; the native password input is gone and a combobox `…-input-combobox` renders. Opening it shows group header `select-group-header-Saved Secrets` (text `Saved Secrets`, CSS-uppercased on screen) with ≥1 saved-secret option — the options arrive with the vault GET, *after* the header |
+| 4 | Read the CREATE section of the same open dropdown | Group header `select-group-header-Create` (text `Create`) is present, carrying option `select-option-__create_private_secret__`. **On the personal project its label reads `New Private Secret`, not the case's "New Project Secret"** — see § Case-text divergence |
 | 5 | Click the `auth_token` option (`select-option-{{secret.auth_token}}`) | The dropdown closes and the combobox displays `auth_token`; the underlying field value is `{{secret.auth_token}}` |
 | 6 | Click `Password` on the toggle | `Password` `aria-pressed="true"`, `Secret` `"false"`; the combobox is gone (count 0) and the native input `…-input-field` is back with `type="password"`, cleared to `""` (the product clears the value on mode switch) |
 | 7 | Type `ghp_autotest_placeholder_123` into the token field | `input_value()` equals the typed string AND the input's `type` attribute is still `password` — i.e. the value is accepted and rendered masked |
@@ -129,9 +129,11 @@ All handles below confirmed live 2026-08-22 on `localhost:5173`, project 399.
 | CREATE action option | `[data-testid="select-option-__create_private_secret__"]` | on-main ✓ (`SingleSelect.jsx:416`, action branch) |
 | Saved-secret option (dynamic) | `[data-testid="select-option-{{secret.<name>}}"]` | on-main ✓ (`SingleSelectMenuItem.jsx:117`) |
 
-**Rendered text is UPPERCASED by CSS** (`CREATE`, `SAVED SECRETS`); the
-underlying strings are `Create` / `Saved Secrets`. Playwright's `inner_text()`
-returns the CSS-transformed form — assert `CREATE` / `SAVED SECRETS`.
+**Rendered text is UPPERCASED by CSS only** (`CREATE`, `SAVED SECRETS`); the
+underlying strings are `Create` / `Saved Secrets`. **Assert the underlying
+strings** — Playwright's `to_have_text` reads `textContent`, which is NOT
+`text-transform`ed (cost one rerun; a browser-console `innerText` probe DOES
+return the transformed form and will mislead you).
 
 ### Testid work performed (`add-data-testid` discipline)
 None needed for ELITEA-1968 — every handle it touches already exists (see the
@@ -197,3 +199,9 @@ None — all 7 steps executed live end-to-end.
   template lives on the hidden `<input>` inside the wrapper (`input_value()`).
 - The saved-secrets list can be long (120 options on project 399) — never
   enumerate it; target the one option by its dynamic testid.
+- **The group headers render BEFORE the vault list resolves.** `useSecretsListQuery`
+  is `skip`-gated on the field's mode, so the first entry into Secret mode opens
+  a menu whose headers are present and whose body is still an empty placeholder.
+  Waiting on the header alone yields an open-but-empty dropdown (cost one rerun).
+  `CredentialCreatePage.open_secret_dropdown()` waits on the first saved-secret
+  OPTION instead.
