@@ -9,9 +9,16 @@ Test cases:
 
 Fidelity (`.agents/testing.md` § Fidelity policy): no substitution of any kind.
 Every asserted value — the toggle's ``aria-pressed`` state, the rendered vault
-options, the stored ``{{secret.<name>}}`` template, the ``201`` create response,
-the post-refresh option count — is produced by the live product against the DEV
+options, the selected secret's displayed name, the ``201`` create response, the
+post-refresh option count — is produced by the live product against the DEV
 backend. Nothing is routed, fulfilled, injected or monkeypatched.
+
+Not asserted (declared): the ``{{secret.<name>}}`` template the field stores
+behind the displayed name. MUI's ``MuiSelect-nativeInput`` carries the bound
+value and receives no testid, and ``SingleSelect``'s ``inputProps`` pass-through
+does not reach it — reaching it needs a raw ``.locator("input")``, which is not
+a #579 sanctioned exception. Dropped rather than shipped non-compliant; the
+testid gap is recorded in ``test-specs/toolkits-credentials/_surface.md``.
 
 Test data: ELITEA-1968 is fully read-only (the credential form is abandoned
 without Save; the ``auth_token`` secret it selects is only read). ELITEA-1969
@@ -166,8 +173,8 @@ class TestCredentialSecretPasswordToggle:
 
         with allure.step(
             f"Step 5 — Select the saved secret {EXISTING_SECRET_NAME!r}: its NAME "
-            "is displayed while the {{secret.<name>}} template is what the field "
-            "stores"
+            "is displayed in the combobox and the dropdown closes (the stored "
+            "template value is NOT asserted — see the module docstring)"
         ):
             option = create_page.saved_secret_option(EXISTING_SECRET_NAME)
             expect(option).to_have_count(1, timeout=UI_TIMEOUT)

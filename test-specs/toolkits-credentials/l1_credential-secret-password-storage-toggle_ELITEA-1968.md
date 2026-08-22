@@ -48,7 +48,7 @@ case's own steps produce.
 | 2 | Read the Secret/Password toggle beside the token field | Both toggle buttons present and visible: `…-input-toggle-secret` and `…-input-toggle-password` |
 | 3 | Click `Secret`, then open the select | `Secret` becomes `aria-pressed="true"`, `Password` `"false"`; the native password input is gone and a combobox `…-input-combobox` renders. Opening it shows group header `select-group-header-Saved Secrets` (text `Saved Secrets`, CSS-uppercased on screen) with ≥1 saved-secret option — the options arrive with the vault GET, *after* the header |
 | 4 | Read the CREATE section of the same open dropdown | Group header `select-group-header-Create` (text `Create`) is present, carrying option `select-option-__create_private_secret__`. **On the personal project its label reads `New Private Secret`, not the case's "New Project Secret"** — see § Case-text divergence |
-| 5 | Click the `auth_token` option (`select-option-{{secret.auth_token}}`) | The dropdown closes and the combobox displays `auth_token`; the underlying field value is `{{secret.auth_token}}` |
+| 5 | Click the `auth_token` option (`select-option-{{secret.auth_token}}`) | The dropdown closes (`select-group-header-Saved Secrets` count 0) and the combobox displays `auth_token`. *(The product also stores `{{secret.auth_token}}` as the underlying value — live-confirmed, but **not asserted**: no compliant handle, see § Coverage Map → Dropped Axis-2 addition.)* |
 | 6 | Click `Password` on the toggle | `Password` `aria-pressed="true"`, `Secret` `"false"`; the combobox is gone (count 0) and the native input `…-input-field` is back with `type="password"`, cleared to `""` (the product clears the value on mode switch) |
 | 7 | Type `ghp_autotest_placeholder_123` into the token field | `input_value()` equals the typed string AND the input's `type` attribute is still `password` — i.e. the value is accepted and rendered masked |
 
@@ -59,7 +59,9 @@ case's own steps produce.
   dropdown carries a `CREATE` group (a create-new-secret action) and a
   `SAVED SECRETS` group listing the project's secrets.
 - Selecting a saved secret displays that secret's **name** in the field while
-  storing the `{{secret.<name>}}` template as the value.
+  storing the `{{secret.<name>}}` template as the value. *(Product behaviour,
+  live-confirmed. Only the displayed name is asserted — the stored template has
+  no compliant handle; see § Coverage Map → Dropped Axis-2 addition.)*
 - `Password` mode restores a masked (`type="password"`) plaintext input which
   accepts typed characters and keeps them masked.
 - Switching modes clears whatever the other mode held (product behaviour,
@@ -78,7 +80,7 @@ case's own steps produce.
 | Step 2 — toggle visible next to the token input | asserted | Step 2 — both toggle buttons visible |
 | Step 3 — click Secret → dropdown shows SAVED SECRETS from the vault | asserted | Step 3 — `aria-pressed` flip + `select-group-header-Saved Secrets` visible + ≥1 saved option |
 | Step 4 — "New Project Secret" available under a CREATE section | asserted (label divergence declared) | Step 4 — `select-group-header-Create` visible + `select-option-__create_private_secret__` visible, label asserted as the product's live value |
-| Step 5 — select existing secret → its name appears in the field | asserted | Step 5 — combobox text `auth_token`, value `{{secret.auth_token}}` |
+| Step 5 — select existing secret → its name appears in the field | asserted | Step 5 — combobox text `auth_token` + dropdown closed (`select-group-header-Saved Secrets` count 0). The case element is "its **name** appears in the field", which this asserts in full; the underlying `{{secret.auth_token}}` value is NOT asserted (dropped Axis-2 addition, below) |
 | Step 6 — switch to Password → masked plaintext input | asserted | Step 6 — combobox count 0, native input visible, `type="password"` |
 | Step 7 — type a token → accepted and masked | asserted | Step 7 — `input_value()` equals typed text AND `type` still `password` |
 | Expected Final State — "both modes store valid token values" | asserted (scoped) | Steps 5 + 7 — the value each mode holds. The case has no Save step, so "store" cannot mean persistence here; nothing is submitted |
