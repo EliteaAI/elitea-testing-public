@@ -46,9 +46,9 @@ case's own steps produce.
 |---|---|---|
 | 1 | Navigate to `/credentials/create-credential/github`; select the `Token` auth radio | The Access Token secret field renders: wrapper `toolkit-field-access_token-input`, native input `toolkit-field-access_token-input-field` |
 | 2 | Read the Secret/Password toggle beside the token field | Both toggle buttons present and visible: `…-input-toggle-secret` and `…-input-toggle-password` |
-| 3 | Click `Secret`, then open the select | `Secret` becomes `aria-pressed="true"`, `Password` `"false"`; the native password input is gone and a combobox `…-input-combobox` renders. Opening it shows group header `select-group-header-Saved Secrets` (rendered text `SAVED SECRETS`) with ≥1 saved-secret option |
-| 4 | Read the CREATE section of the same open dropdown | Group header `select-group-header-Create` (rendered `CREATE`) is present, carrying option `select-option-__create_private_secret__`. **On the personal project its label reads `New Private Secret`, not the case's "New Project Secret"** — see § Case-text divergence |
-| 5 | Click the `auth_token` option (`select-option-{{secret.auth_token}}`) | The dropdown closes and the combobox displays `auth_token`; the underlying field value is `{{secret.auth_token}}` |
+| 3 | Click `Secret`, then open the select | `Secret` becomes `aria-pressed="true"`, `Password` `"false"`; the native password input is gone and a combobox `…-input-combobox` renders. Opening it shows group header `select-group-header-Saved Secrets` (text `Saved Secrets`, CSS-uppercased on screen) with ≥1 saved-secret option — the options arrive with the vault GET, *after* the header |
+| 4 | Read the CREATE section of the same open dropdown | Group header `select-group-header-Create` (text `Create`) is present, carrying option `select-option-__create_private_secret__`. **On the personal project its label reads `New Private Secret`, not the case's "New Project Secret"** — see § Case-text divergence |
+| 5 | Click the `auth_token` option (`select-option-{{secret.auth_token}}`) | The dropdown closes (`select-group-header-Saved Secrets` count 0) and the combobox displays `auth_token`. *(The product also stores `{{secret.auth_token}}` as the underlying value — live-confirmed, but **not asserted**: no compliant handle, see § Coverage Map → Dropped Axis-2 addition.)* |
 | 6 | Click `Password` on the toggle | `Password` `aria-pressed="true"`, `Secret` `"false"`; the combobox is gone (count 0) and the native input `…-input-field` is back with `type="password"`, cleared to `""` (the product clears the value on mode switch) |
 | 7 | Type `ghp_autotest_placeholder_123` into the token field | `input_value()` equals the typed string AND the input's `type` attribute is still `password` — i.e. the value is accepted and rendered masked |
 
@@ -59,7 +59,9 @@ case's own steps produce.
   dropdown carries a `CREATE` group (a create-new-secret action) and a
   `SAVED SECRETS` group listing the project's secrets.
 - Selecting a saved secret displays that secret's **name** in the field while
-  storing the `{{secret.<name>}}` template as the value.
+  storing the `{{secret.<name>}}` template as the value. *(Product behaviour,
+  live-confirmed. Only the displayed name is asserted — the stored template has
+  no compliant handle; see § Coverage Map → Dropped Axis-2 addition.)*
 - `Password` mode restores a masked (`type="password"`) plaintext input which
   accepts typed characters and keeps them masked.
 - Switching modes clears whatever the other mode held (product behaviour,
@@ -78,7 +80,7 @@ case's own steps produce.
 | Step 2 — toggle visible next to the token input | asserted | Step 2 — both toggle buttons visible |
 | Step 3 — click Secret → dropdown shows SAVED SECRETS from the vault | asserted | Step 3 — `aria-pressed` flip + `select-group-header-Saved Secrets` visible + ≥1 saved option |
 | Step 4 — "New Project Secret" available under a CREATE section | asserted (label divergence declared) | Step 4 — `select-group-header-Create` visible + `select-option-__create_private_secret__` visible, label asserted as the product's live value |
-| Step 5 — select existing secret → its name appears in the field | asserted | Step 5 — combobox text `auth_token`, value `{{secret.auth_token}}` |
+| Step 5 — select existing secret → its name appears in the field | asserted | Step 5 — combobox text `auth_token` + dropdown closed (`select-group-header-Saved Secrets` count 0). The case element is "its **name** appears in the field", which this asserts in full; the underlying `{{secret.auth_token}}` value is NOT asserted (dropped Axis-2 addition, below) |
 | Step 6 — switch to Password → masked plaintext input | asserted | Step 6 — combobox count 0, native input visible, `type="password"` |
 | Step 7 — type a token → accepted and masked | asserted | Step 7 — `input_value()` equals typed text AND `type` still `password` |
 | Expected Final State — "both modes store valid token values" | asserted (scoped) | Steps 5 + 7 — the value each mode holds. The case has no Save step, so "store" cannot mean persistence here; nothing is submitted |
@@ -90,7 +92,22 @@ case's own steps produce.
 |---|---|
 | `aria-pressed` asserted on BOTH toggle buttons at each switch, not just the clicked one | The Fail criterion is "the toggle does not switch modes". A one-sided check passes on a toggle that lights both buttons; the exclusive pair is the actual contract (`ToggleButtonGroup exclusive`) |
 | Combobox asserted `to_have_count(0)` in Password mode, native input `to_have_count(0)` in Secret mode | The two modes render mutually-exclusive elements. Presence-only assertions cannot see "both rendered", which is a real regression shape |
-| Underlying value `{{secret.auth_token}}` asserted alongside the displayed name | Step 5's expected result names only the displayed name, but the displayed name is a *label*; a UI that shows the name while storing the wrong value satisfies a text-only check. The template string is what the credential actually persists |
+| Dropdown asserted CLOSED after the selection (`to_have_count(0)` on the SAVED SECRETS header) | Step 5's expected result is that the selected secret "appears in the token field"; a select that stays open after a pick has not committed the selection. **Originally specced as an assertion on the underlying `{{secret.auth_token}}` value — DROPPED, see below** |
+
+**Dropped Axis-2 addition (declared).** The stronger check — assert the
+combobox displays the secret's NAME while the field stores the
+`{{secret.<name>}}` TEMPLATE — has **no compliant handle today**: MUI's
+`MuiSelect-nativeInput` (the element carrying the bound value) receives no
+testid, and `SingleSelect`'s `inputProps` pass-through does not reach it
+(tried live, 2026-08-22, and reverted). Reaching it would require a raw
+`.locator("input")` chained off the wrapper, which is NOT one of the two
+#579 sanctioned exceptions (this is our own JSX, not a third-party widget
+subtree or an editor's internal render nodes) — so it is `CHANGES_REQUESTED`
+territory, not a judgement call. Recorded as a **testid gap** in
+`_surface.md` for whichever case needs it: `SingleSelect.jsx` would need to
+pass the native input's testid via MUI's `slotProps.htmlInput`, which is a
+shared-component change bigger than this case warrants. The displayed name
+plus the dropdown-closes assertion is what ships.
 | Field asserted cleared (`""`) after the Secret→Password switch in Step 6 | The product deliberately clears on mode switch. Asserting it pins live behaviour and makes Step 7's "value is accepted" unambiguous (the typed text, not a leftover) |
 
 ## Cleanup
@@ -114,9 +131,11 @@ All handles below confirmed live 2026-08-22 on `localhost:5173`, project 399.
 | CREATE action option | `[data-testid="select-option-__create_private_secret__"]` | on-main ✓ (`SingleSelect.jsx:416`, action branch) |
 | Saved-secret option (dynamic) | `[data-testid="select-option-{{secret.<name>}}"]` | on-main ✓ (`SingleSelectMenuItem.jsx:117`) |
 
-**Rendered text is UPPERCASED by CSS** (`CREATE`, `SAVED SECRETS`); the
-underlying strings are `Create` / `Saved Secrets`. Playwright's `inner_text()`
-returns the CSS-transformed form — assert `CREATE` / `SAVED SECRETS`.
+**Rendered text is UPPERCASED by CSS only** (`CREATE`, `SAVED SECRETS`); the
+underlying strings are `Create` / `Saved Secrets`. **Assert the underlying
+strings** — Playwright's `to_have_text` reads `textContent`, which is NOT
+`text-transform`ed (cost one rerun; a browser-console `innerText` probe DOES
+return the transformed form and will mislead you).
 
 ### Testid work performed (`add-data-testid` discipline)
 None needed for ELITEA-1968 — every handle it touches already exists (see the
@@ -182,3 +201,9 @@ None — all 7 steps executed live end-to-end.
   template lives on the hidden `<input>` inside the wrapper (`input_value()`).
 - The saved-secrets list can be long (120 options on project 399) — never
   enumerate it; target the one option by its dynamic testid.
+- **The group headers render BEFORE the vault list resolves.** `useSecretsListQuery`
+  is `skip`-gated on the field's mode, so the first entry into Secret mode opens
+  a menu whose headers are present and whose body is still an empty placeholder.
+  Waiting on the header alone yields an open-but-empty dropdown (cost one rerun).
+  `CredentialCreatePage.open_secret_dropdown()` waits on the first saved-secret
+  OPTION instead.

@@ -45,7 +45,7 @@
 |---|---|---|
 | 1 | Navigate to `/credentials/create-credential/github`; select the `Token` auth radio | The Access Token secret field renders (`toolkit-field-access_token-input` + `…-input-field`) |
 | 2 | Click `Secret` on the toggle, then open the select | Combobox `…-input-combobox` renders and the dropdown opens |
-| 3 | Read both dropdown groups | `select-group-header-Create` (text `CREATE`) carrying `select-option-__create_private_secret__`, AND `select-group-header-Saved Secrets` (text `SAVED SECRETS`) with ≥1 saved option. Record the saved-option count as the pre-create baseline |
+| 3 | Read both dropdown groups | `select-group-header-Create` (text `Create`) carrying `select-option-__create_private_secret__`, AND `select-group-header-Saved Secrets` (text `Saved Secrets`) with ≥1 saved option — both header strings are CSS-uppercased on screen only; `to_have_text` reads `textContent`. Record the saved-option count as the pre-create baseline |
 | 4 | Click the CREATE option | **A NEW BROWSER TAB opens** at `/{project_id}/settings/secrets?createSecret=1` (the app calls `window.open(..., '_blank')`, it is NOT an in-page navigation — see § Case-text divergence). The originating tab stays on the credential form with its dropdown still open |
 | 5 | In the new tab, read the secrets table's column headers | Exactly three headers: `secret-column-header-name` = `Name`, `secret-column-header-secretValue` = `Value`, `secret-column-header-actions` = `Actions` |
 | 6 | (Case: "click the + button") | The deep link's `?createSecret=1` has **already opened** the inline editable row — `secret-name-input` / `secret-value-input` are present and `secrets-add-button` is `disabled` (only one row editable at a time). The case's step is pre-satisfied by the product; asserted as such — see § Case-text divergence |
@@ -201,6 +201,8 @@ in the dropdown after refresh; deleted afterwards).
   `/settings/secrets` plus the auto-opened row, which is the durable signal).
 - **Never `networkidle`** on either route (credentials — ELITEA-1964/1967;
   secrets — the #1203 render loop keeps React busy).
+- **Wait on the first saved-secret OPTION, not the group header**, when opening
+  the vault dropdown: the headers render before the vault GET resolves.
 - The secrets table is server-paged at 10 rows/page and sorts alphabetically;
   the new row is NOT pinned to top. Assert by name-filtered row locator, never
   by index.
