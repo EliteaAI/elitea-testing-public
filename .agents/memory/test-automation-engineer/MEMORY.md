@@ -89,3 +89,4 @@
 - [Vite serves stale JSX after an EliteaUI edit](vite_serves_stale_jsx_on_onedrive_checkout.md) — new testid invisible in browser: restart the dev server
 - [allure.issue TMS link](allure_issue_tms_link_filename_verify_before_commit.md) — never derive it; `ls` the clone
 - [Soft-asserted spec is RED, not green](soft_asserted_spec_is_red_not_green.md) — expect.soft raises; verdict + AFS must say sanctioned-RED
+- [File-drop helpers = phases](react_file_drop_expose_phases_not_one_call.md) — split the gesture; assert the overlay reverts

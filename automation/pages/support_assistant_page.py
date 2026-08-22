@@ -10,8 +10,11 @@ The Support Assistant is a reusable chatbot plugin that:
 - Can expand to full view mode
 """
 
+import base64
 import logging
+import mimetypes
 import time
+from pathlib import Path
 from playwright.sync_api import Page
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -211,6 +214,30 @@ class SupportAssistantPage(BasePage):
     attachment_chips = LocatorDescriptor(
         testid="support-assistant-attachment-chip",
         description="Attachment chips staged in the composer (repeated)"
+    )
+
+    # ELITEA-2420 — drag-and-drop attachment. Testids live in the connected
+    # first-party repo EliteaAI/elitea_assistant
+    # (EliteaAI/elitea_assistant@e134bfc on its ``automation/testids`` branch),
+    # ``src/components/chat/MessageInput.tsx``.
+    #
+    # The drop zone is the ALWAYS-MOUNTED input-area div that owns
+    # ``onDragEnter``/``onDragOver``/``onDragLeave``/``onDrop`` — its testid is
+    # stable identity; the drag-over state stays a CSS modifier class, never a
+    # second testid value (PR #581 ruling).
+    drop_zone = LocatorDescriptor(
+        testid="support-assistant-drop-zone",
+        description="Composer input area that owns the drag-and-drop handlers"
+    )
+
+    # The overlay is rendered only while ``isDragOver`` is true
+    # (``{isDragOver && <div …>Drop files here</div>}``). Its own MOUNT encodes
+    # the state, so presence/absence is the assertion and no extra ``data-*``
+    # attribute is added — same accepted shape as
+    # ``support-assistant-history-dropdown``.
+    drop_overlay = LocatorDescriptor(
+        testid="support-assistant-drop-overlay",
+        description='"Drop files here" affordance shown while a file drag is over the composer'
     )
 
     # An item is rendered ``disabled`` exactly when it IS the currently-open
@@ -887,3 +914,117 @@ class SupportAssistantPage(BasePage):
             Number of attachment chips rendered in the composer
         """
         return self.attachment_chips.count()
+
+    # ------------------------------------------------------------------
+    # Drag-and-drop attachment helpers (ELITEA-2420) — additive.
+    #
+    # Playwright cannot drive a native OS-level file drag (Finder/Explorer):
+    # there is no browser API surface for it. The technique below is the one
+    # already merged and reviewed as :meth:`pages.chat_page.ChatPage.
+    # drag_and_drop_file` on the main chat composer — build a synthetic
+    # ``DataTransfer`` holding a REAL ``File`` reconstructed in-page from the
+    # real file's own bytes, and dispatch ``DragEvent``s at the testid'd drop
+    # zone.
+    #
+    # Fidelity: this substitutes only the INPUT GESTURE, which is not the
+    # system under test; from ``handleDragEnter``/``handleDrop`` onward the
+    # product code path is byte-identical to a human drag, and every asserted
+    # value (overlay render, chip, Send state, upload status, predict frame,
+    # reply) is product-produced. TRANSIT ONLY — nothing observable is
+    # fabricated (.agents/testing.md § Fidelity policy).
+    #
+    # The gesture is exposed as three composable phases rather than one call
+    # because the drag-over affordance must be asserted to REVERT mid-gesture
+    # (``handleDragLeave`` decrements ``dragCounterRef``), which a monolithic
+    # enter-over-drop helper cannot express.
+    # ------------------------------------------------------------------
+
+    # Constructing the DataTransfer is done once and shared by every phase.
+    # ``handleDragEnter`` reads only ``dataTransfer.types``, ``handleDragLeave``
+    # reads nothing, and ``handleDrop`` reads ``dataTransfer.files`` — so each
+    # phase builds its own transfer and none depends on another's state.
+    # Events MUST carry ``bubbles``/``cancelable``: React listens at the root
+    # container, and the handlers call ``preventDefault()``.
+    _DISPATCH_DRAG_EVENTS_JS = """(el, args) => {
+        const [b64, name, mime, types] = args;
+        const binary = atob(b64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        const file = new File([bytes], name, { type: mime });
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        for (const type of types) {
+            el.dispatchEvent(new DragEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer,
+            }));
+        }
+    }"""
+
+    def _dispatch_drag_events(self, file_path: str, event_types: list, timeout: int) -> None:
+        """Dispatch *event_types* as ``DragEvent``s carrying *file_path* at the drop zone.
+
+        Args:
+            file_path: Absolute or relative path to a real file on disk
+            event_types: Ordered DOM event names, e.g. ``["dragenter"]``
+            timeout: Maximum wait for the drop zone to be visible (ms)
+        """
+        path = Path(file_path)
+        file_b64 = base64.b64encode(path.read_bytes()).decode("ascii")
+        mime_type = mimetypes.guess_type(path.name)[0] or "text/plain"
+
+        self.drop_zone.wait_for(state="visible", timeout=timeout)
+        self.drop_zone.evaluate(
+            self._DISPATCH_DRAG_EVENTS_JS,
+            [file_b64, path.name, mime_type, event_types],
+        )
+
+    @action("Drag file over Support Assistant composer")
+    def drag_file_over_composer(self, file_path: str, timeout: int = 10000):
+        """Begin a file drag over the composer (``dragenter`` + ``dragover``).
+
+        Leaves the drag in progress: the caller asserts the drop overlay is
+        visible, then either :meth:`drag_leave_composer` or
+        :meth:`drop_file_on_composer`.
+
+        Args:
+            file_path: Path to the real file being dragged
+            timeout: Maximum wait for the drop zone to be visible (ms)
+        """
+        logger.info("Dragging file over Support Assistant composer: %s", file_path)
+        self._dispatch_drag_events(file_path, ["dragenter", "dragover"], timeout)
+
+    @action("Drag leave Support Assistant composer")
+    def drag_leave_composer(self, file_path: str, timeout: int = 10000):
+        """End a drag WITHOUT dropping (``dragleave``).
+
+        ``handleDragLeave`` decrements ``dragCounterRef`` and clears
+        ``isDragOver`` when it reaches 0, so this must be paired 1:1 with the
+        ``dragenter`` deliveries that preceded it.
+
+        Args:
+            file_path: Path to the real file being dragged (the handler ignores
+                the payload, but the event is built the same way)
+            timeout: Maximum wait for the drop zone to be visible (ms)
+        """
+        logger.info("Dragging file away from Support Assistant composer")
+        self._dispatch_drag_events(file_path, ["dragleave"], timeout)
+
+    @action("Drop file on Support Assistant composer")
+    def drop_file_on_composer(self, file_path: str, timeout: int = 10000):
+        """Complete a drag by dropping the file on the composer.
+
+        Delivers the full ``dragenter`` -> ``dragover`` -> ``drop`` sequence so
+        the call is self-contained regardless of whether a drag is already in
+        progress: ``handleDrop`` resets ``dragCounterRef`` to 0 unconditionally,
+        so the counter cannot leak.
+
+        Args:
+            file_path: Path to the real file being dropped
+            timeout: Maximum wait for the drop zone to be visible (ms)
+        """
+        logger.info("Dropping file on Support Assistant composer: %s", file_path)
+        self._dispatch_drag_events(file_path, ["dragenter", "dragover", "drop"], timeout)
