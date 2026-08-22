@@ -62,12 +62,12 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
     # type without a per-type constant. Class-level template constants per
     # .agents/testing.md § Locator policy (dynamic testid pattern).
     #
-    # A PLAIN field puts ``toolkit-field-{key}-input`` on the <input> itself;
-    # a SECRET field puts it on the wrapper <div> and adds
-    # ``toolkit-field-{key}-input-field`` on the native <input>. FIELD_INPUT
-    # therefore resolves for both, which is what a presence/absence inventory
-    # needs.
-    FIELD_INPUT = '[data-testid="toolkit-field-{}-input"]'
+    # ``FIELD_INPUT`` and :meth:`field` were PROMOTED to
+    # :class:`CredentialFormFieldsMixin` for ELITEA-1980 (the detail route
+    # renders the same ``ToolBaseProperty`` fields and needs them too) — the
+    # same treatment ``test_connection_button`` got for ELITEA-1970. This class
+    # inherits the mixin, so ``create_page.field(...)`` resolves exactly as
+    # before.
     # Secret/Password toggle rendered beside every secret field. Second
     # placeholder is the mode: "secret" | "password".
     FIELD_SECRET_TOGGLE = '[data-testid="toolkit-field-{}-input-toggle-{}"]'
@@ -131,6 +131,7 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
             "api_key_input, relabeled for GitHub's Token auth)."
         ),
     )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -270,16 +271,6 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
         """
         self.access_token_input.click()
         self.access_token_input.press_sequentially(value, delay=20)
-
-    def field(self, field_key: str) -> Locator:
-        """Return the form-field locator for schema property *field_key*.
-
-        Resolves for plain fields (testid on the ``<input>``) and secret
-        fields alike (testid on the ``SecretField`` wrapper ``<div>``) — see
-        :data:`FIELD_INPUT`. Used by ELITEA-1967 for both presence and
-        ``to_have_count(0)`` absence assertions.
-        """
-        return self.page.locator(self.FIELD_INPUT.format(field_key))
 
     def secret_toggle(self, field_key: str, mode: str) -> Locator:
         """Return the Secret/Password toggle button of secret field *field_key*.

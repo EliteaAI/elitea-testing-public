@@ -99,10 +99,31 @@ class CredentialFormFieldsMixin:
     # property puts `toolkit-field-{key}-input` on the SecretField wrapper
     # <div> and `-input-field` on the native <input type="password">.
     FIELD_SECRET_INPUT = '[data-testid="toolkit-field-{}-input-field"]'
+    # Any schema-driven form field, promoted from CredentialCreatePage for
+    # ELITEA-1980 (the DETAIL route renders the same ToolBaseProperty fields).
+    # A PLAIN field puts `toolkit-field-{key}-input` on the <input> itself;
+    # a SECRET field puts it on the SecretField wrapper <div> (and the native
+    # <input> carries FIELD_SECRET_INPUT), so this template resolves for both.
+    FIELD_INPUT = '[data-testid="toolkit-field-{}-input"]'
     # Inline error/helper text under a secret field - caller-derived testid
     # added for ELITEA-1970 (EliteaAI/EliteaUI@58955184). Present only while
     # the field is in error; carries the backend's own message verbatim.
     FIELD_HELPER_TEXT = '[data-testid="toolkit-field-{}-input-helper-text"]'
+
+    def field(self, field_key: str) -> Locator:
+        """Return the form-field locator for schema property *field_key*.
+
+        Resolves for plain fields (testid on the ``<input>``) and secret
+        fields alike (testid on the ``SecretField`` wrapper ``<div>``) — see
+        :data:`FIELD_INPUT`. Used by ELITEA-1967 for both presence and
+        ``to_have_count(0)`` absence assertions, and by ELITEA-1980 to read a
+        field's ``aria-invalid`` state after a failed Test connection.
+
+        Promoted here from :class:`CredentialCreatePage` (ELITEA-1980) so the
+        detail route can use it too; that class inherits this mixin, so its
+        existing callers are unchanged.
+        """
+        return self.page.locator(self.FIELD_INPUT.format(field_key))
 
     def secret_native_input(self, field_key: str) -> Locator:
         """Return the Password-mode native ``<input type="password">`` of
@@ -119,6 +140,27 @@ class CredentialFormFieldsMixin:
         handle per field. A failed Test connection puts the backend's
         ``message`` here verbatim (see
         ``credentialError.helpers.js#extractInformationFromCredentialError``).
+        """
+        return self.page.locator(self.FIELD_HELPER_TEXT.format(field_key))
+
+    def field_helper_text(self, field_key: str) -> Locator:
+        """Return the inline error/helper text under ANY form field *field_key*
+        — plain or secret.
+
+        Additive sibling of :meth:`secret_field_helper_text` (left
+        byte-identical for its ELITEA-1970 caller): both resolve the same
+        :data:`FIELD_HELPER_TEXT` testid grammar, which now covers plain fields
+        too. ``ToolBaseProperty`` passes the shared ``helperTextTestId`` prop
+        (``InputBase.jsx:101``/``:270``) with the same caller-derived
+        ``{field-testid}-helper-text`` value ``SecretField`` uses — added for
+        ELITEA-1980 (EliteaAI/EliteaUI@54ce148e).
+
+        Which field a failed Test connection lights up is decided by
+        ``credentialError.helpers.js#extractInformationFromCredentialError``
+        and is NOT always the secret one: when nothing in the backend message
+        maps to a schema key, its fallback branch assigns the message to every
+        ``*url*`` key — so a Github auth failure lands on **Base Url**
+        (``_surface.md`` § Credential ERROR states).
         """
         return self.page.locator(self.FIELD_HELPER_TEXT.format(field_key))
 
