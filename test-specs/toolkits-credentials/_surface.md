@@ -335,3 +335,21 @@ only annotates "(disabled)" on GitHub, but it holds everywhere).
 `/credentials/create-credential/{type}` renders the form with no project-state
 precondition, no seeding and no save. A render-inventory case on this surface is
 fully read-only.
+
+### `networkidle` is NOT a usable settle condition on the credentials routes
+
+**Resolved/added during ELITEA-1967 implementation:** `BasePage.wait_for_network()`
+(`wait_for_load_state("networkidle")`) timed out on the **8th of 10** consecutive
+`/credentials/create-credential/{type}` navigations, on a page that was already
+fully rendered — a bare `TimeoutError`, not an assertion failure; the immediate
+re-run passed. Background DEV-backend traffic keeps the connection count above
+zero. This is the same characteristic ELITEA-1964 recorded for `/credentials/all`
+(`CredentialsListPage.reload_list()` settles on the list `GET` instead).
+
+For the CREATE form the correct condition is the form's own render signal:
+`CredentialCreatePage.open_type_form()` navigates and waits for
+`toolkit-field-label-input` to be visible — `CreateCredential.jsx` only builds
+`credentialDetails` (and therefore only renders any field) after
+`GET /configurations/available/` resolves. `navigate_to_type()` still uses
+`wait_for_page_load()`/`networkidle` for its four pre-existing callers; prefer
+`open_type_form()` in new work on this form.

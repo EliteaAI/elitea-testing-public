@@ -54,6 +54,37 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
     # Concrete Handles table for the full label-to-slug mapping.
     AUTH_METHOD_RADIO = '[data-testid="toolkit-field-auth-radio-{}"]'
 
+    # Generic schema-driven field testids (ELITEA-1967). The credential create
+    # form is rendered entirely from the backend schema
+    # (``GET /configurations/available/?section=credentials``), and every field
+    # testid is derived from the schema property key by the shared
+    # ``ToolBaseProperty`` renderer — so these templates cover ANY credential
+    # type without a per-type constant. Class-level template constants per
+    # .agents/testing.md § Locator policy (dynamic testid pattern).
+    #
+    # A PLAIN field puts ``toolkit-field-{key}-input`` on the <input> itself;
+    # a SECRET field puts it on the wrapper <div> and adds
+    # ``toolkit-field-{key}-input-field`` on the native <input>. FIELD_INPUT
+    # therefore resolves for both, which is what a presence/absence inventory
+    # needs.
+    FIELD_INPUT = '[data-testid="toolkit-field-{}-input"]'
+    # Secret/Password toggle rendered beside every secret field. Second
+    # placeholder is the mode: "secret" | "password".
+    FIELD_SECRET_TOGGLE = '[data-testid="toolkit-field-{}-input-toggle-{}"]'
+    # Enum (dropdown) field, e.g. Jira/Confluence "Hosting".
+    FIELD_SELECT = '[data-testid="toolkit-field-{}-select"]'
+
+    test_connection_button = LocatorDescriptor(
+        testid="credential-form-test-connection-button",
+        description=(
+            "Test connection button (CredentialForm.jsx). Disabled when the "
+            "credential type's schema carries has_test_connection: false "
+            "(Postman, of the ELITEA-1967 set) or when the type's "
+            "check_connection.enabled_when fields are unset. Testid added for "
+            "ELITEA-1967."
+        ),
+    )
+
     # ------------------------------------------------------------------
     # Create-form fields
     # ------------------------------------------------------------------
@@ -115,6 +146,33 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
         """
         self.navigate(f"/credentials/create-credential/{credential_type}")
         self.wait_for_page_load()
+
+    def open_type_form(self, credential_type: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Navigate to the create form for *credential_type* and settle on the
+        rendered form, NOT on ``networkidle`` (ELITEA-1967).
+
+        Additive sibling of :meth:`navigate_to_type` — that method's
+        :meth:`wait_for_page_load` calls ``wait_for_network()``
+        (``wait_for_load_state("networkidle")``), and the credentials routes do
+        **not** reliably reach network-idle: background traffic against the DEV
+        backend keeps the connection count above zero. Live-observed here on
+        step 8 of a 10-navigation run — 7 navigations settled, the 8th raised a
+        bare ``TimeoutError`` from ``networkidle`` on an already fully-rendered
+        page. The same characteristic is recorded for ``/credentials/all`` in
+        ``test-specs/toolkits-credentials/_surface.md`` (ELITEA-1964) and fixed
+        there the same way.
+
+        The form is schema-driven: it renders only once
+        ``GET /configurations/available/?section=credentials`` has resolved and
+        ``CreateCredential.jsx`` has built ``credentialDetails``. So the
+        Display Name field becoming visible IS the "form is ready" condition —
+        a real product signal, no sleep, no idle heuristic.
+
+        :meth:`navigate_to_type` is left byte-identical for its four existing
+        callers (additive-only on a shared-caller page object).
+        """
+        self.navigate(f"/credentials/create-credential/{credential_type}")
+        self.display_name_input.wait_for(state="visible", timeout=timeout)
 
     def type_card(self, credential_type: str) -> Locator:
         """Return the credential-type selector card locator for *credential_type*.
@@ -198,3 +256,27 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
         """
         self.access_token_input.click()
         self.access_token_input.press_sequentially(value, delay=20)
+
+    def field(self, field_key: str) -> Locator:
+        """Return the form-field locator for schema property *field_key*.
+
+        Resolves for plain fields (testid on the ``<input>``) and secret
+        fields alike (testid on the ``SecretField`` wrapper ``<div>``) — see
+        :data:`FIELD_INPUT`. Used by ELITEA-1967 for both presence and
+        ``to_have_count(0)`` absence assertions.
+        """
+        return self.page.locator(self.FIELD_INPUT.format(field_key))
+
+    def secret_toggle(self, field_key: str, mode: str) -> Locator:
+        """Return the Secret/Password toggle button of secret field *field_key*.
+
+        Args:
+            field_key: The schema property key (e.g. ``"api_key"``).
+            mode: ``"secret"`` or ``"password"`` — the toggle's two options.
+        """
+        return self.page.locator(self.FIELD_SECRET_TOGGLE.format(field_key, mode))
+
+    def field_select(self, field_key: str) -> Locator:
+        """Return the enum-dropdown locator for schema property *field_key*
+        (e.g. Jira/Confluence ``"hosting"``)."""
+        return self.page.locator(self.FIELD_SELECT.format(field_key))

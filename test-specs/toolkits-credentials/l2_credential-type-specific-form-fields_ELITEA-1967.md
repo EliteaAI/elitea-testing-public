@@ -227,19 +227,26 @@ function signature, which is mandatory plumbing for a new optional prop.
    value is caller-derived, per `.agents/testing.md` § Locator policy
    ("shared components never hardcode feature-scoped testids").
 
-### Page object impact
+### Page object impact (as shipped)
 `automation/pages/credential_create_page.py` gains, as class-level constants /
-methods:
+methods — all **additive**, nothing existing modified:
 ```python
-FIELD_INPUT = '[data-testid="toolkit-field-{}-input"]'
-FIELD_SECRET_INPUT = '[data-testid="toolkit-field-{}-input-field"]'
+FIELD_INPUT        = '[data-testid="toolkit-field-{}-input"]'
 FIELD_SECRET_TOGGLE = '[data-testid="toolkit-field-{}-input-toggle-{}"]'
-FIELD_SELECT = '[data-testid="toolkit-field-{}-select"]'
+FIELD_SELECT       = '[data-testid="toolkit-field-{}-select"]'
 test_connection_button = LocatorDescriptor(testid="credential-form-test-connection-button", ...)
 ```
-plus `field_input()`, `secret_toggle()`, `field_select()` accessors. The
-existing `AUTH_METHOD_RADIO` constant and `auth_radio()` accessor are reused
-unchanged.
+plus the accessors `field(field_key)`, `secret_toggle(field_key, mode)` and
+`field_select(field_key)`, and `open_type_form(credential_type)` (see
+§ Known Defects/Gaps note 4). The existing `AUTH_METHOD_RADIO` constant and
+`auth_radio()` accessor are reused unchanged; `navigate_to_type()` and
+`wait_for_page_load()` are left byte-identical for their existing callers.
+
+`FIELD_INPUT` intentionally covers BOTH shapes: on a plain field the testid is
+on the `<input>`, on a secret field it is on the `SecretField` wrapper `<div>`
+— so one template serves presence and absence assertions for every field. The
+secret field's native `…-input-field` input is not needed by this case (no
+field is ever filled).
 
 ## Network Behavior
 - `GET /api/v2/configurations/available/?section=credentials&section=storage`
@@ -267,6 +274,26 @@ unchanged.
    `https://api.github.com`, the Test-connection disabled state) is rendered by
    the product from a live backend schema response. No `page.route`, no
    `page.evaluate` in the shipped test, no injected state.
+
+### Implementer-phase addendum — discovered during automation
+
+4. **`networkidle` does not reliably settle on the credentials routes (not a
+   defect — a wait-strategy fact).** The first full implementation run failed
+   on **step 8 of 10** with a bare
+   `TimeoutError: Timeout 10000ms exceeded` raised from
+   `BasePage.wait_for_network()` → `wait_for_load_state("networkidle")`, on a
+   page that was already fully rendered (seven prior navigations settled fine;
+   an immediate re-run passed). Background traffic against the shared DEV
+   backend keeps the connection count above zero. Same characteristic already
+   recorded for `/credentials/all` by ELITEA-1964
+   (`test-specs/toolkits-credentials/_surface.md`).
+   Fixed additively: `CredentialCreatePage.open_type_form()` navigates and then
+   waits for the Display Name field to be visible — which IS the product's own
+   "schema resolved, form rendered" signal, since `CreateCredential.jsx` only
+   builds `credentialDetails` once
+   `GET /configurations/available/` has returned. No sleep, no idle heuristic.
+   `navigate_to_type()` is untouched for its four existing callers.
+   Side benefit: the spec's runtime dropped from ~91s to ~85s.
 
 ## Blocked Steps
 None — all 10 case steps executed and observed live on 2026-08-22 against
