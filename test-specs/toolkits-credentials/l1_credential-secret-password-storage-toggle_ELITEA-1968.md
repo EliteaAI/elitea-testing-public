@@ -90,7 +90,22 @@ case's own steps produce.
 |---|---|
 | `aria-pressed` asserted on BOTH toggle buttons at each switch, not just the clicked one | The Fail criterion is "the toggle does not switch modes". A one-sided check passes on a toggle that lights both buttons; the exclusive pair is the actual contract (`ToggleButtonGroup exclusive`) |
 | Combobox asserted `to_have_count(0)` in Password mode, native input `to_have_count(0)` in Secret mode | The two modes render mutually-exclusive elements. Presence-only assertions cannot see "both rendered", which is a real regression shape |
-| Underlying value `{{secret.auth_token}}` asserted alongside the displayed name | Step 5's expected result names only the displayed name, but the displayed name is a *label*; a UI that shows the name while storing the wrong value satisfies a text-only check. The template string is what the credential actually persists |
+| Dropdown asserted CLOSED after the selection (`to_have_count(0)` on the SAVED SECRETS header) | Step 5's expected result is that the selected secret "appears in the token field"; a select that stays open after a pick has not committed the selection. **Originally specced as an assertion on the underlying `{{secret.auth_token}}` value — DROPPED, see below** |
+
+**Dropped Axis-2 addition (declared).** The stronger check — assert the
+combobox displays the secret's NAME while the field stores the
+`{{secret.<name>}}` TEMPLATE — has **no compliant handle today**: MUI's
+`MuiSelect-nativeInput` (the element carrying the bound value) receives no
+testid, and `SingleSelect`'s `inputProps` pass-through does not reach it
+(tried live, 2026-08-22, and reverted). Reaching it would require a raw
+`.locator("input")` chained off the wrapper, which is NOT one of the two
+#579 sanctioned exceptions (this is our own JSX, not a third-party widget
+subtree or an editor's internal render nodes) — so it is `CHANGES_REQUESTED`
+territory, not a judgement call. Recorded as a **testid gap** in
+`_surface.md` for whichever case needs it: `SingleSelect.jsx` would need to
+pass the native input's testid via MUI's `slotProps.htmlInput`, which is a
+shared-component change bigger than this case warrants. The displayed name
+plus the dropdown-closes assertion is what ships.
 | Field asserted cleared (`""`) after the Secret→Password switch in Step 6 | The product deliberately clears on mode switch. Asserting it pins live behaviour and makes Step 7's "value is accepted" unambiguous (the typed text, not a leftover) |
 
 ## Cleanup
