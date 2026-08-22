@@ -244,3 +244,61 @@ Bind via `SupportAssistantPage.message_copy_buttons` / `.message_bubbles` and th
     directly after `page.wait_for_url(...)`; no `wait_for_timeout`, no `networkidle`, no
     re-open. Full spec runtime with two live replies: **77.8 s** headless (matches the AFS's
     70-90 s estimate).
+
+## History panel & page-refresh restore (verified live 2026-08-22, ELITEA-2423 run)
+
+Source: `../elitea_assistant/src/components/chat/ChatHeader.tsx` (panel) +
+`src/lib/hooks/initAssistant.hook.ts` (data).
+
+| Element | Current raw handle | Testid |
+|---|---|---|
+| History button | `button[aria-label="Chat history"]` (`ChatHeader.tsx:94-101`) | **needed:** `support-assistant-history-button` |
+| History dropdown | `.elitea-assistant-history-dropdown` (`:105`) | **needed:** `support-assistant-history-dropdown` |
+| History item (repeated) | `button.elitea-assistant-history-item` (`:108-112`) | **needed:** `support-assistant-history-item` |
+
+26. **`GET /api/v2/support_assistant/conversations/` fires on PAGE LOAD, not on the History click.**
+    `initAssistant.hook.ts:44` calls `api.getConversations()` in the mount `useEffect`; the History
+    button (`ChatHeader.tsx:97 toggleHistory`) only flips local `showHistory` over the already-fetched
+    array. **Live: zero requests during the click.** Any test asserting a status code "when the history
+    panel opens" must arm its response collector around the **reload/navigation**, or it passes
+    vacuously. Also: the list endpoint is hit **twice per load** (StrictMode double-invokes the effect
+    in dev) — assert `all(status == 200)`, never just the first.
+
+27. **The History button is `disabled` until `history.length > 0`** (`ChatHeader.tsx:100`). That makes
+    `expect(history_button).to_be_enabled()` the cheapest and most honest "conversation list has
+    loaded" wait on this surface — no `networkidle`, no sleep. (It is also disabled for a genuinely
+    empty account, so a spec that needs the panel must create a conversation first.)
+
+28. **A history item is `disabled` exactly when it is the currently-open conversation**
+    (`ChatHeader.tsx:113` — `disabled={conversation.uuid === currentConversationId}`). After a refresh
+    the widget auto-restores `items[0]`, so **index 0 is always disabled**; the flag follows the
+    selection (live: `[True, False, False]` → select index 1 → `[False, True, False]`). To "open a
+    previous session" click the first `:not([disabled])` item. **Do not request a `data-current`
+    attribute** — the native `disabled` already encodes it; filter from a class constant
+    `'[data-testid="support-assistant-history-item"]:not([disabled])'`.
+    Selecting one fires `GET /api/v2/support_assistant/conversation/{uuid}` → 200 and swaps the message
+    list (live 14 → 4 items); the dropdown closes on outside pointerdown (`:36-46`).
+
+29. **The widget does NOT auto-open after a page reload** — `[data-testid="support-assistant-widget"]`
+    count is 0 after `page.reload()`; an explicit launcher click is required. (Contrast quirk 19: an
+    *in-app* route change never closes it. Refresh ≠ navigation on this surface.)
+
+30. **Restore-after-refresh always loads `items[0]` of the conversation list, which is ordered by
+    CREATION, not by last activity.** Live: a message sent into the list's index-1 conversation did not
+    reorder it, and after the next reload the widget restored index 0 again — so that message was not
+    visible (`MSG2 present: 0`) while the index-0 conversation's message was (`MSG1 present: 1`).
+    Consequence for specs: after a refresh you may only assert content of the conversation you were in
+    **if it was `items[0]`**. Never assert "the message I just sent is visible after refresh" once the
+    test has switched conversations.
+
+31. **History item count is shared-account data and appears capped at 20** — assert `>= 1` and
+    *stability across the refresh* (`after == before`), never an absolute.
+
+32. **`#1581` disproved a fourth time** (ELITEA-2423, 2026-08-22): real `fill` → `send-disabled: False`
+    immediately, twice, both messages answered (32.3 s / 31.8 s). The 2026-08-18 ELITEA-2423 AFS that
+    blocked on it (commit `995f775cb`) was stale and has been replaced. Zero console errors and zero
+    non-200 `support_assistant` calls across 2 loads + 2 reloads + 2 live replies.
+
+33. **Case-text clarification #1649** (label `question`) records ELITEA-2423's two case-text
+    imprecisions (the GET trigger in Step 4, the disabled index-0 item in Step 5) — product is correct
+    in both.
