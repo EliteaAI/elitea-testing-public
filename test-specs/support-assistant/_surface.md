@@ -72,3 +72,30 @@ attributes — every handle below is a grandfathered raw fallback, tech debt to 
 `lextend_launcher-visible-widget-opens-and-closes_ELITEA-1796.md`,
 `lextend_send-message-receive-ai-response_ELITEA-1798.md`,
 `lcovered_widget-conversation-state-persists-after-close-reopen_ELITEA-1797.md`.
+
+## Resolved/added during ELITEA-2418 implementation (2026-08-22, test-automation-engineer)
+
+**All six testids in the table above now EXIST** on the integration branches (they are no longer
+"testid to add"): `sidebar-support-assistant-button` in EliteaAI/EliteaUI@37176b46
+(`automation/testids`), and `support-assistant-widget` / `-widget-title` / `-message-input` /
+`-send-button` / `-message-item` in EliteaAI/elitea_assistant@b8a287b (its own `automation/testids`).
+Not yet on either repo's `main` — a human cherry-picks. Bind to them via the class-level
+`LocatorDescriptor(testid=…)` fields now on `SupportAssistantPage` (`sidebar_launcher`, `widget`,
+`widget_header_title`, `message_input_field`, `send_message_button`, `message_items`) plus
+`open_widget_via_sidebar()` / `get_message_item_count()` / `set_message_text()` — the legacy
+`fallback=` fields are untouched for their existing callers.
+
+7. **The Vite dev server does NOT hot-reload edits made under OneDrive.** After adding the testids
+   above, the running server kept serving the pre-edit modules — a plain `curl` of the module URL
+   returned the OLD source, and `get_by_test_id` timed out even though the JSX on disk was correct.
+   fs-watch does not fire reliably on this OneDrive-backed checkout. **Diagnose** with
+   `curl -s http://localhost:5173/src/<path>.jsx | grep -c <testid>` (0 ⇒ stale), and for the
+   connected assistant repo `curl -s 'http://localhost:5173/@fs<abs-path>.tsx'`. **Fix:** kill the
+   `npm run dev` + `vite` PIDs, `rm -rf EliteaUI/node_modules/.vite`, restart, re-curl. Cost one
+   full test rerun before it was identified.
+
+8. **Sending is a WebSocket frame, not a POST.** `src/lib/hooks/chat.hook.ts:152` →
+   `socket.emit(SOCKET_EVENTS.PREDICT, params)`. Asserting "no POST" alone is therefore a weak
+   proof of "no message sent" — assert on outbound Socket.IO frames (`page.on("websocket")` +
+   `ws.on("framesent")`, look for `predict` in the payload). Register the listener BEFORE
+   navigation: `page.on("websocket")` only fires for sockets opened after it is attached.

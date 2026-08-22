@@ -143,14 +143,19 @@ currently contains **zero** `data-testid` attributes, so every handle below is `
 (canon #705). The raw handles in the "observed as" column are what the analyst drove; they are the
 grandfathered fallbacks already in `support_assistant_page.py`, not a licence to add new ones.
 
-| # | Element | Testid to add | Where (file) | Observed as (analyst transit) | PROVENANCE |
+> **Amended during ELITEA-2418 implementation (2026-08-22):** all six testids have been ADDED and
+> pushed. PROVENANCE below is the shipped truth, replacing the analyst's `needs-adding` rows.
+> EliteaUI `automation/testids` commit `37176b46`; `elitea_assistant` `automation/testids` commit
+> `b8a287b`. Both are `on-automation/testids only (awaiting human promotion to main)`.
+
+| # | Element | Testid (added) | Where (file) | Observed as (analyst transit) | PROVENANCE |
 |---|---|---|---|---|---|
-| 1 | Sidebar launcher (the clickable target) | `sidebar-support-assistant-button` | **EliteaUI** `src/[fsd]/widgets/sidebar-root/ui/SidebarBody.jsx:294-298` (the `<Box data-tour=… onClick={onToggleAssistant}>`) | `[data-tour="sidebar-support-assistant"]` | needs-adding (EliteaUI) |
-| 2 | Widget window | `support-assistant-widget` | `elitea_assistant` `src/components/chat/…` window container | `.elitea-assistant-window` | needs-adding (connected repo) |
-| 3 | Widget header title | `support-assistant-widget-title` | `elitea_assistant` header component | `.elitea-assistant-header-title` (text "ELITEA Support") | needs-adding (connected repo) |
-| 4 | Message input | `support-assistant-message-input` | `elitea_assistant` `src/components/chat/MessageInput.tsx:275-287` (`<textarea>`) | `textarea.elitea-assistant-input` | needs-adding (connected repo) |
-| 5 | Send button | `support-assistant-send-button` | `elitea_assistant` `src/components/chat/MessageInput.tsx:296-307` | `button.elitea-assistant-send-button` / `[aria-label="Send message"]` | needs-adding (connected repo) |
-| 6 | Message item (repeated — for the unchanged-conversation count) | `support-assistant-message-item` | `elitea_assistant` `src/components/chat/MessageItem.tsx:22` (wrapper div) | `.elitea-assistant-message-wrapper` | needs-adding (connected repo) |
+| 1 | Sidebar launcher (the clickable target) | `sidebar-support-assistant-button` | **EliteaUI** `src/[fsd]/widgets/sidebar-root/ui/SidebarBody.jsx:294-298` (the `<Box data-tour=… onClick={onToggleAssistant}>`) | `[data-tour="sidebar-support-assistant"]` | added — EliteaAI/EliteaUI@37176b46, on `automation/testids` only |
+| 2 | Widget window | `support-assistant-widget` | `elitea_assistant` `src/components/chat/…` window container | `.elitea-assistant-window` | added — EliteaAI/elitea_assistant@b8a287b, on `automation/testids` only |
+| 3 | Widget header title | `support-assistant-widget-title` | `elitea_assistant` header component | `.elitea-assistant-header-title` (text "ELITEA Support") | added — EliteaAI/elitea_assistant@b8a287b, on `automation/testids` only |
+| 4 | Message input | `support-assistant-message-input` | `elitea_assistant` `src/components/chat/MessageInput.tsx:275-287` (`<textarea>`) | `textarea.elitea-assistant-input` | added — EliteaAI/elitea_assistant@b8a287b, on `automation/testids` only |
+| 5 | Send button | `support-assistant-send-button` | `elitea_assistant` `src/components/chat/MessageInput.tsx:296-307` | `button.elitea-assistant-send-button` / `[aria-label="Send message"]` | added — EliteaAI/elitea_assistant@b8a287b, on `automation/testids` only |
+| 6 | Message item (repeated — for the unchanged-conversation count) | `support-assistant-message-item` | `elitea_assistant` `src/components/chat/MessageItem.tsx:22` (wrapper div) | `.elitea-assistant-message-wrapper` | added — EliteaAI/elitea_assistant@b8a287b, on `automation/testids` only |
 
 **Disabled state is read off the element itself** (`disabled` attribute / `is_disabled()`), not a
 state-suffixed testid — consistent with `.agents/testing.md` § Locator policy ("testid = stable
@@ -238,3 +243,24 @@ element that carries the `onClick` handler (no `page.evaluate` click, unlike the
 2. Add the six testids first (§ Handles Reference), then bind class-level `LocatorDescriptor(testid=…)`.
 3. Ask a human to close **#1581** as not-reproducing (agents never close; the non-repro evidence is
    already commented on the issue).
+
+## Implementation Record (appended by the implementer, 2026-08-22)
+
+- **Spec:** `automation/tests/ui/support_assistant/test_support_assistant_empty_message.py`
+  (`TestSupportAssistantEmptyMessage::test_empty_message_cannot_be_sent`) — GREEN 1/1, 13.9 s.
+- **Page object:** six class-level `LocatorDescriptor(testid=…)` fields plus
+  `open_widget_via_sidebar()`, `get_message_item_count()`, `set_message_text()` appended to
+  `automation/pages/support_assistant_page.py`. Purely additive — the legacy `fallback=` fields and
+  their callers are byte-identical.
+- **Stronger network observable than the AFS specified.** The AFS's Axis-2 row asserts "zero POST
+  requests" during the Enter window. Sending is **not** a POST: `chat.hook.ts:152` does
+  `socket.emit(SOCKET_EVENTS.PREDICT, params)` over Socket.IO. The spec therefore asserts **no
+  outbound WebSocket frame containing `predict`** during the window *in addition to* zero POSTs —
+  a genuine "no message was sent" proof rather than a vacuous one. Same observable, stronger
+  evidence; no scope change.
+- **Settle window:** asserting an absence has no positive condition to wait on, so the two
+  no-send windows use a single commented `page.wait_for_timeout(1500)` (`NO_SEND_SETTLE_MS`) —
+  the documented exception to the no-sleep rule. `handleSend` emits synchronously, so 1.5 s is
+  far more than a real send needs to become observable.
+- **#1581 confirmed non-reproducing** — Step 6 is a hard `to_be_enabled()`, no soft assert, no
+  `# Known defect` comment, exactly as the AFS directs.

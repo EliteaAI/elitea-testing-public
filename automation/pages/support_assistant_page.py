@@ -114,6 +114,48 @@ class SupportAssistantPage(BasePage):
         description="Messages container area"
     )
 
+    # ------------------------------------------------------------------
+    # Testid-only locators (policy-compliant — .agents/testing.md § Locator
+    # policy). Added for ELITEA-2418; the ``fallback=`` fields above are
+    # pre-policy tech debt (#25/#42) kept for their existing callers.
+    #
+    # Testid provenance: ``sidebar-support-assistant-button`` lives in
+    # EliteaUI (``src/[fsd]/widgets/sidebar-root/ui/SidebarBody.jsx``); the
+    # ``support-assistant-*`` ones live in the connected first-party repo
+    # ``EliteaAI/elitea_assistant`` (canon #705), aliased into the local dev
+    # server by ``VITE_ASSISTANT_LOCAL=1``.
+    # ------------------------------------------------------------------
+
+    sidebar_launcher = LocatorDescriptor(
+        testid="sidebar-support-assistant-button",
+        description="Sidebar Support Assistant launcher (the element owning onClick)"
+    )
+
+    widget = LocatorDescriptor(
+        testid="support-assistant-widget",
+        description="Support Assistant widget window"
+    )
+
+    widget_header_title = LocatorDescriptor(
+        testid="support-assistant-widget-title",
+        description="Support Assistant widget header title"
+    )
+
+    message_input_field = LocatorDescriptor(
+        testid="support-assistant-message-input",
+        description="Support Assistant message input textarea"
+    )
+
+    send_message_button = LocatorDescriptor(
+        testid="support-assistant-send-button",
+        description="Support Assistant Send message button"
+    )
+
+    message_items = LocatorDescriptor(
+        testid="support-assistant-message-item",
+        description="Support Assistant conversation message items (repeated)"
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -524,3 +566,51 @@ class SupportAssistantPage(BasePage):
             input_locator = self.page.get_by_placeholder("Type a message...")
         input_locator.wait_for(state="visible", timeout=timeout)
         logger.info("Widget ready")
+
+    # ------------------------------------------------------------------
+    # Testid-based helpers (ELITEA-2418) — additive; the legacy helpers above
+    # keep their existing callers byte-identical.
+    # ------------------------------------------------------------------
+
+    @action("Open Support Assistant via sidebar launcher")
+    def open_widget_via_sidebar(self, timeout: int = 10000):
+        """Open the widget with a REAL pointer click on the sidebar launcher.
+
+        Distinct from :meth:`open_widget`, which JS-clicks the floating button.
+        A native click on ``button.elitea-assistant-button`` is intercepted by
+        the MUI Tooltip clone; the sidebar wrapper is the element that actually
+        carries ``onClick={onToggleAssistant}``, so clicking it is the genuine
+        user-equivalent gesture (no ``page.evaluate``).
+
+        Args:
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Opening Support Assistant widget via sidebar launcher")
+        self.sidebar_launcher.click()
+        self.widget_header_title.wait_for(state="visible", timeout=timeout)
+        self.message_input_field.wait_for(state="visible", timeout=timeout)
+        logger.info("Support Assistant widget opened")
+
+    def get_message_item_count(self) -> int:
+        """Count conversation message items via their testid.
+
+        The widget restores the previous session on open, so this is a
+        BASELINE to diff against — never expect an absolute value.
+
+        Returns:
+            Number of message items currently rendered
+        """
+        return self.message_items.count()
+
+    @action("Set Support Assistant input text")
+    def set_message_text(self, text: str):
+        """Replace the input content with ``text`` using real input events.
+
+        ``fill`` dispatches the events React's controlled ``<textarea>``
+        actually listens to; assigning ``value`` directly does not update
+        component state (see #1581 — a false defect produced exactly that way).
+
+        Args:
+            text: Text to place in the input (``""`` clears it)
+        """
+        self.message_input_field.fill(text)
