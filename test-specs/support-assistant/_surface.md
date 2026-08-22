@@ -338,3 +338,60 @@ named `history_toggle_button` precisely to avoid colliding with it.
 36. **Runtime for the full six-step spec: 92.6 s headless** (two live replies, two full page reloads,
     one conversation switch) — comfortably inside the AFS's 110-150 s estimate. Reply latencies this
     run were at the fast end of the 31-135 s band again.
+
+## Attachments — upload, predict payload, and the sent-message gap (verified live 2026-08-22, ELITEA-2421 run)
+
+Source: `../elitea_assistant/src/components/chat/MessageInput.tsx`,
+`src/components/chat/attachments/AttachmentChip.tsx`, `src/lib/hooks/attachmentUpload.hook.ts`,
+`src/lib/hooks/chat.hook.ts:483-540`.
+
+| Element | Current raw handle | Testid |
+|---|---|---|
+| Attach file button | `button.elitea-assistant-attach-button` / `[aria-label="Attach file"]` (`MessageInput.tsx:266-274`) | **needed:** `support-assistant-attach-button` |
+| Attachment chip (composer) | `.elitea-assistant-file-chip` (`AttachmentChip.tsx:39`; inside a `<Tooltip>`, renders children normally) | **needed:** `support-assistant-attachment-chip` |
+| Chip filename | `.elitea-assistant-file-chip-name` — chip's own text already contains it | — (assert `to_contain_text` on the chip) |
+| Chip remove button | `[aria-label="Remove <filename>"]`, `disabled` while uploading | — (no case touches it yet) |
+| `+N` overflow chip | `button.elitea-assistant-file-chip--count`, `aria-label="Show N more files"` | — (visible only above 2 chips, 3 when expanded) |
+
+37. **The upload fires on SEND, not on attach.** `handleSend` → `startUpload(conversationId)`
+    → `POST /api/v2/support_assistant/attachments/{conversation_uuid}` (multipart `file` +
+    `overwrite=1`, `adapter.api.ts:100`, XHR not fetch) → **201**, body `[{filepath}]`. Attaching
+    only puts a `PENDING` chip in local state. **A network capture armed around the attach click
+    sees nothing** — this is exactly what produced the false bug #1584 ("no file upload to
+    backend"). Arm the collector before Send, and remember it is an **XHR**, so
+    `page.on("response")` catches it but a `expect_request` scoped to `fetch` would not.
+
+38. **The filepath reaches the model through the WebSocket, not HTTP.** Live frame:
+    `42["support_predict",{"conversation_uuid":"…","content":"…","attachments":["/attachments/{uuid}/<file>.txt"],"support_assistant_context":{…}}]`.
+    Combined with quirk 8: "no POST" is never evidence that nothing was sent on this surface.
+
+39. **The assistant genuinely reads attached file content.** Planted a unique token in a `.txt`
+    (`The secret project codename is ZEPHYR-4417.`), asked for it back — reply was exactly
+    `ZEPHYR-4417` in **73.7 s**. This is the cheap deterministic oracle for any
+    "does it process the file" case: plant a per-run token, assert it comes back. A
+    *"summarize this"* prompt has no assertable observable — do not write one.
+
+40. **The sent message shows NO attachment indicator — product gap #1653.** `TMessage`
+    (`chat.types.ts:1-11`) has no attachment field; `chat.hook.ts:492-495` pushes
+    `{id, role:'user', content, timestamp}` only, computing `allFilepaths` separately for
+    `emitPredict`; `MessageItem.tsx` renders nothing for attachments. Live, the sent bubble is
+    bare text. `clearAttachments()` (`chat.hook.ts:424`) wipes the composer chip on send, so the
+    file vanishes from the UI entirely. Assert the correct behaviour with `expect.soft(...)
+    to_contain_text(FILENAME)` on the already-testid'd user item — **do not** invent a testid for
+    an element that does not exist.
+
+41. **Send-button contract, attachment clause** (extends quirk 3): `isSendDisabled = disabled ||
+    isUploading || !attachmentsValid || !text.trim()` (`MessageInput.tsx:105-108`), where
+    `attachmentsValid` = every chip is `PENDING` or `COMPLETED`. So an **ERROR** chip wedges Send
+    until it is removed, and **text is still required** — an attachment alone does not enable the
+    button (though `handleSend`'s own guard at `:118` would allow attachment-only, the button is
+    unreachable). Attach button disables at 10 attachments (`MAX_ATTACHMENT_COUNT`) or while
+    uploading. Allowed extensions are a large fixed set (`attachment.constants.ts`); files > 5 MB
+    (`CHUNK_SIZE`) switch to a chunked upload loop, > 150 MB are rejected client-side.
+
+42. **`#1584` is a false bug** — same class as `#1581`/quirk 21. The 2026-08-18 ELITEA-2421 AFS
+    (commit `7941ba405`) claimed attachments were an unimplemented stub; disproved point-by-point
+    on 2026-08-22 (refutation comment on #1584, issue left OPEN for a human to close). Its
+    *"Echo: …"* reply and its `"Elitea Assistant"` widget title (live title is **"ELITEA Support"**)
+    both fail to reproduce. **Treat every finding from that 2026-08-18 support-assistant pass as
+    unverified until re-run.**
