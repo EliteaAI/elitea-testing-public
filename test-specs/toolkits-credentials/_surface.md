@@ -539,3 +539,27 @@ the query) kept running stale code and the new testid resolved 0 times.
 Fix that worked: kill the dev server, `rm -rf node_modules/.vite`, restart.
 Verify with `curl -s http://localhost:5173/src/... | grep -c <new-testid>`
 **without** a cache-busting query before blaming your edit.
+
+### Display Name is capped at 32 chars — silently TRUNCATED, not rejected
+
+`ToolBaseProperty.jsx:589` applies `maxLength = MAX_NAME_LENGTH` (= 32,
+`src/common/constants.js`) to the `label` field on every credential/toolkit
+form. A longer generated name is cut by the input itself, so the create
+response comes back with a *different* `label`/`elitea_title` than the test
+typed and every subsequent lookup-by-name misses. Keep generated names
+(`autotest_cred_<what>_<epoch>`) under 32 characters — an epoch timestamp
+alone is 10. Cost one run on ELITEA-1970 (33 chars → 32 stored).
+
+### `CredentialFormFieldsMixin` now owns the shared `CredentialForm.jsx` handles
+
+Promoted out of `CredentialCreatePage` during ELITEA-1970 (both the create and
+the detail route render the same `CredentialForm.jsx`):
+`test_connection_button`, `api_error_message`, `FIELD_SECRET_INPUT` +
+`secret_native_input()`, plus new `FIELD_HELPER_TEXT` +
+`secret_field_helper_text()`, `replace_secret_value()`, toast handles
+(`toast_alert` / `toast_message` / `TOAST_ALERT_SEVERITY` / `success_toast()`).
+Both page objects inherit them, so `create_page.test_connection_button` still
+resolves — regression-verified against the three specs that call them
+(`test_credential_type_specific_form_fields`, `test_credential_secret_password_toggle`
+pass; `test_credential_duplicate_mismatch_validation` is the pre-existing
+sanctioned-RED `#1004` signature, unchanged).
