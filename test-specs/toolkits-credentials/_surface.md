@@ -603,3 +603,69 @@ resolves — regression-verified against the three specs that call them
 (`test_credential_type_specific_form_fields`, `test_credential_secret_password_toggle`
 pass; `test_credential_duplicate_mismatch_validation` is the pre-existing
 sanctioned-RED `#1004` signature, unchanged).
+
+## Credential ERROR states — confirmed live 2026-08-22 (ELITEA-1980)
+
+Three error surfaces driven end-to-end on `localhost:5173`, project 399, on a
+**Github** credential (Token auth). **No product defects.** Github needs no
+valid secret here (schema `required: ['base_url']`, and both scenarios want
+*invalid* input), so this surface is immune to `#1673`'s expired
+`GIT_HUB_TOKEN` — the cheapest honest error-state vehicle on this form.
+
+### Which FIELD a failed Test connection lights up — read the mapper, don't guess
+
+`credentialError.helpers.js#extractInformationFromCredentialError` decides,
+in this order: (1) per-key substring match on title / description /
+`settings[key]` / key name → (2) `authentication` in message AND
+`isSecretField(key)` → (3) `url` in message AND `*url*` in key → (4)
+**fallback: nothing matched ⇒ every `*url*` key gets the message.**
+
+Consequence, confirmed live and NOT a defect:
+
+| Type + input | Backend message (400) | Lands on |
+|---|---|---|
+| github, `access_token=invalid_token_xyz` | `Authentication failed: Invalid credentials` | **Base Url** (branch 4 — branch 2 does *not* fire for Github's `access_token`) |
+| github, `base_url=http://unreachable.example.invalid` | `Connection error: Unable to reach GitHub API` | **Base Url** (branch 4) |
+| jira, invalid `api_key` (ELITEA-1970) | `Authentication failed: Invalid username or API key` | `api_key` **and** `username` (branch 1, twice) |
+
+So "auth error ⇒ secret field" is a Jira-shaped intuition, not a rule. Assert
+per FIELD, and name the branch in a comment.
+
+### Unreachable Base Url fails FAST, not by timeout
+
+`http://unreachable.example.invalid` (RFC 2606 reserved ⇒ never resolves)
+returns 400 in ~1.1 s with `Connection error: …`. The case text's "timeout"
+wording is a category, not a duration — no long-timeout handling needed.
+Same probe on jira gives `Connection error: Unable to reach Jira server -
+check URL and network connectivity` (that one contains "URL", so it maps via
+branch 3 instead of the fallback — same destination, different branch).
+
+### `/credentials/all/{bad-id}` renders `Page404` — but only AFTER the GET 404
+
+`EditCredential.jsx:160` → `shouldShowNotFoundPage = isError &&
+isNotFoundError(error)` (`common/utils.jsx:144` — true for 404 **and 400**).
+Until `GET /configurations/configuration/{project}/{id}` resolves, the route
+renders an **empty editable credential form** (Save / Discard / three-dot
+present). A snapshot taken right after `page.goto` sees that blank form and
+looks like a missing not-found state — it is a loading state. Wait on the
+detail GET response, never on a timer. The 404 also emits a console error
+(same class as `#1666`): any console-error side-channel over this route needs
+an endpoint-specific filter.
+
+### Testids added during ELITEA-1980 (EliteaAI/EliteaUI@54ce148e, `automation/testids`, awaiting human cherry-pick to `main`)
+
+- `toolkit-field-{key}-input-helper-text` on **plain** (non-secret) fields —
+  closes the gap the ELITEA-1970 entry above left open. `ToolBaseProperty.jsx`
+  now passes the already-supported `helperTextTestId` prop
+  (`InputBase.jsx:101`/`:270`, 3 pre-existing callers) with the caller-derived
+  value, the same grammar `SecretField.jsx` uses. One JSX attribute; no node,
+  no hook, no behaviour change. The mixin's existing `FIELD_HELPER_TEXT`
+  constant therefore now covers plain **and** secret fields — use the generic
+  `field_helper_text(key)`.
+- `page-not-found` on the shared `Page404` container (`src/pages/Page404.jsx`)
+  — generic, no feature scope; every 404 route in the app gains a handle.
+
+**Resolved/added during ELITEA-1980 implementation:** `CredentialFormFieldsMixin`
+gained `field_helper_text(field_key)` (generic; `secret_field_helper_text` left
+byte-identical for its ELITEA-1970 caller), and `pages/not_found_page.py`
+(`NotFoundPage`) was added for the shared 404 state.
