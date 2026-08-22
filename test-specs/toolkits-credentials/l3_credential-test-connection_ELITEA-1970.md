@@ -93,11 +93,15 @@ grammar — the spec addresses it by schema key, so the row swap in divergence
 
 ## Test Steps
 1. Navigate to `/credentials/create-credential/jira`, fill Display Name with
-   `autotest_cred_testconn_${ts}`, Base Url / Username / Api Key from
-   `.env.test`, click Save.
-   - **Verify**: `POST /configurations/configurations/{project}` → **200**,
-     response `label == elitea_title == ${name}` with a numeric `id`; the app
-     redirects to `/credentials/all`.
+   `autotest_cred_conn_${ts}` (§ Test Data — the name MUST stay within the
+   field's real `maxLength` of 32, which truncates silently), Base Url /
+   Username / Api Key from `.env.test`, click Save.
+   - **Verify**: the Display Name input's own value reads back `${name}`
+     in full (the truncation guard — a name over 32 chars fails here, loudly,
+     instead of silently mismatching every later lookup); Save is enabled once
+     all four fields are filled; `POST /configurations/configurations/{project}`
+     → **200**, response `label == elitea_title == ${name}` with a numeric `id`;
+     the app redirects to `/credentials/all`.
 2. Open the credential's detail page by clicking its card in the list.
    - **Verify**: URL becomes `/credentials/all/{id}` carrying the SAME id the
      create response returned; the Display Name field reads `${name}`; the
@@ -108,7 +112,10 @@ grammar — the spec addresses it by schema key, so the row swap in divergence
      `{"success": true}`; a **success** toast appears
      (`toast-alert[data-severity="success"]`) whose `toast-message` text is
      exactly `The connection is OK!`; the Api Key field shows **no** inline
-     error (`…-helper-text` count 0, `aria-invalid="false"`).
+     error (`…-helper-text` count 0, `aria-invalid="false"`) and the global
+     `credential-form-api-error-message` is absent. The toast is then allowed
+     to auto-hide (its own product behaviour, awaited — no sleep) so step 5's
+     "no success toast" assertion starts from a clean baseline.
 4. Replace the Api Key field's value with `invalid_token_xyz`.
    - **Verify**: the field's native input value reads `invalid_token_xyz`.
 5. Click **Test connection** again.
@@ -116,8 +123,9 @@ grammar — the spec addresses it by schema key, so the row swap in divergence
      **400** with body `success == false` and a non-empty `message`; the Api
      Key field renders the inline error indicator
      (`aria-invalid="true"`) and its `…-helper-text` element is visible with
-     text **equal to that response body's `message`**; no success toast is
-     raised by this click.
+     text **equal to that response body's `message`**; the global
+     `credential-form-api-error-message` stays absent (the error is inline, not
+     a banner); no success toast is raised by this click.
 
 ## Expected Results
 - Test connection reports the **truth from the target service**: a success

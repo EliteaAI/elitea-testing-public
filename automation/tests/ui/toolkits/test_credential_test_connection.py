@@ -53,6 +53,13 @@ CREDENTIAL_TYPE = "jira"
 SECRET_FIELD_KEY = "api_key"
 INVALID_SECRET = "invalid_token_xyz"  # the literal from the case's Test Data
 
+# The Display Name input carries a real maxLength (MAX_NAME_LENGTH,
+# EliteaUI/src/common/constants.js, applied at ToolBaseProperty.jsx:589 for
+# k === 'label'), so an over-long generated name is silently TRUNCATED by the
+# field: the create response then carries a different label/elitea_title than
+# this test typed and every later lookup-by-name misses, far from the cause.
+MAX_DISPLAY_NAME_LENGTH = 32
+
 CREATE_RESPONSE_TIMEOUT = 20_000
 CHECK_CONNECTION_TIMEOUT = 45_000  # a real round trip to the target service
 TOAST_AUTOHIDE_TIMEOUT = 25_000
@@ -76,6 +83,13 @@ def test_credential_test_connection(page, credential_api):
     # Display Name input carries a real maxLength, so a longer name is silently
     # TRUNCATED by the field rather than rejected.
     display_name = f"autotest_cred_conn_{int(time.time())}"
+    # Regression guard for the truncation trap above: fail here, naming the
+    # cause, rather than downstream on a mysterious lookup miss.
+    assert len(display_name) <= MAX_DISPLAY_NAME_LENGTH, (
+        f"Generated Display Name {display_name!r} is {len(display_name)} chars, over the "
+        f"field's maxLength of {MAX_DISPLAY_NAME_LENGTH} — it would be silently truncated "
+        f"by the input and every later lookup by name would miss"
+    )
     credential_id = None
 
     create_page = CredentialCreatePage(page)
@@ -88,7 +102,8 @@ def test_credential_test_connection(page, credential_api):
             create_page.set_display_name(display_name)
             assert create_page.display_name_input.input_value() == display_name, (
                 f"Display Name field should read {display_name!r} after filling, got "
-                f"{create_page.display_name_input.input_value()!r}"
+                f"{create_page.display_name_input.input_value()!r} — a mismatch here means "
+                f"the field's maxLength ({MAX_DISPLAY_NAME_LENGTH}) truncated the name"
             )
             create_page.set_base_url(settings.jira_base_url)
             create_page.set_username(settings.jira_username)
