@@ -561,3 +561,91 @@ Source: `../elitea_assistant/src/components/chat/MessageInput.tsx:44-50, 105-108
       enter/leave counter cannot leak between phases.
     - **The full flow ran green first try, 63.2 s headless, 0 reruns**, confirming quirks
       8/35/37/43/53 exactly as the analysis recorded them.
+
+## Assistant context payload — project / page / entity (verified live 2026-08-22, ELITEA-2424 + ELITEA-2425 run)
+
+**What the widget sends with every message.** EliteaUI builds a `support_assistant_context` object
+and passes it into `<EliteaAssistant supportAssistantContext={…}>`; the assistant emits it on its
+Socket.IO connection. Source chain (read, not guessed):
+
+| Piece | File |
+|---|---|
+| Context builder (project / page / entity) | **EliteaUI** `src/[fsd]/widgets/support-assistant/lib/hooks/useAssistantContext.hooks.js` |
+| Prop hand-off | **EliteaUI** `src/[fsd]/widgets/support-assistant/ui/SupportAssistant.jsx:43` |
+| Type | **elitea_assistant** `src/lib/types/assistant.types.ts:4` (`TSupportAssistantContext`) |
+| Emit | **elitea_assistant** `src/lib/hooks/chat.hook.ts:527` |
+
+Fields: `project_id`, `project_name`, `current_page` (= `useLocation().pathname`), `meta.browser`
+always; entity fields added per `pageType` (`ApplicationDetails`→agent, `PipelineDetails`→pipeline,
+`ToolkitDetails`/`MCPDetails`/`AppDetails`/`CredentialDetails`/`Chat`). `filterDefined` **drops
+undefined keys entirely** — use `ctx.get(...)`, never assume a key exists on a list page.
+`current_entity_name` comes from the **RTK-Query cache** (`findApplicationDetailsInCache`), so the
+detail query must have resolved before sending or the field is absent.
+
+**The socket event is `support_predict`, NOT `predict`** (corrects quirk 8 above). Verified frames:
+
+```
+42["support_predict",{"conversation_uuid":"…","content":"…","support_assistant_context":{
+   "project_id":406,"project_name":"Bugs & Features","current_page":"/agents/all/894",
+   "meta":{"tab":"all","versionId":1577,"browser":"…"},"current_entity_type":"agent",
+   "current_entity_id":894,"current_entity_name":"Qtest_versionID","selected_model":"gpt-5.6-luna"}}]
+42["chat_enter_room",{"project_id":536,"conversation_id":"…"}]
+```
+
+`chat_enter_room`'s `project_id` (**536**) is the Support Assistant's own **deployment** project —
+it is NOT in the user's project selector. `support_assistant_context.project_id` is the **user's**
+project. Asserting the two differ is the mechanical form of ELITEA-2424's "NOT the internal
+deployment project" clause.
+
+Capture it passively (no `route`/`fulfill` — this is observation, not substitution), registering
+**before** the first navigation:
+
+```python
+frames = []
+page.on("websocket", lambda ws: ws.on("framesent", lambda f: frames.append(f)))
+# parse: re.match(r'^\d+(\[.*\])$', frame) -> json.loads -> [event, payload]
+```
+
+### 9. The reply-ready signal is the COPY BUTTON, not the message count
+
+The assistant message item mounts **immediately** with a `Starting up…` placeholder and
+`data-role="assistant"`, so `expect(assistant_items).to_have_count(base+1)` returns **before the
+answer exists** (cost one wasted probe run). `support-assistant-message-copy-button` renders only on
+a *completed* assistant response — wait on its count delta:
+
+```python
+copies = page.locator('[data-testid="support-assistant-message-copy-button"]')
+base = copies.count()
+# … send …
+expect(copies).to_have_count(base + 1, timeout=240_000)
+```
+
+Latencies measured this run: 40.7 s, 41.2 s, 76.5 s, 77.0 s, 77.0 s (digest range 31-135 s holds).
+
+### 10. Project switching from anywhere (app-wide chrome)
+
+`project-selector-trigger-combobox` (EliteaUI `SidebarProjectSelect.jsx:94` — `ProjectSelect`
+appends `-combobox` to the passed `data-testid`) + `[data-testid="select-option-{project_id}"]`.
+Already implemented twice: `AnalyticsPage.switch_project()` (`analytics_page.py:689`,
+`SELECT_OPTION` constant at :402) and `AdminUsersPage.switch_project()` — reuse that shape.
+Live project list for the localhost dev-token identity (2026-08-22): `399 Private` (personal),
+`406 Bugs & Features`, `25 Elitea Development`, `471 Elitea Testing Team`, `400 UI Testing`.
+`/settings` redirects to `/settings/project-general`; `project-general-section` shows the project
+name and teammate count — **no project ID is displayed anywhere in the UI**; the ID is only
+available from the `select-option-<id>` testid, the config, or the context payload.
+
+### 11. The personal ("Private") project's NAME is not stable in the assistant's answer
+
+Asked the same project question twice against project 399: one run answered
+`Project name: project_user_659 / Project ID: 399` ("the UI context label Private is just the
+display label"), another answered `Project name: Private / Project ID: 399`. The **ID was correct
+3/3**. Assert project identity on the **ID**; assert the name against the captured context frame,
+never against the LLM prose. Team projects (e.g. 406) returned their exact display name.
+
+### 12. #1585 (assistant "echoes the question", 403 on `project_info`) did not reproduce
+
+Filed 2026-08-18 from ELITEA-2424. On 2026-08-22 the assistant answered correctly in 3/3 project
+questions, 2/2 page questions and 1/1 entity question. A dedicated `page.on("response")` probe over
+page load + widget open + a full round trip recorded **zero** `status >= 400` responses. Two console
+403s appeared in a longer multi-page probe (settings + project switching) without blocking any
+answer; the console API exposes no URL for them. Issue left OPEN with a non-repro comment.
