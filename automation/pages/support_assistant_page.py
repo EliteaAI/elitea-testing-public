@@ -867,6 +867,24 @@ class SupportAssistantPage(BasePage):
         """
         return self.page.locator(self.HISTORY_ITEM_OPENABLE).first
 
+    def newest_history_item(self):
+        """Locator for the most recent conversation in the history dropdown.
+
+        The list is newest-first and the client PREPENDS a conversation it
+        creates (``chat.hook.ts``: ``setHistory(prev => [created, ...prev])``),
+        so index 0 is the session the current run just produced — which is why
+        the caller may assert its content rather than search the list for it.
+
+        Composed from the existing :attr:`history_items` descriptor — no new
+        handle. Distinct from :meth:`first_openable_history_item`, which skips
+        the currently-open conversation; index 0 is only ``:not([disabled])``
+        once a New chat has cleared ``currentConversationId``.
+
+        Returns:
+            Playwright Locator for the newest history entry (index 0)
+        """
+        return self.history_items.first
+
     # ------------------------------------------------------------------
     # Attachment helpers (ELITEA-2421) — additive. The legacy
     # :meth:`attach_file` drives the pre-policy ``attach_button`` fallback
