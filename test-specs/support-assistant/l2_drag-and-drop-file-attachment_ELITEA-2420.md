@@ -94,10 +94,10 @@ fresh `git fetch origin` in **both** repos on 2026-08-22 (two-stage grep per
 | 5 | Message item (+ `data-role="user"\|"assistant"`) | `support-assistant-message-item` | on-`automation/testids` only — @b8a287b / @216da01 |
 | 6 | Assistant copy button (the reply-COMPLETE signal) | `support-assistant-message-copy-button` | on-`automation/testids` only — EliteaAI/elitea_assistant@216da01 |
 | 7 | Attachment chip (composer) | `support-assistant-attachment-chip` | on-`automation/testids` only — EliteaAI/elitea_assistant@1960c8e |
-| 8 | **Drop zone** — the composer input area that owns `onDragEnter/onDragOver/onDragLeave/onDrop` | **testid needed: `support-assistant-drop-zone`** — on the `div.elitea-assistant-input-area`, `MessageInput.tsx:192` | needs-adding (`no` on both `main` and `automation/testids`, verified 2026-08-22) |
-| 9 | **Drop overlay** — the `"Drop files here"` affordance rendered while `isDragOver` | **testid needed: `support-assistant-drop-overlay`** — on the `div.elitea-assistant-drop-overlay`, `MessageInput.tsx:199` | needs-adding (`no` on both refs, verified 2026-08-22) |
+| 8 | **Drop zone** — the composer input area that owns `onDragEnter/onDragOver/onDragLeave/onDrop` | **testid needed: `support-assistant-drop-zone`** — on the `div.elitea-assistant-input-area`, `MessageInput.tsx:192` | **added during implementation** — on-`automation/testids` only, EliteaAI/elitea_assistant@e134bfc |
+| 9 | **Drop overlay** — the `"Drop files here"` affordance rendered while `isDragOver` | **testid needed: `support-assistant-drop-overlay`** — on the `div.elitea-assistant-drop-overlay`, `MessageInput.tsx:199` | **added during implementation** — on-`automation/testids` only, EliteaAI/elitea_assistant@e134bfc |
 
-**Testid work order (implementer):** both are **attribute-only** additions to
+**Testid work order (implementer) — DONE, EliteaAI/elitea_assistant@e134bfc.** Both are **attribute-only** additions to
 `../elitea_assistant/src/components/chat/MessageInput.tsx` on that repo's `automation/testids`
 branch — no new DOM node, no new hook, no new state, nothing removed (the `isDragOver` state and
 both elements already exist). Zero-functional-impact check passes by construction.
@@ -114,6 +114,8 @@ both elements already exist). Zero-functional-impact check passes by constructio
 ```
 
 Notes:
+- *(Implementation)* the connected repo runs prettier via lint-staged, which reflowed the
+  overlay line to multi-line JSX on commit. Attribute-only change either way — no new node.
 - **The drop-zone testid is stable identity, not state** — it sits on the always-mounted input
   area; the `--drag-over` modifier stays a class. No `data-testid={cond ? … : …}` anywhere
   (PR #581 ruling).
@@ -217,7 +219,13 @@ would not (quirk 37).
   `File` from a `Uint8Array`, wrap it in a `DataTransfer`, and dispatch the `DragEvent`s at the
   testid'd drop zone via `self.drop_zone.evaluate(...)`. Its docstring is the model for yours.
 - **One difference from that precedent: expose composable phases, not one monolithic call** —
-  `drag_file_over_composer(path)` / `drag_leave_composer()` / `drop_file_on_composer(path)` —
+  `drag_file_over_composer(path)` / `drag_leave_composer(path)` / `drop_file_on_composer(path)` —
+  *(amended at implementation: `drag_leave_composer` takes the path too. `handleDragLeave` ignores
+  the payload, but building every phase's event through one `_dispatch_drag_events(path, types)`
+  helper keeps a single JS blob instead of three near-copies. Shipped phases: `over` =
+  `dragenter`+`dragover`, `leave` = `dragleave`, `drop` = `dragenter`+`dragover`+`drop` — the drop
+  phase is self-contained because `handleDrop` resets `dragCounterRef` to 0 unconditionally, so
+  the counter cannot leak.)*
   because Step 3b asserts the overlay *reverts* mid-gesture (the artifacts drag primitives at
   `chat_page.py:8230-8251` set the precedent for splitting a gesture for exactly this reason).
   Each phase may build its own `DataTransfer`: `handleDragEnter` reads only

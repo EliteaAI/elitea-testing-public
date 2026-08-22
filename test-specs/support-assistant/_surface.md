@@ -539,3 +539,25 @@ Source: `../elitea_assistant/src/components/chat/MessageInput.tsx:44-50, 105-108
     messaging, history, attachments, navigation) is due — deferred because
     `support-assistant-w02` is in flight and several sibling AFS files reference this path.
     Whoever analyses this surface first *after* the batch closes should do the split.
+
+56. **Resolved/added during ELITEA-2420 implementation (2026-08-22):**
+    - **Drop-zone + overlay testids now exist** — `support-assistant-drop-zone` (on the
+      always-mounted `div.elitea-assistant-input-area` that owns the drag handlers) and
+      `support-assistant-drop-overlay` (on the `{isDragOver && …}` "Drop files here" div),
+      EliteaAI/elitea_assistant@e134bfc on `automation/testids`. Both attribute-only; the
+      drag-over state stays the `--drag-over` CSS modifier, never a testid value.
+    - **The connected repo runs prettier + eslint via lint-staged on commit.** A one-line JSX
+      edit came back reflowed to multi-line. Harmless, but `git show` will not match what you
+      typed — check the committed file, not your edit, before greping for it.
+    - **A dev-server restart WAS required (quirk 44 holds, now 4-for-4).** After committing the
+      testids, `curl …/@fs<abs>/src/components/chat/MessageInput.tsx | grep -c
+      support-assistant-drop-zone` returned **0** despite the alias being live and the file
+      correct on disk. Fixed by killing vite, `rm -rf EliteaUI/node_modules/.vite`, and
+      restarting with `VITE_ASSISTANT_LOCAL=1 npm run dev`. Budget ~30 s for the restart.
+    - **Shipped page-object phases** (`pages/support_assistant_page.py`, additive):
+      `drag_file_over_composer(path)` = `dragenter`+`dragover`; `drag_leave_composer(path)` =
+      `dragleave`; `drop_file_on_composer(path)` = `dragenter`+`dragover`+`drop`. The drop phase
+      is self-contained — `handleDrop` sets `dragCounterRef` to 0 unconditionally, so the
+      enter/leave counter cannot leak between phases.
+    - **The full flow ran green first try, 63.2 s headless, 0 reruns**, confirming quirks
+      8/35/37/43/53 exactly as the analysis recorded them.
