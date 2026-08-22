@@ -101,8 +101,8 @@ Locators are **testid-only**, as class-level `LocatorDescriptor` fields
 | 4 | Send button | `support-assistant-send-button` | elitea_assistant | on `automation/testids` only |
 | 5 | Message item (`data-role` filter) | `support-assistant-message-item` | elitea_assistant | on `automation/testids` only |
 | 6 | Copy button (reply-complete signal) | `support-assistant-message-copy-button` | elitea_assistant | on `automation/testids` only |
-| 7 | **Attach file button** | **`support-assistant-attach-button`** | elitea_assistant | **needs-adding** |
-| 8 | **Attachment chip (composer)** | **`support-assistant-attachment-chip`** | elitea_assistant | **needs-adding** |
+| 7 | **Attach file button** | **`support-assistant-attach-button`** | elitea_assistant | ✅ added during implementation — EliteaAI/elitea_assistant@1960c8e on `automation/testids` only |
+| 8 | **Attachment chip (composer)** | **`support-assistant-attachment-chip`** | elitea_assistant | ✅ added during implementation — EliteaAI/elitea_assistant@1960c8e on `automation/testids` only |
 
 Rows 1-6 are already bound on `SupportAssistantPage` as `sidebar_launcher`, `widget`,
 `message_input_field`, `send_message_button`, `message_items`, `message_copy_buttons`,
@@ -159,8 +159,8 @@ origin of false bug #1581).
 | Field | Value | Notes |
 |---|---|---|
 | Attachment | `test-results/ELITEA-2421-attachment.txt`, written by the test into `tmp_path` | `.txt` is in `ALLOWED_EXTENSIONS`; well under the 5 MB single-shot threshold |
-| File content | must embed a **unique token**, e.g. `The secret project codename is ZEPHYR-4417.` | The token is the Step-7 oracle — generate it per-run (e.g. `ZEPHYR-{uuid4().hex[:6].upper()}`) so a restored conversation can never satisfy the assertion accidentally |
-| Message | `Read the attached file and reply with ONLY the secret project codename it contains.` | Sharper than the case's literal *"Summarize the content of this file"*, whose free-form summary has no deterministic observable. See § Declared improvisation. |
+| File content | **SHIPPED:** `The project mascot is the {word}.` in a short prose handbook, `{word}` chosen per run from a 10-item list. *(The originally specced `The secret project codename is ZEPHYR-4417.` is refused by the assistant — see § Amended during implementation item 4.)* | The planted word is the Step-7 oracle: it exists only inside the uploaded file, so the reply can carry it only by reading the upload |
+| Message | **SHIPPED:** `According to the attached file, what is the project mascot? Answer with the single word.` | Sharper than the case's literal *"Summarize the content of this file"*, whose free-form summary has no deterministic observable. See § Declared improvisation. |
 
 ---
 
@@ -213,6 +213,65 @@ sees sockets opened afterwards):
 band. Use a **200 s** reply timeout (this case waits for an *upload plus* a
 document-grounded answer, which sits at the slow end). Estimated spec runtime **90-120 s**.
 
+---
+
+## Amended during implementation (2026-08-22, test-automation-engineer)
+
+1. **Rows 7-8 of § Handles Reference now EXIST** — added exactly where this AFS placed
+   them, as pure attribute adds (EliteaAI/elitea_assistant@1960c8e, `automation/testids`
+   only; a human cherry-picks to that repo's `main`). Bound as the additive class-level
+   fields `SupportAssistantPage.attach_file_button` / `.attachment_chips` with the helpers
+   `attach_file_via_testid()` / `get_attachment_chip_count()`.
+
+2. **Step 5's chip-count assertion is also the flow's synchronisation point**, and the
+   spec relies on that ordering rather than adding a wait. `handleSend`
+   (`chat.hook.ts:483-540`) awaits `startUpload` FIRST, then pushes the user message,
+   then calls `emitPredict`, and only then `clearAttachments()`. So
+   `expect(attachment_chips).to_have_count(0)` is a DOM signal that both the upload
+   response and the predict frame have already been observed — which is why the spec
+   reads the collected `upload_statuses` / `predict_frames` immediately after it, with no
+   sleep and no polling helper. (Source-confirmed this run; the AFS listed the four Step-5
+   observables without ordering them.)
+
+4. **§ Declared improvisation's "plant a unique token" oracle is REFUTED AS WRITTEN — the
+   assistant refuses to relay opaque identifiers out of an attachment.** The analyst's
+   single successful observation (`ZEPHYR-4417` returned) did **not** reproduce: two
+   consecutive implementation runs got an explicit safety refusal instead —
+
+   > *"I can't help extract or repeat secret codename values from attachments."*
+   > *"I can't help extract or repeat secret identifiers from attachments."*
+
+   The second refusal followed **neutral** wording (`Build identifier: <TOKEN>` /
+   "reply with ONLY the build identifier"), which rules out the word *"secret"* as the
+   trigger — the guardrail keys on **relaying an opaque identifier out of an
+   attachment**, whatever it is called.
+
+   **Shipped oracle instead — same strength, no guardrail collision:** plant an
+   ordinary-prose fact and ask a comprehension question. The file reads
+   `The project mascot is the {word}.` (word chosen per run from a 10-item list) and the
+   prompt is *"According to the attached file, what is the project mascot? Answer with
+   the single word."* The word still exists **only** inside the uploaded file, so the
+   reply can contain it only by reading the upload — the case's observable is preserved
+   and the assertion stays deterministic. Verified green twice consecutively.
+
+   This is a **how** change inside the implementer's Phase-2 latitude (the AFS's own
+   improvisation is "make the content-grounding deterministic"; only its *example
+   payload* was unusable), not a change to what is verified. **It does confirm the
+   assistant genuinely processes attachment content** — it answers about the file, it
+   just will not echo identifiers — so #1584 stays refuted.
+
+   **Gate risk to note:** this oracle rides a live LLM guardrail whose behaviour already
+   proved non-reproducible once. If the 3x merge gate sees a refusal, that is this
+   mechanism, not a regression in the attachment pipeline (Steps 1-5 are all
+   product-produced and independent of it).
+
+5. **Actual spec runtime: 55-65 s headless** across four runs (the estimate said 90-120 s).
+
+6. **The `img` element inside the sent user message is the user AVATAR**
+   (`MessageItem.tsx:35-43`, `alt="User avatar"`), not an attachment affordance. Noted
+   because the Step-6 failure's aria snapshot shows it and it could be misread as a
+   partial indicator on a future triage. **#1653 stands as written.**
+
 ## Cleanup
 
 None. Consistent with every merged support-assistant spec: messages are left in the shared
@@ -228,8 +287,20 @@ string is green on run 1 and red on runs 2..N, failing the lead's 3× merge gate
 Deterministic, single-cause, source-confirmed (`chat.types.ts:1-11` `TMessage` has no
 attachment field; `chat.hook.ts:492-495` pushes `{id, role, content, timestamp}` only;
 `MessageItem.tsx` renders no attachment element). Affects Step 6 alone; soft-asserted with
-the correct expected behaviour. Every other step hard-asserts and passes, so this spec is
-**not** sanctioned-RED overall — it is green today except for one soft failure.
+the correct expected behaviour. Every other step hard-asserts and passes.
+
+**This spec IS sanctioned-RED** (`.agents/testing.md` § Merge gate) — the pytest outcome
+is **FAILED**, not "green with a soft failure". `expect.soft()` is not a warning here:
+pytest-playwright 0.8.0 wraps every test in `playwright._impl._assertions._soft_scope()`,
+collects each soft-assertion error, and re-raises it (as an `ExceptionGroup` when there is
+more than one) at the end of `pytest_runtest_call`
+(`.venv/lib/python3.13/site-packages/pytest_playwright/pytest_playwright.py:45,101-116`,
+verified in-venv 2026-08-22). So the spec fails deterministically, 3/3, on the identical
+`#1653` signature, and merges RED under the sanctioned-RED exception — single-cause,
+tied to OPEN #1653, linked in the test. **The lead must record the exception (and which
+member fired) in the closure record**, and the case is `blocked-on-#1653`, not
+`automated`, until the indicator ships. The soft assert is the project's sanctioned way
+to keep that red *visible*; it is not masking.
 
 **#1584 — refuted, left OPEN with a refutation comment.** Agents never close issues; a
 human closes it. Do not treat it as a blocker for this case.

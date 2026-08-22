@@ -199,6 +199,20 @@ class SupportAssistantPage(BasePage):
         description="Support Assistant conversation-history entries (repeated)"
     )
 
+    # ELITEA-2421 — file attachments. Testids live in the connected first-party
+    # repo EliteaAI/elitea_assistant (EliteaAI/elitea_assistant@1960c8e on its
+    # ``automation/testids`` branch), ``src/components/chat/MessageInput.tsx``
+    # and ``src/components/chat/attachments/AttachmentChip.tsx``.
+    attach_file_button = LocatorDescriptor(
+        testid="support-assistant-attach-button",
+        description="Support Assistant Attach file button (opens the file picker)"
+    )
+
+    attachment_chips = LocatorDescriptor(
+        testid="support-assistant-attachment-chip",
+        description="Attachment chips staged in the composer (repeated)"
+    )
+
     # An item is rendered ``disabled`` exactly when it IS the currently-open
     # conversation (``ChatHeader.tsx``:
     # ``disabled={conversation.uuid === currentConversationId}``). The native
@@ -812,3 +826,64 @@ class SupportAssistantPage(BasePage):
             Playwright Locator for the first enabled history entry
         """
         return self.page.locator(self.HISTORY_ITEM_OPENABLE).first
+
+    # ------------------------------------------------------------------
+    # Attachment helpers (ELITEA-2421) — additive. The legacy
+    # :meth:`attach_file` drives the pre-policy ``attach_button`` fallback
+    # field and waits on the network; it is left byte-identical for its
+    # existing callers.
+    # ------------------------------------------------------------------
+
+    @action("Attach file to Support Assistant message")
+    def attach_file_via_testid(self, file_path: str, timeout: int = 10000):
+        """Open the file picker from the testid-based attach button and pick *file_path*.
+
+        No network wait afterwards: the upload fires on **Send**, not on
+        attach (``MessageInput.handleSend`` -> ``startUpload``), so attaching
+        only stages a PENDING chip in local state. Waiting for the network here
+        would either time out or pass vacuously — the caller asserts the chip
+        instead.
+
+        Args:
+            file_path: Path to the file to attach
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Attaching file to Support Assistant message: %s", file_path)
+        with self.page.expect_file_chooser(timeout=timeout) as fc_info:
+            self.attach_file_button.click(timeout=timeout)
+        fc_info.value.set_files(file_path)
+
+    def user_message_items(self):
+        """Locator for every user message item in the conversation.
+
+        Composed from the existing :attr:`USER_MESSAGE_ITEM` class constant —
+        no new handle. The plural counterpart to :meth:`last_user_item`, for
+        callers that assert a count delta rather than inspect the newest item.
+
+        Returns:
+            Playwright Locator for all ``data-role="user"`` message items
+        """
+        return self.page.locator(self.USER_MESSAGE_ITEM)
+
+    def get_user_message_item_count(self) -> int:
+        """Count the user message items currently rendered.
+
+        The widget restores the previous session on open, so this is a
+        BASELINE to diff against — never an absolute expectation.
+
+        Returns:
+            Number of user message items rendered in the conversation
+        """
+        return self.user_message_items().count()
+
+    def get_attachment_chip_count(self) -> int:
+        """Count the attachment chips currently staged in the composer.
+
+        The composer is cleared on a successful send
+        (``chat.hook.ts`` ``clearAttachments()``), so this returning to 0 after
+        Send distinguishes "chip cleared by design" from "chip never existed".
+
+        Returns:
+            Number of attachment chips rendered in the composer
+        """
+        return self.attachment_chips.count()
