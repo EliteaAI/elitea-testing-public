@@ -49,3 +49,4 @@
 - [No second user identity](no_second_user_identity_blocks_non_owner_cases.md) — "non-owner cannot X" cases are blocked outright, no workaround
 - [Synthetic typing fabricates a "button never enables" bug](react_controlled_input_false_disabled_button_bug.md) — type for real
 - [Status assertion, wrong trigger](status_assertion_armed_on_wrong_trigger.md) — empty listener ⇒ vacuous green
+- [Support Assistant renders no partial text](support_assistant_no_token_streaming.md) — no token streaming; agent-mode atomic delivery

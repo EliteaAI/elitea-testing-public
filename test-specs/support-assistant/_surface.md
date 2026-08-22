@@ -338,3 +338,499 @@ named `history_toggle_button` precisely to avoid colliding with it.
 36. **Runtime for the full six-step spec: 92.6 s headless** (two live replies, two full page reloads,
     one conversation switch) — comfortably inside the AFS's 110-150 s estimate. Reply latencies this
     run were at the fast end of the 31-135 s band again.
+
+## Attachments — upload, predict payload, and the sent-message gap (verified live 2026-08-22, ELITEA-2421 run)
+
+Source: `../elitea_assistant/src/components/chat/MessageInput.tsx`,
+`src/components/chat/attachments/AttachmentChip.tsx`, `src/lib/hooks/attachmentUpload.hook.ts`,
+`src/lib/hooks/chat.hook.ts:483-540`.
+
+| Element | Current raw handle | Testid |
+|---|---|---|
+| Attach file button | `button.elitea-assistant-attach-button` / `[aria-label="Attach file"]` (`MessageInput.tsx:266-274`) | **needed:** `support-assistant-attach-button` |
+| Attachment chip (composer) | `.elitea-assistant-file-chip` (`AttachmentChip.tsx:39`; inside a `<Tooltip>`, renders children normally) | **needed:** `support-assistant-attachment-chip` |
+| Chip filename | `.elitea-assistant-file-chip-name` — chip's own text already contains it | — (assert `to_contain_text` on the chip) |
+| Chip remove button | `[aria-label="Remove <filename>"]`, `disabled` while uploading | — (no case touches it yet) |
+| `+N` overflow chip | `button.elitea-assistant-file-chip--count`, `aria-label="Show N more files"` | — (visible only above 2 chips, 3 when expanded) |
+
+37. **The upload fires on SEND, not on attach.** `handleSend` → `startUpload(conversationId)`
+    → `POST /api/v2/support_assistant/attachments/{conversation_uuid}` (multipart `file` +
+    `overwrite=1`, `adapter.api.ts:100`, XHR not fetch) → **201**, body `[{filepath}]`. Attaching
+    only puts a `PENDING` chip in local state. **A network capture armed around the attach click
+    sees nothing** — this is exactly what produced the false bug #1584 ("no file upload to
+    backend"). Arm the collector before Send, and remember it is an **XHR**, so
+    `page.on("response")` catches it but a `expect_request` scoped to `fetch` would not.
+
+38. **The filepath reaches the model through the WebSocket, not HTTP.** Live frame:
+    `42["support_predict",{"conversation_uuid":"…","content":"…","attachments":["/attachments/{uuid}/<file>.txt"],"support_assistant_context":{…}}]`.
+    Combined with quirk 8: "no POST" is never evidence that nothing was sent on this surface.
+
+39. **The assistant genuinely reads attached file content.** Planted a unique token in a `.txt`
+    (`The secret project codename is ZEPHYR-4417.`), asked for it back — reply was exactly
+    `ZEPHYR-4417` in **73.7 s**. This is the cheap deterministic oracle for any
+    "does it process the file" case: plant a per-run token, assert it comes back. A
+    *"summarize this"* prompt has no assertable observable — do not write one.
+
+40. **The sent message shows NO attachment indicator — product gap #1653.** `TMessage`
+    (`chat.types.ts:1-11`) has no attachment field; `chat.hook.ts:492-495` pushes
+    `{id, role:'user', content, timestamp}` only, computing `allFilepaths` separately for
+    `emitPredict`; `MessageItem.tsx` renders nothing for attachments. Live, the sent bubble is
+    bare text. `clearAttachments()` (`chat.hook.ts:424`) wipes the composer chip on send, so the
+    file vanishes from the UI entirely. Assert the correct behaviour with `expect.soft(...)
+    to_contain_text(FILENAME)` on the already-testid'd user item — **do not** invent a testid for
+    an element that does not exist.
+
+41. **Send-button contract, attachment clause** (extends quirk 3): `isSendDisabled = disabled ||
+    isUploading || !attachmentsValid || !text.trim()` (`MessageInput.tsx:105-108`), where
+    `attachmentsValid` = every chip is `PENDING` or `COMPLETED`. So an **ERROR** chip wedges Send
+    until it is removed, and **text is still required** — an attachment alone does not enable the
+    button (though `handleSend`'s own guard at `:118` would allow attachment-only, the button is
+    unreachable). Attach button disables at 10 attachments (`MAX_ATTACHMENT_COUNT`) or while
+    uploading. Allowed extensions are a large fixed set (`attachment.constants.ts`); files > 5 MB
+    (`CHUNK_SIZE`) switch to a chunked upload loop, > 150 MB are rejected client-side.
+
+42. **`#1584` is a false bug** — same class as `#1581`/quirk 21. The 2026-08-18 ELITEA-2421 AFS
+    (commit `7941ba405`) claimed attachments were an unimplemented stub; disproved point-by-point
+    on 2026-08-22 (refutation comment on #1584, issue left OPEN for a human to close). Its
+    *"Echo: …"* reply and its `"Elitea Assistant"` widget title (live title is **"ELITEA Support"**)
+    both fail to reproduce. **Treat every finding from that 2026-08-18 support-assistant pass as
+    unverified until re-run.**
+
+## Resolved/added during ELITEA-2421 implementation (2026-08-22, test-automation-engineer)
+
+**Both attachment testids in the table above now EXIST** — `EliteaAI/elitea_assistant@1960c8e`
+on its `automation/testids` branch (pure attribute adds; no new DOM node, hook, state or
+removal): `support-assistant-attach-button` (`MessageInput.tsx`) and
+`support-assistant-attachment-chip` (`AttachmentChip.tsx`). Not on that repo's `main` — a human
+cherry-picks. Bind via `SupportAssistantPage.attach_file_button` / `.attachment_chips` plus the
+helpers `attach_file_via_testid()` and `get_attachment_chip_count()`. The pre-policy
+`attach_button` `fallback=` field and the legacy `attach_file()` helper are untouched for their
+existing callers — the testid field is named `attach_file_button` precisely to avoid colliding
+with it.
+
+43. **The composer chip clearing is the whole flow's synchronisation point — no sleep, no
+    polling helper needed.** `handleSend` (`chat.hook.ts:483-540`) runs in a fixed order:
+    `await startUpload(...)` → push the user message into `setMessages` → `emitPredict(...)`
+    → `clearAttachments()`. `clearAttachments` is **last**, so
+    `expect(attachment_chips).to_have_count(0)` is a DOM-observable proof that the upload
+    response AND the outbound `support_predict` frame have already occurred. Read
+    `page.on("response")` / `ws.on("framesent")` collector lists immediately after that
+    assertion and they are deterministically populated. This is what makes an
+    "assert the network evidence" step honest without a timer — the alternative (polling a
+    Python list) has no auto-retry and would need a sleep.
+
+44. **Quirk 7/18 (stale Vite modules under OneDrive) reproduced a THIRD time** after adding
+    the two testids above — `curl` of the `@fs`-served `MessageInput.tsx` returned the
+    pre-edit module while the existing `support-assistant-message-input` testid in the SAME
+    file was served fine, so the diagnostic must grep for the NEW attribute specifically, not
+    just "does this module load". Same fix (kill `npm run dev` + `vite` + `esbuild` PIDs,
+    `rm -rf EliteaUI/node_modules/.vite`, restart, re-curl). Now 3 for 3 — **budget the
+    restart, do not treat it as a surprise.**
+
+45. **The connected repo runs a lint-staged pre-commit hook** (`prettier --write` +
+    `eslint --fix` on `src/**/*.{ts,tsx}`). It reformats staged files and re-stages them, so a
+    testid commit there may land differently formatted than written. Harmless, but re-read the
+    file after committing rather than assuming the diff you authored is the diff that shipped.
+
+46. **The assistant genuinely reads attached file content — re-confirmed** (quirk 39, second
+    independent run): planted token returned verbatim, full spec **57.9 s** headless including
+    the live reply. `#1584`'s "attachments are an unimplemented stub" claim is disproved twice
+    over now.
+
+47. **#1653's aria snapshot contains an `img` — it is the user AVATAR**
+    (`MessageItem.tsx:35-43`, `alt="User avatar"`, rendered for every user message), not a
+    partial attachment indicator. Anyone re-triaging #1653 off the failure output should not
+    read that node as evidence the feature is half-shipped.
+
+48. **The assistant REFUSES to relay opaque identifiers out of an attachment — do not build
+    a "plant a token, ask for it back" oracle on this surface.** Quirk 39's recipe
+    (planting `The secret project codename is ZEPHYR-4417.` and asking for it back) worked
+    once during ELITEA-2421 analysis and then failed to reproduce twice during its
+    implementation, both times with an explicit guardrail refusal:
+    *"I can't help extract or repeat secret codename values from attachments."* and, after
+    the wording was neutralised to `Build identifier: <TOKEN>`,
+    *"I can't help extract or repeat secret identifiers from attachments."* The word
+    *"secret"* is **not** the trigger — the guardrail keys on relaying an opaque
+    **identifier** out of an attachment.
+
+    **The working shape: plant an ordinary-prose FACT and ask a comprehension question.**
+    Shipped in `test_support_assistant_attachment_send.py`: the file reads
+    `The project mascot is the {word}.` (per-run word from a 10-item list) and the prompt is
+    *"According to the attached file, what is the project mascot? Answer with the single
+    word."* — green twice consecutively. The oracle is exactly as strong (the word exists
+    only inside the upload) and it does not collide with the guardrail.
+
+    **This supersedes quirk 39's recipe, not its conclusion:** the assistant demonstrably
+    DOES read attached files — it answers questions about their content, it just will not
+    echo identifiers. `#1584` stays refuted.
+
+    **Gate caution:** any Step-7-style assertion here rides a live LLM guardrail that has
+    already proven non-reproducible once. A refusal on a gate run is this mechanism, not an
+    attachment-pipeline regression — the upload status, the `support_predict` frame and the
+    composer-chip lifecycle are all product-produced and independent of it.
+
+49. **Spec runtime for the full attachment flow: 55-65 s headless** across four runs
+    (upload + one live reply), against a 90-120 s estimate. The 200 s reply timeout stays —
+    the 31-135 s band's variance is the risk, not its mean.
+
+## Drag-and-drop attachment (verified live 2026-08-22, ELITEA-2420 run)
+
+Source: `../elitea_assistant/src/components/chat/MessageInput.tsx:44-50, 105-108, 146-170, 192-199`
++ `src/theme/styles/input.css:13-28`.
+
+| Element | Current raw handle | Testid |
+|---|---|---|
+| Drop zone (owns `onDragEnter/Over/Leave/Drop`) | `.elitea-assistant-input-area` (`:192`) | **needed:** `support-assistant-drop-zone` |
+| Drag-over overlay ("Drop files here") | `.elitea-assistant-drop-overlay` (`:199`, rendered only while `isDragOver`) | **needed:** `support-assistant-drop-overlay` |
+
+50. **Drag-and-drop is fully implemented — and ONLY on the composer, not the "chat area".**
+    The four drag handlers sit on the input-area div; the message list
+    (`.elitea-assistant-messages`) is its **sibling**, so events there never reach them. Probed
+    live: `dragenter` + `drop` on the message list → overlay 0, chips 0, no reaction at all.
+    Any case text saying "drop onto the chat area" means the composer — clarification **#1655**.
+    On `dragenter` carrying `Files`: overlay renders `"Drop files here"` and the input area gains
+    `elitea-assistant-input-area--drag-over` (which hides its own children via CSS
+    `visibility: hidden`). `dragleave` reverts it (a `dragCounterRef` balances enter/leave), and
+    the `drop` dismisses the overlay and stages a normal attachment chip — from there the flow is
+    byte-identical to the attach-button path (quirks 37/38/41/43).
+
+51. **The working file-drop recipe (verified green, full flow, 70.7 s).** There is no OS-level
+    file drag available to Playwright, so build the `DataTransfer` in-page **once** and deliver
+    each phase to the drop zone:
+    ```js
+    // page.evaluate_handle — one handle, reused for every phase
+    const dt = new DataTransfer();
+    dt.items.add(new File([content], name, {type: 'text/plain'}));
+    ```
+    then dispatch `new DragEvent(phase, {bubbles: true, cancelable: true, dataTransfer})` on it.
+    The event **must bubble** — React listens at the root container. Each phase may build its own
+    `DataTransfer`: `handleDragEnter` reads only `types.includes('Files')`, `handleDragLeave` reads
+    nothing (it decrements `dragCounterRef`), `handleDrop` reads `.files`. **There is already a
+    merged precedent for the whole technique** — `ChatPage.drag_and_drop_file()`
+    (`automation/pages/chat_page.py:2855-2910`, base64 → `Uint8Array` → `File` → `DataTransfer`,
+    dispatched at a testid'd drop zone) — mirror it rather than re-deriving, but expose the phases
+    separately so a test can assert the overlay reverting on `dragleave`. Drove overlay → chip →
+    upload → predict → reply green in one pass. This is **transit** substitution (the input gesture only) —
+    every observable stays product-produced.
+
+52. **An attachment alone does NOT enable Send (extends quirk 41 with the live measurement).**
+    After a drop into an empty composer, `send.is_disabled() == True`; typing flipped it to
+    `False` immediately. `isSendDisabled = disabled || isUploading || !attachmentsValid ||
+    !text.trim()` (`:105-108`). Case texts that assert "Send becomes enabled" right after
+    attaching are stale — assert the pair (disabled attachment-only, enabled after typing).
+
+53. **⚠️ A `page.on("response")` collector keyed on the bare fragment `"/attachments/"` matches
+    the Vite dev server's OWN module URLs** — `…/src/components/chat/attachments/AttachmentChip.tsx?t=…`,
+    `…/AttachmentProgress.tsx`, `…/AttachmentIcon.tsx`, `…/index.tsx`, all `200`. Observed
+    verbatim in the ELITEA-2420 run. So `assert upload_statuses` on that fragment can be
+    **non-empty with zero real uploads**, and `all(status < 300)` passes on those `200`s too.
+    Always filter on the full **`/api/v2/support_assistant/attachments/`**. The merged
+    `test_support_assistant_attachment_send.py:196-202` (ELITEA-2421) uses the short fragment —
+    currently still green because the real `201` is present, but the assertion is weaker than it
+    reads. Same class as the URL-fragment vacuity lesson from ELITEA-2421's own review.
+
+54. **#1653 reproduces identically on the drop path** — the sent user bubble carries only the
+    prompt text, no attachment indicator. It is deliberately NOT re-asserted by ELITEA-2420's spec:
+    ELITEA-2421's spec owns that soft red, and duplicating it would add a second permanent red for
+    one defect with no new information.
+
+55. **Digest size, flagged not actioned (2026-08-22):** this file is ~475 lines and past the
+    comfortable single-read smell. A split into an index + per-subarea files (launcher/widget,
+    messaging, history, attachments, navigation) is due — deferred because
+    `support-assistant-w02` is in flight and several sibling AFS files reference this path.
+    Whoever analyses this surface first *after* the batch closes should do the split.
+
+56. **Resolved/added during ELITEA-2420 implementation (2026-08-22):**
+    - **Drop-zone + overlay testids now exist** — `support-assistant-drop-zone` (on the
+      always-mounted `div.elitea-assistant-input-area` that owns the drag handlers) and
+      `support-assistant-drop-overlay` (on the `{isDragOver && …}` "Drop files here" div),
+      EliteaAI/elitea_assistant@e134bfc on `automation/testids`. Both attribute-only; the
+      drag-over state stays the `--drag-over` CSS modifier, never a testid value.
+    - **The connected repo runs prettier + eslint via lint-staged on commit.** A one-line JSX
+      edit came back reflowed to multi-line. Harmless, but `git show` will not match what you
+      typed — check the committed file, not your edit, before greping for it.
+    - **A dev-server restart WAS required (quirk 44 holds, now 4-for-4).** After committing the
+      testids, `curl …/@fs<abs>/src/components/chat/MessageInput.tsx | grep -c
+      support-assistant-drop-zone` returned **0** despite the alias being live and the file
+      correct on disk. Fixed by killing vite, `rm -rf EliteaUI/node_modules/.vite`, and
+      restarting with `VITE_ASSISTANT_LOCAL=1 npm run dev`. Budget ~30 s for the restart.
+    - **Shipped page-object phases** (`pages/support_assistant_page.py`, additive):
+      `drag_file_over_composer(path)` = `dragenter`+`dragover`; `drag_leave_composer(path)` =
+      `dragleave`; `drop_file_on_composer(path)` = `dragenter`+`dragover`+`drop`. The drop phase
+      is self-contained — `handleDrop` sets `dragCounterRef` to 0 unconditionally, so the
+      enter/leave counter cannot leak between phases.
+    - **The full flow ran green first try, 63.2 s headless, 0 reruns**, confirming quirks
+      8/35/37/43/53 exactly as the analysis recorded them.
+
+## Assistant context payload — project / page / entity (verified live 2026-08-22, ELITEA-2424 + ELITEA-2425 run)
+
+**What the widget sends with every message.** EliteaUI builds a `support_assistant_context` object
+and passes it into `<EliteaAssistant supportAssistantContext={…}>`; the assistant emits it on its
+Socket.IO connection. Source chain (read, not guessed):
+
+| Piece | File |
+|---|---|
+| Context builder (project / page / entity) | **EliteaUI** `src/[fsd]/widgets/support-assistant/lib/hooks/useAssistantContext.hooks.js` |
+| Prop hand-off | **EliteaUI** `src/[fsd]/widgets/support-assistant/ui/SupportAssistant.jsx:43` |
+| Type | **elitea_assistant** `src/lib/types/assistant.types.ts:4` (`TSupportAssistantContext`) |
+| Emit | **elitea_assistant** `src/lib/hooks/chat.hook.ts:527` |
+
+Fields: `project_id`, `project_name`, `current_page` (= `useLocation().pathname`), `meta.browser`
+always; entity fields added per `pageType` (`ApplicationDetails`→agent, `PipelineDetails`→pipeline,
+`ToolkitDetails`/`MCPDetails`/`AppDetails`/`CredentialDetails`/`Chat`). `filterDefined` **drops
+undefined keys entirely** — use `ctx.get(...)`, never assume a key exists on a list page.
+`current_entity_name` comes from the **RTK-Query cache** (`findApplicationDetailsInCache`), so the
+detail query must have resolved before sending or the field is absent.
+
+**The socket event is `support_predict`, NOT `predict`** (corrects quirk 8 above). Verified frames:
+
+```
+42["support_predict",{"conversation_uuid":"…","content":"…","support_assistant_context":{
+   "project_id":406,"project_name":"Bugs & Features","current_page":"/agents/all/894",
+   "meta":{"tab":"all","versionId":1577,"browser":"…"},"current_entity_type":"agent",
+   "current_entity_id":894,"current_entity_name":"Qtest_versionID","selected_model":"gpt-5.6-luna"}}]
+42["chat_enter_room",{"project_id":536,"conversation_id":"…"}]
+```
+
+`chat_enter_room`'s `project_id` (**536**) is the Support Assistant's own **deployment** project —
+it is NOT in the user's project selector. `support_assistant_context.project_id` is the **user's**
+project. Asserting the two differ is the mechanical form of ELITEA-2424's "NOT the internal
+deployment project" clause.
+
+Capture it passively (no `route`/`fulfill` — this is observation, not substitution), registering
+**before** the first navigation:
+
+```python
+frames = []
+page.on("websocket", lambda ws: ws.on("framesent", lambda f: frames.append(f)))
+# parse: re.match(r'^\d+(\[.*\])$', frame) -> json.loads -> [event, payload]
+```
+
+### 9. The reply-ready signal is the COPY BUTTON, not the message count
+
+The assistant message item mounts **immediately** with a `Starting up…` placeholder and
+`data-role="assistant"`, so `expect(assistant_items).to_have_count(base+1)` returns **before the
+answer exists** (cost one wasted probe run). `support-assistant-message-copy-button` renders only on
+a *completed* assistant response — wait on its count delta:
+
+```python
+copies = page.locator('[data-testid="support-assistant-message-copy-button"]')
+base = copies.count()
+# … send …
+expect(copies).to_have_count(base + 1, timeout=240_000)
+```
+
+Latencies measured this run: 40.7 s, 41.2 s, 76.5 s, 77.0 s, 77.0 s (digest range 31-135 s holds).
+
+### 10. Project switching from anywhere (app-wide chrome)
+
+`project-selector-trigger-combobox` (EliteaUI `SidebarProjectSelect.jsx:94` — `ProjectSelect`
+appends `-combobox` to the passed `data-testid`) + `[data-testid="select-option-{project_id}"]`.
+Already implemented twice: `AnalyticsPage.switch_project()` (`analytics_page.py:689`,
+`SELECT_OPTION` constant at :402) and `AdminUsersPage.switch_project()` — reuse that shape.
+Live project list for the localhost dev-token identity (2026-08-22): `399 Private` (personal),
+`406 Bugs & Features`, `25 Elitea Development`, `471 Elitea Testing Team`, `400 UI Testing`.
+`/settings` redirects to `/settings/project-general`; `project-general-section` shows the project
+name and teammate count — **no project ID is displayed anywhere in the UI**; the ID is only
+available from the `select-option-<id>` testid, the config, or the context payload.
+
+### 11. The personal ("Private") project's NAME is not stable in the assistant's answer
+
+Asked the same project question twice against project 399: one run answered
+`Project name: project_user_659 / Project ID: 399` ("the UI context label Private is just the
+display label"), another answered `Project name: Private / Project ID: 399`. The **ID was correct
+3/3**. Assert project identity on the **ID**; assert the name against the captured context frame,
+never against the LLM prose. Team projects (e.g. 406) returned their exact display name.
+
+### 12. #1585 (assistant "echoes the question", 403 on `project_info`) did not reproduce
+
+Filed 2026-08-18 from ELITEA-2424. On 2026-08-22 the assistant answered correctly in 3/3 project
+questions, 2/2 page questions and 1/1 entity question. A dedicated `page.on("response")` probe over
+page load + widget open + a full round trip recorded **zero** `status >= 400` responses. Two console
+403s appeared in a longer multi-page probe (settings + project switching) without blocking any
+answer; the console API exposes no URL for them. Issue left OPEN with a non-repro comment.
+
+## Resolved/added during ELITEA-2424 + ELITEA-2425 implementation (2026-08-22, test-automation-engineer)
+
+57. **`support-assistant-new-chat-button` now EXISTS** — EliteaAI/elitea_assistant@583b5dd on its
+    `automation/testids` (`src/components/chat/ChatHeader.tsx`, attribute-only on the existing
+    "New chat" `<button>`). Closes the `needs-adding` row both AFS files carried. A **dev-server
+    restart was required again** before Vite served it (quirk 44, now **5-for-5**): kill vite,
+    `rm -rf EliteaUI/node_modules/.vite`, restart with `VITE_ASSISTANT_LOCAL=1 npm run dev`.
+    Page-object field: `SupportAssistantPage.new_chat_button_testid` +
+    `start_new_chat_via_testid()`, whose wait is the greeting's copy button becoming visible (a
+    fresh session is never empty — quirk 10) rather than the legacy fixed 1 s timer.
+
+58. **The open widget BLOCKS the project selector *and* the sidebar launcher.** With the widget
+    open, `[data-testid="select-option-<id>"]` cannot be clicked — Playwright reports
+    `<h2 …elitea-assistant-header-title> … subtree intercepts pointer events` — and clicking
+    `sidebar-support-assistant-button` a second time to toggle the widget shut fails the same way
+    (`div.elitea-assistant-input-row` intercepts; the widget's bottom-left overlay container covers
+    the launcher). The widget's Close button carries **no testid**, and adding one for an element
+    no case asserts would breach the testid-scope rule. **The clean move is a full page load**
+    (`page.goto`), which unmounts the widget (consistent with quirks 29/30) — that is what
+    ELITEA-2424 does between its two project rounds.
+
+59. **Project-selector trigger text is three lines** — avatar letter, `Project:` label, then the
+    name: `"U\nProject:\nUI Testing"`. The NAME is the **last line**. Dropdown options are one or
+    two lines (`"E\nElitea Testing Team"`, `"Bugs & Features"`) — same last-line rule.
+
+60. **`project-general-section` + `networkidle` is NOT a sufficient wait after a project switch.**
+    Both settle while the sidebar trigger still shows the PREVIOUS project — a switch A→B read back
+    `'UI Testing'` (the old value) and failed the round-2 assertion. The deterministic, product-
+    produced signal: read the project NAME off the dropdown option *before* clicking it, then
+    `expect(trigger).to_contain_text(that_name)`. Shipped as
+    `SettingsProjectGeneralPage.switch_project()` (`automation/pages/settings_project_general_page.py`
+    — new page object; none existed for Settings ▸ General).
+
+61. **Agent detail URL carries query params**: clicking the first `entity-card-name` lands on
+    `/agents/all/9433?viewMode=owner&name=Echo%20Agent`. Parse the id from `urlparse(url).path`;
+    `current_page` in the context payload is the **pathname only** (`/agents/all/9433`).
+    Shipped as `AgentsListPage.open_first_agent()` (additive — the legacy `select_agent(name)`
+    resolves cards by a raw `text=` locator and keeps its callers byte-identical).
+
+62. **The context payload behaved exactly as analysed, on the FIRST run of both specs.** Frames
+    captured passively via `page.on("websocket")` (armed before the first `goto`); event name
+    `support_predict`; `chat_enter_room.project_id == 536` (the deployment project) vs the user's
+    selected project in `support_assistant_context.project_id`. Live durations, headless:
+    ELITEA-2424 **170.0 s** (2 LLM round trips), ELITEA-2425 **247.9 s** (3 round trips) —
+    the widest per-test runtimes on this surface so far. `#1585` again did **not** reproduce
+    (5 questions, 5 correct answers, zero console errors across both specs).
+
+## History entry CONTENT — title, timestamp, preview (verified live 2026-08-22, ELITEA-2427 run)
+
+Companion to § History panel & page-refresh restore (which covers the panel's *mechanics*). This
+section covers what an entry actually *renders*. Source:
+`../elitea_assistant/src/components/chat/ChatHeader.tsx:112-121` + `src/lib/hooks/chat.hook.ts`.
+
+63. **A history entry's whole DOM body is the conversation title — nothing else.** Verbatim, live:
+    `<button class="elitea-assistant-history-item" type="button"
+    data-testid="support-assistant-history-item">HISTORY-TITLE-TEST: Tell about ELITEA</button>`.
+    No child nodes, no `title` attribute, no `aria-label` (both read `null`). Consequences:
+    **no timestamp** (#1658) and **no conversation preview** (#1659, upstream issue 5723) — both
+    filed, both soft-asserted red-by-design in ELITEA-2427's spec. The list payload *does* carry
+    `created_at`/`updated_at` (the UI simply drops them) but carries **no** message-body field, so a
+    preview needs a backend change too. Full item keys, live: `attachment_participant_id, author_id,
+    created_at, duration, id, instructions, is_private, message_groups_count, meta, name,
+    participants_count, source, updated_at, users_count, uuid`.
+
+64. **The title is an LLM-generated paraphrase delivered over the socket, NOT the user's message.**
+    Backend emits `conversation_name_updated`; the client strips a `User ID <n> - ` prefix
+    (`chat.hook.ts:326-329`). Live: `HISTORY-TITLE-TEST: Tell me about ELITEA` →
+    **`HISTORY-TITLE-TEST: Tell about ELITEA`** ("me" dropped). **Never assert equality with the sent
+    message** — assert containment of a distinctive token. The title was already present at the first
+    read after the reply completed (82 s), so `to_contain_text(TOKEN, timeout≈60 s)` is a sufficient
+    wait; no separate socket wait is needed.
+
+65. **To create a NEW session you must click New chat BEFORE sending.** The widget restores `items[0]`
+    on mount (quirk 30 / `initAssistant.hook.ts:44-58`), so a message sent right after opening joins a
+    pre-existing conversation and no new history entry appears. With New chat first, `handleSend`
+    calls `createConversation()` and **prepends locally** — `setHistory(prev => [created, ...prev])`
+    (`chat.hook.ts:460-466`). Live: 20 → **21** entries, new one at index 0. Note the client-side
+    prepend can push the count past the server's ~20 cap (quirk 31), so assert a **delta**, never a
+    literal.
+
+66. **After the second New chat, index 0 is `:not([disabled])`.** `currentConversationId` is cleared,
+    so the just-created conversation stops being "current" (quirk 28's flag follows the selection).
+    Before that New chat it is index 0 *and* disabled — its text still reads fine (disabled buttons
+    render text normally), so a title assertion does not need the panel to be in either state.
+
+67. **Case-text clarification #1660** (`question` + `case-text-drift`) records ELITEA-2427's two
+    imprecisions — Step 2's ordering (quirk 65) and Step 6's "first user message text" (quirk 64).
+    Product is correct in both.
+
+68. **Runtime: 83 s headless for the full 8-step flow** (one live reply at 74 s — mid-band for this
+    surface). Zero console errors, zero `pageerror`, all `GET …/conversations/` = 200.
+    **#1581 disproved a fifth time**: real `fill` → send enabled immediately.
+
+69. **Resolved/confirmed during ELITEA-2427 implementation (2026-08-22, headless, 89.7 s):**
+    - **Closing the history dropdown is a second click on the history BUTTON.** `ChatHeader.tsx:49`
+      toggles `showHistory`, and the outside-click handler at `:39` does not fire for the button
+      itself because it sits inside the `historyDropdownRef` wrapper. Needed whenever a spec reads a
+      baseline entry count and then goes back to the composer — the dropdown renders over the message
+      area, so leaving it open makes the next click do double duty as a dismiss.
+    - **The LLM title paraphrase reproduced byte-for-byte on an independent run** —
+      `HISTORY-TITLE-TEST: Tell me about ELITEA` → `HISTORY-TITLE-TEST: Tell about ELITEA` again,
+      hours after the analysis run. Do **not** read that as determinism (it is an LLM), but it does
+      make "the title provably lacks the verbatim message" a usable discriminator for a preview
+      assertion (quirk 64 / #1659).
+    - **`expect(message_copy_buttons).to_have_count(1)` after `start_new_chat_via_testid()` is the
+      strongest fresh-session settle.** The helper's own wait is `copy_buttons.first` becoming
+      visible, which a *stale* copy button from the previous conversation can satisfy while the list
+      is still clearing; the exact count (quirk 10: a New chat has exactly one greeting) cannot be.
+      Worth porting to any spec that takes a baseline right after a New chat.
+
+## Generation lifecycle — what "streaming" actually looks like (verified live 2026-08-22, ELITEA-2426 run)
+
+Supersedes and explains quirk 5 ("no token streaming") with the mechanism, and adds the in-flight handles.
+
+70. **The Support Assistant renders NO partial text, ever.** The assistant bubble holds **0 chars**
+    for the whole generation window, then jumps to the complete answer in a single sample. Measured
+    twice at 150 ms sampling: 0 → **474** chars (run 1), 0 → **707** chars (run 2), with the copy
+    button appearing in that same sample. Cause, read in source: this is an **agent**, so the backend
+    emits `agent_llm_chunk` → `chat.hook.ts:258-266` maps it to a **statusMessage only, never
+    content**, then one terminal `agent_response` assigns the whole body
+    (`:268-281`, `content: responseContent, isStreaming: false`). The token-append branch
+    (`chunk`/`AIMessageChunk` → `content: m.content + chunk`, `:238-250`) is unreachable here.
+    The client typewriter (`AnimatedMessage` + `useTypewriter`, 3 chars/16 ms ≈ 187 chars/s) is
+    **dead code on this surface** — `isAnimating` is only ever assigned `false` (`:71`, `:302`),
+    never `true`. **Any case asking to observe progressive/token arrival here is case-text drift**
+    (ELITEA-2426 → clarification #1662), not a product defect.
+
+71. **The two in-flight signals (use these, not text length):**
+    - **Stop generation button** replaces Send while `isStreaming` — `MessageInput.tsx:298-306`,
+      `button[aria-label="Stop generation"]`, **no testid** (`needs-adding`:
+      `support-assistant-stop-button`). Cleanest "generation in flight" gate; observed visible from
+      t≈3.9 s to completion.
+    - **Status message** — `StatusMessage` at `MessageItem.tsx:48`, class
+      `.elitea-assistant-status-message`, **no testid** (`needs-adding`:
+      `support-assistant-status-message`). Text observed: `Starting up...`, `Looking things up...`,
+      `Consulting knowledge base...`, `Writing response...` (NB the words are joined by **NBSP**,
+      `\xa0`, not spaces). **It cycles and revisits earlier values** — `Looking things up...` fired
+      three times in one 91 s run — so never assert progression or a specific string.
+
+72. **Expanding mid-generation is safe by construction, and it was verified live.** Expand is a pure
+    className toggle on the same node (`ChatWindow.tsx:71`), driven from `EliteaAssistant.tsx:78/145`;
+    the chat state lives above `ChatWindow` and `MessageItem` is `memo`'d, so nothing unmounts.
+    Live: expand at t=8.07 s (Stop visible, status `Starting up...`) → generation continued another
+    **82 s** and completed normally in full view; **exactly 1** `support_predict` frame for the whole
+    flow; assistant item count never changed; text length never decreased across 463 samples; widget
+    never flipped back to compact; 0 console errors.
+
+73. **Expand geometry is ANIMATED — assert the state signal, not pixels.** Immediately after the
+    click the widget measures `684×644`, settling `716×674` → `720×678` (viewport 1920×1080).
+    The digest's earlier `720×678` figure is the *settled* value only. The expand button's
+    `aria-label` stays `"Expand chat"` in both states (`ChatHeader.tsx:133`) — **no testid**
+    (`needs-adding`: `support-assistant-expand-button`). The widget's expanded state is currently
+    only a CSS modifier class (`elitea-assistant-window--expanded`); the policy-compliant shape is a
+    **`data-expanded` attribute** on the element that already carries `support-assistant-widget`
+    (`ChatWindow.tsx:71-72`) — specced as `needs-adding` by ELITEA-2426.
+
+74. **Generation is SLOW on this surface — plan timeouts accordingly.** Send→content measured
+    **72.5 s** and **86.6 s** for a "list all toolkits in detail" prompt; full spec runtime
+    ~95-110 s headless. Use 240 s for the completion wait (copy-button delta), 60 s for the
+    Stop-button appearance.
+
+**Resolved/added during ELITEA-2426 implementation (2026-08-22):** the four `needs-adding` testids
+quirks 71-73 record now EXIST on `elitea_assistant`'s `automation/testids`
+(EliteaAI/elitea_assistant@0e3fcc1) — `support-assistant-expand-button` (`ChatHeader.tsx`),
+`support-assistant-stop-button` (`MessageInput.tsx`), `support-assistant-status-message`
+(`StatusMessage.tsx`), and `data-expanded={String(expanded)}` on the element already carrying
+`support-assistant-widget` (`ChatWindow.tsx`). Page-object handles:
+`SupportAssistantPage.expand_toggle_button` / `.stop_generation_button` / `.status_message` and the
+class constants `WIDGET_EXPANDED` / `WIDGET_COMPACT`. Quirk 44 held again (**6-for-6**): a
+dev-server restart (`kill` vite PIDs, `rm -rf EliteaUI/node_modules/.vite`, restart with
+`VITE_ASSISTANT_LOCAL=1 npm run dev`) was required before Vite served them.
+
+75. **While a status message is showing, the assistant bubble is NOT RENDERED AT ALL** — it is not
+    an empty bubble. `MessageItem.tsx:19`:
+    `showBubble = message.role === 'user' || message.content || (!hasStatusMessage && message.isStreaming)`.
+    Because an in-flight assistant message has a `statusMessage` and no `content`, all three
+    disjuncts are false and the `support-assistant-message-bubble` node is absent. Consequence for
+    any spec sampling in-flight text: a strict `bubble.inner_text()` **raises** rather than
+    returning `""`. Use `SupportAssistantPage.get_last_assistant_text_or_empty()`
+    (added ELITEA-2426), which treats "no bubble yet" and "an empty bubble" as the same
+    observation — zero rendered characters. *(This corrects the ELITEA-2426 AFS's implied "the
+    in-flight bubble holds 0 characters": the analyst's `page.evaluate` probe read `textContent`
+    off a `querySelector` that returned `null`, which reads as `''` in JS but is an exception in
+    Playwright's strict locator API.)*

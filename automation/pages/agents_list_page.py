@@ -8,8 +8,9 @@ Handles: /agents/all
 - Import an Agent from an exported ``.agent.md`` file
 """
 
-import re
 import logging
+import re
+from urllib.parse import urlparse
 from playwright.sync_api import Page
 
 from .base_page import BasePage
@@ -314,6 +315,32 @@ class AgentsListPage(BasePage):
         card.wait_for(state="visible", timeout=timeout)
         card.click(force=True)
         self.wait_for_network(timeout=timeout)
+
+    @action("Open the first agent card")
+    def open_first_agent(self, timeout: int = 15000) -> int:
+        """Click the first agent card in the list and return its id.
+
+        Additive counterpart to :meth:`select_agent`, which resolves the card
+        by a raw ``text=`` locator built inside its body (pre-policy tech debt
+        #25/#42) and is left byte-identical for its existing callers. This one
+        drives the shared ``entity-card-name`` testid field and needs no name
+        to be known in advance — ELITEA-2425 opens "a specific agent detail
+        page" without caring which.
+
+        Args:
+            timeout: Maximum wait time in milliseconds
+
+        Returns:
+            The opened agent's numeric id, parsed from the detail URL
+            (``/agents/all/<id>?viewMode=owner&name=...``)
+        """
+        self.entity_card_name.first.wait_for(state="visible", timeout=timeout)
+        self.entity_card_name.first.click()
+        self.page.wait_for_url(re.compile(r"/agents/all/\d+"), timeout=timeout)
+        path = urlparse(self.page.url).path
+        agent_id = int(path.rsplit("/", 1)[-1])
+        logger.info("Opened agent detail page for id %s", agent_id)
+        return agent_id
 
     # ------------------------------------------------------------------
     # Search operations
