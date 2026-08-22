@@ -145,3 +145,38 @@ Source: `../elitea_assistant/src/components/shared/CopyButton.tsx`, rendered fro
 
 15. Reply latency sample 2026-08-22: **69.6 s** for "Explain in one sentence what an AI agent is"
     (in the digest's recorded 33-135 s band). Use a **180 s** wait on this surface; 120 s is tight.
+
+## Resolved/added during ELITEA-2419 implementation (2026-08-22, test-automation-engineer)
+
+**Rows 6-9 of ELITEA-2419's AFS now EXIST** — `EliteaAI/elitea_assistant@216da01` on its
+`automation/testids` branch (attributes only; the shared `CopyButton` takes a caller-supplied
+`testId` prop, wired at the `MessageItem` call site):
+
+| Element | Handle now available |
+|---|---|
+| Copy-to-clipboard button | `support-assistant-message-copy-button` |
+| Its copied state | `data-copied="true" \| "false"` on that same button |
+| Message bubble (user or assistant) | `support-assistant-message-bubble` |
+| Message role | `data-role="assistant" \| "user"` on the item that already carries `support-assistant-message-item` |
+
+Bind via `SupportAssistantPage.message_copy_buttons` / `.message_bubbles` and the class constants
+`MESSAGE_COPY_BUTTON`, `MESSAGE_COPY_BUTTON_COPIED`, `MESSAGE_COPY_BUTTON_IDLE`,
+`ASSISTANT_MESSAGE_ITEM`, `USER_MESSAGE_ITEM`, `MESSAGE_BUBBLE`, plus the helpers
+`get_copy_button_count()`, `last_assistant_item()`, `last_user_item()`, `copy_button_in(item)`,
+`bubble_in(item)`, `send_message_via_testid(text)` and `BasePage.clear_clipboard()`.
+
+16. **Quirk 11 is now assertable without diffing SVG paths** — `data-copied` flips to `"true"`
+    synchronously in the click handler and back to `"false"` after 2000 ms. Assert the "true" edge
+    FIRST (before reading the clipboard), then the revert; both with plain auto-retrying
+    `to_have_count` assertions, no sleep.
+
+17. **Waiting for a reply needs no `wait_for_function`.** Since exactly one reply is expected,
+    `expect(message_copy_buttons).to_have_count(baseline + 1, timeout=180_000)` is the whole wait —
+    simpler than the JS recipe and it keeps `page.evaluate` out of the diff. Measured 85.7 s for the
+    full spec (~70 s of it the reply).
+
+18. **Quirk 7 (stale Vite modules under OneDrive) reproduced again** for the connected assistant
+    repo: after committing the testids, `curl -s 'http://localhost:5173/@fs<abs>/src/components/shared/CopyButton.tsx'`
+    still served the pre-edit module. Same fix worked — kill the `npm run dev` + `vite` + `esbuild`
+    PIDs, `rm -rf EliteaUI/node_modules/.vite`, restart, re-curl until the new attribute appears.
+    **Budget one restart into every dispatch that adds a testid on this surface.**
