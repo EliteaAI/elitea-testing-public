@@ -218,20 +218,19 @@ Nothing structural. Existing members cover the flow:
 `new_chat_button_testid`, `open_history_via_testid`, `get_history_item_count_via_testid`,
 `history_items`.
 
-One small addition, class-level and testid-only, if the implementer wants the top entry as a named
-member rather than `history_items.first` at the call site:
+**Shipped (implementer, 2026-08-22):** one additive method, no new class constant — the proposed
+`HISTORY_ITEM` constant turned out unnecessary, because the existing `history_items`
+`LocatorDescriptor` already addresses the entry and `.first` composes off it:
 
 ```python
-# class level, alongside HISTORY_ITEM_OPENABLE
-HISTORY_ITEM = '[data-testid="support-assistant-history-item"]'
-
 def newest_history_item(self):
-    """The most recent history entry (index 0 — newest first, see AFS point 3)."""
+    """Locator for the most recent conversation in the history dropdown. …"""
     return self.history_items.first
 ```
 
-No new raw handles. No `fallback=`, no `locator=`, nothing built inside a method body beyond the
-class constant above.
+No new raw handles, no `fallback=`, no `locator=`, nothing built inside a method body. Verified on
+the branch diff: locator grep 0 hits, fidelity grep 0 hits, `grep -E '^-[^-]'` on the page object
+empty (additive-only).
 
 ---
 
@@ -334,6 +333,7 @@ deviation and why (#1660); no substitutions.
 | History count delta `+1` | the case says "push the session into history" but asserts nothing about it; without this, Step 4 is unverified |
 | Index-0 entry is `:not([disabled])` after New chat | encodes quirk 5 (current-conversation flag cleared) — a regression here would silently break every "open a previous session" spec |
 | Zero console errors / zero page errors | the case's own pass criterion, which has no step of its own |
+| After Step 4's New chat, the distinctive user message is gone from the composer (`to_have_count(0)`) | *added by the implementer* — proves the session was genuinely left behind rather than merely re-rendered, so the entry read at Steps 6-8 really is a *history* entry |
 
 ---
 
@@ -392,3 +392,36 @@ stopped exploration.
 - Title is an LLM paraphrase over `conversation_name_updated`; assert token containment, never equality.
 - New chat **before** the distinctive message, or the message joins the restored conversation.
 - Client prepends the created conversation locally, so the count can exceed the server's ~20 cap.
+
+---
+
+## Implementer amendments (2026-08-22, `tests/2427-history-session-preview-and-title`)
+
+Shipped as
+`automation/tests/ui/support_assistant/test_support_assistant_history_title_preview.py::TestSupportAssistantHistoryTitleAndPreview::test_history_entry_shows_title_timestamp_and_preview`
+— the file/class/method shape § Suggested location proposed, unchanged.
+
+1. **The baseline history count is read by opening the panel in Step 1 and closing it again.**
+   The AFS asked for "the history count before the send" without saying how; the count only exists
+   while the dropdown is rendered. Clicking `support-assistant-history-button` a second time closes
+   it (`ChatHeader.tsx:49` toggles `showHistory`; the outside-click handler does *not* fire, because
+   the button lives inside the `historyDropdownRef` wrapper). The panel is closed before touching the
+   composer so it cannot overlay the message area or turn the New-chat click into a dismiss.
+2. **Both soft assertions run with `timeout=1000`, not the default 5 s.** The entry's text is already
+   resolved by the hard token assertion immediately above them, so a correctly built entry would
+   match instantly; the short timeout removes ~8 s of dead wait from every RED-by-design run without
+   weakening either assertion (same reasoning, and the same neighbour precedent, as
+   `test_attach_unsupported_file_format_error.py`'s `#1121` soft assert).
+3. **The greeting is the copy-button baseline.** A New chat opens with exactly one completed
+   assistant greeting (digest quirk 10), so the spec asserts `to_have_count(1)` after each New chat
+   and `to_have_count(2)` for the reply — a deterministic settle that also guarantees the previous
+   conversation's messages have been cleared before any baseline is read.
+
+**Implementation run (headless, 89.7 s, 2026-08-22):** every hard assertion passed on the first
+attempt, zero reruns. The live title reproduced the analyst's observation byte-for-byte —
+`HISTORY-TITLE-TEST: Tell about ELITEA` for `HISTORY-TITLE-TEST: Tell me about ELITEA` — on an
+independent run, which is what makes the Step-8 verbatim-message assertion a genuine discriminator
+rather than an accident of one generation. Both soft assertions failed with the entry's full text as
+the actual value (`HISTORY-TITLE-TEST: Tell about ELITEA` — no timestamp, no preview), i.e. the
+closed set {#1658, #1659} fired together and nothing else was red. Console and pageerror channels
+were empty.

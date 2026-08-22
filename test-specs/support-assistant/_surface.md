@@ -742,3 +742,20 @@ section covers what an entry actually *renders*. Source:
 68. **Runtime: 83 s headless for the full 8-step flow** (one live reply at 74 s — mid-band for this
     surface). Zero console errors, zero `pageerror`, all `GET …/conversations/` = 200.
     **#1581 disproved a fifth time**: real `fill` → send enabled immediately.
+
+69. **Resolved/confirmed during ELITEA-2427 implementation (2026-08-22, headless, 89.7 s):**
+    - **Closing the history dropdown is a second click on the history BUTTON.** `ChatHeader.tsx:49`
+      toggles `showHistory`, and the outside-click handler at `:39` does not fire for the button
+      itself because it sits inside the `historyDropdownRef` wrapper. Needed whenever a spec reads a
+      baseline entry count and then goes back to the composer — the dropdown renders over the message
+      area, so leaving it open makes the next click do double duty as a dismiss.
+    - **The LLM title paraphrase reproduced byte-for-byte on an independent run** —
+      `HISTORY-TITLE-TEST: Tell me about ELITEA` → `HISTORY-TITLE-TEST: Tell about ELITEA` again,
+      hours after the analysis run. Do **not** read that as determinism (it is an LLM), but it does
+      make "the title provably lacks the verbatim message" a usable discriminator for a preview
+      assertion (quirk 64 / #1659).
+    - **`expect(message_copy_buttons).to_have_count(1)` after `start_new_chat_via_testid()` is the
+      strongest fresh-session settle.** The helper's own wait is `copy_buttons.first` becoming
+      visible, which a *stale* copy button from the previous conversation can satisfy while the list
+      is still clearing; the exact count (quirk 10: a New chat has exactly one greeting) cannot be.
+      Worth porting to any spec that takes a baseline right after a New chat.
