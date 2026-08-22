@@ -696,3 +696,49 @@ answer; the console API exposes no URL for them. Issue left OPEN with a non-repr
     ELITEA-2424 **170.0 s** (2 LLM round trips), ELITEA-2425 **247.9 s** (3 round trips) —
     the widest per-test runtimes on this surface so far. `#1585` again did **not** reproduce
     (5 questions, 5 correct answers, zero console errors across both specs).
+
+## History entry CONTENT — title, timestamp, preview (verified live 2026-08-22, ELITEA-2427 run)
+
+Companion to § History panel & page-refresh restore (which covers the panel's *mechanics*). This
+section covers what an entry actually *renders*. Source:
+`../elitea_assistant/src/components/chat/ChatHeader.tsx:112-121` + `src/lib/hooks/chat.hook.ts`.
+
+63. **A history entry's whole DOM body is the conversation title — nothing else.** Verbatim, live:
+    `<button class="elitea-assistant-history-item" type="button"
+    data-testid="support-assistant-history-item">HISTORY-TITLE-TEST: Tell about ELITEA</button>`.
+    No child nodes, no `title` attribute, no `aria-label` (both read `null`). Consequences:
+    **no timestamp** (#1658) and **no conversation preview** (#1659, upstream issue 5723) — both
+    filed, both soft-asserted red-by-design in ELITEA-2427's spec. The list payload *does* carry
+    `created_at`/`updated_at` (the UI simply drops them) but carries **no** message-body field, so a
+    preview needs a backend change too. Full item keys, live: `attachment_participant_id, author_id,
+    created_at, duration, id, instructions, is_private, message_groups_count, meta, name,
+    participants_count, source, updated_at, users_count, uuid`.
+
+64. **The title is an LLM-generated paraphrase delivered over the socket, NOT the user's message.**
+    Backend emits `conversation_name_updated`; the client strips a `User ID <n> - ` prefix
+    (`chat.hook.ts:326-329`). Live: `HISTORY-TITLE-TEST: Tell me about ELITEA` →
+    **`HISTORY-TITLE-TEST: Tell about ELITEA`** ("me" dropped). **Never assert equality with the sent
+    message** — assert containment of a distinctive token. The title was already present at the first
+    read after the reply completed (82 s), so `to_contain_text(TOKEN, timeout≈60 s)` is a sufficient
+    wait; no separate socket wait is needed.
+
+65. **To create a NEW session you must click New chat BEFORE sending.** The widget restores `items[0]`
+    on mount (quirk 30 / `initAssistant.hook.ts:44-58`), so a message sent right after opening joins a
+    pre-existing conversation and no new history entry appears. With New chat first, `handleSend`
+    calls `createConversation()` and **prepends locally** — `setHistory(prev => [created, ...prev])`
+    (`chat.hook.ts:460-466`). Live: 20 → **21** entries, new one at index 0. Note the client-side
+    prepend can push the count past the server's ~20 cap (quirk 31), so assert a **delta**, never a
+    literal.
+
+66. **After the second New chat, index 0 is `:not([disabled])`.** `currentConversationId` is cleared,
+    so the just-created conversation stops being "current" (quirk 28's flag follows the selection).
+    Before that New chat it is index 0 *and* disabled — its text still reads fine (disabled buttons
+    render text normally), so a title assertion does not need the panel to be in either state.
+
+67. **Case-text clarification #1660** (`question` + `case-text-drift`) records ELITEA-2427's two
+    imprecisions — Step 2's ordering (quirk 65) and Step 6's "first user message text" (quirk 64).
+    Product is correct in both.
+
+68. **Runtime: 83 s headless for the full 8-step flow** (one live reply at 74 s — mid-band for this
+    surface). Zero console errors, zero `pageerror`, all `GET …/conversations/` = 200.
+    **#1581 disproved a fifth time**: real `fill` → send enabled immediately.
