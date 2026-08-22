@@ -33,3 +33,16 @@ state,stateReason` costs one call. A filter for a closed-as-not-reproducible def
 is a weakened assertion pointing away from a defect, and the precedent argument
 ("three merged specs do it") is convention, not authority (`role-overrides.md`
 § precedent is not authority).
+
+## Round-2 addendum (2026-08-22) — the second, structural #518 vector
+
+Removing the console filter is only half of it. `CredentialsListPage.navigate()`
+calls `recover_from_credentials_list_crash()` (`pages/credentials_list_recovery.py`),
+which detects the "Unexpected Application Error!" boundary and silently **reloads**
+— premised on the same closed #518. It does not hide the crash from a spec whose
+console listener is attached *before* `navigate()` (the console error still fails
+the side-channel assert), but any spec that attaches later, or has no console
+assertion at all, goes green through a real crash. Two merged specs
+(`test_credential_create.py:53`, `test_credential_delete.py:40`) still carry the
+`_is_known_518_warning` filter as well. Suite-health follow-up, not a per-case
+blocker: when reviewing a credentials spec, check BOTH vectors.
