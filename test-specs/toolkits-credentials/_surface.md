@@ -249,3 +249,89 @@ stale twice in a row. `touch`-ing the edited files and then doing an in-page
 `location.reload()` served the new module. If a freshly added testid is "missing"
 from the DOM, verify the served module first
 (`fetch('/src/…jsx?t='+Date.now())` and grep it) before doubting the edit.
+
+## Credential CREATE form — schema-driven field rendering — confirmed live 2026-08-22 (ELITEA-1967)
+
+All ten types the case names driven end-to-end at
+`/credentials/create-credential/{type}` (direct route — the type-card grid on
+`/credentials/all` only renders on a zero-credential project). **Zero defects;
+the case text matched the live product on every row.**
+
+### The form is 100% backend-schema-driven — read the schema, don't guess
+
+`GET /configurations/available/?section=credentials` is the single source for
+every credential type's form. One authenticated call answers "what fields does
+type X render, which are secret, which auth options exist, is Test connection
+enabled" without opening a browser:
+
+```bash
+curl -s -H "Authorization: Bearer $ELITEA_API_TOKEN" \
+  "$ELITEA_API_BASE/configurations/available/?section=credentials"
+# per item: .type, .has_test_connection, .config_schema.properties.data.properties (fields),
+#           .config_schema.properties.data.required,
+#           .config_schema.properties.data.metadata.sections.auth.subsections (auth radio options)
+```
+
+- 32 credential types available on project 399 (2026-08-22).
+- `has_test_connection: false` ⇒ the Test connection button renders **disabled**.
+  Of the ten ELITEA-1967 types, **only `postman`** is false.
+- `metadata.sections.auth` absent ⇒ **no auth radio group at all**
+  (`ado`, `langfuse`, `report_portal`).
+- `metadata.sections.auth.required: false` ⇒ `ToolSection.jsx` **prepends a
+  synthetic `Anonymous` option with value `none`** (this is why GitHub has an
+  Anonymous radio that appears in no schema field list).
+- Default-selected auth option = `sectionOptions[0]` when no field has a value
+  ⇒ `Anonymous` for GitHub, the first real subsection everywhere else.
+  Only the selected subsection's fields render — GitHub on Anonymous shows
+  **no** credential field, just Base Url.
+
+### Field-testid grammar (all generic, all derived from the schema property key)
+
+| Shape | Testid | Source |
+|---|---|---|
+| plain text field | `toolkit-field-{key}-input` (the `<input>`) | `ToolBaseProperty.jsx:589` |
+| secret field | `toolkit-field-{key}-input` on the **wrapper `<div>`**, `toolkit-field-{key}-input-field` on the native `<input>` | `SecretField.jsx` derives the `-field` suffix |
+| secret field toggle | `toolkit-field-{key}-input-toggle-secret` / `…-toggle-password` | **added by ELITEA-1967**, see below |
+| enum dropdown | `toolkit-field-{key}-select` (+ `-select-combobox` on the display node) | **added by ELITEA-1967** |
+| auth radio option | `toolkit-field-auth-radio-{slug}`, slug = option VALUE `.toLowerCase().replace(/\s+/g,'-')` | `RadioButtonGroup.jsx:36-37` |
+| Test connection button | `credential-form-test-connection-button` | **added by ELITEA-1967** |
+
+Because the grammar is generic, **a new credential type needs no new testid** —
+only the page object's expectation table grows.
+
+### Testids added during ELITEA-1967 (EliteaAI/EliteaUI@5892ae48, `automation/testids`, awaiting human cherry-pick to `main`)
+
+Attribute-only, no functional change:
+- `credential-form-test-connection-button` — `CredentialForm.jsx`
+  (`Button.BaseBtn` spreads `restProps` onto `MuiButton`).
+- `toolkit-field-{key}-select` — `ToolBaseProperty.jsx` enum branch
+  (`SingleSelect` already accepted a `data-testid` prop; it was simply never passed).
+- `toolkit-field-{key}-input-toggle-{secret|password}` — `SecretField.jsx`
+  derives `testIdPrefix` from the caller's `data-testid`; `src/components/Toggle.jsx`
+  gained an optional `testIdPrefix` prop. **Caller-derived — the shared `Toggle`
+  hardcodes no feature-scoped testid.** This one benefits every secret field in the
+  app (toolkits included), not just credentials.
+
+### Observed per-type inventory (2026-08-22, verbatim from the live DOM)
+
+Every type also renders `toolkit-field-label-input` (Display Name) and
+`toolkit-field-elitea_title-input` (ID, **`disabled` on all ten** — the case text
+only annotates "(disabled)" on GitHub, but it holds everywhere).
+
+| type | type-specific fields | secret fields | auth radios (default first) | Test connection |
+|---|---|---|---|---|
+| github | `base_url` (pre-filled `https://api.github.com`) | — | `none`=Anonymous ✓, `token`, `password`, `app-private-key` | enabled |
+| sharepoint | `client_id`, `client_secret`, `site_url` | `client_secret` | `app-only` ✓, `delegated` | enabled |
+| ado | `organization_url`, `token` | `token` | **none** | enabled |
+| gitlab | `url`, `private_token` | `private_token` | `gitlab-private-token` ✓ | enabled |
+| confluence | `hosting` (select, `Auto`), `base_url`, `api_key`, `username` | `api_key` | `basic` ✓, `bearer` | enabled |
+| jira | identical to confluence | `api_key` | `basic` ✓, `bearer` | enabled |
+| figma | `token` | `token` | `token` ✓ | enabled |
+| postman | `base_url`, `workspace_id`, `api_key` | `api_key` | `api-key` ✓ | **DISABLED** |
+| langfuse | `base_url`, `public_key`, `secret_key` | `secret_key` | **none** | enabled |
+| report_portal | `project`, `endpoint`, `api_key` | `api_key` | **none** | enabled |
+
+### Cheap navigation fact
+`/credentials/create-credential/{type}` renders the form with no project-state
+precondition, no seeding and no save. A render-inventory case on this surface is
+fully read-only.
