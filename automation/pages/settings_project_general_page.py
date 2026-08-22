@@ -23,7 +23,7 @@ follow (see ``AnalyticsPage.project_selector_trigger``).
 
 import logging
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -80,9 +80,34 @@ class SettingsProjectGeneralPage(BasePage):
         self.project_selector_trigger.click(timeout=timeout)
         option = self.page.locator(self.SELECT_OPTION.format(project_id))
         option.wait_for(state="visible", timeout=timeout)
+        # The dropdown option carries the project's display name, so the
+        # trigger picking that name up is the product's own "the selection
+        # landed" signal. Waiting on the section or the network instead returns
+        # while the sidebar label still shows the PREVIOUS project (observed
+        # live: a switch read back the old name and failed a later assertion).
+        target_name = self._name_of(option)
         option.click()
+        expect(self.project_selector_trigger).to_contain_text(
+            target_name, timeout=timeout
+        )
         self.project_general_section.wait_for(state="visible", timeout=timeout)
         self.wait_for_network(timeout=timeout)
+
+    @staticmethod
+    def _name_of(element) -> str:
+        """Project display name rendered by *element* (trigger or option).
+
+        Both render the name on the LAST line — the trigger prefixes an avatar
+        letter and a ``Project:`` label, an option prefixes the avatar letter
+        when the project has one.
+
+        Args:
+            element: Trigger or option Locator
+
+        Returns:
+            The project display name
+        """
+        return element.inner_text().strip().splitlines()[-1].strip()
 
     def get_selected_project_name(self) -> str:
         """Project name currently shown in the sidebar selector trigger.
@@ -94,4 +119,4 @@ class SettingsProjectGeneralPage(BasePage):
         Returns:
             The selected project's display name
         """
-        return self.project_selector_trigger.inner_text().strip().splitlines()[-1].strip()
+        return self._name_of(self.project_selector_trigger)

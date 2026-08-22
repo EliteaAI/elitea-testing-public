@@ -96,7 +96,7 @@ question/answer round trip. See § Known Defects.
 | Sidebar project selector trigger | `project-selector-trigger-combobox` | EliteaUI `src/[fsd]/widgets/sidebar-root/ui/SidebarProjectSelect.jsx:94` (`ProjectSelect` appends `-combobox`) | **pre-existing**, already used by `AdminUsersPage` / `AnalyticsPage` — verify on main at closure |
 | Project option in the dropdown (dynamic) | `[data-testid="select-option-{project_id}"]` | EliteaUI `src/[fsd]/shared/ui/select/SingleSelectMenuItem.jsx:117` | **pre-existing** |
 | Settings ▸ General project section | `project-general-section` | EliteaUI `src/[fsd]/features/settings/ui/project-general/ProjectGeneralContent.jsx:30` | **pre-existing** |
-| "New chat" button (optional, see § Test Data) | **testid needed: `support-assistant-new-chat-button`** | elitea_assistant `src/components/chat/ChatHeader.tsx:83` (currently only `aria-label="New chat"`) | **needs-adding** — connected first-party repo, canon #705: add it in `elitea_assistant` on ITS `automation/testids`, never a raw handle |
+| "New chat" button | `support-assistant-new-chat-button` | elitea_assistant `src/components/chat/ChatHeader.tsx` | **ADDED during implementation** — EliteaAI/elitea_assistant@583b5dd on its `automation/testids` (canon #705). A dev-server restart was required before Vite served it (digest quirk 44, now 5-for-5). |
 
 ### Provenance verification (fresh `git fetch origin` in both repos, 2026-08-22)
 
@@ -115,7 +115,8 @@ support-assistant-message-input            main:no   testids:YES
 support-assistant-send-button              main:no   testids:YES
 support-assistant-message-item             main:no   testids:YES
 support-assistant-message-copy-button      main:no   testids:YES
-support-assistant-new-chat-button          main:no   testids:no      <- needs adding
+support-assistant-new-chat-button          main:no   testids:YES     <- ADDED during implementation
+                                                                        (EliteaAI/elitea_assistant@583b5dd, 2026-08-22)
 ```
 
 Consequence for the closure record: the widget testids are on `automation/testids` in **both**
@@ -237,10 +238,23 @@ a workaround.)
 `goto`. Keep the raw frame list; parse lazily.
 
 **Step 1 — switch to project A.** Navigate to `/settings` (lands on `/settings/project-general`),
-click `project-selector-trigger-combobox`, click `[data-testid="select-option-{A}"]`, wait for the
-network to settle.
+click `project-selector-trigger-combobox`, click `[data-testid="select-option-{A}"]`.
 *Assert:* the trigger text contains project A's name; `project-general-section` is visible.
-Capture `project_a_name = trigger.inner_text()`.
+Capture `project_a_name` from the trigger.
+
+> **Amended 2026-08-22 (implementer, Phase 2 — shipped truth).** Two live facts the analysis
+> did not record:
+> 1. **The trigger renders three lines** — avatar letter, `Project:` label, then the name
+>    (`"U\nProject:\nUI Testing"`). The project NAME is the LAST line; `inner_text()` as a whole
+>    is not the name and would fail the `ctx["project_name"] == project_a_name` equality.
+> 2. **Waiting on `project-general-section` + `networkidle` after the option click is NOT enough** —
+>    the sidebar label still reads the PREVIOUS project at that point (this failed run 1: switching
+>    A→B read back `'UI Testing'` twice). The deterministic signal is the product's own: read the
+>    NAME off the dropdown option before clicking it, then wait for the trigger to contain it.
+>
+> Both live in `SettingsProjectGeneralPage.switch_project()` /
+> `get_selected_project_name()` (`automation/pages/settings_project_general_page.py`, new page
+> object — no page object existed for Settings ▸ General).
 
 **Step 2 — open the widget and start a fresh chat.** Click `sidebar-support-assistant-button`;
 `support-assistant-widget` becomes visible. Click the New-chat button
@@ -265,8 +279,17 @@ cost one wasted probe run today). The copy button renders only on a *completed* 
   `chat_enter_room` frame — observed `536`, which is not in this user's selector list)
 - `str(A) in last_assistant_message_text` — the LLM reply names the same ID it was given.
 
-**Step 6 — switch to project B.** Repeat Step 1 with B. *Assert:* trigger text contains B's name
-and `B != A`.
+**Step 6 — switch to project B.** Re-load `/settings` (a fresh page load, which also closes the
+widget), then repeat Step 1 with B. *Assert:* trigger text contains B's name and `B != A`.
+
+> **Amended 2026-08-22 (implementer, Phase 2 — shipped truth).** The widget CANNOT stay open across
+> the project switch: its overlay container (`.elitea-assistant-container--bottom-left`) sits above
+> both the project-selector dropdown option AND the sidebar launcher, so with the widget open the
+> option click is intercepted ("subtree intercepts pointer events") and the launcher cannot even be
+> clicked to toggle it shut. The widget's Close button carries no testid, and adding one for an
+> element the case never asserts would violate the testid-scope rule (`.agents/testing.md` §
+> Locator policy) — so the round starts from a fresh `/settings` load, which unmounts the widget.
+> That is also literally what case step 6 says ("Navigate to a different project").
 
 **Step 7 — re-open the widget, fresh chat, ask again.** Repeat Steps 2-4.
 
