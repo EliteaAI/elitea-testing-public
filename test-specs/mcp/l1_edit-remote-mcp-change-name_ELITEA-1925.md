@@ -143,3 +143,8 @@ None.
 - `MAX_NAME_LENGTH = 32` truncates silently; keep generated names ≤ 32.
 - The MCP list is reachable via `McpListPage.navigate()` + `wait_for_page_load()`;
   `search()` then `get_card_names()` is the cheapest list assertion.
+- **`McpListPage.open_card_by_name()` does not wait for the detail page** (its
+  docstring assigns that to the caller) — follow it with
+  `McpFormPage.wait_for_page_load()` before Step 9's reads, and assert both the
+  title and the Name field with retrying `expect(...)` calls, not bare reads
+  (added during implementation fix round 1).
