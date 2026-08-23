@@ -35,7 +35,7 @@ import pytest
 from pages.pipeline_detail_page import PipelineDetailPage
 from playwright.sync_api import Page
 
-pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.new]
+pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.new_verified]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)

@@ -48,3 +48,4 @@
 - [Campaign close: SUM per-wave numbers, don't eyeball the tally](campaign_closure_tally_must_be_summed_not_estimated.md)
 - [Testid grep "no" on shared/ternary components is untrustworthy](testid_promotability_grep_misses_multiline_ternary_composed_values.md) — confirm via file-diff (2×)
 - [Before ANY commit on the shared clone, check current branch first](campaign_doc_edit_lost_during_concurrent_workflow_subagent_git_ops.md) — a Workflow may have switched it (2×)
+- [Synthetic input events produce false product bugs](synthetic_input_events_produce_false_bugs.md) — re-drive with real fill/type before filing "control never works"

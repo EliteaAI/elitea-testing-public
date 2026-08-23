@@ -1,0 +1,376 @@
+"""Support Assistant — history loads correctly after page refresh.
+
+TMS case ELITEA-2423 · AFS
+``test-specs/support-assistant/l2_history-loads-correctly-after-page-refresh_ELITEA-2423.md``
+
+Sends a message in the Support Assistant widget, refreshes the browser page,
+reopens the widget, opens the conversation-history panel, opens a previous
+session from it, then repeats the send-and-refresh cycle — asserting that every
+``GET /api/v2/support_assistant/conversations/`` the reloads trigger comes back
+200 (never 500) and that the history panel keeps loading.
+
+The case's closing pass criterion ("no errors in any step") is asserted as two
+independent side channels over the whole run: no ``support_assistant`` HTTP call
+of any kind returned non-200, and no app console error was logged.
+
+Two source facts shape this spec (both confirmed live, AFS § How this surface
+actually works):
+
+1. ``GET .../conversations/`` fires on PAGE LOAD, not on the History click —
+   ``initAssistant.hook.ts`` calls ``getConversations()`` in the mount effect and
+   the History button only flips local state over the already-fetched array
+   (live: zero requests during the click). So the response collector is armed
+   around the RELOAD; registering it on the click would capture nothing and the
+   case's own assertion would pass vacuously. The endpoint is also hit twice per
+   load (React StrictMode double-invokes the effect in dev), which is why every
+   captured status is asserted rather than the first — tolerating a 500 on the
+   second call would miss exactly the regression this case exists to catch.
+2. A history entry is ``disabled`` exactly when it is the currently-open
+   conversation (``ChatHeader.tsx``). After a refresh the widget auto-restores
+   the list's first conversation, so index 0 is always disabled at that moment;
+   the case's "can be opened" is satisfied by the first ``:not([disabled])``
+   entry, and clicking index 0 would be a silent no-op.
+
+Fidelity: no substitutions. Every asserted observable — HTTP statuses, widget
+visibility, message items, message text, copy buttons, history entries, console
+— is produced by the live product. Both replies are real live responses; typing
+uses real input events (``fill``), never ``page.evaluate`` value assignment.
+
+Baselines, not absolutes: the widget restores whatever conversation the test
+user already has, history is shared account data, and this spec deliberately
+leaves its messages behind (no teardown — the suite convention), so counts are
+asserted as deltas against a baseline or as stability across the refresh. The
+two probe messages carry a run-unique ``uuid4`` suffix, which is what makes the
+message-text assertions exact instead of accumulating across runs.
+
+Markers:
+    - p2 / support_assistant / ui / regression / slow (two live LLM round trips
+      plus two full page reloads put the runtime around 110-150 s)
+
+Usage::
+
+    cd automation
+    ../.venv/bin/pytest tests/ui/support_assistant/test_support_assistant_history_after_refresh.py -v
+"""
+
+import re
+from uuid import uuid4
+
+import allure
+import pytest
+from pages.chat_page import ChatPage
+from pages.support_assistant_page import SupportAssistantPage
+from playwright.sync_api import expect
+
+pytestmark = [
+    pytest.mark.p2,
+    pytest.mark.ui,
+    pytest.mark.support_assistant,
+    pytest.mark.regression,
+    pytest.mark.slow,
+]
+
+WIDGET_TIMEOUT = 15_000
+EXPECT_TIMEOUT = 10_000
+RELOAD_TIMEOUT = 60_000
+
+# Observed reply latency on this surface: 31-135 s (surface digest quirks 5/15;
+# 32.3 s and 31.8 s in the ELITEA-2423 analysis run). 120 s is tight.
+REPLY_TIMEOUT = 180_000
+
+WIDGET_TITLE = "ELITEA Support"
+
+# The conversation LIST endpoint the case names, and the per-conversation DETAIL
+# endpoint that selecting a history entry fires. Distinct paths (``conversations``
+# vs ``conversation``), so the two patterns cannot cross-match.
+LIST_URL_RE = re.compile(r"/api/v2/support_assistant/conversations/?(?:\?|$)")
+DETAIL_URL_RE = re.compile(r"/api/v2/support_assistant/conversation/[^/?]+")
+
+# Every Support Assistant HTTP call, whatever the endpoint — the blanket sweep
+# behind the case's "no errors in any step" pass criterion. Deliberately wider
+# than the two patterns above: config/, conversations/ and conversation/{uuid}
+# are the ones this flow is known to issue, but a NEW endpoint erroring during
+# history hydration is exactly the regression the criterion exists to catch, and
+# a pattern enumerating today's endpoints would not see it.
+SUPPORT_ASSISTANT_URL_RE = re.compile(r"/api/v2/support_assistant/")
+
+# Vite HMR and the dev server's own polling socket log ERR_CONNECTION_REFUSED
+# entries unrelated to the app (surface digest quirk 23). Only these two are
+# excluded — every other console error still fails the test.
+_DEV_SERVER_NOISE = ("@vite/client", "/socket.io/")
+
+
+def _is_dev_server_noise(text: str) -> bool:
+    """Whether *text* is a Vite/dev-server connection error, not an app error."""
+    return "ERR_CONNECTION_REFUSED" in text and any(p in text for p in _DEV_SERVER_NOISE)
+
+
+@allure.issue(
+    "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/support-assistant/ELITEA-2423_history-loads-correctly-after-page-refresh.md",
+    "onetest-ai Test Case link",
+)
+class TestSupportAssistantHistoryAfterRefresh:
+    """ELITEA-2423 — history loads correctly after page refresh."""
+
+    def test_history_loads_correctly_after_page_refresh(self, page):
+        """History still loads, and lists an openable session, across two refreshes."""
+        run_id = uuid4().hex[:8]
+        first_message = f"ELITEA-2423 refresh probe A {run_id}"
+        second_message = f"ELITEA-2423 refresh probe B {run_id}"
+
+        console_errors: list[str] = []
+        page.on(
+            "console",
+            lambda msg: console_errors.append(msg.text)
+            if msg.type == "error" and not _is_dev_server_noise(msg.text)
+            else None,
+        )
+        # An uncaught exception during history hydration never reaches the
+        # console listener, so the console channel alone would not see the very
+        # failure mode this case names. Both are registered before Step 1 — a
+        # listener armed mid-flow cannot observe the loads that precede it.
+        page_errors: list[str] = []
+        page.on("pageerror", lambda error: page_errors.append(str(error)))
+
+        # Collect every conversation-LIST response, rather than waiting for one:
+        # the request is issued by the page-load mount effect (twice under
+        # StrictMode), so there is no single response to await around a click.
+        list_statuses: list[int] = []
+
+        def _record_list_response(response):
+            if LIST_URL_RE.search(response.url) and response.request.method == "GET":
+                list_statuses.append(response.status)
+
+        page.on("response", _record_list_response)
+
+        # Blanket sweep over EVERY support_assistant call the run makes (page
+        # loads, both reloads, both live replies, the history open and the
+        # session switch). The live analysis run recorded zero non-200 responses
+        # across the identical flow, so anything non-200 captured here is a real
+        # error — asserted in the side-channel block at the end.
+        #
+        # Every response is recorded, not just the failures, so the block can
+        # first prove the sweep SAW something: a filter that silently stops
+        # matching (an API version bump, a path rename) would otherwise turn
+        # this check vacuously green and take the case's pass criterion with it.
+        support_assistant_calls: list[tuple[int, str, str]] = []
+
+        def _record_support_assistant_response(response):
+            if SUPPORT_ASSISTANT_URL_RE.search(response.url):
+                support_assistant_calls.append(
+                    (response.status, response.request.method, response.url)
+                )
+
+        page.on("response", _record_support_assistant_response)
+
+        support_page = SupportAssistantPage(page)
+
+        with allure.step(
+            "Step 1 — Open the Support Assistant widget, send a message, wait for the response"
+        ):
+            ChatPage(page).navigate_to_chat()
+            support_page.open_widget_via_sidebar(timeout=WIDGET_TIMEOUT)
+            expect(support_page.widget).to_be_visible(timeout=EXPECT_TIMEOUT)
+            expect(support_page.widget_header_title).to_have_text(
+                WIDGET_TITLE, timeout=EXPECT_TIMEOUT
+            )
+
+            # The widget restores the previous session on open — never assume an
+            # empty conversation (surface digest quirks 2/10).
+            baseline_items = support_page.get_message_item_count()
+            baseline_copies = support_page.get_copy_button_count()
+
+            support_page.set_message_text(first_message)
+            # Real typing enables Send immediately; #1581 ("Send never enables")
+            # is a non-reproducing false bug produced by synthetic value writes
+            # against the React controlled textarea (AFS § Known Defects).
+            expect(support_page.send_message_button).to_be_enabled(timeout=EXPECT_TIMEOUT)
+            support_page.send_message_button.click(timeout=EXPECT_TIMEOUT)
+
+            expect(support_page.bubble_in(support_page.last_user_item())).to_have_text(
+                first_message, timeout=EXPECT_TIMEOUT
+            )
+            # The copy button renders only on a COMPLETED assistant message
+            # (``MessageItem.tsx``: ``!isStreaming && !isAnimating``), which makes
+            # its count the accurate completion signal — an item-count delta fires
+            # while the reply is still arriving.
+            expect(support_page.message_copy_buttons).to_have_count(
+                baseline_copies + 1, timeout=REPLY_TIMEOUT
+            )
+            expect(support_page.message_items).to_have_count(
+                baseline_items + 2, timeout=EXPECT_TIMEOUT
+            )
+
+        with allure.step("Step 2 — Refresh the browser page"):
+            list_statuses.clear()
+            page.reload(wait_until="domcontentloaded", timeout=RELOAD_TIMEOUT)
+            # The reload completed and the app shell is back. The conversation-
+            # list request it triggers is asserted in Step 4, where the case puts
+            # it — the collector above is already recording it.
+            expect(support_page.sidebar_launcher).to_be_visible(timeout=WIDGET_TIMEOUT)
+
+        with allure.step("Step 3 — After the reload, open the Support Assistant widget"):
+            # The widget does NOT auto-open after a reload (surface digest quirk
+            # 29 — in contrast to an in-app route change, which never closes it),
+            # so an explicit launcher click is required and is not a workaround.
+            expect(support_page.widget).to_have_count(0)
+            support_page.open_widget_via_sidebar(timeout=WIDGET_TIMEOUT)
+            expect(support_page.widget).to_be_visible(timeout=EXPECT_TIMEOUT)
+
+            # The pre-refresh conversation survived: without this, "open the
+            # widget" would pass just as well on an empty one.
+            expect(
+                support_page.user_message_item_with_text(first_message)
+            ).to_have_count(1, timeout=EXPECT_TIMEOUT)
+            expect(support_page.message_items).to_have_count(
+                baseline_items + 2, timeout=EXPECT_TIMEOUT
+            )
+            expect(support_page.message_copy_buttons).to_have_count(
+                baseline_copies + 1, timeout=EXPECT_TIMEOUT
+            )
+
+        with allure.step(
+            "Step 4 — Open the History panel; the conversation-list request returned 200"
+        ):
+            # The History button is ``disabled`` until ``history.length > 0``, so
+            # this is the product's own "the conversation list has loaded" signal
+            # — no networkidle, no sleep. It is asserted here rather than right
+            # after the reload because the widget header, and with it the button,
+            # is only mounted once the widget is open (digest quirk 29).
+            expect(support_page.history_toggle_button).to_be_enabled(
+                timeout=WIDGET_TIMEOUT
+            )
+
+            # The case's own assertion. The statuses were captured around the
+            # reload because that is where the product issues the request —
+            # arming a collector on this click would capture nothing.
+            assert list_statuses, (
+                "no GET /api/v2/support_assistant/conversations/ observed across the reload"
+            )
+            assert all(status == 200 for status in list_statuses), (
+                "GET /api/v2/support_assistant/conversations/ did not return 200 after the "
+                f"refresh: {list_statuses}"
+            )
+
+            support_page.open_history_via_testid(timeout=EXPECT_TIMEOUT)
+            expect(support_page.history_dropdown).to_be_visible(timeout=EXPECT_TIMEOUT)
+            history_count_before = support_page.get_history_item_count_via_testid()
+            assert history_count_before >= 1, (
+                "history panel opened but listed no conversations"
+            )
+
+        with allure.step(
+            "Step 5 — The previous session is listed in history and can be opened"
+        ):
+            # "Openable" means an enabled entry: index 0 is the conversation the
+            # widget just auto-restored and is disabled by design, so clicking it
+            # would be a no-op that asserts nothing.
+            openable = support_page.first_openable_history_item()
+            expect(openable).to_be_visible(timeout=EXPECT_TIMEOUT)
+
+            with page.expect_response(
+                lambda response: bool(DETAIL_URL_RE.search(response.url))
+                and response.request.method == "GET",
+                timeout=EXPECT_TIMEOUT,
+            ) as detail_response:
+                openable.click(timeout=EXPECT_TIMEOUT)
+            assert detail_response.value.status == 200, (
+                "opening a previous session returned "
+                f"{detail_response.value.status} for {detail_response.value.url}"
+            )
+
+            expect(support_page.history_dropdown).not_to_be_visible(
+                timeout=EXPECT_TIMEOUT
+            )
+            # Selecting a conversation CLEARS the message list before the fetched
+            # one renders, so the list is transiently empty. Wait that out before
+            # reading anything off it: every conversation on this surface holds at
+            # least the assistant greeting, and a copy button exists only on a
+            # completed assistant message (digest quirks 9/10).
+            expect(support_page.message_copy_buttons).not_to_have_count(
+                0, timeout=EXPECT_TIMEOUT
+            )
+
+            # The conversation really swapped: the run-unique probe message
+            # belongs to the session we just left, so it must be gone. Asserted
+            # after the settle above, or the transient empty list would satisfy
+            # it without anything having loaded. Deterministic where a
+            # message-count change is not — another conversation may happen to
+            # hold the same number of messages.
+            expect(
+                support_page.user_message_item_with_text(first_message)
+            ).to_have_count(0, timeout=EXPECT_TIMEOUT)
+
+        with allure.step(
+            "Step 6 — Send another message, refresh again, verify history still loads"
+        ):
+            # Fresh baselines: this is a different conversation from Step 1's.
+            # Safe to read now — Step 5 waited out the swap's transient empty list.
+            items_in_opened_session = support_page.get_message_item_count()
+            copies_in_opened_session = support_page.get_copy_button_count()
+
+            support_page.send_message_via_testid(second_message, timeout=EXPECT_TIMEOUT)
+            expect(support_page.bubble_in(support_page.last_user_item())).to_have_text(
+                second_message, timeout=EXPECT_TIMEOUT
+            )
+            expect(support_page.message_copy_buttons).to_have_count(
+                copies_in_opened_session + 1, timeout=REPLY_TIMEOUT
+            )
+            expect(support_page.message_items).to_have_count(
+                items_in_opened_session + 2, timeout=EXPECT_TIMEOUT
+            )
+
+            list_statuses.clear()
+            page.reload(wait_until="domcontentloaded", timeout=RELOAD_TIMEOUT)
+            expect(support_page.sidebar_launcher).to_be_visible(timeout=WIDGET_TIMEOUT)
+
+            support_page.open_widget_via_sidebar(timeout=WIDGET_TIMEOUT)
+            expect(support_page.widget).to_be_visible(timeout=EXPECT_TIMEOUT)
+            expect(support_page.history_toggle_button).to_be_enabled(
+                timeout=WIDGET_TIMEOUT
+            )
+            assert list_statuses, (
+                "no GET /api/v2/support_assistant/conversations/ observed across the "
+                "second reload"
+            )
+            assert all(status == 200 for status in list_statuses), (
+                f"conversation-list request failed after the second refresh: {list_statuses}"
+            )
+
+            support_page.open_history_via_testid(timeout=EXPECT_TIMEOUT)
+            expect(support_page.history_dropdown).to_be_visible(timeout=EXPECT_TIMEOUT)
+            # "Still loads" must not be satisfiable by a panel that lost its
+            # entries — the count is asserted stable, not merely non-zero.
+            expect(support_page.history_items).to_have_count(
+                history_count_before, timeout=EXPECT_TIMEOUT
+            )
+
+            # Deliberately no assertion on ``second_message`` here: restore after
+            # a refresh always loads the list's FIRST conversation, which is
+            # ordered by creation rather than by last activity, so the session
+            # opened in Step 5 is not the one restored (AFS § Known Deviations 3).
+
+        with allure.step(
+            "Side channels — no support_assistant call errored, console stayed clean"
+        ):
+            # The case's pass criterion is "no errors in any step", and that is
+            # three independent channels, not one: an HTTP error the UI swallows
+            # leaves nothing in the console, a client-side exception during
+            # history hydration leaves every request 200, and an uncaught
+            # exception never reaches the console listener at all. All three are
+            # asserted over the whole run, because the criterion is whole-run.
+            assert support_assistant_calls, (
+                "the support_assistant response sweep captured nothing at all — "
+                f"{SUPPORT_ASSISTANT_URL_RE.pattern} no longer matches the product's "
+                "endpoints, so the status check below would pass vacuously"
+            )
+            non_200_calls = [
+                f"{status} {method} {url}"
+                for status, method, url in support_assistant_calls
+                if status != 200
+            ]
+            assert non_200_calls == [], (
+                f"support_assistant HTTP calls did not all return 200: {non_200_calls}"
+            )
+            assert console_errors == [], f"Unexpected console errors: {console_errors}"
+            assert page_errors == [], f"Uncaught page errors: {page_errors}"

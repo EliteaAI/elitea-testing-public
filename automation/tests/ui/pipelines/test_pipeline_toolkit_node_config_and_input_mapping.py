@@ -28,7 +28,7 @@ pytestmark = [
     pytest.mark.pipelines,
     pytest.mark.toolkits,
     pytest.mark.p1,
-    pytest.mark.regression, pytest.mark.new]
+    pytest.mark.regression, pytest.mark.new_verified]
 
 UI_ELEMENT_TIMEOUT = 10_000
 TOOLKIT_POPPER_TIMEOUT = 20_000  # the popper's toolkit list can take several

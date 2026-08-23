@@ -88,5 +88,7 @@
 - [Re-dispatch of an already-merged unit](redispatch_of_already_merged_unit_verify_dont_rebuild.md) — empty `trunk..branch` = merged-not-missing as often as never-started; check trunk merges first
 - [Vite serves stale JSX after an EliteaUI edit](vite_serves_stale_jsx_on_onedrive_checkout.md) — new testid invisible in browser: restart the dev server
 - [allure.issue TMS link](allure_issue_tms_link_filename_verify_before_commit.md) — never derive it; `ls` the clone
+- [Soft-asserted spec is RED, not green](soft_asserted_spec_is_red_not_green.md) — expect.soft raises; verdict + AFS must say sanctioned-RED
+- [File-drop helpers = phases](react_file_drop_expose_phases_not_one_call.md) — split the gesture; assert the overlay reverts
 - [ruff --fix reorders pages.* imports](ruff_autofix_reorders_pages_imports_and_stdin_filename_hides_it.md) — never blanket --fix an import block under automation/
 - [Vite dev server misses JSX edits on OneDrive](vite_dev_server_misses_jsx_edits_on_onedrive.md) — testid absent on :5173 though committed; `touch` forces HMR

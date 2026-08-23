@@ -485,3 +485,14 @@ class BasePage:
         except Exception as e:
             logger.warning(f"Failed to read clipboard: {e}")
             return ""
+
+    def clear_clipboard(self) -> None:
+        """Write an empty string to the system clipboard.
+
+        Precondition hygiene, not a substitution: it removes any stale value so
+        a subsequent read cannot mistake an old copy for a fresh one. The value
+        later asserted on is written by the product under test, never by the
+        test. Same pattern as ``help_center_page.copy_version_info``.
+        """
+        self.page.evaluate("() => navigator.clipboard.writeText('')")
+        logger.info("Cleared clipboard")

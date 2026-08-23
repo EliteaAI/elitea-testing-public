@@ -20,7 +20,7 @@ from pages.pipeline_detail_page import PipelineDetailPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p1, pytest.mark.regression, pytest.mark.new]
+pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p1, pytest.mark.regression, pytest.mark.new_verified]
 
 UI_ELEMENT_TIMEOUT = 10_000
 TOAST_TIMEOUT = 10_000

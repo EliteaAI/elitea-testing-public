@@ -2073,7 +2073,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_add_node_menu.test_add_node_menu_lists_types_adds_node_and_dismisses",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2083,7 +2083,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestActionsMenu.test_export_pipeline_if_available",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "ui"
@@ -2092,7 +2092,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestActionsMenu.test_three_dot_menu_lists_items",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "ui"
@@ -2101,7 +2101,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestDiscardChanges.test_discard_reverts_name_change",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2110,7 +2110,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestDiscardChanges.test_save_discard_button_states_toggle_on_edit_and_discard",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2119,7 +2119,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestMakeEntrypoint.test_make_node_entrypoint",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "ui"
@@ -2128,7 +2128,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestMultiNodeTopology.test_save_multi_node_pipeline",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "ui"
@@ -2137,7 +2137,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestMultiNodeTopology.test_three_node_chain",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "ui"
@@ -2146,7 +2146,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestYamlEditor.test_flow_yaml_round_trip",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2155,7 +2155,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestYamlEditor.test_yaml_content_reflects_pipeline",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2164,7 +2164,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_advanced.TestYamlEditor.test_yaml_view_toggle",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2174,7 +2174,7 @@
       "automation_test_id": "tests.ui.pipelines.test_pipeline_agent_node_integration.test_agent_node_fresh_attach",
       "markers": [
         "agents",
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2184,7 +2184,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_attach_files_in_chat.test_attach_files_in_chat",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2194,7 +2194,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_attach_files_in_chat.test_attachments_toggle_persists_across_save_and_reload",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2204,7 +2204,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_attach_pipeline_as_tool.test_attach_pipeline_as_tool",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2214,7 +2214,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_canvas_delete_node.test_delete_middle_node_removes_its_edges_and_persists",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2224,7 +2224,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_canvas_zoom_and_pan.test_canvas_control_panel_zoom_out_interactivity_cards_size_and_auto_arrange",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2234,7 +2234,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_canvas_zoom_and_pan.test_canvas_zoom_pan_and_fit_view",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2244,7 +2244,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_chat_starters_visible_and_clickable.test_pipeline_chat_starters_visible_and_clickable",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2254,7 +2254,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_code_node_configuration.test_code_node_configuration_and_persistence",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2264,7 +2264,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_code_node_elitea_client_user_info.test_code_node_elitea_client_user_info",
       "markers": [
-        "new",
+        "new_verified",
         "p3",
         "pipelines",
         "regression",
@@ -2274,7 +2274,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_code_node_input_filtering.test_code_node_input_filtering_selective_state_access",
       "markers": [
-        "new",
+        "new_verified",
         "p3",
         "pipelines",
         "regression",
@@ -2284,7 +2284,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_code_node_multi_var_dict_return.test_code_node_return_dict_multiple_state_vars",
       "markers": [
-        "new",
+        "new_verified",
         "p3",
         "pipelines",
         "regression",
@@ -2294,7 +2294,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_code_node_reads_state_variable.test_code_node_reads_elitea_state_variable",
       "markers": [
-        "new",
+        "new_verified",
         "p3",
         "pipelines",
         "regression",
@@ -2304,7 +2304,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_collapse_left_panel.test_collapse_and_expand_left_configuration_panel",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2314,7 +2314,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_create_full_details_persist.test_create_pipeline_full_details_persist_after_reload",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2324,7 +2324,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_create_version.test_create_pipeline_version_save_list_switch_preserves_canvas_state",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2334,7 +2334,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_custom_node_configuration.test_custom_node_configuration",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2345,7 +2345,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_dashboard_pin_to_top.test_pipeline_dashboard_pin_to_top",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2355,7 +2355,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_decision_node_configuration.test_decision_node_configuration_and_edge_wiring",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2365,7 +2365,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_decision_node_execution.test_decision_node_routes_execution_to_correct_branch",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2375,7 +2375,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_delete_version.test_delete_pipeline_version_falls_back_to_base",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2385,7 +2385,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_edge_creation.test_drag_connect_creates_edge_replacing_prior_transition",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2395,7 +2395,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_edge_deletion.test_delete_edge_resets_source_transition_and_persists",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2405,7 +2405,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_entry_point_trigger_restricted_interactive_nodes.test_entry_point_trigger_restricted_interactive_nodes",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2415,7 +2415,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_entry_point_trigger_types_persist.test_entry_point_trigger_shown_only_on_entry_point_node",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2425,7 +2425,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_entry_point_trigger_types_persist.test_entry_point_trigger_types_persist",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2435,7 +2435,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestExecutePipeline.test_message_count_starts_at_zero_and_grows",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2444,7 +2444,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestExecutePipeline.test_pipeline_response_is_meaningful",
       "markers": [
-        "new",
+        "new_verified",
         "p0",
         "pipelines",
         "smoke",
@@ -2454,7 +2454,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestExecutePipelineStreaming.test_long_response_streams_progressively",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "regression",
@@ -2464,7 +2464,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestPipelineChatMessages.test_multiple_executions_accumulate",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2473,7 +2473,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestPipelineChatMessages.test_user_message_visible",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2482,7 +2482,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestPipelineExecutionEdgeCases.test_empty_pipeline_execution",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "ui"
@@ -2491,7 +2491,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_execution.TestPipelineExecutionEdgeCases.test_navigate_away_and_reexecute",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "ui"
@@ -2500,7 +2500,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_flow_to_yaml_sync.test_add_node_in_flow_view_syncs_to_yaml",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "regression",
@@ -2510,7 +2510,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_fork_to_different_project.TestPipelineForkToDifferentProject.test_pipeline_fork_to_different_project",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2520,7 +2520,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_hitl_node_configuration.test_hitl_node_configuration_and_router_mapping",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2530,7 +2530,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_hitl_node_runtime_behavior.test_hitl_node_runtime_behavior",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2540,7 +2540,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_import_via_file.test_pipeline_import_via_file",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2550,7 +2550,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_information_section.test_pipeline_information_section",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2560,7 +2560,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_interrupt_before_after_toggles.test_interrupt_after_toggle_pauses_and_attempts_resume",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2570,7 +2570,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_llm_node_system_task_chat_history_config.test_llm_node_config_verified_via_yaml",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "regression",
@@ -2580,7 +2580,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_llm_node_system_task_chat_history_config.test_llm_node_system_task_chat_history_config",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "regression",
@@ -2590,7 +2590,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_llm_node_system_task_chat_history_config.test_llm_node_system_type_walks_fixed_fstring_variable",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "regression",
@@ -2600,7 +2600,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_llm_structured_output_state_variables.test_llm_structured_output_parses_into_state_variables",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "regression",
@@ -2610,7 +2610,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestCreatePipeline.test_create_pipeline_minimal_via_sidebar_button",
       "markers": [
-        "new",
+        "new_verified",
         "p0",
         "pipelines",
         "ui"
@@ -2619,7 +2619,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestCreatePipeline.test_create_pipeline_required_fields_validation",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2628,7 +2628,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestCreatePipeline.test_create_pipeline_via_ui",
       "markers": [
-        "new",
+        "new_verified",
         "p0",
         "pipelines",
         "smoke",
@@ -2638,7 +2638,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestDeletePipeline.test_delete_pipeline_via_api",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2647,7 +2647,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestDeletePipeline.test_delete_pipeline_via_ui_menu",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2656,7 +2656,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestEditPipeline.test_edit_pipeline_description",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2665,7 +2665,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestEditPipeline.test_edit_pipeline_name",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2674,7 +2674,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestEditPipeline.test_pipeline_detail_page_loads",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2683,7 +2683,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestEditPipeline.test_pipeline_has_configuration_and_history_tabs",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2692,7 +2692,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestPipelineDashboard.test_pipeline_created_via_api_visible_in_dashboard",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2701,7 +2701,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestPipelineDashboard.test_pipeline_dashboard_loads",
       "markers": [
-        "new",
+        "new_verified",
         "p0",
         "pipelines",
         "smoke",
@@ -2711,7 +2711,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestPipelineDashboard.test_view_toggle_table_and_card",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2720,7 +2720,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestPipelineIsolation.test_fixture_cleanup_cycle",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "smoke",
@@ -2730,7 +2730,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestPipelineIsolation.test_fixture_creates_fresh_pipeline",
       "markers": [
-        "new",
+        "new_verified",
         "p0",
         "pipelines",
         "smoke",
@@ -2740,7 +2740,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestSearchPipeline.test_search_pipeline_by_name",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2749,7 +2749,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestSearchPipeline.test_search_pipeline_no_results",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2758,7 +2758,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_management.TestSearchPipeline.test_search_placeholder_and_dashboard_grid_filters_and_clears",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "ui"
@@ -2768,7 +2768,7 @@
       "automation_test_id": "tests.ui.pipelines.test_pipeline_mcp_node_change_toolkit_and_tool.test_mcp_node_change_toolkit_and_tool",
       "markers": [
         "mcp",
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2779,7 +2779,7 @@
       "automation_test_id": "tests.ui.pipelines.test_pipeline_mcp_node_empty_toolkit_before_attach.test_mcp_node_empty_toolkit_before_attach",
       "markers": [
         "mcp",
-        "new",
+        "new_verified",
         "p3",
         "pipelines",
         "regression",
@@ -2790,7 +2790,7 @@
       "automation_test_id": "tests.ui.pipelines.test_pipeline_mcp_node_fresh_attach.test_mcp_node_fresh_attach",
       "markers": [
         "mcp",
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2800,7 +2800,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_multiple_browser_tabs.test_pipeline_multiple_browser_tabs",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2810,7 +2810,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_node_auto_increment_naming.test_node_auto_increment_naming_by_type",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2828,7 +2828,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_printer_node_configuration.test_printer_node_configuration_and_persistence",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2838,7 +2838,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_router_node_configuration.test_router_node_configuration_and_edge_wiring",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2848,7 +2848,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_run_details_delete_run_from_history.test_run_details_delete_run_from_history",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2858,7 +2858,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_run_details_multiple_state_variables.test_run_details_multiple_state_variables_different_types",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2868,7 +2868,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_run_details_panel.test_run_details_panel_opens_after_execution",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2878,7 +2878,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_run_details_state_before_after.test_run_details_state_before_after_per_node",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2888,7 +2888,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_run_details_timeline_steps.test_run_details_timeline_steps_display",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2898,7 +2898,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_run_history_view_executions.TestPipelineRunHistoryPanelClose.test_run_history_panel_closes_and_restores_chat",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "regression",
@@ -2908,7 +2908,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_run_history_view_executions.TestPipelineRunHistoryViewExecutions.test_run_history_panel_lists_and_shows_execution_details",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2918,7 +2918,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_schedule_trigger_settings_modal.test_schedule_trigger_settings_modal",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2928,7 +2928,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_state_modifier_node_configuration.test_state_modifier_node_configuration_and_persistence",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2938,7 +2938,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_state_panel_attachments_module.test_state_panel_attachments_module",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2948,7 +2948,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_state_panel_default_and_custom_variables.test_state_panel_default_and_custom_variables",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "regression",
@@ -2958,7 +2958,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_state_panel_default_and_custom_variables.test_state_panel_delete_custom_variable",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "p2",
         "pipelines",
@@ -2969,7 +2969,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_structured_output_toggle_persistence.test_pipeline_structured_output_toggle_persistence",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2979,7 +2979,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_subgraph_state_isolation.test_subgraph_state_sharing_non_common_state_isolation",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2989,7 +2989,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_subgraph_state_sharing.test_subgraph_state_sharing_common_vars",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -2999,7 +2999,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_subgraph_state_sharing.test_subgraph_state_sharing_node_c_state_propagation",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -3009,7 +3009,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_tags_add_and_filter.test_pipeline_tags_add_and_filter",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -3019,7 +3019,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_three_dot_menu_actions.test_pipeline_three_dot_menu_actions",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -3029,7 +3029,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_toolkit_node_config_and_input_mapping.test_toolkit_node_config_and_input_mapping",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "regression",
@@ -3041,7 +3041,7 @@
       "automation_test_id": "tests.ui.pipelines.test_pipeline_tools_section_mcp_add_view_remove.test_tools_section_mcp_add_view_remove",
       "markers": [
         "mcp",
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -3051,7 +3051,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_webhook_trigger_settings_modal.test_webhook_trigger_settings_modal",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -3061,7 +3061,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_welcome_message_shown_before_first_input.test_pipeline_welcome_message_shown_before_first_input",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -3071,7 +3071,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_yaml_editor_invalid_syntax.test_yaml_editor_invalid_syntax_blocks_save",
       "markers": [
-        "new",
+        "new_verified",
         "p2",
         "pipelines",
         "regression",
@@ -3081,7 +3081,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_yaml_editor_view.test_pipeline_yaml_editor_view",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "regression",
@@ -3091,7 +3091,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_yaml_flow_sync.test_yaml_edit_persists_after_save_and_reload",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "regression",
@@ -3101,7 +3101,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_yaml_flow_sync.test_yaml_edit_transition_syncs_to_flow_canvas_and_enables_save",
       "markers": [
-        "new",
+        "new_verified",
         "p1",
         "pipelines",
         "regression",

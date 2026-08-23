@@ -43,6 +43,15 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
   its deterministic gate, and staying red in CI is the correct signal until the
   product fix ships. Anything else red — flaky, multi-cause, no linked defect —
   blocks. Record the exception explicitly in the closure record.
+  - **`expect.soft` failures ARE reds — there is no "green except for a soft
+    failure" (verified in-venv 2026-08-22, ELITEA-2421/PR #1654).** pytest-playwright
+    0.8.0 wraps every test in `playwright._impl._assertions._soft_scope()`, collects
+    each soft-assertion error and re-raises it (`ExceptionGroup` if >1) at the end of
+    `pytest_runtest_call` (`pytest_playwright.py:45,101-119`) — **pytest outcome
+    FAILED**. So a spec carrying one `expect.soft()` + `# Known defect: #N` **is**
+    sanctioned-RED and owes a closure-record entry; its case stays `blocked-on-#N`,
+    never `automated`. Any AFS / Run Report sentence claiming otherwise mis-steers
+    this gate. (The soft assert is not masking — it is how the red stays visible.)
   - **Closed-set variant (2026-07-18, ELITEA-1892/#615):** "single-cause" does
     not require literally one defect ID to fire every run. A gate run may
     legitimately show any subset of a **closed, enumerable set** of known
@@ -600,6 +609,23 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   pattern from ELITEA-2167's file; until then, expect this spec's gate runs to
   need a moment when `/chat/566`/`/chat/564` are the most-recently-touched
   conversations in project 471.
+- **Known-noise entry (2026-08-22, support-assistant wave-02, PR pending)**: the
+  lead's blast-radius run of `test_support_assistant_smoke.py` + the four wave-01
+  support-assistant specs **in one invocation** failed twice on the wave-02 trunk —
+  `test_empty_message_cannot_be_sent` (send button never found: the widget did not
+  open at all) and `test_history_loads_correctly_after_page_refresh`
+  (`to_have_count(12)` saw 13). Investigated before accepting, three controls:
+  (a) the same four wave-01 specs **alone** on the wave-02 trunk → 4/4 PASS;
+  (b) the identical combined set on `automation/base` (no wave-02 code) → 11/11 PASS;
+  (c) the identical combined set repeated on the wave-02 trunk → **11/11 PASS**.
+  So it is neither a wave-02 regression nor a code defect — it is the shared-test-user
+  conversation-pollution class already documented above (`#1082`): every
+  support-assistant spec sends real messages as the same user and none tear down, so a
+  long invocation's later specs read message/history counts that earlier specs moved.
+  Both failing assertions are count-deltas or open-widget-restores against that shared
+  history. This session had ~8h of continuous chat/support-assistant churn behind it.
+  **The durable fix is the rotating/clean test identity noted in the suite-health
+  pointer above, not another guard.** Record further occurrences here.
 - **Suite-health pointer (2026-08-20, not yet actioned):** `#1082`'s root
   cause is that every chat test shares ONE test-user account, whose
   conversation history just keeps accumulating across runs — the actual fix
