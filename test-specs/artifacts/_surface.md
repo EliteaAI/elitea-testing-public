@@ -744,3 +744,63 @@ fresh `git fetch origin` + the two-stage `-i`/`[:=]` grep on both refs.
 `artifacts-file-row`; a folder row renders as `artifacts-folder-row`, so calling it with `a1` /
 `folder-a` times out at 10 s (cost one rerun on this cluster). Folders also carry no Type/Size
 metadata to snapshot — assert their presence via `get_file_names()` and the left-panel tree instead.
+
+---
+
+## Confirmed handles (as of ELITEA-1810 retention edit/persistence, 2026-08-23)
+
+| Element | Handle | Method / constant | Notes |
+|---|---|---|---|
+| New-Bucket / Edit-bucket Cancel button | `artifacts-bucket-cancel-button` | *(no page-object field yet)* | `CreateBucket.jsx:307`; `onCancel = navigate(-1)` — no request fires |
+| Retention measure options | `select-option-days` / `-weeks` / `-months` / `-years` | `BasePage.SELECT_OPTION.format(m)` | shared `SingleSelect` popover; only one select open at a time |
+| Bucket dot-menu **Rename** item | `bucket-menu-rename-menuitem` | *(no page-object method yet)* | derived from `BucketItem.jsx:165` key via `DotMenu.jsx:58`; opens the SAME `/artifacts/create-bucket` route in edit mode (form heading text `Edit bucket`) |
+| Bucket-edit save | `artifacts-bucket-save-button` | ⚠ existing `click_bucket_save_button()` waits for a **POST** | an edit save is a **PUT** `/artifacts/buckets/default/{project_id}` (`src/api/artifacts.js:55`) — the existing method hangs on edits |
+| Delete-confirm dialog | `delete-confirm-title` / `-message` / `-entity-name` / `-cancel-button` / `delete-confirm-button` / `delete-confirm-close-button` | | full inventory read live |
+
+### Retention-policy behaviours confirmed live (2026-08-23)
+
+- Create form defaults: name `new-bucket`, measure `Years`, value `1`.
+- Both retention fields are pre-populated — **select-all before typing** or values
+  concatenate (`1` + `10` → `110`).
+- Measure is a MUI Select: read `textContent`. Value is a real `<input type="number">`:
+  read `input_value()`.
+- Save (create) → `POST …/artifacts/buckets/default/{pid}` 200, then auto-navigates to
+  `/artifacts?bucket=<name>` and auto-selects the new bucket (`PENDING_BUCKET_SESSION_KEY`).
+- Save (edit) → `PUT` same URL, 200, then `/artifacts?bucket=<name>`.
+- **Cancel fires NO request** (verified with a request listener) and does not change
+  `retentionDays`.
+- Bucket list is alphabetically sorted; a created bucket keeps its index across an edit.
+- **No toast fires on bucket save** — the response status is the only honest oracle.
+- Backend stores retention as `retentionDays` (readable via
+  `GET /artifacts/s3/?project_id={id}&format=json`): `20 Weeks`→140, `10 Months`→304,
+  `3 Months`→92. Useful independent tie-breaker for a stale-looking UI read.
+
+### `#1677` — Months retention never round-trips (filed 2026-08-23)
+
+A bucket saved with **Months** reopens as **Days** (`10 Months`→`304 Days`,
+`3 Months`→`92 Days`). Backend stores calendar-accurate days;
+`convertDaysToMeasure()` (`src/utils/retentionPolicy.js`) needs `days % 30 === 0` to
+reconstruct months, which a real month count never satisfies. Weeks (×7) and Years (×365)
+round-trip fine. Deterministic — any case asserting a Months policy after a reopen is
+sanctioned-RED against #1677.
+
+### Gotchas added this run
+
+- **NEVER poll with a busy `while` loop inside `browser_evaluate` / `page.evaluate`.**
+  A JS spin-loop blocks the main thread, so React cannot render the ~967-row bucket list
+  and the poll reads `0 rows` until it times out — this produced a false "the bucket list
+  never loads / shows *No buckets created yet*" reading twice (~65 s wasted). Use
+  Playwright waits (`expect(...).to_have_count`, `locator.wait_for`), which yield.
+- The bucket-list **empty state** (`No buckets created yet`) renders transiently while the
+  list is still loading — never assert emptiness without a settled-list wait.
+- `bucket-menu-{name}-menu-button` is in the DOM but **invisible until the row is
+  hovered**; a direct click fails with *"element is not visible"*.
+- There is exactly **ONE** bucket-creation entry point in the product
+  (`artifacts-create-bucket-button`, a `NewFolder` icon in `BucketHeader.jsx:59`) —
+  TMS cases describing a "Path 1 button" vs a "Path 2 folder icon" (ELITEA-1808 vs
+  ELITEA-1810) both land on it.
+- `#636` ("bucket delete 404s silently, buckets never removed") did **not** reproduce via
+  the **UI** delete path today: row hover → dot-menu `Delete` → `delete-confirm-button`
+  removed the bucket from the S3 listing immediately. Usable teardown fallback.
+- Project 399 held **967 buckets** at run time, including leaked `autotest-*` names from
+  earlier runs (e.g. `autotest-1810-b2-2251`) — always generate unique bucket names.
