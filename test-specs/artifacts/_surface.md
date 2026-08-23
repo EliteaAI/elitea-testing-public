@@ -1376,3 +1376,34 @@ One `pytest` scratch probe using the suite's own fixtures (`page`,
 session). The probe file was deleted after the run; screenshots kept at
 `test-results/screenshots/ELITEA-186{3,4}-*-deeplink.png` and uploaded to the
 `evidence` release.
+
+**Resolved/added during ELITEA-1863/1864 implementation (2026-08-23, implementer):**
+every analyst claim in this section held on first run — 2/2 green, zero reruns,
+no rework. Concretely landed:
+
+- **The 5 testids now exist** on `automation/testids`:
+  EliteaAI/EliteaUI@c45f2d16 adds `artifacts-preview-unavailable-icon` /
+  `-title` / `-message` / `-formats` / `-download-button` to
+  `PreviewUnavailable.jsx` — 5 attribute-only lines, 0 removals, 0 new DOM
+  nodes, 0 hooks (Step-5.5 greps clean). **Not yet on `main`** — awaiting the
+  human cherry-pick.
+- **`ArtifactsPage.navigate_to_file_preview(bucket, file_key)`** is implemented
+  as specced: `?bucket=&file=` (file_key URL-quoted), the same `#638`
+  bucket-param re-check guard as its two siblings, waiting on
+  `artifacts-preview-close-button`. Confirmed live: the panel restores from the
+  URL for a non-previewable type with no content fetch and no console errors.
+- **Two new dynamic-testid locator accessors** were needed and added, because
+  specs may not build locators: `get_file_preview_button(filename)` and
+  `get_file_actions_menu_button(filename)` (same `get_file_row` shape, built
+  from the existing `ARTIFACT_FILE_PREVIEW_BUTTON` / `ARTIFACT_ACTIONS_MENU_BUTTON`
+  class constants). Prefer these + `expect(...).to_have_count(0)` over
+  `is_file_preview_button_visible() is False` for absence — the web-first
+  assertion auto-retries.
+- **`click_preview_unavailable_download()`** wraps the panel's centred Download
+  in `expect_download`; it drives the same `handleDownload` as the dropdown
+  item, and the bytes arrive byte-identical to the seeded payload.
+- **Size-literal seeding works exactly as documented:** 235_520 bytes renders
+  `230.0 KB`; a sub-KiB payload renders a bare `<n> B`. Both asserted as row-text
+  substrings via `get_file_row_text()`.
+- Specs: `automation/tests/ui/artifacts/test_artifacts_file_preview_unsupported_xlsx.py`,
+  `.../test_artifacts_file_preview_unsupported_zip_row_actions.py`.
