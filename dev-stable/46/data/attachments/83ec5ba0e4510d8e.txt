@@ -1,0 +1,1 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Open a resource link in a new tab — Timeout 10000ms exceeded while waiting for event "page"
