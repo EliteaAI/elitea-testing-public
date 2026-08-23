@@ -198,13 +198,20 @@ def test_mcp_edit_change_name(page, toolkit_api: ToolkitAPI):
 
         with allure.step("Step 9 — Reopen the MCP; verify the name persisted"):
             listing.open_card_by_name(renamed_name)
-            assert form.get_detail_heading_text() == renamed_name, (
-                f"Reopened detail page should show the new name, "
-                f"got: {form.get_detail_heading_text()!r}"
+            # open_card_by_name() only clicks and waits for the click's own
+            # network settle — its docstring assigns the destination page's
+            # ready-wait to the caller. Without this, the reads below race the
+            # detail page's "Edit MCP" title placeholder / unpopulated Name
+            # field (McpFormPage._wait_for_detail_data_rendered).
+            form.wait_for_page_load()
+            # Retrying web-first assertions rather than bare reads: the header
+            # is the same lagging element as in Step 7, and the field is
+            # populated from the tool-detail GET one React tick later.
+            expect(form.detail_title).to_have_text(
+                renamed_name, timeout=HEADER_REFRESH_TIMEOUT
             )
-            assert form.name_input.input_value() == renamed_name, (
-                f"Reopened Toolkit Name field should hold the new name, "
-                f"got: {form.name_input.input_value()!r}"
+            expect(form.name_input).to_have_value(
+                renamed_name, timeout=HEADER_REFRESH_TIMEOUT
             )
             _check_no_new_console_errors("Step 9 (reopen from list)")
 

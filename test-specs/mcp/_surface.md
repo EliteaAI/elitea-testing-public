@@ -221,3 +221,14 @@ different components with different gates.
   Assert the `PUT` 200 + the updated state instead; never wait on a toast here.
 - **The configuration section re-collapses after `reload_and_wait()`** — call
   `expand_configuration_section()` again after every reload, not just on first load.
+
+## `McpListPage.open_card_by_name()` does NOT wait for the detail page (2026-08-24)
+
+**Resolved/added during ELITEA-1925 implementation (fix round 1):** `open_card_by_name()`
+clicks the card and waits only for that click's own network settle — its docstring
+explicitly assigns the destination page's ready-wait to the caller. Any read taken
+immediately after it races the detail page's `"Edit MCP"` title placeholder and an
+unpopulated Name field. **Always follow it with `McpFormPage.wait_for_page_load()`**
+(which delegates to `_wait_for_detail_data_rendered()`), and prefer retrying
+`expect(...)` assertions over bare `text_content()` / `input_value()` reads afterwards —
+the header lags on this surface (see the section above).
