@@ -274,6 +274,12 @@ def test_create_remote_mcp_validation_on_missing_required_field(
         with allure.step("Step 10 — Verify the detail page shows the persisted Name and Url"):
             assert toolkit_name in form.get_detail_heading_text()
             assert form.name_input.input_value() == toolkit_name
+            # The detail page keeps the schema-driven fields COLLAPSED — no
+            # toolkit-field-* element exists until "show more" is clicked
+            # (unlike the create form, which renders them inline). Expanding is
+            # an ordinary user gesture, not a substitution: the value read
+            # below is still the one the product loaded from the server.
+            form.expand_configuration_section()
             assert form.url_input.input_value() == TOOLKIT_URL
 
     finally:
