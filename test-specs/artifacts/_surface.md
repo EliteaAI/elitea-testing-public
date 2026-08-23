@@ -1184,3 +1184,18 @@ anything that depends on the dirty state. With that guard the dialog appeared
 `setCode(fileContent)` and the DOM reverts. Practical consequence: after a
 discard, the editor content is byte-equal to the originally loaded content —
 safe to assert with strict equality, which is exactly what ELITEA-1853 does.
+
+**Resolved/added during ELITEA-1853/1854/1855 implementation (2026-08-23):**
+the discard revert **lags the modal close**. `confirm_file_preview_discard()`
+returns as soon as the Warning modal is hidden, but the editor text is
+restored one React state round-trip later (parent resets `editedContent` →
+`useCodeMirror`'s effect calls `setCode(fileContent)`). A one-shot
+`get_file_preview_content_text()` taken at that moment still returns the
+EDITED text — the single rerun this unit needed. Assert the reverted content
+with a web-first, auto-retrying assertion
+(`expect(file_preview_code_content).not_to_contain_text(...)`) and only then
+read the text for byte-equality. Same shape applies to any future assertion
+on post-discard editor state. New page-object methods covering these flows:
+`click_file_preview_discard`, `confirm_file_preview_discard`,
+`cancel_file_preview_discard`, `click_file_preview_close_with_unsaved_changes`,
+`confirm_close_with_unsaved_changes` (`automation/pages/artifacts_page.py`).
