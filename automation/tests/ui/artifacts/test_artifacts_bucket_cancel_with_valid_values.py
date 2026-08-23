@@ -57,9 +57,8 @@ import logging
 
 import allure
 import pytest
-from playwright.sync_api import expect
-
 from pages.artifacts_page import ArtifactsPage
+from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 

@@ -62,10 +62,9 @@ import logging
 
 import allure
 import pytest
+from pages.artifacts_page import ArtifactsPage
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
-
-from pages.artifacts_page import ArtifactsPage
 
 logger = logging.getLogger(__name__)
 

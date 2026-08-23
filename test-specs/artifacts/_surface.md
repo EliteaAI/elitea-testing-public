@@ -966,3 +966,27 @@ needed** — every handle already existed.
   scratch script driving `ArtifactsPage` worked first try. Remains the cheap default here.
 - Both ELITEA-1813 and ELITEA-1815 create **nothing** — they are among the very few
   artifacts cases that add zero buckets to the `#636` pile.
+
+## Resolved/added during ELITEA-1813 + ELITEA-1815 implementation (test-automation-engineer, 2026-08-23)
+
+- **`ArtifactsPage.clear_bucket_name()` — ADDED** (`artifacts_page.py`, additive). The
+  analysis note above ("a `clear_bucket_name()` page-object method is the natural home") is
+  now shipped: click → `select_text()` → `press("Delete")`. Confirmed again live —
+  `fill_bucket_name("")` cannot substitute, because `Locator.type("")` is a silent no-op
+  that leaves the selection in place with the text still present.
+- **`ArtifactsPage.all_bucket_rows()` — ADDED** (additive companion to `any_bucket_row()`).
+  `any_bucket_row()` is deliberately `.first`-scoped (`artifacts_page.py:4397`), so it can
+  carry visibility assertions but NOT `to_have_count()` — it always counts 1. Any spec
+  asserting "the bucket-row count is unchanged" or "the search filter matched nothing" needs
+  the unscoped form. Same `BUCKET_ROW_ANY_SELECTOR` class constant; no new testid.
+- **`navigate_to_artifacts()` cannot carry the cold-session budget** — it hardcodes
+  `wait_for_page_load()`'s 15 s default with no timeout parameter. Where the ~968-row cold
+  load matters, call `navigate("/artifacts")` + `wait_for_page_load(timeout=60000)`
+  directly (both specs of this cluster do).
+- **The blur-gated helper text held exactly as analysed**: pre-blur
+  `artifacts-bucket-name-helper-text` `count() == 0` and `aria-invalid == "false"`;
+  post-`Tab` the text is byte-exact `Name is required` and `aria-invalid == "true"`
+  (CLARIFICATION #1680 stands — the case text omits the blur).
+- **Zero `artifacts/buckets` requests across Cancel — re-confirmed at implementation** in
+  both specs, on the create form, with a passive `capture_requests_matching` listener.
+- Both specs ran GREEN first try in one 49 s headless invocation; no rerun, no flake.
