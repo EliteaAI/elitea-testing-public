@@ -1407,3 +1407,50 @@ no rework. Concretely landed:
   substrings via `get_file_row_text()`.
 - Specs: `automation/tests/ui/artifacts/test_artifacts_file_preview_unsupported_xlsx.py`,
   `.../test_artifacts_file_preview_unsupported_zip_row_actions.py`.
+
+## ⚠ ELITEA-1865 is NOT an artifacts case — Context Management lives elsewhere (2026-08-23, analyst)
+
+**Do not re-explore this.** TMS case ELITEA-1865 ("File Preview/Edit – Context
+Management Settings Panel Opens for Supported File", module `artifacts`) claims
+that opening a supported file from a bucket shows a **Context Management
+settings panel** (toggle, Context Window, Max Tokens, Content-Strategy section,
+Summarization section, External Messages, Custom Instructions, Cancel/Save).
+**It does not exist on the Artifacts surface.** Returned `blocked`; clarification
+filed `EliteaAI/elitea-testing-public#1695` (`question` + `case-text-drift`).
+
+Live probe (fresh bucket + `1.png`, row preview icon, 2026-08-23) — the panel
+rendered exactly the known image-branch shape and **zero** of the case's labels:
+
+```
+PANEL_TEXT='<bucket>/1.png\nSave\nDiscard'
+save/discard/close/3-dot: count=1 each · mode-toggle-group / language-select / code-editor: count=0
+'Context Management' 0 · 'Context Window' 0 · 'Max Context Tokens' 0 · 'Max Tokens' 0
+'Context Strategy' 0 · 'Preserve Recent Messages' 0 · 'Summarization' 0
+'External Messages' 0 · 'Custom Instructions' 0 · CONSOLE_ERRORS=[]
+```
+
+**The panel's real home** is the `context-budget` widget —
+`src/[fsd]/widgets/context-budget/ui/ContextStrategyModalContent.jsx`
+(`label="Context Management"` :130, `title="Context Strategy & Token Management"`
+:158 — the case's "**Content** Strategy" is a typo, Cancel/Save :218,226), with
+fields in `ContextStrategyTokenManagement.jsx` / `ContextStrategySummarization.jsx`
+/ `ContextStrategySystemMessages.jsx`. `ContextBudgetUI` is consumed ONLY by
+Chat participants (`Participants.jsx:6`), Pipelines ChatPanel (`ChatPanel.jsx:9`)
+and Applications ConfigurationTab (`ConfigurationTab.jsx:15`). A near-identical
+Settings → Memory form (`src/[fsd]/features/settings/ui/memory/`) is already
+covered by **ELITEA-2374**
+(`test-specs/settings-user-profile/l3_context-management-toggle-enables-disables-fields_ELITEA-2374.md`).
+
+Three case labels match **nothing** in EliteaUI source at all: "Context Window",
+"Summarized Link Count", "Attribute: Clause & Format". Two more ("Summary Model",
+"Summary Trigger Ratio") are behind a hidden feature toggle even on the real surface.
+
+### Reusable facts confirmed by this probe
+- The Artifacts preview panel's button pair is **Save + Discard** — there is
+  **no Cancel button** on this surface. Any artifacts case-text saying "Cancel"
+  for the preview panel is drifted.
+- `PANEL_TEXT` for an image file is exactly `"<bucket>/<file>\nSave\nDiscard"` —
+  a cheap whole-panel oracle for "nothing unexpected rendered".
+- `ArtifactsPage.open_file_in_editor()` + the `artifacts-preview-*` testids all
+  still resolve as documented above (re-verified 2026-08-23).
+- `#636` bucket-teardown 404 hit again, 2/2 probe runs.
