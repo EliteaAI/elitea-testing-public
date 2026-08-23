@@ -114,20 +114,22 @@ handshake is real and cheap (~1 s).
 ## Handles Reference
 
 Provenance verified 2026-08-23 after `cd ../EliteaUI && git fetch origin`.
-Everything inside the dialog is **needs-adding** — the modal tree has zero
-testids today.
+Everything inside the dialog was **needs-adding** at analysis time; all of it was
+**ADDED during implementation** — EliteaAI/EliteaUI@7d7b21d4 on
+`automation/testids` (attributes only, 10 insertions / 0 deletions, Step-5.5
+greps empty), awaiting human cherry-pick to `main`.
 
 | Purpose | Handle | Provenance |
 |---|---|---|
 | Detail-form fields (precondition assertions) | `toolkit-field-oauth_discovery_endpoint-input`, `toolkit-field-scopes-input`, `toolkit-field-auth-radio-delegated` | on-main ✓ / `automation/testids` (radio, EliteaAI/EliteaUI@c8d5c6af) |
 | Test connection (the "next to" anchor) | `credential-form-test-connection-button` | on `automation/testids` (EliteaAI/EliteaUI@5892ae48) |
-| **Login button (trigger)** | **testid needed: `credential-form-oauth-login-button`** | needs-adding — `CredentialForm.jsx:342-350`; one attribute (`Button.BaseBtn` spreads `restProps`). **Shared with ELITEA-1981 — add once.** |
-| **Dialog container** | **testid needed: `oauth-auth-dialog`** | needs-adding — `McpAuthModal.jsx:369` `<Dialog>`. Pair with a **visibility** assertion (keepMounted, above). |
-| **Dialog title** | **testid needed: `oauth-auth-dialog-title`** | needs-adding — `:380` `DialogTitle` |
-| **Description paragraph** | **testid needed: `oauth-auth-dialog-description`** | needs-adding — `:397` `Typography` |
-| **`Server:` value link** | **testid needed: `oauth-auth-dialog-server-link`** | needs-adding — `:425` MUI `Link`; assert `href` **and** text |
-| **Scope input** | **testid needed — caller-supplied prop, e.g. `scopeTestId` → `oauth-auth-dialog-scope-input`** | needs-adding — `OAuthFormFields.jsx:66-70`. `OAuthFormFields` is a **shared** component (`[fsd]/features/mcp/ui/modal/`, also used by the MCP flows), so per `.agents/testing.md` § shared components it must take a **caller-supplied `testId`-style prop** wired at `McpAuthModal`'s call site — never a hardcoded credential-scoped string inside the shared component. Prop naming: `scopeTestId`, **not** `dataScopeTestId`. |
-| **Cancel / Authorize** | **testids needed: `oauth-auth-dialog-cancel-button` / `oauth-auth-dialog-authorize-button`** | needs-adding — `:478-492` `DialogActions` |
+| **Login button (trigger)** | `credential-form-oauth-login-button` | ADDED — EliteaAI/EliteaUI@7d7b21d4 — `CredentialForm.jsx:342-350`; one attribute (`Button.BaseBtn` spreads `restProps`). **Shared with ELITEA-1981 — add once.** |
+| **Dialog container** | `oauth-auth-dialog` | ADDED — EliteaAI/EliteaUI@7d7b21d4 — `McpAuthModal.jsx:369` `<Dialog>`. Pair with a **visibility** assertion (keepMounted, above). |
+| **Dialog title** | `oauth-auth-dialog-title` | ADDED — EliteaAI/EliteaUI@7d7b21d4 — `:380` `DialogTitle` |
+| **Description paragraph** | `oauth-auth-dialog-description` | ADDED — EliteaAI/EliteaUI@7d7b21d4 — `:397` `Typography` |
+| **`Server:` value link** | `oauth-auth-dialog-server-link` | ADDED — EliteaAI/EliteaUI@7d7b21d4 — `:425` MUI `Link`; assert `href` **and** text |
+| **Scope input** | `oauth-auth-dialog-scope-input`, supplied through the new caller-side `scopeTestId` prop | ADDED — EliteaAI/EliteaUI@7d7b21d4 — `OAuthFormFields.jsx:66-70`. `OAuthFormFields` is a **shared** component (`[fsd]/features/mcp/ui/modal/`, also used by the MCP flows), so per `.agents/testing.md` § shared components it must take a **caller-supplied `testId`-style prop** wired at `McpAuthModal`'s call site — never a hardcoded credential-scoped string inside the shared component. Prop naming: `scopeTestId`, **not** `dataScopeTestId`. |
+| **Cancel / Authorize** | `oauth-auth-dialog-cancel-button` / `oauth-auth-dialog-authorize-button` | ADDED — EliteaAI/EliteaUI@7d7b21d4 — `:478-492` `DialogActions` |
 | Close (X) icon button | **do NOT add** | canon #511 — this case cancels via the Cancel button; the X is never on the executed path |
 | Client Id / Client Secret inputs | **do NOT add** | they do not render in this configuration (`needClientId`/`needsClientSecret` false) — untouched by this case |
 

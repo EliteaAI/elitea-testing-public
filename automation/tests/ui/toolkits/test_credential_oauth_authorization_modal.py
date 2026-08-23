@@ -108,7 +108,7 @@ class TestCredentialOAuthAuthorizationModal:
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "credentials/ELITEA-1982_oauth-authorization-modal-invocation.md",
+        "credentials/ELITEA-1982_credential-oauth-authorization-modal-invocation.md",
         "onetest-ai Test Case link",
     )
     @allure.title("ELITEA-1982 — Login opens the Configuration OAuth dialog; Cancel closes it without action")

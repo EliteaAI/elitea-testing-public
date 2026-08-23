@@ -77,7 +77,7 @@ Provenance verified 2026-08-23 after `cd ../EliteaUI && git fetch origin`.
 | Scopes | `toolkit-field-scopes-input` | on-main ✓ (same grammar) |
 | Test connection | `credential-form-test-connection-button` | on `automation/testids` (EliteaAI/EliteaUI@5892ae48) |
 | Save / Discard | `credential-form-save-button` / `credential-form-discard-button` | on-main ✓ |
-| **Login button** | **testid needed: `credential-form-oauth-login-button`** | **needs-adding** — `CredentialForm.jsx:342-350`, a bare `Button.BaseBtn` with no testid. `Button.BaseBtn` spreads `restProps` onto the MUI button, so this is **one attribute** — same one-line shape as its sibling `credential-form-test-connection-button`. Shared with ELITEA-1982; add once. |
+| **Login button** | `credential-form-oauth-login-button` | **ADDED during implementation** — EliteaAI/EliteaUI@7d7b21d4 on `automation/testids`, awaiting human cherry-pick to `main`. — `CredentialForm.jsx:342-350`, a bare `Button.BaseBtn` with no testid. `Button.BaseBtn` spreads `restProps` onto the MUI button, so this is **one attribute** — same one-line shape as its sibling `credential-form-test-connection-button`. Shared with ELITEA-1982; add once. |
 | **Logout button** (mutually exclusive twin, `CredentialForm.jsx:333-340`) | **do NOT add** | canon #511 — neither case reaches the logged-in state, so it stays untestid'd |
 
 Auth state is read off the native input

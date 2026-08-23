@@ -112,7 +112,7 @@ class TestCredentialOAuthDelegatedFlow:
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "credentials/ELITEA-1981_oauth-required-credential-flow.md",
+        "credentials/ELITEA-1981_credential-oauth-required-credential-flow-sharepoint-delegated.md",
         "onetest-ai Test Case link",
     )
     @allure.issue("https://github.com/EliteaAI/elitea-testing-public/issues/1711", "Case-text clarification #1711")
