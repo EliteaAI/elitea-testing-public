@@ -206,10 +206,21 @@ class CredentialFormFieldsMixin:
 
         Appends to whatever the field already holds (same shape as
         ``set_base_url``); clear it first when replacing a pre-filled value.
+
+        **Blurs the field afterwards — that is load-bearing, not tidiness.**
+        The shared ``Input``/``InputBase`` renderer runs with
+        ``enableAutoBlur``, and some schema-typed fields only commit their
+        typed value into the form state on BLUR — SharePoint's array-typed
+        ``scopes`` is one. Live-measured on ELITEA-1981: with focus still in
+        ``scopes``, ``credential-form-save-button`` stays DISABLED however
+        many characters were typed (the field still reads as empty for the
+        required-field check), and blurring alone flips it to enabled — which
+        is exactly what a human does by moving to the next control.
         """
         field = self.field(field_key)
         field.click()
         field.press_sequentially(value, delay=20)
+        field.blur()
 
     def secret_native_input(self, field_key: str) -> Locator:
         """Return the Password-mode native ``<input type="password">`` of
