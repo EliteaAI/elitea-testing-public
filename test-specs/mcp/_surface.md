@@ -156,3 +156,41 @@ the first Save attempt no matter how long a required field sits empty.
 - After a fresh `goto('/mcps/create')` the type-card mounts **asynchronously** — an
   immediate DOM read misses `toolkit-type-card-mcp`. Observed twice this session. Rely on
   framework auto-waiting; never an immediate `query_selector`.
+
+## MCP DETAIL page: configuration fields are COLLAPSED (found 2026-08-24)
+
+**Appended during ELITEA-1923/1924 implementation. This currently breaks three merged
+specs — read it before writing or debugging any detail-page field assertion.**
+
+The create form (`/mcps/create/mcp`) renders every schema-driven field inline. The
+**detail** page (`/mcps/all/{id}`) does not: it renders **no `toolkit-field-*` element at
+all** until the `toolkit-configuration-show-more` control is clicked. Verified live — the
+DOM of a freshly created MCP was polled for 15 s and contained **zero** `toolkit-field-*`
+testids; only after clicking show-more did `toolkit-field-url-input` appear, holding the
+persisted value.
+
+Use `McpFormPage.expand_configuration_section()` (added ELITEA-1923/1924; a no-op when
+already expanded — the toggle unmounts once clicked) before ANY detail-page assertion on
+`url` / `client_id` / `timeout` / `cache_ttl` / `enable_caching` / `ssl_verify` / ….
+
+### Already-merged specs currently RED on `automation/base` because of this
+
+Confirmed by control runs against the **unmodified base** page object:
+
+| Spec | Symptom |
+|---|---|
+| `test_mcp_create_remote.py::test_create_remote_mcp_all_fields_populated` | `Locator.input_value` timeout on `toolkit-field-*` |
+| `test_mcp_create_remote.py::test_create_remote_mcp_minimal_required_fields` | same |
+| `test_mcp_edit_toggle_enable_caching.py` | `Locator.is_checked` timeout on `toolkit-field-enable_caching-checkbox-field` |
+
+Each needs one `expand_configuration_section()` call — an `adjust-automated-test` pass,
+not a hand-fix inside an unrelated case's PR.
+
+## `_wait_for_detail_data_rendered()` was a no-op on MCP pages (fixed 2026-08-24)
+
+EliteaUI keeps one detail-title `fallbackLabel` **per entity type**
+(`src/[fsd]/shared/lib/constants/breadcrumb.constants.js`): `"Edit Toolkit"` (line 15) for
+`/toolkits`, `"Edit MCP"` (line 47) for `/mcps`. The page object's wait excluded only
+`"Edit Toolkit"`, so on every `/mcps/all/{id}` caller it returned immediately and callers
+read `"Edit MCP"` as the toolkit name. Now driven by `DETAIL_TITLE_PLACEHOLDERS`. If a new
+entity type appears (`/apps`?), check `breadcrumb.constants.js` and extend that tuple.

@@ -17,15 +17,26 @@ import re
 import time
 
 from playwright.sync_api import Page, expect
+from utils.actions import action
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
-from utils.actions import action
 
 logger = logging.getLogger("elitea.pages.mcp_form")
 
 UI_ELEMENT_TIMEOUT = 10_000
 SAVE_RESPONSE_TIMEOUT = 20_000
+
+# Placeholder labels the detail title shows BEFORE the tool-detail GET is
+# applied to component state. EliteaUI keeps one fallbackLabel per entity
+# type in src/[fsd]/shared/lib/constants/breadcrumb.constants.js:
+#   toolkits -> "Edit Toolkit"   (line 15)
+#   mcps     -> "Edit MCP"       (line 47)
+# Both must be excluded, or the wait below returns immediately on the MCP
+# detail page and callers read the placeholder as if it were the name
+# (found at ELITEA-1923/1924: only "Edit Toolkit" was listed, so the wait
+# was a no-op for every /mcps/all/{id} caller).
+DETAIL_TITLE_PLACEHOLDERS = ("Edit Toolkit", "Edit MCP")
 
 
 class McpFormPage(BasePage):
@@ -137,6 +148,48 @@ class McpFormPage(BasePage):
     raw_json_editor_content = LocatorDescriptor(
         testid="toolkit-raw-json-editor-content",
         description="Raw Json CodeMirror editor — editable .cm-content node",
+    )
+
+    # ------------------------------------------------------------------
+    # Detail-page configuration section — added ELITEA-1923/1924.
+    #
+    # On the DETAIL page (unlike the create form) the schema-driven
+    # configuration fields are COLLAPSED behind a "show more" control: no
+    # `toolkit-field-*` element exists in the DOM at all until it is clicked
+    # (verified live 2026-08-24 — polled 15s on a freshly-created MCP, zero
+    # toolkit-field-* testids present). Any detail-page assertion on url /
+    # client_id / timeout / ... must expand the section first.
+    # ------------------------------------------------------------------
+    configuration_show_more = LocatorDescriptor(
+        testid="toolkit-configuration-show-more",
+        description="'Show more' toggle that expands the collapsed "
+        "schema-driven configuration fields on the toolkit/MCP detail page",
+    )
+
+    # ------------------------------------------------------------------
+    # Inline validation helper text (create form) — added ELITEA-1923/1924.
+    #
+    # Two DIFFERENT renderers are involved, which is why the two testids do
+    # not share a prefix:
+    #   * every schema-driven field (url, client_id, timeout, ...) renders
+    #     through ToolBaseProperty.jsx, which already emits
+    #     helperTextTestId={`toolkit-field-${k}-input-helper-text`};
+    #   * Toolkit Name renders through NameDescriptionInput.jsx, which did
+    #     NOT pass helperTextTestId at all — added for ELITEA-1924
+    #     (EliteaAI/EliteaUI@35440c78 on automation/testids).
+    #
+    # Both nodes are UNMOUNTED (not hidden) once the field becomes valid, so
+    # assert their absence with to_have_count(0), never not_to_be_visible().
+    # ------------------------------------------------------------------
+    name_helper_text = LocatorDescriptor(
+        testid="toolkit-form-name-input-helper-text",
+        description="Inline validation message under the Toolkit Name field "
+        "('Field is required')",
+    )
+    url_helper_text = LocatorDescriptor(
+        testid="toolkit-field-url-input-helper-text",
+        description="Inline validation message under the Url field "
+        "('Field is required')",
     )
 
     # ------------------------------------------------------------------
@@ -379,19 +432,26 @@ class McpFormPage(BasePage):
     def _wait_for_detail_data_rendered(self) -> None:
         """Wait past the 'Edit Toolkit' placeholder until real toolkit data renders.
 
-        The detail title (``toolkit-detail-title``) shows a static "Edit
-        Toolkit" placeholder until the tool-detail GET response is applied
-        to component state — the response resolving doesn't guarantee the
-        title has re-rendered yet (one more React tick), so poll the title
-        text itself rather than trusting the network wait alone.
+        The detail title (``toolkit-detail-title``) shows a static
+        entity-specific placeholder ("Edit Toolkit" on /toolkits, "Edit MCP"
+        on /mcps — see :data:`DETAIL_TITLE_PLACEHOLDERS`) until the
+        tool-detail GET response is applied to component state. The response
+        resolving doesn't guarantee the title has re-rendered yet (one more
+        React tick), so poll the title text itself rather than trusting the
+        network wait alone.
         """
         self.name_input.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         self.page.wait_for_function(
-            """(selector) => {
+            """({selector, placeholders}) => {
                 const el = document.querySelector(selector);
-                return !!el && el.textContent.trim() !== '' && el.textContent.trim() !== 'Edit Toolkit';
+                if (!el) return false;
+                const text = el.textContent.trim();
+                return text !== '' && !placeholders.includes(text);
             }""",
-            arg=self.DETAIL_TITLE_SELECTOR,
+            arg={
+                "selector": self.DETAIL_TITLE_SELECTOR,
+                "placeholders": list(DETAIL_TITLE_PLACEHOLDERS),
+            },
             timeout=UI_ELEMENT_TIMEOUT,
         )
 
@@ -763,6 +823,22 @@ class McpFormPage(BasePage):
     # ------------------------------------------------------------------
     # Save + view toggle
     # ------------------------------------------------------------------
+
+    @action("Expand the detail page's configuration section")
+    def expand_configuration_section(self) -> None:
+        """Expand the detail page's collapsed schema-driven configuration fields.
+
+        No-op when the section is already expanded (the "show more" control
+        unmounts once clicked), so this is safe to call unconditionally.
+
+        Needed because the detail page renders NO ``toolkit-field-*`` element
+        until the section is expanded — the create form renders them inline,
+        the detail page does not (found at ELITEA-1923/1924).
+        """
+        if self.configuration_show_more.count() == 0:
+            return
+        self.configuration_show_more.click()
+        self.url_input.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
 
     def is_save_button_disabled(self) -> bool:
         """Return whether the create form's Save button is currently disabled.
