@@ -4175,7 +4175,6 @@ class ArtifactsPage(BasePage):
         except AssertionError:
             return False
 
-    @action("Edit file preview content")
     @action("Open the Discard warning modal")
     def click_file_preview_discard(self, timeout: int = 10000) -> None:
         """Click the editor header's Discard button and wait for its Warning modal.
@@ -4246,6 +4245,7 @@ class ArtifactsPage(BasePage):
         self.file_preview_save_button.wait_for(state="detached", timeout=timeout)
         logger.info("Editor closed, unsaved changes discarded")
 
+    @action("Edit file preview content")
     def edit_file_preview_content(
         self, text: str, line_index: int = 0, timeout: int = 10000
     ) -> None:

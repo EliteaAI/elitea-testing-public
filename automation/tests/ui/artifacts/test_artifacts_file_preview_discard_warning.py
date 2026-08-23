@@ -207,6 +207,17 @@ class TestArtifactFilePreviewDiscardWarning:
             expect(artifacts_page.file_preview_code_content).to_contain_text(
                 EDITED_LINE_17, timeout=UI_ELEMENT_TIMEOUT
             )
+            # Baseline for the ELITEA-1854 "all changes intact" check in
+            # Step 10: the FULL editor content as it reads once the edit has
+            # landed. Captured here (not reconstructed from FILE_LINES) so the
+            # later equality assertion compares the product against itself.
+            edited_content = artifacts_page.get_file_preview_content_text(
+                timeout=UI_ELEMENT_TIMEOUT
+            )
+            assert EDITED_LINE_17 in edited_content, (
+                f"Post-edit baseline must carry the edited line 17: "
+                f"{edited_content!r}"
+            )
 
         with allure.step(
             "Step 4a — Verify Save and Discard became enabled (the product's "
@@ -305,6 +316,15 @@ class TestArtifactFilePreviewDiscardWarning:
             expect(artifacts_page.file_preview_file_path).to_be_visible(
                 timeout=UI_ELEMENT_TIMEOUT
             )
+            if expect_change_present:
+                # AFS Axis-1 row 8 ("all changes intact"): stronger than "the
+                # marker survived" — byte-equality against the post-edit
+                # baseline catches a Cancel that silently drops or mangles any
+                # OTHER line while leaving line 17 alone.
+                assert content_after == edited_content, (
+                    f"[{case_id}] Cancel must leave the edited content intact "
+                    f"byte-for-byte: {content_after!r} != {edited_content!r}"
+                )
 
         with allure.step(
             "Step 11 — Verify Save and Discard are still visible in the "
