@@ -1069,3 +1069,60 @@ the pre-edit module minutes after the file was saved (OneDrive's virtual filesys
 deliver the fs watch event reliably). `touch <file>` forces the watcher and HMR then updates
 within seconds. **Verify a freshly-added testid is actually being served** (`curl … | grep
 <testid>`) before concluding it is missing from the DOM.
+
+## Artifact TOOLKIT-creation wizard + existing-bucket behaviour (ELITEA-1867, 2026-08-23, analyst)
+
+Cross-surface entry: the Toolkits creation wizard is where a *bucket* can be created as a side
+effect, so it belongs in this digest alongside the Artifacts panel. Complements the ELITEA-1866
+(save path) and ELITEA-1868 (cancel path) AFS files, both merged to `automation/base`.
+
+**Live-confirmed product behaviour (reproduced twice, deterministic):**
+
+- **Creating an Artifact toolkit whose `Bucket` names an EXISTING bucket SUCCEEDS.** POST
+  `/api/v2/elitea_core/toolkits/prompt_lib/399` → 200, wizard navigates to `/toolkits/all/{id}`,
+  **no error notification**, and **no duplicate bucket** is created. Create-if-not-exists semantics.
+- **The toolkit-save path never calls the bucket-create API.** Zero requests to
+  `/artifacts/buckets/…` fire during Save. `createBucket` (`EliteaUI/src/api/artifacts.js:46`) has
+  exactly ONE caller in the UI: `src/pages/Artifacts/CreateBucket.jsx:119` (the Artifacts New
+  Bucket form). ⇒ the `Bucket with name X already exists` error is **architecturally impossible**
+  on the toolkit path. This is why ELITEA-1867 is `blocked` on
+  [#1685](https://github.com/EliteaAI/elitea-testing-public/issues/1685).
+
+**Gotchas (each cost real turns):**
+
+- **The New Bucket form's name field is PREFILLED with the literal `new-bucket`**
+  (`CreateBucket.jsx:91`). `click()` + `press_sequentially()` puts the caret at 0 and **prepends** →
+  mangled names. Artefacts of this mistake already live in project 399:
+  `dup-bucket-1867new-bucket`, `new-bucketautotest-buck1-800755`. **Clear the field first**, or use
+  `ArtifactsPage`'s own bucket-creation helper. (This is also the origin of the ELITEA-1867 case's
+  `new-bucket` test data — an author who accepted the default.)
+- **The bucket panel is very slow in project 399 (976 buckets, 2026-08-23).** Polling
+  `[data-testid^="artifacts-bucket-row-"]` returned **0 for >13 s** after navigation, footer still
+  reading `Buckets: 0`, before the list rendered. Never conclude "no buckets" from a short wait;
+  always **search** rather than scan; budget ≥20 s for first render.
+- **The wizard form is NOT deep-linkable.** `/toolkits/create/artifact` renders the *type-picker*,
+  not the form — you must click `toolkit-type-card-artifact`. Use
+  `ToolkitCreationPage.select_toolkit_type("art", "artifact")`.
+- **`art` matches TWO type cards**: `toolkit-type-card-artifact` (STORAGE) and
+  `toolkit-type-card-mcp_Elitea Artifacts` (PLATFORM, backend-supplied MCP type). Assert scoped
+  presence/absence — never a total card count. Already codified in the merged
+  `test_toolkit_creation_cancel_no_toolkit_no_bucket.py:223`.
+- **UI teardown of a toolkit is a 3-step gate:** `controls-menu-button` → `Delete` (a
+  `role=menuitem`, **no testid**) → dialog where `delete-confirm-button` stays **disabled** until
+  the toolkit's exact name is typed into the dialog's `input[name="name"]` (**no testid**). Prefer
+  `ToolkitAPI.delete_toolkit(id)`; `ToolkitCreationPage.save_creation()` already returns the id.
+
+**Handles re-confirmed live, all on EliteaUI `main` (fetched + two-stage grep, 2026-08-23):**
+`sidebar-menu-item-toolkits`, `sidebar-menu-item-artifacts`, `sidebar-create-button`,
+`toolkit-wizard-type-search-input`, `category-filter-tab` (12 rendered),
+`[data-testid="toolkit-type-card-{key}"]` (71 cards unfiltered), `toolkit-form-name-input`,
+`[data-testid="toolkit-field-{k}-input"]` (template — grep the template, not the resolved value),
+`toolkit-form-save-button`, `toolkit-form-cancel-button`, `toast-message`, `controls-menu-button`,
+`delete-confirm-button`, `artifacts-create-bucket-button`, `artifacts-bucket-name-input`,
+`artifacts-bucket-save-button`, `artifacts-search-buckets-button`, `artifacts-bucket-search-input`,
+`[data-testid="artifacts-bucket-row-{name}"]`.
+
+**Independent ground truth for bucket assertions:** `GET /artifacts/s3/?project_id=399&format=json`
+(cookie auth, works from page context) returns the full bucket list — a stronger oracle than the
+virtualized, slow DOM panel. Note `/api/v2/…` endpoints are **not** callable from page-context
+`fetch` (Bearer required) — they 'Failed to fetch'.
