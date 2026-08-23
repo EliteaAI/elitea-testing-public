@@ -1045,3 +1045,27 @@ unique, genuinely-56-char name (CLARIFICATION
 `EliteaAI/elitea-testing-public#1683`). ELITEA-1818 additionally *keeps* its
 bucket (it cancels the delete), so a fixed name breaks the second run on
 duplicate-name and leaks via `#636`.
+
+## Resolved/added during ELITEA-1818 / ELITEA-1819 implementation (2026-08-23, test-automation-engineer)
+
+New Bucket form — the 56-character name boundary.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Name-field character counter | `artifacts-bucket-name-character-counter` | **added this run** — `CreateBucket.jsx:248`, commit `EliteaAI/EliteaUI@475adcc5` on `automation/testids` (pushed; human cherry-pick to `main` pending) | Prop-only wiring: `Text.CharacterCounter` already accepts `data-testid` (`CharacterCounter.jsx:11,20`), so ONE line was added and no DOM node, hook or structure changed. **Focus-gated:** renders only while `isFocused('name') && name.length === 56` — it is removed from the DOM on blur and at any other length, so it can never be asserted after focus leaves the field. Live text at the limit: `"0 characters left"` (the `". You have reached the MAXIMUM character limit"` suffix is suppressed here via `hideMaxLimitMessage`). **Gotcha:** the host `Box` is `display: contents`, so `bounding_box()` returns `None` while `is_visible()` / `to_be_visible()` still resolve `True` — assert visibility/text, never geometry. |
+| Name field's own limit | `artifacts-bucket-name-input`'s `maxlength` attribute == `"56"` | pre-existing testid | `CreateBucket.jsx:239-241` `inputProps={{ maxLength: 56 }}` — a NATIVE browser constraint, so a 57th keystroke never reaches React. Rejection is completely silent: no `aria-invalid`, no helper text, no toast, no request. Confirmed live for BOTH `type()` and `press()` delivery. A `fill()` writes through the DOM value setter and **bypasses `maxLength` entirely** — never use it to test this boundary. |
+| Page-object additions | `ArtifactsPage.bucket_name_character_counter`, `get_bucket_name_character_counter_text()`, `append_to_bucket_name(text)` | `automation/pages/artifacts_page.py` | All additive. `append_to_bucket_name()` is the append counterpart to `fill_bucket_name()` (which always REPLACES the whole value): click → `press("End")` → `type()`, leaving focus in the field so the counter stays mounted. |
+
+**Defect #1080 root cause, confirmed by the implementation run** (a single Save click at exactly
+56 characters does nothing): the focus-gated counter occupies 16 px of flow; `mousedown` blurs
+the Name field → the counter unmounts → the Save button shifts up 16 px → `mouseup` lands
+off-target → no `click` event → `onSave` never runs. Reproduced again on the first spec run.
+Transit past it (an ordinary user gesture, not a substitution): `bucket_name_input.press("Tab")`
+to blur, then click Save — the creation `POST` then returns 200.
+
+**Dev-server gotcha (OneDrive, cost ~15 min this run):** a JSX edit under `../EliteaUI/src` did
+NOT reach the running Vite dev server — `curl http://localhost:5173/src/<path>.jsx` still served
+the pre-edit module minutes after the file was saved (OneDrive's virtual filesystem does not
+deliver the fs watch event reliably). `touch <file>` forces the watcher and HMR then updates
+within seconds. **Verify a freshly-added testid is actually being served** (`curl … | grep
+<testid>`) before concluding it is missing from the DOM.

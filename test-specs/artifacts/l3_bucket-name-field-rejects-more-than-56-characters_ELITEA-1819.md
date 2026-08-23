@@ -124,7 +124,7 @@ add a cleanup step that creates state this case never created.
 | Create-bucket icon | `artifacts-create-bucket-button` | on-main ✓ | `click_create_bucket_button()` |
 | Form heading | `artifacts-bucket-form-heading` | on-`automation/testids` only (awaiting human promotion to main) | text `"New Bucket"` |
 | Name input | `artifacts-bucket-name-input` | on-main ✓ | `maxlength="56"` readable off the same testid'd node — no new handle needed |
-| **Character counter** | **testid needed: `artifacts-bucket-name-character-counter`** | needs-adding | `CreateBucket.jsx:248` `<Text.CharacterCounter>`; the component already accepts a `data-testid` prop (`CharacterCounter.jsx:11,20`) — prop-only wiring at the call site, zero functional impact. No wrapper element may be added. Shared with ELITEA-1818 — whichever case is implemented first adds it. |
+| **Character counter** | `artifacts-bucket-name-character-counter` | **ADDED during implementation** — EliteaAI/EliteaUI@475adcc5 on `automation/testids` (pushed; awaiting human cherry-pick to `main`) | `CreateBucket.jsx:248` `<Text.CharacterCounter>`; wired prop-only at the call site (one added line, no wrapper element). Shared with ELITEA-1818 — added once, used by both. **Implementation note:** the host `Box` is `display: contents`, so `bounding_box()` is `None` while `is_visible()` / `to_be_visible()` still resolve `True` (confirmed live 2026-08-23). |
 | Name helper text | `artifacts-bucket-name-helper-text` | on-main ✓ | asserted **absent** (`to_have_count(0)`) — the rejection is silent |
 | Save button | `artifacts-bucket-save-button` | on-main ✓ | present but **never clicked** by this case |
 
@@ -133,6 +133,12 @@ Existing page-object methods reused as-is: `navigate_to_artifacts()`,
 New page-object work: the character-counter `LocatorDescriptor` + text reader, and a small
 "type one more character at the end" helper (caret to `End`, then `type`) — the existing
 `fill_bucket_name()` replaces the whole value and cannot express an append.
+
+**SHIPPED (implementation, 2026-08-23):** `ArtifactsPage.bucket_name_character_counter`,
+`get_bucket_name_character_counter_text()` and `append_to_bucket_name(text)` (all additive).
+Both delivery shapes are asserted, as § Test Steps step 7 allows: `append_to_bucket_name("z")`
+(a `type()` keystroke) and then `bucket_name_input.press("z")`. Spec:
+`automation/tests/ui/artifacts/test_artifacts_bucket_name_max_length_rejection.py`.
 
 ## Network Behavior
 
