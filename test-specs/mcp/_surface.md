@@ -232,3 +232,78 @@ unpopulated Name field. **Always follow it with `McpFormPage.wait_for_page_load(
 (which delegates to `_wait_for_detail_data_rendered()`), and prefer retrying
 `expect(...)` assertions over bare `text_content()` / `input_value()` reads afterwards —
 the header lags on this surface (see the section above).
+
+## MCP DETAIL page: Discard is CONFIRMED through a modal (2026-08-24)
+
+**Appended during ELITEA-1928/1930 combined analysis+implementation.**
+
+Clicking `toolkit-detail-discard-button` does **not** revert anything. It opens a
+confirmation modal (`Button.DiscardButton` → `Modal.BaseModal`,
+`src/[fsd]/shared/ui/button/DiscardButton.jsx`) reading:
+
+```
+Warning
+Are you sure you want to discard changes?
+Cancel   Discard
+```
+
+The form still holds the edited value and both buttons stay enabled until the
+modal's own **Discard** is clicked; then the modal **unmounts** (detached, not
+hidden), the edited field reverts, and Save + Discard both return to disabled.
+Verified live 2026-08-24 on toolkit 3029 — and **no `PUT` is issued anywhere in
+the flow** (network log showed only the seed POST and the detail GETs), so a
+discard is genuinely server-side inert.
+
+| Handle | Testid | Notes |
+|---|---|---|
+| Discard-confirm modal | `toolkit-detail-discard-confirm-modal` | **Added 2026-08-24** — EliteaAI/EliteaUI@a51c9318 on `automation/testids`, **not yet on `main`**. Lands on the MUI `Dialog` root, so `text_content()` includes the title and both button labels → assert with `in`, never `==`. |
+| Discard-confirm "Discard" button | `toolkit-detail-discard-confirm-button` | Same commit. |
+
+Both were added by passing `modalDataTestId` / `confirmButtonDataTestId` — props
+the shared `Button.DiscardButton` already accepts and the **credentials** tab bar
+already supplies (`credential-discard-confirm-modal` / `-button`) — at the
+toolkit-detail call site (`ToolkitsTabBarContainer.jsx:158`). Two additive props,
+no new DOM node, no hook, no behaviour change. Per #511, `cancelButtonTestId` /
+`closeButtonTestId` / `modalTitleTestId` were deliberately left unpassed.
+
+**Case-text note:** ELITEA-1928's step 5 (`Click Discard → Discard action is
+triggered`) omits this modal entirely. Filed as a clarification, not a bug — the
+Credentials surface (ELITEA-1971) has the identical modal and is already automated
+against it.
+
+## The description field is INLINE on the detail page (2026-08-24)
+
+Do not reach for `expand_configuration_section()` for it. Only the schema-driven
+`toolkit-field-*` handles are collapsed; `toolkit-form-name-input` and
+`toolkit-form-description-input` render inline on the detail page because they go
+through `NameDescriptionInput.jsx`, not `ToolBaseProperty.jsx` (the same split
+that made ELITEA-1924 need its own `helperTextTestId`).
+
+## `toolkit-configuration-show-more` MOUNTS LATE — the expand helper could no-op (fixed 2026-08-24)
+
+**Resolved/added during ELITEA-1930 implementation.** Polled live immediately
+after a `goto` on `/mcps/all/{id}`: `toolkit-detail-title` had already resolved to
+the real toolkit name while `toolkit-configuration-show-more` was still absent; it
+appeared ~1 s later (10 × 500 ms poll, absent at the pre-poll read, present from
+t=0 of the poll onward). So a title-based readiness wait does **not** imply the
+toggle has mounted.
+
+`McpFormPage.expand_configuration_section()` early-returned on
+`configuration_show_more.count() == 0` — a non-waiting read — so calling it too
+early silently no-op'd and every following `toolkit-field-*` read then timed out
+with a misleading "element not found". Fixed by inverting the early-return to key
+off the **fields** instead of the toggle: return immediately when `url_input`
+already exists (create form, or an already-expanded section), otherwise
+`wait_for(state="visible")` the toggle before clicking it. The three existing call
+sites (`test_mcp_edit_url.py:116,155`, `test_mcp_create_validation.py:310`) were
+re-run against the change — see PR.
+
+## Ssl Verify — confirmed behaviour (ELITEA-1930, 2026-08-24)
+
+- Defaults to **checked** on a freshly created Remote MCP (`settings.ssl_verify:
+  true`).
+- Expanding the configuration section does **not** dirty the form (Save/Discard
+  stay disabled) — safe to expand before capturing a pristine baseline.
+- Unchecking → Save → `PUT /tool/prompt_lib/{project}/{id}` 200 with
+  `settings.ssl_verify: false`; survives a full reload; Raw Json (376-char
+  payload, no virtualization risk) shows the boolean `false` under `settings`.
