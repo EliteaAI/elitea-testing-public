@@ -1126,3 +1126,61 @@ effect, so it belongs in this digest alongside the Artifacts panel. Complements 
 (cookie auth, works from page context) returns the full bucket list — a stronger oracle than the
 virtualized, slow DOM panel. Note `/api/v2/…` endpoints are **not** callable from page-context
 `fetch` (Bearer required) — they 'Failed to fetch'.
+
+## Confirmed handles (as of ELITEA-1853/1854/1855 discard/close cluster, 2026-08-23)
+
+Unsaved-changes **exit paths** on the file-preview editor — the header
+**Discard** button's Warning modal, and the **X (close)** button's separate
+unsaved-changes Warning dialog. Extends the ELITEA-1851/1852/1856 editor
+digest above.
+
+| Element | Locator | Source | Notes |
+|---|---|---|---|
+| Discard Warning dialog | `artifacts-preview-discard-warning-dialog` | `DiscardButton.jsx`'s own `Modal.BaseModal`, wired at `PreviewHeader.jsx` | **added this run**, EliteaAI/EliteaUI@d0b8a0c2 (`automation/testids`, human cherry-pick pending) |
+| Discard Warning title | `artifacts-preview-discard-warning-title` | same | text exactly `Warning` |
+| Discard Warning icon | `artifacts-preview-discard-warning-icon` | same | `titleIconTestId` pass-through **added to `DiscardButton.jsx` this run** |
+| Discard Warning X | `artifacts-preview-discard-warning-close-button` | same | `closeButtonTestId` pass-through added this run |
+| Discard Warning Cancel | `artifacts-preview-discard-warning-cancel-button` | same | `cancelButtonTestId` pass-through added this run |
+| Discard Warning Discard (confirm) | `artifacts-preview-discard-warning-confirm-button` | same | label `Discard` (`WARNING_BUTTONS.DISCARD`) |
+| X-close unsaved-changes dialog message | `alert-dialog-content` | `src/components/AlertDialog.jsx` (shared, generic) | **pre-existing** — already a `LocatorDescriptor` in `secrets_page.py`; message `You are editing now. Do you want to discard current changes and continue?` |
+| X-close unsaved-changes Confirm | `alert-dialog-confirm-button` | same | label `Confirm` (AlertDialog default) |
+
+**The header Discard button ALWAYS raises a modal — it never discards
+directly.** `Button.DiscardButton` is a shared component with its own built-in
+`Modal.BaseModal` (title `Warning`, message
+`ModalConstants.WARNING_MESSAGES.DISCARD_CHANGES` =
+`Are you sure you want to discard changes?`, Cancel + `Discard` buttons).
+Confirming calls the caller's `onDiscard` — in Artifacts that is
+`handleDiscard`, a pure `setEditedContent('')` state reset: **no network
+request, no toast**. The editor stays open and Save/Discard return to
+*disabled*. Verified live 2026-08-23.
+
+**The editor's X ALSO gates on unsaved changes — via a DIFFERENT dialog.**
+`FilePreviewCanvas`'s `handleClose` → `if (hasChanges) setShowUnsavedChangesAlert(true)`.
+Different component (`AlertDialog`, not `Modal.BaseModal`), different message,
+different testids (the generic `alert-dialog-*` pair). Do not confuse the two
+modals: they can both be raised from the same editor session.
+`ArtifactsPage.close_file_preview()` is **NOT** usable when the editor is
+dirty — it waits for the close button to hide, which never happens while the
+dialog is up. ELITEA-1855's case text omits this dialog entirely — filed as
+`EliteaAI/elitea-testing-public#1687`.
+
+**Race worth knowing (cost ~2 probe runs, 2026-08-23):** `useCodeMirror`
+(`src/[fsd]/shared/lib/hooks/useCodeMirror.hooks.js`) debounces
+`notifyChange` by **30 ms**, so the parent's `hasChanges` / `hasUnsavedChanges`
+**lag the typed DOM text**. A first analysis run typed into the editor and
+clicked X immediately — the editor closed with **no** warning dialog, because
+the parent still believed it was clean. **Always wait on
+`is_file_preview_save_enabled()` / `is_file_preview_discard_enabled()` after
+typing** (a real product-state condition wait, not a sleep) before asserting
+anything that depends on the dirty state. With that guard the dialog appeared
+3/3 across two sessions, including immediately after a discard cycle.
+
+**How the revert actually reaches CodeMirror.** `PreviewContent.jsx` passes
+`value={fileContent}` (the ORIGINAL, never `contentToDisplay`) to
+`Field.CodeMirrorEditor`. `useCodeMirror`'s effect compares
+`value !== lastNotifiedValueRef.current`; after a discard resets
+`editedContent`, that ref still holds the *edited* text, so the effect fires
+`setCode(fileContent)` and the DOM reverts. Practical consequence: after a
+discard, the editor content is byte-equal to the originally loaded content —
+safe to assert with strict equality, which is exactly what ELITEA-1853 does.
