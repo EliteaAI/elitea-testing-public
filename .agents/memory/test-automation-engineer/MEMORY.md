@@ -93,3 +93,4 @@
 - [ruff --fix reorders pages.* imports](ruff_autofix_reorders_pages_imports_and_stdin_filename_hides_it.md) — never blanket --fix an import block under automation/
 - [Vite dev server misses JSX edits on OneDrive](vite_dev_server_misses_jsx_edits_on_onedrive.md) — testid absent on :5173 though committed; `touch` forces HMR
 - [Absence guards must watch the real mechanism](absence_guards_must_watch_the_real_mechanism.md) — negative assertions need the signal the handler really emits
+- [Absence-of-request assertions must wrap their trigger](absence_of_request_assertion_must_wrap_its_trigger.md) — clicking before opening expect_response passes vacuously
