@@ -1454,3 +1454,111 @@ Three case labels match **nothing** in EliteaUI source at all: "Context Window",
 - `ArtifactsPage.open_file_in_editor()` + the `artifacts-preview-*` testids all
   still resolve as documented above (re-verified 2026-08-23).
 - `#636` bucket-teardown 404 hit again, 2/2 probe runs.
+
+## Confirmed handles (as of ELITEA-2491 bucket-menu-by-project-type, 2026-08-23)
+
+Bucket dot-menu **composition changes with the project type** — the surface behind
+the "Manage access / Manage permissions" case family.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Project selector trigger | `project-selector-trigger-combobox` (`BasePage.project_selector_trigger`) | `SidebarProjectSelect.jsx` | on `main`; `BasePage.switch_project(id)` drives it |
+| Project option | `select-option-{project_id}` (`BasePage.SELECT_OPTION`) | shared `ProjectSelect` | live options for `${TEST_USER}`: `399` Private · `406` Bugs & Features · `25` Elitea Development · `471` Elitea Testing Team · `400` UI Testing |
+| Bucket dot-menu "Manage permissions" item | **testid needed: `bucket-menu-manage-permissions-menuitem`** | `BucketItem.jsx` `menuItems` — the entry has **no `key`**, so `DotMenu.jsx:422` (`testId: item.key`) emits nothing | fix = add `key: 'bucket-menu-manage-permissions'`, exactly the ELITEA-1820 pin-item shape |
+| Bucket dot-menu "Share" item | untagged, deliberately (canon #511 — no test calls it yet) | same array | same `isPersonalProject` gate as Manage permissions |
+
+### Menu composition by project type — settled live (2026-08-23)
+- **Private / personal project (399):** `Upload filesRenamePin to topDelete` — 4 items.
+  `Share` and `Manage permissions` are **filtered out before render**
+  (`display: isPersonalProject ? 'none' : undefined` + the array's own `.filter`), so
+  an absence assertion is `to_have_count(0)`, not a visibility check.
+- **Team project (471):** `Upload filesRenamePin to topShareManage permissions` —
+  **5 items, no `Delete`.** `canDelete = isPrivate || checkPermission(artifacts.delete)`
+  and `${TEST_USER}` has no delete permission there. **Never assert a fixed Team-menu
+  item count** (the ELITEA-1820 digest note predicting "6 items in a TEAM project" is
+  permission-dependent and was not what rendered) — assert the specific item.
+- **The only gate on Share / Manage permissions is `isPersonalProject`** — there is no
+  `isPublic` branch in `BucketItem.jsx`. So in the **Public** project the item would
+  render, contradicting ELITEA-2491's expectation (static reading; see below).
+- `Escape` reliably closes the bucket dot-menu in both projects.
+- The live label is **`Manage permissions`**; "Manage access" appears nowhere in
+  `EliteaUI/src` (only the internal `handleManageAccessClick` handler).
+  Clarification `EliteaAI/elitea-testing-public#1698`.
+
+### The Public project (id 1) is NOT reachable by `${TEST_USER}` (2026-08-23)
+- `useProjectType.hooks.js`: `isPublic = projectId === PUBLIC_PROJECT_ID`;
+  `PUBLIC_PROJECT_ID` is **1**, visible in the selector's feed request
+  `GET /api/v2/projects/project/default/1?check_public_role=true`.
+- That response lists only `400, 471, 25, 399, 406` — **project 1 is absent** (no public
+  role), and the selector renders exactly those 5.
+- Project selection is redux + `localStorage`/`sessionStorage` only; forcing the stored
+  id to `1` and reloading **did not switch** (stayed on Private, requests still
+  `?project_id=399`). There is no honest route into the Public project — any case with a
+  Public-project step is `blocked` until a human provisions access.
+  Clarification `EliteaAI/elitea-testing-public#1699`.
+
+## Confirmed handles (as of ELITEA-2492 manage-permissions empty state, 2026-08-23)
+
+The **Manage Permissions modal** (`src/[fsd]/features/artifacts/ui/bucket-access/`) — reached from
+the bucket dot-menu's `Manage permissions` item (Team projects only, see the ELITEA-2491 section
+above).
+
+### What the modal renders (live, project 471, bucket with 0 exceptions)
+```
+Manage Permissions
+Default Permissions
+All users have read/write permissions by default.
+Exceptions – 0                <-- EN DASH U+2013, not a hyphen
+No exceptions added yet
+All users have read/write permissions by default.
+Add Exceptions
+```
+
+### Testid reality
+- **The only testid in the whole modal today is `credential-warning-banner`** (shared
+  `credential-warning` banner, carries the default-permissions sentence as inner text *and* as
+  `aria-label`). Usable as-is when scoped inside the dialog — no UI change needed.
+- Everything else — dialog, section labels, `Exceptions – N` header, empty-state icon/title/
+  subtitle, `Add Exceptions` CTA, the Add/Edit dialogs, the exceptions table — is **untagged**.
+  Full needs-adding list with file/line pointers:
+  `test-specs/artifacts/l3_manage-permissions-empty-state-and-add-exception_ELITEA-2492.md`
+  § Concrete Handles.
+- **Good news for the implementer:** the table/grid plumbing already accepts testid props —
+  `GridTableHeader` (`columnTestIdPrefix` → `{prefix}-column-header-{field}`,
+  `selectAllCheckboxTestId`), `GridTableRow` (`data-testid`, `checkboxTestId`,
+  `dataCellTestIdPrefix` → `{prefix}-column-value-{field}`), `Modal.BaseModal` (`data-testid`,
+  `titleTestId`, `closeButtonTestId`), `SingleSelect` (`data-testid` → also emits `…-combobox`).
+  Only the **call sites** in `BucketAccessTable.jsx` / the two dialogs pass nothing.
+- Permission `<SingleSelect>` options ARE pre-tagged: `select-option-read` (`Read-only`),
+  `select-option-no_access` (`No access`), `select-option-read_write` (`Read/write (default)`).
+  The **Add** dialog offers only the first two; `Read/write (default)` exists only in **Edit**,
+  where selecting it is what **removes** the exception (`isRemoval = permission === READ_WRITE`).
+  There is no Delete affordance in the table — only `Edit exception` (row) and `Edit selected` (bulk).
+
+### The write path is BLOCKED for `${TEST_USER}` (2026-08-23)
+Every bucket-permission **write** returns `403` for the acting user, in every Team project reachable:
+- `POST /api/v2/artifacts/s3_credentials/default/471` → 403 (creating a credential for another user)
+- `PUT  /api/v2/artifacts/bucket_permissions/default/406` → 403 (updating an existing one)
+- project 400 `UI Testing` has **no buckets**; project 399 is personal (no menu item).
+Reads (`GET bucket_permissions/default/<id>`) are 200, so display-only cases are fine.
+Clarification `EliteaAI/elitea-testing-public#1701`. **Knock-on:** the merged
+`tests/ui/artifacts/test_bucket_permissions_api.py` (ELITEA-2493/2494) uses this write path as its
+setup *and* needs `TEST_USER_B_EMAIL`, which is **unset** in this machine's `.env.test` — expect it
+to be unrunnable here.
+
+### Product bug to keep in mind when reading this modal — `#1700`
+A **failed** save still renders the exception: the empty state is replaced, `Exceptions – N`
+increments, the row shows the chosen permission — while a `Failed to update access` toast fires.
+`handleAccessChange` swallows the error (catch → toast, no re-throw), so `handleAddConfirm`'s
+`Promise.allSettled` never sees a rejection and the optimistic-row rollback never runs. Re-opening
+the modal reveals the truth. **Therefore `Exceptions – N` is not an oracle for "the write
+succeeded"** — verify persistence by re-opening the modal.
+
+### Cheap navigation facts
+- `Exceptions – 0` buckets are NOT the norm in a busy project: in 406 the first three buckets had
+  2 / 4 / 7 exceptions. Resolve an empty one at run time; never take "the first bucket".
+- The Users dropdown lists project members minus those who already have an exception
+  (16 options in 471, 32 in 406) and carries **no** testids on the options.
+- Opening the Users dropdown emits a React console warning
+  (`Invalid value for prop sx on <svg>`, from `UserSearchSelect`'s checked icon) — expected noise,
+  filter it.
