@@ -47,3 +47,17 @@ start in this CodeMirror instance — filter `.cm-line` by text instead.
 content parent, and belongs in a page-object method, never inlined in a spec.
 
 Related: [[no_playwright_mcp_use_sync_playwright_script]]
+
+## Caveat: `Shift+Home` selects the VISUAL line, not the logical one
+
+CodeMirror 6's `standardKeymap` binds `Shift+Home` to
+`selectLineBoundaryBackward` — the start of the **visual** (wrapped) line. On a
+short, unwrapped line (headings, the ELITEA-1859/1860 case) that is the logical
+line start and the replace recipe above is exact. On a **long line that soft-wraps**
+in the editor's width, it selects only back to the wrap point, so `type()` replaces
+a *fragment* and the assertion pair (`to_contain_text(new)` +
+`not_to_contain_text(old)`) can still pass while the line is mangled. If
+`replace_file_preview_line_containing()` is ever pointed at a long line, press
+`Shift+Home` twice (second press extends to the logical start) or verify the
+whole-content byte-equality shape instead. Raised during static review of
+PR #1691 (2026-08-23); not a defect in that PR — its target line cannot wrap.
