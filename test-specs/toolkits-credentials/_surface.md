@@ -681,3 +681,112 @@ with `open_route()`, a `domcontentloaded`-only navigation, because
 `https://api.github.comhttp://unreachable.example.invalid`. Cost one run on
 ELITEA-1980. Same shape as `set_username`/`set_api_key`; only
 `set_display_name()` does select-all + type.
+
+## SharePoint **Delegated** / OAuth credential flow — confirmed live 2026-08-23 (ELITEA-1981 / ELITEA-1982)
+
+Both cases driven end-to-end on `localhost:5173`, project 399. **No product
+defects.** Two case-text clarifications for ELITEA-1981 (#1711). Read this before
+touching any auth *subsection* (not just SharePoint) or the OAuth dialog.
+
+### ⚠️ Read this first — the MCP browser can wedge, and it looks exactly like a product bug
+
+During this analysis the shared Playwright-MCP browser reached a state where
+**every click on a `BaseCheckbox`-backed control (auth radios, the Auto Refresh
+Token checkbox) stopped producing a React state update**, and `onTestConnection`
+stopped firing — while text inputs, `fill()`, and the Save button kept working.
+That partial-liveness is what makes it convincing: it reads as a *targeted*
+defect, not a dead page. Two issues were filed and retracted (#1709, #1710).
+
+**A `page.goto()` in the same context is NOT a pristine repro** for "this control
+does not respond" — it reloads the document but keeps the context. Before filing
+an unresponsive-control bug:
+1. run the nearest **merged spec** that touches the same control
+   (`tests/ui/toolkits/test_credential_create.py` clicks an auth radio — 15 s), and
+2. re-run the scenario in a **fresh `browser.new_context()`** (a throwaway
+   `sync_playwright` script under `/tmp`, ~20 lines).
+Both were green here, which is how the filings were caught within the hour.
+
+### ⚠️ `McpAuthModal` renders `<Dialog keepMounted>` — presence ≠ open
+
+`McpAuthModal.jsx:370`. `[role="dialog"]` is **always** in the DOM. A closed
+instance reads with an **empty `Server:` link** (`href=""`) and a scope value
+**without** the `offline_access` prefix — i.e. it mimics precisely the failures
+ELITEA-1982 steps 5-6 look for. Always assert
+`expect(dialog).to_be_visible()` (Playwright honours the modal's
+`visibility: hidden`), never `to_have_count(1)`; close with
+`not_to_be_visible()`, never `to_have_count(0)`. Scope the locator with
+`.filter(has_text="Configuration OAuth")` — `McpLogoutModal` is mounted on the
+same page.
+
+### The Login button appears only once `oauth_discovery_endpoint` has a value
+
+`CredentialForm.jsx:342` renders it under `!isOAuthLoggedIn && oauthTokenKey`,
+where `oauthTokenKey` = `${credentialDetails.uuid}:${settings.oauth_discovery_endpoint}`
+(falling back to the endpoint alone before save, `:168-176`). So it is **not**
+revealed by selecting Delegated — it appears the moment the endpoint field is
+non-empty (measured: count 0 → 1). It is mutually exclusive with a **Logout**
+button, shown when a token exists for that key. ELITEA-1981's case text places
+the check too early → clarification #1711.
+
+### Testid gaps — the whole OAuth modal tree has none
+
+- `credential-form-oauth-login-button` — `CredentialForm.jsx:342-350`; a bare
+  `Button.BaseBtn`, which spreads `restProps`, so **one attribute** (same shape
+  as its sibling `credential-form-test-connection-button`).
+- `McpAuthModal.jsx` + `OAuthFormFields.jsx`: **zero** testids. Proposed set in
+  the two AFS files (`oauth-auth-dialog{,-title,-description,-server-link,
+  -cancel-button,-authorize-button}`). `OAuthFormFields` is **shared** with the
+  MCP flows → its scope input needs a **caller-supplied `testId` prop** wired at
+  `McpAuthModal`'s call site, never a hardcoded credential-scoped string.
+- Do **not** add the dialog's X close button or the conditional Client Id /
+  Client Secret inputs — neither case touches them (canon #511).
+
+### SharePoint schema + where `offline_access` comes from
+
+`GET /configurations/available/?section=credentials`, type `sharepoint`:
+schema-required `client_id`, `client_secret`, `site_url`; auth subsections
+`App-only` (no extra fields, **default**) and `Delegated`
+(`oauth_discovery_endpoint`, `scopes`, `auto_refresh_token`). The UI marks the
+two Delegated text fields required (`*`) even though the JSON-schema `required`
+list does not include them.
+
+`POST /configurations/check_connection/{project}/sharepoint` with **placeholder**
+client id/secret and any discovery endpoint returns **401**
+`{"success":false,"requires_authorization":true,"auth_metadata":{…}}` — no real
+Microsoft tenant needed, so this surface is immune to `#1673` (expired
+`GIT_HUB_TOKEN`). The **backend** prepends `offline_access`:
+`resource_metadata.scopes_supported` and `provided_settings.scopes` both come
+back `["offline_access","Sites.Read.All"]` for a credential whose own `scopes` is
+`["Sites.Read.All"]`, **regardless of `auto_refresh_token`** (probed both ways).
+`McpAuthModal.jsx:70` prefers those `resourceScopes` over the form scopes, which
+is why the dialog shows `offline_access Sites.Read.All`.
+
+The dialog's `Server:` shows the **discovery endpoint**, not
+`auth_metadata.server_url` (which is the SharePoint *site* URL) — the credential
+form passes it explicitly as the display URL (`useCreateConfiguration.jsx:183`).
+
+### Save is gated on **formik dirty** — `fill()` is not enough
+
+`credential-form-save-button` is `disabled={hasErrors || shouldDisableSave}` with
+`shouldDisableSave = !useFormDirtyExcluding()` (`CredentialsTabBar.jsx:115`).
+Filling every field with Playwright `fill()` — including Display Name, whose
+value the ID field correctly mirrors — left **both** Save and Discard disabled;
+one `press_sequentially` character enabled both. `CredentialCreatePage.set_display_name()`
+already does select-all + type: that is load-bearing, don't "optimise" it.
+
+### Other flow facts
+
+- Saving navigates to `/credentials/all`, **not** to the new credential's detail
+  page — a "verify X on the saved credential page" step needs an explicit open
+  (ELITEA-1981 clarification #1711).
+- `scopes` is a free-text input persisted as an **array** (`["Sites.Read.All"]`).
+  `auto_refresh_token` is **absent** from the persisted `data` when unchecked.
+- The detail page derives the selected auth subsection from which fields hold
+  values ("most non-null fields wins", `ToolSection.jsx:58-72`) — which is why an
+  API-seeded Delegated credential renders with `Delegated` checked.
+- The auth radio group **re-mounts** when `GET /configurations/available/`
+  resolves; a click issued before the form settles is lost. Waiting for
+  `toolkit-field-label-input` (i.e. `CredentialCreatePage.open_type_form()`) is
+  enough.
+- Auth radio slug = the option's **value**, lowercased and hyphenated —
+  `delegated`, `app-only` (and `none` for GitHub's "Anonymous").
