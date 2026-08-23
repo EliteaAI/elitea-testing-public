@@ -51,3 +51,4 @@
 - [Status assertion, wrong trigger](status_assertion_armed_on_wrong_trigger.md) — empty listener ⇒ vacuous green
 - [Support Assistant renders no partial text](support_assistant_no_token_streaming.md) — no token streaming; agent-mode atomic delivery
 - [Provenance grep false-negative — DotMenu `key:`-derived testids](provenance_grep_false_negative_dotmenu_key_derived_testid.md) — `*-menuitem` testids grep as absent; grep the key
+- [MCP browser can wedge into dead clicks](mcp_browser_can_wedge_into_dead_clicks.md) — before filing an unresponsive-control bug: run the nearest merged spec + a fresh context
