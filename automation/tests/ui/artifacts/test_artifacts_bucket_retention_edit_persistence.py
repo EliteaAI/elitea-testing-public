@@ -188,7 +188,7 @@ class TestArtifactBucketRetentionEditPersistence:
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
         "automated-full-regression-ui/artifacts/"
-        "ELITEA-1810_create-artifact-bucket-via-folder-icon-retention-policy.md",
+        "ELITEA-1810_create-artifact-bucket-path-2-verify-retention-policy.md",
         "onetest-ai Test Case link",
     )
     def test_bucket_retention_edit_and_persistence(self, page, artifact_api):
