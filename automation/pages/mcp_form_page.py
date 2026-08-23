@@ -209,6 +209,19 @@ class McpFormPage(BasePage):
         description="Discard button on the detail (edit) page — added ELITEA-1929, "
         "EliteaUI PR #572",
     )
+    # Discard raises a confirmation modal before reverting anything (see
+    # McpFormPage.click_discard) — testids added for ELITEA-1928,
+    # EliteaAI/EliteaUI@a51c9318 on automation/testids.
+    discard_confirm_modal = LocatorDescriptor(
+        testid="toolkit-detail-discard-confirm-modal",
+        description="Discard-changes confirmation modal on the detail (edit) page "
+        "— the testid lands on the MUI Dialog root, so text_content() includes "
+        "the title and both button labels",
+    )
+    discard_confirm_button = LocatorDescriptor(
+        testid="toolkit-detail-discard-confirm-button",
+        description="'Discard' confirm button inside the discard-changes modal",
+    )
     detail_title = LocatorDescriptor(
         testid="toolkit-detail-title",
         description="Toolkit detail page name heading (renders 'Edit Toolkit' "
@@ -835,10 +848,54 @@ class McpFormPage(BasePage):
         until the section is expanded — the create form renders them inline,
         the detail page does not (found at ELITEA-1923/1924).
         """
-        if self.configuration_show_more.count() == 0:
+        # "Already expanded?" is decided on the FIELDS, never on the toggle:
+        # `toolkit-configuration-show-more` mounts asynchronously and is
+        # measurably absent for ~1s after a detail-page load even once
+        # `toolkit-detail-title` has resolved to the real name (polled live at
+        # ELITEA-1930, 10x500ms). A non-waiting `count() == 0` read on the
+        # toggle therefore silently no-op'd, and every following
+        # `toolkit-field-*` read then timed out with a misleading
+        # "element not found". Keying off `url_input` is exact in both
+        # directions: it is already present on the create form and on an
+        # already-expanded section (return immediately, no cost), and absent
+        # exactly when the section still needs expanding.
+        if self.url_input.count() > 0:
             return
+        self.configuration_show_more.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         self.configuration_show_more.click()
         self.url_input.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    @action("Click Discard and wait for the confirmation modal")
+    def click_discard(self) -> None:
+        """Click the detail page's Discard button and wait for its confirm modal.
+
+        Discard is a two-step gesture: the first click only opens a
+        ``Warning / Are you sure you want to discard changes?`` modal — the form
+        still holds the edited values and both action buttons stay enabled until
+        :meth:`confirm_discard` is called (verified live at ELITEA-1928). Same
+        shape as ``CredentialDetailPage.click_discard``.
+        """
+        self.detail_discard_button.click()
+        self.discard_confirm_modal.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    def get_discard_confirm_message(self) -> str:
+        """Return the discard-confirm modal's text.
+
+        The testid sits on the MUI ``Dialog`` root, so this includes the
+        "Warning" title and the "Cancel"/"Discard" button labels — assert with
+        ``in``, not ``==``.
+        """
+        return self.discard_confirm_modal.text_content() or ""
+
+    @action("Confirm Discard in the confirmation modal")
+    def confirm_discard(self) -> None:
+        """Confirm the discard and wait for the modal to unmount.
+
+        The modal is removed from the DOM (not hidden) when it closes, so the
+        wait is on ``detached`` — same as ``credential-discard-confirm-modal``.
+        """
+        self.discard_confirm_button.click()
+        self.discard_confirm_modal.wait_for(state="detached", timeout=UI_ELEMENT_TIMEOUT)
 
     def is_save_button_disabled(self) -> bool:
         """Return whether the create form's Save button is currently disabled.
