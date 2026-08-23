@@ -5,7 +5,7 @@ type: feedback
 aliases: [testid provenance, closure record grep, not on main false negative, data-testid grep]
 tags: [area/automation, type/gotcha]
 created: 2026-08-21
-updated: 2026-08-21
+updated: 2026-08-22
 ---
 
 ## What happens
@@ -21,6 +21,7 @@ EliteaUI handles:
 | `artifacts-file-row` / `artifacts-folder-row` | `ArtifactTable.jsx:525` — `row.type === ARTIFACT_TYPES.FOLDER ? 'artifacts-folder-row' : 'artifacts-file-row'` |
 | `bucket-menu-upload-files-menuitem` | `BucketItem.jsx:153` — `key: 'bucket-menu-upload-files'`, later `+ '-menuitem'` by `DotMenu.jsx:57` |
 | `bucket-menu-{name}-menu-button` | never appears whole in source — `DotMenu.jsx:354` composes `` `${id}-menu-button` `` (stage 1 can't see it either; workflow.md already warns about this class) |
+| `secret-column-header-{name,secretValue,actions}` | `SecretsTable.jsx:563` — `columnTestIdPrefix="secret"`; stage 2 drops it because the token is `TestIdPrefix=`, i.e. `testid` is NOT followed by `:`/`=`. `GridTableHeader.jsx:48` then composes `` `${columnTestIdPrefix}-column-header-${column.field}` ``, so stage 1 misses it too. Same shape for every `columnTestIdPrefix` consumer (TokensTable, UsersTable, DataTable, ArtifactTable). Confirmed 2026-08-22, ELITEA-1969 review |
 
 ## Why it matters
 

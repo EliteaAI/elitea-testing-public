@@ -26,12 +26,23 @@ l1_credential-pin-unpin_ELITEA-1974.md). The ``pin-toggle-credential-menuitem``
 testid required a one-line fix in ``CredentialsControls.jsx`` (the
 ``pinMenuItem`` spread never set a ``key``, unlike its sibling ``Delete``
 item) — added via ``add-data-testid``.
+
+Delete handles (``delete_menuitem`` + the shared ``DeleteEntityModal``
+dialog handles, ``delete_credential_via_menu()``) were added for ELITEA-1964
+(see test-specs/toolkits-credentials/l1_delete-credential_ELITEA-1964.md).
+Every one of those testids already existed on ``main`` — the menu item's
+``delete-credentials-menuitem`` is auto-derived by ``DotMenu.jsx`` from the
+``key: 'delete-credentials'`` set in ``CredentialsControls.jsx``, and the
+dialog testids come from the shared ``DeleteEntityModal.jsx`` — so no
+``add-data-testid`` round-trip was needed.
 """
 
 import logging
 import re
 
 from playwright.sync_api import Page
+
+from config import settings
 
 from .base_page import BasePage
 from .credential_form_fields import CredentialFormFieldsMixin
@@ -41,6 +52,7 @@ from .locator_descriptor import LocatorDescriptor
 logger = logging.getLogger("elitea.pages.credential_detail")
 
 UI_ELEMENT_TIMEOUT = 10_000
+DELETE_RESPONSE_TIMEOUT = 15_000
 
 
 class CredentialDetailPage(CredentialFormFieldsMixin, BasePage):
@@ -98,6 +110,61 @@ class CredentialDetailPage(CredentialFormFieldsMixin, BasePage):
     pin_toggle_menuitem = LocatorDescriptor(
         testid="pin-toggle-credential-menuitem",
         description="Pin/Unpin toggle menu item inside the three-dot menu",
+    )
+    delete_menuitem = LocatorDescriptor(
+        testid="delete-credentials-menuitem",
+        description=(
+            "Delete menu item inside the three-dot menu — testid auto-derived "
+            "by DotMenu.jsx from the item key 'delete-credentials' "
+            "(CredentialsControls.jsx). Pre-existing on main (ELITEA-1964)."
+        ),
+    )
+
+    # ------------------------------------------------------------------
+    # Delete-confirmation dialog (shared DeleteEntityModal.jsx, ELITEA-1964)
+    # ------------------------------------------------------------------
+    # Repo precedent: each page object that triggers this shared modal
+    # declares its own LocatorDescriptors for it (personal_tokens_page.py,
+    # mcp_form_page.py, artifacts_page.py) — no new testid work here.
+    delete_confirm_dialog = LocatorDescriptor(
+        testid="delete-confirm-dialog",
+        description="Delete-confirmation modal container (shared DeleteEntityModal)",
+    )
+    delete_confirm_title = LocatorDescriptor(
+        testid="delete-confirm-title",
+        description="Delete-confirmation modal title ('Delete confirmation')",
+    )
+    delete_confirm_message = LocatorDescriptor(
+        testid="delete-confirm-message",
+        description=(
+            "Delete-confirmation modal body text ('Are you sure to delete the "
+            "<name>? Enter the name to complete the action.')"
+        ),
+    )
+    delete_confirm_entity_name = LocatorDescriptor(
+        testid="delete-confirm-entity-name",
+        description="The credential name rendered inside the confirmation message",
+    )
+    delete_confirm_name_input = LocatorDescriptor(
+        testid="delete-confirm-name-input",
+        description=(
+            "Type-to-confirm Name field — resolves to the MUI TextField "
+            "WRAPPER, not the real <input> (same shape as "
+            "personal_tokens_page.py / mcp_form_page.py); click + "
+            "press_sequentially() types into the focused inner input."
+        ),
+    )
+    delete_confirm_button = LocatorDescriptor(
+        testid="delete-confirm-button",
+        description=(
+            "Delete (confirm) button inside the confirmation modal — disabled "
+            "until the typed name matches the credential name exactly "
+            "(shouldRequestInputName: true in CredentialsControls.jsx)"
+        ),
+    )
+    delete_confirm_cancel_button = LocatorDescriptor(
+        testid="delete-confirm-cancel-button",
+        description="Cancel button inside the delete-confirmation modal",
     )
 
     def __init__(self, page: Page):
@@ -195,3 +262,56 @@ class CredentialDetailPage(CredentialFormFieldsMixin, BasePage):
         ) as response_info:
             self.pin_toggle_menuitem.click()
         return response_info.value
+
+    def open_delete_dialog(self) -> None:
+        """Click the three-dot menu's "Delete" item and wait for the shared
+        delete-confirmation dialog to render (ELITEA-1964, case step 4).
+
+        Precondition: the three-dot menu is already open
+        (:meth:`open_controls_menu`).
+        """
+        self.delete_menuitem.click()
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    def fill_delete_confirm_name(self, name: str) -> None:
+        """Type *name* into the delete dialog's type-to-confirm Name field.
+
+        Same click + ``press_sequentially`` shape as
+        ``personal_tokens_page.py`` / ``mcp_form_page.py`` — MUI needs real
+        keyboard events for React onChange (``.claude/rules/mui-patterns.md``),
+        and the testid resolves to the TextField wrapper rather than the inner
+        input (the click focuses that input, the keystrokes land in it).
+        """
+        self.delete_confirm_name_input.click()
+        self.delete_confirm_name_input.press_sequentially(name, delay=20)
+
+    def confirm_delete(self, credential_id: str):
+        """Click the dialog's Delete button and wait for the underlying
+        ``DELETE .../configurations/configuration/{project}/{credential_id}``
+        response (no fixed sleep).
+
+        Note the SINGULAR ``configuration`` path segment — the plural
+        ``configurations`` endpoint is the list/create one.
+
+        Args:
+            credential_id: The credential's numeric id (see
+                :meth:`get_credential_id_from_url`), used to pin the awaited
+                response to this exact credential.
+
+        Returns:
+            The matched Playwright ``Response``.
+        """
+        with self.page.expect_response(
+            lambda r: (
+                r.request.method == "DELETE"
+                and r.url.rstrip("/").endswith(f"/configurations/configuration/{self._project_id}/{credential_id}")
+            ),
+            timeout=DELETE_RESPONSE_TIMEOUT,
+        ) as response_info:
+            self.delete_confirm_button.click()
+        return response_info.value
+
+    @property
+    def _project_id(self) -> int:
+        """The project id the suite is configured against (``config.settings``)."""
+        return settings.elitea_project_id
