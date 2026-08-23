@@ -50,3 +50,4 @@
 - [Synthetic typing fabricates a "button never enables" bug](react_controlled_input_false_disabled_button_bug.md) — type for real
 - [Status assertion, wrong trigger](status_assertion_armed_on_wrong_trigger.md) — empty listener ⇒ vacuous green
 - [Support Assistant renders no partial text](support_assistant_no_token_streaming.md) — no token streaming; agent-mode atomic delivery
+- [Provenance grep false-negative — DotMenu `key:`-derived testids](provenance_grep_false_negative_dotmenu_key_derived_testid.md) — `*-menuitem` testids grep as absent; grep the key

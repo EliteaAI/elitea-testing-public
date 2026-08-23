@@ -744,3 +744,821 @@ fresh `git fetch origin` + the two-stage `-i`/`[:=]` grep on both refs.
 `artifacts-file-row`; a folder row renders as `artifacts-folder-row`, so calling it with `a1` /
 `folder-a` times out at 10 s (cost one rerun on this cluster). Folders also carry no Type/Size
 metadata to snapshot — assert their presence via `get_file_names()` and the left-panel tree instead.
+
+---
+
+## Confirmed handles (as of ELITEA-1810 retention edit/persistence, 2026-08-23)
+
+| Element | Handle | Method / constant | Notes |
+|---|---|---|---|
+| New-Bucket / Edit-bucket Cancel button | `artifacts-bucket-cancel-button` | *(no page-object field yet)* | `CreateBucket.jsx:307`; `onCancel = navigate(-1)` — no request fires |
+| Retention measure options | `select-option-days` / `-weeks` / `-months` / `-years` | `BasePage.SELECT_OPTION.format(m)` | shared `SingleSelect` popover; only one select open at a time |
+| Bucket dot-menu **Rename** item | `bucket-menu-rename-menuitem` | *(no page-object method yet)* | derived from `BucketItem.jsx:165` key via `DotMenu.jsx:58`; opens the SAME `/artifacts/create-bucket` route in edit mode (form heading text `Edit bucket`) |
+| Bucket-edit save | `artifacts-bucket-save-button` | ⚠ existing `click_bucket_save_button()` waits for a **POST** | an edit save is a **PUT** `/artifacts/buckets/default/{project_id}` (`src/api/artifacts.js:55`) — the existing method hangs on edits |
+| Delete-confirm dialog | `delete-confirm-title` / `-message` / `-entity-name` / `-cancel-button` / `delete-confirm-button` / `delete-confirm-close-button` | | full inventory read live |
+
+### Retention-policy behaviours confirmed live (2026-08-23)
+
+- Create form defaults: name `new-bucket`, measure `Years`, value `1`.
+- Both retention fields are pre-populated — **select-all before typing** or values
+  concatenate (`1` + `10` → `110`).
+- Measure is a MUI Select: read `textContent`. Value is a real `<input type="number">`:
+  read `input_value()`.
+- Save (create) → `POST …/artifacts/buckets/default/{pid}` 200, then auto-navigates to
+  `/artifacts?bucket=<name>` and auto-selects the new bucket (`PENDING_BUCKET_SESSION_KEY`).
+- Save (edit) → `PUT` same URL, 200, then `/artifacts?bucket=<name>`.
+- **Cancel fires NO request** (verified with a request listener) and does not change
+  `retentionDays`.
+- Bucket list is alphabetically sorted; a created bucket keeps its index across an edit.
+- **No toast fires on bucket save** — the response status is the only honest oracle.
+- Backend stores retention as `retentionDays` (readable via
+  `GET /artifacts/s3/?project_id={id}&format=json`): `20 Weeks`→140, `10 Months`→304,
+  `3 Months`→92. Useful independent tie-breaker for a stale-looking UI read.
+
+### `#1677` — Months retention never round-trips (filed 2026-08-23)
+
+A bucket saved with **Months** reopens as **Days** (`10 Months`→`304 Days`,
+`3 Months`→`92 Days`). Backend stores calendar-accurate days;
+`convertDaysToMeasure()` (`src/utils/retentionPolicy.js`) needs `days % 30 === 0` to
+reconstruct months, which a real month count never satisfies. Weeks (×7) and Years (×365)
+round-trip fine. Deterministic — any case asserting a Months policy after a reopen is
+sanctioned-RED against #1677.
+
+### Gotchas added this run
+
+- **NEVER poll with a busy `while` loop inside `browser_evaluate` / `page.evaluate`.**
+  A JS spin-loop blocks the main thread, so React cannot render the ~967-row bucket list
+  and the poll reads `0 rows` until it times out — this produced a false "the bucket list
+  never loads / shows *No buckets created yet*" reading twice (~65 s wasted). Use
+  Playwright waits (`expect(...).to_have_count`, `locator.wait_for`), which yield.
+- The bucket-list **empty state** (`No buckets created yet`) renders transiently while the
+  list is still loading — never assert emptiness without a settled-list wait.
+- `bucket-menu-{name}-menu-button` is in the DOM but **invisible until the row is
+  hovered**; a direct click fails with *"element is not visible"*.
+- There is exactly **ONE** bucket-creation entry point in the product
+  (`artifacts-create-bucket-button`, a `NewFolder` icon in `BucketHeader.jsx:59`) —
+  TMS cases describing a "Path 1 button" vs a "Path 2 folder icon" (ELITEA-1808 vs
+  ELITEA-1810) both land on it.
+- `#636` ("bucket delete 404s silently, buckets never removed") did **not** reproduce via
+  the **UI** delete path today: row hover → dot-menu `Delete` → `delete-confirm-button`
+  removed the bucket from the S3 listing immediately. Usable teardown fallback.
+- Project 399 held **967 buckets** at run time, including leaked `autotest-*` names from
+  earlier runs (e.g. `autotest-1810-b2-2251`) — always generate unique bucket names.
+
+### Resolved/added during ELITEA-1810 implementation (2026-08-23, implementer)
+
+- **Testids added and PUSHED** — EliteaAI/EliteaUI@c91c2aac on `automation/testids`
+  (3 attribute-only lines, 0 removals, no hooks, no new DOM nodes):
+  `key: 'bucket-menu-rename'` on `BucketItem.jsx`'s Rename item (DotMenu derives
+  `bucket-menu-rename-menuitem`), `data-testid="artifacts-bucket-cancel-button"`, and
+  the new `data-testid="artifacts-bucket-form-heading"` on `CreateBucket.jsx`'s heading
+  Typography. **Caution for future analysis on this surface:** the first two were
+  present only as *uncommitted* edits in the `../EliteaUI` working tree at analysis
+  time, so a plain grep reported them as "exists" while they lived on no branch. Verify
+  a testid's provenance with `git grep <t> origin/automation/testids -- src/`, not with
+  a working-tree grep.
+- **`artifacts-bucket-form-heading` is the only observable separating the create form
+  from the edit form.** `/artifacts/create-bucket` is ONE route serving both;
+  `CreateBucket.jsx` renders `currentBucket ? 'Edit bucket' : 'New Bucket'`. One stable
+  testid, state read from the TEXT.
+  **Consequence for every artifacts case whose step reads "the New Bucket form opens"
+  (added during ELITEA-1812/1816 review round 1, 2026-08-23):** a `"/artifacts/create-bucket"
+  in page.url` assertion does NOT verify that expected result — a regression that opened the
+  EDIT form on the same route would pass it. Assert
+  `get_bucket_form_heading_text() == "New Bucket"` alongside the URL. Both ELITEA-1812's and
+  ELITEA-1816's specs now do this at their Step 2.
+- **The retention-measure Select's own MUI backdrop blocks a second combobox click.**
+  Opening the dropdown mounts an invisible `MuiBackdrop` for `menu-expiration_measure`
+  that sits over the combobox — so "open the dropdown, then select an option" as two
+  separate page-object calls times out on `Locator.click`. `select_retention_measure()`
+  now only issues the open-click when `aria-expanded != "true"`, and waits for the
+  option to reach `hidden` before returning so the closing backdrop cannot race the
+  caller's next click.
+- **The bucket-list refetch needs well over 15 s in project 399 (~970 buckets).** The
+  15 s `NAVIGATION_TIMEOUT` the sibling artifacts specs use produced a false "bucket
+  never appeared" right after the create-save; a fresh `navigate_to_artifacts()`
+  showed it instantly. ELITEA-1810 uses a dedicated `BUCKET_LIST_TIMEOUT = 45_000`
+  for every bucket-list condition wait. Expect the sibling specs to start flaking on
+  this as the project's bucket count grows.
+- **An EDIT save is a `PUT`, not a `POST`.** `ArtifactsPage.click_bucket_save_button()`
+  hardcodes `method == "POST"` in its `expect_response` predicate and HANGS on an edit
+  save — use the new additive sibling `click_bucket_save_button_expect_put()`.
+- **Cancel fires no bucket request at all** (`onCancel` is a plain `navigate(-1)`) —
+  confirmed by a `capture_requests_matching("artifacts/buckets", method="PUT")`
+  listener armed before the form is touched: zero captured across the whole
+  select-Days / set-1 / Cancel sequence.
+- **#636 re-confirmed both ways:** `ArtifactAPI.delete_bucket()` 404s every time
+  (`.../buckets/default/399/p--399.<name>`), while the UI delete path removes the
+  bucket cleanly — provided the removal wait gets `BUCKET_LIST_TIMEOUT`, not 15 s.
+
+## Confirmed handles + behaviours (ELITEA-1812/1816 cluster, 2026-08-23)
+
+Bucket **name case-handling** and the **Edit-bucket form's read-only Name field**.
+**Zero new testids were needed** for either case — every handle already existed.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Bucket name input | `artifacts-bucket-name-input` | `fill_bucket_name()` | **Enabled in Create mode, `disabled` in Edit mode** — `CreateBucket.jsx:238` renders `disabled={!!currentBucket}`. It is a real `disabled` attribute (`get_attribute("disabled") == ""`), **not** `readOnly` (`readonly` is `None`). A `click()` on it in Edit mode raises Playwright `TimeoutError` ("not enabled"); the deprecated `Locator.type()` does **not** raise, it silently no-ops — so *value-unchanged* is the assertion that proves "no input accepted", never `type()`'s outcome. |
+| Inline name-validation helper text | `artifacts-bucket-name-helper-text` | `CreateBucket.jsx:244` (`FormHelperTextProps`) | **CORRECTS the 2026-08-02 digest row above**, which says "testid needed / not yet added" — it exists now and is on `origin/main`. |
+| Form heading (New Bucket / Edit bucket) | `artifacts-bucket-form-heading` | `get_bucket_form_heading_text()` | text is `New Bucket` on create, **`Edit bucket`** on edit — same route `/artifacts/create-bucket` for both, so the URL alone never tells you which mode you are in |
+| Bucket dot-menu item order | `Upload files` · **`Rename`** · `Pin to top` · `Delete` | `BucketItem.jsx:153-205` | `get_bucket_menu_items_text()` returns them concatenated with no separator: `"Upload filesRenamePin to topDelete"`. Case texts saying "Edit" (and a different order) are tracked drift — `EliteaAI/elitea-testing-public#666` |
+
+### Bucket-name case conversion is a BACKEND behaviour (confirmed live)
+Typing `AUTOTEST-1812-182449` (or mixed `AuToTest-1816-182606`) into the New Bucket form:
+- the input **preserves the typed case verbatim** — there is **no `toLowerCase()` anywhere
+  in `src/pages/Artifacts/CreateBucket.jsx`**, and the yup schema `^[a-zA-Z][a-zA-Z0-9-]*$`
+  explicitly *permits* uppercase (so this is not a validation rejection);
+- the form posts `values.name.trim()` unchanged to
+  `POST /api/v2/artifacts/buckets/default/{project_id}` (note: **v2**, not v1);
+- the **response body** comes back lowercased —
+  `{"message":"Created","id":"p--399.autotest-1812-182449","name":"autotest-1812-182449"}`.
+  That body is the honest oracle for the "**stored** lowercase" half of the claim; the DOM
+  alone can only prove "**displayed** lowercase".
+- The bucket row testid is derived from the stored name
+  (`data-testid={\`artifacts-bucket-row-${name}\`}`, `BucketItem.jsx:243`), so
+  `artifacts-bucket-row-{lower}` present + `artifacts-bucket-row-{TYPED}` count 0 is a
+  two-sided name assertion.
+
+### Retention `Days / 1` round-trips cleanly
+Create with `Days`/`1` → reopen the Edit form → `Days`/`1` (hard-asserted, passed). Defect
+`#1677` (a `Months` policy reopening as `Days`) only bites units whose day-count is not
+divisible by 30 — **use `Days` or `Weeks` for any retention step that is incidental to the
+case**, so an unrelated red never leaks in.
+
+### Gotchas added this run
+- **Cold-session `networkidle`**: the *first* `/artifacts` navigation of a fresh browser
+  session exceeded `wait_for_page_load()`'s default 15 s once (45 s was comfortable).
+  Subsequent navigations in the same session were fine. Raise that one call's timeout;
+  it is not a product issue.
+- Project 399's bucket leak (`#636`) keeps growing — this run added 2 more
+  (`autotest-1812-182449`, `autotest-1816-182606`).
+- Playwright MCP was **not** attempted this session — went straight to a
+  `playwright.sync_api` scratch script driving `ArtifactsPage` (per the 5-consecutive-session
+  history in the gotchas above). It worked first try; that remains the cheap default here.
+
+### Resolved/added during ELITEA-1812 + ELITEA-1816 implementation (2026-08-23, implementer)
+- **A bucket save lands on the BARE `/artifacts` root — there is no `?bucket=<name>`
+  param.** ELITEA-1812's AFS expected the create form's `PENDING_BUCKET_SESSION_KEY`
+  auto-select to show up as a `?bucket=` query param; an auto-retrying `to_have_url`
+  polled 87 times over 45 s and every sample was plain `http://localhost:5173/artifacts`
+  (project 399, ~970 buckets). Assert the ROUTE after a bucket save, never the param.
+  (Contrast: the file-preview flow *does* set `?bucket=&file=` — see the URL-query row
+  above. The two are different navigations.)
+- **`sidebar_menu_item("artifacts").click()` verified live** as the case-faithful way to
+  return to the Artifacts root (ELITEA-1812 step 5) — testid
+  `sidebar-menu-item-artifacts`, still `automation/testids`-only.
+- **The bucket-form Name field is `disabled`, never `readonly`** (`CreateBucket.jsx`:
+  `disabled={!!currentBucket}`). A `click()` on it in Edit mode is REFUSED by Playwright's
+  actionability check (assert with a SHORT ~3 s budget inside `pytest.raises`), while
+  `Locator.type()`/`press()` do **not** raise — they silently do nothing. So the only
+  assertion that proves "no input accepted" is the unchanged `input_value()`.
+  New page-object accessors: `is_bucket_name_input_disabled()` /
+  `is_bucket_name_input_editable()`.
+- **`ArtifactsPage.delete_bucket_via_menu(name)` now exists** — the UI bucket-teardown
+  composition (navigate → wait for row → dot-menu → Delete → confirm → wait for removal),
+  lifted to the page object at its third repetition. Use it for teardown instead of
+  copying the local helper again. ELITEA-1810's suite-local copy is deliberately left in
+  place (that spec is sanctioned-RED on `#1677`).
+- Both new specs delete their own bucket at teardown (UI path, API fallback), so this run
+  added **no** new leak to `#636`.
+
+## Confirmed handles + behaviours (ELITEA-1813/1815 New-Bucket form cluster, 2026-08-23)
+
+Empty-name validation and the **Cancel** path of the create form. **Zero new testids
+needed** — every handle already existed.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Name helper text | `artifacts-bucket-name-helper-text` | `bucket_name_helper_text` | element is **not rendered at all** while `formik.touched.name` is false — assert `count() == 0`, not `not_to_be_visible()` on a present node |
+| Save button | `artifacts-bucket-save-button` | `bucket_save_button` | `disabled` **only** for an empty (or >56 char) name — `CreateBucket.jsx:292-298`. For a *non-empty but invalid* name it stays ENABLED (that is ELITEA-1811's path) |
+| Cancel button | `artifacts-bucket-cancel-button` | `click_bucket_cancel_button()` | always enabled, in every form state; `onCancel = navigate(-1)` → lands on bare `/artifacts` |
+
+### New-Bucket form validation behaviours confirmed live (2026-08-23)
+
+- **Empty name ⇒ Save disabled IMMEDIATELY, no blur needed.** `bucket_save_button.click()`
+  then raises Playwright `TimeoutError` ("element is not enabled") — that is the honest
+  "not clickable" assertion; `to_be_disabled()` alone only proves the attribute.
+- **`Name is required` needs a BLUR.** After clearing the field: helper-text `count() == 0`,
+  `aria-invalid="false"`. After one `press("Tab")`: helper text `"Name is required"`,
+  `aria-invalid="true"`. Formik sets `touched` on blur/submit only, and the submit path is
+  unreachable because Save is disabled. Case-text gap filed as CLARIFICATION **#1680**.
+  (Same `touched`-gating already noted in § Known gotchas for the invalid-name path — this
+  run confirms the empty-name branch has *no* submit escape hatch at all.)
+- **`fill_bucket_name("")` does NOT clear the field.** `Locator.type("")` is a silent
+  no-op — the text stays selected but present. Clearing needs an explicit
+  click → `select_text()` → `press("Delete")` (a `clear_bucket_name()` page-object method
+  is the natural home; not added by this analysis).
+- **Cancel fires ZERO requests on the CREATE form too** (previously confirmed only for the
+  edit form / ELITEA-1810): a request capture on `artifacts/buckets` across Cancel came
+  back `[]` in both the empty-name and the valid-values runs.
+- Valid name + `Days`/`3` ⇒ Save **and** Cancel both visible + enabled, helper-text
+  `count() == 0`. Defaults observed: name `new-bucket`, measure `Years`, value `1`.
+- **Bucket-search filter is a clean absence oracle**: `open_bucket_search()` →
+  `search_buckets("bucket-cancel-test")` → `get_visible_bucket_count() == 0`, far more
+  robust than a negative row lookup against project 399's ~968 rendered rows.
+
+### Gotchas added this run
+
+- Project 399 rendered **968** bucket rows this session (`#636` leak, still growing) —
+  `wait_for_page_load(timeout=60000)` on the FIRST navigation of a fresh session; the 15 s
+  default is not enough cold.
+- MCP Playwright was **not** attempted (6th consecutive session) — a `playwright.sync_api`
+  scratch script driving `ArtifactsPage` worked first try. Remains the cheap default here.
+- Both ELITEA-1813 and ELITEA-1815 create **nothing** — they are among the very few
+  artifacts cases that add zero buckets to the `#636` pile.
+
+## Resolved/added during ELITEA-1813 + ELITEA-1815 implementation (test-automation-engineer, 2026-08-23)
+
+- **`ArtifactsPage.clear_bucket_name()` — ADDED** (`artifacts_page.py`, additive). The
+  analysis note above ("a `clear_bucket_name()` page-object method is the natural home") is
+  now shipped: click → `select_text()` → `press("Delete")`. Confirmed again live —
+  `fill_bucket_name("")` cannot substitute, because `Locator.type("")` is a silent no-op
+  that leaves the selection in place with the text still present.
+- **`ArtifactsPage.all_bucket_rows()` — ADDED** (additive companion to `any_bucket_row()`).
+  `any_bucket_row()` is deliberately `.first`-scoped (`artifacts_page.py:4397`), so it can
+  carry visibility assertions but NOT `to_have_count()` — it always counts 1. Any spec
+  asserting "the bucket-row count is unchanged" or "the search filter matched nothing" needs
+  the unscoped form. Same `BUCKET_ROW_ANY_SELECTOR` class constant; no new testid.
+- **`navigate_to_artifacts()` cannot carry the cold-session budget** — it hardcodes
+  `wait_for_page_load()`'s 15 s default with no timeout parameter. Where the ~968-row cold
+  load matters, call `navigate("/artifacts")` + `wait_for_page_load(timeout=60000)`
+  directly (both specs of this cluster do).
+- **The blur-gated helper text held exactly as analysed**: pre-blur
+  `artifacts-bucket-name-helper-text` `count() == 0` and `aria-invalid == "false"`;
+  post-`Tab` the text is byte-exact `Name is required` and `aria-invalid == "true"`
+  (CLARIFICATION #1680 stands — the case text omits the blur).
+- **Zero `artifacts/buckets` requests across Cancel — re-confirmed at implementation** in
+  both specs, on the create form, with a passive `capture_requests_matching` listener.
+- Both specs ran GREEN first try in one 49 s headless invocation; no rerun, no flake.
+
+## Confirmed handles (as of ELITEA-1818/1819 cluster analysis, 2026-08-23)
+
+New Bucket form — the **56-character name boundary**. Verified live on
+`localhost:5173`, project 399. Complements the ELITEA-1811/1814 rows above
+(regex validation) and ELITEA-1817 (56-char creation + bucket delete).
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Name field's own max-length | `maxlength="56"` attribute on `artifacts-bucket-name-input` | `CreateBucket.jsx:239-241` (`inputProps.maxLength`) | **native browser constraint** — the 57th keystroke never reaches React. Rejection is completely silent: no error, no helper text, no toast, `aria-invalid` stays `"false"`. Read the attribute off the existing testid'd node; no new handle needed. |
+| Character counter ("0 characters left") | **testid needed: `artifacts-bucket-name-character-counter`** | `CreateBucket.jsx:247-253`, `<Text.CharacterCounter>` | `CharacterCounter.jsx` **already accepts** a `data-testid` prop (`:11,20`) — prop-only wiring at the call site, zero functional impact, **no wrapper element may be added**. |
+| Counter text | `"0 characters left"` (exact) | `src/[fsd]/shared/ui/text/CharacterCounter.jsx` → `` `${remaining} characters left` `` | The `". You have reached the MAXIMUM character limit"` suffix never appears at this call site (`hideMaxLimitMessage` is passed). TMS cases ELITEA-1818/1819 say `"0 of 56 remaining"` — stale; CLARIFICATION `EliteaAI/elitea-testing-public#1682`. |
+| Counter render condition | `isFocused('name') && name.length === 56` | same | **Focus-gated and length-exact.** At 55 chars there is no element at all; blurring the field (Tab / click elsewhere) removes it from the DOM; re-focusing restores it. Never assert it after a blur. |
+| Form heading | `artifacts-bucket-form-heading` | `CreateBucket.jsx` | text `"New Bucket"` (create) / `"Edit bucket"` (edit). On `automation/testids` only — not yet on `main`. |
+| Delete-confirmation **Cancel** | `delete-confirm-cancel-button` | shared `DeleteEntityModal` | on `main`. Live-confirmed from the **bucket** dot-menu call site: closes the modal and fires **zero** `/artifacts/buckets` requests — the right assertion for "closes without deletion" is a network guard, not just a DOM check. |
+| Bucket dot-menu full text | `"Upload filesRenamePin to topDelete"` | `bucket-menu-{name}-menu` | re-confirmed 2026-08-23, unchanged since ELITEA-1817. |
+| Bucket delete (UI path) | `DELETE {api}/artifacts/buckets/default/{pid}?name={bucket}` → 200 | `confirm_delete_bucket()` | toast: `"The {bucket} bucket has been successfully deleted."` **`count_bucket_rows()` immediately after the DELETE response can still read 1** — the list refetch trails the response; use `wait_for_bucket_removed_from_list()`. |
+
+### ⚠️ Save is unclickable in ONE gesture at exactly 56 characters (defect `EliteaAI/elitea-testing-public#1080`, OPEN)
+
+Root-caused during this cluster (4/4 at 56 chars, 0/4 at ≤55). It is **not** a
+validation or backend rejection — `formik.handleSubmit()` is never reached
+because **no `click` event is ever emitted**:
+
+1. the focus-gated counter occupies **16 px** of normal flow inside the
+   column-flex `nameFieldWrapper`;
+2. `mousedown` on Save blurs the Name field → `toggleFieldFocus(null)` →
+   the counter unmounts → **the Save button jumps up 16 px**;
+3. `mouseup` therefore lands on a different element → the browser emits no
+   `click` → `onSave` never runs. Instrumented events: `["mousedown"]` only.
+   Geometry: Save `y=267` focused → `y=251` blurred (Δ 16 px);
+   `elementFromPoint(old centre)` after blur returns the form `<div>`.
+
+**Workaround for any automation that must create a 56-char bucket:** blur the
+Name field first (`bucket_name_input.press("Tab")`), *then* click Save →
+`POST /api/v2/artifacts/buckets/default/{pid}` → 200. This is an ordinary user
+gesture, not a substitution — but a spec whose case says "click Save" owes a
+soft-asserted `# Known defect: #1080` assertion for the single-click path.
+This is why `test_artifacts_create_bucket_55char_name_and_delete.py`
+(ELITEA-1817) carries `@pytest.mark.blocked`.
+
+The same focus-gated `Text.CharacterCounter` pattern is used by
+`CreateAgentForm.jsx`, `CreateSkillForm.jsx` and `ApplicationEditForm.jsx` —
+check for the same shift before trusting a Save click at a name/description
+max length on those forms.
+
+### Case-data trap (both ELITEA-1818 and ELITEA-1819)
+
+Their Test Data literal `bucket-a1b2…w3x4y5` is labelled "56-character" but is
+**57** characters; `maxLength` silently truncates it to 56 — which is then
+**byte-identical to ELITEA-1817's literal**. Never use it verbatim: generate a
+unique, genuinely-56-char name (CLARIFICATION
+`EliteaAI/elitea-testing-public#1683`). ELITEA-1818 additionally *keeps* its
+bucket (it cancels the delete), so a fixed name breaks the second run on
+duplicate-name and leaks via `#636`.
+
+## Resolved/added during ELITEA-1818 / ELITEA-1819 implementation (2026-08-23, test-automation-engineer)
+
+New Bucket form — the 56-character name boundary.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Name-field character counter | `artifacts-bucket-name-character-counter` | **added this run** — `CreateBucket.jsx:248`, commit `EliteaAI/EliteaUI@475adcc5` on `automation/testids` (pushed; human cherry-pick to `main` pending) | Prop-only wiring: `Text.CharacterCounter` already accepts `data-testid` (`CharacterCounter.jsx:11,20`), so ONE line was added and no DOM node, hook or structure changed. **Focus-gated:** renders only while `isFocused('name') && name.length === 56` — it is removed from the DOM on blur and at any other length, so it can never be asserted after focus leaves the field. Live text at the limit: `"0 characters left"` (the `". You have reached the MAXIMUM character limit"` suffix is suppressed here via `hideMaxLimitMessage`). **Gotcha:** the host `Box` is `display: contents`, so `bounding_box()` returns `None` while `is_visible()` / `to_be_visible()` still resolve `True` — assert visibility/text, never geometry. |
+| Name field's own limit | `artifacts-bucket-name-input`'s `maxlength` attribute == `"56"` | pre-existing testid | `CreateBucket.jsx:239-241` `inputProps={{ maxLength: 56 }}` — a NATIVE browser constraint, so a 57th keystroke never reaches React. Rejection is completely silent: no `aria-invalid`, no helper text, no toast, no request. Confirmed live for BOTH `type()` and `press()` delivery. A `fill()` writes through the DOM value setter and **bypasses `maxLength` entirely** — never use it to test this boundary. |
+| Page-object additions | `ArtifactsPage.bucket_name_character_counter`, `get_bucket_name_character_counter_text()`, `append_to_bucket_name(text)` | `automation/pages/artifacts_page.py` | All additive. `append_to_bucket_name()` is the append counterpart to `fill_bucket_name()` (which always REPLACES the whole value): click → `press("End")` → `type()`, leaving focus in the field so the counter stays mounted. |
+
+**Defect #1080 root cause, confirmed by the implementation run** (a single Save click at exactly
+56 characters does nothing): the focus-gated counter occupies 16 px of flow; `mousedown` blurs
+the Name field → the counter unmounts → the Save button shifts up 16 px → `mouseup` lands
+off-target → no `click` event → `onSave` never runs. Reproduced again on the first spec run.
+Transit past it (an ordinary user gesture, not a substitution): `bucket_name_input.press("Tab")`
+to blur, then click Save — the creation `POST` then returns 200.
+
+**Dev-server gotcha (OneDrive, cost ~15 min this run):** a JSX edit under `../EliteaUI/src` did
+NOT reach the running Vite dev server — `curl http://localhost:5173/src/<path>.jsx` still served
+the pre-edit module minutes after the file was saved (OneDrive's virtual filesystem does not
+deliver the fs watch event reliably). `touch <file>` forces the watcher and HMR then updates
+within seconds. **Verify a freshly-added testid is actually being served** (`curl … | grep
+<testid>`) before concluding it is missing from the DOM.
+
+## Artifact TOOLKIT-creation wizard + existing-bucket behaviour (ELITEA-1867, 2026-08-23, analyst)
+
+Cross-surface entry: the Toolkits creation wizard is where a *bucket* can be created as a side
+effect, so it belongs in this digest alongside the Artifacts panel. Complements the ELITEA-1866
+(save path) and ELITEA-1868 (cancel path) AFS files, both merged to `automation/base`.
+
+**Live-confirmed product behaviour (reproduced twice, deterministic):**
+
+- **Creating an Artifact toolkit whose `Bucket` names an EXISTING bucket SUCCEEDS.** POST
+  `/api/v2/elitea_core/toolkits/prompt_lib/399` → 200, wizard navigates to `/toolkits/all/{id}`,
+  **no error notification**, and **no duplicate bucket** is created. Create-if-not-exists semantics.
+- **The toolkit-save path never calls the bucket-create API.** Zero requests to
+  `/artifacts/buckets/…` fire during Save. `createBucket` (`EliteaUI/src/api/artifacts.js:46`) has
+  exactly ONE caller in the UI: `src/pages/Artifacts/CreateBucket.jsx:119` (the Artifacts New
+  Bucket form). ⇒ the `Bucket with name X already exists` error is **architecturally impossible**
+  on the toolkit path. This is why ELITEA-1867 is `blocked` on
+  [#1685](https://github.com/EliteaAI/elitea-testing-public/issues/1685).
+
+**Gotchas (each cost real turns):**
+
+- **The New Bucket form's name field is PREFILLED with the literal `new-bucket`**
+  (`CreateBucket.jsx:91`). `click()` + `press_sequentially()` puts the caret at 0 and **prepends** →
+  mangled names. Artefacts of this mistake already live in project 399:
+  `dup-bucket-1867new-bucket`, `new-bucketautotest-buck1-800755`. **Clear the field first**, or use
+  `ArtifactsPage`'s own bucket-creation helper. (This is also the origin of the ELITEA-1867 case's
+  `new-bucket` test data — an author who accepted the default.)
+- **The bucket panel is very slow in project 399 (976 buckets, 2026-08-23).** Polling
+  `[data-testid^="artifacts-bucket-row-"]` returned **0 for >13 s** after navigation, footer still
+  reading `Buckets: 0`, before the list rendered. Never conclude "no buckets" from a short wait;
+  always **search** rather than scan; budget ≥20 s for first render.
+- **The wizard form is NOT deep-linkable.** `/toolkits/create/artifact` renders the *type-picker*,
+  not the form — you must click `toolkit-type-card-artifact`. Use
+  `ToolkitCreationPage.select_toolkit_type("art", "artifact")`.
+- **`art` matches TWO type cards**: `toolkit-type-card-artifact` (STORAGE) and
+  `toolkit-type-card-mcp_Elitea Artifacts` (PLATFORM, backend-supplied MCP type). Assert scoped
+  presence/absence — never a total card count. Already codified in the merged
+  `test_toolkit_creation_cancel_no_toolkit_no_bucket.py:223`.
+- **UI teardown of a toolkit is a 3-step gate:** `controls-menu-button` → `Delete` (a
+  `role=menuitem`, **no testid**) → dialog where `delete-confirm-button` stays **disabled** until
+  the toolkit's exact name is typed into the dialog's `input[name="name"]` (**no testid**). Prefer
+  `ToolkitAPI.delete_toolkit(id)`; `ToolkitCreationPage.save_creation()` already returns the id.
+
+**Handles re-confirmed live, all on EliteaUI `main` (fetched + two-stage grep, 2026-08-23):**
+`sidebar-menu-item-toolkits`, `sidebar-menu-item-artifacts`, `sidebar-create-button`,
+`toolkit-wizard-type-search-input`, `category-filter-tab` (12 rendered),
+`[data-testid="toolkit-type-card-{key}"]` (71 cards unfiltered), `toolkit-form-name-input`,
+`[data-testid="toolkit-field-{k}-input"]` (template — grep the template, not the resolved value),
+`toolkit-form-save-button`, `toolkit-form-cancel-button`, `toast-message`, `controls-menu-button`,
+`delete-confirm-button`, `artifacts-create-bucket-button`, `artifacts-bucket-name-input`,
+`artifacts-bucket-save-button`, `artifacts-search-buckets-button`, `artifacts-bucket-search-input`,
+`[data-testid="artifacts-bucket-row-{name}"]`.
+
+**Independent ground truth for bucket assertions:** `GET /artifacts/s3/?project_id=399&format=json`
+(cookie auth, works from page context) returns the full bucket list — a stronger oracle than the
+virtualized, slow DOM panel. Note `/api/v2/…` endpoints are **not** callable from page-context
+`fetch` (Bearer required) — they 'Failed to fetch'.
+
+## Confirmed handles (as of ELITEA-1853/1854/1855 discard/close cluster, 2026-08-23)
+
+Unsaved-changes **exit paths** on the file-preview editor — the header
+**Discard** button's Warning modal, and the **X (close)** button's separate
+unsaved-changes Warning dialog. Extends the ELITEA-1851/1852/1856 editor
+digest above.
+
+| Element | Locator | Source | Notes |
+|---|---|---|---|
+| Discard Warning dialog | `artifacts-preview-discard-warning-dialog` | `DiscardButton.jsx`'s own `Modal.BaseModal`, wired at `PreviewHeader.jsx` | **added this run**, EliteaAI/EliteaUI@d0b8a0c2 (`automation/testids`, human cherry-pick pending) |
+| Discard Warning title | `artifacts-preview-discard-warning-title` | same | text exactly `Warning` |
+| Discard Warning icon | `artifacts-preview-discard-warning-icon` | same | `titleIconTestId` pass-through **added to `DiscardButton.jsx` this run** |
+| Discard Warning X | `artifacts-preview-discard-warning-close-button` | same | `closeButtonTestId` pass-through added this run |
+| Discard Warning Cancel | `artifacts-preview-discard-warning-cancel-button` | same | `cancelButtonTestId` pass-through added this run |
+| Discard Warning Discard (confirm) | `artifacts-preview-discard-warning-confirm-button` | same | label `Discard` (`WARNING_BUTTONS.DISCARD`) |
+| X-close unsaved-changes dialog message | `alert-dialog-content` | `src/components/AlertDialog.jsx` (shared, generic) | **pre-existing** — already a `LocatorDescriptor` in `secrets_page.py`; message `You are editing now. Do you want to discard current changes and continue?` |
+| X-close unsaved-changes Confirm | `alert-dialog-confirm-button` | same | label `Confirm` (AlertDialog default) |
+
+**The header Discard button ALWAYS raises a modal — it never discards
+directly.** `Button.DiscardButton` is a shared component with its own built-in
+`Modal.BaseModal` (title `Warning`, message
+`ModalConstants.WARNING_MESSAGES.DISCARD_CHANGES` =
+`Are you sure you want to discard changes?`, Cancel + `Discard` buttons).
+Confirming calls the caller's `onDiscard` — in Artifacts that is
+`handleDiscard`, a pure `setEditedContent('')` state reset: **no network
+request, no toast**. The editor stays open and Save/Discard return to
+*disabled*. Verified live 2026-08-23.
+
+**The editor's X ALSO gates on unsaved changes — via a DIFFERENT dialog.**
+`FilePreviewCanvas`'s `handleClose` → `if (hasChanges) setShowUnsavedChangesAlert(true)`.
+Different component (`AlertDialog`, not `Modal.BaseModal`), different message,
+different testids (the generic `alert-dialog-*` pair). Do not confuse the two
+modals: they can both be raised from the same editor session.
+`ArtifactsPage.close_file_preview()` is **NOT** usable when the editor is
+dirty — it waits for the close button to hide, which never happens while the
+dialog is up. ELITEA-1855's case text omits this dialog entirely — filed as
+`EliteaAI/elitea-testing-public#1687`.
+
+**Race worth knowing (cost ~2 probe runs, 2026-08-23):** `useCodeMirror`
+(`src/[fsd]/shared/lib/hooks/useCodeMirror.hooks.js`) debounces
+`notifyChange` by **30 ms**, so the parent's `hasChanges` / `hasUnsavedChanges`
+**lag the typed DOM text**. A first analysis run typed into the editor and
+clicked X immediately — the editor closed with **no** warning dialog, because
+the parent still believed it was clean. **Always wait on
+`is_file_preview_save_enabled()` / `is_file_preview_discard_enabled()` after
+typing** (a real product-state condition wait, not a sleep) before asserting
+anything that depends on the dirty state. With that guard the dialog appeared
+3/3 across two sessions, including immediately after a discard cycle.
+
+**How the revert actually reaches CodeMirror.** `PreviewContent.jsx` passes
+`value={fileContent}` (the ORIGINAL, never `contentToDisplay`) to
+`Field.CodeMirrorEditor`. `useCodeMirror`'s effect compares
+`value !== lastNotifiedValueRef.current`; after a discard resets
+`editedContent`, that ref still holds the *edited* text, so the effect fires
+`setCode(fileContent)` and the DOM reverts. Practical consequence: after a
+discard, the editor content is byte-equal to the originally loaded content —
+safe to assert with strict equality, which is exactly what ELITEA-1853 does.
+
+**Resolved/added during ELITEA-1853/1854/1855 implementation (2026-08-23):**
+the discard revert **lags the modal close**. `confirm_file_preview_discard()`
+returns as soon as the Warning modal is hidden, but the editor text is
+restored one React state round-trip later (parent resets `editedContent` →
+`useCodeMirror`'s effect calls `setCode(fileContent)`). A one-shot
+`get_file_preview_content_text()` taken at that moment still returns the
+EDITED text — the single rerun this unit needed. Assert the reverted content
+with a web-first, auto-retrying assertion
+(`expect(file_preview_code_content).not_to_contain_text(...)`) and only then
+read the text for byte-equality. Same shape applies to any future assertion
+on post-discard editor state. New page-object methods covering these flows:
+`click_file_preview_discard`, `confirm_file_preview_discard`,
+`cancel_file_preview_discard`, `click_file_preview_close_with_unsaved_changes`,
+`confirm_close_with_unsaved_changes` (`automation/pages/artifacts_page.py`).
+
+## Markdown Preview↔Raw tab switching + Raw-mode discard (ELITEA-1859/1860/1861 cluster, 2026-08-23, analyst)
+
+Extends the ELITEA-1857/1858/1862 render-mode section and the
+ELITEA-1853/1854/1855 discard section above. **Zero new testids needed for
+this cluster** — every handle already exists and was exercised live.
+
+### Behaviours confirmed live (2026-08-23, `project-background.md` in a fixture bucket)
+
+| Observable | Confirmed value |
+|---|---|
+| Toggle on open (`.md`) | `{"rendered": "true", "code": "false"}` |
+| Toggle after clicking Raw | `{"rendered": "false", "code": "true"}` |
+| Toggle after clicking Preview again | `{"rendered": "true", "code": "false"}` |
+| **Save/Discard across a full Preview→Raw→Preview round trip, no edit** | **DISABLED at every point** — never enable |
+| Line-number gutter in Raw | visible |
+| Content round-trip (Preview→Raw→Preview→Raw) | raw text **byte-equal** to the first Raw read |
+| **Toggle state after confirm-Discard while in Raw** | **stays `code=true`** — the editor does NOT snap back to Preview |
+| Save/Discard after confirm-Discard | **both DISABLED** (`hasUnsavedChanges` reset) |
+| Content after confirm-Discard | **byte-equal to the originally loaded content** |
+| Success toast after discard | none (count 0) |
+| **Toggle state after Cancel on the Warning modal** | **stays `code=true`** |
+| Save/Discard after Cancel | both **ENABLED**; content byte-equal to the post-edit baseline |
+| Console errors across all three flows | none |
+
+### The two content branches are mutually exclusive MOUNTS, not show/hide
+
+Confirmed both directions: in **Preview**, `artifacts-preview-code-content`
+has **count 0**; in **Raw**, `artifacts-preview-markdown-content` has
+**count 0**. Assert the absent branch with `to_have_count(0)`, never
+`not_to_be_visible()` on a mounted-but-hidden node.
+
+### ⚠ `get_file_preview_content_text()` has NO line separators
+
+`.cm-content`'s `text_content()` concatenates CodeMirror lines with nothing
+between them. Live sample:
+
+```
+'# Project OverviewThis is a **bold** statement about the project.## ScopeCovers the automation…'
+```
+
+So **`.splitlines()[0]` is the whole document, not line 1** — a silent trap for
+any assertion phrased as "line 1 shows X". Use either
+`to_contain_text` / `not_to_contain_text` on a string unique to the seeded
+content, or whole-content byte-equality against a captured baseline. (Cost this
+run: one confusing probe read.)
+
+### Line REPLACEMENT: `edit_file_preview_line_containing()` only APPENDS
+
+Cases that *replace* a line (ELITEA-1859/1860 swap `# Project Overview` for
+`# Modified Heading`) need a different gesture. Verified-live technique:
+
+```python
+line = file_preview_code_content.locator(CM_LINE).filter(has_text=match).first
+line.click(); page.keyboard.press("End"); page.keyboard.press("Shift+Home")
+page.keyboard.type(new_text)
+```
+
+`Shift+Home` selects to line start from `End`, so the typed text replaces the
+whole line. Worked 2/2 here. Belongs in a page-object method
+(`replace_file_preview_line_containing`) with the same `#579` docstring note
+as the appender — never inlined in a spec.
+
+### Case-text drift filed this run
+
+- `EliteaAI/elitea-testing-public#1689` — ELITEA-1859 step 8 claims Save/Discard stay
+  "active" after confirm-Discard; they correctly re-disable.
+- `EliteaAI/elitea-testing-public#1690` — ELITEA-1861 steps 3/4 claim Save/Discard
+  toggle with the Preview/Raw tab; they are gated on `hasUnsavedChanges` and stay
+  disabled throughout. Siblings of `#1108` / `#995` (same misconception on ELITEA-1851).
+
+### Playwright MCP note
+
+Went straight to a `pytest` scratch probe driving `ArtifactsPage` (per
+`.agents/memory/qa-engineer/no_playwright_mcp_use_sync_playwright_script.md`)
+rather than retrying the MCP tools — all three cases executed in one 94 s run.
+Using the suite's own fixtures (`page`, `artifact_api`, `artifact_bucket`) gives
+auth + seeding + teardown for free and exercises the exact page-object methods
+the implementer will use, which is why every handle in both AFS files is
+pre-verified rather than merely observed.
+
+### ⚠ This digest has outgrown one file (~1200 lines / 110 KB)
+
+Not split this run: units in batch `artifacts-w05` are still appending to it,
+and re-shaping it mid-batch would churn the file the implementer and reviewer
+are told to read. Recommend an index + per-subarea split between batches
+(`test-case-analysis` § When the digest outgrows one file). Flagged to the lead.
+
+**Resolved/added during ELITEA-1859/1860/1861 implementation (2026-08-23):**
+the analyst's line-REPLACEMENT technique is now a page-object method —
+`ArtifactsPage.replace_file_preview_line_containing(match_text, new_text)`
+(sibling of the append-only `edit_file_preview_line_containing`): click the
+`.cm-line` filtered by the target text → `End` → `Shift+Home` → `type()`.
+Verified working first try against `# Project Overview` on line 1. Same #579
+scoped-raw-handle discipline as its sibling (`.cm-line` under the testid'd
+`artifacts-preview-code-content` parent, declared in the docstring).
+Two more implementation-time confirmations for this surface: (a) the
+Preview/Raw branches really are mutually exclusive MOUNTS — the merged specs
+now assert `to_have_count(0)` on the inactive branch and it holds in both
+directions; (b) after BOTH Warning-modal exits (confirm and cancel) on a
+Markdown file the render-mode toggle stays on Raw — no snap-back to Preview.
+Specs: `automation/tests/ui/artifacts/test_artifacts_file_preview_markdown_raw_discard.py`,
+`.../test_artifacts_file_preview_markdown_tab_switching.py`.
+
+## Unsupported file types — no preview entry point at all (ELITEA-1863/1864 cluster, 2026-08-23, analyst)
+
+Extends the file-preview editor sections above with the `canPreview == false`
+branch, which no earlier case had exercised (every prior preview case seeds a
+previewable type).
+
+### The gate is a filename-extension WHITELIST, not a content sniff
+
+`canPreviewFile(name)` (`src/utils/filePreview.js:226`) tests the extension
+against `PREVIEWABLE_EXTENSIONS`. `docx` **is** on the list; `xlsx`, `xls`,
+`zip`, `pdf` are **not**. Consequences, all confirmed live in one probe run
+(fresh bucket, `top-5-soccer-players.xlsx` + `new-file-storage.zip`):
+
+| Observable | `.xlsx` | `.zip` |
+|---|---|---|
+| `artifacts-file-preview-button-{name}` visible (no hover) | **absent (0)** | **absent (0)** |
+| …after hovering the row | still absent | still absent |
+| Row 3-dot dropdown labels | `["Download", "Delete"]` | `["Download", "Delete"]` |
+| Row type / size cells | `Excel Spreadsheet` / `221 B` | `ZIP Archive` / `320 B` |
+
+**So an unsupported file has NO in-app path to the preview panel** — not the row
+icon (`ArtifactRowActions.jsx` gates on `row.canPreview`), and not
+`ActionsMenu.jsx`'s "Preview file" item either (`PREVIEW_TYPES.EMPTY` → renders
+`null`). ELITEA-1863's steps 2–4 assume the opposite; filed
+`EliteaAI/elitea-testing-public#1692`.
+
+### The panel IS reachable via the product's own preview URL route
+
+`/artifacts?bucket=<b>&file=<key>` — the exact params `Artifacts.jsx` writes on
+every preview open, restored by its URL-restore effect (`Artifacts.jsx:545-570`)
+**without** consulting `canPreview`. Deep-linked, both file types render the
+identical unsupported state:
+
+| Element | Live value |
+|---|---|
+| `artifacts-preview-file-path` | `<bucket>/<filename>` |
+| heading | `Preview Not Available` |
+| message | `Preview is not supported for this file type.` |
+| description | `Supported formats: txt, md, json, js, ts, py, java, …` |
+| Download button | present, works (bytes arrive intact) |
+| `artifacts-preview-save-button` / `-discard-button` | **count 0 — structurally ABSENT**, not disabled (`PreviewHeader.jsx` wraps both in `{canPreview && …}`). Contrast images (ELITEA-1862): present-but-disabled. Filed `EliteaAI/elitea-testing-public#1693`. |
+| `artifacts-preview-mode-toggle-group` | count 0 |
+| `artifacts-preview-close-button` / `file-preview-overflow-menu-menu-button` | present (1 each) |
+| Content fetch | **none** — `useArtifactContentFetch` returns early when `canPreview` is false. Don't wait on a content response; wait on the panel's own elements. |
+| Console errors | none |
+
+`open_file_in_editor()` is **NOT usable** for this branch — it waits on the Save
+button, which never renders. A new `navigate_to_file_preview(bucket, file_key)`
+page-object method (waiting on `artifacts-preview-close-button`, present in both
+branches) is specced in ELITEA-1863's AFS.
+
+### Testids needed (5, all attribute-only on existing nodes)
+
+`PreviewUnavailable.jsx` carries **zero** testids today:
+`artifacts-preview-unavailable-icon` / `-title` / `-message` / `-formats` /
+`-download-button`. `Box` and `Button.BaseBtn` both spread props, so all five are
+pure passthroughs — no wrapper elements, no hooks.
+
+### Size/type cell literals are cheap to pin
+
+`formatFileSize` is base-1024 with one decimal (`filePreview.js:719`), so seeding
+exactly **235_520 bytes** makes the row read the case's literal `230.0 KB`. Type
+labels come from `src/utils/fileTypes.js` (`zip → ZIP Archive`,
+`xlsx → Excel Spreadsheet`).
+
+### Probe note
+
+One `pytest` scratch probe using the suite's own fixtures (`page`,
+`artifact_api`, `artifact_bucket`) executed BOTH cases end-to-end in a single
+104 s run — MCP browser not needed (same approach as the ELITEA-1859/1860/1861
+session). The probe file was deleted after the run; screenshots kept at
+`test-results/screenshots/ELITEA-186{3,4}-*-deeplink.png` and uploaded to the
+`evidence` release.
+
+**Resolved/added during ELITEA-1863/1864 implementation (2026-08-23, implementer):**
+every analyst claim in this section held on first run — 2/2 green, zero reruns,
+no rework. Concretely landed:
+
+- **The 5 testids now exist** on `automation/testids`:
+  EliteaAI/EliteaUI@c45f2d16 adds `artifacts-preview-unavailable-icon` /
+  `-title` / `-message` / `-formats` / `-download-button` to
+  `PreviewUnavailable.jsx` — 5 attribute-only lines, 0 removals, 0 new DOM
+  nodes, 0 hooks (Step-5.5 greps clean). **Not yet on `main`** — awaiting the
+  human cherry-pick.
+- **`ArtifactsPage.navigate_to_file_preview(bucket, file_key)`** is implemented
+  as specced: `?bucket=&file=` (file_key URL-quoted), the same `#638`
+  bucket-param re-check guard as its two siblings, waiting on
+  `artifacts-preview-close-button`. Confirmed live: the panel restores from the
+  URL for a non-previewable type with no content fetch and no console errors.
+- **Two new dynamic-testid locator accessors** were needed and added, because
+  specs may not build locators: `get_file_preview_button(filename)` and
+  `get_file_actions_menu_button(filename)` (same `get_file_row` shape, built
+  from the existing `ARTIFACT_FILE_PREVIEW_BUTTON` / `ARTIFACT_ACTIONS_MENU_BUTTON`
+  class constants). Prefer these + `expect(...).to_have_count(0)` over
+  `is_file_preview_button_visible() is False` for absence — the web-first
+  assertion auto-retries.
+- **`click_preview_unavailable_download()`** wraps the panel's centred Download
+  in `expect_download`; it drives the same `handleDownload` as the dropdown
+  item, and the bytes arrive byte-identical to the seeded payload.
+- **Size-literal seeding works exactly as documented:** 235_520 bytes renders
+  `230.0 KB`; a sub-KiB payload renders a bare `<n> B`. Both asserted as row-text
+  substrings via `get_file_row_text()`.
+- Specs: `automation/tests/ui/artifacts/test_artifacts_file_preview_unsupported_xlsx.py`,
+  `.../test_artifacts_file_preview_unsupported_zip_row_actions.py`.
+
+## ⚠ ELITEA-1865 is NOT an artifacts case — Context Management lives elsewhere (2026-08-23, analyst)
+
+**Do not re-explore this.** TMS case ELITEA-1865 ("File Preview/Edit – Context
+Management Settings Panel Opens for Supported File", module `artifacts`) claims
+that opening a supported file from a bucket shows a **Context Management
+settings panel** (toggle, Context Window, Max Tokens, Content-Strategy section,
+Summarization section, External Messages, Custom Instructions, Cancel/Save).
+**It does not exist on the Artifacts surface.** Returned `blocked`; clarification
+filed `EliteaAI/elitea-testing-public#1695` (`question` + `case-text-drift`).
+
+Live probe (fresh bucket + `1.png`, row preview icon, 2026-08-23) — the panel
+rendered exactly the known image-branch shape and **zero** of the case's labels:
+
+```
+PANEL_TEXT='<bucket>/1.png\nSave\nDiscard'
+save/discard/close/3-dot: count=1 each · mode-toggle-group / language-select / code-editor: count=0
+'Context Management' 0 · 'Context Window' 0 · 'Max Context Tokens' 0 · 'Max Tokens' 0
+'Context Strategy' 0 · 'Preserve Recent Messages' 0 · 'Summarization' 0
+'External Messages' 0 · 'Custom Instructions' 0 · CONSOLE_ERRORS=[]
+```
+
+**The panel's real home** is the `context-budget` widget —
+`src/[fsd]/widgets/context-budget/ui/ContextStrategyModalContent.jsx`
+(`label="Context Management"` :130, `title="Context Strategy & Token Management"`
+:158 — the case's "**Content** Strategy" is a typo, Cancel/Save :218,226), with
+fields in `ContextStrategyTokenManagement.jsx` / `ContextStrategySummarization.jsx`
+/ `ContextStrategySystemMessages.jsx`. `ContextBudgetUI` is consumed ONLY by
+Chat participants (`Participants.jsx:6`), Pipelines ChatPanel (`ChatPanel.jsx:9`)
+and Applications ConfigurationTab (`ConfigurationTab.jsx:15`). A near-identical
+Settings → Memory form (`src/[fsd]/features/settings/ui/memory/`) is already
+covered by **ELITEA-2374**
+(`test-specs/settings-user-profile/l3_context-management-toggle-enables-disables-fields_ELITEA-2374.md`).
+
+Three case labels match **nothing** in EliteaUI source at all: "Context Window",
+"Summarized Link Count", "Attribute: Clause & Format". Two more ("Summary Model",
+"Summary Trigger Ratio") are behind a hidden feature toggle even on the real surface.
+
+### Reusable facts confirmed by this probe
+- The Artifacts preview panel's button pair is **Save + Discard** — there is
+  **no Cancel button** on this surface. Any artifacts case-text saying "Cancel"
+  for the preview panel is drifted.
+- `PANEL_TEXT` for an image file is exactly `"<bucket>/<file>\nSave\nDiscard"` —
+  a cheap whole-panel oracle for "nothing unexpected rendered".
+- `ArtifactsPage.open_file_in_editor()` + the `artifacts-preview-*` testids all
+  still resolve as documented above (re-verified 2026-08-23).
+- `#636` bucket-teardown 404 hit again, 2/2 probe runs.
+
+## Confirmed handles (as of ELITEA-2491 bucket-menu-by-project-type, 2026-08-23)
+
+Bucket dot-menu **composition changes with the project type** — the surface behind
+the "Manage access / Manage permissions" case family.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Project selector trigger | `project-selector-trigger-combobox` (`BasePage.project_selector_trigger`) | `SidebarProjectSelect.jsx` | on `main`; `BasePage.switch_project(id)` drives it |
+| Project option | `select-option-{project_id}` (`BasePage.SELECT_OPTION`) | shared `ProjectSelect` | live options for `${TEST_USER}`: `399` Private · `406` Bugs & Features · `25` Elitea Development · `471` Elitea Testing Team · `400` UI Testing |
+| Bucket dot-menu "Manage permissions" item | **testid needed: `bucket-menu-manage-permissions-menuitem`** | `BucketItem.jsx` `menuItems` — the entry has **no `key`**, so `DotMenu.jsx:422` (`testId: item.key`) emits nothing | fix = add `key: 'bucket-menu-manage-permissions'`, exactly the ELITEA-1820 pin-item shape |
+| Bucket dot-menu "Share" item | untagged, deliberately (canon #511 — no test calls it yet) | same array | same `isPersonalProject` gate as Manage permissions |
+
+### Menu composition by project type — settled live (2026-08-23)
+- **Private / personal project (399):** `Upload filesRenamePin to topDelete` — 4 items.
+  `Share` and `Manage permissions` are **filtered out before render**
+  (`display: isPersonalProject ? 'none' : undefined` + the array's own `.filter`), so
+  an absence assertion is `to_have_count(0)`, not a visibility check.
+- **Team project (471):** `Upload filesRenamePin to topShareManage permissions` —
+  **5 items, no `Delete`.** `canDelete = isPrivate || checkPermission(artifacts.delete)`
+  and `${TEST_USER}` has no delete permission there. **Never assert a fixed Team-menu
+  item count** (the ELITEA-1820 digest note predicting "6 items in a TEAM project" is
+  permission-dependent and was not what rendered) — assert the specific item.
+- **The only gate on Share / Manage permissions is `isPersonalProject`** — there is no
+  `isPublic` branch in `BucketItem.jsx`. So in the **Public** project the item would
+  render, contradicting ELITEA-2491's expectation (static reading; see below).
+- `Escape` reliably closes the bucket dot-menu in both projects.
+- The live label is **`Manage permissions`**; "Manage access" appears nowhere in
+  `EliteaUI/src` (only the internal `handleManageAccessClick` handler).
+  Clarification `EliteaAI/elitea-testing-public#1698`.
+
+### The Public project (id 1) is NOT reachable by `${TEST_USER}` (2026-08-23)
+- `useProjectType.hooks.js`: `isPublic = projectId === PUBLIC_PROJECT_ID`;
+  `PUBLIC_PROJECT_ID` is **1**, visible in the selector's feed request
+  `GET /api/v2/projects/project/default/1?check_public_role=true`.
+- That response lists only `400, 471, 25, 399, 406` — **project 1 is absent** (no public
+  role), and the selector renders exactly those 5.
+- Project selection is redux + `localStorage`/`sessionStorage` only; forcing the stored
+  id to `1` and reloading **did not switch** (stayed on Private, requests still
+  `?project_id=399`). There is no honest route into the Public project — any case with a
+  Public-project step is `blocked` until a human provisions access.
+  Clarification `EliteaAI/elitea-testing-public#1699`.
+
+## Confirmed handles (as of ELITEA-2492 manage-permissions empty state, 2026-08-23)
+
+The **Manage Permissions modal** (`src/[fsd]/features/artifacts/ui/bucket-access/`) — reached from
+the bucket dot-menu's `Manage permissions` item (Team projects only, see the ELITEA-2491 section
+above).
+
+### What the modal renders (live, project 471, bucket with 0 exceptions)
+```
+Manage Permissions
+Default Permissions
+All users have read/write permissions by default.
+Exceptions – 0                <-- EN DASH U+2013, not a hyphen
+No exceptions added yet
+All users have read/write permissions by default.
+Add Exceptions
+```
+
+### Testid reality
+- **The only testid in the whole modal today is `credential-warning-banner`** (shared
+  `credential-warning` banner, carries the default-permissions sentence as inner text *and* as
+  `aria-label`). Usable as-is when scoped inside the dialog — no UI change needed.
+- Everything else — dialog, section labels, `Exceptions – N` header, empty-state icon/title/
+  subtitle, `Add Exceptions` CTA, the Add/Edit dialogs, the exceptions table — is **untagged**.
+  Full needs-adding list with file/line pointers:
+  `test-specs/artifacts/l3_manage-permissions-empty-state-and-add-exception_ELITEA-2492.md`
+  § Concrete Handles.
+- **Good news for the implementer:** the table/grid plumbing already accepts testid props —
+  `GridTableHeader` (`columnTestIdPrefix` → `{prefix}-column-header-{field}`,
+  `selectAllCheckboxTestId`), `GridTableRow` (`data-testid`, `checkboxTestId`,
+  `dataCellTestIdPrefix` → `{prefix}-column-value-{field}`), `Modal.BaseModal` (`data-testid`,
+  `titleTestId`, `closeButtonTestId`), `SingleSelect` (`data-testid` → also emits `…-combobox`).
+  Only the **call sites** in `BucketAccessTable.jsx` / the two dialogs pass nothing.
+- Permission `<SingleSelect>` options ARE pre-tagged: `select-option-read` (`Read-only`),
+  `select-option-no_access` (`No access`), `select-option-read_write` (`Read/write (default)`).
+  The **Add** dialog offers only the first two; `Read/write (default)` exists only in **Edit**,
+  where selecting it is what **removes** the exception (`isRemoval = permission === READ_WRITE`).
+  There is no Delete affordance in the table — only `Edit exception` (row) and `Edit selected` (bulk).
+
+### The write path is BLOCKED for `${TEST_USER}` (2026-08-23)
+Every bucket-permission **write** returns `403` for the acting user, in every Team project reachable:
+- `POST /api/v2/artifacts/s3_credentials/default/471` → 403 (creating a credential for another user)
+- `PUT  /api/v2/artifacts/bucket_permissions/default/406` → 403 (updating an existing one)
+- project 400 `UI Testing` has **no buckets**; project 399 is personal (no menu item).
+Reads (`GET bucket_permissions/default/<id>`) are 200, so display-only cases are fine.
+Clarification `EliteaAI/elitea-testing-public#1701`. **Knock-on:** the merged
+`tests/ui/artifacts/test_bucket_permissions_api.py` (ELITEA-2493/2494) uses this write path as its
+setup *and* needs `TEST_USER_B_EMAIL`, which is **unset** in this machine's `.env.test` — expect it
+to be unrunnable here.
+
+### Product bug to keep in mind when reading this modal — `#1700`
+A **failed** save still renders the exception: the empty state is replaced, `Exceptions – N`
+increments, the row shows the chosen permission — while a `Failed to update access` toast fires.
+`handleAccessChange` swallows the error (catch → toast, no re-throw), so `handleAddConfirm`'s
+`Promise.allSettled` never sees a rejection and the optimistic-row rollback never runs. Re-opening
+the modal reveals the truth. **Therefore `Exceptions – N` is not an oracle for "the write
+succeeded"** — verify persistence by re-opening the modal.
+
+### Cheap navigation facts
+- `Exceptions – 0` buckets are NOT the norm in a busy project: in 406 the first three buckets had
+  2 / 4 / 7 exceptions. Resolve an empty one at run time; never take "the first bucket".
+- The Users dropdown lists project members minus those who already have an exception
+  (16 options in 471, 32 in 406) and carries **no** testids on the options.
+- Opening the Users dropdown emits a React console warning
+  (`Invalid value for prop sx on <svg>`, from `UserSearchSelect`'s checked icon) — expected noise,
+  filter it.
