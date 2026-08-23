@@ -49,3 +49,5 @@
 - [Testid grep "no" on shared/ternary components is untrustworthy](testid_promotability_grep_misses_multiline_ternary_composed_values.md) — confirm via file-diff (2×)
 - [Before ANY commit on the shared clone, check current branch first](campaign_doc_edit_lost_during_concurrent_workflow_subagent_git_ops.md) — a Workflow may have switched it (2×)
 - [Synthetic input events produce false product bugs](synthetic_input_events_produce_false_bugs.md) — re-drive with real fill/type before filing "control never works"
+- [The workflow's gate verdict is not your merge gate](workflow_gate_verdict_is_not_the_merge_gate.md) — read gate.failures[], not verdict; sanctioned-RED needs identical 3/3
+- [Artifacts area backlog (#1392)](artifacts_area_backlog_1392.md) — 63/73 automated; the 8 leftovers are human-decision blocks (multi-user needs a deployed env)
