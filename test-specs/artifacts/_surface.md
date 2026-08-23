@@ -1199,3 +1199,90 @@ on post-discard editor state. New page-object methods covering these flows:
 `click_file_preview_discard`, `confirm_file_preview_discard`,
 `cancel_file_preview_discard`, `click_file_preview_close_with_unsaved_changes`,
 `confirm_close_with_unsaved_changes` (`automation/pages/artifacts_page.py`).
+
+## Markdown Preview↔Raw tab switching + Raw-mode discard (ELITEA-1859/1860/1861 cluster, 2026-08-23, analyst)
+
+Extends the ELITEA-1857/1858/1862 render-mode section and the
+ELITEA-1853/1854/1855 discard section above. **Zero new testids needed for
+this cluster** — every handle already exists and was exercised live.
+
+### Behaviours confirmed live (2026-08-23, `project-background.md` in a fixture bucket)
+
+| Observable | Confirmed value |
+|---|---|
+| Toggle on open (`.md`) | `{"rendered": "true", "code": "false"}` |
+| Toggle after clicking Raw | `{"rendered": "false", "code": "true"}` |
+| Toggle after clicking Preview again | `{"rendered": "true", "code": "false"}` |
+| **Save/Discard across a full Preview→Raw→Preview round trip, no edit** | **DISABLED at every point** — never enable |
+| Line-number gutter in Raw | visible |
+| Content round-trip (Preview→Raw→Preview→Raw) | raw text **byte-equal** to the first Raw read |
+| **Toggle state after confirm-Discard while in Raw** | **stays `code=true`** — the editor does NOT snap back to Preview |
+| Save/Discard after confirm-Discard | **both DISABLED** (`hasUnsavedChanges` reset) |
+| Content after confirm-Discard | **byte-equal to the originally loaded content** |
+| Success toast after discard | none (count 0) |
+| **Toggle state after Cancel on the Warning modal** | **stays `code=true`** |
+| Save/Discard after Cancel | both **ENABLED**; content byte-equal to the post-edit baseline |
+| Console errors across all three flows | none |
+
+### The two content branches are mutually exclusive MOUNTS, not show/hide
+
+Confirmed both directions: in **Preview**, `artifacts-preview-code-content`
+has **count 0**; in **Raw**, `artifacts-preview-markdown-content` has
+**count 0**. Assert the absent branch with `to_have_count(0)`, never
+`not_to_be_visible()` on a mounted-but-hidden node.
+
+### ⚠ `get_file_preview_content_text()` has NO line separators
+
+`.cm-content`'s `text_content()` concatenates CodeMirror lines with nothing
+between them. Live sample:
+
+```
+'# Project OverviewThis is a **bold** statement about the project.## ScopeCovers the automation…'
+```
+
+So **`.splitlines()[0]` is the whole document, not line 1** — a silent trap for
+any assertion phrased as "line 1 shows X". Use either
+`to_contain_text` / `not_to_contain_text` on a string unique to the seeded
+content, or whole-content byte-equality against a captured baseline. (Cost this
+run: one confusing probe read.)
+
+### Line REPLACEMENT: `edit_file_preview_line_containing()` only APPENDS
+
+Cases that *replace* a line (ELITEA-1859/1860 swap `# Project Overview` for
+`# Modified Heading`) need a different gesture. Verified-live technique:
+
+```python
+line = file_preview_code_content.locator(CM_LINE).filter(has_text=match).first
+line.click(); page.keyboard.press("End"); page.keyboard.press("Shift+Home")
+page.keyboard.type(new_text)
+```
+
+`Shift+Home` selects to line start from `End`, so the typed text replaces the
+whole line. Worked 2/2 here. Belongs in a page-object method
+(`replace_file_preview_line_containing`) with the same `#579` docstring note
+as the appender — never inlined in a spec.
+
+### Case-text drift filed this run
+
+- `EliteaAI/elitea-testing-public#1689` — ELITEA-1859 step 8 claims Save/Discard stay
+  "active" after confirm-Discard; they correctly re-disable.
+- `EliteaAI/elitea-testing-public#1690` — ELITEA-1861 steps 3/4 claim Save/Discard
+  toggle with the Preview/Raw tab; they are gated on `hasUnsavedChanges` and stay
+  disabled throughout. Siblings of `#1108` / `#995` (same misconception on ELITEA-1851).
+
+### Playwright MCP note
+
+Went straight to a `pytest` scratch probe driving `ArtifactsPage` (per
+`.agents/memory/qa-engineer/no_playwright_mcp_use_sync_playwright_script.md`)
+rather than retrying the MCP tools — all three cases executed in one 94 s run.
+Using the suite's own fixtures (`page`, `artifact_api`, `artifact_bucket`) gives
+auth + seeding + teardown for free and exercises the exact page-object methods
+the implementer will use, which is why every handle in both AFS files is
+pre-verified rather than merely observed.
+
+### ⚠ This digest has outgrown one file (~1200 lines / 110 KB)
+
+Not split this run: units in batch `artifacts-w05` are still appending to it,
+and re-shaping it mid-batch would churn the file the implementer and reviewer
+are told to read. Recommend an index + per-subarea split between batches
+(`test-case-analysis` § When the digest outgrows one file). Flagged to the lead.
