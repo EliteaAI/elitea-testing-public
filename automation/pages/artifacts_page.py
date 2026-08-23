@@ -789,6 +789,88 @@ class ArtifactsPage(BasePage):
         ":attr:`file_preview_save_button`.",
     )
 
+    # ------------------------------------------------------------------
+    # File preview/edit — unsaved-changes exit paths (ELITEA-1853/1854/1855)
+    #
+    # TWO DISTINCT modals guard unsaved changes on this surface — do not
+    # conflate them:
+    #   * the header **Discard** button raises `Button.DiscardButton`'s own
+    #     built-in `Modal.BaseModal` (the `artifacts-preview-discard-warning-*`
+    #     family below), message "Are you sure you want to discard changes?";
+    #   * the header **X (close)** button raises `FilePreviewCanvas`'s separate
+    #     `AlertDialog` (the generic `alert-dialog-*` pair below), message
+    #     "You are editing now. Do you want to discard current changes and
+    #     continue?".
+    # Both can be raised from the same editor session.
+    # ------------------------------------------------------------------
+
+    file_preview_discard_warning_dialog = LocatorDescriptor(
+        testid="artifacts-preview-discard-warning-dialog",
+        description="Root of the Warning modal the header Discard button "
+        "raises (ELITEA-1853 — new testid, implementer). The modal lives "
+        "inside the SHARED `Button.DiscardButton` component, which owns its "
+        "own `Modal.BaseModal`; the Artifacts call site (PreviewHeader.jsx) "
+        "supplies the feature-scoped value through the component's "
+        "caller-supplied testId props. The header Discard button NEVER "
+        "discards directly — it always raises this modal first.",
+    )
+
+    file_preview_discard_warning_title = LocatorDescriptor(
+        testid="artifacts-preview-discard-warning-title",
+        description="Title row of the Discard Warning modal (ELITEA-1853 — "
+        "new testid, implementer). Text is exactly 'Warning'. Wraps the "
+        "warning icon plus the title Typography.",
+    )
+
+    file_preview_discard_warning_icon = LocatorDescriptor(
+        testid="artifacts-preview-discard-warning-icon",
+        description="Warning icon inside the Discard Warning modal's title "
+        "(ELITEA-1853 — new testid, implementer; `titleIconTestId` "
+        "pass-through added to the shared DiscardButton this run).",
+    )
+
+    file_preview_discard_warning_close_button = LocatorDescriptor(
+        testid="artifacts-preview-discard-warning-close-button",
+        description="X (close) icon of the Discard Warning modal "
+        "(ELITEA-1853 — new testid, implementer). Asserted present by "
+        "ELITEA-1853's element-inventory step; distinct from "
+        ":attr:`file_preview_close_button`, which closes the whole editor.",
+    )
+
+    file_preview_discard_warning_cancel_button = LocatorDescriptor(
+        testid="artifacts-preview-discard-warning-cancel-button",
+        description="'Cancel' button of the Discard Warning modal "
+        "(ELITEA-1854 — new testid, implementer). Dismisses the modal and "
+        "leaves the unsaved edit intact.",
+    )
+
+    file_preview_discard_warning_confirm_button = LocatorDescriptor(
+        testid="artifacts-preview-discard-warning-confirm-button",
+        description="'Discard' (confirm) button of the Discard Warning modal "
+        "(ELITEA-1853 — new testid, implementer). Label comes from "
+        "`ModalConstants.WARNING_BUTTONS.DISCARD`. Confirming resets the "
+        "editor's edited content — a pure client-side state reset, no "
+        "network request and no toast.",
+    )
+
+    unsaved_changes_alert_content = LocatorDescriptor(
+        testid="alert-dialog-content",
+        description="Message body of the unsaved-changes Warning dialog the "
+        "editor's X (close) button raises when the editor is dirty "
+        "(ELITEA-1855). PRE-EXISTING generic testid on the shared "
+        "`src/components/AlertDialog.jsx` — correctly generic (a shared "
+        "component never hardcodes a feature-scoped testid), and already "
+        "used the same way by `secrets_page.py`. Live text: 'You are editing "
+        "now. Do you want to discard current changes and continue?'.",
+    )
+
+    unsaved_changes_alert_confirm_button = LocatorDescriptor(
+        testid="alert-dialog-confirm-button",
+        description="'Confirm' button of the unsaved-changes Warning dialog "
+        "(ELITEA-1855). PRE-EXISTING generic testid on the shared "
+        "AlertDialog; confirming discards the edit and closes the editor.",
+    )
+
     file_preview_overflow_menu_button = LocatorDescriptor(
         testid="file-preview-overflow-menu-menu-button",
         description="3-dot (ellipsis) actions-menu trigger in the editor "
@@ -4094,6 +4176,76 @@ class ArtifactsPage(BasePage):
             return False
 
     @action("Edit file preview content")
+    @action("Open the Discard warning modal")
+    def click_file_preview_discard(self, timeout: int = 10000) -> None:
+        """Click the editor header's Discard button and wait for its Warning modal.
+
+        The header Discard button never discards directly — the shared
+        ``Button.DiscardButton`` always raises its own confirmation modal
+        first (confirmed live, ELITEA-1853). This method therefore returns
+        only once that modal is visible.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.file_preview_discard_button.click()
+        self.file_preview_discard_warning_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Discard warning modal opened")
+
+    @action("Confirm the Discard warning modal")
+    def confirm_file_preview_discard(self, timeout: int = 10000) -> None:
+        """Click 'Discard' in the Warning modal and wait for it to close.
+
+        Confirming resets the editor's edited content client-side — there is
+        no network request and no toast to wait on, so the modal's own
+        disappearance is the completion signal.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.file_preview_discard_warning_confirm_button.click()
+        self.file_preview_discard_warning_dialog.wait_for(state="hidden", timeout=timeout)
+        logger.info("Discard confirmed")
+
+    @action("Cancel the Discard warning modal")
+    def cancel_file_preview_discard(self, timeout: int = 10000) -> None:
+        """Click 'Cancel' in the Warning modal and wait for it to close.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.file_preview_discard_warning_cancel_button.click()
+        self.file_preview_discard_warning_dialog.wait_for(state="hidden", timeout=timeout)
+        logger.info("Discard cancelled")
+
+    @action("Close the editor with unsaved changes")
+    def click_file_preview_close_with_unsaved_changes(self, timeout: int = 10000) -> None:
+        """Click the editor's X and wait for the unsaved-changes Warning dialog.
+
+        Separate from :meth:`close_file_preview`, which waits for the close
+        button to DISAPPEAR — that never happens while the editor is dirty,
+        because ``FilePreviewCanvas.handleClose`` raises a confirmation
+        dialog instead of closing (ELITEA-1855; the case text omits this
+        step — EliteaAI/elitea-testing-public#1687).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.file_preview_close_button.click()
+        self.unsaved_changes_alert_content.wait_for(state="visible", timeout=timeout)
+        logger.info("Unsaved-changes warning dialog opened")
+
+    @action("Confirm closing the editor with unsaved changes")
+    def confirm_close_with_unsaved_changes(self, timeout: int = 10000) -> None:
+        """Confirm the unsaved-changes dialog and wait for the editor to close.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.unsaved_changes_alert_confirm_button.click()
+        self.file_preview_save_button.wait_for(state="detached", timeout=timeout)
+        logger.info("Editor closed, unsaved changes discarded")
+
     def edit_file_preview_content(
         self, text: str, line_index: int = 0, timeout: int = 10000
     ) -> None:
