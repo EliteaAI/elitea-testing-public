@@ -1126,3 +1126,331 @@ effect, so it belongs in this digest alongside the Artifacts panel. Complements 
 (cookie auth, works from page context) returns the full bucket list — a stronger oracle than the
 virtualized, slow DOM panel. Note `/api/v2/…` endpoints are **not** callable from page-context
 `fetch` (Bearer required) — they 'Failed to fetch'.
+
+## Confirmed handles (as of ELITEA-1853/1854/1855 discard/close cluster, 2026-08-23)
+
+Unsaved-changes **exit paths** on the file-preview editor — the header
+**Discard** button's Warning modal, and the **X (close)** button's separate
+unsaved-changes Warning dialog. Extends the ELITEA-1851/1852/1856 editor
+digest above.
+
+| Element | Locator | Source | Notes |
+|---|---|---|---|
+| Discard Warning dialog | `artifacts-preview-discard-warning-dialog` | `DiscardButton.jsx`'s own `Modal.BaseModal`, wired at `PreviewHeader.jsx` | **added this run**, EliteaAI/EliteaUI@d0b8a0c2 (`automation/testids`, human cherry-pick pending) |
+| Discard Warning title | `artifacts-preview-discard-warning-title` | same | text exactly `Warning` |
+| Discard Warning icon | `artifacts-preview-discard-warning-icon` | same | `titleIconTestId` pass-through **added to `DiscardButton.jsx` this run** |
+| Discard Warning X | `artifacts-preview-discard-warning-close-button` | same | `closeButtonTestId` pass-through added this run |
+| Discard Warning Cancel | `artifacts-preview-discard-warning-cancel-button` | same | `cancelButtonTestId` pass-through added this run |
+| Discard Warning Discard (confirm) | `artifacts-preview-discard-warning-confirm-button` | same | label `Discard` (`WARNING_BUTTONS.DISCARD`) |
+| X-close unsaved-changes dialog message | `alert-dialog-content` | `src/components/AlertDialog.jsx` (shared, generic) | **pre-existing** — already a `LocatorDescriptor` in `secrets_page.py`; message `You are editing now. Do you want to discard current changes and continue?` |
+| X-close unsaved-changes Confirm | `alert-dialog-confirm-button` | same | label `Confirm` (AlertDialog default) |
+
+**The header Discard button ALWAYS raises a modal — it never discards
+directly.** `Button.DiscardButton` is a shared component with its own built-in
+`Modal.BaseModal` (title `Warning`, message
+`ModalConstants.WARNING_MESSAGES.DISCARD_CHANGES` =
+`Are you sure you want to discard changes?`, Cancel + `Discard` buttons).
+Confirming calls the caller's `onDiscard` — in Artifacts that is
+`handleDiscard`, a pure `setEditedContent('')` state reset: **no network
+request, no toast**. The editor stays open and Save/Discard return to
+*disabled*. Verified live 2026-08-23.
+
+**The editor's X ALSO gates on unsaved changes — via a DIFFERENT dialog.**
+`FilePreviewCanvas`'s `handleClose` → `if (hasChanges) setShowUnsavedChangesAlert(true)`.
+Different component (`AlertDialog`, not `Modal.BaseModal`), different message,
+different testids (the generic `alert-dialog-*` pair). Do not confuse the two
+modals: they can both be raised from the same editor session.
+`ArtifactsPage.close_file_preview()` is **NOT** usable when the editor is
+dirty — it waits for the close button to hide, which never happens while the
+dialog is up. ELITEA-1855's case text omits this dialog entirely — filed as
+`EliteaAI/elitea-testing-public#1687`.
+
+**Race worth knowing (cost ~2 probe runs, 2026-08-23):** `useCodeMirror`
+(`src/[fsd]/shared/lib/hooks/useCodeMirror.hooks.js`) debounces
+`notifyChange` by **30 ms**, so the parent's `hasChanges` / `hasUnsavedChanges`
+**lag the typed DOM text**. A first analysis run typed into the editor and
+clicked X immediately — the editor closed with **no** warning dialog, because
+the parent still believed it was clean. **Always wait on
+`is_file_preview_save_enabled()` / `is_file_preview_discard_enabled()` after
+typing** (a real product-state condition wait, not a sleep) before asserting
+anything that depends on the dirty state. With that guard the dialog appeared
+3/3 across two sessions, including immediately after a discard cycle.
+
+**How the revert actually reaches CodeMirror.** `PreviewContent.jsx` passes
+`value={fileContent}` (the ORIGINAL, never `contentToDisplay`) to
+`Field.CodeMirrorEditor`. `useCodeMirror`'s effect compares
+`value !== lastNotifiedValueRef.current`; after a discard resets
+`editedContent`, that ref still holds the *edited* text, so the effect fires
+`setCode(fileContent)` and the DOM reverts. Practical consequence: after a
+discard, the editor content is byte-equal to the originally loaded content —
+safe to assert with strict equality, which is exactly what ELITEA-1853 does.
+
+**Resolved/added during ELITEA-1853/1854/1855 implementation (2026-08-23):**
+the discard revert **lags the modal close**. `confirm_file_preview_discard()`
+returns as soon as the Warning modal is hidden, but the editor text is
+restored one React state round-trip later (parent resets `editedContent` →
+`useCodeMirror`'s effect calls `setCode(fileContent)`). A one-shot
+`get_file_preview_content_text()` taken at that moment still returns the
+EDITED text — the single rerun this unit needed. Assert the reverted content
+with a web-first, auto-retrying assertion
+(`expect(file_preview_code_content).not_to_contain_text(...)`) and only then
+read the text for byte-equality. Same shape applies to any future assertion
+on post-discard editor state. New page-object methods covering these flows:
+`click_file_preview_discard`, `confirm_file_preview_discard`,
+`cancel_file_preview_discard`, `click_file_preview_close_with_unsaved_changes`,
+`confirm_close_with_unsaved_changes` (`automation/pages/artifacts_page.py`).
+
+## Markdown Preview↔Raw tab switching + Raw-mode discard (ELITEA-1859/1860/1861 cluster, 2026-08-23, analyst)
+
+Extends the ELITEA-1857/1858/1862 render-mode section and the
+ELITEA-1853/1854/1855 discard section above. **Zero new testids needed for
+this cluster** — every handle already exists and was exercised live.
+
+### Behaviours confirmed live (2026-08-23, `project-background.md` in a fixture bucket)
+
+| Observable | Confirmed value |
+|---|---|
+| Toggle on open (`.md`) | `{"rendered": "true", "code": "false"}` |
+| Toggle after clicking Raw | `{"rendered": "false", "code": "true"}` |
+| Toggle after clicking Preview again | `{"rendered": "true", "code": "false"}` |
+| **Save/Discard across a full Preview→Raw→Preview round trip, no edit** | **DISABLED at every point** — never enable |
+| Line-number gutter in Raw | visible |
+| Content round-trip (Preview→Raw→Preview→Raw) | raw text **byte-equal** to the first Raw read |
+| **Toggle state after confirm-Discard while in Raw** | **stays `code=true`** — the editor does NOT snap back to Preview |
+| Save/Discard after confirm-Discard | **both DISABLED** (`hasUnsavedChanges` reset) |
+| Content after confirm-Discard | **byte-equal to the originally loaded content** |
+| Success toast after discard | none (count 0) |
+| **Toggle state after Cancel on the Warning modal** | **stays `code=true`** |
+| Save/Discard after Cancel | both **ENABLED**; content byte-equal to the post-edit baseline |
+| Console errors across all three flows | none |
+
+### The two content branches are mutually exclusive MOUNTS, not show/hide
+
+Confirmed both directions: in **Preview**, `artifacts-preview-code-content`
+has **count 0**; in **Raw**, `artifacts-preview-markdown-content` has
+**count 0**. Assert the absent branch with `to_have_count(0)`, never
+`not_to_be_visible()` on a mounted-but-hidden node.
+
+### ⚠ `get_file_preview_content_text()` has NO line separators
+
+`.cm-content`'s `text_content()` concatenates CodeMirror lines with nothing
+between them. Live sample:
+
+```
+'# Project OverviewThis is a **bold** statement about the project.## ScopeCovers the automation…'
+```
+
+So **`.splitlines()[0]` is the whole document, not line 1** — a silent trap for
+any assertion phrased as "line 1 shows X". Use either
+`to_contain_text` / `not_to_contain_text` on a string unique to the seeded
+content, or whole-content byte-equality against a captured baseline. (Cost this
+run: one confusing probe read.)
+
+### Line REPLACEMENT: `edit_file_preview_line_containing()` only APPENDS
+
+Cases that *replace* a line (ELITEA-1859/1860 swap `# Project Overview` for
+`# Modified Heading`) need a different gesture. Verified-live technique:
+
+```python
+line = file_preview_code_content.locator(CM_LINE).filter(has_text=match).first
+line.click(); page.keyboard.press("End"); page.keyboard.press("Shift+Home")
+page.keyboard.type(new_text)
+```
+
+`Shift+Home` selects to line start from `End`, so the typed text replaces the
+whole line. Worked 2/2 here. Belongs in a page-object method
+(`replace_file_preview_line_containing`) with the same `#579` docstring note
+as the appender — never inlined in a spec.
+
+### Case-text drift filed this run
+
+- `EliteaAI/elitea-testing-public#1689` — ELITEA-1859 step 8 claims Save/Discard stay
+  "active" after confirm-Discard; they correctly re-disable.
+- `EliteaAI/elitea-testing-public#1690` — ELITEA-1861 steps 3/4 claim Save/Discard
+  toggle with the Preview/Raw tab; they are gated on `hasUnsavedChanges` and stay
+  disabled throughout. Siblings of `#1108` / `#995` (same misconception on ELITEA-1851).
+
+### Playwright MCP note
+
+Went straight to a `pytest` scratch probe driving `ArtifactsPage` (per
+`.agents/memory/qa-engineer/no_playwright_mcp_use_sync_playwright_script.md`)
+rather than retrying the MCP tools — all three cases executed in one 94 s run.
+Using the suite's own fixtures (`page`, `artifact_api`, `artifact_bucket`) gives
+auth + seeding + teardown for free and exercises the exact page-object methods
+the implementer will use, which is why every handle in both AFS files is
+pre-verified rather than merely observed.
+
+### ⚠ This digest has outgrown one file (~1200 lines / 110 KB)
+
+Not split this run: units in batch `artifacts-w05` are still appending to it,
+and re-shaping it mid-batch would churn the file the implementer and reviewer
+are told to read. Recommend an index + per-subarea split between batches
+(`test-case-analysis` § When the digest outgrows one file). Flagged to the lead.
+
+**Resolved/added during ELITEA-1859/1860/1861 implementation (2026-08-23):**
+the analyst's line-REPLACEMENT technique is now a page-object method —
+`ArtifactsPage.replace_file_preview_line_containing(match_text, new_text)`
+(sibling of the append-only `edit_file_preview_line_containing`): click the
+`.cm-line` filtered by the target text → `End` → `Shift+Home` → `type()`.
+Verified working first try against `# Project Overview` on line 1. Same #579
+scoped-raw-handle discipline as its sibling (`.cm-line` under the testid'd
+`artifacts-preview-code-content` parent, declared in the docstring).
+Two more implementation-time confirmations for this surface: (a) the
+Preview/Raw branches really are mutually exclusive MOUNTS — the merged specs
+now assert `to_have_count(0)` on the inactive branch and it holds in both
+directions; (b) after BOTH Warning-modal exits (confirm and cancel) on a
+Markdown file the render-mode toggle stays on Raw — no snap-back to Preview.
+Specs: `automation/tests/ui/artifacts/test_artifacts_file_preview_markdown_raw_discard.py`,
+`.../test_artifacts_file_preview_markdown_tab_switching.py`.
+
+## Unsupported file types — no preview entry point at all (ELITEA-1863/1864 cluster, 2026-08-23, analyst)
+
+Extends the file-preview editor sections above with the `canPreview == false`
+branch, which no earlier case had exercised (every prior preview case seeds a
+previewable type).
+
+### The gate is a filename-extension WHITELIST, not a content sniff
+
+`canPreviewFile(name)` (`src/utils/filePreview.js:226`) tests the extension
+against `PREVIEWABLE_EXTENSIONS`. `docx` **is** on the list; `xlsx`, `xls`,
+`zip`, `pdf` are **not**. Consequences, all confirmed live in one probe run
+(fresh bucket, `top-5-soccer-players.xlsx` + `new-file-storage.zip`):
+
+| Observable | `.xlsx` | `.zip` |
+|---|---|---|
+| `artifacts-file-preview-button-{name}` visible (no hover) | **absent (0)** | **absent (0)** |
+| …after hovering the row | still absent | still absent |
+| Row 3-dot dropdown labels | `["Download", "Delete"]` | `["Download", "Delete"]` |
+| Row type / size cells | `Excel Spreadsheet` / `221 B` | `ZIP Archive` / `320 B` |
+
+**So an unsupported file has NO in-app path to the preview panel** — not the row
+icon (`ArtifactRowActions.jsx` gates on `row.canPreview`), and not
+`ActionsMenu.jsx`'s "Preview file" item either (`PREVIEW_TYPES.EMPTY` → renders
+`null`). ELITEA-1863's steps 2–4 assume the opposite; filed
+`EliteaAI/elitea-testing-public#1692`.
+
+### The panel IS reachable via the product's own preview URL route
+
+`/artifacts?bucket=<b>&file=<key>` — the exact params `Artifacts.jsx` writes on
+every preview open, restored by its URL-restore effect (`Artifacts.jsx:545-570`)
+**without** consulting `canPreview`. Deep-linked, both file types render the
+identical unsupported state:
+
+| Element | Live value |
+|---|---|
+| `artifacts-preview-file-path` | `<bucket>/<filename>` |
+| heading | `Preview Not Available` |
+| message | `Preview is not supported for this file type.` |
+| description | `Supported formats: txt, md, json, js, ts, py, java, …` |
+| Download button | present, works (bytes arrive intact) |
+| `artifacts-preview-save-button` / `-discard-button` | **count 0 — structurally ABSENT**, not disabled (`PreviewHeader.jsx` wraps both in `{canPreview && …}`). Contrast images (ELITEA-1862): present-but-disabled. Filed `EliteaAI/elitea-testing-public#1693`. |
+| `artifacts-preview-mode-toggle-group` | count 0 |
+| `artifacts-preview-close-button` / `file-preview-overflow-menu-menu-button` | present (1 each) |
+| Content fetch | **none** — `useArtifactContentFetch` returns early when `canPreview` is false. Don't wait on a content response; wait on the panel's own elements. |
+| Console errors | none |
+
+`open_file_in_editor()` is **NOT usable** for this branch — it waits on the Save
+button, which never renders. A new `navigate_to_file_preview(bucket, file_key)`
+page-object method (waiting on `artifacts-preview-close-button`, present in both
+branches) is specced in ELITEA-1863's AFS.
+
+### Testids needed (5, all attribute-only on existing nodes)
+
+`PreviewUnavailable.jsx` carries **zero** testids today:
+`artifacts-preview-unavailable-icon` / `-title` / `-message` / `-formats` /
+`-download-button`. `Box` and `Button.BaseBtn` both spread props, so all five are
+pure passthroughs — no wrapper elements, no hooks.
+
+### Size/type cell literals are cheap to pin
+
+`formatFileSize` is base-1024 with one decimal (`filePreview.js:719`), so seeding
+exactly **235_520 bytes** makes the row read the case's literal `230.0 KB`. Type
+labels come from `src/utils/fileTypes.js` (`zip → ZIP Archive`,
+`xlsx → Excel Spreadsheet`).
+
+### Probe note
+
+One `pytest` scratch probe using the suite's own fixtures (`page`,
+`artifact_api`, `artifact_bucket`) executed BOTH cases end-to-end in a single
+104 s run — MCP browser not needed (same approach as the ELITEA-1859/1860/1861
+session). The probe file was deleted after the run; screenshots kept at
+`test-results/screenshots/ELITEA-186{3,4}-*-deeplink.png` and uploaded to the
+`evidence` release.
+
+**Resolved/added during ELITEA-1863/1864 implementation (2026-08-23, implementer):**
+every analyst claim in this section held on first run — 2/2 green, zero reruns,
+no rework. Concretely landed:
+
+- **The 5 testids now exist** on `automation/testids`:
+  EliteaAI/EliteaUI@c45f2d16 adds `artifacts-preview-unavailable-icon` /
+  `-title` / `-message` / `-formats` / `-download-button` to
+  `PreviewUnavailable.jsx` — 5 attribute-only lines, 0 removals, 0 new DOM
+  nodes, 0 hooks (Step-5.5 greps clean). **Not yet on `main`** — awaiting the
+  human cherry-pick.
+- **`ArtifactsPage.navigate_to_file_preview(bucket, file_key)`** is implemented
+  as specced: `?bucket=&file=` (file_key URL-quoted), the same `#638`
+  bucket-param re-check guard as its two siblings, waiting on
+  `artifacts-preview-close-button`. Confirmed live: the panel restores from the
+  URL for a non-previewable type with no content fetch and no console errors.
+- **Two new dynamic-testid locator accessors** were needed and added, because
+  specs may not build locators: `get_file_preview_button(filename)` and
+  `get_file_actions_menu_button(filename)` (same `get_file_row` shape, built
+  from the existing `ARTIFACT_FILE_PREVIEW_BUTTON` / `ARTIFACT_ACTIONS_MENU_BUTTON`
+  class constants). Prefer these + `expect(...).to_have_count(0)` over
+  `is_file_preview_button_visible() is False` for absence — the web-first
+  assertion auto-retries.
+- **`click_preview_unavailable_download()`** wraps the panel's centred Download
+  in `expect_download`; it drives the same `handleDownload` as the dropdown
+  item, and the bytes arrive byte-identical to the seeded payload.
+- **Size-literal seeding works exactly as documented:** 235_520 bytes renders
+  `230.0 KB`; a sub-KiB payload renders a bare `<n> B`. Both asserted as row-text
+  substrings via `get_file_row_text()`.
+- Specs: `automation/tests/ui/artifacts/test_artifacts_file_preview_unsupported_xlsx.py`,
+  `.../test_artifacts_file_preview_unsupported_zip_row_actions.py`.
+
+## ⚠ ELITEA-1865 is NOT an artifacts case — Context Management lives elsewhere (2026-08-23, analyst)
+
+**Do not re-explore this.** TMS case ELITEA-1865 ("File Preview/Edit – Context
+Management Settings Panel Opens for Supported File", module `artifacts`) claims
+that opening a supported file from a bucket shows a **Context Management
+settings panel** (toggle, Context Window, Max Tokens, Content-Strategy section,
+Summarization section, External Messages, Custom Instructions, Cancel/Save).
+**It does not exist on the Artifacts surface.** Returned `blocked`; clarification
+filed `EliteaAI/elitea-testing-public#1695` (`question` + `case-text-drift`).
+
+Live probe (fresh bucket + `1.png`, row preview icon, 2026-08-23) — the panel
+rendered exactly the known image-branch shape and **zero** of the case's labels:
+
+```
+PANEL_TEXT='<bucket>/1.png\nSave\nDiscard'
+save/discard/close/3-dot: count=1 each · mode-toggle-group / language-select / code-editor: count=0
+'Context Management' 0 · 'Context Window' 0 · 'Max Context Tokens' 0 · 'Max Tokens' 0
+'Context Strategy' 0 · 'Preserve Recent Messages' 0 · 'Summarization' 0
+'External Messages' 0 · 'Custom Instructions' 0 · CONSOLE_ERRORS=[]
+```
+
+**The panel's real home** is the `context-budget` widget —
+`src/[fsd]/widgets/context-budget/ui/ContextStrategyModalContent.jsx`
+(`label="Context Management"` :130, `title="Context Strategy & Token Management"`
+:158 — the case's "**Content** Strategy" is a typo, Cancel/Save :218,226), with
+fields in `ContextStrategyTokenManagement.jsx` / `ContextStrategySummarization.jsx`
+/ `ContextStrategySystemMessages.jsx`. `ContextBudgetUI` is consumed ONLY by
+Chat participants (`Participants.jsx:6`), Pipelines ChatPanel (`ChatPanel.jsx:9`)
+and Applications ConfigurationTab (`ConfigurationTab.jsx:15`). A near-identical
+Settings → Memory form (`src/[fsd]/features/settings/ui/memory/`) is already
+covered by **ELITEA-2374**
+(`test-specs/settings-user-profile/l3_context-management-toggle-enables-disables-fields_ELITEA-2374.md`).
+
+Three case labels match **nothing** in EliteaUI source at all: "Context Window",
+"Summarized Link Count", "Attribute: Clause & Format". Two more ("Summary Model",
+"Summary Trigger Ratio") are behind a hidden feature toggle even on the real surface.
+
+### Reusable facts confirmed by this probe
+- The Artifacts preview panel's button pair is **Save + Discard** — there is
+  **no Cancel button** on this surface. Any artifacts case-text saying "Cancel"
+  for the preview panel is drifted.
+- `PANEL_TEXT` for an image file is exactly `"<bucket>/<file>\nSave\nDiscard"` —
+  a cheap whole-panel oracle for "nothing unexpected rendered".
+- `ArtifactsPage.open_file_in_editor()` + the `artifacts-preview-*` testids all
+  still resolve as documented above (re-verified 2026-08-23).
+- `#636` bucket-teardown 404 hit again, 2/2 probe runs.
