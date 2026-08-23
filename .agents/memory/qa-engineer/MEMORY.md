@@ -47,3 +47,4 @@
 - [Reviewer diff base = PR's own base](reviewer_diff_base_is_the_prs_own_base_not_automation_base.md) — `gh pr view --json baseRefName`; batch trunk ≠ automation/base
 - [Shared MCP browser carries viewport across dispatches](shared_mcp_browser_carries_viewport_across_dispatches.md) — resize before any scrollHeight/clientHeight check
 - [No second user identity](no_second_user_identity_blocks_non_owner_cases.md) — "non-owner cannot X" cases are blocked outright, no workaround
+- [Provenance grep false-negative — DotMenu `key:`-derived testids](provenance_grep_false_negative_dotmenu_key_derived_testid.md) — `*-menuitem` testids grep as absent; grep the key

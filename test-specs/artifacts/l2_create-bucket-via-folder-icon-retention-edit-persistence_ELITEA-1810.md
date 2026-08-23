@@ -17,8 +17,13 @@
   One case-text drift (steps 12/19/26 say "Edit", the product's menu item is "Rename")
   is an already-tracked CLARIFICATION — commented on
   [#666](https://github.com/EliteaAI/elitea-testing-public/issues/666), not re-filed.
-- **Zero new testids needed** — every handle this case touches already exists on
-  `automation/testids` (see § Concrete Handles for the provenance column).
+- **AMENDED BY IMPLEMENTER 2026-08-23 — this case DOES add testids.** The original
+  "zero new testids needed" claim was made against the analyst's own *uncommitted*
+  working tree in `../EliteaUI`: three attribute additions (`key: 'bucket-menu-rename'`,
+  `data-testid="artifacts-bucket-cancel-button"`, and the form heading) were sitting
+  as unstaged edits, so they greped as "present" but existed on no branch. They are
+  now committed and pushed as EliteaAI/EliteaUI@c91c2aac on `automation/testids`
+  (3 added lines, 0 removals, no hooks, no new DOM nodes). See § Concrete Handles.
 
 ## Overlap check vs existing automation
 
@@ -121,6 +126,12 @@ running system produced.
       (10 months → 304 days; 3 months → 92 days). Weeks are unaffected (exact ×7).
     - Write it as a soft assertion so the rest of the case still runs and the test flips
       green when #1677 is fixed. **Do not weaken it to match the buggy value.**
+    - **IMPLEMENTER AMENDMENT:** the step needs **two** soft assertions (measure text
+      AND value), so the spec's gate signature is an `ExceptionGroup` of exactly **2
+      sub-exceptions from ONE cause** (`'Months' != 'Days'` and `'10' != '304'`),
+      not "exactly one soft failure". Confirmed 2026-08-23: every other step —
+      1-12 and 14-27, including both hard persistence assertions and the
+      no-PUT-on-Cancel check — passed in the same run.
 14. **(case 14)** Open the measure dropdown, click `select-option-weeks`.
     - Verify: combobox text == `Weeks`.
 15. **(case 15)** Set the value field to `20` (select-all + type; it holds `304`).
@@ -233,16 +244,20 @@ fresh `git fetch origin` in `../EliteaUI`.
 | Retention measure options | `select-option-days` / `-weeks` / `-months` / `-years` | shared `SingleSelect` | exists | use `BasePage.SELECT_OPTION.format(<measure>)` |
 | Retention value input | `artifacts-bucket-retention-value-input` | `CreateBucket.jsx:285` (`inputProps`) | exists | `type="number"`; holds the previous value — select-all before typing |
 | Save button | `artifacts-bucket-save-button` | `CreateBucket.jsx:291` | exists | create → POST, edit → PUT |
-| Cancel button | `artifacts-bucket-cancel-button` | `CreateBucket.jsx:307` | exists | **not yet in the page object** — add a `LocatorDescriptor` |
+| Cancel button | `artifacts-bucket-cancel-button` | `CreateBucket.jsx:307` | **ADDED this case** — EliteaAI/EliteaUI@c91c2aac (was an uncommitted local edit at analysis time) | page object: `bucket_cancel_button` |
+| Bucket form heading | `artifacts-bucket-form-heading` | `CreateBucket.jsx:209` (Typography) | **ADDED this case** — EliteaAI/EliteaUI@c91c2aac | *(implementer addition)* the ONLY observable separating the create form from the edit form — the same route serves both, rendering `currentBucket ? 'Edit bucket' : 'New Bucket'`. One stable testid, state read from the TEXT (never a state-switched testid pair). Steps 12/19/26 assert on it. |
 | Bucket row | `artifacts-bucket-row-{name}` | `BucketItem.jsx` | exists | hover target; also the list-index source |
 | Bucket dot-menu trigger | `bucket-menu-{name}-menu-button` | `DotMenu.jsx:376` | exists | **hidden until the row is hovered** |
 | Bucket dot-menu container | `bucket-menu-{name}-menu` | `DotMenu.jsx:393` | exists | |
-| **Rename menu item** | `bucket-menu-rename-menuitem` | `BucketItem.jsx:165` key + `DotMenu.jsx:58` | exists (derived, no JSX change needed) | **new to the page object** — add `click_bucket_menu_rename_item()` |
+| **Rename menu item** | `bucket-menu-rename-menuitem` | `BucketItem.jsx:165` key + `DotMenu.jsx:58` | **ADDED this case** — EliteaAI/EliteaUI@c91c2aac (the `key: 'bucket-menu-rename'` field was an uncommitted local edit at analysis time, on no branch) | page object: `bucket_menu_rename_menuitem` + `click_bucket_menu_rename_item()` |
 | Delete menu item | `bucket-menu-delete-menuitem` | `BucketItem.jsx:205` | exists | teardown fallback |
 | Delete confirm button | `delete-confirm-button` | shared delete dialog | exists | teardown fallback |
 | Buckets footer count | `artifacts-buckets-footer-count` | `BucketsPanel.jsx` | exists | text shape `Buckets:967` |
 
-**No `testid needed:` rows — this case adds zero testids.**
+**AMENDED: this case adds 3 testid-wiring lines** (all pure attribute additions,
+EliteaAI/EliteaUI@c91c2aac): the `bucket-menu-rename` key, the cancel button's testid,
+and the new `artifacts-bucket-form-heading`. Two of the three were present only as
+uncommitted edits in the analyst's working tree.
 
 ## Network Behavior
 
@@ -264,7 +279,11 @@ The `retentionDays` field is a useful independent tie-breaker if a UI read looks
    proof: the backend stores calendar-accurate days, `convertDaysToMeasure()` needs
    `days % 30 === 0`). Isolated to case step 13; Weeks and Years are unaffected.
    → soft assert + `# Known defect: #1677`; **sanctioned-RED per `.agents/testing.md`
-   § Merge gate**. This spec's gate signature is: exactly one soft failure at step 13.
+   § Merge gate**. **Gate signature: a pytest `ExceptionGroup` of exactly 2
+   sub-exceptions from this ONE cause** — Test Step 13 soft-asserts both the measure
+   text (`'Months' != 'Days'`) and the value (`'10' != '304'`); see Test Step 13's
+   IMPLEMENTER AMENDMENT above. It is NOT "exactly one soft failure"; a 1- or
+   3+-sub-exception result is a different signature and must be investigated.
 
 2. **CLARIFICATION (not re-filed — commented on
    [#666](https://github.com/EliteaAI/elitea-testing-public/issues/666), sibling
@@ -331,6 +350,26 @@ None — all 27 steps executed.
   the main thread, so React can never render the 967-row bucket list and the poll reads
   `0 rows` forever (cost ~65 s of false "the list never loads" during this analysis).
   Use Playwright's own waits (`expect(...).to_have_count`, `locator.wait_for`).
+- **IMPLEMENTER-DISCOVERED (2026-08-23) — the measure Select's own backdrop blocks
+  a second combobox click.** MUI renders an invisible `MuiBackdrop` for the open
+  `menu-expiration_measure` popover, sitting OVER the combobox. So a
+  `select_retention_measure()` called right after `open_retention_measure_dropdown()`
+  (case Step 5 -> Step 6) times out on `Locator.click` if it unconditionally clicks
+  the combobox. `ArtifactsPage.select_retention_measure()` therefore only issues the
+  open-click when `aria-expanded != "true"`, and waits for the option to reach
+  `hidden` afterwards so the closing backdrop cannot race the next click (into the
+  retention-value field).
+- **IMPLEMENTER-DISCOVERED (2026-08-23) — the bucket-list refetch needs far more than
+  15 s in this project.** With ~970 buckets, the left panel's post-save refetch
+  regularly exceeded the 15 s `NAVIGATION_TIMEOUT` the sibling artifacts specs use,
+  producing a false "bucket never appeared" at case Step 9. The spec uses a dedicated
+  `BUCKET_LIST_TIMEOUT = 45_000` for every bucket-list condition wait (Steps 9/17/24
+  and the teardown's removal wait). Still a condition wait on the row's own testid —
+  no sleeps. Sibling specs on smaller flows may hit this as the project grows.
+- **Teardown: the UI delete path works; `ArtifactAPI.delete_bucket()` 404s (#636).**
+  Confirmed again this run — the API fallback returns 404 every time, the UI path
+  (hover row -> dot-menu -> Delete -> confirm) removes the bucket cleanly once the
+  removal wait is given `BUCKET_LIST_TIMEOUT`.
 - **Read the measure as text, the value as `input_value()`** — the measure is a MUI
   Select (a `div`), the value is a real `<input type="number">`.
 - Retention units that round-trip cleanly (useful if the case data is ever rewritten):
