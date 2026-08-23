@@ -49,8 +49,17 @@ Known defect (sanctioned-RED, `.agents/testing.md` § Merge gate):
     and ``convertDaysToMeasure()`` (``src/utils/retentionPolicy.js``) only
     rebuilds "months" when ``days % 30 === 0``, unreachable for a real month
     policy. Deterministic, single-cause, isolated to Test Step 13; Weeks
-    (x7) and Years (x365) round-trip cleanly. This spec's gate signature is
-    exactly ONE soft failure, at Test Step 13.
+    (x7) and Years (x365) round-trip cleanly.
+
+    GATE SIGNATURE (read this before classifying a red run): Test Step 13
+    carries TWO ``expect.soft()`` assertions driven by that ONE cause — the
+    measure text (``'Months' != 'Days'``) and the value (``'10' != '304'``).
+    pytest-playwright re-raises collected soft assertions together, so the
+    run fails with an ``ExceptionGroup`` of exactly 2 sub-exceptions. It is
+    NOT "exactly one soft failure": a 1- or 3+-sub-exception result is a
+    DIFFERENT signature and must be investigated, never waved through as
+    #1677. All other 26 steps (1-12, 14-27) pass, including both hard
+    persistence assertions and the no-PUT-on-Cancel check.
 
 Fidelity: no substitution of any kind. Every asserted value is produced by
 the running system — the bucket is created and edited through the real UI,

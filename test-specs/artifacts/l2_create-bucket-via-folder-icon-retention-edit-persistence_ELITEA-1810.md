@@ -279,7 +279,11 @@ The `retentionDays` field is a useful independent tie-breaker if a UI read looks
    proof: the backend stores calendar-accurate days, `convertDaysToMeasure()` needs
    `days % 30 === 0`). Isolated to case step 13; Weeks and Years are unaffected.
    → soft assert + `# Known defect: #1677`; **sanctioned-RED per `.agents/testing.md`
-   § Merge gate**. This spec's gate signature is: exactly one soft failure at step 13.
+   § Merge gate**. **Gate signature: a pytest `ExceptionGroup` of exactly 2
+   sub-exceptions from this ONE cause** — Test Step 13 soft-asserts both the measure
+   text (`'Months' != 'Days'`) and the value (`'10' != '304'`); see Test Step 13's
+   IMPLEMENTER AMENDMENT above. It is NOT "exactly one soft failure"; a 1- or
+   3+-sub-exception result is a different signature and must be investigated.
 
 2. **CLARIFICATION (not re-filed — commented on
    [#666](https://github.com/EliteaAI/elitea-testing-public/issues/666), sibling

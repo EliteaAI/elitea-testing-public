@@ -88,3 +88,4 @@
 - [Re-dispatch of an already-merged unit](redispatch_of_already_merged_unit_verify_dont_rebuild.md) — empty `trunk..branch` = merged-not-missing as often as never-started; check trunk merges first
 - [Vite serves stale JSX after an EliteaUI edit](vite_serves_stale_jsx_on_onedrive_checkout.md) — new testid invisible in browser: restart the dev server
 - [allure.issue TMS link](allure_issue_tms_link_filename_verify_before_commit.md) — never derive it; `ls` the clone
+- [ruff --fix reorders pages.* imports](ruff_autofix_reorders_pages_imports_and_stdin_filename_hides_it.md) — never blanket --fix an import block under automation/
