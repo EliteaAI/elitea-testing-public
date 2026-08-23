@@ -46,3 +46,5 @@ blast-radius run sweeps the WHOLE suite once, not just the new spec (1057 tool
 calls / ~77 min observed on this run alone). Don't read a long-running blast-radius
 phase as a hang — keep polling in-turn (long `TaskOutput` blocking rounds), post
 an interim work-log comment every few rounds so the issue thread shows liveness.
+
+Related: [[blast_radius_red_classify_with_a_control_run_on_base]] — how to CLASSIFY the red once you have routed it.

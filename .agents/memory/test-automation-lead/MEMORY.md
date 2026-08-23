@@ -51,3 +51,5 @@
 - [Synthetic input events produce false product bugs](synthetic_input_events_produce_false_bugs.md) — re-drive with real fill/type before filing "control never works"
 - [The workflow's gate verdict is not your merge gate](workflow_gate_verdict_is_not_the_merge_gate.md) — read gate.failures[], not verdict; sanctioned-RED needs identical 3/3
 - [Artifacts area backlog (#1392)](artifacts_area_backlog_1392.md) — 63/73 automated; the 8 leftovers are human-decision blocks (multi-user needs a deployed env)
+- [Killed run, no report](killed_workflow_run_recover_report_from_journal.md) — rebuild from journal; merged ≠ blocked
+- [Credentials backlog (#1394)](credentials_area_backlog_1394.md) — 21/24 done; 3 OAuth cases blocked on #1708
