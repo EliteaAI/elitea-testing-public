@@ -71,6 +71,14 @@ Every step below was executed live in this order (probe: `/tmp/probe_1812_1816.p
    above the bucket list (`BucketHeader.jsx`, `NewFolder` icon, tooltip "Create bucket").
    - Verify: `page.url` ends with `/artifacts/create-bucket` — a full page navigation,
      **not a modal**. Observed: `http://localhost:5173/artifacts/create-bucket`.
+   - Verify: `artifacts-bucket-form-heading` reads **`New Bucket`**.
+     **Amended during ELITEA-1812 implementation (2026-08-23, review round 1):** the URL
+     alone does NOT satisfy the case's expected result ("'New Bucket' form opens" ) —
+     `/artifacts/create-bucket` is a SINGLE route serving BOTH forms
+     (`CreateBucket.jsx:214` renders `currentBucket ? 'Edit bucket' : 'New Bucket'`, as
+     ELITEA-1816's AFS Step 11 establishes), so a regression that opened the edit form on
+     this route would still pass a URL-only assertion. The heading text is the
+     discriminator.
 3. **(case 3)** Enter the uppercase name via `ArtifactsPage.fill_bucket_name(name)`
    (click + `select_text()` + `type()` — the field is pre-filled `new-bucket`; a bare
    `fill()` / `Control+A` does **not** work on this MUI field).
@@ -87,8 +95,16 @@ Every step below was executed live in this order (probe: `/tmp/probe_1812_1816.p
      — the **backend** is the producer of the lowercase form (the React form sends
      `values.name.trim()` unchanged; there is no `toLowerCase()` anywhere in
      `src/pages/Artifacts/CreateBucket.jsx`).
-   - Verify: URL returns to `/artifacts?bucket=<lowercase name>` (the form auto-selects the
-     freshly created bucket via `PENDING_BUCKET_SESSION_KEY`).
+   - Verify: the save leaves the create route and lands back on the Artifacts list.
+     **Amended during ELITEA-1812 implementation (2026-08-23):** the AFS originally
+     expected `/artifacts?bucket=<lowercase name>` (the form's
+     `PENDING_BUCKET_SESSION_KEY` auto-select). Live, the save lands on the **bare
+     `/artifacts` root** — an auto-retrying `to_have_url` polled 87 times over 45 s and
+     never saw a `?bucket=` param. The spec therefore asserts the route only
+     (`/artifacts` with an optional query), and the "bucket is saved" claim rests on the
+     POST assertions above. Consequence for step 5: the sidebar click is a same-route
+     navigation, so its assertion is "the Artifacts root with the bucket list rendered",
+     not "the `?bucket=` param was cleared".
 5. **(case 5)** Click the sidebar's Artifacts entry — `sidebar-menu-item-artifacts`
    (`BasePage.SIDEBAR_MENU_ITEM.format("artifacts")`) — to return to the Artifacts root.
    - Verify: `page.url` is the `/artifacts` root (no `?bucket=` param) and
@@ -96,6 +112,9 @@ Every step below was executed live in this order (probe: `/tmp/probe_1812_1816.p
    - *(The live probe used `ArtifactsPage.navigate_to_artifacts()` — a direct URL nav — as
      transit; the sidebar click is the case's own step and is the shape to automate. The
      sidebar testid is confirmed present, see § Concrete Handles.)*
+     **Confirmed during implementation (2026-08-23):** the sidebar click itself was
+     executed live and works — `sidebar_menu_item("artifacts").click()` keeps the app on
+     the `/artifacts` root with `artifacts-buckets-heading` visible.
 6. **(case 6)** Verify the bucket is listed **in lowercase**:
    - `artifacts-bucket-row-{lower}` present (**observed: present**) — the row testid is
      itself derived from the stored name (`data-testid={\`artifacts-bucket-row-${name}\`}`,
@@ -123,7 +142,7 @@ Every step below was executed live in this order (probe: `/tmp/probe_1812_1816.p
 | Test-data row "Input bucket name = BUCKET-TEST" | — | § Test Data | generated uppercase name | covered (placeholder → generated, documented) |
 | Test-data row "Expected stored name = bucket-test" | — | Test Step 6 | `typed.lower()` derived | covered |
 | Step 1 Navigate to Artifacts | Artifacts page loads | Test Step 1 | `artifacts-buckets-heading` visible | covered |
-| Step 2 Click folder/create icon | "New Bucket" form opens | Test Step 2 | URL == `/artifacts/create-bucket` | covered |
+| Step 2 Click folder/create icon | "New Bucket" form opens | Test Step 2 | URL == `/artifacts/create-bucket` **and** form heading == `New Bucket` (the route is shared with the edit form — URL alone does not discriminate) | covered |
 | Step 3 Enter uppercase name | field accepts the input | Test Step 3 | `input_value() == typed` (uppercase preserved) | covered |
 | Step 4 Click Save | bucket is saved | Test Step 4 | `POST` → 200 | covered |
 | Step 5 Click "Artifacts" | navigation to Artifacts root | Test Step 5 | sidebar item click → `/artifacts` root | covered |
@@ -142,7 +161,7 @@ Every step below was executed live in this order (probe: `/tmp/probe_1812_1816.p
 
 ## Concrete Handles
 
-All testid-only. **Zero new testids required.** Provenance verified 2026-08-23 after
+All testid-only. **Zero new testids required** (the form-heading testid below already exists, added for ELITEA-1810). Provenance verified 2026-08-23 after
 `cd ../EliteaUI && git fetch origin`, two-stage grep per `.agents/workflow.md`.
 
 | Element | Testid | Page-object member | PROVENANCE |
@@ -153,6 +172,7 @@ All testid-only. **Zero new testids required.** Provenance verified 2026-08-23 a
 | Save button | `artifacts-bucket-save-button` | `click_bucket_save_button()` | on-main ✓ |
 | Bucket row (dynamic) | `artifacts-bucket-row-{name}` | `ArtifactsPage.BUCKET_ROW` class constant, `bucket_row(name)` / `bucket_exists(name)` | on-main ✓ (`BucketItem.jsx:243`) |
 | Sidebar → Artifacts | `sidebar-menu-item-artifacts` | `BasePage.SIDEBAR_MENU_ITEM` | on-`automation/testids` only (awaiting human promotion to main) |
+| Bucket form heading (New Bucket / Edit bucket) | `artifacts-bucket-form-heading` | `get_bucket_form_heading_text()` | on-`automation/testids` only — EliteaAI/EliteaUI@c91c2aac; awaiting human cherry-pick (added for ELITEA-1810; **adopted here in review round 1** so Step 2 discriminates the create form from the edit form on the shared route) |
 
 **Dynamic-testid discipline**: the bucket row is addressed through the existing UPPER_CASE
 class constant `BUCKET_ROW = '[data-testid="artifacts-bucket-row-{}"]'` — never an inline
@@ -163,6 +183,10 @@ class constant `BUCKET_ROW = '[data-testid="artifacts-bucket-row-{}"]'` — neve
 - **File**: new spec `automation/tests/ui/artifacts/test_artifacts_bucket_name_lowercase.py`.
   ELITEA-1816's spec may live in the same file (it shares steps 1–4/7) — that is the
   implementer's call; the two tests must not share a bucket.
+  **Implemented (2026-08-23) as TWO separate spec files** — this one, and
+  `test_artifacts_bucket_name_readonly_in_edit_mode.py` for ELITEA-1816 — per the
+  dispatch's "separate specs, one per case" instruction. They share the page object, not
+  the file, and each generates its own bucket.
 - **Markers**: `@pytest.mark.p3`, `@pytest.mark.artifacts`, `@pytest.mark.regression`, `ui`.
 - **Existing page-object methods cover every interaction** — `click_create_bucket_button`,
   `fill_bucket_name`, `click_bucket_save_button` (already wraps `expect_response` on the

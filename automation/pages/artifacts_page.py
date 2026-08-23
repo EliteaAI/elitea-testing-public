@@ -1459,6 +1459,83 @@ class ArtifactsPage(BasePage):
         self.bucket_name_input.wait_for(state="visible", timeout=timeout)
         return self.bucket_name_input.get_attribute("aria-invalid") == "true"
 
+    def is_bucket_name_input_disabled(self, timeout: int = 10000) -> bool:
+        """Return whether the bucket-form Name field is DISABLED (ELITEA-1816).
+
+        The bucket form serves both create and edit off the same route;
+        ``CreateBucket.jsx`` renders the Name field with
+        ``disabled={!!currentBucket}``, so the field is enabled while
+        creating and disabled once an existing bucket is loaded for edit.
+        Non-editability is implemented as a real ``disabled`` attribute —
+        there is NO ``readonly`` attribute on this input (confirmed live
+        during ELITEA-1816 analysis), which is why callers assert this
+        rather than hunting a ``readonly`` that does not exist.
+
+        Same "read a state property off an already testid-anchored locator"
+        shape as :meth:`is_bucket_name_invalid` / :meth:`is_bucket_selected`
+        — no new testid needed.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the field to be
+                visible before reading its state.
+
+        Returns:
+            True when the input carries the ``disabled`` state.
+        """
+        self.bucket_name_input.wait_for(state="visible", timeout=timeout)
+        return self.bucket_name_input.is_disabled()
+
+    def is_bucket_name_input_editable(self, timeout: int = 10000) -> bool:
+        """Return whether the bucket-form Name field is EDITABLE (ELITEA-1816).
+
+        Companion to :meth:`is_bucket_name_input_disabled`: Playwright's
+        ``is_editable()`` is the positive form of the same actionability
+        question (enabled AND not readonly), so asserting BOTH pins the
+        field's state from both directions and survives the product later
+        swapping ``disabled`` for ``readOnly``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the field to be
+                visible before reading its state.
+
+        Returns:
+            True when the input is editable.
+        """
+        self.bucket_name_input.wait_for(state="visible", timeout=timeout)
+        return self.bucket_name_input.is_editable()
+
+    @action("Delete a bucket through the UI dot-menu")
+    def delete_bucket_via_menu(
+        self, bucket_name: str, timeout: int = 15000
+    ) -> None:
+        """Delete *bucket_name* through the left panel's dot-menu -> Delete flow.
+
+        Pure composition over the existing bucket-menu + delete-confirm
+        methods, lifted to the page object because it is now needed by three
+        specs (ELITEA-1810 keeps its own suite-local copy — that spec is
+        sanctioned-RED on defect #1677 and is deliberately left byte-identical
+        — plus ELITEA-1812 and ELITEA-1816, which both create their bucket as
+        a case step and must not leak it into the project, already carrying
+        ~970 buckets, #636). Third repetition is the project's extraction
+        threshold.
+
+        Navigates to the Artifacts root first so it works from anywhere in the
+        flow, and waits for the row to actually disappear — the honest proof
+        the delete landed, rather than the toast.
+
+        Args:
+            bucket_name: Exact (stored, lowercase) bucket name to delete.
+            timeout: Maximum wait time in milliseconds for the row to vanish
+                from the bucket list after confirmation.
+        """
+        self.navigate_to_artifacts()
+        self.wait_for_bucket_in_list(bucket_name, timeout=timeout)
+        self.open_bucket_menu(bucket_name)
+        self.click_bucket_menu_delete_item()
+        self.confirm_delete_bucket()
+        self.wait_for_bucket_removed_from_list(bucket_name, timeout=timeout)
+        logger.info("Deleted bucket '%s' via the UI dot-menu", bucket_name)
+
     @action("Click bucket Save button")
     def click_bucket_save_button(self, timeout: int = 15000):
         """Click Save on the 'New Bucket' form and return the creation response.

@@ -80,6 +80,10 @@ Every step below was executed live in this order (probe: `/tmp/probe_1816.py`,
 2. **(case 2)** Click `artifacts-create-bucket-button` (the folder/create icon above the
    bucket list).
    - Verify: `page.url` ends with `/artifacts/create-bucket` (full page nav, not a modal).
+   - Verify: `artifacts-bucket-form-heading` reads **`New Bucket`**.
+     **Amended during ELITEA-1816 implementation (2026-08-23, review round 1):** Step 11
+     below asserts `Edit bucket` on that SAME URL, so a URL-only assertion cannot prove
+     the case's "'New Bucket' form opens" — the heading is the discriminator.
 3. **(case 3)** Enter the mixed-case name via `ArtifactsPage.fill_bucket_name(name)`
    (click + `select_text()` + `type()`; `fill()`/`Control+A` do not work on this field).
    - Verify: `input_value() == "AuToTest-1816-182606"` — mixed case preserved verbatim in
@@ -141,6 +145,11 @@ Every step below was executed live in this order (probe: `/tmp/probe_1816.py`,
     - Then send keystrokes anyway (`type("XYZ")` + `press("Backspace")`) — the honest
       version of "try to type or delete characters".
 15. **(case 15)** Verify the Name field is read-only and unchanged.
+    - *Implementation note (2026-08-23): step 14's `Locator.type()`/`press()` attempts are
+      each wrapped in a try/except on `TimeoutError` with the same short 3 s budget — live
+      they do not raise, but the assertion that proves "no input is accepted" is this
+      step's unchanged `input_value()`, not those calls' outcome, so either behaviour is
+      accepted without weakening anything.*
     - Verify **all three**, because each catches a different failure:
       `is_editable() is False`; `is_disabled() is True` (the DOM carries a real `disabled`
       attribute — `get_attribute("disabled") == ""`, and `readonly` is `None`);
@@ -183,7 +192,7 @@ Every step below was executed live in this order (probe: `/tmp/probe_1816.py`,
 | Precondition: user logged in | — | `auth_state` fixture | setup | covered (setup) |
 | Test data: input `BuCkEt-Mix` / expected `bucket-mix` / retention `Days, 1` | — | § Test Data | generated mixed-case name, `lower()` expectation, `Days/1` | covered (placeholder → generated, documented) |
 | Step 1 Navigate to Artifacts | page loads | Test Step 1 | `artifacts-buckets-heading` visible | covered |
-| Step 2 Click create-bucket icon | New Bucket form opens | Test Step 2 | URL == `/artifacts/create-bucket` | covered |
+| Step 2 Click create-bucket icon | New Bucket form opens | Test Step 2 | URL == `/artifacts/create-bucket` **and** form heading == `New Bucket` (Step 11 asserts `Edit bucket` on the same URL) | covered |
 | Step 3 Enter mixed-case name | field accepts input | Test Step 3 | `input_value() == typed` (mixed preserved) + field enabled | covered |
 | Step 4 Select retention "Days" | Days selected | Test Step 4 | combobox text | covered |
 | Step 5 Enter retention value "1" | field shows 1 | Test Step 5 | `input_value()` | covered |
@@ -245,11 +254,16 @@ UPPER_CASE class constants (`BUCKET_ROW`, `BUCKET_MENU_BUTTON`, `BUCKET_MENU_CON
 - **File**: new spec
   `automation/tests/ui/artifacts/test_artifacts_bucket_name_lowercase.py` (may host
   ELITEA-1812's test too — they must **not** share a bucket).
+  **Implemented (2026-08-23) as its own file**,
+  `automation/tests/ui/artifacts/test_artifacts_bucket_name_readonly_in_edit_mode.py`,
+  per the dispatch's "separate specs, one per case" instruction.
 - **Markers**: `@pytest.mark.p3`, `@pytest.mark.artifacts`, `@pytest.mark.regression`, `ui`.
 - **One page-object gap** (not a testid gap): `ArtifactsPage` has no accessor for the Name
   field's editability. Add two thin getters next to the existing bucket-form methods —
   `is_bucket_name_input_disabled()` and `is_bucket_name_input_editable()` — over the
-  existing `bucket_name_input` descriptor. Everything else this case needs already exists
+  existing `bucket_name_input` descriptor. **Added during implementation (2026-08-23)**,
+  exactly as specced, plus a third additive method `delete_bucket_via_menu()` that lifts
+  the (now third) repetition of the UI bucket-teardown composition out of the specs. Everything else this case needs already exists
   (`open_bucket_menu`, `get_bucket_menu_items_text`, `click_bucket_menu_rename_item`,
   `get_bucket_form_heading_text`, `open_retention_measure_dropdown`,
   `select_retention_measure`, `get_retention_measure_text`, `get_retention_value`,
