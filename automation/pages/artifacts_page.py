@@ -102,6 +102,28 @@ class ArtifactsPage(BasePage):
         description="Save button on the 'New Bucket' form — submits bucket creation",
     )
 
+    bucket_cancel_button = LocatorDescriptor(
+        testid="artifacts-bucket-cancel-button",
+        description="Cancel button on the 'New Bucket' / 'Edit bucket' form "
+        "(ELITEA-1810) — testid already present on CreateBucket.jsx:307; this "
+        "is its first page-object binding. onCancel is a plain navigate(-1): "
+        "it fires NO bucket request, which is exactly what ELITEA-1810's "
+        "Test Step 23 asserts.",
+    )
+
+    bucket_form_heading = LocatorDescriptor(
+        testid="artifacts-bucket-form-heading",
+        description="Heading of the bucket form at /artifacts/create-bucket "
+        "(ELITEA-1810 — new testid, implementer; EliteaAI/EliteaUI "
+        "CreateBucket.jsx:209 Typography). The SAME route serves both the "
+        "create and the edit flow, and this heading's text is the only "
+        "observable that tells them apart ('New Bucket' vs 'Edit bucket' — "
+        "CreateBucket.jsx renders `currentBucket ? 'Edit bucket' : 'New "
+        "Bucket'`). ONE stable testid, state read from the TEXT — never a "
+        "state-switched testid pair (.agents/testing.md § Locator policy, "
+        "PR #581 ruling).",
+    )
+
     bucket_name_helper_text = LocatorDescriptor(
         testid="artifacts-bucket-name-helper-text",
         description="Inline validation helper-text under the Name field on the "
@@ -111,6 +133,24 @@ class ArtifactsPage(BasePage):
         "TextField `FormHelperTextProps={{'data-testid': ...}}`, alongside its "
         "existing `inputProps`-based name-input testid — MUI v5 supports both "
         "prop shapes on the same TextField.",
+    )
+
+    bucket_name_character_counter = LocatorDescriptor(
+        testid="artifacts-bucket-name-character-counter",
+        description="Character counter rendered under the Name field on the "
+        "'New Bucket' form (ELITEA-1818/1819 — new testid, implementer). "
+        "CreateBucket.jsx:248 renders `<Text.CharacterCounter>` ONLY while "
+        "`isFocused('name') && name.length === 56`, so the element is absent "
+        "from the DOM at any other length AND after any blur — never assert "
+        "it once focus has left the field. Text is "
+        "`\"{remaining} characters left\"` (CharacterCounter.jsx), i.e. "
+        "\"0 characters left\" at the limit; the \". You have reached the "
+        "MAXIMUM character limit\" suffix is suppressed at this call site via "
+        "`hideMaxLimitMessage`. Wired prop-only — the shared component already "
+        "accepts a `data-testid` prop (CharacterCounter.jsx:11,20), so no DOM "
+        "node was added. NOTE: the host Box is `display: contents`, so "
+        "`bounding_box()` is None while `is_visible()`/`to_be_visible()` still "
+        "resolve True (confirmed live 2026-08-23).",
     )
 
     # ------------------------------------------------------------------
@@ -156,6 +196,19 @@ class ArtifactsPage(BasePage):
         "(ELITEA-1808) — testid is static (not bucket-parameterized): the menu "
         "item's key ('bucket-menu-upload-files') is fixed regardless of which "
         "bucket's menu is currently open",
+    )
+
+    bucket_menu_rename_menuitem = LocatorDescriptor(
+        testid="bucket-menu-rename-menuitem",
+        description="'Rename' item inside a bucket row's dot-menu dropdown "
+        "(ELITEA-1810) — testid added live to BucketItem.jsx's menuItems array "
+        "(a `key: 'bucket-menu-rename'` field, the same DotMenu mechanism as "
+        "the sibling 'bucket-menu-upload-files' / '-pin' / '-delete' keys) and "
+        "pushed to automation/testids (EliteaAI/EliteaUI@c91c2aac). Static "
+        "(not bucket-parameterized). NOTE the label: the TMS cases say 'Edit', "
+        "the live product says 'Rename' (tracked CLARIFICATION #666/#650) — "
+        "clicking it navigates to /artifacts/create-bucket with the bucket "
+        "pre-loaded, i.e. the 'Edit bucket' form.",
     )
 
     bucket_menu_delete_menuitem = LocatorDescriptor(
@@ -1401,6 +1454,88 @@ class ArtifactsPage(BasePage):
         self.bucket_name_input.type(name)
         logger.info("Filled bucket name field with '%s'", name)
 
+    @action("Clear bucket name field")
+    def clear_bucket_name(self) -> None:
+        """Empty the Name field entirely (ELITEA-1813).
+
+        Additive sibling to :meth:`fill_bucket_name` — NOT reusable as
+        ``fill_bucket_name("")``: ``Locator.type("")`` is a silent no-op that
+        leaves the ``select_text()`` selection in place with the text still
+        present, so the field never actually empties (confirmed live during
+        ELITEA-1813 analysis). The explicit ``press("Delete")`` deletes the
+        selection and fires the ``formik.handleChange`` the MUI/formik field
+        needs (``.claude/rules/mui-patterns.md``).
+
+        Leaves focus IN the field — ELITEA-1813 asserts the pre-blur state
+        (helper text absent, ``aria-invalid="false"``) before deliberately
+        blurring, because ``CreateBucket.jsx:243-244`` gates both on
+        ``formik.touched.name``.
+        """
+        self.bucket_name_input.click()
+        self.bucket_name_input.select_text()
+        self.bucket_name_input.press("Delete")
+        logger.info("Cleared bucket name field")
+
+    @action("Append characters to bucket name field")
+    def append_to_bucket_name(self, text: str) -> None:
+        """Type *text* at the END of the Name field's current value (ELITEA-1819).
+
+        Additive sibling to :meth:`fill_bucket_name`, which always REPLACES
+        the whole value (``select_text()`` + ``type()``) and therefore cannot
+        express an append. ELITEA-1819's subject is the browser's own
+        ``maxLength`` enforcement, so the extra character must arrive as a
+        real key event: ``Locator.type()`` dispatches keydown/keypress/input
+        exactly as a user would, whereas ``fill()`` writes through the DOM
+        value setter and bypasses ``maxLength`` entirely — which would make
+        the test pass for the wrong reason.
+
+        Clicks the field first (so the append works from any prior state) and
+        moves the caret to the end with ``press("End")``. Focus is LEFT in the
+        field on return: :attr:`bucket_name_character_counter` unmounts on
+        blur, so callers asserting the counter after the append depend on it.
+
+        Args:
+            text: Characters to append at the end of the current value.
+        """
+        self.bucket_name_input.click()
+        self.bucket_name_input.press("End")
+        self.bucket_name_input.type(text)
+        logger.info("Appended %r to the bucket name field", text)
+
+    def get_bucket_name_character_counter_text(self, timeout: int = 10000) -> str:
+        """Return the Name field's character-counter text (ELITEA-1818/1819).
+
+        Reads :attr:`bucket_name_character_counter`, which renders only while
+        the Name field is focused AND holds exactly 56 characters — see that
+        field's own description for the gating and the ``display: contents``
+        caveat.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the counter.
+
+        Returns:
+            The counter's stripped text, e.g. ``"0 characters left"``.
+        """
+        self.bucket_name_character_counter.wait_for(state="visible", timeout=timeout)
+        text = (self.bucket_name_character_counter.text_content() or "").strip()
+        logger.info("Bucket-name character counter: %r", text)
+        return text
+
+    def all_bucket_rows(self) -> Locator:
+        """Return a locator matching EVERY currently-rendered bucket row.
+
+        Additive companion to :meth:`any_bucket_row`, which is deliberately
+        ``.first``-scoped (visibility checks) and therefore cannot carry a
+        ``to_have_count()`` assertion. ELITEA-1813 needs the unscoped form to
+        assert the bucket-row count is UNCHANGED across a Cancel with a
+        web-first, auto-retrying assertion rather than a one-shot
+        :meth:`get_visible_bucket_count` read on a ~970-row list.
+
+        Returns:
+            Locator for :attr:`BUCKET_ROW_ANY_SELECTOR` (all matches).
+        """
+        return self.page.locator(self.BUCKET_ROW_ANY_SELECTOR)
+
     def is_bucket_name_invalid(self, timeout: int = 5000) -> bool:
         """Return whether the Name field is currently flagged invalid (ELITEA-1817).
 
@@ -1423,6 +1558,83 @@ class ArtifactsPage(BasePage):
         """
         self.bucket_name_input.wait_for(state="visible", timeout=timeout)
         return self.bucket_name_input.get_attribute("aria-invalid") == "true"
+
+    def is_bucket_name_input_disabled(self, timeout: int = 10000) -> bool:
+        """Return whether the bucket-form Name field is DISABLED (ELITEA-1816).
+
+        The bucket form serves both create and edit off the same route;
+        ``CreateBucket.jsx`` renders the Name field with
+        ``disabled={!!currentBucket}``, so the field is enabled while
+        creating and disabled once an existing bucket is loaded for edit.
+        Non-editability is implemented as a real ``disabled`` attribute —
+        there is NO ``readonly`` attribute on this input (confirmed live
+        during ELITEA-1816 analysis), which is why callers assert this
+        rather than hunting a ``readonly`` that does not exist.
+
+        Same "read a state property off an already testid-anchored locator"
+        shape as :meth:`is_bucket_name_invalid` / :meth:`is_bucket_selected`
+        — no new testid needed.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the field to be
+                visible before reading its state.
+
+        Returns:
+            True when the input carries the ``disabled`` state.
+        """
+        self.bucket_name_input.wait_for(state="visible", timeout=timeout)
+        return self.bucket_name_input.is_disabled()
+
+    def is_bucket_name_input_editable(self, timeout: int = 10000) -> bool:
+        """Return whether the bucket-form Name field is EDITABLE (ELITEA-1816).
+
+        Companion to :meth:`is_bucket_name_input_disabled`: Playwright's
+        ``is_editable()`` is the positive form of the same actionability
+        question (enabled AND not readonly), so asserting BOTH pins the
+        field's state from both directions and survives the product later
+        swapping ``disabled`` for ``readOnly``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the field to be
+                visible before reading its state.
+
+        Returns:
+            True when the input is editable.
+        """
+        self.bucket_name_input.wait_for(state="visible", timeout=timeout)
+        return self.bucket_name_input.is_editable()
+
+    @action("Delete a bucket through the UI dot-menu")
+    def delete_bucket_via_menu(
+        self, bucket_name: str, timeout: int = 15000
+    ) -> None:
+        """Delete *bucket_name* through the left panel's dot-menu -> Delete flow.
+
+        Pure composition over the existing bucket-menu + delete-confirm
+        methods, lifted to the page object because it is now needed by three
+        specs (ELITEA-1810 keeps its own suite-local copy — that spec is
+        sanctioned-RED on defect #1677 and is deliberately left byte-identical
+        — plus ELITEA-1812 and ELITEA-1816, which both create their bucket as
+        a case step and must not leak it into the project, already carrying
+        ~970 buckets, #636). Third repetition is the project's extraction
+        threshold.
+
+        Navigates to the Artifacts root first so it works from anywhere in the
+        flow, and waits for the row to actually disappear — the honest proof
+        the delete landed, rather than the toast.
+
+        Args:
+            bucket_name: Exact (stored, lowercase) bucket name to delete.
+            timeout: Maximum wait time in milliseconds for the row to vanish
+                from the bucket list after confirmation.
+        """
+        self.navigate_to_artifacts()
+        self.wait_for_bucket_in_list(bucket_name, timeout=timeout)
+        self.open_bucket_menu(bucket_name)
+        self.click_bucket_menu_delete_item()
+        self.confirm_delete_bucket()
+        self.wait_for_bucket_removed_from_list(bucket_name, timeout=timeout)
+        logger.info("Deleted bucket '%s' via the UI dot-menu", bucket_name)
 
     @action("Click bucket Save button")
     def click_bucket_save_button(self, timeout: int = 15000):
@@ -1467,6 +1679,211 @@ class ArtifactsPage(BasePage):
         """
         self.bucket_save_button.click()
         logger.info("Clicked bucket Save button (invalid-name path, no response expected)")
+
+    def get_bucket_form_heading_text(self, timeout: int = 10000) -> str:
+        """Return the bucket form's heading text (ELITEA-1810).
+
+        ``/artifacts/create-bucket`` is a SINGLE route serving both flows;
+        ``CreateBucket.jsx`` renders ``currentBucket ? 'Edit bucket' : 'New
+        Bucket'``, so this heading is the only DOM observable that
+        distinguishes an edit-form load (reached via the bucket dot-menu's
+        'Rename' item) from a fresh create-form load. Read the TEXT — the
+        testid is stable identity, per the locator policy.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the heading.
+
+        Returns:
+            The heading's stripped text, e.g. ``"Edit bucket"``.
+        """
+        self.bucket_form_heading.wait_for(state="visible", timeout=timeout)
+        text = (self.bucket_form_heading.text_content() or "").strip()
+        logger.info("Bucket form heading: %r", text)
+        return text
+
+    @action("Select bucket retention measure")
+    def select_retention_measure(self, measure: str, timeout: int = 10000) -> None:
+        """Open the retention-measure select and pick *measure* (ELITEA-1810).
+
+        The measure control is the shared ``SingleSelect``, so its options
+        carry the SAME ``select-option-{value}`` testids every other select
+        in this codebase uses — addressed through :attr:`BasePage.SELECT_OPTION`,
+        the inherited class-level template (never an inline locator, per
+        ``.claude/rules/page-objects.md``).
+
+        Idempotent about the dropdown's OPEN state: a caller may have already
+        opened it (:meth:`open_retention_measure_dropdown`, e.g. to assert the
+        offered options first) or not. Confirmed live — clicking the combobox
+        while it is ALREADY expanded times out, because MUI's own invisible
+        ``MuiBackdrop`` for the open ``menu-expiration_measure`` popover sits
+        over the combobox and intercepts the pointer event. So the open click
+        is issued only when ``aria-expanded`` is not already ``"true"``.
+
+        Args:
+            measure: The option's underlying VALUE — one of ``"days"``,
+                ``"weeks"``, ``"months"``, ``"years"`` (lowercase; the
+                rendered LABEL is capitalized by ``capitalizeFirstChar``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        if self.bucket_retention_measure_combobox.get_attribute("aria-expanded") != "true":
+            self.bucket_retention_measure_combobox.click()
+        option = self.page.locator(self.SELECT_OPTION.format(measure))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        # Wait for the popover (and its pointer-intercepting backdrop) to
+        # unmount before returning — otherwise the caller's next click (e.g.
+        # into the retention-value field) races the closing transition.
+        option.wait_for(state="hidden", timeout=timeout)
+        logger.info("Selected retention measure %r", measure)
+
+    def is_retention_measure_option_visible(self, measure: str) -> bool:
+        """Return whether a retention-measure option is rendered (ELITEA-1810).
+
+        Call after :meth:`open_retention_measure_dropdown`. Used by Test Step
+        5 to prove all four measures are offered.
+
+        Args:
+            measure: ``"days"`` / ``"weeks"`` / ``"months"`` / ``"years"``.
+
+        Returns:
+            True when that option's ``select-option-{measure}`` element is
+            visible.
+        """
+        return self.page.locator(self.SELECT_OPTION.format(measure)).is_visible()
+
+    def get_retention_measure_option_text(self, measure: str) -> str:
+        """Return a retention-measure option's rendered label (ELITEA-1810).
+
+        Args:
+            measure: ``"days"`` / ``"weeks"`` / ``"months"`` / ``"years"``.
+
+        Returns:
+            The option's stripped text, e.g. ``"Months"``.
+        """
+        return (
+            self.page.locator(self.SELECT_OPTION.format(measure)).text_content() or ""
+        ).strip()
+
+    @action("Open bucket retention measure dropdown")
+    def open_retention_measure_dropdown(self, timeout: int = 10000) -> None:
+        """Click the retention-measure combobox to open its option list.
+
+        Separate from :meth:`select_retention_measure` because ELITEA-1810's
+        Test Step 5 asserts the OPEN list's contents before choosing.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the first option.
+        """
+        self.bucket_retention_measure_combobox.click()
+        self.page.locator(self.SELECT_OPTION.format("years")).wait_for(
+            state="visible", timeout=timeout
+        )
+        logger.info("Retention-measure dropdown open")
+
+    def get_retention_measure_text(self) -> str:
+        """Return the retention-measure combobox's current selection text.
+
+        The measure control is a MUI Select rendering a ``div`` — read its
+        ``text_content()``, never ``input_value()``.
+
+        Returns:
+            e.g. ``"Years"`` / ``"Months"`` / ``"Weeks"`` / ``"Days"``.
+        """
+        return (self.bucket_retention_measure_combobox.text_content() or "").strip()
+
+    def get_retention_value(self) -> str:
+        """Return the retention-value field's current value.
+
+        A real ``<input type="number">``, unlike the measure control.
+
+        Returns:
+            The field's value as a string, e.g. ``"10"``.
+        """
+        return self.bucket_retention_value_input.input_value()
+
+    @action("Set bucket retention value")
+    def set_retention_value(self, value: str) -> None:
+        """Replace the retention-value field's contents with *value*.
+
+        The field is ALWAYS pre-populated (``1`` on a fresh form, the stored
+        policy on an edit), so a bare ``type()`` would concatenate
+        (``1`` + ``10`` -> ``110``). Uses the same click + ``select_text()`` +
+        ``type()`` shape :meth:`fill_bucket_name` already established for
+        this form — confirmed live that ``fill()`` / ``Control+A`` do not
+        take on these MUI/formik-controlled fields.
+
+        Args:
+            value: The new retention value, as a string.
+        """
+        self.bucket_retention_value_input.click()
+        self.bucket_retention_value_input.select_text()
+        self.bucket_retention_value_input.type(value)
+        logger.info("Set retention value to %r", value)
+
+    @action("Click bucket Save button (edit — PUT expected)")
+    def click_bucket_save_button_expect_put(self, timeout: int = 15000):
+        """Click Save on the 'Edit bucket' form and return the update response.
+
+        Sibling to :meth:`click_bucket_save_button`, which hardcodes
+        ``r.request.method == "POST"`` in its ``expect_response`` predicate
+        and therefore HANGS on an edit save — an edit is a ``PUT``
+        (``src/api/artifacts.js``'s ``updateBucket``), not a ``POST``.
+        Additive: :meth:`click_bucket_save_button` is untouched and its
+        merged callers keep their exact behaviour.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the response.
+
+        Returns:
+            Playwright ``Response`` object for the bucket-update PUT.
+        """
+        with self.page.expect_response(
+            lambda r: "artifacts/buckets" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as response_info:
+            self.bucket_save_button.click()
+        return response_info.value
+
+    @action("Click bucket Cancel button")
+    def click_bucket_cancel_button(self, timeout: int = 15000) -> None:
+        """Click Cancel on the bucket form and wait for the bucket list again.
+
+        ``onCancel`` is a plain ``navigate(-1)`` — no request fires, so there
+        is nothing to ``expect_response`` on. Waits on the CONDITION that the
+        form's Save button is gone, which is what actually proves the route
+        left the form.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the form to close.
+        """
+        self.bucket_cancel_button.click()
+        self.bucket_save_button.wait_for(state="hidden", timeout=timeout)
+        logger.info("Clicked bucket Cancel button — form closed")
+
+    def get_bucket_row_index(self, bucket_name: str) -> int:
+        """Return a bucket's 0-based position among the rendered bucket rows.
+
+        The Artifacts UI exposes no user-visible bucket ID anywhere in the
+        DOM — buckets are keyed by NAME (``bucket-menu-{name}-…``,
+        ``?bucket={name}``). ELITEA-1810's Test Steps 10/17 ("note the bucket
+        position/ID" / "same position") are therefore automated as this list
+        index, which is the only observable half of that step. Reads through
+        :meth:`get_rendered_bucket_names`, so it inherits its pinned-first
+        ordering semantics.
+
+        Args:
+            bucket_name: Exact bucket name to locate.
+
+        Returns:
+            The bucket's 0-based index in the rendered list.
+
+        Raises:
+            ValueError: If the bucket is not currently rendered.
+        """
+        names = self.get_rendered_bucket_names()
+        index = names.index(bucket_name)
+        logger.info("Bucket %r is at list index %d of %d", bucket_name, index, len(names))
+        return index
 
     def wait_for_bucket_in_list(self, bucket_name: str, timeout: int = 15000) -> None:
         """Wait for a bucket to appear in the left-panel bucket list.
@@ -1666,6 +2083,29 @@ class ArtifactsPage(BasePage):
         self.bucket_menu_delete_menuitem.click()
         self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
         logger.info("Clicked 'Delete' in the open bucket-menu")
+
+    @action("Click bucket-menu 'Rename' item")
+    def click_bucket_menu_rename_item(self, timeout: int = 15000) -> None:
+        """Click the open bucket-menu's 'Rename' item to open the edit form.
+
+        Call :meth:`open_bucket_menu` first — same "caller opens, this
+        clicks" division of responsibility as
+        :meth:`click_bucket_menu_delete_item`.
+
+        Label note (CLARIFICATION #666/#650): the TMS cases call this item
+        "Edit"; the live product renders "Rename". It navigates to the SAME
+        ``/artifacts/create-bucket`` route the create flow uses, with the
+        bucket pre-loaded — the heading flips to "Edit bucket"
+        (:meth:`get_bucket_form_heading_text`), which is what this method
+        waits on as proof the edit form actually loaded.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the edit form.
+        """
+        self.bucket_menu_rename_menuitem.click()
+        self.bucket_form_heading.wait_for(state="visible", timeout=timeout)
+        self.bucket_name_input.wait_for(state="visible", timeout=timeout)
+        logger.info("Clicked 'Rename' in the open bucket-menu — edit form open")
 
     @action("Select files via bucket-menu 'Upload files'")
     def click_bucket_menu_upload_files_item(

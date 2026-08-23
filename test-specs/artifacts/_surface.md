@@ -744,3 +744,385 @@ fresh `git fetch origin` + the two-stage `-i`/`[:=]` grep on both refs.
 `artifacts-file-row`; a folder row renders as `artifacts-folder-row`, so calling it with `a1` /
 `folder-a` times out at 10 s (cost one rerun on this cluster). Folders also carry no Type/Size
 metadata to snapshot — assert their presence via `get_file_names()` and the left-panel tree instead.
+
+---
+
+## Confirmed handles (as of ELITEA-1810 retention edit/persistence, 2026-08-23)
+
+| Element | Handle | Method / constant | Notes |
+|---|---|---|---|
+| New-Bucket / Edit-bucket Cancel button | `artifacts-bucket-cancel-button` | *(no page-object field yet)* | `CreateBucket.jsx:307`; `onCancel = navigate(-1)` — no request fires |
+| Retention measure options | `select-option-days` / `-weeks` / `-months` / `-years` | `BasePage.SELECT_OPTION.format(m)` | shared `SingleSelect` popover; only one select open at a time |
+| Bucket dot-menu **Rename** item | `bucket-menu-rename-menuitem` | *(no page-object method yet)* | derived from `BucketItem.jsx:165` key via `DotMenu.jsx:58`; opens the SAME `/artifacts/create-bucket` route in edit mode (form heading text `Edit bucket`) |
+| Bucket-edit save | `artifacts-bucket-save-button` | ⚠ existing `click_bucket_save_button()` waits for a **POST** | an edit save is a **PUT** `/artifacts/buckets/default/{project_id}` (`src/api/artifacts.js:55`) — the existing method hangs on edits |
+| Delete-confirm dialog | `delete-confirm-title` / `-message` / `-entity-name` / `-cancel-button` / `delete-confirm-button` / `delete-confirm-close-button` | | full inventory read live |
+
+### Retention-policy behaviours confirmed live (2026-08-23)
+
+- Create form defaults: name `new-bucket`, measure `Years`, value `1`.
+- Both retention fields are pre-populated — **select-all before typing** or values
+  concatenate (`1` + `10` → `110`).
+- Measure is a MUI Select: read `textContent`. Value is a real `<input type="number">`:
+  read `input_value()`.
+- Save (create) → `POST …/artifacts/buckets/default/{pid}` 200, then auto-navigates to
+  `/artifacts?bucket=<name>` and auto-selects the new bucket (`PENDING_BUCKET_SESSION_KEY`).
+- Save (edit) → `PUT` same URL, 200, then `/artifacts?bucket=<name>`.
+- **Cancel fires NO request** (verified with a request listener) and does not change
+  `retentionDays`.
+- Bucket list is alphabetically sorted; a created bucket keeps its index across an edit.
+- **No toast fires on bucket save** — the response status is the only honest oracle.
+- Backend stores retention as `retentionDays` (readable via
+  `GET /artifacts/s3/?project_id={id}&format=json`): `20 Weeks`→140, `10 Months`→304,
+  `3 Months`→92. Useful independent tie-breaker for a stale-looking UI read.
+
+### `#1677` — Months retention never round-trips (filed 2026-08-23)
+
+A bucket saved with **Months** reopens as **Days** (`10 Months`→`304 Days`,
+`3 Months`→`92 Days`). Backend stores calendar-accurate days;
+`convertDaysToMeasure()` (`src/utils/retentionPolicy.js`) needs `days % 30 === 0` to
+reconstruct months, which a real month count never satisfies. Weeks (×7) and Years (×365)
+round-trip fine. Deterministic — any case asserting a Months policy after a reopen is
+sanctioned-RED against #1677.
+
+### Gotchas added this run
+
+- **NEVER poll with a busy `while` loop inside `browser_evaluate` / `page.evaluate`.**
+  A JS spin-loop blocks the main thread, so React cannot render the ~967-row bucket list
+  and the poll reads `0 rows` until it times out — this produced a false "the bucket list
+  never loads / shows *No buckets created yet*" reading twice (~65 s wasted). Use
+  Playwright waits (`expect(...).to_have_count`, `locator.wait_for`), which yield.
+- The bucket-list **empty state** (`No buckets created yet`) renders transiently while the
+  list is still loading — never assert emptiness without a settled-list wait.
+- `bucket-menu-{name}-menu-button` is in the DOM but **invisible until the row is
+  hovered**; a direct click fails with *"element is not visible"*.
+- There is exactly **ONE** bucket-creation entry point in the product
+  (`artifacts-create-bucket-button`, a `NewFolder` icon in `BucketHeader.jsx:59`) —
+  TMS cases describing a "Path 1 button" vs a "Path 2 folder icon" (ELITEA-1808 vs
+  ELITEA-1810) both land on it.
+- `#636` ("bucket delete 404s silently, buckets never removed") did **not** reproduce via
+  the **UI** delete path today: row hover → dot-menu `Delete` → `delete-confirm-button`
+  removed the bucket from the S3 listing immediately. Usable teardown fallback.
+- Project 399 held **967 buckets** at run time, including leaked `autotest-*` names from
+  earlier runs (e.g. `autotest-1810-b2-2251`) — always generate unique bucket names.
+
+### Resolved/added during ELITEA-1810 implementation (2026-08-23, implementer)
+
+- **Testids added and PUSHED** — EliteaAI/EliteaUI@c91c2aac on `automation/testids`
+  (3 attribute-only lines, 0 removals, no hooks, no new DOM nodes):
+  `key: 'bucket-menu-rename'` on `BucketItem.jsx`'s Rename item (DotMenu derives
+  `bucket-menu-rename-menuitem`), `data-testid="artifacts-bucket-cancel-button"`, and
+  the new `data-testid="artifacts-bucket-form-heading"` on `CreateBucket.jsx`'s heading
+  Typography. **Caution for future analysis on this surface:** the first two were
+  present only as *uncommitted* edits in the `../EliteaUI` working tree at analysis
+  time, so a plain grep reported them as "exists" while they lived on no branch. Verify
+  a testid's provenance with `git grep <t> origin/automation/testids -- src/`, not with
+  a working-tree grep.
+- **`artifacts-bucket-form-heading` is the only observable separating the create form
+  from the edit form.** `/artifacts/create-bucket` is ONE route serving both;
+  `CreateBucket.jsx` renders `currentBucket ? 'Edit bucket' : 'New Bucket'`. One stable
+  testid, state read from the TEXT.
+  **Consequence for every artifacts case whose step reads "the New Bucket form opens"
+  (added during ELITEA-1812/1816 review round 1, 2026-08-23):** a `"/artifacts/create-bucket"
+  in page.url` assertion does NOT verify that expected result — a regression that opened the
+  EDIT form on the same route would pass it. Assert
+  `get_bucket_form_heading_text() == "New Bucket"` alongside the URL. Both ELITEA-1812's and
+  ELITEA-1816's specs now do this at their Step 2.
+- **The retention-measure Select's own MUI backdrop blocks a second combobox click.**
+  Opening the dropdown mounts an invisible `MuiBackdrop` for `menu-expiration_measure`
+  that sits over the combobox — so "open the dropdown, then select an option" as two
+  separate page-object calls times out on `Locator.click`. `select_retention_measure()`
+  now only issues the open-click when `aria-expanded != "true"`, and waits for the
+  option to reach `hidden` before returning so the closing backdrop cannot race the
+  caller's next click.
+- **The bucket-list refetch needs well over 15 s in project 399 (~970 buckets).** The
+  15 s `NAVIGATION_TIMEOUT` the sibling artifacts specs use produced a false "bucket
+  never appeared" right after the create-save; a fresh `navigate_to_artifacts()`
+  showed it instantly. ELITEA-1810 uses a dedicated `BUCKET_LIST_TIMEOUT = 45_000`
+  for every bucket-list condition wait. Expect the sibling specs to start flaking on
+  this as the project's bucket count grows.
+- **An EDIT save is a `PUT`, not a `POST`.** `ArtifactsPage.click_bucket_save_button()`
+  hardcodes `method == "POST"` in its `expect_response` predicate and HANGS on an edit
+  save — use the new additive sibling `click_bucket_save_button_expect_put()`.
+- **Cancel fires no bucket request at all** (`onCancel` is a plain `navigate(-1)`) —
+  confirmed by a `capture_requests_matching("artifacts/buckets", method="PUT")`
+  listener armed before the form is touched: zero captured across the whole
+  select-Days / set-1 / Cancel sequence.
+- **#636 re-confirmed both ways:** `ArtifactAPI.delete_bucket()` 404s every time
+  (`.../buckets/default/399/p--399.<name>`), while the UI delete path removes the
+  bucket cleanly — provided the removal wait gets `BUCKET_LIST_TIMEOUT`, not 15 s.
+
+## Confirmed handles + behaviours (ELITEA-1812/1816 cluster, 2026-08-23)
+
+Bucket **name case-handling** and the **Edit-bucket form's read-only Name field**.
+**Zero new testids were needed** for either case — every handle already existed.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Bucket name input | `artifacts-bucket-name-input` | `fill_bucket_name()` | **Enabled in Create mode, `disabled` in Edit mode** — `CreateBucket.jsx:238` renders `disabled={!!currentBucket}`. It is a real `disabled` attribute (`get_attribute("disabled") == ""`), **not** `readOnly` (`readonly` is `None`). A `click()` on it in Edit mode raises Playwright `TimeoutError` ("not enabled"); the deprecated `Locator.type()` does **not** raise, it silently no-ops — so *value-unchanged* is the assertion that proves "no input accepted", never `type()`'s outcome. |
+| Inline name-validation helper text | `artifacts-bucket-name-helper-text` | `CreateBucket.jsx:244` (`FormHelperTextProps`) | **CORRECTS the 2026-08-02 digest row above**, which says "testid needed / not yet added" — it exists now and is on `origin/main`. |
+| Form heading (New Bucket / Edit bucket) | `artifacts-bucket-form-heading` | `get_bucket_form_heading_text()` | text is `New Bucket` on create, **`Edit bucket`** on edit — same route `/artifacts/create-bucket` for both, so the URL alone never tells you which mode you are in |
+| Bucket dot-menu item order | `Upload files` · **`Rename`** · `Pin to top` · `Delete` | `BucketItem.jsx:153-205` | `get_bucket_menu_items_text()` returns them concatenated with no separator: `"Upload filesRenamePin to topDelete"`. Case texts saying "Edit" (and a different order) are tracked drift — `EliteaAI/elitea-testing-public#666` |
+
+### Bucket-name case conversion is a BACKEND behaviour (confirmed live)
+Typing `AUTOTEST-1812-182449` (or mixed `AuToTest-1816-182606`) into the New Bucket form:
+- the input **preserves the typed case verbatim** — there is **no `toLowerCase()` anywhere
+  in `src/pages/Artifacts/CreateBucket.jsx`**, and the yup schema `^[a-zA-Z][a-zA-Z0-9-]*$`
+  explicitly *permits* uppercase (so this is not a validation rejection);
+- the form posts `values.name.trim()` unchanged to
+  `POST /api/v2/artifacts/buckets/default/{project_id}` (note: **v2**, not v1);
+- the **response body** comes back lowercased —
+  `{"message":"Created","id":"p--399.autotest-1812-182449","name":"autotest-1812-182449"}`.
+  That body is the honest oracle for the "**stored** lowercase" half of the claim; the DOM
+  alone can only prove "**displayed** lowercase".
+- The bucket row testid is derived from the stored name
+  (`data-testid={\`artifacts-bucket-row-${name}\`}`, `BucketItem.jsx:243`), so
+  `artifacts-bucket-row-{lower}` present + `artifacts-bucket-row-{TYPED}` count 0 is a
+  two-sided name assertion.
+
+### Retention `Days / 1` round-trips cleanly
+Create with `Days`/`1` → reopen the Edit form → `Days`/`1` (hard-asserted, passed). Defect
+`#1677` (a `Months` policy reopening as `Days`) only bites units whose day-count is not
+divisible by 30 — **use `Days` or `Weeks` for any retention step that is incidental to the
+case**, so an unrelated red never leaks in.
+
+### Gotchas added this run
+- **Cold-session `networkidle`**: the *first* `/artifacts` navigation of a fresh browser
+  session exceeded `wait_for_page_load()`'s default 15 s once (45 s was comfortable).
+  Subsequent navigations in the same session were fine. Raise that one call's timeout;
+  it is not a product issue.
+- Project 399's bucket leak (`#636`) keeps growing — this run added 2 more
+  (`autotest-1812-182449`, `autotest-1816-182606`).
+- Playwright MCP was **not** attempted this session — went straight to a
+  `playwright.sync_api` scratch script driving `ArtifactsPage` (per the 5-consecutive-session
+  history in the gotchas above). It worked first try; that remains the cheap default here.
+
+### Resolved/added during ELITEA-1812 + ELITEA-1816 implementation (2026-08-23, implementer)
+- **A bucket save lands on the BARE `/artifacts` root — there is no `?bucket=<name>`
+  param.** ELITEA-1812's AFS expected the create form's `PENDING_BUCKET_SESSION_KEY`
+  auto-select to show up as a `?bucket=` query param; an auto-retrying `to_have_url`
+  polled 87 times over 45 s and every sample was plain `http://localhost:5173/artifacts`
+  (project 399, ~970 buckets). Assert the ROUTE after a bucket save, never the param.
+  (Contrast: the file-preview flow *does* set `?bucket=&file=` — see the URL-query row
+  above. The two are different navigations.)
+- **`sidebar_menu_item("artifacts").click()` verified live** as the case-faithful way to
+  return to the Artifacts root (ELITEA-1812 step 5) — testid
+  `sidebar-menu-item-artifacts`, still `automation/testids`-only.
+- **The bucket-form Name field is `disabled`, never `readonly`** (`CreateBucket.jsx`:
+  `disabled={!!currentBucket}`). A `click()` on it in Edit mode is REFUSED by Playwright's
+  actionability check (assert with a SHORT ~3 s budget inside `pytest.raises`), while
+  `Locator.type()`/`press()` do **not** raise — they silently do nothing. So the only
+  assertion that proves "no input accepted" is the unchanged `input_value()`.
+  New page-object accessors: `is_bucket_name_input_disabled()` /
+  `is_bucket_name_input_editable()`.
+- **`ArtifactsPage.delete_bucket_via_menu(name)` now exists** — the UI bucket-teardown
+  composition (navigate → wait for row → dot-menu → Delete → confirm → wait for removal),
+  lifted to the page object at its third repetition. Use it for teardown instead of
+  copying the local helper again. ELITEA-1810's suite-local copy is deliberately left in
+  place (that spec is sanctioned-RED on `#1677`).
+- Both new specs delete their own bucket at teardown (UI path, API fallback), so this run
+  added **no** new leak to `#636`.
+
+## Confirmed handles + behaviours (ELITEA-1813/1815 New-Bucket form cluster, 2026-08-23)
+
+Empty-name validation and the **Cancel** path of the create form. **Zero new testids
+needed** — every handle already existed.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Name helper text | `artifacts-bucket-name-helper-text` | `bucket_name_helper_text` | element is **not rendered at all** while `formik.touched.name` is false — assert `count() == 0`, not `not_to_be_visible()` on a present node |
+| Save button | `artifacts-bucket-save-button` | `bucket_save_button` | `disabled` **only** for an empty (or >56 char) name — `CreateBucket.jsx:292-298`. For a *non-empty but invalid* name it stays ENABLED (that is ELITEA-1811's path) |
+| Cancel button | `artifacts-bucket-cancel-button` | `click_bucket_cancel_button()` | always enabled, in every form state; `onCancel = navigate(-1)` → lands on bare `/artifacts` |
+
+### New-Bucket form validation behaviours confirmed live (2026-08-23)
+
+- **Empty name ⇒ Save disabled IMMEDIATELY, no blur needed.** `bucket_save_button.click()`
+  then raises Playwright `TimeoutError` ("element is not enabled") — that is the honest
+  "not clickable" assertion; `to_be_disabled()` alone only proves the attribute.
+- **`Name is required` needs a BLUR.** After clearing the field: helper-text `count() == 0`,
+  `aria-invalid="false"`. After one `press("Tab")`: helper text `"Name is required"`,
+  `aria-invalid="true"`. Formik sets `touched` on blur/submit only, and the submit path is
+  unreachable because Save is disabled. Case-text gap filed as CLARIFICATION **#1680**.
+  (Same `touched`-gating already noted in § Known gotchas for the invalid-name path — this
+  run confirms the empty-name branch has *no* submit escape hatch at all.)
+- **`fill_bucket_name("")` does NOT clear the field.** `Locator.type("")` is a silent
+  no-op — the text stays selected but present. Clearing needs an explicit
+  click → `select_text()` → `press("Delete")` (a `clear_bucket_name()` page-object method
+  is the natural home; not added by this analysis).
+- **Cancel fires ZERO requests on the CREATE form too** (previously confirmed only for the
+  edit form / ELITEA-1810): a request capture on `artifacts/buckets` across Cancel came
+  back `[]` in both the empty-name and the valid-values runs.
+- Valid name + `Days`/`3` ⇒ Save **and** Cancel both visible + enabled, helper-text
+  `count() == 0`. Defaults observed: name `new-bucket`, measure `Years`, value `1`.
+- **Bucket-search filter is a clean absence oracle**: `open_bucket_search()` →
+  `search_buckets("bucket-cancel-test")` → `get_visible_bucket_count() == 0`, far more
+  robust than a negative row lookup against project 399's ~968 rendered rows.
+
+### Gotchas added this run
+
+- Project 399 rendered **968** bucket rows this session (`#636` leak, still growing) —
+  `wait_for_page_load(timeout=60000)` on the FIRST navigation of a fresh session; the 15 s
+  default is not enough cold.
+- MCP Playwright was **not** attempted (6th consecutive session) — a `playwright.sync_api`
+  scratch script driving `ArtifactsPage` worked first try. Remains the cheap default here.
+- Both ELITEA-1813 and ELITEA-1815 create **nothing** — they are among the very few
+  artifacts cases that add zero buckets to the `#636` pile.
+
+## Resolved/added during ELITEA-1813 + ELITEA-1815 implementation (test-automation-engineer, 2026-08-23)
+
+- **`ArtifactsPage.clear_bucket_name()` — ADDED** (`artifacts_page.py`, additive). The
+  analysis note above ("a `clear_bucket_name()` page-object method is the natural home") is
+  now shipped: click → `select_text()` → `press("Delete")`. Confirmed again live —
+  `fill_bucket_name("")` cannot substitute, because `Locator.type("")` is a silent no-op
+  that leaves the selection in place with the text still present.
+- **`ArtifactsPage.all_bucket_rows()` — ADDED** (additive companion to `any_bucket_row()`).
+  `any_bucket_row()` is deliberately `.first`-scoped (`artifacts_page.py:4397`), so it can
+  carry visibility assertions but NOT `to_have_count()` — it always counts 1. Any spec
+  asserting "the bucket-row count is unchanged" or "the search filter matched nothing" needs
+  the unscoped form. Same `BUCKET_ROW_ANY_SELECTOR` class constant; no new testid.
+- **`navigate_to_artifacts()` cannot carry the cold-session budget** — it hardcodes
+  `wait_for_page_load()`'s 15 s default with no timeout parameter. Where the ~968-row cold
+  load matters, call `navigate("/artifacts")` + `wait_for_page_load(timeout=60000)`
+  directly (both specs of this cluster do).
+- **The blur-gated helper text held exactly as analysed**: pre-blur
+  `artifacts-bucket-name-helper-text` `count() == 0` and `aria-invalid == "false"`;
+  post-`Tab` the text is byte-exact `Name is required` and `aria-invalid == "true"`
+  (CLARIFICATION #1680 stands — the case text omits the blur).
+- **Zero `artifacts/buckets` requests across Cancel — re-confirmed at implementation** in
+  both specs, on the create form, with a passive `capture_requests_matching` listener.
+- Both specs ran GREEN first try in one 49 s headless invocation; no rerun, no flake.
+
+## Confirmed handles (as of ELITEA-1818/1819 cluster analysis, 2026-08-23)
+
+New Bucket form — the **56-character name boundary**. Verified live on
+`localhost:5173`, project 399. Complements the ELITEA-1811/1814 rows above
+(regex validation) and ELITEA-1817 (56-char creation + bucket delete).
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Name field's own max-length | `maxlength="56"` attribute on `artifacts-bucket-name-input` | `CreateBucket.jsx:239-241` (`inputProps.maxLength`) | **native browser constraint** — the 57th keystroke never reaches React. Rejection is completely silent: no error, no helper text, no toast, `aria-invalid` stays `"false"`. Read the attribute off the existing testid'd node; no new handle needed. |
+| Character counter ("0 characters left") | **testid needed: `artifacts-bucket-name-character-counter`** | `CreateBucket.jsx:247-253`, `<Text.CharacterCounter>` | `CharacterCounter.jsx` **already accepts** a `data-testid` prop (`:11,20`) — prop-only wiring at the call site, zero functional impact, **no wrapper element may be added**. |
+| Counter text | `"0 characters left"` (exact) | `src/[fsd]/shared/ui/text/CharacterCounter.jsx` → `` `${remaining} characters left` `` | The `". You have reached the MAXIMUM character limit"` suffix never appears at this call site (`hideMaxLimitMessage` is passed). TMS cases ELITEA-1818/1819 say `"0 of 56 remaining"` — stale; CLARIFICATION `EliteaAI/elitea-testing-public#1682`. |
+| Counter render condition | `isFocused('name') && name.length === 56` | same | **Focus-gated and length-exact.** At 55 chars there is no element at all; blurring the field (Tab / click elsewhere) removes it from the DOM; re-focusing restores it. Never assert it after a blur. |
+| Form heading | `artifacts-bucket-form-heading` | `CreateBucket.jsx` | text `"New Bucket"` (create) / `"Edit bucket"` (edit). On `automation/testids` only — not yet on `main`. |
+| Delete-confirmation **Cancel** | `delete-confirm-cancel-button` | shared `DeleteEntityModal` | on `main`. Live-confirmed from the **bucket** dot-menu call site: closes the modal and fires **zero** `/artifacts/buckets` requests — the right assertion for "closes without deletion" is a network guard, not just a DOM check. |
+| Bucket dot-menu full text | `"Upload filesRenamePin to topDelete"` | `bucket-menu-{name}-menu` | re-confirmed 2026-08-23, unchanged since ELITEA-1817. |
+| Bucket delete (UI path) | `DELETE {api}/artifacts/buckets/default/{pid}?name={bucket}` → 200 | `confirm_delete_bucket()` | toast: `"The {bucket} bucket has been successfully deleted."` **`count_bucket_rows()` immediately after the DELETE response can still read 1** — the list refetch trails the response; use `wait_for_bucket_removed_from_list()`. |
+
+### ⚠️ Save is unclickable in ONE gesture at exactly 56 characters (defect `EliteaAI/elitea-testing-public#1080`, OPEN)
+
+Root-caused during this cluster (4/4 at 56 chars, 0/4 at ≤55). It is **not** a
+validation or backend rejection — `formik.handleSubmit()` is never reached
+because **no `click` event is ever emitted**:
+
+1. the focus-gated counter occupies **16 px** of normal flow inside the
+   column-flex `nameFieldWrapper`;
+2. `mousedown` on Save blurs the Name field → `toggleFieldFocus(null)` →
+   the counter unmounts → **the Save button jumps up 16 px**;
+3. `mouseup` therefore lands on a different element → the browser emits no
+   `click` → `onSave` never runs. Instrumented events: `["mousedown"]` only.
+   Geometry: Save `y=267` focused → `y=251` blurred (Δ 16 px);
+   `elementFromPoint(old centre)` after blur returns the form `<div>`.
+
+**Workaround for any automation that must create a 56-char bucket:** blur the
+Name field first (`bucket_name_input.press("Tab")`), *then* click Save →
+`POST /api/v2/artifacts/buckets/default/{pid}` → 200. This is an ordinary user
+gesture, not a substitution — but a spec whose case says "click Save" owes a
+soft-asserted `# Known defect: #1080` assertion for the single-click path.
+This is why `test_artifacts_create_bucket_55char_name_and_delete.py`
+(ELITEA-1817) carries `@pytest.mark.blocked`.
+
+The same focus-gated `Text.CharacterCounter` pattern is used by
+`CreateAgentForm.jsx`, `CreateSkillForm.jsx` and `ApplicationEditForm.jsx` —
+check for the same shift before trusting a Save click at a name/description
+max length on those forms.
+
+### Case-data trap (both ELITEA-1818 and ELITEA-1819)
+
+Their Test Data literal `bucket-a1b2…w3x4y5` is labelled "56-character" but is
+**57** characters; `maxLength` silently truncates it to 56 — which is then
+**byte-identical to ELITEA-1817's literal**. Never use it verbatim: generate a
+unique, genuinely-56-char name (CLARIFICATION
+`EliteaAI/elitea-testing-public#1683`). ELITEA-1818 additionally *keeps* its
+bucket (it cancels the delete), so a fixed name breaks the second run on
+duplicate-name and leaks via `#636`.
+
+## Resolved/added during ELITEA-1818 / ELITEA-1819 implementation (2026-08-23, test-automation-engineer)
+
+New Bucket form — the 56-character name boundary.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Name-field character counter | `artifacts-bucket-name-character-counter` | **added this run** — `CreateBucket.jsx:248`, commit `EliteaAI/EliteaUI@475adcc5` on `automation/testids` (pushed; human cherry-pick to `main` pending) | Prop-only wiring: `Text.CharacterCounter` already accepts `data-testid` (`CharacterCounter.jsx:11,20`), so ONE line was added and no DOM node, hook or structure changed. **Focus-gated:** renders only while `isFocused('name') && name.length === 56` — it is removed from the DOM on blur and at any other length, so it can never be asserted after focus leaves the field. Live text at the limit: `"0 characters left"` (the `". You have reached the MAXIMUM character limit"` suffix is suppressed here via `hideMaxLimitMessage`). **Gotcha:** the host `Box` is `display: contents`, so `bounding_box()` returns `None` while `is_visible()` / `to_be_visible()` still resolve `True` — assert visibility/text, never geometry. |
+| Name field's own limit | `artifacts-bucket-name-input`'s `maxlength` attribute == `"56"` | pre-existing testid | `CreateBucket.jsx:239-241` `inputProps={{ maxLength: 56 }}` — a NATIVE browser constraint, so a 57th keystroke never reaches React. Rejection is completely silent: no `aria-invalid`, no helper text, no toast, no request. Confirmed live for BOTH `type()` and `press()` delivery. A `fill()` writes through the DOM value setter and **bypasses `maxLength` entirely** — never use it to test this boundary. |
+| Page-object additions | `ArtifactsPage.bucket_name_character_counter`, `get_bucket_name_character_counter_text()`, `append_to_bucket_name(text)` | `automation/pages/artifacts_page.py` | All additive. `append_to_bucket_name()` is the append counterpart to `fill_bucket_name()` (which always REPLACES the whole value): click → `press("End")` → `type()`, leaving focus in the field so the counter stays mounted. |
+
+**Defect #1080 root cause, confirmed by the implementation run** (a single Save click at exactly
+56 characters does nothing): the focus-gated counter occupies 16 px of flow; `mousedown` blurs
+the Name field → the counter unmounts → the Save button shifts up 16 px → `mouseup` lands
+off-target → no `click` event → `onSave` never runs. Reproduced again on the first spec run.
+Transit past it (an ordinary user gesture, not a substitution): `bucket_name_input.press("Tab")`
+to blur, then click Save — the creation `POST` then returns 200.
+
+**Dev-server gotcha (OneDrive, cost ~15 min this run):** a JSX edit under `../EliteaUI/src` did
+NOT reach the running Vite dev server — `curl http://localhost:5173/src/<path>.jsx` still served
+the pre-edit module minutes after the file was saved (OneDrive's virtual filesystem does not
+deliver the fs watch event reliably). `touch <file>` forces the watcher and HMR then updates
+within seconds. **Verify a freshly-added testid is actually being served** (`curl … | grep
+<testid>`) before concluding it is missing from the DOM.
+
+## Artifact TOOLKIT-creation wizard + existing-bucket behaviour (ELITEA-1867, 2026-08-23, analyst)
+
+Cross-surface entry: the Toolkits creation wizard is where a *bucket* can be created as a side
+effect, so it belongs in this digest alongside the Artifacts panel. Complements the ELITEA-1866
+(save path) and ELITEA-1868 (cancel path) AFS files, both merged to `automation/base`.
+
+**Live-confirmed product behaviour (reproduced twice, deterministic):**
+
+- **Creating an Artifact toolkit whose `Bucket` names an EXISTING bucket SUCCEEDS.** POST
+  `/api/v2/elitea_core/toolkits/prompt_lib/399` → 200, wizard navigates to `/toolkits/all/{id}`,
+  **no error notification**, and **no duplicate bucket** is created. Create-if-not-exists semantics.
+- **The toolkit-save path never calls the bucket-create API.** Zero requests to
+  `/artifacts/buckets/…` fire during Save. `createBucket` (`EliteaUI/src/api/artifacts.js:46`) has
+  exactly ONE caller in the UI: `src/pages/Artifacts/CreateBucket.jsx:119` (the Artifacts New
+  Bucket form). ⇒ the `Bucket with name X already exists` error is **architecturally impossible**
+  on the toolkit path. This is why ELITEA-1867 is `blocked` on
+  [#1685](https://github.com/EliteaAI/elitea-testing-public/issues/1685).
+
+**Gotchas (each cost real turns):**
+
+- **The New Bucket form's name field is PREFILLED with the literal `new-bucket`**
+  (`CreateBucket.jsx:91`). `click()` + `press_sequentially()` puts the caret at 0 and **prepends** →
+  mangled names. Artefacts of this mistake already live in project 399:
+  `dup-bucket-1867new-bucket`, `new-bucketautotest-buck1-800755`. **Clear the field first**, or use
+  `ArtifactsPage`'s own bucket-creation helper. (This is also the origin of the ELITEA-1867 case's
+  `new-bucket` test data — an author who accepted the default.)
+- **The bucket panel is very slow in project 399 (976 buckets, 2026-08-23).** Polling
+  `[data-testid^="artifacts-bucket-row-"]` returned **0 for >13 s** after navigation, footer still
+  reading `Buckets: 0`, before the list rendered. Never conclude "no buckets" from a short wait;
+  always **search** rather than scan; budget ≥20 s for first render.
+- **The wizard form is NOT deep-linkable.** `/toolkits/create/artifact` renders the *type-picker*,
+  not the form — you must click `toolkit-type-card-artifact`. Use
+  `ToolkitCreationPage.select_toolkit_type("art", "artifact")`.
+- **`art` matches TWO type cards**: `toolkit-type-card-artifact` (STORAGE) and
+  `toolkit-type-card-mcp_Elitea Artifacts` (PLATFORM, backend-supplied MCP type). Assert scoped
+  presence/absence — never a total card count. Already codified in the merged
+  `test_toolkit_creation_cancel_no_toolkit_no_bucket.py:223`.
+- **UI teardown of a toolkit is a 3-step gate:** `controls-menu-button` → `Delete` (a
+  `role=menuitem`, **no testid**) → dialog where `delete-confirm-button` stays **disabled** until
+  the toolkit's exact name is typed into the dialog's `input[name="name"]` (**no testid**). Prefer
+  `ToolkitAPI.delete_toolkit(id)`; `ToolkitCreationPage.save_creation()` already returns the id.
+
+**Handles re-confirmed live, all on EliteaUI `main` (fetched + two-stage grep, 2026-08-23):**
+`sidebar-menu-item-toolkits`, `sidebar-menu-item-artifacts`, `sidebar-create-button`,
+`toolkit-wizard-type-search-input`, `category-filter-tab` (12 rendered),
+`[data-testid="toolkit-type-card-{key}"]` (71 cards unfiltered), `toolkit-form-name-input`,
+`[data-testid="toolkit-field-{k}-input"]` (template — grep the template, not the resolved value),
+`toolkit-form-save-button`, `toolkit-form-cancel-button`, `toast-message`, `controls-menu-button`,
+`delete-confirm-button`, `artifacts-create-bucket-button`, `artifacts-bucket-name-input`,
+`artifacts-bucket-save-button`, `artifacts-search-buckets-button`, `artifacts-bucket-search-input`,
+`[data-testid="artifacts-bucket-row-{name}"]`.
+
+**Independent ground truth for bucket assertions:** `GET /artifacts/s3/?project_id=399&format=json`
+(cookie auth, works from page context) returns the full bucket list — a stronger oracle than the
+virtualized, slow DOM panel. Note `/api/v2/…` endpoints are **not** callable from page-context
+`fetch` (Bearer required) — they 'Failed to fetch'.
