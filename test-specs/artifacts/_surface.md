@@ -844,3 +844,48 @@ sanctioned-RED against #1677.
 - **#636 re-confirmed both ways:** `ArtifactAPI.delete_bucket()` 404s every time
   (`.../buckets/default/399/p--399.<name>`), while the UI delete path removes the
   bucket cleanly — provided the removal wait gets `BUCKET_LIST_TIMEOUT`, not 15 s.
+
+## Confirmed handles + behaviours (ELITEA-1812/1816 cluster, 2026-08-23)
+
+Bucket **name case-handling** and the **Edit-bucket form's read-only Name field**.
+**Zero new testids were needed** for either case — every handle already existed.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Bucket name input | `artifacts-bucket-name-input` | `fill_bucket_name()` | **Enabled in Create mode, `disabled` in Edit mode** — `CreateBucket.jsx:238` renders `disabled={!!currentBucket}`. It is a real `disabled` attribute (`get_attribute("disabled") == ""`), **not** `readOnly` (`readonly` is `None`). A `click()` on it in Edit mode raises Playwright `TimeoutError` ("not enabled"); the deprecated `Locator.type()` does **not** raise, it silently no-ops — so *value-unchanged* is the assertion that proves "no input accepted", never `type()`'s outcome. |
+| Inline name-validation helper text | `artifacts-bucket-name-helper-text` | `CreateBucket.jsx:244` (`FormHelperTextProps`) | **CORRECTS the 2026-08-02 digest row above**, which says "testid needed / not yet added" — it exists now and is on `origin/main`. |
+| Form heading (New Bucket / Edit bucket) | `artifacts-bucket-form-heading` | `get_bucket_form_heading_text()` | text is `New Bucket` on create, **`Edit bucket`** on edit — same route `/artifacts/create-bucket` for both, so the URL alone never tells you which mode you are in |
+| Bucket dot-menu item order | `Upload files` · **`Rename`** · `Pin to top` · `Delete` | `BucketItem.jsx:153-205` | `get_bucket_menu_items_text()` returns them concatenated with no separator: `"Upload filesRenamePin to topDelete"`. Case texts saying "Edit" (and a different order) are tracked drift — `EliteaAI/elitea-testing-public#666` |
+
+### Bucket-name case conversion is a BACKEND behaviour (confirmed live)
+Typing `AUTOTEST-1812-182449` (or mixed `AuToTest-1816-182606`) into the New Bucket form:
+- the input **preserves the typed case verbatim** — there is **no `toLowerCase()` anywhere
+  in `src/pages/Artifacts/CreateBucket.jsx`**, and the yup schema `^[a-zA-Z][a-zA-Z0-9-]*$`
+  explicitly *permits* uppercase (so this is not a validation rejection);
+- the form posts `values.name.trim()` unchanged to
+  `POST /api/v2/artifacts/buckets/default/{project_id}` (note: **v2**, not v1);
+- the **response body** comes back lowercased —
+  `{"message":"Created","id":"p--399.autotest-1812-182449","name":"autotest-1812-182449"}`.
+  That body is the honest oracle for the "**stored** lowercase" half of the claim; the DOM
+  alone can only prove "**displayed** lowercase".
+- The bucket row testid is derived from the stored name
+  (`data-testid={\`artifacts-bucket-row-${name}\`}`, `BucketItem.jsx:243`), so
+  `artifacts-bucket-row-{lower}` present + `artifacts-bucket-row-{TYPED}` count 0 is a
+  two-sided name assertion.
+
+### Retention `Days / 1` round-trips cleanly
+Create with `Days`/`1` → reopen the Edit form → `Days`/`1` (hard-asserted, passed). Defect
+`#1677` (a `Months` policy reopening as `Days`) only bites units whose day-count is not
+divisible by 30 — **use `Days` or `Weeks` for any retention step that is incidental to the
+case**, so an unrelated red never leaks in.
+
+### Gotchas added this run
+- **Cold-session `networkidle`**: the *first* `/artifacts` navigation of a fresh browser
+  session exceeded `wait_for_page_load()`'s default 15 s once (45 s was comfortable).
+  Subsequent navigations in the same session were fine. Raise that one call's timeout;
+  it is not a product issue.
+- Project 399's bucket leak (`#636`) keeps growing — this run added 2 more
+  (`autotest-1812-182449`, `autotest-1816-182606`).
+- Playwright MCP was **not** attempted this session — went straight to a
+  `playwright.sync_api` scratch script driving `ArtifactsPage` (per the 5-consecutive-session
+  history in the gotchas above). It worked first try; that remains the cheap default here.
