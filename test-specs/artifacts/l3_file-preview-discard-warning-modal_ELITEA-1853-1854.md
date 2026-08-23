@@ -69,6 +69,14 @@ values.
 7. **Row-specific**: click the modal button named in the parameter table.
 8. **Verify**: the modal closes (hidden).
 9. **Verify**: the editor content matches the row's "Expected content after".
+   **Use a web-first (auto-retrying) assertion, not a one-shot read** —
+   *implementer amendment, ELITEA-1853 build*: the revert reaches CodeMirror
+   through a React state round-trip (parent resets `editedContent`, then
+   `useCodeMirror`'s effect pushes the original text back) that completes
+   slightly AFTER the modal disappears. A read taken the instant the dialog
+   hides still shows `# temp change` and fails; polling on the observable
+   passes deterministically. For ELITEA-1853, follow the retrying assertion
+   with a byte-equality read against the captured original.
 10. **Verify**: the editor is **still open** in edit mode — the CodeMirror
     content surface is still visible and the file table has NOT replaced it.
 11. **Verify**: Save and Discard are still **visible**, in the row's expected
@@ -187,5 +195,7 @@ None.
   state, not a sleep) before clicking Discard — this is a correctness guard,
   not a nicety (see the ELITEA-1855 AFS for what the same race caused there).
 - Both rows share the whole prefix; implement as ONE parameterized spec.
+- **The revert lags the modal close** (see step 9) — the only rerun this unit
+  needed came from reading content immediately after the dialog hid.
 - Confirmed live 2026-08-23 via pytest scratch runs against
   `http://localhost:5173`.

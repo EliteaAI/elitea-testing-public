@@ -269,19 +269,25 @@ class TestArtifactFilePreviewDiscardWarning:
             "(ELITEA-1853: reverted byte-for-byte to the original; "
             "ELITEA-1854: '# temp change' still present on line 17)"
         ):
+            # Web-first (auto-retrying) assertions: the revert reaches
+            # CodeMirror through a React state round-trip that completes
+            # slightly AFTER the modal disappears (the parent resets
+            # `editedContent`, then `useCodeMirror`'s effect pushes the
+            # original text back into the editor), so an immediate one-shot
+            # read races the product. Polling on the real observable is the
+            # correct wait here — never a sleep.
+            if expect_change_present:
+                expect(artifacts_page.file_preview_code_content).to_contain_text(
+                    EDITED_LINE_17, timeout=UI_ELEMENT_TIMEOUT
+                )
+            else:
+                expect(artifacts_page.file_preview_code_content).not_to_contain_text(
+                    TEMP_CHANGE.strip(), timeout=UI_ELEMENT_TIMEOUT
+                )
             content_after = artifacts_page.get_file_preview_content_text(
                 timeout=UI_ELEMENT_TIMEOUT
             )
-            if expect_change_present:
-                assert EDITED_LINE_17 in content_after, (
-                    f"[{case_id}] Cancel must preserve the unsaved change on "
-                    f"line 17 ('{EDITED_LINE_17}'): {content_after!r}"
-                )
-            else:
-                assert TEMP_CHANGE.strip() not in content_after, (
-                    f"[{case_id}] Discard must remove '{TEMP_CHANGE.strip()}': "
-                    f"{content_after!r}"
-                )
+            if not expect_change_present:
                 # Stronger than "the marker is gone" — byte-equality catches a
                 # revert that drops or mangles unrelated lines (AFS Axis 2).
                 assert content_after == original_content, (
