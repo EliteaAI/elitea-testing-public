@@ -861,3 +861,64 @@ already does select-all + type: that is load-bearing, don't "optimise" it.
   EMPTY. Still genuinely `automation/testids`-only on this surface:
   `credential-form-test-connection-button`, `toolkit-field-{key}-select`,
   `toolkit-field-{key}-input-helper-text`, and the ELITEA-1982 dialog set.
+
+## OAuth **failure / cancellation** paths — confirmed live 2026-08-24 (ELITEA-1984)
+
+Continues the section above; read that first. ELITEA-1984 is **blocked** — the
+whole `_surface` fact set below is what the live run produced.
+
+### The failure half of the OAuth dialog needs a REAL provider identity — it is not automatable today
+
+`Authorize` builds the authorize URL from the backend metadata and navigates the
+popup to it, verbatim including a user-edited scope:
+
+```
+https://login.microsoftonline.com/placeholder-tenant/v2.0/oauth2/authorize
+  ?response_type=code&client_id=placeholder-client-id
+  &redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fmcp-auth-callback
+  &state=<32-char random>&scope=<whatever is in the Scope field>
+```
+
+With the **placeholder** tenant/client this URL answers **HTTP 404 with an empty
+body** (verified with `curl`, independent of the browser) — so there is no provider
+error page to observe, and the rejection is caused by the *tenant*, not by an invalid
+*scope*. A genuine provider **denial** (`?error=invalid_scope` redirected back to
+`/mcp-auth-callback`, which is the ONLY way Elitea's error path is reachable) needs a
+real Entra tenant + a registered OAuth app whose redirect URI includes
+`http://localhost:5173/mcp-auth-callback`. **We do not have that as test data** — the
+same class of gap as the expired `GIT_HUB_TOKEN` (#1673). Simulating it (fulfilling
+the callback, `postMessage`-ing the parent, a stub provider) is a **terminal**
+substitution and forbidden.
+
+### There is NO popup-close detection — the dialog freezes on "Authorizing…" for 5 minutes (#1713)
+
+Measured, from the Authorize click: `Authorizing…` at +0/+15/+73/+131/+189/+247 s,
+and only at **+305 s** the monitor's fallback `Authorization timed out. Please try
+again.` (Authorize re-enables). Closing the popup changes **nothing** —
+`mcpAuthWindow.helpers.js` `createAuthorizationMonitor` listens on postMessage /
+BroadcastChannel / localStorage + a 5-minute `setTimeout`, and never polls
+`authWindow.closed`, although `McpAuthModal` holds the handle in `authWindowRef`
+(and uses it in `handleCancel`). **Cancel keeps working the whole time**, so nobody
+is trapped — a UX gap, not a hang. Shared modal ⇒ same gap in the MCP / toolkit /
+OpenAPI OAuth flows.
+
+**Consequence for any spec on this surface: never wait for a message after killing
+the popup — budget >5 min or don't assert it at all.** The ELITEA-1984 probe ran
+321 s, nearly all of it that wait.
+
+### Other live facts (2026-08-24)
+
+- `Authorize` is **not** gated on scope validity — it stays enabled with
+  `Invalid.Scope.xyz` in the field (`isAuthorizeDisabled` checks only
+  loading/success, `storageKey`, metadata presence, and client id/secret when
+  required).
+- The `Authorize` button's **label** flips to `Authorizing…` in flight — read the
+  state with `to_be_disabled()`, never a text-keyed locator.
+- The parent page issues **zero** API requests on Authorize (already noted above:
+  the handshake is entirely inside the popup). A request-based wait hangs forever;
+  use `page.expect_popup()`.
+- The dialog's error/timeout message box (`McpAuthModal.jsx:454-467`, the `authError`
+  block) has **no testid** — proposed `oauth-auth-dialog-error`, deliberately NOT
+  added (canon #511: no test executes it yet).
+- Editing the Scope field: `clear_scope()` + `press_sequentially` works; no formik
+  dirty-gate here (that gate is on the credential form, not the dialog).
