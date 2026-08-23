@@ -4,7 +4,10 @@
 > is a cache, not a source of truth. Last updated: 2026-08-02 (ELITEA-1934 /
 > ELITEA-1937 implementer session, fix round 2 — testid gaps resolved via
 > `add-data-testid`; originally created 2026-08-01, analyst session, cluster
-> dispatch, `approved-top10` batch).
+> dispatch, `approved-top10` batch). **Appended 2026-08-24 during
+> ELITEA-1923/1924 combined analysis+implementation** — create-form validation
+> handles + the Save-button gating mechanism (see the two new sections at the
+> end).
 
 ## Confirmed-stable handles (testid-based)
 
@@ -23,6 +26,8 @@
 | Run button | `toolkit-test-run-tool-button` | **visible text is "Run Test", not "RUN TOOL"** — issue #1087, cosmetic only, locate via testid |
 | Run Results container | `chat-message-list` | only exists in DOM AFTER Run is clicked — shared `ChatMessageList.jsx`, same testid the Artifact-toolkit surface uses |
 | Run Results item | `chat-message-list li.MuiListItem-root` | scoped class constant, not a fresh testid |
+| Url validation helper text | `toolkit-field-url-input-helper-text` | **Added/confirmed during ELITEA-1923 implementation (2026-08-24):** pre-existing, emitted generically by `ToolBaseProperty.jsx:610` as ``helperTextTestId={`toolkit-field-${k}-input-helper-text`}`` — so EVERY schema-driven toolkit field has one for free. Text is exactly `Field is required`; carries `Mui-error`. Element is UNMOUNTED (not hidden) once the field becomes valid — assert absence with `to_have_count(0)`. |
+| Toolkit Name validation helper text | `toolkit-form-name-input-helper-text` | **Added during ELITEA-1924 implementation (2026-08-24)** — EliteaAI/EliteaUI@35440c78 on `automation/testids`, **not yet on `main`**. The Name field renders through `NameDescriptionInput.jsx`, NOT `ToolBaseProperty.jsx`, so it did NOT inherit the generic helper testid above; one-line additive `helperTextTestId` prop (`InputBase.jsx:101,270`). Description field intentionally left untouched (#511). |
 | Raw Json view toggle | `toolkit-raw-json-view-toggle` | |
 | Raw Json editor content | `toolkit-raw-json-editor-content` | CodeMirror virtualizes — use `get_raw_json_full()`, not `get_raw_json()`, for payloads >~30 lines |
 | Detail title heading | `toolkit-detail-title` | shows "Edit Toolkit" placeholder until real data lands — poll text, don't trust visibility alone |
@@ -81,3 +86,73 @@ concluding a defect.
   texts) require an API-key credential not provisioned in this environment —
   substitute the DeepWiki fixture and note it in the AFS Preconditions, same
   precedent set at ELITEA-1933.
+
+## Save-button gating on the toolkit/MCP create form — the mechanism (settled 2026-08-24)
+
+**Appended during ELITEA-1923/1924 combined analysis+implementation.** Read this before
+writing ANY assertion about the create form's Save button — it has now cost two separate
+sessions (ELITEA-1921, then ELITEA-1923/1924).
+
+Source of truth, `src/pages/Toolkits/CreateToolkitToolTabBar.jsx:43-45`:
+
+```js
+const shouldDisableSave = useMemo(() => {
+  return isLoading || !formik?.dirty;
+}, [isLoading, formik?.dirty]);
+```
+
+**Save's disabled state is purely dirty-based.** It never consults required-field
+validity, and never consults the Toolkit Name specifically. Therefore, confirmed live:
+
+| Form state | `save_button.disabled` |
+|---|---|
+| Pristine, nothing touched | `true` |
+| Toolkit Name filled only (Url empty) | `false` |
+| Url filled only (Toolkit Name empty) | `false` |
+| Both filled | `false` |
+
+**Submission is still correctly gated** — clicking Save with any required field empty
+fires **no** `POST .../tools/prompt_lib/{project}` at all; Formik/Yup renders an inline
+`Field is required` under the offending field (`aria-invalid="true"`) and the page stays
+on `/mcps/create/mcp`. `showValidation` flips to `true` on the Save click
+(`onClickSave` → `setShowValidation(true)`), which is why NO error text is visible before
+the first Save attempt no matter how long a required field sits empty.
+
+**Consequences for anyone writing or reviewing an assertion here:**
+
+- Only two Save-button states are safe to assert: **disabled on the pristine form**, and
+  **enabled once anything is touched**. Any "still disabled after a partial fill"
+  assertion is false against the live product.
+- Tracked on **OPEN issue #633** (label `bug`, `[INFO]`). ELITEA-1924's case text asserts
+  the false reading as its *entire Objective, step 4 and a Pass criterion*, so its
+  automation carries a sanctioned-RED `expect.soft()` + `# Known defect: #633` and the
+  case is `blocked-on-#633`, not `automated`, until a human rules product-vs-case-text
+  (see the AFS at `test-specs/mcp/l2_create-remote-mcp-validation-missing-required-field_ELITEA-1923-1924.md`
+  § Known Defects, and issue #633's 2026-08-24 comment).
+- Do NOT assert that the pristine-form disabled state is *caused by* empty required
+  fields — the cause is `!formik.dirty`.
+
+## Create-form validation errors — how to assert them (2026-08-24)
+
+- Message text is exactly `Field is required` for both Name and Url.
+- **Assert the text exactly, not by visibility or substring.** The Scopes field renders a
+  permanent, unrelated `Enter scopes separated by commas or spaces` helper in the same
+  `.MuiFormHelperText-root` family — a loose "a helper text is visible" check passes on it.
+- The error node is **removed from the DOM** when the field becomes valid, not hidden →
+  `to_have_count(0)`, not `not_to_be_visible()`.
+- The invalid input itself carries `aria-invalid="true"` — a useful second, testid-anchored
+  signal (the attribute sits on the element that already has the field testid).
+- Errors only appear **after** a Save click (`showValidation` gate) — never before.
+
+## Fixtures (addendum, 2026-08-24)
+
+- `https://mcp.example.com/sse` is fine for any case that only **stores** a URL (create /
+  validation / persistence). It is never dialled unless Load Tools is clicked, so its
+  unreachability is irrelevant there — reserve the DeepWiki fixture for cases that
+  actually discover tools.
+- Toolkit-name length: `MAX_NAME_LENGTH = 32` is enforced as `inputProps.maxLength` and
+  **silently truncates**. Compute the uuid-suffix length against the case's literal base
+  name every time (`autotest_validation_no_url` = 26 → 4-hex suffix = 31 ✓).
+- After a fresh `goto('/mcps/create')` the type-card mounts **asynchronously** — an
+  immediate DOM read misses `toolkit-type-card-mcp`. Observed twice this session. Rely on
+  framework auto-waiting; never an immediate `query_selector`.
