@@ -921,3 +921,48 @@ case**, so an unrelated red never leaks in.
   place (that spec is sanctioned-RED on `#1677`).
 - Both new specs delete their own bucket at teardown (UI path, API fallback), so this run
   added **no** new leak to `#636`.
+
+## Confirmed handles + behaviours (ELITEA-1813/1815 New-Bucket form cluster, 2026-08-23)
+
+Empty-name validation and the **Cancel** path of the create form. **Zero new testids
+needed** — every handle already existed.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Name helper text | `artifacts-bucket-name-helper-text` | `bucket_name_helper_text` | element is **not rendered at all** while `formik.touched.name` is false — assert `count() == 0`, not `not_to_be_visible()` on a present node |
+| Save button | `artifacts-bucket-save-button` | `bucket_save_button` | `disabled` **only** for an empty (or >56 char) name — `CreateBucket.jsx:292-298`. For a *non-empty but invalid* name it stays ENABLED (that is ELITEA-1811's path) |
+| Cancel button | `artifacts-bucket-cancel-button` | `click_bucket_cancel_button()` | always enabled, in every form state; `onCancel = navigate(-1)` → lands on bare `/artifacts` |
+
+### New-Bucket form validation behaviours confirmed live (2026-08-23)
+
+- **Empty name ⇒ Save disabled IMMEDIATELY, no blur needed.** `bucket_save_button.click()`
+  then raises Playwright `TimeoutError` ("element is not enabled") — that is the honest
+  "not clickable" assertion; `to_be_disabled()` alone only proves the attribute.
+- **`Name is required` needs a BLUR.** After clearing the field: helper-text `count() == 0`,
+  `aria-invalid="false"`. After one `press("Tab")`: helper text `"Name is required"`,
+  `aria-invalid="true"`. Formik sets `touched` on blur/submit only, and the submit path is
+  unreachable because Save is disabled. Case-text gap filed as CLARIFICATION **#1680**.
+  (Same `touched`-gating already noted in § Known gotchas for the invalid-name path — this
+  run confirms the empty-name branch has *no* submit escape hatch at all.)
+- **`fill_bucket_name("")` does NOT clear the field.** `Locator.type("")` is a silent
+  no-op — the text stays selected but present. Clearing needs an explicit
+  click → `select_text()` → `press("Delete")` (a `clear_bucket_name()` page-object method
+  is the natural home; not added by this analysis).
+- **Cancel fires ZERO requests on the CREATE form too** (previously confirmed only for the
+  edit form / ELITEA-1810): a request capture on `artifacts/buckets` across Cancel came
+  back `[]` in both the empty-name and the valid-values runs.
+- Valid name + `Days`/`3` ⇒ Save **and** Cancel both visible + enabled, helper-text
+  `count() == 0`. Defaults observed: name `new-bucket`, measure `Years`, value `1`.
+- **Bucket-search filter is a clean absence oracle**: `open_bucket_search()` →
+  `search_buckets("bucket-cancel-test")` → `get_visible_bucket_count() == 0`, far more
+  robust than a negative row lookup against project 399's ~968 rendered rows.
+
+### Gotchas added this run
+
+- Project 399 rendered **968** bucket rows this session (`#636` leak, still growing) —
+  `wait_for_page_load(timeout=60000)` on the FIRST navigation of a fresh session; the 15 s
+  default is not enough cold.
+- MCP Playwright was **not** attempted (6th consecutive session) — a `playwright.sync_api`
+  scratch script driving `ArtifactsPage` worked first try. Remains the cheap default here.
+- Both ELITEA-1813 and ELITEA-1815 create **nothing** — they are among the very few
+  artifacts cases that add zero buckets to the `#636` pile.
