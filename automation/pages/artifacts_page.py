@@ -935,6 +935,64 @@ class ArtifactsPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # File preview/edit — UNSUPPORTED file type ("Preview Not Available")
+    # (ELITEA-1863/1864)
+    #
+    # Rendered by `FilePreviewCanvas/PreviewUnavailable.jsx` whenever
+    # `canPreview` is false — i.e. the file's extension is absent from
+    # `PREVIEWABLE_EXTENSIONS` (`src/utils/filePreview.js`'s
+    # `canPreviewFile`, a filename WHITELIST, never a content sniff), or
+    # the file exceeds the size limit (different `message` prop, out of
+    # scope here). In this branch `PreviewHeader.jsx` wraps Save/Discard
+    # in `{canPreview && ...}`, so those are structurally ABSENT (count 0),
+    # NOT present-but-disabled as they are for images (ELITEA-1862).
+    # ------------------------------------------------------------------
+
+    file_preview_unavailable_icon = LocatorDescriptor(
+        testid="artifacts-preview-unavailable-icon",
+        description="Empty/unavailable-file icon at the top of the "
+        "'Preview Not Available' state (ELITEA-1863 - new testid, "
+        "implementer, PreviewUnavailable.jsx's `<Box component="
+        "{UnavailableIcon}>`; MUI `Box` spreads props, so `data-testid` "
+        "passes straight through - no DOM node added).",
+    )
+
+    file_preview_unavailable_title = LocatorDescriptor(
+        testid="artifacts-preview-unavailable-title",
+        description="'Preview Not Available' heading Typography in the "
+        "unsupported-file-type state (ELITEA-1863 - new testid, "
+        "implementer, PreviewUnavailable.jsx). A literal, not state-derived.",
+    )
+
+    file_preview_unavailable_message = LocatorDescriptor(
+        testid="artifacts-preview-unavailable-message",
+        description="Supporting message Typography rendering the `message` "
+        "prop (ELITEA-1863 - new testid, implementer). Reads 'Preview is "
+        "not supported for this file type.' for a TYPE-gated file; the "
+        "SIZE-gated branch passes a different `sizeLimitMessage` through "
+        "this same node (FilePreviewCanvas/index.jsx).",
+    )
+
+    file_preview_unavailable_formats = LocatorDescriptor(
+        testid="artifacts-preview-unavailable-formats",
+        description="Supported-formats Typography ('Supported formats: txt, "
+        "md, json, ...') in the unsupported-file-type state (ELITEA-1863 - "
+        "new testid, implementer). A long hardcoded literal that will churn "
+        "as formats are added - assert startswith/contains, never full "
+        "equality.",
+    )
+
+    file_preview_unavailable_download_button = LocatorDescriptor(
+        testid="artifacts-preview-unavailable-download-button",
+        description="Centred 'Download' button inside the unsupported-file-"
+        "type state (ELITEA-1863 - new testid, implementer, wired via "
+        "`Button.BaseBtn`'s `...restProps` spread). Calls the same "
+        "`handleDownload` as the panel's 3-dot dropdown item. Distinct from "
+        ":attr:`download_menu_item` (the ROW dropdown's item) and "
+        ":attr:`file_preview_download_menuitem` (the PANEL dropdown's item).",
+    )
+
+    # ------------------------------------------------------------------
     # File preview/edit — markdown mode toggle + image preview
     # (ELITEA-1857/1858/1862)
     # ------------------------------------------------------------------
@@ -1305,6 +1363,88 @@ class ArtifactsPage(BasePage):
             return
 
         logger.info("Navigated to bucket '%s', folder '%s'", bucket_name, folder)
+
+    @action("Navigate directly to a file's preview panel")
+    def navigate_to_file_preview(
+        self, bucket_name: str, file_key: str, timeout: int = 15000, _retry: bool = True
+    ) -> None:
+        """Open a file's preview panel directly via the product's preview URL.
+
+        Third sibling of :meth:`navigate_to_bucket` /
+        :meth:`navigate_to_bucket_folder` (ELITEA-1863) - both have merged
+        callers, so they stay byte-identical rather than growing an optional
+        ``file`` kwarg (additive-only on shared-caller files).
+
+        Sets ``?bucket={bucket_name}&file={file_key}`` - the exact params
+        ``Artifacts.jsx`` itself writes whenever a preview is opened
+        (``setSearchParams({ bucket, file })``, ``Artifacts.jsx:290``) and
+        restores from on load (its URL-restore effect,
+        ``Artifacts.jsx:545-570``), which does **not** consult
+        ``canPreview``. Navigating here is therefore ordinary product
+        navigation (a bookmarked / shared preview link), not injected state.
+
+        **Why this exists at all:** an UNSUPPORTED file type has no in-app
+        path to the preview panel - ``ArtifactRowActions.jsx`` gates the
+        "View/Edit file" icon on ``row.canPreview``, and ``ActionsMenu.jsx``'s
+        "Preview file" item renders ``null`` for it. This URL route is the
+        only way to reach the ``PreviewUnavailable`` branch (ELITEA-1863;
+        case-text clarification EliteaAI/elitea-testing-public#1692).
+
+        **Why not** :meth:`open_file_in_editor`: that helper waits on
+        :attr:`file_preview_save_button`, which ``PreviewHeader.jsx`` wraps
+        in ``{canPreview && ...}`` and which therefore never renders in this
+        branch. This method waits on :attr:`file_preview_close_button`
+        instead - present for BOTH the supported and unsupported branches.
+
+        Carries the same ``bucket``-param re-check guard as its two siblings
+        (known product race, issue #638): on a fresh page load
+        ``Artifacts.jsx`` can still be resolving the project id from Redux
+        and silently strip the query params, falling back to the
+        most-recently-used bucket with no error shown.
+
+        Args:
+            bucket_name: Exact name of the bucket (case-sensitive).
+            file_key: Full relative key of the file within the bucket
+                (e.g. ``"report.xlsx"`` or ``"a1/report.xlsx"``).
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            AssertionError: If the ``bucket`` URL param is still wrong after
+                one retry (i.e. the race fired twice in a row).
+        """
+        super().navigate(
+            f"/artifacts?bucket={bucket_name}&file={urllib.parse.quote(file_key)}"
+        )
+        self._wait_for_bucket_panel(bucket_name, timeout=timeout)
+
+        live_bucket_param = urllib.parse.parse_qs(
+            urllib.parse.urlparse(self.page.url).query
+        ).get("bucket", [None])[0]
+        if live_bucket_param != bucket_name:
+            if not _retry:
+                raise AssertionError(
+                    f"Navigation to bucket '{bucket_name}' file '{file_key}' "
+                    f"did not stick after a retry - URL's bucket param is "
+                    f"{live_bucket_param!r} instead (known product race, "
+                    f"issue #638)"
+                )
+            logger.warning(
+                "Bucket param lost after navigating to '%s' (URL now has %r) "
+                "- retrying once (known product race, issue #638)",
+                bucket_name, live_bucket_param,
+            )
+            self.navigate_to_file_preview(
+                bucket_name, file_key, timeout=timeout, _retry=False
+            )
+            return
+
+        # The preview panel is "open" once its X (close) button renders - the
+        # one header control present in BOTH the previewable and the
+        # unsupported branch (PreviewHeader.jsx).
+        self.file_preview_close_button.wait_for(state="visible", timeout=timeout)
+        logger.info(
+            "Navigated to preview of '%s' in bucket '%s'", file_key, bucket_name
+        )
 
     # ------------------------------------------------------------------
     # Wait helpers
@@ -3930,6 +4070,49 @@ class ArtifactsPage(BasePage):
     # File preview/edit editor panel (ELITEA-1851/1852/1856)
     # ------------------------------------------------------------------
 
+    def get_file_preview_button(self, filename: str) -> Locator:
+        """Return a locator for *filename*'s row-level "View/Edit file" icon.
+
+        Built from the class-level :attr:`ARTIFACT_FILE_PREVIEW_BUTTON`
+        dynamic-testid constant (ELITEA-1863/1864), same dynamic-identity
+        pattern as :meth:`get_file_row` - spec files never build this
+        locator themselves.
+
+        The icon renders only when ``row.canPreview`` is true
+        (``ArtifactRowActions.jsx``), so for an UNSUPPORTED file type this
+        locator resolves to 0 elements. Prefer
+        ``expect(...).to_have_count(0)`` on it over
+        :meth:`is_file_preview_button_visible` returning False for absence
+        assertions: the web-first assertion auto-retries, so a slow render
+        can never produce a false pass.
+
+        Args:
+            filename: Exact file name (the dynamic testid's suffix).
+
+        Returns:
+            Playwright ``Locator`` for the row's preview icon button.
+        """
+        return self.page.locator(self.ARTIFACT_FILE_PREVIEW_BUTTON.format(filename))
+
+    def get_file_actions_menu_button(self, filename: str) -> Locator:
+        """Return a locator for *filename*'s row-level 3-dot actions trigger.
+
+        Built from the class-level :attr:`ARTIFACT_ACTIONS_MENU_BUTTON`
+        dynamic-testid constant (ELITEA-1864), same dynamic-identity pattern
+        as :meth:`get_file_row`. Exists so specs can assert the trigger's
+        VISIBILITY (e.g. before any hover - the hover-independence guard for
+        EliteaAI/elitea-testing-public#994) without building the locator
+        themselves; :meth:`open_file_actions_menu` remains the way to
+        actually open the menu.
+
+        Args:
+            filename: Exact base file name (the dynamic testid's suffix).
+
+        Returns:
+            Playwright ``Locator`` for the row's dot-menu trigger button.
+        """
+        return self.page.locator(self.ARTIFACT_ACTIONS_MENU_BUTTON.format(filename))
+
     def get_file_row(self, filename: str) -> Locator:
         """Return a locator for a single file row, filtered by displayed name.
 
@@ -4067,6 +4250,84 @@ class ArtifactsPage(BasePage):
         """
         self.file_preview_file_path.wait_for(state="visible", timeout=timeout)
         return (self.file_preview_file_path.text_content() or "").strip()
+
+    @action("Click 'Download' in the unsupported-preview panel")
+    def click_preview_unavailable_download(self, timeout: int = 10000) -> Download:
+        """Click the centred Download button of the unsupported-preview state.
+
+        Wraps the click in ``page.expect_download`` and returns the captured
+        download (ELITEA-1863). This button calls the very same
+        ``handleDownload`` as the panel's 3-dot dropdown item
+        (``FilePreviewCanvas/index.jsx`` passes it as ``onDownload``), so a
+        single-file stream is expected - never the multi-select ZIP
+        packaging flow.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the download event.
+
+        Returns:
+            Playwright ``Download`` object (caller can use ``download.path()``
+            to read the downloaded bytes).
+
+        Raises:
+            TimeoutError: If no download event fires within *timeout*.
+        """
+        self.file_preview_unavailable_download_button.wait_for(
+            state="visible", timeout=timeout
+        )
+        with self.page.expect_download(timeout=timeout) as download_info:
+            self.file_preview_unavailable_download_button.click()
+
+        download = download_info.value
+        logger.info(
+            "Download started from the unsupported-preview panel -> "
+            "suggested filename: %s",
+            download.suggested_filename,
+        )
+        return download
+
+    def get_preview_unavailable_title_text(self, timeout: int = 10000) -> str:
+        """Return the unsupported-file-type panel's heading text.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The stripped text of :attr:`file_preview_unavailable_title`
+            (``"Preview Not Available"`` in the current product).
+        """
+        self.file_preview_unavailable_title.wait_for(state="visible", timeout=timeout)
+        return (self.file_preview_unavailable_title.text_content() or "").strip()
+
+    def get_preview_unavailable_message_text(self, timeout: int = 10000) -> str:
+        """Return the unsupported-file-type panel's supporting message text.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The stripped text of :attr:`file_preview_unavailable_message`
+            (``"Preview is not supported for this file type."`` for a
+            TYPE-gated file).
+        """
+        self.file_preview_unavailable_message.wait_for(state="visible", timeout=timeout)
+        return (self.file_preview_unavailable_message.text_content() or "").strip()
+
+    def get_preview_unavailable_formats_text(self, timeout: int = 10000) -> str:
+        """Return the unsupported-file-type panel's supported-formats text.
+
+        The sentence is a long hardcoded literal that will churn as formats
+        are added - callers assert ``startswith``/``in``, never full
+        equality (ELITEA-1863 AFS).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The stripped text of :attr:`file_preview_unavailable_formats`.
+        """
+        self.file_preview_unavailable_formats.wait_for(state="visible", timeout=timeout)
+        return (self.file_preview_unavailable_formats.text_content() or "").strip()
 
     def get_file_preview_language_text(self, timeout: int = 10000) -> str:
         """Return the editor panel's language-label text (e.g. 'Python (detected)').
