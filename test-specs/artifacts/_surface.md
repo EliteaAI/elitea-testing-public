@@ -889,3 +889,29 @@ case**, so an unrelated red never leaks in.
 - Playwright MCP was **not** attempted this session — went straight to a
   `playwright.sync_api` scratch script driving `ArtifactsPage` (per the 5-consecutive-session
   history in the gotchas above). It worked first try; that remains the cheap default here.
+
+### Resolved/added during ELITEA-1812 + ELITEA-1816 implementation (2026-08-23, implementer)
+- **A bucket save lands on the BARE `/artifacts` root — there is no `?bucket=<name>`
+  param.** ELITEA-1812's AFS expected the create form's `PENDING_BUCKET_SESSION_KEY`
+  auto-select to show up as a `?bucket=` query param; an auto-retrying `to_have_url`
+  polled 87 times over 45 s and every sample was plain `http://localhost:5173/artifacts`
+  (project 399, ~970 buckets). Assert the ROUTE after a bucket save, never the param.
+  (Contrast: the file-preview flow *does* set `?bucket=&file=` — see the URL-query row
+  above. The two are different navigations.)
+- **`sidebar_menu_item("artifacts").click()` verified live** as the case-faithful way to
+  return to the Artifacts root (ELITEA-1812 step 5) — testid
+  `sidebar-menu-item-artifacts`, still `automation/testids`-only.
+- **The bucket-form Name field is `disabled`, never `readonly`** (`CreateBucket.jsx`:
+  `disabled={!!currentBucket}`). A `click()` on it in Edit mode is REFUSED by Playwright's
+  actionability check (assert with a SHORT ~3 s budget inside `pytest.raises`), while
+  `Locator.type()`/`press()` do **not** raise — they silently do nothing. So the only
+  assertion that proves "no input accepted" is the unchanged `input_value()`.
+  New page-object accessors: `is_bucket_name_input_disabled()` /
+  `is_bucket_name_input_editable()`.
+- **`ArtifactsPage.delete_bucket_via_menu(name)` now exists** — the UI bucket-teardown
+  composition (navigate → wait for row → dot-menu → Delete → confirm → wait for removal),
+  lifted to the page object at its third repetition. Use it for teardown instead of
+  copying the local helper again. ELITEA-1810's suite-local copy is deliberately left in
+  place (that spec is sanctioned-RED on `#1677`).
+- Both new specs delete their own bucket at teardown (UI path, API fallback), so this run
+  added **no** new leak to `#636`.

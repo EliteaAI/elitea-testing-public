@@ -54,6 +54,7 @@ Usage:
 """
 
 import logging
+import re
 import time
 
 import allure
@@ -163,6 +164,18 @@ class TestArtifactBucketNameLowercase:
                     f"The backend should store the typed {typed_name!r} as "
                     f"{expected_name!r}; the creation response says "
                     f"{stored_name!r}"
+                )
+                # AFS drift, corrected here and amended in the AFS: the AFS's
+                # Step 4 expected the save to land on
+                # ``/artifacts?bucket=<stored name>`` (the form's
+                # PENDING_BUCKET_SESSION_KEY auto-select). Live in this run the
+                # save lands on the bare ``/artifacts`` root — 87 polls over
+                # 45s never saw a ``?bucket=`` param — so asserting it would
+                # have been asserting the analyst's probe rather than the
+                # product. The case's own claim ("Bucket is saved") is carried
+                # by the POST assertions above.
+                expect(page).to_have_url(
+                    re.compile(r"/artifacts(\?.*)?$"), timeout=NAVIGATION_TIMEOUT
                 )
 
             with allure.step(

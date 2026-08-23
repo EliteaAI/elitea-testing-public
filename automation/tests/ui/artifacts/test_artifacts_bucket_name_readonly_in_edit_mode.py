@@ -481,8 +481,12 @@ class TestArtifactBucketNameReadOnlyInEditMode:
                         "Cancel must not save: expected no bucket PUT request, "
                         f"but captured {list(cancel_puts)!r}"
                     )
-                    assert "/artifacts/create-bucket" not in page.url, (
-                        f"Cancel should leave the bucket form, got {page.url!r}"
+                    assert (
+                        "/artifacts" in page.url
+                        and "/artifacts/create-bucket" not in page.url
+                    ), (
+                        "Cancel should leave the bucket form and land back on "
+                        f"the Artifacts list, got {page.url!r}"
                     )
                     artifacts_page.wait_for_bucket_in_list(
                         expected_name, timeout=BUCKET_LIST_TIMEOUT

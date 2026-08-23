@@ -141,6 +141,11 @@ Every step below was executed live in this order (probe: `/tmp/probe_1816.py`,
     - Then send keystrokes anyway (`type("XYZ")` + `press("Backspace")`) — the honest
       version of "try to type or delete characters".
 15. **(case 15)** Verify the Name field is read-only and unchanged.
+    - *Implementation note (2026-08-23): step 14's `Locator.type()`/`press()` attempts are
+      each wrapped in a try/except on `TimeoutError` with the same short 3 s budget — live
+      they do not raise, but the assertion that proves "no input is accepted" is this
+      step's unchanged `input_value()`, not those calls' outcome, so either behaviour is
+      accepted without weakening anything.*
     - Verify **all three**, because each catches a different failure:
       `is_editable() is False`; `is_disabled() is True` (the DOM carries a real `disabled`
       attribute — `get_attribute("disabled") == ""`, and `readonly` is `None`);
@@ -245,11 +250,16 @@ UPPER_CASE class constants (`BUCKET_ROW`, `BUCKET_MENU_BUTTON`, `BUCKET_MENU_CON
 - **File**: new spec
   `automation/tests/ui/artifacts/test_artifacts_bucket_name_lowercase.py` (may host
   ELITEA-1812's test too — they must **not** share a bucket).
+  **Implemented (2026-08-23) as its own file**,
+  `automation/tests/ui/artifacts/test_artifacts_bucket_name_readonly_in_edit_mode.py`,
+  per the dispatch's "separate specs, one per case" instruction.
 - **Markers**: `@pytest.mark.p3`, `@pytest.mark.artifacts`, `@pytest.mark.regression`, `ui`.
 - **One page-object gap** (not a testid gap): `ArtifactsPage` has no accessor for the Name
   field's editability. Add two thin getters next to the existing bucket-form methods —
   `is_bucket_name_input_disabled()` and `is_bucket_name_input_editable()` — over the
-  existing `bucket_name_input` descriptor. Everything else this case needs already exists
+  existing `bucket_name_input` descriptor. **Added during implementation (2026-08-23)**,
+  exactly as specced, plus a third additive method `delete_bucket_via_menu()` that lifts
+  the (now third) repetition of the UI bucket-teardown composition out of the specs. Everything else this case needs already exists
   (`open_bucket_menu`, `get_bucket_menu_items_text`, `click_bucket_menu_rename_item`,
   `get_bucket_form_heading_text`, `open_retention_measure_dropdown`,
   `select_retention_measure`, `get_retention_measure_text`, `get_retention_value`,
