@@ -1286,3 +1286,19 @@ Not split this run: units in batch `artifacts-w05` are still appending to it,
 and re-shaping it mid-batch would churn the file the implementer and reviewer
 are told to read. Recommend an index + per-subarea split between batches
 (`test-case-analysis` § When the digest outgrows one file). Flagged to the lead.
+
+**Resolved/added during ELITEA-1859/1860/1861 implementation (2026-08-23):**
+the analyst's line-REPLACEMENT technique is now a page-object method —
+`ArtifactsPage.replace_file_preview_line_containing(match_text, new_text)`
+(sibling of the append-only `edit_file_preview_line_containing`): click the
+`.cm-line` filtered by the target text → `End` → `Shift+Home` → `type()`.
+Verified working first try against `# Project Overview` on line 1. Same #579
+scoped-raw-handle discipline as its sibling (`.cm-line` under the testid'd
+`artifacts-preview-code-content` parent, declared in the docstring).
+Two more implementation-time confirmations for this surface: (a) the
+Preview/Raw branches really are mutually exclusive MOUNTS — the merged specs
+now assert `to_have_count(0)` on the inactive branch and it holds in both
+directions; (b) after BOTH Warning-modal exits (confirm and cancel) on a
+Markdown file the render-mode toggle stays on Raw — no snap-back to Preview.
+Specs: `automation/tests/ui/artifacts/test_artifacts_file_preview_markdown_raw_discard.py`,
+`.../test_artifacts_file_preview_markdown_tab_switching.py`.
