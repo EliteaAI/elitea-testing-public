@@ -89,3 +89,4 @@
 - [Vite serves stale JSX after an EliteaUI edit](vite_serves_stale_jsx_on_onedrive_checkout.md) — new testid invisible in browser: restart the dev server
 - [allure.issue TMS link](allure_issue_tms_link_filename_verify_before_commit.md) — never derive it; `ls` the clone
 - [ruff --fix reorders pages.* imports](ruff_autofix_reorders_pages_imports_and_stdin_filename_hides_it.md) — never blanket --fix an import block under automation/
+- [Vite dev server misses JSX edits on OneDrive](vite_dev_server_misses_jsx_edits_on_onedrive.md) — testid absent on :5173 though committed; `touch` forces HMR
