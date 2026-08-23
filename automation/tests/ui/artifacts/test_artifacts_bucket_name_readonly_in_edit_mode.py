@@ -10,7 +10,10 @@ tests/ui/artifacts/`` had no hit on this field anywhere in the suite.
 
 Test flow (17 case steps, 1:1 with the AFS's Test Steps):
 1-2.   Navigate to Artifacts, click the create-bucket folder icon (full page
-       nav to ``/artifacts/create-bucket``, not a modal).
+       nav to ``/artifacts/create-bucket``, not a modal) — headed ``New
+       Bucket``. The heading is asserted, not just the URL: Step 11 below
+       asserts ``Edit bucket`` on that SAME URL, so the route cannot tell the
+       two forms apart.
 3.     Type a MIXED-CASE bucket name — preserved verbatim, and the field is
        ENABLED here. That enabled reading is the control for Step 15: without
        it, "disabled in Edit mode" would also pass on a field that is always
@@ -122,6 +125,11 @@ PROBE_MEASURE = "weeks"
 PROBE_MEASURE_LABEL = "Weeks"
 PROBE_VALUE = "3"
 
+# ``/artifacts/create-bucket`` is a SINGLE route serving both flows —
+# ``CreateBucket.jsx:214`` renders ``currentBucket ? 'Edit bucket' : 'New
+# Bucket'`` — so the heading text, not the URL, is what tells the two forms
+# apart (Step 2 asserts the create heading, Step 11 the edit heading).
+CREATE_FORM_HEADING = "New Bucket"
 EDIT_FORM_HEADING = "Edit bucket"
 
 # The four dot-menu items, in their live render order (CLARIFICATION #666 —
@@ -179,12 +187,25 @@ class TestArtifactBucketNameReadOnlyInEditMode:
             with allure.step(
                 "Step 2 — Click the create-bucket folder icon above the bucket "
                 "list — verify it opens the 'New Bucket' form as a full page "
-                "navigation, not a modal"
+                "navigation, not a modal. The route is shared with the edit "
+                "form (Step 11), so the heading text is what proves this is "
+                "the CREATE form"
             ):
                 artifacts_page.click_create_bucket_button(timeout=NAVIGATION_TIMEOUT)
                 assert "/artifacts/create-bucket" in page.url, (
                     f"Expected URL to contain '/artifacts/create-bucket', "
                     f"got: {page.url!r}"
+                )
+                assert (
+                    artifacts_page.get_bucket_form_heading_text(
+                        timeout=UI_ELEMENT_TIMEOUT
+                    )
+                    == CREATE_FORM_HEADING
+                ), (
+                    f"The form should be headed {CREATE_FORM_HEADING!r} — this "
+                    f"spec's own Step 11 asserts {EDIT_FORM_HEADING!r} on the "
+                    "SAME URL, so the URL cannot prove the case's "
+                    "\"'New Bucket' form opens\" on its own"
                 )
 
             with allure.step(

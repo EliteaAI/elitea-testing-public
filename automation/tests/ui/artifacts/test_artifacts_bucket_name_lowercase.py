@@ -10,7 +10,10 @@ typed and what is stored can differ by case.
 Test flow (6 case steps, 1:1 with the AFS's Test Steps):
 1. Navigate to Artifacts.
 2. Click the create-bucket folder icon — full page nav to
-   ``/artifacts/create-bucket``, not a modal.
+   ``/artifacts/create-bucket``, not a modal, and headed ``New Bucket``. That
+   heading is the assertion that matters: the SAME route serves the edit form
+   (``CreateBucket.jsx:214`` switches the heading off ``currentBucket``), so
+   the URL alone cannot prove the case's "'New Bucket' form opens".
 3. Type an ALL-UPPERCASE bucket name — the field preserves it verbatim
    (no client-side lowercasing; the yup schema explicitly allows A-Z).
 4. Save — the creation POST returns 200 AND its response body's ``name`` is
@@ -78,6 +81,14 @@ SAVE_RESPONSE_TIMEOUT = 20_000     # bucket-creation POST
 # larger budget — still a condition wait on the row's own testid, never a sleep.
 BUCKET_LIST_TIMEOUT = 45_000
 
+# ---------------------------------------------------------------------------
+# Form heading (ELITEA-1816's AFS Step 11 established this): the SINGLE route
+# ``/artifacts/create-bucket`` serves BOTH flows — ``CreateBucket.jsx:214``
+# renders ``currentBucket ? 'Edit bucket' : 'New Bucket'`` — so the URL alone
+# does NOT prove the case's "'New Bucket' form opens". The heading text does.
+# ---------------------------------------------------------------------------
+CREATE_FORM_HEADING = "New Bucket"
+
 
 @allure.epic("Artifacts")
 @allure.feature("Bucket Creation + Name Normalization")
@@ -123,12 +134,26 @@ class TestArtifactBucketNameLowercase:
             with allure.step(
                 "Step 2 — Click the create-bucket folder icon above the bucket "
                 "list — verify it opens the 'New Bucket' form as a full page "
-                "navigation, not a modal"
+                "navigation, not a modal. The route is shared by the create "
+                "and edit forms, so the heading text is what proves it is the "
+                "CREATE form"
             ):
                 artifacts_page.click_create_bucket_button(timeout=NAVIGATION_TIMEOUT)
                 assert "/artifacts/create-bucket" in page.url, (
                     f"Expected URL to contain '/artifacts/create-bucket', "
                     f"got: {page.url!r}"
+                )
+                assert (
+                    artifacts_page.get_bucket_form_heading_text(
+                        timeout=UI_ELEMENT_TIMEOUT
+                    )
+                    == CREATE_FORM_HEADING
+                ), (
+                    f"The form should be headed {CREATE_FORM_HEADING!r} — the "
+                    "URL is shared with the Edit form "
+                    "(CreateBucket.jsx:214 switches the heading off "
+                    "`currentBucket`), so it cannot prove the case's "
+                    "\"'New Bucket' form opens\" on its own"
                 )
 
             with allure.step(
@@ -179,10 +204,12 @@ class TestArtifactBucketNameLowercase:
                 )
 
             with allure.step(
-                "Step 5 — Click 'Artifacts' in the left sidebar — verify "
-                "navigation back to the Artifacts root (the form auto-selected "
-                "the fresh bucket via ?bucket=, so this step has an observable "
-                "effect on the URL)"
+                "Step 5 — Click 'Artifacts' in the left sidebar — verify the "
+                "app is on the Artifacts root with the bucket list rendered. "
+                "Save already landed on the bare /artifacts root (see Step 4), "
+                "so this is a same-route navigation: the assertion is that the "
+                "sidebar entry keeps us on the root with the list visible, NOT "
+                "that a ?bucket= param was cleared"
             ):
                 artifacts_page.sidebar_menu_item("artifacts").click()
                 expect(artifacts_page.buckets_heading).to_be_visible(

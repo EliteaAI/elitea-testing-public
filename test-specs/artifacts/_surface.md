@@ -821,6 +821,12 @@ sanctioned-RED against #1677.
   from the edit form.** `/artifacts/create-bucket` is ONE route serving both;
   `CreateBucket.jsx` renders `currentBucket ? 'Edit bucket' : 'New Bucket'`. One stable
   testid, state read from the TEXT.
+  **Consequence for every artifacts case whose step reads "the New Bucket form opens"
+  (added during ELITEA-1812/1816 review round 1, 2026-08-23):** a `"/artifacts/create-bucket"
+  in page.url` assertion does NOT verify that expected result — a regression that opened the
+  EDIT form on the same route would pass it. Assert
+  `get_bucket_form_heading_text() == "New Bucket"` alongside the URL. Both ELITEA-1812's and
+  ELITEA-1816's specs now do this at their Step 2.
 - **The retention-measure Select's own MUI backdrop blocks a second combobox click.**
   Opening the dropdown mounts an invisible `MuiBackdrop` for `menu-expiration_measure`
   that sits over the combobox — so "open the dropdown, then select an option" as two

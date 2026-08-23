@@ -80,6 +80,10 @@ Every step below was executed live in this order (probe: `/tmp/probe_1816.py`,
 2. **(case 2)** Click `artifacts-create-bucket-button` (the folder/create icon above the
    bucket list).
    - Verify: `page.url` ends with `/artifacts/create-bucket` (full page nav, not a modal).
+   - Verify: `artifacts-bucket-form-heading` reads **`New Bucket`**.
+     **Amended during ELITEA-1816 implementation (2026-08-23, review round 1):** Step 11
+     below asserts `Edit bucket` on that SAME URL, so a URL-only assertion cannot prove
+     the case's "'New Bucket' form opens" — the heading is the discriminator.
 3. **(case 3)** Enter the mixed-case name via `ArtifactsPage.fill_bucket_name(name)`
    (click + `select_text()` + `type()`; `fill()`/`Control+A` do not work on this field).
    - Verify: `input_value() == "AuToTest-1816-182606"` — mixed case preserved verbatim in
@@ -188,7 +192,7 @@ Every step below was executed live in this order (probe: `/tmp/probe_1816.py`,
 | Precondition: user logged in | — | `auth_state` fixture | setup | covered (setup) |
 | Test data: input `BuCkEt-Mix` / expected `bucket-mix` / retention `Days, 1` | — | § Test Data | generated mixed-case name, `lower()` expectation, `Days/1` | covered (placeholder → generated, documented) |
 | Step 1 Navigate to Artifacts | page loads | Test Step 1 | `artifacts-buckets-heading` visible | covered |
-| Step 2 Click create-bucket icon | New Bucket form opens | Test Step 2 | URL == `/artifacts/create-bucket` | covered |
+| Step 2 Click create-bucket icon | New Bucket form opens | Test Step 2 | URL == `/artifacts/create-bucket` **and** form heading == `New Bucket` (Step 11 asserts `Edit bucket` on the same URL) | covered |
 | Step 3 Enter mixed-case name | field accepts input | Test Step 3 | `input_value() == typed` (mixed preserved) + field enabled | covered |
 | Step 4 Select retention "Days" | Days selected | Test Step 4 | combobox text | covered |
 | Step 5 Enter retention value "1" | field shows 1 | Test Step 5 | `input_value()` | covered |
