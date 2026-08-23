@@ -61,7 +61,14 @@ without any further request. The only work needed is **testids** — the whole
 | 8 | `Cancel` and `Authorize` present | both visible | both present. **`Authorize` is ENABLED** in this configuration (the server advertises an authorization endpoint and no client secret is required, so `isAuthorizeDisabled` is false). The dialog renders **one** input — the Scope field only; Client Id / Client Secret inputs are conditional (`needClientId` / `needsClientSecret`) and do **not** render here. | ✅ |
 | 9 | Click **Cancel** | dialog closes without taking any action | dialog hidden; **no further POST** in the 2 s after the click (only the step-3 `check_connection` in the whole session) | ✅ |
 
-**No console errors** over the whole flow.
+**No console errors** over the whole flow — **amended during implementation
+(2026-08-24): with one expected exception.** Chromium logs every non-2xx fetch
+as a console error, so the case's own `check_connection` **401** (the oracle
+that opens the dialog) surfaces as `Failed to load resource: the server
+responded with a status of 401 (Unauthorized)`. The implemented side channel
+filters exactly that one, matched by the failing resource's own `location.url`
+(`/configurations/check_connection/`) plus the 401 status — never by "401"
+alone, so any other 401 still fails.
 
 ## ⚠️ The one trap on this surface — `keepMounted`
 
@@ -183,7 +190,7 @@ back empty.
 | `check_connection` returns **401** with `requires_authorization` | proves the dialog was opened by the real backend handshake and not by some other code path — the honest oracle a `route.fulfill` would have destroyed |
 | `Authorize` **enabled** at open | it is enabled in this configuration; asserting it deliberately stops a silent future flip (e.g. a metadata regression that leaves the button dead) from passing unnoticed |
 | Exactly one input renders in the dialog (Scope only) | the Client Id / Client Secret fields are conditional; a regression that starts demanding them would change the flow the case describes without failing any text assertion |
-| No console errors across the flow | standard side channel; this flow was clean, so the assertion starts honest |
+| No console errors across the flow | standard side channel; clean apart from the browser's own log line for the expected `check_connection` 401, filtered endpoint-specifically (amended 2026-08-24) |
 
 ## Known Defects
 

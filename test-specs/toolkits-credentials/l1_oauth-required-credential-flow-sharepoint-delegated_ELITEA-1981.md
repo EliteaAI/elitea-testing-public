@@ -56,7 +56,7 @@ Microsoft tenant, no `.env.test` secret, so this case is immune to `#1673`
 | 3 | Select **Delegated** | Delegated fields appear | radio becomes checked; the subsection renders | ✅ |
 | 4 | Verify Auto Refresh Token checkbox, Oauth Discovery Endpoint, Scopes appear | all visible | all three render — labels `Auto Refresh Token`, `Oauth Discovery Endpoint *`, `Scopes *`. Both are marked required by the **subsection**, though the JSON-schema `required` list is only `client_id/client_secret/site_url`. The checkbox toggles normally (default unchecked). | ✅ |
 | 5 | Verify a **Login** button appears next to Test connection | Login visible in the form | **Case-text drift → #1711.** Login is **absent** right after step 3/4 and appears the moment **Oauth Discovery Endpoint** is non-empty (`Login count 0 → 1`, measured both ways). `CredentialForm.jsx:342` gates it on `oauthTokenKey`, derived from `settings.oauth_discovery_endpoint` (`:168-176`). Product is correct; the case text orders the step too early. | ⚠️ clarification |
-| 6 | Fill all required fields | all accept input | all accept input. **Save stays disabled until a field is typed with real keystrokes** — a Playwright `fill()` on Display Name leaves formik non-dirty (`useFormDirtyExcluding`), so `credential-form-save-button` *and* Discard stay disabled; one `press_sequentially` char flips both. `CredentialCreatePage.set_display_name()` already does select-all + type — use it. | ✅ |
+| 6 | Fill all required fields | all accept input | all accept input. **Save stays disabled until a field is typed with real keystrokes** — a Playwright `fill()` on Display Name leaves formik non-dirty (`useFormDirtyExcluding`), so `credential-form-save-button` *and* Discard stay disabled; one `press_sequentially` char flips both. `CredentialCreatePage.set_display_name()` already does select-all + type — use it. **Amended during implementation (2026-08-24): typing is necessary but NOT sufficient for the Delegated fields — they commit on BLUR.** With focus still in `scopes` (array-typed) Save stays disabled however many characters were typed; blurring alone flips it to enabled (measured across 3 probes: App-only fields alone enable Save, selecting Delegated disables it, and it re-enables the moment `scopes` blurs). `CredentialFormFieldsMixin.type_into_field()` therefore blurs after typing. | ✅ |
 | 7 | Save | saved with Delegated auth | `POST /configurations/configurations/399` → **200**; app navigates to **`/credentials/all`**, not to the detail page (**#1711**). Persisted `data`: `{"scopes":["Sites.Read.All"], "site_url":…, "client_id":…, "client_secret":"{{secret.<uuid>}}", "oauth_discovery_endpoint":…}` — **`scopes` is stored as an array** built from the free-text input, and **`auto_refresh_token` is absent** when left unchecked. | ✅ |
 | 8 | Verify Login remains on the saved credential detail page | Login present | open `/credentials/all/{id}`: `Delegated` radio checked (derived from the field values), all values round-tripped, **Login** present next to Test connection. `client_secret` renders as the bare vault uuid — known non-defect (digest § NOT a defect — the saved-secret round trip). | ✅ |
 
@@ -112,6 +112,11 @@ Auth state is read off the native input
 - After Save, settle on the list GET (`CredentialsListPage.reload_list()`), then
   navigate to the detail route and settle on
   `GET /configurations/configuration/399/{id}`.
+- **Blur is a commit signal, not tidiness (added during implementation):** the
+  shared `Input`/`InputBase` renderer runs with `enableAutoBlur`, and the
+  schema-typed Delegated fields (`scopes` is `array`) only push their typed
+  value into the form state on blur. A test that types and immediately reads
+  `credential-form-save-button` sees it disabled.
 - Once any field is touched, `page.goto()`/`reload()` raises `beforeunload`.
   Playwright auto-dismisses dialogs in the pytest suite; an MCP session must not.
 

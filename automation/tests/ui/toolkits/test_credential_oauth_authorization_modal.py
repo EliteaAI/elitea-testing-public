@@ -76,6 +76,22 @@ def _is_known_554_warning(msg) -> bool:
     return "404" in msg.text and "elitea_core/toolkits/prompt_lib/" in location_url
 
 
+def _is_expected_oauth_401(msg) -> bool:
+    """Filter the browser's own "Failed to load resource: 401" entry for THIS
+    case's ``check_connection`` call.
+
+    Not a defect and not masking: the 401 + ``requires_authorization`` response
+    IS the case's oracle — it is what opens the dialog, and step 3 asserts it
+    explicitly off the response object. Chromium logs every non-2xx fetch as a
+    console error, so the side channel would otherwise fail on the very
+    behaviour the case verifies. Matched by the failing resource's own
+    ``location.url`` (the check_connection endpoint) plus the 401 status, never
+    by "401" alone — any OTHER 401 in the flow still fails this check.
+    """
+    location_url = (msg.location or {}).get("url", "")
+    return "401" in msg.text and "/configurations/check_connection/" in location_url
+
+
 def _is_known_291_warning(msg) -> bool:
     """Filter the pre-existing, already-filed React "missing key prop" /
     validateDOMNesting dev warnings on the credential surfaces (#291)."""
@@ -113,6 +129,7 @@ class TestCredentialOAuthAuthorizationModal:
                 msg.type in ("error", "warning")
                 and not _is_known_291_warning(msg)
                 and not _is_known_554_warning(msg)
+                and not _is_expected_oauth_401(msg)
             ):
                 console_messages.append(msg)
 
@@ -272,7 +289,9 @@ class TestCredentialOAuthAuthorizationModal:
 
             with allure.step("Side-channel check — no console errors/warnings across the full flow"):
                 # Known defects #291 / #554 are filtered above (both filed, both
-                # pre-existing); anything else fails this check for real.
+                # pre-existing), as is the browser's console entry for this
+                # case's OWN expected check_connection 401 (the oracle step 3
+                # asserts). Anything else fails this check for real.
                 assert not console_messages, (
                     f"Unexpected console errors/warnings: {[m.text for m in console_messages]}"
                 )
