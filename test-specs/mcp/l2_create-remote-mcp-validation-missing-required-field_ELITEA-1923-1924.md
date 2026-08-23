@@ -368,6 +368,19 @@ rather than `blocked`.
   timeout, treating the timeout as the PASS (see
   `tests/ui/artifacts/test_artifacts_create_bucket_56char_limit_warning_delete_cancel.py`).
   Keep this a **hard** assertion — it is not the known defect.
+  - **The Save click MUST run INSIDE the `expect_response` block, never before it.**
+    *Amended during fix round 1 (2026-08-24) — the first implementation clicked Save
+    and opened the waiter on the next line.* `expect_response` only matches traffic
+    arriving after its `__enter__`, so a create POST that fires on click and resolves
+    during the click's own round-trip is invisible to a waiter opened afterwards, and
+    the absence assertion passes vacuously — it would report "no POST fired" on a run
+    where the toolkit **was** created. Whether it catches the POST is otherwise a pure
+    race. Proven red/green out-of-band: with the response forced to land before
+    `__enter__`, click-then-wait reports "no POST seen" while trigger-inside-waiter
+    correctly detects it. The shipped helper therefore takes the trigger as a callable
+    (`_assert_trigger_fires_no_create_request(page, project_id, form.save_button.click)`)
+    so the wrong order is unrepresentable — the same shape
+    `McpFormPage.save_and_wait_for_created` uses for the mirror-image (presence) case.
 - **The `expect.soft()` for #633 targets a locator** (`save_button`), so
   `expect.soft(form.save_button).to_be_disabled()` is the right shape — no
   `soft_failures`/`pytest.fail()` aggregation needed for it.

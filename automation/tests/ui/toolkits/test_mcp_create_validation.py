@@ -39,7 +39,9 @@ row still delivers real coverage of the case's stated intent.
 """
 
 import logging
+import re
 import uuid
+from collections.abc import Callable
 
 import allure
 import pytest
@@ -62,6 +64,12 @@ pytestmark = [
 TOOLKIT_URL = "https://mcp.example.com/sse"
 VALIDATION_MESSAGE = "Field is required"
 
+# MUI marks an errored FormHelperText with the `Mui-error` class alongside its
+# generated `MuiFormHelperText-*` classes; the AFS asserts the class, not just
+# the copy, so a helper rendered in the NORMAL (non-error) style with the same
+# text could never satisfy this step.
+MUI_ERROR_CLASS = re.compile(r"\bMui-error\b")
+
 # Short window in which the create POST must NOT appear. This is an
 # absence-of-network-request observable, so it is asserted by expecting the
 # wait to TIME OUT — see _assert_no_create_request.
@@ -81,13 +89,21 @@ def _unique(base: str) -> str:
     return name
 
 
-def _assert_no_create_request(page, project_id: str) -> None:
-    """Assert the create POST does NOT fire when Save is clicked.
+def _assert_trigger_fires_no_create_request(page, project_id: str, trigger: Callable[[], None]) -> None:
+    """Run ``trigger`` and assert the create POST does NOT fire because of it.
 
     The observable is the ABSENCE of a network request, which Playwright's
     web-first assertions cannot express — so the established in-repo idiom is
     used: wait for the response and treat the timeout as the PASS (cf.
     tests/ui/artifacts/test_artifacts_create_bucket_56char_limit_warning_delete_cancel.py).
+
+    **The trigger runs INSIDE the waiter, and that is load-bearing.**
+    ``page.expect_response`` only matches traffic that arrives after its
+    ``__enter__``; a create POST that fires on click and resolves before the
+    waiter opened would be invisible to it, so a caller that clicks first and
+    opens the waiter afterwards asserts nothing at all and passes vacuously.
+    Same shape as :meth:`McpFormPage.save_and_wait_for_created`, which wraps
+    its own click for the mirror-image reason.
 
     This is a HARD assertion for both rows — it is not the known defect.
     """
@@ -96,7 +112,7 @@ def _assert_no_create_request(page, project_id: str) -> None:
             lambda r: f"/tools/prompt_lib/{project_id}" in r.url and r.request.method == "POST",
             timeout=NO_REQUEST_WINDOW,
         ):
-            pass
+            trigger()
     except PlaywrightTimeoutError:
         return  # no create request fired — the expected outcome
     raise AssertionError(
@@ -234,19 +250,31 @@ def test_create_remote_mcp_validation_on_missing_required_field(
                 save_button_expectation.to_be_enabled()
 
         with allure.step("Step 6 — Click Save; verify NO toolkit is created"):
-            form.save_button.click()
-            _assert_no_create_request(page, project_id)
+            # The click is the TRIGGER passed into the absence assertion, not a
+            # separate statement before it: the response waiter must already be
+            # open when the click happens, or a POST that fires and resolves
+            # first is simply never seen and the assertion passes vacuously.
+            _assert_trigger_fires_no_create_request(page, project_id, form.save_button.click)
             assert "/mcps/create/mcp" in page.url, (
                 f"Must stay on the create page when a required field is empty, got: {page.url}"
             )
             expect(empty_input).to_have_attribute("aria-invalid", "true")
 
         with allure.step(f"Step 7 — Verify '{VALIDATION_MESSAGE}' is shown under the '{empty_field}' field"):
-            # Assert the text EXACTLY: the Scopes field renders a permanent,
-            # unrelated helper ("Enter scopes separated by commas or spaces") in
-            # the same MuiFormHelperText family, so a loose visibility or
-            # substring check would pass on it (AFS Axis 2).
+            # All three checks the AFS names for this step (§ Test Steps step 7 /
+            # Coverage-Map Axis-1 row 6), each catching a different failure:
+            #   visible      — the node exists AND is rendered to the user, not
+            #                  merely present in the DOM;
+            #   exact text   — the Scopes field renders a permanent, unrelated
+            #                  helper ("Enter scopes separated by commas or
+            #                  spaces") in the same MuiFormHelperText family, so
+            #                  a loose/substring check would pass on it;
+            #   `Mui-error`  — the helper is shown in the ERROR style, so the
+            #                  same copy rendered as ordinary hint text (or the
+            #                  error styling silently dropped) still fails.
+            expect(helper_text).to_be_visible()
             expect(helper_text).to_have_text(VALIDATION_MESSAGE)
+            expect(helper_text).to_have_class(MUI_ERROR_CLASS)
 
         with allure.step(f"Step 8 — Fill the missing '{empty_field}'; verify the error clears"):
             if empty_field == "url":
