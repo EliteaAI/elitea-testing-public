@@ -52,3 +52,4 @@
 - [Support Assistant renders no partial text](support_assistant_no_token_streaming.md) — no token streaming; agent-mode atomic delivery
 - [Provenance grep false-negative — DotMenu `key:`-derived testids](provenance_grep_false_negative_dotmenu_key_derived_testid.md) — `*-menuitem` testids grep as absent; grep the key
 - [MCP browser can wedge into dead clicks](mcp_browser_can_wedge_into_dead_clicks.md) — before filing an unresponsive-control bug: run the nearest merged spec + a fresh context
+- [Testid provenance — composed testids](testid_provenance_runtime_composed.md) — diff the component file between refs; a bare grep is blind
