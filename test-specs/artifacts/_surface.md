@@ -804,3 +804,43 @@ sanctioned-RED against #1677.
   removed the bucket from the S3 listing immediately. Usable teardown fallback.
 - Project 399 held **967 buckets** at run time, including leaked `autotest-*` names from
   earlier runs (e.g. `autotest-1810-b2-2251`) — always generate unique bucket names.
+
+### Resolved/added during ELITEA-1810 implementation (2026-08-23, implementer)
+
+- **Testids added and PUSHED** — EliteaAI/EliteaUI@c91c2aac on `automation/testids`
+  (3 attribute-only lines, 0 removals, no hooks, no new DOM nodes):
+  `key: 'bucket-menu-rename'` on `BucketItem.jsx`'s Rename item (DotMenu derives
+  `bucket-menu-rename-menuitem`), `data-testid="artifacts-bucket-cancel-button"`, and
+  the new `data-testid="artifacts-bucket-form-heading"` on `CreateBucket.jsx`'s heading
+  Typography. **Caution for future analysis on this surface:** the first two were
+  present only as *uncommitted* edits in the `../EliteaUI` working tree at analysis
+  time, so a plain grep reported them as "exists" while they lived on no branch. Verify
+  a testid's provenance with `git grep <t> origin/automation/testids -- src/`, not with
+  a working-tree grep.
+- **`artifacts-bucket-form-heading` is the only observable separating the create form
+  from the edit form.** `/artifacts/create-bucket` is ONE route serving both;
+  `CreateBucket.jsx` renders `currentBucket ? 'Edit bucket' : 'New Bucket'`. One stable
+  testid, state read from the TEXT.
+- **The retention-measure Select's own MUI backdrop blocks a second combobox click.**
+  Opening the dropdown mounts an invisible `MuiBackdrop` for `menu-expiration_measure`
+  that sits over the combobox — so "open the dropdown, then select an option" as two
+  separate page-object calls times out on `Locator.click`. `select_retention_measure()`
+  now only issues the open-click when `aria-expanded != "true"`, and waits for the
+  option to reach `hidden` before returning so the closing backdrop cannot race the
+  caller's next click.
+- **The bucket-list refetch needs well over 15 s in project 399 (~970 buckets).** The
+  15 s `NAVIGATION_TIMEOUT` the sibling artifacts specs use produced a false "bucket
+  never appeared" right after the create-save; a fresh `navigate_to_artifacts()`
+  showed it instantly. ELITEA-1810 uses a dedicated `BUCKET_LIST_TIMEOUT = 45_000`
+  for every bucket-list condition wait. Expect the sibling specs to start flaking on
+  this as the project's bucket count grows.
+- **An EDIT save is a `PUT`, not a `POST`.** `ArtifactsPage.click_bucket_save_button()`
+  hardcodes `method == "POST"` in its `expect_response` predicate and HANGS on an edit
+  save — use the new additive sibling `click_bucket_save_button_expect_put()`.
+- **Cancel fires no bucket request at all** (`onCancel` is a plain `navigate(-1)`) —
+  confirmed by a `capture_requests_matching("artifacts/buckets", method="PUT")`
+  listener armed before the form is touched: zero captured across the whole
+  select-Days / set-1 / Cancel sequence.
+- **#636 re-confirmed both ways:** `ArtifactAPI.delete_bucket()` 404s every time
+  (`.../buckets/default/399/p--399.<name>`), while the UI delete path removes the
+  bucket cleanly — provided the removal wait gets `BUCKET_LIST_TIMEOUT`, not 15 s.

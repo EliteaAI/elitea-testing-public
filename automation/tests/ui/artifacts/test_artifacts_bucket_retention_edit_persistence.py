@@ -61,7 +61,6 @@ AFS: test-specs/artifacts/l2_create-bucket-via-folder-icon-retention-edit-persis
 Markers:
     - ui: requires browser
     - regression: regression test
-    - artifacts: artifacts feature
     - p1: high priority (matches case priority "high" / AFS l2)
 
 Usage:
@@ -83,7 +82,6 @@ logger = logging.getLogger(__name__)
 pytestmark = [
     pytest.mark.ui,
     pytest.mark.regression,
-    pytest.mark.artifacts,
     pytest.mark.new,
 ]
 
@@ -93,6 +91,12 @@ pytestmark = [
 UI_ELEMENT_TIMEOUT = 10_000        # fields, buttons, menus, rows
 NAVIGATION_TIMEOUT = 15_000        # SPA route transitions, bucket-list refetch
 SAVE_RESPONSE_TIMEOUT = 20_000     # bucket create POST / update PUT
+# The project under test carries ~970 buckets, and the left panel refetches the
+# WHOLE list after a bucket save. Measured live: the post-save refetch can take
+# well over the 15s NAVIGATION_TIMEOUT the smaller sibling specs use, so the
+# bucket-list waits get their own, larger condition-wait budget. Still a
+# condition wait on the row's own testid — never a sleep.
+BUCKET_LIST_TIMEOUT = 45_000
 
 # ---------------------------------------------------------------------------
 # Test data (from the case's own Test Data table, used verbatim live)
@@ -162,7 +166,7 @@ class TestArtifactBucketRetentionEditPersistence:
         artifacts_page.click_bucket_menu_delete_item(timeout=UI_ELEMENT_TIMEOUT)
         artifacts_page.delete_confirm_button.click()
         artifacts_page.wait_for_bucket_removed_from_list(
-            bucket_name, timeout=NAVIGATION_TIMEOUT
+            bucket_name, timeout=BUCKET_LIST_TIMEOUT
         )
 
     @pytest.mark.p1
@@ -330,7 +334,7 @@ class TestArtifactBucketRetentionEditPersistence:
                 "list — condition wait on its own dynamic row testid"
             ):
                 artifacts_page.wait_for_bucket_in_list(
-                    bucket_name, timeout=NAVIGATION_TIMEOUT
+                    bucket_name, timeout=BUCKET_LIST_TIMEOUT
                 )
                 assert artifacts_page.count_bucket_rows(bucket_name) == 1, (
                     f"Expected exactly one {bucket_name!r} row in the bucket list"
@@ -452,7 +456,7 @@ class TestArtifactBucketRetentionEditPersistence:
                 "name AND at the same position as recorded in Step 10"
             ):
                 artifacts_page.wait_for_bucket_in_list(
-                    bucket_name, timeout=NAVIGATION_TIMEOUT
+                    bucket_name, timeout=BUCKET_LIST_TIMEOUT
                 )
                 position_after_edit = artifacts_page.get_bucket_row_index(bucket_name)
                 assert position_after_edit == position_after_create, (
@@ -542,7 +546,7 @@ class TestArtifactBucketRetentionEditPersistence:
 
             with allure.step("Step 24 — Verify the bucket list is visible again"):
                 artifacts_page.wait_for_bucket_in_list(
-                    bucket_name, timeout=NAVIGATION_TIMEOUT
+                    bucket_name, timeout=BUCKET_LIST_TIMEOUT
                 )
 
             with allure.step(

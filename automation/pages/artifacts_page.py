@@ -1534,16 +1534,29 @@ class ArtifactsPage(BasePage):
         the inherited class-level template (never an inline locator, per
         ``.claude/rules/page-objects.md``).
 
+        Idempotent about the dropdown's OPEN state: a caller may have already
+        opened it (:meth:`open_retention_measure_dropdown`, e.g. to assert the
+        offered options first) or not. Confirmed live — clicking the combobox
+        while it is ALREADY expanded times out, because MUI's own invisible
+        ``MuiBackdrop`` for the open ``menu-expiration_measure`` popover sits
+        over the combobox and intercepts the pointer event. So the open click
+        is issued only when ``aria-expanded`` is not already ``"true"``.
+
         Args:
             measure: The option's underlying VALUE — one of ``"days"``,
                 ``"weeks"``, ``"months"``, ``"years"`` (lowercase; the
                 rendered LABEL is capitalized by ``capitalizeFirstChar``).
             timeout: Maximum wait time in milliseconds.
         """
-        self.bucket_retention_measure_combobox.click()
+        if self.bucket_retention_measure_combobox.get_attribute("aria-expanded") != "true":
+            self.bucket_retention_measure_combobox.click()
         option = self.page.locator(self.SELECT_OPTION.format(measure))
         option.wait_for(state="visible", timeout=timeout)
         option.click()
+        # Wait for the popover (and its pointer-intercepting backdrop) to
+        # unmount before returning — otherwise the caller's next click (e.g.
+        # into the retention-value field) races the closing transition.
+        option.wait_for(state="hidden", timeout=timeout)
         logger.info("Selected retention measure %r", measure)
 
     def is_retention_measure_option_visible(self, measure: str) -> bool:
