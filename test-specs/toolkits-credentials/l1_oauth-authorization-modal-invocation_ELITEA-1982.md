@@ -59,7 +59,7 @@ without any further request. The only work needed is **testids** — the whole
 | 6 | Scope pre-populated with credential scopes prefixed by `offline_access` | `offline_access <scopes>` | **`offline_access Sites.Read.All`**. The prefix is **backend-sourced**, not a UI concat: `resource_metadata.scopes_supported` / `provided_settings.scopes` come back `["offline_access","Sites.Read.All"]` for a credential whose own `scopes` is `["Sites.Read.All"]` — **and do so regardless of `auto_refresh_token`** (probed true and false, identical). `McpAuthModal.jsx:70` prefers those `resourceScopes` over the form scopes. | ✅ |
 | 7 | Scope placeholder `Enter OAuth scopes (space-separated)` | correct when empty | attribute matches exactly; clearing the field renders it | ✅ |
 | 8 | `Cancel` and `Authorize` present | both visible | both present. **`Authorize` is ENABLED** in this configuration (the server advertises an authorization endpoint and no client secret is required, so `isAuthorizeDisabled` is false). The dialog renders **one** input — the Scope field only; Client Id / Client Secret inputs are conditional (`needClientId` / `needsClientSecret`) and do **not** render here. | ✅ |
-| 9 | Click **Cancel** | dialog closes without taking any action | dialog hidden; **no further POST** in the 2 s after the click (only the step-3 `check_connection` in the whole session) | ✅ |
+| 9 | Click **Cancel** | dialog closes without taking any action | dialog hidden; **no OAuth popup opened** and the browser context gains no page (an authorization attempt = `onAuthorize`'s `window.open('about:blank','_blank')`, `McpAuthModal.jsx:244-258` — the handshake runs INSIDE that popup, so it makes no request this page can see); and **no further `check_connection`** (only the step-3 one in the whole session) | ✅ |
 
 **No console errors** over the whole flow — **amended during implementation
 (2026-08-24): with one expected exception.** Chromium logs every non-2xx fetch
@@ -121,7 +121,7 @@ greps empty), awaiting human cherry-pick to `main`.
 
 | Purpose | Handle | Provenance |
 |---|---|---|
-| Detail-form fields (precondition assertions) | `toolkit-field-oauth_discovery_endpoint-input`, `toolkit-field-scopes-input`, `toolkit-field-auth-radio-delegated` | on-main ✓ / `automation/testids` (radio, EliteaAI/EliteaUI@c8d5c6af) |
+| Detail-form fields (precondition assertions) | `toolkit-field-oauth_discovery_endpoint-input`, `toolkit-field-scopes-input`, `toolkit-field-auth-radio-delegated` | **all on-main ✓** — the radio is EliteaAI/EliteaUI@bf4a13ad, NOT `automation/testids`-only. It is runtime-composed (`ToolSection.jsx:290` + `RadioButtonGroup.jsx:36-37`), so a grep for `toolkit-field-auth-radio-delegated` is empty on BOTH refs; verified by file diff (`git diff origin/main origin/automation/testids` on both composing files is EMPTY). ELITEA-1962's EliteaAI/EliteaUI@c8d5c6af was promoted to `main` by the 2026-08-12 batch. |
 | Test connection (the "next to" anchor) | `credential-form-test-connection-button` | on `automation/testids` (EliteaAI/EliteaUI@5892ae48) |
 | **Login button (trigger)** | `credential-form-oauth-login-button` | ADDED — EliteaAI/EliteaUI@7d7b21d4 — `CredentialForm.jsx:342-350`; one attribute (`Button.BaseBtn` spreads `restProps`). **Shared with ELITEA-1981 — add once.** |
 | **Dialog container** | `oauth-auth-dialog` | ADDED — EliteaAI/EliteaUI@7d7b21d4 — `McpAuthModal.jsx:369` `<Dialog>`. Pair with a **visibility** assertion (keepMounted, above). |
@@ -181,9 +181,9 @@ back empty.
 | Step 6 Scope pre-populated `offline_access …` | scope value | input value vs the **captured response**'s `scopes_supported`, plus an explicit `startswith("offline_access ")` | Step 6 | covered |
 | Step 7 Scope placeholder when empty | placeholder correct | clear the field, assert `placeholder` attribute + empty value | Step 7 | covered |
 | Step 8 Cancel + Authorize present | both visible | visibility of both (+ `Authorize` enabled) | Step 8 | covered |
-| Step 9 Cancel closes without action | dialog closed, no action | `not_to_be_visible()` + no further `check_connection`/OAuth request | Step 9 | covered |
+| Step 9 Cancel closes without action | dialog closed, no action | `not_to_be_visible()` + popup-absence + context page-count unchanged + no further `check_connection` | Step 9 | covered |
 | Expected Final State | dialog opens with pre-populated server + scope; Cancel dismisses without authorizing | steps 3-9 | Steps 3-9 | covered |
-| Pass criterion "Cancel does not trigger an authorization attempt" | no auth attempt | request-absence assertion in step 9 | Step 9 | covered |
+| Pass criterion "Cancel does not trigger an authorization attempt" | no auth attempt | **popup-absence + context page-count** assertion in step 9 (the direct guard — `onAuthorize` opens a popup and fires NO `check_connection`, so a request-count guard alone would never have caught a real attempt); `check_connection` count kept as a secondary no-new-handshake check | Step 9 | covered |
 
 ### Axis 2 — observables asserted beyond the case
 

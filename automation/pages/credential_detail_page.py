@@ -40,9 +40,8 @@ dialog testids come from the shared ``DeleteEntityModal.jsx`` — so no
 import logging
 import re
 
-from playwright.sync_api import Page
-
 from config import settings
+from playwright.sync_api import Page
 
 from .base_page import BasePage
 from .credential_form_fields import CredentialFormFieldsMixin

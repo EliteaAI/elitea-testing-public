@@ -19,6 +19,12 @@ product: the dialog opens off a real
 response's own ``scopes_supported`` rather than against a string this test
 authored. No ``route.fulfill``, no injected state.
 
+⚠️ An "authorization attempt" (the case's step-9 Fail criterion) is a POPUP,
+not a request this page makes: ``McpAuthModal.onAuthorize`` opens
+``window.open('about:blank', '_blank', …)`` and runs the whole handshake inside
+it. Step 9 therefore guards on popup absence + the context's page count; the
+``check_connection`` count is only a secondary no-new-handshake check.
+
 ⚠️ ``McpAuthModal`` renders ``<Dialog keepMounted>``: the dialog is always in
 the DOM and a CLOSED instance holds pre-open state (empty ``Server:`` href, a
 Scope value without the ``offline_access`` prefix) — i.e. it mimics precisely
@@ -133,9 +139,28 @@ class TestCredentialOAuthAuthorizationModal:
             ):
                 console_messages.append(msg)
 
-        # The case's Pass criterion for step 9 ("Cancel does not trigger an
-        # authorization attempt") is a request-absence assertion, so every
-        # check_connection request the page makes is recorded.
+        # The case's Fail criterion for step 9 is "Cancel triggers an
+        # authorization attempt". An authorization attempt is NOT a
+        # check_connection call — `McpAuthModal.onAuthorize`
+        # (McpAuthModal.jsx:244-258) opens a popup with
+        # `window.open('about:blank', '_blank', …)` and then runs
+        # `McpAuthFlowHelpers.startMcpAuthFlow`, whose whole handshake
+        # (authorize / token / registration) happens INSIDE that popup and is
+        # therefore invisible to this page's request listener. So the popup is
+        # the direct, unconditional guard: `window.open` is the first thing
+        # `onAuthorize` does after its `storageKey` check, and `storageKey =
+        # tokenStorageKey || serverUrl` is truthy in the credential flow, so
+        # any authorization attempt necessarily produces one.
+        popups = []
+
+        def _on_popup(popup_page):
+            popups.append(popup_page)
+
+        page.on("popup", _on_popup)
+
+        # Secondary axis (kept as a no-new-backend-handshake guard, NOT as the
+        # authorization guard it was mistaken for): every check_connection
+        # request this page makes.
         check_connection_requests = []
 
         def _on_request(request):
@@ -276,14 +301,39 @@ class TestCredentialOAuthAuthorizationModal:
                     "Expected exactly one check_connection request (step 3's) before Cancel, got "
                     f"{check_connection_requests!r}"
                 )
+                # Nothing has authorized yet — the baseline the Fail criterion
+                # is measured against.
+                assert popups == [], (
+                    f"An authorization popup opened before Cancel was even clicked: "
+                    f"{[p.url for p in popups]!r}"
+                )
+                pages_before_cancel = len(page.context.pages)
 
                 modal.click_cancel()
 
                 # keepMounted: the dialog stays in the DOM, so "closed" is a
                 # visibility assertion, never to_have_count(0).
                 expect(modal.dialog).not_to_be_visible()
+
+                # THE case's Fail criterion: "Cancel triggers an authorization
+                # attempt". `onAuthorize`'s first act is opening the auth popup,
+                # so an authorization attempt is exactly one new page in this
+                # context. Both axes are read AFTER the dialog is confirmed
+                # hidden, so the event has had its chance to fire; the page
+                # count is a synchronous re-read that does not depend on event
+                # timing at all.
+                assert popups == [], (
+                    "Cancel must not trigger an authorization attempt, but an OAuth popup "
+                    f"was opened: {[p.url for p in popups]!r}"
+                )
+                assert len(page.context.pages) == pages_before_cancel, (
+                    "Cancel must not trigger an authorization attempt, but the browser "
+                    f"context gained a page: {pages_before_cancel} -> {len(page.context.pages)} "
+                    f"({[p.url for p in page.context.pages]!r})"
+                )
+                # Secondary: Cancel also starts no new backend handshake.
                 assert len(check_connection_requests) == requests_before_cancel, (
-                    "Cancel must not trigger an authorization attempt, but new check_connection "
+                    "Cancel must not start a new backend handshake, but new check_connection "
                     f"requests fired: {check_connection_requests[requests_before_cancel:]!r}"
                 )
 
@@ -297,6 +347,15 @@ class TestCredentialOAuthAuthorizationModal:
                 )
 
         finally:
+            # If the step-9 guard ever fires, an OAuth popup is left open and
+            # would outlive this test; close it so the next test starts clean.
+            page.remove_listener("popup", _on_popup)
+            for leaked in popups:
+                try:
+                    leaked.close()
+                except Exception as exc:  # noqa: BLE001 — teardown must never mask the verdict
+                    logger.warning("Teardown: failed to close leaked OAuth popup: %s", exc)
+
             with allure.step("Cleanup — delete the seeded credential"):
                 if credential_id is not None:
                     try:

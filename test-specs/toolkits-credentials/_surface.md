@@ -834,3 +834,30 @@ already does select-all + type: that is load-bearing, don't "optimise" it.
   `networkidle`). New page object: `pages/oauth_auth_modal_page.py`
   (`OAuthAuthModalPage`) for the shared dialog. Blast radius re-run green:
   `test_credential_type_specific_form_fields.py`, `test_credential_create.py`.
+
+**Appended during ELITEA-1981 / ELITEA-1982 fix round 1 (2026-08-24):**
+
+- **An OAuth "authorization attempt" is a POPUP, not a request this page makes.**
+  `McpAuthModal.onAuthorize` (`McpAuthModal.jsx:244-258`) opens
+  `window.open('about:blank', '_blank', 'width=500,height=700')` **first**, then
+  runs `McpAuthFlowHelpers.startMcpAuthFlow` — whose entire handshake
+  (authorize / token / dynamic-client-registration) happens inside that popup
+  window. It issues **no** `check_connection` call and nothing the parent page's
+  `page.on("request")` can see. So any "did Cancel authorize?" guard must watch
+  `page.on("popup")` / `page.context.pages`, never a request count. The early
+  return `if (!storageKey && !isPrebuildMcp) return;` cannot suppress it in the
+  credential flow: `storageKey = tokenStorageKey || serverUrl` and `serverUrl` is
+  the credential's discovery endpoint. Verified live 2026-08-24 (clicking
+  Authorize opens exactly one popup; clicking Cancel opens none).
+- **Provenance of the toolkit-form testids: composed names need a FILE DIFF, not
+  a grep.** `toolkit-field-auth-radio-{slug}` and
+  `toolkit-field-{key}-checkbox{,-field}` are built at runtime
+  (`ToolSection.jsx:290` + `RadioButtonGroup.jsx:36-37`; `ToolBaseProperty.jsx:390-391`),
+  so `git grep` for the composed string is empty on **both** `origin/main` and
+  `origin/automation/testids` — which reads as "not on main" and is wrong. Both
+  families are in fact **on `main`** (EliteaAI/EliteaUI@bf4a13ad, the 2026-08-12
+  promotion batch of ~400 testids), proven by
+  `git diff origin/main origin/automation/testids -- <composing file>` coming back
+  EMPTY. Still genuinely `automation/testids`-only on this surface:
+  `credential-form-test-connection-button`, `toolkit-field-{key}-select`,
+  `toolkit-field-{key}-input-helper-text`, and the ELITEA-1982 dialog set.

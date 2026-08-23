@@ -71,8 +71,8 @@ Provenance verified 2026-08-23 after `cd ../EliteaUI && git fetch origin`.
 | Client Id | `toolkit-field-client_id-input` | on-main ✓ |
 | Client Secret (wrapper / native input) | `toolkit-field-client_secret-input` / `…-input-field` | on-main ✓ |
 | Site Url | `toolkit-field-site_url-input` | on-main ✓ |
-| Auth radio — App-only / Delegated | `toolkit-field-auth-radio-app-only` / `toolkit-field-auth-radio-delegated` | on `automation/testids` only (EliteaAI/EliteaUI@c8d5c6af, ELITEA-1962) — awaiting human cherry-pick to `main` |
-| Auto Refresh Token (wrapper / native input) | `toolkit-field-auto_refresh_token-checkbox` / `…-checkbox-field` | on `automation/testids` only (same family) |
+| Auth radio — App-only / Delegated | `toolkit-field-auth-radio-app-only` / `toolkit-field-auth-radio-delegated` | **on-main ✓** — EliteaAI/EliteaUI@bf4a13ad. Runtime-composed (`ToolSection.jsx:290` passes `testId={`toolkit-field-${sectionKey}-radio`}`; `RadioButtonGroup.jsx:36-37` appends the option value slug), so a grep for the composed string is empty on BOTH refs and proves nothing — verified by file diff instead: `git diff origin/main origin/automation/testids -- 'src/[fsd]/features/toolkits/ui/form/ToolBase/ToolSection.jsx' 'src/[fsd]/shared/ui/checkbox/RadioButtonGroup.jsx'` is EMPTY. ELITEA-1962's EliteaAI/EliteaUI@c8d5c6af was promoted to `main` by the 2026-08-12 batch. |
+| Auto Refresh Token (wrapper / native input) | `toolkit-field-auto_refresh_token-checkbox` / `…-checkbox-field` | **on-main ✓** — EliteaAI/EliteaUI@bf4a13ad, `ToolBaseProperty.jsx:390-391` on `origin/main` (also runtime-composed from the schema key `k`; verified by reading the composing lines on `origin/main`, not by grepping the composed name). |
 | Oauth Discovery Endpoint | `toolkit-field-oauth_discovery_endpoint-input` | on-main ✓ (generic schema-driven grammar) |
 | Scopes | `toolkit-field-scopes-input` | on-main ✓ (same grammar) |
 | Test connection | `credential-form-test-connection-button` | on `automation/testids` (EliteaAI/EliteaUI@5892ae48) |
