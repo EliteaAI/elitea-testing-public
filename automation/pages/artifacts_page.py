@@ -4547,6 +4547,42 @@ class ArtifactsPage(BasePage):
         self.page.keyboard.type(append_text)
         logger.info("Appended %r to the CodeMirror line containing %r", append_text, match_text)
 
+    @action("Replace a specific CodeMirror line by matching text")
+    def replace_file_preview_line_containing(
+        self, match_text: str, new_text: str, timeout: int = 10000
+    ) -> None:
+        """Click the ``.cm-line`` containing *match_text* and REPLACE it with *new_text*.
+
+        Sibling of :meth:`edit_file_preview_line_containing`, which only
+        APPENDS. Cases that must rewrite a whole line (ELITEA-1859/1860 —
+        ``# Project Overview`` becomes ``# Modified Heading``) need the
+        select-to-line-start step this method adds: click the target line →
+        ``End`` → ``Shift+Home`` (selects the whole line) → ``type()``
+        (replaces the selection).
+
+        LOCATOR: ``.cm-line`` is CodeMirror-internal render DOM — sanctioned
+        #579 exception (third-party editor library internal render node),
+        scoped under the testid'd :attr:`file_preview_code_content` parent
+        (whose ``.cm-content`` node is these lines' direct parent). Do not
+        extend the exception to any handle that COULD carry a testid.
+
+        Args:
+            match_text: Exact text of the target line to filter by.
+            new_text: Text that replaces the whole line.
+            timeout: Maximum wait time in milliseconds.
+        """
+        target_line = self.file_preview_code_content.locator(self.CM_LINE).filter(
+            has_text=match_text
+        ).first
+        target_line.wait_for(state="visible", timeout=timeout)
+        target_line.click()
+        self.page.keyboard.press("End")
+        self.page.keyboard.press("Shift+Home")
+        self.page.keyboard.type(new_text)
+        logger.info(
+            "Replaced the CodeMirror line containing %r with %r", match_text, new_text
+        )
+
     # ------------------------------------------------------------------
     # Landing-page chrome / pagination readers (ELITEA-1803/1804/1805)
     # ------------------------------------------------------------------
