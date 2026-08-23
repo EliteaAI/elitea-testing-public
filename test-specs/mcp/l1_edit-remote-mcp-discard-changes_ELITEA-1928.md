@@ -131,7 +131,8 @@ None (no product defect).
 with no mention of the intervening confirmation modal that the product actually
 shows. The product behaviour is reasonable and matches the Credentials surface
 (ELITEA-1971 has the same modal, already automated). The case text should name
-the modal step. Filed as a clarification per `.agents/profile.md` § Bug filing.
+the modal step. Filed as **clarification #1718** (`question` + `case-text-drift`), sibling of
+#1689 (same pattern on the artifacts file-preview surface, ELITEA-1859).
 
 ## Blocked Steps
 None.
@@ -144,5 +145,6 @@ None.
   same as `credential-discard-confirm-modal`).
 - The modal testid lands on the MUI `Dialog` root, so its `text_content()`
   includes the title and both button labels — assert with `in`, not `==`.
-- Do not assert the detail header here — nothing renames, and the header is a
-  known laggy element on this surface.
+- The detail header is read once in step 1 (it must show the seeded name on a
+  freshly loaded page). Do **not** assert a header *change* anywhere in this case
+  — nothing renames, and the header is a known laggy element on this surface.
