@@ -61,6 +61,22 @@ class CredentialFormFieldsMixin:
             "which clicks it on the credential DETAIL page."
         ),
     )
+    oauth_login_button = LocatorDescriptor(
+        testid="credential-form-oauth-login-button",
+        description=(
+            "OAuth Login button (CredentialForm.jsx) — rendered next to Test "
+            "connection only while a token key exists AND no token is stored "
+            "for it, i.e. from the moment oauth_discovery_endpoint is "
+            "non-empty (CredentialForm.jsx:342, oauthTokenKey at :168-176). "
+            "NOT revealed by picking the Delegated auth method alone. "
+            "Mutually exclusive with the Logout button (shown once a token "
+            "exists). Testid added for ELITEA-1981/ELITEA-1982 "
+            "(EliteaAI/EliteaUI@7d7b21d4); declared here on the shared mixin "
+            "because both the create and the detail route render the same "
+            "CredentialForm.jsx block — same treatment "
+            "test_connection_button got for ELITEA-1970."
+        ),
+    )
     api_error_message = LocatorDescriptor(
         testid="credential-form-api-error-message",
         description=(
@@ -109,6 +125,20 @@ class CredentialFormFieldsMixin:
     # added for ELITEA-1970 (EliteaAI/EliteaUI@58955184). Present only while
     # the field is in error; carries the backend's own message verbatim.
     FIELD_HELPER_TEXT = '[data-testid="toolkit-field-{}-input-helper-text"]'
+    # Boolean schema property: ToolBaseProperty puts `toolkit-field-{key}-checkbox`
+    # on the MUI FormControlLabel wrapper and `-checkbox-field` on the native
+    # <input type="checkbox"> (ToolBaseProperty.jsx:390-391). Added for
+    # ELITEA-1981 (SharePoint Delegated's "Auto Refresh Token").
+    FIELD_CHECKBOX = '[data-testid="toolkit-field-{}-checkbox"]'
+    # Auth-method radiogroup (ELITEA-1962) — dynamic testid template,
+    # `toolkit-field-auth-radio-{slug}` where slug is the option's underlying
+    # VALUE (lowercased, spaces->hyphens), not its label text. E.g. label
+    # "Anonymous" -> slug "none", label "Token" -> slug "token", label
+    # "Delegated" -> slug "delegated". PROMOTED here from
+    # CredentialCreatePage for ELITEA-1981: the DETAIL route renders the same
+    # radio group and derives the checked option from which subsection's
+    # fields hold values (ToolSection.jsx:58-72).
+    AUTH_METHOD_RADIO = '[data-testid="toolkit-field-auth-radio-{}"]'
 
     def field(self, field_key: str) -> Locator:
         """Return the form-field locator for schema property *field_key*.
@@ -124,6 +154,62 @@ class CredentialFormFieldsMixin:
         existing callers are unchanged.
         """
         return self.page.locator(self.FIELD_INPUT.format(field_key))
+
+    def auth_radio(self, method_slug: str) -> Locator:
+        """Return the Auth radio-button locator for *method_slug* (e.g. ``"token"``).
+
+        The testid lands on the MUI ``FormControlLabel`` wrapping the native
+        ``<input type="radio">`` (not the input itself) — live-verified that
+        Playwright's ``is_checked()`` still resolves correctly through this
+        wrapper, so no extra unwrap is needed by callers.
+
+        Promoted here from :class:`CredentialCreatePage` for ELITEA-1981; that
+        class inherits this mixin, so its existing callers are unchanged.
+        """
+        return self.page.locator(self.AUTH_METHOD_RADIO.format(method_slug))
+
+    def select_auth_method(self, method_slug: str) -> None:
+        """Click the Auth radio button matching *method_slug* (e.g. ``"token"``).
+
+        Args:
+            method_slug: The auth option's underlying value slug, not its
+                label text (see :data:`AUTH_METHOD_RADIO` docstring note).
+        """
+        self.auth_radio(method_slug).click()
+
+    def field_checkbox(self, field_key: str) -> Locator:
+        """Return the checkbox locator for boolean schema property *field_key*.
+
+        Resolves the ``FormControlLabel`` wrapper (see :data:`FIELD_CHECKBOX`);
+        Playwright reads ``is_checked()`` / ``to_be_checked()`` through it, the
+        same way :meth:`CredentialCreatePage.auth_radio` does for the auth
+        radio group.
+        """
+        return self.page.locator(self.FIELD_CHECKBOX.format(field_key))
+
+    def type_into_field(self, field_key: str, value: str) -> None:
+        """Type *value* into PLAIN schema field *field_key* with real keystrokes.
+
+        Generic, schema-driven sibling of the per-type setters on
+        :class:`CredentialCreatePage` (``set_base_url``, ``set_username``, …):
+        the credential form is rendered entirely from the backend schema, so a
+        type whose fields nobody has written a setter for (SharePoint's
+        ``site_url`` / ``oauth_discovery_endpoint`` / ``scopes``,
+        ELITEA-1981) needs no new per-field method.
+
+        ``click`` + ``press_sequentially`` rather than ``fill()``: MUI/React
+        only commits on real key events (``.claude/rules/mui-patterns.md``),
+        and the Save button is additionally gated on formik's *dirty* flag
+        (``CredentialsTabBar.jsx:115`` → ``useFormDirtyExcluding``) — a
+        ``fill()`` leaves the form non-dirty and Save disabled
+        (``_surface.md`` § Save is gated on formik dirty).
+
+        Appends to whatever the field already holds (same shape as
+        ``set_base_url``); clear it first when replacing a pre-filled value.
+        """
+        field = self.field(field_key)
+        field.click()
+        field.press_sequentially(value, delay=20)
 
     def secret_native_input(self, field_key: str) -> Locator:
         """Return the Password-mode native ``<input type="password">`` of
