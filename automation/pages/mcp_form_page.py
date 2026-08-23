@@ -17,10 +17,10 @@ import re
 import time
 
 from playwright.sync_api import Page, expect
+from utils.actions import action
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
-from utils.actions import action
 
 logger = logging.getLogger("elitea.pages.mcp_form")
 
@@ -137,6 +137,32 @@ class McpFormPage(BasePage):
     raw_json_editor_content = LocatorDescriptor(
         testid="toolkit-raw-json-editor-content",
         description="Raw Json CodeMirror editor — editable .cm-content node",
+    )
+
+    # ------------------------------------------------------------------
+    # Inline validation helper text (create form) — added ELITEA-1923/1924.
+    #
+    # Two DIFFERENT renderers are involved, which is why the two testids do
+    # not share a prefix:
+    #   * every schema-driven field (url, client_id, timeout, ...) renders
+    #     through ToolBaseProperty.jsx, which already emits
+    #     helperTextTestId={`toolkit-field-${k}-input-helper-text`};
+    #   * Toolkit Name renders through NameDescriptionInput.jsx, which did
+    #     NOT pass helperTextTestId at all — added for ELITEA-1924
+    #     (EliteaAI/EliteaUI@35440c78 on automation/testids).
+    #
+    # Both nodes are UNMOUNTED (not hidden) once the field becomes valid, so
+    # assert their absence with to_have_count(0), never not_to_be_visible().
+    # ------------------------------------------------------------------
+    name_helper_text = LocatorDescriptor(
+        testid="toolkit-form-name-input-helper-text",
+        description="Inline validation message under the Toolkit Name field "
+        "('Field is required')",
+    )
+    url_helper_text = LocatorDescriptor(
+        testid="toolkit-field-url-input-helper-text",
+        description="Inline validation message under the Url field "
+        "('Field is required')",
     )
 
     # ------------------------------------------------------------------
