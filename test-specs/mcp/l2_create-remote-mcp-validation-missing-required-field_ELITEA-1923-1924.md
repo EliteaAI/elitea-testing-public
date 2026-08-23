@@ -121,8 +121,18 @@ Steps below are written once for the family; `{empty_field}` / `{filled_field}` 
    - *(Confirmed live: ELITEA-1923 → id `2990`; ELITEA-1924 → id `2991`; both `201`.)*
 10. Verify the created MCP's detail page shows the persisted values.
     - **Verify**: `toolkit-detail-title` contains the generated toolkit name;
-      `toolkit-form-name-input` = the toolkit name; `toolkit-field-url-input` =
-      `https://mcp.example.com/sse`.
+      `toolkit-form-name-input` = the toolkit name; then **expand the collapsed
+      configuration section** (`toolkit-configuration-show-more`) and verify
+      `toolkit-field-url-input` = `https://mcp.example.com/sse`.
+    - **AMENDED during implementation (2026-08-24).** The DETAIL page — unlike the
+      create form — renders **no `toolkit-field-*` element at all** until the
+      "show more" control is clicked. Verified live: on a freshly created MCP the
+      DOM was polled for 15s and contained **zero** `toolkit-field-*` testids;
+      clicking `toolkit-configuration-show-more` then revealed
+      `toolkit-field-url-input` holding the persisted value. Expanding is an
+      ordinary user gesture (not a substitution) — the value read afterwards is
+      still the one the product loaded from the server. Driven through the new
+      additive `McpFormPage.expand_configuration_section()`.
 
 ## Expected Results
 - Save is disabled on the pristine form (both rows).
@@ -239,6 +249,7 @@ this table.**
 | **Url validation helper text** | `[data-testid="toolkit-field-url-input-helper-text"]` | on-`automation/testids` only — **already existed**, emitted by `ToolBaseProperty.jsx:610` as `helperTextTestId={`toolkit-field-${k}-input-helper-text`}` | none |
 | **Toolkit Name validation helper text** | `[data-testid="toolkit-form-name-input-helper-text"]` | **needs-adding → ADDED THIS SESSION**, EliteaAI/EliteaUI@35440c78 on `automation/testids`; **not yet on `main`** (human cherry-pick pending) | none |
 | Detail page title heading | `[data-testid="toolkit-detail-title"]` | on-`automation/testids` only | none |
+| **Detail page "show more" configuration toggle** | `[data-testid="toolkit-configuration-show-more"]` | pre-existing (found during implementation, 2026-08-24) | none — **mandatory** before any detail-page `toolkit-field-*` assertion |
 
 **Why the Name helper testid had to be added rather than worked around.** The Url field
 renders through `ToolBaseProperty.jsx` (schema-driven), which already passes
@@ -378,3 +389,25 @@ rather than `blocked`.
   different purpose (validation gating) from the two positive create tests.
 - Markers: `pytest.mark.ui, toolkits, mcp, p2, regression, new` — `p2` per the `high`
   frontmatter priority (matching ELITEA-1934's precedent).
+
+### Discovered during implementation (2026-08-24) — two pre-existing page-object defects
+
+Both were surfaced by step 10 and are **present on `origin/automation/base`**, confirmed by
+control runs against the unmodified base page object. Fixed in this family's PR because
+step 10 cannot be asserted without them:
+
+1. **`_wait_for_detail_data_rendered()` was a no-op on every MCP detail page.** It excluded
+   only the `"Edit Toolkit"` placeholder, but EliteaUI keeps one `fallbackLabel` per entity
+   type (`src/[fsd]/shared/lib/constants/breadcrumb.constants.js` — `"Edit Toolkit"` line 15,
+   `"Edit MCP"` line 47). On `/mcps/all/{id}` the poll therefore returned immediately and
+   callers read `"Edit MCP"` as if it were the toolkit name. Now driven by a
+   `DETAIL_TITLE_PLACEHOLDERS` tuple. The change only ever makes the wait *longer*, so it
+   cannot break a caller that already passed.
+2. **The detail page's configuration fields are collapsed** (see step 10's amendment).
+
+**Suite-health finding for the lead — NOT fixed here (out of this family's scope).** Three
+already-merged MCP specs assert detail-page `toolkit-field-*` values without expanding, and
+are consequently **already RED on `automation/base`**:
+`test_mcp_create_remote.py` (both tests) and `test_mcp_edit_toggle_enable_caching.py`.
+Each needs one `expand_configuration_section()` call — the primitive now exists — via an
+`adjust-automated-test` pass, not this PR.
