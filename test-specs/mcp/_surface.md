@@ -194,3 +194,30 @@ EliteaUI keeps one detail-title `fallbackLabel` **per entity type**
 `"Edit Toolkit"`, so on every `/mcps/all/{id}` caller it returned immediately and callers
 read `"Edit MCP"` as the toolkit name. Now driven by `DETAIL_TITLE_PLACEHOLDERS`. If a new
 entity type appears (`/apps`?), check `breadcrumb.constants.js` and extend that tuple.
+
+## MCP DETAIL page: Save/Discard gating, header refresh, and (no) success toast (2026-08-24)
+
+**Appended during ELITEA-1925/1926 combined analysis+implementation.** These are the
+*detail* page's behaviours — do NOT carry the create-form's #633 lesson across, they are
+different components with different gates.
+
+- **Save AND Discard both gate on `isFormDirtyExcluding`** —
+  `src/[fsd]/features/toolkits/ui/toolkits-tab-bar/ToolkitsTabBarContainer.jsx:102-109`
+  (`shouldDisableSave = isSaving || !isFormDirtyExcluding || reasonFor === saveNewVersion
+  || hasValidationErrors`) and `:157-160` for Discard. Confirmed live: both disabled on a
+  pristine detail page, both enabled after touching a single field. So unlike the create
+  form (#633), a "Save becomes enabled after editing" assertion IS honest here — and the
+  pristine-disabled baseline is real too.
+- **The detail header (`toolkit-detail-title`) lags the Save.** Read immediately after the
+  `PUT` resolves, it still shows the OLD name; ~5 s later it shows the new one and stays
+  (stable at +2/+5/+10 s and across a full reload). Not a defect — a re-render/cache-refresh
+  delay with no user action needed. **Assert it with a retrying web-first assertion**
+  (`expect(form.detail_title).to_have_text(...)`); a bare `get_detail_heading_text()` read
+  right after Save is a guaranteed flake (it failed on probe 1, passed on probe 2 only
+  because an unrelated 5 s lookup sat in between).
+- **No success toast is rendered on the MCP detail Save.** `ToolkitsTabBarContainer.jsx`
+  calls `toastSuccess('The toolkit has been updated successfully')` on `isSaveSuccess`, but
+  `toast-message` never appears within a 5 s wait — confirmed on two independent probes.
+  Assert the `PUT` 200 + the updated state instead; never wait on a toast here.
+- **The configuration section re-collapses after `reload_and_wait()`** — call
+  `expand_configuration_section()` again after every reload, not just on first load.
