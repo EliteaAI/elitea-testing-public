@@ -47,12 +47,12 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
     # .agents/testing.md § Locator policy (dynamic testid pattern).
     TYPE_CARD_SELECTOR = '[data-testid="toolkit-type-card-{}"]'
 
-    # Auth-method radiogroup (ELITEA-1962) — dynamic testid template,
-    # `toolkit-field-auth-radio-{slug}` where slug is the option's underlying
-    # VALUE (lowercased, spaces->hyphens), not its label text. E.g. label
-    # "Anonymous" -> slug "none", label "Token" -> slug "token". See the AFS
-    # Concrete Handles table for the full label-to-slug mapping.
-    AUTH_METHOD_RADIO = '[data-testid="toolkit-field-auth-radio-{}"]'
+    # AUTH_METHOD_RADIO + auth_radio() + select_auth_method() were PROMOTED to
+    # CredentialFormFieldsMixin for ELITEA-1981 (the credential DETAIL route
+    # renders the same auth radio group, and ELITEA-1981/1982 assert the
+    # selected auth method there) — the same treatment test_connection_button
+    # got for ELITEA-1970 and FIELD_INPUT for ELITEA-1980. This class inherits
+    # the mixin, so create_page.auth_radio(...) resolves exactly as before.
 
     # Generic schema-driven field testids (ELITEA-1967). The credential create
     # form is rendered entirely from the backend schema
@@ -243,25 +243,6 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
         self.username_input.click()
         self.username_input.select_text()
         self.username_input.press("Backspace")
-
-    def auth_radio(self, method_slug: str) -> Locator:
-        """Return the Auth radio-button locator for *method_slug* (e.g. ``"token"``).
-
-        The testid lands on the MUI ``FormControlLabel`` wrapping the native
-        ``<input type="radio">`` (not the input itself) — live-verified that
-        Playwright's ``is_checked()`` still resolves correctly through this
-        wrapper, so no extra unwrap is needed by callers.
-        """
-        return self.page.locator(self.AUTH_METHOD_RADIO.format(method_slug))
-
-    def select_auth_method(self, method_slug: str) -> None:
-        """Click the Auth radio button matching *method_slug* (e.g. ``"token"``).
-
-        Args:
-            method_slug: The auth option's underlying value slug, not its
-                label text (see :data:`AUTH_METHOD_RADIO` docstring note).
-        """
-        self.auth_radio(method_slug).click()
 
     def set_access_token(self, value: str) -> None:
         """Fill the Access Token field, triggering React onChange.

@@ -92,3 +92,4 @@
 - [File-drop helpers = phases](react_file_drop_expose_phases_not_one_call.md) — split the gesture; assert the overlay reverts
 - [ruff --fix reorders pages.* imports](ruff_autofix_reorders_pages_imports_and_stdin_filename_hides_it.md) — never blanket --fix an import block under automation/
 - [Vite dev server misses JSX edits on OneDrive](vite_dev_server_misses_jsx_edits_on_onedrive.md) — testid absent on :5173 though committed; `touch` forces HMR
+- [Absence guards must watch the real mechanism](absence_guards_must_watch_the_real_mechanism.md) — negative assertions need the signal the handler really emits

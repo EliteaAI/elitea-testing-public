@@ -681,3 +681,244 @@ with `open_route()`, a `domcontentloaded`-only navigation, because
 `https://api.github.comhttp://unreachable.example.invalid`. Cost one run on
 ELITEA-1980. Same shape as `set_username`/`set_api_key`; only
 `set_display_name()` does select-all + type.
+
+## SharePoint **Delegated** / OAuth credential flow — confirmed live 2026-08-23 (ELITEA-1981 / ELITEA-1982)
+
+Both cases driven end-to-end on `localhost:5173`, project 399. **No product
+defects.** Two case-text clarifications for ELITEA-1981 (#1711). Read this before
+touching any auth *subsection* (not just SharePoint) or the OAuth dialog.
+
+### ⚠️ Read this first — the MCP browser can wedge, and it looks exactly like a product bug
+
+During this analysis the shared Playwright-MCP browser reached a state where
+**every click on a `BaseCheckbox`-backed control (auth radios, the Auto Refresh
+Token checkbox) stopped producing a React state update**, and `onTestConnection`
+stopped firing — while text inputs, `fill()`, and the Save button kept working.
+That partial-liveness is what makes it convincing: it reads as a *targeted*
+defect, not a dead page. Two issues were filed and retracted (#1709, #1710).
+
+**A `page.goto()` in the same context is NOT a pristine repro** for "this control
+does not respond" — it reloads the document but keeps the context. Before filing
+an unresponsive-control bug:
+1. run the nearest **merged spec** that touches the same control
+   (`tests/ui/toolkits/test_credential_create.py` clicks an auth radio — 15 s), and
+2. re-run the scenario in a **fresh `browser.new_context()`** (a throwaway
+   `sync_playwright` script under `/tmp`, ~20 lines).
+Both were green here, which is how the filings were caught within the hour.
+
+### ⚠️ `McpAuthModal` renders `<Dialog keepMounted>` — presence ≠ open
+
+`McpAuthModal.jsx:370`. `[role="dialog"]` is **always** in the DOM. A closed
+instance reads with an **empty `Server:` link** (`href=""`) and a scope value
+**without** the `offline_access` prefix — i.e. it mimics precisely the failures
+ELITEA-1982 steps 5-6 look for. Always assert
+`expect(dialog).to_be_visible()` (Playwright honours the modal's
+`visibility: hidden`), never `to_have_count(1)`; close with
+`not_to_be_visible()`, never `to_have_count(0)`. Scope the locator with
+`.filter(has_text="Configuration OAuth")` — `McpLogoutModal` is mounted on the
+same page.
+
+### The Login button appears only once `oauth_discovery_endpoint` has a value
+
+`CredentialForm.jsx:342` renders it under `!isOAuthLoggedIn && oauthTokenKey`,
+where `oauthTokenKey` = `${credentialDetails.uuid}:${settings.oauth_discovery_endpoint}`
+(falling back to the endpoint alone before save, `:168-176`). So it is **not**
+revealed by selecting Delegated — it appears the moment the endpoint field is
+non-empty (measured: count 0 → 1). It is mutually exclusive with a **Logout**
+button, shown when a token exists for that key. ELITEA-1981's case text places
+the check too early → clarification #1711.
+
+### Testid gaps — the whole OAuth modal tree has none
+
+- `credential-form-oauth-login-button` — `CredentialForm.jsx:342-350`; a bare
+  `Button.BaseBtn`, which spreads `restProps`, so **one attribute** (same shape
+  as its sibling `credential-form-test-connection-button`).
+- `McpAuthModal.jsx` + `OAuthFormFields.jsx`: **zero** testids. Proposed set in
+  the two AFS files (`oauth-auth-dialog{,-title,-description,-server-link,
+  -cancel-button,-authorize-button}`). `OAuthFormFields` is **shared** with the
+  MCP flows → its scope input needs a **caller-supplied `testId` prop** wired at
+  `McpAuthModal`'s call site, never a hardcoded credential-scoped string.
+- Do **not** add the dialog's X close button or the conditional Client Id /
+  Client Secret inputs — neither case touches them (canon #511).
+
+### SharePoint schema + where `offline_access` comes from
+
+`GET /configurations/available/?section=credentials`, type `sharepoint`:
+schema-required `client_id`, `client_secret`, `site_url`; auth subsections
+`App-only` (no extra fields, **default**) and `Delegated`
+(`oauth_discovery_endpoint`, `scopes`, `auto_refresh_token`). The UI marks the
+two Delegated text fields required (`*`) even though the JSON-schema `required`
+list does not include them.
+
+`POST /configurations/check_connection/{project}/sharepoint` with **placeholder**
+client id/secret and any discovery endpoint returns **401**
+`{"success":false,"requires_authorization":true,"auth_metadata":{…}}` — no real
+Microsoft tenant needed, so this surface is immune to `#1673` (expired
+`GIT_HUB_TOKEN`). The **backend** prepends `offline_access`:
+`resource_metadata.scopes_supported` and `provided_settings.scopes` both come
+back `["offline_access","Sites.Read.All"]` for a credential whose own `scopes` is
+`["Sites.Read.All"]`, **regardless of `auto_refresh_token`** (probed both ways).
+`McpAuthModal.jsx:70` prefers those `resourceScopes` over the form scopes, which
+is why the dialog shows `offline_access Sites.Read.All`.
+
+The dialog's `Server:` shows the **discovery endpoint**, not
+`auth_metadata.server_url` (which is the SharePoint *site* URL) — the credential
+form passes it explicitly as the display URL (`useCreateConfiguration.jsx:183`).
+
+### Save is gated on **formik dirty** — `fill()` is not enough
+
+`credential-form-save-button` is `disabled={hasErrors || shouldDisableSave}` with
+`shouldDisableSave = !useFormDirtyExcluding()` (`CredentialsTabBar.jsx:115`).
+Filling every field with Playwright `fill()` — including Display Name, whose
+value the ID field correctly mirrors — left **both** Save and Discard disabled;
+one `press_sequentially` character enabled both. `CredentialCreatePage.set_display_name()`
+already does select-all + type: that is load-bearing, don't "optimise" it.
+
+### Other flow facts
+
+- Saving navigates to `/credentials/all`, **not** to the new credential's detail
+  page — a "verify X on the saved credential page" step needs an explicit open
+  (ELITEA-1981 clarification #1711).
+- `scopes` is a free-text input persisted as an **array** (`["Sites.Read.All"]`).
+  `auto_refresh_token` is **absent** from the persisted `data` when unchecked.
+- The detail page derives the selected auth subsection from which fields hold
+  values ("most non-null fields wins", `ToolSection.jsx:58-72`) — which is why an
+  API-seeded Delegated credential renders with `Delegated` checked.
+- The auth radio group **re-mounts** when `GET /configurations/available/`
+  resolves; a click issued before the form settles is lost. Waiting for
+  `toolkit-field-label-input` (i.e. `CredentialCreatePage.open_type_form()`) is
+  enough.
+- Auth radio slug = the option's **value**, lowercased and hyphenated —
+  `delegated`, `app-only` (and `none` for GitHub's "Anonymous").
+
+**Resolved/added during ELITEA-1981 / ELITEA-1982 implementation (2026-08-24):**
+
+- **Testids added** (EliteaAI/EliteaUI@7d7b21d4, `automation/testids`, awaiting
+  human cherry-pick to `main`) — attributes only, 10 insertions / 0 deletions,
+  all three `add-data-testid` § Step 5.5 greps empty:
+  `credential-form-oauth-login-button` (`CredentialForm.jsx`), and the whole
+  dialog set `oauth-auth-dialog{,-title,-description,-server-link,
+  -cancel-button,-authorize-button}` on `McpAuthModal.jsx` — deliberately
+  GENERIC, because that modal is mounted by the MCP, toolkit, index, OpenAPI,
+  SharePoint and credential flows alike. The Scope input's testid
+  (`oauth-auth-dialog-scope-input`) reaches the shared `OAuthFormFields` through
+  a new caller-supplied `scopeTestId` prop wired at `McpAuthModal`'s call site,
+  never hardcoded inside the shared component.
+- **Blur is a COMMIT signal on the schema-typed Delegated fields** — the one
+  thing that cost this implementation a rerun. Typing with real keystrokes is
+  necessary but not sufficient: `scopes` is `array`-typed and the shared
+  `Input`/`InputBase` renderer runs with `enableAutoBlur`, so with focus still
+  in the field `credential-form-save-button` stays DISABLED however many
+  characters were typed. Measured: App-only fields alone → Save enabled;
+  selecting **Delegated** → Save disabled; typing endpoint + scopes → still
+  disabled; blurring `scopes` → enabled. (A checkbox click enables it too — for
+  the same reason: it blurs the field.) `CredentialFormFieldsMixin.type_into_field()`
+  blurs after typing for exactly this reason; don't "optimise" that away.
+- **The expected `check_connection` 401 shows up as a CONSOLE ERROR.** Chromium
+  logs every non-2xx fetch, so ELITEA-1982's own oracle prints
+  `Failed to load resource: the server responded with a status of 401
+  (Unauthorized)`. Any console side-channel over this flow needs an
+  endpoint-specific filter (match `location.url` containing
+  `/configurations/check_connection/`), never a blanket 401 filter.
+- **`<Dialog data-testid=…>` + keepMounted behaves as hoped**: the testid lands
+  on the Modal root, which MUI hides with `visibility: hidden` while closed, so
+  `to_be_visible()` / `not_to_be_visible()` are decisive and no
+  `.filter(has_text=…)` scoping is needed.
+- **Page-object promotions:** `AUTH_METHOD_RADIO` + `auth_radio()` +
+  `select_auth_method()` moved from `CredentialCreatePage` into
+  `CredentialFormFieldsMixin` (the detail route renders the same radio group and
+  derives the checked option from the persisted values). New on the mixin:
+  `oauth_login_button`, `FIELD_CHECKBOX` + `field_checkbox()`,
+  `type_into_field()`. New on `CredentialDetailPage`: `open_by_id()` (direct
+  detail route, settles on the detail GET — no list round-trip, no
+  `networkidle`). New page object: `pages/oauth_auth_modal_page.py`
+  (`OAuthAuthModalPage`) for the shared dialog. Blast radius re-run green:
+  `test_credential_type_specific_form_fields.py`, `test_credential_create.py`.
+
+**Appended during ELITEA-1981 / ELITEA-1982 fix round 1 (2026-08-24):**
+
+- **An OAuth "authorization attempt" is a POPUP, not a request this page makes.**
+  `McpAuthModal.onAuthorize` (`McpAuthModal.jsx:244-258`) opens
+  `window.open('about:blank', '_blank', 'width=500,height=700')` **first**, then
+  runs `McpAuthFlowHelpers.startMcpAuthFlow` — whose entire handshake
+  (authorize / token / dynamic-client-registration) happens inside that popup
+  window. It issues **no** `check_connection` call and nothing the parent page's
+  `page.on("request")` can see. So any "did Cancel authorize?" guard must watch
+  `page.on("popup")` / `page.context.pages`, never a request count. The early
+  return `if (!storageKey && !isPrebuildMcp) return;` cannot suppress it in the
+  credential flow: `storageKey = tokenStorageKey || serverUrl` and `serverUrl` is
+  the credential's discovery endpoint. Verified live 2026-08-24 (clicking
+  Authorize opens exactly one popup; clicking Cancel opens none).
+- **Provenance of the toolkit-form testids: composed names need a FILE DIFF, not
+  a grep.** `toolkit-field-auth-radio-{slug}` and
+  `toolkit-field-{key}-checkbox{,-field}` are built at runtime
+  (`ToolSection.jsx:290` + `RadioButtonGroup.jsx:36-37`; `ToolBaseProperty.jsx:390-391`),
+  so `git grep` for the composed string is empty on **both** `origin/main` and
+  `origin/automation/testids` — which reads as "not on main" and is wrong. Both
+  families are in fact **on `main`** (EliteaAI/EliteaUI@bf4a13ad, the 2026-08-12
+  promotion batch of ~400 testids), proven by
+  `git diff origin/main origin/automation/testids -- <composing file>` coming back
+  EMPTY. Still genuinely `automation/testids`-only on this surface:
+  `credential-form-test-connection-button`, `toolkit-field-{key}-select`,
+  `toolkit-field-{key}-input-helper-text`, and the ELITEA-1982 dialog set.
+
+## OAuth **failure / cancellation** paths — confirmed live 2026-08-24 (ELITEA-1984)
+
+Continues the section above; read that first. ELITEA-1984 is **blocked** — the
+whole `_surface` fact set below is what the live run produced.
+
+### The failure half of the OAuth dialog needs a REAL provider identity — it is not automatable today
+
+`Authorize` builds the authorize URL from the backend metadata and navigates the
+popup to it, verbatim including a user-edited scope:
+
+```
+https://login.microsoftonline.com/placeholder-tenant/v2.0/oauth2/authorize
+  ?response_type=code&client_id=placeholder-client-id
+  &redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fmcp-auth-callback
+  &state=<32-char random>&scope=<whatever is in the Scope field>
+```
+
+With the **placeholder** tenant/client this URL answers **HTTP 404 with an empty
+body** (verified with `curl`, independent of the browser) — so there is no provider
+error page to observe, and the rejection is caused by the *tenant*, not by an invalid
+*scope*. A genuine provider **denial** (`?error=invalid_scope` redirected back to
+`/mcp-auth-callback`, which is the ONLY way Elitea's error path is reachable) needs a
+real Entra tenant + a registered OAuth app whose redirect URI includes
+`http://localhost:5173/mcp-auth-callback`. **We do not have that as test data** — the
+same class of gap as the expired `GIT_HUB_TOKEN` (#1673). Simulating it (fulfilling
+the callback, `postMessage`-ing the parent, a stub provider) is a **terminal**
+substitution and forbidden.
+
+### There is NO popup-close detection — the dialog freezes on "Authorizing…" for 5 minutes (#1713)
+
+Measured, from the Authorize click: `Authorizing…` at +0/+15/+73/+131/+189/+247 s,
+and only at **+305 s** the monitor's fallback `Authorization timed out. Please try
+again.` (Authorize re-enables). Closing the popup changes **nothing** —
+`mcpAuthWindow.helpers.js` `createAuthorizationMonitor` listens on postMessage /
+BroadcastChannel / localStorage + a 5-minute `setTimeout`, and never polls
+`authWindow.closed`, although `McpAuthModal` holds the handle in `authWindowRef`
+(and uses it in `handleCancel`). **Cancel keeps working the whole time**, so nobody
+is trapped — a UX gap, not a hang. Shared modal ⇒ same gap in the MCP / toolkit /
+OpenAPI OAuth flows.
+
+**Consequence for any spec on this surface: never wait for a message after killing
+the popup — budget >5 min or don't assert it at all.** The ELITEA-1984 probe ran
+321 s, nearly all of it that wait.
+
+### Other live facts (2026-08-24)
+
+- `Authorize` is **not** gated on scope validity — it stays enabled with
+  `Invalid.Scope.xyz` in the field (`isAuthorizeDisabled` checks only
+  loading/success, `storageKey`, metadata presence, and client id/secret when
+  required).
+- The `Authorize` button's **label** flips to `Authorizing…` in flight — read the
+  state with `to_be_disabled()`, never a text-keyed locator.
+- The parent page issues **zero** API requests on Authorize (already noted above:
+  the handshake is entirely inside the popup). A request-based wait hangs forever;
+  use `page.expect_popup()`.
+- The dialog's error/timeout message box (`McpAuthModal.jsx:454-467`, the `authError`
+  block) has **no testid** — proposed `oauth-auth-dialog-error`, deliberately NOT
+  added (canon #511: no test executes it yet).
+- Editing the Scope field: `clear_scope()` + `press_sequentially` works; no formik
+  dirty-gate here (that gate is on the credential form, not the dialog).
