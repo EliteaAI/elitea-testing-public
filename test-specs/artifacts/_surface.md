@@ -1302,3 +1302,77 @@ directions; (b) after BOTH Warning-modal exits (confirm and cancel) on a
 Markdown file the render-mode toggle stays on Raw — no snap-back to Preview.
 Specs: `automation/tests/ui/artifacts/test_artifacts_file_preview_markdown_raw_discard.py`,
 `.../test_artifacts_file_preview_markdown_tab_switching.py`.
+
+## Unsupported file types — no preview entry point at all (ELITEA-1863/1864 cluster, 2026-08-23, analyst)
+
+Extends the file-preview editor sections above with the `canPreview == false`
+branch, which no earlier case had exercised (every prior preview case seeds a
+previewable type).
+
+### The gate is a filename-extension WHITELIST, not a content sniff
+
+`canPreviewFile(name)` (`src/utils/filePreview.js:226`) tests the extension
+against `PREVIEWABLE_EXTENSIONS`. `docx` **is** on the list; `xlsx`, `xls`,
+`zip`, `pdf` are **not**. Consequences, all confirmed live in one probe run
+(fresh bucket, `top-5-soccer-players.xlsx` + `new-file-storage.zip`):
+
+| Observable | `.xlsx` | `.zip` |
+|---|---|---|
+| `artifacts-file-preview-button-{name}` visible (no hover) | **absent (0)** | **absent (0)** |
+| …after hovering the row | still absent | still absent |
+| Row 3-dot dropdown labels | `["Download", "Delete"]` | `["Download", "Delete"]` |
+| Row type / size cells | `Excel Spreadsheet` / `221 B` | `ZIP Archive` / `320 B` |
+
+**So an unsupported file has NO in-app path to the preview panel** — not the row
+icon (`ArtifactRowActions.jsx` gates on `row.canPreview`), and not
+`ActionsMenu.jsx`'s "Preview file" item either (`PREVIEW_TYPES.EMPTY` → renders
+`null`). ELITEA-1863's steps 2–4 assume the opposite; filed
+`EliteaAI/elitea-testing-public#1692`.
+
+### The panel IS reachable via the product's own preview URL route
+
+`/artifacts?bucket=<b>&file=<key>` — the exact params `Artifacts.jsx` writes on
+every preview open, restored by its URL-restore effect (`Artifacts.jsx:545-570`)
+**without** consulting `canPreview`. Deep-linked, both file types render the
+identical unsupported state:
+
+| Element | Live value |
+|---|---|
+| `artifacts-preview-file-path` | `<bucket>/<filename>` |
+| heading | `Preview Not Available` |
+| message | `Preview is not supported for this file type.` |
+| description | `Supported formats: txt, md, json, js, ts, py, java, …` |
+| Download button | present, works (bytes arrive intact) |
+| `artifacts-preview-save-button` / `-discard-button` | **count 0 — structurally ABSENT**, not disabled (`PreviewHeader.jsx` wraps both in `{canPreview && …}`). Contrast images (ELITEA-1862): present-but-disabled. Filed `EliteaAI/elitea-testing-public#1693`. |
+| `artifacts-preview-mode-toggle-group` | count 0 |
+| `artifacts-preview-close-button` / `file-preview-overflow-menu-menu-button` | present (1 each) |
+| Content fetch | **none** — `useArtifactContentFetch` returns early when `canPreview` is false. Don't wait on a content response; wait on the panel's own elements. |
+| Console errors | none |
+
+`open_file_in_editor()` is **NOT usable** for this branch — it waits on the Save
+button, which never renders. A new `navigate_to_file_preview(bucket, file_key)`
+page-object method (waiting on `artifacts-preview-close-button`, present in both
+branches) is specced in ELITEA-1863's AFS.
+
+### Testids needed (5, all attribute-only on existing nodes)
+
+`PreviewUnavailable.jsx` carries **zero** testids today:
+`artifacts-preview-unavailable-icon` / `-title` / `-message` / `-formats` /
+`-download-button`. `Box` and `Button.BaseBtn` both spread props, so all five are
+pure passthroughs — no wrapper elements, no hooks.
+
+### Size/type cell literals are cheap to pin
+
+`formatFileSize` is base-1024 with one decimal (`filePreview.js:719`), so seeding
+exactly **235_520 bytes** makes the row read the case's literal `230.0 KB`. Type
+labels come from `src/utils/fileTypes.js` (`zip → ZIP Archive`,
+`xlsx → Excel Spreadsheet`).
+
+### Probe note
+
+One `pytest` scratch probe using the suite's own fixtures (`page`,
+`artifact_api`, `artifact_bucket`) executed BOTH cases end-to-end in a single
+104 s run — MCP browser not needed (same approach as the ELITEA-1859/1860/1861
+session). The probe file was deleted after the run; screenshots kept at
+`test-results/screenshots/ELITEA-186{3,4}-*-deeplink.png` and uploaded to the
+`evidence` release.
