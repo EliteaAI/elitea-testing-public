@@ -135,6 +135,24 @@ class ArtifactsPage(BasePage):
         "prop shapes on the same TextField.",
     )
 
+    bucket_name_character_counter = LocatorDescriptor(
+        testid="artifacts-bucket-name-character-counter",
+        description="Character counter rendered under the Name field on the "
+        "'New Bucket' form (ELITEA-1818/1819 — new testid, implementer). "
+        "CreateBucket.jsx:248 renders `<Text.CharacterCounter>` ONLY while "
+        "`isFocused('name') && name.length === 56`, so the element is absent "
+        "from the DOM at any other length AND after any blur — never assert "
+        "it once focus has left the field. Text is "
+        "`\"{remaining} characters left\"` (CharacterCounter.jsx), i.e. "
+        "\"0 characters left\" at the limit; the \". You have reached the "
+        "MAXIMUM character limit\" suffix is suppressed at this call site via "
+        "`hideMaxLimitMessage`. Wired prop-only — the shared component already "
+        "accepts a `data-testid` prop (CharacterCounter.jsx:11,20), so no DOM "
+        "node was added. NOTE: the host Box is `display: contents`, so "
+        "`bounding_box()` is None while `is_visible()`/`to_be_visible()` still "
+        "resolve True (confirmed live 2026-08-23).",
+    )
+
     # ------------------------------------------------------------------
     # Bucket-row 3-dot menu (left panel, ELITEA-1808)
     # ------------------------------------------------------------------
@@ -1457,6 +1475,51 @@ class ArtifactsPage(BasePage):
         self.bucket_name_input.select_text()
         self.bucket_name_input.press("Delete")
         logger.info("Cleared bucket name field")
+
+    @action("Append characters to bucket name field")
+    def append_to_bucket_name(self, text: str) -> None:
+        """Type *text* at the END of the Name field's current value (ELITEA-1819).
+
+        Additive sibling to :meth:`fill_bucket_name`, which always REPLACES
+        the whole value (``select_text()`` + ``type()``) and therefore cannot
+        express an append. ELITEA-1819's subject is the browser's own
+        ``maxLength`` enforcement, so the extra character must arrive as a
+        real key event: ``Locator.type()`` dispatches keydown/keypress/input
+        exactly as a user would, whereas ``fill()`` writes through the DOM
+        value setter and bypasses ``maxLength`` entirely — which would make
+        the test pass for the wrong reason.
+
+        Clicks the field first (so the append works from any prior state) and
+        moves the caret to the end with ``press("End")``. Focus is LEFT in the
+        field on return: :attr:`bucket_name_character_counter` unmounts on
+        blur, so callers asserting the counter after the append depend on it.
+
+        Args:
+            text: Characters to append at the end of the current value.
+        """
+        self.bucket_name_input.click()
+        self.bucket_name_input.press("End")
+        self.bucket_name_input.type(text)
+        logger.info("Appended %r to the bucket name field", text)
+
+    def get_bucket_name_character_counter_text(self, timeout: int = 10000) -> str:
+        """Return the Name field's character-counter text (ELITEA-1818/1819).
+
+        Reads :attr:`bucket_name_character_counter`, which renders only while
+        the Name field is focused AND holds exactly 56 characters — see that
+        field's own description for the gating and the ``display: contents``
+        caveat.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the counter.
+
+        Returns:
+            The counter's stripped text, e.g. ``"0 characters left"``.
+        """
+        self.bucket_name_character_counter.wait_for(state="visible", timeout=timeout)
+        text = (self.bucket_name_character_counter.text_content() or "").strip()
+        logger.info("Bucket-name character counter: %r", text)
+        return text
 
     def all_bucket_rows(self) -> Locator:
         """Return a locator matching EVERY currently-rendered bucket row.

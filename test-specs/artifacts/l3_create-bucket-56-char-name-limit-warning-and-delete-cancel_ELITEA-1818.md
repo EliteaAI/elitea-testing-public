@@ -205,7 +205,7 @@ refetch trails the response) — use `wait_for_bucket_removed_from_list()` if th
 | Create-bucket icon | `artifacts-create-bucket-button` | on-main ✓ | `click_create_bucket_button()` |
 | Form heading | `artifacts-bucket-form-heading` | on-`automation/testids` only (awaiting human promotion to main) | text `"New Bucket"` |
 | Name input | `artifacts-bucket-name-input` | on-main ✓ | `maxLength="56"` on the DOM node |
-| **Character counter** | **testid needed: `artifacts-bucket-name-character-counter`** | needs-adding | `CreateBucket.jsx:248` `<Text.CharacterCounter>`. The component **already accepts** a `data-testid` prop (`CharacterCounter.jsx:11,20`) — wiring it at this call site is a prop-only, zero-functional-impact change. Do **not** use a text/CSS handle. |
+| **Character counter** | `artifacts-bucket-name-character-counter` | **ADDED during implementation** — EliteaAI/EliteaUI@475adcc5 on `automation/testids` (pushed; awaiting human cherry-pick to `main`) | `CreateBucket.jsx:248` `<Text.CharacterCounter>`. Wired prop-only (the component already accepts a `data-testid` prop, `CharacterCounter.jsx:11,20`) — one added line, no DOM node, no hook. **Implementation note:** the host `Box` is `display: contents`, so `bounding_box()` returns `None` while `is_visible()` / `to_be_visible()` still resolve `True` (confirmed live 2026-08-23) — assert visibility/text, never geometry. |
 | Name helper text | `artifacts-bucket-name-helper-text` | on-main ✓ | absent in this flow (56 is valid) — assert absence via `to_have_count(0)` |
 | Retention measure | `artifacts-bucket-retention-measure-select` (+ `-combobox`) | on-main ✓ | text `"Years"` |
 | Retention value | `artifacts-bucket-retention-value-input` | on-main ✓ | value `"1"` |
@@ -228,6 +228,18 @@ reader for its text; plus a Save-click variant that does **not** wrap `expect_re
 assertion 7a) — `click_bucket_save_button_expect_no_request()` already exists (ELITEA-1811) and
 may be reusable, but its semantics ("no request expected") are the *defect's* behaviour, so the
 soft assertion must be phrased as "a request SHOULD have fired".
+
+**SHIPPED (implementation, 2026-08-23):** added
+`ArtifactsPage.bucket_name_character_counter` + `get_bucket_name_character_counter_text()`
+(both additive). Assertion 7a did **not** reuse
+`click_bucket_save_button_expect_no_request()`: the spec wraps a plain
+`bucket_save_button.click()` in a short `page.expect_response(...)` (5 s) that is EXPECTED to
+succeed and currently times out — phrasing the assertion as "a request SHOULD have fired", so
+the test flips green by itself when #1080 ships. The soft failure is collected in a
+`soft_failures` list and raised by a trailing `pytest.fail()` (the project's established idiom;
+Playwright's `expect.soft` takes locators/pages/responses only, and this observable is the
+ABSENCE of a request). Spec:
+`automation/tests/ui/artifacts/test_artifacts_create_bucket_56char_limit_warning_delete_cancel.py`.
 
 ## Network Behavior
 
