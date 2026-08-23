@@ -990,3 +990,58 @@ needed** — every handle already existed.
 - **Zero `artifacts/buckets` requests across Cancel — re-confirmed at implementation** in
   both specs, on the create form, with a passive `capture_requests_matching` listener.
 - Both specs ran GREEN first try in one 49 s headless invocation; no rerun, no flake.
+
+## Confirmed handles (as of ELITEA-1818/1819 cluster analysis, 2026-08-23)
+
+New Bucket form — the **56-character name boundary**. Verified live on
+`localhost:5173`, project 399. Complements the ELITEA-1811/1814 rows above
+(regex validation) and ELITEA-1817 (56-char creation + bucket delete).
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Name field's own max-length | `maxlength="56"` attribute on `artifacts-bucket-name-input` | `CreateBucket.jsx:239-241` (`inputProps.maxLength`) | **native browser constraint** — the 57th keystroke never reaches React. Rejection is completely silent: no error, no helper text, no toast, `aria-invalid` stays `"false"`. Read the attribute off the existing testid'd node; no new handle needed. |
+| Character counter ("0 characters left") | **testid needed: `artifacts-bucket-name-character-counter`** | `CreateBucket.jsx:247-253`, `<Text.CharacterCounter>` | `CharacterCounter.jsx` **already accepts** a `data-testid` prop (`:11,20`) — prop-only wiring at the call site, zero functional impact, **no wrapper element may be added**. |
+| Counter text | `"0 characters left"` (exact) | `src/[fsd]/shared/ui/text/CharacterCounter.jsx` → `` `${remaining} characters left` `` | The `". You have reached the MAXIMUM character limit"` suffix never appears at this call site (`hideMaxLimitMessage` is passed). TMS cases ELITEA-1818/1819 say `"0 of 56 remaining"` — stale; CLARIFICATION `EliteaAI/elitea-testing-public#1682`. |
+| Counter render condition | `isFocused('name') && name.length === 56` | same | **Focus-gated and length-exact.** At 55 chars there is no element at all; blurring the field (Tab / click elsewhere) removes it from the DOM; re-focusing restores it. Never assert it after a blur. |
+| Form heading | `artifacts-bucket-form-heading` | `CreateBucket.jsx` | text `"New Bucket"` (create) / `"Edit bucket"` (edit). On `automation/testids` only — not yet on `main`. |
+| Delete-confirmation **Cancel** | `delete-confirm-cancel-button` | shared `DeleteEntityModal` | on `main`. Live-confirmed from the **bucket** dot-menu call site: closes the modal and fires **zero** `/artifacts/buckets` requests — the right assertion for "closes without deletion" is a network guard, not just a DOM check. |
+| Bucket dot-menu full text | `"Upload filesRenamePin to topDelete"` | `bucket-menu-{name}-menu` | re-confirmed 2026-08-23, unchanged since ELITEA-1817. |
+| Bucket delete (UI path) | `DELETE {api}/artifacts/buckets/default/{pid}?name={bucket}` → 200 | `confirm_delete_bucket()` | toast: `"The {bucket} bucket has been successfully deleted."` **`count_bucket_rows()` immediately after the DELETE response can still read 1** — the list refetch trails the response; use `wait_for_bucket_removed_from_list()`. |
+
+### ⚠️ Save is unclickable in ONE gesture at exactly 56 characters (defect `EliteaAI/elitea-testing-public#1080`, OPEN)
+
+Root-caused during this cluster (4/4 at 56 chars, 0/4 at ≤55). It is **not** a
+validation or backend rejection — `formik.handleSubmit()` is never reached
+because **no `click` event is ever emitted**:
+
+1. the focus-gated counter occupies **16 px** of normal flow inside the
+   column-flex `nameFieldWrapper`;
+2. `mousedown` on Save blurs the Name field → `toggleFieldFocus(null)` →
+   the counter unmounts → **the Save button jumps up 16 px**;
+3. `mouseup` therefore lands on a different element → the browser emits no
+   `click` → `onSave` never runs. Instrumented events: `["mousedown"]` only.
+   Geometry: Save `y=267` focused → `y=251` blurred (Δ 16 px);
+   `elementFromPoint(old centre)` after blur returns the form `<div>`.
+
+**Workaround for any automation that must create a 56-char bucket:** blur the
+Name field first (`bucket_name_input.press("Tab")`), *then* click Save →
+`POST /api/v2/artifacts/buckets/default/{pid}` → 200. This is an ordinary user
+gesture, not a substitution — but a spec whose case says "click Save" owes a
+soft-asserted `# Known defect: #1080` assertion for the single-click path.
+This is why `test_artifacts_create_bucket_55char_name_and_delete.py`
+(ELITEA-1817) carries `@pytest.mark.blocked`.
+
+The same focus-gated `Text.CharacterCounter` pattern is used by
+`CreateAgentForm.jsx`, `CreateSkillForm.jsx` and `ApplicationEditForm.jsx` —
+check for the same shift before trusting a Save click at a name/description
+max length on those forms.
+
+### Case-data trap (both ELITEA-1818 and ELITEA-1819)
+
+Their Test Data literal `bucket-a1b2…w3x4y5` is labelled "56-character" but is
+**57** characters; `maxLength` silently truncates it to 56 — which is then
+**byte-identical to ELITEA-1817's literal**. Never use it verbatim: generate a
+unique, genuinely-56-char name (CLARIFICATION
+`EliteaAI/elitea-testing-public#1683`). ELITEA-1818 additionally *keeps* its
+bucket (it cancels the delete), so a fixed name breaks the second run on
+duplicate-name and leaks via `#636`.
