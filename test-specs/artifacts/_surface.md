@@ -1454,3 +1454,45 @@ Three case labels match **nothing** in EliteaUI source at all: "Context Window",
 - `ArtifactsPage.open_file_in_editor()` + the `artifacts-preview-*` testids all
   still resolve as documented above (re-verified 2026-08-23).
 - `#636` bucket-teardown 404 hit again, 2/2 probe runs.
+
+## Confirmed handles (as of ELITEA-2491 bucket-menu-by-project-type, 2026-08-23)
+
+Bucket dot-menu **composition changes with the project type** — the surface behind
+the "Manage access / Manage permissions" case family.
+
+| Element | Testid / handle | Where | Notes |
+|---|---|---|---|
+| Project selector trigger | `project-selector-trigger-combobox` (`BasePage.project_selector_trigger`) | `SidebarProjectSelect.jsx` | on `main`; `BasePage.switch_project(id)` drives it |
+| Project option | `select-option-{project_id}` (`BasePage.SELECT_OPTION`) | shared `ProjectSelect` | live options for `${TEST_USER}`: `399` Private · `406` Bugs & Features · `25` Elitea Development · `471` Elitea Testing Team · `400` UI Testing |
+| Bucket dot-menu "Manage permissions" item | **testid needed: `bucket-menu-manage-permissions-menuitem`** | `BucketItem.jsx` `menuItems` — the entry has **no `key`**, so `DotMenu.jsx:422` (`testId: item.key`) emits nothing | fix = add `key: 'bucket-menu-manage-permissions'`, exactly the ELITEA-1820 pin-item shape |
+| Bucket dot-menu "Share" item | untagged, deliberately (canon #511 — no test calls it yet) | same array | same `isPersonalProject` gate as Manage permissions |
+
+### Menu composition by project type — settled live (2026-08-23)
+- **Private / personal project (399):** `Upload filesRenamePin to topDelete` — 4 items.
+  `Share` and `Manage permissions` are **filtered out before render**
+  (`display: isPersonalProject ? 'none' : undefined` + the array's own `.filter`), so
+  an absence assertion is `to_have_count(0)`, not a visibility check.
+- **Team project (471):** `Upload filesRenamePin to topShareManage permissions` —
+  **5 items, no `Delete`.** `canDelete = isPrivate || checkPermission(artifacts.delete)`
+  and `${TEST_USER}` has no delete permission there. **Never assert a fixed Team-menu
+  item count** (the ELITEA-1820 digest note predicting "6 items in a TEAM project" is
+  permission-dependent and was not what rendered) — assert the specific item.
+- **The only gate on Share / Manage permissions is `isPersonalProject`** — there is no
+  `isPublic` branch in `BucketItem.jsx`. So in the **Public** project the item would
+  render, contradicting ELITEA-2491's expectation (static reading; see below).
+- `Escape` reliably closes the bucket dot-menu in both projects.
+- The live label is **`Manage permissions`**; "Manage access" appears nowhere in
+  `EliteaUI/src` (only the internal `handleManageAccessClick` handler).
+  Clarification `EliteaAI/elitea-testing-public#1698`.
+
+### The Public project (id 1) is NOT reachable by `${TEST_USER}` (2026-08-23)
+- `useProjectType.hooks.js`: `isPublic = projectId === PUBLIC_PROJECT_ID`;
+  `PUBLIC_PROJECT_ID` is **1**, visible in the selector's feed request
+  `GET /api/v2/projects/project/default/1?check_public_role=true`.
+- That response lists only `400, 471, 25, 399, 406` — **project 1 is absent** (no public
+  role), and the selector renders exactly those 5.
+- Project selection is redux + `localStorage`/`sessionStorage` only; forcing the stored
+  id to `1` and reloading **did not switch** (stayed on Private, requests still
+  `?project_id=399`). There is no honest route into the Public project — any case with a
+  Public-project step is `blocked` until a human provisions access.
+  Clarification `EliteaAI/elitea-testing-public#1699`.
