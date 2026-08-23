@@ -790,3 +790,74 @@ already does select-all + type: that is load-bearing, don't "optimise" it.
   enough.
 - Auth radio slug = the option's **value**, lowercased and hyphenated —
   `delegated`, `app-only` (and `none` for GitHub's "Anonymous").
+
+**Resolved/added during ELITEA-1981 / ELITEA-1982 implementation (2026-08-24):**
+
+- **Testids added** (EliteaAI/EliteaUI@7d7b21d4, `automation/testids`, awaiting
+  human cherry-pick to `main`) — attributes only, 10 insertions / 0 deletions,
+  all three `add-data-testid` § Step 5.5 greps empty:
+  `credential-form-oauth-login-button` (`CredentialForm.jsx`), and the whole
+  dialog set `oauth-auth-dialog{,-title,-description,-server-link,
+  -cancel-button,-authorize-button}` on `McpAuthModal.jsx` — deliberately
+  GENERIC, because that modal is mounted by the MCP, toolkit, index, OpenAPI,
+  SharePoint and credential flows alike. The Scope input's testid
+  (`oauth-auth-dialog-scope-input`) reaches the shared `OAuthFormFields` through
+  a new caller-supplied `scopeTestId` prop wired at `McpAuthModal`'s call site,
+  never hardcoded inside the shared component.
+- **Blur is a COMMIT signal on the schema-typed Delegated fields** — the one
+  thing that cost this implementation a rerun. Typing with real keystrokes is
+  necessary but not sufficient: `scopes` is `array`-typed and the shared
+  `Input`/`InputBase` renderer runs with `enableAutoBlur`, so with focus still
+  in the field `credential-form-save-button` stays DISABLED however many
+  characters were typed. Measured: App-only fields alone → Save enabled;
+  selecting **Delegated** → Save disabled; typing endpoint + scopes → still
+  disabled; blurring `scopes` → enabled. (A checkbox click enables it too — for
+  the same reason: it blurs the field.) `CredentialFormFieldsMixin.type_into_field()`
+  blurs after typing for exactly this reason; don't "optimise" that away.
+- **The expected `check_connection` 401 shows up as a CONSOLE ERROR.** Chromium
+  logs every non-2xx fetch, so ELITEA-1982's own oracle prints
+  `Failed to load resource: the server responded with a status of 401
+  (Unauthorized)`. Any console side-channel over this flow needs an
+  endpoint-specific filter (match `location.url` containing
+  `/configurations/check_connection/`), never a blanket 401 filter.
+- **`<Dialog data-testid=…>` + keepMounted behaves as hoped**: the testid lands
+  on the Modal root, which MUI hides with `visibility: hidden` while closed, so
+  `to_be_visible()` / `not_to_be_visible()` are decisive and no
+  `.filter(has_text=…)` scoping is needed.
+- **Page-object promotions:** `AUTH_METHOD_RADIO` + `auth_radio()` +
+  `select_auth_method()` moved from `CredentialCreatePage` into
+  `CredentialFormFieldsMixin` (the detail route renders the same radio group and
+  derives the checked option from the persisted values). New on the mixin:
+  `oauth_login_button`, `FIELD_CHECKBOX` + `field_checkbox()`,
+  `type_into_field()`. New on `CredentialDetailPage`: `open_by_id()` (direct
+  detail route, settles on the detail GET — no list round-trip, no
+  `networkidle`). New page object: `pages/oauth_auth_modal_page.py`
+  (`OAuthAuthModalPage`) for the shared dialog. Blast radius re-run green:
+  `test_credential_type_specific_form_fields.py`, `test_credential_create.py`.
+
+**Appended during ELITEA-1981 / ELITEA-1982 fix round 1 (2026-08-24):**
+
+- **An OAuth "authorization attempt" is a POPUP, not a request this page makes.**
+  `McpAuthModal.onAuthorize` (`McpAuthModal.jsx:244-258`) opens
+  `window.open('about:blank', '_blank', 'width=500,height=700')` **first**, then
+  runs `McpAuthFlowHelpers.startMcpAuthFlow` — whose entire handshake
+  (authorize / token / dynamic-client-registration) happens inside that popup
+  window. It issues **no** `check_connection` call and nothing the parent page's
+  `page.on("request")` can see. So any "did Cancel authorize?" guard must watch
+  `page.on("popup")` / `page.context.pages`, never a request count. The early
+  return `if (!storageKey && !isPrebuildMcp) return;` cannot suppress it in the
+  credential flow: `storageKey = tokenStorageKey || serverUrl` and `serverUrl` is
+  the credential's discovery endpoint. Verified live 2026-08-24 (clicking
+  Authorize opens exactly one popup; clicking Cancel opens none).
+- **Provenance of the toolkit-form testids: composed names need a FILE DIFF, not
+  a grep.** `toolkit-field-auth-radio-{slug}` and
+  `toolkit-field-{key}-checkbox{,-field}` are built at runtime
+  (`ToolSection.jsx:290` + `RadioButtonGroup.jsx:36-37`; `ToolBaseProperty.jsx:390-391`),
+  so `git grep` for the composed string is empty on **both** `origin/main` and
+  `origin/automation/testids` — which reads as "not on main" and is wrong. Both
+  families are in fact **on `main`** (EliteaAI/EliteaUI@bf4a13ad, the 2026-08-12
+  promotion batch of ~400 testids), proven by
+  `git diff origin/main origin/automation/testids -- <composing file>` coming back
+  EMPTY. Still genuinely `automation/testids`-only on this surface:
+  `credential-form-test-connection-button`, `toolkit-field-{key}-select`,
+  `toolkit-field-{key}-input-helper-text`, and the ELITEA-1982 dialog set.

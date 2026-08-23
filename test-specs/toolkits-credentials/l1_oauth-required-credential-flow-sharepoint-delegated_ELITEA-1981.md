@@ -56,7 +56,7 @@ Microsoft tenant, no `.env.test` secret, so this case is immune to `#1673`
 | 3 | Select **Delegated** | Delegated fields appear | radio becomes checked; the subsection renders | ✅ |
 | 4 | Verify Auto Refresh Token checkbox, Oauth Discovery Endpoint, Scopes appear | all visible | all three render — labels `Auto Refresh Token`, `Oauth Discovery Endpoint *`, `Scopes *`. Both are marked required by the **subsection**, though the JSON-schema `required` list is only `client_id/client_secret/site_url`. The checkbox toggles normally (default unchecked). | ✅ |
 | 5 | Verify a **Login** button appears next to Test connection | Login visible in the form | **Case-text drift → #1711.** Login is **absent** right after step 3/4 and appears the moment **Oauth Discovery Endpoint** is non-empty (`Login count 0 → 1`, measured both ways). `CredentialForm.jsx:342` gates it on `oauthTokenKey`, derived from `settings.oauth_discovery_endpoint` (`:168-176`). Product is correct; the case text orders the step too early. | ⚠️ clarification |
-| 6 | Fill all required fields | all accept input | all accept input. **Save stays disabled until a field is typed with real keystrokes** — a Playwright `fill()` on Display Name leaves formik non-dirty (`useFormDirtyExcluding`), so `credential-form-save-button` *and* Discard stay disabled; one `press_sequentially` char flips both. `CredentialCreatePage.set_display_name()` already does select-all + type — use it. | ✅ |
+| 6 | Fill all required fields | all accept input | all accept input. **Save stays disabled until a field is typed with real keystrokes** — a Playwright `fill()` on Display Name leaves formik non-dirty (`useFormDirtyExcluding`), so `credential-form-save-button` *and* Discard stay disabled; one `press_sequentially` char flips both. `CredentialCreatePage.set_display_name()` already does select-all + type — use it. **Amended during implementation (2026-08-24): typing is necessary but NOT sufficient for the Delegated fields — they commit on BLUR.** With focus still in `scopes` (array-typed) Save stays disabled however many characters were typed; blurring alone flips it to enabled (measured across 3 probes: App-only fields alone enable Save, selecting Delegated disables it, and it re-enables the moment `scopes` blurs). `CredentialFormFieldsMixin.type_into_field()` therefore blurs after typing. | ✅ |
 | 7 | Save | saved with Delegated auth | `POST /configurations/configurations/399` → **200**; app navigates to **`/credentials/all`**, not to the detail page (**#1711**). Persisted `data`: `{"scopes":["Sites.Read.All"], "site_url":…, "client_id":…, "client_secret":"{{secret.<uuid>}}", "oauth_discovery_endpoint":…}` — **`scopes` is stored as an array** built from the free-text input, and **`auto_refresh_token` is absent** when left unchecked. | ✅ |
 | 8 | Verify Login remains on the saved credential detail page | Login present | open `/credentials/all/{id}`: `Delegated` radio checked (derived from the field values), all values round-tripped, **Login** present next to Test connection. `client_secret` renders as the bare vault uuid — known non-defect (digest § NOT a defect — the saved-secret round trip). | ✅ |
 
@@ -71,13 +71,13 @@ Provenance verified 2026-08-23 after `cd ../EliteaUI && git fetch origin`.
 | Client Id | `toolkit-field-client_id-input` | on-main ✓ |
 | Client Secret (wrapper / native input) | `toolkit-field-client_secret-input` / `…-input-field` | on-main ✓ |
 | Site Url | `toolkit-field-site_url-input` | on-main ✓ |
-| Auth radio — App-only / Delegated | `toolkit-field-auth-radio-app-only` / `toolkit-field-auth-radio-delegated` | on `automation/testids` only (EliteaAI/EliteaUI@c8d5c6af, ELITEA-1962) — awaiting human cherry-pick to `main` |
-| Auto Refresh Token (wrapper / native input) | `toolkit-field-auto_refresh_token-checkbox` / `…-checkbox-field` | on `automation/testids` only (same family) |
+| Auth radio — App-only / Delegated | `toolkit-field-auth-radio-app-only` / `toolkit-field-auth-radio-delegated` | **on-main ✓** — EliteaAI/EliteaUI@bf4a13ad. Runtime-composed (`ToolSection.jsx:290` passes `testId={`toolkit-field-${sectionKey}-radio`}`; `RadioButtonGroup.jsx:36-37` appends the option value slug), so a grep for the composed string is empty on BOTH refs and proves nothing — verified by file diff instead: `git diff origin/main origin/automation/testids -- 'src/[fsd]/features/toolkits/ui/form/ToolBase/ToolSection.jsx' 'src/[fsd]/shared/ui/checkbox/RadioButtonGroup.jsx'` is EMPTY. ELITEA-1962's EliteaAI/EliteaUI@c8d5c6af was promoted to `main` by the 2026-08-12 batch. |
+| Auto Refresh Token (wrapper / native input) | `toolkit-field-auto_refresh_token-checkbox` / `…-checkbox-field` | **on-main ✓** — EliteaAI/EliteaUI@bf4a13ad, `ToolBaseProperty.jsx:390-391` on `origin/main` (also runtime-composed from the schema key `k`; verified by reading the composing lines on `origin/main`, not by grepping the composed name). |
 | Oauth Discovery Endpoint | `toolkit-field-oauth_discovery_endpoint-input` | on-main ✓ (generic schema-driven grammar) |
 | Scopes | `toolkit-field-scopes-input` | on-main ✓ (same grammar) |
 | Test connection | `credential-form-test-connection-button` | on `automation/testids` (EliteaAI/EliteaUI@5892ae48) |
 | Save / Discard | `credential-form-save-button` / `credential-form-discard-button` | on-main ✓ |
-| **Login button** | **testid needed: `credential-form-oauth-login-button`** | **needs-adding** — `CredentialForm.jsx:342-350`, a bare `Button.BaseBtn` with no testid. `Button.BaseBtn` spreads `restProps` onto the MUI button, so this is **one attribute** — same one-line shape as its sibling `credential-form-test-connection-button`. Shared with ELITEA-1982; add once. |
+| **Login button** | `credential-form-oauth-login-button` | **ADDED during implementation** — EliteaAI/EliteaUI@7d7b21d4 on `automation/testids`, awaiting human cherry-pick to `main`. — `CredentialForm.jsx:342-350`, a bare `Button.BaseBtn` with no testid. `Button.BaseBtn` spreads `restProps` onto the MUI button, so this is **one attribute** — same one-line shape as its sibling `credential-form-test-connection-button`. Shared with ELITEA-1982; add once. |
 | **Logout button** (mutually exclusive twin, `CredentialForm.jsx:333-340`) | **do NOT add** | canon #511 — neither case reaches the logged-in state, so it stays untestid'd |
 
 Auth state is read off the native input
@@ -112,6 +112,11 @@ Auth state is read off the native input
 - After Save, settle on the list GET (`CredentialsListPage.reload_list()`), then
   navigate to the detail route and settle on
   `GET /configurations/configuration/399/{id}`.
+- **Blur is a commit signal, not tidiness (added during implementation):** the
+  shared `Input`/`InputBase` renderer runs with `enableAutoBlur`, and the
+  schema-typed Delegated fields (`scopes` is `array`) only push their typed
+  value into the form state on blur. A test that types and immediately reads
+  `credential-form-save-button` sees it disabled.
 - Once any field is touched, `page.goto()`/`reload()` raises `beforeunload`.
   Playwright auto-dismisses dialogs in the pytest suite; an MCP session must not.
 

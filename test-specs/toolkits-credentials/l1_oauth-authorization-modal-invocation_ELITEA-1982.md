@@ -59,9 +59,16 @@ without any further request. The only work needed is **testids** — the whole
 | 6 | Scope pre-populated with credential scopes prefixed by `offline_access` | `offline_access <scopes>` | **`offline_access Sites.Read.All`**. The prefix is **backend-sourced**, not a UI concat: `resource_metadata.scopes_supported` / `provided_settings.scopes` come back `["offline_access","Sites.Read.All"]` for a credential whose own `scopes` is `["Sites.Read.All"]` — **and do so regardless of `auto_refresh_token`** (probed true and false, identical). `McpAuthModal.jsx:70` prefers those `resourceScopes` over the form scopes. | ✅ |
 | 7 | Scope placeholder `Enter OAuth scopes (space-separated)` | correct when empty | attribute matches exactly; clearing the field renders it | ✅ |
 | 8 | `Cancel` and `Authorize` present | both visible | both present. **`Authorize` is ENABLED** in this configuration (the server advertises an authorization endpoint and no client secret is required, so `isAuthorizeDisabled` is false). The dialog renders **one** input — the Scope field only; Client Id / Client Secret inputs are conditional (`needClientId` / `needsClientSecret`) and do **not** render here. | ✅ |
-| 9 | Click **Cancel** | dialog closes without taking any action | dialog hidden; **no further POST** in the 2 s after the click (only the step-3 `check_connection` in the whole session) | ✅ |
+| 9 | Click **Cancel** | dialog closes without taking any action | dialog hidden; **no OAuth popup opened** and the browser context gains no page (an authorization attempt = `onAuthorize`'s `window.open('about:blank','_blank')`, `McpAuthModal.jsx:244-258` — the handshake runs INSIDE that popup, so it makes no request this page can see); and **no further `check_connection`** (only the step-3 one in the whole session) | ✅ |
 
-**No console errors** over the whole flow.
+**No console errors** over the whole flow — **amended during implementation
+(2026-08-24): with one expected exception.** Chromium logs every non-2xx fetch
+as a console error, so the case's own `check_connection` **401** (the oracle
+that opens the dialog) surfaces as `Failed to load resource: the server
+responded with a status of 401 (Unauthorized)`. The implemented side channel
+filters exactly that one, matched by the failing resource's own `location.url`
+(`/configurations/check_connection/`) plus the 401 status — never by "401"
+alone, so any other 401 still fails.
 
 ## ⚠️ The one trap on this surface — `keepMounted`
 
@@ -107,20 +114,22 @@ handshake is real and cheap (~1 s).
 ## Handles Reference
 
 Provenance verified 2026-08-23 after `cd ../EliteaUI && git fetch origin`.
-Everything inside the dialog is **needs-adding** — the modal tree has zero
-testids today.
+Everything inside the dialog was **needs-adding** at analysis time; all of it was
+**ADDED during implementation** — EliteaAI/EliteaUI@7d7b21d4 on
+`automation/testids` (attributes only, 10 insertions / 0 deletions, Step-5.5
+greps empty), awaiting human cherry-pick to `main`.
 
 | Purpose | Handle | Provenance |
 |---|---|---|
-| Detail-form fields (precondition assertions) | `toolkit-field-oauth_discovery_endpoint-input`, `toolkit-field-scopes-input`, `toolkit-field-auth-radio-delegated` | on-main ✓ / `automation/testids` (radio, EliteaAI/EliteaUI@c8d5c6af) |
+| Detail-form fields (precondition assertions) | `toolkit-field-oauth_discovery_endpoint-input`, `toolkit-field-scopes-input`, `toolkit-field-auth-radio-delegated` | **all on-main ✓** — the radio is EliteaAI/EliteaUI@bf4a13ad, NOT `automation/testids`-only. It is runtime-composed (`ToolSection.jsx:290` + `RadioButtonGroup.jsx:36-37`), so a grep for `toolkit-field-auth-radio-delegated` is empty on BOTH refs; verified by file diff (`git diff origin/main origin/automation/testids` on both composing files is EMPTY). ELITEA-1962's EliteaAI/EliteaUI@c8d5c6af was promoted to `main` by the 2026-08-12 batch. |
 | Test connection (the "next to" anchor) | `credential-form-test-connection-button` | on `automation/testids` (EliteaAI/EliteaUI@5892ae48) |
-| **Login button (trigger)** | **testid needed: `credential-form-oauth-login-button`** | needs-adding — `CredentialForm.jsx:342-350`; one attribute (`Button.BaseBtn` spreads `restProps`). **Shared with ELITEA-1981 — add once.** |
-| **Dialog container** | **testid needed: `oauth-auth-dialog`** | needs-adding — `McpAuthModal.jsx:369` `<Dialog>`. Pair with a **visibility** assertion (keepMounted, above). |
-| **Dialog title** | **testid needed: `oauth-auth-dialog-title`** | needs-adding — `:380` `DialogTitle` |
-| **Description paragraph** | **testid needed: `oauth-auth-dialog-description`** | needs-adding — `:397` `Typography` |
-| **`Server:` value link** | **testid needed: `oauth-auth-dialog-server-link`** | needs-adding — `:425` MUI `Link`; assert `href` **and** text |
-| **Scope input** | **testid needed — caller-supplied prop, e.g. `scopeTestId` → `oauth-auth-dialog-scope-input`** | needs-adding — `OAuthFormFields.jsx:66-70`. `OAuthFormFields` is a **shared** component (`[fsd]/features/mcp/ui/modal/`, also used by the MCP flows), so per `.agents/testing.md` § shared components it must take a **caller-supplied `testId`-style prop** wired at `McpAuthModal`'s call site — never a hardcoded credential-scoped string inside the shared component. Prop naming: `scopeTestId`, **not** `dataScopeTestId`. |
-| **Cancel / Authorize** | **testids needed: `oauth-auth-dialog-cancel-button` / `oauth-auth-dialog-authorize-button`** | needs-adding — `:478-492` `DialogActions` |
+| **Login button (trigger)** | `credential-form-oauth-login-button` | ADDED — EliteaAI/EliteaUI@7d7b21d4 — `CredentialForm.jsx:342-350`; one attribute (`Button.BaseBtn` spreads `restProps`). **Shared with ELITEA-1981 — add once.** |
+| **Dialog container** | `oauth-auth-dialog` | ADDED — EliteaAI/EliteaUI@7d7b21d4 — `McpAuthModal.jsx:369` `<Dialog>`. Pair with a **visibility** assertion (keepMounted, above). |
+| **Dialog title** | `oauth-auth-dialog-title` | ADDED — EliteaAI/EliteaUI@7d7b21d4 — `:380` `DialogTitle` |
+| **Description paragraph** | `oauth-auth-dialog-description` | ADDED — EliteaAI/EliteaUI@7d7b21d4 — `:397` `Typography` |
+| **`Server:` value link** | `oauth-auth-dialog-server-link` | ADDED — EliteaAI/EliteaUI@7d7b21d4 — `:425` MUI `Link`; assert `href` **and** text |
+| **Scope input** | `oauth-auth-dialog-scope-input`, supplied through the new caller-side `scopeTestId` prop | ADDED — EliteaAI/EliteaUI@7d7b21d4 — `OAuthFormFields.jsx:66-70`. `OAuthFormFields` is a **shared** component (`[fsd]/features/mcp/ui/modal/`, also used by the MCP flows), so per `.agents/testing.md` § shared components it must take a **caller-supplied `testId`-style prop** wired at `McpAuthModal`'s call site — never a hardcoded credential-scoped string inside the shared component. Prop naming: `scopeTestId`, **not** `dataScopeTestId`. |
+| **Cancel / Authorize** | `oauth-auth-dialog-cancel-button` / `oauth-auth-dialog-authorize-button` | ADDED — EliteaAI/EliteaUI@7d7b21d4 — `:478-492` `DialogActions` |
 | Close (X) icon button | **do NOT add** | canon #511 — this case cancels via the Cancel button; the X is never on the executed path |
 | Client Id / Client Secret inputs | **do NOT add** | they do not render in this configuration (`needClientId`/`needsClientSecret` false) — untouched by this case |
 
@@ -172,9 +181,9 @@ back empty.
 | Step 6 Scope pre-populated `offline_access …` | scope value | input value vs the **captured response**'s `scopes_supported`, plus an explicit `startswith("offline_access ")` | Step 6 | covered |
 | Step 7 Scope placeholder when empty | placeholder correct | clear the field, assert `placeholder` attribute + empty value | Step 7 | covered |
 | Step 8 Cancel + Authorize present | both visible | visibility of both (+ `Authorize` enabled) | Step 8 | covered |
-| Step 9 Cancel closes without action | dialog closed, no action | `not_to_be_visible()` + no further `check_connection`/OAuth request | Step 9 | covered |
+| Step 9 Cancel closes without action | dialog closed, no action | `not_to_be_visible()` + popup-absence + context page-count unchanged + no further `check_connection` | Step 9 | covered |
 | Expected Final State | dialog opens with pre-populated server + scope; Cancel dismisses without authorizing | steps 3-9 | Steps 3-9 | covered |
-| Pass criterion "Cancel does not trigger an authorization attempt" | no auth attempt | request-absence assertion in step 9 | Step 9 | covered |
+| Pass criterion "Cancel does not trigger an authorization attempt" | no auth attempt | **popup-absence + context page-count** assertion in step 9 (the direct guard — `onAuthorize` opens a popup and fires NO `check_connection`, so a request-count guard alone would never have caught a real attempt); `check_connection` count kept as a secondary no-new-handshake check | Step 9 | covered |
 
 ### Axis 2 — observables asserted beyond the case
 
@@ -183,7 +192,7 @@ back empty.
 | `check_connection` returns **401** with `requires_authorization` | proves the dialog was opened by the real backend handshake and not by some other code path — the honest oracle a `route.fulfill` would have destroyed |
 | `Authorize` **enabled** at open | it is enabled in this configuration; asserting it deliberately stops a silent future flip (e.g. a metadata regression that leaves the button dead) from passing unnoticed |
 | Exactly one input renders in the dialog (Scope only) | the Client Id / Client Secret fields are conditional; a regression that starts demanding them would change the flow the case describes without failing any text assertion |
-| No console errors across the flow | standard side channel; this flow was clean, so the assertion starts honest |
+| No console errors across the flow | standard side channel; clean apart from the browser's own log line for the expected `check_connection` 401, filtered endpoint-specifically (amended 2026-08-24) |
 
 ## Known Defects
 

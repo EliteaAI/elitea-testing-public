@@ -40,9 +40,8 @@ dialog testids come from the shared ``DeleteEntityModal.jsx`` — so no
 import logging
 import re
 
-from playwright.sync_api import Page
-
 from config import settings
+from playwright.sync_api import Page
 
 from .base_page import BasePage
 from .credential_form_fields import CredentialFormFieldsMixin
@@ -183,6 +182,37 @@ class CredentialDetailPage(CredentialFormFieldsMixin, BasePage):
         card.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         card.first.click()
         self.wait_for_page_load()
+
+    def open_by_id(self, credential_id, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Open ``/credentials/all/{credential_id}`` directly, settling on the
+        credential's own detail GET.
+
+        Additive sibling of :meth:`open_credential_by_name` (left untouched for
+        its existing callers): a case that already knows the id — because it
+        just created the credential through the UI (ELITEA-1981) or seeded it
+        via API (ELITEA-1982) — has no reason to round-trip through the list
+        page, whose known ``#518`` refetch crash then needs recovering.
+
+        Deliberately NOT :meth:`BasePage.navigate`: that waits up to 30 s for
+        ``networkidle``, which the credentials routes never reach
+        (``.agents/testing.md``; ELITEA-1964/1967) — the same reason
+        ``NotFoundPage.open_route()`` exists. The detail GET's own response is
+        the honest settle condition; until it resolves the route renders an
+        empty form shell (``EditCredential.jsx:160``).
+        """
+        url = f"{settings.app_base_url}/credentials/all/{credential_id}"
+        logger.info("Navigating to %s (settling on the detail GET)", url)
+        with self.page.expect_response(
+            lambda r: (
+                r.request.method == "GET"
+                and r.url.split("?")[0].rstrip("/").endswith(
+                    f"/configurations/configuration/{self._project_id}/{credential_id}"
+                )
+            ),
+            timeout=timeout,
+        ):
+            self.page.goto(url, wait_until="domcontentloaded")
+        self.display_name_input.wait_for(state="visible", timeout=timeout)
 
     def _recover_from_credentials_list_crash(self) -> bool:
         """Reload once if /credentials/all crashed with the known refetch race.
