@@ -1436,6 +1436,43 @@ class ArtifactsPage(BasePage):
         self.bucket_name_input.type(name)
         logger.info("Filled bucket name field with '%s'", name)
 
+    @action("Clear bucket name field")
+    def clear_bucket_name(self) -> None:
+        """Empty the Name field entirely (ELITEA-1813).
+
+        Additive sibling to :meth:`fill_bucket_name` — NOT reusable as
+        ``fill_bucket_name("")``: ``Locator.type("")`` is a silent no-op that
+        leaves the ``select_text()`` selection in place with the text still
+        present, so the field never actually empties (confirmed live during
+        ELITEA-1813 analysis). The explicit ``press("Delete")`` deletes the
+        selection and fires the ``formik.handleChange`` the MUI/formik field
+        needs (``.claude/rules/mui-patterns.md``).
+
+        Leaves focus IN the field — ELITEA-1813 asserts the pre-blur state
+        (helper text absent, ``aria-invalid="false"``) before deliberately
+        blurring, because ``CreateBucket.jsx:243-244`` gates both on
+        ``formik.touched.name``.
+        """
+        self.bucket_name_input.click()
+        self.bucket_name_input.select_text()
+        self.bucket_name_input.press("Delete")
+        logger.info("Cleared bucket name field")
+
+    def all_bucket_rows(self) -> Locator:
+        """Return a locator matching EVERY currently-rendered bucket row.
+
+        Additive companion to :meth:`any_bucket_row`, which is deliberately
+        ``.first``-scoped (visibility checks) and therefore cannot carry a
+        ``to_have_count()`` assertion. ELITEA-1813 needs the unscoped form to
+        assert the bucket-row count is UNCHANGED across a Cancel with a
+        web-first, auto-retrying assertion rather than a one-shot
+        :meth:`get_visible_bucket_count` read on a ~970-row list.
+
+        Returns:
+            Locator for :attr:`BUCKET_ROW_ANY_SELECTOR` (all matches).
+        """
+        return self.page.locator(self.BUCKET_ROW_ANY_SELECTOR)
+
     def is_bucket_name_invalid(self, timeout: int = 5000) -> bool:
         """Return whether the Name field is currently flagged invalid (ELITEA-1817).
 

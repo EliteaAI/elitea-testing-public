@@ -97,8 +97,10 @@ Checked by behaviour before classifying:
 9. Verify `bucket-cancel-test` is absent (case step 9). Assert all three:
    - `[data-testid="artifacts-bucket-row-bucket-cancel-test"]` count `0`,
    - via the bucket search box (`open_bucket_search()` → `search_buckets(NAME)` →
-     `get_visible_bucket_count() == 0`; the panel filters client-side with a 300 ms
-     debounce), then `close_bucket_search()`,
+     `expect(all_bucket_rows()).to_have_count(0)`; the panel filters client-side with a
+     300 ms debounce), then `close_bucket_search()`. **Shipped as the auto-retrying
+     `expect(...)` form** rather than the one-shot `get_visible_bucket_count()` read,
+     per this AFS's own Automation Hints,
    - the step-7 capture stayed `[]` (no POST ever fired).
 
 ## Expected Results
@@ -175,11 +177,18 @@ all addressed through existing UPPER_CASE class constants — never an inline
   pytest.mark.new]` + `@pytest.mark.p3` on the test — the shape every sibling
   `tests/ui/artifacts/*.py` spec uses. **There is no `artifacts` marker** in
   `automation/pytest.ini`; don't add one (it would raise an unregistered-marker warning).
-- **No new page-object method is needed.** Every interaction already exists:
+- **One additive page-object accessor was added** (shared with ELITEA-1813 on the same
+  branch): `all_bucket_rows()` — the unscoped `BUCKET_ROW_ANY_SELECTOR` locator, needed
+  because `any_bucket_row()` is `.first`-scoped and so cannot carry `to_have_count()`.
+  Every interaction otherwise already exists:
   `click_create_bucket_button`, `get_bucket_form_heading_text`, `fill_bucket_name`,
   `select_retention_measure`, `set_retention_value`, `click_bucket_cancel_button`,
   `open_bucket_search` / `search_buckets` / `close_bucket_search`,
   `get_visible_bucket_count`, `capture_requests_matching`, `sidebar_menu_item`.
+- **`navigate_to_artifacts()` hardcodes the 15 s `wait_for_page_load()` default** and
+  cannot carry the cold-session budget — the shipped spec calls
+  `navigate("/artifacts")` + `wait_for_page_load(timeout=60000)` instead
+  (implementation finding, ELITEA-1815).
 - **Never call `click_bucket_save_button()`** — this case must not create a bucket. The
   Save button is only ever *asserted on*, never clicked.
 - `capture_requests_matching("artifacts/buckets")` must be `.stop()`-ed in a `finally`

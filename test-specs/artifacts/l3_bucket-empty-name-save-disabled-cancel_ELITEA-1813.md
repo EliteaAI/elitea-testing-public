@@ -109,8 +109,13 @@ Checked before classifying (grep by behaviour, not case id):
    - `[data-testid="artifacts-bucket-row-new-bucket"]` count `0` (the default name is the
      only name that could plausibly have been submitted),
    - rendered bucket-row count equals the step-1 baseline
-     (`expect(any_bucket_row).to_have_count(baseline)` — auto-retrying, never a bare
+     (`expect(all_bucket_rows()).to_have_count(baseline)` — auto-retrying, never a bare
      `len()` read on a ~970-row list).
+     **Amended at implementation (shipped truth):** the AFS originally named
+     `any_bucket_row`, but that accessor is deliberately `.first`-scoped
+     (`artifacts_page.py:4397`) and therefore always counts 1. The implementation adds
+     an additive `all_bucket_rows()` returning the unscoped
+     `BUCKET_ROW_ANY_SELECTOR` locator — same class constant, no new testid.
 
 ## Expected Results
 
@@ -168,7 +173,7 @@ All testid-only; **zero new testids required**. Provenance verified 2026-08-23 w
 | Save button | `artifacts-bucket-save-button` | `bucket_save_button` | on-main ✓ |
 | Cancel button | `artifacts-bucket-cancel-button` | `bucket_cancel_button` / `click_bucket_cancel_button()` | on-`automation/testids` only (awaiting human cherry-pick to main) |
 | Bucket row (dynamic) | `artifacts-bucket-row-{name}` | `ArtifactsPage.BUCKET_ROW` constant / `bucket_row(name)` | on-main ✓ |
-| Any bucket row (prefix) | `artifacts-bucket-row-` | `ArtifactsPage.BUCKET_ROW_ANY_SELECTOR` / `any_bucket_row` | on-main ✓ |
+| Any bucket row (prefix) | `artifacts-bucket-row-` | `ArtifactsPage.BUCKET_ROW_ANY_SELECTOR` / `all_bucket_rows()` (added at implementation — `any_bucket_row` is `.first`-scoped and cannot carry `to_have_count`) | on-main ✓ |
 
 **Dynamic-testid discipline**: rows are addressed through the existing UPPER_CASE class
 constants — never an inline `get_by_test_id(f"…")` (`.agents/testing.md` § Locator policy).
@@ -182,12 +187,17 @@ constants — never an inline `get_by_test_id(f"…")` (`.agents/testing.md` § 
   pytest.mark.new]` + `@pytest.mark.p3` on the test — the shape every sibling
   `tests/ui/artifacts/*.py` spec uses. **There is no `artifacts` marker** in
   `automation/pytest.ini`; don't add one (it would raise an unregistered-marker warning).
-- **New page-object work — one small method**: `clear_bucket_name()` on `ArtifactsPage`
+- **New page-object work — two small additive methods** (shipped): `clear_bucket_name()`
+  and `all_bucket_rows()` on `ArtifactsPage`. `clear_bucket_name()`
   (click → `select_text()` → `press("Delete")`). `fill_bucket_name("")` cannot be reused:
   `Locator.type("")` is a silent no-op that leaves the text selected but present.
   Everything else already exists (`click_create_bucket_button`,
   `get_bucket_form_heading_text`, `click_bucket_cancel_button`,
-  `capture_requests_matching`, `any_bucket_row`, `get_visible_bucket_count`).
+  `capture_requests_matching`, `get_visible_bucket_count`).
+- **`navigate_to_artifacts()` hardcodes the 15 s `wait_for_page_load()` default** and
+  cannot carry the cold-session budget — the shipped spec calls
+  `navigate("/artifacts")` + `wait_for_page_load(timeout=60000)` instead
+  (implementation finding, ELITEA-1813).
 - **Do NOT call `click_bucket_save_button()`** anywhere in this spec — it wraps
   `expect_response` on a POST that can never fire here. The disabled-click probe must be a
   raw `bucket_save_button.click(timeout=…)` inside `pytest.raises(PlaywrightTimeoutError)`.
