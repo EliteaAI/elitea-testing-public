@@ -344,6 +344,40 @@ class McpFormPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # Detail action bar (/mcps/all/{id} header row) — added ELITEA-1940.
+    # EL-6277 (EliteaAI/EliteaUI@cb030b7d) moved the Test surface out of the
+    # detail page into its own route and relocated the "view run history"
+    # control here, so both entry points now live in this one action bar
+    # (`ToolkitForm.jsx:525` renders it when `isDetailsActionBar`).
+    # ------------------------------------------------------------------
+    action_bar = LocatorDescriptor(
+        testid="toolkit-action-bar",
+        description="Detail-page action bar container (ToolkitForm.jsx:525) — "
+        "hosts the Test button, the Run History button and the Form/Raw Json "
+        "view toggle. Mounts ASYNCHRONOUSLY after a client-side navigation "
+        "back to the detail page (test-specs/mcp/_surface.md § Sequencing "
+        "gotchas), so callers must wait on it rather than query immediately.",
+    )
+    test_button = LocatorDescriptor(
+        testid="toolkit-test-button",
+        description="'Test' button in the detail action bar (aria-label "
+        "'Test MCP') — navigates to the /mcps/all/{id}/test route (EL-6277). "
+        "DISABLED while the form is dirty (`isTestDisabled={dirty}`), so a "
+        "flow that clicked Load Tools must Save first and wait for this "
+        "button to re-enable.",
+    )
+    run_history_button = LocatorDescriptor(
+        testid="pipeline-history-tab",
+        description="'Run History' button in the detail action bar "
+        "(ViewRunHistoryButton.jsx, aria-label 'view run history') — "
+        "navigates to /toolkits/all/{id}/history?isMCP=true. The "
+        "`pipeline-` prefix is the shared component's DEFAULT testid "
+        "(ViewRunHistoryButton.jsx:16), correct on this surface too and "
+        "already relied on by PipelineDetailPage — do not rename "
+        "(test-specs/mcp/_surface.md § Run History, clarification #1727).",
+    )
+
+    # ------------------------------------------------------------------
     # Connection-status indicator + sync-error toast — added ELITEA-1934.
     # ------------------------------------------------------------------
     connection_status = LocatorDescriptor(
@@ -514,6 +548,69 @@ class McpFormPage(BasePage):
             },
             timeout=UI_ELEMENT_TIMEOUT,
         )
+
+    # ------------------------------------------------------------------
+    # Detail action-bar navigation — added ELITEA-1940.
+    # ------------------------------------------------------------------
+
+    @action("Open the Test route from the detail action bar")
+    def open_test_route(self, toolkit_id: int, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the action bar's **Test** button and wait for the Test route.
+
+        EL-6277 made the Test surface its own route
+        (``/mcps/all/{id}/test``) instead of a right-hand region of the
+        detail page. The button is ``disabled`` while the form is dirty
+        (``ToolkitForm.jsx``: ``isTestDisabled={dirty}``) — clicking Load
+        Tools dirties it — so this waits for the button to be ENABLED
+        before clicking rather than clicking into a dead element and
+        timing out later on a panel that never mounted.
+
+        Args:
+            toolkit_id: The MCP's numeric id, used to match the target URL.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.test_button.wait_for(state="visible", timeout=timeout)
+        expect(self.test_button).to_be_enabled(timeout=timeout)
+        self.test_button.click()
+        self.page.wait_for_url(re.compile(rf"/mcps/all/{toolkit_id}/test"), timeout=timeout)
+        logger.info("Opened the Test route for MCP id=%s", toolkit_id)
+
+    def is_test_button_disabled(self, timeout: int = UI_ELEMENT_TIMEOUT) -> bool:
+        """Return whether the action bar's Test button is currently disabled.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the button to render.
+
+        Returns:
+            True while the detail form is dirty (``isTestDisabled={dirty}``).
+        """
+        self.test_button.wait_for(state="visible", timeout=timeout)
+        return self.test_button.is_disabled()
+
+    @action("Open Run History from the detail action bar")
+    def open_run_history(self, toolkit_id: int, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click **Run History** and wait for the run-history route to load.
+
+        MCPs deliberately reuse the toolkit route with an ``isMCP`` query
+        flag (``useToolkitDetailNavigation.hooks.js``), so the destination
+        is ``/toolkits/all/{id}/history?isMCP=true`` — a full page, not a
+        drawer (clarification #1727).
+
+        The action bar mounts asynchronously after a client-side
+        navigation back to the detail page (test-specs/mcp/_surface.md
+        § Sequencing gotchas — an immediate click raised "does not match
+        any elements" live), hence the explicit visibility wait.
+
+        Args:
+            toolkit_id: The MCP's numeric id, used to match the target URL.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.run_history_button.wait_for(state="visible", timeout=timeout)
+        self.run_history_button.click()
+        self.page.wait_for_url(
+            re.compile(rf"/toolkits/all/{toolkit_id}/history"), timeout=timeout
+        )
+        logger.info("Opened Run History for MCP id=%s", toolkit_id)
 
     # ------------------------------------------------------------------
     # Three-dot actions menu + delete-confirm dialog — added ELITEA-1947.
