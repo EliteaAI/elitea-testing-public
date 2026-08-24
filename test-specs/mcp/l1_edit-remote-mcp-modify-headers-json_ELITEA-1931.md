@@ -108,13 +108,40 @@ The seeded toolkit is deleted in a `finally:` block via
 | Headers editor wrapper | `toolkit-field-headers-editor` | on-main ✓ |
 | Headers editor `.cm-content` | `toolkit-field-headers-editor-content` | on-main ✓ |
 | Client Id input (blur target only) | `toolkit-field-client_id-input` | on-main ✓ |
-| Configuration show-more | `toolkit-configuration-show-more` | on `automation/testids` |
-| Detail Save / Discard buttons | `toolkit-detail-save-button` / `toolkit-detail-discard-button` | on `automation/testids` (ELITEA-1929, EliteaUI PR #572) |
+| Configuration show-more | `toolkit-configuration-show-more` | on-main ✓ — EliteaAI/EliteaUI@ab757380 (`ToolBase.jsx:375`) |
+| Detail Save / Discard buttons | `toolkit-detail-save-button` / `toolkit-detail-discard-button` | on-main ✓ — EliteaAI/EliteaUI@bf4a13ad (`ToolkitsTabBarContainer.jsx:149,159`); promoted since the ELITEA-1929 AFS was written |
 | Form / Raw Json view toggles | `toolkit-form-view-toggle` / `toolkit-raw-json-view-toggle` | on-main ✓ |
 | Raw Json editor content | `toolkit-raw-json-editor-content` | on-main ✓ |
 | Detail title | `toolkit-detail-title` | on-main ✓ |
 
-No new testid is required for this case.
+No new testid is required for this case, and **every handle it uses is on `main`** —
+the case is deployed-env promotable as soon as the test merges.
+
+### Provenance verification (run 2026-08-24, fix round 1)
+
+These testids are **template-composed** in shared components
+(`` data-testid={`toolkit-field-${k}-input`} ``, `testIdPrefix`, `${dataTestId}-combobox`),
+so a bare `git grep '<literal-testid>' origin/main` finds **nothing** and silently
+reports "not on `main`" — the #19 false-row failure mode. The provenance column above
+is verified by grepping the **composing source file** on each ref, after
+`cd ../EliteaUI && git fetch origin`:
+
+```
+toolkit-field-<k>-input                        main:YES  testids:YES   (ToolBase/ToolBaseProperty.jsx)
+toolkit-field-<k>-editor(-content)             main:YES  testids:YES   (ToolBase/ToolBaseProperty.jsx)
+toolkit-configuration-show-more                main:YES  testids:YES   (ToolBase/ToolBase.jsx:375)
+toolkit-detail-save-button                     main:YES  testids:YES   (toolkits-tab-bar/ToolkitsTabBarContainer.jsx:149)
+toolkit-detail-discard-button                  main:YES  testids:YES   (toolkits-tab-bar/ToolkitsTabBarContainer.jsx:159)
+toolkit-form/raw-json-view-toggle              main:YES  testids:YES   (shared/ui/tab-group-button/FormViewToggle.jsx)
+toolkit-raw-json-editor-content                main:YES  testids:YES   (toolkits/ui/form/ToolCustom.jsx:218)
+toolkit-detail-title                           main:YES  testids:YES   (pages/Toolkits/EditToolkit.jsx:398)
+<field>-input-field (native input)             main:YES  testids:YES   (shared/ui/secret-field/SecretField.jsx:77)
+<field>-input-toggle-{secret,password}         main:no   testids:YES   (shared/ui/secret-field/SecretField.jsx:342)
+Toggle.jsx renders the toggle testids          main:no   testids:YES   (src/components/Toggle.jsx)
+<field>-input-combobox                         main:YES  testids:YES   (shared/ui/select/SingleSelect.jsx:661)
+select-option-<value>                          main:YES  testids:YES   (shared/ui/select/SingleSelect.jsx:416)
+select-group-header-<group>                    main:YES  testids:YES   (shared/ui/select/SingleSelect.jsx:383)
+```
 
 ## Network Behavior
 - `POST /tools/prompt_lib/{project}` → 201 (seed).
