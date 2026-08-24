@@ -4,6 +4,7 @@ Handles: /mcps/all
 - MCP list display (card / table view)
 - View toggle (Card list view <-> Table view)
 - Search by name (shared ``SearchBar.jsx`` component)
+- Type filter (Local / Remote) via the shared ``Categories.jsx`` Types panel
 
 Mirrors the identical card/table toggle pattern already implemented in
 ``AgentsListPage`` (agents_list_page.py) and ``PipelinesListPage``
@@ -21,7 +22,8 @@ short render-lag wait is used instead.
 
 import logging
 
-from playwright.sync_api import Page
+from config import settings
+from playwright.sync_api import Locator, Page, Response
 from utils.actions import action
 
 from .base_page import BasePage
@@ -30,6 +32,7 @@ from .locator_descriptor import LocatorDescriptor
 logger = logging.getLogger("elitea.pages.mcp_list")
 
 UI_ELEMENT_TIMEOUT = 10_000
+LIST_RESPONSE_TIMEOUT = 15_000
 
 
 class McpListPage(BasePage):
@@ -139,6 +142,40 @@ class McpListPage(BasePage):
     search_clear_button = LocatorDescriptor(
         testid="search-clear-button",
         description="Search clear (X) icon — shared SearchBar, generic testid",
+    )
+
+    # --- Right-hand "Types" filter panel (shared Categories.jsx) ---------
+    # Unlike Credentials' panel (data-derived from
+    # GET /configurations/types/{project}), the MCP chip list is HARDCODED to
+    # exactly Local + Remote in `useLoadToolkits.hooks.js` (`tagList`, isMCP
+    # branch) — both chips render whatever the project holds (ELITEA-1942 AFS
+    # step 2, source-confirmed).
+    #
+    # Parameterized template — chip label filled in per-call, per the
+    # dynamic-testid convention (.claude/rules/page-objects.md /
+    # .agents/testing.md § Locator policy). Identical constant to
+    # CredentialsListPage.TYPE_FILTER_CHIP: same shared component.
+    TYPE_FILTER_CHIP = '[data-testid="tags-panel-chip-{}"]'
+
+    tags_clear_all_button = LocatorDescriptor(
+        testid="tags-panel-clear-all",
+        description=(
+            "Types panel 'Clear all' button — rendered ONLY while at least one "
+            "type chip is selected, so its presence is the product's own "
+            "'a filter is active' signal (Categories.jsx showClearButton). It "
+            "is UNMOUNTED, not hidden, when nothing is selected — assert its "
+            "absence with to_have_count(0)."
+        ),
+    )
+
+    # Collection locator over EVERY visible card's type badge — the same
+    # testid CARD_TAG_CHIP_SELECTOR scopes per-card, read page-wide here so a
+    # type-filter assertion can prove EVERY rendered card carries the selected
+    # type (ELITEA-1942), not just one named card. Mirrors
+    # CredentialsListPage.entity_card_tag_chip.
+    entity_card_tag_chip = LocatorDescriptor(
+        testid="entity-card-tag-chip",
+        description="MCP card type badge (Local/Remote) — collection locator, one per visible card",
     )
 
     # Shared EmptyStatePage.jsx component testid (also used by Toolkits/
@@ -401,6 +438,138 @@ class McpListPage(BasePage):
         button = self.page.locator(self.PIN_TOGGLE_BUTTON.format(mcp_id))
         button.first.wait_for(state="visible", timeout=timeout)
         return button.first.get_attribute("aria-label") or ""
+
+    # ------------------------------------------------------------------
+    # Type filter (right-hand "Types" panel) — ELITEA-1942
+    # ------------------------------------------------------------------
+
+    def type_filter_chip(self, type_label: str) -> Locator:
+        """Return the Types-panel chip locator for *type_label*.
+
+        Args:
+            type_label: The chip label the panel renders — ``"Local"`` or
+                ``"Remote"`` (hardcoded pair, see :attr:`TYPE_FILTER_CHIP`).
+        """
+        return self.page.locator(self.TYPE_FILTER_CHIP.format(type_label))
+
+    def wait_for_type_panel(self, type_label: str = "Remote", timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Wait until the Types panel has mounted its chips.
+
+        The chips mount LATER than :meth:`wait_for_page_load`'s own signal
+        (the card-view toggle button): immediately after :meth:`navigate`
+        returns, ``tags-panel-chip-Remote`` is still absent and a click there
+        fails with "does not match any elements" (observed live, ELITEA-1942
+        AFS § Automation Hints). Waiting on the chip itself is the honest
+        signal — never a fixed sleep.
+
+        Args:
+            type_label: Which chip to wait for.
+            timeout: Maximum wait for the chip to become visible.
+        """
+        self.type_filter_chip(type_label).first.wait_for(state="visible", timeout=timeout)
+
+    def _expect_list_response(self, action_fn, filtered: bool) -> Response:
+        """Run *action_fn* and wait for the MCP-list GET it triggers.
+
+        Selecting a type chip is URL-driven (``?tags[]=<Name>``) and
+        re-queries the list SERVER-side — the filtered request carries
+        ``toolkit_type=``, the unfiltered one does not (ELITEA-1942 AFS
+        § Network Behavior). Awaiting that response, never a sleep, is the
+        deterministic signal that the product has re-filtered.
+
+        Args:
+            action_fn: Zero-arg callable performing the UI interaction.
+            filtered: ``True`` to await the filtered (``toolkit_type=``) GET,
+                ``False`` to await the unfiltered one.
+        """
+        def _matches(response: Response) -> bool:
+            return (
+                f"/tools/prompt_lib/{settings.elitea_project_id}" in response.url
+                and response.request.method == "GET"
+                and (("toolkit_type=" in response.url) is filtered)
+            )
+
+        with self.page.expect_response(_matches, timeout=LIST_RESPONSE_TIMEOUT) as response_info:
+            action_fn()
+        response = response_info.value
+        # The React re-render lands a task tick after the response resolves —
+        # same race search()/clear_search() already handle.
+        self.wait_for_network()
+        return response
+
+    @action("Apply an MCP type filter")
+    def click_type_filter(self, type_label: str) -> Response:
+        """Click the *type_label* chip to SELECT it; wait for the filtered list GET.
+
+        Args:
+            type_label: Chip label to click (``"Remote"``).
+
+        Returns:
+            The matched Playwright ``Response`` for the re-filtered list query.
+        """
+        chip = self.type_filter_chip(type_label)
+        chip.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        response = self._expect_list_response(chip.first.click, filtered=True)
+        logger.info("Applied MCP type filter %r", type_label)
+        return response
+
+    @action("Remove an MCP type filter")
+    def remove_type_filter(self, type_label: str) -> Response:
+        """Click an already-selected chip to DESELECT it; wait for the
+        unfiltered list GET and the restored cards to render.
+
+        Args:
+            type_label: Chip label to click again (``"Remote"``).
+        """
+        chip = self.type_filter_chip(type_label)
+        chip.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        response = self._expect_list_response(chip.first.click, filtered=False)
+        self._settle_restored_list()
+        logger.info("Removed MCP type filter %r", type_label)
+        return response
+
+    @action("Clear all MCP type filters")
+    def clear_all_type_filters(self) -> Response:
+        """Click the Types panel's 'Clear all' button and settle on the
+        unfiltered list GET."""
+        response = self._expect_list_response(self.tags_clear_all_button.click, filtered=False)
+        self._settle_restored_list()
+        logger.info("Cleared all MCP type filters")
+        return response
+
+    def _settle_restored_list(self) -> None:
+        """Wait for the restored, unfiltered card list to actually render.
+
+        Removing a type filter resolves its list GET before React has
+        re-rendered the cards, so a synchronous read right after the response
+        can legitimately see an empty grid (the race
+        ``CredentialsListPage._settle_unfiltered_list`` documents). Callers
+        are the filter-removal paths, reached only when the project is known
+        to hold at least one MCP — so "at least one card renders" is a safe
+        settle condition here, and is NOT a general-purpose list wait.
+        """
+        self.wait_for_network()
+        self.mcp_card.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    def is_type_filter_active(self) -> bool:
+        """Report whether any type filter is currently applied.
+
+        Reads the product's own signal: the Types panel renders 'Clear all'
+        only while at least one chip is selected (see
+        :attr:`tags_clear_all_button`). The chip's own selected state lives
+        ONLY in an emotion CSS class hash — never a legal handle here.
+        """
+        return self.tags_clear_all_button.count() > 0
+
+    def get_visible_type_badges(self) -> list[str]:
+        """Return the type-badge text of every currently rendered MCP card.
+
+        Used to prove a type filter narrowed by TYPE (every badge matches),
+        not merely that the card count changed. Mirrors
+        ``CredentialsListPage.get_visible_type_badges``.
+        """
+        badges = self.entity_card_tag_chip
+        return [(badges.nth(i).text_content() or "").strip() for i in range(badges.count())]
 
     # ------------------------------------------------------------------
     # Table view
