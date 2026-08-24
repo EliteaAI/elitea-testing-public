@@ -1184,3 +1184,58 @@ worth re-checking the next time someone touches those filters.
   Still not evidence they are fixed.
 - **Both rows ran green first try, 61.7 s for the pair** (seed → edit → save → reload →
   Raw Json → restore → API delete, twice), no reruns.
+
+## Create form: CANCEL is a two-step gesture with its own confirm dialog (ELITEA-1960, 2026-08-24)
+
+**Appended during ELITEA-1960 analysis (batch `mcp-w04`).** Distinct from the *detail*
+page's Discard modal documented above — different component, different testids, same shape.
+
+`CreateToolkitToolTabBar.jsx` renders the create form's Cancel as a shared
+`Button.DiscardButton title="Cancel"`, so clicking it **cancels nothing**: it only opens
+
+```
+Warning
+Are you sure you want to cancel creation of this toolkit?
+Cancel   Discard
+```
+
+The form stays mounted and keeps both field values until the modal's own **Discard** is
+clicked. All three handles are **on `origin/main` ✓** (EliteaAI/EliteaUI@bf4a13ad) —
+nothing to add.
+
+| Handle | Testid | Notes |
+|---|---|---|
+| Cancel button (create form) | `toolkit-form-cancel-button` | label exactly `Cancel`; enabled whenever `!isLoading` |
+| Cancel-confirm dialog | `toolkit-form-cancel-confirm-dialog` | lands on the MUI `Dialog` **root** (`role="presentation"`) → `text_content()` == `WarningAre you sure you want to cancel creation of this toolkit?CancelDiscard`. **Assert with `in`, never `==`** |
+| Cancel-confirm "Discard" button | `toolkit-form-cancel-confirm-button` | label exactly `Discard` |
+
+### What confirming actually does — no navigation, no URL change
+
+`onCancel` → `setWantToCancel(true)` → effect calls `onClearEditTool()` + `formik.resetForm()`.
+At the MCP call site `onClearEditTool` is `() => setEditToolDetail(null)` (`CreateToolkit.jsx:141`)
+— **pure component state; there is no `navigate()` anywhere in the cancel path.** Live result:
+
+- every create-form handle **unmounts** (`toolkit-form-name-input`, `-description-input`,
+  `toolkit-field-url-input`, `toolkit-form-save-button`, `toolkit-form-cancel-button` → count 0);
+- the **type picker re-renders** (`mcp-type-picker-heading` == `Choose the MCP type`,
+  `toolkit-type-card-mcp` present);
+- the **URL stays `/mcps/create/mcp`** — it does NOT return to `/mcps/create`.
+
+⇒ Assert the view (unmount + picker heading), **never the URL**. Filed as clarification
+[#1747](https://github.com/EliteaAI/elitea-testing-public/issues/1747).
+Zero `POST` fires anywhere in the flow — a cancelled creation is server-side inert.
+
+### ⚠️ The MCP type picker emits a console ERROR on every mount (#656) — and a cancel flow mounts it TWICE
+
+`CategorySection.jsx:35` via `ToolkitTypeSelector.jsx:36` logs React's
+`Each child in a list should have a unique "key" prop` at **error** level on every
+type-picker mount ([#656](https://github.com/EliteaAI/elitea-testing-public/issues/656)).
+`test_mcp_back_navigation.py` dodges it by registering its listener after setup — a cancel
+flow **cannot**, because returning to the picker IS the observable. Any console assertion on
+this surface must **filter that signature by message** (plus the standing `socket.io`
+CORS/502/503 noise to `dev.elitea.ai`), not drop the assertion and not run it unfiltered.
+
+### Handle gotcha worth remembering
+
+`toolkit-field-url-input`'s testid sits on the `<input>` **itself** — `[data-testid="toolkit-field-url-input"] input`
+matches nothing. (`toolkit-form-name-input` is the opposite: wrapper, real input inside.)
