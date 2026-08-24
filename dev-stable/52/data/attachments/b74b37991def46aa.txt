@@ -1,3 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to Artifacts — Timeout 15000ms exceeded.
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to Artifacts — Timeout 15000ms exceeded.
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to Artifacts — Timeout 15000ms exceeded.

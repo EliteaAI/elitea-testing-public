@@ -1,2 +1,0 @@
-WARNING  elitea.api_auth:api_auth.py:123 Missing elitea-staging_auth_session cookie
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to Artifacts — Timeout 15000ms exceeded.
