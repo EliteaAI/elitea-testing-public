@@ -17,15 +17,26 @@ import re
 import time
 
 from playwright.sync_api import Page, expect
+from utils.actions import action
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
-from utils.actions import action
 
 logger = logging.getLogger("elitea.pages.mcp_form")
 
 UI_ELEMENT_TIMEOUT = 10_000
 SAVE_RESPONSE_TIMEOUT = 20_000
+
+# Placeholder labels the detail title shows BEFORE the tool-detail GET is
+# applied to component state. EliteaUI keeps one fallbackLabel per entity
+# type in src/[fsd]/shared/lib/constants/breadcrumb.constants.js:
+#   toolkits -> "Edit Toolkit"   (line 15)
+#   mcps     -> "Edit MCP"       (line 47)
+# Both must be excluded, or the wait below returns immediately on the MCP
+# detail page and callers read the placeholder as if it were the name
+# (found at ELITEA-1923/1924: only "Edit Toolkit" was listed, so the wait
+# was a no-op for every /mcps/all/{id} caller).
+DETAIL_TITLE_PLACEHOLDERS = ("Edit Toolkit", "Edit MCP")
 
 
 class McpFormPage(BasePage):
@@ -98,6 +109,28 @@ class McpFormPage(BasePage):
         testid="toolkit-field-scopes-input",
         description="Scopes input",
     )
+    # Secret/Password "secret view toggler" rendered beside every SECRET schema
+    # field — added ELITEA-1932. Both testids are emitted generically by the
+    # shared SecretField.jsx (line 342), which passes
+    # testIdPrefix={`${fieldTestId}-toggle`} down to Toggle.jsx, so the pair
+    # exists for free on every secret field (same grammar
+    # CredentialCreatePage.FIELD_SECRET_TOGGLE already uses for credentials).
+    # Active mode is read from `aria-pressed`, never from a class.
+    client_secret_toggle_secret = LocatorDescriptor(
+        testid="toolkit-field-client_secret-input-toggle-secret",
+        description="'Secret' button of the Client Secret secret-view toggler",
+    )
+    client_secret_toggle_password = LocatorDescriptor(
+        testid="toolkit-field-client_secret-input-toggle-password",
+        description="'Password' button of the Client Secret secret-view toggler",
+    )
+    # In Secret mode the native <input> is UNMOUNTED and replaced by a
+    # SingleSelect over the project's secret vault (and vice versa), so exactly
+    # one of client_secret_input_field / client_secret_combobox exists at a time.
+    client_secret_combobox = LocatorDescriptor(
+        testid="toolkit-field-client_secret-input-combobox",
+        description="Client Secret vault SingleSelect — present only in Secret mode",
+    )
     timeout_input = LocatorDescriptor(
         testid="toolkit-field-timeout-input",
         description="Timeout input",
@@ -140,6 +173,48 @@ class McpFormPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # Detail-page configuration section — added ELITEA-1923/1924.
+    #
+    # On the DETAIL page (unlike the create form) the schema-driven
+    # configuration fields are COLLAPSED behind a "show more" control: no
+    # `toolkit-field-*` element exists in the DOM at all until it is clicked
+    # (verified live 2026-08-24 — polled 15s on a freshly-created MCP, zero
+    # toolkit-field-* testids present). Any detail-page assertion on url /
+    # client_id / timeout / ... must expand the section first.
+    # ------------------------------------------------------------------
+    configuration_show_more = LocatorDescriptor(
+        testid="toolkit-configuration-show-more",
+        description="'Show more' toggle that expands the collapsed "
+        "schema-driven configuration fields on the toolkit/MCP detail page",
+    )
+
+    # ------------------------------------------------------------------
+    # Inline validation helper text (create form) — added ELITEA-1923/1924.
+    #
+    # Two DIFFERENT renderers are involved, which is why the two testids do
+    # not share a prefix:
+    #   * every schema-driven field (url, client_id, timeout, ...) renders
+    #     through ToolBaseProperty.jsx, which already emits
+    #     helperTextTestId={`toolkit-field-${k}-input-helper-text`};
+    #   * Toolkit Name renders through NameDescriptionInput.jsx, which did
+    #     NOT pass helperTextTestId at all — added for ELITEA-1924
+    #     (EliteaAI/EliteaUI@35440c78 on automation/testids).
+    #
+    # Both nodes are UNMOUNTED (not hidden) once the field becomes valid, so
+    # assert their absence with to_have_count(0), never not_to_be_visible().
+    # ------------------------------------------------------------------
+    name_helper_text = LocatorDescriptor(
+        testid="toolkit-form-name-input-helper-text",
+        description="Inline validation message under the Toolkit Name field "
+        "('Field is required')",
+    )
+    url_helper_text = LocatorDescriptor(
+        testid="toolkit-field-url-input-helper-text",
+        description="Inline validation message under the Url field "
+        "('Field is required')",
+    )
+
+    # ------------------------------------------------------------------
     # Save (create form) + detail page title
     # ------------------------------------------------------------------
     save_button = LocatorDescriptor(
@@ -155,6 +230,19 @@ class McpFormPage(BasePage):
         testid="toolkit-detail-discard-button",
         description="Discard button on the detail (edit) page — added ELITEA-1929, "
         "EliteaUI PR #572",
+    )
+    # Discard raises a confirmation modal before reverting anything (see
+    # McpFormPage.click_discard) — testids added for ELITEA-1928,
+    # EliteaAI/EliteaUI@a51c9318 on automation/testids.
+    discard_confirm_modal = LocatorDescriptor(
+        testid="toolkit-detail-discard-confirm-modal",
+        description="Discard-changes confirmation modal on the detail (edit) page "
+        "— the testid lands on the MUI Dialog root, so text_content() includes "
+        "the title and both button labels",
+    )
+    discard_confirm_button = LocatorDescriptor(
+        testid="toolkit-detail-discard-confirm-button",
+        description="'Discard' confirm button inside the discard-changes modal",
     )
     detail_title = LocatorDescriptor(
         testid="toolkit-detail-title",
@@ -209,6 +297,14 @@ class McpFormPage(BasePage):
     # (a raw DOM query, not a Playwright locator — mirrors BasePage's own
     # evaluate()-based waits, e.g. dismiss_banner_if_present()).
     DETAIL_TITLE_SELECTOR = '[data-testid="toolkit-detail-title"]'
+
+    # Secret-vault dropdown options (ELITEA-1932). Dynamic testid -> class-level
+    # template constant per .agents/testing.md § Locator policy; the option's
+    # testid embeds the stored reference itself, e.g.
+    # select-option-{{secret.auth_token}}.
+    SECRET_SAVED_OPTION = '[data-testid="select-option-{{{{secret.{}}}}}"]'
+    SECRET_SAVED_OPTION_PREFIX = '[data-testid^="select-option-{{secret."]'
+    SECRET_GROUP_HEADER_SAVED = '[data-testid="select-group-header-Saved Secrets"]'
 
     # ------------------------------------------------------------------
     # Tools section (Configuration accordion, "TOOLS" sub-heading) —
@@ -379,19 +475,26 @@ class McpFormPage(BasePage):
     def _wait_for_detail_data_rendered(self) -> None:
         """Wait past the 'Edit Toolkit' placeholder until real toolkit data renders.
 
-        The detail title (``toolkit-detail-title``) shows a static "Edit
-        Toolkit" placeholder until the tool-detail GET response is applied
-        to component state — the response resolving doesn't guarantee the
-        title has re-rendered yet (one more React tick), so poll the title
-        text itself rather than trusting the network wait alone.
+        The detail title (``toolkit-detail-title``) shows a static
+        entity-specific placeholder ("Edit Toolkit" on /toolkits, "Edit MCP"
+        on /mcps — see :data:`DETAIL_TITLE_PLACEHOLDERS`) until the
+        tool-detail GET response is applied to component state. The response
+        resolving doesn't guarantee the title has re-rendered yet (one more
+        React tick), so poll the title text itself rather than trusting the
+        network wait alone.
         """
         self.name_input.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         self.page.wait_for_function(
-            """(selector) => {
+            """({selector, placeholders}) => {
                 const el = document.querySelector(selector);
-                return !!el && el.textContent.trim() !== '' && el.textContent.trim() !== 'Edit Toolkit';
+                if (!el) return false;
+                const text = el.textContent.trim();
+                return text !== '' && !placeholders.includes(text);
             }""",
-            arg=self.DETAIL_TITLE_SELECTOR,
+            arg={
+                "selector": self.DETAIL_TITLE_SELECTOR,
+                "placeholders": list(DETAIL_TITLE_PLACEHOLDERS),
+            },
             timeout=UI_ELEMENT_TIMEOUT,
         )
 
@@ -703,6 +806,75 @@ class McpFormPage(BasePage):
         """Return the raw DOM value of the (visually masked) Client Secret input."""
         return self.client_secret_input_field.input_value()
 
+    @action("Switch the Client Secret field to Secret mode")
+    def switch_client_secret_to_secret_mode(self) -> None:
+        """Click the Client Secret toggler's "Secret" button and wait for the swap.
+
+        Secret mode replaces the native ``<input type="password">`` with the
+        vault ``SingleSelect`` (``SecretField.jsx``), so the wait is on the
+        combobox mounting — not on the button's own ``aria-pressed``, which
+        flips before the field re-renders.
+        """
+        self.client_secret_toggle_secret.click()
+        self.client_secret_combobox.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    def saved_secret_option(self, secret_name: str):
+        """Return the vault-dropdown option locator for saved secret *secret_name*."""
+        return self.page.locator(self.SECRET_SAVED_OPTION.format(secret_name))
+
+    def saved_secret_options(self):
+        """Return every SAVED-SECRETS option currently rendered in the dropdown."""
+        return self.page.locator(self.SECRET_SAVED_OPTION_PREFIX)
+
+    def saved_secrets_group_header(self):
+        """Return the dropdown's "SAVED SECRETS" group header."""
+        return self.page.locator(self.SECRET_GROUP_HEADER_SAVED)
+
+    @action("Open the Client Secret vault dropdown")
+    def open_client_secret_vault_dropdown(self) -> None:
+        """Open the Secret-mode vault dropdown and wait for its first saved option.
+
+        The vault query (``useSecretsListQuery``) is skipped while the field is
+        in Password mode, so the options only start loading once Secret mode is
+        active and the select is opened — wait on a rendered OPTION, not on
+        network idle (same discipline as
+        ``CredentialCreatePage.open_secret_dropdown``).
+        """
+        self.client_secret_combobox.click()
+        self.saved_secret_options().first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    @action("Select a saved secret in the Client Secret vault dropdown")
+    def select_client_secret_saved_secret(self, secret_name: str) -> None:
+        """Pick saved secret *secret_name* and wait for the dropdown to close."""
+        option = self.saved_secret_option(secret_name)
+        option.click()
+        option.wait_for(state="detached", timeout=UI_ELEMENT_TIMEOUT)
+
+    def get_client_secret_display_text(self) -> str:
+        """Return the Secret-mode combobox's displayed secret NAME.
+
+        The combobox shows the human-readable secret name (``auth_token``); the
+        stored reference (``{{secret.auth_token}}``) is only visible in the Raw
+        Json view / the save response.
+        """
+        return self.client_secret_combobox.text_content() or ""
+
+    @action("Blur the Headers JSON editor")
+    def blur_headers_editor(self) -> None:
+        """Move focus out of the Headers editor so its value commits to the form.
+
+        The CodeMirror-backed Headers field propagates on **blur**, not on
+        keystroke: with focus still inside the editor after typing valid JSON,
+        ``toolkit-detail-save-button`` stays disabled (verified live at
+        ELITEA-1931). Blurring also re-formats the JSON to its pretty-printed
+        form, which is why this is a separate, additive method rather than a
+        change to :meth:`fill_headers_json` — that method's merged caller
+        (``test_mcp_create_remote.py``) reads the editor text immediately after
+        filling and must keep seeing the verbatim, unformatted input.
+        """
+        self.headers_editor_content.blur()
+        self._wait_for_text_content_stable(self.headers_editor_content)
+
     @action("Fill Scopes")
     def fill_scopes(self, scopes: str) -> None:
         self._fill_text_input(self.scopes_input, scopes)
@@ -763,6 +935,66 @@ class McpFormPage(BasePage):
     # ------------------------------------------------------------------
     # Save + view toggle
     # ------------------------------------------------------------------
+
+    @action("Expand the detail page's configuration section")
+    def expand_configuration_section(self) -> None:
+        """Expand the detail page's collapsed schema-driven configuration fields.
+
+        No-op when the section is already expanded (the "show more" control
+        unmounts once clicked), so this is safe to call unconditionally.
+
+        Needed because the detail page renders NO ``toolkit-field-*`` element
+        until the section is expanded — the create form renders them inline,
+        the detail page does not (found at ELITEA-1923/1924).
+        """
+        # "Already expanded?" is decided on the FIELDS, never on the toggle:
+        # `toolkit-configuration-show-more` mounts asynchronously and is
+        # measurably absent for ~1s after a detail-page load even once
+        # `toolkit-detail-title` has resolved to the real name (polled live at
+        # ELITEA-1930, 10x500ms). A non-waiting `count() == 0` read on the
+        # toggle therefore silently no-op'd, and every following
+        # `toolkit-field-*` read then timed out with a misleading
+        # "element not found". Keying off `url_input` is exact in both
+        # directions: it is already present on the create form and on an
+        # already-expanded section (return immediately, no cost), and absent
+        # exactly when the section still needs expanding.
+        if self.url_input.count() > 0:
+            return
+        self.configuration_show_more.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        self.configuration_show_more.click()
+        self.url_input.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    @action("Click Discard and wait for the confirmation modal")
+    def click_discard(self) -> None:
+        """Click the detail page's Discard button and wait for its confirm modal.
+
+        Discard is a two-step gesture: the first click only opens a
+        ``Warning / Are you sure you want to discard changes?`` modal — the form
+        still holds the edited values and both action buttons stay enabled until
+        :meth:`confirm_discard` is called (verified live at ELITEA-1928). Same
+        shape as ``CredentialDetailPage.click_discard``.
+        """
+        self.detail_discard_button.click()
+        self.discard_confirm_modal.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    def get_discard_confirm_message(self) -> str:
+        """Return the discard-confirm modal's text.
+
+        The testid sits on the MUI ``Dialog`` root, so this includes the
+        "Warning" title and the "Cancel"/"Discard" button labels — assert with
+        ``in``, not ``==``.
+        """
+        return self.discard_confirm_modal.text_content() or ""
+
+    @action("Confirm Discard in the confirmation modal")
+    def confirm_discard(self) -> None:
+        """Confirm the discard and wait for the modal to unmount.
+
+        The modal is removed from the DOM (not hidden) when it closes, so the
+        wait is on ``detached`` — same as ``credential-discard-confirm-modal``.
+        """
+        self.discard_confirm_button.click()
+        self.discard_confirm_modal.wait_for(state="detached", timeout=UI_ELEMENT_TIMEOUT)
 
     def is_save_button_disabled(self) -> bool:
         """Return whether the create form's Save button is currently disabled.

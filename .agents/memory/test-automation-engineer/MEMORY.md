@@ -20,6 +20,7 @@
 - [Never amend after a failed husky commit](never_amend_after_a_failed_husky_commit_on_shared_branch.md) — rejected hook still leaves HEAD on someone else's commit
 - [AFS: work order, not gospel](afs_is_a_work_order_not_gospel.md) — verify every claim live; amend the AFS + _surface.md, never re-scope (12×)
 - [PROVENANCE needs both refs + git status](afs_on_main_provenance_claim_needs_two_ref_grep.md) — grep origin/main AND origin/automation/testids (6×)
+- [Composed testids: grep the composing SOURCE](composed_testid_provenance_grep_the_composing_source.md) — literal grep proves nothing; staleness runs both ways
 - [AFS Priority vs pytest.mark](afs_priority_vs_pytest_mark_preflight_check.md) — grep Priority vs @pytest.mark.pN before handoff, incl. module-inherited (8×)
 - [Verify your own delivery](verify_your_own_delivery_before_handoff.md) — exit code/stdout lie; run all three greps against the batch trunk (12×)
 - [Fix round: diff-check each named finding](fix_round_must_diff_check_each_named_finding.md) — grep the round's own commit per finding before calling it done, don't rely on memory
@@ -93,3 +94,4 @@
 - [ruff --fix reorders pages.* imports](ruff_autofix_reorders_pages_imports_and_stdin_filename_hides_it.md) — never blanket --fix an import block under automation/
 - [Vite dev server misses JSX edits on OneDrive](vite_dev_server_misses_jsx_edits_on_onedrive.md) — testid absent on :5173 though committed; `touch` forces HMR
 - [Absence guards must watch the real mechanism](absence_guards_must_watch_the_real_mechanism.md) — negative assertions need the signal the handler really emits
+- [Absence-of-request assertions must wrap their trigger](absence_of_request_assertion_must_wrap_its_trigger.md) — clicking before opening expect_response passes vacuously
