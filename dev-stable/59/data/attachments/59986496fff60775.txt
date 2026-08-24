@@ -1,0 +1,5 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Remove empty toolkit blocks from Sensitive Action Tools — Locator.wait_for: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator("text=\"Sensitive Actions\"").first to be visible
+
+ERROR    elitea.api:client.py:1793 Failed to create toolkit. Status: 400, Response: {"ok": false, "error": [{"type": "value_error", "loc": ["settings", "jira_configuration"], "msg": "Value error, {\"error_type\": \"private_credential_not_found\", \"credential_id\": \"guardrails_test_credential\"}"}]}
