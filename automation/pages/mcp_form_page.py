@@ -675,6 +675,17 @@ class McpFormPage(BasePage):
         """Return the three-dot menu popup's full text content (all menu item labels)."""
         return self.controls_menu.text_content() or ""
 
+    def wait_for_controls_menu_closed(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Wait for the three-dot menu popup to leave the DOM.
+
+        ``DotMenu`` unmounts the popup rather than hiding it, but the unmount
+        runs behind MUI's close TRANSITION — an assertion fired in the same
+        tick as the click that closed it still sees ``count() == 1``
+        (observed live, ELITEA-1959 implementation). This is a framework
+        condition wait, not a sleep.
+        """
+        self.controls_menu.wait_for(state="detached", timeout=timeout)
+
     @action("Close the three-dot actions menu with Escape")
     def close_controls_menu_with_escape(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
         """Press Escape and wait for the menu popup to UNMOUNT.
@@ -684,7 +695,7 @@ class McpFormPage(BasePage):
         ``count() == 0``, not on ``not_to_be_visible()``.
         """
         self.page.keyboard.press("Escape")
-        self.controls_menu.wait_for(state="detached", timeout=timeout)
+        self.wait_for_controls_menu_closed(timeout=timeout)
 
     @action("Click the Copy link menu item")
     def click_copy_link_menu_item(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str:

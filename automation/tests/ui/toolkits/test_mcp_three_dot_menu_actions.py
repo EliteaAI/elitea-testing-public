@@ -112,8 +112,15 @@ def test_mcp_detail_three_dot_menu_actions(page, toolkit_api: ToolkitAPI):
     name_a = f"{NAME_PREFIX_A}{ts}"
     name_b = f"{NAME_PREFIX_B}{ts}"
 
+    # Console-error side channel (AFS § Test Steps, "no console errors"). The
+    # listener is registered AFTER setup, deliberately: the /mcps/create
+    # type-picker used to seed the disposable MCP(s) emits a React dev-mode
+    # "unique key prop" warning from CategorySection.jsx on every mount —
+    # already tracked as EliteaAI/elitea-testing-public#656 and on a page this
+    # CASE never visits. Scoping the listener to the case's own flow keeps the
+    # assertion about the surface under test instead of about our scaffolding;
+    # it is not a weakening (the known defect stays filed and unmasked).
     console_errors: list = []
-    page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
 
     id_a: int | None = None
     id_b: int | None = None
@@ -124,6 +131,7 @@ def test_mcp_detail_three_dot_menu_actions(page, toolkit_api: ToolkitAPI):
             logger.info("Created MCP A id=%s (%s), MCP B id=%s (%s)", id_a, name_a, id_b, name_b)
 
         with allure.step("Step 1 — Open MCP A's detail page from the list; verify it loaded"):
+            page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
             list_page.navigate()
             assert name_a in list_page.get_card_names(), (
                 f"{name_a!r} should appear in the MCP list after creation"
@@ -189,6 +197,10 @@ def test_mcp_detail_three_dot_menu_actions(page, toolkit_api: ToolkitAPI):
             )
             # DotMenu.jsx's `withClose` fires on every item click — this is why
             # step 5 must RE-OPEN the menu before exercising Escape.
+            # The unmount runs behind MUI's close transition, so wait on the
+            # condition first — asserting in the click's own tick still sees
+            # the popup (observed live during implementation).
+            form.wait_for_controls_menu_closed()
             assert form.controls_menu.count() == 0, (
                 "The menu should close (unmount) as a side effect of clicking a menu item"
             )

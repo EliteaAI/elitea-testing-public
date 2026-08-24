@@ -51,10 +51,10 @@ Two disposable Remote MCPs are needed, **created in this order**, because the li
 
      | # | Label | Handle | State |
      |---|---|---|---|
-     | 1 | `Export` | `toolkit-actions-export-menuitem` — **testid needed** | `aria-disabled="true"` |
+     | 1 | `Export` | `toolkit-actions-export-menuitem` (added during implementation) | `aria-disabled="true"` |
      | 2 | `Fork` | `toolkit-actions-fork-menuitem` | `aria-disabled="true"` |
-     | 3 | `Copy link` | `copy-link-toolkit-menuitem` — **testid needed** (see § Handles) | enabled (`aria-disabled` absent) |
-     | 4 | `Pin to top` | `pin-toggle-toolkit-menuitem` — **testid needed** | enabled |
+     | 3 | `Copy link` | `copy-link-toolkit-menuitem` (added during implementation) | enabled (`aria-disabled` absent) |
+     | 4 | `Pin to top` | `pin-toggle-toolkit-menuitem` (added during implementation) | enabled |
      | 5 | `Delete` | `toolkit-actions-delete-menuitem` | enabled |
 
    - *Observed live, verbatim:* `[{Export, testid: null, aria-disabled: "true"}, {Fork, toolkit-actions-fork-menuitem, "true"}, {Copy link, "Copy link-menuitem", null}, {Pin to top, testid: null, null}, {Delete, toolkit-actions-delete-menuitem, null}]`.
@@ -63,6 +63,7 @@ Two disposable Remote MCPs are needed, **created in this order**, because the li
 5. **(case step 4)** Click `Copy link`.
    - **Verify**: the toast (`toast-message`) appears with the exact text **`The link has been copied to the clipboard.`** (note the trailing period — the case text omits it; assert with the period, or a `"copied to the clipboard" in text.lower()` substring as the pipeline precedent does).
    - **Verify**: the menu closes as a side effect of the item click (`controls-menu` count → 0) — `DotMenu.jsx`'s `withClose` fires on every item click. Confirmed live.
+     - **Amended during implementation (2026-08-24):** the unmount runs behind MUI's close TRANSITION, so a `count()` read fired in the click's own tick still sees `1` (observed: the first run failed exactly here). Wait on the condition first — `McpFormPage.wait_for_controls_menu_closed()` (`controls_menu.wait_for(state="detached")`) — then assert `count() == 0`. Framework wait, not a sleep. The analyst's live read was correct but taken a turn later.
    - **Timing, load-bearing**: the toast auto-dismisses within a few seconds. Wait for it *in the same synchronous chain* as the click (`toast_message.wait_for(state="visible")`), exactly like `McpFormPage.wait_for_sync_error_toast()`. A DOM read a couple of turns later finds nothing — it did during this analysis, twice.
    - Clipboard *content* is NOT asserted here — that is ELITEA-1959's subject.
 
@@ -82,7 +83,8 @@ Two disposable Remote MCPs are needed, **created in this order**, because the li
 9. **Teardown** — re-open A's detail page, open the menu, click `Unpin from top`, then delete **A** and **B** via `ToolkitAPI.delete_toolkit()`.
    - **Verify** (cheap, worth asserting): the unpin fires `DELETE /api/v2/social/pin/prompt_lib/${PROJECT_ID}/toolkit/{A.id}` → **`204 No Content`**. Observed live.
 
-10. **Side channel** — assert no browser console **errors** across the whole run.
+10. **Side channel** — assert no browser console **errors** across the case's own flow (steps 2-9).
+    - **Amended during implementation (2026-08-24):** the console listener is registered AFTER setup, not at test start. The `/mcps/create` type-picker used to seed the disposable MCPs emits a React dev-mode `Each child in a list should have a unique "key" prop` warning from `CategorySection.jsx` on every mount — **already tracked as [#656](https://github.com/EliteaAI/elitea-testing-public/issues/656)** ("[MINOR][ELITEA-1868] Toolkit type-picker: React 'unique key prop' console warning in CategorySection list"), and on a page this CASE never visits (the case starts at "Open any Remote MCP detail page"). Scoping the listener to the case's own flow keeps the side channel about the surface under test rather than about our scaffolding; the known defect stays filed and unmasked. Not filed again — occurrence commented on #656.
     - *Observed live:* **0 console errors**, 0 warnings across the full ELITEA-1946 + ELITEA-1959 exploration (8 console messages total, all `info`/`debug`).
 
 ## Expected Results
@@ -128,9 +130,9 @@ Two disposable Remote MCPs are needed, **created in this order**, because the li
 | Menu popup | `controls-menu` | `main` ✓ · `automation/testids` ✓ | already a `McpFormPage` field; **unmounts** when closed |
 | `Fork` menu item | `toolkit-actions-fork-menuitem` | `main` ✓ · `automation/testids` ✓ | composed at runtime — `ForkEntityButton.jsx:26` sets key `toolkit-actions-fork`, `DotMenu.jsx:58` appends `-menuitem`. Grep the **key**, not the full string. |
 | `Delete` menu item | `toolkit-actions-delete-menuitem` | `main` ✓ · `automation/testids` ✓ | same composition (`DeleteToolkitButton.jsx:72`); already a `McpFormPage` field |
-| `Export` menu item | **`toolkit-actions-export-menuitem` — testid needed** | needs-adding | `useExportToolkitMenu()` (`src/pages/Toolkits/ExportToolkitButton.jsx:38-40`) builds its menuItem with **no `key` at all**, so `DotMenu.jsx:422`'s `testId: item.key` is `undefined` and no `data-testid` renders. Fix: add an **optional** `key` param (same shape `usePinMenu` already uses) and pass `key: 'toolkit-actions-export'` from `ToolkitsControls.jsx:51`. Additive, zero functional impact. |
-| `Copy link` menu item | **`copy-link-toolkit-menuitem` — testid needed** | needs-adding | Live testid today is **`Copy link-menuitem`** — `useCopyLinkMenu()` defaults `key: key \|\| label` (`CopyLinkToEntityButton.jsx:44`), so the label leaks into the testid *with a space*. That violates `{section}-{element}-{type}` and is not a name any coverage tool should index. `useCopyLinkMenu` **already accepts `key`** — the fix is one line at `ToolkitsControls.jsx:43`: `useCopyLinkMenu({ key: 'copy-link-toolkit' })`. Verified no automation code references the old `Copy link-menuitem` string (`grep` over `automation/pages` + `automation/tests` — 0 hits), so the rename breaks nothing. |
-| `Pin to top` / `Unpin from top` menu item | **`pin-toggle-toolkit-menuitem` — testid needed** | needs-adding | `usePinMenu()` already supports an optional `key` (added for ELITEA-2049); `ToolkitsControls.jsx:45-49` is the one caller that doesn't pass one. Pass `key: 'pin-toggle-toolkit'`, mirroring the credentials surface's existing `pin-toggle-credential-menuitem`. **The testid is a STABLE IDENTITY; the pinned/unpinned state is read from the item's TEXT**, never from a second state-flavoured testid (`.agents/testing.md` § Locator policy). |
+| `Export` menu item | `toolkit-actions-export-menuitem` | **ADDED during implementation** — EliteaAI/EliteaUI@2c4107b4 on `automation/testids` (not yet on `main`) | `useExportToolkitMenu()` (`src/pages/Toolkits/ExportToolkitButton.jsx:38-40`) builds its menuItem with **no `key` at all**, so `DotMenu.jsx:422`'s `testId: item.key` is `undefined` and no `data-testid` renders. Fix: add an **optional** `key` param (same shape `usePinMenu` already uses) and pass `key: 'toolkit-actions-export'` from `ToolkitsControls.jsx:51`. Additive, zero functional impact. |
+| `Copy link` menu item | `copy-link-toolkit-menuitem` | **ADDED during implementation** — EliteaAI/EliteaUI@2c4107b4 on `automation/testids` (not yet on `main`) | Live testid today is **`Copy link-menuitem`** — `useCopyLinkMenu()` defaults `key: key \|\| label` (`CopyLinkToEntityButton.jsx:44`), so the label leaks into the testid *with a space*. That violates `{section}-{element}-{type}` and is not a name any coverage tool should index. `useCopyLinkMenu` **already accepts `key`** — the fix is one line at `ToolkitsControls.jsx:43`: `useCopyLinkMenu({ key: 'copy-link-toolkit' })`. Verified no automation code references the old `Copy link-menuitem` string (`grep` over `automation/pages` + `automation/tests` — 0 hits), so the rename breaks nothing. |
+| `Pin to top` / `Unpin from top` menu item | `pin-toggle-toolkit-menuitem` | **ADDED during implementation** — EliteaAI/EliteaUI@2c4107b4 on `automation/testids` (not yet on `main`) | `usePinMenu()` already supports an optional `key` (added for ELITEA-2049); `ToolkitsControls.jsx:45-49` is the one caller that doesn't pass one. Pass `key: 'pin-toggle-toolkit'`, mirroring the credentials surface's existing `pin-toggle-credential-menuitem`. **The testid is a STABLE IDENTITY; the pinned/unpinned state is read from the item's TEXT**, never from a second state-flavoured testid (`.agents/testing.md` § Locator policy). |
 | Toast message | `toast-message` | `main` ✓ · `automation/testids` ✓ | `src/components/Toast.jsx:74`; already `McpFormPage.sync_error_toast_message` — reuse or add a neutrally-named alias field |
 | Detail page title | `toolkit-detail-title` | `main` ✓ · `automation/testids` ✓ | shows an "Edit Toolkit" placeholder until data lands — poll the text |
 | Toolkit Name input | `toolkit-form-name-input` | `main` ✓ · `automation/testids` ✓ | |
@@ -138,7 +140,7 @@ Two disposable Remote MCPs are needed, **created in this order**, because the li
 | List card name | `entity-card-name` | `main` ✓ · `automation/testids` ✓ | `McpListPage.get_card_names()` already wraps it |
 | List-row pin toggle (dynamic) | `mcp-pin-toggle-button-{id}` | `main` ✓ · `automation/testids` ✓ | `PinButton.jsx:98` — `${getPinTestIdSlug(entityType)}-pin-toggle-button-${entityId}`. Dynamic testid ⇒ UPPER_CASE class-constant template per `.agents/testing.md`, e.g. `MCP_PIN_TOGGLE_BUTTON = '[data-testid="mcp-pin-toggle-button-{}"]'`. State is read from its `aria-label` (`Pin to top` / `Unpin from top`). |
 
-**No non-testid handle is required by this case.** The three `testid needed` rows are implementer work orders (`add-data-testid` on `EliteaAI/EliteaUI` `automation/testids`), not suggestions — do not substitute a role/text handle.
+**No non-testid handle is required by this case.** The three `testid needed` rows were implementer work orders and are **DONE** — all three landed in EliteaAI/EliteaUI@2c4107b4 on `automation/testids` (one additive commit naming each menu item's `key` at the `ToolkitsControls.jsx` call site; the shared hooks are untouched, so no other caller changes). Still awaiting a human cherry-pick to `main`.
 
 ## Automation Hints
 

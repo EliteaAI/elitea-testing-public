@@ -43,9 +43,10 @@
 3. **(case step 2)** Click the three-dot menu button (`controls-menu-button`).
    - **Verify**: `controls-menu` visible.
 
-4. **(case step 3)** Clear the clipboard (real write of `''`), then click `Copy link` (`copy-link-toolkit-menuitem` — **testid needed**, see § Handles).
+4. **(case step 3)** Clear the clipboard (real write of `''`), then click `Copy link` (`copy-link-toolkit-menuitem` — added during implementation, EliteaAI/EliteaUI@2c4107b4).
    - **Verify**: `toast-message` appears reading exactly **`The link has been copied to the clipboard.`**
    - **Verify**: the menu closes as a side effect (`controls-menu` → count 0) — `DotMenu.jsx`'s `withClose`.
+     - **Amended during implementation (2026-08-24):** the unmount runs behind MUI's close transition — wait for `detached` (`McpFormPage.wait_for_controls_menu_closed()`) before reading `count()`, or the assertion fires a tick too early and sees `1`.
    - Clearing first turns "wait for a non-empty clipboard" into a real condition instead of a sleep — this is `_copy_link_via_menuitem()`'s whole reason for existing.
 
 5. **(case step 4)** Read the clipboard and assert its content.
@@ -68,7 +69,8 @@
 
 7. **Teardown** — `ToolkitAPI.delete_toolkit(A.id)`.
 
-8. **Side channel** — assert no browser console **errors** across the run (including on the new tab: attach the listener to `new_page` before `goto`, as `test_agent_copy_version_link.py:303` does).
+8. **Side channel** — assert no browser console **errors** across the case's own flow, steps 2-6 (including on the new tab: attach the listener to `new_page` before `goto`, as `test_agent_copy_version_link.py:303` does).
+   - **Amended during implementation (2026-08-24):** the main-page listener is registered AFTER setup. The `/mcps/create` type-picker used to seed the disposable MCP emits a React dev-mode `unique "key" prop` warning from `CategorySection.jsx` — already tracked as [#656](https://github.com/EliteaAI/elitea-testing-public/issues/656), on a page this case never visits. Not re-filed; occurrence commented on #656.
    - *Observed live:* **0 console errors**, 0 warnings across the whole exploration.
 
 ## Expected Results
@@ -111,13 +113,13 @@
 |---|---|---|---|
 | Three-dot menu button | `controls-menu-button` | `main` ✓ · `automation/testids` ✓ | already a `McpFormPage` field |
 | Menu popup | `controls-menu` | `main` ✓ · `automation/testids` ✓ | unmounts on close |
-| `Copy link` menu item | **`copy-link-toolkit-menuitem` — testid needed** | needs-adding | Live testid today is **`Copy link-menuitem`**: `useCopyLinkMenu()` defaults `key: key \|\| label` (`CopyLinkToEntityButton.jsx:44`), leaking the label — *with a space* — into the testid. The hook **already accepts `key`**; the fix is one additive line at `ToolkitsControls.jsx:43` → `useCopyLinkMenu({ key: 'copy-link-toolkit' })`. `grep` over `automation/pages` + `automation/tests` found **0** references to the old string, so nothing breaks. Do not ship a test bound to `Copy link-menuitem`. |
+| `Copy link` menu item | `copy-link-toolkit-menuitem` | **ADDED during implementation** — EliteaAI/EliteaUI@2c4107b4 on `automation/testids` (not yet on `main`) | Live testid today is **`Copy link-menuitem`**: `useCopyLinkMenu()` defaults `key: key \|\| label` (`CopyLinkToEntityButton.jsx:44`), leaking the label — *with a space* — into the testid. The hook **already accepts `key`**; the fix is one additive line at `ToolkitsControls.jsx:43` → `useCopyLinkMenu({ key: 'copy-link-toolkit' })`. `grep` over `automation/pages` + `automation/tests` found **0** references to the old string, so nothing breaks. Do not ship a test bound to `Copy link-menuitem`. |
 | Toast message | `toast-message` | `main` ✓ · `automation/testids` ✓ | `src/components/Toast.jsx:74`; auto-dismisses within seconds — wait in the same chain as the click |
 | Detail page title | `toolkit-detail-title` | `main` ✓ · `automation/testids` ✓ | placeholder text until data lands — poll the text |
 | Toolkit Name input | `toolkit-form-name-input` | `main` ✓ · `automation/testids` ✓ | second, independent confirmation the right MCP loaded |
 | List card name | `entity-card-name` | `main` ✓ · `automation/testids` ✓ | `McpListPage.open_card_by_name()` already wraps it |
 
-**One `testid needed` row**, and it is an implementer work order (`add-data-testid` on `EliteaAI/EliteaUI` `automation/testids`), not a suggestion. ELITEA-1946 requests the same testid plus two more (`toolkit-actions-export-menuitem`, `pin-toggle-toolkit-menuitem`) — if both cases are built on one branch, add all three in a single commit.
+**One `testid needed` row — DONE.** All three testids this cluster needed (`copy-link-toolkit-menuitem`, `toolkit-actions-export-menuitem`, `pin-toggle-toolkit-menuitem`) landed in ONE additive commit, EliteaAI/EliteaUI@2c4107b4 on `automation/testids`, as the AFS suggested. Awaiting a human cherry-pick to `main`.
 
 ## Automation Hints
 
