@@ -1,6 +1,0 @@
-WARNING  elitea.pages.chat:chat_page.py:1609 Timeout waiting for AI response. Copy button seen: False, Current text: Thought for less than a second
-WARNING  elitea.pages.chat:chat_page.py:1609 Timeout waiting for AI response. Copy button seen: False, Current text: Thought for 2 min and 33 sec
-Here’s the generated image of a sunset over mountains (1024×1024):
-
-- File: `sunset_over_mountains_20260824133735440.png`
-WARNING  elitea.pages.chat:chat_page.py:1609 Timeout waiting for AI response. Copy button seen: False, Current text: Thought for less than a second
