@@ -167,8 +167,8 @@ All handles below were exercised live in this session unless the PROVENANCE colu
 | 10 | Raw Json view toggle | `toolkit-raw-json-view-toggle` | on-main ✓ | |
 | 11 | Raw Json editor content | `toolkit-raw-json-editor-content` | on-main ✓ | read via `get_raw_json_full()` |
 | 12 | Form view toggle | `toolkit-form-view-toggle` | on-main ✓ | |
-| 13 | **Timeout info icon** | **`toolkit-field-timeout-info-icon`** | **needs-adding** | work order below |
-| 14 | **Cache TTL info icon** | **`toolkit-field-cache_ttl-info-icon`** | **needs-adding** | work order below |
+| 13 | **Timeout info icon** | **`toolkit-field-timeout-info-icon`** | **ADDED during implementation** — EliteaAI/EliteaUI@25c47d7d on `automation/testids`; NOT yet on `main` (human cherry-pick) | work order below, executed as written |
+| 14 | **Cache TTL info icon** | **`toolkit-field-cache_ttl-info-icon`** | **ADDED during implementation** — EliteaAI/EliteaUI@25c47d7d on `automation/testids`; NOT yet on `main` (human cherry-pick) | work order below, executed as written |
 
 ### Work order — the two info-icon testids (`add-data-testid`, rows 13/14)
 
@@ -198,6 +198,19 @@ Extend that same per-key allow-list with `timeout` and `cache_ttl`, naming them
   `.agents/testing.md` § Locator policy forbids.
 - **Zero functional impact**: two additive props on an existing call, no new DOM node,
   no new hook, no removed line — clears the `add-data-testid` § Step 5.5 greps.
+
+**Shipped during ELITEA-1956/1957 implementation (2026-08-24)** exactly as specified —
+EliteaAI/EliteaUI@25c47d7d on `automation/testids`:
+
+```jsx
+{...((k === 'timeout' || k === 'cache_ttl') && {
+  tooltipTestId: `toolkit-field-${k}-info-icon`,
+})}
+```
+
+Only `tooltipTestId`, scoped per key, added as a SECOND spread beside the existing
+`bucket` one (leaving that line byte-identical). All three `add-data-testid` § Step 5.5
+greps returned 0 hits (no new hook, no new DOM node, no removed line).
 
 ## Coverage Map
 
@@ -310,3 +323,11 @@ None. Every step of both cases was executed and observed live.
   `#549` soft, anything else a hard fail); it degrades gracefully to a clean pass if the
   warnings really are gone.
 - Wrap each step in `with allure.step("Step N — …")`, one block per numbered step above.
+
+**Implemented (2026-08-24):**
+`automation/tests/ui/toolkits/test_mcp_edit_timeout_cache_ttl.py::test_mcp_edit_timeout_cache_ttl[ELITEA-1956]`
+and `…[ELITEA-1957]` — one parameterized spec as specified. `BasePage.reload_and_wait()`
+was used for Step 6's reload (it already dispatches to `McpFormPage.wait_for_page_load()`,
+so the AFS's `page.reload()` + `wait_for_page_load()` pair needs no separate call). Every
+step's assertion landed as written; the Step 5 / Step 8 PUT bodies do carry
+`settings[<key>]` as specified. Ran GREEN 2/2 first try, 61.7 s, zero reruns.

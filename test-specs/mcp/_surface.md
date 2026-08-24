@@ -1164,3 +1164,23 @@ Raw Json → restore, twice), headless, fresh context — including the `#291` R
 warnings and the `#549` MUI-Tabs warning that `test_mcp_edit_toggle_enable_caching.py` still
 filters/soft-fails. **Not evidence they are fixed** (different render path / headless), but
 worth re-checking the next time someone touches those filters.
+
+
+### Resolved/added during ELITEA-1956/1957 implementation (2026-08-24, implementer)
+
+- **The info-icon testid gap above is CLOSED.** `toolkit-field-timeout-info-icon` and
+  `toolkit-field-cache_ttl-info-icon` now exist — EliteaAI/EliteaUI@25c47d7d on
+  `automation/testids` (NOT yet on `main`: a human cherry-picks). Shipped as a second
+  per-key spread beside the pre-existing `bucket` one in
+  `ToolBaseProperty.jsx`, passing only `tooltipTestId`. Bound as
+  `McpFormPage.timeout_info_icon` / `McpFormPage.cache_ttl_info_icon`. The same one-line
+  pattern is now the proven recipe for any other schema field's info icon.
+- **`save_and_wait_for_updated()`'s returned PUT body carries the full `settings` object**
+  — `save_response["settings"]["timeout"]` is directly assertable, no extra GET needed
+  (used for both the save and the restore step). A UI-typed value comes back as a JSON
+  STRING there too, matching what Raw Json renders.
+- **Console stayed clean again** across both parameterized rows (headless): zero
+  error-type messages, so neither the `#291` filter nor the `#549` soft-fail branch fired.
+  Still not evidence they are fixed.
+- **Both rows ran green first try, 61.7 s for the pair** (seed → edit → save → reload →
+  Raw Json → restore → API delete, twice), no reruns.
