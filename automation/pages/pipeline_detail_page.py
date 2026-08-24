@@ -1635,13 +1635,12 @@ class PipelineDetailPage(PipelineFormPage):
         description='Run Details panel "Timeline step" section (label + node id + stepper)'
     )
 
-    # TEMPORARY FIX: testid removed or never existed (discovered Aug 24)
-    # Target first accordion, then go up to its container parent
-    # The container has all accordions, so text_content() will get all state vars
-    run_details_states_section = LocatorDescriptor(
-        locator='[data-testid="pipeline-run-details-panel"] .MuiAccordion-root >> xpath=..',
-        description='Run Details panel "States" section (per-variable accordion list)'
-    )
+    # TEMPORARY FIX removed - now building locator directly in get_run_details_states_section_text()
+    # Keeping this comment as placeholder for when testid is added
+    # run_details_states_section = LocatorDescriptor(
+    #     testid="pipeline-run-details-states-section",
+    #     description='Run Details panel "States" section (per-variable accordion list)'
+    # )
 
     # Multi-run history toggle (RunStateNodeGroup — ELITEA-2454). Renders
     # only when >1 run exists (`nodes.length > 1`), immediately before the
@@ -7069,8 +7068,16 @@ class PipelineDetailPage(PipelineFormPage):
         return (self.run_details_timeline_section.text_content() or "").strip()
 
     def get_run_details_states_section_text(self) -> str:
-        """Return the Run Details panel's States section text content."""
-        return (self.run_details_states_section.text_content() or "").strip()
+        """Return the Run Details panel's States section text content.
+
+        TEMPORARY: Builds locator manually due to missing testid.
+        Target: statesContainer (parent of first MuiAccordion).
+        """
+        # TEMPORARY FIX: testid missing, build locator manually
+        panel = self.page.get_by_test_id("pipeline-run-details-panel")
+        first_accordion = panel.locator(".MuiAccordion-root").first
+        states_container = first_accordion.locator("xpath=..")
+        return (states_container.text_content() or "").strip()
 
     # ------------------------------------------------------------------
     # Run Details panel — multi-run history (RunStateNodeGroup — ELITEA-2454)
