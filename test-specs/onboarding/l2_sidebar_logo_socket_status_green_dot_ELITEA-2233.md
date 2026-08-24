@@ -42,9 +42,11 @@ Live-confirmed 2026-08-24: `background-color: rgb(43, 212, 141)`, `aria-label="E
 - Sidebar rendered (any authenticated route; this AFS uses `/chat`, the default landing).
   The dot lives inside `sidebar-toggle`, which renders in **both** the expanded and collapsed sidebar
   (unlike the bell of ELITEA-2234).
-- The first-visit interactive-tour prompt may cover the page — see ELITEA-2234 AFS § Entry-path quirk.
-  This case only *reads* the dot, so the backdrop does not block it, but it does emit the known
-  `#1753` console error; dismiss it for a clean side channel.
+- ~~The first-visit interactive-tour prompt may cover the page~~ — **amended at implementation**: the
+  prompt cannot fire on the suite's entry path (fresh context + empty localhost `auth_state` storage
+  state ⇒ the `interactive-tour:first-elitea:pending` flag `useProposePendingTour` requires is never
+  set). See ELITEA-2234 AFS § Entry-path quirk (amended). No dismissal step is implemented; the
+  `#1753` console filter is kept as a cheap, ticket-linked safety net.
 - **ZERO substitution.** No route mock, no injected state, no Redux poke. Every asserted value is
   produced by the product.
 
@@ -59,7 +61,7 @@ Live-confirmed 2026-08-24: `background-color: rgb(43, 212, 141)`, `aria-label="E
 | P | Precondition: "User is logged in to the Elitea platform" | authenticated session | framework `auth_state` | `expect(sidebar_toggle).to_be_visible()` | **asserted** (transit) |
 | 1 | Log in to the application for the **first time**; land on the expected landing page | authenticated, on landing page | `page.goto("/chat")` | `expect(page).to_have_url(re.compile("/chat"))` | **asserted, scope-amended** — "first time" is not reproducible for a standard user and the product does not gate the dot on it: the indicator is socket state, rendered on every session (`useSocketIcon.hooks.jsx`). Asserting the live contract per the reverse-masking guard |
 | 2 | Locate the ELITEA logo icon in the top left of the sidebar | control located, no error | `sidebar-toggle` (**on-main ✓**) | `expect(sidebar_toggle).to_be_visible()` | **asserted** — this element carries the ELITEA wordmark SVG (`EliteAIcon`) |
-| 3 | Verify a green dot is displayed above the ELITEA logo | green dot visible | `sidebar-socket-status-indicator` (**testid needed**) + `data-socket-status` (**needed**) | `expect(dot).to_be_visible()` + `expect(dot).to_have_css("background-color", "rgb(43, 212, 141)")` + `expect(dot).to_have_attribute("data-socket-status", "connected")` + geometry: the dot's box is inside the logo button's box and top-aligned with it | **asserted** — three independent readings: the semantic state attribute, the rendered colour, and the position. "Above the logo" is, live, the logo button's **top-right corner** (dot x=44..52 y=8..16 inside button x=8..52 y=8..52) — asserted as containment + `dot.top == button.top`, never as pixel constants |
+| 3 | Verify a green dot is displayed above the ELITEA logo | green dot visible | `sidebar-socket-status-indicator` + `data-socket-status` (**added** EliteaAI/EliteaUI@2c0ac201) | `expect(dot).to_be_visible()` + `expect(dot).to_have_css("background-color", "rgb(43, 212, 141)")` + `expect(dot).to_have_attribute("data-socket-status", "connected")` + geometry: the dot's box is inside the logo button's box and top-aligned with it | **asserted** — three independent readings: the semantic state attribute, the rendered colour, and the position. "Above the logo" is, live, the logo button's **top-right corner** (dot x=44..52 y=8..16 inside button x=8..52 y=8..52) — asserted as containment + `dot.top == button.top`, never as pixel constants |
 | 4 | Verify **no red dot** is shown (red would mean the server is updating) | no red indicator anywhere | same element + a page-wide count | `expect(dot).not_to_have_css("background-color", "rgb(215, 22, 22)")` **and** `expect(socket_status_indicators).to_have_count(1)` **and** `expect(page.locator(SOCKET_INDICATOR_DISCONNECTED)).to_have_count(0)` (the testid + `[data-socket-status="disconnected"]` state filter) | **asserted** — the count assertion is what makes the negative exhaustive: with exactly one indicator element in the DOM, "this one is green" *is* "no red one exists". The `[data-socket-status="disconnected"]` absence assertion states the same in the product's own vocabulary and is a first-class reference under canon ruling #511 |
 | Final | No red dot is shown | as step 4 | same | same | **asserted** |
 
@@ -79,7 +81,7 @@ Live-confirmed 2026-08-24: `background-color: rgb(43, 212, 141)`, `aria-label="E
 | Element | Handle (testid-only) | Provenance (verified 2026-08-24, `git fetch origin` in ../EliteaUI) |
 |---|---|---|
 | Sidebar logo button (ELITEA wordmark) | `sidebar-toggle` | **on-main ✓** |
-| Socket status dot | `sidebar-socket-status-indicator` + `data-socket-status="connected|disconnected"` | **needs-adding** |
+| Socket status dot | `sidebar-socket-status-indicator` + `data-socket-status="connected|disconnected"` | **ADDED** EliteaAI/EliteaUI@2c0ac201 (`automation/testids`, pushed) |
 
 Class constants for the page object (dynamic/state-filtered shapes must live at class level per
 `.claude/rules/page-objects.md`):
@@ -178,3 +180,17 @@ already filed, and only filtered here.)
 
 - `test-results/screenshots/ELITEA-2234-step-05-notifications-popover-open.png` — shared cluster frame: the
   green dot at the logo's top-right corner is visible in it.
+
+---
+
+## Implementation amendment (test-automation-engineer, 2026-08-24)
+
+- **Shipped:** `automation/tests/ui/onboarding/test_sidebar_socket_status_indicator.py`
+  (`TestSidebarSocketStatusIndicator::test_logo_shows_green_connected_dot`) on the shared new page
+  object `automation/pages/sidebar_header_page.py` (`SidebarHeaderPage`). Green first run, 0 reruns.
+- **Every live value in § Live-captured values re-confirmed by the run**: `rgb(43, 212, 141)`,
+  `data-socket-status="connected"`, `aria-label="Elitea is connected"`, DOM count 1, and the dot
+  contained in the logo button's box and flush with its top edge (asserted with a 1 px sub-pixel
+  tolerance, not as pixel constants).
+- **Entry path simplified** — no first-visit-prompt dismissal (see § Preconditions, amended).
+- Everything else implemented as specced; every Coverage-Map row is asserted.
