@@ -5,7 +5,7 @@ executing your own case.
 
 | Field | Value |
 |---|---|
-| Last verified | 2026-08-24 (qa-engineer, batch `onboarding-w2`, cases ELITEA-2235/2236/2241) |
+| Last verified | 2026-08-24 (qa-engineer, batch `onboarding-w2`, cases ELITEA-2235/2236/2241, then ELITEA-2232) |
 | Target | `http://localhost:5173/onboarding` — EliteaUI `automation/testids`, DEV backend |
 | Source | `src/pages/Onboarding/Onboarding.jsx`, `src/[fsd]/features/onboarding/ui/{Welcome,OnboardingTour,TourContent,WorkspaceIsReady}.jsx` |
 
@@ -19,7 +19,7 @@ and local state:
 | State | Gate | Renders | Whose case |
 |---|---|---|---|
 | **Welcome** | `!showTour && !user.personal_project_id && user.id` | `Welcome` card, "Sure, let's go!" | ELITEA-2231 (needs the author-details mock) |
-| **Tour + provisioning** | `showTour && !thePrivateProjectIsReady` | `OnboardingTour` + `onboarding-progress-footer` ("Configuring Personal project… / about 5 min") | ELITEA-2232-ish |
+| **Tour + provisioning** | `showTour && !thePrivateProjectIsReady` | `OnboardingTour` + `onboarding-progress-footer` ("Configuring Personal project… / about 5 min") | ELITEA-2232 (executed live 2026-08-24 — § The provisioning state) |
 | **Tour + ready** | `showTour && thePrivateProjectIsReady` | `OnboardingTour` + `WorkspaceIsReady` ("Jump in now!") | ELITEA-2235 / 2236 / 2241 |
 
 `showTour` initialises to `hasClickedGetStarted || !!user.personal_project_id`, and the effect at
@@ -121,6 +121,7 @@ and `project-selector-trigger` ARE on main. `sidebar-menu-item-*` is a dynamic t
 - `lhigh_onboarding_tips_card_slide_1_of_48_ELITEA-2235.md`
 - `lhigh_onboarding_tips_fullscreen_expand_collapse_ELITEA-2236.md`
 - `lmedium_onboarding_jump_in_now_ELITEA-2241.md`
+- `lmedium_onboarding_provisioning_after_get_started_ELITEA-2232.md`
 
 ---
 
@@ -179,3 +180,50 @@ overlays, not in the onboarding page object — the prompt mounts on whatever ro
 Quirks 1-6 above all confirmed live by the implementation run — including the deterministic
 first-visit prompt and the #1753 console error, which the ELITEA-2241 spec filters by that ONE
 message with a `# Known defect: #1753` comment.
+
+
+---
+
+## The provisioning state — executed live 2026-08-24 (ELITEA-2232)
+
+The middle state of the three above, reached the only way it can be: install
+`OnboardingPage.mock_fresh_user_state()` (nulls `personal_project_id` on `GET /social/author/`,
+lead ruling `onboarding-w1` DECISIONS § D3) **before navigating**, go to `/onboarding`, click
+`onboarding-welcome-get-started-button`. It is the one state no merged spec asserts — the other
+three onboarding specs all assert `onboarding-progress-footer` **absent**.
+
+**What the click actually does** (`Onboarding.jsx:66-85` `handleShowTour`) — worth knowing before
+writing any assertion about "provisioning":
+
+1. `sessionStorage.onboarding_state = 'true'` (this is why a reused context skips the Welcome
+   card entirely — `showTour` initialises from it at line 36-37; always use a fresh context).
+2. Starts a **client-side progress animation only**: `progress` starts at `5` and grows by
+   `95/150` per second, capped at 95. Live: `aria-valuenow` 5 → 13 @ +12 s → 16 @ +18 s.
+3. Starts a **5 s poll of `GET /api/v2/social/author/`**. Live cadence +4.9 / +9.9 / +14.9 s.
+
+There is **no provisioning API call at all** — provisioning is backend-side, tied to account
+creation. The TMS case text says otherwise; filed as clarification **#1756**. Anyone writing
+"verify provisioning starts" should assert the *poll start* instead. Careful with the pre-click
+baseline: `/social/author/` is fetched **twice during normal page load** (+0.9 s, +1.6 s), so the
+"nothing was polling before" window must start after the Welcome card is visible (a ≥7 s quiet
+window there is clean, 0 requests).
+
+**Exiting the state.** Releasing the mock (`clear_author_details_mock()`) lets the next poll see
+the real `personal_project_id`; the footer unmounts and `WorkspaceIsReady` appears — within 5 s,
+no sleep needed, `expect(...).to_be_visible(timeout=20_000)` covers it.
+
+**The sidebar renders on `/onboarding` itself once the project is ready** — this surprised the
+analysis and matters for ELITEA-2232 step 11: `MainSidebar` returns null only when
+`isOnboardingPage && !user.personal_project_id`, so the moment the id is truthy the full app
+sidebar appears *beside the onboarding page*, no navigation required.
+
+| Observable, ready state on `/onboarding` | Value |
+|---|---|
+| `sidebar-toggle`, `project-selector-trigger` | visible (both **on-main ✓**) |
+| `project-selector-trigger` text | `P\nProject:\nPrivate` |
+| `sidebar-menu-item-*` | fills in **progressively**: `skills` + `applications` at t+0, the full nine (`chat`, `agents`, `pipelines`, `skills`, `toolkits`, `mcps`, `credentials`, `applications`, `artifacts`) by ~3 s. Anchor on one item with auto-waiting `expect`; never assert the list length. |
+| project dropdown option row | **no testid** — requested as dynamic `project-selector-option-{label}` on `SidebarProjectSelect.jsx` `customRenderOption` (ELITEA-2232 AFS) |
+| console errors, whole flow | **0** — quirk 4's `#1753` MUI focus error needs the first-visit prompt, which only appears after "Jump in now!" navigates to `/chat`. Stay on `/onboarding` and the console assertion needs no filter. |
+
+**Absence handles during provisioning** (all confirmed count 0): `sidebar-toggle`,
+`project-selector-trigger`, `onboarding-workspace-ready-title`, `onboarding-welcome-card`.
