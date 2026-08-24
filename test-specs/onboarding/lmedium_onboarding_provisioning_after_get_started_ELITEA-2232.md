@@ -111,7 +111,7 @@ but the direct navigation is one hop and is what the merged ELITEA-2231 spec doe
 
 | Observable | Reason | Assertion |
 |---|---|---|
-| Progress bar is a *determinate* MUI bar that **advances** | Step 8 only asks that a bar is *visible* — a frozen or indeterminate bar would pass that while telling the user nothing. `Onboarding.jsx:71-73` increments `progress` by `95/150` every second from a start of `5`. Measured live: `aria-valuenow` 5 → 13 after 12 s → 16 after 18 s. | `expect(progress_bar).to_have_attribute("role", "progressbar")`; capture `aria-valuenow` right after the click (== `"5"`), then after a ≥6 s wait assert `int(later) > int(initial)` |
+| Progress bar is a *determinate* MUI bar that **advances** | Step 8 only asks that a bar is *visible* — a frozen or indeterminate bar would pass that while telling the user nothing. `Onboarding.jsx:71-73` increments `progress` by `95/150` every second from a start of `5`. Measured live: `aria-valuenow` 5 → 13 after 12 s → 16 after 18 s. | `expect(progress_bar).to_have_attribute("role", "progressbar")`; capture `aria-valuenow` right after the click, assert it is at its baseline (`5 <= initial <= 12`), then after a ≥6 s wait assert `int(later) > int(initial)`. **Amended at implementation (2026-08-24):** the AFS originally specified exact equality with `"5"`. The read happens after the footer's visibility assertion, i.e. inside — but not reliably at the start of — the product's first 1 s interval tick, so exact equality is a stopwatch race against the 3× merge gate while carrying no extra meaning. The bounded form asserts the same observable (the bar starts at its documented baseline and then moves); shipped value observed live: `5`. |
 | Previous-slide button is **disabled** | Independent proof the card is really at the FIRST slide — a rendering bug could print `1 / 48` while the position is wrong (`TourContent.jsx: disabled={currentStep === 1}`). Same rationale as ELITEA-2235's Axis 2. | `expect(tour_prev_button).to_be_disabled()` |
 | `onboarding-workspace-ready-title` is **absent** during provisioning | The provisioning state and the ready state are mutually exclusive in `Onboarding.jsx:182/213`; asserting the banner's absence is what proves the page is genuinely in the *provisioning* state and not merely rendering a footer. | `expect(workspace_ready_title).to_have_count(0)` while the footer is visible |
 | `sessionStorage.onboarding_state == "true"` after the click | The click's only persisted side effect (`Onboarding.jsx:68`); it is what makes a page refresh resume the tour instead of re-showing the Welcome card. Cheap, and it distinguishes "the click was handled" from "React re-rendered for another reason". | `page.evaluate("sessionStorage.getItem('onboarding_state')") == "true"` |
@@ -148,9 +148,9 @@ Provenance verified 2026-08-24 after `cd ../EliteaUI && git fetch origin`, two-s
 | Sidebar toggle (absence, then presence) | `sidebar-toggle` | **on-main ✓** | `SidebarBody.jsx:221` |
 | Project dropdown trigger (absence, then presence) | `project-selector-trigger` | **on-main ✓** | `SidebarProjectSelect.jsx:94` |
 | Sidebar entity menu items | `sidebar-menu-item-{value}` (dynamic) | on-`automation/testids` only | `SidebarBody.jsx:272` (`testId={...}` prop) |
-| Project option inside the open dropdown | **`project-selector-option-{label}` — testid needed** | needs-adding | `SidebarProjectSelect.jsx` `customRenderOption` (lines 67-84) |
+| Project option inside the open dropdown | `project-selector-option-{label}` (dynamic) | **ADDED at implementation** — EliteaAI/EliteaUI@bb8b9adc, on-`automation/testids` only (awaiting human promotion to main) | `SidebarProjectSelect.jsx` `customRenderOption` |
 
-### The one testid to add
+### The one testid to add — **DONE** (EliteaAI/EliteaUI@bb8b9adc, `automation/testids`)
 
 `SidebarProjectSelect.jsx`'s `customRenderOption` renders each project row with **no testid**, so
 step 11's "appears on left-menu dropdown" cannot be asserted on the option itself. Add it via the

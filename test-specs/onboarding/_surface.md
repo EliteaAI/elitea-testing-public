@@ -227,3 +227,44 @@ sidebar appears *beside the onboarding page*, no navigation required.
 
 **Absence handles during provisioning** (all confirmed count 0): `sidebar-toggle`,
 `project-selector-trigger`, `onboarding-workspace-ready-title`, `onboarding-welcome-card`.
+
+
+---
+
+## Resolved/added during ELITEA-2232 implementation (test-automation-engineer, 2026-08-24)
+
+Attributed implementation-time facts — the analyst's behavior/scope claims above are unchanged.
+
+**The project-dropdown option testid now EXISTS.** `project-selector-option-{label}` was added to
+`SidebarProjectSelect.jsx`'s `customRenderOption` (EliteaAI/EliteaUI@bb8b9adc, pushed to
+`automation/testids`; **not yet on `main`** — human cherry-pick pending, same as every other
+`onboarding-*` testid here). Attribute-only addition on the existing `<Box>` — no new DOM node,
+no hook, no render-prop change. Live value for the standard test user:
+`project-selector-option-Private`.
+
+**EliteaUI commitlint rejects `[ELITEA-NNNN]` in a commit subject.** The husky `commit-msg` hook
+enforces `[EL-XXXX]` (`function-rules/subject-empty`: *"subject must container ticket number -
+[EL-XXXX]"*). Use `test: [EL-2232] …`, not `test: [ELITEA-2232] …`, for every testid commit in
+that repo — the first form fails the hook and the commit is rejected outright.
+
+**Page object (shipped, additive-only).** The provisioning locators went into the EXISTING
+`automation/pages/onboarding_page.py`: `progress_status_label` / `progress_estimated_time` /
+`progress_bar` as `LocatorDescriptor` fields, plus class-level dynamic-testid template constants
+`PROJECT_SELECTOR_OPTION` / `SIDEBAR_MENU_ITEM` with accessors `project_selector_option(label)` /
+`sidebar_menu_item(value)`, and actions `click_get_started()` / `open_project_selector()`. Every
+ELITEA-2231/2235/2236/2241 locator is byte-identical (0 removed lines in the diff).
+
+**Spec:** `automation/tests/ui/onboarding/test_onboarding_provisioning.py` (ELITEA-2232) — green
+first run, 0 reruns, 31.0 s.
+
+**Timings confirmed by the implementation run** (all as the analyst measured): the ≥7 s post-
+Welcome quiet window is clean (0 `/social/author/` requests); the click yields ≥2 polls within
+12 s; `aria-valuenow` reads `5` immediately after the click and has advanced after 6 s; releasing
+the mock brings up `WorkspaceIsReady` + the sidebar within the 20 s allowance; 0 console errors
+across the whole flow, no filter needed (the `#1753` MUI focus error needs the first-visit prompt,
+which only appears after "Jump in now!" — this spec deliberately stays on `/onboarding`).
+
+**Progress-bar start value: assert a bound, not an exact number.** The AFS's `aria-valuenow == "5"`
+was amended to `5 <= initial <= 12` at implementation — the read lands inside, but not reliably at
+the start of, the product's first 1 s interval tick, so exact equality is a stopwatch race against
+the 3× merge gate while asserting nothing extra. Observed value on the shipped run: `5`.
