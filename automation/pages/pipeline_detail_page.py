@@ -1636,10 +1636,10 @@ class PipelineDetailPage(PipelineFormPage):
     )
 
     # TEMPORARY FIX: testid removed or never existed (discovered Aug 24)
-    # Using xpath to target the accordions container
-    # Targets the flex container (parent of first accordion)
+    # Target first accordion, then go up to its container parent
+    # The container has all accordions, so text_content() will get all state vars
     run_details_states_section = LocatorDescriptor(
-        locator='[data-testid="pipeline-run-details-panel"] >> xpath=//div[.//div[contains(@class, "MuiAccordion-root")]]',
+        locator='[data-testid="pipeline-run-details-panel"] .MuiAccordion-root >> xpath=..',
         description='Run Details panel "States" section (per-variable accordion list)'
     )
 
