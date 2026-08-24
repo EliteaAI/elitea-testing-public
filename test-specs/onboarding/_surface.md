@@ -469,3 +469,38 @@ notifications popover, `navigate_and_get_unread_total()`, `open_notifications()`
 `automation/tests/ui/onboarding/test_sidebar_notification_badge.py` (ELITEA-2234),
 `test_sidebar_socket_status_indicator.py` (ELITEA-2233). Both green on the first run, 0 reruns,
 20.7 s for the pair.
+
+---
+
+## The project dropdown + full sidebar after provisioning — executed live 2026-08-24 (ELITEA-2240)
+
+The *content* of the ready state, which no merged spec asserted (ELITEA-2232 asserts its skeleton
+only: sidebar present, trigger reads `Private`, ONE entity item, the `Private` row exists).
+
+| Observable, dropdown open on `/onboarding` | Value (standard test user, DEV backend) |
+|---|---|
+| Option rows | 5 — `Private` + team projects `Bugs & Features`, `Elitea Development`, `Elitea Testing Team`, `UI Testing` |
+| Row testids | outer MUI `MenuItem` = `select-option-{projectId}` (**numeric, env-specific — do not bind**); inner Box = `project-selector-option-{label}` (bind to this one) |
+| Selected row | `aria-selected="true"` + `Mui-selected` + a `<CheckedIcon/>` `<svg>` in `.MuiListItemIcon-root` — **the icon has NO testid** (requested generic `select-option-selected-icon` on the shared `SingleSelectMenuItem.jsx`; option-row selection state requested as `data-selected` on the existing `project-selector-option-*` Box, ELITEA-2240 AFS) |
+| Entity menu | exactly **9** `sidebar-menu-item-*`: chat, agents, pipelines, skills, toolkits, mcps, credentials, applications, artifacts. Label of `toolkits` is **"Toolkits & Indexes"** |
+| Settings / Catalog | **not** menu items — separate bottom-section buttons `sidebar-settings-button` (`SettingsButton.jsx:27`) and `sidebar-agent-hub-button` (`AgentHubButton.jsx:38`, label "Catalog"). Both `automation/testids` only |
+| Project-list endpoint (the oracle) | `GET /api/v2/projects/project/default/1?check_public_role=true` → array of `{id, name, …}`; the personal project (`id == personal_project_id`, raw name `project_user_659`) renders as `Private`; **no public-project entry**, so the mapping to rows is 1:1 |
+
+**⚠ The dropdown fills PROGRESSIVELY, exactly like the entity menu.** At the instant
+`onboarding-workspace-ready-title` appears the dropdown lists **only `Private`**; the team rows
+arrive a few seconds later when the project-list query resolves. Auto-wait per option; never
+snapshot the option list, never assert its length.
+
+**Provisioning-state absence re-confirmed first-hand** (mask `personal_project_id: null`, click
+"Sure, let's go!"): `sidebar-toggle` 0, `project-selector-trigger` 0, `sidebar-menu-item-*` 0,
+`sidebar-settings-button` 0, `sidebar-agent-hub-button` 0 — the sidebar does not exist, it is not
+merely empty. So ELITEA-2240's step 2 ("click the project dropdown, no project listed, limited
+sidebar items") is unexecutable as written → clarification **#1767**. Mask release → ready banner in
+**1.8 s**. 0 console errors across the whole flow.
+
+**Menu items are permission-filtered per selected project** (`SidebarBody.jsx` `sections` memo,
+`PERMISSION_GROUPS`) — that is the mechanism behind a "limited sidebar" on routes where the sidebar
+does render without a project.
+
+**Related AFS:** `lextend_private_and_team_projects_in_dropdown_after_provisioning_ELITEA-2240.md`
+(`extend-existing` on `automation/tests/ui/onboarding/test_onboarding_provisioning.py:324-350`).
