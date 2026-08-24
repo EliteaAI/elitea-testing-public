@@ -1636,11 +1636,11 @@ class PipelineDetailPage(PipelineFormPage):
     )
 
     # TEMPORARY FIX: testid removed or never existed (discovered Aug 24)
-    # Using CSS locator to target the section that contains "States" header + accordions
-    # This matches the Box containing the header Typography with text "States"
+    # Using CSS locator to target the accordions container
+    # Targets the flex container with per-variable accordions (statesContainer)
     run_details_states_section = LocatorDescriptor(
-        locator='[data-testid="pipeline-run-details-panel"] >> text="States" >> xpath=..',
-        description='Run Details panel "States" section (header + per-variable accordion list)'
+        locator='[data-testid="pipeline-run-details-panel"] >> css=div:has(> [class*="MuiAccordion"])',
+        description='Run Details panel "States" section (per-variable accordion list)'
     )
 
     # Multi-run history toggle (RunStateNodeGroup — ELITEA-2454). Renders
