@@ -780,11 +780,21 @@ class McpFormPage(BasePage):
                 scoped inside the editor).
             new_line_text: Full replacement text for that line.
         """
-        line = self.raw_json_editor_content.get_by_text(current_line_text, exact=True)
-        line.click()
+        # Resolve the element handle BEFORE the click: the moment a selection
+        # lands, CodeMirror's selectionMatch extension decorates every OTHER
+        # occurrence of the selected text with `cm-selectionMatch` <span>s, so
+        # re-resolving the same get_by_text() locator afterwards raises a
+        # strict-mode violation (confirmed live at ELITEA-1935 implementation on
+        # a document that also carries `available_mcp_tools`, where a tool name
+        # appears both in `selected_tools` and as a `"value"` entry). The handle
+        # captured here still points at the original `.cm-line` div.
+        line_handle = self.raw_json_editor_content.get_by_text(
+            current_line_text, exact=True
+        ).element_handle()
+        line_handle.click()
         self.page.keyboard.press("Home")
         self.page.keyboard.press("Shift+End")
-        self._wait_for_line_selection_applied(line)
+        self._wait_for_line_selection_applied_handle(line_handle)
         self.page.keyboard.type(new_line_text)
         self._wait_for_text_content_stable(self.raw_json_editor_content)
 
@@ -820,11 +830,15 @@ class McpFormPage(BasePage):
                 locate the line's div via ``get_by_text(..., exact=True)``
                 scoped inside the editor).
         """
-        line = self.raw_json_editor_content.get_by_text(current_line_text, exact=True)
-        line.click()
+        # Handle resolved before the click for the same selectionMatch reason
+        # documented in :meth:`fill_raw_json_line`.
+        line_handle = self.raw_json_editor_content.get_by_text(
+            current_line_text, exact=True
+        ).element_handle()
+        line_handle.click()
         self.page.keyboard.press("Home")
         self.page.keyboard.press("Shift+End")
-        self._wait_for_line_selection_applied(line)
+        self._wait_for_line_selection_applied_handle(line_handle)
         self.page.keyboard.press("Backspace")
         self._wait_for_text_content_stable(self.raw_json_editor_content)
 
@@ -875,14 +889,25 @@ class McpFormPage(BasePage):
         20-char selection). Comparing against the *trimmed* text length is
         the correct equality check here.
         """
-        handle = line_locator.element_handle()
+        self._wait_for_line_selection_applied_handle(
+            line_locator.element_handle(), timeout_ms=timeout_ms
+        )
+
+    def _wait_for_line_selection_applied_handle(self, line_handle, timeout_ms: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Handle-based variant of :meth:`_wait_for_line_selection_applied`.
+
+        Takes an already-resolved ``ElementHandle`` instead of a locator, so the
+        caller can capture the target line BEFORE the click that triggers
+        CodeMirror's ambiguity-creating selectionMatch decorations (see
+        :meth:`fill_raw_json_line`).
+        """
         self.page.wait_for_function(
             """(el) => {
                 const trimmedLen = el.textContent.trim().length;
                 const sel = window.getSelection();
                 return trimmedLen === 0 || (sel && sel.toString().length === trimmedLen);
             }""",
-            arg=handle,
+            arg=line_handle,
             timeout=timeout_ms,
         )
 
