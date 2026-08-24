@@ -176,4 +176,4 @@ Live exploration, 2026-08-24, `http://localhost:5173`, project 399. Observations
 | `/mcps/all` + search `autotest_cancelled` | **0 cards**, `empty-state-title` rendered |
 | Console (session-wide) | only vite-HMR reload failures (dev-server restart), `socket.io` CORS/502/503 to `dev.elitea.ai`, and the #656 type-picker key warning — **none emitted by the Cancel/Discard clicks themselves** |
 
-Screenshot: `.playwright-mcp/ELITEA-1960-step-05-cancel-confirm-dialog.png` (step 5, confirmation dialog).
+Screenshot: `test-results/screenshots/ELITEA-1960-step-05-cancel-confirm-dialog.png` (step 5, confirmation dialog).
