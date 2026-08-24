@@ -1,6 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Select a tool in the Test Settings panel — Locator.wait_for: Timeout 10000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("toolkit-test-empty-tool-select") to be visible
-ERROR    elitea.steps:actions.py:49 Step failed: Select a tool in the Test Settings panel — Locator.wait_for: Timeout 10000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("toolkit-test-empty-tool-select") to be visible
