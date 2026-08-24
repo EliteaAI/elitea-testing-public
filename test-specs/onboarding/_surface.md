@@ -504,3 +504,84 @@ does render without a project.
 
 **Related AFS:** `lextend_private_and_team_projects_in_dropdown_after_provisioning_ELITEA-2240.md`
 (`extend-existing` on `automation/tests/ui/onboarding/test_onboarding_provisioning.py:324-350`).
+
+---
+
+## Resolved/added during ELITEA-2240 implementation (test-automation-engineer, 2026-08-24)
+
+Appended by the implementer; the analyst's behaviour/scope claims above are unchanged.
+
+### Selection state in ANY single-select is now a first-class handle
+
+`EliteaAI/EliteaUI@b0a7d61a` added two things to the **shared**
+`src/[fsd]/shared/ui/select/SingleSelectMenuItem.jsx` (attribute-only, no new DOM
+node, no hook change):
+
+| Handle | Shape | Scope |
+|---|---|---|
+| `data-selected="true" \| "false"` | attribute on the MUI `MenuItem` root — i.e. on the option itself | **every** single-select built on `Select`/`SingleSelectMenuItem`, not just the project dropdown |
+| `select-option-selected-icon` | `data-testid` on the `ListItemIcon` hosting `<CheckedIcon/>` | same — deliberately generic, per `.agents/testing.md` § Locator policy shared-component rule |
+
+Consequences for later cases on ANY surface using a single-select:
+
+- **Selected-row locator shape:** `'[data-selected="true"] [data-testid="<inner-row-testid>"]'`
+  as a class-level template constant. The state attribute is on the **ancestor**
+  `MenuItem`; the feature's own testid (here `project-selector-option-{label}`)
+  is on the content Box that `customRenderOption` renders inside it. Both greppable,
+  both `[data-testid=`-anchored → compliant testid-only locating.
+- **Do NOT re-derive this** by widening `SidebarProjectSelect.jsx`'s
+  `customRenderOption` to `(option, isSelected)`. It works (the arg is already
+  passed at `SingleSelectMenuItem.jsx:101`), but it modifies a `useCallback(` line
+  and therefore trips the reviewer's zero-functional-impact grep #1 for no gain.
+- `select-option-selected-icon` resolves to exactly **one** node inside one open
+  single-select (MUI unmounts a closed `Menu`), so `to_have_count(1)` is a valid
+  "only one row is marked selected" invariant.
+- `.prettierrc` in EliteaUI sets `"singleAttributePerLine": true` — adding a second
+  attribute to a one-line JSX tag **forces** a 1→3-line reflow. That is a legitimate,
+  unavoidable removal-grep hit; declare it in the commit body rather than fighting it.
+
+### The project list is available as a test oracle
+
+`ProjectSelect` issues `GET /api/v2/projects/project/{mode}/{PUBLIC_PROJECT_ID}?check_public_role=true`
+(`src/api/project.js`) and the response body is a **plain JSON array** of
+`{"id", "name", ...}` (spread straight into `state.settings.projects`,
+`src/slices/settings.js:321`). Label mapping is `ProjectSelect.jsx getProjectName()`:
+personal project → `Private`, `PUBLIC_PROJECT_ID` → `Public` (only when the user holds
+the public role), everything else → its backend `name`. Two implementation facts worth
+reusing:
+
+- The **public-project id is in the request URL itself** — parse it out
+  (`/projects/project/[^/]+/(\d+)`) instead of hardcoding it or importing a second
+  config source.
+- The **personal project id** comes from the newest `GET /social/author/` response
+  carrying a truthy `personal_project_id`. While ELITEA-2232's fresh-user mask is
+  installed that field is `null`, so "newest truthy" is what selects the genuine
+  post-release payload.
+
+Reading response bodies: collect `Response` objects in a `page.on("response", ...)`
+listener and call `.json()` **later**, in the step body — a sync event handler may not
+read a body. Guard the read with
+`if not collected: with page.expect_response(pred, timeout=...): pass` — race-free,
+because the sync dispatcher only delivers events inside a Playwright call.
+
+### Progressive fill — confirmed again, and it bites the dropdown too
+
+At the instant `onboarding-workspace-ready-title` appears the dropdown holds **only
+`Private`**; the team rows land when the project-list query resolves. Same standing
+rule as the entity menu: **one auto-waiting `expect()` per label, never a count and
+never an `all_text_contents()` snapshot.**
+
+### Sidebar bottom section is NOT part of the entity menu
+
+`sidebar-settings-button` ("Settings") and `sidebar-agent-hub-button` ("Catalog") are
+separate bottom-section buttons — they are **not** `sidebar-menu-item-*`. The 9 entity
+values are `chat, agents, pipelines, skills, toolkits, mcps, credentials, applications,
+artifacts`; assert them by testid, because the product renders `toolkits` with the
+label **"Toolkits & Indexes"** (clarification #1767 § 2).
+
+### Provenance (verified 2026-08-24 after `git fetch origin`)
+
+Every testid this case's test touches is on `origin/automation/testids` and **none is on
+`origin/main`** — `select-option-selected-icon`, `sidebar-settings-button`,
+`sidebar-agent-hub-button`, `project-selector-option-*`, `sidebar-menu-item-*`, plus the
+new `data-selected` attribute. Not deployable-env-promotable until a human cherry-picks.

@@ -69,8 +69,13 @@ expect(onboarding_page.select_option_selected_icon).to_have_count(1)
 expect(onboarding_page.select_option_selected_icon).to_be_visible()
 ```
 
-Two **testids need adding** (§ Handles Reference) — the checkmark is currently an untestidded
-`<svg>` inside a MUI `ListItemIcon`, and the option row exposes no selection state.
+One **testid** and one **state attribute** need adding (§ Handles Reference) — the checkmark was an
+untestidded `<svg>` inside a MUI `ListItemIcon`, and the option exposed no `data-*` selection state.
+
+> **Amended at implementation (2026-08-24, EliteaAI/EliteaUI@b0a7d61a).** Both landed on the SHARED
+> `SingleSelectMenuItem.jsx` instead of on `SidebarProjectSelect.jsx`'s option Box — see § Handles
+> Reference row 7 and § Testids to add item A for why. `project_selector_option_selected(label)` is
+> unchanged as the page-object call; only the underlying selector shape moved.
 
 ### G2 — team projects are listed alongside Private (case step 6)
 
@@ -191,30 +196,47 @@ Every handle is a `data-testid`; state is a `data-*` attribute filter, never a s
 | 4 | Sidebar entity menu item, by value | `sidebar-menu-item-{value}` | `SIDEBAR_MENU_ITEM` template + `sidebar_menu_item(value)` (exists) | on `automation/testids` only — awaiting human cherry-pick |
 | 5 | Settings button (bottom section) | `sidebar-settings-button` | **add** `OnboardingPage.sidebar_settings_button = LocatorDescriptor(testid="sidebar-settings-button")` | on `automation/testids` only — **exists in JSX**, `SettingsButton.jsx:27` `testId` prop |
 | 6 | Catalog button (bottom section) | `sidebar-agent-hub-button` | **add** `OnboardingPage.sidebar_agent_hub_button = LocatorDescriptor(testid="sidebar-agent-hub-button")` | on `automation/testids` only — **exists in JSX**, `AgentHubButton.jsx:38` |
-| 7 | **Selected** project row (checkmark state) | `[data-testid="project-selector-option-{label}"][data-selected="true"]` | **add** class-level template `PROJECT_SELECTOR_OPTION_SELECTED = '[data-testid="project-selector-option-{}"][data-selected="true"]'` + `project_selector_option_selected(label)` | **needs-adding** — see § Testids to add, item A |
-| 8 | The checkmark icon itself | `select-option-selected-icon` | **add** `LocatorDescriptor(testid="select-option-selected-icon")` | **needs-adding** — see § Testids to add, item B |
+| 7 | **Selected** project row (checkmark state) | `[data-selected="true"] [data-testid="project-selector-option-{label}"]` — **AMENDED at implementation**, see item A | class-level template `PROJECT_SELECTOR_OPTION_SELECTED = '[data-selected="true"] [data-testid="project-selector-option-{}"]'` + `project_selector_option_selected(label)` (**added**) | added on `automation/testids` (EliteaAI/EliteaUI@b0a7d61a) — not on `main` |
+| 8 | The checkmark icon itself | `select-option-selected-icon` | `LocatorDescriptor(testid="select-option-selected-icon")` (**added**) | added on `automation/testids` (EliteaAI/EliteaUI@b0a7d61a) — not on `main` |
 
 ### Testids to add (`add-data-testid`, EliteaUI `automation/testids`, commit subject `test: [EL-2240] …`)
 
 Reminder from the digest: EliteaUI's commitlint rejects `[ELITEA-NNNN]` — use `[EL-2240]`.
 
-**A. `data-selected` state attribute on the existing project-option row** —
-`src/[fsd]/widgets/sidebar-root/ui/SidebarProjectSelect.jsx`, `customRenderOption`:
+**A. `data-selected` state attribute — AMENDED at implementation.**
+
+*As analysed:* put `data-selected` on the project-option `Box` in
+`src/[fsd]/widgets/sidebar-root/ui/SidebarProjectSelect.jsx` by widening `customRenderOption` to
+`(option, isSelected)` (the second argument is already passed by `SingleSelectMenuItem.jsx:101`, just
+unused today). The AFS asserted this would keep the zero-functional-impact greps clean.
+
+*As implemented (EliteaAI/EliteaUI@b0a7d61a):* it does **not** — widening the callback modifies the
+`const customRenderOption = useCallback(` line, a direct hit on the reviewer's grep #1
+(`^\+.*\buse(State|Effect|Memo|Callback|Ref)\(`, `.agents/role-overrides.md` § Reviewer slot). That
+hit is declarable as mandatory plumbing, but it is avoidable, so it was avoided. The attribute went
+on the **MUI `MenuItem` root** in the shared `src/[fsd]/shared/ui/select/SingleSelectMenuItem.jsx`
+instead, where `isSelected` is already a destructured prop:
 
 ```jsx
-const customRenderOption = useCallback((option, isSelected) => (
-  <Box
-    data-testid={`project-selector-option-${option?.label}`}
-    data-selected={isSelected ? 'true' : 'false'}
-    sx={optionStyles.optionRow}
-  >
+<MenuItem
+  {...restProps}
+  data-testid={option.testId ?? `select-option-${option.value}`}
+  data-selected={isSelected ? 'true' : 'false'}
 ```
 
-`SingleSelectMenuItem.jsx:101` already calls `customRenderOption(option, isSelected)` — the second
-argument exists and is simply unused today. Attribute-only: no new DOM node, no new hook, no
-render-prop change (the zero-functional-impact greps stay clean). This is the canon shape for state
-(`.agents/testing.md` § Locator policy — "testid = stable identity; state via `data-*`"), not a
-state-switched testid.
+The `MenuItem` **is** the option; the `project-selector-option-*` Box is the content rendered inside
+it, so the state attribute sits on the ancestor and the locator becomes
+`[data-selected="true"] [data-testid="project-selector-option-{label}"]` — still testid-anchored with
+a `data-*` state filter, the canon shape for state (`.agents/testing.md` § Locator policy — "testid =
+stable identity; state via `data-*`"), never a state-switched testid. The generic name is required
+because the component is shared (same section's shared-component rule), and `data-selected` is this
+codebase's established state attribute (`CategoryRail.jsx:27`, `BucketItem.jsx:244`,
+`FileTreeItem.jsx:108`).
+
+Measured on the shipped diff: **0 hook hits, 0 new-DOM-node hits**; one removal hit — the
+`ListItemIcon` opening tag reflowed from one line to three, forced by `.prettierrc`
+`"singleAttributePerLine": true` once item B adds a second attribute (declared in the commit body per
+`add-data-testid` § Mandatory-plumbing exceptions; `npx prettier --check` passes on the result).
 
 **B. Generic testid on the shared selected-icon slot** —
 `src/[fsd]/shared/ui/select/SingleSelectMenuItem.jsx:136-140`, the `isSelected &&` branch:
@@ -284,7 +306,12 @@ None.
   inherits the covering spec's modelling of it.
 - **#1759 (open canon)** — is releasing a precondition mock mid-test sanctioned transit? This case
   inherits it unchanged from the merged spec; nothing new is introduced.
-- No product defect found. The live product behaved exactly as the case intends for steps 4-7.
+- No product defect found. The live product behaved exactly as the case intends for steps 4-7 —
+  reconfirmed at implementation: the extended spec ran GREEN first try (32.01 s, 0 reruns, 0 console
+  errors), with the derived project set and all 11 navigation handles satisfied.
+- **AFS accuracy note (implementation, 2026-08-24):** § Testids to add item A's claim that widening
+  `customRenderOption` keeps "the zero-functional-impact greps clean" was wrong — grep #1 matches any
+  added line containing `useCallback(`. Amended above; no scope and no assertion changed.
 
 ---
 
