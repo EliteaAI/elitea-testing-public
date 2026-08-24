@@ -24,7 +24,7 @@
       "automation_test_id": "tests.ui.admin.test_analytics_default_load.TestAnalyticsDefaultLoad.test_analytics_page_default_load",
       "markers": [
         "admin",
-        "new",
+        "new_verified",
         "p1",
         "regression",
         "ui"
@@ -120,7 +120,7 @@
       "automation_test_id": "tests.ui.admin.test_notification_text_content.TestNotificationTextContent.test_notification_text_content_renders_correctly",
       "markers": [
         "admin",
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "ui"
@@ -131,7 +131,7 @@
       "markers": [
         "admin",
         "blocked",
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "ui"
@@ -141,7 +141,7 @@
       "automation_test_id": "tests.ui.admin.test_personal_token_create_and_verify.TestPersonalTokenCreateAndVerify.test_expired_token_shows_expired_icon_and_label",
       "markers": [
         "admin",
-        "new",
+        "new_verified",
         "p1",
         "p2",
         "regression",
@@ -152,7 +152,7 @@
       "automation_test_id": "tests.ui.admin.test_personal_token_create_and_verify.TestPersonalTokenCreateAndVerify.test_invalid_token_name_shows_error_and_keeps_generate_disabled",
       "markers": [
         "admin",
-        "new",
+        "new_verified",
         "p1",
         "p2",
         "regression",
@@ -1993,7 +1993,7 @@
       "automation_test_id": "tests.ui.chat.test_pin_conversation.TestPinConversationViaPinOnTop.test_pin_conversation_via_pin_on_top",
       "markers": [
         "chat",
-        "new",
+        "new_verified",
         "p2",
         "regression",
         "ui"
