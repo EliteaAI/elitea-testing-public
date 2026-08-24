@@ -677,3 +677,31 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   Record further occurrences here. If it keeps costing gate time, the durable fix is the
   rotating/clean test identity named in the § Suite-health pointer above, not a per-spec
   guard.
+- **400 flavor of the console-noise class, and the URL-capture gap now closed
+  (2026-08-24, onboarding-w4, ELITEA-2234)**: a STANDALONE post-gate invocation of
+  `test_sidebar_notification_badge.py::TestSidebarNotificationBadge::test_bell_shows_red_badge_and_notifications_popover`
+  failed its final "Axis 2 — No console errors" step on **two** unrelated
+  `Failed to load resource: the server responded with a status of 400 (Bad Request)`
+  messages. Same family as the 500 and 404 flavors above: not the requests the test
+  itself drives, non-reproducing (a live MCP walk of the same path returned 200 on
+  every request — `support_assistant/*`, `configurations/models/*`, `budget_warning`,
+  `folder`, `notifications`), and the failure screenshot shows that attempt had landed
+  on a RESTORED conversation in the chat pane rather than the blank composer every
+  passing run gets — i.e. the 400s came from the chat-page restore path the spec merely
+  passes THROUGH. `pytest.ini`'s `--reruns=2` then passed on rerun, so the junit trail
+  records PASS and the signature is invisible there — **the allure result is the only
+  place it exists**; when chasing this class, read `reports/allure-results/*-result.json`,
+  not the junit archive.
+  **The standing ask of this ledger ("capture the failing resource URL") is now
+  implemented**: `automation/utils/console_errors.py` (`collect_console_errors(page)` /
+  `format_console_message(msg)`) renders every console error as
+  `"<type>: <text> @ <url>"`, reading the failing resource's URL from
+  `ConsoleMessage.location` — where the browser actually puts it, since the message TEXT
+  carries only the status code. It is **capture-only**; filtering a known defect stays
+  each spec's own explicit `# Known defect: #N` decision. ELITEA-2234's spec is migrated
+  to it; the other ~230 specs still hand-roll the URL-less
+  `page.on("console", lambda msg: errors.append(f"{msg.type}: {msg.text}"))` shape and
+  should be migrated opportunistically whenever one is touched — the next occurrence on
+  a migrated spec finally names the resource, which is what a shared filter needs.
+  Pinned by `tests/unit/test_console_error_capture_includes_url.py`. Do NOT widen the
+  #1753 filter (or any filter) to swallow 400s — that is masking, not noise handling.
