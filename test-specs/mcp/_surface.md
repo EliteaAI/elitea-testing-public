@@ -965,6 +965,18 @@ before and after the run).
 | Hygiene | The merged `test_mcp_three_dot_menu_actions.py` asserts "no MCP is pinned" as its own precondition — **never leak a pin**, and assert the same guard before pinning (a stray pin sits at index 0 and breaks the "moved to top" read for an unrelated reason). |
 | Page object | `McpListPage.PIN_TOGGLE_BUTTON` + `get_pin_toggle_label(mcp_id)` already exist; a `click_pin_toggle(mcp_id)` returning the awaited pin/unpin `Response` is the missing piece (mirror `McpFormPage.click_pin_toggle_menu_item()`). |
 
+**Added during ELITEA-1945 implementation (2026-08-24, PR against `tests/batch-mcp-w03`):**
+`McpListPage` now carries the full card-pin vocabulary — `pin_toggle_button(mcp_id)` (Locator,
+mirrors `CredentialsListPage`/`PipelinesListPage`), `hover_pin_toggle(mcp_id)`,
+`click_pin_toggle(mcp_id) -> Response` (awaits the `/social/pin/…/toolkit/{id}` round trip),
+`wait_for_pin_toggle_label(mcp_id, expected)` (retrying `aria-label` assertion — the flip lands a
+render tick after the response), `wait_for_card_at_top(name)` (the pin's client-side re-sort is
+immediate but one tick late), and `get_all_pin_toggle_labels()` off a new
+`PIN_TOGGLE_BUTTON_ANY = '[data-testid^="mcp-pin-toggle-button-"]'` class constant, which is how
+the "nothing is pinned" precondition guard is asserted without a raw handle. Everything the digest
+predicted held live first run: 201/204, immediate pin re-sort, unpin non-re-sort, byte-identical
+restored order after `navigate()`, 0 console errors. No new testids were needed.
+
 ### Type-filter counts — #1737 re-reproduced (3rd time)
 
 | Filter | Cards | Badge set | List request |
