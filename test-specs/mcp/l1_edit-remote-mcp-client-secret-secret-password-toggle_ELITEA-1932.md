@@ -43,7 +43,7 @@ deleted after the run).
 |---|--------|-----------------|---------------|
 | 1 | Open a Remote MCP detail page in Form view | Detail page loads in Form view | `toolkit-form-view-toggle` `aria-pressed == "true"`; `toolkit-detail-title` == seeded name |
 | 2 | Locate "Client Secret" field | Client Secret field is visible | count == 0 until `expand_configuration_section()` (digest § MCP DETAIL page: configuration fields are COLLAPSED); after expanding, `toolkit-field-client_secret-input` is visible |
-| 3 | Verify "secret view toggler" group is visible with "Secret" and "Password" buttons | Toggle group with both buttons displayed | `toolkit-field-client_secret-input-toggle-secret` (text `Secret`) and `...-toggle-password` (text `Password`) both visible — testids come from the shared `Toggle.jsx` via `SecretField.jsx:342` (`testIdPrefix = "<field-testid>-toggle"`) |
+| 3 | Verify "secret view toggler" group is visible with "Secret" and "Password" buttons | Toggle group with both buttons displayed | `toolkit-field-client_secret-input-toggle-secret` (text `Secret`) and `...-toggle-password` (text `Password`) both visible — testids come from the shared `Toggle.jsx` via `SecretField.jsx:342` (`testIdPrefix = "<field-testid>-toggle"`), **both `automation/testids`-only — see § Concrete Handles** |
 | 4 | Verify "Password" button is pressed (active) by default — field shows masked text | Password mode active, text masked | `...-toggle-password` `aria-pressed == "true"`, `...-toggle-secret` `aria-pressed == "false"`; the real input `toolkit-field-client_secret-input-field` has `type == "password"` (masked) |
 | 5 | Click "Secret" button | Toggle switches to Secret mode | click flips `aria-pressed`: secret `true`, password `false` |
 | 6 | Verify toggle switches to Secret mode | Secret button is now active | in Secret mode the native `<input>` is **unmounted** and replaced by the vault `SingleSelect`: `...-input-field` count == 0, `toolkit-field-client_secret-input-combobox` count == 1 |
@@ -109,16 +109,45 @@ never created, edited, or deleted.
 |---|---|---|
 | Client Secret wrapper (SecretField root) | `toolkit-field-client_secret-input` | on-main ✓ |
 | Client Secret real `<input>` (Password mode only) | `toolkit-field-client_secret-input-field` | on-main ✓ |
-| "Secret" toggle button | `toolkit-field-client_secret-input-toggle-secret` | on-main ✓ (shared `Toggle.jsx` `testIdPrefix`) |
-| "Password" toggle button | `toolkit-field-client_secret-input-toggle-password` | on-main ✓ |
+| "Secret" toggle button | `toolkit-field-client_secret-input-toggle-secret` | **on `automation/testids` ONLY** — EliteaAI/EliteaUI@5892ae48 (EL-1967). `SecretField.jsx:342` passes no `testIdPrefix` on `main` **and** `src/components/Toggle.jsx` carries no testid at all on `main`. **Not yet on `main`.** |
+| "Password" toggle button | `toolkit-field-client_secret-input-toggle-password` | **on `automation/testids` ONLY** — same commit EliteaAI/EliteaUI@5892ae48. **Not yet on `main`.** |
 | Vault select (Secret mode only) | `toolkit-field-client_secret-input-combobox` | on-main ✓ |
 | Saved-secret option (dynamic) | `select-option-{{secret.<name>}}` | on-main ✓ (same grammar `CredentialCreatePage.SECRET_SAVED_OPTION` already uses) |
 | SAVED SECRETS group header | `select-group-header-Saved Secrets` | on-main ✓ |
-| Configuration show-more | `toolkit-configuration-show-more` | on `automation/testids` |
-| Detail Save / Discard buttons | `toolkit-detail-save-button` / `toolkit-detail-discard-button` | on `automation/testids` |
+| Configuration show-more | `toolkit-configuration-show-more` | on-main ✓ — EliteaAI/EliteaUI@ab757380 (`ToolBase.jsx:375`) |
+| Detail Save / Discard buttons | `toolkit-detail-save-button` / `toolkit-detail-discard-button` | on-main ✓ — EliteaAI/EliteaUI@bf4a13ad (`ToolkitsTabBarContainer.jsx:149,159`); promoted since the ELITEA-1929 AFS was written |
 | Form / Raw Json view toggles + Raw Json content | `toolkit-form-view-toggle` / `toolkit-raw-json-view-toggle` / `toolkit-raw-json-editor-content` | on-main ✓ |
 
-No new testid is required for this case.
+No new testid is required for this case — but **the case is not deployed-env
+promotable yet**: the Secret/Password toggle pair (steps 3-6, 9) exists only on
+`automation/testids`. Unblocks when a human cherry-picks EliteaAI/EliteaUI@5892ae48
+to `EliteaAI/EliteaUI` `main` and it deploys. Owner: human.
+
+### Provenance verification (run 2026-08-24, fix round 1)
+
+These testids are **template-composed** in shared components
+(`` data-testid={`toolkit-field-${k}-input`} ``, `testIdPrefix`, `${dataTestId}-combobox`),
+so a bare `git grep '<literal-testid>' origin/main` finds **nothing** and silently
+reports "not on `main`" — the #19 false-row failure mode. The provenance column above
+is verified by grepping the **composing source file** on each ref, after
+`cd ../EliteaUI && git fetch origin`:
+
+```
+toolkit-field-<k>-input                        main:YES  testids:YES   (ToolBase/ToolBaseProperty.jsx)
+toolkit-field-<k>-editor(-content)             main:YES  testids:YES   (ToolBase/ToolBaseProperty.jsx)
+toolkit-configuration-show-more                main:YES  testids:YES   (ToolBase/ToolBase.jsx:375)
+toolkit-detail-save-button                     main:YES  testids:YES   (toolkits-tab-bar/ToolkitsTabBarContainer.jsx:149)
+toolkit-detail-discard-button                  main:YES  testids:YES   (toolkits-tab-bar/ToolkitsTabBarContainer.jsx:159)
+toolkit-form/raw-json-view-toggle              main:YES  testids:YES   (shared/ui/tab-group-button/FormViewToggle.jsx)
+toolkit-raw-json-editor-content                main:YES  testids:YES   (toolkits/ui/form/ToolCustom.jsx:218)
+toolkit-detail-title                           main:YES  testids:YES   (pages/Toolkits/EditToolkit.jsx:398)
+<field>-input-field (native input)             main:YES  testids:YES   (shared/ui/secret-field/SecretField.jsx:77)
+<field>-input-toggle-{secret,password}         main:no   testids:YES   (shared/ui/secret-field/SecretField.jsx:342)
+Toggle.jsx renders the toggle testids          main:no   testids:YES   (src/components/Toggle.jsx)
+<field>-input-combobox                         main:YES  testids:YES   (shared/ui/select/SingleSelect.jsx:661)
+select-option-<value>                          main:YES  testids:YES   (shared/ui/select/SingleSelect.jsx:416)
+select-group-header-<group>                    main:YES  testids:YES   (shared/ui/select/SingleSelect.jsx:383)
+```
 
 ## Network Behavior
 - `POST /tools/prompt_lib/{project}` → 201 (seed).
