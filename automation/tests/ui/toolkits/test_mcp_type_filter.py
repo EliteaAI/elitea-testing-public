@@ -70,7 +70,7 @@ def _seed_mcp_via_ui(page) -> int:
 
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
-    "automated-full-regression-ui/mcp/ELITEA-1942_mcp-dashboard-filter-by-type-remote.md",
+    "automated-full-regression-ui/mcp/ELITEA-1942_mcp-dashboard-filter-by-type-remote-only.md",
     "onetest-ai Test Case link",
 )
 @pytest.mark.mcp
