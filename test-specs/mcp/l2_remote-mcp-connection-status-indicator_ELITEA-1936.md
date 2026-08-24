@@ -178,7 +178,18 @@ All handles below were exercised live this session. **PROVENANCE verified
 | Url input (setup) | `toolkit-field-url-input` | on-main ✓ | |
 | Create-form Save (setup) | `toolkit-form-save-button` | on-main ✓ | create form only — the detail page uses `toolkit-detail-save-button` |
 
-**No new testid is required.** ⚠️ **Promotability:** the two handles this case
+**AMENDED at implementation (2026-08-24, implementer): ONE new testid WAS
+required.** Step 4's Axis-2 icon assertion has no compliant handle — the
+`OnlineIcon` svg is an unlabelled sibling of the status `Typography` inside
+`McpAuthStatus.jsx`'s status container, and chaining a raw `svg` selector off
+`toolkit-connection-status` is forbidden (`.agents/testing.md` § Locator
+policy). Added via `add-data-testid` discipline:
+
+| Element | Handle | Provenance |
+|---|---|---|
+| Connection-status state icon | `toolkit-connection-status-icon` | **added during implementation** — EliteaAI/EliteaUI@55dc4f66 on `automation/testids`, **NOT on `main`** (human cherry-pick pending). One additive attribute on the existing `<OnlineIcon>`; no new DOM node, no hook, no removed markup. |
+
+⚠️ **Promotability:** the two handles this case
 depends on most (`toolkit-connection-status`, `toolkit-connection-login-button`)
 live on `automation/testids` only. This spec will be **green on localhost and red
 on any deployed env** until a human cherry-picks EliteaAI/EliteaUI@a467c0ac to

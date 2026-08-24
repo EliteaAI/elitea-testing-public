@@ -256,6 +256,40 @@ None.
   the testid-anchored `raw_json_editor_content` parent) — copy that docstring
   block across; do not re-derive the justification.
 
+  **AMENDED at implementation (2026-08-24, implementer):** the shape above
+  fails on *this* document. The moment the `Home`/`Shift+End` selection lands,
+  CodeMirror's **selectionMatch** extension decorates every OTHER occurrence of
+  the selected text with `cm-selectionMatch` `<span>`s — and `"ask_question",`
+  occurs again inside `available_mcp_tools` as a `"value"` entry — so
+  re-resolving the same `get_by_text()` locator for the selection wait raises
+  `strict mode violation: ... resolved to 3 elements`. The **shipped** shape
+  resolves the `ElementHandle` BEFORE the click and waits on that handle:
+
+  ```
+  line_handle = self.raw_json_editor_content.get_by_text(
+      current_line_text, exact=True
+  ).element_handle()
+  line_handle.click()
+  self.page.keyboard.press("Home")
+  self.page.keyboard.press("Shift+End")
+  self._wait_for_line_selection_applied_handle(line_handle)
+  self.page.keyboard.press("Backspace")
+  self._wait_for_text_content_stable(self.raw_json_editor_content)
+  ```
+
+  The same latent bug hit **step 7's `fill_raw_json_line`** call
+  (`"read_wiki_contents",` also recurs as an `available_mcp_tools` `"value"`),
+  so that pre-existing shared method was fixed the same way. It has exactly one
+  merged caller (`test_mcp_edit_raw_json_description.py`), re-run green
+  alongside both new specs — see the PR description.
+
+- **A second new helper was required: `McpFormPage.scroll_raw_json_to_top()`.**
+  The AFS's "do the per-line edit BEFORE any `get_raw_json_full()` call" hint
+  cannot be honoured as written, because the case's own step order is read
+  (step 3) *then* edit (step 4). The helper re-uses `get_raw_json_full()`'s
+  scrollable-ancestor walk and sets `scrollTop = 0`; it is called before every
+  per-line edit that follows a full read (steps 4 and 7).
+
 - **Order matters: do the per-line edit BEFORE any `get_raw_json_full()` call.**
   `get_raw_json_full()` scrolls the CodeMirror viewport to the bottom to defeat
   virtualization and **leaves it there**. A `fill_raw_json_line()` immediately

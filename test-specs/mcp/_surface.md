@@ -442,3 +442,65 @@ is **empty** — never assert on chip text. Use
 
 Observed **3.5 s** this session (the earlier note said ~1 s). Rely on framework
 auto-waiting; never an immediate `query_selector` after `goto('/mcps/create')`.
+
+## Resolved/added during ELITEA-1935 / ELITEA-1936 implementation (2026-08-24)
+
+*Implementer-appended, attributed per the digest's one-writer rule — these are
+implementation-time facts, not a rewrite of the analyst's behaviour claims.*
+
+### New testid: `toolkit-connection-status-icon`
+
+The `OnlineIcon` svg sitting next to the connection-status text in
+`McpAuthStatus.jsx` had no testid, and chaining a raw `svg` selector off
+`toolkit-connection-status` is forbidden. Added as one additive attribute —
+EliteaAI/EliteaUI@55dc4f66 on `automation/testids`, **not yet on `main`**
+(human cherry-pick pending). Zero functional impact: no new DOM node, no hook,
+no removed markup.
+
+### ⚠️ Fourth Raw-Json trap: CodeMirror's **selectionMatch** makes a line locator ambiguous
+
+`fill_raw_json_line()` / `delete_raw_json_line()` select a line with
+`Home`/`Shift+End`. The instant that selection lands, CodeMirror's
+`selectionMatch` extension wraps **every other occurrence of the selected text**
+in a `cm-selectionMatch` `<span>` — so re-resolving the same
+`get_by_text(..., exact=True)` locator for the selection wait raises
+`strict mode violation: ... resolved to 3 elements`.
+
+It bites on any document where the line text recurs — which is *every*
+tools-loaded MCP, because a tool name appears both in `selected_tools`
+(`"ask_question",`) and in `available_mcp_tools` (`"value": "ask_question",`,
+whose selectionMatch span is exactly `"ask_question",`).
+
+**Fix, now shipped in both methods:** resolve the `ElementHandle` BEFORE the
+click and wait on that handle via the new
+`_wait_for_line_selection_applied_handle()`. `fill_raw_json_line()` carried this
+latent bug since ELITEA-1927 (its only merged caller edits a `"description"`
+line, which never recurs) — re-run green after the fix.
+
+### New helper: `McpFormPage.scroll_raw_json_to_top()`
+
+Trap 1 above ("`get_raw_json_full()` leaves the editor scrolled to the BOTTOM")
+says to edit before reading — but ELITEA-1935's own step order is read (step 3)
+then edit (step 4), so that isn't available. The helper re-uses
+`get_raw_json_full()`'s scrollable-ancestor walk and sets `scrollTop = 0`. Call
+it before any per-line edit that follows a full read.
+
+### New helper: `McpListPage.get_card_texts()`
+
+Absence assertions on the list page (#1723: "no card renders a connection
+badge") have no testid to bind to, because the element does not exist. Reading
+each card's own text through the testid-anchored `entity-card` container is the
+closest testid-only shape; page-wide `get_by_text` would be a new raw handle.
+
+### Confirmed live this session
+
+- `available_mcp_tools` entries carry `label` / `value` / `args_schema`; the
+  `value` is the raw tool name (matches the chip testid suffix and the
+  `selected_tools` entries).
+- The detail Save's `PUT` response body carries the full `settings`, so
+  `selected_tools` can be asserted from the **response** as well as the DOM.
+- `sessionStorage["elitea_mcp_tokens_v1"]` is empty at test start under the
+  standard `page` fixture (fresh browser context per test) — the `Not Connected`
+  baseline needs no explicit clearing, and the record dies with the context.
+- The Login round-trip against DeepWiki settles well inside the 20 s
+  `SAVE_RESPONSE_TIMEOUT`; the whole ELITEA-1936 spec runs in ~24 s.
