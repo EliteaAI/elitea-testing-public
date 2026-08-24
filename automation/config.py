@@ -47,6 +47,14 @@ class Settings(BaseSettings):
     # Team projects have "Manage permissions" feature, unlike private projects
     elitea_team_project_id: Optional[int] = 0
 
+    @field_validator('elitea_project_id', mode='before')
+    @classmethod
+    def parse_project_id(cls, v):
+        """Parse project ID from string or int, allowing empty string to default to 0."""
+        if v is None or v == "":
+            return 0
+        return int(v)
+
     @field_validator('elitea_team_project_id', mode='before')
     @classmethod
     def parse_team_project_id(cls, v):
