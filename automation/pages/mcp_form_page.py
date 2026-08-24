@@ -70,6 +70,40 @@ class McpFormPage(BasePage):
         "automation/testids",
     )
 
+    # Type-picker elements added for ELITEA-1949 (EliteaAI/EliteaUI@f4ce7128 +
+    # EliteaAI/EliteaUI@989db4f0 on automation/testids). The heading and the
+    # filter chips render through the SHARED CategoryFilter.jsx, so the testids
+    # are supplied as `titleTestId` / `chipTestIdPrefix` props from the
+    # standalone `/mcps/create` call site only (CreateToolkit.jsx) — the in-chat
+    # MCP canvas (ToolkitEditor.jsx) deliberately keeps the generic
+    # `category-filter-tab` chips that `select_remote_category_tab()` binds to.
+    type_picker_heading = LocatorDescriptor(
+        testid="mcp-type-picker-heading",
+        description="'Choose the MCP type' heading on /mcps/create",
+    )
+    local_documentation_link = LocatorDescriptor(
+        testid="mcp-type-picker-local-documentation-link",
+        description="'Documentation' external link inside the Local MCP "
+        "empty-state message on /mcps/create",
+    )
+    no_results_title = LocatorDescriptor(
+        testid="catalog-no-results-title",
+        description="Type-picker catalog empty-result title ('No MCPs found')",
+    )
+    no_results_description = LocatorDescriptor(
+        testid="catalog-no-results-description",
+        description="Type-picker catalog empty-result description "
+        "('Try adjusting your search terms')",
+    )
+
+    # Per-chip type filters on /mcps/create. Selection state is a `data-*`
+    # attribute on the SAME testid'd element (never a state-switched testid) —
+    # `.agents/testing.md` § Locator policy, PR #581 ruling.
+    TYPE_FILTER_CHIP = '[data-testid="mcp-type-picker-filter-chip-{}"]'
+    TYPE_FILTER_CHIP_SELECTED = (
+        '[data-testid="mcp-type-picker-filter-chip-{}"][data-selected="true"]'
+    )
+
     # ------------------------------------------------------------------
     # Shared schema-driven fields (create + detail)
     # ------------------------------------------------------------------
@@ -535,11 +569,11 @@ class McpFormPage(BasePage):
     def navigate_to_create(self) -> None:
         """Navigate to ``/mcps/create`` and wait for the type-picker to load.
 
-        The "Choose the MCP type" copy has no data-testid (shared
-        ``GroupedCategory``/``CategoryFilter`` title, out of this case's
-        touched-element scope per the testid-only locator policy) — the
-        type-picker having loaded is instead proven via the testid-bearing
-        :attr:`remote_mcp_type_card` becoming visible.
+        The "Choose the MCP type" copy now carries
+        :attr:`type_picker_heading` (``mcp-type-picker-heading``, added for
+        ELITEA-1949). The load wait still keys off the testid-bearing
+        :attr:`remote_mcp_type_card`, which mounts LAST (up to ~3.5s after the
+        navigation) and is therefore the stronger readiness signal.
         """
         self.navigate("/mcps/create")
         self.remote_mcp_type_card.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
@@ -566,6 +600,41 @@ class McpFormPage(BasePage):
         tab = self.category_filter_tab.filter(has_text=re.compile("^Remote$"))
         tab.wait_for(state="visible", timeout=timeout)
         tab.click()
+
+    def type_filter_chip(self, chip_slug: str):
+        """Return the ``/mcps/create`` type-filter chip locator for *chip_slug*.
+
+        *chip_slug* is the slugified category label the product itself emits
+        (``local`` / ``remote``). Mirrors ``McpListPage.type_filter_chip()``
+        (ELITEA-1942) in shape; the pattern lives at class level so the testid
+        inventory stays greppable (``.agents/testing.md`` § Locator policy —
+        dynamic testids).
+        """
+        return self.page.locator(self.TYPE_FILTER_CHIP.format(chip_slug))
+
+    def selected_type_filter_chip(self, chip_slug: str):
+        """Return the *selected-state* locator for a type-filter chip.
+
+        Selection is asserted via the chip's own ``data-selected`` attribute,
+        never via its emotion CSS class hash or computed background colour.
+        """
+        return self.page.locator(self.TYPE_FILTER_CHIP_SELECTED.format(chip_slug))
+
+    @action("Click an MCP type filter chip")
+    def click_type_filter(self, chip_slug: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the ``local``/``remote`` type-filter chip on ``/mcps/create``.
+
+        Filtering here is pure client-side re-grouping — there is NO network
+        request to wait on (unlike the dashboard type filter, ELITEA-1942), so
+        callers wait on the DOM outcome themselves.
+        """
+        chip = self.type_filter_chip(chip_slug)
+        chip.wait_for(state="visible", timeout=timeout)
+        chip.click()
+
+    def is_type_filter_selected(self, chip_slug: str) -> bool:
+        """Return whether the given type-filter chip is currently selected."""
+        return self.type_filter_chip(chip_slug).get_attribute("data-selected") == "true"
 
     @action("Navigate to MCP detail page")
     def navigate_to_detail(self, toolkit_id: int, project_id: str) -> None:

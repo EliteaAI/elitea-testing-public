@@ -870,3 +870,236 @@ no other current spec touches (#511 scope rule).
   document load fires Playwright's page `"load"` event and an SPA route change does
   not, so watching for that event's ABSENCE across the click is an honest,
   product-produced signal.
+
+## MCP DASHBOARD — "Types" filter panel (Local / Remote) — added 2026-08-24
+
+**Appended during the ELITEA-1942/1943 cluster analysis (batch `mcp-w03`).
+Verified live on `/mcps/all`, project 399, 19 MCPs (all Remote).**
+
+| Handle | Testid | Provenance (fetched 2026-08-24) | Notes |
+|---|---|---|---|
+| Type filter chip (dynamic) | `tags-panel-chip-{TypeName}` → `…-Local`, `…-Remote` | **on-main ✓** | `components/Categories.jsx:336`. Shared with the Credentials Types panel — `CredentialsListPage.TYPE_FILTER_CHIP` is the same constant. |
+| "Clear all" | `tags-panel-clear-all` | **on-main ✓** | `Categories.jsx:299`. Rendered ONLY while ≥1 chip is selected ⇒ **its presence is the product's own "a filter is active" signal**; unmounted (not hidden) when nothing is selected → `to_have_count(0)`. |
+| Card type badge, page-wide collection | `entity-card-tag-chip` | on-main ✓ | `McpListPage` today only has the per-card **scoped** `CARD_TAG_CHIP_SELECTOR`; a page-wide `LocatorDescriptor` + `get_visible_type_badges()` is needed for filter assertions — copy `credentials_list_page.py:~487`. |
+
+**Mechanics (source-confirmed, `[fsd]/features/toolkits/lib/hooks/useLoadToolkits.hooks.js`):**
+
+- The MCP Types chip list is **HARDCODED to exactly `Local` + `Remote`**
+  (`tagList`, `isMCP` branch, ~lines 181-198) — it is NOT data-derived. Both
+  chips always render, whatever the project holds. (Credentials' panel *is*
+  data-derived — do not carry that assumption across.)
+- Selecting a chip is **URL-driven**: `useTypes` pushes `?tags[]=<Name>`
+  (`replace: true`) and the list re-queries. Selected state lives ONLY in an
+  emotion CSS class hash (`css-1oy09ev` selected vs `css-16qy5qb` idle) —
+  **no `aria-selected`, no `data-*` attribute**. Never bind to the class.
+  Assert "a filter is active" via the URL param + `tags-panel-clear-all`.
+  (Known gap: a `data-selected` attribute on `StyledChip` would be the policy
+  shape if a case ever needs to prove *which* chip is lit; not needed yet.)
+- Filtering is **server-side**: Remote ⇒ `GET …/tools/prompt_lib/{project}?…&toolkit_type=mcp`.
+  (Contrast: the search box on the same page filters **client-side** —
+  ELITEA-1941.)
+- **The chips mount AFTER the page's load signal.** `McpListPage.navigate()`
+  waits on the card-view toggle, at which point `tags-panel-chip-Remote` is
+  still absent (a click there fails with "does not match any elements",
+  observed live). Wait for the chip itself.
+- Re-clicking a selected chip deselects it; `tags-panel-clear-all` clears all.
+  Both verified to restore the full list.
+
+**⚠ Product defect #1737 (OPEN, filed 2026-08-24) — the `Local` chip does not
+filter.** `selectedMcpTypes = rows.filter(t => t !== 'mcp')` is `[]` when the
+project has no pre-built `mcp_*` type, and an empty type set is treated as
+"no filter" ⇒ the list query goes out with **no `toolkit_type` at all** and
+every Remote MCP stays on screen while the Local filter is visibly active.
+Reproduced 2/2 including a pristine `goto('/mcps/all?tags[]=Local')`.
+
+**⚠ Environment fact — there are NO Local MCPs and none can be created here
+(question #1738).** `GET /toolkit_types/prompt_lib/{project}?mcp=true` →
+`{"rows": ["mcp"], "total": 1}`; `/mcps/create` offers exactly one type card
+(`toolkit-type-card-mcp`, "Remote MCP"). Any case text naming ADO /
+FileSystem / PlaywrightMCP as available Local MCPs is unsatisfiable in this
+environment — check this before planning such a case.
+
+**Resolved/added during ELITEA-1942 implementation (2026-08-24, implementer):**
+every handle above worked verbatim — no testid was added for this case.
+Three implementation-time facts the analyst pass could not see:
+
+- **Settle signal for a chip click is the list GET's `toolkit_type=` param.**
+  `McpListPage._expect_list_response(action, filtered=…)` awaits
+  `/tools/prompt_lib/{project}` GET whose URL either contains `toolkit_type=`
+  (select) or does not (deselect / Clear all). Both fire reliably; no sleep is
+  needed anywhere in the flow.
+- **The restored list renders a tick AFTER the unfiltered GET resolves** — a
+  synchronous `get_card_names()` right after the response can read an empty
+  grid (the same race `CredentialsListPage._settle_unfiltered_list` documents).
+  `McpListPage._settle_restored_list()` (network + first card visible) is the
+  fix; `remove_type_filter()` / `clear_all_type_filters()` call it for you.
+- **`page.url` percent-encodes the param** — it reads `tags%5B%5D=Remote`, so
+  assert on `urllib.parse.unquote(page.url)` containing `tags[]=Remote` rather
+  than on the raw string.
+
+New `McpListPage` members (all testid-only, all additive): `TYPE_FILTER_CHIP`,
+`tags_clear_all_button`, `entity_card_tag_chip`, `type_filter_chip()`,
+`wait_for_type_panel()`, `click_type_filter()`, `remove_type_filter()`,
+`clear_all_type_filters()`, `is_type_filter_active()`,
+`get_visible_type_badges()`.
+
+---
+
+## MCP LIST card pin/unpin + type-filter counts (2026-08-24)
+
+**Appended during ELITEA-1945 / ELITEA-1958 cluster analysis, batch `mcp-w03`.** All observed
+live against `http://localhost:5173/mcps/all`, project 399 (19 MCPs, all Remote, none pinned
+before and after the run).
+
+### Card pin toggle — `mcp-pin-toggle-button-{id}`
+
+| Fact | Detail |
+|---|---|
+| Provenance | **on `main` ✓** — `origin/main:src/[fsd]/widgets/pin-toggler/ui/PinButton.jsx:98` (verified after `git fetch origin`, 2026-08-24) |
+| State read | `aria-label` = `Pin to top` / `Unpin from top` (testid stable, state in the attribute) |
+| **Hover-reveal** | **The button renders at `opacity: 0` until the card is hovered** (`pointer-events: auto` throughout, so a click works unhovered). ⚠️ Playwright's visibility definition ignores `opacity`, so `to_be_visible()` passes on an invisible control — assert `to_have_css("opacity","1")` after an explicit hover when a case says "the button is visible". |
+| Tooltip | MUI `role="tooltip"` appears on hover carrying the same text (`Pin to top` → `Unpin from top`). **No testid, and none should be added** (#511) — `aria-label` is the testid-anchored equivalent. |
+| Pin | `POST /api/v2/social/pin/prompt_lib/{project}/toolkit/{id}` → **201**; card jumps to index 0 **immediately, client-side** (observed 18 → 0, no reload, no list re-fetch). |
+| Unpin | `DELETE` same path → **204**; label flips back instantly **but the list does NOT re-sort** — the card stays at index 0 until the next list fetch. After `page.goto('/mcps/all')` the original order returns byte-identical. Case-text gap filed as clarification **#1740**. |
+| Vacuity trap | Default sort is newest-first, so a freshly created MCP is already index 0. A pin test must seed **two** MCPs (A then B) and pin **A**, asserting `index(A) < index(B)` afterwards. |
+| Hygiene | The merged `test_mcp_three_dot_menu_actions.py` asserts "no MCP is pinned" as its own precondition — **never leak a pin**, and assert the same guard before pinning (a stray pin sits at index 0 and breaks the "moved to top" read for an unrelated reason). |
+| Page object | `McpListPage.PIN_TOGGLE_BUTTON` + `get_pin_toggle_label(mcp_id)` already exist; a `click_pin_toggle(mcp_id)` returning the awaited pin/unpin `Response` is the missing piece (mirror `McpFormPage.click_pin_toggle_menu_item()`). |
+
+**Added during ELITEA-1945 implementation (2026-08-24, PR against `tests/batch-mcp-w03`):**
+`McpListPage` now carries the full card-pin vocabulary — `pin_toggle_button(mcp_id)` (Locator,
+mirrors `CredentialsListPage`/`PipelinesListPage`), `hover_pin_toggle(mcp_id)`,
+`click_pin_toggle(mcp_id) -> Response` (awaits the `/social/pin/…/toolkit/{id}` round trip),
+`wait_for_pin_toggle_label(mcp_id, expected)` (retrying `aria-label` assertion — the flip lands a
+render tick after the response), `wait_for_card_at_top(name)` (the pin's client-side re-sort is
+immediate but one tick late), and `get_all_pin_toggle_labels()` off a new
+`PIN_TOGGLE_BUTTON_ANY = '[data-testid^="mcp-pin-toggle-button-"]'` class constant, which is how
+the "nothing is pinned" precondition guard is asserted without a raw handle. Everything the digest
+predicted held live first run: 201/204, immediate pin re-sort, unpin non-re-sort, byte-identical
+restored order after `navigate()`, 0 console errors. No new testids were needed.
+
+### Type-filter counts — #1737 re-reproduced (3rd time)
+
+| Filter | Cards | Badge set | List request |
+|---|---|---|---|
+| none | 19 | `{Remote}` | `…/tools/prompt_lib/399?query=&sort_by=created_at&sort_order=desc&mcp=true&limit=20&offset=0` |
+| Remote | 19 | `{Remote}` | same **+ `&toolkit_type=mcp`** |
+| **Local** | **19** | **`{Remote}`** | **byte-identical to unfiltered — no `toolkit_type` at all** |
+
+So the count identity ELITEA-1958 asserts (`total == Remote + Local`) reads **19 == 19 + 19**
+live. ELITEA-1958 is **blocked** on #1737 (product) + #1738 (no Local MCP exists in DEV, now
+gating three cases). Occurrences were commented onto both existing issues; nothing re-filed.
+`tags-panel-clear-all` is a verified equivalent to re-clicking the chip for clearing (2/2).
+
+### Console
+
+0 errors on `/mcps/all` across the whole pin/unpin flow *and* the whole filter flow. The known
+`/mcps/create` React key warning (#656) is the only reason to scope a console listener — register
+it **after** any UI-create seeding.
+
+---
+
+## MCP **type picker** (`/mcps/create`) — sections, Documentation link, filter chips (2026-08-24)
+
+**Appended during the ELITEA-1948/1949 cluster analysis, batch `mcp-w03`.** Verified live
+on `http://localhost:5173/mcps/create`, project 399. **Do NOT confuse this surface with the
+MCP dashboard "Types" panel** (§ MCP DASHBOARD above) — different component, different
+testids, different mechanics.
+
+| Surface | Component | Chip testid | Filtering |
+|---|---|---|---|
+| `/mcps/all` dashboard | `components/Categories.jsx` | `tags-panel-chip-{Type}` | **server-side** (`?tags[]=`, `toolkit_type=`), has `tags-panel-clear-all` |
+| `/mcps/create` type picker | `[fsd]/shared/ui/filter/CategoryFilter.jsx` | **`category-filter-tab` — shared by BOTH chips, non-unique** | **pure client-side re-grouping, NO network request**, no "clear all" |
+
+### Confirmed handles on this surface
+
+| Element | Testid | Provenance (fetched 2026-08-24) |
+|---|---|---|
+| Local empty-state message | `mcp-type-picker-local-empty-state` | **on-main ✓** (`ToolkitTypeSelector.jsx:176`) |
+| Remote MCP type card | `toolkit-type-card-mcp` | **on-main ✓** (runtime-composed ``toolkit-type-card-${itemKey}``, `CategoryItemCard.jsx:14` — bare-string grep says "no", the template is there) |
+| No-results title / description | `catalog-no-results-title` / `catalog-no-results-description` | **on-main ✓** (`NoResultsMessage.jsx`) |
+
+### Testid GAPS on this surface (work orders in ELITEA-1949's AFS, not waivers)
+
+| Element | Recommended name | Where |
+|---|---|---|
+| Heading `Choose the MCP type` | `mcp-type-picker-heading` | `CategoryFilter.jsx:33-39` — shared ⇒ add a `titleTestId` prop, plumb through `GroupedCategory.jsx` exactly as `searchInputTestId` already is, pass only when `isMCP` |
+| Filter chips | `mcp-type-picker-filter-chip-local` / `-remote` **+ `data-selected`** | `CategoryFilter.jsx:66-81` — **mirror the sibling `CategoryRail.jsx:5-30`**, which already has `chipTestIdPrefix` + `slugifyCategory()` + `data-selected`. Keep `category-filter-tab` as the no-prefix fallback (other surfaces use it) |
+| Documentation link | `mcp-type-picker-local-documentation-link` | `ToolkitTypeSelector.jsx:179-186` — our own JSX, direct attribute |
+
+Chip selection state today lives **only** in an emotion class hash (`css-5yxssv` selected
+vs `css-1n8j5hf` idle) / computed `background-color` — never bind to either.
+
+**Resolved/added during ELITEA-1949 implementation (2026-08-24):** all three testids above
+are now on `automation/testids` — EliteaAI/EliteaUI@f4ce7128 (the props + the doc link) and
+EliteaAI/EliteaUI@989db4f0 (the scoping fix below). Not yet on `main`. Chip selection is now
+readable as `data-selected="true|false"` on the chip's own testid, so the emotion-class
+warning above is no longer a constraint on this surface — page-object handles:
+`McpFormPage.type_picker_heading`, `.local_documentation_link`, `.no_results_title`,
+`.no_results_description`, and the `TYPE_FILTER_CHIP` / `TYPE_FILTER_CHIP_SELECTED` class
+constants with `type_filter_chip()` / `click_type_filter()` / `is_type_filter_selected()`.
+
+**Trap the work order did not see — `ToolkitTypeSelector` has TWO call sites.** It is
+rendered by the standalone `/mcps/create` page (`src/pages/Toolkits/CreateToolkit.jsx`) **and
+by the in-chat MCP canvas** (`src/[fsd]/features/chat/ui/editors/ToolkitEditor.jsx:304`), and
+both pass `isMCP`. Putting `chipTestIdPrefix={isMCP ? … : undefined}` inside
+`ToolkitTypeSelector` therefore also renames the CANVAS chips, breaking the two merged specs
+that bind `category-filter-tab` there (`tests/ui/chat/test_create_mcp_from_conversation.py`,
+`…_discard_changes.py`, via `McpFormPage.select_remote_category_tab`). The shipped shape
+hoists both props to the `CreateToolkit.jsx` call site; `ToolkitTypeSelector` only forwards
+them. Anything else added to this surface's shared components must make the same check —
+both chat specs re-ran green after the fix.
+
+### Behaviours confirmed live
+
+- **The chips are MULTI-SELECT** and there is no clear-all. Clicking `Local` then `Remote`
+  leaves *both* lit. Re-clicking a lit chip deselects it.
+- **⚠️ Selecting `Local` unmounts the Local section entirely** — heading, empty-state
+  message and Documentation link all vanish, replaced by `No MCPs found` /
+  `Try adjusting your search terms`. Source: `ToolkitTypeSelector.jsx` passes
+  `allowEmptyCategory={isMCP}` and `GroupedCategory.jsx:56-62` keeps an empty category
+  **only while `!selectedCategories.length`**. So the Local placeholder is an
+  *unfiltered-view* affordance. Filed as clarification **#1742** (`question` +
+  `case-text-drift`) — NOT a bug, and a sibling of (not a duplicate of) the dashboard
+  bug #1737.
+- Selecting `Remote` (alone or alongside `Local`) renders the single `Remote` section with
+  `toolkit-type-card-mcp`.
+- `toolkit-type-card-mcp` mount delay reconfirmed — framework auto-waiting only.
+- **Console:** exactly one error on this route, the known #656 React `key` warning from
+  `CategorySection.jsx` via `ToolkitTypeSelector.jsx`. Nothing else, including across both
+  filter clicks.
+
+---
+
+## MCP DETAIL — Form ⇄ Raw Json is a live two-way projection (2026-08-24, ELITEA-1948)
+
+**Appended during the ELITEA-1948/1949 cluster analysis, batch `mcp-w03`.** Verified live on
+toolkit **3134** (`autotest_conn_tools_a1`). Nothing was persisted — the whole flow issued
+**zero** `PUT`/`POST`/`PATCH`/`DELETE`.
+
+- **The two views SWAP, they do not co-exist.** After `switch_to_raw_json_view()`,
+  `toolkit-form-name-input` is **unmounted** (`to_have_count(0)`, not hidden), and vice
+  versa. State reads on the toggles use `aria-pressed` (`toolkit-form-view-toggle` /
+  `toolkit-raw-json-view-toggle`) — attribute on the testid'd element, compliant.
+- **An unsaved Raw-Json edit reaches the Form view immediately** (no save, no reload) and
+  survives a round trip back to Raw Json. Both Save and Discard flip to **enabled** the
+  moment the edit lands — the product's own proof the edit entered the shared Formik model
+  rather than just the CodeMirror buffer.
+- **A view switch RE-SERIALISES the JSON from the form model.** Observed 30 → 29 → 30 lines
+  across edit → Form → Raw Json → discard: CodeMirror's auto-indent artefact from a
+  per-line edit is normalised away. ⇒ **assert on the parsed value**
+  (`json.loads(get_raw_json_full())["description"]`), never on raw line text.
+- **`description: null` in the JSON ⇄ `""` in the Form input.** An absent description
+  serialises as `null`. Seed a NON-EMPTY description when a case needs "reverts to the
+  original value" to be a real observable.
+- **Discard reverts BOTH views** (after the modal confirm, § MCP DETAIL page: Discard is
+  CONFIRMED through a modal): the editor goes back to `"description": null,`, the Form
+  input to `""`, Save + Discard back to disabled, and **the active view does not change**
+  (still Raw Json, `aria-pressed="true"`).
+- **The `.fill()` trap reconfirmed the hard way this session:** Playwright MCP's
+  `browser_type` maps to `locator.fill()`, which replaced the entire 30-line document with
+  one line (invalid JSON, Save stays disabled, only a reload recovers). Per-line editing
+  only — click the `.cm-line`, `End`, `Shift+Home`, `keyboard.type(...)`. In-repo:
+  `McpFormPage.fill_raw_json_line()`.
+- **Case-text gap:** ELITEA-1948's step 9 omits the Discard confirmation modal, exactly as
+  ELITEA-1928's step 5 did. **Third case to hit it** — occurrence commented on the existing
+  clarification **#1718**; nothing re-filed.
