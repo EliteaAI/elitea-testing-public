@@ -149,6 +149,30 @@ class OnboardingPage(BasePage):
             "Must be absent at the Welcome state (before button click)."
         ),
     )
+    progress_status_label = LocatorDescriptor(
+        testid="onboarding-progress-status-label",
+        description=(
+            "'Configuring Personal project...' status line inside the progress "
+            "footer (Onboarding.jsx:188-194). Present only while "
+            "showTour && !thePrivateProjectIsReady."
+        ),
+    )
+    progress_estimated_time = LocatorDescriptor(
+        testid="onboarding-progress-estimated-time",
+        description=(
+            "'about 5 min' estimate inside the progress footer "
+            "(Onboarding.jsx:195-201)."
+        ),
+    )
+    progress_bar = LocatorDescriptor(
+        testid="onboarding-progress-bar",
+        description=(
+            "Determinate MUI LinearProgress inside the progress footer "
+            "(Onboarding.jsx:204-209). role='progressbar'; aria-valuenow starts "
+            "at 5 and grows by 95/150 per second, capped at 95 "
+            "(Onboarding.jsx:71-73) — client-side animation only."
+        ),
+    )
 
     # ------------------------------------------------------------------
     # Locators — onboarding tips card (OnboardingTour.jsx / TourContent.jsx)
@@ -244,6 +268,23 @@ class OnboardingPage(BasePage):
         '[data-testid="onboarding-tour-page-indicator"]'
     )
 
+    # Dynamic (runtime-parameterized) testids — class-level template constants per
+    # .agents/testing.md § Locator policy (inline get_by_test_id(f"...") is NOT
+    # compliant; the pattern must stay greppable at class level).
+    PROJECT_SELECTOR_OPTION = '[data-testid="project-selector-option-{}"]'
+    """Row inside the OPEN project dropdown, keyed by project label
+    (SidebarProjectSelect.jsx customRenderOption — testid added for ELITEA-2232,
+    EliteaAI/EliteaUI@bb8b9adc). Live value for the standard test user: 'Private'.
+    """
+
+    SIDEBAR_MENU_ITEM = '[data-testid="sidebar-menu-item-{}"]'
+    """Sidebar entity menu item, keyed by entity value (SidebarBody.jsx:272,
+    testId prop). Values: chat, agents, pipelines, skills, toolkits, mcps,
+    credentials, applications, artifacts. The menu fills in progressively after
+    the project becomes ready — anchor on ONE item with an auto-waiting expect(),
+    never assert the item count.
+    """
+
     # ------------------------------------------------------------------
     # Locators — workspace-ready banner (WorkspaceIsReady.jsx)
     # ELITEA-2235 / ELITEA-2241
@@ -277,9 +318,32 @@ class OnboardingPage(BasePage):
         """Slide counter INSIDE the full-screen dialog."""
         return self.page.locator(self.DIALOG_PAGE_INDICATOR)
 
+    def project_selector_option(self, label: str) -> Locator:
+        """Project row inside the OPEN project dropdown, by project label."""
+        return self.page.locator(self.PROJECT_SELECTOR_OPTION.format(label))
+
+    def sidebar_menu_item(self, value: str) -> Locator:
+        """Sidebar entity menu item, by entity value (e.g. 'chat')."""
+        return self.page.locator(self.SIDEBAR_MENU_ITEM.format(value))
+
     # ------------------------------------------------------------------
     # Actions — tour card / banner
     # ------------------------------------------------------------------
+
+    @action("Click 'Sure, let's go!' on the Welcome card")
+    def click_get_started(self) -> None:
+        """Leave the Welcome state and enter the tour state.
+
+        Onboarding.jsx handleShowTour() writes sessionStorage.onboarding_state,
+        starts the client-side progress animation and starts a 5 s poll of
+        GET /api/v2/social/author/. It issues no provisioning call of its own.
+        """
+        self.welcome_get_started_button.click()
+
+    @action("Open the project dropdown from the sidebar")
+    def open_project_selector(self) -> None:
+        """Click the sidebar project-selector trigger to list the projects."""
+        self.project_selector_trigger.click()
 
     @action("Open the onboarding tips card in full screen")
     def open_tour_fullscreen(self) -> None:
