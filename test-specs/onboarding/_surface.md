@@ -117,11 +117,16 @@ and `project-selector-trigger` ARE on main. `sidebar-menu-item-*` is a dynamic t
 
 ## Related AFS
 
-- `l2_onboarding-welcome-page_ELITEA-2231.md`, `lmedium_welcome_page_first_login_ELITEA-2231.md`
-- `lhigh_onboarding_tips_card_slide_1_of_48_ELITEA-2235.md`
-- `lhigh_onboarding_tips_fullscreen_expand_collapse_ELITEA-2236.md`
-- `lmedium_onboarding_jump_in_now_ELITEA-2241.md`
-- `lmedium_onboarding_provisioning_after_get_started_ELITEA-2232.md`
+- `l2_onboarding-welcome-page_ELITEA-2231.md`
+- `l1_onboarding_tips_card_slide_1_of_48_ELITEA-2235.md`
+- `l1_onboarding_tips_fullscreen_expand_collapse_ELITEA-2236.md`
+- `l2_onboarding_jump_in_now_ELITEA-2241.md`
+- `l2_onboarding_provisioning_after_get_started_ELITEA-2232.md`
+
+_(Filename prefixes follow the repo's numeric convention — `l1_` = high, `l2_` = medium,
+`l3_` = low. The earlier `lhigh_`/`lmedium_` word forms were renamed 2026-08-24; a
+superseded second ELITEA-2231 draft, `lmedium_welcome_page_first_login_ELITEA-2231.md`
+— a code-review-only `blocked` analysis — was deleted in the same pass.)_
 
 ---
 
