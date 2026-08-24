@@ -343,3 +343,102 @@ configuration fields are COLLAPSED applies before any of these handles resolves.
 - **Case-text divergence (ELITEA-1931 step 2):** there is no "Headers accordion" — the
   case's step is satisfied by expanding the single Configuration section. Filed as
   clarification #1719 (also records the commit-on-blur behaviour).
+
+## Connection status + `selected_tools` via Raw Json (ELITEA-1935 / ELITEA-1936, 2026-08-24)
+
+**Appended during the ELITEA-1935/1936 cluster analysis.**
+
+### There is NO connection badge on MCP list cards
+
+An MCP list card's complete testid inventory is `entity-card-icon`,
+`entity-card-name`, `entity-card-tag-chip`, `mcp-pin-toggle-button-<id>`.
+`entity-card-tag-chip` renders the **type** (`Remote`), not a connection state.
+A page-wide text probe for `Disconnected` / `Not Connected` / `Connected!` on
+`/mcps/all` returns **false for all three** (18 cards, verified live). Source
+agrees: `grep -rn "Disconnected" src/` hits only the chat-participants feature
+(`mcpIsDisconnected`, a different surface — issue #687) and the guided-tour
+markdown. Connection status exists **only on the detail page**.
+ELITEA-1936's step 2 asserts otherwise — filed as clarification **#1723**.
+
+### The Login button is fully automatable — no OAuth window for a no-OAuth server
+
+`McpAuthStatus.jsx` → `onLogin` → `useMcpAuthCheck.runAuthCheck` emits a
+**socket `test_mcp_connection`** event (protocol-level `tools/list`). For a
+public server (DeepWiki) it succeeds in-page: `setConnectionVerified(url)` runs
+and the indicator flips. **No external window, no redirect, no credential.**
+Only a server that actually demands OAuth opens `McpAuthModal`.
+
+| Observable | Value |
+|---|---|
+| Status text | `Not Connected` → `Connected!` (**trailing `!`** — case texts omit it) |
+| Button label | `Login` → `Logging in...` (transient) → `Logout` |
+| Round-trip time | **< 500 ms** against DeepWiki — do NOT assert the `Logging in...` label, it is a guaranteed flake |
+
+### ⚠️ Connection state lives in `sessionStorage`, keyed by SERVER URL
+
+```
+sessionStorage["elitea_mcp_tokens_v1"]
+  = {"https://mcp.deepwiki.com/mcp": {"access_token": "__connection_verified__",
+     "issued_at": …, "expires_at": …, "connection_verified": true}}
+```
+
+Per-context, so a fresh Playwright context gives an honest `Not Connected`
+baseline — **but it is keyed by URL, not by toolkit**, so a unique per-test
+toolkit name does NOT isolate you. Any earlier test in the same context that
+connected to the same fixture URL leaves the next one already `Connected!`.
+Clear the key in setup or take a fresh context.
+
+### `available_mcp_tools` is CONDITIONAL, not absent (corrects #574)
+
+The blanket claim "the live product never renders `available_mcp_tools`" came
+from toolkits explored **before Load Tools**. Once tools are discovered the
+field is present and fully populated (`label` / `value` / `args_schema` per
+tool) — confirmed both in the editor and via `get_raw_json_full()`.
+Commented on #574. No change needed to `test_mcp_edit_raw_json_description.py`
+(its fixture has no tools loaded, so absence is correct there).
+
+### Editing `selected_tools` through the Raw Json editor
+
+`selected_tools` renders **one array element per line**, sorted, all discovered
+tools selected by default after Load Tools.
+
+- **Removing** a tool = deleting its whole line. Target a **non-last** element —
+  removing the last one strands the preceding line's trailing comma and the JSON
+  becomes invalid. `ask_question` sorts first with the DeepWiki fixture.
+- `Home` in CodeMirror is **smart-home** (first non-whitespace), so
+  `Home` → `Shift+End` → `Backspace` leaves the indentation behind. That
+  whitespace-only line is valid JSON and the server normalises it away on save.
+- **Re-adding** is a one-line replacement with the existing
+  `fill_raw_json_line('"read_wiki_contents",', '"ask_question", "read_wiki_contents",')`
+  — JSON is whitespace-insensitive, two names on one line is valid, server
+  reformats. Verified live end-to-end.
+- `McpFormPage` has **no line-delete helper** — ELITEA-1935's AFS specs
+  `delete_raw_json_line()` (same shape as `fill_raw_json_line`, `Backspace`
+  instead of `type`, inheriting its declared #579 exception).
+
+### Three traps that each cost a probe this session
+
+1. **`get_raw_json_full()` leaves the editor scrolled to the BOTTOM.** A
+   `fill_raw_json_line()` afterwards fails with `Locator.click: Timeout` — the
+   target line has been virtualized out of the DOM. **Do per-line edits BEFORE
+   any full read**, or scroll back to the top first.
+2. **Never `.fill()` the raw-JSON editor.** It is a contenteditable CodeMirror
+   root, so `fill()` replaces the **entire document** (observed: 29 lines → 1).
+   Per-line editing only. (Nothing saves in that state — Save goes disabled —
+   but recovery needs a reload.)
+3. **`is_save_button_disabled()` targets the CREATE-form Save**
+   (`toolkit-form-save-button`), which does not exist on the detail page — it
+   times out after 10 s. Use `detail_save_button` there.
+
+### Tool chips: selection is an ATTRIBUTE, not presence
+
+Deselecting a tool does **not** remove its chip — the chip list is driven by
+`available_mcp_tools`, the selection by `selected_tools`. All 3 chips stay
+rendered; the deselected one flips to `data-selected="false"`. Chip `innerText`
+is **empty** — never assert on chip text. Use
+`McpFormPage.is_tool_chip_selected(name)`.
+
+### `toolkit-type-card-mcp` mount delay is longer than previously logged
+
+Observed **3.5 s** this session (the earlier note said ~1 s). Rely on framework
+auto-waiting; never an immediate `query_selector` after `goto('/mcps/create')`.
