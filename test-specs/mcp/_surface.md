@@ -1103,3 +1103,64 @@ toolkit **3134** (`autotest_conn_tools_a1`). Nothing was persisted — the whole
 - **Case-text gap:** ELITEA-1948's step 9 omits the Discard confirmation modal, exactly as
   ELITEA-1928's step 5 did. **Third case to hit it** — occurrence commented on the existing
   clarification **#1718**; nothing re-filed.
+
+## Timeout / Cache TTL numeric fields — defaults, value TYPE asymmetry, info icon (2026-08-24, ELITEA-1956/1957)
+
+**Appended during the ELITEA-1956/1957 cluster analysis (batch `mcp-w04`). Confirmed live
+on a freshly seeded Remote MCP (toolkit 3247, `https://mcp.example.com/sse`).**
+
+- **Defaults are real input VALUES, not just placeholders.** Both `toolkit-field-timeout-input`
+  and `toolkit-field-cache_ttl-input` read `input_value() == "300"` on the create form AND on
+  a freshly created MCP's detail page. They *also* carry `placeholder="300"` (derived from the
+  schema default at `ToolBaseProperty.jsx:592-596`, `placeholder = schemaPlaceholder ||
+  (isInteger && defaultValue !== undefined ? String(defaultValue) : undefined)` with
+  `value={settings[k] ?? ''}`) — so a *genuinely empty* field would still show "300" greyed
+  out. **Assert `input_value()`, never the placeholder.**
+- **Value TYPE asymmetry — the one thing to know here.** An **untouched** default persists as a
+  JSON **number**; a value **typed in the UI** persists as a JSON **string**:
+
+  | State | `settings.timeout` | `settings.cache_ttl` |
+  |---|---|---|
+  | freshly created, untouched | `300` (int) | `300` (int) |
+  | after typing 60 into Timeout | `"60"` (str) | `300` (int) — untouched sibling stays numeric |
+  | after typing 600 into Cache TTL | `"300"` (str, from a prior edit) | `"600"` (str) |
+
+  Same in the create POST body, the update PUT body and the Raw Json view. This is why
+  merged `test_mcp_create_remote.py:196-199` asserts `== "600"` + `isinstance(..., str)`.
+  TMS case texts (ELITEA-1956/1957) print bare numbers — that is **case-text drift**, not a
+  defect. Assert with `str(raw["settings"][k]) == "<value>"`.
+- **Round-trip confirmed both directions**: 300 → 60 → 300 (Timeout) and 300 → 600 → 300
+  (Cache TTL), each with a PUT 200, each surviving `page.reload()`. Editing one field never
+  touched the other.
+
+### The label info icon has NO testid (work order, not a waiver)
+
+Live DOM inside each field's `<label>`:
+`<span data-info-tooltip="true"><svg width="16" height="16" …/></span>` — one SVG, **zero
+`data-testid`** on `timeout`, `cache_ttl`, `url` (checked all three).
+
+The plumbing is fully wired already — `ToolBaseProperty.jsx` → `Input.StyledInputEnhancer`
+→ `InputBase` → `InfoTooltip`, and `InfoTooltip` accepts `testId` / `contentTestId`.
+`ToolBaseProperty.jsx:615-618` already passes them, but **only for `k === 'bucket'`**
+(`toolkit-field-bucket-info-icon`, already on `origin/main`). Adding an info-icon testid for
+any other field = extend that per-key allow-list with two additive props. Do **not** make it
+generic (blanket-add ban, `.agents/testing.md` § Locator policy) and do **not** add the
+`-info-tooltip-content` sibling unless a case actually opens the tooltip (#511).
+
+### Two traps this session
+
+1. **`McpFormPage.is_save_button_disabled()` binds the CREATE form's
+   `toolkit-form-save-button`** — it does not exist on the detail page, so calling it there
+   times out after 30 s with a misleading "waiting for get_by_test_id(...)". On the detail
+   page read `detail_save_button.is_disabled()` directly. (Pristine detail page: `true`;
+   after touching one field: `false` — consistent with the Save/Discard gating section above.)
+2. `expand_configuration_section()` is required **again after every `page.reload()`** — and
+   again after `switch_to_form_view()` coming back from Raw Json.
+
+### Console was clean
+
+Zero `error`-type console messages across both full flows (seed → edit → save → reload →
+Raw Json → restore, twice), headless, fresh context — including the `#291` React dev-mode
+warnings and the `#549` MUI-Tabs warning that `test_mcp_edit_toggle_enable_caching.py` still
+filters/soft-fails. **Not evidence they are fixed** (different render path / headless), but
+worth re-checking the next time someone touches those filters.
