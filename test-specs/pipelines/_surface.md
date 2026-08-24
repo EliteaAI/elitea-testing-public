@@ -2,7 +2,96 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-09 (ELITEA-2449 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-24 (ELITEA-1952/1953
+> cluster analysis, batch `mcp-w05`).
+
+## MCP node — the 4 Tools ADD triggers, the Tools card's untestid'd name/connection-status, input-mapping TYPE gaps, and LIVE MCP-node EXECUTION (confirmed live, 2026-08-24, ELITEA-1952/1953)
+
+Extends § "MCP node — inline config panel, CONDITIONALLY rendered (…ELITEA-2037)"
+below; everything there still holds. New this session, all live-confirmed on
+pipeline `9506` with MCP toolkit `autotest_mcp_w05` (DeepWiki fixture):
+
+- **All four TOOLS ADD triggers already carry testids and are already
+  `PipelineDetailPage` fields** (`pipeline_detail_page.py:1374/1399/1408/1420),
+  all on `origin/main`: `agent-add-toolkit-button`, `agent-add-mcp-button`,
+  `agent-add-agent-button`, `agent-add-pipeline-button`. **Visible text is
+  `Toolkit`/`MCP`/`Agent`/`Pipeline` — the `+` is a separate icon**, so a case
+  text saying `"+ MCP"` must not be matched as a string.
+- **The attached-tool card (`agent-toolkit-card`) has TWO testid gaps.** Its
+  children are: an untestid'd MCP `<svg>` icon, an untestid'd
+  `<div class="MuiTypography-root MuiTypography-bodyMed">` holding the **name**,
+  `toolkit-card-tools-toggle` ("Show tools"), `toolkit-open-button`,
+  `agent-toolkit-delete-button`, and an untestid'd `<button>` reading **`Log in`**
+  — that button IS the card's **connection status** for an unauthenticated Remote
+  MCP. Recommended: `pipeline-tools-card-name`,
+  `pipeline-tools-card-connection-status`. ⚠️ **Distinct from
+  `toolkit-connection-status`** (that one is `McpAuthStatus.jsx` on the MCP
+  *detail* page, not the pipeline Tools card).
+- **Input-mapping row shape**: `HeadingChip(DisplayName)` + a **`Type` select**
+  (options `select-option-fixed` / `-variable` / `-fstring`, i.e. Fixed/Variable/
+  F-String) + a `Value` control. The heading text is `Input mapping (required N)`
+  — sentence case with the count, NOT the uppercase "INPUT MAPPING (REQUIRED)"
+  several case texts use. **No JSON-schema data type is displayed** anywhere; the
+  "Type" the UI shows is the *mapping* type.
+- **Two live testid gaps on the MCP node's input mapping** (both are one-line
+  widenings of existing plumbing, exact lines in
+  `test-specs/pipelines/lextend_mcp-node-input-mapping-configuration_ELITEA-1953.md`):
+  1. the **Type select** — `BaseToolNode.jsx:208-212` passes `typeTestIdPrefix`
+     only for `nodeType === Toolkit`; MCP gets `undefined`, leaving two identical
+     `id="simple-select-Type"` controls per node (positional only). The comment in
+     that file says it was scoped to Toolkit "because the MCP node's equivalent
+     select is untouched by any test" — ELITEA-1953 is that test, so widening it
+     now SATISFIES #511 rather than violating it.
+  2. the **Variable-branch Value select** — `InputMappingItem.jsx:245-255` (the
+     non-enum, non-string `Select.SingleSelect`) has no `dataTestId`, while the
+     other two branches already pass `dataTestId={valueTestId}` (lines 146, 170).
+- **Switching a row's Type to `Variable` SWAPS the Value WIDGET** — the text input
+  (and with it `pipeline-mcp-node-input-mapping-value-{param}`) is **removed from
+  the DOM** and replaced by a state-variable select auto-set to `input`
+  (`id="simple-select-[object Object]"` — a cosmetic id-computation slip, not a
+  functional defect; never locate on it). Same behaviour class as the LLM/HITL
+  finding at § "LLM/HITL node Type+Value field" below. The Type change is
+  **per-row**: the sibling row keeps `Fixed`.
+- **Default toggle states on a fresh MCP node** (re-confirmed, and the nuance the
+  case texts get wrong): all three are **unchecked**. `Interrupt before` is
+  additionally `disabled` *because the node is the entry point*; `Interrupt after`
+  *because `transition == END`*; **`Structured output` is NOT `disabled`** — just
+  unchecked. A case text saying "disabled by default" means OFF, not the
+  `disabled` attribute.
+- **Persistence through Save + full reload is clean** for: per-row Type,
+  Variable-branch value, Fixed value, Toolkit, Tool, input-mapping heading, and all
+  three toggle states. `PUT …/application/prompt_lib/{project}/{id}` → 201.
+- **THERE IS NO `START` NODE.** A fresh pipeline's canvas holds only `END`; "start"
+  is the node's `Trigger`/entry-point property
+  (`pipeline-entry-point-trigger-select`, which the sole node auto-acquires). The
+  `MCP 1 → END` edge is **auto-created** from the node's default `transition` —
+  it does not exist at add time (edge count 0 right after "Add node → MCP") but is
+  present after Save + reload as
+  `rf__edge-xy-edge__MCP 1---EliteAPipelineEnd`. Any case step saying
+  "connect START → X → END" is case-text drift with nothing to drag.
+- **LIVE MCP-NODE EXECUTION WORKS AND IS ASSERTABLE (new capability on this
+  surface).** Sending a message in the embedded chat on a saved pipeline whose MCP
+  node has a Toolkit+Tool runs the tool for real. The assistant message then
+  contains `chat-answer-thought-accordion` → **`chat-answer-tool-chip` whose text
+  is exactly `"{toolkit_name}: {tool_name} (MCP1)"`** (e.g.
+  `autotest_mcp_w05: ask_question (MCP1)`) plus `skill-test-last-response` holding
+  the real tool output. **That chip is the observable that proves the MCP node ran
+  the SELECTED tool** — a non-empty answer alone does not (a silent LLM-only
+  fallback would also produce one). `chat-answer-tool-chip` is on `origin/main` and
+  already wired on `ChatPage`/`AgentDetailPage`, but NOT yet on
+  `PipelineDetailPage` — page-object work only, no EliteaUI change. Wall clock this
+  session: ~11 s "Thought" + streaming, ~40 s end to end. Budget 180 s, wait on the
+  last message's `chat-delete-button`, never a sleep.
+- **⚠️ Enter does NOT send in the embedded chat composer.** Filling
+  `chat-message-input` and pressing Enter leaves the text in the field and posts
+  nothing — `chat-send-button` must be clicked.
+  `PipelineDetailPage.send_message_in_embedded_chat()` already does this; do not
+  "simplify" it to a keypress.
+- **The pipeline CREATE form requires Description as well as Name** —
+  `agent-save-button` stays `disabled` until both are filled. (Only relevant if a
+  case creates the pipeline through the UI; specs normally use the `pipeline_id`
+  API fixture.)
+
 
 ## Code node — input filtering (elitea_state scoping), confirmed live, clean pass (2026-08-09, ELITEA-2449)
 
