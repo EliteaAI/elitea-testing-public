@@ -348,3 +348,33 @@ by ELITEA-2337/2338/2343 analyst sessions (same day).
   3/3. Inconclusive whether a fresh automated run of THIS case's own test
   will reproduce it; the implementer should check their own run rather than
   assume either way (see the AFS's § Known Defects decision tree).
+
+## Empty state & project scoping (ELITEA-2249, 2026-08-24, analyst)
+- **Secrets are PROJECT-scoped**: `GET /api/v2/secrets/secrets/default/{project_id}`.
+  Live counts for the shared `${TEST_USER}`'s 5 selectable projects:
+  `Private` 399 → `200`/**120**, `UI Testing` 400 → `200`/**4**,
+  `Bugs & Features` 406 / `Elitea Development` 25 / `Elitea Testing Team` 471 →
+  **`403`**. There is **no project this user can list AND that is empty**, and the
+  project selector has **no create-project affordance** (5 fixed options).
+- **A `403` project looks exactly like an empty project.** `SecretsContent.jsx` skips
+  the query client-side (`skip: !projectId || !checkPermission(PERMISSIONS.secrets.list)`),
+  so no request is issued at all, `data` stays `undefined`, and the table renders the
+  ordinary `"No secrets"` empty branch **with the `secrets-add-button` visible and
+  enabled**. Filed as bug **#1773**. Never read "table is empty" as "project has no
+  secrets" — prove it with the list response (`200` + zero items).
+- **`#1203`'s render loop is UNBOUNDED in that skipped state.** Measured 2026-08-24
+  over 6 s from a fresh load: project 399 → **5** `Maximum update depth exceeded`
+  console errors (bounded mount burst); project 471 → **140 and still climbing**
+  (~28k entries over a few minutes). Root cause is the `data: secrets = []` default
+  minting a new array on every render → `secretsList`/`filteredSecrets` useMemo chain →
+  `useEffect([isFetching, filteredSecrets])` → `setSecretRows` → re-render. New
+  occurrence commented on #1203. Any console-error axis on this page must account
+  for it, and never dwell on a 403 project.
+- **Empty-message handle**: the `"No secrets"` text is a bare
+  `<span class="MuiTypography-root …">` inside a `Box`, produced by the SHARED
+  `GridTableContainer` (`isEmpty` + `emptyMessage` props, `GridTableContainer.jsx:37-43`)
+  — **no testid**, and none can be hardcoded there (shared component). A case needing
+  it must thread a caller-supplied prop (e.g. `emptyMessageTestId`) from
+  `SecretsTable.jsx`. `secrets-pagination-info` is **absent** when the table is empty.
+- ELITEA-2249 is parked **blocked** on the precondition (see
+  `l2_secrets-empty-state-no-secrets_ELITEA-2249.md` § Blocked Steps).
