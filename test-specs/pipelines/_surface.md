@@ -3580,3 +3580,62 @@ never rendered the Code node's `input`/`output` fields. The test verifies
 those fields via `pipeline_api.get_pipeline()` server-truth readback instead
 of `pipeline_page.get_yaml_content()`. No new issue filed — same root cause,
 same established workaround pattern.
+
+## MCP node — Input-mapping Type control + Tools-card composition + live MCP execution (**Resolved/added during ELITEA-1952/1953 implementation, 2026-08-24**)
+
+Implementation-time facts confirmed by the implementer while building
+`test_mcp_node_executes_selected_tool` (ELITEA-1952) and
+`test_mcp_node_input_mapping_type_and_toggles_persist` (ELITEA-1953) in
+`automation/tests/ui/pipelines/test_pipeline_mcp_node_fresh_attach.py`.
+Behaviour/scope claims elsewhere in this digest are unchanged.
+
+**New testids (EliteaAI/EliteaUI, `automation/testids`):**
+
+| Testid | Where | Commit |
+|---|---|---|
+| `pipeline-mcp-node-input-mapping-type-{param}` | `BaseToolNode.jsx` — `typeTestIdPrefix` widened from Toolkit-only to `Toolkit \| Mcp` | EliteaAI/EliteaUI@5c24ed30 |
+| `pipeline-mcp-node-input-mapping-value-{param}` (Variable branch) | `InputMappingItem.jsx` — the enum/variable `Select.SingleSelect` | EliteaAI/EliteaUI@7a5fce32 |
+| `toolkit-card-name` | `ToolCard.jsx` — the card's name Typography | EliteaAI/EliteaUI@5c24ed30 |
+| `toolkit-card-connection-status` (+ `data-connected="true\|false"`) | `ToolCard.jsx` — the MCP Online/Offline status-icon Box | EliteaAI/EliteaUI@5c24ed30 |
+
+**The Variable mapping type does NOT render the "no-enum" select branch.**
+`FlowEditorHelpers.getEnumList('variable', …)` returns the state-variable list
+(`flowEditor.helpers.js:162`), so `enumList` is non-empty and
+`InputMappingItem.jsx` renders its FIRST branch
+(`dataType !== 'array' || type === 'variable'`), not the final `Select.SingleSelect`
+the ELITEA-1953 AFS pointed at. A testid placed on the final select never appears
+in the DOM. Cost one rerun to find.
+
+**One row Value testid, two widget shapes — two different readers.** Since
+EliteaAI/EliteaUI@7a5fce32 the row's Value control keeps the same testid whether
+Type is Fixed/F-String (a text input) or Variable (a state-variable select). Read
+it with `get_mcp_node_input_mapping_value()` (`input_value()`) in the first case
+and `get_mcp_node_input_mapping_variable_value()` (`text_content()`) in the
+second. Handy side effect: a `text_content()` read returning `"input"` PROVES the
+widget swapped, because a text input has no text content — that is how the tests
+assert the swap now that the old absence assertion is void.
+
+**The canvas Control Panel intercepts Input-mapping clicks.** A freshly-added node
+spawns above ReactFlow's bottom-left `rf__controls` panel; once the Input-mapping
+rows render, the node card extends down over it and the panel's "Fit View" button
+intercepts the pointer on the Type select's click (Playwright names `rf__controls`
+as the intercepting subtree). Remedy: `move_node(node_id, dx=450, dy=0)` right
+after adding the node — the same remedy
+`test_pipeline_interrupt_before_after_toggles.py:87` already uses.
+
+**Connection status belongs on the indicator, not the Log-in button.** The AFS
+proposed tagging the card's `Log in` button as the connection-status control, but
+`McpLogInButton` returns `null` once the MCP is authorized — a testid whose
+PRESENCE flips with state, outlawed by the PR #581 ruling. The Online/Offline
+indicator Box is always rendered for an MCP card, so it carries the stable testid
+and expresses state in `data-connected`. A freshly-provisioned, never-authenticated
+Remote MCP reads `"false"` (confirmed live).
+
+**Live MCP execution from the embedded chat is stable and ~40 s.** Sending the
+repo name as the chat message (with `repoName` bound Type=Variable to the `input`
+state variable and `question` left Fixed) drives the DeepWiki fixture MCP end to
+end. Proof the node ran the SELECTED tool is the `chat-answer-tool-chip` inside the
+last `chat-message-item`, text `"{toolkit}: ask_question (MCP1)"` — asserted with
+`to_contain_text("{toolkit}: ask_question")` rather than the full string, since the
+node-id segment renders without its space. Answer body (~1 kB) asserted by shape
+only. Whole test: 39 s, zero console errors, green first try.
