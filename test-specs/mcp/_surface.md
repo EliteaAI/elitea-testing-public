@@ -307,3 +307,38 @@ re-run against the change — see PR.
 - Unchecking → Save → `PUT /tool/prompt_lib/{project}/{id}` 200 with
   `settings.ssl_verify: false`; survives a full reload; Raw Json (376-char
   payload, no virtualization risk) shows the boolean `false` under `settings`.
+
+## Headers JSON editor + Client Secret secret-toggle (ELITEA-1931 / ELITEA-1932, 2026-08-24)
+
+**Appended during the ELITEA-1931/1932 combined analysis+implementation.** Both fields
+live inside the *Configuration* section, so everything in § MCP DETAIL page:
+configuration fields are COLLAPSED applies before any of these handles resolves.
+
+| Handle | Testid | Notes |
+|---|---|---|
+| Headers JSON editor wrapper / content | `toolkit-field-headers-editor` / `-content` | pre-existing, on `main`. CodeMirror. |
+| Client Secret wrapper (SecretField root) | `toolkit-field-client_secret-input` | the real `<input>` is `...-input-field` and exists **only in Password mode** |
+| Secret / Password toggle buttons | `toolkit-field-client_secret-input-toggle-secret` / `-toggle-password` | emitted generically by `SecretField.jsx:342` → `Toggle.jsx` (`testIdPrefix = "<field-testid>-toggle"`), so EVERY secret schema field gets the pair for free. State = `aria-pressed`. |
+| Vault select (Secret mode only) | `toolkit-field-client_secret-input-combobox` | mounts in place of the native input |
+| Saved-secret option (dynamic) | `select-option-{{secret.<name>}}` | same grammar `CredentialCreatePage.SECRET_SAVED_OPTION` already uses |
+
+- **The Headers editor commits on BLUR — this is the trap.** With focus still in the
+  editor after typing valid JSON, `toolkit-detail-save-button` stays **disabled**;
+  clicking any other control flips Save + Discard to enabled. Same class as the
+  credentials `scopes` field. On blur the editor also **pretty-prints** the JSON, so
+  `text_content()` becomes `{  "X-Custom-Header": "test-value"}` (CodeMirror line
+  `<div>`s concatenate with no newline) — always `json.loads` it, never string-compare.
+- `McpFormPage.fill_headers_json()` deliberately does **not** blur (its merged
+  ELITEA-1922 caller reads the editor text pre-format); use the additive
+  `blur_headers_editor()` before Save.
+- **Switching Raw Json → Form view keeps the configuration section expanded.** Only a
+  full reload re-collapses it.
+- **Client Secret mode is derived, not stored.** `SecretField.jsx` re-enters Secret mode
+  after a reload only when the stored value matches `/^{{secret\.([A-Za-z0-9_]+)}}$/`
+  **and** that name is still in the project vault; otherwise it falls back to Password
+  mode. `auth_token` is the stable read-only vault entry in project 399 (also used by
+  the merged credentials case ELITEA-1968).
+- The credentials dropdown-close defect **#1047 does not reproduce here** — selecting a
+  saved secret closed the dropdown normally on the MCP detail page.
+- **Case-text divergence (ELITEA-1931 step 2):** there is no "Headers accordion" — the
+  case's step is satisfied by expanding the single Configuration section.
