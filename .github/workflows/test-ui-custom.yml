@@ -337,6 +337,21 @@ jobs:
           SUITE_COUNT=${#SUITE_ARRAY[@]}
           echo "Total suites: $SUITE_COUNT"
 
+          # SPECIAL HANDLING: Extract 'admin' suite if present - it always runs in separate executor
+          HAS_ADMIN=false
+          ADMIN_REMOVED_SUITES=()
+          for suite in "${SUITE_ARRAY[@]}"; do
+            if [ "$suite" = "admin" ]; then
+              HAS_ADMIN=true
+              echo "Admin suite detected - will run in dedicated executor with suffix 'admin'"
+            else
+              ADMIN_REMOVED_SUITES+=("$suite")
+            fi
+          done
+
+          # Replace SUITE_ARRAY with admin-removed version for distribution
+          SUITE_ARRAY=("${ADMIN_REMOVED_SUITES[@]}")
+
           # Distribute suites across users using weighted load-balancing
           # (greedy bin-packing: assign each suite to the executor with minimum current load)
           # This replaces round-robin to better balance execution time across executors
@@ -416,6 +431,16 @@ jobs:
             fi
             JSON="$JSON{\"user_idx\":\"$user_idx\",\"suites\":\"$suites\"}"
           done
+
+          # Add admin suite as separate dedicated executor (if it was present)
+          if [ "$HAS_ADMIN" = true ]; then
+            if [ "$FIRST" = false ]; then
+              JSON="$JSON,"
+            fi
+            JSON="$JSON{\"user_idx\":\"admin\",\"suites\":\"admin\"}"
+            echo "Added dedicated admin executor to matrix"
+          fi
+
           JSON="$JSON]"
 
           echo "Matrix JSON: $JSON"
