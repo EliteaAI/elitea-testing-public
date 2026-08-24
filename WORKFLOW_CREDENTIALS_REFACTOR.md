@@ -27,12 +27,13 @@ matrix.suffix: "1", "2", "3", ..., "ADMIN"
 - Admin user required separate secret
 
 **After:**
-- Usernames follow a **fixed pattern**: `autotest_user_[suffix]`
+- Usernames follow a **fixed pattern**: `autotest_user_[suffix_lowercase]`
   - `autotest_user_1`
   - `autotest_user_2`
   - `autotest_user_3`
   - ...
-  - `autotest_user_ADMIN`
+  - `autotest_user_admin` (lowercase for username)
+- Secrets use UPPERCASE suffix: `TEST_USER_PASSWORD_ADMIN`
 - No username secrets needed anymore
 
 **Benefits:**
@@ -95,14 +96,16 @@ ELITEA_API_TOKEN: ${{ secrets[format('TEST_USER_TOKEN_{0}', matrix.user_idx)] ||
 
 **After:**
 ```yaml
-TEST_USER_EMAIL: autotest_user_${{ matrix.suffix }}
+TEST_USER_EMAIL: autotest_user_${{ matrix.suffix == 'ADMIN' && 'admin' || matrix.suffix }}
 TEST_USER_PASSWORD: ${{ secrets[format('TEST_USER_PASSWORD_{0}', matrix.suffix)] }}
 ELITEA_PROJECT_ID: ${{ secrets[format('TEST_USER_PROJECT_{0}', matrix.suffix)] }}
 ELITEA_API_TOKEN: ${{ secrets[format('TEST_USER_TOKEN_{0}', matrix.suffix)] }}
 ```
 
 **Key changes:**
-- Username is now **hardcoded pattern** (no secret lookup)
+- Username is now **hardcoded pattern** with lowercase conversion for ADMIN (no secret lookup)
+- Secrets always use UPPERCASE suffix (e.g., `TEST_USER_PASSWORD_ADMIN`)
+- Username uses lowercase (e.g., `autotest_user_admin`)
 - Removed fallback to `secrets.TEST_USER_EMAIL` (was causing the admin skip issue)
 - Direct secret resolution without fallbacks
 
@@ -135,7 +138,7 @@ Create the following users in Keycloak for each environment (dev, stage2, next):
 | `autotest_user_7` | Parallel executor 7 | `TEST_USER_PASSWORD_7`, `TEST_USER_PROJECT_7`, `TEST_USER_TOKEN_7` |
 | `autotest_user_8` | Parallel executor 8 | `TEST_USER_PASSWORD_8`, `TEST_USER_PROJECT_8`, `TEST_USER_TOKEN_8` |
 | `autotest_user_9` | Parallel executor 9 + User B | `TEST_USER_PASSWORD_9`, `TEST_USER_PROJECT_9`, `TEST_USER_TOKEN_9` |
-| `autotest_user_ADMIN` | **Admin suite only** | `TEST_USER_PASSWORD_ADMIN`, `TEST_USER_PROJECT_ADMIN`, `TEST_USER_TOKEN_ADMIN` |
+| `autotest_user_admin` | **Admin suite only** (lowercase) | `TEST_USER_PASSWORD_ADMIN`, `TEST_USER_PROJECT_ADMIN`, `TEST_USER_TOKEN_ADMIN` (UPPERCASE) |
 
 ## Required GitHub Secrets
 
@@ -162,14 +165,15 @@ TEST_USER_PASSWORD (base fallback)
 For each environment (dev-stable, stage2, next):
 
 ```bash
-# Create users with pattern autotest_user_[1-9, ADMIN]
+# Create users with pattern autotest_user_[1-9, admin]
+# Note: Username is LOWERCASE, but secrets are UPPERCASE
 # Example for dev-stable:
 Username: autotest_user_1
 Email: autotest_user_1@elitea.ai (or your domain)
 Password: (secure password)
 Roles: standard user roles
 
-Username: autotest_user_ADMIN
+Username: autotest_user_admin  # lowercase "admin"
 Email: autotest_user_admin@elitea.ai
 Password: (secure password)
 Roles: admin roles + standard roles

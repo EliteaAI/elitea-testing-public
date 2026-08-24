@@ -504,8 +504,9 @@ jobs:
           # Use indexed credentials for parallel execution
           ELITEA_PROJECT_ID: ${{ secrets[format('TEST_USER_PROJECT_{0}', matrix.suffix)] }}
           ELITEA_API_TOKEN: ${{ secrets[format('TEST_USER_TOKEN_{0}', matrix.suffix)] }}
-          # Username follows pattern: autotest_user_[suffix] (e.g., autotest_user_1, autotest_user_ADMIN)
-          TEST_USER_EMAIL: autotest_user_${{ matrix.suffix }}
+          # Username follows pattern: autotest_user_[suffix_lowercase] (e.g., autotest_user_1, autotest_user_admin)
+          # Secrets use uppercase suffix (e.g., TEST_USER_PASSWORD_1, TEST_USER_PASSWORD_ADMIN)
+          TEST_USER_EMAIL: autotest_user_${{ matrix.suffix == 'ADMIN' && 'admin' || matrix.suffix }}
           TEST_USER_PASSWORD: ${{ secrets[format('TEST_USER_PASSWORD_{0}', matrix.suffix)] }}
           # Secondary user (User B) for multi-user tests - uses user 9 for all parallel jobs
           # Note: Job 9 will have same user for primary and secondary, but no multi-user tests there yet
@@ -553,7 +554,8 @@ jobs:
 
           PYTEST_CMD="$PYTEST_CMD -v --tb=short"
 
-          echo "Running suites '$SUITES' with user suffix ${{ matrix.suffix }} (autotest_user_${{ matrix.suffix }})"
+          USERNAME="autotest_user_${{ matrix.suffix == 'ADMIN' && 'admin' || matrix.suffix }}"
+          echo "Running suites '$SUITES' with user suffix ${{ matrix.suffix }} ($USERNAME)"
           echo "Running: $PYTEST_CMD"
           eval $PYTEST_CMD
 
@@ -561,8 +563,9 @@ jobs:
         if: always()
         working-directory: automation
         run: |
+          USERNAME="autotest_user_${{ matrix.suffix == 'ADMIN' && 'admin' || matrix.suffix }}"
           echo "## Test Results - ${{ steps.env.outputs.name }} - ${{ matrix.suites }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Suites:** ${{ matrix.suites }} (user: autotest_user_${{ matrix.suffix }})" >> $GITHUB_STEP_SUMMARY
+          echo "**Suites:** ${{ matrix.suites }} (user: $USERNAME)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ -f "reports/junit.xml" ]; then
