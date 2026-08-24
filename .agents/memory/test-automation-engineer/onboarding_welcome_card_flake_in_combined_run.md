@@ -1,51 +1,55 @@
 ---
-name: Onboarding welcome-card precondition flakes in a combined onboarding run
-description: ELITEA-2232's fresh-user Welcome precondition missed once in a 4-spec invocation; not reproducible, 4 clean runs after.
+name: Onboarding suite flakes with a DIFFERENT symptom nearly every run
+description: tests/ui/onboarding/ intermittently fails with a different test+error class each run; re-run before treating an onboarding red as real.
 type: project
-aliases: [onboarding-welcome-card, mock_fresh_user_state, ELITEA-2232 flake, onboarding gate flake]
+aliases: [onboarding-welcome-card, mock_fresh_user_state, ELITEA-2232 flake, onboarding gate flake, onboarding suite flaky]
 tags: [area/onboarding, type/flake]
 created: 2026-08-24
 updated: 2026-08-24
 ---
 
-## Symptom
+## Symptom — it is NOT one flaky assertion
 
-`tests/ui/onboarding/test_onboarding_provisioning.py::TestOnboardingProvisioning::
-test_get_started_starts_provisioning_poll_and_shows_tips_with_progress_footer`
-(ELITEA-2232) failed its own **precondition** step:
+Originally logged as a single welcome-card precondition miss. Widened
+2026-08-24: the whole `tests/ui/onboarding/` directory is intermittently
+unstable, and **the failing test and the error class differ almost every run.**
 
-```
-expect(onboarding_page.welcome_card).to_be_visible(timeout=10000)
-AssertionError: Locator expected to be visible / Actual value: None
-  - waiting for get_by_test_id("onboarding-welcome-card")
-```
+Four consecutive invocations of the identical command
+(`HEADLESS=true ../.venv/bin/pytest tests/ui/onboarding/ -v -p no:cacheprovider`),
+same session, same machine, only a comment-text diff between them:
 
-i.e. `mock_fresh_user_state()` was installed, `/onboarding` was reached, but the
-Welcome card never rendered — the app had presumably already moved past the
-first-login state.
+| Run | Result | Symptom |
+|---|---|---|
+| 1 | 1 failed, 3 passed, 1 error (47s) | provisioning: poll count `1 >= 2` false; tips_card: `TargetClosedError` — `Route.fetch: Request context disposed` |
+| 2 (control, pristine HEAD) | **5 passed**, 1 auto-rerun (112s) | — |
+| 3 | 2 failed, 3 passed (81s) | jump_in: `Locator expected to be visible`; provisioning: `TypeError: JSONDecodeError.__init__() missing 2 required positional arguments` |
+| 4 | **5 passed** clean (60s) | — |
 
-## When
+Note run durations swing 47s → 112s, and run 1 was the *fastest* because an
+early context disposal cascaded.
 
-Observed exactly ONCE, on the batch-onboarding-w2 hardening gate (2026-08-24),
-when the four new onboarding specs ran in ONE pytest invocation with the
-provisioning spec LAST (tips_card → tips_fullscreen → jump_in → provisioning).
+## Why this matters
 
-## Not reproducible
-
-- standalone: PASS (29.7s)
-- same 4-spec command, same order: PASS ×3 (53.0s / 53.0s / 51.2s)
-- whole `tests/ui/onboarding/` dir (5 specs, alphabetical — provisioning 2nd): PASS
-
-So it is **not** deterministic order-dependence. Plausible mechanism worth
-checking if it recurs: the earlier specs leave `sessionStorage.onboarding_state`
-or `localStorage["interactive-tour:first-elitea:pending"]` behind, or the
-fresh-user route mock lost the race with the first `authorDetails` call from
-`ProtectedRoutes.jsx`. The spec's own comment already flags that the mock must be
-installed before the first `goto()`.
+A red here proves nothing on its own. Both a pristine tree and a
+comment-only diff produced reds *and* clean 5/5 passes. Anyone bisecting an
+onboarding red against a code change will chase a ghost — I nearly did, and
+only a pristine-control run plus a repeat settled it.
 
 ## What to do next time
 
-Re-run once. If it reproduces, look at storage carry-over between contexts before
-suspecting the mock. Record further occurrences here.
+1. **Re-run before believing it.** One clean 5/5 is normal after a red.
+2. If you are checking whether *your change* caused it, run a **pristine
+   control** (`git checkout --` the files, run, re-apply) — cheap and decisive.
+3. Only if a symptom repeats *identically* across runs treat it as real; the
+   signature of this noise class is that it does not.
+4. Mechanisms still unruled-out: route-mock racing the first `authorDetails`
+   call from `ProtectedRoutes.jsx`; storage carry-over
+   (`sessionStorage.onboarding_state`,
+   `localStorage["interactive-tour:first-elitea:pending"]`) between contexts;
+   shared-backend strain (same class as the `#1082` chat pollution notes).
+
+Consistent with the broader documented noise culture in `.agents/testing.md`
+§ Known issues / Unconfirmed. Worth a `.agents/testing.md` entry by the lead if
+it keeps costing gate time.
 
 Related: [[onboarding_provisioning_state_entry]] · [[onboarding_tour_state_without_mocks]]
