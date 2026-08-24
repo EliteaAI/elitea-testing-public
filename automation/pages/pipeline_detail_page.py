@@ -7071,13 +7071,22 @@ class PipelineDetailPage(PipelineFormPage):
         """Return the Run Details panel's States section text content.
 
         TEMPORARY: Builds locator manually due to missing testid.
-        Target: statesContainer (parent of first MuiAccordion).
+        Returns combined text from header ("States") + accordion content.
         """
-        # TEMPORARY FIX: testid missing, build locator manually
+        # TEMPORARY FIX: testid missing, combine header + container text
+        # statesHeader and statesContainer are siblings, no wrapper with testid
         panel = self.page.get_by_test_id("pipeline-run-details-panel")
+
+        # Get header text (Typography with "States")
+        header_text = panel.locator('text="States"').first.text_content() or ""
+
+        # Get container text (all state variable accordions)
         first_accordion = panel.locator(".MuiAccordion-root").first
-        states_container = first_accordion.locator("xpath=..")
-        return (states_container.text_content() or "").strip()
+        container = first_accordion.locator("xpath=..")
+        container_text = container.text_content() or ""
+
+        # Combine both (header + content)
+        return f"{header_text} {container_text}".strip()
 
     # ------------------------------------------------------------------
     # Run Details panel — multi-run history (RunStateNodeGroup — ELITEA-2454)
