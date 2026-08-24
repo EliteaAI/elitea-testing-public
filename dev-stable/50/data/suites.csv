@@ -1,0 +1,14 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Mon Aug 24 09:34:17 UTC 2026","Mon Aug 24 09:34:25 UTC 2026","8338","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_yaml_view_toggle","PIPE-019: Switch to YAML view and verify the editor is visible."
+"passed","Mon Aug 24 09:35:44 UTC 2026","Mon Aug 24 09:36:01 UTC 2026","16923","tests.ui.pipelines","test_pipeline_advanced","TestMultiNodeTopology","","","test_three_node_chain","PIPE-030: Build a three-node chain: LLM → Code → END."
+"passed","Mon Aug 24 09:34:34 UTC 2026","Mon Aug 24 09:34:45 UTC 2026","10878","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_flow_yaml_round_trip","PIPE-021: Toggle Flow → YAML → Flow preserves the canvas."
+"passed","Mon Aug 24 09:34:06 UTC 2026","Mon Aug 24 09:34:16 UTC 2026","10321","tests.ui.pipelines","test_pipeline_add_node_menu","","","","test_add_node_menu_lists_types_adds_node_and_dismisses","Add Node menu lists exactly 11 types in order; LLM selection adds a
+    node with config visible; Escape dismisses without adding a node."
+"passed","Mon Aug 24 09:34:26 UTC 2026","Mon Aug 24 09:34:33 UTC 2026","7568","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_yaml_content_reflects_pipeline","PIPE-020: YAML content should reflect the pipeline structure."
+"passed","Mon Aug 24 09:34:55 UTC 2026","Mon Aug 24 09:35:04 UTC 2026","9331","tests.ui.pipelines","test_pipeline_advanced","TestDiscardChanges","","","test_save_discard_button_states_toggle_on_edit_and_discard","ELITEA-2048: Save/Discard are disabled on a clean pipeline, become
+        enabled once the name is edited, and return to disabled after Discard
+        reverts the edit."
+"passed","Mon Aug 24 09:35:32 UTC 2026","Mon Aug 24 09:35:43 UTC 2026","11543","tests.ui.pipelines","test_pipeline_advanced","TestActionsMenu","","","test_export_pipeline_if_available","PIPE-029: Export pipeline via menu (skips if not available)."
+"passed","Mon Aug 24 09:35:22 UTC 2026","Mon Aug 24 09:35:31 UTC 2026","9006","tests.ui.pipelines","test_pipeline_advanced","TestActionsMenu","","","test_three_dot_menu_lists_items","PIPE-028: The three-dot menu should contain expected items."
+"passed","Mon Aug 24 09:35:05 UTC 2026","Mon Aug 24 09:35:21 UTC 2026","16717","tests.ui.pipelines","test_pipeline_advanced","TestMakeEntrypoint","","","test_make_node_entrypoint","PIPE-024: Set a node as entrypoint via the three-dot menu."
+"passed","Mon Aug 24 09:34:45 UTC 2026","Mon Aug 24 09:34:54 UTC 2026","8896","tests.ui.pipelines","test_pipeline_advanced","TestDiscardChanges","","","test_discard_reverts_name_change","PIPE-022: Edit name, click Discard, and verify original name restored."
