@@ -1,7 +1,8 @@
 """UI test — the onboarding provisioning state after "Sure, let's go!".
 
-TMS: ELITEA-2232
+TMS: ELITEA-2232, ELITEA-2240
 AFS: test-specs/onboarding/l2_onboarding_provisioning_after_get_started_ELITEA-2232.md
+AFS: test-specs/onboarding/lextend_private_and_team_projects_in_dropdown_after_provisioning_ELITEA-2240.md
 
 Clicking "Sure, let's go!" on the first-login Welcome card replaces it with the
 onboarding tips card at slide 1 / 48, renders the "Configuring Personal
@@ -14,6 +15,15 @@ project selector.
 
 This is the only spec in the suite that asserts onboarding-progress-footer
 PRESENT — the other three onboarding specs assert it absent.
+
+ELITEA-2240 extends the ready state that ELITEA-2232 lands in (step 12): the
+Private row carries the selected/checkmark indicator, EVERY project the backend
+returned has its own dropdown row, and the full sidebar navigation is present
+(9 entity items + Settings + Catalog). It adds no flow and no substitution — see
+the coverage boundary below, and clarification #1767 for its three case-text
+drifts (step 2 is unexecutable as written; step 7's list is 9 menu items plus 2
+separate bottom-section buttons, and the product labels Toolkits as "Toolkits &
+Indexes"; step 3's "~5 minutes" is an estimate label, not an observable).
 
 SUBSTITUTIONS (both TRANSIT, declared per .agents/testing.md § Fidelity policy
 and AFS § Fidelity Declaration):
@@ -36,11 +46,18 @@ and AFS § Fidelity Declaration):
      transition is a new application of the same mechanism (AFS § Fidelity
      Declaration, flagged for the lead).
 
-COVERAGE BOUNDARY: this spec verifies the UI contract of the provisioning state
-and of the transition out of it. It does NOT verify that the backend actually
+COVERAGE BOUNDARY: this spec verifies the UI contract of the provisioning state,
+of the transition out of it, and of the CONTENT of the state it lands in
+(ELITEA-2240). It does NOT verify that the backend actually
 provisions a personal project for a brand-new account — that is an API/e2e
 concern with a ~5-minute real wait and no available fresh account. The mock
 authors exactly one field (personal_project_id: null) and no assertion reads it.
+Nor does this spec verify the "~5 minutes" duration — unobservable here; the
+honest claim is "once provisioning completes", pinned by the workspace-ready
+wait. Every value ELITEA-2240 asserts comes from the genuine post-release
+backend payload: the expected dropdown rows are derived from the product's own
+GET /projects/project/ response used as the oracle, never hardcoded
+(.agents/testing.md § Fidelity policy).
 
 Usage::
 
@@ -93,6 +110,60 @@ _EXPECTED_ESTIMATED_TIME = "about 5 min"
 _EXPECTED_PROJECT_LABEL = "Private"
 _SIDEBAR_ANCHOR_ITEM = "chat"
 
+# ELITEA-2240 — the full entity menu. SidebarBody.jsx renders one
+# sidebar-menu-item-{value} per entity; Settings and Catalog are SEPARATE
+# bottom-section buttons, not menu items (clarification #1767 § 2). Asserted by
+# testid, never by label: the product labels "toolkits" as "Toolkits & Indexes".
+_SIDEBAR_MENU_ITEMS = (
+    "chat",
+    "agents",
+    "pipelines",
+    "skills",
+    "toolkits",
+    "mcps",
+    "credentials",
+    "applications",
+    "artifacts",
+)
+
+# The project-list query the sidebar's ProjectSelect issues. api/project.js builds
+# it as '/projects/project/{mode}/{PUBLIC_PROJECT_ID}?check_public_role=true', so
+# the public-project id is read off the product's OWN request rather than
+# hardcoded or duplicated from a second config source.
+_PROJECT_LIST_URL_FRAGMENT = "/projects/project/"
+_PROJECT_LIST_URL_RE = re.compile(r"/projects/project/[^/]+/(\d+)")
+_AUTHOR_DETAILS_URL_FRAGMENT = "/social/author/"
+
+# ELITEA-2240 step 6 says "team projects (if applicable)". This floor keeps the
+# check non-vacuous: 'Private' plus at least one team project. If the test
+# account ever loses its team memberships the spec fails loudly instead of
+# passing an empty set.
+_MIN_EXPECTED_PROJECT_LABELS = 2
+
+
+def _is_project_list_response(response) -> bool:
+    """True for a successful sidebar project-list response."""
+    return _PROJECT_LIST_URL_FRAGMENT in response.url and response.ok
+
+
+def _latest_personal_project_id(responses: list):
+    """Personal project id from the newest GET /social/author/ carrying one.
+
+    The fresh-user mock nulls the field while it is installed, so the newest
+    response with a truthy value is the genuine post-release backend one. The
+    product uses exactly this field to decide which row renders as 'Private'
+    (ProjectSelect.jsx getProjectName).
+    """
+    for response in reversed(responses):
+        try:
+            body = response.json()
+        except Exception:
+            # A response whose body is no longer retrievable is simply skipped.
+            continue
+        if body.get("personal_project_id"):
+            return body["personal_project_id"]
+    return None
+
 # Onboarding.jsx:71-73 — progress starts at 5 and grows by 95/150 per second.
 # The initial read happens inside the first one-second interval tick, so the
 # value is at its baseline; the upper bound keeps the assertion meaningful
@@ -108,7 +179,13 @@ class TestOnboardingProvisioning:
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
         "automated-full-regression-ui/onboarding/"
         "ELITEA-2232_onboarding-clicking-sure-lets-go-triggers-project-provisioni.md",
-        "onetest-ai Test Case link",
+        "onetest-ai Test Case link (ELITEA-2232)",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/onboarding/"
+        "ELITEA-2240_onboarding-private-and-team-projects-appear-in-project-dropd.md",
+        "onetest-ai Test Case link (ELITEA-2240)",
     )
     def test_get_started_starts_provisioning_poll_and_shows_tips_with_progress_footer(
         self, page
@@ -131,6 +208,26 @@ class TestOnboardingProvisioning:
             "request",
             lambda request: author_polls.append(time.monotonic())
             if "/social/author/" in request.url
+            else None,
+        )
+        # ELITEA-2240 — the product's own responses are the oracle for the
+        # expected project set (.agents/testing.md § Fidelity policy: "capture the
+        # real response and assert the UI against it"). Response objects are
+        # collected here and their bodies read in step 12; reading a body inside a
+        # sync event handler is not permitted.
+        project_list_responses: list = []
+        author_responses: list = []
+
+        page.on(
+            "response",
+            lambda response: project_list_responses.append(response)
+            if _is_project_list_response(response)
+            else None,
+        )
+        page.on(
+            "response",
+            lambda response: author_responses.append(response)
+            if _AUTHOR_DETAILS_URL_FRAGMENT in response.url
             else None,
         )
 
@@ -348,6 +445,87 @@ class TestOnboardingProvisioning:
                 expect(
                     onboarding_page.project_selector_option(_EXPECTED_PROJECT_LABEL)
                 ).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step(
+                "Step 12 (ELITEA-2240) — Private is marked selected, every team "
+                "project is listed, and the full sidebar navigation is present"
+            ):
+                # The dropdown opened at the end of step 11 is still on screen.
+
+                # --- The expected project set comes from the PRODUCT -----------
+                if not project_list_responses:
+                    # The sidebar's project-list query fires when
+                    # personal_project_id turns truthy. If it has not been seen
+                    # yet, wait for the event itself — no sleep, no polling loop.
+                    with page.expect_response(
+                        _is_project_list_response, timeout=UI_ELEMENT_TIMEOUT
+                    ):
+                        pass
+                assert project_list_responses, (
+                    "No successful GET /projects/project/ response was observed, "
+                    "so the expected project set cannot be derived from the product"
+                )
+                projects_response = project_list_responses[-1]
+                projects_body = projects_response.json()
+                public_project_id = int(
+                    _PROJECT_LIST_URL_RE.search(projects_response.url).group(1)
+                )
+                personal_project_id = _latest_personal_project_id(author_responses)
+                assert personal_project_id, (
+                    "No GET /social/author/ response carried a truthy "
+                    "personal_project_id after the mask was released, so the "
+                    "'Private' row cannot be identified"
+                )
+
+                expected_labels = {_EXPECTED_PROJECT_LABEL}
+                for project in projects_body:
+                    project_id = project["id"]
+                    if project_id == personal_project_id:
+                        # ProjectSelect.jsx getProjectName(): the personal project
+                        # always renders as 'Private', never its backend name.
+                        continue
+                    if project_id == public_project_id:
+                        # The public project renders only for users holding the
+                        # public role (ProjectSelect.jsx hasPublicProjectAccess),
+                        # which is outside ELITEA-2240 step 6 ("team projects").
+                        # This account's response carries no such entry at all.
+                        continue
+                    expected_labels.add(project["name"])
+
+                assert len(expected_labels) >= _MIN_EXPECTED_PROJECT_LABELS, (
+                    f"ELITEA-2240 step 6 needs an account belonging to at least "
+                    f"one team project; the project-list response yielded only "
+                    f"{sorted(expected_labels)}"
+                )
+
+                # --- Case step 5 — Private carries the selected indicator ------
+                expect(
+                    onboarding_page.project_selector_option_selected(
+                        _EXPECTED_PROJECT_LABEL
+                    )
+                ).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                # Axis 2 — a single-select marking two rows selected is a real
+                # defect class, and is invisible to a per-row assertion.
+                expect(onboarding_page.select_option_selected_icon).to_have_count(1)
+                expect(onboarding_page.select_option_selected_icon).to_be_visible()
+
+                # --- Case step 6 — every returned project has its own row ------
+                # The dropdown fills progressively: only 'Private' is present at
+                # the instant the ready banner appears; the team rows arrive when
+                # the project-list query resolves. One auto-waiting expect per
+                # label — never a count or an all_text_contents() snapshot.
+                for label in sorted(expected_labels):
+                    expect(
+                        onboarding_page.project_selector_option(label)
+                    ).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+
+                # --- Case step 7 — the full sidebar navigation -----------------
+                for value in _SIDEBAR_MENU_ITEMS:
+                    expect(onboarding_page.sidebar_menu_item(value)).to_be_visible(
+                        timeout=UI_ELEMENT_TIMEOUT
+                    )
+                expect(onboarding_page.sidebar_settings_button).to_be_visible()
+                expect(onboarding_page.sidebar_agent_hub_button).to_be_visible()
 
             with allure.step("Axis 2 — No error-level console messages across the flow"):
                 assert not console_errors, (
