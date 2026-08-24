@@ -135,7 +135,8 @@ Full sidebar inventory observed live on `/chat` (for whoever needs more): `sideb
 
 - File: `automation/tests/ui/onboarding/test_onboarding_jump_in.py` (separate from the tips-card
   spec — this one leaves the onboarding surface and asserts a different screen).
-- Markers: `p3`/`p2` per the suite's medium mapping, `onboarding`, `regression`, `ui`.
+- Markers: shipped as **`p2`** (`pytest.ini`: `p2` = medium priority, matching the case's own
+  `priority: medium`), `onboarding`, `regression`, `ui`, `new`.
 - One `allure.step` per case step; the Skip dismissal lives inside step 7's block with a comment
   citing #1754.
 - Docstring must name the known-defect console filter and link #1753.
@@ -143,6 +144,11 @@ Full sidebar inventory observed live on `/chat` (for whoever needs more): `sideb
 ---
 
 ## Risks / gotchas for the implementer
+
+0. **SHIPPED (implementer, 2026-08-24):** the colour assertion was kept as specified —
+   `to_have_css("background-color", "rgb(106, 232, 250)")`, one assertion, with a comment
+   naming the default (dark) theme so a failure reads "the theme changed". It passed live on
+   the first run. The § Risks 1 fallback was NOT needed.
 
 1. **The colour assertion is theme-dependent.** `rgb(106, 232, 250)` was measured on the default
    (dark) theme via computed `background-color` on `MuiButton-eliteaPrimary`. If the suite ever

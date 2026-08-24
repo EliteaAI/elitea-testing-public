@@ -121,3 +121,61 @@ and `project-selector-trigger` ARE on main. `sidebar-menu-item-*` is a dynamic t
 - `lhigh_onboarding_tips_card_slide_1_of_48_ELITEA-2235.md`
 - `lhigh_onboarding_tips_fullscreen_expand_collapse_ELITEA-2236.md`
 - `lmedium_onboarding_jump_in_now_ELITEA-2241.md`
+
+---
+
+## Resolved/added during ELITEA-2235 / 2236 / 2241 implementation (test-automation-engineer, 2026-08-24)
+
+Attributed implementation-time facts — the analyst's behavior/scope claims above are unchanged.
+
+**The seven "needs-adding" testids now EXIST** on `EliteaAI/EliteaUI` `automation/testids`
+(commit EliteaAI/EliteaUI@3ba7967d, pushed; **not yet on `main`** — human cherry-pick pending,
+same as every other `onboarding-*` testid here):
+
+| testid | File |
+|---|---|
+| `onboarding-tour-fullscreen-button` | `OnboardingTour.jsx` |
+| `onboarding-tour-fullscreen-dialog` | `OnboardingTour.jsx` — **on the Dialog's PAPER via `slotProps.paper`** |
+| `onboarding-tour-fullscreen-title` | `OnboardingTour.jsx` |
+| `onboarding-tour-fullscreen-close-button` | `OnboardingTour.jsx` |
+| `onboarding-tour-tip-image` | `TourContent.jsx` |
+| `interactive-tour-first-visit-prompt` | `FirstVisitPrompt.jsx` (TourCard root) |
+| `interactive-tour-first-visit-skip-button` | `FirstVisitPrompt.jsx` (Skip button) |
+
+**Why the dialog testid is on the paper, not on `<Dialog>`.** MUI spreads a `data-testid` passed
+to `<Dialog>` onto the Modal **root**, which is `position: fixed; inset: 0` for *every* dialog —
+so a bounding-box "is this fullscreen?" assertion against it passes even with `fullScreen`
+removed. The paper is the element MUI resizes for `fullScreen`, and carries `role="dialog"`.
+Dialog-scoping is unaffected (header, `DialogContent` and the second `TourContent` are all
+descendants of the paper).
+
+**`page.viewport_size` is `None` in the suite's default HEADED mode** (`conftest.py` uses
+`no_viewport=True` when `HEADLESS=false`; headless pins 1366x768). Any "compare a box to the
+viewport" assertion on this or any other surface must handle that — ELITEA-2236 asserts
+origin-anchoring + coverage of `onboarding-page-container` + larger-than-the-embedded-card
+unconditionally, and adds the exact viewport equality only when `viewport_size` is set.
+
+**Feature-scoped testids pass cleanly through the shared `TourCard` / `BaseBtn`** — both spread
+`...rest` onto their MUI root, so the testid is hardcoded at the FEATURE call site
+(`FirstVisitPrompt.jsx`), never inside the shared component. No `testId` prop plumbing needed.
+
+**Page objects (shipped).** The tour/banner locators went into the EXISTING
+`automation/pages/onboarding_page.py` (`OnboardingPage`), not a sibling: a sibling would have had
+to re-declare `onboarding-page-container` / `-page-logo` / `-progress-footer` /
+`onboarding-welcome-card`, which this project's "one testid, one file" convention forbids. The
+ELITEA-2231 Welcome locators and `mock_fresh_user_state()` are byte-identical (additive-only).
+Dialog-scoped selectors ship as class constants `DIALOG_TIP_CONTENT` / `DIALOG_TIP_IMAGE` /
+`DIALOG_PAGE_INDICATOR` with accessor methods `dialog_tip_content()` / `dialog_tip_image()` /
+`dialog_page_indicator()`.
+
+**First-visit prompt page object:** `components/interactive_tour.py` → `FirstVisitPromptCard`
+(`prompt`, `skip_button`, `wait_for()`, `click_skip()`). It lives with the other interactive-tour
+overlays, not in the onboarding page object — the prompt mounts on whatever route is next.
+
+**Specs (shipped, one per case):**
+`automation/tests/ui/onboarding/test_onboarding_tips_card.py` (ELITEA-2235),
+`test_onboarding_tips_fullscreen.py` (ELITEA-2236),
+`test_onboarding_jump_in.py` (ELITEA-2241). All three green first run, 0 reruns, 24.3 s total.
+Quirks 1-6 above all confirmed live by the implementation run — including the deterministic
+first-visit prompt and the #1753 console error, which the ELITEA-2241 spec filters by that ONE
+message with a `# Known defect: #1753` comment.

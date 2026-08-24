@@ -127,6 +127,14 @@ state is a different screen: add the tour/banner locators there (extending the d
 line) or in a sibling page object — implementer's call, but keep the ELITEA-2231 locators and
 `mock_fresh_user_state()` untouched; this case must not use that mock.
 
+**RESOLVED at implementation (2026-08-24, implementer):** the locators were added to the
+**existing `OnboardingPage`**, not a sibling. A sibling would have had to re-declare
+`onboarding-page-container` / `-page-logo` / `-progress-footer` / `onboarding-welcome-card`
+(all needed by this case's presence + absence assertions), breaking the project's
+"one testid appears in exactly one file" convention. The module/class docstring scope line was
+extended to name both states; every ELITEA-2231 locator, `mock_fresh_user_state()` and
+`clear_author_details_mock()` are byte-identical (additive-only diff verified).
+
 ---
 
 ## Expected values (verified live 2026-08-24)
@@ -153,10 +161,15 @@ Source of truth for the copy: `src/[fsd]/features/onboarding/lib/constants/onboa
 
 ## Suggested test shape
 
+**AMENDED at implementation (2026-08-24, implementer):** shipped as
+`automation/tests/ui/onboarding/test_onboarding_tips_card.py`, holding ELITEA-2235 **only**.
+ELITEA-2236 ships as its own spec file (`test_onboarding_tips_fullscreen.py`) — the batch
+dispatch requires one spec per case; they still share the page object, which is where the
+"same screen" reuse belongs. Marker shipped as `p1` (`pytest.ini`: `p1` = high priority,
+matching the case's own `priority: high`).
+
 - File: `automation/tests/ui/onboarding/test_onboarding_tips_card.py`
-  (ELITEA-2236 belongs in the same file — same screen, same page object.)
-- Markers: `p2` *(or `p1` — case priority is high; follow the suite's mapping)*, `onboarding`,
-  `regression`, `ui`.
+- Markers: `p1`, `onboarding`, `regression`, `ui`, `new`.
 - One `allure.step` per case step, `"Step N — …"`.
 - Console listener attached before navigation (Axis 2).
 
