@@ -1,13 +1,20 @@
 "Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
-"failed","Mon Aug 24 18:41:45 UTC 2026","Mon Aug 24 18:42:28 UTC 2026","43146","tests.ui.admin","test_guardrails_live_reload","TestBlockedToolLiveReload","","","test_blocked_tool_live_reload_case_insensitive","Verify blocked tool takes effect immediately with case-insensitive matching."
-"failed","Mon Aug 24 18:40:56 UTC 2026","Mon Aug 24 18:41:45 UTC 2026","48715","tests.ui.admin","test_guardrails_live_reload","TestBlockedToolkitLiveReload","","","test_blocked_toolkit_live_reload_case_insensitive","Verify blocked toolkit takes effect immediately with case-insensitive matching."
-"passed","Mon Aug 24 18:40:03 UTC 2026","Mon Aug 24 18:40:11 UTC 2026","7218","tests.ui.admin","test_analytics_default_load","TestAnalyticsDefaultLoad","","","test_analytics_page_default_load","Header, date filter bar (4 presets, ""Last 24h"" active by default,
+"passed","Mon Aug 24 18:50:04 UTC 2026","Mon Aug 24 18:50:09 UTC 2026","5483","tests.ui.admin","test_personal_token_create_and_verify","TestPersonalTokenCreateAndVerify","","","test_expired_token_shows_expired_icon_and_label","ELITEA-2284 (steps 2-3) — an existing expired token's Expiration
+        cell shows the gray/expired state icon and the exact 'Expired'
+        label. Read-only: uses existing live project data, no token created
+        or deleted. (ELITEA-2284 steps 4-5 — active token, green icon, 'in X
+        days' — are already asserted by
+        test_create_personal_token_and_verify_in_table's Step 12 above; not
+        repeated here.)"
+"broken","Mon Aug 24 18:48:52 UTC 2026","Mon Aug 24 18:48:52 UTC 2026","0","tests.ui.admin","test_guardrails_live_reload","TestBlockedToolkitLiveReload","","","test_blocked_toolkit_live_reload_case_insensitive","Verify blocked toolkit takes effect immediately with case-insensitive matching."
+"broken","Mon Aug 24 18:49:27 UTC 2026","Mon Aug 24 18:49:27 UTC 2026","0","tests.ui.admin","test_guardrails_live_reload","TestBlockedToolLiveReload","","","test_blocked_tool_live_reload_case_insensitive","Verify blocked tool takes effect immediately with case-insensitive matching."
+"broken","Mon Aug 24 18:49:27 UTC 2026","Mon Aug 24 18:49:27 UTC 2026","0","tests.ui.admin","test_guardrails_live_reload","TestSensitiveToolLiveReload","","","test_sensitive_tool_live_reload_case_insensitive","Verify sensitive tool triggers authorization dialog immediately after config change."
+"passed","Mon Aug 24 18:48:43 UTC 2026","Mon Aug 24 18:48:51 UTC 2026","8025","tests.ui.admin","test_analytics_default_load","TestAnalyticsDefaultLoad","","","test_analytics_page_default_load","Header, date filter bar (4 presets, ""Last 24h"" active by default,
         From/To 1 day apart), 7-tab bar with Overview selected, and the page
         settling out of its loading state all render as specified."
-"failed","Mon Aug 24 18:42:29 UTC 2026","Mon Aug 24 18:43:39 UTC 2026","70201","tests.ui.admin","test_guardrails_live_reload","TestSensitiveToolLiveReload","","","test_sensitive_tool_live_reload_case_insensitive","Verify sensitive tool triggers authorization dialog immediately after config change."
-"skipped","Mon Aug 24 18:44:14 UTC 2026","Mon Aug 24 18:44:19 UTC 2026","4309","tests.ui.admin","test_notification_text_content","TestNotificationTextContent","","","test_notification_text_content_renders_correctly","All 4 known notification types render their exact expected templates;
+"skipped","Mon Aug 24 18:49:57 UTC 2026","Mon Aug 24 18:50:03 UTC 2026","5315","tests.ui.admin","test_notification_text_content","TestNotificationTextContent","","","test_notification_text_content_renders_correctly","All 4 known notification types render their exact expected templates;
         no row (of any type) shows raw JSON, broken HTML, or ""undefined"" text."
-"passed","Mon Aug 24 18:44:24 UTC 2026","Mon Aug 24 18:44:30 UTC 2026","6379","tests.ui.admin","test_personal_token_create_and_verify","TestPersonalTokenCreateAndVerify","","","test_invalid_token_name_shows_error_and_keeps_generate_disabled","ELITEA-2286 — a token name containing any character outside
+"passed","Mon Aug 24 18:50:09 UTC 2026","Mon Aug 24 18:50:16 UTC 2026","6359","tests.ui.admin","test_personal_token_create_and_verify","TestPersonalTokenCreateAndVerify","","","test_invalid_token_name_shows_error_and_keeps_generate_disabled","ELITEA-2286 — a token name containing any character outside
         [a-zA-Z0-9_-] (special characters or a space) shows the validation
         error and keeps Generate disabled; replacing it with a conforming name
         clears the error and re-enables Generate. Read-only against the
@@ -15,11 +22,4 @@
         cleanup. (The empty-name-disables-Generate and
         fresh-valid-name-enables-Generate observables are already asserted by
         test_create_personal_token_and_verify_in_table's Step 2/Step 3 — not
-        repeated here.)"
-"passed","Mon Aug 24 18:44:19 UTC 2026","Mon Aug 24 18:44:24 UTC 2026","4315","tests.ui.admin","test_personal_token_create_and_verify","TestPersonalTokenCreateAndVerify","","","test_expired_token_shows_expired_icon_and_label","ELITEA-2284 (steps 2-3) — an existing expired token's Expiration
-        cell shows the gray/expired state icon and the exact 'Expired'
-        label. Read-only: uses existing live project data, no token created
-        or deleted. (ELITEA-2284 steps 4-5 — active token, green icon, 'in X
-        days' — are already asserted by
-        test_create_personal_token_and_verify_in_table's Step 12 above; not
         repeated here.)"
