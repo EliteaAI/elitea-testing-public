@@ -96,3 +96,4 @@
 - [Absence guards must watch the real mechanism](absence_guards_must_watch_the_real_mechanism.md) — negative assertions need the signal the handler really emits
 - [Absence-of-request assertions must wrap their trigger](absence_of_request_assertion_must_wrap_its_trigger.md) — clicking before opening expect_response passes vacuously
 - [Chat detail pane input echo](chat_detail_pane_input_echo_defeats_list_level_assertions.md) — list-level asserts verify the INPUT; use the answer testid
+- [Shared-component testid prop — check all call sites](shared_component_testid_prop_check_all_call_sites.md) — grep callers before `cond ? testid : undefined`

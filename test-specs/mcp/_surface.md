@@ -1029,6 +1029,26 @@ testids, different mechanics.
 Chip selection state today lives **only** in an emotion class hash (`css-5yxssv` selected
 vs `css-1n8j5hf` idle) / computed `background-color` — never bind to either.
 
+**Resolved/added during ELITEA-1949 implementation (2026-08-24):** all three testids above
+are now on `automation/testids` — EliteaAI/EliteaUI@f4ce7128 (the props + the doc link) and
+EliteaAI/EliteaUI@989db4f0 (the scoping fix below). Not yet on `main`. Chip selection is now
+readable as `data-selected="true|false"` on the chip's own testid, so the emotion-class
+warning above is no longer a constraint on this surface — page-object handles:
+`McpFormPage.type_picker_heading`, `.local_documentation_link`, `.no_results_title`,
+`.no_results_description`, and the `TYPE_FILTER_CHIP` / `TYPE_FILTER_CHIP_SELECTED` class
+constants with `type_filter_chip()` / `click_type_filter()` / `is_type_filter_selected()`.
+
+**Trap the work order did not see — `ToolkitTypeSelector` has TWO call sites.** It is
+rendered by the standalone `/mcps/create` page (`src/pages/Toolkits/CreateToolkit.jsx`) **and
+by the in-chat MCP canvas** (`src/[fsd]/features/chat/ui/editors/ToolkitEditor.jsx:304`), and
+both pass `isMCP`. Putting `chipTestIdPrefix={isMCP ? … : undefined}` inside
+`ToolkitTypeSelector` therefore also renames the CANVAS chips, breaking the two merged specs
+that bind `category-filter-tab` there (`tests/ui/chat/test_create_mcp_from_conversation.py`,
+`…_discard_changes.py`, via `McpFormPage.select_remote_category_tab`). The shipped shape
+hoists both props to the `CreateToolkit.jsx` call site; `ToolkitTypeSelector` only forwards
+them. Anything else added to this surface's shared components must make the same check —
+both chat specs re-ran green after the fix.
+
 ### Behaviours confirmed live
 
 - **The chips are MULTI-SELECT** and there is no clear-all. Clicking `Local` then `Remote`
