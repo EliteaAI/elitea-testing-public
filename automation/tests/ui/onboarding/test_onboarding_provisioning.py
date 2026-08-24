@@ -1,7 +1,7 @@
 """UI test — the onboarding provisioning state after "Sure, let's go!".
 
 TMS: ELITEA-2232
-AFS: test-specs/onboarding/lmedium_onboarding_provisioning_after_get_started_ELITEA-2232.md
+AFS: test-specs/onboarding/l2_onboarding_provisioning_after_get_started_ELITEA-2232.md
 
 Clicking "Sure, let's go!" on the first-login Welcome card replaces it with the
 onboarding tips card at slide 1 / 48, renders the "Configuring Personal

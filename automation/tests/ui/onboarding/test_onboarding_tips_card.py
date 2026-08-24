@@ -1,7 +1,7 @@
 """UI test — Onboarding tips card is displayed, starting at slide 1 / 48.
 
 TMS: ELITEA-2235
-AFS: test-specs/onboarding/lhigh_onboarding_tips_card_slide_1_of_48_ELITEA-2235.md
+AFS: test-specs/onboarding/l1_onboarding_tips_card_slide_1_of_48_ELITEA-2235.md
 
 An authenticated user WITH a personal project navigating to /onboarding lands
 directly in the tour + workspace-ready state (Onboarding.jsx:130-134 sets

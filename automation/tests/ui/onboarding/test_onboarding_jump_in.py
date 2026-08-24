@@ -1,7 +1,7 @@
 """UI test — "Jump in now!" closes onboarding and shows the default project page.
 
 TMS: ELITEA-2241
-AFS: test-specs/onboarding/lmedium_onboarding_jump_in_now_ELITEA-2241.md
+AFS: test-specs/onboarding/l2_onboarding_jump_in_now_ELITEA-2241.md
 
 From the onboarding tips screen, clicking "Jump in now!" in the "Your Elitea
 workspace is ready!" banner navigates to /chat and unmounts the whole onboarding

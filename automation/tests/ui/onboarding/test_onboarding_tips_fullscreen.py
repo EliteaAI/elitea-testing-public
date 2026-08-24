@@ -1,7 +1,7 @@
 """UI test — Onboarding tips card expands to fullscreen and collapses with the X button.
 
 TMS: ELITEA-2236
-AFS: test-specs/onboarding/lhigh_onboarding_tips_fullscreen_expand_collapse_ELITEA-2236.md
+AFS: test-specs/onboarding/l1_onboarding_tips_fullscreen_expand_collapse_ELITEA-2236.md
 
 The tips card carries an expand icon in its top-right corner. Clicking it opens
 a fullscreen MUI Dialog titled "Onboarding tips" that re-renders the same slide
