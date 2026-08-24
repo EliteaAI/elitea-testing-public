@@ -57,7 +57,12 @@ doc comment states the toolkit-namespace URL for an MCP is intended:
   (`MAX_NAME_LENGTH = 32`, silently truncating — compute the suffix against the
   literal base name, digest § Fixtures addendum).
 - URL: `https://mcp.deepwiki.com/mcp`
-- Tool: `read_wiki_structure`; parameter `repoName = "AsyncFuncAI/deepwiki-open"`
+- Tool: `read_wiki_structure`; run TWICE with two different `repoName` values —
+  `"AsyncFuncAI/deepwiki-open"` (run 1) and `"facebook/react"` (run 2).
+  **Amended by the implementer (2026-08-24):** the two runs must differ, so the
+  step-8 "the detail changed" assertion has something row-specific to read; two
+  identical runs would render identical detail panes and the assertion would be
+  unfalsifiable.
 
 ## Test Steps
 
@@ -88,6 +93,30 @@ doc comment states the toolkit-namespace URL for an MCP is intended:
      contains `✅ read_wiki_structure` — confirmed live at `1.182s`, followed by
      the real DeepWiki page list (proving a genuine remote execution, not a
      canned response).
+   - **AMENDED BY THE IMPLEMENTER (2026-08-24, PR #1728 review round 1) — the
+     ✅ is load-bearing, assert it explicitly.** `wait_for_tool_result()`
+     (`pages/toolkit_test_settings_page.py:441`) polls the `[✅❌]` regex, so it
+     resolves on a FAILED run too and returns the text either way; and the
+     summary EliteaUI builds (`indexChat.helpers.js:250-264`,
+     `` `${status} \`${tool}\`${execTime}` ``) names the tool under BOTH icons.
+     A `"read_wiki_structure" in result` check therefore passes on
+     `❌ read_wiki_structure (0.4s) MCP error …` — green while the tool errored,
+     and Run History then holds a failed execution for steps 7–8 to assert
+     against. Assert the **success marker for this tool** plus the absence of
+     any `❌` (module-level `is_successful_tool_run()`, unit-pinned in
+     `automation/tests/unit/test_mcp_run_history_successful_run_matcher.py`),
+     and assert the requested `repoName` appears in the result body — DeepWiki
+     answers `Available pages for <repo>: …`, so that is the produced-by-the-
+     system proof that the body is the real remote structure, not an empty
+     success.
+5b. *(Added by the implementer, 2026-08-24.)* Return to the detail page,
+   click **Test** again, re-select `read_wiki_structure`, fill
+   `repoName = "facebook/react"`, and Run Test a second time.
+   - **Why a second Test-route visit and not simply a second Run Test click**:
+     one Run History row is one **conversation**, and a conversation is created
+     only when the panel has none (`useToolkitChat.executeRunTool`) — two runs
+     in one mount produce ONE row. See § Test Steps 8 § Implication for setup.
+   - **Verify**: the result message names the executed tool.
 6. Navigate back to the MCP detail page (`/mcps/all/{id}`) and click
    **Run History** (`pipeline-history-tab`).
    - **Verify**: URL becomes `/toolkits/all/{id}/history?isMCP=true`.
@@ -121,6 +150,26 @@ doc comment states the toolkit-namespace URL for an MCP is intended:
      (`Calling 'read_wiki_structure' with parameters:` + the JSON
      `{ "repoName": "AsyncFuncAI/deepwiki-open" }`) and the **output** (the
      DeepWiki page list). Confirmed live for both rows tested.
+   - **AMENDED BY THE IMPLEMENTER (2026-08-24, PR #1728 review round 1) —
+     input and output MUST be asserted through SEPARATE handles.** Both
+     messages share the `chat-message-item` testid (`UserMessage.jsx:127` /
+     `ApplicationAnswer.jsx:578`), and the input echo *already contains the
+     tool name and the `repoName`*. So every text assertion made against the
+     message LIST (or its `chat-message-list` container) is satisfied by the
+     input alone, and `to_have_count(2)` counts **input + error** exactly like
+     input + output — i.e. the output would go entirely unverified. The only
+     handle that can match the produced result is the answer-content testid
+     (`ApplicationAnswer.jsx:710` — `isLastMessage ? 'skill-test-last-response'
+     : 'chat-answer-content'`; the run-history answer is the last message, so
+     `skill-test-last-response` in practice — confirmed live 2026-08-24 on
+     toolkit 2140's history: that node reads
+     `Available pages for AsyncFuncAI/deepwiki-open: 1 …` while the input node
+     carries only `chat-message-sender-name` / `-avatar`). Assert, per selected
+     row: the ANSWER contains that row's own `repoName`, contains no `❌`, and
+     does NOT contain the `Calling '<tool>' with parameters` echo (a
+     self-check — if the answer handle ever collapsed onto the input, every
+     other output assertion would become unfalsifiable), plus the INPUT node
+     separately carries the echo and the same `repoName`.
    - **Note on default selection (confirmed live + source)**:
      `RunHistoryContainer.jsx` auto-selects `historyRows[0]` on mount when
      nothing is selected. So on arrival the top row is *already* selected and
@@ -131,13 +180,19 @@ doc comment states the toolkit-namespace URL for an MCP is intended:
      index 1, `data-selected` flipped to it, and the detail pane switched from
      the *"less than a minute ago"* run to the *"22 days ago"* run.
    - **Implication for setup**: to exercise this honestly the MCP needs **two**
-     runs. Simplest honest route — run the tool **twice** in step 5 (same tool,
-     same parameter is fine; each Run Test produces its own history row,
-     confirmed live: the pre-existing MCP showed 2 rows from 2 runs on different
-     days). Alternatively, if the implementer keeps a single run, the step-6
-     assertion must be explicitly scoped to "the auto-selected row already shows
-     input/output", and the click-changes-selection assertion dropped — **that
-     is weaker than the case asks for; prefer two runs.**
+     history rows.
+     **AMENDED BY THE IMPLEMENTER (2026-08-24) — the original route did not
+     work.** One Run History row is **one conversation, not one Run Test
+     click**: `useToolkitChat.executeRunTool` creates a conversation only when
+     `!activeConversation`, so clicking Run Test twice inside a single mount of
+     the Test panel appends both runs to the SAME conversation and Run History
+     shows **1 row** (measured: the first implementation did exactly this and
+     `to_have_count(2)` saw 1). The working route — and the one a real user
+     takes for two separate test sessions — is to **re-enter the Test route
+     between runs** (detail page -> Test button -> re-select the tool -> Run),
+     which remounts the panel, clears `activeConversation`, and produces a
+     second row. Use two DIFFERENT `repoName` values so the two rows' detail
+     panes are distinguishable.
 
 ## Expected Results
 
@@ -161,7 +216,7 @@ doc comment states the toolkit-namespace URL for an MCP is intended:
 | 3 Click "view run history" button in test panel header | history panel/drawer opens | step 6 | step 6 | asserted — **CLARIFICATION #1727: the button is in the MCP DETAIL ACTION BAR, not the test panel header** |
 | 4 Verify run history panel/drawer opens | history panel visible | step 6 + 7 | step 6 (URL) + 7 (rows) | asserted — **CLARIFICATION #1727: it is a full PAGE/route, not a drawer** |
 | 5 Verify previous executions listed with timestamps | entries show timestamps | step 7 | step 7 | asserted — Date (`DD-MM-YYYY, hh:mm AM/PM`) + Duration |
-| 6 Click a history entry → shows input/output details | input + output displayed | step 8 | step 8 | asserted — `data-selected` flip + 2 `chat-message-item` (input JSON + output) |
+| 6 Click a history entry → shows input/output details | input + output displayed | step 8 | step 8 | asserted — `data-selected` flip + the INPUT node's echo/`repoName` + the ANSWER node's own `repoName` and absence of `❌`, through **separate handles** (see step 8's implementer amendment: a list-level assertion is satisfied by the input echo alone) |
 | Expected Final State: all executions listed with timestamps, entry detail works | — | steps 7–8 | steps 7–8 | asserted |
 | Pass/Fail: entries listed with timestamps, detail view works | — | steps 7–8 | steps 7–8 | asserted — no blocking defect |
 
@@ -217,6 +272,7 @@ immediately before the check. Every handle this case needs is already on
 | **Run-history row** | `[data-testid="run-history-list-item"]` — same literal testid on **every** row, positionally distinguished (default sort = Date descending ⇒ index 0 = most recent) | on-main ✓ |
 | **Run-history row — selected state** | `[data-testid="run-history-list-item"][data-selected="true"]` — testid + **state attribute**, per `.agents/testing.md` § Locator policy (`RunHistoryListItem.jsx:151` sets `data-selected={selectedItem === item.id}`) | on-main ✓ |
 | Run-history detail messages | `[data-testid="chat-message-list"]` / `[data-testid="chat-message-item"]` | on-main ✓ |
+| **Run-history detail — OUTPUT (answer) content** | `[data-testid="skill-test-last-response"], [data-testid="chat-answer-content"]` scoped inside `chat-message-list` — the ONLY handle that isolates the produced result from the input echo (`ApplicationAnswer.jsx:710` picks the testid by `isLastMessage`; the answer is last here, so `skill-test-last-response`). Already used this way by `PipelineDetailPage` / `AgentDetailPage`. | on-main ✓ (fresh `git fetch origin` 2026-08-24: both testids YES on `origin/main` **and** on `origin/automation/testids`) |
 | Per-row overflow menu | `[data-testid="run-history-menu-menu-button"]` | on-main ✓ — present, not needed by this case; **do not wire it** (#511: only what the executed path calls) |
 
 > **Naming note (not a defect, do not "fix"):** `ViewRunHistoryButton.jsx:16`
@@ -272,8 +328,16 @@ flag, action-bar button not rendered) would leave both existing specs green.
   `is_run_history_item_selected` / `get_run_history_chat_messages_text` method
   set (`pages/pipeline_detail_page.py:6897-7000`). Whether to extend
   `McpFormPage` or add a small `ToolkitRunHistoryPage` is the implementer's
-  call; a shared mixin across the three surfaces would be a **declared**
-  improvement, not a requirement (`.agents/role-overrides.md` § Declared-improvisation).
+  call.
+  *(Implementer, 2026-08-24: shipped as a new `ToolkitRunHistoryPage`
+  (`automation/pages/toolkit_run_history_page.py`) — the run-history page is a
+  distinct ROUTE, not a region of the detail form. The action-bar handles
+  (`toolkit-test-button`, `pipeline-history-tab`) went onto `McpFormPage`, which
+  owns the detail page.)*
+  A shared mixin across the three surfaces would be a **declared**
+  improvement, not a requirement (`.agents/role-overrides.md` § Declared-improvisation)
+  — NOT taken here: it would mean editing two merged page objects for no
+  assertion this case makes. Flagged as suite health in the Run Report.
 - **Reuse `McpFormPage`** (create / Load Tools / Save / detail waits) and
   **`ToolkitTestSettingsPage`** (`select_tool_from_empty_state`,
   `fill_param_field`, `run_tool`, `wait_for_tool_result`) — both already model
@@ -286,6 +350,9 @@ flag, action-bar button not rendered) would leave both existing specs green.
      `toolkit-test-button` to enable, before clicking Test.
   2. After returning to the detail page, the action bar (and therefore
      `pipeline-history-tab`) mounts **asynchronously** — wait for it.
+  3. *(Implementer, 2026-08-24)* One Run History row = one **conversation**.
+     Two runs in one Test-panel mount = one row; remount the Test route between
+     runs to get two (see § Test Steps 8 § Implication for setup).
 - Markers: `p2`/`l3`-consistent priority marker + `regression` + the
   `credentials`-style per-feature marker used by the other MCP specs
   (`toolkits`), matching `automation/tests/ui/toolkits/test_mcp_*.py`.
