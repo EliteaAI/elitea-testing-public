@@ -598,6 +598,14 @@ class PipelineDetailPage(PipelineFormPage):
     # (ELITEA-2052).
     CHAT_MESSAGE_ITEM_SELECTOR = '[data-testid="chat-message-item"]'
     CHAT_READ_OUT_BUTTON_SELECTOR = '[data-testid="chat-read-out-button"]'
+
+    # Tool-call chip rendered inside an assistant answer's "Thought" accordion
+    # (ELITEA-1952) — text "{toolkit}: {tool} ({node})". Same shared
+    # `chat-answer-tool-chip` testid `ChatPage`/`AgentDetailPage` already bind;
+    # scoped inside a single chat-message-item at the call site, never used as a
+    # bare page-level handle, so it stays a class constant per the locator
+    # policy's scoped-sub-selector convention.
+    CHAT_ANSWER_TOOL_CHIP_SELECTOR = '[data-testid="chat-answer-tool-chip"]'
     SKILL_TEST_LAST_RESPONSE_SELECTOR = '[data-testid="skill-test-last-response"]'
     CHAT_ANSWER_CONTENT_SELECTOR = '[data-testid="chat-answer-content"]'
     CHAT_MESSAGE_DELETE_SELECTOR = '[data-testid="chat-message-delete-button"]'
@@ -1392,6 +1400,19 @@ class PipelineDetailPage(PipelineFormPage):
     TOOLKIT_CARD_TOOLS_TOGGLE = '[data-testid="toolkit-card-tools-toggle"]'
     TOOLKIT_CARD_TOOL_ITEM = '[data-testid="toolkit-card-tool-item-{}"]'
 
+    # Same scoped-sub-selector idiom (ELITEA-1952) — the attached card's name
+    # text and its MCP connection-status indicator. Both added to the shared
+    # `ToolCard.jsx` this session (EliteaAI/EliteaUI@5c24ed30) with GENERIC,
+    # call-site-agnostic names matching their `toolkit-card-tools-toggle` /
+    # `toolkit-open-button` siblings in the same component (the card is shared
+    # by the agent AND pipeline TOOLS sections — a `pipeline-`-scoped name on a
+    # shared component is exactly what `.agents/testing.md` § Locator policy's
+    # shared-component rule forbids). The connection indicator carries its state
+    # as a `data-connected` attribute on a STABLE testid (PR #581 ruling), never
+    # as a state-switched testid value.
+    TOOLKIT_CARD_NAME = '[data-testid="toolkit-card-name"]'
+    TOOLKIT_CARD_CONNECTION_STATUS = '[data-testid="toolkit-card-connection-status"]'
+
     # "+ Toolkit" button (ELITEA-2021). Testid already exists in the DOM on
     # `main` (ToolMenu.jsx) and is already a field on AgentDetailPage — only
     # missing here since PipelineDetailPage previously had no Toolkit-attach
@@ -1506,6 +1527,17 @@ class PipelineDetailPage(PipelineFormPage):
     # template constant per .agents/testing.md § Locator policy, formatted
     # with test-generated data only at the call site.
     MCP_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-mcp-node-input-mapping-value-{}"]'
+
+    # The same row's Type select (ELITEA-1953). `BaseToolNode.jsx`'s
+    # `typeTestIdPrefix` was Toolkit-only until this session; widened to
+    # Toolkit|Mcp (EliteaAI/EliteaUI@5c24ed30) because ELITEA-1953's subject IS
+    # this select. NOTE: `MCP_NODE_INPUT_MAPPING_VALUE` above now resolves for
+    # BOTH widget shapes of the row's Value control — a text input while Type is
+    # Fixed/F-String, an MUI single-select while Type is Variable (same testid,
+    # one stable identity) — so read it with
+    # `get_mcp_node_input_mapping_value()` or
+    # `get_mcp_node_input_mapping_variable_value()` respectively.
+    MCP_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-mcp-node-input-mapping-type-{}"]'
 
     # Dynamic (runtime-parameterized) testids — one Value/Type select pair per
     # tool parameter (e.g. search_query, repo_name, max_count). Class-level
@@ -4142,6 +4174,85 @@ class PipelineDetailPage(PipelineFormPage):
         except Exception:
             return False
 
+    def get_mcp_node_input_mapping_type(self, param_name: str, timeout: int = 5000) -> str:
+        """Read an MCP-node Input-mapping row's Type select value.
+
+        Mirrors :meth:`get_toolkit_node_input_mapping_type` exactly — same
+        shared ``InputMappingItem.jsx`` control, different node-type testid
+        prefix (ELITEA-1953).
+
+        Args:
+            param_name: The tool parameter's raw schema key (e.g. ``"repoName"``).
+            timeout: Maximum wait time for the select to be visible.
+
+        Returns:
+            The option label currently shown, e.g. ``"Fixed"`` / ``"Variable"``.
+        """
+        type_select = self.page.locator(self.MCP_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        type_select.wait_for(state="visible", timeout=timeout)
+        text = (type_select.text_content() or "").replace("\u200b", "")
+        return text.strip()
+
+    def open_mcp_node_input_mapping_type_select(self, param_name: str, timeout: int = 5000) -> None:
+        """Open an MCP-node Input-mapping row's Type select without choosing (ELITEA-1953).
+
+        Split out of :meth:`select_mcp_node_input_mapping_type` so a test can
+        inspect the offered options (``get_open_listbox_option_testids``)
+        before picking one via ``select_open_listbox_option``.
+
+        Args:
+            param_name: The tool parameter's raw schema key (e.g. ``"repoName"``).
+            timeout: Maximum wait time for the select / listbox.
+        """
+        type_select = self.page.locator(self.MCP_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        type_select.scroll_into_view_if_needed(timeout=timeout)
+        type_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_mcp_node_input_mapping_type(
+        self, param_name: str, type_value: str, timeout: int = 5000
+    ) -> None:
+        """Open an MCP-node Input-mapping row's Type select and choose *type_value*.
+
+        Mirrors :meth:`select_toolkit_node_input_mapping_type` (ELITEA-1953).
+
+        Args:
+            param_name: The tool parameter's raw schema key (e.g. ``"repoName"``).
+            type_value: Option display text — ``"Fixed"``, ``"Variable"`` or ``"F-String"``.
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        type_select = self.page.locator(self.MCP_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        type_select.scroll_into_view_if_needed(timeout=timeout)
+        type_select.click(timeout=timeout)
+        option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
+        option = self.page.locator(self.SELECT_OPTION.format(option_value))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def get_mcp_node_input_mapping_variable_value(self, param_name: str, timeout: int = 5000) -> str:
+        """Read an MCP-node Input-mapping row's Value control while Type is ``Variable``.
+
+        Switching a row's Type to ``Variable`` swaps its Value widget from a
+        text input to an MUI single-select of the pipeline's state variables.
+        Since EliteaAI/EliteaUI@5c24ed30 both widget shapes carry the SAME
+        ``pipeline-mcp-node-input-mapping-value-{param}`` testid, so this
+        method is the select-shaped counterpart of
+        :meth:`get_mcp_node_input_mapping_value` (which reads ``input_value()``
+        and therefore only works on the Fixed/F-String text input).
+
+        Args:
+            param_name: The tool parameter's raw schema key (e.g. ``"repoName"``).
+            timeout: Maximum wait time for the select to be visible.
+
+        Returns:
+            The state-variable name currently selected, e.g. ``"input"``.
+        """
+        field = self.page.locator(self.MCP_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        field.wait_for(state="visible", timeout=timeout)
+        return (field.text_content() or "").replace("\u200b", "").strip()
+
     def is_input_mapping_section_visible(self, required_count: int, timeout: int = 5000) -> bool:
         """Check whether the "Input mapping (required N)" accordion is visible.
 
@@ -4963,6 +5074,17 @@ class PipelineDetailPage(PipelineFormPage):
         except Exception:
             return False
 
+    def is_node_interrupt_before_toggle_checked(self, node_id: str, timeout: int = 5000) -> bool:
+        """Return whether *node_id*'s 'Interrupt before' switch is ON (ELITEA-1953).
+
+        Distinct from :meth:`is_node_interrupt_before_toggle_disabled` — a
+        switch can be interactable and OFF, or gated and OFF; the case asserts
+        the default is OFF, which is this method.
+        """
+        toggle = self.page.locator(self.NODE_INTERRUPT_BEFORE_TOGGLE.format(node_id))
+        toggle.wait_for(state="visible", timeout=timeout)
+        return toggle.is_checked()
+
     def is_node_interrupt_before_toggle_disabled(self, node_id: str, timeout: int = 5000) -> bool:
         """Return whether *node_id*'s 'Interrupt before' switch is disabled.
 
@@ -5654,6 +5776,64 @@ class PipelineDetailPage(PipelineFormPage):
         toggle = card.locator(self.TOOLKIT_CARD_TOOLS_TOGGLE)
         toggle.wait_for(state="visible", timeout=timeout)
         toggle.click()
+
+    def get_toolkit_card_name_text(self, toolkit_name: str, timeout: int = 10000) -> str:
+        """Return the NAME text rendered inside a TOOLS-section card (ELITEA-1952).
+
+        Distinct from :meth:`is_toolkit_attached`, which only proves *some*
+        card contains the name anywhere in its text (description, tool list,
+        tooltip); this reads the dedicated name element itself.
+
+        Args:
+            toolkit_name: Toolkit/MCP name identifying the card.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        card.wait_for(state="visible", timeout=timeout)
+        name_el = card.locator(self.TOOLKIT_CARD_NAME)
+        name_el.wait_for(state="visible", timeout=timeout)
+        return (name_el.text_content() or "").strip()
+
+    def is_toolkit_card_tools_toggle_visible(self, toolkit_name: str, timeout: int = 10000) -> bool:
+        """Whether a TOOLS-section card renders its "Show tools" toggle (ELITEA-1952).
+
+        Presence-only counterpart of :meth:`open_toolkit_card_tools` — the
+        case asserts the control is offered, without expanding it.
+
+        Args:
+            toolkit_name: Toolkit/MCP name identifying the card.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        card.wait_for(state="visible", timeout=timeout)
+        try:
+            card.locator(self.TOOLKIT_CARD_TOOLS_TOGGLE).wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_toolkit_card_connection_state(self, toolkit_name: str, timeout: int = 10000) -> str:
+        """Return a TOOLS-section MCP card's connection state (ELITEA-1952).
+
+        The card's connection indicator keeps ONE stable testid
+        (``toolkit-card-connection-status``) and expresses its state in a
+        ``data-connected`` attribute (PR #581 ruling: testid = stable
+        identity, state = ``data-*``), so this reads the attribute rather
+        than inferring connection from which icon rendered.
+
+        Args:
+            toolkit_name: Toolkit/MCP name identifying the card.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            ``"true"`` when the MCP server is connected/authorized, ``"false"``
+            otherwise.
+        """
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        card.wait_for(state="visible", timeout=timeout)
+        status = card.locator(self.TOOLKIT_CARD_CONNECTION_STATUS)
+        status.wait_for(state="visible", timeout=timeout)
+        return (status.get_attribute("data-connected") or "").strip()
 
     def is_toolkit_card_tool_listed(
         self, toolkit_name: str, tool_name: str, timeout: int = 5000
@@ -6358,6 +6538,42 @@ class PipelineDetailPage(PipelineFormPage):
         if self.skill_test_last_response.count() > 0:
             return (self.skill_test_last_response.last.text_content() or "").strip()
         return ""
+
+    def get_last_embedded_chat_response_locator(self):
+        """Return a Locator for the LAST embedded-chat message's answer BODY
+        (the ``skill-test-last-response`` testid ``get_last_embedded_chat_
+        message_text()`` reads).
+
+        Additive counterpart to that reader (ELITEA-1952 stabilisation): the
+        reader is a one-shot ``text_content()`` snapshot by design, while an
+        answer streams in progressively AFTER its tool chip renders. Callers
+        that need the answer to have arrived poll this locator with
+        ``expect(...).to_contain_text(...)`` first — the same locator-not-text
+        discipline as ``get_last_embedded_chat_tool_chip_locator()``.
+
+        Returns:
+            Locator for the last message's answer-body element (count 0 while
+            no answer has rendered yet).
+        """
+        return self.skill_test_last_response.last
+
+    def get_last_embedded_chat_tool_chip_locator(self):
+        """Return a Locator for every ``chat-answer-tool-chip`` in the LAST
+        embedded-chat message (ELITEA-1952).
+
+        The chip is what proves a pipeline's MCP node actually invoked the
+        configured tool — its text is ``"{toolkit}: {tool} ({node})"``. Scoped
+        inside the last ``chat-message-item`` so an earlier message's chips can
+        never satisfy the assertion.
+
+        Returns the LOCATOR, not text: the chip's label fills in progressively
+        while the tool call resolves, so callers should poll with
+        ``expect(...).to_contain_text(...)`` before reading it (same discipline
+        as ``AgentDetailPage.get_nested_agent_tool_chip_locator``).
+        """
+        return self._embedded_chat_message_items_by_testid().last.locator(
+            self.CHAT_ANSWER_TOOL_CHIP_SELECTOR
+        )
 
     def get_last_embedded_chat_message_agent_markers(self) -> tuple[bool, bool, bool]:
         """Return agent/user code-path markers for the last (or only) message.
