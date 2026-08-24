@@ -248,6 +248,11 @@ class TestOnboardingProvisioning:
                 expect(onboarding_page.tour_page_indicator).to_have_text(
                     _EXPECTED_SLIDE_COUNTER
                 )
+                # Axis 2 — independent proof the card really is at the FIRST slide:
+                # the counter text alone could read "1 / 48" while the position is
+                # wrong (TourContent.jsx: disabled={currentStep === 1}). Same
+                # rationale as ELITEA-2235's Axis 2.
+                expect(onboarding_page.tour_prev_button).to_be_disabled()
 
             with allure.step(
                 "Step 10 — No sidebar navigation and no project dropdown while the "
