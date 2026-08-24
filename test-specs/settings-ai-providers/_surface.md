@@ -194,3 +194,39 @@ Three call shapes on page load, all independently 200 for this project:
   `Loading...` 0.25-4.75 s → 12 section testids at 5.0 s. Remember `page.unroute`.
 - Without a delay the whole fetch completes in well under a second — do not try to
   catch the loading state by racing it.
+
+## Resolved/added during ELITEA-2251 implementation (2026-08-24)
+- **`{sectionTestId}-loading` now exists** on `ConfigurationSection.jsx`'s `isLoading`
+  branch (`data-testid={sectionTestId ? \`${sectionTestId}-loading\` : undefined}` on the
+  `Loading...` `Typography`) — EliteaAI/EliteaUI@c49f61bc, on `automation/testids`, NOT yet
+  cherry-picked to `main`. Resolves this digest's "**No testid** — needs
+  `{sectionTestId}-loading`" note above. All 7 sections get one; the count is 7 while the
+  combined configurations GET is in flight and 0 afterwards.
+- **Do NOT count section roots with the bare `[data-testid^="ai-providers-section-"]`
+  prefix** — it also matches the derived `-default-selector` / `-high-tier-model-selector`
+  / `-low-tier-model-selector` testids. That is why 12 nodes are observed for 5 rendered
+  sections. Use the 5 named section-header descriptors
+  (`AIProvidersPage.populated_section_headers()`), or the compound
+  `[data-testid^="ai-providers-section-"][data-testid$="-loading"]`
+  (`AIProvidersPage.SECTION_LOADING_SELECTOR`) for the loading placeholders.
+- **A `time.sleep()` inside a `page.route` handler does NOT work for delaying a SINGLE
+  request in Playwright's sync API** (it does work for the artifacts-download tests only
+  because those delay many requests in sequence). Sync-API route handlers run on the same
+  OS thread as the test body, so the sleep freezes the test body too and it resumes at the
+  same instant the response lands — racing the re-render it wants to observe. **Working
+  pattern: hold and release** — the handler appends the `Route` object to a list and
+  returns; the test body asserts the transient state, then calls `route.continue_()` on
+  each held route. Fully deterministic, no guessed delay constant, same fidelity class
+  (the product's own request is continued, never fulfilled). Always release in a `finally`
+  and `page.unroute(...)`.
+- **`AIProvidersPage.navigate()` (i.e. `BasePage.navigate()`) is unusable while a request
+  is held** — it waits for `networkidle`, which can never be reached; use
+  `page.goto(f"{settings.app_base_url}{AI_PROVIDERS_PATH}", wait_until="domcontentloaded")`.
+- **The loading branch replaces the whole section**: no accordion header, no cards, no
+  selectors — so `ai-providers-section-llms` has count 0 while loading. It is a legitimate
+  "content has arrived" proof.
+- **Dev-server gotcha (cost one rerun):** the FIRST test run right after editing a JSX file
+  loaded the pre-edit module (testid absent) even though the Vite dev server was already
+  serving the updated transform (`curl` confirmed). The identical re-run passed. If a
+  brand-new testid is "not found" on the first run after adding it, re-run once before
+  debugging the JSX.

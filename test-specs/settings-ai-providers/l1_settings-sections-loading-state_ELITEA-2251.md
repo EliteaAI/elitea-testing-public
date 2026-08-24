@@ -19,7 +19,7 @@
 ## Fidelity Declaration
 | Substitution | Kind | Authority |
 |---|---|---|
-| `page.route('**/api/v2/configurations/configurations/**')` handler that **delays the real response** by N seconds and then `route.continue()`s it | **Timing control — NOT substitution** | `.agents/testing.md` § Fidelity policy: *"Delaying a real response via `page.route()` so a transient state becomes observable leaves the product as the producer of every asserted value."* Every asserted value here (the `Loading...` branch, the section cards after it) is produced by the app from the real backend response. Nothing is fabricated, nothing is fulfilled. |
+| `page.route('**/api/v2/configurations/configurations/**')` handler that **holds the real request open** until the loading state has been observed and then `route.continue_()`s it | **Timing control — NOT substitution** | `.agents/testing.md` § Fidelity policy: *"Delaying a real response via `page.route()` so a transient state becomes observable leaves the product as the producer of every asserted value."* Every asserted value here (the `Loading...` branch, the section cards after it) is produced by the app from the real backend response. Nothing is fabricated, nothing is fulfilled. |
 
 The case text ("on a slow or throttled connection") explicitly asks for a slowed
 connection, so the delay *is* the case's own precondition — not a workaround.
@@ -33,19 +33,34 @@ then is replaced by ≥1 section), so they survive any change in that data.
 
 ## Test Steps
 1. **Arm the delay before navigating.** Register a route handler on
-   `**/api/v2/configurations/configurations/**` that waits `DELAY` (6 s used live;
-   ≥4 s recommended) and then `route.continue()`s — the real request, real response.
+   `**/api/v2/configurations/configurations/**` that **holds** the real request
+   (stores the `Route` object without answering it) and `route.continue_()`s it from
+   the test body once the loading assertions have run — the real request, real
+   response.
    - **Verify**: nothing yet; this is setup. Register it BEFORE the navigation that
      triggers the fetch, or the request escapes the handler.
+   - **Amended at implementation (ELITEA-2251, 2026-08-24):** the analyst's original
+     shape — `time.sleep(DELAY)` *inside* the handler, the in-repo artifacts-download
+     precedent — is **not usable for a single-request delay** in Playwright's sync
+     API: route handlers run on the same OS thread as the test body, so a sleeping
+     handler freezes the test body too and it resumes at the same instant the
+     response lands, racing the very re-render it is trying to observe. Holding and
+     releasing explicitly makes the observation window deterministic (and removes the
+     guessed `DELAY` constant entirely). Same fidelity class — the product's own
+     request is continued, never fulfilled.
 2. Navigate to Settings → AI Providers (`/settings/ai-providers`).
    - Either a direct `page.goto` (verified live) or an in-app click from another
      settings page (also verified live) works — see the timeline below; the direct
      `goto` costs ~1.5-2 s of route-chunk load first and needs no new nav testid.
+   - **Amended at implementation:** use a bare `page.goto(..., wait_until="domcontentloaded")`,
+     **not** `AIProvidersPage.navigate()` — `BasePage.navigate()` waits for
+     `networkidle`, which can never be reached while the configurations request is
+     deliberately held open (a 30 s dead wait).
    - **Verify**: `ai-providers-page-title` becomes visible (this is the page shell,
      which renders *before* the configurations arrive).
 3. Verify the loading indicator is shown while configurations are loading.
-   - **Verify**: `[data-testid="ai-providers-section-llms-loading"]` (**testid
-     needed**, see Handles) is visible **while** `ai-providers-page-title` is already
+   - **Verify**: `[data-testid="ai-providers-section-llms-loading"]` (**added by this
+     implementation**, see Handles) is visible **while** `ai-providers-page-title` is already
      visible and **zero** configuration cards/selectors exist.
    - **Verify (count)**: the loading placeholder renders **once per section = 7**
      (LLMs, Embedding Models, Vector Storage, Image Generation, ASR, TTS, AI
@@ -58,16 +73,23 @@ then is replaced by ≥1 section), so they survive any change in that data.
      is a *different* indicator and is gone before the section loading state appears.
 4. Verify the loading indicator disappears once data is fully loaded.
    - **Verify**: the loading testid reaches count 0 (auto-waiting
-     `expect(...).to_have_count(0)` with a timeout > `DELAY`).
+     `expect(...).to_have_count(0)`, bounded by the 15 s termination budget, asserted
+     after the held request is released).
    - **Verify (replaced by real content)**: `ai-providers-section-llms` is visible and
      the section's model cards/selectors render — e.g.
      `ai-providers-section-llms-default-selector-combobox` visible. Disappearing alone
      is not enough: an error state would also make it disappear.
 5. Verify the page does not remain in a permanent loading state.
-   - **Verify**: within a bounded budget after the delay elapses (live: content at
-     `DELAY + ~1 s`), ≥6 `[data-testid^="ai-providers-section-"]` section roots are
-     present and the loading testid count is 0. Assert the *timeout* explicitly —
-     this step's whole content is "it terminates".
+   - **Verify**: within a bounded budget after the request is released (15 s ceiling
+     in the spec; live: content at ~1 s), the loading testid count is 0, >=1
+     configuration card is rendered, and **each of the 5 populated section headers** —
+     LLMs, Embedding Models, Image Generation, ASR, TTS — is visible. Assert the
+     *timeout* explicitly — this step's whole content is "it terminates".
+   - **Amended at implementation:** the analyst's ">=6 `[data-testid^="ai-providers-section-"]`"
+     count is a **mixed** set — that prefix also matches the derived `-default-selector*`
+     testids, which is why 12 nodes were observed for 5 rendered sections. Only 5 section
+     roots exist for this project (Vector Storage and AI Credentials are empty and hidden
+     by design), so the spec asserts those 5 by name instead of a fuzzy prefix count.
 6. Side channel.
    - **Verify**: no unexpected console errors across the whole flow (0 observed live
      on this page, both with and without the delay).
@@ -91,10 +113,11 @@ contract, no chunk-load phase.
 | Element | Primary handle (testid-only) | Provenance | Notes |
 |---|---|---|---|
 | Page title | `ai-providers-page-title` | **on-main ✓** (`git grep` on `origin/main -- src/`, fetched 2026-08-24) | renders during loading — the page shell is not blocked |
-| Section loading placeholder | **testid needed: `{sectionTestId}-loading`** (e.g. `ai-providers-section-llms-loading`) | needs-adding | `ConfigurationSection.jsx:88-105`; the component **already receives `sectionTestId`** (`ConfigurationsPanel.jsx:78,110,125,140,154,168,183`) and already builds derived ids from it (`${sectionTestId}-default-selector`, `ConfigurationSection.jsx:148`) — so this is the same established dynamic-testid pattern, one attribute on the `Loading...` `Typography`. Feature-scoped file, not a shared component. **Not** a state-switched testid: the element itself only exists while loading; its testid value never flips (PR #581 ruling respected). |
+| Section loading placeholder | `ai-providers-section-llms-loading` (templated `{sectionTestId}-loading`) | **added by this implementation** — EliteaAI/EliteaUI@c49f61bc on `automation/testids`; **not yet on `main`** (human cherry-pick) | `ConfigurationSection.jsx:88-105`; the component **already receives `sectionTestId`** (`ConfigurationsPanel.jsx:78,110,125,140,154,168,183`) and already builds derived ids from it (`${sectionTestId}-default-selector`, `ConfigurationSection.jsx:148`) — so this is the same established dynamic-testid pattern, one attribute on the `Loading...` `Typography`. Feature-scoped file, not a shared component. **Not** a state-switched testid: the element itself only exists while loading; its testid value never flips (PR #581 ruling respected). |
 | LLMs section root | `ai-providers-section-llms` | **on-main ✓** | the "content arrived" proof |
 | LLMs default-model selector | `ai-providers-section-llms-default-selector-combobox` | **on-main ✓** (pre-existing, used by ELITEA-2397's merged spec) | stronger "content arrived" proof than the section root alone |
-| Any section root (count) | class constant `'[data-testid^="ai-providers-section-"]'` | derived | UPPER_CASE class constant per `.claude/rules/page-objects.md`; 12 matches after load on project 399 |
+| All section loading placeholders (count) | class constant `'[data-testid^="ai-providers-section-"][data-testid$="-loading"]'` (`AIProvidersPage.SECTION_LOADING_SELECTOR`) | derived from the added testid | UPPER_CASE class constant per `.claude/rules/page-objects.md`; 7 while loading, 0 after. The bare `^="ai-providers-section-"` prefix is NOT used — it also matches the derived `-default-selector*` testids (that is the 12-node count), so it cannot count section roots |
+| Populated section roots | the 5 pre-existing `LocatorDescriptor` fields (llms / embedding-models / image-generation / asr / tts) via `AIProvidersPage.populated_section_headers()` | **on-main ✓** (ELITEA-2392) | Vector Storage + AI Credentials are empty for project 399 and correctly absent |
 
 Page object: extend `automation/pages/ai_providers_page.py` (exists; used by
 `test_ai_providers_page_sections_load_without_error.py` and
@@ -109,7 +132,7 @@ Page object: extend `automation/pages/ai_providers_page.py` (exists; used by
 | Step 1: navigate to Settings → **AI Configuration** on a slow/throttled connection | no page called "AI Configuration" exists; the page is **AI Providers** (`/settings/ai-providers`) — same drift already filed as #1250 for ELITEA-2392. "Slow connection" realised as a real-response delay (§ Fidelity Declaration) | Steps 1-2 | route handler + URL + page title | covered — **clarification #1250** for the page-name drift |
 | Step 2: loading indicator shown while configurations load | 7 per-section `Loading...` placeholders, page title already visible, zero cards | Step 3 | new `*-loading` testid: visible, count 7 | covered |
 | Step 3: loading indicator disappears once data is fully loaded | placeholders gone, sections + selectors rendered | Step 4 | count 0 **and** section/selector visible | covered (decomposed — disappearance alone would also pass on an error state) |
-| Step 4: page does not remain in a permanent loading state | content within `DELAY + ~1 s` | Step 5 | bounded-timeout assertion on section count ≥6 | covered |
+| Step 4: page does not remain in a permanent loading state | content within ~1 s of the release | Step 5 | bounded-timeout (15 s) assertions on the 5 populated section headers + loading count 0 + >=1 card | covered |
 | Expected Final State: no permanent loading state | as step 4 | Step 5 | same | covered |
 
 ### Axis 2 — asserted beyond the case
