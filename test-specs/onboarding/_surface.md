@@ -330,3 +330,87 @@ one per case (ELITEA-2237 forward navigation, ELITEA-2238 arrow boundaries, ELIT
 navigation). One file rather than three because all three share ONE subject (arrow navigation) and
 the same entry path; the w2 wave's one-file-per-case shape was for three genuinely different
 screens.
+
+
+---
+
+## The sidebar header — added by ELITEA-2234 / ELITEA-2233 analysis (qa-engineer, 2026-08-24, batch `onboarding-w4`)
+
+These two "onboarding" cases are **not on `/onboarding` at all** — their subject is the persistent
+app sidebar header (`src/[fsd]/widgets/sidebar-root/ui/SidebarBody.jsx`), which renders on every
+authenticated route. Executed live on `/chat`.
+
+### Layout (live boxes, 2026-08-24, expanded sidebar)
+
+| Element | Box | Source |
+|---|---|---|
+| Logo `IconButton` (`sidebar-toggle`, **on-main ✓**) | x=8 y=8 44×44 | `SidebarBody.jsx:218-236` |
+| Socket status dot (inside the logo button) | x=44 y=8 8×8 — top-**right corner**, `top:0 right:0` | `SidebarBody.jsx:229-235` |
+| Notification bell container | x=172 y=16 28×28 | `NotificationButton.jsx:68` |
+
+### Socket status dot — ONE element, colour is the whole state machine
+
+`useSocketIcon()` → Redux `settings.socketConnected` → `socketStatus` `'connected'|'disconnected'`;
+`isSocketIconVisible` is hardcoded `true`. Colour: `icon.fill.success` `#2BD48D` =
+**`rgb(43, 212, 141)`** vs `icon.fill.error` `#D71616` = `rgb(215, 22, 22)`.
+MUI's `<Tooltip title={...}>` clones the title onto the child as **`aria-label="Elitea is connected"`**
+— readable without hovering. DOM count of the element: **1**, so "no red dot" is provable by a
+count+colour pair, not just by absence.
+
+### Notification bell — the badge is an SVG circle, not a DOM node
+
+`BellIcon.jsx` renders `<circle cx=12 cy=3 r=3 fill="#D71616">` **inside** the bell `<svg>` when its
+`hasMessages` prop is true. `hasMessages` = `!!data?.total` from
+`GET /api/v2/notifications/notifications/prompt_lib/{personal_project_id}?only_new=true&only_total=true`
+(`NotificationButton.jsx:63`) plus the `notifications_notify` socket event.
+⇒ the badge can only be located by a **state attribute on the bell**, never by a testid on the circle
+(presence-flipping testids are outlawed). Requested shape:
+`sidebar-notifications-bell-icon` + `data-has-messages`.
+
+**Two different project ids:** the badge query uses `user.personal_project_id`; the popover query
+uses `useSelectedProjectId()`. Both are **399** for the standard test user today.
+
+**Bell only exists in the EXPANDED sidebar** — `{!sideBarCollapsed && <Buttons.NotificationButton />}`.
+The socket dot exists in both states.
+
+### Notifications popover (`NotificationList.jsx`)
+
+MUI **Popover** `id="notificationList"` (not a modal, no backdrop; outside click / Escape also close
+it). Header "Notifications" + X `aria-label="Close notifications"`; body = unread items; footer
+"Mark all as read" (**rendered only when `notifications.length > 0`** — a clean "the list is
+non-empty" observable) and "View all". Live: 5 unread bucket-retention notices from the artifacts
+suite. **Opening the popover does NOT mark anything read** — the red badge survives open→close
+(confirmed live).
+
+### Testids requested by this wave (all `needs-adding`, all attribute-only, 0 grep hits on `origin/automation/testids`)
+
+`sidebar-socket-status-indicator` + `data-socket-status` · `sidebar-notifications-button` ·
+`sidebar-notifications-bell-icon` + `data-has-messages` · `sidebar-notifications-popover` (on the
+Popover **paper** via `slotProps`, per the w2 Dialog lesson) · `sidebar-notifications-popover-title` ·
+`sidebar-notifications-close-button` · `sidebar-notifications-mark-all-read-button`.
+`BellIcon` and `BaseBtn` both spread `...rest` onto their root, so every testid is hardcoded at the
+**feature call site** — no shared-component pollution, no `testId` prop plumbing.
+
+### Quirks (new, live-confirmed)
+
+7. **The first-visit interactive-tour prompt fires on `/chat` too, and BLOCKS the sidebar.** Quirk 3
+   above is not `/onboarding`-specific: landing on `/chat` in this browser profile opened the "New
+   here?" prompt and a `bell.click()` failed with `<div class="MuiBox-root …"> intercepts pointer
+   events`. Dismiss with `components/interactive_tour.py` → `FirstVisitPromptCard.click_skip()`
+   (`interactive-tour-first-visit-prompt` / `-skip-button`) before ANY sidebar interaction. It also
+   emits the known `#1753` MUI focus console error — filter that one message.
+   The prompt is per-section (`localStorage["interactive-tour:<section>:prompt-seen"]`).
+8. **You cannot call the Elitea API from inside the page.** An in-page `fetch('/api/v2/...')` (even
+   same-origin, `credentials: 'include'`) is redirected to `dev.elitea.ai/forward-auth/auth_oidc/login`
+   and dies on CORS — the app's requests carry a Bearer token the page context doesn't reproduce.
+   Cost 3 turns during this analysis. For API preconditions use the suite's `automation/api/`
+   `APIClient` (Bearer from `.env.test`), never `page.evaluate` + `fetch`.
+   Corollary: those CORS errors land in the console log and can be mistaken for product errors.
+
+### AFS produced
+
+- `l1_sidebar_notification_bell_red_badge_ELITEA-2234.md` (clarification **#1764**)
+- `l2_sidebar_logo_socket_status_green_dot_ELITEA-2233.md` (clarification **#1765**)
+
+Both `ready-for-automation`, ZERO substitution. Suggested shared page object:
+`automation/pages/sidebar_header_page.py` (`SidebarHeaderPage`) — **not** `onboarding_page.py`.
