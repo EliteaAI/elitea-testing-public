@@ -918,3 +918,27 @@ Reproduced 2/2 including a pristine `goto('/mcps/all?tags[]=Local')`.
 (`toolkit-type-card-mcp`, "Remote MCP"). Any case text naming ADO /
 FileSystem / PlaywrightMCP as available Local MCPs is unsatisfiable in this
 environment — check this before planning such a case.
+
+**Resolved/added during ELITEA-1942 implementation (2026-08-24, implementer):**
+every handle above worked verbatim — no testid was added for this case.
+Three implementation-time facts the analyst pass could not see:
+
+- **Settle signal for a chip click is the list GET's `toolkit_type=` param.**
+  `McpListPage._expect_list_response(action, filtered=…)` awaits
+  `/tools/prompt_lib/{project}` GET whose URL either contains `toolkit_type=`
+  (select) or does not (deselect / Clear all). Both fire reliably; no sleep is
+  needed anywhere in the flow.
+- **The restored list renders a tick AFTER the unfiltered GET resolves** — a
+  synchronous `get_card_names()` right after the response can read an empty
+  grid (the same race `CredentialsListPage._settle_unfiltered_list` documents).
+  `McpListPage._settle_restored_list()` (network + first card visible) is the
+  fix; `remove_type_filter()` / `clear_all_type_filters()` call it for you.
+- **`page.url` percent-encodes the param** — it reads `tags%5B%5D=Remote`, so
+  assert on `urllib.parse.unquote(page.url)` containing `tags[]=Remote` rather
+  than on the raw string.
+
+New `McpListPage` members (all testid-only, all additive): `TYPE_FILTER_CHIP`,
+`tags_clear_all_button`, `entity_card_tag_chip`, `type_filter_chip()`,
+`wait_for_type_panel()`, `click_type_filter()`, `remove_type_filter()`,
+`clear_all_type_filters()`, `is_type_filter_active()`,
+`get_visible_type_badges()`.

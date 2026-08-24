@@ -4,7 +4,7 @@ description: TMS case slugs are named independently of AFS/case titles; derived 
 type: feedback
 aliases: [allure issue link, TMS case link 404, dead test case link]
 tags: [area/traceability, type/gotcha]
-updated: 2026-08-23
+updated: 2026-08-24
 ---
 
 ## The rule
@@ -23,10 +23,10 @@ And when a reviewer flags this class, **grep your own diff for the exact string
 before claiming it fixed** — an "addressed" round with no line touching the
 decorator reads as a skip, and reviewers treat it as one.
 
-## Why it keeps happening (6 occurrences, all caught at review, never by a run)
+## Why it keeps happening (7 occurrences, all caught at review, never by a run)
 
 A dead link never fails a test — it only 404s in an Allure report — so nothing
-in the loop catches it except a human reviewer. The six:
+in the loop catches it except a human reviewer. The seven:
 
 | Case | Derived from | Real slug differed by |
 |---|---|---|
@@ -35,8 +35,9 @@ in the loop catches it except a human reviewer. The six:
 | ELITEA-1836/1837/1838 (2026-08-21) | an invented `…file-tree-behavior-…` shape applied to all three | three different real slugs |
 | ELITEA-1848 + ELITEA-1850 (2026-08-22) | the **AFS** filename slug again (1849's happened to coincide and resolved, masking the pair) | `all-files-` not `delete-all-`; `close-x-modal-keeps-items` not `close-x-on-delete-confirmation` |
 | ELITEA-1810 (PR #1678, 2026-08-23) | the case **title** / AFS slug (`…via-folder-icon-retention-policy`) | real slug is `…path-2-verify-retention-policy` — the TMS names the case by its *path-2* framing; nothing in the title or the AFS hints at it |
+| ELITEA-1942 (PR #1739, 2026-08-24) | the case **title** / AFS slug (`…filter-by-type-remote`) | real slug ends `-remote-only` — the TMS encodes the *scope* qualifier the title omits |
 
-Occurrences #1, #2 and #5 also survived the first fix round untouched — the
+Occurrences #1, #2, #5 and #6 also survived the first fix round untouched — the
 expensive failure mode. #5 is the sharpest lesson: this very entry already
 existed and was still not consulted, because it carried **no `MEMORY.md` index
 line** — a fact that must change your FIRST move is worthless unindexed. Indexed
@@ -51,6 +52,7 @@ nothing about the spec *looks* wrong. Check every link, not a sample.
 - `automation/tests/unit/test_artifacts_tree_specs_allure_issue_links.py`
 - `automation/tests/unit/test_artifacts_delete_all_specs_allure_issue_links.py`
 - `automation/tests/unit/test_artifacts_bucket_retention_spec_allure_issue_link.py`
+- `automation/tests/unit/test_mcp_type_filter_spec_allure_issue_link.py`
 
 Each parses `@allure.issue` URLs with `ast` (handles adjacent-string-literal URL
 wrapping), asserts each path resolves in the sibling clone, and skips cleanly
