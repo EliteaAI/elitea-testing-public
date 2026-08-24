@@ -28,7 +28,9 @@
 | Toolkit Name | `autotest_cancelled` | 18 chars, well under `MAX_NAME_LENGTH = 32` (which **silently truncates** — `_surface.md` § Fixtures addendum). No uuid suffix: the whole point of the case is that this name never reaches the server, and a generated suffix would make step 8's "does NOT appear" assertion trivially true for the wrong reason (a random string is absent from any list). |
 | Url | `https://mcp.example.com/sse` | Correct fixture: the URL is only ever **stored in form state**, never dialled — Load Tools is not part of this case (`_surface.md` § Fixtures addendum). |
 
-**Pre-flight guard (recommended, declared):** before step 1, assert via `ToolkitAPI.list_all_toolkits()` that no toolkit named `autotest_cancelled` exists. If one does, the environment is dirty from an aborted earlier run and step 8 would pass/fail for the wrong reason — fail fast with a clear message rather than produce a misleading result. This is cheap (one API call) and makes the fixed-literal choice safe.
+**Pre-flight guard (recommended, declared):** before step 1, assert that no MCP named `autotest_cancelled` exists. If one does, the environment is dirty from an aborted earlier run and step 8 would fail for the wrong reason — fail fast with a clear message rather than produce a misleading result. This makes the fixed-literal choice safe.
+
+> **AMENDED at implementation (review fix round 1, 2026-08-24 — the shipped shape).** The guard must run through the **MCP list view** (`McpListPage.navigate()` + `search()` + `get_card_names()`), **not** `ToolkitAPI.list_all_toolkits()`. That endpoint answers `{"rows": [], "total": 0}` on this environment regardless of params or auth method — re-verified live 2026-08-24 (API reported 0 toolkits while `/mcps/all` rendered 20 cards) — so an absence assertion phrased against it is **vacuous**: it passes whether or not the toolkit exists. The guard is additionally preceded by a `get_card_count() > 0` presence check, so an absence result is only ever read off a channel proven able to see MCPs.
 
 ### reuse-existing
 - Whatever other MCPs the project holds — used only to prove the list actually rendered (a zero-length list would make step 8 vacuous). Never asserted by name.
@@ -74,7 +76,7 @@ No MCP named `autotest_cancelled` exists — neither in the UI list nor server-s
 | Step 3b: `toolkit-form-cancel-button` is **enabled** on the filled form | Cancel is the control under test; proving it was actionable before the click makes step 4's dialog attributable to the click rather than to an already-open state. Cheap, no new handle. |
 | Step 4b: form still mounted **and both values still present** immediately after the Cancel click, dialog open | Pins the product's two-step gesture. Without it, a regression that cancelled immediately (skipping the dialog) could still pass steps 5-8 by accident if the dialog rendered afterwards. |
 | Step 8b: **no `POST` to the toolkit-create endpoint fired** during the whole flow | The case's Expected Final State is "no MCP is created". A UI-list absence alone does not prove that — a created-then-hidden entity would read the same. Implement with a `page.on("request")` collector (passive observation, **not** interception — § Fidelity Declaration). |
-| Step 8c: `ToolkitAPI.list_all_toolkits()` contains no toolkit named `autotest_cancelled` | Independent, non-DOM ground truth for the same claim; also catches a create that succeeded but did not reach the list view. |
+| ~~Step 8c: `ToolkitAPI.list_all_toolkits()` contains no toolkit named `autotest_cancelled`~~ **— DROPPED at implementation (review fix round 1, 2026-08-24)** | Would have been a **vacuous** assertion: that endpoint always answers an empty list here (see § Test Data). Its stated value — independent, non-DOM ground truth that also catches a create that never reached the list view — is fully delivered by step 8b, which is strictly stronger (it proves no mutation was even attempted). |
 | Step 8d: the unfiltered MCP list rendered **> 0** cards before the search | Guards against the vacuous pass where the list failed to load at all and *everything* is "absent". |
 | Step 8e: console errors, filtered (see § Automation Hints) | The case's Pass criterion says "All steps complete without errors" — the side channel is where a silent one would show. |
 
@@ -137,7 +139,7 @@ toolkit-form-name-input                  main:YES  testids:YES
 - Both fields are filled through the real inputs; Cancel and Discard are real clicks on the product's own controls.
 - The dialog, the unmount, the type-picker re-render and the empty search result are all rendered by the product.
 - The "no POST fired" assertion uses a **passive** `page.on("request")` observer — observation, not interception. No `page.route`, no `route.fulfill`, no `page.evaluate`-injected state, no API-seeded precondition standing in for a UI step.
-- `ToolkitAPI.list_all_toolkits()` is used only as an **independent read-only oracle** for absence, never to create or shortcut a step.
+- ~~`ToolkitAPI.list_all_toolkits()` is used only as an **independent read-only oracle** for absence~~ — **the shipped spec uses no API oracle at all** (review fix round 1): the listing endpoint is always empty here, so it could only ever have been a vacuous one. Absence is read off the MCP list view, and the server-side claim off the passive request observer.
 
 *Analyst-side note on exploration technique:* live observation used `browser_evaluate` **read-only** DOM probes (presence/value/text reads). No state was injected and no assertion in this AFS derives from an evaluated write.
 
@@ -177,3 +179,18 @@ Live exploration, 2026-08-24, `http://localhost:5173`, project 399. Observations
 | Console (session-wide) | only vite-HMR reload failures (dev-server restart), `socket.io` CORS/502/503 to `dev.elitea.ai`, and the #656 type-picker key warning — **none emitted by the Cancel/Discard clicks themselves** |
 
 Screenshot: `test-results/screenshots/ELITEA-1960-step-05-cancel-confirm-dialog.png` (step 5, confirmation dialog).
+
+## Shipped implementation (2026-08-24, implementer)
+
+- **Spec:** `automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py`
+- **Node id:** `tests/ui/toolkits/test_mcp_cancel_during_creation.py::TestMcpCancelDuringCreation::test_cancel_during_creation_creates_nothing`
+- **Form C (for the orchestrator's post-merge back-write):**
+  `tests.ui.toolkits.test_mcp_cancel_during_creation.TestMcpCancelDuringCreation.test_cancel_during_creation_creates_nothing`
+- **AFS drift found:** none. Every handle, message string, heading and behaviour in
+  this AFS matched the live product on the implementation run.
+- **Page-object naming:** the analyst's declared `create_cancel_button` /
+  `cancel_confirm_dialog` / `cancel_confirm_button` + `click_cancel_creation()` /
+  `get_cancel_confirm_message()` / `confirm_cancel_creation()` was adopted verbatim —
+  no alternative prefix chosen, so nothing further to declare.
+- **New testids:** none (all four cancel-flow handles were already on `origin/main`).
+- **Result:** GREEN 1/1 on the first run, 0 reruns, ~30 s headless.
