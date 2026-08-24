@@ -251,6 +251,35 @@ class McpFormPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # Breadcrumb trail (detail page only) — added ELITEA-1961.
+    #
+    # `/mcps/all/:id` declares a breadcrumb trail (`breadcrumb.constants.js`)
+    # and `EditToolkit.jsx` renders
+    # `hasBreadcrumbTrail ? <Breadcrumbs/> : (<BackButton/> + title)`, so the
+    # BackButton branch is unreachable on this route no matter how the user
+    # arrived. `back_button` below is therefore bound for an ABSENCE
+    # assertion only, which keeps that finding test-enforced instead of
+    # documentation-only (CLARIFICATION #1731; .agents/testing.md § Locator
+    # policy, #511 extension). `AgentDetailPage` and `SkillDetailPage` already
+    # declare the same shared app-shell testid on their own classes — a third
+    # declaration is the established shape here, not a duplication.
+    # ------------------------------------------------------------------
+    breadcrumbs_nav = LocatorDescriptor(
+        testid="breadcrumbs",
+        description="Breadcrumb <nav> on the MCP detail page (absent on the MCP list page)",
+    )
+    breadcrumb_parent_link = LocatorDescriptor(
+        testid="breadcrumb-item",
+        description="Parent crumb link ('MCPs') inside the breadcrumb trail — "
+        "exactly one of these renders on the MCP detail page",
+    )
+    back_button = LocatorDescriptor(
+        testid="back-button",
+        description="Shared app-shell back arrow — NEVER rendered on /mcps/all/:id; "
+        "bound for the absence assertion of ELITEA-1961 / #1731",
+    )
+
+    # ------------------------------------------------------------------
     # Three-dot actions menu + delete-confirm dialog (detail page only) —
     # added ELITEA-1947. controls-menu-button/controls-menu are the SAME
     # generic ControlsDropdown/DotMenu testids already used by
@@ -593,6 +622,35 @@ class McpFormPage(BasePage):
             },
             timeout=UI_ELEMENT_TIMEOUT,
         )
+
+    # ------------------------------------------------------------------
+    # Breadcrumb navigation (detail page) — added ELITEA-1961.
+    # ------------------------------------------------------------------
+
+    def get_breadcrumb_text(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Return the breadcrumb trail's full text, e.g. ``MCPs/<toolkit name>``.
+
+        MUI renders the separator as its own node, so ``text_content()``
+        concatenates the crumbs into ``MCPs/<name>`` with no separating
+        whitespace.
+        """
+        self.breadcrumbs_nav.wait_for(state="visible", timeout=timeout)
+        return (self.breadcrumbs_nav.text_content() or "").strip()
+
+    @action("Click the parent breadcrumb link")
+    def click_breadcrumb_parent(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the parent crumb ("MCPs") and wait for the list route.
+
+        This is the product's own in-page navigation control — deliberately
+        NOT ``page.go_back()``, which is a different flow with a different
+        contract (ELITEA-1961 AFS § Automation Hints). The navigation is
+        client-side, so no reload is awaited; callers that need to prove that
+        should watch for the absence of a ``load`` event.
+        """
+        self.breadcrumb_parent_link.first.wait_for(state="visible", timeout=timeout)
+        self.breadcrumb_parent_link.first.click()
+        self.page.wait_for_url("**/mcps/all", timeout=timeout)
+        self.wait_for_network()
 
     # ------------------------------------------------------------------
     # Detail action-bar navigation — added ELITEA-1940.

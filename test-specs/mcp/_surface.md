@@ -830,3 +830,43 @@ at all would need a blanket-add on an element no case touches).
 `scrollHeight` 900 vs `clientHeight` 801 at 1920×1080 — i.e. only **~99 px** of scroll range.
 Any future scroll-dependent case must assert `scrollHeight > clientHeight` first or seed more
 MCPs; at a smaller card count the list does not scroll at all and the observable is vacuous.
+
+## MCP DETAIL page top-left control is a BREADCRUMB, not a back arrow (ELITEA-1961, 2026-08-24)
+
+**Resolved/added during ELITEA-1961 implementation** (analyst-discovered, confirmed
+green in the automated flow). Read this before writing any "back to the list"
+assertion on `/mcps/all/:id`.
+
+`EditToolkit.jsx:390-403` renders `hasBreadcrumbTrail ? <Breadcrumbs/> :
+(<BackButton/> + <Typography data-testid="toolkit-detail-title"/>)`.
+`useHasBreadcrumbTrail()` is **purely route-based** and `/mcps/all/:id` declares a
+trail (`breadcrumb.constants.js:48`), so the `<BackButton/>` branch is **unreachable
+on this route no matter how the user arrived** (card click or deep link). Case-text
+drift, not a defect — CLARIFICATION #1731.
+
+| Handle | Testid | Notes |
+|---|---|---|
+| Breadcrumb nav (detail only) | `breadcrumbs` | on `main` ✓ (`shared/ui/breadcrumbs/Breadcrumbs.jsx:20`). `<nav>`; `text_content()` concatenates to `MCPs/{name}` with no separating whitespace. **Absent on `/mcps/all`** — the cleanest detail-vs-list discriminator. |
+| Parent crumb link | `breadcrumb-item` | on `main` ✓ (`BreadcrumbItem.jsx:30`). `<a>` reading `MCPs`; exactly **one** renders on the MCP detail page — assert count-then-text, not `.first`. |
+| Back arrow | `back-button` | on `main` ✓ but **count 0 on this route** — bind it only for the absence assertion. |
+
+Bound on `McpFormPage` as `breadcrumbs_nav` / `breadcrumb_parent_link` /
+`back_button` + `get_breadcrumb_text()` / `click_breadcrumb_parent()`. Kept on
+`McpFormPage` rather than promoted to `BasePage`: the trail is app-shell and a
+future cross-surface case may want it there, but promoting now would bind a testid
+no other current spec touches (#511 scope rule).
+
+### List filter state survives the round trip; scroll position does NOT
+
+- The list's search filter lives in **redux** (`src/slices/search.js`), in-memory and
+  **not in the URL** — `/mcps/all` carries no query string while filtered. It survives
+  a client-side route change (which is exactly why the detail→list round trip keeps the
+  filter) but would NOT survive `page.reload()`. Never reload mid-flow, never read the
+  filter off the URL.
+- **Scroll position is not restored** (`scrollTop` 99 → 0; no list scroll-restoration
+  code exists anywhere in `src/`). ELITEA-1961 deliberately asserts it in **neither**
+  direction — CLARIFICATION #1732 is open for a human ruling.
+- Proving the breadcrumb navigates **client-side** needs no `page.evaluate`: a full
+  document load fires Playwright's page `"load"` event and an SPA route change does
+  not, so watching for that event's ABSENCE across the click is an honest,
+  product-produced signal.
