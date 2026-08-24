@@ -43,6 +43,7 @@ import allure
 import pytest
 from pages.sidebar_header_page import SidebarHeaderPage
 from playwright.sync_api import expect
+from utils.console_errors import collect_console_errors
 
 pytestmark = [
     pytest.mark.p1,
@@ -71,13 +72,12 @@ class TestSidebarNotificationBadge:
     def test_bell_shows_red_badge_and_notifications_popover(self, page):
         """The bell carries the red badge and its popover opens and closes on X."""
         sidebar = SidebarHeaderPage(page)
-        console_errors: list = []
-        page.on(
-            "console",
-            lambda msg: console_errors.append(f"{msg.type}: {msg.text}")
-            if msg.type == "error"
-            else None,
-        )
+        # URL-annotated capture (`utils.console_errors`): a "Failed to load resource"
+        # message carries only the status code in its text — the failing resource's URL
+        # lives in `msg.location`. Capturing it is what makes an occurrence of the
+        # recurring background-resource noise class (.agents/testing.md § Unconfirmed)
+        # diagnosable instead of anonymous. Capture-only: nothing is dropped here.
+        console_errors = collect_console_errors(page)
 
         with allure.step(
             "Step 1 — Log in to the private project and land on the expected landing page"
