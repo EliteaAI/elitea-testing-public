@@ -294,7 +294,7 @@ def test_mcp_view_run_history_and_entry_details(page, toolkit_api: ToolkitAPI):
             expect(answer).not_to_contain_text(FAILED_RUN_MARKER)
             expect(answer).not_to_contain_text(TOOL_CALL_ECHO)
             expect(run_history.get_detail_input_message()).to_contain_text(
-                f"{TOOL_CALL_ECHO}", timeout=10_000
+                TOOL_CALL_ECHO, timeout=10_000
             )
             expect(run_history.get_detail_input_message()).to_contain_text(
                 REPO_FIRST_RUN, timeout=10_000
