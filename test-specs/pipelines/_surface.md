@@ -3639,3 +3639,30 @@ last `chat-message-item`, text `"{toolkit}: ask_question (MCP1)"` — asserted w
 `to_contain_text("{toolkit}: ask_question")` rather than the full string, since the
 node-id segment renders without its space. Answer body (~1 kB) asserted by shape
 only. Whole test: 39 s, zero console errors, green first try.
+
+**Saving RE-INITIALISES the whole flow graph — post-save canvas reads must be
+polled** (*Resolved during the ELITEA-1952 flake fix, 2026-08-24*). The Save
+PUT's `201` is NOT the point at which the canvas is settled. The response
+updates the RTK Query cache, which re-runs `PipelineEditor.jsx`'s init effect
+("Triggers on initial load and after save when RTK Query cache updates",
+`PipelineEditor.jsx:347`) → `initThePipeline` → `resetFlag` → `FlowEditor.jsx`
+rebuilds the graph wholesale (`setFlowNodes(initialNodes)` /
+`setFlowEdges(initialEdges)`, plus a 150 ms `setTimeout` Redux sync,
+`FlowEditor.jsx:176-195`). During that window the canvas is momentarily EMPTY —
+both merge-gate failure screenshots showed a blank canvas with the TOOLS card
+intact. A one-shot `edge_testid_present()` / `.count()` read fired right after
+`save_and_wait_for_update()` lands inside it on ~40 % of runs (2 of 5 gate runs;
+a diagnostic run measured the edge re-appearing **0.09 s** after the one-shot
+read returned `False`). Use `wait_for_edge()` (polls the same exact edge testid
+via `expect().to_have_count(1)`) — or any auto-retrying assertion — for ANY
+canvas read after a Save; never a one-shot boolean.
+
+**The embedded-chat tool chip marks the START of a tool call, not the end**
+(*same fix*). `wait_for_embedded_chat_response()` stabilises on the whole
+`chat-message-item`'s text, which is already non-empty and unchanging (the chip
++ "Thought" header) while the MCP round trip is still in flight — so it can
+return while the run indicator still spins at 0 % and the answer body is `""`.
+Poll the answer BODY (`skill-test-last-response`, via
+`get_last_embedded_chat_response_locator()`) with
+`expect(...).to_contain_text(re.compile(r"[\s\S]{N,}"))` before reading it with
+`get_last_embedded_chat_message_text()`.

@@ -6539,6 +6539,24 @@ class PipelineDetailPage(PipelineFormPage):
             return (self.skill_test_last_response.last.text_content() or "").strip()
         return ""
 
+    def get_last_embedded_chat_response_locator(self):
+        """Return a Locator for the LAST embedded-chat message's answer BODY
+        (the ``skill-test-last-response`` testid ``get_last_embedded_chat_
+        message_text()`` reads).
+
+        Additive counterpart to that reader (ELITEA-1952 stabilisation): the
+        reader is a one-shot ``text_content()`` snapshot by design, while an
+        answer streams in progressively AFTER its tool chip renders. Callers
+        that need the answer to have arrived poll this locator with
+        ``expect(...).to_contain_text(...)`` first — the same locator-not-text
+        discipline as ``get_last_embedded_chat_tool_chip_locator()``.
+
+        Returns:
+            Locator for the last message's answer-body element (count 0 while
+            no answer has rendered yet).
+        """
+        return self.skill_test_last_response.last
+
     def get_last_embedded_chat_tool_chip_locator(self):
         """Return a Locator for every ``chat-answer-tool-chip`` in the LAST
         embedded-chat message (ELITEA-1952).
