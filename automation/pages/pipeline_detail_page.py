@@ -7071,22 +7071,24 @@ class PipelineDetailPage(PipelineFormPage):
         """Return the Run Details panel's States section text content.
 
         TEMPORARY: Builds locator manually due to missing testid.
-        Returns combined text from header ("States") + accordion content.
+        Returns combined text from header + all accordion summaries + any expanded content.
         """
-        # TEMPORARY FIX: testid missing, combine header + container text
-        # statesHeader and statesContainer are siblings, no wrapper with testid
+        # TEMPORARY FIX: testid missing, build from parts
         panel = self.page.get_by_test_id("pipeline-run-details-panel")
 
-        # Get header text (Typography with "States")
-        header_text = panel.locator('text="States"').first.text_content() or ""
+        # Get "States" header
+        header = panel.locator('text="States"').first.text_content() or ""
 
-        # Get container text (all state variable accordions)
-        first_accordion = panel.locator(".MuiAccordion-root").first
-        container = first_accordion.locator("xpath=..")
-        container_text = container.text_content() or ""
+        # Get all accordion summaries (state variable names)
+        # MuiAccordion-root contains MuiAccordionSummary
+        accordions = panel.locator(".MuiAccordion-root")
+        accordion_texts = []
+        for i in range(accordions.count()):
+            accordion_texts.append(accordions.nth(i).text_content() or "")
 
-        # Combine both (header + content)
-        return f"{header_text} {container_text}".strip()
+        # Combine: header + all accordion content
+        all_text = f"{header} {' '.join(accordion_texts)}"
+        return all_text.strip()
 
     # ------------------------------------------------------------------
     # Run Details panel — multi-run history (RunStateNodeGroup — ELITEA-2454)
