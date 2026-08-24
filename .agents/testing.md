@@ -638,3 +638,15 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   (not the PR itself — different purpose) into a chat-dedicated
   rotating-user fixture the next time `#1082` gets prioritized, instead of
   re-deriving the same shape from scratch.
+- **Known-noise entry (2026-08-24, mcp wave-01, PR #1722)**: 1 of 4 lead-independent gate
+  runs over the 7-spec MCP set hit an extra failure on
+  `test_mcp_create_validation.py::…[ELITEA-1923]` — `Locator.wait_for: Timeout 10000ms`
+  waiting for `get_by_test_id("toolkit-type-card-mcp")` to be visible on the MCP **type
+  picker** page (`/mcps/create`), i.e. the picker never rendered its cards. Exhausted the
+  spec's reruns within that invocation, then did NOT reproduce in the 3 consecutive full-set
+  runs that followed (each: 7 passed + only the sanctioned-RED ELITEA-1924/#633 failure).
+  It was the first run after a long idle period, consistent with a cold dev-server/route-chunk
+  load rather than a code defect. Distinct from the console-500/404 background-resource
+  patterns above — this is a route-level render lag on a *navigation* step. Record further
+  occurrences here; if it repeats, the fix is an explicit page-ready wait in
+  `McpFormPage`'s type-picker navigation, not a longer timeout.
