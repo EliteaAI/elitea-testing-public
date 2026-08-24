@@ -1103,3 +1103,181 @@ toolkit **3134** (`autotest_conn_tools_a1`). Nothing was persisted — the whole
 - **Case-text gap:** ELITEA-1948's step 9 omits the Discard confirmation modal, exactly as
   ELITEA-1928's step 5 did. **Third case to hit it** — occurrence commented on the existing
   clarification **#1718**; nothing re-filed.
+
+## Timeout / Cache TTL numeric fields — defaults, value TYPE asymmetry, info icon (2026-08-24, ELITEA-1956/1957)
+
+**Appended during the ELITEA-1956/1957 cluster analysis (batch `mcp-w04`). Confirmed live
+on a freshly seeded Remote MCP (toolkit 3247, `https://mcp.example.com/sse`).**
+
+- **Defaults are real input VALUES, not just placeholders.** Both `toolkit-field-timeout-input`
+  and `toolkit-field-cache_ttl-input` read `input_value() == "300"` on the create form AND on
+  a freshly created MCP's detail page. They *also* carry `placeholder="300"` (derived from the
+  schema default at `ToolBaseProperty.jsx:592-596`, `placeholder = schemaPlaceholder ||
+  (isInteger && defaultValue !== undefined ? String(defaultValue) : undefined)` with
+  `value={settings[k] ?? ''}`) — so a *genuinely empty* field would still show "300" greyed
+  out. **Assert `input_value()`, never the placeholder.**
+- **Value TYPE asymmetry — the one thing to know here.** An **untouched** default persists as a
+  JSON **number**; a value **typed in the UI** persists as a JSON **string**:
+
+  | State | `settings.timeout` | `settings.cache_ttl` |
+  |---|---|---|
+  | freshly created, untouched | `300` (int) | `300` (int) |
+  | after typing 60 into Timeout | `"60"` (str) | `300` (int) — untouched sibling stays numeric |
+  | after typing 600 into Cache TTL | `"300"` (str, from a prior edit) | `"600"` (str) |
+
+  Same in the create POST body, the update PUT body and the Raw Json view. This is why
+  merged `test_mcp_create_remote.py:196-199` asserts `== "600"` + `isinstance(..., str)`.
+  TMS case texts (ELITEA-1956/1957) print bare numbers — that is **case-text drift**, not a
+  defect. Assert with `str(raw["settings"][k]) == "<value>"`.
+- **Round-trip confirmed both directions**: 300 → 60 → 300 (Timeout) and 300 → 600 → 300
+  (Cache TTL), each with a PUT 200, each surviving `page.reload()`. Editing one field never
+  touched the other.
+
+### The label info icon has NO testid (work order, not a waiver)
+
+Live DOM inside each field's `<label>`:
+`<span data-info-tooltip="true"><svg width="16" height="16" …/></span>` — one SVG, **zero
+`data-testid`** on `timeout`, `cache_ttl`, `url` (checked all three).
+
+The plumbing is fully wired already — `ToolBaseProperty.jsx` → `Input.StyledInputEnhancer`
+→ `InputBase` → `InfoTooltip`, and `InfoTooltip` accepts `testId` / `contentTestId`.
+`ToolBaseProperty.jsx:615-618` already passes them, but **only for `k === 'bucket'`**
+(`toolkit-field-bucket-info-icon`, already on `origin/main`). Adding an info-icon testid for
+any other field = extend that per-key allow-list with two additive props. Do **not** make it
+generic (blanket-add ban, `.agents/testing.md` § Locator policy) and do **not** add the
+`-info-tooltip-content` sibling unless a case actually opens the tooltip (#511).
+
+### Two traps this session
+
+1. **`McpFormPage.is_save_button_disabled()` binds the CREATE form's
+   `toolkit-form-save-button`** — it does not exist on the detail page, so calling it there
+   times out after 30 s with a misleading "waiting for get_by_test_id(...)". On the detail
+   page read `detail_save_button.is_disabled()` directly. (Pristine detail page: `true`;
+   after touching one field: `false` — consistent with the Save/Discard gating section above.)
+2. `expand_configuration_section()` is required **again after every `page.reload()`** — and
+   again after `switch_to_form_view()` coming back from Raw Json.
+
+### Console was clean
+
+Zero `error`-type console messages across both full flows (seed → edit → save → reload →
+Raw Json → restore, twice), headless, fresh context — including the `#291` React dev-mode
+warnings and the `#549` MUI-Tabs warning that `test_mcp_edit_toggle_enable_caching.py` still
+filters/soft-fails. **Not evidence they are fixed** (different render path / headless), but
+worth re-checking the next time someone touches those filters.
+
+
+### Resolved/added during ELITEA-1956/1957 implementation (2026-08-24, implementer)
+
+- **The info-icon testid gap above is CLOSED.** `toolkit-field-timeout-info-icon` and
+  `toolkit-field-cache_ttl-info-icon` now exist — EliteaAI/EliteaUI@25c47d7d on
+  `automation/testids` (NOT yet on `main`: a human cherry-picks). Shipped as a second
+  per-key spread beside the pre-existing `bucket` one in
+  `ToolBaseProperty.jsx`, passing only `tooltipTestId`. Bound as
+  `McpFormPage.timeout_info_icon` / `McpFormPage.cache_ttl_info_icon`. The same one-line
+  pattern is now the proven recipe for any other schema field's info icon.
+- **`save_and_wait_for_updated()`'s returned PUT body carries the full `settings` object**
+  — `save_response["settings"]["timeout"]` is directly assertable, no extra GET needed
+  (used for both the save and the restore step). A UI-typed value comes back as a JSON
+  STRING there too, matching what Raw Json renders.
+- **Console stayed clean again** across both parameterized rows (headless): zero
+  error-type messages, so neither the `#291` filter nor the `#549` soft-fail branch fired.
+  Still not evidence they are fixed.
+- **Both rows ran green first try, 61.7 s for the pair** (seed → edit → save → reload →
+  Raw Json → restore → API delete, twice), no reruns.
+
+## Create form: CANCEL is a two-step gesture with its own confirm dialog (ELITEA-1960, 2026-08-24)
+
+**Appended during ELITEA-1960 analysis (batch `mcp-w04`).** Distinct from the *detail*
+page's Discard modal documented above — different component, different testids, same shape.
+
+`CreateToolkitToolTabBar.jsx` renders the create form's Cancel as a shared
+`Button.DiscardButton title="Cancel"`, so clicking it **cancels nothing**: it only opens
+
+```
+Warning
+Are you sure you want to cancel creation of this toolkit?
+Cancel   Discard
+```
+
+The form stays mounted and keeps both field values until the modal's own **Discard** is
+clicked. All three handles are **on `origin/main` ✓** (EliteaAI/EliteaUI@bf4a13ad) —
+nothing to add.
+
+| Handle | Testid | Notes |
+|---|---|---|
+| Cancel button (create form) | `toolkit-form-cancel-button` | label exactly `Cancel`; enabled whenever `!isLoading` |
+| Cancel-confirm dialog | `toolkit-form-cancel-confirm-dialog` | lands on the MUI `Dialog` **root** (`role="presentation"`) → `text_content()` == `WarningAre you sure you want to cancel creation of this toolkit?CancelDiscard`. **Assert with `in`, never `==`** |
+| Cancel-confirm "Discard" button | `toolkit-form-cancel-confirm-button` | label exactly `Discard` |
+
+### What confirming actually does — no navigation, no URL change
+
+`onCancel` → `setWantToCancel(true)` → effect calls `onClearEditTool()` + `formik.resetForm()`.
+At the MCP call site `onClearEditTool` is `() => setEditToolDetail(null)` (`CreateToolkit.jsx:141`)
+— **pure component state; there is no `navigate()` anywhere in the cancel path.** Live result:
+
+- every create-form handle **unmounts** (`toolkit-form-name-input`, `-description-input`,
+  `toolkit-field-url-input`, `toolkit-form-save-button`, `toolkit-form-cancel-button` → count 0);
+- the **type picker re-renders** (`mcp-type-picker-heading` == `Choose the MCP type`,
+  `toolkit-type-card-mcp` present);
+- the **URL stays `/mcps/create/mcp`** — it does NOT return to `/mcps/create`.
+
+⇒ Assert the view (unmount + picker heading), **never the URL**. Filed as clarification
+[#1747](https://github.com/EliteaAI/elitea-testing-public/issues/1747).
+Zero `POST` fires anywhere in the flow — a cancelled creation is server-side inert.
+
+### ⚠️ The MCP type picker emits a console ERROR on every mount (#656) — and a cancel flow mounts it TWICE
+
+`CategorySection.jsx:35` via `ToolkitTypeSelector.jsx:36` logs React's
+`Each child in a list should have a unique "key" prop` at **error** level on every
+type-picker mount ([#656](https://github.com/EliteaAI/elitea-testing-public/issues/656)).
+`test_mcp_back_navigation.py` dodges it by registering its listener after setup — a cancel
+flow **cannot**, because returning to the picker IS the observable. Any console assertion on
+this surface must **filter that signature by message** (plus the standing `socket.io`
+CORS/502/503 noise to `dev.elitea.ai`), not drop the assertion and not run it unfiltered.
+
+### Handle gotcha worth remembering
+
+`toolkit-field-url-input`'s testid sits on the `<input>` **itself** — `[data-testid="toolkit-field-url-input"] input`
+matches nothing. (`toolkit-form-name-input` is the opposite: wrapper, real input inside.)
+
+### Resolved/added during ELITEA-1960 implementation (2026-08-24, implementer)
+
+- **`McpFormPage` now binds the create-form cancel trio** — `create_cancel_button`
+  (`toolkit-form-cancel-button`), `cancel_confirm_dialog`
+  (`toolkit-form-cancel-confirm-dialog`), `cancel_confirm_button`
+  (`toolkit-form-cancel-confirm-button`), plus `click_cancel_creation()` /
+  `get_cancel_confirm_message()` / `confirm_cancel_creation()`. Named
+  `create_cancel_*` / `cancel_confirm_*` to stay unambiguous next to the DETAIL
+  page's pre-existing `detail_discard_button` / `discard_confirm_modal` /
+  `discard_confirm_button` trio — the two flows live in the same class and the
+  product labels their triggers differently ("Cancel" vs "Discard") while both
+  confirm buttons read "Discard". No new testids were needed.
+- **`toolkit-form-name-input` behaves as a real input for assertions.** Despite the
+  wrapper note above, `expect(form.name_input).to_have_value(...)` works directly
+  (Playwright would raise "Not an input element" otherwise) — verified green in
+  `test_mcp_cancel_during_creation.py` steps 2/4b.
+- **The two-signature console filter works as specced.** Excluding the #656
+  `unique "key" prop` message and `/socket.io/` + `@vite/client` noise left the
+  remainder empty across a whole cancel flow (picker mounted twice). No third
+  signature surfaced.
+- **The passive `page.on("request")` oracle is cheap and decisive**: filtering
+  `method != "GET" and "prompt_lib" in url` across the entire flow collected zero
+  requests — no toolkit POST/PUT fires on a cancelled creation. Confirms the
+  analyst's network observation from the implementation side.
+- **⚠️ `ToolkitAPI.list_all_toolkits()` is a VACUOUS absence oracle here — never use it
+  for an MCP "does not exist" assertion.** `GET tools/prompt_lib/{project}` answers
+  `{"rows": [], "total": 0}` regardless of params or auth method (re-verified live
+  2026-08-24 during the ELITEA-1960 review fix; also documented in
+  `.agents/memory/test-automation-engineer/mcp_pipeline_node_toolkit_tool_quirks.md`
+  and four merged MCP siblings). An assertion phrased against it passes whether or not
+  the toolkit exists. *(This corrects an earlier bullet here that recorded the
+  API-based pre-flight guard as a verified implementation fact — it was not.)*
+  The reliable discovery path is the **MCP list view** (`McpListPage.navigate()` +
+  `search()` + `get_card_names()`), same as `test_mcp_delete_remote`'s stale-MCP check.
+- **Pre-flight guard is worth keeping — via the LIST VIEW, not the API**: the fixed
+  literal `autotest_cancelled` is safe only because the test asserts up front that no
+  such MCP pre-exists (and deliberately does NOT delete one it finds — a leftover IS
+  the defect signal). Every absence assertion in that spec is preceded by a
+  `get_card_count() > 0` presence check, so an absence result is only ever read off a
+  channel proven able to see MCPs.
+- Whole spec runs in ~30 s headless, green first try, zero reruns.

@@ -173,6 +173,22 @@ class McpFormPage(BasePage):
         testid="toolkit-field-cache_ttl-input",
         description="Cache TTL input",
     )
+    # Info (tooltip) icons rendered inside the Timeout / Cache TTL field
+    # LABELS. ToolBaseProperty.jsx passes `tooltipTestId` through a per-key
+    # allow-list (the pre-existing `k === 'bucket'` precedent) — extended with
+    # `timeout` / `cache_ttl` for ELITEA-1956/1957
+    # (EliteaAI/EliteaUI@25c47d7d on automation/testids). Only the ICON carries
+    # a testid: neither case opens the tooltip, so no
+    # `-info-tooltip-content` sibling was added (#511 — an unreferenced testid
+    # inflates the presence-based coverage metric).
+    timeout_info_icon = LocatorDescriptor(
+        testid="toolkit-field-timeout-info-icon",
+        description="Info (tooltip) icon next to the Timeout field label",
+    )
+    cache_ttl_info_icon = LocatorDescriptor(
+        testid="toolkit-field-cache_ttl-info-icon",
+        description="Info (tooltip) icon next to the Cache TTL field label",
+    )
     enable_caching_checkbox = LocatorDescriptor(
         testid="toolkit-field-enable_caching-checkbox",
         description="Enable Caching checkbox — MUI span wrapper (click target)",
@@ -254,6 +270,28 @@ class McpFormPage(BasePage):
     save_button = LocatorDescriptor(
         testid="toolkit-form-save-button",
         description="Save button on the create form",
+    )
+    # Create-form Cancel is a two-step gesture rendered by
+    # CreateToolkitToolTabBar.jsx (Button.DiscardButton + its confirm dialog).
+    # Named create_cancel_* / cancel_confirm_* to stay unambiguous next to the
+    # DETAIL page's discard_* trio above — the product labels the two triggers
+    # differently ("Cancel" here, "Discard" there) while both confirm buttons
+    # read "Discard". Naming choice declared in the ELITEA-1960 AFS
+    # § Page-object work.
+    create_cancel_button = LocatorDescriptor(
+        testid="toolkit-form-cancel-button",
+        description="Cancel button on the create form — opens the "
+        "cancel-creation confirmation dialog, cancels nothing by itself",
+    )
+    cancel_confirm_dialog = LocatorDescriptor(
+        testid="toolkit-form-cancel-confirm-dialog",
+        description="Cancel-creation confirmation dialog — the testid lands on "
+        "the MUI Dialog root, so text_content() includes the 'Warning' title "
+        "and both button labels; assert with `in`, never `==`",
+    )
+    cancel_confirm_button = LocatorDescriptor(
+        testid="toolkit-form-cancel-confirm-button",
+        description="'Discard' confirm button inside the cancel-creation dialog",
     )
     detail_save_button = LocatorDescriptor(
         testid="toolkit-detail-save-button",
@@ -1441,6 +1479,43 @@ class McpFormPage(BasePage):
         """
         self.discard_confirm_button.click()
         self.discard_confirm_modal.wait_for(state="detached", timeout=UI_ELEMENT_TIMEOUT)
+
+    @action("Click Cancel on the create form and wait for the confirmation dialog")
+    def click_cancel_creation(self) -> None:
+        """Click the CREATE form's Cancel button and wait for its confirm dialog.
+
+        Cancel is a two-step gesture: this first click only opens the
+        ``Warning / Are you sure you want to cancel creation of this toolkit?``
+        dialog (``CreateToolkitToolTabBar.jsx`` -> ``setOpenAlert(true)``). The
+        form stays mounted and keeps every entered value until
+        :meth:`confirm_cancel_creation` is called (verified live at
+        ELITEA-1960). Same shape as the detail page's :meth:`click_discard`,
+        different testids.
+        """
+        self.create_cancel_button.click()
+        self.cancel_confirm_dialog.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    def get_cancel_confirm_message(self) -> str:
+        """Return the cancel-creation confirmation dialog's text.
+
+        The testid sits on the MUI ``Dialog`` root (``role="presentation"``),
+        so this returns the "Warning" title, the message and BOTH button
+        labels concatenated — assert with ``in``, not ``==``.
+        """
+        return self.cancel_confirm_dialog.text_content() or ""
+
+    @action("Confirm cancellation of the create form")
+    def confirm_cancel_creation(self) -> None:
+        """Click 'Discard' in the cancel-creation dialog and wait for it to unmount.
+
+        The dialog is removed from the DOM (not hidden), so the wait is on
+        ``detached``. Note the create form itself unmounts too and the type
+        picker re-renders, but the URL does NOT change (it stays
+        ``/mcps/create/mcp``) — CLARIFICATION
+        EliteaAI/elitea-testing-public#1747; callers must not key off the URL.
+        """
+        self.cancel_confirm_button.click()
+        self.cancel_confirm_dialog.wait_for(state="detached", timeout=UI_ELEMENT_TIMEOUT)
 
     def is_save_button_disabled(self) -> bool:
         """Return whether the create form's Save button is currently disabled.

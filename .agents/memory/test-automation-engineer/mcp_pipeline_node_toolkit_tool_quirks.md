@@ -52,6 +52,17 @@ quirk, not a client bug. **Don't rely on listing to discover a known
 pre-existing toolkit by name** — use a fixed id (config setting, e.g.
 `remote_github_mcp_toolkit_id`), not a search.
 
+**Update (ELITEA-1960, 2026-08-24): it is ALSO a vacuous ABSENCE oracle — the
+review-blocking shape.** Because the listing always returns `[]`, any assertion of
+the form "toolkit X is NOT in `list_all_toolkits()`" passes whether or not X exists.
+Re-verified the same day via Bearer: the API reported 0 toolkits while `/mcps/all`
+rendered 20 cards. Two such assertions shipped into ELITEA-1960's first PR and were
+caught at review. **Rule: never phrase an MCP/toolkit absence check against the
+listing API. Use the MCP list view** (`McpListPage.navigate()` + `search()` +
+`get_card_names()`), **and precede every absence assertion with a presence check on
+the same channel** (`get_card_count() > 0`) so a blind channel fails loudly instead
+of passing free.
+
 **Update (ELITEA-1944, 2026-07-15): this quirk also breaks UI list pages,
 not just the API client.** `/mcps/all` (and presumably any other list page
 backed by the same `tools/prompt_lib/{project}` endpoint) renders from that
