@@ -995,3 +995,91 @@ gating three cases). Occurrences were commented onto both existing issues; nothi
 0 errors on `/mcps/all` across the whole pin/unpin flow *and* the whole filter flow. The known
 `/mcps/create` React key warning (#656) is the only reason to scope a console listener — register
 it **after** any UI-create seeding.
+
+---
+
+## MCP **type picker** (`/mcps/create`) — sections, Documentation link, filter chips (2026-08-24)
+
+**Appended during the ELITEA-1948/1949 cluster analysis, batch `mcp-w03`.** Verified live
+on `http://localhost:5173/mcps/create`, project 399. **Do NOT confuse this surface with the
+MCP dashboard "Types" panel** (§ MCP DASHBOARD above) — different component, different
+testids, different mechanics.
+
+| Surface | Component | Chip testid | Filtering |
+|---|---|---|---|
+| `/mcps/all` dashboard | `components/Categories.jsx` | `tags-panel-chip-{Type}` | **server-side** (`?tags[]=`, `toolkit_type=`), has `tags-panel-clear-all` |
+| `/mcps/create` type picker | `[fsd]/shared/ui/filter/CategoryFilter.jsx` | **`category-filter-tab` — shared by BOTH chips, non-unique** | **pure client-side re-grouping, NO network request**, no "clear all" |
+
+### Confirmed handles on this surface
+
+| Element | Testid | Provenance (fetched 2026-08-24) |
+|---|---|---|
+| Local empty-state message | `mcp-type-picker-local-empty-state` | **on-main ✓** (`ToolkitTypeSelector.jsx:176`) |
+| Remote MCP type card | `toolkit-type-card-mcp` | **on-main ✓** (runtime-composed ``toolkit-type-card-${itemKey}``, `CategoryItemCard.jsx:14` — bare-string grep says "no", the template is there) |
+| No-results title / description | `catalog-no-results-title` / `catalog-no-results-description` | **on-main ✓** (`NoResultsMessage.jsx`) |
+
+### Testid GAPS on this surface (work orders in ELITEA-1949's AFS, not waivers)
+
+| Element | Recommended name | Where |
+|---|---|---|
+| Heading `Choose the MCP type` | `mcp-type-picker-heading` | `CategoryFilter.jsx:33-39` — shared ⇒ add a `titleTestId` prop, plumb through `GroupedCategory.jsx` exactly as `searchInputTestId` already is, pass only when `isMCP` |
+| Filter chips | `mcp-type-picker-filter-chip-local` / `-remote` **+ `data-selected`** | `CategoryFilter.jsx:66-81` — **mirror the sibling `CategoryRail.jsx:5-30`**, which already has `chipTestIdPrefix` + `slugifyCategory()` + `data-selected`. Keep `category-filter-tab` as the no-prefix fallback (other surfaces use it) |
+| Documentation link | `mcp-type-picker-local-documentation-link` | `ToolkitTypeSelector.jsx:179-186` — our own JSX, direct attribute |
+
+Chip selection state today lives **only** in an emotion class hash (`css-5yxssv` selected
+vs `css-1n8j5hf` idle) / computed `background-color` — never bind to either.
+
+### Behaviours confirmed live
+
+- **The chips are MULTI-SELECT** and there is no clear-all. Clicking `Local` then `Remote`
+  leaves *both* lit. Re-clicking a lit chip deselects it.
+- **⚠️ Selecting `Local` unmounts the Local section entirely** — heading, empty-state
+  message and Documentation link all vanish, replaced by `No MCPs found` /
+  `Try adjusting your search terms`. Source: `ToolkitTypeSelector.jsx` passes
+  `allowEmptyCategory={isMCP}` and `GroupedCategory.jsx:56-62` keeps an empty category
+  **only while `!selectedCategories.length`**. So the Local placeholder is an
+  *unfiltered-view* affordance. Filed as clarification **#1742** (`question` +
+  `case-text-drift`) — NOT a bug, and a sibling of (not a duplicate of) the dashboard
+  bug #1737.
+- Selecting `Remote` (alone or alongside `Local`) renders the single `Remote` section with
+  `toolkit-type-card-mcp`.
+- `toolkit-type-card-mcp` mount delay reconfirmed — framework auto-waiting only.
+- **Console:** exactly one error on this route, the known #656 React `key` warning from
+  `CategorySection.jsx` via `ToolkitTypeSelector.jsx`. Nothing else, including across both
+  filter clicks.
+
+---
+
+## MCP DETAIL — Form ⇄ Raw Json is a live two-way projection (2026-08-24, ELITEA-1948)
+
+**Appended during the ELITEA-1948/1949 cluster analysis, batch `mcp-w03`.** Verified live on
+toolkit **3134** (`autotest_conn_tools_a1`). Nothing was persisted — the whole flow issued
+**zero** `PUT`/`POST`/`PATCH`/`DELETE`.
+
+- **The two views SWAP, they do not co-exist.** After `switch_to_raw_json_view()`,
+  `toolkit-form-name-input` is **unmounted** (`to_have_count(0)`, not hidden), and vice
+  versa. State reads on the toggles use `aria-pressed` (`toolkit-form-view-toggle` /
+  `toolkit-raw-json-view-toggle`) — attribute on the testid'd element, compliant.
+- **An unsaved Raw-Json edit reaches the Form view immediately** (no save, no reload) and
+  survives a round trip back to Raw Json. Both Save and Discard flip to **enabled** the
+  moment the edit lands — the product's own proof the edit entered the shared Formik model
+  rather than just the CodeMirror buffer.
+- **A view switch RE-SERIALISES the JSON from the form model.** Observed 30 → 29 → 30 lines
+  across edit → Form → Raw Json → discard: CodeMirror's auto-indent artefact from a
+  per-line edit is normalised away. ⇒ **assert on the parsed value**
+  (`json.loads(get_raw_json_full())["description"]`), never on raw line text.
+- **`description: null` in the JSON ⇄ `""` in the Form input.** An absent description
+  serialises as `null`. Seed a NON-EMPTY description when a case needs "reverts to the
+  original value" to be a real observable.
+- **Discard reverts BOTH views** (after the modal confirm, § MCP DETAIL page: Discard is
+  CONFIRMED through a modal): the editor goes back to `"description": null,`, the Form
+  input to `""`, Save + Discard back to disabled, and **the active view does not change**
+  (still Raw Json, `aria-pressed="true"`).
+- **The `.fill()` trap reconfirmed the hard way this session:** Playwright MCP's
+  `browser_type` maps to `locator.fill()`, which replaced the entire 30-line document with
+  one line (invalid JSON, Save stays disabled, only a reload recovers). Per-line editing
+  only — click the `.cm-line`, `End`, `Shift+Home`, `keyboard.type(...)`. In-repo:
+  `McpFormPage.fill_raw_json_line()`.
+- **Case-text gap:** ELITEA-1948's step 9 omits the Discard confirmation modal, exactly as
+  ELITEA-1928's step 5 did. **Third case to hit it** — occurrence commented on the existing
+  clarification **#1718**; nothing re-filed.
