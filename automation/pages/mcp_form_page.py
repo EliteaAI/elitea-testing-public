@@ -355,6 +355,16 @@ class McpFormPage(BasePage):
         ".agents/testing.md § Locator policy — one stable testid, the rendered "
         "text is what the case asserts)",
     )
+    connection_status_icon = LocatorDescriptor(
+        testid="toolkit-connection-status-icon",
+        description="State icon (OnlineIcon svg) rendered next to the "
+        "connection-status text inside McpAuthStatus.jsx's status container — "
+        "added via add-data-testid for ELITEA-1936 (EliteaAI/EliteaUI@55dc4f66, "
+        "on automation/testids, human cherry-pick to main pending). The svg had "
+        "no testid, and chaining a raw `svg` selector off connection_status is "
+        "forbidden by .agents/testing.md § Locator policy.",
+    )
+
     login_button = LocatorDescriptor(
         testid="toolkit-connection-login-button",
         description="Login/Logout button next to the connection-status indicator "
@@ -398,6 +408,13 @@ class McpFormPage(BasePage):
     # "class-level selector constant consumed by evaluate()" shape as
     # DETAIL_TITLE_SELECTOR above.
     RAW_JSON_EDITOR_SELECTOR = '[data-testid="toolkit-raw-json-editor-content"]'
+
+    # Key under which the product stores its own per-server MCP connection
+    # record in sessionStorage (McpAuthHelpers / useMcpTokenChange). Read-only
+    # observation handle for ELITEA-1936 step 7 — NOT a locator and NOT a
+    # substitution: the test never writes it, it only reads what the product
+    # wrote after a real connection round-trip.
+    MCP_TOKENS_SESSION_STORAGE_KEY = "elitea_mcp_tokens_v1"
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -763,13 +780,102 @@ class McpFormPage(BasePage):
                 scoped inside the editor).
             new_line_text: Full replacement text for that line.
         """
-        line = self.raw_json_editor_content.get_by_text(current_line_text, exact=True)
-        line.click()
+        # Resolve the element handle BEFORE the click: the moment a selection
+        # lands, CodeMirror's selectionMatch extension decorates every OTHER
+        # occurrence of the selected text with `cm-selectionMatch` <span>s, so
+        # re-resolving the same get_by_text() locator afterwards raises a
+        # strict-mode violation (confirmed live at ELITEA-1935 implementation on
+        # a document that also carries `available_mcp_tools`, where a tool name
+        # appears both in `selected_tools` and as a `"value"` entry). The handle
+        # captured here still points at the original `.cm-line` div.
+        line_handle = self.raw_json_editor_content.get_by_text(
+            current_line_text, exact=True
+        ).element_handle()
+        line_handle.click()
         self.page.keyboard.press("Home")
         self.page.keyboard.press("Shift+End")
-        self._wait_for_line_selection_applied(line)
+        self._wait_for_line_selection_applied_handle(line_handle)
         self.page.keyboard.type(new_line_text)
         self._wait_for_text_content_stable(self.raw_json_editor_content)
+
+    @action("Delete a single line from the Raw Json editor")
+    def delete_raw_json_line(self, current_line_text: str) -> None:
+        """Delete the content of one line of the Raw Json CodeMirror editor.
+
+        DECLARED IMPROVISATION — inherits :meth:`fill_raw_json_line`'s
+        lead-approved #579 exception verbatim: the Raw Json editor's per-line
+        ``<div>`` nodes are CodeMirror-internal render nodes, not app JSX, so
+        no testid can be placed on them (analogous to the third-party-widget
+        Stop+flag exception, e.g. ReactFlow's ``rf__wrapper``, per
+        ``.agents/testing.md`` § Locator policy). ``get_by_text()`` scoped
+        inside the testid-anchored ``raw_json_editor_content`` parent (itself a
+        ``LocatorDescriptor(testid=...)`` field) is the sanctioned pattern for
+        this specific canon-gap; do not extend it to any handle that COULD
+        carry a testid.
+
+        Additive sibling of :meth:`fill_raw_json_line` rather than a new mode
+        of it (additive-only shared-caller rule — ``fill_raw_json_line`` has
+        merged callers): same select-then-act discipline, ending in a
+        ``Backspace`` instead of a ``type``. ``keyboard.type("")`` is a no-op,
+        so the existing method cannot express a deletion.
+
+        CodeMirror's ``Home`` is *smart-home* — it moves to the first
+        non-whitespace character — so this clears the line's CONTENT and leaves
+        its leading indentation behind. That whitespace-only line is still
+        valid JSON and the server normalises it away on save (confirmed live,
+        ELITEA-1935 analysis).
+
+        Args:
+            current_line_text: Exact current text of the target line (used to
+                locate the line's div via ``get_by_text(..., exact=True)``
+                scoped inside the editor).
+        """
+        # Handle resolved before the click for the same selectionMatch reason
+        # documented in :meth:`fill_raw_json_line`.
+        line_handle = self.raw_json_editor_content.get_by_text(
+            current_line_text, exact=True
+        ).element_handle()
+        line_handle.click()
+        self.page.keyboard.press("Home")
+        self.page.keyboard.press("Shift+End")
+        self._wait_for_line_selection_applied_handle(line_handle)
+        self.page.keyboard.press("Backspace")
+        self._wait_for_text_content_stable(self.raw_json_editor_content)
+
+    def scroll_raw_json_to_top(self) -> None:
+        """Scroll the Raw Json editor's scrollable ancestor back to the top.
+
+        :meth:`get_raw_json_full` defeats CodeMirror virtualization by scrolling
+        the editor's scrollable ancestor to the BOTTOM and leaves it there. Any
+        per-line edit afterwards (:meth:`fill_raw_json_line` /
+        :meth:`delete_raw_json_line`) then fails with ``Locator.click: Timeout``,
+        because the target line has been virtualized out of the DOM (confirmed
+        live, ELITEA-1935 analysis — one of the three documented traps in
+        ``test-specs/mcp/_surface.md``). Call this between a full read and a
+        subsequent per-line edit.
+
+        Reuses :meth:`get_raw_json_full`'s scrollable-ancestor walk (first
+        ancestor with real overflow) rather than a MUI ``css-*`` class name,
+        which is not a stable selector. The selector fed to ``querySelector``
+        is the class-level :attr:`RAW_JSON_EDITOR_SELECTOR` testid constant.
+        """
+        self.page.evaluate(
+            """(selector) => {
+                const el = document.querySelector(selector);
+                let node = el;
+                while (node && node !== document.body) {
+                    const cs = getComputedStyle(node);
+                    if ((cs.overflowY === 'auto' || cs.overflowY === 'scroll')
+                            && node.scrollHeight > node.clientHeight) {
+                        node.scrollTop = 0;
+                        return true;
+                    }
+                    node = node.parentElement;
+                }
+                return false;
+            }""",
+            self.RAW_JSON_EDITOR_SELECTOR,
+        )
 
     def _wait_for_line_selection_applied(self, line_locator, timeout_ms: int = UI_ELEMENT_TIMEOUT) -> None:
         """Wait until *line_locator*'s content is selected via ``Home``/``Shift+End``.
@@ -783,14 +889,25 @@ class McpFormPage(BasePage):
         20-char selection). Comparing against the *trimmed* text length is
         the correct equality check here.
         """
-        handle = line_locator.element_handle()
+        self._wait_for_line_selection_applied_handle(
+            line_locator.element_handle(), timeout_ms=timeout_ms
+        )
+
+    def _wait_for_line_selection_applied_handle(self, line_handle, timeout_ms: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Handle-based variant of :meth:`_wait_for_line_selection_applied`.
+
+        Takes an already-resolved ``ElementHandle`` instead of a locator, so the
+        caller can capture the target line BEFORE the click that triggers
+        CodeMirror's ambiguity-creating selectionMatch decorations (see
+        :meth:`fill_raw_json_line`).
+        """
         self.page.wait_for_function(
             """(el) => {
                 const trimmedLen = el.textContent.trim().length;
                 const sel = window.getSelection();
                 return trimmedLen === 0 || (sel && sel.toString().length === trimmedLen);
             }""",
-            arg=handle,
+            arg=line_handle,
             timeout=timeout_ms,
         )
 
@@ -1342,6 +1459,59 @@ class McpFormPage(BasePage):
         """Return the connection-status indicator's current text ('Not Connected'/'Connected!')."""
         self.connection_status.wait_for(state="visible", timeout=timeout)
         return self.connection_status.text_content() or ""
+
+    @action("Click the connection Login button")
+    def click_connection_login(self) -> None:
+        """Click the connection-status Login button and wait for the flow to settle.
+
+        For a Remote MCP whose server needs no OAuth (the DeepWiki fixture),
+        ``onLogin`` -> ``useMcpAuthCheck.runAuthCheck`` emits an in-page socket
+        ``test_mcp_connection`` event — a protocol-level ``tools/list``
+        round-trip. There is NO external window, NO redirect and NO credential
+        prompt; only a server that genuinely demands OAuth opens
+        ``McpAuthModal`` (McpAuthStatus.jsx, confirmed live ELITEA-1936).
+
+        Waits only for the button to leave its in-flight state (label back off
+        ``Logging in...``). The transient label itself is deliberately NOT
+        asserted anywhere — the DeepWiki round-trip completed faster than a
+        500 ms poll during analysis, so asserting it would be a guaranteed
+        flake.
+        """
+        self.login_button.click()
+        expect(self.login_button).not_to_have_text(
+            "Logging in...", timeout=SAVE_RESPONSE_TIMEOUT
+        )
+
+    def get_mcp_connection_record(self, server_url: str) -> dict | None:
+        """Return the product's own sessionStorage connection record for *server_url*.
+
+        READ-ONLY OBSERVATION, not a substitution: this reads state the PRODUCT
+        wrote (``McpAuthHelpers.setConnectionVerified(url)`` after a successful
+        socket round-trip). Nothing is injected, stubbed or forced — the
+        ``.evaluate()`` call performs a ``sessionStorage.getItem`` and a
+        ``JSON.parse``, and the case's own observable (the status text) is
+        asserted independently in the DOM. Provenance discipline per
+        ``.agents/testing.md`` § Fidelity policy.
+
+        The record is keyed by SERVER URL (not by toolkit id), so it is shared
+        by every toolkit pointing at the same MCP server within one browser
+        context.
+
+        Args:
+            server_url: The MCP server URL the toolkit points at.
+
+        Returns:
+            The per-server record dict (``access_token`` / ``connection_verified``
+            / ``issued_at`` / ``expires_at``), or ``None`` when the product has
+            written no record for that URL.
+        """
+        raw = self.page.evaluate(
+            "(key) => window.sessionStorage.getItem(key)",
+            self.MCP_TOKENS_SESSION_STORAGE_KEY,
+        )
+        if not raw:
+            return None
+        return json.loads(raw).get(server_url)
 
     @action("Wait for the Load-Tools sync-error toast and return its text")
     def wait_for_sync_error_toast(self, timeout: int = 5000) -> str:

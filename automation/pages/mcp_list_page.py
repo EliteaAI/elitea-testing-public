@@ -22,10 +22,10 @@ short render-lag wait is used instead.
 import logging
 
 from playwright.sync_api import Page
+from utils.actions import action
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
-from utils.actions import action
 
 logger = logging.getLogger("elitea.pages.mcp_list")
 
@@ -320,6 +320,28 @@ class McpListPage(BasePage):
         chip = card.first.locator(self.CARD_TAG_CHIP_SELECTOR).first
         chip.wait_for(state="visible", timeout=timeout)
         return chip.text_content() or ""
+
+    def get_card_texts(self, timeout: int = UI_ELEMENT_TIMEOUT) -> list[str]:
+        """Return the full rendered text of every visible MCP card.
+
+        Scoped to the ``entity-card`` testid (the :attr:`mcp_card` collection
+        locator) — no raw page-level handle. Used by ELITEA-1936 step 2 to
+        assert an ABSENCE: no Remote MCP card renders a connection-status
+        badge. The badge the case expects does not exist in the product
+        (clarification EliteaAI/elitea-testing-public#1723), so there is no
+        testid to bind an absence assertion to — reading each card's own text
+        through its testid-anchored container is the closest testid-only
+        shape, and it keeps the case's claim test-enforced instead of silently
+        dropped.
+
+        Args:
+            timeout: Maximum time to wait for the first card to render.
+        """
+        try:
+            self.mcp_card.first.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return []
+        return [self.mcp_card.nth(i).inner_text() for i in range(self.mcp_card.count())]
 
     @action("Open an MCP card by name from the list")
     def open_card_by_name(self, name: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
