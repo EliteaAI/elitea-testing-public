@@ -728,3 +728,40 @@ Testid = **stable identity**; the pinned/unpinned state is read from the item's 
   ELITEA-2049's exploration.
 - **New tab must be `page.context.new_page()`**, not `browser.new_page()` — the latter is an
   unauthenticated context (`test_agent_hub_copy_link_from_modal.py:121-123`).
+
+## Resolved/added during ELITEA-1946 / ELITEA-1959 implementation (2026-08-24)
+
+**Testids added** — EliteaAI/EliteaUI@2c4107b4 on `automation/testids` (one additive commit,
+`ToolkitsControls.jsx` only; the shared hooks are untouched so no other caller changed):
+
+| Testid | Was |
+|---|---|
+| `toolkit-actions-export-menuitem` | nothing at all (`useExportToolkitMenu()` supplies no `key`, and `DotMenu.jsx` wires `testId: item.key`) |
+| `copy-link-toolkit-menuitem` | `Copy link-menuitem` — `useCopyLinkMenu()` defaults `key: key \|\| label`, leaking the visible label (space included) |
+| `pin-toggle-toolkit-menuitem` | nothing (`usePinMenu()` accepts an optional `key`; this caller passed none) |
+
+The compliant shape is naming the `key` **at the call site's items array** —
+`{ ...pinMenuItem, key: 'pin-toggle-toolkit' }` — exactly as `SkillControls.jsx`
+(`pin-toggle-skill`) and `CredentialsControls.jsx` (`pin-toggle-credential`) already do. Do NOT
+add a `key` param to the shared hook for this: the call-site spread is smaller, scoped, and has
+precedent. Not yet on `main` — awaiting a human cherry-pick.
+
+**The controls menu unmounts behind MUI's close TRANSITION.** `DotMenu.jsx`'s `withClose` fires
+on every item click, but a `controls_menu.count()` read in the click's own tick still returns
+`1` — the first ELITEA-1959 run failed exactly there. Wait on the condition first:
+`McpFormPage.wait_for_controls_menu_closed()` (`wait_for(state="detached")`), then assert
+`count() == 0`. Same applies after `Escape`.
+
+**The `/mcps/create` type-picker emits a React dev-mode console error on every mount** —
+`Each child in a list should have a unique "key" prop` from
+`src/[fsd]/shared/ui/category/CategorySection.jsx` via `ToolkitTypeSelector.jsx`. Already
+tracked as [#656](https://github.com/EliteaAI/elitea-testing-public/issues/656). Consequence for
+any MCP test that seeds its own MCP through the UI create flow **and** asserts
+`assert not console_errors`: register the console listener **after** setup, or the assertion
+fails on scaffolding rather than on the surface under test. (Detail-page and deep-link flows
+themselves were clean — 0 console errors across both cases.)
+
+**Both cases green as written** — the analyst's menu inventory, `aria-disabled` states, exact
+toast text (`The link has been copied to the clipboard.`), the `/{projectId}` clipboard URL
+shape, the `ProjectSwitcher` strip on the deep-linked tab, and the pin → index-0 reorder all
+reproduced first try under pytest.

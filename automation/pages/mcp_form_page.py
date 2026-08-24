@@ -273,6 +273,51 @@ class McpFormPage(BasePage):
         "add-data-testid for ELITEA-1947 (DeleteToolkitButton.jsx's "
         "useDeleteToolkitMenu() menuItem had no key before this case)",
     )
+    # Remaining three-dot menu items — testids added via add-data-testid for
+    # ELITEA-1946/1959 (EliteaAI/EliteaUI, ToolkitsControls.jsx): DotMenu.jsx
+    # wires `testId: item.key`, so Export rendered NO testid at all (its hook
+    # supplies no key) and Copy link rendered the label-derived
+    # `Copy link-menuitem` (space included). Both are now named at the
+    # ToolkitsControls call site, the same shape SkillControls.jsx /
+    # CredentialsControls.jsx already use for their pin item.
+    export_menuitem = LocatorDescriptor(
+        testid="toolkit-actions-export-menuitem",
+        description="'Export' menu item inside the three-dot menu — permanently "
+        "disabled on this surface (aria-disabled=\"true\"); MUI renders disabled "
+        "MenuItems as <li aria-disabled>, which is_enabled() does NOT read as "
+        "disabled — assert the attribute",
+    )
+    fork_menuitem = LocatorDescriptor(
+        testid="toolkit-actions-fork-menuitem",
+        description="'Fork' menu item inside the three-dot menu — disabled on "
+        "this surface (ToolkitsControls passes disabled: true); read "
+        "aria-disabled, not is_enabled()",
+    )
+    copy_link_menuitem = LocatorDescriptor(
+        testid="copy-link-toolkit-menuitem",
+        description="'Copy link' menu item inside the three-dot menu — copies the "
+        "MCP's project-scoped deep link and raises the "
+        "'The link has been copied to the clipboard.' toast",
+    )
+    pin_toggle_menuitem = LocatorDescriptor(
+        testid="pin-toggle-toolkit-menuitem",
+        description="Pin toggle menu item inside the three-dot menu — STABLE "
+        "identity; its pinned state is read from the LABEL ('Pin to top' / "
+        "'Unpin from top'), never from a state-flavoured testid "
+        "(.agents/testing.md § Locator policy)",
+    )
+    # Neutrally-named handle for the shared Toast.jsx node. The pre-existing
+    # `sync_error_toast_message` field below points at the SAME
+    # `toast-message` testid but is named for ELITEA-1934's Load-Tools error
+    # toast; it is left byte-identical for its existing callers (additive-only
+    # rule) and this alias is used wherever the toast is a success message.
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="Shared Toast.jsx message node — auto-dismisses within a few "
+        "seconds, so wait for it in the SAME synchronous chain as the click "
+        "that raises it",
+    )
+
     delete_confirm_dialog = LocatorDescriptor(
         testid="delete-confirm-dialog",
         description="Delete confirmation dialog (DeleteEntityModal, shared across "
@@ -629,6 +674,66 @@ class McpFormPage(BasePage):
     def get_controls_menu_text(self) -> str:
         """Return the three-dot menu popup's full text content (all menu item labels)."""
         return self.controls_menu.text_content() or ""
+
+    def wait_for_controls_menu_closed(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Wait for the three-dot menu popup to leave the DOM.
+
+        ``DotMenu`` unmounts the popup rather than hiding it, but the unmount
+        runs behind MUI's close TRANSITION — an assertion fired in the same
+        tick as the click that closed it still sees ``count() == 1``
+        (observed live, ELITEA-1959 implementation). This is a framework
+        condition wait, not a sleep.
+        """
+        self.controls_menu.wait_for(state="detached", timeout=timeout)
+
+    @action("Close the three-dot actions menu with Escape")
+    def close_controls_menu_with_escape(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Press Escape and wait for the menu popup to UNMOUNT.
+
+        ``DotMenu`` removes the popup from the DOM rather than hiding it, so
+        the wait (and any caller assertion) must be on ``detached`` /
+        ``count() == 0``, not on ``not_to_be_visible()``.
+        """
+        self.page.keyboard.press("Escape")
+        self.wait_for_controls_menu_closed(timeout=timeout)
+
+    @action("Click the Copy link menu item")
+    def click_copy_link_menu_item(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Click 'Copy link' and return the confirmation toast's text.
+
+        The toast auto-dismisses within a few seconds, so the wait happens in
+        the same synchronous chain as the click (same shape as
+        :meth:`wait_for_sync_error_toast`). Clicking the item also closes the
+        menu — ``DotMenu.jsx``'s ``withClose`` fires on every item click.
+        """
+        self.copy_link_menuitem.click()
+        self.toast_message.wait_for(state="visible", timeout=timeout)
+        return self.toast_message.text_content() or ""
+
+    def get_pin_toggle_menu_label(self) -> str:
+        """Return the pin-toggle menu item's current text ('Pin to top' / 'Unpin from top')."""
+        return self.pin_toggle_menuitem.text_content() or ""
+
+    @action("Click the Pin/Unpin menu item")
+    def click_pin_toggle_menu_item(self, timeout: int = UI_ELEMENT_TIMEOUT):
+        """Click the pin-toggle menu item and wait for the pin API round trip.
+
+        Mirrors ``CredentialDetailPage.click_pin_toggle_menu_item()`` verbatim
+        (the two surfaces share the widget) — waits on the real
+        ``POST``/``DELETE .../social/pin/prompt_lib/{project}/toolkit/{id}``
+        response instead of a fixed sleep.
+
+        Returns:
+            The matched Playwright ``Response`` (201 on pin, 204 on unpin).
+        """
+        toolkit_id = self.get_toolkit_id_from_url()
+        pattern = "/social/pin/prompt_lib/"
+        with self.page.expect_response(
+            lambda r: pattern in r.url and r.url.rstrip("/").endswith(f"/toolkit/{toolkit_id}"),
+            timeout=timeout,
+        ) as response_info:
+            self.pin_toggle_menuitem.click()
+        return response_info.value
 
     @action("Click the Delete menu item")
     def click_delete_menu_item(self) -> None:

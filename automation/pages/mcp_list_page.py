@@ -114,6 +114,17 @@ class McpListPage(BasePage):
         description="MCP name cell in table-view rows — collection locator, one per visible row",
     )
 
+    # List-row pin toggle (dynamic testid) — PinButton.jsx:98 renders
+    # `${getPinTestIdSlug(entityType)}-pin-toggle-button-${entityId}`, which
+    # resolves to `mcp-pin-toggle-button-{id}` on /mcps/all (confirmed live,
+    # ELITEA-1946). Runtime-parameterized testids live as an UPPER_CASE
+    # class-level template per .agents/testing.md § Locator policy, never as
+    # an inline get_by_test_id(f"...") in a method body. The pinned state is
+    # read from the button's aria-label ("Pin to top" / "Unpin from top"),
+    # matching CredentialsListPage.PIN_TOGGLE_BUTTON / PipelinesListPage's
+    # same-shaped constants.
+    PIN_TOGGLE_BUTTON = '[data-testid="mcp-pin-toggle-button-{}"]'
+
     # Shared SearchBar.jsx component testids (also used by Credentials/
     # Skills/Toolkits/Applications list pages) — same shared component, same
     # mechanics as CredentialsListPage. ELITEA-1941 AFS Concrete Handles.
@@ -374,6 +385,22 @@ class McpListPage(BasePage):
         card.first.click()
         self.wait_for_network()
         logger.info("Opened MCP card %r from the list", name)
+
+    @action("Read an MCP row's pin-toggle state from the list")
+    def get_pin_toggle_label(self, mcp_id: int, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Return the ``aria-label`` of the list row's pin toggle for *mcp_id*.
+
+        "Pin to top" when the MCP is not pinned, "Unpin from top" when it is —
+        the state lives in the aria-label, not in a second testid
+        (.agents/testing.md § Locator policy).
+
+        Args:
+            mcp_id: The MCP/toolkit's numeric id.
+            timeout: Maximum time to wait for the button to render.
+        """
+        button = self.page.locator(self.PIN_TOGGLE_BUTTON.format(mcp_id))
+        button.first.wait_for(state="visible", timeout=timeout)
+        return button.first.get_attribute("aria-label") or ""
 
     # ------------------------------------------------------------------
     # Table view
