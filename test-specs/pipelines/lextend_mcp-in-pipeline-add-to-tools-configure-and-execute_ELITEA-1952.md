@@ -86,6 +86,15 @@ Add gap **3 as a SEPARATE test function in the SAME file**
 (`test_mcp_node_executes_selected_tool`), reusing the same `pipeline_id` +
 `mcp_toolkit_with_tools` fixtures and the same `PipelineDetailPage` methods.
 
+> **AMENDED at implementation (2026-08-24, implementer).** Gaps 1 and 2 were NOT
+> appended to the merged `test_mcp_node_fresh_attach`; all three gaps live in the
+> single new sibling test `test_mcp_node_executes_selected_tool`. Reasons: Hard
+> Rule 3's additive-only discipline (the covering test is a merged, deterministic
+> merge-gate participant and stays byte-identical), and keeping ELITEA-1952 atomic
+> — one case, one test, one verdict. The new test walks the same flow, so gaps 1
+> and 2 sit at exactly the same points in it. The covering spec's own 3-test file
+> ran 3/3 green.
+
 Reasoning (canon has no rule for this, so it is declared per
 `.agents/role-overrides.md` § Declared-improvisation protocol): the covering test is
 currently fully deterministic and fast; a live MCP+LLM execution took **~11 s of
@@ -200,11 +209,11 @@ Append to the covering spec's **Step 4**, alongside the existing
 - the card's **name element** reads exactly the fixture MCP's display name;
 - the card's **"Show tools"** toggle is visible (`toolkit-card-tools-toggle`,
   already on `main` — reuse; ELITEA-2065 already has a click helper for it);
-- the card's **connection-status control** is visible and reads `Log in`
-  for a not-yet-authenticated Remote MCP.
+- the card's **connection-status indicator** is visible and reports
+  `data-connected="false"` for a not-yet-authenticated Remote MCP.
 
-Needs **2 new testids** (see § Handles Reference — `pipeline-tools-card-name`,
-`pipeline-tools-card-connection-status`). The MCP *icon* (step 7's fourth element)
+Needed **2 new testids**, both added 2026-08-24 (see § Handles Reference —
+`toolkit-card-name`, `toolkit-card-connection-status`). The MCP *icon* (step 7's fourth element)
 is a decorative `<svg>` with no accessible identity; assert the three above and note
 the icon as not-asserted in the Coverage Map rather than adding a testid to an
 `<svg>` nobody can meaningfully verify.
@@ -253,8 +262,8 @@ Provenance verified 2026-08-24 with `cd ../EliteaUI && git fetch origin` first.
 | MCP picker row | `toolkit-menu-item` | on-main ✓ | filter by text |
 | Attached tool card | `agent-toolkit-card` | on-main ✓ | ONE flat list for all 4 types (no sub-tabs — `#1149`) |
 | Card "Show tools" | `toolkit-card-tools-toggle` | on-main ✓ | |
-| **Card name text** | **testid needed: `pipeline-tools-card-name`** | needs-adding | `<div class="MuiTypography-root MuiTypography-bodyMed">` inside `agent-toolkit-card`; shared `ApplicationTools.jsx`/tool-card component — name it for the CALL SITE per the shared-component rule, or accept a generic `tools-card-name` |
-| **Card connection status ("Log in")** | **testid needed: `pipeline-tools-card-connection-status`** | needs-adding | `<button>` reading `Log in` for an unauthenticated Remote MCP. **Distinct from `toolkit-connection-status`** (that one lives on the MCP *detail* page, `McpAuthStatus.jsx`) |
+| **Card name text** | `toolkit-card-name` | **ADDED 2026-08-24** — EliteaAI/EliteaUI@5c24ed30 on `automation/testids` | On the name `TypographyWithConditionalTooltip` in `src/pages/Applications/Components/Tools/ToolCard.jsx`. **Named generically, not `pipeline-`-scoped as this AFS first proposed** — the card is the SAME shared component the agent TOOLS section renders, so a feature-scoped testid is exactly what `.agents/testing.md` § Locator policy's shared-component rule forbids; matches its `toolkit-card-tools-toggle` / `toolkit-open-button` siblings in the same file |
+| **Card connection status** | `toolkit-card-connection-status` + `data-connected="true\|false"` | **ADDED 2026-08-24** — EliteaAI/EliteaUI@5c24ed30 | **AMENDED at implementation:** placed on the MCP status-**indicator** `Box` (`ToolCard.jsx`, the Online/Offline icon container), NOT on the `Log in` button this AFS pointed at. The button is `McpLogInButton`, which returns `null` once the MCP is authorized — a testid whose PRESENCE flips with state, which the PR #581 ruling outlaws. The indicator Box is always rendered for an MCP card, keeps one stable testid, and carries its state in `data-connected` — the ruling's prescribed shape. Asserted as `"false"` for a freshly-provisioned, never-authenticated Remote MCP. **Distinct from `toolkit-connection-status`** (MCP *detail* page, `McpAuthStatus.jsx`) |
 | Add-node button | `pipeline-add-node-button` | on-main ✓ | |
 | Add-node MCP item | `pipeline-add-node-menu-item-mcp` | on-main ✓ | |
 | Node entry-point Trigger | `pipeline-entry-point-trigger-select` (+`-combobox`) | on-main ✓ | |
@@ -306,6 +315,13 @@ established mechanism in `PipelineDetailPage.get_node_ids()` /
 - **Node id contains a space** (`MCP 1`), so the interrupt-before testid is
   literally `pipeline-node-interrupt-before-toggle-MCP 1`. Existing helper
   `is_node_interrupt_before_toggle_visible(node_id)` handles it.
+- **The canvas Control Panel intercepts clicks on the node's Input-mapping rows.**
+  A freshly-added node spawns above ReactFlow's bottom-left `rf__controls` panel;
+  once the Input-mapping rows render, the node card extends down over it and the
+  panel's "Fit View" button intercepts the pointer on the Type select's click
+  (live-hit during implementation). Remedy: `move_node(node_id, dx=450, dy=0)`
+  right after adding the node — the same remedy
+  `test_pipeline_interrupt_before_after_toggles.py:87` already uses.
 - Live MCP execution took **~40 s wall-clock** end to end this session; budget a
   180 s timeout, wait on the response-complete marker (`chat-delete-button` on the
   last message), never a sleep.

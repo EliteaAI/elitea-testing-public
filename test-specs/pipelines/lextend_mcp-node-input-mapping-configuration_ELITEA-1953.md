@@ -152,11 +152,16 @@ New sibling test `test_mcp_node_input_mapping_type_and_toggles_persist`:
 3. **Change Type → `Variable`** on `repoName`;
    `get_mcp_node_input_mapping_type("repoName") == "Variable"` while
    `…("question") == "Fixed"` (the change is per-row, not global).
-4. **The Fixed-branch Value testid is GONE for that row** —
-   `expect(page.locator(MCP_NODE_INPUT_MAPPING_VALUE.format("repoName"))).to_have_count(0)`
-   — and the Variable-branch value select reads `input`.
-   *(Absence assertions are first-class references per `.agents/testing.md`
-   § Locator policy, canon ruling #511 extension.)*
+4. **The Value widget swapped, and the Variable-branch select reads `input`.**
+   *(AMENDED at implementation, 2026-08-24.* This AFS specified an ABSENCE
+   assertion — `…VALUE.format("repoName")` at `to_have_count(0)` — because before
+   testid gap 2 landed, the row's value testid vanished in the Variable branch.
+   Landing gap 2 gives BOTH widget shapes the same testid, which is the whole
+   point of that gap, so the absence assertion is now false by construction and
+   was replaced by a strictly stronger one: `text_content()` on that testid reads
+   `"input"`. A text `<input>` has no text content, so only the state-variable
+   select the Variable branch renders can yield it — the widget swap stays an
+   enforced invariant, and the auto-bound value is asserted too.)
 5. **All three toggles are unchecked by default** — `to_not_be_checked()` on
    `pipeline-node-interrupt-before-toggle-{node_id}`,
    `pipeline-mcp-node-interrupt-after-toggle`,
@@ -171,7 +176,7 @@ Both are **one-line widenings of plumbing that already exists**, not new machine
 | # | Element | Testid to add | File / line (on `origin/automation/testids`) |
 |---|---|---|---|
 | 1 | Input-mapping row **Type** select | `pipeline-mcp-node-input-mapping-type-{param}` (dynamic) | `src/[fsd]/features/pipelines/flow-editor/ui/nodes/BaseToolNode.jsx:208-212` — widen `typeTestIdPrefix={nodeType === …Toolkit ? \`${testIdPrefix}-input-mapping-type\` : undefined}` to also cover `…PipelineNodeTypes.Mcp`. The comment there explicitly says it was scoped to Toolkit "because the MCP node's equivalent select is untouched by any test" — **this case is that test**, so widening now satisfies canon ruling #511 rather than violating it. `InputMappingItem.jsx:214` already applies `data-testid={typeTestId}`. |
-| 2 | Input-mapping **Value** select in the `Variable` branch | reuse the SAME `pipeline-mcp-node-input-mapping-value-{param}` string | `src/[fsd]/features/pipelines/flow-editor/ui/settings/InputMappings/InputMappingItem.jsx:245-255` — the final `Select.SingleSelect` (the non-enum, non-string branch) has no `dataTestId`; the two other branches already pass `dataTestId={valueTestId}` (lines 146, 170). Adding it there gives the row's Value control **one stable testid across both widget shapes** — stable identity, exactly what `.agents/testing.md` § "Testid = stable identity" asks for, and NOT a state-switched testid (the value string does not change). |
+| 2 | Input-mapping **Value** select in the `Variable` branch | reuse the SAME `pipeline-mcp-node-input-mapping-value-{param}` string | `InputMappingItem.jsx` — **CORRECTED at implementation (2026-08-24):** the Variable branch is NOT the final non-enum `Select.SingleSelect` this AFS named. `FlowEditorHelpers.getEnumList('variable', …)` returns the state-variable list (`flowEditor.helpers.js:162`), so `enumList` is non-empty and the row renders the FIRST enum branch (`dataType !== 'array' \|\| type === 'variable'`). The testid went there (EliteaAI/EliteaUI@7a5fce32); the first attempt on the final select never appeared in the DOM. The final select stays untagged — no test references it. Adding it there gives the row's Value control **one stable testid across both widget shapes** — stable identity, exactly what `.agents/testing.md` § "Testid = stable identity" asks for, and NOT a state-switched testid (the value string does not change). |
 
 **Do NOT widen `optionalHeadingTestId`** in the same edit — `ask_question` has zero
 optional parameters, so this test never references it, and adding it would be an
@@ -195,8 +200,8 @@ Provenance verified 2026-08-24 with `cd ../EliteaUI && git fetch origin` first.
 | Node Tool select | `pipeline-mcp-node-tool-select` (+`-combobox`) | same | conditionally rendered — absent until a Toolkit is picked |
 | Input-mapping heading | `pipeline-mcp-node-input-mapping-heading` | same | text `Input mapping (required 2)` |
 | Input-mapping Value (Fixed / F-String branch) | `pipeline-mcp-node-input-mapping-value-{param}` | same | class constant `MCP_NODE_INPUT_MAPPING_VALUE`; params are the RAW keys `repoName` / `question` |
-| **Input-mapping Type select** | **testid needed: `pipeline-mcp-node-input-mapping-type-{param}`** | needs-adding (gap 1 above) | today only `#simple-select-Type`, duplicated per row — positional only, non-compliant |
-| **Input-mapping Value (Variable branch)** | **testid needed: reuse `pipeline-mcp-node-input-mapping-value-{param}`** | needs-adding (gap 2 above) | today `id="simple-select-[object Object]"`, no testid |
+| **Input-mapping Type select** | `pipeline-mcp-node-input-mapping-type-{param}` | **ADDED 2026-08-24** — EliteaAI/EliteaUI@5c24ed30 on `automation/testids` | `BaseToolNode.jsx`'s `typeTestIdPrefix` widened Toolkit → Toolkit\|Mcp |
+| **Input-mapping Value (Variable branch)** | `pipeline-mcp-node-input-mapping-value-{param}` (same string as the Fixed branch) | **ADDED 2026-08-24** — EliteaAI/EliteaUI@7a5fce32 | on the enum/variable `Select.SingleSelect` branch — see § Gap assertions' correction |
 | Type dropdown options | `select-option-fixed` / `select-option-variable` / `select-option-fstring` | on-main ✓ | shared app-wide `select-option-{value}` pattern |
 | Interrupt before toggle | `pipeline-node-interrupt-before-toggle-{node_id}` | on-main ✓ | node_id has a SPACE (`MCP 1`); helper `is_node_interrupt_before_toggle_visible/disabled` exists |
 | Interrupt after toggle | `pipeline-mcp-node-interrupt-after-toggle` | on-`automation/testids` (added by ELITEA-2037) | existing field |
@@ -217,10 +222,19 @@ Provenance verified 2026-08-24 with `cd ../EliteaUI && git fetch origin` first.
 
 ## Gotchas (for the implementer)
 
-- **The Value testid is branch-dependent TODAY.** Until gap 2 lands, switching a row
-  to `Variable` makes `pipeline-mcp-node-input-mapping-value-{param}` disappear.
-  Write step 4's absence assertion against that reality *and* land gap 2 so the
-  post-switch value is assertable at all — both are needed.
+- **The Value testid is branch-dependent TODAY.** ~~Until gap 2 lands, switching a
+  row to `Variable` makes `pipeline-mcp-node-input-mapping-value-{param}`
+  disappear.~~ **RESOLVED 2026-08-24** — gap 2 landed (EliteaAI/EliteaUI@7a5fce32),
+  so the row's Value control carries the same testid in both widget shapes. Read it
+  with `get_mcp_node_input_mapping_value()` while Type is Fixed/F-String (an
+  `input_value()` read) and `get_mcp_node_input_mapping_variable_value()` while Type
+  is Variable (a `text_content()` read) — the two shapes need different readers.
+- **The canvas Control Panel intercepts clicks on the Input-mapping rows.** A
+  freshly-added node spawns above ReactFlow's bottom-left `rf__controls` panel and,
+  once the rows render, extends down over it; the panel's "Fit View" button then
+  intercepts the pointer on the Type select's click (live-hit during
+  implementation). Remedy: `move_node(node_id, dx=450, dy=0)` right after adding
+  the node — same remedy `test_pipeline_interrupt_before_after_toggles.py:87` uses.
 - **`id="simple-select-[object Object]"`** on the Variable-branch select is a real
   (cosmetic) id-computation slip in the shared component. It is not a functional
   defect and no assertion should depend on it — it is called out here only so nobody
