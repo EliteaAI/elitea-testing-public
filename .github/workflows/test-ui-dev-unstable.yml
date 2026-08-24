@@ -52,7 +52,6 @@ jobs:
       ELITEA_API_BASE: ${{ secrets.ELITEA_API_BASE_DEV }}
       ELITEA_API_TOKEN: ${{ secrets.ELITEA_API_TOKEN_DEV }}
       ELITEA_PROJECT_ID: ${{ secrets.ELITEA_PROJECT_ID_DEV }}
-      TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD_DEV }}
       # Indexed project IDs for parallel suite execution (env-specific)
       TEST_USER_PROJECT_1: ${{ secrets.TEST_USER_PROJECT_DEV_1 }}
       TEST_USER_PROJECT_2: ${{ secrets.TEST_USER_PROJECT_DEV_2 }}
@@ -87,7 +86,6 @@ jobs:
       TEST_USER_PASSWORD_7: ${{ secrets.TEST_USER_PASSWORD_7 }}
       TEST_USER_PASSWORD_8: ${{ secrets.TEST_USER_PASSWORD_8 }}
       TEST_USER_PASSWORD_9: ${{ secrets.TEST_USER_PASSWORD_9 }}
-      TEST_USER_PASSWORD_10: ${{ secrets.TEST_USER_PASSWORD_10 }}
       GIT_HUB_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
       BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
       ADO_TOKEN: ${{ secrets.ADO_TOKEN }}
