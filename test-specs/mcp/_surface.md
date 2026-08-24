@@ -8,6 +8,12 @@
 > ELITEA-1923/1924 combined analysis+implementation** — create-form validation
 > handles + the Save-button gating mechanism (see the two new sections at the
 > end).
+>
+> ⚠️ **Appended 2026-08-24 (ELITEA-1938/1939/1940 cluster analysis, batch
+> `mcp-w02`): the Test Settings surface was REFACTORED on 2026-08-20 by
+> EliteaAI/EliteaUI@cb030b7d (`EL-6277`, #803). It is now its own ROUTE with a
+> two-column layout. The `TestTools.jsx` state-machine section below is
+> SUPERSEDED — read § Test Settings is now its own ROUTE (EL-6277) first.**
 
 ## Confirmed-stable handles (testid-based)
 
@@ -47,7 +53,16 @@ Confirmed-stable handles above. The third (`model-selector-name`/`-button`
 pair, #1088) is only half-resolved: `model-selector-name` is fixed and in
 Confirmed-stable handles; `model-selector-button` is still open, listed here.
 
-## State machine — `TestTools.jsx` (governs BOTH Remote MCP and Artifact toolkit Test Settings panels — same shared component)
+## ~~State machine — `TestTools.jsx`~~ — SUPERSEDED 2026-08-20 by EL-6277
+
+> ⚠️ **HISTORICAL ONLY — do not use for new work.** `TestTools.jsx` was deleted by
+> EliteaAI/EliteaUI@cb030b7d (`EL-6277`, #803, 2026-08-20). The three-state machine
+> below no longer describes the product: results no longer REPLACE the settings
+> form, and there is no back-arrow. Kept because it explains the shape of the
+> merged ELITEA-1866/1933/1937 specs and the #1086 clarification. **For current
+> behaviour read § Test Settings is now its own ROUTE (EL-6277), below.**
+
+### (historical) State machine — `TestTools.jsx` (governed BOTH Remote MCP and Artifact toolkit Test Settings panels)
 
 Three mutually-exclusive states, driven by `selectedTool` + `hasRealMessages || isRunning`:
 
@@ -504,3 +519,94 @@ closest testid-only shape; page-wide `get_by_text` would be a new raw handle.
   baseline needs no explicit clearing, and the record dies with the context.
 - The Login round-trip against DeepWiki settles well inside the 20 s
   `SAVE_RESPONSE_TIMEOUT`; the whole ELITEA-1936 spec runs in ~24 s.
+
+
+## Test Settings is now its own ROUTE (EL-6277) — read this before ANY Test-panel work
+
+**Confirmed live 2026-08-24** (ELITEA-1938/1939/1940 cluster analysis, batch
+`mcp-w02`), against `EliteaAI/EliteaUI` @ `automation/testids`, MCP id 2140.
+Supersedes the `TestTools.jsx` state-machine section above.
+
+`EliteaAI/EliteaUI@cb030b7d` — `feat: [EL-6277] move indexes into the details
+right panel (#803)`, 2026-08-20 — replaced `TestTools.jsx` with
+`src/[fsd]/features/toolkits/ui/toolkit-test/ToolkitTestPanel.jsx`:
+
+- **The Test surface is a ROUTE**, `/mcps/all/{id}/test` (toolkits:
+  `/toolkits/all/{id}/test`) — **not** a right-hand region of the detail page.
+  Reached from the detail **action bar** (`toolkit-action-bar`) via
+  `toolkit-test-button` (aria-label `Test MCP`). Direct URL navigation works too.
+- **Two-column layout, side by side**: left header `Test Settings`, right header
+  `Results`. Results no longer REPLACE the settings form — both are visible at
+  once, so the old "run-results view swaps in / back-arrow returns" model is gone.
+- **Both column headers are plain `Typography` with NO buttons.** The only
+  buttons on the page: the connection-status `toolkit-connection-login-button`,
+  the Model Settings gear (no testid), `toolkit-test-run-tool-button`, and —
+  after a run — `chat-copy-button`.
+- The tool-selection gating from EL-5947 is unchanged: with no tool selected the
+  left column renders `ToolkitTestEmptyState` and `toolkit-test-empty-tool-select`
+  ("Select Tool") is the only route into the settings form.
+- `ToolkitTestResults.jsx` renders `null` while `messages.length === 0`, so
+  `chat-message-list` still does not exist in the DOM before the first run
+  (#1086 holds after the refactor).
+
+### The trio of header controls the ELITEA-1938/1939/1940 case texts describe is GONE
+
+Pre-EL-5947 `TestTools.jsx@0cff136d^` really did render all three in the panel
+header (lines 191/195/196): `FullScreenToggle`, `ChatButton.ClearChatButton`,
+`ViewRunHistoryButton`. Two deliberate commits dismantled it:
+
+| Control | Fate | Today |
+|---|---|---|
+| **Clear the chat** (trash) | removed by `EL-5947` (@0cff136d, 2026-07-30), demoted to an unlabelled back-arrow; that back-arrow removed by `EL-6277` | **no control at all** — `handleClearChat` is still exposed by `useToolkitTestRunner` but consumed by nothing. Clarification **#1725**, ELITEA-1938 `blocked` |
+| **Fullscreen mode** | removed by `EL-5947`; never returned | **no control at all**. `FullScreenToggle.jsx` still lives and is still wired on `SkillTestPanel.jsx` / `IndexChat.jsx` / Applications `ConfigurationTab.jsx` — and carries **no testid** there either. Clarification **#1726**, ELITEA-1939 `blocked` |
+| **View run history** | **relocated**, not removed | lives in the DETAIL **action bar** (`ToolkitForm.jsx:562`, rendered when `isDetailsActionBar`). Clarification **#1727**, ELITEA-1940 `ready-for-automation` |
+
+**Before filing "control X is missing" on this surface, check this table** — two
+cases already spent a session rediscovering it.
+
+## Run History on the MCP / toolkit surface (2026-08-24, ELITEA-1940)
+
+| Handle | Testid | Notes |
+|---|---|---|
+| Run History button | `pipeline-history-tab` | In the DETAIL action bar. aria-label `view run history`, label "Run History". **The `pipeline-` prefix is a shared-component default** (`ViewRunHistoryButton.jsx:16`, `testId = 'pipeline-history-tab'`) — it is correct on the MCP surface too; already used by `PipelineDetailPage`. Do not rename. |
+| Run-history row | `run-history-list-item` | Same literal testid on EVERY row — distinguish positionally. Default sort Date-descending ⇒ index 0 = most recent. |
+| Row selected state | `[data-testid="run-history-list-item"][data-selected="true"]` | `RunHistoryListItem.jsx:151`. Testid + state attribute, the policy-compliant shape. |
+| Row overflow menu | `run-history-menu-menu-button` | present; wire only if a case's executed path calls it (#511) |
+| Detail pane | `chat-message-list` / `chat-message-item` | 2 items per run: the input (`Calling '<tool>' with parameters:` + JSON) and the output |
+
+- **Route:** clicking it navigates to **`/toolkits/all/{id}/history?isMCP=true`** —
+  a full PAGE, not a drawer. MCPs deliberately reuse the toolkit route with an
+  `isMCP` query flag (`useToolkitDetailNavigation.hooks.js`'s own doc comment
+  says so). Breadcrumb reads `Toolkits & Indexes / <name> / Run History`.
+- **Columns are `Date` + `Duration`** (e.g. `24-08-2026, 06:17 AM` / `1.19 s`).
+  No `Version` column here — the Agent surface's ELITEA-1876/#1282 note records
+  Date/Version/Duration; that is a DIFFERENT surface. Assert per surface.
+- **Row 0 is auto-selected on mount** (`RunHistoryContainer.jsx`: selects
+  `historyRows[0]` when nothing is selected). A "click an entry → details show"
+  assertion that clicks row 0 proves nothing — click a *different* row and assert
+  the `data-selected` flip AND the detail-content change. Needs ≥2 runs to be
+  meaningful.
+- Already automated on two OTHER surfaces with the same component — reuse the
+  shape: `pages/pipeline_detail_page.py:57,69-71,6897-7000` (ELITEA-2011/2070)
+  and `AgentDetailPage` (ELITEA-1876/1877).
+
+## Sequencing gotchas on the MCP detail page (2026-08-24, both cost real time)
+
+1. **`toolkit-test-button` is disabled while the detail form is dirty** —
+   `ToolkitForm.jsx` passes `isTestDisabled={dirty}`. Clicking **Load Tools**
+   dirties the form, so a flow that loads tools must click
+   `toolkit-detail-save-button` and WAIT for `toolkit-test-button` to re-enable
+   before it can reach the Test route. Otherwise the button never becomes
+   clickable and the flow hangs on a disabled element.
+2. **The action bar mounts asynchronously after a client-side navigation back to
+   the detail page** — `pipeline-history-tab` returned *"does not match any
+   elements"* on an immediate click and appeared on a subsequent poll. Same class
+   as the existing `toolkit-type-card-mcp` note in § Fixtures (addendum). Rely on
+   framework auto-waiting / an explicit `wait_for(state="visible")`.
+
+> **Digest size note (2026-08-24):** this file is now ~600 lines, well past the
+> comfortable-single-read threshold the `test-case-analysis` skill flags (~150).
+> A split into an index + per-subarea files (create-form / detail-page /
+> test-surface / run-history / fixtures) is overdue. Not done in this batch —
+> several merged AFS files reference this path, so the restructure wants its own
+> unit rather than a mid-wave edit. Flagged to the lead.
