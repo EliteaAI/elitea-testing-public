@@ -57,7 +57,12 @@ doc comment states the toolkit-namespace URL for an MCP is intended:
   (`MAX_NAME_LENGTH = 32`, silently truncating — compute the suffix against the
   literal base name, digest § Fixtures addendum).
 - URL: `https://mcp.deepwiki.com/mcp`
-- Tool: `read_wiki_structure`; parameter `repoName = "AsyncFuncAI/deepwiki-open"`
+- Tool: `read_wiki_structure`; run TWICE with two different `repoName` values —
+  `"AsyncFuncAI/deepwiki-open"` (run 1) and `"facebook/react"` (run 2).
+  **Amended by the implementer (2026-08-24):** the two runs must differ, so the
+  step-8 "the detail changed" assertion has something row-specific to read; two
+  identical runs would render identical detail panes and the assertion would be
+  unfalsifiable.
 
 ## Test Steps
 
@@ -88,6 +93,14 @@ doc comment states the toolkit-namespace URL for an MCP is intended:
      contains `✅ read_wiki_structure` — confirmed live at `1.182s`, followed by
      the real DeepWiki page list (proving a genuine remote execution, not a
      canned response).
+5b. *(Added by the implementer, 2026-08-24.)* Return to the detail page,
+   click **Test** again, re-select `read_wiki_structure`, fill
+   `repoName = "facebook/react"`, and Run Test a second time.
+   - **Why a second Test-route visit and not simply a second Run Test click**:
+     one Run History row is one **conversation**, and a conversation is created
+     only when the panel has none (`useToolkitChat.executeRunTool`) — two runs
+     in one mount produce ONE row. See § Test Steps 8 § Implication for setup.
+   - **Verify**: the result message names the executed tool.
 6. Navigate back to the MCP detail page (`/mcps/all/{id}`) and click
    **Run History** (`pipeline-history-tab`).
    - **Verify**: URL becomes `/toolkits/all/{id}/history?isMCP=true`.
@@ -131,13 +144,19 @@ doc comment states the toolkit-namespace URL for an MCP is intended:
      index 1, `data-selected` flipped to it, and the detail pane switched from
      the *"less than a minute ago"* run to the *"22 days ago"* run.
    - **Implication for setup**: to exercise this honestly the MCP needs **two**
-     runs. Simplest honest route — run the tool **twice** in step 5 (same tool,
-     same parameter is fine; each Run Test produces its own history row,
-     confirmed live: the pre-existing MCP showed 2 rows from 2 runs on different
-     days). Alternatively, if the implementer keeps a single run, the step-6
-     assertion must be explicitly scoped to "the auto-selected row already shows
-     input/output", and the click-changes-selection assertion dropped — **that
-     is weaker than the case asks for; prefer two runs.**
+     history rows.
+     **AMENDED BY THE IMPLEMENTER (2026-08-24) — the original route did not
+     work.** One Run History row is **one conversation, not one Run Test
+     click**: `useToolkitChat.executeRunTool` creates a conversation only when
+     `!activeConversation`, so clicking Run Test twice inside a single mount of
+     the Test panel appends both runs to the SAME conversation and Run History
+     shows **1 row** (measured: the first implementation did exactly this and
+     `to_have_count(2)` saw 1). The working route — and the one a real user
+     takes for two separate test sessions — is to **re-enter the Test route
+     between runs** (detail page -> Test button -> re-select the tool -> Run),
+     which remounts the panel, clears `activeConversation`, and produces a
+     second row. Use two DIFFERENT `repoName` values so the two rows' detail
+     panes are distinguishable.
 
 ## Expected Results
 
@@ -272,8 +291,16 @@ flag, action-bar button not rendered) would leave both existing specs green.
   `is_run_history_item_selected` / `get_run_history_chat_messages_text` method
   set (`pages/pipeline_detail_page.py:6897-7000`). Whether to extend
   `McpFormPage` or add a small `ToolkitRunHistoryPage` is the implementer's
-  call; a shared mixin across the three surfaces would be a **declared**
-  improvement, not a requirement (`.agents/role-overrides.md` § Declared-improvisation).
+  call.
+  *(Implementer, 2026-08-24: shipped as a new `ToolkitRunHistoryPage`
+  (`automation/pages/toolkit_run_history_page.py`) — the run-history page is a
+  distinct ROUTE, not a region of the detail form. The action-bar handles
+  (`toolkit-test-button`, `pipeline-history-tab`) went onto `McpFormPage`, which
+  owns the detail page.)*
+  A shared mixin across the three surfaces would be a **declared**
+  improvement, not a requirement (`.agents/role-overrides.md` § Declared-improvisation)
+  — NOT taken here: it would mean editing two merged page objects for no
+  assertion this case makes. Flagged as suite health in the Run Report.
 - **Reuse `McpFormPage`** (create / Load Tools / Save / detail waits) and
   **`ToolkitTestSettingsPage`** (`select_tool_from_empty_state`,
   `fill_param_field`, `run_tool`, `wait_for_tool_result`) — both already model
@@ -286,6 +313,9 @@ flag, action-bar button not rendered) would leave both existing specs green.
      `toolkit-test-button` to enable, before clicking Test.
   2. After returning to the detail page, the action bar (and therefore
      `pipeline-history-tab`) mounts **asynchronously** — wait for it.
+  3. *(Implementer, 2026-08-24)* One Run History row = one **conversation**.
+     Two runs in one Test-panel mount = one row; remount the Test route between
+     runs to get two (see § Test Steps 8 § Implication for setup).
 - Markers: `p2`/`l3`-consistent priority marker + `regression` + the
   `credentials`-style per-feature marker used by the other MCP specs
   (`toolkits`), matching `automation/tests/ui/toolkits/test_mcp_*.py`.

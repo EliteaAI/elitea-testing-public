@@ -590,6 +590,35 @@ cases already spent a session rediscovering it.
   shape: `pages/pipeline_detail_page.py:57,69-71,6897-7000` (ELITEA-2011/2070)
   and `AgentDetailPage` (ELITEA-1876/1877).
 
+### Resolved/added during ELITEA-1940 implementation (2026-08-24)
+
+- **One Run History row is one CONVERSATION, not one Run Test click.**
+  `useToolkitChat.executeRunTool` creates a conversation only when
+  `!activeConversation`, so N runs inside a single mount of the Test panel all
+  land in ONE history row. To produce two rows, leave and re-enter the Test
+  route between runs (detail page -> `toolkit-test-button` -> re-select the
+  tool -> Run) — that remounts the panel and clears `activeConversation`.
+  Measured live: two back-to-back Run Test clicks produced exactly 1 row.
+- The Test panel's Results list **appends** across runs within a mount
+  (`setChatHistory(prev => [...prev, ...])`), so
+  `ToolkitTestSettingsPage.wait_for_tool_result()` (which reads `.last`) can
+  return the PREVIOUS run's already-completed ✅ message if a second run is
+  started in the same mount. Another reason to remount between runs.
+- Page objects added/extended: new `ToolkitRunHistoryPage`
+  (`automation/pages/toolkit_run_history_page.py`) for the
+  `/toolkits/all/{id}/history` route; `McpFormPage.action_bar` / `.test_button`
+  / `.run_history_button` + `open_test_route()` / `open_run_history()` /
+  `is_test_button_disabled()`; `ToolkitTestSettingsPage.set_param_field()`
+  (additive sibling of `fill_param_field`, which types into whatever is already
+  there and therefore APPENDS on a re-run).
+- **Merged spec `tests/ui/toolkits/test_mcp_test_settings_select_and_run_tool.py`
+  (ELITEA-1937) is RED on localhost** as of 2026-08-24, independently of this
+  case's branch: it waits for `toolkit-test-empty-tool-select` on the DETAIL
+  page, which EL-6277 moved to the `/mcps/all/{id}/test` route. Verified by
+  running it standalone (fails in Step 2: `Timeout 10000ms exceeded waiting for
+  get_by_test_id("toolkit-test-empty-tool-select")`). Needs an
+  `adjust-automated-test` pass — reported to the lead, not fixed here.
+
 ## Sequencing gotchas on the MCP detail page (2026-08-24, both cost real time)
 
 1. **`toolkit-test-button` is disabled while the detail form is dirty** —
