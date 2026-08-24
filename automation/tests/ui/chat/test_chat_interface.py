@@ -321,7 +321,7 @@ class TestConversationUIElements:
                 if plus_menu.is_visible():
                     plus_menu.click(force=True)
                     page.wait_for_timeout(500)
-                    menu_file_input = page.locator('.MuiPopper-root button[aria-label="attach files"] input[type="file"]')
+                    menu_file_input = page.locator('.MuiPopper-root').first.locator('button[aria-label="attach files"] input[type="file"]')
                     if menu_file_input.count() > 0:
                         try:
                             menu_file_input.set_input_files(str(test_file))

@@ -526,43 +526,76 @@ class GuardrailsAdminPage(BasePage):
         (header + trash icon + empty input) remains. This method clicks the trash
         icon to remove empty blocks.
 
-        Specifically targets blocks for: github, artifact, data_analysis, etc.
+        Uses dynamic discovery to find ALL toolkit blocks, not just known types.
 
         Args:
             timeout: Maximum wait time in milliseconds
         """
         logger.info("Removing empty toolkit blocks from Sensitive Action Tools")
-        print("[CLEANUP] Removing empty sensitive toolkit blocks")
+        print("[CLEANUP] Removing empty sensitive toolkit blocks - using dynamic discovery")
         self._expand_sensitive_section(timeout)
-
-        # First, debug: list ALL toolkit labels found
-        all_labels = self.page.locator('p.MuiTypography-root').all()
-        print(f"[CLEANUP] DEBUG: Found {len(all_labels)} p.MuiTypography-root elements")
-        for i, label in enumerate(all_labels[:20]):  # Limit to first 20
-            try:
-                if label.is_visible():
-                    text = label.text_content() or ""
-                    if text.strip():
-                        print(f"[CLEANUP] DEBUG: Label {i}: '{text.strip()}'")
-            except:
-                pass
 
         removed_count = 0
 
-        # Known toolkit names to check (common ones)
-        toolkit_names = ["github", "artifact", "data_analysis", "python_sandbox", "web_browser"]
+        # DYNAMIC DISCOVERY: Find all visible toolkit labels in Sensitive Action Tools section
+        # Look for the Sensitive Action Tools section header first
+        sensitive_section = self.page.locator('text="Sensitive Action Tools"').first
+        if sensitive_section.count() == 0:
+            print("[CLEANUP] Sensitive Action Tools section not found")
+            return
 
-        for toolkit_name in toolkit_names:
+        # Get the parent container that holds all toolkit blocks
+        # Structure: Header -> parent div -> toolkit blocks
+        section_container = sensitive_section.locator('xpath=ancestor::div[3]')
+
+        # Find all typography elements that could be toolkit labels
+        # They are <p class="MuiTypography-root"> with toolkit names
+        all_labels = section_container.locator('p.MuiTypography-root').all()
+        print(f"[CLEANUP] Found {len(all_labels)} potential toolkit labels in Sensitive Actions section")
+
+        # Discover toolkit names dynamically
+        discovered_toolkits = []
+        for label in all_labels:
             try:
-                # Look for toolkit label by exact text match
-                label = self.page.locator(f'p.MuiTypography-root:text-is("{toolkit_name}")').first
-                if label.count() == 0:
-                    continue  # Toolkit block doesn't exist
-
                 if not label.is_visible():
                     continue
 
-                print(f"[CLEANUP] Found toolkit block: {toolkit_name}")
+                text = label.text_content() or ""
+                text = text.strip().lower()
+
+                # Skip section headers and empty labels
+                if not text or text in ["sensitive action tools", "add toolkit name..."]:
+                    continue
+
+                # This is likely a toolkit name
+                discovered_toolkits.append(text)
+                print(f"[CLEANUP] Discovered toolkit: '{text}'")
+
+            except Exception as e:
+                logger.debug("Error reading label: %s", e)
+                continue
+
+        # Remove duplicates while preserving order
+        discovered_toolkits = list(dict.fromkeys(discovered_toolkits))
+        print(f"[CLEANUP] Total unique toolkits discovered: {len(discovered_toolkits)}")
+
+        # Now process each discovered toolkit
+        for toolkit_name in discovered_toolkits:
+            try:
+                # Look for toolkit label by exact text match
+                label = self.page.locator(f'p.MuiTypography-root:text-is("{toolkit_name}")').first
+
+                # Wait briefly for the label to be stable
+                try:
+                    label.wait_for(state="visible", timeout=2000)
+                except Exception:
+                    print(f"[CLEANUP] Toolkit '{toolkit_name}' label no longer visible, skipping")
+                    continue
+
+                if label.count() == 0:
+                    continue
+
+                print(f"[CLEANUP] Processing toolkit block: {toolkit_name}")
 
                 # Get the parent container (toolkit block)
                 # Structure: <div> -> <div> -> <div containing label + trash + input>
@@ -574,12 +607,15 @@ class GuardrailsAdminPage(BasePage):
                 # Check if block has any tool chips
                 chips = toolkit_block.locator('.MuiChip-root')
                 chip_count = chips.count()
-                print(f"[CLEANUP] Toolkit {toolkit_name} has {chip_count} tool chips")
+                print(f"[CLEANUP] Toolkit '{toolkit_name}' has {chip_count} tool chips")
 
                 if chip_count > 0:
+                    print(f"[CLEANUP] Toolkit '{toolkit_name}' has tools, keeping block")
                     continue  # Block has tools, skip
 
                 # Empty block found - click the trash icon next to the label
+                print(f"[CLEANUP] Toolkit '{toolkit_name}' is empty, removing block")
+
                 # Try to find delete/trash icon near the label
                 trash_icon = label.locator('xpath=following-sibling::*[1]//svg').first
                 if trash_icon.count() == 0:
@@ -598,7 +634,7 @@ class GuardrailsAdminPage(BasePage):
 
             except Exception as e:
                 logger.debug("Error removing toolkit block %s: %s", toolkit_name, e)
-                print(f"[CLEANUP] Error removing {toolkit_name}: {e}")
+                print(f"[CLEANUP] Error removing '{toolkit_name}': {e}")
                 continue
 
         logger.info("Removed %d empty toolkit blocks from Sensitive Action Tools", removed_count)
