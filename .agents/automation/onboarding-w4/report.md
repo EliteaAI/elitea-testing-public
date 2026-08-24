@@ -1,0 +1,115 @@
+# Batch Report — onboarding-w4
+
+**Batch:** onboarding-w4 | **Base:** origin/automation/base | **Work item:** #1397 | **Integration branch:** tests/batch-onboarding-w4
+
+**Totals:** 3 blocked
+
+---
+
+## Cases
+
+| Case ID | Outcome | Note | AFS | Branch | PR |
+|---------|---------|------|-----|--------|-----|
+| ELITEA-2234 | blocked | gate red: test_sidebar_notification_badge.py:153: expect(sidebar.notifications_mark_all_read_button).to_be_visible() -> AssertionError: Locator expected to be visible / Actual value: None / Error: element(s) no | test-specs/onboarding/l1_sidebar_notification_bell_red_badge_ELITEA-2234.md | tests/2234-2233-sidebar-header | 1766 |
+| ELITEA-2233 | blocked | gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved | test-specs/onboarding/l2_sidebar_logo_socket_status_green_dot_ELITEA-2233.md | tests/2234-2233-sidebar-header | 1766 |
+| ELITEA-2240 | blocked | review/fix round 0 failed | test-specs/onboarding/lextend_private_and_team_projects_in_dropdown_after_provisioning_ELITEA-2240.md | tests/ELITEA-2240-project-dropdown-full-sidebar | 1768 |
+
+---
+
+## Findings
+
+### Clarification findings
+
+- **#1764** — [Clarification][ELITEA-2234]: case step 5 says a 'modal opens with "Project was successfully created"'. Live it is a MUI Popover (id=notificationList, no backdrop, closes on outside click/Escape too) headed 'Notifications' listing the account's unread items - 5 bucket-retention notices from the artifacts suite, no project-created item. That message is a genuine first-login artifact…
+
+- **#1765** — [Clarification][ELITEA-2233]: case says a red dot 'would indicate server is updating'. Source says otherwise - SidebarBody.jsx:393-403 colours the dot by socketStatus, so red means socket DISCONNECTED. Also 'above the ELITEA logo' is really the top-right corner INSIDE the logo IconButton (top:0 right:0), and 'first time' login is irrelevant to the indicator. No assertion changes, but…
+
+- **#1767** (question + case-text-drift): (1) case step 2 is unexecutable — during provisioning MainSidebar returns null, so sidebar-toggle / project-selector-trigger / sidebar-menu-item-* / sidebar-settings-button / sidebar-agent-hub-button all count 0; there is no dropdown to click, only absence. (2) Step 7 lists 11 'navigation items' but the product renders 9 sidebar-menu-item-* plus two separa…
+
+- **AFS drift, AMENDED** (docs(afs): d2e4e4765): § Testids to add item A proposed hosting `data-selected` on SidebarProjectSelect.jsx's option Box by widening `customRenderOption` to `(option, isSelected)`, and asserted "the zero-functional-impact greps stay clean". They do not — reviewer grep #1 matches any added line containing `useCallba…
+
+### Question findings
+
+- **ELITEA-2234 test-data dependency**: red badge visible depends on the shared DEV account having >=1 unread notification on personal project 399. It does today (5 unread, artifacts-suite bucket-retention notices, timestamps spread over ~20h, and nothing in the merged suite clicks 'Mark all as read'), and the AFS pins the badge to that real count rather than fabricating it. But if a future notifications test mar…
+
+- **Fidelity questions inherited**: This case inherits, unchanged, the two open canon cards the ELITEA-2232 work raised: #1760 ('log in for the first time' is unautomatable here — what does a first-login case owe?) and #1759 (is releasing a precondition mock mid-test sanctioned transit?). No new fidelity question is introduced by the extension; if #1759 is ruled against, G1/G2/G3 would need a non-mock entry path…
+
+### Note findings
+
+- **NEW QUIRK**: the interactive-tour first-visit prompt ('New here? ... Skip / Start!') is PER-SECTION (localStorage interactive-tour:<section>:prompt-seen), not an /onboarding after-effect - it fired on a plain landing on /chat and its InteractiveTourBackdrop made the bell click fail with '<div class="MuiBox-root ..."> intercepts pointer events'. Any spec touching the sideb…
+
+- **GOTCHA worth 3 turns**: you cannot call the Elitea API from inside the page. An in-page fetch('/api/v2/...', {credentials:'include'}) - even same-origin on localhost:5173 - is redirected to dev.elitea.ai/forward-auth/auth_oidc/login and dies on CORS ('TypeError: Failed to fetch'); the app's own requests carry a Bearer token the page context doesn't reproduce. Use browser_network_requests / page.expe…
+
+- **test-specs/onboarding/_surface.md** is now 416 lines / ~27 KB after this wave's section - well past the ~150-line split-into-index smell, and every subsequent unit on this surface re-reads it whole. I did NOT split it mid-batch because in-flight units reference the single path; recommend a split into an index + per-subarea files (page states / tips card / provisioning / sidebar header) at batch clos…
+
+- **Testid inventory** for the implementer, all needs-adding, all attribute-only (zero-functional-impact check passes), 0 grep hits on origin/automation/testids as of 2026-08-24: sidebar-socket-status-indicator + data-socket-status (SidebarBody.jsx:234) | sidebar-notifications-button + sidebar-notifications-bell-icon + data-has-messages (NotificationButton.jsx, both passed at the call site through BellI…
+
+- **Digest quirk 7**: the first-visit interactive-tour prompt fires on /chat and BLOCKS the sidebar is profile-specific, not a property of the suite. `NewChat.jsx:104` is the ONLY caller of `useProposePendingTour`, and it returns immediately unless localStorage["interactive-tour:first-elitea:pending"] === "true" — a flag written only by /onboarding's handlePersonalProjectReady(). On localhost `auth_s…
+
+- **AFS contingency fallback** for the ELITEA-2234 test-data dependency (PUT …/notifications/prompt_lib/{pid} with {"ids": "all", "is_seen": false} to re-arm unread notifications) was NOT built — the AFS said build it only on a real failure, and the DEV account still had unread items, so the badge precondition held. If a future gate run fails on `unread_total > 0`, that is a real environment/data…
+
+- **ELITEA-2233 red/disconnected socket state** is deliberately unexercised — producing it honestly needs the backend socket to drop, and faking it would be a terminal substitution of the case's own observable. It is covered by exhaustive absence assertions (indicator to_have_count(1) + [data-socket-status="disconnected"] to_have_count(0)). The analyst flagged this as a possible future `question` card…
+
+- **sidebar-toggle** is now declared in a third page object (SidebarHeaderPage, as the header anchor) alongside the pre-existing declarations in chat_page.py and onboarding_page.py. This bends the project's "one testid appears in exactly one file" convention, but it is pre-existing app-shell chrome that was already declared twice, and the alternative (moving it into BasePage) would have added a fourth…
+
+- **EliteaUI prettier pre-commit hook** reflows a self-closing one-line JSX tag to a multi-line tag as soon as attributes are added, which makes the mandatory Step-5.5 zero-functional-impact greps report a `<Box` addition and two `-` removals for what is a pure attribute-only change. Not a violation (full hunks pasted in the PR body show the same two elements), but it will trip the reviewer's…
+
+- **Testid promotability** (verified, not copied — `git fetch origin` in ../EliteaUI first). All seven new testids exist on origin/automation/testids and NONE on origin/main: sidebar-notifications-button, -bell-icon, -popover, -popover-title, -close-button, -mark-all-read-button (EliteaAI/EliteaUI@1d512ae2), sidebar-socket-status-indicator (EliteaAI/EliteaUI@2c0ac201). Only sidebar-toggle is main:YES. B…
+
+- **AFS claim is stronger** than the shipped test. Axis-2 says the badge/count tie catches 'a regression that renders the dot unconditionally, or drops it while unread items exist'. Only the second half is true: the spec asserts `unread_total > 0` as a hard precondition and then `data-has-messages == "true"`, so it never exercises the total==0 branch and an unconditionally-rendered badge would still pas…
+
+- **Convention drift, declared, non-blocking**: `.agents/conventions.md` says 'one data-testid appears in exactly one file', and `sidebar-toggle` is now declared as a LocatorDescriptor in THREE page objects — chat_page.py, onboarding_page.py and this new sidebar_header_page.py. The implementer declares it explicitly in the class docstring, so it is a declared improvisation, not a silent one, and precede…
+
+- **Console filter** is now provably dead code on this entry path, and slightly broader than its ticket. Both specs exclude `_KNOWN_CONSOLE_ERROR_1753 = "does not accept focus"`, but the implementer's own amendment proves the first-visit tour prompt CANNOT fire on the suite's entry path (fresh context + empty localhost auth_state storage state => the `interactive-tour:first-elitea:pending` flag `useProp…
+
+- **Coverage-Map verification result**: neither AFS contains any `already-covered` / covered-by-another-spec disposition — every Axis-1 row for both cases is `asserted` (two marked scope-amended/text-amended under the reverse-masking guard, both backed by filed OPEN clarification issues #1764 and #1765, and #1753 for the console filter; all three verified OPEN with the right labels). So there was no cov…
+
+- **Positives worth recording** for the batch. (1) Fidelity is genuinely zero-substitution on both cases: the badge assertion is tied to the product's OWN unread-count response captured via `page.expect_response` around the navigation (`navigate_and_get_unread_total`), which is the sanctioned nondeterministic-producer shape from `.agents/testing.md`, not a fabricated payload — and the count probe is cor…
+
+- **Product behaviour**: the project dropdown fills PROGRESSIVELY, exactly like the entity menu. At the instant onboarding-workspace-ready-title appears the dropdown holds only 'Private'; the four team rows arrive a few seconds later when the project-list query resolves. Auto-wait per option label; a one-shot count/text snapshot of the option list will flake. R…
+
+- **Handle trap**: the outer MUI MenuItem testid for any single-select option is select-option-{option.value} — for projects that is the numeric backend project id (live: select-option-399), environment-specific. Bind to the inner project-selector-option-{label} Box instead. Captured in role memory (mui_single_select_selected_option_handles.md) because it applies to every single-select in the app, not j…
+
+- **Reviewer heads-up**: the requested select-option-selected-icon testid lands in a SHARED component (src/[fsd]/shared/ui/select/SingleSelectMenuItem.jsx), which is why the name is deliberately generic per .agents/testing.md § Locator policy. If the lead rules it out on shared-component reach, the AFS says G1 degrades to the data-selected assertion alone — a raw .MuiListIte…
+
+- **NOT deployable-env-promotable**: Verified after `cd ../EliteaUI && git fetch origin` with the two-stage closure-record grep: select-option-selected-icon main:no testids:YES · sidebar-settings-button main:no testids:YES · sidebar-agent-hub-button main:no testids:YES · project-selector-option main:no testids:YES · sidebar-menu-item main:no testids:YES · plus the new `data-selected` on SingleSelectMenu…
+
+- **Back-write shape**: the covering spec now carries TWO case ids on ONE pytest node. automation_test_id (Form C, verified MATCH against automation/reports/junit.xml) = tests.ui.onboarding.test_onboarding_provisioning.TestOnboardingProvisioning.test_get_started_starts_provisioning_poll_and_shows_tips_with_progress_footer — write it to ELITEA-2240's case file as well as ELITEA-2232'…
+
+- **Tracker comment sweep**: Skipped the per-case tracker comment (profile.md § Status reporting "Comment PR link": yes) deliberately — this batch runs the workflow's single TMS/tracker mirror sweep at close, and the prior onboarding waves (#1758, #1763) landed the same way. Flagging so you can fold ELITEA-2240 into that sweep rather than assume it was already posted. No other seeded external write was skipped.
+
+- **Reusable capability**: now live for EVERY single-select in the app, not just onboarding — documented in test-specs/onboarding/_surface.md's new attributed ELITEA-2240 section. (a) Selection state on any Select/SingleSelectMenuItem is now `[data-selected="true"] [data-testid="<inner-row-testid>"]`, and `select-option-selected-icon` resolves to exactly one node inside one open menu (MUI unmounts a clos…
+
+- **EliteaUI framework gotcha**: .prettierrc sets "singleAttributePerLine": true (printWidth 110), so adding a data-testid to a one-attribute one-line JSX tag FORCES a 1->3-line reflow — and the repo's lint-staged hook runs `prettier --write` on commit, so it cannot be opted out of. That reflow is an unavoidable hit on reviewer grep #3 (`^-` not matching testid). Declare it in…
+
+---
+
+## Gate Verdict
+
+**Verdict:** RED
+
+**Runs:** 3 consecutive runs
+
+**Timings:**
+- Run 1: 34.28s
+- Run 2: 32.76s
+- Run 3: 56.91s
+
+**Failure signature:**
+
+```
+automation/tests/ui/onboarding/test_sidebar_notification_badge.py::TestSidebarNotificationBadge::test_bell_shows_red_badge_and_notifications_popover
+
+test_sidebar_notification_badge.py:153: expect(sidebar.notifications_mark_all_read_button).to_be_visible()
+AssertionError: Locator expected to be visible
+Actual value: None
+Error: element(s) not found
+Call log: Expect "to_be_visible" with timeout 5000ms - waiting for get_by_test_id("sidebar-notifications-mark-all-read-button")
+Aria snapshot: text: Notifications; button "Close notificati…
+```
+
+**Case IDs affected:** ELITEA-2234
+
+---
+
+**Status:** The batch gate is RED. All three cases are blocked pending resolution of the test failure. No cases are promotable until the gate passes.
