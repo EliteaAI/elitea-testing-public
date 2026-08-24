@@ -7,6 +7,9 @@
 - **User set**: `${TEST_USER}` (auth via `auth_state` / `VITE_DEV_TOKEN` on localhost)
 - **Analyst**: qa-engineer (Sage), batch `settings-w01`, 2026-08-24
 - **Status**: ready-for-automation (**case-text drift — asserts the LIVE contract**)
+- **Implemented**: `automation/tests/ui/settings/test_settings_profile_logout_button_visible.py`
+  + `automation/pages/settings_profile_page.py` (ELITEA-2252). Amendments made during
+  implementation are marked *"amended at implementation"* inline below.
 - **Surface digest**: `test-specs/settings-user-profile/_surface.md`
 - **Filed**: no new issue — the drift is already tracked by clarification **#1772**
   (row 4: "There is no Log out item anywhere in the Settings drawer"); this case's
@@ -95,8 +98,14 @@ is written, no cleanup.
      raw handle chained off it, declared in the method docstring). Declare it in the
      page-object method docstring exactly that way.
    - **Verify**: the drawer's menu container is **not scrollable** —
-     `scrollHeight == clientHeight` (observed 617 == 617 at 1366×768). This is the
-     drawer half of the case's "without additional scrolling" requirement.
+     `scrollHeight == clientHeight`. This is the drawer half of the case's
+     "without additional scrolling" requirement.
+     *Amended at implementation (ELITEA-2252):* the scrolling element is the inner
+     `menuContainer` (the only node carrying `overflow: auto`), not the drawer root,
+     so it needed its own handle — `settings-drawer-menu`, added with the rest of
+     this case's testids. The read is `SettingsProfilePage.is_scrollable()`
+     (`el.scrollHeight > el.clientHeight`): a browser-computed layout measurement of
+     the product's own DOM, i.e. a read, not an injection.
 
 3. **Verify the Log out button is present, labelled and enabled.**
    - **Verify**: `settings-profile-logout-button` is visible.
@@ -108,16 +117,20 @@ is written, no cleanup.
    - The icon is an inline SVG rendered by `LogoutIcon` (`@/assets/logout-icon.svg?react`)
      via MUI's `startIcon` slot, so it lands in
      `.MuiButton-startIcon > svg` inside the button.
-   - **Verify**: exactly one `svg` descendant of `settings-profile-logout-button`,
-     and it is visible:
-     `expect(logout_button.locator(SVG_ICON)).to_have_count(1)` where
-     `SVG_ICON` is a class-level constant. Observed live: `<svg width="16" height="16"
-     viewBox="0 0 16 16" fill="currentColor">`, rendered box 16×16.
-   - *Locator-policy note:* the SVG is a library-rendered node with no app JSX of its
-     own (`svg?react` import). Scope it off the button's testid, never page-level.
-     Alternatively the implementer may add a testid on the icon wrapper — but
-     `startIcon` is a MUI slot, and wiring a testid there would need a new DOM node,
-     which the zero-functional-impact check forbids. Prefer the scoped `svg` count.
+   - **Verify**: exactly one icon element inside the button, and it is visible:
+     `expect(logout_button_icon).to_have_count(1)` / `.to_be_visible()`.
+     Observed live: `<svg width="16" height="16" viewBox="0 0 16 16"
+     fill="currentColor" data-testid="settings-profile-logout-icon">`.
+   - *Locator-policy note — **amended at implementation (ELITEA-2252)**.* The AFS
+     originally specced a scoped raw `svg` handle under the #579 exception, on the
+     reading that `startIcon` is a MUI slot and a testid there would need a new DOM
+     node. That turned out to be avoidable: **svgr (`vite-plugin-svgr`) spreads props
+     onto the generated `<svg>` root**, so the call site can name the icon directly —
+     `startIcon={<LogoutIcon data-testid="settings-profile-logout-icon" />}` — with no
+     wrapper node, no shared-asset edit, and no raw handle. Verified live (the
+     attribute lands on the rendered `<svg>`), and it matches two existing precedents
+     in EliteaUI (`catalog-skills-tab-icon`, `version-option-pin-icon`). The compliant
+     testid-only shape wins over the exception whenever it is reachable.
    - Do **not** assert the SVG path data or a specific asset filename — that is
      implementation, not behaviour.
 
@@ -154,17 +167,22 @@ is written, no cleanup.
 | Element | Primary handle (testid-only) | Provenance (verified `git fetch origin` 2026-08-24) | Notes |
 |---|---|---|---|
 | Sidebar "Settings" entry | `sidebar-settings-button` | **on `automation/testids` only** (not on `main`) | `BasePage.sidebar_settings_button` |
-| Settings drawer root | `settings-drawer` | **needs-adding** — not on `main`, not on `automation/testids` | `SettingsDrawer.jsx` root `<Box sx={styles.drawer}>`. Requested by the ELITEA-2242/2243/2244 AFS as well; whoever lands first adds it. |
-| Drawer nav item (dynamic) | `settings-nav-item-{tabId}` + `data-active` | **needs-adding** | the per-tab `<Box onClick=…>` in `section.tabs.map`, `SettingsDrawer.jsx`. `isActive` is already computed there — state goes on `data-active`, never in the testid value (PR #581 ruling). Class constant: `SETTINGS_NAV_ITEM = '[data-testid="settings-nav-item-{}"]'`. |
-| Settings content pane | `settings-content` | **needs-adding** | `<Box component="main" sx={styles.mainContent}>` in `src/[fsd]/pages/settings/index.jsx`. **Required** — a bare `main` selector matches TWO elements (app shell + settings content) and the app-shell one's text includes the drawer's, which silently green-lights content assertions. |
-| Profile page container | `settings-profile-page` | **needs-adding** | `Profile.jsx` root `<Box sx={styles.container}>`. Pure attribute add. |
-| **Log out button** | `settings-profile-logout-button` | **needs-adding** | `Profile.jsx:73` `<BaseBtn …>Log out</BaseBtn>`. `BaseBtn` spreads `...restProps` onto `MuiButton` (`src/[fsd]/shared/ui/button/BaseBtn.jsx:31-40`), so `data-testid="settings-profile-logout-button"` passes straight through to the rendered `<button>` — **no prop plumbing, no new DOM node, no new hook**. Zero-functional-impact check passes by construction. |
-| Log out icon | scoped `svg` inside the button (class constant) | n/a | `LogoutIcon` via MUI `startIcon`; library-rendered node, `#579` scoped-raw-handle discipline applies. |
+| Settings drawer root | `settings-drawer` | **added this case** — EliteaAI/EliteaUI@e1e031a1 on `automation/testids` (not on `main`) | `SettingsDrawer.jsx` root `<Box sx={styles.drawer}>`. Requested by the ELITEA-2242/2243/2244 AFS as well; whoever lands first adds it. |
+| Drawer nav item (dynamic) | `settings-nav-item-{tabId}` + `data-active` | **added this case** — EliteaAI/EliteaUI@e1e031a1 | the per-tab `<Box onClick=…>` in `section.tabs.map`, `SettingsDrawer.jsx`. `isActive` is already computed there — state goes on `data-active`, never in the testid value (PR #581 ruling). Class constant: `SETTINGS_NAV_ITEM = '[data-testid="settings-nav-item-{}"]'`. |
+| Settings content pane | `settings-content` | **added this case** — EliteaAI/EliteaUI@e1e031a1 | `<Box component="main" sx={styles.mainContent}>` in `src/[fsd]/pages/settings/index.jsx`. **Required** — a bare `main` selector matches TWO elements (app shell + settings content) and the app-shell one's text includes the drawer's, which silently green-lights content assertions. |
+| Profile page container | `settings-profile-page` | **added this case** — EliteaAI/EliteaUI@e1e031a1 | `Profile.jsx` root `<Box sx={styles.container}>`. Pure attribute add. |
+| **Log out button** | `settings-profile-logout-button` | **added this case** — EliteaAI/EliteaUI@e1e031a1 | `Profile.jsx:73` `<BaseBtn …>Log out</BaseBtn>`. `BaseBtn` spreads `...restProps` onto `MuiButton` (`src/[fsd]/shared/ui/button/BaseBtn.jsx:31-40`), so `data-testid="settings-profile-logout-button"` passes straight through to the rendered `<button>` — **no prop plumbing, no new DOM node, no new hook**. Zero-functional-impact check passes by construction. |
+| Drawer menu container | `settings-drawer-menu` | **added this case** — EliteaAI/EliteaUI@e1e031a1 on `automation/testids` | **Added at implementation (ELITEA-2252).** `<Box sx={styles.menuContainer}>` in `SettingsDrawer.jsx` — the only node with `overflow: auto`, so it is the element whose scroll geometry answers step 2's "does the drawer need scrolling?". The drawer root would give a meaningless answer (`overflow: visible`). |
+| Log out icon | `settings-profile-logout-icon` | **added this case** — EliteaAI/EliteaUI@67194ed1 on `automation/testids` | **Amended at implementation (ELITEA-2252):** a real testid, not the scoped raw `svg` handle originally specced — svgr spreads props onto the generated `<svg>` root, so `startIcon={<LogoutIcon data-testid="…" />}` needs no wrapper node. See step 4. |
 
-**Testid additions this case needs (implementer, via `add-data-testid`):**
-`settings-profile-logout-button`, `settings-profile-page`, plus `settings-drawer`,
-`settings-content` and `settings-nav-item-{tabId}` if the sibling settings-navigation
-work has not landed them by then. All are pure attribute additions.
+**Testid additions this case needed — all LANDED (implementer, ELITEA-2252):**
+`settings-drawer`, `settings-drawer-menu`, `settings-nav-item-{tabId}` (+ `data-active`),
+`settings-content`, `settings-profile-page`, `settings-profile-logout-button`
+(EliteaAI/EliteaUI@e1e031a1) and `settings-profile-logout-icon`
+(EliteaAI/EliteaUI@67194ed1), all pushed to `automation/testids`; **none on `main`
+yet — a human cherry-picks.** Every one is a pure attribute addition: the
+zero-functional-impact greps produced no new DOM nodes, no new hooks, and no removals
+(the only `-` lines are the same `<Box>` tags reflowed to multi-line by Prettier).
 
 **Naming note:** `{section}-{element}-{type}` refers to the CALL SITE's section.
 `Profile.jsx` is a feature file under `src/[fsd]/features/settings/ui/profile/`, not a

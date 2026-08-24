@@ -279,3 +279,54 @@ belongs on specs for this page — adding one would be masking.
 `l1_settings_profile_logout_logs_user_out_ELITEA-2253.md` (**blocked** — env),
 `l1_settings_logout_reachable_from_any_subpage_ELITEA-2254.md` (**blocked** — premise + env).
 Drift consolidated onto clarification **#1772**.
+
+## `/settings/profile` + the Settings drawer — testids added during ELITEA-2252 implementation
+
+**Added/resolved during ELITEA-2252 implementation (2026-08-24, test-automation-engineer).**
+The Settings shell had **zero** testids before this case; all seven below are new,
+pure attribute additions on `automation/testids`, **none on `main` yet** (human
+cherry-pick pending).
+
+| Testid | Element | Commit |
+|---|---|---|
+| `settings-drawer` | `SettingsDrawer.jsx` root `<Box sx={styles.drawer}>` | EliteaAI/EliteaUI@e1e031a1 |
+| `settings-drawer-menu` | the inner `<Box sx={styles.menuContainer}>` | EliteaAI/EliteaUI@e1e031a1 |
+| `settings-nav-item-{tabId}` (+ `data-active`) | per-tab `<Box onClick=…>` in `section.tabs.map` | EliteaAI/EliteaUI@e1e031a1 |
+| `settings-content` | `<Box component="main">` in `src/[fsd]/pages/settings/index.jsx` | EliteaAI/EliteaUI@e1e031a1 |
+| `settings-profile-page` | `Profile.jsx` root container | EliteaAI/EliteaUI@e1e031a1 |
+| `settings-profile-logout-button` | `Profile.jsx` `<BaseBtn>Log out</BaseBtn>` | EliteaAI/EliteaUI@e1e031a1 |
+| `settings-profile-logout-icon` | the `LogoutIcon` `<svg>` in the button's `startIcon` slot | EliteaAI/EliteaUI@67194ed1 |
+
+Page object: `automation/pages/settings_profile_page.py` (`SettingsProfilePage`) —
+drawer + content-pane + Profile handles, `nav_item(tab_id)`, `open_from_sidebar()`,
+`drawer_logout_controls()` (absence handle), `is_scrollable(container)`.
+
+### Facts worth reusing
+
+- **svgr spreads props onto the generated `<svg>` root.** `@/assets/*.svg?react`
+  components (`vite-plugin-svgr` 4.5.0) accept `data-testid` at the **call site** —
+  `startIcon={<LogoutIcon data-testid="…" />}` lands the attribute on the rendered
+  `<svg>`. Verified live. So an inline SVG icon is **not** a #579 "testid can't be
+  placed" case: name it at the call site (feature-scoped, no wrapper node, no shared
+  `.svg` asset edit). Existing precedents: `catalog-skills-tab-icon`,
+  `version-option-pin-icon`. Prefer this over a scoped raw `svg` handle.
+- **`BaseBtn` (`src/[fsd]/shared/ui/button/BaseBtn.jsx`) spreads `...restProps` onto
+  `MuiButton`** — `data-testid` passes straight through to the rendered `<button>`.
+  No prop plumbing needed for any `BaseBtn` call site.
+- **`data-active={isActive}` renders as `data-active="false"`, not as an absent
+  attribute** — React stringifies booleans on `data-*` attributes, so
+  `to_have_attribute("data-active", "true"/"false")` works on both states.
+- **Two `<main>` elements exist on a `/settings/*` route** (app shell + settings
+  content). Never use a bare `main` selector — use `settings-content`.
+- **The Settings drawer has no Log out entry** and never did: `SettingsDrawer.jsx`
+  renders only `SETTINGS_TABS_CONFIG` tabs, and PERSONAL ends at Notifications. Log
+  out is the last control of the **Profile page** content pane. Clarification
+  EliteaAI/elitea-testing-public#1772 row 4. ELITEA-2252 pins this as an invariant
+  (absence assertion scoped inside `settings-drawer`).
+- **Never click the Profile Log out button from an unrelated spec.** `onLogout` sets
+  `window.location.href = origin + '/forward-auth/logout'`, leaving the context
+  outside the SPA — a teardown hazard for whatever runs next.
+- **Dev-server HMR lag after adding a testid**: a pytest run started ~1 min after
+  pushing a new testid found 0 elements for it, while a direct probe moments later
+  saw it rendered. If a brand-new testid resolves to 0, re-check the live DOM before
+  suspecting the JSX — the fix is to re-run, not to change the locator.
