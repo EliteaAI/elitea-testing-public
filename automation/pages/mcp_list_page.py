@@ -23,7 +23,7 @@ short render-lag wait is used instead.
 import logging
 
 from config import settings
-from playwright.sync_api import Locator, Page, Response
+from playwright.sync_api import Locator, Page, Response, expect
 from utils.actions import action
 
 from .base_page import BasePage
@@ -127,6 +127,13 @@ class McpListPage(BasePage):
     # matching CredentialsListPage.PIN_TOGGLE_BUTTON / PipelinesListPage's
     # same-shaped constants.
     PIN_TOGGLE_BUTTON = '[data-testid="mcp-pin-toggle-button-{}"]'
+
+    # Every rendered list-row pin toggle, regardless of id — the prefix form of
+    # PIN_TOGGLE_BUTTON above, used by :meth:`get_all_pin_toggle_labels` for the
+    # "nothing in this project is pinned" precondition guard (ELITEA-1945 AFS
+    # § Preconditions). Same UPPER_CASE class-constant shape as the other
+    # ``[data-testid^="..."]`` collection selectors in this suite.
+    PIN_TOGGLE_BUTTON_ANY = '[data-testid^="mcp-pin-toggle-button-"]'
 
     # Shared SearchBar.jsx component testids (also used by Credentials/
     # Skills/Toolkits/Applications list pages) — same shared component, same
@@ -438,6 +445,104 @@ class McpListPage(BasePage):
         button = self.page.locator(self.PIN_TOGGLE_BUTTON.format(mcp_id))
         button.first.wait_for(state="visible", timeout=timeout)
         return button.first.get_attribute("aria-label") or ""
+
+    def pin_toggle_button(self, mcp_id: int) -> Locator:
+        """Return the list-card pin/unpin icon button for *mcp_id*.
+
+        Mirrors ``CredentialsListPage.pin_toggle_button`` /
+        ``PipelinesListPage.pin_toggle_button`` (same shared ``PinButton.jsx``
+        widget). Unhovered the button renders at ``opacity: 0`` — Playwright
+        still reports it visible, so a caller asserting the case's "button is
+        visible on the card" must read the computed opacity after a hover
+        (ELITEA-1945 AFS § Test Steps 3), not rely on ``to_be_visible()``.
+        """
+        return self.page.locator(self.PIN_TOGGLE_BUTTON.format(mcp_id))
+
+    @action("Hover an MCP card's pin toggle")
+    def hover_pin_toggle(self, mcp_id: int, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Hover the pin toggle for *mcp_id* so the card's hover-reveal fires.
+
+        Args:
+            mcp_id: The MCP/toolkit's numeric id.
+            timeout: Maximum time to wait for the button to render.
+        """
+        button = self.pin_toggle_button(mcp_id)
+        button.first.wait_for(state="visible", timeout=timeout)
+        button.first.hover()
+
+    @action("Click an MCP card's pin toggle")
+    def click_pin_toggle(self, mcp_id: int, timeout: int = UI_ELEMENT_TIMEOUT) -> Response:
+        """Click the card's pin/unpin button and wait for the pin API round trip.
+
+        Mirrors ``McpFormPage.click_pin_toggle_menu_item()`` (the detail-menu
+        entry point to the same API) and ``CredentialsListPage.click_pin_toggle``
+        — waits on the real ``POST``/``DELETE
+        .../social/pin/prompt_lib/{project}/toolkit/{id}`` response rather than
+        a fixed delay. Awaiting the response is also the condition wait the
+        caller's next read (the re-sorted list) depends on.
+
+        Returns:
+            The matched Playwright ``Response`` (201 on pin, 204 on unpin).
+        """
+        pattern = "/social/pin/prompt_lib/"
+        with self.page.expect_response(
+            lambda r: pattern in r.url and r.url.rstrip("/").endswith(f"/toolkit/{mcp_id}"),
+            timeout=timeout,
+        ) as response_info:
+            self.pin_toggle_button(mcp_id).first.click()
+        return response_info.value
+
+    def wait_for_pin_toggle_label(
+        self, mcp_id: int, expected: str, timeout: int = UI_ELEMENT_TIMEOUT
+    ) -> None:
+        """Wait until *mcp_id*'s pin toggle reports ``aria-label == expected``.
+
+        The pinned/unpinned state lives in the aria-label of the stable
+        testid-anchored button (.agents/testing.md § Locator policy). Uses a
+        retrying web-first assertion so the label flip that follows the pin /
+        unpin response is awaited on its condition, never on a sleep.
+
+        Args:
+            mcp_id: The MCP/toolkit's numeric id.
+            expected: ``"Pin to top"`` or ``"Unpin from top"``.
+            timeout: Maximum time to wait for the label to settle.
+        """
+        expect(self.pin_toggle_button(mcp_id).first).to_have_attribute(
+            "aria-label", expected, timeout=timeout
+        )
+
+    def get_all_pin_toggle_labels(self, timeout: int = UI_ELEMENT_TIMEOUT) -> list[str]:
+        """Return the ``aria-label`` of every rendered card pin toggle.
+
+        Used to assert the project-level precondition "no MCP is pinned"
+        (ELITEA-1945 AFS § Preconditions): a stray pin left by an aborted run
+        sits at index 0 and would break the "moved to top" read for a reason
+        unrelated to the case.
+
+        Args:
+            timeout: Maximum time to wait for the first toggle to attach.
+        """
+        buttons = self.page.locator(self.PIN_TOGGLE_BUTTON_ANY)
+        try:
+            buttons.first.wait_for(state="attached", timeout=timeout)
+        except Exception:
+            return []
+        return [buttons.nth(i).get_attribute("aria-label") or "" for i in range(buttons.count())]
+
+    @action("Wait until a named MCP card is first in the list")
+    def wait_for_card_at_top(self, name: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Wait until the first rendered card's name equals *name*.
+
+        The pin's re-sort is an immediate client-side update (no list re-fetch,
+        ELITEA-1945 AFS § Network Behavior), but it lands a render tick after
+        the pin response resolves — this retrying assertion is that tick's
+        condition wait.
+
+        Args:
+            name: The MCP card name expected to sort first.
+            timeout: Maximum time to wait for the re-sort.
+        """
+        expect(self.mcp_card_name.first).to_have_text(name, timeout=timeout)
 
     # ------------------------------------------------------------------
     # Type filter (right-hand "Types" panel) — ELITEA-1942
