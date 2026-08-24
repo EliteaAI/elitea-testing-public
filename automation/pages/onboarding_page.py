@@ -56,7 +56,8 @@ class OnboardingPage(BasePage):
     project-selector-option-{label} (dynamic), sidebar-menu-item-{value} (dynamic),
     onboarding-tour-container, onboarding-tour-tip-content,
     onboarding-tour-tip-image, onboarding-tour-page-indicator,
-    onboarding-tour-prev-button, onboarding-tour-fullscreen-button,
+    onboarding-tour-prev-button, onboarding-tour-next-button,
+    onboarding-tour-fullscreen-button,
     onboarding-tour-fullscreen-dialog, onboarding-tour-fullscreen-title,
     onboarding-tour-fullscreen-close-button,
     onboarding-workspace-ready-title,
@@ -219,6 +220,16 @@ class OnboardingPage(BasePage):
             "(TourContent.jsx: disabled={currentStep === 1})"
         ),
     )
+    tour_next_button = LocatorDescriptor(
+        testid="onboarding-tour-next-button",
+        description=(
+            "Next-slide IconButton — disabled at the last slide "
+            "(TourContent.jsx: disabled={currentStep === onboardingTips.length}). "
+            "Added for ELITEA-2237/2238/2239 (EliteaAI/EliteaUI@f647488d). "
+            "Resolves to TWO nodes while the full-screen dialog is open: scope "
+            "with DIALOG_NEXT_BUTTON."
+        ),
+    )
     tour_fullscreen_button = LocatorDescriptor(
         testid="onboarding-tour-fullscreen-button",
         description=(
@@ -269,6 +280,28 @@ class OnboardingPage(BasePage):
     DIALOG_PAGE_INDICATOR = (
         '[data-testid="onboarding-tour-fullscreen-dialog"] '
         '[data-testid="onboarding-tour-page-indicator"]'
+    )
+    DIALOG_PREV_BUTTON = (
+        '[data-testid="onboarding-tour-fullscreen-dialog"] '
+        '[data-testid="onboarding-tour-prev-button"]'
+    )
+    DIALOG_NEXT_BUTTON = (
+        '[data-testid="onboarding-tour-fullscreen-dialog"] '
+        '[data-testid="onboarding-tour-next-button"]'
+    )
+
+    # Card-scoped selectors — the mirror image of the dialog-scoped ones. While the
+    # full-screen dialog is open the shared testids resolve to two nodes, so reading
+    # the EMBEDDED copy also needs scoping. The dialog's paper is NOT a descendant of
+    # onboarding-tour-container, so scoping into the card selects the embedded copy
+    # alone (ELITEA-2239 step 9 — "consistent with the collapsed card view").
+    CARD_PAGE_INDICATOR = (
+        '[data-testid="onboarding-tour-container"] '
+        '[data-testid="onboarding-tour-page-indicator"]'
+    )
+    CARD_TIP_CONTENT = (
+        '[data-testid="onboarding-tour-container"] '
+        '[data-testid="onboarding-tour-tip-content"]'
     )
 
     # Dynamic (runtime-parameterized) testids — class-level template constants per
@@ -321,6 +354,22 @@ class OnboardingPage(BasePage):
         """Slide counter INSIDE the full-screen dialog."""
         return self.page.locator(self.DIALOG_PAGE_INDICATOR)
 
+    def dialog_prev_button(self) -> Locator:
+        """Previous-slide arrow INSIDE the full-screen dialog."""
+        return self.page.locator(self.DIALOG_PREV_BUTTON)
+
+    def dialog_next_button(self) -> Locator:
+        """Next-slide arrow INSIDE the full-screen dialog."""
+        return self.page.locator(self.DIALOG_NEXT_BUTTON)
+
+    def card_page_indicator(self) -> Locator:
+        """Slide counter on the EMBEDDED card (valid while the dialog is open)."""
+        return self.page.locator(self.CARD_PAGE_INDICATOR)
+
+    def card_tip_content(self) -> Locator:
+        """Tip markdown node on the EMBEDDED card (valid while the dialog is open)."""
+        return self.page.locator(self.CARD_TIP_CONTENT)
+
     def project_selector_option(self, label: str) -> Locator:
         """Project row inside the OPEN project dropdown, by project label."""
         return self.page.locator(self.PROJECT_SELECTOR_OPTION.format(label))
@@ -361,6 +410,26 @@ class OnboardingPage(BasePage):
         ELITEA-2236 step 8 asks specifically for the X button.
         """
         self.tour_fullscreen_close_button.click()
+
+    @action("Advance the onboarding tips card to the next slide")
+    def click_next_slide(self) -> None:
+        """Click the embedded card's forward arrow."""
+        self.tour_next_button.click()
+
+    @action("Return the onboarding tips card to the previous slide")
+    def click_prev_slide(self) -> None:
+        """Click the embedded card's back arrow."""
+        self.tour_prev_button.click()
+
+    @action("Advance the full-screen tips dialog to the next slide")
+    def click_dialog_next_slide(self) -> None:
+        """Click the forward arrow inside the full-screen dialog."""
+        self.dialog_next_button().click()
+
+    @action("Return the full-screen tips dialog to the previous slide")
+    def click_dialog_prev_slide(self) -> None:
+        """Click the back arrow inside the full-screen dialog."""
+        self.dialog_prev_button().click()
 
     @action("Click 'Jump in now!' in the workspace-ready banner")
     def click_jump_in(self) -> None:
