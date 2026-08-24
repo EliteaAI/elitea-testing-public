@@ -8,6 +8,12 @@
 > ELITEA-1923/1924 combined analysis+implementation** — create-form validation
 > handles + the Save-button gating mechanism (see the two new sections at the
 > end).
+>
+> ⚠️ **Appended 2026-08-24 (ELITEA-1938/1939/1940 cluster analysis, batch
+> `mcp-w02`): the Test Settings surface was REFACTORED on 2026-08-20 by
+> EliteaAI/EliteaUI@cb030b7d (`EL-6277`, #803). It is now its own ROUTE with a
+> two-column layout. The `TestTools.jsx` state-machine section below is
+> SUPERSEDED — read § Test Settings is now its own ROUTE (EL-6277) first.**
 
 ## Confirmed-stable handles (testid-based)
 
@@ -31,9 +37,9 @@
 | Raw Json view toggle | `toolkit-raw-json-view-toggle` | |
 | Raw Json editor content | `toolkit-raw-json-editor-content` | CodeMirror virtualizes — use `get_raw_json_full()`, not `get_raw_json()`, for payloads >~30 lines |
 | Detail title heading | `toolkit-detail-title` | shows "Edit Toolkit" placeholder until real data lands — poll text, don't trust visibility alone |
-| Connection-status indicator ("Not Connected"/"Connected!") | `toolkit-connection-status` | `McpAuthStatus.jsx`, wrapping `Typography` — added via `add-data-testid` for ELITEA-1934 (2026-08-02). Live on `automation/testids` (EliteaUI@a467c0ac); **not yet on `main`** — human cherry-pick pending, see PR closure record. |
+| Connection-status indicator ("Not Connected"/"Connected!") | `toolkit-connection-status` | `McpAuthStatus.jsx`, wrapping `Typography` — added via `add-data-testid` for ELITEA-1934 (2026-08-02). Born on `automation/testids` (EliteaUI@a467c0ac); **now on `main` ✓ since 2026-08-12** — promoted in EliteaAI/EliteaUI@bf4a13ad (400-testid bulk promotion, EliteaUI PR #753). *Corrected 2026-08-24 during ELITEA-1936 implementation: the previous "not yet on `main`" claim went stale at that promotion and was copied into ELITEA-1936's AFS. Re-verify provenance per case; never inherit it.* |
 | Error toast (mcp_sync_tools failure) | `toast-message` | reuses the existing app-wide `Toast.jsx` component (same as `artifacts_page.py`/`skills_list_page.py`/`skill_detail_page.py`) — confirmed live, no new testid needed. Already on `main`. |
-| Model selector NAME (not the button) in Test Settings panel, `variant="field"` branch | `model-selector-name` | `LLMModelSelector.jsx` — now applies in the `"field"` branch too (previously `"default"`-only), fixed via `add-data-testid` for ELITEA-1937 (2026-08-02), scoped to only this testid since that's the one ELITEA-1937's test reads. Live on `automation/testids` (EliteaUI@a467c0ac); **not yet on `main`**. |
+| Model selector NAME (not the button) in Test Settings panel, `variant="field"` branch | `model-selector-name` | `LLMModelSelector.jsx` — now applies in the `"field"` branch too (previously `"default"`-only), fixed via `add-data-testid` for ELITEA-1937 (2026-08-02), scoped to only this testid since that's the one ELITEA-1937's test reads. Born on `automation/testids` (EliteaUI@a467c0ac); **now on `main` ✓ since 2026-08-12** — same EliteaAI/EliteaUI@bf4a13ad bulk promotion (verified 2026-08-24). |
 
 ## Confirmed testid GAPS (flag to `add-data-testid`, don't build raw fallbacks into new code without a stop+flag reason)
 
@@ -47,7 +53,16 @@ Confirmed-stable handles above. The third (`model-selector-name`/`-button`
 pair, #1088) is only half-resolved: `model-selector-name` is fixed and in
 Confirmed-stable handles; `model-selector-button` is still open, listed here.
 
-## State machine — `TestTools.jsx` (governs BOTH Remote MCP and Artifact toolkit Test Settings panels — same shared component)
+## ~~State machine — `TestTools.jsx`~~ — SUPERSEDED 2026-08-20 by EL-6277
+
+> ⚠️ **HISTORICAL ONLY — do not use for new work.** `TestTools.jsx` was deleted by
+> EliteaAI/EliteaUI@cb030b7d (`EL-6277`, #803, 2026-08-20). The three-state machine
+> below no longer describes the product: results no longer REPLACE the settings
+> form, and there is no back-arrow. Kept because it explains the shape of the
+> merged ELITEA-1866/1933/1937 specs and the #1086 clarification. **For current
+> behaviour read § Test Settings is now its own ROUTE (EL-6277), below.**
+
+### (historical) State machine — `TestTools.jsx` (governed BOTH Remote MCP and Artifact toolkit Test Settings panels)
 
 Three mutually-exclusive states, driven by `selectedTool` + `hasRealMessages || isRunning`:
 
@@ -343,3 +358,515 @@ configuration fields are COLLAPSED applies before any of these handles resolves.
 - **Case-text divergence (ELITEA-1931 step 2):** there is no "Headers accordion" — the
   case's step is satisfied by expanding the single Configuration section. Filed as
   clarification #1719 (also records the commit-on-blur behaviour).
+
+## Connection status + `selected_tools` via Raw Json (ELITEA-1935 / ELITEA-1936, 2026-08-24)
+
+**Appended during the ELITEA-1935/1936 cluster analysis.**
+
+### There is NO connection badge on MCP list cards
+
+An MCP list card's complete testid inventory is `entity-card-icon`,
+`entity-card-name`, `entity-card-tag-chip`, `mcp-pin-toggle-button-<id>`.
+`entity-card-tag-chip` renders the **type** (`Remote`), not a connection state.
+A page-wide text probe for `Disconnected` / `Not Connected` / `Connected!` on
+`/mcps/all` returns **false for all three** (18 cards, verified live). Source
+agrees: `grep -rn "Disconnected" src/` hits only the chat-participants feature
+(`mcpIsDisconnected`, a different surface — issue #687) and the guided-tour
+markdown. Connection status exists **only on the detail page**.
+ELITEA-1936's step 2 asserts otherwise — filed as clarification **#1723**.
+
+### The Login button is fully automatable — no OAuth window for a no-OAuth server
+
+`McpAuthStatus.jsx` → `onLogin` → `useMcpAuthCheck.runAuthCheck` emits a
+**socket `test_mcp_connection`** event (protocol-level `tools/list`). For a
+public server (DeepWiki) it succeeds in-page: `setConnectionVerified(url)` runs
+and the indicator flips. **No external window, no redirect, no credential.**
+Only a server that actually demands OAuth opens `McpAuthModal`.
+
+| Observable | Value |
+|---|---|
+| Status text | `Not Connected` → `Connected!` (**trailing `!`** — case texts omit it) |
+| Button label | `Login` → `Logging in...` (transient) → `Logout` |
+| Round-trip time | **< 500 ms** against DeepWiki — do NOT assert the `Logging in...` label, it is a guaranteed flake |
+
+### ⚠️ Connection state lives in `sessionStorage`, keyed by SERVER URL
+
+```
+sessionStorage["elitea_mcp_tokens_v1"]
+  = {"https://mcp.deepwiki.com/mcp": {"access_token": "__connection_verified__",
+     "issued_at": …, "expires_at": …, "connection_verified": true}}
+```
+
+Per-context, so a fresh Playwright context gives an honest `Not Connected`
+baseline — **but it is keyed by URL, not by toolkit**, so a unique per-test
+toolkit name does NOT isolate you. Any earlier test in the same context that
+connected to the same fixture URL leaves the next one already `Connected!`.
+Clear the key in setup or take a fresh context.
+
+### `available_mcp_tools` is CONDITIONAL, not absent (corrects #574)
+
+The blanket claim "the live product never renders `available_mcp_tools`" came
+from toolkits explored **before Load Tools**. Once tools are discovered the
+field is present and fully populated (`label` / `value` / `args_schema` per
+tool) — confirmed both in the editor and via `get_raw_json_full()`.
+Commented on #574. No change needed to `test_mcp_edit_raw_json_description.py`
+(its fixture has no tools loaded, so absence is correct there).
+
+### Editing `selected_tools` through the Raw Json editor
+
+`selected_tools` renders **one array element per line**, sorted, all discovered
+tools selected by default after Load Tools.
+
+- **Removing** a tool = deleting its whole line. Target a **non-last** element —
+  removing the last one strands the preceding line's trailing comma and the JSON
+  becomes invalid. `ask_question` sorts first with the DeepWiki fixture.
+- `Home` in CodeMirror is **smart-home** (first non-whitespace), so
+  `Home` → `Shift+End` → `Backspace` leaves the indentation behind. That
+  whitespace-only line is valid JSON and the server normalises it away on save.
+- **Re-adding** is a one-line replacement with the existing
+  `fill_raw_json_line('"read_wiki_contents",', '"ask_question", "read_wiki_contents",')`
+  — JSON is whitespace-insensitive, two names on one line is valid, server
+  reformats. Verified live end-to-end.
+- `McpFormPage` has **no line-delete helper** — ELITEA-1935's AFS specs
+  `delete_raw_json_line()` (same shape as `fill_raw_json_line`, `Backspace`
+  instead of `type`, inheriting its declared #579 exception).
+
+### Three traps that each cost a probe this session
+
+1. **`get_raw_json_full()` leaves the editor scrolled to the BOTTOM.** A
+   `fill_raw_json_line()` afterwards fails with `Locator.click: Timeout` — the
+   target line has been virtualized out of the DOM. **Do per-line edits BEFORE
+   any full read**, or scroll back to the top first.
+2. **Never `.fill()` the raw-JSON editor.** It is a contenteditable CodeMirror
+   root, so `fill()` replaces the **entire document** (observed: 29 lines → 1).
+   Per-line editing only. (Nothing saves in that state — Save goes disabled —
+   but recovery needs a reload.)
+3. **`is_save_button_disabled()` targets the CREATE-form Save**
+   (`toolkit-form-save-button`), which does not exist on the detail page — it
+   times out after 10 s. Use `detail_save_button` there.
+
+### Tool chips: selection is an ATTRIBUTE, not presence
+
+Deselecting a tool does **not** remove its chip — the chip list is driven by
+`available_mcp_tools`, the selection by `selected_tools`. All 3 chips stay
+rendered; the deselected one flips to `data-selected="false"`. Chip `innerText`
+is **empty** — never assert on chip text. Use
+`McpFormPage.is_tool_chip_selected(name)`.
+
+### `toolkit-type-card-mcp` mount delay is longer than previously logged
+
+Observed **3.5 s** this session (the earlier note said ~1 s). Rely on framework
+auto-waiting; never an immediate `query_selector` after `goto('/mcps/create')`.
+
+## Resolved/added during ELITEA-1935 / ELITEA-1936 implementation (2026-08-24)
+
+*Implementer-appended, attributed per the digest's one-writer rule — these are
+implementation-time facts, not a rewrite of the analyst's behaviour claims.*
+
+### New testid: `toolkit-connection-status-icon`
+
+The `OnlineIcon` svg sitting next to the connection-status text in
+`McpAuthStatus.jsx` had no testid, and chaining a raw `svg` selector off
+`toolkit-connection-status` is forbidden. Added as one additive attribute —
+EliteaAI/EliteaUI@55dc4f66 on `automation/testids`, **not yet on `main`**
+(human cherry-pick pending). Zero functional impact: no new DOM node, no hook,
+no removed markup.
+
+### ⚠️ Fourth Raw-Json trap: CodeMirror's **selectionMatch** makes a line locator ambiguous
+
+`fill_raw_json_line()` / `delete_raw_json_line()` select a line with
+`Home`/`Shift+End`. The instant that selection lands, CodeMirror's
+`selectionMatch` extension wraps **every other occurrence of the selected text**
+in a `cm-selectionMatch` `<span>` — so re-resolving the same
+`get_by_text(..., exact=True)` locator for the selection wait raises
+`strict mode violation: ... resolved to 3 elements`.
+
+It bites on any document where the line text recurs — which is *every*
+tools-loaded MCP, because a tool name appears both in `selected_tools`
+(`"ask_question",`) and in `available_mcp_tools` (`"value": "ask_question",`,
+whose selectionMatch span is exactly `"ask_question",`).
+
+**Fix, now shipped in both methods:** resolve the `ElementHandle` BEFORE the
+click and wait on that handle via the new
+`_wait_for_line_selection_applied_handle()`. `fill_raw_json_line()` carried this
+latent bug since ELITEA-1927 (its only merged caller edits a `"description"`
+line, which never recurs) — re-run green after the fix.
+
+### New helper: `McpFormPage.scroll_raw_json_to_top()`
+
+Trap 1 above ("`get_raw_json_full()` leaves the editor scrolled to the BOTTOM")
+says to edit before reading — but ELITEA-1935's own step order is read (step 3)
+then edit (step 4), so that isn't available. The helper re-uses
+`get_raw_json_full()`'s scrollable-ancestor walk and sets `scrollTop = 0`. Call
+it before any per-line edit that follows a full read.
+
+### New helper: `McpListPage.get_card_texts()`
+
+Absence assertions on the list page (#1723: "no card renders a connection
+badge") have no testid to bind to, because the element does not exist. Reading
+each card's own text through the testid-anchored `entity-card` container is the
+closest testid-only shape; page-wide `get_by_text` would be a new raw handle.
+
+### Confirmed live this session
+
+- `available_mcp_tools` entries carry `label` / `value` / `args_schema`; the
+  `value` is the raw tool name (matches the chip testid suffix and the
+  `selected_tools` entries).
+- The detail Save's `PUT` response body carries the full `settings`, so
+  `selected_tools` can be asserted from the **response** as well as the DOM.
+- `sessionStorage["elitea_mcp_tokens_v1"]` is empty at test start under the
+  standard `page` fixture (fresh browser context per test) — the `Not Connected`
+  baseline needs no explicit clearing, and the record dies with the context.
+- The Login round-trip against DeepWiki settles well inside the 20 s
+  `SAVE_RESPONSE_TIMEOUT`; the whole ELITEA-1936 spec runs in ~24 s.
+
+
+## Test Settings is now its own ROUTE (EL-6277) — read this before ANY Test-panel work
+
+**Confirmed live 2026-08-24** (ELITEA-1938/1939/1940 cluster analysis, batch
+`mcp-w02`), against `EliteaAI/EliteaUI` @ `automation/testids`, MCP id 2140.
+Supersedes the `TestTools.jsx` state-machine section above.
+
+`EliteaAI/EliteaUI@cb030b7d` — `feat: [EL-6277] move indexes into the details
+right panel (#803)`, 2026-08-20 — replaced `TestTools.jsx` with
+`src/[fsd]/features/toolkits/ui/toolkit-test/ToolkitTestPanel.jsx`:
+
+- **The Test surface is a ROUTE**, `/mcps/all/{id}/test` (toolkits:
+  `/toolkits/all/{id}/test`) — **not** a right-hand region of the detail page.
+  Reached from the detail **action bar** (`toolkit-action-bar`) via
+  `toolkit-test-button` (aria-label `Test MCP`). Direct URL navigation works too.
+- **Two-column layout, side by side**: left header `Test Settings`, right header
+  `Results`. Results no longer REPLACE the settings form — both are visible at
+  once, so the old "run-results view swaps in / back-arrow returns" model is gone.
+- **Both column headers are plain `Typography` with NO buttons.** The only
+  buttons on the page: the connection-status `toolkit-connection-login-button`,
+  the Model Settings gear (no testid), `toolkit-test-run-tool-button`, and —
+  after a run — `chat-copy-button`.
+- The tool-selection gating from EL-5947 is unchanged: with no tool selected the
+  left column renders `ToolkitTestEmptyState` and `toolkit-test-empty-tool-select`
+  ("Select Tool") is the only route into the settings form.
+- `ToolkitTestResults.jsx` renders `null` while `messages.length === 0`, so
+  `chat-message-list` still does not exist in the DOM before the first run
+  (#1086 holds after the refactor).
+
+### The trio of header controls the ELITEA-1938/1939/1940 case texts describe is GONE
+
+Pre-EL-5947 `TestTools.jsx@0cff136d^` really did render all three in the panel
+header (lines 191/195/196): `FullScreenToggle`, `ChatButton.ClearChatButton`,
+`ViewRunHistoryButton`. Two deliberate commits dismantled it:
+
+| Control | Fate | Today |
+|---|---|---|
+| **Clear the chat** (trash) | removed by `EL-5947` (@0cff136d, 2026-07-30), demoted to an unlabelled back-arrow; that back-arrow removed by `EL-6277` | **no control at all** — `handleClearChat` is still exposed by `useToolkitTestRunner` but consumed by nothing. Clarification **#1725**, ELITEA-1938 `blocked` |
+| **Fullscreen mode** | removed by `EL-5947`; never returned | **no control at all**. `FullScreenToggle.jsx` still lives and is still wired on `SkillTestPanel.jsx` / `IndexChat.jsx` / Applications `ConfigurationTab.jsx` — and carries **no testid** there either. Clarification **#1726**, ELITEA-1939 `blocked` |
+| **View run history** | **relocated**, not removed | lives in the DETAIL **action bar** (`ToolkitForm.jsx:562`, rendered when `isDetailsActionBar`). Clarification **#1727**, ELITEA-1940 `ready-for-automation` |
+
+**Before filing "control X is missing" on this surface, check this table** — two
+cases already spent a session rediscovering it.
+
+## Run History on the MCP / toolkit surface (2026-08-24, ELITEA-1940)
+
+| Handle | Testid | Notes |
+|---|---|---|
+| Run History button | `pipeline-history-tab` | In the DETAIL action bar. aria-label `view run history`, label "Run History". **The `pipeline-` prefix is a shared-component default** (`ViewRunHistoryButton.jsx:16`, `testId = 'pipeline-history-tab'`) — it is correct on the MCP surface too; already used by `PipelineDetailPage`. Do not rename. |
+| Run-history row | `run-history-list-item` | Same literal testid on EVERY row — distinguish positionally. Default sort Date-descending ⇒ index 0 = most recent. |
+| Row selected state | `[data-testid="run-history-list-item"][data-selected="true"]` | `RunHistoryListItem.jsx:151`. Testid + state attribute, the policy-compliant shape. |
+| Row overflow menu | `run-history-menu-menu-button` | present; wire only if a case's executed path calls it (#511) |
+| Detail pane | `chat-message-list` / `chat-message-item` | 2 items per run: the input (`Calling '<tool>' with parameters:` + JSON) and the output |
+
+- **Route:** clicking it navigates to **`/toolkits/all/{id}/history?isMCP=true`** —
+  a full PAGE, not a drawer. MCPs deliberately reuse the toolkit route with an
+  `isMCP` query flag (`useToolkitDetailNavigation.hooks.js`'s own doc comment
+  says so). Breadcrumb reads `Toolkits & Indexes / <name> / Run History`.
+- **Columns are `Date` + `Duration`** (e.g. `24-08-2026, 06:17 AM` / `1.19 s`).
+  No `Version` column here — the Agent surface's ELITEA-1876/#1282 note records
+  Date/Version/Duration; that is a DIFFERENT surface. Assert per surface.
+- **Row 0 is auto-selected on mount** (`RunHistoryContainer.jsx`: selects
+  `historyRows[0]` when nothing is selected). A "click an entry → details show"
+  assertion that clicks row 0 proves nothing — click a *different* row and assert
+  the `data-selected` flip AND the detail-content change. Needs ≥2 runs to be
+  meaningful.
+- Already automated on two OTHER surfaces with the same component — reuse the
+  shape: `pages/pipeline_detail_page.py:57,69-71,6897-7000` (ELITEA-2011/2070)
+  and `AgentDetailPage` (ELITEA-1876/1877).
+
+### Resolved/added during ELITEA-1940 implementation (2026-08-24)
+
+- **One Run History row is one CONVERSATION, not one Run Test click.**
+  `useToolkitChat.executeRunTool` creates a conversation only when
+  `!activeConversation`, so N runs inside a single mount of the Test panel all
+  land in ONE history row. To produce two rows, leave and re-enter the Test
+  route between runs (detail page -> `toolkit-test-button` -> re-select the
+  tool -> Run) — that remounts the panel and clears `activeConversation`.
+  Measured live: two back-to-back Run Test clicks produced exactly 1 row.
+- The Test panel's Results list **appends** across runs within a mount
+  (`setChatHistory(prev => [...prev, ...])`), so
+  `ToolkitTestSettingsPage.wait_for_tool_result()` (which reads `.last`) can
+  return the PREVIOUS run's already-completed ✅ message if a second run is
+  started in the same mount. Another reason to remount between runs.
+- Page objects added/extended: new `ToolkitRunHistoryPage`
+  (`automation/pages/toolkit_run_history_page.py`) for the
+  `/toolkits/all/{id}/history` route; `McpFormPage.action_bar` / `.test_button`
+  / `.run_history_button` + `open_test_route()` / `open_run_history()` /
+  `is_test_button_disabled()`; `ToolkitTestSettingsPage.set_param_field()`
+  (additive sibling of `fill_param_field`, which types into whatever is already
+  there and therefore APPENDS on a re-run).
+- **Merged spec `tests/ui/toolkits/test_mcp_test_settings_select_and_run_tool.py`
+  (ELITEA-1937) is RED on localhost** as of 2026-08-24, independently of this
+  case's branch: it waits for `toolkit-test-empty-tool-select` on the DETAIL
+  page, which EL-6277 moved to the `/mcps/all/{id}/test` route. Verified by
+  running it standalone (fails in Step 2: `Timeout 10000ms exceeded waiting for
+  get_by_test_id("toolkit-test-empty-tool-select")`). Needs an
+  `adjust-automated-test` pass — reported to the lead, not fixed here.
+
+## Sequencing gotchas on the MCP detail page (2026-08-24, both cost real time)
+
+1. **`toolkit-test-button` is disabled while the detail form is dirty** —
+   `ToolkitForm.jsx` passes `isTestDisabled={dirty}`. Clicking **Load Tools**
+   dirties the form, so a flow that loads tools must click
+   `toolkit-detail-save-button` and WAIT for `toolkit-test-button` to re-enable
+   before it can reach the Test route. Otherwise the button never becomes
+   clickable and the flow hangs on a disabled element.
+2. **The action bar mounts asynchronously after a client-side navigation back to
+   the detail page** — `pipeline-history-tab` returned *"does not match any
+   elements"* on an immediate click and appeared on a subsequent poll. Same class
+   as the existing `toolkit-type-card-mcp` note in § Fixtures (addendum). Rely on
+   framework auto-waiting / an explicit `wait_for(state="visible")`.
+
+> **Digest size note (2026-08-24):** this file is now ~600 lines, well past the
+> comfortable-single-read threshold the `test-case-analysis` skill flags (~150).
+> A split into an index + per-subarea files (create-form / detail-page /
+> test-surface / run-history / fixtures) is overdue. Not done in this batch —
+> several merged AFS files reference this path, so the restructure wants its own
+> unit rather than a mid-wave edit. Flagged to the lead.
+
+---
+
+## MCP DETAIL three-dot ("controls") menu — full inventory + Copy link / Pin to top (2026-08-24)
+
+**Appended during ELITEA-1946 / ELITEA-1959 cluster analysis, batch `mcp-w02`.** Everything
+below was observed live against `http://localhost:5173`, MCP `2140`, project `399`.
+
+### Menu inventory (owner viewMode, private project)
+
+Rendered by `src/[fsd]/features/toolkits/ui/toolkits-tab-bar/ToolkitsControls.jsx:60-73`,
+in this DOM order:
+
+| # | Label | testid | State |
+|---|---|---|---|
+| 1 | `Export` | **none** | `aria-disabled="true"` (hardcoded `disabled: true` at `ToolkitsControls.jsx:51`) |
+| 2 | `Fork` | `toolkit-actions-fork-menuitem` | `aria-disabled="true"` (hardcoded) |
+| 3 | `Copy link` | `Copy link-menuitem` ⚠️ | enabled |
+| 4 | `Pin to top` / `Unpin from top` | **none** | enabled |
+| 5 | `Delete` | `toolkit-actions-delete-menuitem` | enabled |
+
+Container handles: `controls-menu-button` (trigger) + `controls-menu` (popup) — both
+already `McpFormPage` fields, both on `main` ✓.
+
+**Menu items get their testid from their `key`:** `DotMenu.jsx:422` wires `testId: item.key`
+and `DotMenu.jsx:58` renders `data-testid={testId ? \`${testId}-menuitem\` : undefined}`.
+So the full testid string **never appears in EliteaUI source** — a closure-record grep must
+search the **key** (`toolkit-actions-delete`), not the composed value. Both existing keys are
+on `main` ✓ (`DeleteToolkitButton.jsx:72`, `ForkEntityButton.jsx:26`).
+
+### Three testid gaps on this menu (work orders, not waivers)
+
+| Element | Recommended testid | One-line fix |
+|---|---|---|
+| `Export` | `toolkit-actions-export-menuitem` | `useExportToolkitMenu()` (`ExportToolkitButton.jsx:38-40`) builds its menuItem with **no `key` at all** → no testid renders. Add an **optional** `key` param (same shape `usePinMenu` already uses) and pass `key: 'toolkit-actions-export'` from `ToolkitsControls.jsx:51`. |
+| `Copy link` | `copy-link-toolkit-menuitem` | Today's `Copy link-menuitem` is the **label leaking into the testid, space and all** — `useCopyLinkMenu()` defaults `key: key \|\| label` (`CopyLinkToEntityButton.jsx:44`). The hook already accepts `key`; pass `key: 'copy-link-toolkit'` at `ToolkitsControls.jsx:43`. Verified 0 references to the old string anywhere in `automation/` — the rename is safe. |
+| `Pin to top` | `pin-toggle-toolkit-menuitem` | `usePinMenu()` already supports an optional `key` (added for ELITEA-2049); `ToolkitsControls.jsx:45-49` is the one caller not passing one. Mirror credentials' existing `pin-toggle-credential`. |
+
+Testid = **stable identity**; the pinned/unpinned state is read from the item's **text**
+(`Pin to top` / `Unpin from top`), never from a state-flavoured testid variant.
+
+### Confirmed behaviours
+
+- **Copy link → toast** `toast-message` = exactly `The link has been copied to the clipboard.`
+  (trailing period; the TMS case texts omit it). Auto-dismisses in a few seconds — wait for it
+  **in the same synchronous chain as the click**; a DOM read one turn later finds nothing
+  (this bit twice during analysis).
+- **Copied URL shape:** `{origin}{APP_PREFIX}/{projectId}/mcps/all/{id}?viewMode=owner&name={encoded name}`.
+  Observed: `http://localhost:5173/399/mcps/all/2140?viewMode=owner&name=autotest_mcp_run_tool`.
+  Built by `useProjectEntityLink()` (`src/hooks/useProjectEntityLink.js:12-14`) as
+  `origin + getBasename() + details.projectPath + (details.search || '?viewMode=' + viewMode)`,
+  and `usePageDetails().projectPath` carries `PROJECT_ID_URL_PREFIX`. **The `/{projectId}`
+  segment is real and by design** — ELITEA-1959's case text omits it, filed as CLARIFICATION
+  [#1729](https://github.com/EliteaAI/elitea-testing-public/issues/1729). Never hardcode the
+  host or project id; build from `settings.app_base_url` + `settings.elitea_project_id`.
+- **Opening that URL in a new tab works**, via a `ProjectSwitcher` hard `window.location.replace()`
+  that strips the `/{projectId}` prefix — final URL settles at `/mcps/all/{id}?viewMode=owner&name=…`.
+  Assert on the settled state, never on the URL right after `goto`. Same hop documented for ELITEA-1898.
+- **Any menu-item click closes the menu** (`DotMenu.jsx`'s `withClose`). Consequence: to test
+  Escape-to-close you must **re-open the menu first**, or the assertion passes vacuously
+  (the ELITEA-2049 review-round-1 lesson, re-confirmed here).
+- **`Escape` closes the menu by UNMOUNTING it** → assert `to_have_count(0)`, not `not_to_be_visible()`.
+- **Pin from the detail menu:** `POST /api/v2/social/pin/prompt_lib/{project}/toolkit/{id}` → **201 Created**;
+  unpin → `DELETE` same path → **204 No Content**. Same asymmetric shape as credentials/pipelines.
+  After pinning, re-opening the menu shows `Unpin from top`, and `/mcps/all` puts the MCP at
+  **index 0** (verified: it jumped from index 3 to index 0 with no reload beyond the navigation).
+- **List-row pin toggle** is `mcp-pin-toggle-button-{id}` (`PinButton.jsx:98`,
+  `${getPinTestIdSlug(entityType)}-pin-toggle-button-${entityId}`, on `main` ✓). Its state is
+  in `aria-label` (`Pin to top` / `Unpin from top`) — a clean, testid-anchored state read.
+- **Pin timing is asymmetric** (consistent with the merged credential/pipeline pin tests):
+  pinning re-sorts immediately; **unpinning does not** — the entity stays at the top until a
+  fresh navigate/re-fetch, even though its label flips back instantly.
+- **State of project 399 as of 2026-08-24:** 19 MCPs, none pinned, default sort newest-first
+  (id-descending). A freshly created MCP is therefore already at index 0 — **a pin test must
+  create TWO MCPs** (A then B, pin A) or the "moves to top" assertion is vacuous.
+
+### Clipboard, in this repo
+
+- `conftest.py:303` already grants `clipboard-read` + `clipboard-write` suite-wide; the merged
+  tests re-grant defensively per test. **Without the grant, `navigator.clipboard.readText()`
+  raises `NotAllowedError: Read permission denied`** (reproduced verbatim in the Playwright-MCP
+  context during this analysis — which is also why the analyst verified the copied string by a
+  real `Meta+V` paste into the list's `agent-search-input` instead).
+- **Never call `readText()` directly** — use `_copy_link_via_menuitem()` from
+  `test_pipeline_three_dot_menu_actions.py:44-65` (clear → click → wait for toast →
+  `page.wait_for_function` poll → read). A direct call hung ~30 min on a permission prompt during
+  ELITEA-2049's exploration.
+- **New tab must be `page.context.new_page()`**, not `browser.new_page()` — the latter is an
+  unauthenticated context (`test_agent_hub_copy_link_from_modal.py:121-123`).
+
+## Resolved/added during ELITEA-1946 / ELITEA-1959 implementation (2026-08-24)
+
+**Testids added** — EliteaAI/EliteaUI@2c4107b4 on `automation/testids` (one additive commit,
+`ToolkitsControls.jsx` only; the shared hooks are untouched so no other caller changed):
+
+| Testid | Was |
+|---|---|
+| `toolkit-actions-export-menuitem` | nothing at all (`useExportToolkitMenu()` supplies no `key`, and `DotMenu.jsx` wires `testId: item.key`) |
+| `copy-link-toolkit-menuitem` | `Copy link-menuitem` — `useCopyLinkMenu()` defaults `key: key \|\| label`, leaking the visible label (space included) |
+| `pin-toggle-toolkit-menuitem` | nothing (`usePinMenu()` accepts an optional `key`; this caller passed none) |
+
+The compliant shape is naming the `key` **at the call site's items array** —
+`{ ...pinMenuItem, key: 'pin-toggle-toolkit' }` — exactly as `SkillControls.jsx`
+(`pin-toggle-skill`) and `CredentialsControls.jsx` (`pin-toggle-credential`) already do. Do NOT
+add a `key` param to the shared hook for this: the call-site spread is smaller, scoped, and has
+precedent. Not yet on `main` — awaiting a human cherry-pick.
+
+**The controls menu unmounts behind MUI's close TRANSITION.** `DotMenu.jsx`'s `withClose` fires
+on every item click, but a `controls_menu.count()` read in the click's own tick still returns
+`1` — the first ELITEA-1959 run failed exactly there. Wait on the condition first:
+`McpFormPage.wait_for_controls_menu_closed()` (`wait_for(state="detached")`), then assert
+`count() == 0`. Same applies after `Escape`.
+
+**The `/mcps/create` type-picker emits a React dev-mode console error on every mount** —
+`Each child in a list should have a unique "key" prop` from
+`src/[fsd]/shared/ui/category/CategorySection.jsx` via `ToolkitTypeSelector.jsx`. Already
+tracked as [#656](https://github.com/EliteaAI/elitea-testing-public/issues/656). Consequence for
+any MCP test that seeds its own MCP through the UI create flow **and** asserts
+`assert not console_errors`: register the console listener **after** setup, or the assertion
+fails on scaffolding rather than on the surface under test. (Detail-page and deep-link flows
+themselves were clean — 0 console errors across both cases.)
+
+**Both cases green as written** — the analyst's menu inventory, `aria-disabled` states, exact
+toast text (`The link has been copied to the clipboard.`), the `/{projectId}` clipboard URL
+shape, the `ProjectSwitcher` strip on the deep-linked tab, and the pin → index-0 reorder all
+reproduced first try under pytest.
+
+---
+
+## The MCP detail page has NO back button — it's a BREADCRUMB TRAIL now (2026-08-24, ELITEA-1961)
+
+**Appended during ELITEA-1961 analysis, batch `mcp-w02`. Read this before writing any
+"back button" / detail-to-list navigation assertion on ANY toolkit-family surface.**
+
+`src/pages/Toolkits/EditToolkit.jsx:390-403` renders exactly one of two headers:
+
+```jsx
+{hasBreadcrumbTrail ? <Breadcrumbs /> : (<><BackButton /><Typography data-testid="toolkit-detail-title"/></>)}
+```
+
+`useHasBreadcrumbTrail()` (`src/[fsd]/shared/lib/hooks/useBreadcrumbTrail.hooks.js:35`) is
+**purely route-based** — `resolveBreadcrumbTrail(pathname).length > 0` — and `/mcps/all/:id`
+declares a trail (`src/[fsd]/shared/lib/constants/breadcrumb.constants.js:48`). So
+**`<BackButton/>` is unreachable on this route no matter how the user arrived** (card click
+and deep link both verified live). `document.querySelector('[data-testid="back-button"]')`
+→ `null` on `/mcps/all/{id}`.
+
+`toolkit-detail-title` still exists — but it now renders as the **last (non-clickable) crumb
+inside the trail**, emitted from `breadcrumb.constants.js`, not from the `EditToolkit.jsx:398`
+`<Typography>` (which is in the dead branch). Same testid, different owner.
+
+| Handle | Testid | Notes |
+|---|---|---|
+| Breadcrumb nav (detail pages ONLY) | `breadcrumbs` | `<nav>`, text `MCPs/{name}`. **Absent on `/mcps/all`** — a clean detail-vs-list discriminator. On `main` ✓ |
+| Parent crumb link | `breadcrumb-item` | `<a>`, text `MCPs`. Exactly **1** on the MCP detail page — assert `to_have_count(1)` before reading. Clicking it navigates to `/mcps/all` client-side. On `main` ✓ |
+| Current crumb | `toolkit-detail-title` | last crumb, not a link. On `main` ✓ |
+
+Breadcrumbs are recent — `breadcrumb.constants.js` was last touched on `main` by `1facc163`
+(`feat: [EL-6293] dedicated index search page`, 2026-08-21), same redesign era as EL-6277.
+Filed as CLARIFICATION [#1731](https://github.com/EliteaAI/elitea-testing-public/issues/1731)
+against ELITEA-1961's step 3/4 text. **No page object binds `breadcrumbs`/`breadcrumb-item`
+yet** — ELITEA-1961's AFS specs them onto `McpFormPage`.
+
+## MCP list state across a detail round-trip: filter SURVIVES, scroll does NOT (2026-08-24)
+
+Measured live, twice, two different search terms:
+
+| List state | Survives detail → back? | Mechanism |
+|---|---|---|
+| Search filter (term + filtered card set) | **YES ✅** | the term lives in the redux slice `src/slices/search.js` (in-memory). Survives a client-side route change; would **NOT** survive a `page.reload()`. |
+| Scroll position | **NO ❌** | `#EliteACustomTabPanel` `scrollTop` 99 → 0 on return, still 0 at +2 s. No list scroll-restoration code exists anywhere in `src/` — never implemented, not regressed. |
+
+Two consequences for anyone writing a list-page assertion here:
+
+1. **The filter is NEVER in the URL.** `/mcps/all` carries no query string while filtered
+   (verified). Read the filter from `agent-search-input`'s value + the rendered card set,
+   never from `location.search`.
+2. **Never `reload()` mid-flow** in a case that depends on the filter surviving — the redux
+   store dies with the page and the filter silently resets.
+
+The scroll half is CLARIFICATION
+[#1732](https://github.com/EliteaAI/elitea-testing-public/issues/1732) (case-text vs product
+scope, human ruling pending). ELITEA-1961's AFS deliberately asserts it in **neither**
+direction: asserting preservation reverse-masks, asserting reset-to-0 cements a possibly
+unintended behaviour, and the scroller carries an `id` not a `data-testid` (so asserting it
+at all would need a blanket-add on an element no case touches).
+
+**List-page baseline (project 399, 2026-08-24):** 19 MCPs, card view default, scroller
+`scrollHeight` 900 vs `clientHeight` 801 at 1920×1080 — i.e. only **~99 px** of scroll range.
+Any future scroll-dependent case must assert `scrollHeight > clientHeight` first or seed more
+MCPs; at a smaller card count the list does not scroll at all and the observable is vacuous.
+
+## MCP DETAIL page top-left control is a BREADCRUMB, not a back arrow (ELITEA-1961, 2026-08-24)
+
+**Resolved/added during ELITEA-1961 implementation** (analyst-discovered, confirmed
+green in the automated flow). Read this before writing any "back to the list"
+assertion on `/mcps/all/:id`.
+
+`EditToolkit.jsx:390-403` renders `hasBreadcrumbTrail ? <Breadcrumbs/> :
+(<BackButton/> + <Typography data-testid="toolkit-detail-title"/>)`.
+`useHasBreadcrumbTrail()` is **purely route-based** and `/mcps/all/:id` declares a
+trail (`breadcrumb.constants.js:48`), so the `<BackButton/>` branch is **unreachable
+on this route no matter how the user arrived** (card click or deep link). Case-text
+drift, not a defect — CLARIFICATION #1731.
+
+| Handle | Testid | Notes |
+|---|---|---|
+| Breadcrumb nav (detail only) | `breadcrumbs` | on `main` ✓ (`shared/ui/breadcrumbs/Breadcrumbs.jsx:20`). `<nav>`; `text_content()` concatenates to `MCPs/{name}` with no separating whitespace. **Absent on `/mcps/all`** — the cleanest detail-vs-list discriminator. |
+| Parent crumb link | `breadcrumb-item` | on `main` ✓ (`BreadcrumbItem.jsx:30`). `<a>` reading `MCPs`; exactly **one** renders on the MCP detail page — assert count-then-text, not `.first`. |
+| Back arrow | `back-button` | on `main` ✓ but **count 0 on this route** — bind it only for the absence assertion. |
+
+Bound on `McpFormPage` as `breadcrumbs_nav` / `breadcrumb_parent_link` /
+`back_button` + `get_breadcrumb_text()` / `click_breadcrumb_parent()`. Kept on
+`McpFormPage` rather than promoted to `BasePage`: the trail is app-shell and a
+future cross-surface case may want it there, but promoting now would bind a testid
+no other current spec touches (#511 scope rule).
+
+### List filter state survives the round trip; scroll position does NOT
+
+- The list's search filter lives in **redux** (`src/slices/search.js`), in-memory and
+  **not in the URL** — `/mcps/all` carries no query string while filtered. It survives
+  a client-side route change (which is exactly why the detail→list round trip keeps the
+  filter) but would NOT survive `page.reload()`. Never reload mid-flow, never read the
+  filter off the URL.
+- **Scroll position is not restored** (`scrollTop` 99 → 0; no list scroll-restoration
+  code exists anywhere in `src/`). ELITEA-1961 deliberately asserts it in **neither**
+  direction — CLARIFICATION #1732 is open for a human ruling.
+- Proving the breadcrumb navigates **client-side** needs no `page.evaluate`: a full
+  document load fires Playwright's page `"load"` event and an SPA route change does
+  not, so watching for that event's ABSENCE across the click is an honest,
+  product-produced signal.

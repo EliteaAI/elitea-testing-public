@@ -22,10 +22,10 @@ short render-lag wait is used instead.
 import logging
 
 from playwright.sync_api import Page
+from utils.actions import action
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
-from utils.actions import action
 
 logger = logging.getLogger("elitea.pages.mcp_list")
 
@@ -113,6 +113,17 @@ class McpListPage(BasePage):
         testid="mcp-table-row-name",
         description="MCP name cell in table-view rows — collection locator, one per visible row",
     )
+
+    # List-row pin toggle (dynamic testid) — PinButton.jsx:98 renders
+    # `${getPinTestIdSlug(entityType)}-pin-toggle-button-${entityId}`, which
+    # resolves to `mcp-pin-toggle-button-{id}` on /mcps/all (confirmed live,
+    # ELITEA-1946). Runtime-parameterized testids live as an UPPER_CASE
+    # class-level template per .agents/testing.md § Locator policy, never as
+    # an inline get_by_test_id(f"...") in a method body. The pinned state is
+    # read from the button's aria-label ("Pin to top" / "Unpin from top"),
+    # matching CredentialsListPage.PIN_TOGGLE_BUTTON / PipelinesListPage's
+    # same-shaped constants.
+    PIN_TOGGLE_BUTTON = '[data-testid="mcp-pin-toggle-button-{}"]'
 
     # Shared SearchBar.jsx component testids (also used by Credentials/
     # Skills/Toolkits/Applications list pages) — same shared component, same
@@ -321,6 +332,28 @@ class McpListPage(BasePage):
         chip.wait_for(state="visible", timeout=timeout)
         return chip.text_content() or ""
 
+    def get_card_texts(self, timeout: int = UI_ELEMENT_TIMEOUT) -> list[str]:
+        """Return the full rendered text of every visible MCP card.
+
+        Scoped to the ``entity-card`` testid (the :attr:`mcp_card` collection
+        locator) — no raw page-level handle. Used by ELITEA-1936 step 2 to
+        assert an ABSENCE: no Remote MCP card renders a connection-status
+        badge. The badge the case expects does not exist in the product
+        (clarification EliteaAI/elitea-testing-public#1723), so there is no
+        testid to bind an absence assertion to — reading each card's own text
+        through its testid-anchored container is the closest testid-only
+        shape, and it keeps the case's claim test-enforced instead of silently
+        dropped.
+
+        Args:
+            timeout: Maximum time to wait for the first card to render.
+        """
+        try:
+            self.mcp_card.first.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return []
+        return [self.mcp_card.nth(i).inner_text() for i in range(self.mcp_card.count())]
+
     @action("Open an MCP card by name from the list")
     def open_card_by_name(self, name: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
         """Click the MCP card matching *name*, navigating to its detail page.
@@ -352,6 +385,22 @@ class McpListPage(BasePage):
         card.first.click()
         self.wait_for_network()
         logger.info("Opened MCP card %r from the list", name)
+
+    @action("Read an MCP row's pin-toggle state from the list")
+    def get_pin_toggle_label(self, mcp_id: int, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Return the ``aria-label`` of the list row's pin toggle for *mcp_id*.
+
+        "Pin to top" when the MCP is not pinned, "Unpin from top" when it is —
+        the state lives in the aria-label, not in a second testid
+        (.agents/testing.md § Locator policy).
+
+        Args:
+            mcp_id: The MCP/toolkit's numeric id.
+            timeout: Maximum time to wait for the button to render.
+        """
+        button = self.page.locator(self.PIN_TOGGLE_BUTTON.format(mcp_id))
+        button.first.wait_for(state="visible", timeout=timeout)
+        return button.first.get_attribute("aria-label") or ""
 
     # ------------------------------------------------------------------
     # Table view
