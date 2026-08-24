@@ -1,2 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to create skill — Timeout 10000ms exceeded.
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to create skill — Timeout 10000ms exceeded.
