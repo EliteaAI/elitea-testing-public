@@ -30,7 +30,10 @@ Two runs (not one) are required by the observable: ``RunHistoryContainer``
 auto-selects row 0 on mount, so a "click an entry -> details show" assertion
 that clicks row 0 would pass even if the click did nothing. The runs use
 DIFFERENT ``repoName`` values so the detail pane's content is provably
-row-specific.
+row-specific, and they are performed in two SEPARATE visits to the Test route —
+one Run History row is one conversation, and a conversation is only created
+when the test panel has none (``useToolkitChat.executeRunTool``), so two runs
+without a remount would share a single row.
 """
 
 import logging
@@ -140,17 +143,23 @@ def test_mcp_view_run_history_and_entry_details(page, toolkit_api: ToolkitAPI):
             )
 
         with allure.step(
-            f"Step 5b — Run the same tool a second time with repoName={REPO_SECOND_RUN!r} "
-            "so Run History holds two DISTINGUISHABLE executions"
+            f"Step 5b — Re-open the Test route and run the tool again with "
+            f"repoName={REPO_SECOND_RUN!r}, so Run History holds two DISTINGUISHABLE executions"
         ):
-            result_items = test_settings.get_result_items()
-            items_before_second_run = result_items.count()
+            # One Run History row == one conversation, NOT one Run Test click:
+            # `useToolkitChat.executeRunTool` only creates a conversation when
+            # `!activeConversation`, so two runs inside a single panel mount land in
+            # the SAME row (confirmed live — the first implementation ran the tool
+            # twice in place and Run History showed 1 row). Re-entering the Test
+            # route remounts the panel, clearing `activeConversation`, which is what
+            # a user doing two separate test sessions does.
+            form.navigate_to_detail(created_id, project_id)
+            form.open_test_route(created_id)
+            test_settings.select_tool_from_empty_state(TOOL_KEY)
+            test_settings.wait_for_panel()
             test_settings.set_param_field("repoName", REPO_SECOND_RUN)
+            expect(test_settings.run_tool_button).to_be_enabled(timeout=10_000)
             test_settings.run_tool()
-            # The results list APPENDS (useToolkitChat: setChatHistory(prev => [...prev, ...])),
-            # so wait for a NEW item before reading the last one — otherwise the previous
-            # run's already-completed result would satisfy the ✅/❌ wait immediately.
-            expect(result_items.nth(items_before_second_run)).to_be_visible(timeout=RUN_RESULT_TIMEOUT)
             second_result = test_settings.wait_for_tool_result(timeout=RUN_RESULT_TIMEOUT)
             assert TOOL_KEY in second_result, (
                 f"Second result should name the executed tool {TOOL_KEY!r}, got: {second_result[:200]!r}"
