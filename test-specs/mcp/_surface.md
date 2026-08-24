@@ -341,4 +341,5 @@ configuration fields are COLLAPSED applies before any of these handles resolves.
 - The credentials dropdown-close defect **#1047 does not reproduce here** — selecting a
   saved secret closed the dropdown normally on the MCP detail page.
 - **Case-text divergence (ELITEA-1931 step 2):** there is no "Headers accordion" — the
-  case's step is satisfied by expanding the single Configuration section.
+  case's step is satisfied by expanding the single Configuration section. Filed as
+  clarification #1719 (also records the commit-on-blur behaviour).

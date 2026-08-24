@@ -94,8 +94,8 @@ and on the detail page that whole section is collapsed behind a single
 `toolkit-configuration-show-more` control. The step's *intent* (make the Headers
 editor reachable) is executed faithfully by expanding that section; the automation
 asserts the live contract, not the case's wording (reverse-masking guard,
-`.agents/role-overrides.md`). Filed as a case-text clarification — see § Findings
-in the Run Report.
+`.agents/role-overrides.md`). Filed as case-text clarification **#1719** (which
+also records the commit-on-blur behaviour of the editor).
 
 ## Cleanup
 The seeded toolkit is deleted in a `finally:` block via
