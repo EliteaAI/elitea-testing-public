@@ -154,7 +154,7 @@ def guardrails_test_toolkit(
     toolkit_settings = {
         "jira_configuration": {
             "elitea_title": guardrails_test_credential["elitea_title"],
-            "private": True,
+            "private": False,  # Changed from True - private credentials not immediately accessible
         },
         "selected_tools": [
             "list_projects",     # For sensitive tool test - zero parameters
