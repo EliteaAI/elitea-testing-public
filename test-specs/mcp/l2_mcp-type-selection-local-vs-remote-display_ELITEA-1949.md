@@ -105,9 +105,9 @@ verified 2026-08-24 with `cd ../EliteaUI && git fetch origin` first.
 | Remote MCP type card | `toolkit-type-card-mcp` | **on-main ✓** (runtime-composed ``toolkit-type-card-${itemKey}``, `CategoryItemCard.jsx:14` — the literal string is not greppable; the template is on `main`) | ⚠️ **mounts asynchronously — up to 3.5 s** after `goto('/mcps/create')`. Framework auto-waiting only; never an immediate DOM read |
 | No-results title | `catalog-no-results-title` | **on-main ✓** | `NoResultsMessage.jsx`; text `No MCPs found` |
 | No-results description | `catalog-no-results-description` | **on-main ✓** | text `Try adjusting your search terms` |
-| **Page heading "Choose the MCP type"** | **`mcp-type-picker-heading`** | **needs-adding** (work order A) | |
-| **Type filter chips** | **`mcp-type-picker-filter-chip-local` / `-remote`** + `data-selected="true|false"` | **needs-adding** (work order B) | today both chips share `category-filter-tab` with no state attribute |
-| **Documentation link** | **`mcp-type-picker-local-documentation-link`** | **needs-adding** (work order C) | |
+| **Page heading "Choose the MCP type"** | **`mcp-type-picker-heading`** | **ADDED** — EliteaAI/EliteaUI@f4ce7128 + EliteaAI/EliteaUI@989db4f0 on `automation/testids`, **NOT yet on `main`** | |
+| **Type filter chips** | **`mcp-type-picker-filter-chip-local` / `-remote`** + `data-selected="true|false"` | **ADDED** — same two commits, **NOT yet on `main`** | `category-filter-tab` is retained as the no-prefix fallback and is still what the in-chat MCP canvas renders |
+| **Documentation link** | **`mcp-type-picker-local-documentation-link`** | **ADDED** — EliteaAI/EliteaUI@f4ce7128, **NOT yet on `main`** | |
 
 ### Testid work orders — `add-data-testid`, on `EliteaAI/EliteaUI` `automation/testids`
 
@@ -120,8 +120,21 @@ component, so it must not hardcode a feature-scoped testid: add a `titleTestId` 
 put it on the existing title `<Typography>` (`:33-39`). Plumb it through
 `src/[fsd]/shared/ui/category/GroupedCategory.jsx` (destructure + forward, alongside the
 `searchInputTestId` prop it **already forwards this exact way** — copy that line). Call
-site `src/pages/Toolkits/ToolkitTypeSelector.jsx`:
+site **`src/pages/Toolkits/CreateToolkit.jsx`** (not `ToolkitTypeSelector.jsx`):
 `titleTestId={isMCP ? 'mcp-type-picker-heading' : undefined}` — MCP only, per #511.
+`ToolkitTypeSelector` merely destructures and forwards `titleTestId`.
+
+> **AMENDED AT IMPLEMENTATION (2026-08-24, ELITEA-1949).** The AFS originally put the
+> `isMCP ? …` decision *inside* `ToolkitTypeSelector`. That component has **two** call
+> sites that both pass `isMCP` — the standalone `/mcps/create` page
+> (`CreateToolkit.jsx`) **and the in-chat MCP canvas**
+> (`src/[fsd]/features/chat/ui/editors/ToolkitEditor.jsx:304`) — so deciding there also
+> renamed the canvas chips away from `category-filter-tab`, which two merged specs bind
+> to (`tests/ui/chat/test_create_mcp_from_conversation.py` and
+> `…_discard_changes.py`, via `McpFormPage.select_remote_category_tab`). Hoisting the
+> decision to `CreateToolkit.jsx` leaves the canvas byte-identical. Both chat specs
+> re-ran green against the shipped change (evidence in the PR description).
+> Shipped as EliteaAI/EliteaUI@f4ce7128 + EliteaAI/EliteaUI@989db4f0.
 
 **B — per-chip testid + state attribute.** Same file, the chip map at `:66-81`. There is
 an **exact in-repo precedent to mirror**: the sibling `CategoryRail.jsx:5-30` already has
@@ -136,9 +149,10 @@ data-selected={selectedCategories.includes(category) ? 'true' : 'false'}
 
 **Keep `category-filter-tab` as the no-prefix fallback** — other surfaces rely on it;
 removing it would be a functional change. Plumb `chipTestIdPrefix` through
-`GroupedCategory` the same way as A, and pass
+`GroupedCategory` **and `ToolkitTypeSelector`** the same way as A, and pass
 `chipTestIdPrefix={isMCP ? 'mcp-type-picker-filter-chip' : undefined}` at the
-`ToolkitTypeSelector` call site → `mcp-type-picker-filter-chip-local` /
+**`CreateToolkit.jsx`** call site (see the amendment note under A) →
+`mcp-type-picker-filter-chip-local` /
 `mcp-type-picker-filter-chip-remote`. Both branches are referenced on the executed path
 (both asserted present in step 6, both clicked), so #511 is satisfied.
 
@@ -175,9 +189,7 @@ fields / constants (never built in a method body):
 
 ```python
 type_picker_heading      = LocatorDescriptor(testid="mcp-type-picker-heading")
-local_empty_state        = LocatorDescriptor(testid="mcp-type-picker-local-empty-state")
 local_documentation_link = LocatorDescriptor(testid="mcp-type-picker-local-documentation-link")
-remote_type_card         = LocatorDescriptor(testid="toolkit-type-card-mcp")   # may already exist
 no_results_title         = LocatorDescriptor(testid="catalog-no-results-title")
 no_results_description   = LocatorDescriptor(testid="catalog-no-results-description")
 
@@ -185,8 +197,13 @@ TYPE_FILTER_CHIP          = '[data-testid="mcp-type-picker-filter-chip-{}"]'
 TYPE_FILTER_CHIP_SELECTED = '[data-testid="mcp-type-picker-filter-chip-{}"][data-selected="true"]'
 ```
 
-plus `click_type_filter(name)` / `is_type_filter_selected(name)` helpers that `format()`
+plus `type_filter_chip(slug)` / `selected_type_filter_chip(slug)` /
+`click_type_filter(slug)` / `is_type_filter_selected(slug)` helpers that `format()`
 those constants. Mirror `McpListPage.type_filter_chip()` (ELITEA-1942) for shape.
+
+**Shipped as written**, minus two rows that already existed on `McpFormPage` and were
+reused unchanged: `local_empty_state` (added ELITEA-1921) and `remote_mcp_type_card`
+(the AFS's `remote_type_card`).
 
 ---
 
