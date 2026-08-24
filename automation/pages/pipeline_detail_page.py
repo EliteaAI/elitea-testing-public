@@ -1627,8 +1627,11 @@ class PipelineDetailPage(PipelineFormPage):
         description="Run Details panel close icon button"
     )
 
+    # TEMPORARY FIX: testid removed in EliteaUI commit a638b586 (Aug 11)
+    # Using CSS locator to target the parent Box that contains the label + node name
+    # This matches the <Box sx={styles.timelineHeader}> element
     run_details_timeline_section = LocatorDescriptor(
-        testid="pipeline-run-details-timeline-section",
+        locator='[data-testid="pipeline-run-details-panel"] >> text="Timeline step:" >> xpath=..',
         description='Run Details panel "Timeline step" section (label + node id + stepper)'
     )
 
