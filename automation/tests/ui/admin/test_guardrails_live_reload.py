@@ -310,6 +310,11 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
                 print(f"[CLEANUP] Could not remove empty toolkit containers: {e}")
                 logger.debug("Could not remove empty toolkit containers: %s", e)
 
+            # Reload page to ensure stable state before sensitive tools cleanup
+            print("[CLEANUP] Reloading page for stable state")
+            guardrails.navigate_to_guardrails()
+            pg.wait_for_timeout(1000)  # Let page settle
+
             # Remove sensitive tools
             print("[CLEANUP] Cleaning up sensitive tools")
             logger.info("Cleaning up sensitive tools")
