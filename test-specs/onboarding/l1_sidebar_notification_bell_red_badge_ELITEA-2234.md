@@ -44,19 +44,30 @@ popover opens with 5 unread items, X closes it, and the red dot **survives** ope
   ("first login" ⇒ the project-created notification). See § Test-data dependency — it is the one
   real risk in this case and is handled by reading the product's own count, not by fabricating it.
 - Route: any authenticated route renders the sidebar; this AFS uses `/chat` (the default landing).
-- **The first-visit interactive-tour prompt blocks the sidebar** — see § Entry-path quirk.
+- ~~The first-visit interactive-tour prompt blocks the sidebar~~ — **does not fire on the suite's entry path**; see § Entry-path quirk (amended at implementation).
 - **ZERO substitution.** No route mock, no injected state, no API seeding. Every asserted value is
   produced by the product.
 
-### Entry-path quirk (live-confirmed, costs a click)
+### Entry-path quirk (analysis-time) — **amended at implementation, 2026-08-24**
 
-On a fresh context, landing on `/chat` opens the interactive-tour **first-visit prompt** ("New here?
-… Skip / Start!"). It is modal with `InteractiveTourBackdrop`: the sidebar is *visible but not
-clickable* — a plain `bell.click()` fails Playwright actionability with
-`<div class="MuiBox-root …"> intercepts pointer events` (reproduced live). Dismiss it first with the
-existing page object `components/interactive_tour.py` → `FirstVisitPromptCard.click_skip()`
-(testids `interactive-tour-first-visit-prompt` / `-skip-button`, shipped in wave w2). Opening it also
-emits the known `#1753` console error — filter that ONE message, don't assert a bare "no console errors".
+**Analysis observed:** landing on `/chat` opened the interactive-tour **first-visit prompt** ("New
+here? … Skip / Start!"), a modal with `InteractiveTourBackdrop` whose backdrop intercepts pointer
+events — a plain `bell.click()` failed Playwright actionability with
+`<div class="MuiBox-root …"> intercepts pointer events`.
+
+**Amended (implementer, ELITEA-2234/2233 implementation):** that prompt **cannot fire on the
+suite's entry path**, and no dismissal step is implemented. `NewChat.jsx:104` is the only caller of
+`useProposePendingTour`, and that hook returns immediately unless
+`localStorage["interactive-tour:first-elitea:pending"] === "true"` — a flag written **only** by
+`/onboarding`'s `handlePersonalProjectReady()`
+(`[fsd]/features/interactive-tours/lib/hooks/useProposeTour.hooks.js`). The analysis session had
+visited `/onboarding` in the same browser profile; the suite has not: on localhost `auth_state`
+returns an **empty storage state** (`fixtures/session_fixtures.py:110`) and `conftest.py` builds a
+**fresh context per test**, so the flag can never be set when the spec navigates straight to `/chat`.
+Confirmed by the implementation run: prompt absent, **0 console errors**.
+
+The `#1753` console filter is kept anyway (one message, ticket-linked) so the assertion stays honest
+if a future entry path does arm the prompt — it costs nothing and masks nothing.
 
 ---
 
@@ -102,9 +113,9 @@ not a product problem). Do not build it speculatively.
 | # | Case element | Expected result | Covered by | Asserted where | Disposition |
 |---|---|---|---|---|---|
 | P | Precondition: "User is logged in to the Elitea platform" | authenticated session | framework `auth_state` | `expect(sidebar_toggle).to_be_visible()` | **asserted** (transit) |
-| 1 | Log in to private project for the **first time**; land on the expected landing page | authenticated, on landing page | `page.goto("/chat")` + dismiss first-visit prompt | `expect(page).to_have_url(re.compile("/chat"))` + `expect(sidebar_toggle).to_be_visible()` | **asserted, scope-amended** — "first login" is **not reproducible** for a standard user and is not what the product gates on: the badge reflects the *unread count* at any login (`NotificationButton.jsx:63`), not a first-session flag. Asserting the live contract per the reverse-masking guard; drift filed as a clarification |
-| 2 | Locate the bell (notification) icon in the top-right area of the sidebar header | control located, no error | `sidebar-notifications-button` (**testid needed**) | `expect(notifications_button).to_be_visible()` + geometry: its box is right of `sidebar-toggle` and inside the header row (live: bell x=172-200 y=16-44 vs logo x=8-52 y=8-52) | **asserted** — position asserted as `bell.x > logo.right`, not as pixel constants |
-| 3 | Verify the bell icon is visible | bell visible | `sidebar-notifications-bell-icon` (**testid needed**) | `expect(bell_icon).to_be_visible()` | **asserted** |
+| 1 | Log in to private project for the **first time**; land on the expected landing page | authenticated, on landing page | `page.goto("/chat")` (no prompt dismissal — see § Entry-path quirk, amended) | `expect(page).to_have_url(re.compile("/chat"))` + `expect(sidebar_toggle).to_be_visible()` | **asserted, scope-amended** — "first login" is **not reproducible** for a standard user and is not what the product gates on: the badge reflects the *unread count* at any login (`NotificationButton.jsx:63`), not a first-session flag. Asserting the live contract per the reverse-masking guard; drift filed as a clarification |
+| 2 | Locate the bell (notification) icon in the top-right area of the sidebar header | control located, no error | `sidebar-notifications-button` (**added** EliteaAI/EliteaUI@1d512ae2) | `expect(notifications_button).to_be_visible()` + geometry: its box is right of `sidebar-toggle` and inside the header row (live: bell x=172-200 y=16-44 vs logo x=8-52 y=8-52) | **asserted** — position asserted as `bell.x > logo.right`, not as pixel constants |
+| 3 | Verify the bell icon is visible | bell visible | `sidebar-notifications-bell-icon` (**added** EliteaAI/EliteaUI@1d512ae2) | `expect(bell_icon).to_be_visible()` | **asserted** |
 | 4 | Verify red badge/dot is displayed above the bell icon | red dot rendered | `sidebar-notifications-bell-icon` + state attribute `data-has-messages` (**needed**) | `expect(bell_icon).to_have_attribute("data-has-messages", "true")`, tied to the real `unread_total > 0` read from the product's own response | **asserted** — the badge is an SVG `<circle>` INSIDE the bell, so it cannot carry its own testid (its *presence* flips with state, which `.agents/testing.md` § Locator policy outlaws). State goes on a `data-*` attribute of the stable element, per the PR #581 ruling |
 | 5 | Click the red dot; a modal opens with "Project was successfully created" | modal/popover opens showing the notification | `sidebar-notifications-button` clicked; `sidebar-notifications-popover` + `-popover-title` + `-mark-all-read-button` (**all needed**) | `notifications_button.click()` → `expect(popover).to_be_visible()` + `expect(popover_title).to_have_text("Notifications")` + `expect(mark_all_read_button).to_be_visible()` | **asserted, text-amended** — live the popover is headed **"Notifications"** and lists the account's actual unread items; **"Project was successfully created" is a first-login-only message this account no longer has.** Asserting it would be reverse-masking. The "≥1 item is listed" meaning is carried by `sidebar-notifications-mark-all-read-button`, which `NotificationList.jsx:141` renders **only** when `notifications.length > 0`. Drift filed as a clarification. Note it is a **Popover, not a modal** — no backdrop, closes on outside click too |
 | 6 | Click the "X" button | control responds | `sidebar-notifications-close-button` (**testid needed**; today only `aria-label="Close notifications"`) | `close_button.click()` | **asserted** |
@@ -127,14 +138,14 @@ not a product problem). Do not build it speculatively.
 | Element | Handle (testid-only) | Provenance (verified 2026-08-24, `git fetch origin` in ../EliteaUI) |
 |---|---|---|
 | Sidebar logo / toggle (header anchor) | `sidebar-toggle` | **on-main ✓** |
-| Sidebar collapse toggle | `sidebar-collapse-toggle-button` | on `automation/testids` (verify at implementation) |
-| Bell button (clickable container) | `sidebar-notifications-button` | **needs-adding** |
-| Bell SVG + badge state | `sidebar-notifications-bell-icon` + `data-has-messages="true|false"` | **needs-adding** |
-| Notifications popover paper | `sidebar-notifications-popover` | **needs-adding** |
-| Popover header title | `sidebar-notifications-popover-title` | **needs-adding** |
-| Popover X close button | `sidebar-notifications-close-button` | **needs-adding** |
-| "Mark all as read" (renders only when ≥1 item) | `sidebar-notifications-mark-all-read-button` | **needs-adding** |
-| First-visit tour prompt + Skip | `interactive-tour-first-visit-prompt` / `-skip-button` | on `automation/testids` (EliteaAI/EliteaUI@3ba7967d) |
+| Sidebar collapse toggle | `sidebar-collapse-toggle-button` | on `automation/testids` — verified live at implementation ✓ |
+| Bell button (clickable container) | `sidebar-notifications-button` | **ADDED** EliteaAI/EliteaUI@1d512ae2 (`automation/testids`, pushed) |
+| Bell SVG + badge state | `sidebar-notifications-bell-icon` + `data-has-messages="true|false"` | **ADDED** EliteaAI/EliteaUI@1d512ae2 |
+| Notifications popover paper | `sidebar-notifications-popover` | **ADDED** EliteaAI/EliteaUI@1d512ae2 |
+| Popover header title | `sidebar-notifications-popover-title` | **ADDED** EliteaAI/EliteaUI@1d512ae2 |
+| Popover X close button | `sidebar-notifications-close-button` | **ADDED** EliteaAI/EliteaUI@1d512ae2 |
+| "Mark all as read" (renders only when ≥1 item) | `sidebar-notifications-mark-all-read-button` | **ADDED** EliteaAI/EliteaUI@1d512ae2 |
+| ~~First-visit tour prompt + Skip~~ | ~~`interactive-tour-first-visit-prompt` / `-skip-button`~~ | **not used** — the prompt cannot fire on the suite's entry path (see § Entry-path quirk, amended) |
 
 **Live-captured values (2026-08-24, standard test user, personal project 399):**
 
@@ -247,3 +258,19 @@ already filed, and only filtered here.)
 
 - `test-results/screenshots/ELITEA-2234-step-05-notifications-popover-open.png` — bell with red badge, green
   logo dot, and the open Notifications popover in one frame.
+
+---
+
+## Implementation amendment (test-automation-engineer, 2026-08-24)
+
+- **Shipped:** `automation/tests/ui/onboarding/test_sidebar_notification_badge.py`
+  (`TestSidebarNotificationBadge::test_bell_shows_red_badge_and_notifications_popover`) +
+  new page object `automation/pages/sidebar_header_page.py` (`SidebarHeaderPage`, shared with
+  ELITEA-2233). Green first run, 0 reruns.
+- **Entry path simplified** — no first-visit-prompt dismissal (see § Entry-path quirk, amended).
+- **Test data at implementation time:** the product's own unread-count probe returned a non-zero
+  `total` and the bell rendered `data-has-messages="true"`, exactly as specced. The precondition is
+  asserted loudly (never `pytest.skip`).
+- **The `PUT … {"ids": "all", "is_seen": false}` fallback was NOT built** — the AFS said build it only
+  on a real failure, and there was none.
+- Everything else implemented as specced; every Coverage-Map row is asserted.

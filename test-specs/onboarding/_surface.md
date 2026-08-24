@@ -414,3 +414,58 @@ Popover **paper** via `slotProps`, per the w2 Dialog lesson) · `sidebar-notific
 
 Both `ready-for-automation`, ZERO substitution. Suggested shared page object:
 `automation/pages/sidebar_header_page.py` (`SidebarHeaderPage`) — **not** `onboarding_page.py`.
+
+---
+
+## Resolved/added during ELITEA-2234 / ELITEA-2233 implementation (test-automation-engineer, 2026-08-24)
+
+Attributed implementation-time facts — the analyst's behavior/scope claims above are unchanged.
+
+**The seven sidebar-header testids now EXIST** on `EliteaAI/EliteaUI` `automation/testids`
+(**not yet on `main`** — human cherry-pick pending, same as every other testid in this batch).
+All are attribute-only additions on elements that already existed: no new DOM node, no hook, no
+render-prop change, nothing removed.
+
+| testid | File | Commit |
+|---|---|---|
+| `sidebar-socket-status-indicator` + `data-socket-status` | `SidebarBody.jsx` | EliteaAI/EliteaUI@2c0ac201 |
+| `sidebar-notifications-button` | `button/NotificationButton.jsx` | EliteaAI/EliteaUI@1d512ae2 |
+| `sidebar-notifications-bell-icon` + `data-has-messages` | `button/NotificationButton.jsx` (at the call site — `BellIcon` spreads `...rest` onto its `<svg>`) | EliteaAI/EliteaUI@1d512ae2 |
+| `sidebar-notifications-popover` | `NotificationList.jsx` — on the Popover's **paper** via `slotProps.paper` | EliteaAI/EliteaUI@1d512ae2 |
+| `sidebar-notifications-popover-title` | `NotificationList.jsx` | EliteaAI/EliteaUI@1d512ae2 |
+| `sidebar-notifications-close-button` | `NotificationList.jsx` (`BaseBtn` spreads `...rest`) | EliteaAI/EliteaUI@1d512ae2 |
+| `sidebar-notifications-mark-all-read-button` | `NotificationList.jsx` | EliteaAI/EliteaUI@1d512ae2 |
+
+**Quirk 7 is CORRECTED for the pytest suite: the first-visit prompt CANNOT fire on a direct
+`/chat` entry.** `NewChat.jsx:104` is the only caller of `useProposePendingTour`, and that hook
+returns immediately unless `localStorage["interactive-tour:first-elitea:pending"] === "true"` — a
+flag written **only** by `/onboarding`'s `handlePersonalProjectReady()`
+(`[fsd]/features/interactive-tours/lib/hooks/useProposeTour.hooks.js`; there is no other
+`useProposeTour` call site in `src/`). The analysis session saw the prompt because that same browser
+profile had visited `/onboarding` earlier. The suite cannot inherit it: on localhost `auth_state`
+returns an **empty storage state** (`fixtures/session_fixtures.py:110`) and `conftest.py` creates a
+**fresh context per test**. Confirmed by the ELITEA-2234/2233 run — no prompt, **0 console errors**
+on `/chat`. Quirk 7 remains true for any spec that reaches `/chat` *through* `/onboarding`
+(ELITEA-2241's path).
+
+**The bell's badge oracle.** `GET …/notifications/notifications/prompt_lib/{personal_project_id}
+?only_new=true&only_total=true&limit=1&offset=0` fires on every app load; capturing it with
+`page.expect_response` around the navigation yields the exact `total` the badge is computed from
+(`SidebarHeaderPage.navigate_and_get_unread_total()`). It shares its URL prefix with the notification
+CENTRE's list fetch — `only_total=true` selects the count probe, `sort_by=created_at` selects the
+list (`NotificationCenterPage` keys off the latter for the opposite reason). The DEV account still
+had unread items at implementation time; the `is_seen: false` re-arm fallback the AFS sketched was
+NOT needed and was NOT built.
+
+**Page object (shipped): `automation/pages/sidebar_header_page.py` (`SidebarHeaderPage`)** — the
+persistent app-shell sidebar header, deliberately not `onboarding_page.py`. Holds the logo anchor,
+the socket dot (plus the three class-level scoped/state-filtered constants), the bell and the whole
+notifications popover, `navigate_and_get_unread_total()`, `open_notifications()` and
+`close_notifications()`. `sidebar-collapse-toggle-button` is inherited from `BasePage`;
+`sidebar-toggle` is pre-existing app-shell chrome already declared in `chat_page.py` /
+`onboarding_page.py`.
+
+**Specs (shipped, one per case):**
+`automation/tests/ui/onboarding/test_sidebar_notification_badge.py` (ELITEA-2234),
+`test_sidebar_socket_status_indicator.py` (ELITEA-2233). Both green on the first run, 0 reruns,
+20.7 s for the pair.
