@@ -99,3 +99,5 @@
 - [Shared-component testid prop — check all call sites](shared_component_testid_prop_check_all_call_sites.md) — grep callers before `cond ? testid : undefined`
 - [page.viewport_size is None in headed mode](headed_mode_viewport_size_is_none.md) — box-vs-viewport asserts must degrade
 - [EliteaUI prettier forces a JSX tag reflow when a testid is added](elitea_ui_prettier_forces_jsx_tag_reflow_when_adding_a_testid.md) — declare it, prettier wins
+- [Delay one request: hold the Route, don't sleep](playwright_sync_route_delay_hold_and_release.md) — sync-API handler sleep freezes the test body too
+- [New testid missing on the FIRST run after the JSX edit](new_testid_missing_on_first_run_after_jsx_edit.md) — re-run once before debugging
