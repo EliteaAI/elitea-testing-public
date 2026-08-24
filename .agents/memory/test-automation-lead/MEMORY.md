@@ -53,3 +53,5 @@
 - [Artifacts area backlog (#1392)](artifacts_area_backlog_1392.md) — 63/73 automated; the 8 leftovers are human-decision blocks (multi-user needs a deployed env)
 - [Killed run, no report](killed_workflow_run_recover_report_from_journal.md) — rebuild from journal; merged ≠ blocked
 - [Credentials backlog (#1394)](credentials_area_backlog_1394.md) — 21/24 done; 3 OAuth cases blocked on #1708
+- [A park is a hypothesis, not a verdict](a_parked_case_is_a_hypothesis_not_a_verdict.md) — re-test "do not schedule" cases; 2 of 2 dissolved
+- [Non-reproducing gate red → stabilize, not re-run](non_reproducing_gate_red_still_goes_to_stabilize.md) — a re-run buys a green, never a cause
