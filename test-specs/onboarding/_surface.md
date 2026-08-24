@@ -5,7 +5,7 @@ executing your own case.
 
 | Field | Value |
 |---|---|
-| Last verified | 2026-08-24 (qa-engineer, batch `onboarding-w2`, cases ELITEA-2235/2236/2241, then ELITEA-2232) |
+| Last verified | 2026-08-24 (batch `onboarding-w3`, cases ELITEA-2237/2238/2239 — slide navigation; before that `onboarding-w2`: ELITEA-2235/2236/2241, then ELITEA-2232) |
 | Target | `http://localhost:5173/onboarding` — EliteaUI `automation/testids`, DEV backend |
 | Source | `src/pages/Onboarding/Onboarding.jsx`, `src/[fsd]/features/onboarding/ui/{Welcome,OnboardingTour,TourContent,WorkspaceIsReady}.jsx` |
 
@@ -56,7 +56,7 @@ personal project; for the standard test user root lands on `/chat`.
 | `onboarding-tour-tip-content` | **one markdown node** carrying tip title + description + Quick Action — no per-part testids possible (markdown-rendered DOM) |
 | `onboarding-tour-page-indicator` | `"{currentStep} / 48"` — 48 = `onboardingTips.length` |
 | `onboarding-tour-prev-button` | `disabled` at slide 1 |
-| *next button* | **no testid** — add if a case navigates forward |
+| `onboarding-tour-next-button` | forward arrow; `disabled` at slide 48 — added 2026-08-24 for ELITEA-2237/2238/2239 (EliteaAI/EliteaUI@f647488d, `automation/testids` only) |
 | *slide image* | **no testid** — requested as `onboarding-tour-tip-image` (ELITEA-2236 AFS) |
 | *expand icon* | **no testid** — `aria-label="View tour in full screen"`; requested as `onboarding-tour-fullscreen-button` |
 | *fullscreen dialog / title / X* | **no testids** — requested as `onboarding-tour-fullscreen-{dialog,title,close-button}` |
@@ -273,3 +273,60 @@ which only appears after "Jump in now!" — this spec deliberately stays on `/on
 was amended to `5 <= initial <= 12` at implementation — the read lands inside, but not reliably at
 the start of, the product's first 1 s interval tick, so exact equality is a stopwatch race against
 the 3× merge gate while asserting nothing extra. Observed value on the shipped run: `5`.
+
+
+---
+
+## Resolved/added during ELITEA-2237 / 2238 / 2239 analysis + implementation (test-automation-engineer, 2026-08-24)
+
+Attributed implementation-time facts — the analyst's behavior/scope claims above are unchanged.
+
+**The last missing tips-card testid now EXISTS.** `onboarding-tour-next-button` was added to the
+forward `IconButton` in `TourContent.jsx` (EliteaAI/EliteaUI@f647488d, pushed to
+`automation/testids`; **not yet on `main`** — human cherry-pick pending, same as every other
+`onboarding-*` testid here). Attribute-only addition on the existing element — no new DOM node,
+no hook, no render-prop change. The tips card now has a complete testid inventory.
+
+**The duplicate-testid trap (quirk 1) extends to BOTH nav arrows.** While the fullscreen dialog is
+open, `onboarding-tour-prev-button` and `onboarding-tour-next-button` each resolve to **2 visible
+nodes**, exactly like the tip content / image / indicator. Confirmed live. The page object now
+ships `DIALOG_PREV_BUTTON` / `DIALOG_NEXT_BUTTON` alongside the existing dialog-scoped constants,
+plus `CARD_PAGE_INDICATOR` / `CARD_TIP_CONTENT` for reading the EMBEDDED copy while the dialog is
+open (scoped into `onboarding-tour-container`; the dialog's paper is not a descendant of it).
+
+**Slide state is shared between the two copies.** `currentStep` is lifted into `OnboardingTour`, so
+navigating inside the dialog moves the embedded card too — live-observed as both indicators reading
+`2 / 48` simultaneously — and the slide reached in the dialog survives collapsing it. This is the
+only machine-checkable reading of ELITEA-2239's prose step 9 ("consistent with the collapsed card
+view").
+
+**Navigation facts measured live (2026-08-24):**
+
+| Fact | Value |
+|---|---|
+| Clicks from `1 / 48` to `48 / 48` | exactly **47** |
+| Slide 2 | `Tip 2: Navigate the Sidebar` · image `sidebar-navigation.png` |
+| Slide 3 | `Tip 3: Switch Between Projects` · image `project-selector.png` |
+| Slide 48 | `Tip 48: View Message Execution Details` · image `message-details.png` |
+| Prev @ slide 1 / Next @ slide 48 | `disabled=true`, computed `color: rgb(104, 108, 118)` (theme `text.disabled`), `pointer-events: none` |
+| Opposite arrow at each boundary | ENABLED (Next @ 1, Prev @ 48) |
+| Console errors over the full 1 → 48 walk + a fullscreen navigation cycle | **0** — no filter needed on `/onboarding` (quirk 5 holds) |
+
+**`pointer-events: none` on the disabled arrows ⇒ `click(force=True)` is mandatory** for the
+"click the inactive arrow and verify nothing happens" steps (ELITEA-2238 steps 3 and 8). A plain
+`.click()` times out on Playwright's actionability check and reads like a product failure. Forcing
+dispatches a real mouse click at the control's position — the product's own handler ignores it, and
+the asserted observable (counter unchanged) is still produced by the product.
+
+**Dev-server HMR gotcha on this machine (cost ~4 turns).** After editing JSX under `../EliteaUI/src`,
+Vite served the NEW module (`curl .../TourContent.jsx?t=<epoch>` showed the testid) while the
+already-open browser page kept the OLD one — a plain re-`goto` of the same URL did not pick it up.
+A cache-busted navigation (`/onboarding?r=1`) did. If a freshly-added testid "does not match any
+elements", check the served module with a `?t=` query before suspecting the edit.
+
+**Specs (shipped, one per case):**
+`automation/tests/ui/onboarding/test_onboarding_tips_navigation.py` — three test classes,
+one per case (ELITEA-2237 forward navigation, ELITEA-2238 arrow boundaries, ELITEA-2239 fullscreen
+navigation). One file rather than three because all three share ONE subject (arrow navigation) and
+the same entry path; the w2 wave's one-file-per-case shape was for three genuinely different
+screens.
