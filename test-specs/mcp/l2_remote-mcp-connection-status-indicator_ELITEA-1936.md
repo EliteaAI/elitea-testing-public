@@ -166,8 +166,8 @@ All handles below were exercised live this session. **PROVENANCE verified
 
 | Element | Handle (testid-only) | Provenance | Notes |
 |---|---|---|---|
-| Connection-status text | `toolkit-connection-status` | **on-`automation/testids` only** — EliteaAI/EliteaUI@a467c0ac, added for ELITEA-1934; **NOT yet on `main`** (human cherry-pick pending) | `McpAuthStatus.jsx:136`. Text is `Not Connected` / `Connected!` |
-| Login / Logout button | `toolkit-connection-login-button` | **on-`automation/testids` only** — same commit; **NOT yet on `main`** | `McpAuthStatus.jsx:149`. Label `Login` → `Logging in...` (transient) → `Logout` |
+| Connection-status text | `toolkit-connection-status` | **on-main ✓** — born on `automation/testids` as EliteaAI/EliteaUI@a467c0ac (ELITEA-1934), promoted to `main` 2026-08-12 in EliteaAI/EliteaUI@bf4a13ad (the 400-testid bulk promotion, EliteaUI PR #753) | `McpAuthStatus.jsx:136`. Text is `Not Connected` / `Connected!` |
+| Login / Logout button | `toolkit-connection-login-button` | **on-main ✓** — same two commits (born a467c0ac, promoted EliteaAI/EliteaUI@bf4a13ad) | `McpAuthStatus.jsx:149`. Label `Login` → `Logging in...` (transient) → `Logout` |
 | MCP list card | `entity-card` | on-main ✓ | |
 | MCP list card name | `entity-card-name` | on-main ✓ | |
 | Card type chip | `entity-card-tag-chip` | on-main ✓ | text is `Remote` — the **type**, not a connection state |
@@ -189,11 +189,31 @@ policy). Added via `add-data-testid` discipline:
 |---|---|---|
 | Connection-status state icon | `toolkit-connection-status-icon` | **added during implementation** — EliteaAI/EliteaUI@55dc4f66 on `automation/testids`, **NOT on `main`** (human cherry-pick pending). One additive attribute on the existing `<OnlineIcon>`; no new DOM node, no hook, no removed markup. |
 
-⚠️ **Promotability:** the two handles this case
-depends on most (`toolkit-connection-status`, `toolkit-connection-login-button`)
-live on `automation/testids` only. This spec will be **green on localhost and red
-on any deployed env** until a human cherry-picks EliteaAI/EliteaUI@a467c0ac to
-`main`. The closure record must say so.
+⚠️ **Promotability — CORRECTED at fix round 1 (2026-08-24, implementer).** The
+analysis-time rows above claimed `toolkit-connection-status` and
+`toolkit-connection-login-button` were on `automation/testids` only. **That was
+false**: both have been on `origin/main` since 2026-08-12
+(EliteaAI/EliteaUI@bf4a13ad, the 400-testid bulk promotion — EliteaUI PR #753),
+i.e. they were promoted *before* this analysis ran and the AFS inherited a stale
+"not on main" claim from `test-specs/mcp/_surface.md`. Re-verified with a fresh
+`git fetch origin` in `../EliteaUI`:
+
+```
+toolkit-connection-status                main:YES  testids:YES
+toolkit-connection-login-button          main:YES  testids:YES
+toolkit-connection-status-icon           main:no   testids:YES
+```
+
+**The one genuine promotability gap is `toolkit-connection-status-icon`** —
+added by this implementation as EliteaAI/EliteaUI@55dc4f66 on
+`automation/testids`, not yet on `main`. Step 4's icon assertion (and therefore
+this spec) stays **green on localhost, red on any deployed env** until a human
+cherry-picks that one commit. The closure record must cite EliteaAI/EliteaUI@55dc4f66
+— not a467c0ac — as the pending promotion.
+
+*Lesson (also filed in role memory): a provenance row can go stale in the
+NOT-on-main direction after a bulk promotion. Never carry a prior AFS's
+provenance forward — re-run the fetch+grep block per case.*
 
 ## Network Behavior
 

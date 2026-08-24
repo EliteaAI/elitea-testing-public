@@ -26,6 +26,7 @@ import pytest
 from api import ToolkitAPI
 from config import settings
 from pages.mcp_form_page import McpFormPage
+from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,13 @@ DEEPWIKI_TOOLS = {"ask_question", "read_wiki_contents", "read_wiki_structure"}
 # non-last element. Deleting the LAST element would strand the preceding line's
 # trailing comma and make the document invalid JSON, so Save would be refused.
 TOOL_TO_DESELECT = "ask_question"
+
+# Every UI-state assertion in this spec follows a click or a navigation, so it
+# must RETRY rather than snapshot-read: React commits the new state one or more
+# ticks after the action's promise resolves. Playwright's `expect` polls; a bare
+# `is_visible()` / `is_disabled()` / `get_attribute()` reads once, at the worst
+# possible instant. (Review finding, fix round 1.)
+UI_STATE_TIMEOUT = 10_000
 
 
 @allure.issue(
@@ -76,19 +84,17 @@ def test_mcp_toggle_selected_tools_via_raw_json(page, toolkit_api: ToolkitAPI):
     try:
         with allure.step("Step 1 — Open the Remote MCP detail page (toolkit with discovered tools)"):
             form.navigate_to_detail(toolkit_id, project_id)
-            assert form.get_detail_heading_text() == toolkit_name, (
-                "Detail title should show the toolkit's own name, not the 'Edit MCP' "
-                f"placeholder, got: {form.get_detail_heading_text()!r}"
-            )
-            assert form.form_view_toggle.get_attribute("aria-pressed") == "true", (
-                "Detail page should open in Form view"
+            # Retrying assertions: the heading renders an 'Edit MCP' placeholder
+            # until the tool-detail GET resolves, and the toggle's aria-pressed
+            # is committed a tick after that.
+            expect(form.detail_title).to_have_text(toolkit_name, timeout=UI_STATE_TIMEOUT)
+            expect(form.form_view_toggle).to_have_attribute(
+                "aria-pressed", "true", timeout=UI_STATE_TIMEOUT
             )
 
         with allure.step("Step 2 — Switch to Raw Json view; verify the JSON editor is visible"):
             form.switch_to_raw_json_view()
-            assert form.raw_json_editor_content.is_visible(), (
-                "Raw Json editor should be visible after switching view"
-            )
+            expect(form.raw_json_editor_content).to_be_visible(timeout=UI_STATE_TIMEOUT)
 
         with allure.step(
             "Step 3 — Locate 'selected_tools' and note all tool names present"
@@ -149,9 +155,12 @@ def test_mcp_toggle_selected_tools_via_raw_json(page, toolkit_api: ToolkitAPI):
             assert set(saved_tools) == DEEPWIKI_TOOLS - {TOOL_TO_DESELECT}, (
                 f"Save response should carry the reduced selected_tools, got: {saved_tools!r}"
             )
-            assert form.detail_save_button.is_disabled(), (
-                "Save should be disabled again once the form is no longer dirty"
-            )
+            # RETRYING, not a snapshot read: save_and_wait_for_updated() returns
+            # the instant the PUT response arrives, but the button's disabled
+            # state derives from Formik dirty-state, which resets only after
+            # React processes that response and the follow-up GET refetch lands.
+            # `is_disabled()` here reads at exactly the wrong tick. (Fix round 1.)
+            expect(form.detail_save_button).to_be_disabled(timeout=UI_STATE_TIMEOUT)
 
         with allure.step(
             f"Step 6 — Form view: {TOOL_TO_DESELECT!r} is no longer selected in the Tools section"
