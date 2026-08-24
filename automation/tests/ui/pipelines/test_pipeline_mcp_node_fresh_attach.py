@@ -54,6 +54,9 @@ EXECUTION_RESPONSE_TIMEOUT = 180_000
 # Shape-only floor for a nondeterministic generated answer — a real DeepWiki
 # answer ran ~1 kB; anything under this is a stub, an error string or empty.
 MIN_TOOL_ANSWER_LENGTH = 200
+# Horizontal drag that clears a freshly-added MCP node of ReactFlow's
+# bottom-left Control Panel once its Input-mapping rows render.
+MCP_NODE_CLEARANCE_DX = 450
 
 
 @allure.issue(
@@ -382,6 +385,14 @@ def test_mcp_node_executes_selected_tool(page, pipeline_id, mcp_toolkit_with_too
         pipeline_page.add_node("MCP", timeout=UI_ELEMENT_TIMEOUT)
         mcp_node_id = pipeline_page.wait_for_node_on_canvas("mcp", timeout=UI_ELEMENT_TIMEOUT)
         assert mcp_node_id, "MCP node should be present on the canvas with a non-empty data-id"
+        # Move the node clear of ReactFlow's bottom-left Control Panel: a
+        # fresh node spawns above it, and once the Input-mapping rows render
+        # they extend down over the panel, whose "Fit View" button then
+        # intercepts the pointer on the Type select's click (live-hit this
+        # session — Playwright named `rf__controls` as the intercepting
+        # subtree). Same `move_node()` remedy as
+        # test_pipeline_interrupt_before_after_toggles.py:87.
+        pipeline_page.move_node(mcp_node_id, dx=MCP_NODE_CLEARANCE_DX, dy=0)
 
     with allure.step("Steps 12-16 — Configure the node: Toolkit then Tool"):
         pipeline_page.select_mcp_node_toolkit(mcp_toolkit_name, timeout=UI_ELEMENT_TIMEOUT)
@@ -513,6 +524,14 @@ def test_mcp_node_input_mapping_type_and_toggles_persist(page, pipeline_id, mcp_
         )
         pipeline_page.add_node("MCP", timeout=UI_ELEMENT_TIMEOUT)
         mcp_node_id = pipeline_page.wait_for_node_on_canvas("mcp", timeout=UI_ELEMENT_TIMEOUT)
+        # Move the node clear of ReactFlow's bottom-left Control Panel: a
+        # fresh node spawns above it, and once the Input-mapping rows render
+        # they extend down over the panel, whose "Fit View" button then
+        # intercepts the pointer on the Type select's click (live-hit this
+        # session — Playwright named `rf__controls` as the intercepting
+        # subtree). Same `move_node()` remedy as
+        # test_pipeline_interrupt_before_after_toggles.py:87.
+        pipeline_page.move_node(mcp_node_id, dx=MCP_NODE_CLEARANCE_DX, dy=0)
         pipeline_page.select_mcp_node_toolkit(mcp_toolkit_name, timeout=UI_ELEMENT_TIMEOUT)
 
     with allure.step("Steps 2-3 — Select the tool; the Input-mapping section appears"):
