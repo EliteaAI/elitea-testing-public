@@ -318,7 +318,7 @@ configuration fields are COLLAPSED applies before any of these handles resolves.
 |---|---|---|
 | Headers JSON editor wrapper / content | `toolkit-field-headers-editor` / `-content` | pre-existing, on `main`. CodeMirror. |
 | Client Secret wrapper (SecretField root) | `toolkit-field-client_secret-input` | the real `<input>` is `...-input-field` and exists **only in Password mode** |
-| Secret / Password toggle buttons | `toolkit-field-client_secret-input-toggle-secret` / `-toggle-password` | emitted generically by `SecretField.jsx:342` → `Toggle.jsx` (`testIdPrefix = "<field-testid>-toggle"`), so EVERY secret schema field gets the pair for free. State = `aria-pressed`. |
+| Secret / Password toggle buttons | `toolkit-field-client_secret-input-toggle-secret` / `-toggle-password` | emitted generically by `SecretField.jsx:342` → `Toggle.jsx` (`testIdPrefix = "<field-testid>-toggle"`), so EVERY secret schema field gets the pair for free. State = `aria-pressed`. **Verified during ELITEA-1932 fix round 1 (2026-08-24): the whole mechanism is `automation/testids`-only** — EliteaAI/EliteaUI@5892ae48 (EL-1967). `Toggle.jsx` on `origin/main` carries NO testid at all and `SecretField.jsx` on `main` passes no `testIdPrefix`, so any case using this pair is green on localhost and NOT deployed-env promotable. The literal never appears in `src/` on either ref (three-level composition) — check provenance on the composing FILE, not by grepping the testid string. |
 | Vault select (Secret mode only) | `toolkit-field-client_secret-input-combobox` | mounts in place of the native input |
 | Saved-secret option (dynamic) | `select-option-{{secret.<name>}}` | same grammar `CredentialCreatePage.SECRET_SAVED_OPTION` already uses |
 
