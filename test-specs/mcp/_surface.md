@@ -765,3 +765,68 @@ themselves were clean — 0 console errors across both cases.)
 toast text (`The link has been copied to the clipboard.`), the `/{projectId}` clipboard URL
 shape, the `ProjectSwitcher` strip on the deep-linked tab, and the pin → index-0 reorder all
 reproduced first try under pytest.
+
+---
+
+## The MCP detail page has NO back button — it's a BREADCRUMB TRAIL now (2026-08-24, ELITEA-1961)
+
+**Appended during ELITEA-1961 analysis, batch `mcp-w02`. Read this before writing any
+"back button" / detail-to-list navigation assertion on ANY toolkit-family surface.**
+
+`src/pages/Toolkits/EditToolkit.jsx:390-403` renders exactly one of two headers:
+
+```jsx
+{hasBreadcrumbTrail ? <Breadcrumbs /> : (<><BackButton /><Typography data-testid="toolkit-detail-title"/></>)}
+```
+
+`useHasBreadcrumbTrail()` (`src/[fsd]/shared/lib/hooks/useBreadcrumbTrail.hooks.js:35`) is
+**purely route-based** — `resolveBreadcrumbTrail(pathname).length > 0` — and `/mcps/all/:id`
+declares a trail (`src/[fsd]/shared/lib/constants/breadcrumb.constants.js:48`). So
+**`<BackButton/>` is unreachable on this route no matter how the user arrived** (card click
+and deep link both verified live). `document.querySelector('[data-testid="back-button"]')`
+→ `null` on `/mcps/all/{id}`.
+
+`toolkit-detail-title` still exists — but it now renders as the **last (non-clickable) crumb
+inside the trail**, emitted from `breadcrumb.constants.js`, not from the `EditToolkit.jsx:398`
+`<Typography>` (which is in the dead branch). Same testid, different owner.
+
+| Handle | Testid | Notes |
+|---|---|---|
+| Breadcrumb nav (detail pages ONLY) | `breadcrumbs` | `<nav>`, text `MCPs/{name}`. **Absent on `/mcps/all`** — a clean detail-vs-list discriminator. On `main` ✓ |
+| Parent crumb link | `breadcrumb-item` | `<a>`, text `MCPs`. Exactly **1** on the MCP detail page — assert `to_have_count(1)` before reading. Clicking it navigates to `/mcps/all` client-side. On `main` ✓ |
+| Current crumb | `toolkit-detail-title` | last crumb, not a link. On `main` ✓ |
+
+Breadcrumbs are recent — `breadcrumb.constants.js` was last touched on `main` by `1facc163`
+(`feat: [EL-6293] dedicated index search page`, 2026-08-21), same redesign era as EL-6277.
+Filed as CLARIFICATION [#1731](https://github.com/EliteaAI/elitea-testing-public/issues/1731)
+against ELITEA-1961's step 3/4 text. **No page object binds `breadcrumbs`/`breadcrumb-item`
+yet** — ELITEA-1961's AFS specs them onto `McpFormPage`.
+
+## MCP list state across a detail round-trip: filter SURVIVES, scroll does NOT (2026-08-24)
+
+Measured live, twice, two different search terms:
+
+| List state | Survives detail → back? | Mechanism |
+|---|---|---|
+| Search filter (term + filtered card set) | **YES ✅** | the term lives in the redux slice `src/slices/search.js` (in-memory). Survives a client-side route change; would **NOT** survive a `page.reload()`. |
+| Scroll position | **NO ❌** | `#EliteACustomTabPanel` `scrollTop` 99 → 0 on return, still 0 at +2 s. No list scroll-restoration code exists anywhere in `src/` — never implemented, not regressed. |
+
+Two consequences for anyone writing a list-page assertion here:
+
+1. **The filter is NEVER in the URL.** `/mcps/all` carries no query string while filtered
+   (verified). Read the filter from `agent-search-input`'s value + the rendered card set,
+   never from `location.search`.
+2. **Never `reload()` mid-flow** in a case that depends on the filter surviving — the redux
+   store dies with the page and the filter silently resets.
+
+The scroll half is CLARIFICATION
+[#1732](https://github.com/EliteaAI/elitea-testing-public/issues/1732) (case-text vs product
+scope, human ruling pending). ELITEA-1961's AFS deliberately asserts it in **neither**
+direction: asserting preservation reverse-masks, asserting reset-to-0 cements a possibly
+unintended behaviour, and the scroller carries an `id` not a `data-testid` (so asserting it
+at all would need a blanket-add on an element no case touches).
+
+**List-page baseline (project 399, 2026-08-24):** 19 MCPs, card view default, scroller
+`scrollHeight` 900 vs `clientHeight` 801 at 1920×1080 — i.e. only **~99 px** of scroll range.
+Any future scroll-dependent case must assert `scrollHeight > clientHeight` first or seed more
+MCPs; at a smaller card count the list does not scroll at all and the observable is vacuous.
