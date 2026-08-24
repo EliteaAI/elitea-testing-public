@@ -12,12 +12,27 @@ In a standard test run neither first condition holds naturally for an
 existing user, so mock_fresh_user_state() establishes the first-login
 precondition by intercepting GET /social/author/ and mutating the response.
 
-Scope boundary: this page object covers the Welcome state only (pre-click on
-"Sure, let's go!"). The post-click OnboardingTour state belongs to ELITEA-2232+.
+Scope boundary (extended 2026-08-24, ELITEA-2235/2236/2241): this page object
+covers BOTH onboarding states rendered by Onboarding.jsx:
+  - the Welcome state (ELITEA-2231) — pre-click on "Sure, let's go!";
+  - the tour + workspace-ready state — the OnboardingTour tips card, its
+    full-screen dialog, and the WorkspaceIsReady banner.
+
+The two states share the page shell (onboarding-page-container /
+onboarding-page-logo / onboarding-progress-footer), which is why they live in
+one page object: a testid appears in exactly one file (.agents/conventions.md).
+The tour state needs NO route mock — an authenticated user WITH a personal
+project navigating to /onboarding lands in it directly (Onboarding.jsx:130-134
+sets thePrivateProjectIsReady whenever user.personal_project_id is truthy).
+mock_fresh_user_state() belongs to the Welcome state only; never call it for
+tour-state cases.
 """
 
 import json
 import logging
+
+from playwright.sync_api import Locator
+from utils.actions import action
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -35,7 +50,17 @@ class OnboardingPage(BasePage):
     onboarding-welcome-title, onboarding-welcome-greeting,
     onboarding-welcome-body-text, onboarding-welcome-secondary-text,
     onboarding-welcome-get-started-button, onboarding-progress-footer,
-    sidebar-toggle (absence), project-selector-trigger (absence).
+    onboarding-progress-status-label, onboarding-progress-estimated-time,
+    onboarding-progress-bar,
+    sidebar-toggle, project-selector-trigger,
+    project-selector-option-{label} (dynamic), sidebar-menu-item-{value} (dynamic),
+    onboarding-tour-container, onboarding-tour-tip-content,
+    onboarding-tour-tip-image, onboarding-tour-page-indicator,
+    onboarding-tour-prev-button, onboarding-tour-fullscreen-button,
+    onboarding-tour-fullscreen-dialog, onboarding-tour-fullscreen-title,
+    onboarding-tour-fullscreen-close-button,
+    onboarding-workspace-ready-title,
+    onboarding-workspace-ready-jump-in-button.
     """
 
     # ------------------------------------------------------------------
@@ -127,6 +152,220 @@ class OnboardingPage(BasePage):
             "Must be absent at the Welcome state (before button click)."
         ),
     )
+    progress_status_label = LocatorDescriptor(
+        testid="onboarding-progress-status-label",
+        description=(
+            "'Configuring Personal project...' status line inside the progress "
+            "footer (Onboarding.jsx:188-194). Present only while "
+            "showTour && !thePrivateProjectIsReady."
+        ),
+    )
+    progress_estimated_time = LocatorDescriptor(
+        testid="onboarding-progress-estimated-time",
+        description=(
+            "'about 5 min' estimate inside the progress footer "
+            "(Onboarding.jsx:195-201)."
+        ),
+    )
+    progress_bar = LocatorDescriptor(
+        testid="onboarding-progress-bar",
+        description=(
+            "Determinate MUI LinearProgress inside the progress footer "
+            "(Onboarding.jsx:204-209). role='progressbar'; aria-valuenow starts "
+            "at 5 and grows by 95/150 per second, capped at 95 "
+            "(Onboarding.jsx:71-73) — client-side animation only."
+        ),
+    )
+
+    # ------------------------------------------------------------------
+    # Locators — onboarding tips card (OnboardingTour.jsx / TourContent.jsx)
+    # ELITEA-2235 / ELITEA-2236
+    # ------------------------------------------------------------------
+
+    tour_container = LocatorDescriptor(
+        testid="onboarding-tour-container",
+        description="Tips-card wrapper (OnboardingTour.jsx styles.wrapper)",
+    )
+    tour_tip_content = LocatorDescriptor(
+        testid="onboarding-tour-tip-content",
+        description=(
+            "Single markdown node carrying the slide's tip title, description and "
+            "Quick Action (TourContent.jsx). The three parts have no testids of "
+            "their own — the DOM inside is produced by the Markdown renderer, not "
+            "by app JSX — so they are asserted with contains-text on this node. "
+            "Resolves to TWO nodes while the full-screen dialog is open (the "
+            "embedded copy stays mounted): scope with DIALOG_TIP_CONTENT."
+        ),
+    )
+    tour_tip_image = LocatorDescriptor(
+        testid="onboarding-tour-tip-image",
+        description=(
+            "Slide illustration (TourContent.jsx <Box component='img'>). "
+            "Added for ELITEA-2236 (EliteaAI/EliteaUI@3ba7967d). "
+            "Also resolves to two nodes while the dialog is open."
+        ),
+    )
+    tour_page_indicator = LocatorDescriptor(
+        testid="onboarding-tour-page-indicator",
+        description=(
+            "Slide counter '{currentStep} / {onboardingTips.length}' "
+            "(TourContent.jsx). Two nodes while the dialog is open."
+        ),
+    )
+    tour_prev_button = LocatorDescriptor(
+        testid="onboarding-tour-prev-button",
+        description=(
+            "Previous-slide IconButton — disabled at slide 1 "
+            "(TourContent.jsx: disabled={currentStep === 1})"
+        ),
+    )
+    tour_fullscreen_button = LocatorDescriptor(
+        testid="onboarding-tour-fullscreen-button",
+        description=(
+            "Expand icon in the card's top-right corner (aria-label "
+            "'View tour in full screen'). Added for ELITEA-2236 "
+            "(EliteaAI/EliteaUI@3ba7967d)."
+        ),
+    )
+    tour_fullscreen_dialog = LocatorDescriptor(
+        testid="onboarding-tour-fullscreen-dialog",
+        description=(
+            "Full-screen Dialog PAPER — wired via slotProps.paper, deliberately "
+            "NOT the MUI Modal root: the root is position:fixed/inset:0 for every "
+            "dialog, so a bounding-box 'is it fullscreen' assertion against it "
+            "would be a tautology. The paper is the element MUI resizes when "
+            "fullScreen is set. Added for ELITEA-2236 (EliteaAI/EliteaUI@3ba7967d)."
+        ),
+    )
+    tour_fullscreen_title = LocatorDescriptor(
+        testid="onboarding-tour-fullscreen-title",
+        description=(
+            "'Onboarding tips' heading in the dialog header. "
+            "Added for ELITEA-2236 (EliteaAI/EliteaUI@3ba7967d)."
+        ),
+    )
+    tour_fullscreen_close_button = LocatorDescriptor(
+        testid="onboarding-tour-fullscreen-close-button",
+        description=(
+            "X (collapse) IconButton in the dialog header (aria-label "
+            "'Close full screen tour'). Added for ELITEA-2236 "
+            "(EliteaAI/EliteaUI@3ba7967d)."
+        ),
+    )
+
+    # Dialog-scoped selectors — the embedded TourContent stays mounted while the
+    # dialog renders a SECOND copy, so the shared testids resolve to two visible
+    # nodes and an unscoped expect() is a strict-mode violation. Class-level
+    # constants containing [data-testid="..."] only, per
+    # .claude/rules/page-objects.md / .agents/testing.md § Locator policy.
+    DIALOG_TIP_CONTENT = (
+        '[data-testid="onboarding-tour-fullscreen-dialog"] '
+        '[data-testid="onboarding-tour-tip-content"]'
+    )
+    DIALOG_TIP_IMAGE = (
+        '[data-testid="onboarding-tour-fullscreen-dialog"] '
+        '[data-testid="onboarding-tour-tip-image"]'
+    )
+    DIALOG_PAGE_INDICATOR = (
+        '[data-testid="onboarding-tour-fullscreen-dialog"] '
+        '[data-testid="onboarding-tour-page-indicator"]'
+    )
+
+    # Dynamic (runtime-parameterized) testids — class-level template constants per
+    # .agents/testing.md § Locator policy (inline get_by_test_id(f"...") is NOT
+    # compliant; the pattern must stay greppable at class level).
+    PROJECT_SELECTOR_OPTION = '[data-testid="project-selector-option-{}"]'
+    """Row inside the OPEN project dropdown, keyed by project label
+    (SidebarProjectSelect.jsx customRenderOption — testid added for ELITEA-2232,
+    EliteaAI/EliteaUI@bb8b9adc). Live value for the standard test user: 'Private'.
+    """
+
+    SIDEBAR_MENU_ITEM = '[data-testid="sidebar-menu-item-{}"]'
+    """Sidebar entity menu item, keyed by entity value (SidebarBody.jsx:272,
+    testId prop). Values: chat, agents, pipelines, skills, toolkits, mcps,
+    credentials, applications, artifacts. The menu fills in progressively after
+    the project becomes ready — anchor on ONE item with an auto-waiting expect(),
+    never assert the item count.
+    """
+
+    # ------------------------------------------------------------------
+    # Locators — workspace-ready banner (WorkspaceIsReady.jsx)
+    # ELITEA-2235 / ELITEA-2241
+    # ------------------------------------------------------------------
+
+    workspace_ready_title = LocatorDescriptor(
+        testid="onboarding-workspace-ready-title",
+        description="Banner title 'Your Elitea workspace is ready!' (WorkspaceIsReady.jsx)",
+    )
+    workspace_ready_jump_in_button = LocatorDescriptor(
+        testid="onboarding-workspace-ready-jump-in-button",
+        description=(
+            "'Jump in now!' button (WorkspaceIsReady.jsx) — handleJumpIn clears "
+            "sessionStorage.onboarding_state and navigates to /chat"
+        ),
+    )
+
+    # ------------------------------------------------------------------
+    # Dialog-scoped locator accessors (tour full-screen state)
+    # ------------------------------------------------------------------
+
+    def dialog_tip_content(self) -> Locator:
+        """Tip markdown node INSIDE the full-screen dialog."""
+        return self.page.locator(self.DIALOG_TIP_CONTENT)
+
+    def dialog_tip_image(self) -> Locator:
+        """Slide illustration INSIDE the full-screen dialog."""
+        return self.page.locator(self.DIALOG_TIP_IMAGE)
+
+    def dialog_page_indicator(self) -> Locator:
+        """Slide counter INSIDE the full-screen dialog."""
+        return self.page.locator(self.DIALOG_PAGE_INDICATOR)
+
+    def project_selector_option(self, label: str) -> Locator:
+        """Project row inside the OPEN project dropdown, by project label."""
+        return self.page.locator(self.PROJECT_SELECTOR_OPTION.format(label))
+
+    def sidebar_menu_item(self, value: str) -> Locator:
+        """Sidebar entity menu item, by entity value (e.g. 'chat')."""
+        return self.page.locator(self.SIDEBAR_MENU_ITEM.format(value))
+
+    # ------------------------------------------------------------------
+    # Actions — tour card / banner
+    # ------------------------------------------------------------------
+
+    @action("Click 'Sure, let's go!' on the Welcome card")
+    def click_get_started(self) -> None:
+        """Leave the Welcome state and enter the tour state.
+
+        Onboarding.jsx handleShowTour() writes sessionStorage.onboarding_state,
+        starts the client-side progress animation and starts a 5 s poll of
+        GET /api/v2/social/author/. It issues no provisioning call of its own.
+        """
+        self.welcome_get_started_button.click()
+
+    @action("Open the project dropdown from the sidebar")
+    def open_project_selector(self) -> None:
+        """Click the sidebar project-selector trigger to list the projects."""
+        self.project_selector_trigger.click()
+
+    @action("Open the onboarding tips card in full screen")
+    def open_tour_fullscreen(self) -> None:
+        """Click the expand icon in the tips card's top-right corner."""
+        self.tour_fullscreen_button.click()
+
+    @action("Collapse the full-screen onboarding tips dialog")
+    def close_tour_fullscreen(self) -> None:
+        """Click the dialog's X button.
+
+        Escape also closes the dialog (OnboardingTour.jsx handleKeyDown), but
+        ELITEA-2236 step 8 asks specifically for the X button.
+        """
+        self.tour_fullscreen_close_button.click()
+
+    @action("Click 'Jump in now!' in the workspace-ready banner")
+    def click_jump_in(self) -> None:
+        """Dismiss onboarding and navigate to the default project page."""
+        self.workspace_ready_jump_in_button.click()
 
     # ------------------------------------------------------------------
     # Route mock — fresh-user (first-login) precondition
