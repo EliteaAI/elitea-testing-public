@@ -1635,8 +1635,11 @@ class PipelineDetailPage(PipelineFormPage):
         description='Run Details panel "Timeline step" section (label + node id + stepper)'
     )
 
+    # TEMPORARY FIX: testid removed or never existed (discovered Aug 24)
+    # Using CSS locator to target the section that contains "States" header + accordions
+    # This matches the Box containing the header Typography with text "States"
     run_details_states_section = LocatorDescriptor(
-        testid="pipeline-run-details-states-section",
+        locator='[data-testid="pipeline-run-details-panel"] >> text="States" >> xpath=..',
         description='Run Details panel "States" section (header + per-variable accordion list)'
     )
 
