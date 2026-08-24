@@ -54,6 +54,7 @@ class OnboardingPage(BasePage):
     onboarding-progress-bar,
     sidebar-toggle, project-selector-trigger,
     project-selector-option-{label} (dynamic), sidebar-menu-item-{value} (dynamic),
+    sidebar-settings-button, sidebar-agent-hub-button, select-option-selected-icon,
     onboarding-tour-container, onboarding-tour-tip-content,
     onboarding-tour-tip-image, onboarding-tour-page-indicator,
     onboarding-tour-prev-button, onboarding-tour-next-button,
@@ -313,6 +314,18 @@ class OnboardingPage(BasePage):
     EliteaAI/EliteaUI@bb8b9adc). Live value for the standard test user: 'Private'.
     """
 
+    PROJECT_SELECTOR_OPTION_SELECTED = '[data-selected="true"] [data-testid="project-selector-option-{}"]'
+    """The SELECTED project row inside the OPEN dropdown, keyed by project label.
+
+    Selection state is a data-* attribute on a stable element, never a
+    state-named testid (.agents/testing.md § Locator policy). The attribute sits
+    on the MUI MenuItem root -- the option itself -- while the testid sits on the
+    content row the project selector renders inside it (shared
+    SingleSelectMenuItem.jsx: data-selected={isSelected ? 'true' : 'false'};
+    SidebarProjectSelect.jsx customRenderOption: the project-selector-option-*
+    Box). Added for ELITEA-2240 (EliteaAI/EliteaUI@b0a7d61a).
+    """
+
     SIDEBAR_MENU_ITEM = '[data-testid="sidebar-menu-item-{}"]'
     """Sidebar entity menu item, keyed by entity value (SidebarBody.jsx:272,
     testId prop). Values: chat, agents, pipelines, skills, toolkits, mcps,
@@ -320,6 +333,39 @@ class OnboardingPage(BasePage):
     the project becomes ready — anchor on ONE item with an auto-waiting expect(),
     never assert the item count.
     """
+
+    # ------------------------------------------------------------------
+    # Locators — sidebar bottom section + selected-option indicator
+    # ELITEA-2240
+    # ------------------------------------------------------------------
+
+    sidebar_settings_button = LocatorDescriptor(
+        testid="sidebar-settings-button",
+        description=(
+            "'Settings' button in the sidebar's bottom section "
+            "(SettingsButton.jsx:27, testId prop). NOT a sidebar-menu-item-* -- the "
+            "bottom section is rendered separately from the entity menu."
+        ),
+    )
+    sidebar_agent_hub_button = LocatorDescriptor(
+        testid="sidebar-agent-hub-button",
+        description=(
+            "'Catalog' button in the sidebar's bottom section "
+            "(AgentHubButton.jsx:38). Same separate-section note as Settings; the "
+            "product label is 'Catalog', the testid keeps the agent-hub name."
+        ),
+    )
+    select_option_selected_icon = LocatorDescriptor(
+        testid="select-option-selected-icon",
+        description=(
+            "Checkmark (CheckedIcon) in the selected option's ListItemIcon of any "
+            "single-select menu (shared SingleSelectMenuItem.jsx, isSelected "
+            "branch). Deliberately GENERIC -- the component is shared "
+            "(.agents/testing.md § Locator policy). Exactly one node exists inside "
+            "one open single-select. Added for ELITEA-2240 "
+            "(EliteaAI/EliteaUI@b0a7d61a)."
+        ),
+    )
 
     # ------------------------------------------------------------------
     # Locators — workspace-ready banner (WorkspaceIsReady.jsx)
@@ -373,6 +419,10 @@ class OnboardingPage(BasePage):
     def project_selector_option(self, label: str) -> Locator:
         """Project row inside the OPEN project dropdown, by project label."""
         return self.page.locator(self.PROJECT_SELECTOR_OPTION.format(label))
+
+    def project_selector_option_selected(self, label: str) -> Locator:
+        """SELECTED project row inside the OPEN project dropdown, by label."""
+        return self.page.locator(self.PROJECT_SELECTOR_OPTION_SELECTED.format(label))
 
     def sidebar_menu_item(self, value: str) -> Locator:
         """Sidebar entity menu item, by entity value (e.g. 'chat')."""
