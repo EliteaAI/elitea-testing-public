@@ -173,6 +173,22 @@ class McpFormPage(BasePage):
         testid="toolkit-field-cache_ttl-input",
         description="Cache TTL input",
     )
+    # Info (tooltip) icons rendered inside the Timeout / Cache TTL field
+    # LABELS. ToolBaseProperty.jsx passes `tooltipTestId` through a per-key
+    # allow-list (the pre-existing `k === 'bucket'` precedent) — extended with
+    # `timeout` / `cache_ttl` for ELITEA-1956/1957
+    # (EliteaAI/EliteaUI@25c47d7d on automation/testids). Only the ICON carries
+    # a testid: neither case opens the tooltip, so no
+    # `-info-tooltip-content` sibling was added (#511 — an unreferenced testid
+    # inflates the presence-based coverage metric).
+    timeout_info_icon = LocatorDescriptor(
+        testid="toolkit-field-timeout-info-icon",
+        description="Info (tooltip) icon next to the Timeout field label",
+    )
+    cache_ttl_info_icon = LocatorDescriptor(
+        testid="toolkit-field-cache_ttl-info-icon",
+        description="Info (tooltip) icon next to the Cache TTL field label",
+    )
     enable_caching_checkbox = LocatorDescriptor(
         testid="toolkit-field-enable_caching-checkbox",
         description="Enable Caching checkbox — MUI span wrapper (click target)",
