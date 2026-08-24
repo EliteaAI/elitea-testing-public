@@ -1264,7 +1264,20 @@ matches nothing. (`toolkit-form-name-input` is the opposite: wrapper, real input
   `method != "GET" and "prompt_lib" in url` across the entire flow collected zero
   requests — no toolkit POST/PUT fires on a cancelled creation. Confirms the
   analyst's network observation from the implementation side.
-- **Pre-flight guard is worth keeping**: the fixed literal `autotest_cancelled` is
-  safe only because the test asserts up front that no such toolkit pre-exists (and
-  deliberately does NOT delete one it finds — a leftover IS the defect signal).
+- **⚠️ `ToolkitAPI.list_all_toolkits()` is a VACUOUS absence oracle here — never use it
+  for an MCP "does not exist" assertion.** `GET tools/prompt_lib/{project}` answers
+  `{"rows": [], "total": 0}` regardless of params or auth method (re-verified live
+  2026-08-24 during the ELITEA-1960 review fix; also documented in
+  `.agents/memory/test-automation-engineer/mcp_pipeline_node_toolkit_tool_quirks.md`
+  and four merged MCP siblings). An assertion phrased against it passes whether or not
+  the toolkit exists. *(This corrects an earlier bullet here that recorded the
+  API-based pre-flight guard as a verified implementation fact — it was not.)*
+  The reliable discovery path is the **MCP list view** (`McpListPage.navigate()` +
+  `search()` + `get_card_names()`), same as `test_mcp_delete_remote`'s stale-MCP check.
+- **Pre-flight guard is worth keeping — via the LIST VIEW, not the API**: the fixed
+  literal `autotest_cancelled` is safe only because the test asserts up front that no
+  such MCP pre-exists (and deliberately does NOT delete one it finds — a leftover IS
+  the defect signal). Every absence assertion in that spec is preceded by a
+  `get_card_count() > 0` presence check, so an absence result is only ever read off a
+  channel proven able to see MCPs.
 - Whole spec runs in ~30 s headless, green first try, zero reruns.

@@ -21,12 +21,24 @@ product defect — filed as CLARIFICATION
 EliteaAI/elitea-testing-public#1747 — so this test asserts the LIVE contract:
 every create-form handle unmounts AND the type picker is back.
 
+**The "nothing was created" oracle is the passive request observer, not an
+API read.** ``ToolkitAPI.list_all_toolkits()`` is a CONFIRMED-BROKEN discovery
+path on this environment — ``GET tools/prompt_lib/{project}`` answers
+``{"rows": [], "total": 0}`` regardless of params or auth method, re-verified
+2026-08-24, and documented in
+``.agents/memory/test-automation-engineer/mcp_pipeline_node_toolkit_tool_quirks.md``
+plus four merged MCP siblings. Any absence assertion phrased against it is
+VACUOUS — it passes whether or not the toolkit exists — so this spec uses none.
+The server-side oracle is instead a PASSIVE ``page.on("request")`` observer
+proving no mutating toolkit request ever fired, which is strictly stronger:
+it also covers a create that succeeded but never reached the list view. Every
+absence assertion here is preceded by a presence check proving its channel can
+actually see MCPs (see the pre-flight guard and step 8).
+
 No substitutions (AFS § Fidelity Declaration): both fields are filled through
 the real inputs, Cancel and Discard are real clicks on the product's own
-controls, and the "nothing was created" oracle is a PASSIVE ``page.on
-("request")`` observer plus a read-only ``ToolkitAPI.list_all_toolkits()``.
-No ``page.route``, no fabricated response, no injected state, no API-seeded
-stand-in for a UI step.
+controls, and the oracles are observation-only. No ``page.route``, no
+fabricated response, no injected state, no API-seeded stand-in for a UI step.
 
 Spec: test-specs/mcp/l2_remote-mcp-cancel-during-creation_ELITEA-1960.md
 """
@@ -35,8 +47,6 @@ import logging
 
 import allure
 import pytest
-from api import ToolkitAPI
-from config import settings
 from pages.mcp_form_page import McpFormPage
 from pages.mcp_list_page import McpListPage
 from playwright.sync_api import expect
@@ -99,9 +109,8 @@ def _is_dev_server_noise(msg) -> bool:
 class TestMcpCancelDuringCreation:
     """Remote MCP create form: Cancel -> confirmation dialog -> Discard creates nothing."""
 
-    def test_cancel_during_creation_creates_nothing(self, page, toolkit_api: ToolkitAPI):
+    def test_cancel_during_creation_creates_nothing(self, page):
         """Cancelling MCP creation warns, returns to the type picker, and creates no MCP."""
-        project_id = str(settings.elitea_project_id)
         form = McpFormPage(page)
         list_page = McpListPage(page)
 
@@ -109,18 +118,35 @@ class TestMcpCancelDuringCreation:
             "Pre-flight guard — no MCP named 'autotest_cancelled' may pre-exist"
         ):
             # Step 8's observable is ABSENCE, so a leftover from an aborted
-            # earlier run would make it lie in the other direction. Fail fast
+            # earlier run would make it fail for the wrong reason. Fail fast
             # with a clear message instead of producing a misleading result.
             # Deliberately NOT auto-deleted: a real leftover IS the bug this
             # case exists to catch, and deleting it would erase the evidence.
-            pre_existing = [
-                t for t in toolkit_api.list_all_toolkits() if t.get("name") == TOOLKIT_NAME
-            ]
+            #
+            # Discovery runs through the MCP LIST VIEW, not the API: the
+            # toolkit listing endpoint always answers an empty list here (see
+            # the module docstring), which would make this guard vacuous. Same
+            # UI-based discovery the sibling delete spec uses
+            # (``test_mcp_delete_remote._delete_stale_mcp_if_present``).
+            list_page.navigate()
+            preflight_unfiltered = list_page.get_card_count()
+            # Non-vacuity check FIRST: an absence result is only evidence if
+            # the channel can see MCPs at all. Zero cards would mean the list
+            # failed to render, and every "not present" below would be free.
+            assert preflight_unfiltered > 0, (
+                "The MCP list rendered zero cards, so the pre-existence guard below "
+                "would be vacuous — the project needs at least one MCP (AFS § Test Data)"
+            )
+            list_page.search(TOOLKIT_NAME)
+            # No clear_search() — see the note in step 8 (defect #1734/#585).
+            # Step 1 navigates to the create page explicitly, so the filtered
+            # list state is not carried into the flow.
+            pre_existing = list_page.get_card_names()
             assert not pre_existing, (
-                f"Environment is dirty: a toolkit named {TOOLKIT_NAME!r} already exists "
-                f"({[t.get('id') for t in pre_existing]}). Either a previous run of this "
-                "case genuinely created one (the defect this case catches) or it was left "
-                "behind by an aborted run — investigate, do not auto-delete."
+                f"Environment is dirty: an MCP named {TOOLKIT_NAME!r} already exists "
+                f"({pre_existing}). Either a previous run of this case genuinely created "
+                "one (the defect this case catches) or it was left behind by an aborted "
+                "run — investigate, do not auto-delete."
             )
 
         # Console-error side channel (AFS step 8e / the case's Pass criterion
@@ -257,20 +283,13 @@ class TestMcpCancelDuringCreation:
         with allure.step(
             "Step 8b — Verify no mutating toolkit request fired anywhere in the flow"
         ):
+            # The independent, non-DOM ground truth for "nothing was created" —
+            # it also covers a create that succeeded but never reached the list
+            # view, which is why no API-listing assertion is needed (and why
+            # none would be honest here — see the module docstring).
             assert not mutating_toolkit_requests, (
                 "Cancelling creation must not send any create/update request, but these "
                 f"fired: {mutating_toolkit_requests}"
-            )
-
-        with allure.step(
-            "Step 8c — Verify via the API that no toolkit named 'autotest_cancelled' exists"
-        ):
-            # Independent, non-DOM ground truth for the same claim — also
-            # catches a create that succeeded but never reached the list view.
-            names = [t.get("name") for t in toolkit_api.list_all_toolkits()]
-            assert TOOLKIT_NAME not in names, (
-                f"The API still reports a toolkit named {TOOLKIT_NAME!r} in project "
-                f"{project_id} after cancellation — the MCP was created despite Discard"
             )
 
         with allure.step("Step 8e — Verify no unexpected console errors across the flow"):
