@@ -202,3 +202,80 @@ drive this test — it needs a sibling method that types a raw `str` and does
 NOT bake in `wait_for_autosave()` (that method's docstring already flags it
 as best-effort/non-committal about whether a PUT actually fired). Same
 shape as `set_target_summary_tokens()`, added for ELITEA-2378.
+
+## `/settings/profile` — Profile page + the ONLY Log out control (ELITEA-2252/2253/2254, 2026-08-24)
+
+Confirmed live at both 1366×768 (the framework's headless viewport, `conftest.py:310`)
+and 1728×861. Source: `src/[fsd]/features/settings/ui/profile/Profile.jsx`.
+
+**Where logout lives — and where it does not.**
+- The Log out button is a `BaseBtn` in the **content pane of `/settings/profile`**,
+  the last control of the Profile card: `Profile.jsx:73-80`,
+  `<BaseBtn variant="secondary" startIcon={<LogoutIcon/>} onClick={onLogout}>Log out</BaseBtn>`.
+  Label is `Log out` **with a space**.
+- **There is no Log out item in the Settings drawer.** PERSONAL ends at
+  **Notifications** (`SettingsDrawer.jsx` renders only `SETTINGS_TABS_CONFIG` tabs).
+  A whole-document text scan on `/settings/tokens` returned **0** `Log out` nodes.
+- **There is no user/profile menu in the app-shell sidebar.**
+  `src/[fsd]/widgets/sidebar-root/ui/button/UserButton.jsx` has a DotMenu with
+  `Preferences` + `Logout`, but it is **dead code** — `grep -rn "UserButton" src/`
+  finds no importer, and no `data-tour` user node renders live. Do not target it, do
+  not add testids to it. This is the #1 thing that misleads a source read for
+  "where is logout".
+- ⇒ From any Settings sub-page, logging out costs **one drawer click** (→ Profile),
+  then the button. This is why ELITEA-2254's "no extra navigation" premise fails.
+
+**Geometry / scroll facts (asserted as relations, never as coordinates).**
+- Log out is in-viewport with `window.scrollY == 0` at both viewports
+  (1366×768 → `(525, 392) 112×28`; 1728×861 → `(706, 392)`).
+- The settings **content pane is not scrollable** on this page
+  (`scrollHeight == clientHeight`).
+- The drawer **menu container is not scrollable** at 768px height
+  (`617 == 617`) — so "visible without scrolling" holds for both panes.
+- The icon is an inline `<svg width="16" height="16" viewBox="0 0 16 16"
+  fill="currentColor">` in MUI's `startIcon` slot. Scope it off the button's testid;
+  wiring a testid onto the icon itself would need a new DOM node (zero-functional-impact
+  check forbids it).
+- ⚠️ "Log out is the last focusable element in the pane" read `true` live but is **not**
+  a safe assertion — `FieldWithCopy` rows can add copy affordances on hover.
+
+**Clicking Log out is destructive and unobservable on localhost.**
+`onLogout` dispatches redux `logout()` then sets
+`window.location.href = origin + '/forward-auth/logout'` (`Profile.jsx:20-23`) — a hard
+browser navigation to an **infrastructure** endpoint, not an in-app route. On localhost
+that path is answered by the Vite SPA fallback (`curl … /forward-auth/logout` → **200**,
+body = the SPA shell), so the app renders its global **"Page not found. Try Home page"**
+view *inside the still-authenticated shell*, and a subsequent `/settings/profile` load is
+**still logged in** (`Test Bot` / id 659 rendered, `document.cookie` empty throughout —
+localhost auth is the `VITE_DEV_TOKEN` dev path, there is no Keycloak session and no
+login page in existence locally).
+⇒ **Never click Log out in a spec that shares a browser context.** It parks the context
+outside the SPA routes. The only honest local observable of the click is
+`expect(page).to_have_url(f"{BASE_URL}/forward-auth/logout")`.
+The same `onLogout` shape is in the dead `UserButton.jsx:32`.
+
+**Testids on this page — all `needs-adding` as of 2026-08-24**
+(re-verified against `origin/main` and `origin/automation/testids` with `git fetch`):
+
+| Testid | Where | Notes |
+|---|---|---|
+| `settings-profile-page` | `Profile.jsx` root `<Box sx={styles.container}>` | pure attribute add |
+| `settings-profile-logout-button` | `Profile.jsx:73` `<BaseBtn>` | `BaseBtn` spreads `...restProps` onto `MuiButton` (`shared/ui/button/BaseBtn.jsx:31-40`), so `data-testid` passes straight to the `<button>` — no prop plumbing, no new node, no new hook |
+
+Pre-existing and reusable: `personal-tokens-page-title` (**on `main` ✓ and
+`automation/testids` ✓** — one of the few fully promoted handles in this area);
+`sidebar-settings-button` (`automation/testids` only).
+Still unadded anywhere as of this run: `settings-drawer`, `settings-content`,
+`settings-nav-item-{tabId}` (requested by the ELITEA-2242/2243/2244 AFS too — whoever
+lands first adds them).
+
+**Console:** 0 errors across every load of `/settings/profile` and `/settings/tokens`
+in this session, including the logout click. Neither the **#1771** (AI Personality
+`disableUnderline`) nor the **#1203** (Secrets "Maximum update depth exceeded") filter
+belongs on specs for this page — adding one would be masking.
+
+**AFS files from this run:**
+`l2_settings_profile_logout_button_visible_ELITEA-2252.md` (ready-for-automation),
+`l1_settings_profile_logout_logs_user_out_ELITEA-2253.md` (**blocked** — env),
+`l1_settings_logout_reachable_from_any_subpage_ELITEA-2254.md` (**blocked** — premise + env).
+Drift consolidated onto clarification **#1772**.
