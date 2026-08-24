@@ -188,10 +188,43 @@ class SidebarHeaderPage(BasePage):
     # Notifications popover
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _is_notification_list_response(response: Response) -> bool:
+        """True for the POPOVER's own paginated notification-list fetch.
+
+        Same URL prefix as the badge's unread-count probe; the probe is the request
+        carrying ``only_total=true``, so its ABSENCE is what identifies the list
+        fetch (verified live):
+        ``GET /api/v2/notifications/notifications/prompt_lib/<pid>?only_new=true&limit=5&offset=0``
+        """
+        return (
+            NOTIFICATIONS_URL_SUBSTRING in response.url
+            and NOTIFICATIONS_UNREAD_COUNT_MARKER not in response.url
+            and response.request.method == "GET"
+        )
+
     @action("Open the notifications popover")
     def open_notifications(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
-        """Click the bell and wait for the Notifications popover paper."""
-        self.notifications_button.click()
+        """Click the bell, wait for the popover's OWN list response, then its paper.
+
+        The paper mounts immediately, but its body has three MUTUALLY EXCLUSIVE
+        states driven by that request (``NotificationList.jsx``): five ``Skeleton``
+        bars while ``isFetching && !notifications.length``, the "No new notifications
+        right now" empty state when ``!notifications.length && !isFetching``, and the
+        item list plus "Mark all as read" only once ``notifications.length > 0``.
+        Returning on the paper alone therefore hands the caller a SKELETON, and every
+        content assertion after it races a live DEV round-trip.
+
+        Waiting on the response is deterministic, not a sleep: ``NotificationList``
+        mounts only on a bell click (``{notificationListAnchorEl && <NotificationList/>}``,
+        ``NotificationButton.jsx``) and its ``useEffect(() => { refetch(); }, [refetch])``
+        forces the round-trip on EVERY open, cache or no cache — so the request is
+        guaranteed to fire each time this method runs.
+        """
+        with self.page.expect_response(
+            self._is_notification_list_response, timeout=NAVIGATION_TIMEOUT
+        ):
+            self.notifications_button.click()
         self.notifications_popover.wait_for(state="visible", timeout=timeout)
 
     @action("Close the notifications popover via its X button")

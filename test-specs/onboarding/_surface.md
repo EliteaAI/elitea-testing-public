@@ -585,3 +585,37 @@ Every testid this case's test touches is on `origin/automation/testids` and **no
 `origin/main`** — `select-option-selected-icon`, `sidebar-settings-button`,
 `sidebar-agent-hub-button`, `project-selector-option-*`, `sidebar-menu-item-*`, plus the
 new `data-selected` attribute. Not deployable-env-promotable until a human cherry-picks.
+
+---
+
+## Resolved during ELITEA-2234 stabilization (test-automation-engineer, 2026-08-24, batch `onboarding-w4` round 1)
+
+Attributed implementation-time fact. Corrects nothing above — it ADDS the loading
+dimension the original popover section (§ *Notifications popover*) did not cover.
+
+**The popover's list is a live round-trip on EVERY open, and its body has THREE
+mutually exclusive states.** `NotificationList.jsx` mounts only when the bell is
+clicked (`{notificationListAnchorEl && <NotificationList/>}`, `NotificationButton.jsx`),
+and it carries `useEffect(() => { refetch(); }, [refetch])` — so a fresh
+`GET …/notifications/notifications/prompt_lib/<pid>?only_new=true&limit=5&offset=0`
+fires on every open, cache or no cache. Until it lands, the body renders **five grey
+`Skeleton` bars** (`isFetching && !notifications.length`); the "No new notifications
+right now" empty state renders only when `!notifications.length && !isFetching`; and
+the item list plus **"Mark all as read"** only when `notifications.length > 0`.
+
+**Consequence:** waiting for the Popover **paper** is not waiting for the popover.
+The paper mounts instantly, so any content assertion after it races the DEV
+round-trip on Playwright's **silent 5 s `expect` default** — the onboarding-w4 gate
+went RED exactly there (Step 5, 5066 ms, `sidebar-notifications-mark-all-read-button`
+never visible; the failure screenshot shows the five skeletons).
+
+**The pattern (shipped in `SidebarHeaderPage.open_notifications()`):** wrap the bell
+click in `page.expect_response(<list predicate>)`, then wait for the paper. The forced
+refetch makes it deterministic — no sleep, no weakened assertion. The predicate is the
+mirror of the badge probe's: same URL prefix, GET, and `only_total=true` **absent**
+(the probe is the one that carries it, and it fires on page load — a predicate that
+matched it would resolve instantly and silently reinstate the bug). Pinned by
+`automation/tests/unit/test_sidebar_notifications_list_response_matcher.py`.
+
+**Generalisable:** any MUI Popover/Dialog whose content is an RTK-Query list is a
+paper-mounts-first surface. Wait on the product's own response, not on the container.

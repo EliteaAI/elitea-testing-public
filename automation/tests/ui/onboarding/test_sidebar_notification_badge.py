@@ -144,13 +144,22 @@ class TestSidebarNotificationBadge:
             "Step 5 — Click the bell; the Notifications popover opens listing the "
             "unread notifications (clarification #1764)"
         ):
+            # `open_notifications()` waits for the popover's OWN list response before
+            # returning (`SidebarHeaderPage`), so the assertions below read a settled
+            # list rather than the five Skeleton bars. Every one of them also carries
+            # an explicit timeout — Playwright's 5 s `expect` default is silent and
+            # too tight for a live DEV round-trip on this popover.
             sidebar.open_notifications()
-            expect(sidebar.notifications_popover).to_be_visible()
-            expect(sidebar.notifications_popover_title).to_have_text(_EXPECTED_POPOVER_TITLE)
+            expect(sidebar.notifications_popover).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            expect(sidebar.notifications_popover_title).to_have_text(
+                _EXPECTED_POPOVER_TITLE, timeout=UI_ELEMENT_TIMEOUT
+            )
             # "Mark all as read" is rendered ONLY when notifications.length > 0, so its
             # presence is the product's own statement that the list is non-empty —
             # the machine-checkable form of the case's "a notification is shown".
-            expect(sidebar.notifications_mark_all_read_button).to_be_visible()
+            expect(sidebar.notifications_mark_all_read_button).to_be_visible(
+                timeout=UI_ELEMENT_TIMEOUT
+            )
 
         with allure.step('Step 6 — Click the "X" button'):
             sidebar.close_notifications()
