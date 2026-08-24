@@ -37,7 +37,7 @@ No substitution, no seeding, no cleanup.
 | 1 | Log in first time; onboarding card visible | Card rendered | `navigate("/onboarding")` → `onboarding-tour-container` | `expect(tour_container).to_be_visible()` | **ready** — same boundary as ELITEA-2235 § Entry path |
 | 2 | Locate the expand/fullscreen icon in the top-right corner of the card | Icon present and visible | `onboarding-tour-fullscreen-button` | `expect(fullscreen_button).to_be_visible()` | **ready** — **testid needed** (see § Testids to add) |
 | 3 | Click the expand icon | Control responds | click on `onboarding-tour-fullscreen-button` | action | **ready** |
-| 4 | Card expands to a fullscreen / enlarged modal state | Fullscreen dialog shown | `onboarding-tour-fullscreen-dialog` + its box size vs viewport | `expect(dialog).to_be_visible()` **and** dialog `bounding_box()` width/height == `page.viewport_size` (±2 px) | **ready** — **testid needed**. The box comparison is what makes "fullscreen" an assertion rather than a word; MUI's `paperFullScreen` class is NOT an allowed handle here. |
+| 4 | Card expands to a fullscreen / enlarged modal state | Fullscreen dialog shown | `onboarding-tour-fullscreen-dialog` + its box geometry | `expect(dialog).to_be_visible()` **and** the shipped three-part geometry check below | **ready** — **testid needed**. The box comparison is what makes "fullscreen" an assertion rather than a word; MUI's `paperFullScreen` class is NOT an allowed handle here. **AMENDED at implementation** — see § Amendment: step 4 geometry. |
 | 5 | Modal title "Onboarding tips" in the top-left of the enlarged view | Title text | `onboarding-tour-fullscreen-title` | `expect(dialog_title).to_have_text("Onboarding tips")` | **ready** — **testid needed** |
 | 6 | Slide content, image, title, description and page counter all still visible in the enlarged state | All four visible **inside the dialog** | dialog-scoped: `onboarding-tour-tip-image`, `onboarding-tour-tip-content`, `onboarding-tour-page-indicator` | `expect(...).to_be_visible()` on each scoped locator + `to_have_text("1 / 48")` on the scoped counter + `to_contain_text("Tip 1: Welcome to ELITEA")` on the scoped tip | **ready** — **image testid needed**; the other two exist but **MUST be dialog-scoped** (see § Handles note 1 — duplicate-testid trap) |
 | 7 | X (close/collapse) button displayed top-right of the enlarged modal | Button visible | `onboarding-tour-fullscreen-close-button` | `expect(close_button).to_be_visible()` | **ready** — **testid needed** |
@@ -71,6 +71,29 @@ components (zero-functional-impact check passes by construction).
 
 Naming follows `{section}-{element}-{type}`; verified unique — none of the five exists on
 `origin/main` or `origin/automation/testids` as of 2026-08-24 (fetched, two-stage grep).
+
+### Amendment: step 4 geometry + where the dialog testid lives (implementer, 2026-08-24)
+
+Two things this AFS specified were adjusted; both are *how*, not *what*, and both make the
+step-4 assertion stronger rather than weaker.
+
+1. **`onboarding-tour-fullscreen-dialog` is wired on the Dialog's PAPER**
+   (`slotProps.paper['data-testid']`), **not on the `<Dialog>` root** as row #2 of § Testids
+   to add said. MUI spreads a `data-testid` passed to `<Dialog>` onto the Modal *root*, which is
+   `position: fixed; inset: 0` for **every** dialog, fullscreen or not — a bounding-box
+   "is it fullscreen" assertion against it would be a tautology that passes even if `fullScreen`
+   were removed. The paper is the element MUI actually resizes when `fullScreen` is set, and it
+   is also the element carrying `role="dialog"`. Dialog-scoping still works unchanged (the
+   header, `DialogContent` and the second `TourContent` are all descendants of the paper).
+2. **The viewport comparison is conditional, with an unconditional geometry core.** Headless
+   runs pin the viewport (`conftest.py`: 1366x768) but **headed runs use `no_viewport=True`, so
+   `page.viewport_size` is `None`** and the AFS's `== page.viewport_size (±2 px)` cannot be
+   evaluated at all in the suite's default headed mode. The shipped assertion is therefore:
+   (a) the dialog box is anchored at the viewport origin (`x`, `y` <= 2 px);
+   (b) it covers at least the whole onboarding page shell (`onboarding-page-container`'s box);
+   (c) it is strictly larger than the embedded card's box measured **before** the click;
+   plus (d) the exact `== page.viewport_size (±2 px)` check **when `viewport_size` is set**.
+   (a)-(c) alone still fail if `fullScreen` is dropped.
 
 **About #5:** `TourContent` is rendered twice while the dialog is open, so this testid (like
 `onboarding-tour-tip-content`, `-page-indicator`, `-prev-button`) legitimately matches two nodes
@@ -121,8 +144,14 @@ The dialog title and close button live only inside the dialog, so their plain
 
 ## Suggested test shape
 
-- File: `automation/tests/ui/onboarding/test_onboarding_tips_card.py` (shared with ELITEA-2235).
-- Markers: `p2` *(case priority high — follow the suite's mapping)*, `onboarding`, `regression`, `ui`.
+**AMENDED at implementation (2026-08-24, implementer):** shipped as its OWN spec file,
+`automation/tests/ui/onboarding/test_onboarding_tips_fullscreen.py` — the batch dispatch
+requires one spec per case. ELITEA-2235 keeps `test_onboarding_tips_card.py`; the two share the
+`OnboardingPage` page object, which is where the "same screen" reuse belongs. Marker shipped as
+`p1` (`pytest.ini`: `p1` = high priority, matching the case's own `priority: high`).
+
+- File: `automation/tests/ui/onboarding/test_onboarding_tips_fullscreen.py`
+- Markers: `p1`, `onboarding`, `regression`, `ui`, `new`.
 - One `allure.step` per case step.
 - No teardown needed — the dialog is closed by step 8, and context state is per-test.
 
