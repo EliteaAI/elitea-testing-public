@@ -177,3 +177,18 @@ Live exploration, 2026-08-24, `http://localhost:5173`, project 399. Observations
 | Console (session-wide) | only vite-HMR reload failures (dev-server restart), `socket.io` CORS/502/503 to `dev.elitea.ai`, and the #656 type-picker key warning — **none emitted by the Cancel/Discard clicks themselves** |
 
 Screenshot: `test-results/screenshots/ELITEA-1960-step-05-cancel-confirm-dialog.png` (step 5, confirmation dialog).
+
+## Shipped implementation (2026-08-24, implementer)
+
+- **Spec:** `automation/tests/ui/toolkits/test_mcp_cancel_during_creation.py`
+- **Node id:** `tests/ui/toolkits/test_mcp_cancel_during_creation.py::TestMcpCancelDuringCreation::test_cancel_during_creation_creates_nothing`
+- **Form C (for the orchestrator's post-merge back-write):**
+  `tests.ui.toolkits.test_mcp_cancel_during_creation.TestMcpCancelDuringCreation.test_cancel_during_creation_creates_nothing`
+- **AFS drift found:** none. Every handle, message string, heading and behaviour in
+  this AFS matched the live product on the implementation run.
+- **Page-object naming:** the analyst's declared `create_cancel_button` /
+  `cancel_confirm_dialog` / `cancel_confirm_button` + `click_cancel_creation()` /
+  `get_cancel_confirm_message()` / `confirm_cancel_creation()` was adopted verbatim —
+  no alternative prefix chosen, so nothing further to declare.
+- **New testids:** none (all four cancel-flow handles were already on `origin/main`).
+- **Result:** GREEN 1/1 on the first run, 0 reruns, ~30 s headless.

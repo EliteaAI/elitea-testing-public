@@ -1239,3 +1239,32 @@ CORS/502/503 noise to `dev.elitea.ai`), not drop the assertion and not run it un
 
 `toolkit-field-url-input`'s testid sits on the `<input>` **itself** — `[data-testid="toolkit-field-url-input"] input`
 matches nothing. (`toolkit-form-name-input` is the opposite: wrapper, real input inside.)
+
+### Resolved/added during ELITEA-1960 implementation (2026-08-24, implementer)
+
+- **`McpFormPage` now binds the create-form cancel trio** — `create_cancel_button`
+  (`toolkit-form-cancel-button`), `cancel_confirm_dialog`
+  (`toolkit-form-cancel-confirm-dialog`), `cancel_confirm_button`
+  (`toolkit-form-cancel-confirm-button`), plus `click_cancel_creation()` /
+  `get_cancel_confirm_message()` / `confirm_cancel_creation()`. Named
+  `create_cancel_*` / `cancel_confirm_*` to stay unambiguous next to the DETAIL
+  page's pre-existing `detail_discard_button` / `discard_confirm_modal` /
+  `discard_confirm_button` trio — the two flows live in the same class and the
+  product labels their triggers differently ("Cancel" vs "Discard") while both
+  confirm buttons read "Discard". No new testids were needed.
+- **`toolkit-form-name-input` behaves as a real input for assertions.** Despite the
+  wrapper note above, `expect(form.name_input).to_have_value(...)` works directly
+  (Playwright would raise "Not an input element" otherwise) — verified green in
+  `test_mcp_cancel_during_creation.py` steps 2/4b.
+- **The two-signature console filter works as specced.** Excluding the #656
+  `unique "key" prop` message and `/socket.io/` + `@vite/client` noise left the
+  remainder empty across a whole cancel flow (picker mounted twice). No third
+  signature surfaced.
+- **The passive `page.on("request")` oracle is cheap and decisive**: filtering
+  `method != "GET" and "prompt_lib" in url` across the entire flow collected zero
+  requests — no toolkit POST/PUT fires on a cancelled creation. Confirms the
+  analyst's network observation from the implementation side.
+- **Pre-flight guard is worth keeping**: the fixed literal `autotest_cancelled` is
+  safe only because the test asserts up front that no such toolkit pre-exists (and
+  deliberately does NOT delete one it finds — a leftover IS the defect signal).
+- Whole spec runs in ~30 s headless, green first try, zero reruns.
