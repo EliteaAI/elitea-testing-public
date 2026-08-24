@@ -942,3 +942,44 @@ New `McpListPage` members (all testid-only, all additive): `TYPE_FILTER_CHIP`,
 `wait_for_type_panel()`, `click_type_filter()`, `remove_type_filter()`,
 `clear_all_type_filters()`, `is_type_filter_active()`,
 `get_visible_type_badges()`.
+
+---
+
+## MCP LIST card pin/unpin + type-filter counts (2026-08-24)
+
+**Appended during ELITEA-1945 / ELITEA-1958 cluster analysis, batch `mcp-w03`.** All observed
+live against `http://localhost:5173/mcps/all`, project 399 (19 MCPs, all Remote, none pinned
+before and after the run).
+
+### Card pin toggle — `mcp-pin-toggle-button-{id}`
+
+| Fact | Detail |
+|---|---|
+| Provenance | **on `main` ✓** — `origin/main:src/[fsd]/widgets/pin-toggler/ui/PinButton.jsx:98` (verified after `git fetch origin`, 2026-08-24) |
+| State read | `aria-label` = `Pin to top` / `Unpin from top` (testid stable, state in the attribute) |
+| **Hover-reveal** | **The button renders at `opacity: 0` until the card is hovered** (`pointer-events: auto` throughout, so a click works unhovered). ⚠️ Playwright's visibility definition ignores `opacity`, so `to_be_visible()` passes on an invisible control — assert `to_have_css("opacity","1")` after an explicit hover when a case says "the button is visible". |
+| Tooltip | MUI `role="tooltip"` appears on hover carrying the same text (`Pin to top` → `Unpin from top`). **No testid, and none should be added** (#511) — `aria-label` is the testid-anchored equivalent. |
+| Pin | `POST /api/v2/social/pin/prompt_lib/{project}/toolkit/{id}` → **201**; card jumps to index 0 **immediately, client-side** (observed 18 → 0, no reload, no list re-fetch). |
+| Unpin | `DELETE` same path → **204**; label flips back instantly **but the list does NOT re-sort** — the card stays at index 0 until the next list fetch. After `page.goto('/mcps/all')` the original order returns byte-identical. Case-text gap filed as clarification **#1740**. |
+| Vacuity trap | Default sort is newest-first, so a freshly created MCP is already index 0. A pin test must seed **two** MCPs (A then B) and pin **A**, asserting `index(A) < index(B)` afterwards. |
+| Hygiene | The merged `test_mcp_three_dot_menu_actions.py` asserts "no MCP is pinned" as its own precondition — **never leak a pin**, and assert the same guard before pinning (a stray pin sits at index 0 and breaks the "moved to top" read for an unrelated reason). |
+| Page object | `McpListPage.PIN_TOGGLE_BUTTON` + `get_pin_toggle_label(mcp_id)` already exist; a `click_pin_toggle(mcp_id)` returning the awaited pin/unpin `Response` is the missing piece (mirror `McpFormPage.click_pin_toggle_menu_item()`). |
+
+### Type-filter counts — #1737 re-reproduced (3rd time)
+
+| Filter | Cards | Badge set | List request |
+|---|---|---|---|
+| none | 19 | `{Remote}` | `…/tools/prompt_lib/399?query=&sort_by=created_at&sort_order=desc&mcp=true&limit=20&offset=0` |
+| Remote | 19 | `{Remote}` | same **+ `&toolkit_type=mcp`** |
+| **Local** | **19** | **`{Remote}`** | **byte-identical to unfiltered — no `toolkit_type` at all** |
+
+So the count identity ELITEA-1958 asserts (`total == Remote + Local`) reads **19 == 19 + 19**
+live. ELITEA-1958 is **blocked** on #1737 (product) + #1738 (no Local MCP exists in DEV, now
+gating three cases). Occurrences were commented onto both existing issues; nothing re-filed.
+`tags-panel-clear-all` is a verified equivalent to re-clicking the chip for clearing (2/2).
+
+### Console
+
+0 errors on `/mcps/all` across the whole pin/unpin flow *and* the whole filter flow. The known
+`/mcps/create` React key warning (#656) is the only reason to scope a console listener — register
+it **after** any UI-create seeding.
