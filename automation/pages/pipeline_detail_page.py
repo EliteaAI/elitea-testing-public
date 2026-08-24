@@ -1659,15 +1659,20 @@ class PipelineDetailPage(PipelineFormPage):
         description="Run Details panel close icon button"
     )
 
+    # TEMPORARY FIX: testid removed in EliteaUI commit a638b586 (Aug 11)
+    # Using CSS locator to target the parent Box that contains the label + node name
+    # This matches the <Box sx={styles.timelineHeader}> element
     run_details_timeline_section = LocatorDescriptor(
-        testid="pipeline-run-details-timeline-section",
+        locator='[data-testid="pipeline-run-details-panel"] >> text="Timeline step:" >> xpath=..',
         description='Run Details panel "Timeline step" section (label + node id + stepper)'
     )
 
-    run_details_states_section = LocatorDescriptor(
-        testid="pipeline-run-details-states-section",
-        description='Run Details panel "States" section (header + per-variable accordion list)'
-    )
+    # TEMPORARY FIX removed - now building locator directly in get_run_details_states_section_text()
+    # Keeping this comment as placeholder for when testid is added
+    # run_details_states_section = LocatorDescriptor(
+    #     testid="pipeline-run-details-states-section",
+    #     description='Run Details panel "States" section (per-variable accordion list)'
+    # )
 
     # Multi-run history toggle (RunStateNodeGroup — ELITEA-2454). Renders
     # only when >1 run exists (`nodes.length > 1`), immediately before the
@@ -7279,8 +7284,27 @@ class PipelineDetailPage(PipelineFormPage):
         return (self.run_details_timeline_section.text_content() or "").strip()
 
     def get_run_details_states_section_text(self) -> str:
-        """Return the Run Details panel's States section text content."""
-        return (self.run_details_states_section.text_content() or "").strip()
+        """Return the Run Details panel's States section text content.
+
+        TEMPORARY: Builds locator manually due to missing testid.
+        Returns combined text from header + all accordion summaries + any expanded content.
+        """
+        # TEMPORARY FIX: testid missing, build from parts
+        panel = self.page.get_by_test_id("pipeline-run-details-panel")
+
+        # Get "States" header
+        header = panel.locator('text="States"').first.text_content() or ""
+
+        # Get all accordion summaries (state variable names)
+        # MuiAccordion-root contains MuiAccordionSummary
+        accordions = panel.locator(".MuiAccordion-root")
+        accordion_texts = []
+        for i in range(accordions.count()):
+            accordion_texts.append(accordions.nth(i).text_content() or "")
+
+        # Combine: header + all accordion content
+        all_text = f"{header} {' '.join(accordion_texts)}"
+        return all_text.strip()
 
     # ------------------------------------------------------------------
     # Run Details panel — multi-run history (RunStateNodeGroup — ELITEA-2454)
