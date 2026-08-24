@@ -109,6 +109,28 @@ class McpFormPage(BasePage):
         testid="toolkit-field-scopes-input",
         description="Scopes input",
     )
+    # Secret/Password "secret view toggler" rendered beside every SECRET schema
+    # field — added ELITEA-1932. Both testids are emitted generically by the
+    # shared SecretField.jsx (line 342), which passes
+    # testIdPrefix={`${fieldTestId}-toggle`} down to Toggle.jsx, so the pair
+    # exists for free on every secret field (same grammar
+    # CredentialCreatePage.FIELD_SECRET_TOGGLE already uses for credentials).
+    # Active mode is read from `aria-pressed`, never from a class.
+    client_secret_toggle_secret = LocatorDescriptor(
+        testid="toolkit-field-client_secret-input-toggle-secret",
+        description="'Secret' button of the Client Secret secret-view toggler",
+    )
+    client_secret_toggle_password = LocatorDescriptor(
+        testid="toolkit-field-client_secret-input-toggle-password",
+        description="'Password' button of the Client Secret secret-view toggler",
+    )
+    # In Secret mode the native <input> is UNMOUNTED and replaced by a
+    # SingleSelect over the project's secret vault (and vice versa), so exactly
+    # one of client_secret_input_field / client_secret_combobox exists at a time.
+    client_secret_combobox = LocatorDescriptor(
+        testid="toolkit-field-client_secret-input-combobox",
+        description="Client Secret vault SingleSelect — present only in Secret mode",
+    )
     timeout_input = LocatorDescriptor(
         testid="toolkit-field-timeout-input",
         description="Timeout input",
@@ -275,6 +297,14 @@ class McpFormPage(BasePage):
     # (a raw DOM query, not a Playwright locator — mirrors BasePage's own
     # evaluate()-based waits, e.g. dismiss_banner_if_present()).
     DETAIL_TITLE_SELECTOR = '[data-testid="toolkit-detail-title"]'
+
+    # Secret-vault dropdown options (ELITEA-1932). Dynamic testid -> class-level
+    # template constant per .agents/testing.md § Locator policy; the option's
+    # testid embeds the stored reference itself, e.g.
+    # select-option-{{secret.auth_token}}.
+    SECRET_SAVED_OPTION = '[data-testid="select-option-{{{{secret.{}}}}}"]'
+    SECRET_SAVED_OPTION_PREFIX = '[data-testid^="select-option-{{secret."]'
+    SECRET_GROUP_HEADER_SAVED = '[data-testid="select-group-header-Saved Secrets"]'
 
     # ------------------------------------------------------------------
     # Tools section (Configuration accordion, "TOOLS" sub-heading) —
@@ -775,6 +805,75 @@ class McpFormPage(BasePage):
     def get_client_secret_value(self) -> str:
         """Return the raw DOM value of the (visually masked) Client Secret input."""
         return self.client_secret_input_field.input_value()
+
+    @action("Switch the Client Secret field to Secret mode")
+    def switch_client_secret_to_secret_mode(self) -> None:
+        """Click the Client Secret toggler's "Secret" button and wait for the swap.
+
+        Secret mode replaces the native ``<input type="password">`` with the
+        vault ``SingleSelect`` (``SecretField.jsx``), so the wait is on the
+        combobox mounting — not on the button's own ``aria-pressed``, which
+        flips before the field re-renders.
+        """
+        self.client_secret_toggle_secret.click()
+        self.client_secret_combobox.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    def saved_secret_option(self, secret_name: str):
+        """Return the vault-dropdown option locator for saved secret *secret_name*."""
+        return self.page.locator(self.SECRET_SAVED_OPTION.format(secret_name))
+
+    def saved_secret_options(self):
+        """Return every SAVED-SECRETS option currently rendered in the dropdown."""
+        return self.page.locator(self.SECRET_SAVED_OPTION_PREFIX)
+
+    def saved_secrets_group_header(self):
+        """Return the dropdown's "SAVED SECRETS" group header."""
+        return self.page.locator(self.SECRET_GROUP_HEADER_SAVED)
+
+    @action("Open the Client Secret vault dropdown")
+    def open_client_secret_vault_dropdown(self) -> None:
+        """Open the Secret-mode vault dropdown and wait for its first saved option.
+
+        The vault query (``useSecretsListQuery``) is skipped while the field is
+        in Password mode, so the options only start loading once Secret mode is
+        active and the select is opened — wait on a rendered OPTION, not on
+        network idle (same discipline as
+        ``CredentialCreatePage.open_secret_dropdown``).
+        """
+        self.client_secret_combobox.click()
+        self.saved_secret_options().first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    @action("Select a saved secret in the Client Secret vault dropdown")
+    def select_client_secret_saved_secret(self, secret_name: str) -> None:
+        """Pick saved secret *secret_name* and wait for the dropdown to close."""
+        option = self.saved_secret_option(secret_name)
+        option.click()
+        option.wait_for(state="detached", timeout=UI_ELEMENT_TIMEOUT)
+
+    def get_client_secret_display_text(self) -> str:
+        """Return the Secret-mode combobox's displayed secret NAME.
+
+        The combobox shows the human-readable secret name (``auth_token``); the
+        stored reference (``{{secret.auth_token}}``) is only visible in the Raw
+        Json view / the save response.
+        """
+        return self.client_secret_combobox.text_content() or ""
+
+    @action("Blur the Headers JSON editor")
+    def blur_headers_editor(self) -> None:
+        """Move focus out of the Headers editor so its value commits to the form.
+
+        The CodeMirror-backed Headers field propagates on **blur**, not on
+        keystroke: with focus still inside the editor after typing valid JSON,
+        ``toolkit-detail-save-button`` stays disabled (verified live at
+        ELITEA-1931). Blurring also re-formats the JSON to its pretty-printed
+        form, which is why this is a separate, additive method rather than a
+        change to :meth:`fill_headers_json` — that method's merged caller
+        (``test_mcp_create_remote.py``) reads the editor text immediately after
+        filling and must keep seeing the verbatim, unformatted input.
+        """
+        self.headers_editor_content.blur()
+        self._wait_for_text_content_stable(self.headers_editor_content)
 
     @action("Fill Scopes")
     def fill_scopes(self, scopes: str) -> None:
