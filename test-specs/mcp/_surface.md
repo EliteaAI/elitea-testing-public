@@ -639,3 +639,92 @@ cases already spent a session rediscovering it.
 > test-surface / run-history / fixtures) is overdue. Not done in this batch —
 > several merged AFS files reference this path, so the restructure wants its own
 > unit rather than a mid-wave edit. Flagged to the lead.
+
+---
+
+## MCP DETAIL three-dot ("controls") menu — full inventory + Copy link / Pin to top (2026-08-24)
+
+**Appended during ELITEA-1946 / ELITEA-1959 cluster analysis, batch `mcp-w02`.** Everything
+below was observed live against `http://localhost:5173`, MCP `2140`, project `399`.
+
+### Menu inventory (owner viewMode, private project)
+
+Rendered by `src/[fsd]/features/toolkits/ui/toolkits-tab-bar/ToolkitsControls.jsx:60-73`,
+in this DOM order:
+
+| # | Label | testid | State |
+|---|---|---|---|
+| 1 | `Export` | **none** | `aria-disabled="true"` (hardcoded `disabled: true` at `ToolkitsControls.jsx:51`) |
+| 2 | `Fork` | `toolkit-actions-fork-menuitem` | `aria-disabled="true"` (hardcoded) |
+| 3 | `Copy link` | `Copy link-menuitem` ⚠️ | enabled |
+| 4 | `Pin to top` / `Unpin from top` | **none** | enabled |
+| 5 | `Delete` | `toolkit-actions-delete-menuitem` | enabled |
+
+Container handles: `controls-menu-button` (trigger) + `controls-menu` (popup) — both
+already `McpFormPage` fields, both on `main` ✓.
+
+**Menu items get their testid from their `key`:** `DotMenu.jsx:422` wires `testId: item.key`
+and `DotMenu.jsx:58` renders `data-testid={testId ? \`${testId}-menuitem\` : undefined}`.
+So the full testid string **never appears in EliteaUI source** — a closure-record grep must
+search the **key** (`toolkit-actions-delete`), not the composed value. Both existing keys are
+on `main` ✓ (`DeleteToolkitButton.jsx:72`, `ForkEntityButton.jsx:26`).
+
+### Three testid gaps on this menu (work orders, not waivers)
+
+| Element | Recommended testid | One-line fix |
+|---|---|---|
+| `Export` | `toolkit-actions-export-menuitem` | `useExportToolkitMenu()` (`ExportToolkitButton.jsx:38-40`) builds its menuItem with **no `key` at all** → no testid renders. Add an **optional** `key` param (same shape `usePinMenu` already uses) and pass `key: 'toolkit-actions-export'` from `ToolkitsControls.jsx:51`. |
+| `Copy link` | `copy-link-toolkit-menuitem` | Today's `Copy link-menuitem` is the **label leaking into the testid, space and all** — `useCopyLinkMenu()` defaults `key: key \|\| label` (`CopyLinkToEntityButton.jsx:44`). The hook already accepts `key`; pass `key: 'copy-link-toolkit'` at `ToolkitsControls.jsx:43`. Verified 0 references to the old string anywhere in `automation/` — the rename is safe. |
+| `Pin to top` | `pin-toggle-toolkit-menuitem` | `usePinMenu()` already supports an optional `key` (added for ELITEA-2049); `ToolkitsControls.jsx:45-49` is the one caller not passing one. Mirror credentials' existing `pin-toggle-credential`. |
+
+Testid = **stable identity**; the pinned/unpinned state is read from the item's **text**
+(`Pin to top` / `Unpin from top`), never from a state-flavoured testid variant.
+
+### Confirmed behaviours
+
+- **Copy link → toast** `toast-message` = exactly `The link has been copied to the clipboard.`
+  (trailing period; the TMS case texts omit it). Auto-dismisses in a few seconds — wait for it
+  **in the same synchronous chain as the click**; a DOM read one turn later finds nothing
+  (this bit twice during analysis).
+- **Copied URL shape:** `{origin}{APP_PREFIX}/{projectId}/mcps/all/{id}?viewMode=owner&name={encoded name}`.
+  Observed: `http://localhost:5173/399/mcps/all/2140?viewMode=owner&name=autotest_mcp_run_tool`.
+  Built by `useProjectEntityLink()` (`src/hooks/useProjectEntityLink.js:12-14`) as
+  `origin + getBasename() + details.projectPath + (details.search || '?viewMode=' + viewMode)`,
+  and `usePageDetails().projectPath` carries `PROJECT_ID_URL_PREFIX`. **The `/{projectId}`
+  segment is real and by design** — ELITEA-1959's case text omits it, filed as CLARIFICATION
+  [#1729](https://github.com/EliteaAI/elitea-testing-public/issues/1729). Never hardcode the
+  host or project id; build from `settings.app_base_url` + `settings.elitea_project_id`.
+- **Opening that URL in a new tab works**, via a `ProjectSwitcher` hard `window.location.replace()`
+  that strips the `/{projectId}` prefix — final URL settles at `/mcps/all/{id}?viewMode=owner&name=…`.
+  Assert on the settled state, never on the URL right after `goto`. Same hop documented for ELITEA-1898.
+- **Any menu-item click closes the menu** (`DotMenu.jsx`'s `withClose`). Consequence: to test
+  Escape-to-close you must **re-open the menu first**, or the assertion passes vacuously
+  (the ELITEA-2049 review-round-1 lesson, re-confirmed here).
+- **`Escape` closes the menu by UNMOUNTING it** → assert `to_have_count(0)`, not `not_to_be_visible()`.
+- **Pin from the detail menu:** `POST /api/v2/social/pin/prompt_lib/{project}/toolkit/{id}` → **201 Created**;
+  unpin → `DELETE` same path → **204 No Content**. Same asymmetric shape as credentials/pipelines.
+  After pinning, re-opening the menu shows `Unpin from top`, and `/mcps/all` puts the MCP at
+  **index 0** (verified: it jumped from index 3 to index 0 with no reload beyond the navigation).
+- **List-row pin toggle** is `mcp-pin-toggle-button-{id}` (`PinButton.jsx:98`,
+  `${getPinTestIdSlug(entityType)}-pin-toggle-button-${entityId}`, on `main` ✓). Its state is
+  in `aria-label` (`Pin to top` / `Unpin from top`) — a clean, testid-anchored state read.
+- **Pin timing is asymmetric** (consistent with the merged credential/pipeline pin tests):
+  pinning re-sorts immediately; **unpinning does not** — the entity stays at the top until a
+  fresh navigate/re-fetch, even though its label flips back instantly.
+- **State of project 399 as of 2026-08-24:** 19 MCPs, none pinned, default sort newest-first
+  (id-descending). A freshly created MCP is therefore already at index 0 — **a pin test must
+  create TWO MCPs** (A then B, pin A) or the "moves to top" assertion is vacuous.
+
+### Clipboard, in this repo
+
+- `conftest.py:303` already grants `clipboard-read` + `clipboard-write` suite-wide; the merged
+  tests re-grant defensively per test. **Without the grant, `navigator.clipboard.readText()`
+  raises `NotAllowedError: Read permission denied`** (reproduced verbatim in the Playwright-MCP
+  context during this analysis — which is also why the analyst verified the copied string by a
+  real `Meta+V` paste into the list's `agent-search-input` instead).
+- **Never call `readText()` directly** — use `_copy_link_via_menuitem()` from
+  `test_pipeline_three_dot_menu_actions.py:44-65` (clear → click → wait for toast →
+  `page.wait_for_function` poll → read). A direct call hung ~30 min on a permission prompt during
+  ELITEA-2049's exploration.
+- **New tab must be `page.context.new_page()`**, not `browser.new_page()` — the latter is an
+  unauthenticated context (`test_agent_hub_copy_link_from_modal.py:121-123`).
