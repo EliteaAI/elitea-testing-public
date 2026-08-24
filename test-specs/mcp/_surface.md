@@ -870,3 +870,51 @@ no other current spec touches (#511 scope rule).
   document load fires Playwright's page `"load"` event and an SPA route change does
   not, so watching for that event's ABSENCE across the click is an honest,
   product-produced signal.
+
+## MCP DASHBOARD — "Types" filter panel (Local / Remote) — added 2026-08-24
+
+**Appended during the ELITEA-1942/1943 cluster analysis (batch `mcp-w03`).
+Verified live on `/mcps/all`, project 399, 19 MCPs (all Remote).**
+
+| Handle | Testid | Provenance (fetched 2026-08-24) | Notes |
+|---|---|---|---|
+| Type filter chip (dynamic) | `tags-panel-chip-{TypeName}` → `…-Local`, `…-Remote` | **on-main ✓** | `components/Categories.jsx:336`. Shared with the Credentials Types panel — `CredentialsListPage.TYPE_FILTER_CHIP` is the same constant. |
+| "Clear all" | `tags-panel-clear-all` | **on-main ✓** | `Categories.jsx:299`. Rendered ONLY while ≥1 chip is selected ⇒ **its presence is the product's own "a filter is active" signal**; unmounted (not hidden) when nothing is selected → `to_have_count(0)`. |
+| Card type badge, page-wide collection | `entity-card-tag-chip` | on-main ✓ | `McpListPage` today only has the per-card **scoped** `CARD_TAG_CHIP_SELECTOR`; a page-wide `LocatorDescriptor` + `get_visible_type_badges()` is needed for filter assertions — copy `credentials_list_page.py:~487`. |
+
+**Mechanics (source-confirmed, `[fsd]/features/toolkits/lib/hooks/useLoadToolkits.hooks.js`):**
+
+- The MCP Types chip list is **HARDCODED to exactly `Local` + `Remote`**
+  (`tagList`, `isMCP` branch, ~lines 181-198) — it is NOT data-derived. Both
+  chips always render, whatever the project holds. (Credentials' panel *is*
+  data-derived — do not carry that assumption across.)
+- Selecting a chip is **URL-driven**: `useTypes` pushes `?tags[]=<Name>`
+  (`replace: true`) and the list re-queries. Selected state lives ONLY in an
+  emotion CSS class hash (`css-1oy09ev` selected vs `css-16qy5qb` idle) —
+  **no `aria-selected`, no `data-*` attribute**. Never bind to the class.
+  Assert "a filter is active" via the URL param + `tags-panel-clear-all`.
+  (Known gap: a `data-selected` attribute on `StyledChip` would be the policy
+  shape if a case ever needs to prove *which* chip is lit; not needed yet.)
+- Filtering is **server-side**: Remote ⇒ `GET …/tools/prompt_lib/{project}?…&toolkit_type=mcp`.
+  (Contrast: the search box on the same page filters **client-side** —
+  ELITEA-1941.)
+- **The chips mount AFTER the page's load signal.** `McpListPage.navigate()`
+  waits on the card-view toggle, at which point `tags-panel-chip-Remote` is
+  still absent (a click there fails with "does not match any elements",
+  observed live). Wait for the chip itself.
+- Re-clicking a selected chip deselects it; `tags-panel-clear-all` clears all.
+  Both verified to restore the full list.
+
+**⚠ Product defect #1737 (OPEN, filed 2026-08-24) — the `Local` chip does not
+filter.** `selectedMcpTypes = rows.filter(t => t !== 'mcp')` is `[]` when the
+project has no pre-built `mcp_*` type, and an empty type set is treated as
+"no filter" ⇒ the list query goes out with **no `toolkit_type` at all** and
+every Remote MCP stays on screen while the Local filter is visibly active.
+Reproduced 2/2 including a pristine `goto('/mcps/all?tags[]=Local')`.
+
+**⚠ Environment fact — there are NO Local MCPs and none can be created here
+(question #1738).** `GET /toolkit_types/prompt_lib/{project}?mcp=true` →
+`{"rows": ["mcp"], "total": 1}`; `/mcps/create` offers exactly one type card
+(`toolkit-type-card-mcp`, "Remote MCP"). Any case text naming ADO /
+FileSystem / PlaywrightMCP as available Local MCPs is unsatisfiable in this
+environment — check this before planning such a case.
