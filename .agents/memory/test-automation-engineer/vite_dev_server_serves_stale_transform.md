@@ -5,7 +5,7 @@ type: project
 aliases: [stale testid, HMR not picking up, testid not found, vite cache, node_modules/.vite]
 tags: [area/eliteaui, type/gotcha]
 created: 2026-08-22
-updated: 2026-08-22
+updated: 2026-08-24
 ---
 
 ## Symptom
@@ -37,5 +37,25 @@ kill <vite pids>; rm -rf node_modules/.vite; nohup npm run dev > /tmp/eliteaui-d
 Then re-verify with the **plain** curl before re-running the spec. Cost 3 turns
 on ELITEA-1970 (2026-08-22) on this OneDrive-backed clone, where fs events are
 unreliable.
+
+## Milder variant — the SERVER is fine, the OPEN PAGE is stale (2026-08-24, ELITEA-2237)
+
+Same symptom, cheaper cause and cheaper fix. If the **cache-busted** curl returns
+the new text, the dev server does NOT need restarting — a long-lived browser page
+(a live Playwright-MCP exploration session opened before the edit) is holding the
+old module, and a plain re-`goto` of the SAME url does not dislodge it.
+
+Fix: navigate with a throwaway query — `/onboarding?r=1`. Cost 4 turns before
+reaching for it.
+
+Decision rule, one probe:
+
+| cache-busted curl | plain curl | cause | fix |
+|---|---|---|---|
+| new | new | the open page only | re-navigate with `?r=<anything>` |
+| new | old | server transform cache | kill vite + `rm -rf node_modules/.vite` (above) |
+| old | old | the edit never reached the server | `touch` the file / check you edited the right clone |
+
+Never bites pytest runs — each test opens a fresh context.
 
 Related: [[project_briefing]]

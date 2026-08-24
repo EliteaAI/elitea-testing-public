@@ -37,12 +37,12 @@ no cleanup. **ZERO substitution.**
 | # | Case element | Expected result | Covered by | Asserted where | Disposition |
 |---|---|---|---|---|---|
 | 1 | Log in for the first time; onboarding card is at slide 1/48 | Authenticated, on the expected landing page | `navigate("/onboarding")` → `onboarding-tour-container`, `onboarding-tour-page-indicator` | `expect(tour_container).to_be_visible()` + `to_have_text("1 / 48")` | **asserted** — same entry-path boundary as ELITEA-2237 row 1 |
-| 2 | Left arrow (<) is visually inactive (disabled / greyed out) on slide 1/48 | Control disabled and greyed | `onboarding-tour-prev-button` | `expect(prev_button).to_be_disabled()` **and** a computed-colour check: `color == rgb(104, 108, 118)` (the theme's `text.disabled`), asserted as *different from* the enabled Next arrow's colour in the same DOM state | **asserted** — "visually inactive" is asserted as BOTH the `disabled` property and the greyed colour; live values captured below |
+| 2 | Left arrow (<) is visually inactive (disabled / greyed out) on slide 1/48 | Control disabled and greyed | `onboarding-tour-prev-button` | **SHIPPED:** `expect(prev_button).to_be_disabled()` + `to_have_css("color", "rgb(104, 108, 118)")` + `to_have_css("pointer-events", "none")`, paired with `expect(next_button).not_to_have_css("color", <same>)` on the sibling ENABLED arrow | **asserted** — "visually inactive" is asserted three ways: the `disabled` property, the greyed colour, and unclickability. The paired `not_to_have_css` on the active sibling is what makes the colour assertion mean "greyed **relative to** the active control" rather than "some colour". Declarative Playwright throughout — no `.evaluate()` read |
 | 3 | Click the left arrow (<); no navigation occurs (stays on 1/48) | Counter unchanged | `onboarding-tour-prev-button` clicked with `force=True`; `onboarding-tour-page-indicator` | `prev_button.click(force=True)` then `expect(page_indicator).to_have_text("1 / 48")` | **asserted** — `force=True` is required: the disabled button has `pointer-events: none`, so a normal Playwright click would fail actionability. Forcing dispatches a real mouse click at the control's position, which is exactly what a user does; the product's own handler ignores it. Not a substitution — the observable (counter unchanged) is produced by the product |
 | 4 | Click the right arrow (>) repeatedly until slide 48/48 is reached | Reaches the last slide | `onboarding-tour-next-button` clicked in a bounded loop | loop of 47 real `next_button.click()` calls, each followed by an auto-waiting counter assertion for the expected step | **asserted** — 47 confirmed live. The loop is bounded by a constant (48), not by `while not disabled` — an off-by-one product regression must FAIL, not silently adapt |
 | 5 | Slide counter shows "48 / 48" | Counter text | `onboarding-tour-page-indicator` | `expect(page_indicator).to_have_text("48 / 48")` | **asserted** — live-confirmed |
 | 6 | Slide content shows "Tip 48: View Message Execution Details" | Tip 48 title | `onboarding-tour-tip-content` | `expect(tip_content).to_contain_text("Tip 48: View Message Execution Details")` | **asserted** — live-confirmed |
-| 7 | Right arrow (>) is visually inactive (disabled / greyed out) on slide 48/48 | Control disabled and greyed | `onboarding-tour-next-button` | `expect(next_button).to_be_disabled()` + the same computed-colour check as row 2 | **asserted** — **testid needed**, added for ELITEA-2237 (see § Testids) |
+| 7 | Right arrow (>) is visually inactive (disabled / greyed out) on slide 48/48 | Control disabled and greyed | `onboarding-tour-next-button` | **SHIPPED:** mirror of row 2 — `to_be_disabled()` + `to_have_css("color", …)` + `to_have_css("pointer-events", "none")`, paired with `not_to_have_css` on the now-enabled Previous arrow | **asserted** — **testid needed**, added for ELITEA-2237 (see § Testids) |
 | 8 | Click the right arrow (>); no navigation occurs (stays on 48/48) | Counter unchanged | `onboarding-tour-next-button` clicked with `force=True` | `next_button.click(force=True)` then `expect(page_indicator).to_have_text("48 / 48")` | **asserted** — same force-click rationale as row 3 |
 | Final | Stays on slide 48/48 after clicking the right arrow | as step 8 | same | same | **asserted** |
 
@@ -77,9 +77,17 @@ no cleanup. **ZERO substitution.**
 | Next @ slide 1 (enabled control, contrast baseline) | `false` | *(theme `text.secondary` — read live, asserted only as "different from disabled")* | `auto` |
 
 The greyed-out colour comes from `TourContent.jsx` `styles.navButton['&:disabled'].color =
-'text.disabled'`. Asserting the *exact* hex would bind the test to the dark-theme palette; the
-shipped assertion pairs `to_be_disabled()` with "disabled colour differs from the sibling enabled
-arrow's colour", which survives a theme change while still proving the control is greyed.
+'text.disabled'`.
+
+**Shipped assertion shape (implementer, 2026-08-24).** `to_be_disabled()` +
+`to_have_css("color", "rgb(104, 108, 118)")` + `to_have_css("pointer-events", "none")` on the
+inactive arrow, and `not_to_have_css("color", <same>)` on the sibling active arrow. The exact
+colour IS asserted — a pure "differs from the sibling" comparison would need a
+`locator.evaluate("el => getComputedStyle(el).color")` read on both arrows, which trips the
+fidelity grep and buys nothing: the paired negative already carries the "greyed **relative to**
+active" meaning, and a theme change that alters `text.disabled` is a real, loud signal rather
+than a flake. `to_have_css` is Playwright's own auto-retrying computed-style assertion, so no
+JS read is needed at all.
 
 ---
 
@@ -104,11 +112,11 @@ None new for this case. `onboarding-tour-next-button` was added while analysing 
 ## Test Steps (implementation order)
 
 1. Navigate to `/onboarding`; card visible; counter `1 / 48`.
-2. Prev arrow disabled + greyed; Next arrow enabled (Axis 2).
+2. Prev arrow disabled + greyed + `pointer-events: none`; Next arrow enabled and NOT greyed (Axis 2).
 3. Force-click Prev; counter still `1 / 48`.
 4. Click Next 47 times, asserting the counter after each click.
 5. Counter `48 / 48`.
 6. Tip content contains `Tip 48: View Message Execution Details`; image src is `message-details`.
-7. Next arrow disabled + greyed; Prev arrow enabled (Axis 2).
+7. Next arrow disabled + greyed + `pointer-events: none`; Prev arrow enabled and NOT greyed (Axis 2).
 8. Force-click Next; counter still `48 / 48`.
 9. Axis 2 — no console errors.
