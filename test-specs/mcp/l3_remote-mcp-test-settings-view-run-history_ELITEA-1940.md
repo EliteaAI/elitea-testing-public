@@ -93,6 +93,22 @@ doc comment states the toolkit-namespace URL for an MCP is intended:
      contains `✅ read_wiki_structure` — confirmed live at `1.182s`, followed by
      the real DeepWiki page list (proving a genuine remote execution, not a
      canned response).
+   - **AMENDED BY THE IMPLEMENTER (2026-08-24, PR #1728 review round 1) — the
+     ✅ is load-bearing, assert it explicitly.** `wait_for_tool_result()`
+     (`pages/toolkit_test_settings_page.py:441`) polls the `[✅❌]` regex, so it
+     resolves on a FAILED run too and returns the text either way; and the
+     summary EliteaUI builds (`indexChat.helpers.js:250-264`,
+     `` `${status} \`${tool}\`${execTime}` ``) names the tool under BOTH icons.
+     A `"read_wiki_structure" in result` check therefore passes on
+     `❌ read_wiki_structure (0.4s) MCP error …` — green while the tool errored,
+     and Run History then holds a failed execution for steps 7–8 to assert
+     against. Assert the **success marker for this tool** plus the absence of
+     any `❌` (module-level `is_successful_tool_run()`, unit-pinned in
+     `automation/tests/unit/test_mcp_run_history_successful_run_matcher.py`),
+     and assert the requested `repoName` appears in the result body — DeepWiki
+     answers `Available pages for <repo>: …`, so that is the produced-by-the-
+     system proof that the body is the real remote structure, not an empty
+     success.
 5b. *(Added by the implementer, 2026-08-24.)* Return to the detail page,
    click **Test** again, re-select `read_wiki_structure`, fill
    `repoName = "facebook/react"`, and Run Test a second time.
@@ -134,6 +150,26 @@ doc comment states the toolkit-namespace URL for an MCP is intended:
      (`Calling 'read_wiki_structure' with parameters:` + the JSON
      `{ "repoName": "AsyncFuncAI/deepwiki-open" }`) and the **output** (the
      DeepWiki page list). Confirmed live for both rows tested.
+   - **AMENDED BY THE IMPLEMENTER (2026-08-24, PR #1728 review round 1) —
+     input and output MUST be asserted through SEPARATE handles.** Both
+     messages share the `chat-message-item` testid (`UserMessage.jsx:127` /
+     `ApplicationAnswer.jsx:578`), and the input echo *already contains the
+     tool name and the `repoName`*. So every text assertion made against the
+     message LIST (or its `chat-message-list` container) is satisfied by the
+     input alone, and `to_have_count(2)` counts **input + error** exactly like
+     input + output — i.e. the output would go entirely unverified. The only
+     handle that can match the produced result is the answer-content testid
+     (`ApplicationAnswer.jsx:710` — `isLastMessage ? 'skill-test-last-response'
+     : 'chat-answer-content'`; the run-history answer is the last message, so
+     `skill-test-last-response` in practice — confirmed live 2026-08-24 on
+     toolkit 2140's history: that node reads
+     `Available pages for AsyncFuncAI/deepwiki-open: 1 …` while the input node
+     carries only `chat-message-sender-name` / `-avatar`). Assert, per selected
+     row: the ANSWER contains that row's own `repoName`, contains no `❌`, and
+     does NOT contain the `Calling '<tool>' with parameters` echo (a
+     self-check — if the answer handle ever collapsed onto the input, every
+     other output assertion would become unfalsifiable), plus the INPUT node
+     separately carries the echo and the same `repoName`.
    - **Note on default selection (confirmed live + source)**:
      `RunHistoryContainer.jsx` auto-selects `historyRows[0]` on mount when
      nothing is selected. So on arrival the top row is *already* selected and
@@ -180,7 +216,7 @@ doc comment states the toolkit-namespace URL for an MCP is intended:
 | 3 Click "view run history" button in test panel header | history panel/drawer opens | step 6 | step 6 | asserted — **CLARIFICATION #1727: the button is in the MCP DETAIL ACTION BAR, not the test panel header** |
 | 4 Verify run history panel/drawer opens | history panel visible | step 6 + 7 | step 6 (URL) + 7 (rows) | asserted — **CLARIFICATION #1727: it is a full PAGE/route, not a drawer** |
 | 5 Verify previous executions listed with timestamps | entries show timestamps | step 7 | step 7 | asserted — Date (`DD-MM-YYYY, hh:mm AM/PM`) + Duration |
-| 6 Click a history entry → shows input/output details | input + output displayed | step 8 | step 8 | asserted — `data-selected` flip + 2 `chat-message-item` (input JSON + output) |
+| 6 Click a history entry → shows input/output details | input + output displayed | step 8 | step 8 | asserted — `data-selected` flip + the INPUT node's echo/`repoName` + the ANSWER node's own `repoName` and absence of `❌`, through **separate handles** (see step 8's implementer amendment: a list-level assertion is satisfied by the input echo alone) |
 | Expected Final State: all executions listed with timestamps, entry detail works | — | steps 7–8 | steps 7–8 | asserted |
 | Pass/Fail: entries listed with timestamps, detail view works | — | steps 7–8 | steps 7–8 | asserted — no blocking defect |
 
@@ -236,6 +272,7 @@ immediately before the check. Every handle this case needs is already on
 | **Run-history row** | `[data-testid="run-history-list-item"]` — same literal testid on **every** row, positionally distinguished (default sort = Date descending ⇒ index 0 = most recent) | on-main ✓ |
 | **Run-history row — selected state** | `[data-testid="run-history-list-item"][data-selected="true"]` — testid + **state attribute**, per `.agents/testing.md` § Locator policy (`RunHistoryListItem.jsx:151` sets `data-selected={selectedItem === item.id}`) | on-main ✓ |
 | Run-history detail messages | `[data-testid="chat-message-list"]` / `[data-testid="chat-message-item"]` | on-main ✓ |
+| **Run-history detail — OUTPUT (answer) content** | `[data-testid="skill-test-last-response"], [data-testid="chat-answer-content"]` scoped inside `chat-message-list` — the ONLY handle that isolates the produced result from the input echo (`ApplicationAnswer.jsx:710` picks the testid by `isLastMessage`; the answer is last here, so `skill-test-last-response`). Already used this way by `PipelineDetailPage` / `AgentDetailPage`. | on-main ✓ (fresh `git fetch origin` 2026-08-24: both testids YES on `origin/main` **and** on `origin/automation/testids`) |
 | Per-row overflow menu | `[data-testid="run-history-menu-menu-button"]` | on-main ✓ — present, not needed by this case; **do not wire it** (#511: only what the executed path calls) |
 
 > **Naming note (not a defect, do not "fix"):** `ViewRunHistoryButton.jsx:16`

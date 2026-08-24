@@ -65,7 +65,38 @@ TIMESTAMP_PATTERN = re.compile(r"\d{2}-\d{2}-\d{4},\s*\d{2}:\d{2}\s*(?:AM|PM)")
 # Duration column, confirmed live: "1.19 s" (also rendered in ms for fast runs).
 DURATION_PATTERN = re.compile(r"\d+(?:\.\d+)?\s*(?:ms|s)(?!\w)")
 
+# A tool run's result summary is built by `indexChat.helpers.js:250-264` as
+# ``${status} `${tool}`${execTime}`` — status is ✅ only when the tool action is
+# neither `error` nor `cancelled`, ❌ otherwise. BOTH shapes name the tool, and
+# `ToolkitTestSettingsPage.wait_for_tool_result()` resolves on EITHER marker
+# (it polls the `[✅❌]` regex) and returns the text regardless, so a bare
+# "the tool name appears in the result" check passes on a FAILED run
+# (`❌ read_wiki_structure (0.4s) …`). The success marker is the only thing
+# that distinguishes them — assert on it, never on the tool name alone.
+SUCCESSFUL_RUN_PATTERN = re.compile(r"✅\s*" + re.escape(TOOL_KEY))
+FAILED_RUN_MARKER = "❌"
+
+# The input echo the detail pane renders for a tool run
+# (`toolkits.helpers.js:281`). Used as a NEGATIVE assertion on the answer
+# element: if the answer locator ever collapses back onto the input message,
+# this fires instead of silently making the output assertions unfalsifiable.
+TOOL_CALL_ECHO = f"Calling '{TOOL_KEY}' with parameters"
+
 RUN_RESULT_TIMEOUT = 30_000
+
+
+def is_successful_tool_run(result_text: str) -> bool:
+    """Return whether *result_text* reports a SUCCESSFUL run of :data:`TOOL_KEY`.
+
+    True only when the result carries the ✅ success marker for this tool AND
+    no ❌ marker at all (the summary joins one line per tool action, so a
+    partially-failed run still has to fail this check).
+
+    Kept as a module-level pure function so the ❌-must-not-pass contract is
+    unit-testable — see
+    ``tests/unit/test_mcp_run_history_successful_run_matcher.py``.
+    """
+    return bool(SUCCESSFUL_RUN_PATTERN.search(result_text)) and FAILED_RUN_MARKER not in result_text
 
 
 @allure.issue(
@@ -138,8 +169,19 @@ def test_mcp_view_run_history_and_entry_details(page, toolkit_api: ToolkitAPI):
             expect(test_settings.run_tool_button).to_be_enabled(timeout=10_000)
             test_settings.run_tool()
             first_result = test_settings.wait_for_tool_result(timeout=RUN_RESULT_TIMEOUT)
-            assert TOOL_KEY in first_result, (
-                f"Result should name the executed tool {TOOL_KEY!r}, got: {first_result[:200]!r}"
+            # AFS § Test Steps 5: the result must read "✅ read_wiki_structure",
+            # i.e. the run SUCCEEDED — not merely that the message names the
+            # tool, which a ❌ failure summary does too (see SUCCESSFUL_RUN_PATTERN).
+            assert is_successful_tool_run(first_result), (
+                f"Run 1 must SUCCEED — expected a '✅ {TOOL_KEY}' summary and no "
+                f"{FAILED_RUN_MARKER!r} marker; got: {first_result[:300]!r}"
+            )
+            # ...and the run must have produced the REAL remote structure for the
+            # repo requested, proving a genuine DeepWiki execution rather than a
+            # bare success marker with an empty body (AFS § Test Steps 5).
+            assert REPO_FIRST_RUN in first_result, (
+                f"Run 1's result should contain DeepWiki's structure for {REPO_FIRST_RUN!r}, "
+                f"got: {first_result[:300]!r}"
             )
 
         with allure.step(
@@ -161,8 +203,13 @@ def test_mcp_view_run_history_and_entry_details(page, toolkit_api: ToolkitAPI):
             expect(test_settings.run_tool_button).to_be_enabled(timeout=10_000)
             test_settings.run_tool()
             second_result = test_settings.wait_for_tool_result(timeout=RUN_RESULT_TIMEOUT)
-            assert TOOL_KEY in second_result, (
-                f"Second result should name the executed tool {TOOL_KEY!r}, got: {second_result[:200]!r}"
+            assert is_successful_tool_run(second_result), (
+                f"Run 2 must SUCCEED — expected a '✅ {TOOL_KEY}' summary and no "
+                f"{FAILED_RUN_MARKER!r} marker; got: {second_result[:300]!r}"
+            )
+            assert REPO_SECOND_RUN in second_result, (
+                f"Run 2's result should contain DeepWiki's structure for {REPO_SECOND_RUN!r}, "
+                f"got: {second_result[:300]!r}"
             )
 
         with allure.step(
@@ -200,10 +247,35 @@ def test_mcp_view_run_history_and_entry_details(page, toolkit_api: ToolkitAPI):
         ):
             # Default sort is Date-descending, so row 0 is the second (most recent) run;
             # RunHistoryContainer auto-selects it on mount.
+            #
+            # INPUT and OUTPUT are asserted through SEPARATE handles (case step 6
+            # asks for both). They must be: the two messages share the
+            # `chat-message-item` testid, and the input is the echo
+            # `Calling 'read_wiki_structure' with parameters: {"repoName": …}` —
+            # which already contains the tool name AND the repo. So every
+            # text assertion made against the message LIST is satisfied by the
+            # input alone, and `to_have_count(2)` counts input+error exactly
+            # like input+output. Only the answer-content testid
+            # (ToolkitRunHistoryPage.DETAIL_ANSWER_CONTENT_SELECTOR) can match
+            # the produced result.
             assert run_history.is_item_selected(0), (
                 "Run History should auto-select the most recent row on mount"
             )
-            expect(run_history.detail_message_list).to_contain_text(
+            answer = run_history.get_detail_answer()
+            expect(answer).to_have_count(1, timeout=10_000)
+            # DeepWiki's read_wiki_structure answers with the structure of the repo
+            # it was asked about ("Available pages for <repo>: …" — confirmed live
+            # 2026-08-24), so the repo name inside the ANSWER node is a
+            # system-produced, run-specific value the input echo cannot supply.
+            expect(answer).to_contain_text(REPO_SECOND_RUN, timeout=10_000)
+            expect(answer).not_to_contain_text(FAILED_RUN_MARKER)
+            # Locator self-check: if the answer handle ever matched the input
+            # message instead, every assertion above would go unfalsifiable.
+            expect(answer).not_to_contain_text(TOOL_CALL_ECHO)
+            expect(run_history.get_detail_input_message()).to_contain_text(
+                TOOL_CALL_ECHO, timeout=10_000
+            )
+            expect(run_history.get_detail_input_message()).to_contain_text(
                 REPO_SECOND_RUN, timeout=10_000
             )
 
@@ -214,10 +286,22 @@ def test_mcp_view_run_history_and_entry_details(page, toolkit_api: ToolkitAPI):
             )
             # The detail pane now has to show the FIRST run — proving the click changed
             # the rendered execution, not merely that 'some detail is visible'.
-            expect(run_history.detail_message_list).to_contain_text(
+            answer = run_history.get_detail_answer()
+            expect(answer).to_contain_text(REPO_FIRST_RUN, timeout=10_000)
+            # ...and no longer the previously-selected run's output: the answer
+            # really re-rendered rather than the pane keeping stale content.
+            expect(answer).not_to_contain_text(REPO_SECOND_RUN)
+            expect(answer).not_to_contain_text(FAILED_RUN_MARKER)
+            expect(answer).not_to_contain_text(TOOL_CALL_ECHO)
+            expect(run_history.get_detail_input_message()).to_contain_text(
+                f"{TOOL_CALL_ECHO}", timeout=10_000
+            )
+            expect(run_history.get_detail_input_message()).to_contain_text(
                 REPO_FIRST_RUN, timeout=10_000
             )
-            expect(run_history.detail_message_list).to_contain_text(TOOL_KEY, timeout=10_000)
+            # Exactly the input + the output — no third message, and (given the
+            # answer assertions above) an error rendering in place of the output
+            # can no longer satisfy this count.
             expect(run_history.get_detail_message_items()).to_have_count(2, timeout=10_000)
 
     finally:

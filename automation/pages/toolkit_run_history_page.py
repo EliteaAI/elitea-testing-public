@@ -60,6 +60,30 @@ class ToolkitRunHistoryPage(BasePage):
     CHAT_MESSAGE_LIST_SELECTOR = '[data-testid="chat-message-list"]'
     CHAT_MESSAGE_ITEM_SELECTOR = '[data-testid="chat-message-item"]'
 
+    # The OUTPUT half of the pair, isolated from the input echo.
+    #
+    # Both messages render as `chat-message-item` (`UserMessage.jsx:127` for the
+    # input, `ApplicationAnswer.jsx:578` for the output), so an assertion made
+    # against the whole list — or against the list container — is satisfied by
+    # the INPUT alone: the input echo is literally
+    # `Calling '<tool>' with parameters: {"repoName": "<repo>"}`, which already
+    # carries the tool name AND the parameter values a caller is likely to
+    # assert on. Only `ApplicationAnswer.jsx:710` emits an answer-content
+    # testid (`isLastMessage ? 'skill-test-last-response' : 'chat-answer-content'`),
+    # so this selector is the one handle that can only match the produced
+    # result. Confirmed live 2026-08-24 on toolkit 2140's history: the answer
+    # node carries `skill-test-last-response` and reads
+    # "Available pages for AsyncFuncAI/deepwiki-open: 1 …"; the input node
+    # carries only `chat-message-sender-name` / `-avatar`.
+    #
+    # Both alternatives are `[data-testid=` literals (locator policy: scoped
+    # sub-selectors are UPPER_CASE `[data-testid="…"]` constants) — the pair is
+    # needed because the testid VALUE depends on the message's position in the
+    # conversation, not on this page.
+    DETAIL_ANSWER_CONTENT_SELECTOR = (
+        '[data-testid="skill-test-last-response"], [data-testid="chat-answer-content"]'
+    )
+
     detail_message_list = LocatorDescriptor(
         testid="chat-message-list",
         description="Detail pane's message list for the currently-selected "
@@ -160,6 +184,30 @@ class ToolkitRunHistoryPage(BasePage):
     def get_detail_message_items(self):
         """Return the Locator matching every message in the detail pane."""
         return self.page.locator(self.CHAT_MESSAGE_ITEM_SELECTOR)
+
+    def get_detail_input_message(self):
+        """Return the Locator for the selected run's INPUT (request) message.
+
+        Index 0 of the conversation — the ``Calling '<tool>' with parameters:``
+        echo plus the parameter JSON
+        (``toolkits.helpers.js:281`` builds that string).
+        """
+        return self.get_detail_message_items().nth(0)
+
+    def get_detail_answer(self):
+        """Return the Locator for the selected run's OUTPUT (answer) content.
+
+        Scoped inside :attr:`detail_message_list` and keyed on the
+        answer-content testid (:attr:`DETAIL_ANSWER_CONTENT_SELECTOR`), so it
+        matches the tool's produced RESULT and never the input echo — see that
+        constant's note for why asserting against the message list as a whole
+        is not a check of the output at all.
+
+        Returned as a Locator so callers keep Playwright's auto-retry: the
+        detail pane re-renders asynchronously when the selected row changes,
+        and a one-shot read can catch the previous run's answer.
+        """
+        return self.detail_message_list.locator(self.DETAIL_ANSWER_CONTENT_SELECTOR)
 
     def get_detail_text(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
         """Return the concatenated text of the selected run's detail pane.
