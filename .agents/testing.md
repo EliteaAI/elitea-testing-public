@@ -650,3 +650,30 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   patterns above — this is a route-level render lag on a *navigation* step. Record further
   occurrences here; if it repeats, the fix is an explicit page-ready wait in
   `McpFormPage`'s type-picker navigation, not a longer timeout.
+- **Known-noise entry, NEW SYMPTOM CLASS — `tests/ui/onboarding/` flakes with a *different*
+  symptom nearly every run (2026-08-24, onboarding wave-02, issue #1397)**: during a
+  docstring-only fix-round on the wave-02 trunk, a test-automation-engineer ran the 5-spec
+  onboarding suite 4× back-to-back and saw **2 reds**, each with an unrelated symptom —
+  run 1: provisioning poll-count assertion `1 >= 2` **plus** a `TargetClosedError` on
+  `test_onboarding_tips_card`; run 3: `test_onboarding_jump_in` `Locator expected to be
+  visible` **plus** a `JSONDecodeError` in provisioning; runs 2 and 4 clean. Crucially, its
+  **pristine-HEAD control run also needed an auto-rerun**, so the reds were not caused by
+  the diff (which changed only four `AFS:` docstring lines and cannot reach runtime).
+  **Weighed against the reds: 9 consecutive clean 5/5 runs** — the workflow's own gate 3/3
+  (53.05/53.00/51.15 s), the lead's independent pre-merge gate 3/3
+  (59.70/58.50/56.31 s), and the lead's re-gate on the exact merge candidate 3/3
+  (57.52/66.13/63.07 s), all with `reruns.json == {}`. Merged on that evidence.
+  What makes this its own bucket rather than one of the entries above: the *symptom class
+  itself* rotates (browser-level `TargetClosedError`, transport-level `JSONDecodeError`,
+  app-level locator timeouts, assertion-level poll counts) instead of one signature
+  recurring — the profile of environment/backend strain under sustained churn, the same
+  family as the `#1082` shared-test-user and session-level heavy-load entries above, not a
+  defect in any one spec. This session had ~4 h of continuous onboarding churn behind it,
+  and every onboarding spec drives real first-login/provisioning state as the same shared
+  test user with no teardown.
+  **Do not bisect an onboarding red against a code change without a pristine-HEAD control
+  run first** — that control is what converted this from "the diff broke it" to "the suite
+  is noisy", and it costs one invocation.
+  Record further occurrences here. If it keeps costing gate time, the durable fix is the
+  rotating/clean test identity named in the § Suite-health pointer above, not a per-spec
+  guard.
