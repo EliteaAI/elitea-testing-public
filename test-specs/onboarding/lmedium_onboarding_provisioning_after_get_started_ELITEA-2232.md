@@ -263,8 +263,8 @@ is correct in every observed respect.
 
 ## Evidence
 
-- `test-results/screenshots/ELITEA-2232-step-00-welcome.png` — Welcome card, pre-click
-- `test-results/screenshots/ELITEA-2232-step-02-tour-provisioning.png` — tips card 1/48 + "Configuring Personal project..." footer
-- `test-results/screenshots/ELITEA-2232-step-11-ready-with-sidebar.png` — ready state: footer gone, sidebar + `Project: Private`
-- `test-results/screenshots/ELITEA-2232-step-11-project-dropdown.png` — project dropdown open, `Private` listed
-- `test-results/screenshots/ELITEA-2232-step-11-final.png` — full sidebar entity menu on `/onboarding`
+- `automation/test-results/screenshots/ELITEA-2232-step-00-welcome.png` — Welcome card, pre-click
+- `automation/test-results/screenshots/ELITEA-2232-step-02-tour-provisioning.png` — tips card 1/48 + "Configuring Personal project..." footer
+- `automation/test-results/screenshots/ELITEA-2232-step-11-ready-with-sidebar.png` — ready state: footer gone, sidebar + `Project: Private`
+- `automation/test-results/screenshots/ELITEA-2232-step-11-project-dropdown.png` — project dropdown open, `Private` listed
+- `automation/test-results/screenshots/ELITEA-2232-step-11-final.png` — full sidebar entity menu on `/onboarding`
