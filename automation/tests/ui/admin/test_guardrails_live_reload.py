@@ -310,6 +310,21 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
                 print(f"[CLEANUP] Could not remove empty toolkit containers: {e}")
                 logger.debug("Could not remove empty toolkit containers: %s", e)
 
+            # Save blocked section changes before moving to sensitive section
+            print("[CLEANUP] Saving blocked section changes before reload")
+            try:
+                save_btn = pg.locator('button:has-text("Save")').last
+                if save_btn.count() > 0 and save_btn.is_visible() and save_btn.is_enabled():
+                    print("[CLEANUP] Save button is enabled, saving configuration")
+                    guardrails.save_configuration(timeout=20000)
+                    print("[CLEANUP] Saved blocked section configuration")
+                    logger.info("Saved blocked section configuration after cleanup")
+                else:
+                    print("[CLEANUP] No changes to save in blocked section")
+            except Exception as e:
+                print(f"[CLEANUP] Could not save blocked section configuration: {e}")
+                logger.warning("Could not save blocked section configuration: %s", e)
+
             # Reload page to ensure stable state before sensitive tools cleanup
             print("[CLEANUP] Reloading page for stable state")
             guardrails.navigate_to_guardrails()
@@ -337,21 +352,21 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
                 print(f"[CLEANUP] Could not remove empty sensitive toolkit blocks: {e}")
                 logger.debug("Could not remove empty sensitive toolkit blocks: %s", e)
 
-            # Save configuration after cleanup (only if we made changes)
-            print("[CLEANUP] Checking if save is needed")
+            # Save sensitive section changes after cleanup (only if we made changes)
+            print("[CLEANUP] Checking if save is needed for sensitive section")
             try:
                 # Check if Save button is enabled (indicates changes were made)
                 save_btn = pg.locator('button:has-text("Save")').last
                 if save_btn.count() > 0 and save_btn.is_visible() and save_btn.is_enabled():
-                    print("[CLEANUP] Save button is enabled, saving configuration")
+                    print("[CLEANUP] Save button is enabled, saving sensitive section configuration")
                     guardrails.save_configuration(timeout=20000)
-                    print("[CLEANUP] Saved guardrails configuration")
-                    logger.info("Saved guardrails configuration after cleanup")
+                    print("[CLEANUP] Saved sensitive section configuration")
+                    logger.info("Saved sensitive section configuration after cleanup")
                 else:
-                    print("[CLEANUP] No changes to save (Save button not enabled)")
+                    print("[CLEANUP] No changes to save in sensitive section")
             except Exception as e:
-                print(f"[CLEANUP] Could not save configuration: {e}")
-                logger.warning("Could not save configuration: %s", e)
+                print(f"[CLEANUP] Could not save sensitive section configuration: {e}")
+                logger.warning("Could not save sensitive section configuration: %s", e)
 
         except Exception as e:
             print(f"[CLEANUP] Cleanup failed: {e}")
