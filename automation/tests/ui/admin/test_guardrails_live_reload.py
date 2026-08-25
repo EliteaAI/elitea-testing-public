@@ -276,6 +276,7 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
                 print(f"[CLEANUP] Could not get blocked toolkits list: {e}")
                 blocked_list = []
 
+            removed_anything = False
             for toolkit in [TEST_TOOLKIT, "JIRA", "Jira"]:
                 try:
                     is_blocked = guardrails.is_toolkit_blocked(toolkit)
@@ -284,6 +285,7 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
                         guardrails.remove_blocked_toolkit(toolkit)
                         print(f"[CLEANUP] Removed blocked toolkit: {toolkit}")
                         logger.info("Removed blocked toolkit: %s", toolkit)
+                        removed_anything = True
                 except Exception as e:
                     print(f"[CLEANUP] Could not remove toolkit {toolkit}: {e}")
                     logger.debug("Could not remove toolkit %s: %s", toolkit, e)
@@ -297,6 +299,7 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
                         guardrails.remove_blocked_tool(tool)
                         print(f"[CLEANUP] Removed blocked tool: {tool}")
                         logger.info("Removed blocked tool: %s", tool)
+                        removed_anything = True
                 except Exception as e:
                     print(f"[CLEANUP] Could not remove tool {tool}: {e}")
                     logger.debug("Could not remove tool %s: %s", tool, e)
@@ -310,20 +313,19 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
                 print(f"[CLEANUP] Could not remove empty toolkit containers: {e}")
                 logger.debug("Could not remove empty toolkit containers: %s", e)
 
-            # Save blocked section changes before moving to sensitive section
-            print("[CLEANUP] Saving blocked section changes before reload")
-            try:
-                save_btn = pg.locator('button:has-text("Save")').last
-                if save_btn.count() > 0 and save_btn.is_visible() and save_btn.is_enabled():
-                    print("[CLEANUP] Save button is enabled, saving configuration")
+            # ALWAYS save after cleanup if we removed anything
+            # This unblocks JIRA so tests can create JIRA toolkit
+            if removed_anything:
+                print("[CLEANUP] Saving blocked section to unblock JIRA")
+                try:
                     guardrails.save_configuration(timeout=20000)
-                    print("[CLEANUP] Saved blocked section configuration")
-                    logger.info("Saved blocked section configuration after cleanup")
-                else:
-                    print("[CLEANUP] No changes to save in blocked section")
-            except Exception as e:
-                print(f"[CLEANUP] Could not save blocked section configuration: {e}")
-                logger.warning("Could not save blocked section configuration: %s", e)
+                    print("[CLEANUP] Saved - JIRA is now unblocked")
+                    logger.info("Saved blocked section - JIRA unblocked")
+                except Exception as e:
+                    print(f"[CLEANUP] Failed to save: {e}")
+                    logger.error("Failed to save blocked section: %s", e)
+            else:
+                print("[CLEANUP] Nothing was blocked, no save needed")
 
             # Reload page to ensure stable state before sensitive tools cleanup
             print("[CLEANUP] Reloading page for stable state")
