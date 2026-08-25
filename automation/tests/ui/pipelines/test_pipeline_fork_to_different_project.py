@@ -46,6 +46,7 @@ import uuid
 import allure
 import pytest
 from api import PipelineAPI
+from config import settings
 from pages.pipeline_detail_page import PipelineDetailPage
 from pages.pipelines_list_page import PipelinesListPage
 
@@ -57,11 +58,10 @@ FORK_TIMEOUT = 15_000
 
 logger = logging.getLogger("elitea.tests.pipelines")
 
-# Source project — "UI Testing" (400): the AFS's chosen "pipeline from
-# another project", also exercised via the project switcher per case Step 1.
-SOURCE_PROJECT_ID = 400
-# Target/fork-into project — "Private" (399): the suite default project,
-# i.e. the user's own/home project (case's "user's own project").
+# Source project — user's home project from ELITEA_PROJECT_ID env var.
+# The test user's project (varies per environment).
+SOURCE_PROJECT_ID = settings.elitea_project_id
+# Target/fork-into project — shared test project (fixed across environments).
 TARGET_PROJECT_ID = 399
 
 
