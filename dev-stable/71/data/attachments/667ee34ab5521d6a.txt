@@ -1,1 +1,0 @@
-WARNING  elitea.pages.pipeline_detail:pipeline_detail_page.py:2044 select_version_by_name: VERSION trigger/id/URL never agreed on 'base' post-reload (attempt 1/2) — retrying the full select+reload cycle

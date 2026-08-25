@@ -1,2 +1,0 @@
-WARNING  elitea.api_auth:api_auth.py:123 Missing elitea-staging_auth_session cookie
-ERROR    elitea.api:client.py:1103 Failed to create credential: status=500 body={"error": "Unexpected error", "field": "unknown"}
