@@ -318,12 +318,13 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
             if removed_anything:
                 print("[CLEANUP] Saving blocked section to unblock JIRA")
                 try:
-                    # Find Save button and click it directly
-                    # Don't wait for visibility - it exists but might need scroll
-                    save_btn = pg.locator('button:has-text("Save")').last
-                    save_btn.scroll_into_view_if_needed()
+                    # Scroll to bottom of page first (Save is in footer)
+                    pg.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                     pg.wait_for_timeout(500)  # Let scroll settle
-                    save_btn.click()
+
+                    # Now Save button should be in viewport
+                    save_btn = pg.locator('button:has-text("Save")').last
+                    save_btn.click(timeout=10000)
                     pg.wait_for_load_state("networkidle", timeout=20000)
                     pg.wait_for_timeout(1000)
                     print("[CLEANUP] Saved - JIRA is now unblocked")
