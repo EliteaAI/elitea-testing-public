@@ -1,0 +1,35 @@
+[ADD_SENSITIVE] Checking toolkit 'jira': found 0 existing blocks
+[ADD_SENSITIVE] Creating new toolkit block: jira
+[ADD_SENSITIVE] Found input field, typing: jira
+[ADD_SENSITIVE] Dropdown option found, clicking to create toolkit block
+[ADD_SENSITIVE] Toolkit block created via dropdown selection
+[CLEANUP] Running guardrails cleanup AFTER tests (finalizer)
+[CLEANUP] Starting guardrails cleanup...
+[CLEANUP] Navigated to guardrails page
+[CLEANUP] Cleaning up blocked toolkits
+[CLEANUP] Currently blocked toolkits: []
+[CLEANUP] Checking toolkit 'jira': blocked=False
+[CLEANUP] Checking toolkit 'JIRA': blocked=False
+[CLEANUP] Checking toolkit 'Jira': blocked=False
+[CLEANUP] Cleaning up blocked tools
+[CLEANUP] Removing empty toolkit containers
+[CLEANUP] Removed empty toolkit containers
+[CLEANUP] Nothing was blocked, no changes needed
+[CLEANUP] Reloading page for stable state
+[CLEANUP] Cleaning up sensitive tools
+[CLEANUP] Removed sensitive tool: list_projects
+[CLEANUP] Removing empty toolkit blocks from Sensitive Action Tools
+[CLEANUP] Removing empty sensitive toolkit blocks - using dynamic discovery
+[CLEANUP] Found 2 potential toolkit labels in Sensitive Actions section
+[CLEANUP] Discovered toolkit: 'jira'
+[CLEANUP] Total unique toolkits discovered: 1
+[CLEANUP] Processing toolkit block: jira
+[CLEANUP] Toolkit 'jira' has 0 tool chips
+[CLEANUP] Toolkit 'jira' is empty, removing block
+[CLEANUP] Clicking trash icon for empty block: jira
+[CLEANUP] ✓ Removed empty block: jira
+[CLEANUP] Total removed: 1 empty blocks
+[CLEANUP] Removed empty sensitive toolkit blocks
+[CLEANUP] Checking if save is needed for sensitive section
+[CLEANUP] Save button is enabled, saving sensitive section configuration
+[CLEANUP] Saved sensitive section configuration
