@@ -1,0 +1,296 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"broken","Tue Aug 25 12:01:35 UTC 2026","Tue Aug 25 12:01:35 UTC 2026","396","tests.ui.pipelines","test_pipeline_execution","TestPipelineExecutionEdgeCases","","","test_empty_pipeline_execution","PIPE-015: Executing a pipeline with no nodes (only END)."
+"broken","Tue Aug 25 12:01:57 UTC 2026","Tue Aug 25 12:01:58 UTC 2026","372","tests.ui.pipelines","test_pipeline_management","TestCreatePipeline","","","test_create_pipeline_required_fields_validation","Save button should be disabled when required fields are empty."
+"broken","Tue Aug 25 12:01:16 UTC 2026","Tue Aug 25 12:01:17 UTC 2026","372","tests.ui.pipelines","test_pipeline_create_version","","","","test_create_pipeline_version_save_list_switch_preserves_canvas_state","Save As Version creates 'v1_test' with the LLM node preserved;
+    switching to 'base' shows the original (node-less) topology; switching
+    back to 'v1_test' restores the LLM node — each version's canvas state is
+    independently preserved with no cross-version leakage."
+"broken","Tue Aug 25 12:01:43 UTC 2026","Tue Aug 25 12:01:44 UTC 2026","763","tests.ui.pipelines","test_pipeline_fork_to_different_project","TestPipelineForkToDifferentProject","","","test_pipeline_fork_to_different_project","Fork a Pipeline into a different project and verify the forked
+        pipeline's configuration + attribution, then clean up.
+
+        Steps (AFS
+        test-specs/pipelines/l2_pipeline-fork-to-different-project_ELITEA-2051.md):
+        1. Create the source Pipeline via API in project 400 (""UI
+           Testing""); navigate to it via the sidebar project switcher +
+           Pipelines dashboard card (precondition — a pipeline from
+           another project, accessible to the user).
+        2. Open the pipeline-actions overflow menu; verify the VERSION
+           group shows ""Fork"" enabled.
+        3. Click ""Fork""; verify the Fork wizard dialog opens showing the
+           Project selector and Main-entity preview card.
+        4. Select a target project DIFFERENT from the source (399,
+           ""Private""); verify the Fork button becomes enabled.
+        5. Verify the entity-preview card shows the Main entity only (no
+           ""Nested entities"" section, since the source has no attached
+           toolkits/skills/nested agents).
+        6. Click ""Fork""; verify the fork POST returns 201 Created and the
+           dialog re-renders as ""Fork Complete"".
+        7. Click ""Got it""; verify navigation into the target project, onto
+           the new forked Pipeline.
+        8. Verify the forked pipeline's ID/Version ID are new and unique,
+           and its Name/Description/Step Limit match the source exactly.
+        9. Verify the forked pipeline's dashboard card (Card list view,
+           target project) shows a ""Forked from"" attribution icon-link.
+        10. Clean up: delete the forked pipeline via the UI; verify the
+            DELETE call returns 204 No Content.
+        "
+"broken","Tue Aug 25 12:01:12 UTC 2026","Tue Aug 25 12:01:12 UTC 2026","379","tests.ui.pipelines","test_pipeline_code_node_reads_state_variable","","","","test_code_node_reads_elitea_state_variable","Code node reads a custom state variable via elitea_state.get(...) and writes a processed value into another."
+"broken","Tue Aug 25 12:02:39 UTC 2026","Tue Aug 25 12:02:39 UTC 2026","384","tests.ui.pipelines","test_pipeline_state_modifier_node_configuration","","","","test_state_modifier_node_configuration_and_persistence","Configure a State modifier node's Jinja Template/Input/Output; verify they persist through Save + reload."
+"broken","Tue Aug 25 12:00:41 UTC 2026","Tue Aug 25 12:00:42 UTC 2026","388","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_yaml_content_reflects_pipeline","PIPE-020: YAML content should reflect the pipeline structure."
+"broken","Tue Aug 25 12:03:03 UTC 2026","Tue Aug 25 12:03:03 UTC 2026","377","tests.ui.pipelines","test_pipeline_yaml_flow_sync","","","","test_yaml_edit_transition_syncs_to_flow_canvas_and_enables_save","A YAML transition edit re-wires the Flow edge and enables Save."
+"broken","Tue Aug 25 12:02:44 UTC 2026","Tue Aug 25 12:02:45 UTC 2026","384","tests.ui.pipelines","test_pipeline_structured_output_toggle_persistence","","","","test_pipeline_structured_output_toggle_persistence","Structured output toggle on an LLM node persists both directions through save + reload."
+"broken","Tue Aug 25 12:00:43 UTC 2026","Tue Aug 25 12:00:43 UTC 2026","393","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_flow_yaml_round_trip","PIPE-021: Toggle Flow → YAML → Flow preserves the canvas."
+"broken","Tue Aug 25 12:02:59 UTC 2026","Tue Aug 25 12:03:00 UTC 2026","379","tests.ui.pipelines","test_pipeline_welcome_message_shown_before_first_input","","","","test_pipeline_welcome_message_shown_before_first_input","Welcome message renders automatically before any user input."
+"broken","Tue Aug 25 12:02:10 UTC 2026","Tue Aug 25 12:02:10 UTC 2026","725","tests.ui.pipelines","test_pipeline_management","TestSearchPipeline","","","test_search_placeholder_and_dashboard_grid_filters_and_clears","ELITEA-2023: search filters the dashboard grid (not just the
+        suggestions popover) and Clear restores the full, unfiltered list.
+
+        Unlike ``test_search_pipeline_by_name``/``test_search_pipeline_no_results``
+        above (which exercise the suggestions popover via the old fill-only
+        ``search()``), this asserts the actual grid-narrowing filter, which
+        activates only on Enter — see ``PipelinesListPage.search()`` docstring.
+        "
+"broken","Tue Aug 25 12:02:37 UTC 2026","Tue Aug 25 12:02:38 UTC 2026","395","tests.ui.pipelines","test_pipeline_schedule_trigger_settings_modal","","","","test_schedule_trigger_settings_modal","Schedule settings modal: Default/Advanced modes, dynamic summary, and persistence."
+"broken","Tue Aug 25 12:02:30 UTC 2026","Tue Aug 25 12:02:31 UTC 2026","391","tests.ui.pipelines","test_pipeline_run_details_panel","","","","test_run_details_panel_opens_after_execution","Run Details panel opens after execution and shows header/status/controls/sections."
+"broken","Tue Aug 25 12:01:55 UTC 2026","Tue Aug 25 12:01:55 UTC 2026","374","tests.ui.pipelines","test_pipeline_management","TestPipelineDashboard","","","test_view_toggle_table_and_card","Dashboard should support switching between table and card views.
+
+        Extended for ELITEA-2024 (AFS:
+        test-specs/pipelines/lextend_pipeline-dashboard-view-toggle-default-and-layout_ELITEA-2024.md)
+        with default-state (Step 3) and actual-rendered-layout (Steps 5 & 7)
+        assertions — the original ELITEA-0855 coverage (button visibility +
+        button aria-pressed state) is unchanged.
+        "
+"broken","Tue Aug 25 12:00:50 UTC 2026","Tue Aug 25 12:00:52 UTC 2026","1195","tests.ui.pipelines","test_pipeline_advanced","TestActionsMenu","","","test_export_pipeline_if_available","PIPE-029: Export pipeline via menu (skips if not available)."
+"broken","Tue Aug 25 12:01:49 UTC 2026","Tue Aug 25 12:01:49 UTC 2026","368","tests.ui.pipelines","test_pipeline_llm_node_system_task_chat_history_config","","","","test_llm_node_system_type_walks_fixed_fstring_variable","Walk the LLM node's SYSTEM Type through Fixed -> F-String -> Variable.
+
+    TMS: ELITEA-2040 — extend-existing over this file's ELITEA-2004 test
+    (test-specs/pipelines/
+    lextend_pipeline-input-mapping-types-fixed-fstring-variable_ELITEA-2040.md).
+    ELITEA-2004 never selects ""Variable""; this test closes that gap: the
+    Type select's full 3-option set, the Value field's DOM-widget swap
+    (<textarea> -> MUI Select) on entering Variable mode, the Variable
+    Value-select's option list (the pipeline's own state variables), and
+    Type=Variable/Value=<state var> persistence through Save + reload. Does
+    not modify ELITEA-2004's test above.
+    "
+"broken","Tue Aug 25 12:01:00 UTC 2026","Tue Aug 25 12:01:00 UTC 2026","620","tests.ui.pipelines","test_pipeline_attach_pipeline_as_tool","","","","test_attach_pipeline_as_tool","Attach a second pipeline as a tool via TOOLS ""+ Pipeline""; verify save/reload persistence."
+"broken","Tue Aug 25 12:01:36 UTC 2026","Tue Aug 25 12:01:37 UTC 2026","378","tests.ui.pipelines","test_pipeline_execution","TestPipelineExecutionEdgeCases","","","test_navigate_away_and_reexecute","PIPE-016: Navigate away from the pipeline and return to re-execute."
+"broken","Tue Aug 25 12:00:58 UTC 2026","Tue Aug 25 12:00:59 UTC 2026","386","tests.ui.pipelines","test_pipeline_attach_files_in_chat","","","","test_attachments_toggle_persists_across_save_and_reload","Attachments MODULES toggle + attach-button state survive Save + reload, both directions.
+
+    ELITEA-2059's own test proves the ON-direction, live/unsaved causal link
+    (toggle -> attach button, instant, no Save needed). This test proves the
+    stronger, Save-gated claim ELITEA-2066's case asks for: after Save and a
+    hard page reload, the toggle AND the attach button still reflect the
+    persisted state — in both the enable and disable direction.
+    "
+"broken","Tue Aug 25 12:01:15 UTC 2026","Tue Aug 25 12:01:15 UTC 2026","382","tests.ui.pipelines","test_pipeline_create_full_details_persist","","","","test_create_pipeline_full_details_persist_after_reload","Create a pipeline with all fields populated; verify persistence after reload."
+"broken","Tue Aug 25 12:00:53 UTC 2026","Tue Aug 25 12:00:53 UTC 2026","434","tests.ui.pipelines","test_pipeline_advanced","TestMultiNodeTopology","","","test_three_node_chain","PIPE-030: Build a three-node chain: LLM → Code → END."
+"broken","Tue Aug 25 12:01:42 UTC 2026","Tue Aug 25 12:01:42 UTC 2026","375","tests.ui.pipelines","test_pipeline_flow_to_yaml_sync","","","","test_add_node_in_flow_view_syncs_to_yaml","A node added in Flow view is immediately reflected in the YAML view
+    and remains on canvas after switching back to Flow view."
+"broken","Tue Aug 25 12:03:04 UTC 2026","Tue Aug 25 12:03:05 UTC 2026","382","tests.ui.pipelines","test_pipeline_yaml_flow_sync","","","","test_yaml_edit_persists_after_save_and_reload","A YAML `output:` edit reflects in the Flow node config, enables Save, and survives reload.
+
+    TMS: ELITEA-2067
+    (test-specs/pipelines/lextend_pipeline-yaml-editor-edit-and-save_ELITEA-2067.md)
+
+    Extends the YAML<->Flow sync coverage this file already establishes (ELITEA-2028) one stage
+    further: that test proves a YAML edit reflects on the canvas AND enables Save, but never
+    clicks Save nor reloads. This test edits a different field (the LLM node's `output:` list,
+    the case's own worked example — ""change a node's output variable name""), verifies the change
+    reflected in the node's own inline config panel (not the canvas edge), then clicks Save and
+    reloads to prove the edit round-trips through a full browser reload, not just in-memory
+    client state.
+
+    The `pipeline_with_llm_id` fixture (single LLM node -> END, `output: []`, never saved in this
+    session) is ALREADY the clean baseline this case needs — unlike ELITEA-2028's own test, no
+    second node / prior Save is required to establish a disabled Save/Discard starting point.
+    "
+"broken","Tue Aug 25 12:02:09 UTC 2026","Tue Aug 25 12:02:09 UTC 2026","378","tests.ui.pipelines","test_pipeline_management","TestSearchPipeline","","","test_search_pipeline_no_results","Searching for a non-existent pipeline should show no results."
+"broken","Tue Aug 25 12:00:46 UTC 2026","Tue Aug 25 12:00:46 UTC 2026","366","tests.ui.pipelines","test_pipeline_advanced","TestDiscardChanges","","","test_save_discard_button_states_toggle_on_edit_and_discard","ELITEA-2048: Save/Discard are disabled on a clean pipeline, become
+        enabled once the name is edited, and return to disabled after Discard
+        reverts the edit."
+"broken","Tue Aug 25 12:01:10 UTC 2026","Tue Aug 25 12:01:11 UTC 2026","411","tests.ui.pipelines","test_pipeline_code_node_multi_var_dict_return","","","","test_code_node_return_dict_multiple_state_vars","A Code node whose script's final statement is a 3-key dict literal writes all 3 state vars in one execution."
+"broken","Tue Aug 25 12:02:40 UTC 2026","Tue Aug 25 12:02:40 UTC 2026","393","tests.ui.pipelines","test_pipeline_state_panel_attachments_module","","","","test_state_panel_attachments_module","Enabling Attachments auto-adds an immutable input_attachments STATE var; disabling removes it."
+"broken","Tue Aug 25 12:02:33 UTC 2026","Tue Aug 25 12:02:34 UTC 2026","396","tests.ui.pipelines","test_pipeline_run_details_timeline_steps","","","","test_run_details_timeline_steps_display","Run Details Timeline shows one entry per executed node: green dot, node-id tooltip, timestamp, in order."
+"broken","Tue Aug 25 12:02:52 UTC 2026","Tue Aug 25 12:02:53 UTC 2026","384","tests.ui.pipelines","test_pipeline_toolkit_node_config_and_input_mapping","","","","test_toolkit_node_config_and_input_mapping","Attach a toolkit, configure a Toolkit node's Tool + Input mapping; verify persistence."
+"broken","Tue Aug 25 12:01:23 UTC 2026","Tue Aug 25 12:01:24 UTC 2026","386","tests.ui.pipelines","test_pipeline_decision_node_execution","","","","test_decision_node_routes_execution_to_correct_branch","Decision node classifies chat input and routes execution to the matching branch; config persists."
+"broken","Tue Aug 25 12:03:02 UTC 2026","Tue Aug 25 12:03:02 UTC 2026","399","tests.ui.pipelines","test_pipeline_yaml_editor_view","","","","test_pipeline_yaml_editor_view","Flow/Yaml toggle -> YAML editor with line numbers -> Copy to clipboard."
+"broken","Tue Aug 25 12:02:32 UTC 2026","Tue Aug 25 12:02:32 UTC 2026","406","tests.ui.pipelines","test_pipeline_run_details_state_before_after","","","","test_run_details_state_before_after_per_node","Run Details STATES section shows correct per-variable Before/After per timeline step."
+"broken","Tue Aug 25 12:00:44 UTC 2026","Tue Aug 25 12:00:45 UTC 2026","498","tests.ui.pipelines","test_pipeline_advanced","TestDiscardChanges","","","test_discard_reverts_name_change","PIPE-022: Edit name, click Discard, and verify original name restored."
+"broken","Tue Aug 25 12:00:57 UTC 2026","Tue Aug 25 12:00:57 UTC 2026","375","tests.ui.pipelines","test_pipeline_attach_files_in_chat","","","","test_attach_files_in_chat","Attach a file in the pipeline's embedded chat; pipeline processes it without error."
+"broken","Tue Aug 25 12:01:48 UTC 2026","Tue Aug 25 12:01:48 UTC 2026","376","tests.ui.pipelines","test_pipeline_llm_node_system_task_chat_history_config","","","","test_llm_node_system_task_chat_history_config","Configure an LLM node's SYSTEM/TASK/CHAT HISTORY + Input/Output; verify persistence."
+"broken","Tue Aug 25 12:01:04 UTC 2026","Tue Aug 25 12:01:04 UTC 2026","418","tests.ui.pipelines","test_pipeline_canvas_zoom_and_pan","","","","test_canvas_control_panel_zoom_out_interactivity_cards_size_and_auto_arrange","Extends the ELITEA-2019 coverage above with the case's remaining
+    control-panel buttons: visibility of all 6 buttons, Zoom Out (the
+    pre-existing `zoom_out_canvas()` method was never exercised by any
+    test before this), Toggle Interactivity (lock/unlock node dragging),
+    Toggle cards size (compact/expanded node height, exact round trip), and
+    Auto-arrange (deterministic layout — a dragged-away node returns to its
+    exact original position)."
+"broken","Tue Aug 25 12:00:54 UTC 2026","Tue Aug 25 12:00:54 UTC 2026","422","tests.ui.pipelines","test_pipeline_advanced","TestMultiNodeTopology","","","test_save_multi_node_pipeline","PIPE-030b: Build a multi-node pipeline, save, and verify persistence."
+"broken","Tue Aug 25 12:01:22 UTC 2026","Tue Aug 25 12:01:22 UTC 2026","385","tests.ui.pipelines","test_pipeline_decision_node_configuration","","","","test_decision_node_configuration_and_edge_wiring","Configure a Decision node's fields; verify they + their edges persist through Save + reload."
+"broken","Tue Aug 25 12:01:06 UTC 2026","Tue Aug 25 12:01:07 UTC 2026","381","tests.ui.pipelines","test_pipeline_code_node_configuration","","","","test_code_node_configuration_and_persistence","Configure a Code node's CODE/Input/Output fields; verify they persist through Save + reload."
+"broken","Tue Aug 25 12:02:17 UTC 2026","Tue Aug 25 12:02:17 UTC 2026","389","tests.ui.pipelines","test_pipeline_mcp_node_empty_toolkit_before_attach","","","","test_mcp_node_empty_toolkit_before_attach","MCP node Toolkit dropdown is empty before attach, populates after."
+"broken","Tue Aug 25 12:02:11 UTC 2026","Tue Aug 25 12:02:11 UTC 2026","370","tests.ui.pipelines","test_pipeline_management","TestPipelineIsolation","","","test_fixture_creates_fresh_pipeline","Verify the pipeline_id fixture produces a valid pipeline."
+"broken","Tue Aug 25 12:02:06 UTC 2026","Tue Aug 25 12:02:07 UTC 2026","611","tests.ui.pipelines","test_pipeline_management","TestDeletePipeline","","","test_delete_pipeline_via_ui_menu","Create a pipeline, delete via the UI three-dot menu, and verify removal.
+
+        Extends coverage for ELITEA-2022 (test-specs/pipelines/lextend_delete-
+        pipeline-via-actions-menu_ELITEA-2022.md) — additive Step 4 assertion
+        that the app auto-redirects to the Pipelines dashboard as a direct
+        consequence of the delete action (previously this test drove its own
+        navigation afterward, masking the redirect entirely).
+
+        **Known product defect (step 4, sanctioned RED):** the redirect
+        (`navigate(-1)` in EliteaUI's `useDeleteApplication`) is a browser-
+        history no-op when the detail page was reached via direct navigation
+        — exactly this test's own setup (Step 2: `detail_page.navigate(pid)`,
+        a `page.goto()`, no prior in-app history entry). Confirmed live via
+        Playwright MCP (8s poll, no redirect, 0 console errors). Filed as
+        `EliteaAI/elitea-testing-public#1332`. Per `.agents/testing.md` §
+        Merge gate's analysis-time exception, Step 4's redirect assertion is
+        `soft_failures`-tagged `# Known defect: #1332`; Step 5 (pipeline
+        actually gone) is unaffected and stays a hard assertion — it reaches
+        the dashboard itself since the redirect can't be relied on while
+        #1332 stays open.
+        "
+"broken","Tue Aug 25 12:02:25 UTC 2026","Tue Aug 25 12:02:25 UTC 2026","376","tests.ui.pipelines","test_pipeline_nodes","TestAddNode","","","test_add_human_in_the_loop_node_and_connect_to_end","PIPE-031: Add a HITL node and connect it to END."
+"broken","Tue Aug 25 12:02:47 UTC 2026","Tue Aug 25 12:02:48 UTC 2026","415","tests.ui.pipelines","test_pipeline_subgraph_state_sharing","","","","test_subgraph_state_sharing_common_vars","Common-named state vars (state_1/state_2) are shared between a parent pipeline and a
+    child pipeline attached as a tool to its Agent node."
+"broken","Tue Aug 25 12:01:39 UTC 2026","Tue Aug 25 12:01:39 UTC 2026","382","tests.ui.pipelines","test_pipeline_execution","TestPipelineChatMessages","","","test_multiple_executions_accumulate","PIPE-014, PIPE-018: Multiple sequential executions accumulate messages."
+"broken","Tue Aug 25 12:01:56 UTC 2026","Tue Aug 25 12:01:56 UTC 2026","390","tests.ui.pipelines","test_pipeline_management","TestCreatePipeline","","","test_create_pipeline_via_ui","PIPE-002: Create a pipeline through the UI form and verify it appears."
+"broken","Tue Aug 25 12:02:01 UTC 2026","Tue Aug 25 12:02:01 UTC 2026","387","tests.ui.pipelines","test_pipeline_management","TestEditPipeline","","","test_edit_pipeline_description","Edit a pipeline's description and verify the change persists."
+"broken","Tue Aug 25 12:01:25 UTC 2026","Tue Aug 25 12:01:25 UTC 2026","390","tests.ui.pipelines","test_pipeline_delete_version","","","","test_delete_pipeline_version_falls_back_to_base","Deleting a non-base version via the three-dot menu removes it from
+    the VERSION dropdown and the pipeline automatically falls back to
+    ""base"" — VERSION selector, URL, and Information panel all agree."
+"broken","Tue Aug 25 12:01:51 UTC 2026","Tue Aug 25 12:01:52 UTC 2026","381","tests.ui.pipelines","test_pipeline_llm_structured_output_state_variables","","","","test_llm_structured_output_parses_into_state_variables","LLM node with Structured output enabled parses a response into 4 typed state variables."
+"broken","Tue Aug 25 12:02:35 UTC 2026","Tue Aug 25 12:02:35 UTC 2026","397","tests.ui.pipelines","test_pipeline_run_history_view_executions","TestPipelineRunHistoryViewExecutions","","","test_run_history_panel_lists_and_shows_execution_details","Executing a pipeline twice creates 2 Run History entries; opening
+        the panel lists both, and clicking an entry loads that execution's
+        own message + response content into the right-hand panel."
+"broken","Tue Aug 25 12:01:54 UTC 2026","Tue Aug 25 12:01:54 UTC 2026","498","tests.ui.pipelines","test_pipeline_management","TestPipelineDashboard","","","test_pipeline_created_via_api_visible_in_dashboard","Pipeline created via API fixture should appear in the dashboard."
+"broken","Tue Aug 25 12:01:01 UTC 2026","Tue Aug 25 12:01:02 UTC 2026","402","tests.ui.pipelines","test_pipeline_canvas_delete_node","","","","test_delete_middle_node_removes_its_edges_and_persists","Deleting the middle node (Code 1) removes it + both its edges; LLM 1
+    and END remain; the deletion persists after Save + reload."
+"broken","Tue Aug 25 12:02:56 UTC 2026","Tue Aug 25 12:02:57 UTC 2026","387","tests.ui.pipelines","test_pipeline_tools_section_mcp_add_view_remove","","","","test_tools_section_mcp_add_view_remove","Attach an MCP to TOOLS, view its tools, remove it, and verify removal persists."
+"broken","Tue Aug 25 12:02:20 UTC 2026","Tue Aug 25 12:02:21 UTC 2026","425","tests.ui.pipelines","test_pipeline_mcp_node_fresh_attach","","","","test_mcp_node_fresh_attach","Fresh-attach an MCP, add + configure an MCP node, save, verify reload persistence."
+"broken","Tue Aug 25 12:00:48 UTC 2026","Tue Aug 25 12:00:49 UTC 2026","376","tests.ui.pipelines","test_pipeline_advanced","TestActionsMenu","","","test_three_dot_menu_lists_items","PIPE-028: The three-dot menu should contain expected items."
+"broken","Tue Aug 25 12:02:46 UTC 2026","Tue Aug 25 12:02:46 UTC 2026","373","tests.ui.pipelines","test_pipeline_subgraph_state_isolation","","","","test_subgraph_state_sharing_non_common_state_isolation","Non-common state vars stay isolated between a parent pipeline and a child
+    pipeline attached as a tool to its Agent node: state_3 (child-only) never
+    surfaces in the parent's Run Details, state_2 (parent-only) is untouched by
+    the child, and state_1 (common) IS shared (sanity control)."
+"broken","Tue Aug 25 12:01:30 UTC 2026","Tue Aug 25 12:01:30 UTC 2026","369","tests.ui.pipelines","test_pipeline_entry_point_trigger_types_persist","","","","test_entry_point_trigger_types_persist","All 3 trigger types are listed, selectable, persist, and travel with the entry point."
+"broken","Tue Aug 25 12:02:23 UTC 2026","Tue Aug 25 12:02:24 UTC 2026","389","tests.ui.pipelines","test_pipeline_node_auto_increment_naming","","","","test_node_auto_increment_naming_by_type","Nodes of the same type auto-name with an incrementing number; a
+    different type's counter starts independently at 1."
+"broken","Tue Aug 25 12:02:03 UTC 2026","Tue Aug 25 12:02:04 UTC 2026","381","tests.ui.pipelines","test_pipeline_management","TestEditPipeline","","","test_pipeline_has_configuration_and_history_tabs","Pipeline detail page shows configuration panel and history button."
+"broken","Tue Aug 25 12:02:13 UTC 2026","Tue Aug 25 12:02:13 UTC 2026","0","tests.ui.pipelines","test_pipeline_mcp_node_change_toolkit_and_tool","","","","test_mcp_node_change_toolkit_and_tool","Change an MCP node's Toolkit and Tool; verify reset/repopulate + persistence."
+"broken","Tue Aug 25 12:01:28 UTC 2026","Tue Aug 25 12:01:29 UTC 2026","386","tests.ui.pipelines","test_pipeline_entry_point_trigger_restricted_interactive_nodes","","","","test_entry_point_trigger_restricted_interactive_nodes","Chat-Message-only restriction gates on the SAVED version, for Printer/HITL/interrupts alike."
+"broken","Tue Aug 25 12:01:26 UTC 2026","Tue Aug 25 12:01:26 UTC 2026","373","tests.ui.pipelines","test_pipeline_edge_creation","","","","test_drag_connect_creates_edge_replacing_prior_transition","Dragging LLM 1 -> Printer 1 creates the edge, replacing LLM 1's prior
+    -> END edge; the new edge survives Save + reload."
+"broken","Tue Aug 25 12:02:49 UTC 2026","Tue Aug 25 12:02:49 UTC 2026","461","tests.ui.pipelines","test_pipeline_tags_add_and_filter","","","","test_pipeline_tags_add_and_filter","Create 2 pipelines with shared/unique tags; verify tag chips + filter narrowing.
+
+    Steps (see AFS for full detail):
+    1. Create Pipeline 1 (tags: regression, smoke) via the create form's Tags
+       field; verify both chips render in the form.
+    2. Create Pipeline 2 (tags: regression, integration); verify both chips
+       render in the form.
+    3. Navigate to the dashboard; verify both pipelines visible, each card
+       showing its own tags.
+    4. Filter by ""smoke"" — verify exactly Pipeline 1 is shown, URL carries
+       ``tags=smoke``.
+    5. Clear filter, filter by shared tag ""regression"" — verify exactly both
+       pipelines are shown.
+    6. Clear filter — verify URL reverts (no ``tags`` param) and the full
+       list (including both disposable pipelines) is restored.
+    7. Zero console errors across the whole flow.
+    "
+"passed","Tue Aug 25 12:02:12 UTC 2026","Tue Aug 25 12:02:13 UTC 2026","450","tests.ui.pipelines","test_pipeline_management","TestPipelineIsolation","","","test_fixture_cleanup_cycle","Verify that creating and deleting pipelines via the API works."
+"broken","Tue Aug 25 12:00:40 UTC 2026","Tue Aug 25 12:00:40 UTC 2026","379","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_yaml_view_toggle","PIPE-019: Switch to YAML view and verify the editor is visible."
+"broken","Tue Aug 25 12:01:02 UTC 2026","Tue Aug 25 12:01:03 UTC 2026","386","tests.ui.pipelines","test_pipeline_canvas_zoom_and_pan","","","","test_canvas_zoom_pan_and_fit_view","Fit View shows all nodes; Zoom In enlarges the canvas; dragging pans
+    the viewport by the exact delta; Fit View again restores the exact
+    original all-nodes-visible transform."
+"broken","Tue Aug 25 12:01:34 UTC 2026","Tue Aug 25 12:01:34 UTC 2026","381","tests.ui.pipelines","test_pipeline_execution","TestExecutePipeline","","","test_message_count_starts_at_zero_and_grows","PIPE-013: Fresh pipeline starts at zero messages and count grows with each send."
+"broken","Tue Aug 25 12:02:05 UTC 2026","Tue Aug 25 12:02:05 UTC 2026","599","tests.ui.pipelines","test_pipeline_management","TestDeletePipeline","","","test_delete_pipeline_via_api","Create a pipeline, delete via API, and verify it's gone from the UI."
+"broken","Tue Aug 25 12:01:45 UTC 2026","Tue Aug 25 12:01:46 UTC 2026","378","tests.ui.pipelines","test_pipeline_import_via_file","","","","test_pipeline_import_via_file","Export a pipeline, delete the original, import the file back, verify the round trip."
+"broken","Tue Aug 25 12:02:41 UTC 2026","Tue Aug 25 12:02:42 UTC 2026","385","tests.ui.pipelines","test_pipeline_state_panel_default_and_custom_variables","","","","test_state_panel_default_and_custom_variables","STATE panel: default vars are immutable, a custom var can be added/typed and is usable downstream."
+"broken","Tue Aug 25 12:00:47 UTC 2026","Tue Aug 25 12:00:47 UTC 2026","393","tests.ui.pipelines","test_pipeline_advanced","TestMakeEntrypoint","","","test_make_node_entrypoint","PIPE-024: Set a node as entrypoint via the three-dot menu."
+"broken","Tue Aug 25 12:01:18 UTC 2026","Tue Aug 25 12:01:19 UTC 2026","387","tests.ui.pipelines","test_pipeline_custom_node_configuration","","","","test_custom_node_configuration","Add a Custom node, configure Toolkit/Tool/Input-mapping/Input/Output; verify persistence."
+"broken","Tue Aug 25 12:02:28 UTC 2026","Tue Aug 25 12:02:28 UTC 2026","377","tests.ui.pipelines","test_pipeline_run_details_delete_run_from_history","","","","test_run_details_delete_run_from_history","Deleting a run from history removes only that run; others stay intact."
+"broken","Tue Aug 25 12:02:36 UTC 2026","Tue Aug 25 12:02:36 UTC 2026","383","tests.ui.pipelines","test_pipeline_run_history_view_executions","TestPipelineRunHistoryPanelClose","","","test_run_history_panel_closes_and_restores_chat","Closing the Run History panel (after selecting an entry) removes
+        the panel from the DOM and restores the Configuration form +
+        embedded chat, with zero network requests fired by the close itself."
+"broken","Tue Aug 25 12:02:43 UTC 2026","Tue Aug 25 12:02:43 UTC 2026","389","tests.ui.pipelines","test_pipeline_state_panel_default_and_custom_variables","","","","test_state_panel_delete_custom_variable","STATE panel: a custom variable's delete button removes it; defaults stay immutable; removal persists in YAML."
+"broken","Tue Aug 25 12:01:32 UTC 2026","Tue Aug 25 12:01:33 UTC 2026","378","tests.ui.pipelines","test_pipeline_execution","TestExecutePipeline","","","test_pipeline_response_is_meaningful","PIPE-011, PIPE-012: Execute a simple pipeline and verify meaningful response."
+"broken","Tue Aug 25 12:01:44 UTC 2026","Tue Aug 25 12:01:45 UTC 2026","377","tests.ui.pipelines","test_pipeline_hitl_node_configuration","","","","test_hitl_node_configuration_and_router_mapping","Configure a HITL node's fields; verify they persist through Save + reload."
+"broken","Tue Aug 25 12:01:20 UTC 2026","Tue Aug 25 12:01:21 UTC 2026","890","tests.ui.pipelines","test_pipeline_dashboard_pin_to_top","","","","test_pipeline_dashboard_pin_to_top","Pinning a pipeline moves it to the top of the dashboard list; unpinning reverts it."
+"broken","Tue Aug 25 12:02:58 UTC 2026","Tue Aug 25 12:02:58 UTC 2026","388","tests.ui.pipelines","test_pipeline_webhook_trigger_settings_modal","","","","test_webhook_trigger_settings_modal","Webhook settings modal: full field inventory, type switching, and persistence."
+"broken","Tue Aug 25 12:02:07 UTC 2026","Tue Aug 25 12:02:08 UTC 2026","494","tests.ui.pipelines","test_pipeline_management","TestSearchPipeline","","","test_search_pipeline_by_name","Search for a pipeline by name on the dashboard."
+"broken","Tue Aug 25 12:03:00 UTC 2026","Tue Aug 25 12:03:01 UTC 2026","379","tests.ui.pipelines","test_pipeline_yaml_editor_invalid_syntax","","","","test_yaml_editor_invalid_syntax_blocks_save","Invalid YAML in the editor enables Save but is rejected server-side on attempt."
+"broken","Tue Aug 25 12:02:29 UTC 2026","Tue Aug 25 12:02:29 UTC 2026","400","tests.ui.pipelines","test_pipeline_run_details_multiple_state_variables","","","","test_run_details_multiple_state_variables_different_types","Run Details STATES section renders 4 typed custom variables, each independently expandable."
+"broken","Tue Aug 25 12:01:08 UTC 2026","Tue Aug 25 12:01:08 UTC 2026","392","tests.ui.pipelines","test_pipeline_code_node_elitea_client_user_info","","","","test_code_node_elitea_client_user_info","A Code node calling elitea_client.get_user_data() writes the authenticated user's data into a state variable."
+"broken","Tue Aug 25 12:00:55 UTC 2026","Tue Aug 25 12:00:56 UTC 2026","490","tests.ui.pipelines","test_pipeline_agent_node_integration","","","","test_agent_node_fresh_attach","Fresh-attach an Agent, add + configure an Agent node, save, verify reload persistence."
+"broken","Tue Aug 25 12:01:47 UTC 2026","Tue Aug 25 12:01:47 UTC 2026","382","tests.ui.pipelines","test_pipeline_information_section","","","","test_pipeline_information_section","Information section — Pipeline ID/Version ID/Trigger/Show link + copy buttons."
+"broken","Tue Aug 25 12:02:50 UTC 2026","Tue Aug 25 12:02:50 UTC 2026","634","tests.ui.pipelines","test_pipeline_three_dot_menu_actions","","","","test_pipeline_three_dot_menu_actions","Three-dot menu shows all expected items; PIPELINE-group ""Share""
+    (the case's ""Copy link"") copies the pipeline URL with a toast
+    confirmation; Escape closes the menu."
+"broken","Tue Aug 25 12:00:39 UTC 2026","Tue Aug 25 12:00:39 UTC 2026","547","tests.ui.pipelines","test_pipeline_add_node_menu","","","","test_add_node_menu_lists_types_adds_node_and_dismisses","Add Node menu lists exactly 11 types in order; LLM selection adds a
+    node with config visible; Escape dismisses without adding a node."
+"broken","Tue Aug 25 12:01:59 UTC 2026","Tue Aug 25 12:02:00 UTC 2026","379","tests.ui.pipelines","test_pipeline_management","TestEditPipeline","","","test_edit_pipeline_name","Edit a pipeline's name and verify the change persists."
+"broken","Tue Aug 25 12:01:13 UTC 2026","Tue Aug 25 12:01:13 UTC 2026","374","tests.ui.pipelines","test_pipeline_collapse_left_panel","","","","test_collapse_and_expand_left_configuration_panel","Collapsing the left configuration panel shrinks it and unmounts its
+    sections while the canvas grows; expanding it again restores the exact
+    original width and remounts every section."
+"broken","Tue Aug 25 12:01:53 UTC 2026","Tue Aug 25 12:01:53 UTC 2026","377","tests.ui.pipelines","test_pipeline_management","TestPipelineDashboard","","","test_pipeline_dashboard_loads","PIPE-001: Dashboard loads with header and search input."
+"broken","Tue Aug 25 12:01:50 UTC 2026","Tue Aug 25 12:01:51 UTC 2026","370","tests.ui.pipelines","test_pipeline_llm_node_system_task_chat_history_config","","","","test_llm_node_config_verified_via_yaml","Configure an LLM node fully, then verify every field via the parsed YAML view.
+
+    TMS: ELITEA-2027 — extend-existing over this file's ELITEA-2004 test
+    (test-specs/pipelines/
+    lextend_pipeline-node-config-verified-via-yaml_ELITEA-2027.md).
+    Establishes YAML-based verification (parse the pipeline's YAML view and
+    assert field values) as a working, reusable technique for validating
+    node configuration end-to-end, instead of re-reading individual UI
+    fields — the case's own stated purpose. Reuses ELITEA-2004's LLM node
+    config methods and ELITEA-2042's state-panel / yaml.safe_load() pattern.
+    Does not modify either existing test above.
+    "
+"broken","Tue Aug 25 12:01:27 UTC 2026","Tue Aug 25 12:01:27 UTC 2026","386","tests.ui.pipelines","test_pipeline_edge_deletion","","","","test_delete_edge_resets_source_transition_and_persists","Deleting the LLM 1 -> Printer 1 edge removes it, resets LLM 1's
+    transition to END, and the removal persists after Save + reload."
+"broken","Tue Aug 25 12:01:38 UTC 2026","Tue Aug 25 12:01:38 UTC 2026","387","tests.ui.pipelines","test_pipeline_execution","TestPipelineChatMessages","","","test_user_message_visible","PIPE-017: User message appears in chat alongside AI response."
+"broken","Tue Aug 25 12:02:26 UTC 2026","Tue Aug 25 12:02:27 UTC 2026","432","tests.ui.pipelines","test_pipeline_printer_node_configuration","","","","test_printer_node_configuration_and_persistence","Configure a Printer node's PRINTER/Final Message fields; verify they persist through Save + reload."
+"broken","Tue Aug 25 12:01:05 UTC 2026","Tue Aug 25 12:01:05 UTC 2026","382","tests.ui.pipelines","test_pipeline_chat_starters_visible_and_clickable","","","","test_pipeline_chat_starters_visible_and_clickable","Saved chat starter renders as a clickable chip that pre-fills the chat input."
+"broken","Tue Aug 25 12:01:09 UTC 2026","Tue Aug 25 12:01:09 UTC 2026","417","tests.ui.pipelines","test_pipeline_code_node_input_filtering","","","","test_code_node_input_filtering_selective_state_access","A Code node's elitea_state only exposes vars listed in its own input:, excluding others set earlier."
+"broken","Tue Aug 25 12:01:58 UTC 2026","Tue Aug 25 12:01:59 UTC 2026","385","tests.ui.pipelines","test_pipeline_management","TestCreatePipeline","","","test_create_pipeline_minimal_via_sidebar_button","ELITEA-2020: Create a pipeline via the sidebar '+' control, with only
+        the required Name + Description fields, and verify the resulting
+        pipeline gets a unique numeric ID (URL + Information section) and
+        defaults to the ""base"" VERSION.
+
+        Extends TestCreatePipeline (test-specs/pipelines/lextend_create-
+        pipeline-minimal-sidebar_ELITEA-2020.md) — additive to
+        test_create_pipeline_via_ui, which navigates via a direct URL instead
+        of the sidebar control and never asserts the Information section or
+        VERSION selector.
+        "
+"broken","Tue Aug 25 12:02:22 UTC 2026","Tue Aug 25 12:02:23 UTC 2026","927","tests.ui.pipelines","test_pipeline_multiple_browser_tabs","","","","test_pipeline_multiple_browser_tabs","Two pipelines opened in separate browser tabs keep independent titles
+    and content; switching to / closing one tab has zero effect on the other."
+"broken","Tue Aug 25 12:01:31 UTC 2026","Tue Aug 25 12:01:31 UTC 2026","376","tests.ui.pipelines","test_pipeline_entry_point_trigger_types_persist","","","","test_entry_point_trigger_shown_only_on_entry_point_node","Trigger control renders ONLY on the entry-point node; Information section mirrors it.
+
+    TMS: ELITEA-2041
+    (test-specs/pipelines/lextend_pipeline-entry-point-trigger-shown-only-on-entry-node_ELITEA-2041.md)
+    "
+"broken","Tue Aug 25 12:02:02 UTC 2026","Tue Aug 25 12:02:03 UTC 2026","505","tests.ui.pipelines","test_pipeline_management","TestEditPipeline","","","test_pipeline_detail_page_loads","Navigate to a pipeline's detail page and verify form fields match."
+"broken","Tue Aug 25 12:01:40 UTC 2026","Tue Aug 25 12:01:41 UTC 2026","385","tests.ui.pipelines","test_pipeline_execution","TestExecutePipelineStreaming","","","test_long_response_streams_progressively","Pipeline with an LLM entry node (TASK F-String ``{input}``)
+        streams a long response progressively, with no console/network
+        errors, and the settled response exceeds 200 characters. Also
+        covers ELITEA-2058 (Model Selector Menu is visible with a
+        non-empty default model before any switch, and the settled
+        response's model-attribution chip proves execution used the
+        model the user selected, not the pipeline's prior default).
+
+        Steps (AFS):
+        1. Pipeline created with LLM entry node, TASK F-String ""{input}""
+           (fixture — API-created, ready for execution).
+        2. [ELITEA-2058] Verify the Model Selector Menu button is visible
+           and shows a non-empty default model name before any switch.
+        3. Select ""GPT-5 mini"" via the Model Selector Menu.
+        4. Send ""Write a 500-word essay on AI"".
+        5. Verify the response streams progressively (tokens appear
+           incrementally, not all at once).
+        6. Verify the final response is complete and exceeds 200 characters.
+        7. [ELITEA-2058] Verify the settled response's model-attribution
+           chip names the selected model (""GPT-5 mini""), proving execution
+           used the selected model, not the pipeline's prior default.
+        8. Verify no timeout or error occurs during streaming.
+        "
