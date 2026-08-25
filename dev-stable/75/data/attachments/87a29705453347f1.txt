@@ -1,0 +1,4 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Save skill and wait for navigation — Timeout 15000ms exceeded.
+=========================== logs ===========================
+waiting for navigation to "**/skills/all/**" until 'load'
+============================================================
