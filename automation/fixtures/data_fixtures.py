@@ -2097,8 +2097,18 @@ def mcp_toolkit_with_tools(toolkit_api: ToolkitAPI, request):
     Yields:
         dict: ``{"id": int, "name": str, "toolkit_name": str, "tools": list[str]}``
     """
+    from api.helpers import sync_mcp_tools_with_retry
+
     name = f"autotest_mcp_{request.node.name}"[:32]
-    tools = toolkit_api.sync_mcp_tools(_MCP_DEEPWIKI_URL)
+
+    # Use retry logic to handle transient pool saturation (503 errors)
+    tools = sync_mcp_tools_with_retry(
+        toolkit_api,
+        _MCP_DEEPWIKI_URL,
+        max_retries=3,
+        initial_delay=5,
+        timeout=60
+    )
     assert tools, f"mcp_sync_tools returned no tools for {_MCP_DEEPWIKI_URL!r} — endpoint may be down"
 
     toolkit = toolkit_api.create_remote_mcp_toolkit(
