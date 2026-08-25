@@ -1322,10 +1322,14 @@ class PipelineDetailPage(PipelineFormPage):
         description="Webhook settings modal Apply button"
     )
 
+    # TEMPORARY WORKAROUND (2026-08-25): testid missing/changed in EliteaUI
+    # Tests failing: test_pipeline_entry_point_trigger_types_persist, test_schedule_trigger_settings_modal
+    # TODO: Add data-testid="pipeline-schedule-settings-modal" to Schedule.ScheduleModal in EliteaUI
+    # TODO: Then restore testid parameter and remove this workaround comment
     schedule_modal = LocatorDescriptor(
-        testid="pipeline-schedule-settings-modal",
+        # testid="pipeline-schedule-settings-modal",  # DISABLED - testid doesn't exist
         fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").first,
-        description="Schedule settings modal (dialog root)"
+        description="Schedule settings modal (dialog root) - USING FALLBACK due to missing testid"
     )
     schedule_summary_text = LocatorDescriptor(
         testid="pipeline-schedule-summary-text",
