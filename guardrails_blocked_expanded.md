@@ -1,0 +1,88 @@
+- generic [ref=f3e3]:
+  - generic [ref=f3e4]:
+    - generic [ref=f3e5]:
+      - generic [ref=f3e6]:
+        - generic [ref=f3e7]:
+          - button "Server is connected" [ref=f3e104] [cursor=pointer]
+          - generic [ref=f3e16]: Elitea Admin
+        - generic [ref=f3e21] [cursor=pointer]
+      - generic [ref=f3e24]:
+        - generic [ref=f3e25] [cursor=pointer]: Users
+        - generic [ref=f3e30] [cursor=pointer]: Projects
+        - generic [ref=f3e35] [cursor=pointer]: Eval Dimensions
+        - generic [ref=f3e40] [cursor=pointer]: Secrets
+        - generic [ref=f3e45] [cursor=pointer]: LiteLLM
+        - generic [ref=f3e50] [cursor=pointer]: Model Prices
+        - generic [ref=f3e55] [cursor=pointer]: App Requests
+      - generic [ref=f3e60]:
+        - separator [ref=f3e61]
+        - generic [ref=f3e62]:
+          - generic [ref=f3e63] [cursor=pointer]: Configuration
+          - generic [ref=f3e68] [cursor=pointer]: Features
+          - generic [ref=f3e73] [cursor=pointer]: Audit Trail
+          - generic [ref=f3e78] [cursor=pointer]: System
+        - separator [ref=f3e83]
+        - button "TB Test Bot" [ref=f3e85] [cursor=pointer]:
+          - generic [ref=f3e86]:
+            - generic [ref=f3e87]: TB
+            - generic [ref=f3e88]: Test Bot
+    - generic [ref=f3e91] [cursor=pointer]
+  - main [ref=f3e94]:
+    - generic [ref=f3e95]:
+      - generic [ref=f3e96]: Configuration
+      - generic [ref=f3e100]:
+        - generic [ref=f3e106]:
+          - paragraph [ref=f3e110] [cursor=pointer]: Advanced
+          - paragraph [ref=f3e114] [cursor=pointer]: Maintenance
+          - paragraph [ref=f3e118] [cursor=pointer]: Banner
+          - paragraph [ref=f3e122] [cursor=pointer]: MCP Servers
+          - paragraph [ref=f3e126] [cursor=pointer]: Guardrails
+          - paragraph [ref=f3e131] [cursor=pointer]: Observability
+          - paragraph [ref=f3e135] [cursor=pointer]: Runtime
+          - paragraph [ref=f3e139] [cursor=pointer]: Authentication
+        - generic [ref=f3e140]:
+          - generic [ref=f3e142]:
+            - paragraph [ref=f3e143]: Control platform-wide security policies, toolkit restrictions, and MCP exposure settings.
+            - generic [ref=f3e144]:
+              - generic [ref=f3e145] [cursor=pointer]:
+                - generic [ref=f3e146]:
+                  - paragraph [ref=f3e149]: Blocked Toolkits & Tools
+                  - generic [ref=f3e150]: 2 settings
+                - button [ref=f3e151]
+              - generic [ref=f3e170]:
+                - generic [ref=f3e171]:
+                  - paragraph [ref=f3e174]: Blocked Toolkits
+                  - generic [ref=f3e175]: Toolkit types that are completely disabled platform-wide. Blocked toolkits will not be registered, listed, or creatable.
+                  - generic [ref=f3e177]:
+                    - generic [ref=f3e180]:
+                      - combobox [ref=f3e181]
+                      - group
+                    - button "jira" [ref=f3e184]:
+                      - img [ref=f3e186] [cursor=pointer]
+                - generic [ref=f3e188]:
+                  - paragraph [ref=f3e191]: Blocked Tools
+                  - generic [ref=f3e192]: Specific tools blocked within allowed toolkits. Map of toolkit type to list of blocked tool names.
+                  - generic [ref=f3e194]:
+                    - generic [ref=f3e195]:
+                      - generic [ref=f3e196]:
+                        - paragraph [ref=f3e197]: jira
+                        - button [ref=f3e198] [cursor=pointer]
+                      - generic [ref=f3e202]:
+                        - generic [ref=f3e205]:
+                          - combobox [ref=f3e206]
+                          - group
+                        - button "search_using_jql" [ref=f3e209]:
+                          - img [ref=f3e211] [cursor=pointer]
+                    - generic [ref=f3e213]:
+                      - generic [ref=f3e216]:
+                        - combobox "Add toolkit name..." [ref=f3e217]
+                        - group
+                      - button "Add" [disabled]
+            - generic [ref=f3e155] [cursor=pointer]:
+              - generic [ref=f3e156]:
+                - paragraph [ref=f3e160]: Sensitive Actions
+                - generic [ref=f3e161]: 3 settings
+              - button [ref=f3e162]
+          - generic [ref=f3e166]:
+            - button "Discard" [disabled]
+            - button "Save" [disabled]

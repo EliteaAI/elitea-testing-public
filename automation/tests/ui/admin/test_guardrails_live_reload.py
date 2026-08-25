@@ -318,7 +318,14 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
             if removed_anything:
                 print("[CLEANUP] Saving blocked section to unblock JIRA")
                 try:
-                    guardrails.save_configuration(timeout=20000)
+                    # Find Save button and click it directly
+                    # Don't wait for visibility - it exists but might need scroll
+                    save_btn = pg.locator('button:has-text("Save")').last
+                    save_btn.scroll_into_view_if_needed()
+                    pg.wait_for_timeout(500)  # Let scroll settle
+                    save_btn.click()
+                    pg.wait_for_load_state("networkidle", timeout=20000)
+                    pg.wait_for_timeout(1000)
                     print("[CLEANUP] Saved - JIRA is now unblocked")
                     logger.info("Saved blocked section - JIRA unblocked")
                 except Exception as e:
