@@ -63,7 +63,7 @@ import allure
 import pytest
 from config import settings
 
-from tests.ui.pipelines.helpers import _navigate_to_canvas
+from tests.ui.pipeline_helpers import _navigate_to_canvas
 
 logger = logging.getLogger(__name__)
 
