@@ -36,6 +36,7 @@ on:
           - artifacts
           - chat
           - pipelines
+          - pipelines_2
           - skills
           - smoke
           - support_assistant
