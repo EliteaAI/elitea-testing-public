@@ -671,14 +671,18 @@ class GuardrailsAdminPage(BasePage):
         """Click Save button and wait for save to complete.
 
         The Save button is at the bottom of the page (footer).
+        After removing items from sections higher up, the viewport is not
+        at the footer, so we scroll to bottom first.
         """
         logger.info("Saving Guardrails configuration")
 
-        # Save button is in the footer, labeled "Save"
+        # Scroll to bottom of page first (Save is in footer)
+        self.page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        self.page.wait_for_timeout(500)  # Let scroll settle
+
+        # Now Save button should be in viewport
         save_btn = self.page.locator('button:has-text("Save")').last
-        save_btn.wait_for(state="visible", timeout=timeout)
-        save_btn.scroll_into_view_if_needed()
-        save_btn.click()
+        save_btn.click(timeout=timeout)
 
         self.wait_for_network(timeout=timeout)
         self.page.wait_for_timeout(1000)
