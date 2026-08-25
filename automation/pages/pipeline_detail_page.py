@@ -1324,6 +1324,7 @@ class PipelineDetailPage(PipelineFormPage):
 
     schedule_modal = LocatorDescriptor(
         testid="pipeline-schedule-settings-modal",
+        fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").first,
         description="Schedule settings modal (dialog root)"
     )
     schedule_summary_text = LocatorDescriptor(
