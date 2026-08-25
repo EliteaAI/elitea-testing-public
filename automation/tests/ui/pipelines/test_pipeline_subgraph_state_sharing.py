@@ -249,6 +249,7 @@ _KNOWN_DEFECT_1381 = "https://github.com/EliteaAI/elitea-testing-public/issues/1
 _EXPECTED_TIMELINE_STEP_COUNT_WITH_BLOCKED_NODE_C = 4
 
 
+@pytest.mark.blocked(reason="Known product defect - blocked by issue #1381")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

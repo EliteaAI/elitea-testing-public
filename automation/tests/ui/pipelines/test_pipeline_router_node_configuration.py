@@ -52,6 +52,7 @@ SAVE_RESPONSE_TIMEOUT = 15_000
 _CONDITION_TEMPLATE = "{% if 'yes' in input %}approve{% else %}reject{% endif %}"
 
 
+@pytest.mark.blocked(reason="Known product defect - blocked by issue #1036")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"
