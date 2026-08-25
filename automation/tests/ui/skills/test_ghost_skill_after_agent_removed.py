@@ -225,7 +225,33 @@ class TestGhostSkillAfterAgentRemoved:
                         "project skills' as an alternative explanation"
                     )
                 finally:
-                    new_tab.close()
+                    # Aggressively clean up the tab to prevent hang during pytest teardown.
+                    # Simply closing the tab without ensuring all async operations complete
+                    # can leave orphaned event listeners that block pytest's cleanup phase.
+                    try:
+                        # First, try to cancel any ongoing navigations
+                        try:
+                            new_tab.evaluate("() => window.stop()")
+                        except Exception:
+                            pass  # Tab might already be detached
+
+                        # Wait for network to settle (short timeout — we're in cleanup)
+                        try:
+                            new_tab.wait_for_load_state("networkidle", timeout=3000)
+                        except Exception:
+                            pass  # Timeout/error is acceptable — we tried
+
+                        # Remove all listeners to prevent hang
+                        try:
+                            new_tab.remove_all_listeners()
+                        except Exception:
+                            pass  # Best effort
+                    finally:
+                        # Close the tab regardless of cleanup success
+                        try:
+                            new_tab.close()
+                        except Exception as e:
+                            logger.warning("Failed to close new_tab cleanly: %s", e)
 
         finally:
             # Cleanup per AFS: no conversation is ever created in this case
