@@ -671,18 +671,44 @@ class GuardrailsAdminPage(BasePage):
         """Click Save button and wait for save to complete.
 
         The Save button is at the bottom of the page (footer).
-        After removing items from sections higher up, the viewport is not
-        at the footer, so we scroll to bottom first.
+
+        IMPORTANT: Removing items (clicking X) doesn't enable Save button.
+        If Save is disabled, we add+remove a dummy item to trigger dirty state.
         """
         logger.info("Saving Guardrails configuration")
 
-        # Scroll to bottom of page first (Save is in footer)
+        # Scroll to bottom first
         self.page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-        self.page.wait_for_timeout(500)  # Let scroll settle
+        self.page.wait_for_timeout(500)
 
-        # Now Save button should be in viewport
         save_btn = self.page.locator('button:has-text("Save")').last
-        save_btn.click(timeout=timeout)
+
+        # Check if Save button is enabled
+        if save_btn.count() == 0 or not save_btn.is_enabled():
+            logger.info("Save button not enabled, triggering dirty state with dummy add/remove")
+
+            # Add a dummy toolkit to trigger dirty state
+            self._expand_blocked_section()
+            dummy_input = self.page.locator('input[placeholder*="search and filter"]').first
+            dummy_input.click()
+            dummy_input.fill("dummy_save_trigger")
+            self.page.wait_for_timeout(300)
+            dummy_input.press("Enter")
+            self.page.wait_for_timeout(500)
+
+            # Remove the dummy
+            dummy_chip = self.page.locator('.MuiChip-deletable:has(.MuiChip-label:text-is("dummy_save_trigger"))')
+            if dummy_chip.count() > 0:
+                dummy_chip.first.locator('.MuiChip-deleteIcon').click()
+                self.page.wait_for_timeout(300)
+
+            # Scroll to Save again
+            self.page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            self.page.wait_for_timeout(500)
+
+        # Now click Save (should be enabled)
+        save_btn = self.page.locator('button:has-text("Save")').last
+        save_btn.click(force=True, timeout=timeout)
 
         self.wait_for_network(timeout=timeout)
         self.page.wait_for_timeout(1000)

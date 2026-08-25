@@ -313,27 +313,72 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
                 print(f"[CLEANUP] Could not remove empty toolkit containers: {e}")
                 logger.debug("Could not remove empty toolkit containers: %s", e)
 
-            # ALWAYS save after cleanup if we removed anything
-            # This unblocks JIRA so tests can create JIRA toolkit
+            # Save changes after removal
+            # Problem: Removing items doesn't enable Save button (form not marked dirty)
+            # Solution: Add a dummy toolkit, then remove it - this triggers dirty state
             if removed_anything:
-                print("[CLEANUP] Saving blocked section to unblock JIRA")
+                print("[CLEANUP] Saving blocked section to persist removal")
                 try:
-                    # Scroll to bottom of page first (Save is in footer)
-                    pg.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                    pg.wait_for_timeout(500)  # Let scroll settle
-
-                    # Now Save button should be in viewport
-                    save_btn = pg.locator('button:has-text("Save")').last
-                    save_btn.click(timeout=10000)
-                    pg.wait_for_load_state("networkidle", timeout=20000)
+                    # Wait for page to stabilize after removals
                     pg.wait_for_timeout(1000)
-                    print("[CLEANUP] Saved - JIRA is now unblocked")
-                    logger.info("Saved blocked section - JIRA unblocked")
+
+                    # Check if Save button is already enabled
+                    pg.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                    pg.wait_for_timeout(500)
+
+                    save_btn = pg.locator('button:has-text("Save")').last
+
+                    # Check if Save exists and is enabled
+                    if save_btn.count() == 0 or not save_btn.is_enabled():
+                        print("[CLEANUP] Save not enabled, adding dummy item to trigger dirty state")
+
+                        # IMPORTANT: Expand blocked section first!
+                        # (After removals, section might need time to settle)
+                        try:
+                            guardrails._expand_blocked_section(timeout=10000)
+                        except Exception as expand_err:
+                            print(f"[CLEANUP] Could not expand section: {expand_err}")
+                            # Try one more time after navigating fresh
+                            print("[CLEANUP] Reloading page and retrying...")
+                            guardrails.navigate_to_guardrails()
+                            guardrails._expand_blocked_section(timeout=10000)
+
+                        # Add a dummy toolkit to make form dirty
+                        dummy_input = pg.locator('input[placeholder*="search and filter"]').first
+                        dummy_input.click()
+                        dummy_input.fill("dummy_cleanup_toolkit")
+                        pg.wait_for_timeout(300)
+                        dummy_input.press("Enter")
+                        pg.wait_for_timeout(500)
+
+                        # Remove the dummy immediately
+                        dummy_chip = pg.locator('.MuiChip-deletable:has(.MuiChip-label:text-is("dummy_cleanup_toolkit"))')
+                        if dummy_chip.count() > 0:
+                            dummy_chip.first.locator('.MuiChip-deleteIcon').click()
+                            pg.wait_for_timeout(300)
+
+                        print("[CLEANUP] Form now dirty, Save should be enabled")
+
+                    # Now scroll and click Save
+                    pg.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                    pg.wait_for_timeout(500)
+
+                    save_btn = pg.locator('button:has-text("Save")').last
+                    if save_btn.count() > 0:
+                        save_btn.click(force=True, timeout=5000)
+                        pg.wait_for_load_state("networkidle", timeout=20000)
+                        pg.wait_for_timeout(1000)
+                        print("[CLEANUP] Saved - changes persisted")
+                        logger.info("Saved blocked section successfully")
+                    else:
+                        print("[CLEANUP] WARNING: Save button still not found")
+                        logger.warning("Save button not found after dummy add/remove")
+
                 except Exception as e:
                     print(f"[CLEANUP] Failed to save: {e}")
                     logger.error("Failed to save blocked section: %s", e)
             else:
-                print("[CLEANUP] Nothing was blocked, no save needed")
+                print("[CLEANUP] Nothing was blocked, no changes needed")
 
             # Reload page to ensure stable state before sensitive tools cleanup
             print("[CLEANUP] Reloading page for stable state")
