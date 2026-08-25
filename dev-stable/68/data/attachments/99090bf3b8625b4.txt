@@ -1,0 +1,25 @@
+[CLEANUP] Running guardrails cleanup AFTER tests (finalizer)
+[CLEANUP] Starting guardrails cleanup...
+[CLEANUP] Navigated to guardrails page
+[CLEANUP] Cleaning up blocked toolkits
+[CLEANUP] Currently blocked toolkits: ['jira']
+[CLEANUP] Checking toolkit 'jira': blocked=True
+[CLEANUP] Removed blocked toolkit: jira
+[CLEANUP] Checking toolkit 'JIRA': blocked=False
+[CLEANUP] Checking toolkit 'Jira': blocked=False
+[CLEANUP] Cleaning up blocked tools
+[CLEANUP] Removed blocked tool: search_using_jql
+[CLEANUP] Removing empty toolkit containers
+[CLEANUP] Removed empty toolkit containers
+[CLEANUP] Saving blocked section changes before reload
+[CLEANUP] No changes to save in blocked section
+[CLEANUP] Reloading page for stable state
+[CLEANUP] Cleaning up sensitive tools
+[CLEANUP] Removing empty toolkit blocks from Sensitive Action Tools
+[CLEANUP] Removing empty sensitive toolkit blocks - using dynamic discovery
+[CLEANUP] Found 1 potential toolkit labels in Sensitive Actions section
+[CLEANUP] Total unique toolkits discovered: 0
+[CLEANUP] Total removed: 0 empty blocks
+[CLEANUP] Removed empty sensitive toolkit blocks
+[CLEANUP] Checking if save is needed for sensitive section
+[CLEANUP] No changes to save in sensitive section
