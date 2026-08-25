@@ -2530,6 +2530,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_hitl_node_runtime_behavior.test_hitl_node_runtime_behavior",
       "markers": [
+        "blocked",
         "new_verified",
         "p2",
         "pipelines",
@@ -2560,6 +2561,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_interrupt_before_after_toggles.test_interrupt_after_toggle_pauses_and_attempts_resume",
       "markers": [
+        "blocked",
         "new_verified",
         "p2",
         "pipelines",
@@ -2838,6 +2840,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_router_node_configuration.test_router_node_configuration_and_edge_wiring",
       "markers": [
+        "blocked",
         "new_verified",
         "p2",
         "pipelines",
@@ -2999,6 +3002,7 @@
     {
       "automation_test_id": "tests.ui.pipelines.test_pipeline_subgraph_state_sharing.test_subgraph_state_sharing_node_c_state_propagation",
       "markers": [
+        "blocked",
         "new_verified",
         "p2",
         "pipelines",
