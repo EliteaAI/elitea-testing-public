@@ -406,3 +406,36 @@ clarification and never a `bug`). Dedup pass before filing:
 returned only #1653, #1584, #1583 — all ELITEA-2420/2421 *product* bugs about the
 send-side attachment behaviour, none about ELITEA-1802's case text. Not
 duplicates.
+
+---
+
+## Implementation note (implementer, 2026-08-27)
+
+Both gap assertions shipped as specified. Recorded here so the § Gap assertions
+line references above are not read as the shipped state.
+
+- **Gap 1 — shape chosen: the explicit two-line form**, not the
+  `attach_file_via_testid()` helper. Rationale: the case's Step 6 is its own
+  expected result (*"file chooser dialog opens"*), and Coverage Map Axis-1 row 6
+  points at a spec-level assertion for it. Collapsing onto the helper would move
+  that observable behind a helper contract and leave the row pointing at nothing.
+  The explicit form keeps the migration a pure handle swap — `attach_btn` →
+  `support_page.attach_file_button` — with zero behavioural change, exactly as
+  the live evidence (`sameElementAsLegacy: true`, `legacyCount: 1`) licenses.
+  `.first` dropped as specified. `attach_file_via_testid()` keeps its existing
+  callers untouched.
+- **Gap 1c — taken.** `open_widget()` → `open_widget_via_sidebar()`; removes a
+  `page.evaluate` from the flow. Not propagated to any other spec.
+- **Gap 2 — shipped**, and **red-green verified**: temporarily asserting
+  `to_have_count(2)` failed with `Actual value: 1`, proving the assertion
+  discriminates rather than passing vacuously like the `wait_for_network()` it
+  replaces.
+- **Docstring `Covers:` widened to `7.1.1, 7.1.2, 7.1.3`** — the chip assertion
+  is what makes 7.1.3 (*"selected file appears as preview"*) genuinely covered;
+  the class docstring already claimed it while no test asserted it.
+- **Import block sorted** (pre-existing `ruff I001` on the block the `expect`
+  import joins). File-level ruff errors 11 → 10; the 10 remaining are
+  pre-existing `E501`s on long `@allure.issue` URLs, untouched.
+- **Shipped step layout:** Step 1 open (sidebar) · Step 2 attach button visible ·
+  Step 3 click inside `expect_file_chooser` · Step 4 chooser opened + `set_files` ·
+  Step 5 staged chip. All wrapped in `allure.step`.

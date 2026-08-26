@@ -22,10 +22,11 @@ Usage::
     HEADLESS=false pytest tests/ui/support_assistant/ -v  # watch the browser
 """
 
-import pytest
-from pages.support_assistant_page import SupportAssistantPage
-from pages.chat_page import ChatPage
 import allure
+import pytest
+from pages.chat_page import ChatPage
+from pages.support_assistant_page import SupportAssistantPage
+from playwright.sync_api import expect
 
 pytestmark = [pytest.mark.smoke, pytest.mark.ui, pytest.mark.support_assistant]
 
@@ -423,27 +424,43 @@ class TestSupportAssistantAttachments:
     def test_attach_button_present_and_opens_picker(self, page, tmp_path):
         """Attach button opens file picker dialog.
 
-        Covers: 7.1.1, 7.1.2
+        Covers: 7.1.1, 7.1.2, 7.1.3
+
+        AFS: test-specs/support-assistant/lextend_attach-button-opens-file-picker_ELITEA-1802.md
+
+        No substitution: the file chooser is opened by the browser in response to a
+        real click, and the staged chip is rendered by the widget's own state.
         """
         with allure.step("Step 1 — Open Support Assistant"):
             chat_page = ChatPage(page)
             chat_page.navigate_to_chat()
             support_page = SupportAssistantPage(page)
-            support_page.open_widget(timeout=WIDGET_TIMEOUT)
+            # Sidebar launcher = a real pointer click; the legacy open_widget()
+            # JS-evaluate-clicks the floating button to dodge a MUI overlay.
+            support_page.open_widget_via_sidebar(timeout=WIDGET_TIMEOUT)
             support_page.wait_for_widget_ready(timeout=WIDGET_TIMEOUT)
 
         with allure.step("Step 2 — Verify attach button is visible"):
-            attach_btn = page.locator('button[aria-label="Attach file"]').first
-            assert attach_btn.is_visible(), "Attach file button should be visible"
+            expect(support_page.attach_file_button).to_be_visible()
 
         with allure.step("Step 3 — Click attach button"):
             test_file = tmp_path / "test_attachment.txt"
             test_file.write_text("Test attachment content")
             with page.expect_file_chooser(timeout=WIDGET_TIMEOUT) as fc_info:
-                attach_btn.click()
+                support_page.attach_file_button.click(timeout=WIDGET_TIMEOUT)
 
         with allure.step("Step 4 — Verify file chooser dialog opens"):
             file_chooser = fc_info.value
             assert file_chooser is not None, "File chooser should open when clicking attach"
             file_chooser.set_files(str(test_file))
-            support_page.wait_for_network(timeout=WIDGET_TIMEOUT)
+
+        with allure.step("Step 5 — Verify the selected file is staged in the composer"):
+            # The case's own Step 8 ("wait for networkidle, indicating the upload
+            # has been processed") rests on a false premise: the upload fires on
+            # Send, not on attach (MessageInput.handleSend -> startUpload), so
+            # attaching stages a PENDING chip and issues no request. The previous
+            # wait_for_network() therefore passed vacuously. Case-text
+            # clarification filed as #1827. The chip is the observable the
+            # product genuinely produces at this point.
+            expect(support_page.attachment_chips).to_have_count(1)
+            expect(support_page.attachment_chips.first).to_contain_text("test_attachment.txt")
