@@ -5,7 +5,7 @@ type: project
 aliases: [artifacts backlog, ELITEA-18xx, bucket permissions, artifacts coverage]
 tags: [area/artifacts, status/blocked]
 created: 2026-08-23
-updated: 2026-08-23
+updated: 2026-08-26
 ---
 
 ## Outcome
@@ -26,6 +26,20 @@ re-exploration is needed:
 | ELITEA-2488/2489/2490 | need a 2nd/3rd **logged-in** identity on a **deployed** env | #1697 |
 | ELITEA-2491 | Public project (id=1) unreachable by the test user | #1699 |
 | ELITEA-2492 | every bucket-permission **write** 403s for the acting user | #1701 |
+
+## Verified again 2026-08-26 (resumed on "Proceed")
+
+All 9 question cards still unanswered; no new TMS cases; User B still unprovisioned.
+Full `tests/ui/artifacts/` on base `69f26485c`: **5 failed / 57 passed / 2 skipped**.
+Failures = 3 sanctioned-RED by design (#1677, #1080, #649) + known #1631 animation race
++ one NEW on a pre-existing spec -> **#1825** (shared 15s bucket-list wait vs ~970 buckets;
+progressive because leak #636 keeps adding: 555 -> 762 -> 970).
+
+**ELITEA-2493/2494 SKIP (`ss`), they do not pass** — so my wave-01 back-write to
+`ready`/`automated` over-claims coverage for two `critical` security cases. Not reverted:
+the correct action depends on #1697's ruling (option (a) makes it right; (c)/(d) needs revert).
+Lesson: a back-write justified by "a merged PR covers it" must also check the test can EXECUTE
+in some environment — `automation_coverage` counts it either way.
 
 ## The multi-user wall (reusable fact)
 
