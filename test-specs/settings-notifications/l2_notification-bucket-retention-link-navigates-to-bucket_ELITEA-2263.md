@@ -58,11 +58,30 @@
 
 4. **Case step 4** — verify the new tab lands on the referenced artifact bucket.
    - Wait (framework wait, never a sleep) for the popup URL to settle at
-     `/artifacts?bucket={bucket_name}` — the `/{projectId}` prefix is consumed by the
-     project switcher.
-   - **Verify**: popup path == `/artifacts`, query param `bucket` == `bucket_name`;
-     the project selector shows the notification's project (live 2026-08-26: `Private`,
-     project 399, title `"Artifacts - project_user_659"`).
+     `…/artifacts?bucket={bucket_name}`.
+   - **AMENDED during ELITEA-2263 implementation (2026-08-26): the `/{projectId}` prefix
+     is NOT always consumed.** The project switcher drops it only when a switch is
+     actually required. This notification's project (399, the personal project) is
+     already the selected one, so the segment SURVIVES: the live landing URL is
+     `http://localhost:5173/399/artifacts?bucket=autotest-1816-182606`, not
+     `/artifacts?bucket=…`. (ELITEA-2261's mention notification lives in project 406,
+     a real switch, and its segment IS consumed — hence the digest's original claim.)
+   - **Verify**: popup path == `/artifacts` **or** `/{notification.project_id}/artifacts`
+     — exactly those two, nothing else — and query param `bucket` == `bucket_name`.
+   - **AMENDED during fix round 1 (2026-08-26): the "correct project" proof moved to
+     step 5 and changed handle.** The landing path cannot carry it — when no switch is
+     required the product serves the bare `/artifacts` form, which names no project at
+     all — and the sidebar project selector renders a project *label*
+     (live 2026-08-26: `Private`, title `"Artifacts - project_user_659"`) that the test
+     cannot derive from the notification without hardcoding it (there is no project-name
+     API client in `automation/api/`). The shipped assertion instead reads the artifacts
+     REST calls the new tab actually issued and requires every one of them to be scoped
+     to the notification's own `project_id` — the UI carries it as a query param, not a
+     path segment (observed live 2026-08-26: `GET /artifacts/s3/?project_id=399&format=json`
+     and `GET /artifacts/s3/{bucket}?project_id=399&format=json`) — strictly stronger
+     evidence, since a
+     same-named bucket in another project surfaces here as a foreign project id, and it
+     is symmetric with ELITEA-2261's `conversation_responses` project-scoped-URL check.
 
 5. **Case step 5** — verify the bucket page opens without a "not found" error, on the
    **correct** bucket.
@@ -95,7 +114,7 @@
 | Step 1 — Navigate to Settings → Notifications | page/section loads | `navigate_and_get_rows()` | step 1 | covered |
 | Step 2 — Find a "Bucket [bucket link] will start deleting files…" notification | produces expected UI state | search + live-bucket discovery | step 2 | covered (decomposed: search, parse href, liveness check) |
 | Step 3 — Click the bucket link | control responds | click on `notification-message-link` | step 3 | covered |
-| Step 4 — Browser navigates to the referenced artifact bucket | condition holds | popup URL `/artifacts?bucket={name}` + project | step 4 | covered (new TAB, not in-tab navigation) |
+| Step 4 — Browser navigates to the referenced artifact bucket | condition holds | popup URL `/artifacts?bucket={name}` or `/{project_id}/artifacts?bucket={name}` (amended); the notification's own project proven in step 5 by every artifacts REST call carrying `?project_id={project_id}` (amended, fix round 1) | steps 4-5 | covered (new TAB, not in-tab navigation) |
 | Step 5 — Bucket page opens without a "not found" error | condition holds | bucket row visible + bucket tree opened | step 5 | covered |
 | Expected final state | bucket page opens cleanly | same as step 5 | step 5 | covered |
 
@@ -105,6 +124,7 @@
 | `href` equals the meta-derived URL and link text == `meta.bucket_name` | "the CORRECT bucket" is decided by the href; deterministic for every retention row even when the bucket has since been deleted. |
 | `target="_blank"` + `rel` | The new-tab behaviour is why the case's step-4 wording doesn't apply literally; pinning it stops a silent switch to in-tab navigation from hanging the popup wait. |
 | Bucket **opened**, not merely listed | Landing on `/artifacts` with a `?bucket=` query the app ignored would satisfy a URL-only assertion while the case's intent ("navigates to the correct bucket") failed. |
+| Every artifacts REST call scoped to the notification's own `project_id` | "the correct bucket" is project-scoped: bucket names are unique only within a project, and the bare `/artifacts` landing form names no project. |
 | No console errors / no 4xx | Standard side-channel check. |
 
 ## Cleanup
@@ -117,7 +137,7 @@ None — read-only. Close the popup tab; clear the search field.
 | Notification row (repeats) | `[data-testid="notification-row"]` | on-main ✓ | scope per row via checkbox id |
 | Row checkbox (dynamic) | `[data-testid="notification-checkbox-{id}"]` | on-`automation/testids` only | `NOTIFICATION_ROW_CHECKBOX` |
 | Row message cell | `[data-testid="notification-message-text"]` | on-main ✓ | |
-| **In-message link** | `[data-testid="notification-message-link"]` | **needs-adding** | identical work item to ELITEA-2261 — add ONCE, both specs consume it |
+| **In-message link** | `[data-testid="notification-message-link"]` | **ADDED during implementation** — on-`automation/testids` only (EliteaAI/EliteaUI@9733742f) | one add, consumed by ELITEA-2261 and ELITEA-2263 |
 | Search input | `[data-testid="notifications-search-input"]` | on-`automation/testids` only | |
 | Bucket row (dynamic) | `[data-testid="artifacts-bucket-row-{name}"]` | on-main ✓ | `ArtifactsPage.BUCKET_ROW` |
 | Bucket empty-tree label (dynamic) | `[data-testid="artifacts-bucket-tree-empty-label-{name}"]` | on-`automation/testids` only | `ArtifactsPage.BUCKET_TREE_EMPTY_LABEL` — proof the bucket is OPENED |
@@ -137,10 +157,14 @@ exercise; the case's own observable is still produced live.
 ## Network Behavior
 - List GET (+ `search=`) as documented in `test-specs/settings-notifications/_surface.md`.
 - Popup: the artifacts bucket-listing GETs for the notification's project.
-- Known environmental noise: a `500` on
-  `/api/v2/elitea_core/project_info/prompt_lib/{id}/project-info` was observed once on the
-  popup and is unrelated to this flow (`.agents/testing.md` § Known issues — background
+- Known environmental noise: a `403` on `/api/v2/secrets/secrets/default/{project}` and a
+  `500` on `/api/v2/elitea_core/project_info/prompt_lib/{id}/project-info` were observed on
+  the popup and are unrelated to this flow (`.agents/testing.md` § Known issues — background
   resource noise). Use `automation/utils/console_errors.py` so any recurrence names its URL.
+  **The spec's filter is scoped to those exact (status, resource) PAIRS**
+  (`KNOWN_BACKGROUND_NOISE_SIGNATURES`), never the URL alone — a different status on either
+  resource is a real failure and must fail the test (pinned by
+  `automation/tests/unit/test_notification_link_console_noise_filter_scope.py`).
 
 ## Known Defects Found During Exploration
 None. Retention warnings that point at already-deleted buckets are the retention policy

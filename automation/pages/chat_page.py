@@ -827,6 +827,17 @@ class ChatPage(BasePage):
         description="Main messages list container"
     )
 
+    # App-wide AlertDialog body (``src/components/AlertDialog.jsx``, static
+    # testid already on ``main``). On the chat surface it is what renders
+    # "The conversation you are looking for does not exist in your project or
+    # you don't have access to it." — ELITEA-2261 uses it as an ABSENCE
+    # assertion (canon #511 extension: absence assertions are references).
+    # Same shared handle ``ArtifactsPage``/``SecretsPage`` already expose.
+    alert_dialog_content = LocatorDescriptor(
+        testid="alert-dialog-content",
+        description="Shared AlertDialog body — chat's 'Conversation not found' message",
+    )
+
     messages_container = LocatorDescriptor(
         testid="chat-message-item",
         fallback=lambda page: page.locator('main ul.MuiList-root > li.MuiListItem-root'),
