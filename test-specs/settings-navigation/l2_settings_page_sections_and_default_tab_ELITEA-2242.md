@@ -147,10 +147,13 @@ None — read-only navigation and inventory assertions, no state mutated.
 | Settings drawer root | `settings-drawer` | `automation/testids` only — `EliteaAI/EliteaUI@e1e031a1` | `SettingsDrawer.jsx` root |
 | Drawer nav item (dynamic) | `settings-nav-item-{tabId}` + `data-active` | `automation/testids` only — `EliteaAI/EliteaUI@e1e031a1` | Class constant `SETTINGS_NAV_ITEM = '[data-testid="settings-nav-item-{}"]'`. State on `data-active`, never in the testid value (PR #581). |
 | Settings content pane | `settings-content` | `automation/testids` only — `EliteaAI/EliteaUI@e1e031a1` | **Required** — two `<main>` elements exist on a Settings route; a bare `main` selector is ambiguous. |
+| Drawer group header (dynamic) | `settings-section-header-{project\|personal}` | `automation/testids` only — `EliteaAI/EliteaUI@529e2e4d` (added by the implementer for this case) | **Amendment 2026-08-26 (implementer):** step 2 needs a positive assertion target for the "PROJECT"/"PERSONAL" group headers; none existed on the plain `<Box component="span">` header nodes. Added per `.agents/testing.md` § Locator policy ("missing testid ⇒ add it, don't rung down"). Class constant `SETTINGS_SECTION_HEADER = '[data-testid="settings-section-header-{}"]'`. See `_surface.md` for the full note. |
 
-No new testids needed — all four were added by a prior (not-yet-merged in this
-repo) analyst/implementer session and are already live on `automation/testids`.
-See `_surface.md` § Testids for the full provenance table.
+**Amendment (implementer, 2026-08-26):** one new testid was needed beyond the
+four listed by the analyst — see the group-header row above and `_surface.md`
+§ Resolved/added during implementation. The other four were already live on
+`automation/testids` and needed no change. See `_surface.md` § Testids for the
+full provenance table.
 
 ## Network Behavior
 - No mutating requests — this is a read-only navigation/inventory check. The
