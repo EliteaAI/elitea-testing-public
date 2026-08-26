@@ -237,3 +237,41 @@ offers only `"None"`, and no `PGVECTOR*` secret exists in `automation/config.py`
 ⇒ no indexable toolkit can be created ⇒ `index_data_changed` notifications cannot be produced
 from the test side. Any case whose trigger is an index run is `blocked` until a vector-store
 credential + indexable toolkit are provisioned (human/lead decision).
+
+## Resolved/added during ELITEA-2258 + ELITEA-2264 implementation (2026-08-26, test-automation-engineer)
+
+**Testids added — `EliteaAI/EliteaUI@e0d98f4a` on `automation/testids`, NOT yet on `main`.**
+Both close the "the colour lives on a node with no testid" gap the ELITEA-2258 analysis
+flagged above:
+
+| Testid | How | Component |
+|---|---|---|
+| `notification-message-typography` | caller-supplied additive prop thread — `NotificationTable.jsx` `renderCell` passes `messageTestId` → `NotificationListItem` forwards it as `testId` → `NotificationListItemMessage` renders `data-testid` on the EXISTING `<Typography sx={{ color: textColor }}>` | shared with the sidebar popover, so caller-supplied: `context='list'` gains nothing |
+| `notification-date-text` | plain `data-testid` attribute | `NotificationTable.jsx`'s own `created_at` `renderCell` (page-owned file) |
+
+Prop plumbing only — no new DOM node, no hook, no removed markup.
+
+**Row click: use the DATE cell, not the message cell.** The message `<Typography>` embeds
+an inline `<Link target="_blank">`, so a centre-click can land on the anchor and open a
+tab (that is the case's *other* branch, "open the linked entity"). The date cell is
+link-free and in the same row — an unambiguous row click. Confirmed live: clicking it
+issues zero `/notifications/notifications/prompt_lib/` `PUT`s and changes neither colour
+nor `is_seen`.
+
+**Clearing the search field issues NO request** (cost one rerun to learn). RTK-Query still
+holds the unfiltered query fetched on page load (inside `keepUnusedDataFor`), so the full
+list comes back from cache and `expect_response(<unfiltered list GET>)` times out. Wait on
+the rendered row count returning to baseline instead; the network evidence worth asserting
+is the ABSENCE of a stale `search=`-carrying request. (Typing a term still fires a real
+GET, so `search_notifications()` legitimately waits on a response.)
+
+**Proving a request did NOT fire, without a sleep:** `page.expect_request(<predicate>,
+timeout=N)` wrapped in `try/except PlaywrightTimeoutError` — the timeout IS the verdict.
+Used for both the row-click-no-`PUT` probe and the `MIN_SEARCH_LENGTH` boundary. Bounded
+at 4 s, comfortably past the product's 600 ms debounce.
+
+**Read/unread colour polarity (source, not just observation):** both
+`NotificationTable.jsx`'s date cell and `NotificationListItemMessage.jsx`'s message text
+use `is_seen ? 'text.primary' : 'text.secondary'` — so in this dark theme READ is
+`text.primary` = `rgb(169, 183, 193)` and UNREAD is `text.secondary` =
+`rgb(255, 255, 255)`. Counterintuitive naming; assert the difference, never the token.

@@ -615,13 +615,6 @@ class NotificationCenterPage(BasePage):
             and NOTIFICATIONS_SEARCH_URL_MARKER in response.url
         )
 
-    def _is_notifications_unfiltered_response(self, response) -> bool:
-        """True for a notification-list GET that carries NO ``search=`` parameter."""
-        return (
-            self._is_notifications_list_response(response)
-            and NOTIFICATIONS_SEARCH_URL_MARKER not in response.url
-        )
-
     def _sync_rendered_rows_with(self, response, timeout: int = UI_ELEMENT_TIMEOUT) -> list[dict]:
         """Wait until the table renders exactly as many rows as *response* returned.
 
@@ -653,21 +646,37 @@ class NotificationCenterPage(BasePage):
         logger.info("Searched notifications for %r -> %s", term, response.url)
         return response
 
-    def clear_search(self, timeout: int = NAVIGATION_TIMEOUT):
-        """Clear the search field and wait for the resulting UNFILTERED list GET.
+    def clear_search(
+        self,
+        expected_row_count: int,
+        settle_timeout: int = NO_REQUEST_SETTLE_TIMEOUT,
+        timeout: int = UI_ELEMENT_TIMEOUT,
+    ) -> bool:
+        """Clear the search field and wait for the unfiltered list to render again.
+
+        Deliberately does NOT wait on a network response. Confirmed live
+        2026-08-26: clearing the field issues **no request at all** — RTK-Query
+        still holds the unfiltered query it fetched on page load (well inside
+        ``keepUnusedDataFor``), so the full list is served from cache. The
+        observable that survives either way is the rendered list itself.
+
+        What IS asserted about the network is the absence of a stale FILTERED
+        request, proven with a bounded ``expect_request`` that is expected to
+        time out — a framework wait, not a sleep.
 
         Returns:
-            The matched Playwright ``Response`` (its URL carries no ``search=``).
+            ``True`` when no ``search=``-carrying request fired while clearing.
         """
-        self.search_input.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-        with self.page.expect_response(
-            self._is_notifications_unfiltered_response, timeout=timeout
-        ) as response_info:
-            self.search_input.fill("")
-        response = response_info.value
-        self._sync_rendered_rows_with(response)
-        logger.info("Cleared notification search -> %s", response.url)
-        return response
+        no_filtered_request = self.fill_search_expecting_no_request(
+            "", settle_timeout=settle_timeout
+        )
+        expect(self.notification_row).to_have_count(expected_row_count, timeout=timeout)
+        logger.info(
+            "Cleared notification search; %d row(s) rendered again, no filtered request: %s",
+            expected_row_count,
+            no_filtered_request,
+        )
+        return no_filtered_request
 
     def fill_search_expecting_no_request(
         self, term: str, settle_timeout: int = NO_REQUEST_SETTLE_TIMEOUT

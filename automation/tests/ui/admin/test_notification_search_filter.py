@@ -184,16 +184,13 @@ class TestNotificationSearchFilter:
             )
 
         with allure.step(
-            "Step 5 — Clear the Search input: the field empties and an unfiltered list "
-            "request is issued"
+            "Step 5 — Clear the Search input: the field empties, the unfiltered list renders "
+            "again and no stale filtered request is issued"
         ):
-            cleared_response = notif_page.clear_search()
-            assert "search=" not in cleared_response.url, (
-                f"Expected the post-clear list request to carry no search parameter, got URL "
-                f"{cleared_response.url}"
-            )
-            assert cleared_response.status == 200, (
-                f"Expected the post-clear list request to return 200, got {cleared_response.status}"
+            no_filtered_request = notif_page.clear_search(baseline_row_count)
+            assert no_filtered_request, (
+                "Clearing the search field issued another search=-carrying list request; the "
+                "cleared field must not keep querying with a filter"
             )
             assert notif_page.get_search_value() == "", (
                 f"Expected the search field to be empty after clearing, got "
