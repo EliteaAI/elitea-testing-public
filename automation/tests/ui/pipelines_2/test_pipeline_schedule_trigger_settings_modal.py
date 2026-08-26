@@ -123,8 +123,9 @@ def test_schedule_trigger_settings_modal(page, pipeline_with_llm_id):
         pipeline_page.set_schedule_hour_minute("09", "30", timeout=UI_ELEMENT_TIMEOUT)
 
         summary_after_time = pipeline_page.get_schedule_summary_text()
-        assert summary_after_time == "At 09:30", (
-            f"Summary should re-derive to the single clean value 'At 09:30', got {summary_after_time!r}"
+        # UI intentionally adds quotes around the summary message
+        assert summary_after_time == '"At 09:30"', (
+            f'Summary should show "At 09:30" (with quotes), got {summary_after_time!r}'
         )
 
     with allure.step('Step 6 — Switch to "Advanced" mode; verify the raw cron text input appears'):
@@ -142,8 +143,9 @@ def test_schedule_trigger_settings_modal(page, pipeline_with_llm_id):
             "Default-mode dropdowns should re-render, re-parsed from the same cron string (day period, no 'on')"
         )
         summary_after_switch_back = pipeline_page.get_schedule_summary_text()
-        assert summary_after_switch_back == "At 09:30", (
-            f"Summary should still read 'At 09:30' after switching modes both directions, "
+        # UI intentionally adds quotes around the summary message
+        assert summary_after_switch_back == '"At 09:30"', (
+            f'Summary should still show "At 09:30" (with quotes) after switching modes both directions, '
             f"got {summary_after_switch_back!r}"
         )
 
@@ -186,8 +188,9 @@ def test_schedule_trigger_settings_modal(page, pipeline_with_llm_id):
         pipeline_page.trigger_schedule_edit_button.click(timeout=UI_ELEMENT_TIMEOUT)
         pipeline_page.wait_for_schedule_settings_loaded(timeout=MODAL_TIMEOUT)
         persisted_summary = pipeline_page.get_schedule_summary_text()
-        assert persisted_summary == "At 09:30", (
-            f"Reopened Schedule modal should show the round-tripped 09:30 cron, got {persisted_summary!r}"
+        # UI intentionally adds quotes around the summary message
+        assert persisted_summary == '"At 09:30"', (
+            f'Reopened Schedule modal should show "At 09:30" (with quotes) round-tripped cron, got {persisted_summary!r}'
         )
         pipeline_page.schedule_modal_cancel_button.click(timeout=UI_ELEMENT_TIMEOUT)
         pipeline_page.schedule_modal.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)

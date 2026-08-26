@@ -3741,8 +3741,11 @@ class PipelineDetailPage(PipelineFormPage):
         """Set the Schedule modal's hour/minute "at HH:MM" pickers to a single value.
 
         Updated 2026-08-26: Now uses MUI Autocomplete (CronSelect) instead of
-        react-js-cron. Opens dropdown by clicking the Autocomplete input,
-        selects option by clicking the li[role="option"] element.
+        react-js-cron. Uses MUI class selector (.MuiAutocomplete-root) to find
+        hour/minute selects, since testids may not be deployed yet.
+
+        The hour and minute are the last two Autocompletes in the modal's
+        Builder mode (after period and optional weekdays/monthdays selects).
 
         Args:
             hour: Target hour, zero-padded (e.g. ``"09"``).
@@ -3754,15 +3757,21 @@ class PipelineDetailPage(PipelineFormPage):
         # MUI Autocomplete dropdowns (.MuiAutocomplete-popper)
         dropdown = self.page.locator(self.CRON_DROPDOWN)
 
-        # Process hour and minute sequentially
-        for target, testid in ((hour, "schedule-cron-hour-select"), (minute, "schedule-cron-minute-select")):
-            # Find the MUI Autocomplete by testid within the visible modal
-            # Wait for modal to be present first
-            self.schedule_modal.wait_for(state="visible", timeout=timeout)
+        # Wait for modal to be visible
+        self.schedule_modal.wait_for(state="visible", timeout=timeout)
 
-            # The testid is on the Autocomplete root, input is nested inside
-            autocomplete = self.page.locator(f'[data-testid="{testid}"]')
-            autocomplete.wait_for(state="visible", timeout=timeout)
+        # Find all MUI Autocomplete components in the modal
+        # In Builder mode, the last two are always hour and minute
+        autocompletes = self.schedule_modal.locator(self.SCHEDULE_CRON_SELECT)
+        total_count = autocompletes.count()
+
+        # Hour is second-to-last, minute is last
+        for target, index_from_end in ((hour, 2), (minute, 1)):
+            # Get the correct Autocomplete (counting from the end)
+            autocomplete_index = total_count - index_from_end
+            autocomplete = autocompletes.nth(autocomplete_index)
+
+            # Click the input to open dropdown
             autocomplete_input = autocomplete.locator('input').first
             autocomplete_input.click(timeout=timeout)
 
