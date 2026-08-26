@@ -59,3 +59,4 @@
 - [Repairing a neighbour spec leaves ITS AFS stale](repairing_a_neighbour_spec_leaves_its_afs_stale.md) — grep every touched spec's AFS, not just the dispatched ones
 - [Shared modal base class invites orphan testids](shared_modal_base_class_invites_orphan_testids.md) — filled-in base placeholders become #511 orphan testids
 - [Fork wizard excludes current project](fork_wizard_excludes_current_project.md) — a fork test with source==target can never pass; project ids are per-user
+- [expect.poll is not a Python Playwright API](expect_poll_is_not_a_python_playwright_api.md) — JS-only; raises AttributeError at runtime
