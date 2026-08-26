@@ -6,7 +6,18 @@ created: 2026-08-26
 updated: 2026-08-26
 ---
 
-## Status after wave settings-w01 (2026-08-26)
+## Status after waves w01 + w02 (2026-08-26)
+
+**Running total: 12 delivered, 6 blocked on human decisions, ~110 not yet attempted.**
+
+### Wave settings-w02 — `settings/notifications` (9 cases)
+
+7 automated (ELITEA-2255/2256/2258/2260/2261/2263/2264, PR #1788, lead gate 3/3 green).
+2 blocked → #1789: ELITEA-2265 (no toolkit/credential/vector-store exists to trigger a notification), ELITEA-2262 (all 7 index notifications point at toolkits that now 400).
+
+The lead gate caught a red the workflow's own gate missed; `batch-stabilize` fixed it in one round (timing budget on project 399's 1,049-bucket artifacts list, not the data-selection cause I hypothesised). Suite-health discovery filed as #1790.
+
+### Wave settings-w01 — root `settings` (9 cases)
 
 9 root `settings` cases attempted (the smallest sub-area, chosen as wave 1):
 
@@ -27,9 +38,9 @@ full provenance table + SHAs.
   Deliberately NOT grouped into w01: they need multiple identities (admin vs
   viewer/monitor role, an unauthenticated session), a different setup shape
   than the rest of the root `settings` cases.
-- **8 more sub-areas, ~115 cases**: `ai-configuration` (24), `analytics` (15),
-  `user-profile` (17), `users-and-roles` (15), `secrets` (14),
-  `personal-tokens` (11), `project-params` (10), `notifications` (9).
+- **7 more sub-areas, ~106 cases**: `ai-configuration` (24), `user-profile` (17),
+  `analytics` (15), `users-and-roles` (15), `secrets` (14),
+  `personal-tokens` (11), `project-params` (10). (`notifications` done in w02.)
 
 ## Pattern for the next wave
 
