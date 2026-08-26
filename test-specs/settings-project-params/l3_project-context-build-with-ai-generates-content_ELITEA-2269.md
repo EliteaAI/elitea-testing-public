@@ -85,14 +85,23 @@ than mocked away.
 | **Generate Draft** | `generate-project-context-submit-button` | added during this case (same commit) — `generateButtonTestId` |
 | Review **Project Background** field | `generate-project-context-review-background-input` | added during this case (same commit) — `slotProps.htmlInput['data-testid']`, lands on the real `<textarea>` so `input_value()` works |
 | **Apply** | `generate-project-context-approve-button` | added during this case (same commit) — `approveButtonTestId` |
+| Dialog title | `generate-project-context-title` | added during this case — EliteaAI/EliteaUI@aacfb6e on `automation/testids`; `GenerateEntityModal` gained an additive `titleTestId` pass-through to `Modal.BaseModal`'s pre-existing `titleTestId` prop |
 | Editor (CodeMirror) | `project-context-editor-content` | on-main ✓ |
 | Editor wrapper (scope for `.cm-line`) | `project-context-editor-wrapper` | on `automation/testids` only (EliteaAI/EliteaUI@b05bbc9a) |
 | Save | `project-context-save-button` | on-main ✓ |
 | Character counter | `project-context-char-counter` | on-main ✓ |
 
 Every testid added by this case is referenced on the test's executed code path (#511).
-The shared `GenerateEntityModal` / `GenerateEntityButton` components were **not
-modified** — every modal testid rides a prop those components already accepted.
+`Back to prompt`, the dialog's close (X) and the generate-failure alert are **not**
+given testids: no case exercises them, and an unreferenced testid inflates the
+presence-based coverage metric. `GenerateProjectContextModalPage` therefore overrides
+the base `wait_for_review_form()` (which waits on a back button) to key on `Apply` +
+the populated Project Background field instead.
+
+`GenerateEntityButton` was not modified at all. `GenerateEntityModal` gained exactly
+one additive prop — `titleTestId`, defaulting to `undefined` and forwarded to the
+`titleTestId` prop `Modal.BaseModal` already accepted — identical in shape to the nine
+testid props it already took, so its other callers are untouched.
 
 ## Test Steps
 

@@ -178,6 +178,11 @@ class ProjectContextPage(BasePage):
         description="'Edit with AI' modal container (MUI Dialog root; no keepMounted, "
         "so its count is 0 while closed)",
     )
+    ai_edit_title = LocatorDescriptor(
+        testid="ai-edit-project-context-title",
+        description="'Edit with AI' dialog title — identifies WHICH AI dialog is open, "
+        "since the editor toolbar hosts two different ones",
+    )
     ai_edit_cancel_button = LocatorDescriptor(
         testid="ai-edit-project-context-cancel-button",
         description="'Edit with AI' dialog's Cancel button (prompt step) — closes it "

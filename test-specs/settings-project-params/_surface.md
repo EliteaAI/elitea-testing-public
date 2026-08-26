@@ -360,3 +360,17 @@ rejects >2500 chars with a toast, **replaces** (never appends) the editor conten
 
 **New page object: `GenerateProjectContextModalPage`** (`automation/pages/generate_project_context_modal_page.py`)
 — third subclass of `GenerateEntityModalPageBase`, alongside the Agent and Skill ones.
+
+**Follow-up testid commit (same wave).** EliteaAI/EliteaUI@aacfb6e adds
+`generate-project-context-title` and `ai-edit-project-context-title` so a spec can assert
+WHICH AI dialog opened without a raw `<h2>` handle (the editor toolbar hosts two). Both
+ride `Modal.BaseModal`'s **pre-existing** `titleTestId` prop; the shared
+`GenerateEntityModal` gained a single additive `titleTestId` pass-through (default
+`undefined`) — no other caller is affected, no DOM node, hook or removal.
+
+**Deliberately NOT given testids on this dialog** (#511 — unreferenced testids inflate the
+presence-based coverage metric): `Back to prompt`, the close (X) button and the
+generate-failure alert. Consequence: `GenerateEntityModalPageBase.wait_for_review_form()`
+cannot be used as-is here (it waits on `back_button`), so
+`GenerateProjectContextModalPage` overrides it to key on `Apply` + the populated
+Project Background field. Wire the missing testids only when a case actually exercises them.

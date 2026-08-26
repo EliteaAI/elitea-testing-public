@@ -57,6 +57,12 @@ class GenerateProjectContextModalPage(GenerateEntityModalPageBase):
         "the editor content is empty (swapped for Edit with AI otherwise)",
     )
 
+    title = LocatorDescriptor(
+        testid="generate-project-context-title",
+        description='Dialog title ("Build with AI") — identifies WHICH AI dialog is '
+        "open, since the editor toolbar hosts two different ones",
+    )
+
     modal = LocatorDescriptor(
         testid="generate-project-context-modal",
         description='"Build with AI" modal container (MUI Dialog root; no keepMounted, '
@@ -108,6 +114,20 @@ class GenerateProjectContextModalPage(GenerateEntityModalPageBase):
     def get_review_background(self) -> str:
         """Return the review-form Project Background field's current value."""
         return self.review_background_input.input_value()
+
+    def wait_for_review_form(self, timeout: int = 15000):
+        """Wait for the review step, keyed on THIS entity's review handles.
+
+        Overrides the base implementation, which waits on ``back_button`` +
+        ``approve_button``. "Back to prompt" carries no testid for Project
+        Context and deliberately does not get one: no case exercises it, and an
+        unreferenced testid inflates the presence-based coverage metric
+        (``.agents/testing.md`` § Locator policy, canon ruling #511). The review
+        step is fully identified without it — ``Apply`` plus the populated
+        Project Background field appear together and only on this step.
+        """
+        self.approve_button.wait_for(state="visible", timeout=timeout)
+        self.review_background_input.wait_for(state="visible", timeout=timeout)
 
     @action("Click Apply")
     def click_apply(self) -> None:

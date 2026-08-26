@@ -13,8 +13,8 @@ response body is the ORACLE -- the review field and the editor are asserted
 against the response, never against a hand-written payload, so every asserted
 value comes from the product while the assertion stays fully deterministic
 (.agents/testing.md, "How to test a NONDETERMINISTIC producer without
-substituting it"). No page.route / route.fulfill / monkeypatch / page.evaluate
-anywhere in this spec. Precedent: tests/ui/agents/test_agent_build_with_ai.py
+substituting it"). This spec fabricates no response, injects no state, replaces
+no client and patches nothing -- it only clicks, types and reads. Precedent: tests/ui/agents/test_agent_build_with_ai.py
 (ELITEA-1909/1911), same shared GenerateEntityModal shell.
 
 Case-text divergence (declared, reverse-masking guard): the case calls the
@@ -102,7 +102,7 @@ class TestProjectContextBuildWithAI:
 
         with allure.step("Step 3 — Verify the AI-assisted input dialog appears"):
             expect(modal.modal).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-            expect(modal.modal.locator("h2")).to_have_text("Build with AI")
+            expect(modal.title).to_have_text("Build with AI")
             expect(modal.prompt_input).to_be_visible()
             expect(modal.prompt_input).to_have_value("")
             expect(modal.generate_button).to_be_disabled()

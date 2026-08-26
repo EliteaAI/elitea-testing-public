@@ -12,8 +12,8 @@ Fidelity (no substitution): the file is handed to the product's own hidden
 in for the OS picker Playwright cannot drive and leaves the application's
 handleImportClick / handleFileUpload / FileReader path completely intact. Every
 asserted value -- the editor lines, the character counter, the dirty state -- is
-produced by the product. No page.route / route.fulfill / monkeypatch /
-page.evaluate.
+produced by the product. This spec fabricates no response, injects no state,
+replaces no client and patches nothing -- it only clicks, picks a file and reads.
 
 Case-text divergence (declared, reverse-masking guard): the case calls the
 target the "Project Background editor". No section of that name exists -- it is

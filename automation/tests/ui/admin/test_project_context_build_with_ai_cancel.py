@@ -28,7 +28,8 @@ that name exists (module-wide clarification #1792, already filed, not re-filed).
 Fidelity (no substitution): the content is typed into the real editor by the
 test acting as the user, and "unchanged" is read back off the product's own
 CodeMirror lines. Cancelling from either dialog's prompt step issues no network
-request at all. No page.route / route.fulfill / monkeypatch / page.evaluate.
+request at all. This spec fabricates no response, injects no state, replaces no
+client and patches nothing -- it only clicks, types and reads.
 
 Test case: ELITEA-2270
 AFS: test-specs/settings-project-params/l3_project-context-build-with-ai-cancel-leaves-content_ELITEA-2270.md
@@ -84,7 +85,7 @@ class TestProjectContextBuildWithAICancel:
 
         with allure.step("Phase A / Steps 3-4 — Open 'Build with AI' and cancel it without submitting"):
             modal.open_modal(timeout=UI_ELEMENT_TIMEOUT)
-            expect(modal.modal.locator("h2")).to_have_text("Build with AI")
+            expect(modal.title).to_have_text("Build with AI")
             modal.click_cancel()
             expect(modal.modal).to_have_count(0)
 
@@ -108,7 +109,7 @@ class TestProjectContextBuildWithAICancel:
 
         with allure.step("Phase B / Steps 3-4 — Open the AI dialog and cancel it without submitting"):
             context_page.open_ai_edit_modal()
-            expect(context_page.ai_edit_modal.locator("h2")).to_have_text("Edit with AI")
+            expect(context_page.ai_edit_title).to_have_text("Edit with AI")
             context_page.cancel_ai_edit_modal()
             expect(context_page.ai_edit_modal).to_have_count(0)
 
