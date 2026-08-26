@@ -55,3 +55,5 @@
 - [Credentials backlog (#1394)](credentials_area_backlog_1394.md) — 21/24 done; 3 OAuth cases blocked on #1708
 - [A park is a hypothesis, not a verdict](a_parked_case_is_a_hypothesis_not_a_verdict.md) — re-test "do not schedule" cases; 2 of 2 dissolved
 - [Non-reproducing gate red → stabilize, not re-run](non_reproducing_gate_red_still_goes_to_stabilize.md) — a re-run buys a green, never a cause
+- ["3 sessions" auto-park can be a spend ceiling](auto_park_3_sessions_can_be_a_spend_ceiling_not_a_real_blocker.md) — check the prior failure signature before trusting the label
+- [Settings backlog (#1398)](settings_area_backlog_1398.md) — wave 1: 5/9 delivered, 4 blocked on env/scope decisions (#1780/#1781)
