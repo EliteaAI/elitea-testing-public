@@ -7,7 +7,7 @@ on:
       suite:
         description: 'Test suite'
         type: choice
-        options: [all, agents, admin, artifacts, chat, pipelines, skills, smoke, support_assistant, toolkits, voice]
+        options: [all, agents, admin, artifacts, chat, pipelines, pipelines_2, skills, smoke, support_assistant, toolkits, voice]
         default: all
       custom_suites:
         description: 'Custom suites (comma-separated)'

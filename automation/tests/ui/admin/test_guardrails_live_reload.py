@@ -154,7 +154,7 @@ def guardrails_test_toolkit(
     toolkit_settings = {
         "jira_configuration": {
             "elitea_title": guardrails_test_credential["elitea_title"],
-            "private": True,
+            "private": False,  # Changed from True - private credentials not immediately accessible
         },
         "selected_tools": [
             "list_projects",     # For sensitive tool test - zero parameters
@@ -276,6 +276,7 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
                 print(f"[CLEANUP] Could not get blocked toolkits list: {e}")
                 blocked_list = []
 
+            removed_anything = False
             for toolkit in [TEST_TOOLKIT, "JIRA", "Jira"]:
                 try:
                     is_blocked = guardrails.is_toolkit_blocked(toolkit)
@@ -284,6 +285,7 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
                         guardrails.remove_blocked_toolkit(toolkit)
                         print(f"[CLEANUP] Removed blocked toolkit: {toolkit}")
                         logger.info("Removed blocked toolkit: %s", toolkit)
+                        removed_anything = True
                 except Exception as e:
                     print(f"[CLEANUP] Could not remove toolkit {toolkit}: {e}")
                     logger.debug("Could not remove toolkit %s: %s", toolkit, e)
@@ -297,6 +299,7 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
                         guardrails.remove_blocked_tool(tool)
                         print(f"[CLEANUP] Removed blocked tool: {tool}")
                         logger.info("Removed blocked tool: %s", tool)
+                        removed_anything = True
                 except Exception as e:
                     print(f"[CLEANUP] Could not remove tool {tool}: {e}")
                     logger.debug("Could not remove tool %s: %s", tool, e)
@@ -309,6 +312,78 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
             except Exception as e:
                 print(f"[CLEANUP] Could not remove empty toolkit containers: {e}")
                 logger.debug("Could not remove empty toolkit containers: %s", e)
+
+            # Save changes after removal
+            # Problem: Removing items doesn't enable Save button (form not marked dirty)
+            # Solution: Add a dummy toolkit, then remove it - this triggers dirty state
+            if removed_anything:
+                print("[CLEANUP] Saving blocked section to persist removal")
+                try:
+                    # Wait for page to stabilize after removals
+                    pg.wait_for_timeout(1000)
+
+                    # Check if Save button is already enabled
+                    pg.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                    pg.wait_for_timeout(500)
+
+                    save_btn = pg.locator('button:has-text("Save")').last
+
+                    # Check if Save exists and is enabled
+                    if save_btn.count() == 0 or not save_btn.is_enabled():
+                        print("[CLEANUP] Save not enabled, adding dummy item to trigger dirty state")
+
+                        # IMPORTANT: Expand blocked section first!
+                        # (After removals, section might need time to settle)
+                        try:
+                            guardrails._expand_blocked_section(timeout=10000)
+                        except Exception as expand_err:
+                            print(f"[CLEANUP] Could not expand section: {expand_err}")
+                            # Try one more time after navigating fresh
+                            print("[CLEANUP] Reloading page and retrying...")
+                            guardrails.navigate_to_guardrails()
+                            guardrails._expand_blocked_section(timeout=10000)
+
+                        # Add a dummy toolkit to make form dirty
+                        dummy_input = pg.locator('input[placeholder*="search and filter"]').first
+                        dummy_input.click()
+                        dummy_input.fill("dummy_cleanup_toolkit")
+                        pg.wait_for_timeout(300)
+                        dummy_input.press("Enter")
+                        pg.wait_for_timeout(500)
+
+                        # Remove the dummy immediately
+                        dummy_chip = pg.locator('.MuiChip-deletable:has(.MuiChip-label:text-is("dummy_cleanup_toolkit"))')
+                        if dummy_chip.count() > 0:
+                            dummy_chip.first.locator('.MuiChip-deleteIcon').click()
+                            pg.wait_for_timeout(300)
+
+                        print("[CLEANUP] Form now dirty, Save should be enabled")
+
+                    # Now scroll and click Save
+                    pg.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                    pg.wait_for_timeout(500)
+
+                    save_btn = pg.locator('button:has-text("Save")').last
+                    if save_btn.count() > 0:
+                        save_btn.click(force=True, timeout=5000)
+                        pg.wait_for_load_state("networkidle", timeout=20000)
+                        pg.wait_for_timeout(1000)
+                        print("[CLEANUP] Saved - changes persisted")
+                        logger.info("Saved blocked section successfully")
+                    else:
+                        print("[CLEANUP] WARNING: Save button still not found")
+                        logger.warning("Save button not found after dummy add/remove")
+
+                except Exception as e:
+                    print(f"[CLEANUP] Failed to save: {e}")
+                    logger.error("Failed to save blocked section: %s", e)
+            else:
+                print("[CLEANUP] Nothing was blocked, no changes needed")
+
+            # Reload page to ensure stable state before sensitive tools cleanup
+            print("[CLEANUP] Reloading page for stable state")
+            guardrails.navigate_to_guardrails()
+            pg.wait_for_timeout(1000)  # Let page settle
 
             # Remove sensitive tools
             print("[CLEANUP] Cleaning up sensitive tools")
@@ -332,21 +407,21 @@ def cleanup_guardrails(browser: Browser, auth_state, request):
                 print(f"[CLEANUP] Could not remove empty sensitive toolkit blocks: {e}")
                 logger.debug("Could not remove empty sensitive toolkit blocks: %s", e)
 
-            # Save configuration after cleanup (only if we made changes)
-            print("[CLEANUP] Checking if save is needed")
+            # Save sensitive section changes after cleanup (only if we made changes)
+            print("[CLEANUP] Checking if save is needed for sensitive section")
             try:
                 # Check if Save button is enabled (indicates changes were made)
                 save_btn = pg.locator('button:has-text("Save")').last
                 if save_btn.count() > 0 and save_btn.is_visible() and save_btn.is_enabled():
-                    print("[CLEANUP] Save button is enabled, saving configuration")
+                    print("[CLEANUP] Save button is enabled, saving sensitive section configuration")
                     guardrails.save_configuration(timeout=20000)
-                    print("[CLEANUP] Saved guardrails configuration")
-                    logger.info("Saved guardrails configuration after cleanup")
+                    print("[CLEANUP] Saved sensitive section configuration")
+                    logger.info("Saved sensitive section configuration after cleanup")
                 else:
-                    print("[CLEANUP] No changes to save (Save button not enabled)")
+                    print("[CLEANUP] No changes to save in sensitive section")
             except Exception as e:
-                print(f"[CLEANUP] Could not save configuration: {e}")
-                logger.warning("Could not save configuration: %s", e)
+                print(f"[CLEANUP] Could not save sensitive section configuration: {e}")
+                logger.warning("Could not save sensitive section configuration: %s", e)
 
         except Exception as e:
             print(f"[CLEANUP] Cleanup failed: {e}")

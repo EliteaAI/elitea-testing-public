@@ -22,7 +22,7 @@ import logging
 import allure
 import pytest
 
-from tests.ui.pipelines.helpers import _navigate_to_detail
+from tests.ui.pipeline_helpers import _navigate_to_detail
 
 logger = logging.getLogger(__name__)
 
