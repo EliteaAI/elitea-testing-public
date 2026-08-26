@@ -4322,3 +4322,54 @@ Flow-graph-dirty-state Discard flow, one layer deeper than ELITEA-2076
   check, then poll at fixed intervals) if picked up again — don't hard-
   assert the placeholder text without a wait-for-condition, and don't treat
   a single early-check failure as proof.
+
+## Agent/Pipeline participant SECOND-ADD silent drop — re-confirmed a THIRD time (ELITEA-2094, 2026-08-27)
+
+Independent re-confirmation of #1279 from a separate analyst session, one day after the
+ELITEA-2455 pass. **7 fresh live reps, no fixed delays**, project 399, localhost:5173:
+
+| Variant | Reps | Result |
+|---|---|---|
+| Agent → Pipeline | 4 | **0/4** — Pipeline silently dropped, PIPELINES section never renders |
+| Pipeline → Agent | 2 | **0/2** — Agent silently dropped |
+| **Pipeline alone (control)** | 1 | **1/1 OK** |
+
+- The **pipeline-alone control is the new datapoint**: a pipeline participant adds fine on its
+  own, so this is specifically a *second version-carrying participant* race, not broken pipeline
+  participants. Run this control before blaming a diff.
+- **Console clean in 7/7** (`console=[] pageerrors=[]`). A "no console errors" assertion cannot
+  detect this failure mode — do not write one as its guard.
+- Toolkit and MCP adds unaffected (4/4), consistent with ELITEA-2203's merged green spec.
+- Unblock signal is mechanical: 6 reps of Agent→Pipeline landing with **no fixed wall-clock
+  delay**. Probe shape recorded in
+  `test-specs/chat-interface/l2_add-agent-pipeline-toolkit-mcp-participants-panel_ELITEA-2094.md`
+  § Automation Hints (~4 min to re-check).
+
+### A misconfigured participant has NO `chat-participant-row-*` testid (automation-critical, 2026-08-27)
+
+`chat-participant-row-{uniqueId}` renders **only for a non-misconfigured participant**. A
+participant flagged with a warning renders through the attention branch instead
+(`chat-participant-warning-icon`) and carries **no row testid at all**.
+
+Consequence, hit live this pass: `mcp_toolkit_with_tools` (a *healthy* public
+`mcp.deepwiki.com` MCP) is falsely flagged "Server is disconnected!" (**#687, still reproducing
+4/4 on 2026-08-27**), so an assertion written as "the MCP appears as
+`chat-participant-row-toolkit_{id}_{proj}`" reads as an **outright missing participant** even
+though the MCP is visibly present in the MCPS section. Any participant assertion touching MCPs
+must either accept the warned shape or wait on #687.
+
+### Project 399 DOES satisfy the "entities exist" precondition (retires a July note, 2026-08-27)
+
+The July ELITEA-2094 note that `${ELITEA_PROJECT_ID}` = 399 ("Private") has zero pipelines and
+zero MCPs, and that participant analysis must therefore move to project 471, is **retired**. It
+described the pre-existing catalogue, not what the fixtures build: `agent_id`,
+`pipeline_with_llm_id`, `artifact_toolkit` and `mcp_toolkit_with_tools` all create their own
+entities in 399 and all resolved first try this pass. No project switch needed.
+
+### Pipeline participant menu-item testid (verified live 2026-08-27)
+
+`[data-testid="pipelines-menu-item-pipeline-{project_id}-{pipeline_id}"]` — same generic
+`PlusChatSubmenu.jsx` template as the agents/toolkits/mcps rows, already on
+`automation/testids`, resolves first try. **No `ChatPage` constant or `add_pipeline_participant_by_id()`
+method exists yet** — the agent analogue (`AGENT_MENU_ITEM` + `add_agent_participant_by_id`) does.
+That is the one genuine page-object gap for any four-participant-type case.
