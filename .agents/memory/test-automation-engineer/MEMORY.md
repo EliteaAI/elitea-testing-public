@@ -107,3 +107,4 @@
 - [Vite watcher is blind on this OneDrive checkout](vite_watcher_blind_on_onedrive_restart_dev_server.md) — restart vite after JSX edits
 - [Seed sets 2 fields, declares 1](a_seed_fixture_that_writes_two_fields_declares_only_one.md) — declare each one
 - [Fidelity Declaration must be pinned by a grep](fidelity_declaration_must_be_pinned_by_a_grep.md) — "never asserted" prose drifts silently; ship the AST guard with it
+- [Project ids aren't portable](hardcoded_project_id_is_not_portable.md) — resolve via ProjectAPI; CI users differ

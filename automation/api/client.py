@@ -214,6 +214,62 @@ class APIClient:
         pass
 
 
+class ProjectAPI:
+    """Read the acting user's project memberships (ELITEA-2051).
+
+    Hits the SAME endpoint the UI's own project selector uses
+    (``../EliteaUI/src/api/project.js``)::
+
+        GET /projects/project/default/{public_project_id}?check_public_role=true
+
+    — verified live 2026-08-26 against ``localhost:5173``'s own network trace.
+    The ``public_project_id`` path segment mirrors EliteaUI's
+    ``VITE_PUBLIC_PROJECT_ID`` and comes from ``settings.public_project_id``.
+
+    Authentication mirrors :class:`PipelineAPI` exactly (browser session
+    cookies, Bearer-token fallback) so the API identity is the same one the
+    browser under test is acting as — a test that resolves projects here and
+    then drives the UI must see the same membership list the UI sees.
+
+    Args:
+        browser_cookies: List of cookie dicts from ``BrowserContext.cookies()``.
+        base_url: API root (defaults to ``ELITEA_API_BASE`` env var).
+    """
+
+    def __init__(
+        self,
+        browser_cookies: list[dict],
+        base_url: str | None = None,
+    ):
+        self.base_url = (base_url or settings.elitea_api_base).rstrip("/")
+
+        self._session = _create_retry_session()
+        for c in browser_cookies:
+            self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
+        if not browser_cookies and settings.elitea_api_token:
+            self._session.headers.update({"Authorization": f"Bearer {settings.elitea_api_token}"})
+
+        logger.debug("ProjectAPI initialised — base_url=%s", self.base_url)
+
+    def _projects_url(self) -> str:
+        return f"{self.base_url}/projects/project/default/{settings.public_project_id}"
+
+    def list_projects(self) -> list[dict]:
+        """Return the acting user's project memberships.
+
+        Each entry carries at least ``id``, ``name`` and ``owner_id``.
+        """
+        url = self._projects_url()
+        logger.debug("LIST projects %s", url)
+        resp = self._session.get(url, params={"check_public_role": "true"})
+        _raise_for_status(resp)
+        return resp.json()
+
+    def close(self):
+        """Close the underlying HTTP session."""
+        self._session.close()
+
+
 class ConversationAPI:
     """Manage chat conversations via the Elitea API.
 
