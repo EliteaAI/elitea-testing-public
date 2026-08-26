@@ -104,3 +104,5 @@
 - [svgr icons accept a testid at the call site](svgr_icons_accept_testid_at_call_site.md) — `svg?react` spreads props; don't reach for the #579 raw-handle exception
 - [UI/flow assumption gate](ui_flow_assumption_gate.md) — test fails, assume UI changed? Verify vs case text first, wait if unconfirmed
 - [Backend API investigation](backend_api_investigation.md) — API fails/wrong data? Isolate, compare CI/local, check retriability
+- [Vite watcher is blind on this OneDrive checkout](vite_watcher_blind_on_onedrive_restart_dev_server.md) — restart vite after JSX edits
+- [Seed sets 2 fields, declares 1](a_seed_fixture_that_writes_two_fields_declares_only_one.md) — declare each one

@@ -169,3 +169,67 @@ goals/terminology/workflows/constraints subtitle. `grep -rn "Project Background"
 on both `origin/main` and `automation/testids` returns exactly two hits, neither a
 section heading (a label in `GenerateProjectContextReviewForm.jsx`, a placeholder in
 `AIEditProjectContextModal.jsx`). Do not go looking for it. Tracked as **#1792**.
+
+## Resolved/added during ELITEA-2266/2267/2276 implementation (test-automation-engineer, 2026-08-26)
+
+**Testids added** — EliteaAI/EliteaUI@b05bbc9a on `automation/testids`, pushed; awaiting
+the human cherry-pick to `main`. All thirteen render live (verified in-browser before the
+commit), and all thirteen are referenced on an executed test path (#511):
+
+| Testid | Where | How it is wired |
+|---|---|---|
+| `project-context-page-title` | `ProjectContextSavedView.jsx` | `DrawerPageHeader`'s **pre-existing** `titleTestId` prop — no component change |
+| `project-context-toggle-card` / `-title` / `-description` | `EnableToggleCard.jsx` | new caller-supplied `testId` / `titleTestId` / `descriptionTestId` props (default `undefined`, so `MidturnInjection.jsx` — the card's other caller — is unaffected) |
+| `project-context-enable-toggle` | `EnableToggleCard.jsx` → shared `Switch.BaseSwitch` | caller-supplied `switchTestId` threaded through `slotProps.switch.slotProps.input`, so it lands on the **real `<input type="checkbox">`** and `to_be_checked()` works directly. A plain spread would have put it on the MUI root `<span>`, where checked state is unreadable. |
+| `project-context-disabled-banner` | `ProjectContextSavedView.jsx` → shared `BannerMessage.jsx` | new `testId` prop **defaulting to the pre-existing `credential-warning-banner`**, so the ~6 merged callers and the tests reading that testid are untouched |
+| `project-context-edit-button` | `ProjectContextSavedView.jsx` | plain `data-testid` |
+| `project-context-discard-button`, `-import-button`, `-editor-wrapper` | `ProjectContextEditor.jsx` | plain `data-testid` |
+| `project-context-mode-edit-button` / `-mode-preview-button` | `ProjectContextEditor.jsx` `modeButtons` | `TabGroupButton`'s **pre-existing** `item.buttonProps` spread (`TabButtonItem.jsx`) — no shared-component change; MUI `ToggleButton` supplies `aria-pressed` for selected state |
+| `project-context-loader` | `ProjectContextContent.jsx` | plain `data-testid` on the `isLoading` Box |
+
+**#1794 RESOLVED.** `ProjectContextPage.click_create()` and the merged ELITEA-2272 spec
+both now wait for `/settings/project-context/edit` instead of the retired
+`?view=create`. `click_create()` had exactly one caller (that spec), enumerated and
+re-run green.
+
+**Gotcha — Vite's file watcher does not see edits on this OneDrive checkout.** JSX edits
+under `../EliteaUI/src` did NOT hot-reload and were NOT served even after a hard browser
+reload and `touch`; `curl http://localhost:5173/src/…/File.jsx | grep <new-testid>`
+returned 0 while the file on disk clearly had it. **Restarting the dev server is the fix**
+(`pkill -f "node .*node_modules/.bin/vite" && npm run dev`, ~25 s to ready). Verify with
+that same curl before concluding a testid "didn't work" — the DOM is not the ground truth
+here, the served module is.
+
+**Char counter on an empty editor** reads exactly `2500 characters left.` after
+whitespace normalization. Use a retrying `expect(...).to_have_text(...)` rather than a
+one-shot `text_content()`: the counter is a separate element whose state update lags the
+CodeMirror transaction slightly.
+
+**TMS case files for this module live under `settings/project-params/`, not
+`settings-project-params/`.** The merged ELITEA-2272 spec's `allure.issue` link pointed at
+the latter (and at a truncated slug) and 404'd; repaired in the same commit. Verify the
+path with `find ../onetest-ai-tm-Elitea/tests -name "*<id>*"` before writing a case link.
+
+**New fixture: `project_context_seed`** (`automation/fixtures/data_fixtures.py`, registered
+in `conftest.py`). Yields `(content, enabled=None) -> dict`; deletes before and after,
+tolerating the API's 404. Use it for any test touching the toggle or the saved view — the
+toggle only exists while `content` is non-empty.
+
+⚠️ **Seed CONTENT, not the enable flag** (settled in ELITEA-2266/2267/2276 review round 1,
+2026-08-26). The one `PUT` carries both `content` and `enabled`, and on this surface the
+flag is frequently the *case's own observable* — "the toggle is ON by default"
+(ELITEA-2266 step 6, ELITEA-2267 step 2) or the result of a user ACTION, "Turn the Project
+Context toggle ON" (ELITEA-2276 step 6). Seeding `enabled=True` and then asserting the
+switch is checked is a **terminal substitution**: the assertion reads a value the test
+wrote, and it looks perfectly healthy (deterministic, exact-equality, green).
+
+So `enabled` defaults to `None` = **carry the product's own flag forward**: the callable
+`GET`s the resource and echoes its value back, mirroring the product's own
+`serverData?.enabled ?? true` (`ProjectContextSavedView.jsx:27`,
+`ProjectContextEditor.jsx:157`). On a freshly-deleted resource the `GET` returns the
+server's own default, so "ON by default" is *observed*. Pass an explicit `enabled=` only
+to establish a **precondition** you then act on — ELITEA-2276 Phase B seeds
+`enabled=False` to restore the OFF state its own earlier click produced, then clicks the
+toggle ON for real. Declare any explicit flag in the spec docstring **and** the AFS
+§ Fidelity Declaration; pinned by
+`automation/tests/unit/test_project_context_seed_enabled_flag_not_authored.py`.

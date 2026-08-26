@@ -2539,6 +2539,91 @@ def clean_project_context(api: APIClient):
         logger.warning("Failed to delete Project Context in teardown: %s", exc)
 
 
+@pytest.fixture
+def project_context_seed(api: APIClient):
+    """Yield a callable that seeds the active project's Project Context.
+
+    The Project Context enable-toggle, its card and the saved view only render
+    when ``content`` is non-empty (``ProjectContextContent.hasContent``) — an
+    empty project shows the empty state, which has no toggle at all. Tests that
+    exercise the toggle or the saved view therefore need a non-empty context as
+    a precondition.
+
+    Seeding via ``PUT`` is a **transit substitution** (``.agents/testing.md``
+    § Fidelity policy): it only establishes "a context exists" so the control
+    under test is reachable. Every observable the specs assert — the toggle's
+    persisted state, the save response, the toast, the rendered view — is still
+    produced by the product itself.
+
+    **The ``enabled`` flag is NOT test-authored by default.** The same ``PUT``
+    that carries ``content`` also carries the enable flag, and three case
+    elements read that flag as PRODUCT state ("the toggle is ON by default" —
+    ELITEA-2266 step 6, ELITEA-2267 step 2) or as the result of a user ACTION
+    ("Turn the Project Context toggle ON" — ELITEA-2276 step 6). Writing
+    ``enabled=True`` here and then asserting the toggle is checked would read
+    the case's observable off a value the test itself wrote — a terminal
+    substitution (review round 1, ELITEA-2266/2267/2276).
+
+    So ``enabled`` defaults to ``None``, meaning **carry forward whatever the
+    product currently reports**: the callable ``GET``s the resource first and
+    echoes its ``enabled`` back, falling back to ``True`` only where the field
+    is absent — byte-for-byte the product's own rule
+    (``ProjectContextSavedView.jsx:27`` / ``ProjectContextEditor.jsx:157``:
+    ``const enabled = serverData?.enabled ?? true``). On a freshly-deleted
+    context the ``GET`` returns the server's own default, so "ON by default"
+    is observed, never manufactured.
+
+    Passing an explicit ``enabled=`` is therefore a **deliberate precondition
+    state**, and the calling spec must declare it in its module docstring and
+    its AFS § Fidelity Declaration (pinned by
+    ``tests/unit/test_project_context_seed_enabled_flag_not_authored.py``).
+
+    Deletes before (clean start) and after (teardown), tolerating the API's
+    404 "Project context not found" in both directions — ELITEA-2266/2267/2276.
+
+    Yields:
+        Callable ``(content: str, enabled: bool | None = None) -> dict``
+        returning the API's own response body for the seeded context.
+
+    Example::
+
+        def test_x(page, project_context_seed):
+            project_context_seed("ELITEA-2267 toggle seed.")   # product default
+    """
+    path = f"/elitea_core/project_context/prompt_lib/{api.project_id}/project-context"
+
+    def _current_enabled() -> bool:
+        """Return the product's OWN current enable flag (never a test-authored one)."""
+        resp = api.get(path)
+        resp.raise_for_status()
+        current = resp.json().get("enabled")
+        # Mirrors the product: `serverData?.enabled ?? true`.
+        return True if current is None else bool(current)
+
+    def _seed(content: str, enabled: bool | None = None) -> dict:
+        authored = enabled is not None
+        effective = enabled if authored else _current_enabled()
+        resp = api.put(path, json={"content": content, "enabled": effective})
+        resp.raise_for_status()
+        logger.info(
+            "Seeded Project Context for project %s (enabled=%s [%s], %d chars)",
+            api.project_id,
+            effective,
+            "explicit precondition" if authored else "carried forward from the product",
+            len(content),
+        )
+        return resp.json()
+
+    _delete_project_context(api)
+
+    yield _seed
+
+    try:
+        _delete_project_context(api)
+    except Exception as exc:
+        logger.warning("Failed to delete Project Context in teardown: %s", exc)
+
+
 @pytest.fixture(scope="session")
 def analytics_empty_pipeline_id(pipeline_api: PipelineAPI):
     """Create an empty pipeline for analytics testing.
