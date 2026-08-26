@@ -705,3 +705,24 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   a migrated spec finally names the resource, which is what a shared filter needs.
   Pinned by `tests/unit/test_console_error_capture_includes_url.py`. Do NOT widen the
   #1753 filter (or any filter) to swallow 400s — that is masking, not noise handling.
+- **500 flavor — the URL is finally captured (2026-08-26, settings-w03, ELITEA-2275 fix
+  round 1)**: the long-standing ask of the recurring console-500 entry above ("capture the
+  failing resource URL, not just the status code, so a shared filter can be written") is
+  now answered. `test_project_context_save_discard_dirty_state.py` (ELITEA-2275) failed its
+  "no console errors" step on attempt 1 of a post-fix run, and because that spec is migrated
+  to `utils/console_errors.collect_console_errors()` the message carried the resource:
+  `error: Failed to load resource: the server responded with a status of 500 (Internal
+  Server Error) @ http://localhost:5173/socket.io/?EIO=4&transport=polling`.
+  **It is the Socket.IO polling handshake** — a background transport the app opens on every
+  page, unrelated to any test's own action, which is exactly the profile every occurrence of
+  this class has had (never the PUT/POST under test, never reproducing, a different spec each
+  time). pytest-rerunfailures passed it on the immediate rerun, and a fresh standalone
+  invocation ran clean in 9.06 s with `reruns.json == {}`.
+  This is one occurrence, so it does NOT yet license a filter — but it is the first
+  URL-bearing datapoint, and it names a concrete candidate (`/socket.io/` polling) for the
+  shared filter the earlier entries could not write. **Next occurrence: check whether its URL
+  is also `/socket.io/`.** Two matching URLs is enough to filter that ONE endpoint (never the
+  status code, never a blanket 500 rule — that would be masking). The migration ask stands:
+  a spec still hand-rolling the URL-less `page.on("console", …)` shape should be moved to
+  `collect_console_errors()` whenever it is touched, since only migrated specs can produce
+  this evidence.
