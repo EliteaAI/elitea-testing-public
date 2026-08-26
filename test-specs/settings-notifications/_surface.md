@@ -126,7 +126,7 @@ adds in `NotificationTableToolbar.jsx`:
 |---|---|---|
 | `notifications-center-header` | new `data-testid` attribute | `NotificationTableToolbar.jsx` header `<Typography>` |
 | `notifications-search-input` | `data-testid` prop (already threaded to `InputBase.inputProps`) | `SimpleSearchBar` call site |
-| `notifications-delete-selected-button` | `testId` prop (already accepted) | `DeleteEntityButton` call site |
+| `notifications-delete-selected-button` | NEW additive `buttonTestId` prop on the inner `IconButton` (`EliteaAI/EliteaUI@30a15ac6`) — see the trap below | `DeleteEntityButton` |
 | `notifications-select-all-checkbox` | `selectAllCheckboxTestId` prop (already accepted) | `GridTableHeader` call site |
 | `notifications-column-header-{event_type,notification_text,created_at}` | `columnTestIdPrefix="notifications"` (already accepted) | `GridTableHeader` call site |
 | `notifications-pagination-{prev-button,page-info,page-size-select}` | `prevButtonTestId` / `pageInfoTestId` / `pageSizeSelectTestId` (already accepted) | `GridTablePagination` call site |
@@ -169,3 +169,14 @@ selection is empty) and the delete button (`aria-label="delete entity"`). Both a
   (`sidebar-notifications-bell-icon[data-has-messages]`, ELITEA-2234). ELITEA-2260's
   step 4 ("unread count badge next to Notifications") is therefore case-text drift —
   commented on clarification EliteaAI/elitea-testing-public#1772, not filed as a bug.
+
+**Trap — `DeleteEntityButton`'s `testId` prop lands on the WRAPPER SPAN, not the button.**
+`src/components/DeleteEntityButton.jsx` renders `<Tooltip><Box component="span"
+data-testid={testId}><IconButton disabled={…}>` — the span wrapper exists because MUI
+Tooltip cannot wrap a disabled button. So a locator built on `testId` is a `<span>`:
+`is_disabled()` on it is ALWAYS `False` and any enabled/disabled assertion silently
+passes-as-enabled. Caught the expensive way during ELITEA-2255 implementation (one
+rerun). The fix, now in place for every future caller: an additive `buttonTestId` prop
+on the inner `IconButton` (`EliteaAI/EliteaUI@30a15ac6`) — pass `buttonTestId` INSTEAD
+of `testId` when the test needs the button's own state, so exactly one testid exists and
+it is on the button. Existing `testId` callers are untouched.

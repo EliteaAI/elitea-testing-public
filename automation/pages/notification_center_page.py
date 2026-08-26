@@ -39,8 +39,11 @@ already accepted, except two plain attribute adds in ``NotificationTableToolbar.
 ``notifications-center-header`` is a new ``data-testid`` on the toolbar's header
 ``<Typography>``; ``notifications-search-input`` uses ``SimpleSearchBar``'s existing
 ``data-testid`` prop (threaded onto its ``InputBase`` ``inputProps``);
-``notifications-delete-selected-button`` uses ``DeleteEntityButton``'s existing
-``testId`` prop; ``notifications-select-all-checkbox`` and
+``notifications-delete-selected-button`` uses a NEW additive ``buttonTestId`` prop on
+``DeleteEntityButton``'s inner ``IconButton`` (``EliteaAI/EliteaUI@30a15ac6``) — its
+pre-existing ``testId`` prop lands on the Tooltip's wrapper ``<Box component="span">``,
+where ``is_disabled()`` is always ``False``; the call site passes ``buttonTestId``
+INSTEAD of ``testId`` so exactly one testid exists, on the button; ``notifications-select-all-checkbox`` and
 ``notifications-column-header-{field}`` use ``GridTableHeader``'s existing
 ``selectAllCheckboxTestId`` / ``columnTestIdPrefix`` props;
 ``notifications-pagination-{prev-button,page-info,page-size-select}`` use
