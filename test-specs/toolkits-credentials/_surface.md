@@ -906,6 +906,37 @@ OpenAPI OAuth flows.
 the popup — budget >5 min or don't assert it at all.** The ELITEA-1984 probe ran
 321 s, nearly all of it that wait.
 
+### Re-verified 2026-08-26 (ELITEA-1984 re-dispatch) — three corrections
+
+1. **`popup.url` is `about:blank` right after `page.expect_popup()` — always.**
+   `onAuthorize` opens `window.open('about:blank', …)` and assigns `location`
+   afterwards, so an immediate read (and even a `sleep(4)` read) returns
+   `about:blank` with an empty body. **Settle with
+   `popup.wait_for_url(re.compile(r"login\.microsoftonline\.com"))`** before
+   asserting anything about the provider URL — a naive read looks exactly like
+   "the provider returned nothing".
+2. **The authorize URL's shape is DISCOVERY-DEPENDENT**, so never hardcode it:
+   - placeholder tenant (discovery fails) → synthetic
+     `{endpoint}/v2.0/oauth2/authorize?response_type=code&client_id=…&redirect_uri=…&state=…&scope=<field verbatim>`
+     → HTTP 404, empty popup.
+   - a **real** endpoint (`…/common`, still with a placeholder client id) → Microsoft's
+     canonical `/common/oauth2/v2.0/authorize` **plus `nonce`** and an **`openid `-prefixed**
+     scope (`scope=openid+Invalid.Scope.xyz`) → the provider serves its **real sign-in page**
+     ("Sign in to your account").
+   ⇒ pin specs to the placeholder tenant for determinism (offline, no third-party
+   dependency); assert the endpoint host from the credential's own value, not a literal.
+3. **What blocks the failure half is a Microsoft USER identity, not merely a tenant.**
+   Microsoft shows sign-in *before* validating the client, so with a real endpoint the
+   flow dies at "somebody must sign in". A provider *denial* (→ `?error=…` back to
+   `/mcp-auth-callback`, the only path that reaches Elitea's error box) needs a
+   registered Entra app with `/mcp-auth-callback` as redirect URI **and** an account that
+   can consent. Same ask as open decision card **#1708**.
+
+Also re-confirmed unchanged: `check_connection` 401 opens the dialog; Authorize stays
+enabled with an invalid scope; after the popup is closed the dialog sits on
+`Authorizing…` with **no message at +5/+20/+45/+75 s** (#1713), Cancel still closes it,
+and the only console error is the expected `check_connection` 401.
+
 ### Other live facts (2026-08-24)
 
 - `Authorize` is **not** gated on scope validity — it stays enabled with
