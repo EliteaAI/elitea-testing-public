@@ -180,3 +180,60 @@ rerun). The fix, now in place for every future caller: an additive `buttonTestId
 on the inner `IconButton` (`EliteaAI/EliteaUI@30a15ac6`) — pass `buttonTestId` INSTEAD
 of `testId` when the test needs the button's own state, so exactly one testid exists and
 it is on the button. Existing `testId` callers are untouched.
+
+## Read/unread VISUAL distinction — confirmed live 2026-08-26 (ELITEA-2258)
+
+Supersedes the 2026-08-04 note above ("no visible DOM indicator … not usable as a
+reliable test signal"): the distinction **is** observable and assertable, just not as an
+attribute. Measured on the same row before/after a real mark-read (dark theme):
+
+| Element | Unread | Read |
+|---|---|---|
+| message `<Typography>` | `rgb(255, 255, 255)` | `rgb(169, 183, 193)` |
+| date `<Typography>` | `rgb(255, 255, 255)` | `rgb(169, 183, 193)` |
+| in-message `<Link>` | `rgb(41, 184, 245)` | `rgba(41, 184, 245, 0.7)` |
+
+Source: `NotificationTable.jsx:219` (`color={row.is_seen ? 'text.primary' :
+'text.secondary'}`) for the date cell, `NotificationListItemMessage.jsx:11,60` for the
+message text and link. **Assert the DIFFERENCE, never the literal rgb** — these are
+theme tokens.
+
+- ⚠️ `notification-message-text` is the wrapper `<Box>`; its computed `color` is the
+  inherited default and does NOT change with `is_seen`. The colour lives on the inner
+  `<Typography>`, which has **no testid yet** — ELITEA-2258's AFS specs a caller-supplied
+  `messageTestId` → `testId` prop thread (`NotificationTable.renderCell` →
+  `NotificationListItem` → `NotificationListItemMessage`) plus a plain
+  `notification-date-text` attribute on the call-site date `<Typography>`.
+- Read `getComputedStyle` via `locator.evaluate("el => window.getComputedStyle(el).color")`
+  — precedent `automation/pages/agent_form_page.py:230`. It is a READ, not a
+  substitution; declare it when the reviewer's `\.evaluate\(` grep hits.
+- **Clicking a notification row does NOT mark it read** (confirmed: zero
+  `/notifications/notifications/prompt_lib/` requests after a row-message click).
+  `GridTableRow` has no row-level `onClick` beyond checkbox selection, and the message
+  `<Link>` is a plain `target="_blank"` anchor with no mark-seen handler. The only
+  in-product transitions are the toolbar toggle (table) and the per-row hover button in
+  the sidebar popover (`NotificationListItem`, `context === 'list'` only).
+- Page 1 carried **50 of 50 unread** this session — a read row must be produced by the
+  test itself (mark one read, restore it in cleanup).
+
+## Search field — confirmed live 2026-08-26 (ELITEA-2264)
+
+- `notifications-search-input` filters **server-side**: the list GET gains `search=<term>`
+  (alongside `sort_by=created_at`), debounced 600 ms, and only when the debounced value is
+  **≥ 2 chars** (`MIN_SEARCH_LENGTH` in `NotificationCenter.jsx`). A 1-char query fires no
+  request and leaves the list unfiltered — verified with `"8"` → still `"1 - 50 of 89"`.
+- Worked example: `"182606"` → `"1 - 2 of 2"`, both rendered rows containing the term.
+  `search_input.fill("")` (real Playwright fill) correctly clears the React-controlled
+  input and restores `"1 - 50 of 89"`.
+- Totals this session: **89 notifications** (67 on 2026-08-04, 89 on 2026-08-26 — it grows;
+  never hardcode a total or a search term, derive the term from the list response).
+
+## Environment gap blocking index-triggered notifications (ELITEA-2265, 2026-08-26)
+
+The test user's personal project has **zero toolkits** (`/toolkits/all` → `/toolkits/create`)
+and **zero credentials** (`/credentials/all` → `/credentials/create-credential`). The
+`artifact` toolkit form's vector-store select (`toolkit-credential-select-pgvector-combobox`)
+offers only `"None"`, and no `PGVECTOR*` secret exists in `automation/config.py` / `.env.test`.
+⇒ no indexable toolkit can be created ⇒ `index_data_changed` notifications cannot be produced
+from the test side. Any case whose trigger is an index run is `blocked` until a vector-store
+credential + indexable toolkit are provisioned (human/lead decision).
