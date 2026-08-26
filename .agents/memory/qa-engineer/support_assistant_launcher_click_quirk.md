@@ -43,8 +43,15 @@ superseded by canon ruling #705** (`.agents/testing.md` § Locator policy, conne
 the dev server by `VITE_ASSISTANT_LOCAL=1` (`EliteaUI/vite.config.js`). Missing testids there
 are *work to do in that repo*, not a #579 scope exception.
 
-As of 2026-08-22 `../elitea_assistant/src` contains **zero** `data-testid` attributes — every
-handle in `support_assistant_page.py` is a raw class/aria fallback. That is grandfathered tech
-debt to migrate, not precedent.
+**Update 2026-08-27 (ELITEA-1802 re-analysis).** The "zero `data-testid` attributes" state above
+is over. Waves ELITEA-2418/2419/2420/2421/2423 added **17** `support-assistant-*` testids on
+`EliteaAI/elitea_assistant` `origin/automation/testids`; all 17 confirmed rendering in the live
+DOM through the alias on 2026-08-27, and **none is on that repo's `origin/main`** (awaiting human
+promotion, then an EliteaUI `@eliteaai/elitea-assistant` dep bump — the connected repo's extra
+promotion hop). The launcher itself now has `sidebar-support-assistant-button` in **EliteaUI**
+(`SidebarBody.jsx`), and clicking that testid natively opens the widget first try — so
+`open_widget_via_sidebar()` is preferred over the legacy JS-evaluate `open_widget()`.
+The remaining `fallback=` fields in `support_assistant_page.py` are grandfathered tech debt to
+migrate, not precedent.
 
 Related: [[support_assistant_response_latency_and_no_streaming]]

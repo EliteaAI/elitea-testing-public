@@ -17,6 +17,14 @@ The assistant is a **connected first-party repo** (canon #705): testids belong i
 a #579 third-party waiver. As of 2026-08-22 `../elitea_assistant/src` has **zero** `data-testid`
 attributes — every handle below is a grandfathered raw fallback, tech debt to migrate, never precedent.
 
+> **Superseded 2026-08-27 (ELITEA-1802 re-analysis).** The "zero `data-testid` attributes" sentence
+> above was true only on 2026-08-22. Waves ELITEA-2418/2419/2420/2421/2423 have since added **17**
+> `support-assistant-*` testids on `EliteaAI/elitea_assistant` `origin/automation/testids`. All 17
+> confirmed rendering in the live DOM on 2026-08-27; **none is on that repo's `origin/main`** yet
+> (awaiting human promotion, then the EliteaUI `@eliteaai/elitea-assistant` dep bump). The
+> "Testid to add" column below is therefore partly stale — trust the per-section notes further down,
+> and re-grep before assuming a handle still needs adding.
+
 ## Handles (verified live 2026-08-22)
 
 | Element | Current raw handle | Testid to add |
@@ -30,7 +38,7 @@ attributes — every handle below is a grandfathered raw fallback, tech debt to 
 | Message input | `textarea.elitea-assistant-input`, `id="elitea-assistant-message-input"`, placeholder `Type a message...` | `support-assistant-message-input` |
 | Send button | `button.elitea-assistant-send-button` / `[aria-label="Send message"]` | `support-assistant-send-button` |
 | Stop button (generation only) | `button[aria-label="Stop generation"]` (replaces Send while streaming) | — |
-| Attach button | `button[aria-label="Attach file"]` | — |
+| Attach button | `button[aria-label="Attach file"]` | **EXISTS** → `support-assistant-attach-button` (see § Attachments; re-verified live 2026-08-27) |
 | Close | `button[aria-label="Close chat"]` | — |
 | Typing indicator | `.elitea-assistant-typing-indicator` (3 × `.elitea-assistant-typing-dot`) | — |
 | Message bubble (inside an item) | `.elitea-assistant-message--assistant` / `--user` | `support-assistant-message-bubble` |
@@ -834,3 +842,35 @@ dev-server restart (`kill` vite PIDs, `rm -rf EliteaUI/node_modules/.vite`, rest
     in-flight bubble holds 0 characters": the analyst's `page.evaluate` probe read `textContent`
     off a `querySelector` that returned `null`, which reads as `''` in JS but is an exception in
     Playwright's strict locator API.)*
+
+## ELITEA-1802 re-analysis (verified live 2026-08-27)
+
+49. **The `#110` "Support Assistant is third-party, un-remediable" framing is RETRACTED.** The
+    2026-07-16 ELITEA-1802 AFS claimed the widget's DOM could never carry testids because it ships
+    from a third-party npm package. Canon #705 (2026-07-23) overturned that by name: it is
+    `@eliteaai/elitea-assistant`, **our own repo**, sibling-cloned at `../elitea_assistant`, aliased
+    into the dev server by `VITE_ASSISTANT_LOCAL=1` (`EliteaUI/vite.config.js:27-32,49-53` +
+    `EliteaUI/.env:13`, both confirmed present). A missing testid there is *work to do*, never a #579
+    waiver. Anyone who finds the old framing quoted anywhere should treat it as withdrawn.
+
+50. **The sidebar launcher takes a plain native click — no `page.evaluate` needed.** Clicking
+    `[data-testid="sidebar-support-assistant-button"]` opened the widget first try. The MUI-overlay
+    pointer intercept (quirk 1) that forced a JS click in the legacy
+    `SupportAssistantPage.open_widget()` applies to the **floating** `button.elitea-assistant-button`,
+    not to the sidebar entry. Prefer `open_widget_via_sidebar()`; it is a real user-equivalent gesture
+    and removes an `evaluate` from the flow.
+
+51. **`support-assistant-attach-button` and `button[aria-label="Attach file"]` are the SAME element,
+    and there is exactly one of it.** Live DOM read: `sameElementAsLegacy: true`, `legacyCount: 1`.
+    So migrating a legacy raw handle to the testid is a pure swap with zero behavioural change, and
+    the defensive `.first` some specs carry is redundant on this element.
+
+52. **Quirk 37 re-confirmed independently, and it makes a case step vacuous.** A full network capture
+    across attach + `setFiles` showed **zero** `POST /api/v2/support_assistant/attachments/{uuid}` —
+    only `config/`, `conversations/` and `conversation/{uuid}` GETs. The upload fires on **Send**.
+    Consequence worth knowing before writing any attach-flow assertion: a `wait_for_network()` /
+    `networkidle` wait placed after an attach **passes vacuously** — it settles because nothing was
+    ever in flight, so it can never fail and proves nothing. Assert
+    `attachment_chips` count/text instead (the chip is the real system-produced observable at that
+    point). ELITEA-1802's case text asserts exactly this false premise — clarification filed as
+    `#1827`.
