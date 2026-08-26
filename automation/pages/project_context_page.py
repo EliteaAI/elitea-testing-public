@@ -150,6 +150,11 @@ class ProjectContextPage(BasePage):
         "query is in flight",
     )
 
+    saved_content = LocatorDescriptor(
+        testid="project-context-saved-content",
+        description="Saved view's content area — the Box rendering the stored "
+        "Project Context as formatted markdown",
+    )
     preview_pane = LocatorDescriptor(
         testid="project-context-preview",
         description="Markdown preview pane — replaces the CodeMirror editor entirely "
@@ -573,3 +578,14 @@ class ProjectContextPage(BasePage):
     def is_discard_enabled(self) -> bool:
         """Return True if the Discard/Cancel button is currently enabled."""
         return self.discard_button.is_enabled()
+
+    def saved_content_headings(self) -> Locator:
+        """Return the level-2 headings react-markdown rendered in the SAVED view.
+
+        Same **#579** exception and same discipline as :meth:`preview_headings`
+        (react-markdown owns this DOM, so the heading itself cannot carry a
+        testid), scoped here to the saved view's own app-owned container
+        ``project-context-saved-content``. Scoping matters: the settings page
+        renders other headings outside this container.
+        """
+        return self.saved_content.locator(self.PREVIEW_HEADING_2)
