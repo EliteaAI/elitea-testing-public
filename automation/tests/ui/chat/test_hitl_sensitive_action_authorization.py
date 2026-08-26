@@ -70,12 +70,18 @@ authorize-resume, all OPEN, all soft-routed so every one of them is reported on
 every run — is:
 
 * **#1834** — the toolkit tool never executes (seeded file still in the bucket
-  90 s after Authorize). Fired 4/4 on 2026-08-27.
-* **#1834** — the LLM-model chip never renders. Fired 1/4 on 2026-08-27; the
-  chip DID render in the other three runs, so this member is the subset-firing
-  one the closed-set variant explicitly allows.
+  90 s after Authorize). Fired **7 of 7** runs, 2026-08-27.
 * **#1835** — the sensitive-action card, correctly closed ~0.1 s after
-  Authorize, is rendered AGAIN ~90 s later with live buttons. Fired 4/4.
+  Authorize, is rendered AGAIN ~90 s later with live buttons. Fired **7 of 7**.
+* **#1834** — the LLM-model chip never renders. Fired **3 of 7**; the chip DID
+  render in the other four runs. This is the subset-firing member the
+  closed-set variant explicitly allows.
+
+**What a gate operator should expect, so nobody mistakes it for a new symptom:**
+the failure is a ``BaseExceptionGroup`` whose sub-exception count legitimately
+alternates between **2 and 3** — 2 when the model chip happens to render, 3 when
+it does not. **Both are the SAME signature.** A new symptom means a failure
+naming something OUTSIDE the three bullets above; anything else is this set.
 
 Every affected assertion states the CORRECT behaviour, so the spec flips green
 unchanged when the product is fixed. A green run is a signal that these defects
@@ -321,6 +327,14 @@ class TestSensitiveActionAuthorize:
         "onetest-ai Test Case link",
     )
     @pytest.mark.p2
+    # reruns=0 because this spec is SANCTIONED-RED (#1834 + #1835): it is expected
+    # to fail, so `pytest.ini`'s global `--reruns=2` could never rescue it — it
+    # could only multiply wall clock and put retry noise in the record. Verified
+    # by observation 2026-08-27 that the marker overrides the CLI value in this
+    # venv (pytest-rerunfailures 16.4): an unmarked test failing on an
+    # `--only-rerun` pattern ran 3x/10.06s, the same test marked reruns=0 ran
+    # 1x/0.03s.
+    @pytest.mark.flaky(reruns=0)
     def test_authorize_executes_toolkit_tool_directly(
         self,
         page,
@@ -463,9 +477,11 @@ class TestSensitiveActionAuthorize:
                 # live buttons, as if the interrupt were still pending. Asserted
                 # as the CORRECT behaviour and soft-routed so Step 10's
                 # side-channel check still runs and reports.
-                expect.soft(chat.sensitive_action_panel).to_have_count(
-                    0, timeout=PANEL_STAYS_GONE_TIMEOUT
-                )
+                expect.soft(
+                    chat.sensitive_action_panel,
+                    f"Known defect {KNOWN_DEFECT_CARD_REAPPEARS}: the resolved "
+                    "sensitive-action card must stay gone",
+                ).to_have_count(0, timeout=PANEL_STAYS_GONE_TIMEOUT)
 
             with allure.step("Step 10 — Side-channel: no console/JS errors across the whole flow"):
                 # Errors only. The backend also emits an unhandled `parallel_hitl_ready`
