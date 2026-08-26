@@ -85,14 +85,33 @@ than mocked away.
 | **Generate Draft** | `generate-project-context-submit-button` | added during this case (same commit) — `generateButtonTestId` |
 | Review **Project Background** field | `generate-project-context-review-background-input` | added during this case (same commit) — `slotProps.htmlInput['data-testid']`, lands on the real `<textarea>` so `input_value()` works |
 | **Apply** | `generate-project-context-approve-button` | added during this case (same commit) — `approveButtonTestId` |
+| Dialog title | `generate-project-context-title` | added during this case — EliteaAI/EliteaUI@18db47e7 on `automation/testids`; `GenerateEntityModal` gained an additive `titleTestId` pass-through to `Modal.BaseModal`'s pre-existing `titleTestId` prop |
 | Editor (CodeMirror) | `project-context-editor-content` | on-main ✓ |
 | Editor wrapper (scope for `.cm-line`) | `project-context-editor-wrapper` | on `automation/testids` only (EliteaAI/EliteaUI@b05bbc9a) |
 | Save | `project-context-save-button` | on-main ✓ |
 | Character counter | `project-context-char-counter` | on-main ✓ |
 
-Every testid added by this case is referenced on the test's executed code path (#511).
-The shared `GenerateEntityModal` / `GenerateEntityButton` components were **not
-modified** — every modal testid rides a prop those components already accepted.
+Every testid added by this case is referenced on the test's executed code path (#511)
+— **mechanically pinned**, not asserted in prose, by
+`automation/tests/unit/test_project_context_modal_testids_referenced.py`, which walks
+the page object's call graph from the specs' entry points and fails on any declared
+locator no spec reaches. (Review round 1 caught this claim being *false* for
+`generate-project-context-loading-indicator`: the testid was declared but only the
+inherited `wait_for_loading_visible()` / `wait_for_loading_hidden()` read it, and no
+spec called those. Fixed by asserting the LOADING step in Test Step 5 — see
+§ Coverage Map Axis 2 — and the guard now prevents a silent recurrence. The EliteaUI
+commit message on EliteaAI/EliteaUI@d6eb52b6 carried the same claim; it is accurate as
+of this fix, and the branch is shared so its history is not rewritten.)
+`Back to prompt`, the dialog's close (X) and the generate-failure alert are **not**
+given testids: no case exercises them, and an unreferenced testid inflates the
+presence-based coverage metric. `GenerateProjectContextModalPage` therefore overrides
+the base `wait_for_review_form()` (which waits on a back button) to key on `Apply` +
+the populated Project Background field instead.
+
+`GenerateEntityButton` was not modified at all. `GenerateEntityModal` gained exactly
+one additive prop — `titleTestId`, defaulting to `undefined` and forwarded to the
+`titleTestId` prop `Modal.BaseModal` already accepted — identical in shape to the nine
+testid props it already took, so its other callers are untouched.
 
 ## Test Steps
 
@@ -113,6 +132,13 @@ modified** — every modal testid rides a prop those components already accepted
    - **Verify**: **Generate Draft** becomes enabled.
    - Click **Generate Draft** and wait on the real network response
      (`POST **/generate_project_context_draft/**`, live, up to 30 s).
+   - **Verify** (while the call is in flight): the dialog enters its **LOADING**
+     step — `generate-project-context-loading-indicator` becomes visible and reads
+     `Generating project context draft...`. This is the product's own evidence that
+     the click started a generation, and it pins the shared modal's
+     `entityLabel="project context"` wiring.
+   - **Verify**: once the response lands, the loading step is gone (the dialog left
+     LOADING rather than stalling in it).
    - **Verify**: response status is `200` — "action completes without error".
    - **Verify**: the review step is reached: **Apply** is visible and the
      `Project Background` review field is visible.
@@ -160,6 +186,7 @@ modified** — every modal testid rides a prop those components already accepted
 | Addition | Why it is grounded |
 |---|---|
 | Generate Draft disabled while the prompt is empty | the product's own gate (`disabled={!description.trim()}`); makes "provide a description **when prompted**" a real precondition rather than an unchecked click |
+| The dialog passes through its LOADING step (indicator visible with `Generating project context draft...`, then gone) | the shared `GenerateEntityModal` renders INPUT → LOADING → REVIEW; observing the middle state proves the click started a generation and that the review form was not reached from some other path, and pins `entityLabel="project context"` |
 | Response `project_background` is non-empty | without it, "content was generated" could pass on an empty string |
 | Save enabled after Apply, content still unsaved server-side | this is what makes step 6's "**before saving**" a fact rather than an assumption |
 | No console errors | project convention on this surface |
