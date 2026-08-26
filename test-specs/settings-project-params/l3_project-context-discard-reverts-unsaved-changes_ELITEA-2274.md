@@ -51,7 +51,7 @@ drift already filed as **#1792**; no new ticket.
 
 | What is substituted | Transit or terminal | Authority / real observable |
 |---|---|---|
-| Precondition seeding of the Project Context **`content`** via `PUT` instead of typing + saving it in the UI | **Transit** | It only establishes "saved content exists" so the editor opens in edit mode with a Discard button. The case's observable is the *revert*, and the baseline it is compared against is **read off the product** in step 3 (`get_editor_text()`), not taken from the seed string — so even a seed that mismatched would not make this test pass falsely. |
+| Precondition seeding of the Project Context **`content`** via `PUT` instead of typing + saving it in the UI | **Transit** | It only establishes "saved content exists" so the editor opens in edit mode with a Discard button. The case's observable is the *revert*, and the baseline it is compared against is **read off the product** in step 3 (`get_editor_lines()`), not taken from the seed string — so even a seed that mismatched would not make this test pass falsely. |
 | The **`enabled` flag** carried by that same `PUT` | **Not substituted** | `project_context_seed` is called with `content` only; `enabled` defaults to `None` = echo the product's own current value (`.agents/testing.md`, pinned by `tests/unit/test_project_context_seed_enabled_flag_not_authored.py`). This case never asserts the flag. |
 
 `page.evaluate` is used only for the clipboard write behind the paste gesture

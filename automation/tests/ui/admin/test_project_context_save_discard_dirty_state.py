@@ -20,9 +20,11 @@ the API by project_context_seed, satisfying the case's own step-1 precondition
 ("with existing saved content") — which is also what makes the sibling button
 Discard rather than Cancel (create mode's Cancel calls a different handler). The
 seed writes CONTENT only and never authors the enabled flag. The seeded TEXT is
-never asserted; every observable here — each button's disabled state at each
-phase, the label, the post-Discard navigation, the absence of the typed
-character — is produced by the product.
+never asserted: the baseline the post-Discard content is compared against is
+READ OFF THE PRODUCT in step 1 (the ELITEA-2274 pattern), not taken from the
+seed string. Every observable here — each button's disabled state at each phase,
+the label, the post-Discard navigation, the absence of the typed character — is
+produced by the product.
 
 Test case: ELITEA-2275
 AFS: test-specs/settings-project-params/l3_project-context-save-discard-enabled-only-when-dirty_ELITEA-2275.md
@@ -77,6 +79,18 @@ class TestProjectContextSaveDiscardDirtyState:
             expect(context_page.editor_content).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
             expect(context_page.editor_content).not_to_be_empty()
             expect(context_page.discard_button).to_have_text("Discard")
+            # The baseline step 5b compares against is READ OFF THE PRODUCT here, never
+            # taken from the seed string — the seeded TEXT is never asserted.
+            baseline_lines = context_page.get_editor_lines()
+            assert baseline_lines and any(line.strip() for line in baseline_lines), (
+                f"Baseline read from the editor is empty ({baseline_lines!r}) — the "
+                "post-Discard comparison would be vacuous"
+            )
+            assert not any(DIRTY_CHAR in line for line in baseline_lines), (
+                f"The saved content already contains {DIRTY_CHAR!r} ({baseline_lines!r}), so "
+                "'the typed character is absent' could not tell a reverted editor apart from "
+                "one that kept the edit"
+            )
 
         with allure.step("Step 2 — Save and Discard are inactive when no changes have been made"):
             expect(context_page.save_button).to_be_disabled()
@@ -105,7 +119,8 @@ class TestProjectContextSaveDiscardDirtyState:
             context_page.click_edit()
             expect(context_page.save_button).to_be_disabled()
             expect(context_page.discard_button).to_be_disabled()
-            expect(context_page.editor_lines()).to_have_text([SEED_CONTENT])
+            expect(context_page.editor_content).not_to_contain_text(DIRTY_CHAR)
+            expect(context_page.editor_lines()).to_have_text(baseline_lines)
 
         with allure.step("Side-channel check — no console errors at any step"):
             assert not console_errors, f"Unexpected console errors: {console_errors}"
