@@ -58,3 +58,4 @@
 - ["3 sessions" auto-park can be a spend ceiling](auto_park_3_sessions_can_be_a_spend_ceiling_not_a_real_blocker.md) — check the prior failure signature before trusting the label
 - [Settings backlog (#1398)](settings_area_backlog_1398.md) — 3 waves done: 22 delivered, 6 blocked (#1780/#1781/#1789)
 - [Reproduce locally before accepting an environment-specific framing](environment_specific_framing_needs_a_local_reproduction_first.md) — triage dispatch line
+- [A green CI run can mean zero tests ran](ci_green_can_mean_zero_tests_ran.md) — pytest exits 0 on all-skip; check JUnit skipped vs tests
