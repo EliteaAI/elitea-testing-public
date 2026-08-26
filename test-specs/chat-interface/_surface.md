@@ -4373,3 +4373,63 @@ entities in 399 and all resolved first try this pass. No project switch needed.
 `automation/testids`, resolves first try. **No `ChatPage` constant or `add_pipeline_participant_by_id()`
 method exists yet** — the agent analogue (`AGENT_MENU_ITEM` + `add_agent_participant_by_id`) does.
 That is the one genuine page-object gap for any four-participant-type case.
+
+
+---
+
+## Chat HITL — Sensitive Action Authorization (confirmed 2026-08-27, ELITEA-2211, qa-engineer analyst)
+
+**The precondition does NOT need the Admin UI.** The Admin UI is a separate deployed
+application (no `/admin` route in `EliteaUI/src/routes.js`), but the guardrails config is
+reachable by REST with the standard test user's `ELITEA_API_TOKEN`:
+
+| Request | Result |
+|---|---|
+| `GET/PUT {api}/admin/plugin_config_values/**administration**/guardrails` | **200** — readable AND writable |
+| `GET {api}/admin/plugin_config_values/**prompt_lib**/guardrails` | **403** `access_denied` |
+
+The mode segment is the whole difference. `PUT` returns
+`{"saved": true, "requires_restart": []}` — **live immediately**, mid-conversation, no
+restart / re-attach / new conversation. PUT the **full** values object (read → mutate
+`sensitive_tools` → PUT back); restore the captured original on teardown, never a
+hardcoded `{}`.
+
+`sensitive_tools` is keyed by toolkit **TYPE** (`{"artifact": ["delete_file"]}`) and is
+**org-wide** while set. Default on DEV is `{}` — `delete_file` executes straight through
+with no card.
+
+**Confirmed handles** (all on `EliteaAI/EliteaUI` `main`, verified 2026-08-27):
+
+| Element | testid |
+|---|---|
+| Sensitive action panel | `sensitive-action-panel` |
+| Authorize / Block / Block with Comment | `sensitive-action-authorize-button` · `sensitive-action-block-button` · `sensitive-action-block-with-comment-button` |
+| Thought accordion | `chat-answer-thought-accordion` |
+| Plus menu · Toolkits submenu · composer | `plus-menu-button` · `toolkits-menuitem` · `chat-message-input` |
+| Toolkit participant row (dynamic) | `toolkits-menu-item-toolkit-{project_id}-{toolkit_id}` |
+
+**Live panel text** (verbatim):
+`⚠️ Sensitive Action Authorization Required` / `Agent is about to perform:` /
+`{toolkit_name}.{tool_name}` / `Parameters ▸` (renders `filename`, `bucket_name`;
+`SensitiveToolParams.jsx` has **no testids**) / the policy line templated from the
+guardrails key `sensitive_action_message_template` / `Authorize` `Block`
+`Block with Comment`.
+
+The TMS case's `aaa.delete_file` is **literal format** — `{toolkit_name}.{tool_name}` —
+not an illustration.
+
+**Waits:** the card arrives **>5 s, <25 s** after send. 30 s timeout is right.
+
+**Quirks:**
+- The `chat-answer-thought-accordion` label is variable — "Thought for 2 secs" and
+  "Thought for less than a second" both observed. Assert visibility, never the string.
+- Bare `/chat` **restores the most recent conversation** (`#1082` pollution class) — it
+  landed on an unrelated prior chat this pass. Always navigate to an
+  API-created `/chat/{conversation_id}`.
+- A delete_file message must name the bucket AND filename explicitly, and say
+  "Execute the tool now, do not ask for clarification." The TMS case's own wording
+  ("remove from the bucket all files") makes the LLM ask which bucket — no tool call, no card.
+- Console during the HITL flow: **0 errors**, but 2× `unknown message type
+  parallel_hitl_ready` warnings — unhandled socket type, issue **#1831**. Don't filter it.
+- `ArtifactAPI.delete_bucket()` 404s on freshly-created buckets (`p--{project_id}.{name}`
+  path). Pre-existing; the fixture swallows it.
