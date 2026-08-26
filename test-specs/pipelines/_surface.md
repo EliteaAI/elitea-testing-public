@@ -2,8 +2,51 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-24 (ELITEA-1952/1953
-> cluster analysis, batch `mcp-w05`).
+> place, don't append duplicate entries. Last updated: 2026-08-26 (ELITEA-2008
+> failure triage, EL-6128 trigger-restriction drift).
+
+## Entry-point Trigger restriction — EL-6128 GREYS OUT instead of HIDING; and `select-option-selected-icon` poisons `select-option-*` enumeration (confirmed live, 2026-08-26, ELITEA-2008 triage)
+
+**Two independent facts, both live-confirmed on `automation/testids` @ 0-behind-`origin/main`.**
+
+**① The Trigger dropdown no longer hides restricted options — it disables them in place.**
+EliteaAI/EliteaUI@cb70a64e + @15099206 + @07e0e9b1 (EL-6128, on `origin/main` 2026-08-24/25) changed
+`TriggerTypeSelector.jsx` from `TRIGGER_OPTIONS.filter(...)` to
+`TRIGGER_OPTIONS.map(opt => opt.value === chat_message ? opt : {...opt, disabled: true})`.
+
+- Restricted state (Printer / HITL / non-empty `interrupt_before|after` in the **saved** YAML):
+  all three options render; `select-option-schedule` and `select-option-webhook` carry
+  **`aria-disabled="true"`** (+ MUI `Mui-disabled` class); `select-option-chat_message` does not.
+- Unrestricted state: **no `aria-disabled` attribute at all** on any option — absent, *not* `"false"`.
+  So an "is enabled" check must be `:not([aria-disabled="true"])`, never `== "false"`.
+- **The option NAME list is `['Chat Message','Schedule','Webhook']` in BOTH states.** Any assertion
+  written against names alone now proves nothing. Assert the enabled/disabled split.
+- The restriction is still gated on the **last-SAVED** YAML (`values.version_details.instructions`),
+  not the live canvas — unchanged by EL-6128, re-confirmed live 2026-08-26.
+- Predicate widened to `hasInteractiveElements || hasDelegatedOauthToolkit` — a saved delegated-OAuth
+  toolkit now restricts the trigger too. **No TMS case covers that yet.**
+- The `Trigger` label tooltip gained a reason sentence, but its info icon has **no testid**
+  (`<span data-info-tooltip="true">`), so it is not assertable without new UI work.
+
+Handles, all **on `origin/main`** (verified 2026-08-26 after `git fetch origin`) — no new testids needed:
+`pipeline-entry-point-trigger-select`, `select-option-{chat_message|schedule|webhook}` (shared template
+`SingleSelectMenuItem.jsx:117`), `pipeline-node-interrupt-before-toggle-{node_id}`, `agent-save-button`.
+
+**② `select-option-selected-icon` breaks `get_open_listbox_option_names()` on localhost.**
+EliteaAI/EliteaUI@b0a7d61a (2026-08-24, **`automation/testids` only, NOT on `main`**) put
+`data-testid="select-option-selected-icon"` on the ✓ icon *inside* the selected `MenuItem`. It matches
+`SELECT_OPTION_PREFIX = '[data-testid^="select-option-"]'` (`pipeline_detail_page.py:1580`), so every
+enumeration returns a spurious `''` for the selected option:
+
+```
+localhost baseline: ['Chat Message', '', 'Schedule', 'Webhook']
+```
+
+Bites localhost only today; **breaks DEV the moment a human cherry-picks b0a7d61a**. Affects ~40
+`SELECT_OPTION_PREFIX` references + `test_pipeline_entry_point_trigger_types_persist.py` and the two
+`pipelines_2` MCP-node specs. Root fix = rename the icon testid out of the `select-option-` namespace.
+Same commit also added `data-selected` on options — **also `automation/testids`-only, do not build
+DEV-bound assertions on it.**
 
 ## MCP node — the 4 Tools ADD triggers, the Tools card's untestid'd name/connection-status, input-mapping TYPE gaps, and LIVE MCP-node EXECUTION (confirmed live, 2026-08-24, ELITEA-1952/1953)
 
