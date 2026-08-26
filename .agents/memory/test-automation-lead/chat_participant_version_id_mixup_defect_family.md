@@ -2,14 +2,15 @@
 name: Chat-participants version_id-mixup defect family
 description: Any case needing an Agent AND a Pipeline as simultaneous chat participants is UNAUTOMATABLE until #1279 is fixed — check this family before re-diagnosing
 type: project
+updated: 2026-08-27
 ---
 
 ## The family
 
 A shared root cause — participant-state `version_id` resolution instability in the chat
 PARTICIPANTS panel — surfaces under multiple symptoms. First documented during the
-ELITEA-2094 investigation (PR EliteaAI/elitea-testing-public#688, still OPEN/unmerged,
-R2-cap parked 2026-07-20). All still OPEN as of 2026-08-26:
+ELITEA-2094 investigation (PR EliteaAI/elitea-testing-public#688, R2-cap parked 2026-07-20,
+CLOSED as superseded 2026-08-27; its analysis was re-run and landed as PR #1829). All still OPEN as of 2026-08-27 — none fixed in the product since July:
 
 - **#684** — Pipeline participant with an orphaned version crashes silently (no warning UI)
   instead of showing a misconfiguration warning like MCPs do.
@@ -19,12 +20,25 @@ R2-cap parked 2026-07-20). All still OPEN as of 2026-08-26:
 - **#1279** — The second Agent-or-Pipeline participant added to a conversation is
   **silently dropped**. See the hard numbers below.
 
-## #1279 — the automation-blocking one (16-rep evidence, ELITEA-2455 re-attempt 2026-08-26)
+## #1279 — the automation-blocking one (23 reps across 2 independent passes, latest 2026-08-27)
 
 **It is NOT order-dependent.** The issue body's original "Pipeline-then-Agent is a viable
 workaround for test automation" line is **RETIRED** — do not act on it, and do not repeat
 it in an AFS or dispatch prompt. Whichever of Agent/Pipeline is added *second* is dropped,
-in both orders: **13 of 16 live pytest-harness repetitions.**
+in both orders. Cumulative live pytest-harness evidence:
+
+- ELITEA-2455 pass, 2026-08-26 — **13 of 16** reps dropped.
+- ELITEA-2094 pass, 2026-08-27 — **6 of 6** dropped with no fixed delay
+  (Agent→Pipeline 0/4, Pipeline→Agent 0/2), plus a **pipeline-alone control that landed 1/1**.
+
+**The control is the discriminating datapoint:** it rules out "pipeline participants are
+broken" and pins the defect to the *second version-carrying add* specifically. Cite it
+before anyone re-opens that question.
+
+Also from the 2026-08-27 pass: **the console is completely clean on every drop (7/7)** — a
+"no console errors" assertion cannot detect this failure mode, and the `version/prompt_lib`
+400 on the issue body fires only on runs that SUCCEED. Unblock re-check is cheap (~4 min):
+6 reps of Agent→Pipeline landing with no fixed delay.
 
 | Wait between adds | Result |
 |---|---|

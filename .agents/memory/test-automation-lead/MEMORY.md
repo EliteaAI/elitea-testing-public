@@ -85,3 +85,5 @@
 - [Trunk→base PR can use a stale head](trunk_to_base_pr_can_use_stale_head_missing_report_commit.md) — `gh pr create` right after completion can miss the report-writer's own commit; verify `gh pr view --json files` includes report.json post-merge
 - [Agent+Pipeline chat participants](chat_participant_version_id_mixup_defect_family.md) — #1279 drops 2nd add 13/16
 - [Two-half cases](two_half_case_blocked_if_either_half_is_terminal.md) — one reproducible half ≠ ready-for-automation
+- [Resumed parked card](stale_parked_card_reanalyse_dont_rebase.md) — re-analyse fresh; a stale branch is a rewrite
+- [Blocked case AFS](blocked_case_afs_still_lands.md) — analysis-only output is docs: merge it, no gate applies
