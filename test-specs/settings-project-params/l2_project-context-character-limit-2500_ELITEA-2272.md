@@ -62,11 +62,20 @@
      `project-context-create-button`) is visible — confirms the page/section
      loaded and the precondition (no existing context) held.
 3. Click the "Create" button.
-   - **Verify**: URL becomes `${BASE_URL}/settings/project-context?view=create`;
+   - **Verify**: URL becomes `${BASE_URL}/settings/project-context/edit`;
      the CodeMirror editor content area (testid
      `project-context-editor-content`) is visible; Save (testid
      `project-context-save-button`) is **disabled** (no edits yet —
      `isDirty` false).
+   - **Amendment (implementer, ELITEA-2266/2267/2276 branch, 2026-08-26):** this
+     row previously specified the create-mode query param, which the product has
+     since retired — `routes.js` now declares a real
+     `/settings/project-context/edit` route. `ProjectContextPage.click_create()`
+     and this case's shipped spec both waited for the dead URL and timed out on
+     every run (issue #1794). Both now pin the live route, and this AFS row is
+     amended to the shipped truth. The assertion was repaired, never weakened:
+     it still pins an exact route, so a future rename fails loudly.
+     Pinned by `automation/tests/unit/test_project_context_2272_afs_route_matches_page_object.py`.
    - **Amendment (implementer, Phase 2):** dropped the original draft's
      "and Discard/Cancel are both disabled" clause from this verify — the
      Concrete Handles table explicitly scopes Discard/Cancel as "not
@@ -232,7 +241,8 @@ None.
 - Reading editor content: mirror `SkillFormPage.get_instructions()` —
   `.text_content()` on the `project-context-editor-content` testid, `.strip()`d.
 - Wait strategy: after Save, wait for the toast (`expect(toast).to_be_visible()`)
-  or the URL change away from `?view=create`, not a fixed timeout — no
+  or the URL change away from `/settings/project-context/edit` back to
+  `/settings/project-context`, not a fixed timeout — no
   `page.wait_for_timeout` calls, per `.agents/conventions.md` "No `sleep`/
   `waitForTimeout` — framework waits only" (note: `skill_form_page.py`'s
   `fill_instructions()` uses several `wait_for_timeout` calls — that is
