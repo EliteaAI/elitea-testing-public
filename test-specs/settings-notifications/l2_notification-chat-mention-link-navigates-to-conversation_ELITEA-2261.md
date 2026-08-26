@@ -191,6 +191,11 @@ it selects WHICH notification to exercise (a precondition), and the case's own o
   once each and are unrelated to this flow (`.agents/testing.md` § Known issues — the
   background-resource noise class). Scope the console-error assertion accordingly and use
   `automation/utils/console_errors.py` so the URL is captured.
+  **AMENDED fix round 1 (2026-08-26):** "scope accordingly" means the exact
+  (status, resource) PAIR, not the URL alone (`KNOWN_BACKGROUND_NOISE_SIGNATURES`) — a
+  `500` on the secrets probe or a `404` on project-info is a real failure and must fail
+  the test. Pinned by
+  `automation/tests/unit/test_notification_link_console_noise_filter_scope.py`.
 
 ## Known Defects Found During Exploration
 - **None (no product defect).** Two of the twelve mention notifications (conversations `7839`,

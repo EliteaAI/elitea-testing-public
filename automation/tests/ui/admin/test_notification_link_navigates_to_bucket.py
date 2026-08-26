@@ -74,17 +74,36 @@ RETENTION_SEARCH_TERM = "will start deleting files"
 RETENTION_EVENT_TYPE = "bucket_expiration_warning"
 
 #: Background resources documented as environmental noise on this DEV backend
-#: (`.agents/testing.md` § Known issues — the recurring unrelated-resource
-#: console-error class). Neither is requested by the flow under test. This is
-#: noise SCOPING by resource URL, not defect masking: every other console error,
-#: including anything on the artifacts endpoints, still fails the test.
-KNOWN_BACKGROUND_NOISE_URL_MARKERS = (
-    "/secrets/secrets/default/",
-    "/project_info/prompt_lib/",
+#: (`.agents/testing.md` § Known issues / § Unconfirmed — the recurring
+#: unrelated-resource console-error class). Neither is requested by the flow under
+#: test: the first is the secrets probe every project mount fires, the second the
+#: project-info fetch the project switcher fires.
+#:
+#: Each entry is a (status-text, URL-marker) PAIR and both halves must match —
+#: the exact signature observed live on 2026-08-26 and recorded in this case's AFS
+#: § Network Behavior. Scoping by URL alone would swallow every future status on
+#: those two resources (a 500 on the secrets probe, a 404 on project-info), which
+#: is masking, not noise handling — the same fix the credentials specs' `#554`
+#: filter carries (`tests/unit/test_credentials_console_filters_scope.py`) and the
+#: shape every sibling spec uses (`_is_known_secrets_403`, chat suite).
+#: Everything else — any other status, any other resource, anything on the
+#: endpoints this flow drives — still fails the test.
+KNOWN_BACKGROUND_NOISE_SIGNATURES = (
+    ("status of 403", "/secrets/secrets/default/"),
+    ("status of 500", "/project_info/prompt_lib/"),
 )
 
 #: Substring shared by the artifacts REST calls the bucket page makes.
 ARTIFACTS_URL_MARKER = "/artifacts/"
+
+#: The project a bucket-page artifacts READ was scoped to. The UI's artifacts REST
+#: calls carry it as a query param, not a path segment — observed live 2026-08-26:
+#: ``/artifacts/s3/?project_id=399&format=json`` (bucket list) and
+#: ``/artifacts/s3/{bucket}?project_id=399&format=json`` (bucket contents). Used to
+#: prove the new tab rendered the artifacts of the NOTIFICATION's own project, which
+#: the landing path alone cannot: when no project switch is required the product
+#: serves the bare ``/artifacts`` form, naming no project at all.
+ARTIFACTS_PROJECT_SCOPE_RE = re.compile(r"/artifacts/s3/[^?#]*\?(?:[^#]*&)?project_id=(\d+)")
 
 #: Characters ``encodeURIComponent`` leaves untouched, so the expected href can be
 #: rebuilt byte-for-byte from the notification's own ``meta.bucket_name``.
@@ -94,13 +113,25 @@ POPUP_URL_TIMEOUT = 30_000
 POPUP_ELEMENT_TIMEOUT = 20_000
 
 
+def _is_known_background_noise(message: str) -> bool:
+    """True only for an exact (status, resource) pair from
+    :data:`KNOWN_BACKGROUND_NOISE_SIGNATURES`.
+
+    *message* is a line rendered by ``utils.console_errors.format_console_message``
+    (``"<type>: <text> @ <url>"``), so the status half matches the message TEXT
+    ("...responded with a status of 403 ()") and the marker half the URL. Both must
+    match: a 500 on the secrets probe, or a 403 on project-info, is NOT this noise
+    and must fail the test.
+    """
+    return any(
+        status in message and marker in message
+        for status, marker in KNOWN_BACKGROUND_NOISE_SIGNATURES
+    )
+
+
 def _flow_console_errors(messages: list[str]) -> list[str]:
-    """Drop the two documented background-resource noise entries, keep everything else."""
-    return [
-        message
-        for message in messages
-        if not any(marker in message for marker in KNOWN_BACKGROUND_NOISE_URL_MARKERS)
-    ]
+    """Drop the two documented background-resource noise signatures, keep everything else."""
+    return [message for message in messages if not _is_known_background_noise(message)]
 
 
 def _expected_retention_href(row: dict) -> str:
@@ -300,6 +331,29 @@ class TestNotificationBucketRetentionLinkNavigation:
                 assert not failed_artifacts_reads, (
                     f"The artifacts/bucket listing failed on the backend: "
                     f"{failed_artifacts_reads}"
+                )
+
+                # The notification's OWN project — not merely "an artifacts page".
+                # The landing path cannot carry this proof: the `/{project_id}`
+                # segment survives only when no switch is required, so the bare
+                # `/artifacts` form names no project. The reads the popup actually
+                # issued do, and a same-named bucket in another project would show
+                # up here as a foreign project id.
+                observed_projects = {
+                    match.group(1)
+                    for _status, url in artifacts_responses
+                    if (match := ARTIFACTS_PROJECT_SCOPE_RE.search(url))
+                }
+                # Vite serves the feature's own JS modules from paths containing
+                # "/artifacts/" too — only the REST reads carry a project.
+                artifacts_rest_urls = [
+                    url for _status, url in artifacts_responses if "/src/" not in url
+                ]
+                assert observed_projects == {str(project_id)}, (
+                    f"The new tab did not read the artifacts of the notification's own "
+                    f"project {project_id}: the artifacts REST calls it issued were scoped "
+                    f"to project(s) {sorted(observed_projects) or 'none'} "
+                    f"(calls observed: {artifacts_rest_urls or 'none'})"
                 )
 
             with allure.step("Axis 2 — No console errors attributable to this flow"):

@@ -80,14 +80,22 @@ MENTION_EVENT_TYPE = "chat_user_mentioned"
 
 #: Background resources documented as environmental noise on this DEV backend
 #: (`.agents/testing.md` § Known issues / § Unconfirmed — the recurring
-#: unrelated-resource console-error class). Neither is requested by the flow
-#: under test: the first is the secrets probe every project mount fires, the
-#: second the project-info fetch the project switcher fires. This is noise
-#: SCOPING by resource URL, not defect masking — every other console error,
-#: including anything on the conversation endpoint, still fails the test.
-KNOWN_BACKGROUND_NOISE_URL_MARKERS = (
-    "/secrets/secrets/default/",
-    "/project_info/prompt_lib/",
+#: unrelated-resource console-error class). Neither is requested by the flow under
+#: test: the first is the secrets probe every project mount fires, the second the
+#: project-info fetch the project switcher fires.
+#:
+#: Each entry is a (status-text, URL-marker) PAIR and both halves must match —
+#: the exact signature observed live on 2026-08-26 and recorded in this case's AFS
+#: § Network Behavior. Scoping by URL alone would swallow every future status on
+#: those two resources (a 500 on the secrets probe, a 404 on project-info), which
+#: is masking, not noise handling — the same fix the credentials specs' `#554`
+#: filter carries (`tests/unit/test_credentials_console_filters_scope.py`) and the
+#: shape every sibling spec uses (`_is_known_secrets_403`, chat suite).
+#: Everything else — any other status, any other resource, anything on the
+#: endpoints this flow drives — still fails the test.
+KNOWN_BACKGROUND_NOISE_SIGNATURES = (
+    ("status of 403", "/secrets/secrets/default/"),
+    ("status of 500", "/project_info/prompt_lib/"),
 )
 
 CONVERSATION_URL_TEMPLATE = "/elitea_core/conversation/prompt_lib/{project_id}/{conversation_id}"
@@ -96,13 +104,25 @@ POPUP_URL_TIMEOUT = 30_000
 POPUP_ELEMENT_TIMEOUT = 15_000
 
 
+def _is_known_background_noise(message: str) -> bool:
+    """True only for an exact (status, resource) pair from
+    :data:`KNOWN_BACKGROUND_NOISE_SIGNATURES`.
+
+    *message* is a line rendered by ``utils.console_errors.format_console_message``
+    (``"<type>: <text> @ <url>"``), so the status half matches the message TEXT
+    ("...responded with a status of 403 ()") and the marker half the URL. Both must
+    match: a 500 on the secrets probe, or a 403 on project-info, is NOT this noise
+    and must fail the test.
+    """
+    return any(
+        status in message and marker in message
+        for status, marker in KNOWN_BACKGROUND_NOISE_SIGNATURES
+    )
+
+
 def _flow_console_errors(messages: list[str]) -> list[str]:
-    """Drop the two documented background-resource noise entries, keep everything else."""
-    return [
-        message
-        for message in messages
-        if not any(marker in message for marker in KNOWN_BACKGROUND_NOISE_URL_MARKERS)
-    ]
+    """Drop the two documented background-resource noise signatures, keep everything else."""
+    return [message for message in messages if not _is_known_background_noise(message)]
 
 
 def _expected_mention_href(row: dict) -> str:
