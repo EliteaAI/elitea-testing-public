@@ -65,6 +65,7 @@ def _chat_predict_events(frames, inner_type):
     return [f for f in frames if f.get("event") == "chat_predict" and f.get("type") == inner_type]
 
 
+@pytest.mark.blocked(reason="Known product defect - blocked by issue #1103")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/ELITEA-2015_pipeline-hitl-node-runtime-behavior.md",

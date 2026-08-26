@@ -33,7 +33,7 @@ Usage:
 """
 
 import pytest
-from tests.ui.pipelines.helpers import _navigate_to_detail, _navigate_to_canvas
+from tests.ui.pipeline_helpers import _navigate_to_detail, _navigate_to_canvas
 import allure
 
 pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.new_verified]

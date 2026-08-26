@@ -53,3 +53,4 @@
 - [Provenance grep false-negative — DotMenu `key:`-derived testids](provenance_grep_false_negative_dotmenu_key_derived_testid.md) — `*-menuitem` testids grep as absent; grep the key
 - [MCP browser can wedge into dead clicks](mcp_browser_can_wedge_into_dead_clicks.md) — before filing an unresponsive-control bug: run the nearest merged spec + a fresh context
 - [Testid provenance — composed testids](testid_provenance_runtime_composed.md) — diff the component file between refs; a bare grep is blind
+- [UI/flow assumption gate](ui_flow_assumption_gate.md) — test fails, assume UI changed? Verify vs case text first, wait if unconfirmed

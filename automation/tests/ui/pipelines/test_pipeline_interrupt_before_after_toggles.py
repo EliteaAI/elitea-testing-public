@@ -40,6 +40,7 @@ _CODE_VALUE = 'result = "code node ran"'
 _KNOWN_DEFECT_1327 = "https://github.com/EliteaAI/elitea-testing-public/issues/1327"
 
 
+@pytest.mark.blocked(reason="Known product defect - blocked by issue #1327")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/"

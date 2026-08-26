@@ -305,7 +305,7 @@ class TestPipelineCredentialIndicators:
                 add_toolkit_btn.click()
                 page.wait_for_timeout(500)
 
-                popper = page.locator('.MuiPopper-root')
+                popper = page.locator('.MuiPopper-root').first  # Use .first to avoid strict mode violation
                 popper.wait_for(state="visible", timeout=5000)
                 search_input = popper.locator('input')
                 if search_input.count() > 0:

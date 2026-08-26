@@ -1,0 +1,645 @@
+{
+  "summary": {
+    "total_orphans": 127,
+    "found": 0,
+    "not_found": 127
+  },
+  "found_mappings": [],
+  "not_found": [
+    {
+      "tms_ref": "tests.ui.artifacts.test_artifacts_bucket_name_validation_invalid_formats.TestArtifactBucketNameValidationInvalidFormats.test_bucket_name_validation_rejects_invalid_format",
+      "case_id": "ELITEA-1814",
+      "test_name": "test_bucket_name_validation_rejects_invalid_format"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_agent_hub_create_conversation_via_starter.TestAgentHubCreateConversationViaStarter.test_agent_hub_create_conversation_via_starter",
+      "case_id": "ELITEA-2093",
+      "test_name": "test_agent_hub_create_conversation_via_starter"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_attach_files_10_left_counter.TestAttachFiles10LeftCounter.test_attach_files_menuitem_shows_10_left_counter",
+      "case_id": "ELITEA-2195",
+      "test_name": "test_attach_files_menuitem_shows_10_left_counter"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_attach_files_multiple_chips_display.TestAttachFilesMultipleChipsDisplay.test_attach_files_of_different_types_shows_identical_icon_and_long_filename_truncates",
+      "case_id": "ELITEA-2199",
+      "test_name": "test_attach_files_of_different_types_shows_identical_icon_and_long_filename_truncates"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_attach_files_multiple_chips_display.TestAttachFilesMultipleChipsDisplay.test_attach_files_then_remove_two_individually_sequentially",
+      "case_id": "ELITEA-2198",
+      "test_name": "test_attach_files_then_remove_two_individually_sequentially"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_attach_files_multiple_chips_display.TestAttachFilesMultipleChipsDisplay.test_attach_multiple_files_displays_chips_above_composer",
+      "case_id": "ELITEA-2196",
+      "test_name": "test_attach_multiple_files_displays_chips_above_composer"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_attach_files_multiple_chips_display.TestAttachFilesMultipleChipsDisplay.test_long_filename_truncates_and_overflow_indicator_click_expands",
+      "case_id": "ELITEA-2467",
+      "test_name": "test_long_filename_truncates_and_overflow_indicator_click_expands"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_build_with_ai_cancel_then_generate_echo_agent.TestBuildWithAICancelThenGenerateEchoAgent.test_cancel_then_generate_creates_echo_agent_in_canvas",
+      "case_id": "ELITEA-2073",
+      "test_name": "test_cancel_then_generate_creates_echo_agent_in_canvas"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_agent_starters_add_remove.TestChatAddAgentWithStartersAndSendViaStarter.test_add_agent_with_starters_and_send_via_starter",
+      "case_id": "ELITEA-2465",
+      "test_name": "test_add_agent_with_starters_and_send_via_starter"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_agent_starters_add_remove.TestChatAddAgentWithStartersToConversation.test_add_agent_with_starters_to_conversation",
+      "case_id": "ELITEA-2177",
+      "test_name": "test_add_agent_with_starters_to_conversation"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_agent_starters_add_remove.TestChatRemoveAgentClearsConversationStarters.test_remove_agent_clears_conversation_starters",
+      "case_id": "ELITEA-2178",
+      "test_name": "test_remove_agent_clears_conversation_starters"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_canvas_edit_agent.TestChatCanvasEditAgent.test_edit_agent_welcome_message_syncs_to_agents_section",
+      "case_id": "ELITEA-2089",
+      "test_name": "test_edit_agent_welcome_message_syncs_to_agents_section"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_folder_creation_custom_name_and_cancel.TestChatFolderCreationCustomNameAndCancel.test_cancel_folder_creation_discards_folder",
+      "case_id": "ELITEA-2134",
+      "test_name": "test_cancel_folder_creation_discards_folder"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_folder_creation_custom_name_and_cancel.TestChatFolderCreationCustomNameAndCancel.test_create_folder_with_custom_name",
+      "case_id": "ELITEA-2457",
+      "test_name": "test_create_folder_with_custom_name"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_folder_rename_checkmark_validation.TestChatFolderRenameCheckmarkValidation.test_folder_rename_cancel_via_x_icon_discards_changes",
+      "case_id": "ELITEA-2122",
+      "test_name": "test_folder_rename_cancel_via_x_icon_discards_changes"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_folder_rename_checkmark_validation.TestChatFolderRenameCheckmarkValidation.test_folder_rename_no_changes_close_via_x_icon",
+      "case_id": "ELITEA-2131",
+      "test_name": "test_folder_rename_no_changes_close_via_x_icon"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_folder_rename_checkmark_validation.TestChatFolderRenameCheckmarkValidation.test_folder_rename_via_context_menu_edit_option",
+      "case_id": "ELITEA-2121",
+      "test_name": "test_folder_rename_via_context_menu_edit_option"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_folder_rename_checkmark_validation.TestChatFolderRenameCheckmarkValidation.test_pinned_folder_rename_retains_pin_state",
+      "case_id": "ELITEA-2130",
+      "test_name": "test_pinned_folder_rename_retains_pin_state"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_folder_rename_length_boundaries.TestChatFolderRenameLengthBoundaries.test_rename_folder_length_boundary_50_chars_accepted",
+      "case_id": "ELITEA-2128",
+      "test_name": "test_rename_folder_length_boundary_50_chars_accepted"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_folder_rename_length_boundaries.TestChatFolderRenameLengthBoundaries.test_rename_folder_type_and_paste_beyond_max_length_truncates",
+      "case_id": "ELITEA-2129",
+      "test_name": "test_rename_folder_type_and_paste_beyond_max_length_truncates"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_interface.TestHashSearch.test_add_agent_via_hash_search_joins_participants_and_responds",
+      "case_id": "ELITEA-2469",
+      "test_name": "test_add_agent_via_hash_search_joins_participants_and_responds"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_interface.TestHashSearch.test_add_pipeline_via_hash_search_joins_participants_and_responds",
+      "case_id": "ELITEA-2470",
+      "test_name": "test_add_pipeline_via_hash_search_joins_participants_and_responds"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_interface.TestHashSearch.test_hash_search_shows_agents_and_pipelines_from_all_sources",
+      "case_id": "ELITEA-2206",
+      "test_name": "test_hash_search_shows_agents_and_pipelines_from_all_sources"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_search_and_modules_panel.TestChatSearchAndModulesPanel.test_search_cleared_by_x_icon_restores_default_view",
+      "case_id": "ELITEA-2164",
+      "test_name": "test_search_cleared_by_x_icon_restores_default_view"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_search_and_modules_panel.TestChatSearchAndModulesPanel.test_search_input_cleared_by_deleting_text_updates_dynamically",
+      "case_id": "ELITEA-2165",
+      "test_name": "test_search_input_cleared_by_deleting_text_updates_dynamically"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_chat_search_and_modules_panel.TestChatSearchAndModulesPanel.test_search_no_results_state",
+      "case_id": "ELITEA-2163",
+      "test_name": "test_search_no_results_state"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_close_toolkit_canvas_without_saving.TestCloseToolkitCanvasWithoutSaving.test_close_toolkit_canvas_without_saving_creates_no_toolkit",
+      "case_id": "ELITEA-2081",
+      "test_name": "test_close_toolkit_canvas_without_saving_creates_no_toolkit"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_context_auto_summarization_disabled.TestContextAutoSummarizationDisabled.test_no_summarization_when_auto_summarization_disabled",
+      "case_id": "ELITEA-2217",
+      "test_name": "test_no_summarization_when_auto_summarization_disabled"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_context_management_disabled.TestContextManagementDisabledWidgetStaysZero.test_context_management_disabled_widget_stays_at_zero",
+      "case_id": "ELITEA-2216",
+      "test_name": "test_context_management_disabled_widget_stays_at_zero"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_conversation_deletion_inside_folder.TestConversationDeletionInsideFolder.test_delete_conversation_inside_folder_preserves_folder",
+      "case_id": "ELITEA-2115",
+      "test_name": "test_delete_conversation_inside_folder_preserves_folder"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_conversation_rename_basic_via_edit_option.TestConversationRenameBasicViaEditOption.test_rename_conversation_basic_via_edit_option",
+      "case_id": "ELITEA-2099",
+      "test_name": "test_rename_conversation_basic_via_edit_option"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_conversation_rename_cancel_discards_changes.TestConversationRenameCancelDiscardsChanges.test_rename_conversation_cancel_discards_changes",
+      "case_id": "ELITEA-2100",
+      "test_name": "test_rename_conversation_cancel_discards_changes"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_conversation_rename_checkmark_active_state.TestConversationRenameCheckmarkActiveState.test_rename_checkmark_activates_at_three_characters",
+      "case_id": "ELITEA-2109",
+      "test_name": "test_rename_checkmark_activates_at_three_characters"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_conversation_rename_checkmark_active_state.TestConversationRenameCheckmarkActiveState.test_rename_checkmark_inactive_click_has_no_effect[ELITEA-2105-no-changes]",
+      "case_id": "ELITEA-2105",
+      "test_name": "test_rename_checkmark_inactive_click_has_no_effect"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_conversation_rename_checkmark_active_state.TestConversationRenameCheckmarkActiveState.test_rename_checkmark_inactive_click_has_no_effect[ELITEA-2106-empty-field]",
+      "case_id": "ELITEA-2106",
+      "test_name": "test_rename_checkmark_inactive_click_has_no_effect"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_conversation_rename_checkmark_active_state.TestConversationRenameCheckmarkActiveState.test_rename_checkmark_inactive_click_has_no_effect[ELITEA-2107-1-char]",
+      "case_id": "ELITEA-2107",
+      "test_name": "test_rename_checkmark_inactive_click_has_no_effect"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_conversation_rename_checkmark_active_state.TestConversationRenameCheckmarkActiveState.test_rename_checkmark_inactive_click_has_no_effect[ELITEA-2108-2-char]",
+      "case_id": "ELITEA-2108",
+      "test_name": "test_rename_checkmark_inactive_click_has_no_effect"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_conversation_rename_invalid_chars_and_recovery.TestConversationRenameInvalidCharsAndRecovery.test_rename_checkmark_inactive_for_invalid_input_shows_tooltip[ELITEA-2110-special-characters]",
+      "case_id": "ELITEA-2110",
+      "test_name": "test_rename_checkmark_inactive_for_invalid_input_shows_tooltip"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_conversation_rename_invalid_chars_and_recovery.TestConversationRenameInvalidCharsAndRecovery.test_rename_checkmark_inactive_for_invalid_input_shows_tooltip[ELITEA-2111-dollar-percent-at-characters]",
+      "case_id": "ELITEA-2111",
+      "test_name": "test_rename_checkmark_inactive_for_invalid_input_shows_tooltip"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_conversation_rename_invalid_chars_and_recovery.TestConversationRenameInvalidCharsAndRecovery.test_rename_checkmark_inactive_for_invalid_input_shows_tooltip[ELITEA-2112-leading-space]",
+      "case_id": "ELITEA-2112",
+      "test_name": "test_rename_checkmark_inactive_for_invalid_input_shows_tooltip"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_conversation_rename_invalid_chars_and_recovery.TestConversationRenameInvalidCharsAndRecovery.test_rename_recovers_and_saves_after_invalid_value_replaced",
+      "case_id": "ELITEA-2113",
+      "test_name": "test_rename_recovers_and_saves_after_invalid_value_replaced"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_conversation_rename_length_boundaries.TestConversationRenameLengthBoundaries.test_rename_conversation_length_boundary[ELITEA-2101-49-chars]",
+      "case_id": "ELITEA-2101",
+      "test_name": "test_rename_conversation_length_boundary"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_conversation_rename_length_boundaries.TestConversationRenameLengthBoundaries.test_rename_conversation_length_boundary[ELITEA-2102-50-chars]",
+      "case_id": "ELITEA-2102",
+      "test_name": "test_rename_conversation_length_boundary"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_conversation_rename_length_boundaries.TestConversationRenameLengthBoundaries.test_rename_conversation_paste_beyond_max_length_truncates",
+      "case_id": "ELITEA-2104",
+      "test_name": "test_rename_conversation_paste_beyond_max_length_truncates"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_conversation_rename_length_boundaries.TestConversationRenameLengthBoundaries.test_rename_conversation_type_beyond_max_length_truncates",
+      "case_id": "ELITEA-2103",
+      "test_name": "test_rename_conversation_type_beyond_max_length_truncates"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_create_mcp_from_conversation_discard_changes.TestCreateMcpFromConversationDiscardChanges.test_create_mcp_from_conversation_discard_changes_creates_no_mcp",
+      "case_id": "ELITEA-2084",
+      "test_name": "test_create_mcp_from_conversation_discard_changes_creates_no_mcp"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_create_new_conversation_team_project_attachments_and_llm.TestCreateNewConversationTeamProjectAttachmentsAndLLM.test_create_conversation_team_project_attachments_and_llm",
+      "case_id": "ELITEA-2091",
+      "test_name": "test_create_conversation_team_project_attachments_and_llm"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_create_toolkit_from_conversation.TestCreateToolkitFromConversation.test_create_toolkit_from_conversation_close_canvas_and_verify_participant",
+      "case_id": "ELITEA-2083",
+      "test_name": "test_create_toolkit_from_conversation_close_canvas_and_verify_participant"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_delete_confirmation_modal_ui_validation.TestDeleteConfirmationModalUIValidation.test_delete_confirmation_modal_dismisses_via_escape_and_outside_click",
+      "case_id": "ELITEA-2116",
+      "test_name": "test_delete_confirmation_modal_dismisses_via_escape_and_outside_click"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_delete_confirmation_modal_ui_validation.TestDeleteConfirmationModalUIValidation.test_delete_confirmation_modal_title_body_and_button_styling",
+      "case_id": "ELITEA-2116",
+      "test_name": "test_delete_confirmation_modal_title_body_and_button_styling"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_drag_drop_conversation_folder.TestDragDropConversationBackToGeneralList.test_drag_drop_conversation_back_to_general_list",
+      "case_id": "ELITEA-2145",
+      "test_name": "test_drag_drop_conversation_back_to_general_list"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_drag_drop_conversation_folder.TestDragDropConversationToFolder.test_drag_drop_conversation_to_folder",
+      "case_id": "ELITEA-2142",
+      "test_name": "test_drag_drop_conversation_to_folder"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_drag_drop_conversation_folder.TestDragDropHighlightsTargetFolderOnHover.test_drag_drop_highlights_target_folder_on_hover",
+      "case_id": "ELITEA-2143",
+      "test_name": "test_drag_drop_highlights_target_folder_on_hover"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_folder_creation.TestChatFolderCreation.test_create_folder_default_name_checkmark_active",
+      "case_id": "ELITEA-2118",
+      "test_name": "test_create_folder_default_name_checkmark_active"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_folder_list_scrollability_and_expand_states.TestFolderDisplaysConversationsOrEmptyState.test_folder_displays_conversations_or_empty_state",
+      "case_id": "ELITEA-2460",
+      "test_name": "test_folder_displays_conversations_or_empty_state"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_folder_list_scrollability_and_expand_states.TestFolderListScrollableWhenManyFoldersExist.test_folder_list_scrollable_when_many_folders_exist",
+      "case_id": "ELITEA-2146",
+      "test_name": "test_folder_list_scrollable_when_many_folders_exist"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_folder_list_scrollability_and_expand_states.TestMoveToSubmenuFolderListScrollable.test_move_to_submenu_folder_list_scrollable",
+      "case_id": "ELITEA-2147",
+      "test_name": "test_move_to_submenu_folder_list_scrollable"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_generated_echo_agent_save_close_and_starters.TestGeneratedEchoAgentSaveCloseAndStarters.test_save_close_and_use_generated_starters",
+      "case_id": "ELITEA-2074",
+      "test_name": "test_save_close_and_use_generated_starters"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_invite_users_add_cancel_close.TestCancelAddUsersModalAfterPreselectingUsers.test_cancel_after_preselecting_two_users_adds_no_one",
+      "case_id": "ELITEA-2176",
+      "test_name": "test_cancel_after_preselecting_two_users_adds_no_one"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_invite_users_add_cancel_close.TestRemovePreselectedUserViaChipX.test_remove_preselected_user_via_chip_x",
+      "case_id": "ELITEA-2175",
+      "test_name": "test_remove_preselected_user_via_chip_x"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_last_remaining_conversation_deletion.TestLastRemainingConversationDeletion.test_delete_last_remaining_conversation_shows_welcome_state",
+      "case_id": "ELITEA-2117",
+      "test_name": "test_delete_last_remaining_conversation_shows_welcome_state"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_move_conversation_to_folder.TestMoveConversationBackToList.test_move_conversation_back_to_list",
+      "case_id": "ELITEA-2140",
+      "test_name": "test_move_conversation_back_to_list"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_move_conversation_to_folder.TestMoveConversationBetweenTwoFolders.test_move_conversation_between_two_folders",
+      "case_id": "ELITEA-2141",
+      "test_name": "test_move_conversation_between_two_folders"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_move_conversation_to_folder.TestMoveConversationToExistingFolder.test_move_conversation_to_new_folder",
+      "case_id": "ELITEA-2137",
+      "test_name": "test_move_conversation_to_new_folder"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_move_conversation_to_folder.TestMoveConversationToNewFolder.test_move_conversation_to_new_folder_with_custom_name",
+      "case_id": "ELITEA-2138",
+      "test_name": "test_move_conversation_to_new_folder_with_custom_name"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_open_conversation_from_folder.TestOpenExistingConversationFromFolder.test_open_existing_conversation_from_folder",
+      "case_id": "ELITEA-2098",
+      "test_name": "test_open_existing_conversation_from_folder"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_owner_has_no_remove_control_in_users_dropdown.TestOwnerHasNoRemoveControlInUsersDropdown.test_owner_has_no_remove_control_in_users_dropdown",
+      "case_id": "ELITEA-2192",
+      "test_name": "test_owner_has_no_remove_control_in_users_dropdown"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_participants_dropdown_click_name_inserts_mention.TestParticipantsDropdownClickNameInsertsMention.test_click_participant_name_inserts_mention[ELITEA-2173-single-mention]",
+      "case_id": "ELITEA-2173",
+      "test_name": "test_click_participant_name_inserts_mention"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_participants_dropdown_click_name_inserts_mention.TestParticipantsDropdownClickNameInsertsMention.test_click_participant_name_inserts_mention[ELITEA-2174-two-mentions]",
+      "case_id": "ELITEA-2174",
+      "test_name": "test_click_participant_name_inserts_mention"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_pin_conversation.TestChatPanelOrderingPinnedFoldersAndConversations.test_pinned_folder_and_conversation_render_above_unpinned_panel_order",
+      "case_id": "ELITEA-2461",
+      "test_name": "test_pinned_folder_and_conversation_render_above_unpinned_panel_order"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_pin_conversation.TestMultipleConversationsPinnedIndependently.test_pin_two_conversations_independently",
+      "case_id": "ELITEA-2160",
+      "test_name": "test_pin_two_conversations_independently"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_pin_conversation.TestPinDisabledInFolderThenMovedAndPinned.test_pin_disabled_in_folder_then_moved_and_pinned",
+      "case_id": "ELITEA-2158",
+      "test_name": "test_pin_disabled_in_folder_then_moved_and_pinned"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_pin_conversation.TestUnpinConversationViaContextMenu.test_unpin_conversation_via_context_menu",
+      "case_id": "ELITEA-2150",
+      "test_name": "test_unpin_conversation_via_context_menu"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_pin_folder.TestMultipleFoldersPinnedIndependently.test_pin_two_folders_independently",
+      "case_id": "ELITEA-2161",
+      "test_name": "test_pin_two_folders_independently"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_pin_folder.TestPinFolderViaPinOnTop.test_pin_empty_folder_retains_empty_state",
+      "case_id": "ELITEA-2155",
+      "test_name": "test_pin_empty_folder_retains_empty_state"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_pin_folder.TestPinFolderViaPinOnTop.test_pin_folder_via_pin_on_top",
+      "case_id": "ELITEA-2462",
+      "test_name": "test_pin_folder_via_pin_on_top"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_pin_folder.TestPinFolderViaPinOnTop.test_pin_folder_with_multiple_conversations_retains_all",
+      "case_id": "ELITEA-2154",
+      "test_name": "test_pin_folder_with_multiple_conversations_retains_all"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_pin_folder.TestUnpinFolderViaContextMenu.test_unpin_empty_folder_retains_empty_state",
+      "case_id": "ELITEA-2156",
+      "test_name": "test_unpin_empty_folder_retains_empty_state"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_pin_folder.TestUnpinFolderViaContextMenu.test_unpin_folder_via_context_menu",
+      "case_id": "ELITEA-2153",
+      "test_name": "test_unpin_folder_via_context_menu"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_pipeline_create_save_basic_configuration.TestPipelineCreateSaveBasicConfiguration.test_create_pipeline_save_basic_configuration",
+      "case_id": "ELITEA-2077",
+      "test_name": "test_create_pipeline_save_basic_configuration"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_pipeline_discard_changes_clears_canvas.TestPipelineDiscardChangesClearsCanvas.test_discard_clears_canvas_and_creates_no_pipeline",
+      "case_id": "ELITEA-2076",
+      "test_name": "test_discard_clears_canvas_and_creates_no_pipeline"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_pipeline_flow_editor_discard_llm_node.TestPipelineFlowEditorDiscardLlmNode.test_add_llm_node_discard_changes_removes_node",
+      "case_id": "ELITEA-2078",
+      "test_name": "test_add_llm_node_discard_changes_removes_node"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_public_conversation_green_icon.TestPublicConversationGreenIcon.test_public_conversation_shows_green_icon_in_chat_list",
+      "case_id": "ELITEA-2188",
+      "test_name": "test_public_conversation_shows_green_icon_in_chat_list"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_regenerate_response.TestRegenerateResponse.test_regenerate_only_on_last_and_click_triggers_new_generation",
+      "case_id": "ELITEA-2187",
+      "test_name": "test_regenerate_only_on_last_and_click_triggers_new_generation"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_regenerate_response.TestRegenerateResponse.test_regenerate_replaces_response_with_new_generation",
+      "case_id": "ELITEA-2185",
+      "test_name": "test_regenerate_replaces_response_with_new_generation"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_regenerate_response.TestRegenerateResponse.test_regenerate_visible_only_on_last_response",
+      "case_id": "ELITEA-2184",
+      "test_name": "test_regenerate_visible_only_on_last_response"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_send_message_with_attachments_verify_included.TestSendMessageWithAttachmentsVerifyIncluded.test_send_message_with_attachments_verify_included",
+      "case_id": "ELITEA-2201",
+      "test_name": "test_send_message_with_attachments_verify_included"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_slash_mention_mcp_selection_and_available_tools.TestSlashMentionMcpSelectionAndAvailableTools.test_select_mcp_from_slash_mention_no_tools_shows_empty_panel",
+      "case_id": "ELITEA-2468",
+      "test_name": "test_select_mcp_from_slash_mention_no_tools_shows_empty_panel"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_slash_mention_mcp_selection_and_available_tools.TestSlashMentionMcpSelectionAndAvailableTools.test_select_mcp_from_slash_mention_shows_its_tools",
+      "case_id": "ELITEA-2468",
+      "test_name": "test_select_mcp_from_slash_mention_shows_its_tools"
+    },
+    {
+      "tms_ref": "tests.ui.chat.test_streaming_response.TestStreamingResponse.test_composer_send_button_toggles_with_empty_input_and_waveform_reappears",
+      "case_id": "ELITEA-2466",
+      "test_name": "test_composer_send_button_toggles_with_empty_input_and_waveform_reappears"
+    },
+    {
+      "tms_ref": "tests.ui.help_center.test_help_center_resource_links.TestHelpCenterResourceLinks.test_resource_card_link_redirects_to_external_page[ELITEA-2220-documentation-getting-started]",
+      "case_id": "ELITEA-2220",
+      "test_name": "test_resource_card_link_redirects_to_external_page"
+    },
+    {
+      "tms_ref": "tests.ui.help_center.test_help_center_resource_links.TestHelpCenterResourceLinks.test_resource_card_link_redirects_to_external_page[ELITEA-2221-release-notes-latest]",
+      "case_id": "ELITEA-2221",
+      "test_name": "test_resource_card_link_redirects_to_external_page"
+    },
+    {
+      "tms_ref": "tests.ui.help_center.test_help_center_resource_links.TestHelpCenterResourceLinks.test_resource_card_link_redirects_to_external_page[ELITEA-2222-tutorials-how-to-create-an-agent]",
+      "case_id": "ELITEA-2222",
+      "test_name": "test_resource_card_link_redirects_to_external_page"
+    },
+    {
+      "tms_ref": "tests.ui.help_center.test_help_center_resource_links.TestHelpCenterResourceLinks.test_resource_card_link_redirects_to_external_page[ELITEA-2224-tutorials-more]",
+      "case_id": "ELITEA-2224",
+      "test_name": "test_resource_card_link_redirects_to_external_page"
+    },
+    {
+      "tms_ref": "tests.ui.help_center.test_help_center_resource_links.TestHelpCenterResourceLinks.test_video_library_more_redirects_to_external_portal",
+      "case_id": "ELITEA-2223",
+      "test_name": "test_video_library_more_redirects_to_external_portal"
+    },
+    {
+      "tms_ref": "tests.ui.help_center.test_help_center_sidebar_tour.TestHelpCenterSidebarTourExtras.test_sidebar_interactive_tour_back_returns_to_step_one",
+      "case_id": "ELITEA-2230",
+      "test_name": "test_sidebar_interactive_tour_back_returns_to_step_one"
+    },
+    {
+      "tms_ref": "tests.ui.help_center.test_help_center_sidebar_tour.TestHelpCenterSidebarTourExtras.test_sidebar_interactive_tour_restarts_after_completion",
+      "case_id": "ELITEA-2228",
+      "test_name": "test_sidebar_interactive_tour_restarts_after_completion"
+    },
+    {
+      "tms_ref": "tests.ui.help_center.test_help_center_sidebar_tour.TestHelpCenterSidebarTourExtras.test_sidebar_interactive_tour_skip_terminates",
+      "case_id": "ELITEA-2229",
+      "test_name": "test_sidebar_interactive_tour_skip_terminates"
+    },
+    {
+      "tms_ref": "tests.ui.help_center.test_help_center_sidebar_tour.TestHelpCenterSidebarTourExtras.test_sidebar_interactive_tour_starts_on_link_click",
+      "case_id": "ELITEA-2226",
+      "test_name": "test_sidebar_interactive_tour_starts_on_link_click"
+    },
+    {
+      "tms_ref": "tests.ui.help_center.test_help_center_version_info.TestHelpCenterVersionInfo.test_version_info_tooltip_displays_and_copies",
+      "case_id": "ELITEA-2225",
+      "test_name": "test_version_info_tooltip_displays_and_copies"
+    },
+    {
+      "tms_ref": "tests.ui.onboarding.test_onboarding_welcome.TestOnboardingWelcomePage.test_welcome_page_displayed_on_first_login",
+      "case_id": "ELITEA-2231",
+      "test_name": "test_welcome_page_displayed_on_first_login"
+    },
+    {
+      "tms_ref": "tests.ui.settings.test_ai_providers_page_sections_load_without_error.TestAIProvidersPageSections.test_ai_providers_page_sections_load_without_error_test",
+      "case_id": "ELITEA-2392",
+      "test_name": "test_ai_providers_page_sections_load_without_error_test"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_agent_skills_validation_attribution_and_token_invalidation.TestAgentSkillsValidationAttributionAndTokenInvalidation.test_agent_skills_validation_attribution_and_token_invalidation",
+      "case_id": "ELITEA-2601",
+      "test_name": "test_agent_skills_validation_attribution_and_token_invalidation"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_agent_with_skills_publishing_flow.TestAgentWithSkillsPublishingFlow.test_agent_with_skills_publishing_flow",
+      "case_id": "ELITEA-2600",
+      "test_name": "test_agent_with_skills_publishing_flow"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_published_agent_version_cannot_be_modified.TestPublishedAgentVersionCannotBeModified.test_published_agent_version_cannot_be_modified",
+      "case_id": "ELITEA-2614",
+      "test_name": "test_published_agent_version_cannot_be_modified"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_agent_interaction.TestInteractWithSkillsFromAgent.test_skill_autonomous_invocation_thought_process_and_security",
+      "case_id": "ELITEA-2607",
+      "test_name": "test_skill_autonomous_invocation_thought_process_and_security"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_agent_interaction.TestInteractWithSkillsFromAgent.test_skill_explicit_and_autonomous_invocation_coexistence",
+      "case_id": "ELITEA-2609",
+      "test_name": "test_skill_explicit_and_autonomous_invocation_coexistence"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_agent_version_selection_behavior.TestSkillAgentVersionSelectionBehavior.test_skill_version_selection_drives_agent_chat_behavior",
+      "case_id": "ELITEA-2610",
+      "test_name": "test_skill_version_selection_drives_agent_chat_behavior"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_build_with_ai.TestSkillBuildWithAIBackToPromptFromReviewStep.test_back_to_prompt_returns_to_input_step_and_preserves_prompt_text",
+      "case_id": "ELITEA-1996",
+      "test_name": "test_back_to_prompt_returns_to_input_step_and_preserves_prompt_text"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_build_with_ai.TestSkillBuildWithAICancelFromPromptStep.test_cancel_from_prompt_step_closes_modal_without_creating_skill",
+      "case_id": "ELITEA-1997",
+      "test_name": "test_cancel_from_prompt_step_closes_modal_without_creating_skill"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_build_with_ai.TestSkillBuildWithAICancelFromReviewStep.test_cancel_from_review_step_does_not_create_skill",
+      "case_id": "ELITEA-1998",
+      "test_name": "test_cancel_from_review_step_does_not_create_skill"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_build_with_ai.TestSkillBuildWithAICreationFailureRecovery.test_creation_failure_stays_on_review_step_and_retry_succeeds",
+      "case_id": "ELITEA-2000",
+      "test_name": "test_creation_failure_stays_on_review_step_and_retry_succeeds"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_build_with_ai.TestSkillBuildWithAIGeneratedNameNamingRules.test_generated_skill_name_adheres_to_naming_rules",
+      "case_id": "ELITEA-1992",
+      "test_name": "test_generated_skill_name_adheres_to_naming_rules"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_build_with_ai.TestSkillBuildWithAIReviewFormCharacterLimits.test_review_form_field_character_limit_is_enforced[ELITEA-1994-description",
+      "case_id": "ELITEA-1994",
+      "test_name": "test_review_form_field_character_limit_is_enforced"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_build_with_ai.TestSkillBuildWithAIReviewFormCharacterLimits.test_review_form_field_character_limit_is_enforced[ELITEA-1995-instructions",
+      "case_id": "ELITEA-1995",
+      "test_name": "test_review_form_field_character_limit_is_enforced"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_build_with_ai_role_visibility.TestSkillBuildWithAIButtonRoleVisibility.test_build_with_ai_button_visible_for_admin_role",
+      "case_id": "ELITEA-1986",
+      "test_name": "test_build_with_ai_button_visible_for_admin_role"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_edit_with_ai_happy_path.TestSkillEditWithAIHappyPath.test_edit_with_ai_happy_path",
+      "case_id": "ELITEA-2611",
+      "test_name": "test_edit_with_ai_happy_path"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_edit_with_ai_navigation_error_handling.TestSkillEditWithAINavigationErrorHandling.test_edit_with_ai_navigation_and_error_handling",
+      "case_id": "ELITEA-2612",
+      "test_name": "test_edit_with_ai_navigation_and_error_handling"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_edit_with_ai_role_visibility.TestSkillEditWithAICharacterLimit.test_edit_with_ai_summary_instructions_truncates_at_character_limit",
+      "case_id": "ELITEA-2613",
+      "test_name": "test_edit_with_ai_summary_instructions_truncates_at_character_limit"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_edit_with_ai_role_visibility.TestSkillEditWithAIRoleVisibility.test_edit_with_ai_button_visible_for_admin_role",
+      "case_id": "ELITEA-2613",
+      "test_name": "test_edit_with_ai_button_visible_for_admin_role"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_publish_ai_validation_blockers.TestSkillPublishAiValidationBlockers.test_short_content_placeholder_and_secrets_block_publish",
+      "case_id": "ELITEA-2596",
+      "test_name": "test_short_content_placeholder_and_secrets_block_publish"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_publish_token_invalidation_and_ttl.TestSkillPublishTokenInvalidationAndTTL.test_publish_token_expires_after_ttl",
+      "case_id": "ELITEA-2597",
+      "test_name": "test_publish_token_expires_after_ttl"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_publish_token_invalidation_and_ttl.TestSkillPublishTokenInvalidationAndTTL.test_publish_token_invalidated_by_modification",
+      "case_id": "ELITEA-2597",
+      "test_name": "test_publish_token_invalidated_by_modification"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_publish_warn_status_allows_publishing.TestSkillPublishWarnStatusAllowsPublishing.test_warn_status_does_not_block_publish",
+      "case_id": "ELITEA-2598",
+      "test_name": "test_warn_status_does_not_block_publish"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_publish_wizard_happy_path.TestSkillPublishWizardHappyPath.test_publish_skill_happy_path",
+      "case_id": "ELITEA-2595",
+      "test_name": "test_publish_skill_happy_path"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_skill_unpublish_republish_lifecycle.TestSkillUnpublishRepublishLifecycle.test_unpublish_republish_lifecycle",
+      "case_id": "ELITEA-2599",
+      "test_name": "test_unpublish_republish_lifecycle"
+    },
+    {
+      "tms_ref": "tests.ui.skills.test_subagent_skills_isolation.TestSubagentSkillsIsolation.test_subagent_uses_only_its_own_attached_skill",
+      "case_id": "ELITEA-2608",
+      "test_name": "test_subagent_uses_only_its_own_attached_skill"
+    }
+  ]
+}
