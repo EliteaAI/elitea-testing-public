@@ -376,3 +376,311 @@ element, earning it a real testid per `.agents/testing.md`).
 - Wait strategy: `page.expect_response()` on the fork POST (`/elitea_core/fork/prompt_lib/{target_id}`,
   method POST) exactly like ELITEA-1893's test — don't use a fixed
   timeout for the 201.
+
+---
+
+## 2026-08-26 — Adjustment (issue #1800)
+
+**Analyst:** qa-engineer (Sage), investigation slot · **Trigger:** GHA run
+[32931571484](https://github.com/EliteaAI/elitea-testing-public/actions/runs/32931571484),
+cell `dev-stable - pipelines` (user3, `dev.elitea.ai`) — failed 3/3 identically at Step 4
+with `Locator.wait_for: Timeout 10000ms exceeded — waiting for
+locator("[data-testid=\"select-option-399\"]")`.
+
+### Verdict
+
+**Test-data / portability defect — a test-code regression, introduced by
+`e42e71536` (2026-08-25, "fix: update SOURCE_PROJECT_ID to use environment variable
+for flexibility").** NOT a product bug, NOT environment drift, NOT a case-text
+problem. No defect ticket filed (nothing in the product misbehaves); the fix is
+entirely inside the test's two project constants.
+
+The commit inverted the AFS's project pair. It made the **SOURCE** env-derived
+(`SOURCE_PROJECT_ID = settings.elitea_project_id`) and left the **TARGET** hardcoded
+to `399`, relabelling `399`'s comment as *"shared test project (fixed across
+environments)"* — a factually false description. `399` is **`project_user_659`,
+`owner_id: 659` — the local operator's own personal ("Private") project**, which is
+exactly what `ELITEA_PROJECT_ID` already resolves to on this machine. The result:
+
+* **on localhost** — `SOURCE == TARGET == 399`, and the product deliberately excludes
+  the currently-selected project from the Fork target list, so `select-option-399`
+  can never render. **The merged test is red on localhost too** (reproduced this
+  session — see below), i.e. this was never a DEV-only failure.
+* **on DEV as `autotest_user_3`** — `SOURCE = TEST_USER_PROJECT_3` (that user's own
+  "Private" project, per `.github/workflows/test-ui-custom.yml:506`), while `399` is a
+  *different user's* private project that user3 has no membership in. Doubly absent.
+
+### Evidence
+
+**1 — What `ELITEA_PROJECT_ID` / the three project ids actually are (product API, not
+code comments).** `GET {ELITEA_API_BASE}/projects/project/default/1?check_public_role=true`
+— the identical request the UI itself issues (captured live:
+`GET http://localhost:5173/api/v2/projects/project/default/1?check_public_role=true => [200]`),
+as the local acting user:
+
+```
+{"id": 400, "name": "UI Testing",           "owner_id": 7}
+{"id": 471, "name": "Elitea Testing Team",  "owner_id": 7}
+{"id":  25, "name": "Elitea Development",   "owner_id": 7}
+{"id": 399, "name": "project_user_659",     "owner_id": 659}   <-- the acting user's OWN project
+{"id": 406, "name": "Bugs & Features",      "owner_id": 7}
+```
+
+Resolved settings on this machine (`from config import settings`):
+`elitea_project_id = 399` · `elitea_team_project_id = 471` · `users_team_project_id = 400`.
+
+`ProjectSelect.jsx:99-104` renders the project whose id equals `user.personal_project_id`
+with the literal label **"Private"** — which is why `399` shows as "Private" locally and
+why the AFS (correctly) called it *"the user's own/default project"*.
+
+**2 — Local reproduction (clean process).**
+
+```
+cd automation && HEADLESS=true ../.venv/bin/pytest \
+  tests/ui/pipelines/test_pipeline_fork_to_different_project.py -v -p no:cacheprovider
+
+tests/ui/pipelines/test_pipeline_fork_to_different_project.py:203 ->
+pages/pipeline_detail_page.py:2468: in select_fork_target_project
+E   playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 10000ms exceeded.
+E     - waiting for locator("[data-testid=\"select-option-399\"]") to be visible
+```
+
+Byte-identical to the DEV failure. **The test is red everywhere, not just on DEV.**
+
+**3 — The product's own rule (source, not inference).**
+`EliteaUI/src/[fsd]/entities/import-wizard/lib/hooks/useForkProjectIds.hooks.js`
+(introduced `7515f444`, 2026-04-08 — long predating this test, so no product change is
+involved):
+
+```js
+const excludedProjectIds = useMemo(
+  () => (isForking ? [PUBLIC_PROJECT_ID, selectedProjectId] : []),
+  [isForking, selectedProjectId],
+);
+```
+
+consumed by `IWModalContent.jsx:105` (`filterIds={excludedProjectIds}`) →
+`ProjectSelect.jsx:107` (`const excludedIds = filterIds.map(id => +id)`).
+**When forking, the target dropdown = the acting user's project memberships MINUS the
+public project MINUS the currently-selected (source) project.** There is no permission
+or role filter beyond that.
+
+**4 — Live walk of the Fork wizard, both directions (localhost:5173, acting user).**
+Option inventory read straight off the open dropdown:
+
+| Source project selected | `select-option-*` testids actually rendered |
+|---|---|
+| **399 "Private"** (what the merged test does) | `select-option-406`, `select-option-25`, `select-option-471`, `select-option-400` — **`select-option-399` ABSENT** |
+| **400 "UI Testing"** (what the AFS specified) | `select-option-399` ("Private"), `select-option-406`, `select-option-25`, `select-option-471` — **`select-option-399` PRESENT** |
+
+Control: the **sidebar** project switcher (no fork exclusion) does render
+`select-option-399` "Private" alongside all five — so the option's absence in the Fork
+wizard is the exclusion rule, not a missing testid or a membership problem.
+
+![Fork target dropdown with project 399 selected — 399 absent](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/ELITEA-2051-localhost-fork-dropdown-from-project-399.png)
+![Fork target dropdown with project 400 selected — 399 present](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/ELITEA-2051-localhost-fork-dropdown-from-project-400.png)
+
+**5 — The DEV failure screenshot corroborates the same mechanism.**
+[ELITEA-2051-step4-fork-project-selector.png](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/ELITEA-2051-step4-fork-project-selector.png):
+the sidebar reads **`Project: Private`** (so `SOURCE_PROJECT_ID` resolved to user3's own
+private project, exactly as it does locally), and the open Fork dropdown offers exactly
+one option — **"Elitea Automation"**. Therefore `autotest_user_3` belongs to precisely two
+projects: its own private one and "Elitea Automation" — **neither `399` nor `400` nor
+`471`**. Consequence for the fix: **no fixed project id can serve as the source on both
+localhost and DEV.**
+
+**6 — Regression provenance.** `git log` on the test file:
+
+```
+e42e71536 2026-08-25 fix: update SOURCE_PROJECT_ID to use environment variable for flexibility
+736f6dafd 2026-08-21 test: enable all pipeline tests by replacing 'new' marker with 'new_verified'
+6e1b11283 2026-08-09 test: pipelines-remaining wave-02 ... (#1343)   <-- original green delivery
+```
+
+`e42e71536` diff:
+
+```diff
+-# Source project — "UI Testing" (400): the AFS's chosen "pipeline from
+-# another project", also exercised via the project switcher per case Step 1.
+-SOURCE_PROJECT_ID = 400
+-# Target/fork-into project — "Private" (399): the suite default project,
+-# i.e. the user's own/home project (case's "user's own project").
++# Source project — user's home project from ELITEA_PROJECT_ID env var.
++# The test user's project (varies per environment).
++SOURCE_PROJECT_ID = settings.elitea_project_id
++# Target/fork-into project — shared test project (fixed across environments).
+ TARGET_PROJECT_ID = 399
+```
+
+The commit is on `origin/main` and `origin/automation/base` (`git branch -r --contains
+e42e71536`). CI runs `main`, which is why the nightly went red.
+
+**7 — Contract check: which constant *should* be env-derived.** TMS case ELITEA-2051's
+Test Data table says **`Target project | User's private project`**, its objective says
+*"a pipeline from another project can be forked into the user's own project"*, and Step 5
+asserts *"a forked copy is created in **user's own project**"*. So `ELITEA_PROJECT_ID`
+(= `TEST_USER_PROJECT_<n>` in CI = the acting user's own project) is the **TARGET**, and
+the source must be some *other* project the acting user can reach. `e42e71536` assigned
+it to the source.
+
+**8 — Sibling test, for shape reference.**
+`tests/ui/agents/test_fork_agent_to_different_project.py:57-62` runs the INVERSE direction
+of the same mechanic and is already correctly shaped for it:
+`SOURCE = settings.elitea_project_id` (user's own) / `TARGET = int(settings.users_team_project_id)`.
+`e42e71536` appears to have half-copied that pattern onto a case whose direction is
+reversed. **Note (not verified here):** that sibling test would hit the same DEV wall from
+the other side — `users_team_project_id` defaults to `"400"` and `USERS_TEAM_PROJECT_ID`
+is **not** passed by `.github/workflows/test-ui-custom.yml`, so on DEV it resolves to a
+project user-N is not a member of. It did not appear in run 32931571484's `agents` cell
+junit, so its DEV status is unknown — flagged, not claimed.
+
+### Fix specification (for the implementer — do not weaken any assertion)
+
+Triage class per `adjust-automated-test` § Step 2: **D (test data / config)**. Nothing on
+the **preserve-the-nature rail** moves: every assertion, every `allure.step`, every
+observable and the step order stay byte-for-byte as they are. Only *which project ids the
+test uses* and *how they are resolved* changes. **Expected-result changes: none.**
+
+**F1 — Restore the case's direction, env-derived on the correct side.**
+In `automation/tests/ui/pipelines/test_pipeline_fork_to_different_project.py`:
+
+```python
+# Target/fork-into project — the acting user's OWN ("Private") project, per the
+# TMS case's Test Data table ("Target project | User's private project") and its
+# Step 5 ("forked copy is created in user's own project"). ELITEA_PROJECT_ID is
+# that project on every environment: locally 399 (`project_user_659`), and in CI
+# TEST_USER_PROJECT_<n> for the suite's own autotest_user_<n>
+# (.github/workflows/test-ui-custom.yml:506).
+TARGET_PROJECT_ID = settings.elitea_project_id
+```
+
+`SOURCE_PROJECT_ID` becomes a **runtime-discovered fixture value**, not a module constant
+— no fixed id is valid on both localhost and DEV (evidence 5).
+
+**F2 — Add a project-list read to the API layer** (`automation/api/client.py`), mirroring
+`PipelineAPI`'s constructor exactly (cookie session, Bearer fallback) so the identity
+matches the browser's:
+
+```python
+class ProjectAPI:
+    """Read the acting user's project memberships.
+
+    Same endpoint the UI's own project selector uses (`src/api/project.js`) —
+    GET /projects/project/default/{public_project_id}?check_public_role=true —
+    verified live 2026-08-26 against localhost:5173's own network trace.
+    """
+    def list_projects(self) -> list[dict]: ...
+```
+
+**F3 — Add one documented config key** (`automation/config.py`), used ONLY as that URL's
+path segment:
+
+```python
+# Public ("Public") project id — the path segment the projects-list endpoint takes for
+# its check_public_role probe. Mirrors EliteaUI's VITE_PUBLIC_PROJECT_ID (= 1 on the
+# DEV backend, confirmed live 2026-08-26 from the UI's own request). Config-driven so a
+# deployed env with a different public project id needs no code change.
+public_project_id: int = 1
+```
+
+No `.env.test` key and **no GHA workflow secret is required** — the default is correct on
+every environment that shares the DEV backend, and CI passes nothing today.
+
+**F4 — Source-project resolution (module-level helper or a test-local fixture; keep it in
+the test file unless a second spec needs it).** Deterministic, live-verified this session
+against the real API — it returns `400` locally, i.e. **byte-identical behaviour to the
+pre-`e42e71536` test on localhost**:
+
+```python
+projects   = ProjectAPI(browser_cookies=_browser_cookies).list_projects()
+candidates = [p for p in projects
+              if int(p["id"]) not in (TARGET_PROJECT_ID, settings.public_project_id)]
+preferred  = int(settings.users_team_project_id)          # 400 "UI Testing" by default
+source     = next((p for p in candidates if int(p["id"]) == preferred), None) \
+             or (sorted(candidates, key=lambda p: int(p["id"]))[0] if candidates else None)
+```
+
+* `preferred` keeps localhost pinned to the AFS's documented source (`UI Testing`/400) so
+  the local run is unchanged; on DEV, where the user is not in 400, it falls through.
+* the `sorted(...)[0]` fallback makes the pick deterministic run-to-run (no
+  "whatever the API returned first").
+* **no candidate ⇒ the case's own precondition ("a pipeline from a DIFFERENT project")
+  cannot be met.** Spec: `pytest.fail("ELITEA-2051 precondition unmet: acting user
+  <id> belongs to only one project (<id>); the case requires a second project to fork
+  FROM.")` — a loud, legible red rather than a silent skip. See § Open questions.
+
+**F5 — Docstring / comment corrections (mandatory, they are what misled `e42e71536`).**
+The module docstring currently hardcodes *"project 400, 'UI Testing'"* and *"(399,
+'Private', the user's own/default project)"*. Rewrite so both sides are described by
+ROLE, never by a literal id:
+
+* source — *"a project OTHER than the target, discovered at runtime from the acting
+  user's own project memberships (the same list the UI's project selector renders);
+  locally this resolves to `UI Testing`/400"*;
+* target — *"the acting user's own ('Private') project, `ELITEA_PROJECT_ID` —
+  `TEST_USER_PROJECT_<n>` in CI"*;
+* and delete the false *"shared test project (fixed across environments)"* comment
+  outright. **399 is not shared and is not fixed** — it is one specific user's private
+  project.
+
+Also fix the in-test `allure.step` strings that name literal ids ("Step 1 — ... in project
+'UI Testing' (400)", "Step 4 — ... (399, 'Private')"): they must interpolate the resolved
+ids, not assert a hardcoded environment. **This is a label change only — the assertions
+inside those steps are untouched.**
+
+**F6 — Re-verification required before the PR is raised.**
+
+1. Merge gate per `.agents/testing.md` § Merge gate: **3 separate consecutive clean-process
+   invocations** of
+   `tests/ui/pipelines/test_pipeline_fork_to_different_project.py::TestPipelineForkToDifferentProject::test_pipeline_fork_to_different_project`
+   on localhost. Expect the same green the original `#1343` delivery had, with the
+   `#570` `validateDOMNesting` soft-failure signature if it still fires — that is the
+   pre-existing sanctioned-RED condition, unrelated to this adjustment, and must NOT be
+   "fixed" here.
+2. Confirm from the run log that the resolved pair is **source 400 → target 399** locally
+   (log both ids at Step 1 — `logger.info` already does for the source; add the target).
+3. `TARGET_PROJECT_ID` is interpolated into two network assertions
+   (`/elitea_core/fork/prompt_lib/{TARGET_PROJECT_ID}` 201 and
+   `/elitea_core/application/prompt_lib/{TARGET_PROJECT_ID}/{id}` 204) — verify both
+   still match the real traffic after the swap. They are the case's own observables and
+   must keep asserting `201` / `204` exactly.
+4. **DEV is only provable by a CI run.** After merge to `automation/base` and promotion to
+   `main`, the next `UI Tests DEV Stable` nightly (or a `workflow_dispatch` with
+   `suite: pipelines`) is the verification. See § Unverified.
+
+### Coverage Map — unchanged
+
+No row of Axis 1 or Axis 2 changes. The case's observables (Fork wizard shape, 201 on the
+fork POST, new unique Pipeline/Version ids, Name/Description/Step-Limit equality, the
+"Forked from" dashboard-card attribution, 204 on delete) are all preserved verbatim. This
+adjustment changes only **which two projects** the flow runs between and **how they are
+resolved** — the case's own Test Data table (`Target project | User's private project`) is
+now honoured, where the merged code contradicted it.
+
+### Unverified / open questions (for the lead)
+
+1. **DEV as `autotest_user_3` was NOT queried directly.** `TEST_USER_PROJECT_3` and
+   `TEST_USER_TOKEN_3` are GitHub Actions secrets and are not reachable from this
+   machine, so user3's project list is **inferred** — from the failure screenshot's
+   single-option dropdown plus the product's exclusion rule — not read from the API.
+   Confidence is high (the mechanism is source-confirmed and the screenshot is
+   unambiguous), but the claim *"user3 belongs to exactly two projects"* remains
+   inference. **What the human may do, if certainty is wanted before the fix ships:**
+   read `TEST_USER_PROJECT_3` from the repo secrets, or dispatch
+   `UI Tests DEV Stable` with `suite: pipelines` after the fix and read the log.
+2. **Does `autotest_user_<n>` have *create* permission in its second project?** The fixed
+   test creates the source pipeline there via the API. Every DEV user is a member of
+   "Elitea Automation", but whether that membership carries pipeline-create rights is
+   unknown from here. If it does not, the fixed test will fail at Step 1 with a `4xx` on
+   `create_pipeline` — a **different, legible** failure that names the real gap, not the
+   current misleading locator timeout. This is the one residual risk in F4 and it can
+   only be closed by a DEV run.
+3. **`pytest.fail` vs `pytest.skip` for an unmeetable precondition (F4).** I specced a
+   loud `fail` so a single-project CI user can never silently drop this case's coverage;
+   the suite does have `skip`-on-missing-test-data precedent (`GIT_HUB_TOKEN`). If the
+   lead prefers `skip`, that is a policy call, not a technical one — flagging rather than
+   deciding.
+4. **The sibling `test_fork_agent_to_different_project.py` is likely to have the mirror
+   problem** (evidence 8) — `users_team_project_id` defaults to `400` and is never passed
+   in CI. Not in scope for #1800 and not verified; worth its own card so the same fix
+   shape lands on both fork tests at once.
