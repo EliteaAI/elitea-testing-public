@@ -1,15 +1,14 @@
 """Fork pipeline to a different project (ELITEA-2051).
 
 Creates a source Pipeline via the API in a project OTHER than the fork
-target (project 400, "UI Testing"), navigates to it via the sidebar
-project switcher + Pipelines dashboard card (Card list view) — matching
-the case's "pipeline from another project" framing — forks it via the
-pipeline-actions overflow menu's "Fork" item into the target project
-(399, "Private", the user's own/default project — the INVERSE project-pair
-direction from the sibling Agent case ELITEA-1893, but the same underlying
-mechanic: Fork always operates from whichever project is currently
-selected into a user-chosen target — see AFS § Preconditions), and
-verifies:
+target, navigates to it via the sidebar project switcher + Pipelines
+dashboard card (Card list view) — matching the case's "pipeline from
+another project" framing — forks it via the pipeline-actions overflow
+menu's "Fork" item into the target project (the INVERSE project-pair
+direction from the sibling Agent case ELITEA-1893, but the same
+underlying mechanic: Fork always operates from whichever project is
+currently selected into a user-chosen target — see AFS § Preconditions),
+and verifies:
 
 1. The Fork wizard shows only a "Main entity" card (no "Nested entities"
    section) for a dependency-free source pipeline.
@@ -25,6 +24,32 @@ verifies:
 6. Cleanup (case step 9 equivalent) deletes the forked pipeline via the
    UI's type-to-confirm dialog, and the DELETE call returns 204 No
    Content; the read-only source pipeline is deleted via the API.
+
+**The two projects, by ROLE — never by a literal id** (issue #1800: a
+hardcoded pair regressed this test into selecting the same project as both
+source and target, which the product forbids):
+
+* **Target** — the acting user's own ("Private") project, i.e.
+  ``ELITEA_PROJECT_ID`` (``TEST_USER_PROJECT_<n>`` in CI). This is what the
+  TMS case's own Test Data table specifies ("Target project | User's
+  private project") and what its Step 5 asserts ("a forked copy is created
+  in user's own project").
+* **Source** — a project OTHER than the target, discovered at runtime from
+  the acting user's own project memberships (the same list the UI's project
+  selector renders). No fixed id is valid on every environment: each CI
+  matrix cell runs as its own ``autotest_user_<n>`` with its own
+  memberships. Locally this resolves to "UI Testing" (400), the source the
+  AFS documents.
+
+Precondition discovery — **declared**: the source project is resolved by
+reading the acting user's REAL project memberships from the product's own
+projects-list endpoint (``ProjectAPI.list_projects()`` — the identical
+request ``EliteaUI/src/api/project.js`` issues). That is a live read of
+real system state used only to REACH the case's Step 1 portably; none of
+the case's own observables is fabricated, injected or substituted. Source
+and target must differ because the product deliberately excludes the
+currently-selected project from the Fork target dropdown
+(``EliteaUI/src/[fsd]/entities/import-wizard/lib/hooks/useForkProjectIds.hooks.js``).
 
 One MINOR, isolated, already-filed product defect (React
 ``validateDOMNesting`` ``<p>``-in-``<p>`` console warning on the Fork/Import
@@ -45,7 +70,7 @@ import uuid
 
 import allure
 import pytest
-from api import PipelineAPI
+from api import PipelineAPI, ProjectAPI
 from config import settings
 from pages.pipeline_detail_page import PipelineDetailPage
 from pages.pipelines_list_page import PipelinesListPage
@@ -58,11 +83,66 @@ FORK_TIMEOUT = 15_000
 
 logger = logging.getLogger("elitea.tests.pipelines")
 
-# Source project — user's home project from ELITEA_PROJECT_ID env var.
-# The test user's project (varies per environment).
-SOURCE_PROJECT_ID = settings.elitea_project_id
-# Target/fork-into project — shared test project (fixed across environments).
-TARGET_PROJECT_ID = 399
+# Target/fork-into project — the acting user's OWN ("Private") project, per
+# the TMS case's Test Data table ("Target project | User's private project")
+# and its Step 5 ("a forked copy is created in user's own project").
+# ELITEA_PROJECT_ID is that project on every environment: locally 399
+# (`project_user_659`), and in CI TEST_USER_PROJECT_<n> for the suite's own
+# autotest_user_<n> (.github/workflows/test-ui-custom.yml).
+TARGET_PROJECT_ID = settings.elitea_project_id
+
+# Source project — deliberately NOT a module constant. No fixed id is valid
+# on both localhost and DEV, so it is discovered per-run below.
+
+
+def _resolve_source_project_id(browser_cookies: list[dict]) -> int:
+    """Return a project the acting user belongs to, other than the target.
+
+    Reads the acting user's real project memberships from the product's own
+    projects-list endpoint (the same one the UI's project selector renders
+    from), then:
+
+    * drops the fork TARGET (the product excludes the currently-selected
+      project from the Fork target dropdown, so source == target can never
+      work) and the PUBLIC project (not a fork source for this case);
+    * prefers ``USERS_TEAM_PROJECT_ID`` when the user is actually a member
+      of it — that keeps localhost pinned to the AFS's documented source
+      ("UI Testing"/400), i.e. behaviour identical to this test's original
+      green delivery;
+    * otherwise falls back to the lowest remaining project id, so the pick
+      is deterministic run-to-run rather than "whatever the API listed
+      first".
+
+    Fails loudly (never skips) when the user belongs to no second project:
+    that is the case's own precondition ("a pipeline from a DIFFERENT
+    project") being unmeetable, and a silent skip would drop this case's
+    coverage without anyone noticing.
+    """
+    project_api = ProjectAPI(browser_cookies=browser_cookies)
+    try:
+        projects = project_api.list_projects()
+    finally:
+        project_api.close()
+
+    member_ids = [int(p["id"]) for p in projects]
+    candidates = [
+        p for p in projects
+        if int(p["id"]) not in (TARGET_PROJECT_ID, settings.public_project_id)
+    ]
+    if not candidates:
+        pytest.fail(
+            "ELITEA-2051 precondition unmet: the acting user belongs to no "
+            f"project other than the fork target ({TARGET_PROJECT_ID}); the "
+            "case requires a second project to fork FROM. Memberships read "
+            f"from the projects-list endpoint: {member_ids}"
+        )
+
+    preferred = int(settings.users_team_project_id)
+    chosen = next(
+        (p for p in candidates if int(p["id"]) == preferred),
+        sorted(candidates, key=lambda p: int(p["id"]))[0],
+    )
+    return int(chosen["id"])
 
 
 class TestPipelineForkToDifferentProject:
@@ -80,16 +160,18 @@ class TestPipelineForkToDifferentProject:
 
         Steps (AFS
         test-specs/pipelines/l2_pipeline-fork-to-different-project_ELITEA-2051.md):
-        1. Create the source Pipeline via API in project 400 ("UI
-           Testing"); navigate to it via the sidebar project switcher +
-           Pipelines dashboard card (precondition — a pipeline from
+        1. Create the source Pipeline via API in the resolved SOURCE
+           project (a project the acting user belongs to, other than the
+           fork target); navigate to it via the sidebar project switcher
+           + Pipelines dashboard card (precondition — a pipeline from
            another project, accessible to the user).
         2. Open the pipeline-actions overflow menu; verify the VERSION
            group shows "Fork" enabled.
         3. Click "Fork"; verify the Fork wizard dialog opens showing the
            Project selector and Main-entity preview card.
-        4. Select a target project DIFFERENT from the source (399,
-           "Private"); verify the Fork button becomes enabled.
+        4. Select the TARGET project — the acting user's own ("Private")
+           project, necessarily DIFFERENT from the source; verify the Fork
+           button becomes enabled.
         5. Verify the entity-preview card shows the Main entity only (no
            "Nested entities" section, since the source has no attached
            toolkits/skills/nested agents).
@@ -108,13 +190,23 @@ class TestPipelineForkToDifferentProject:
         source_pipeline_name = f"el-2051-pipeline-{unique_suffix}"
         source_pipeline_description = "Pipeline for ELITEA-2051 fork-to-project verification."
 
+        # SOURCE project — discovered live from the acting user's real
+        # project memberships (declared precondition discovery; see the
+        # module docstring). It is necessarily != TARGET_PROJECT_ID, which
+        # is what the Fork wizard requires.
+        source_project_id = _resolve_source_project_id(_browser_cookies)
+        logger.info(
+            "ELITEA-2051 resolved project pair — source=%d target=%d",
+            source_project_id, TARGET_PROJECT_ID,
+        )
+
         # Project-scoped PipelineAPI instances — the suite-default
-        # `pipeline_api` fixture is scoped to project 399 (the FORK
-        # TARGET here), so both the source-project (400) and target-project
-        # (399) clients are built explicitly, mirroring
+        # `pipeline_api` fixture is scoped to the ELITEA_PROJECT_ID project
+        # (the FORK TARGET here), so both the source-project and
+        # target-project clients are built explicitly, mirroring
         # test_fork_agent_to_different_project.py's `target_project_agent_api`.
         source_project_pipeline_api = PipelineAPI(
-            browser_cookies=_browser_cookies, project_id=str(SOURCE_PROJECT_ID),
+            browser_cookies=_browser_cookies, project_id=str(source_project_id),
         )
         target_project_pipeline_api = PipelineAPI(
             browser_cookies=_browser_cookies, project_id=str(TARGET_PROJECT_ID),
@@ -130,9 +222,9 @@ class TestPipelineForkToDifferentProject:
 
         try:
             with allure.step(
-                "Step 1 — Create the source Pipeline via API in project "
-                "'UI Testing' (400); navigate to it via the sidebar "
-                "project switcher + Pipelines dashboard card"
+                f"Step 1 — Create the source Pipeline via API in the source "
+                f"project ({source_project_id}); navigate to it via the "
+                f"sidebar project switcher + Pipelines dashboard card"
             ):
                 created = source_project_pipeline_api.create_pipeline(
                     name=source_pipeline_name,
@@ -141,12 +233,12 @@ class TestPipelineForkToDifferentProject:
                 source_pipeline_id = int(created["id"])
                 logger.info(
                     "Created source pipeline %r id=%d in project %d",
-                    source_pipeline_name, source_pipeline_id, SOURCE_PROJECT_ID,
+                    source_pipeline_name, source_pipeline_id, source_project_id,
                 )
 
                 list_page = PipelinesListPage(page)
                 list_page.navigate()
-                list_page.switch_project(SOURCE_PROJECT_ID, timeout=NAVIGATION_TIMEOUT)
+                list_page.switch_project(source_project_id, timeout=NAVIGATION_TIMEOUT)
                 list_page.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
                 if not list_page.is_card_view_active():
                     list_page.switch_to_card_view()
@@ -196,9 +288,10 @@ class TestPipelineForkToDifferentProject:
                 )
 
             with allure.step(
-                "Step 4 — Select a target project DIFFERENT from the "
-                "source (399, 'Private'); verify the Fork button becomes "
-                "enabled"
+                f"Step 4 — Select the target project ({TARGET_PROJECT_ID}, the "
+                f"acting user's own 'Private' project), DIFFERENT from the "
+                f"source ({source_project_id}); verify the Fork button "
+                f"becomes enabled"
             ):
                 detail_page.select_fork_target_project(
                     TARGET_PROJECT_ID, timeout=UI_ELEMENT_TIMEOUT,
@@ -388,8 +481,8 @@ class TestPipelineForkToDifferentProject:
                 )
 
         finally:
-            # Cleanup per AFS: source pipeline (project 400, read-only
-            # throughout Fork) always; forked pipeline (project 399) ONLY
+            # Cleanup per AFS: source pipeline (source project, read-only
+            # throughout Fork) always; forked pipeline (target project) ONLY
             # as a fallback if the UI-driven Step 10 delete above did not
             # run/succeed (forked_pipeline_id is cleared to None on success).
             if source_pipeline_id is not None:

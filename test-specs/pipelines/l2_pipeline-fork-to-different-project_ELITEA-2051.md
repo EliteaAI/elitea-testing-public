@@ -684,3 +684,39 @@ now honoured, where the merged code contradicted it.
    problem** (evidence 8) — `users_team_project_id` defaults to `400` and is never passed
    in CI. Not in scope for #1800 and not verified; worth its own card so the same fix
    shape lands on both fork tests at once.
+
+### Implementation record (implementer, 2026-08-26 — branch `tests/ELITEA-2051-fork-project-portability`)
+
+F1–F6 shipped as specced. What landed, so this section states the SHIPPED truth:
+
+| Fix | Where | Shape |
+|---|---|---|
+| F1 | `automation/tests/ui/pipelines/test_pipeline_fork_to_different_project.py` | `TARGET_PROJECT_ID = settings.elitea_project_id`; the module-level `SOURCE_PROJECT_ID` constant is **removed** |
+| F2 | `automation/api/client.py` + `automation/api/__init__.py` | `ProjectAPI.list_projects()` — `GET /projects/project/default/{public_project_id}?check_public_role=true`, cookie session + Bearer fallback, constructor mirroring `PipelineAPI` |
+| F3 | `automation/config.py` | `public_project_id: int = 1` (documented; path segment only — no `.env.test` key, no CI secret) |
+| F4 | test module | `_resolve_source_project_id(browser_cookies)` — memberships − {target, public}; prefers `users_team_project_id` **only when the user is a member of it**, else `sorted(...)[0]`; no candidate ⇒ `pytest.fail` (lead's ruling: a loud red, never `skip`) |
+| F5 | test module + method docstrings, Step 1 / Step 4 `allure.step` labels, cleanup comment | both projects described by ROLE; the false *"shared test project (fixed across environments)"* comment **deleted**; step labels interpolate the resolved ids at runtime. Assertions untouched. |
+
+**F6 verification (localhost:5173, `HEADLESS=true`, `-p no:cacheprovider`, 3 separate
+clean-process invocations):**
+
+* Resolved pair, logged at Step 1 and **identical in all 3 runs**:
+  `ELITEA-2051 resolved project pair — source=400 target=399` — i.e. byte-identical
+  routing to the pre-`e42e71536` green delivery (#1343) on localhost.
+* Both `TARGET_PROJECT_ID`-interpolated network assertions still match real traffic:
+  Step 6's `POST /elitea_core/fork/prompt_lib/399` asserted **201** and Step 10's
+  `DELETE /elitea_core/application/prompt_lib/399/{forked-id}` asserted **204**, passing
+  in all 3 runs (the fallback API cleanup never fired, which is only possible when the
+  UI-driven Step-10 delete asserted 204 successfully).
+* Sole failure in all 3 runs is the pre-existing **sanctioned-RED #570** signature
+  (`validateDOMNesting` on `IWModalSucceedContent.jsx`, soft-asserted) — deterministic
+  3/3, single-cause, linked to an OPEN issue. **Not touched by this adjustment**: the
+  diff contains no change to the `soft_failures` / Step 6b block. Steps 1–10 otherwise
+  pass, and the pre-fix failure (a Step-4 `select-option-399` locator timeout) is gone.
+* Lint: `ruff` per-file error counts unchanged from `automation/base` for
+  `config.py`/`api/client.py`, and one pre-existing `E501` removed from `api/__init__.py`.
+
+**Still open (unchanged from § Unverified above):** DEV is provable only by a CI run
+(open questions 1–2 — whether `autotest_user_<n>`'s second project carries pipeline-create
+rights). The sibling `test_fork_agent_to_different_project.py` (open question 4) is
+tracked separately as issue #1801 and was NOT touched here.
