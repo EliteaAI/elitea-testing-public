@@ -1886,6 +1886,26 @@ def sensitive_delete_file_toolkit(api: APIClient):
     wipe somebody else's configuration. The restore is verified by readback and
     fails LOUDLY, because a botched restore corrupts the org for everyone.
 
+    **The ``try`` opens BEFORE the mutating PUT, not after it.** Everything
+    that can raise once org-wide state is dirty — the readback GET, its
+    assertion, the log — sits inside the protected region. Were the ``try`` to
+    open after the write, a transient 5xx on the readback (or the assertion
+    firing, which is the very thing it exists to do) would abort the fixture
+    during SETUP; pytest does not run the teardown half of a fixture that
+    raised in setup, so the sensitive flag would stay set on the shared
+    backend permanently, with nothing to self-heal it.
+
+    **Mutate and restore are deliberately asymmetric**, and setup's half is the
+    generous one: setup ADDS to whatever ``sensitive_tools`` it found, while
+    teardown PUTs the captured original *wholesale*. So if a concurrent actor
+    added an entry during the module's window, teardown wins and that entry is
+    lost. That is the ordered behaviour (ELITEA-2211 AFS § Rework delta row 7):
+    restoring exactly what we captured is the only way to guarantee we leave no
+    residue of our own, and a read-modify-write restore would reopen the very
+    race it tried to close. It is acceptable here because this module is
+    serial-only by contract (never under ``pytest-xdist``, see above) and the
+    window is one module long — but it is the reason the window must stay short.
+
     Module scope means this fixture's setup/teardown run ONCE for whichever
     single test module requests it, even though it is centrally defined here
     (fixture location rule — ``.claude/rules/api-patterns.md``).
@@ -1898,24 +1918,26 @@ def sensitive_delete_file_toolkit(api: APIClient):
         tools.append(_SENSITIVE_TOOL_NAME)
     sensitive_tools[_SENSITIVE_TOOLKIT_TYPE] = tools
 
-    api.set_guardrails_config({**original, "sensitive_tools": sensitive_tools})
-
-    applied = api.get_guardrails_config().get("sensitive_tools") or {}
-    assert _SENSITIVE_TOOL_NAME in applied.get(_SENSITIVE_TOOLKIT_TYPE, []), (
-        f"Guardrails readback should list {_SENSITIVE_TOOLKIT_TYPE}/{_SENSITIVE_TOOL_NAME} "
-        f"as sensitive, got: {applied!r}"
-    )
-    logger.info(
-        "Marked %s/%s sensitive for the module (was: %r)",
-        _SENSITIVE_TOOLKIT_TYPE, _SENSITIVE_TOOL_NAME, original.get("sensitive_tools"),
-    )
-
+    # The try opens BEFORE the write: from here on the org-wide config may be
+    # dirty, so every subsequent statement must be covered by the restore.
     try:
+        api.set_guardrails_config({**original, "sensitive_tools": sensitive_tools})
+
+        applied = api.get_guardrails_config().get("sensitive_tools") or {}
+        assert _SENSITIVE_TOOL_NAME in applied.get(_SENSITIVE_TOOLKIT_TYPE, []), (
+            f"Guardrails readback should list {_SENSITIVE_TOOLKIT_TYPE}/{_SENSITIVE_TOOL_NAME} "
+            f"as sensitive, got: {applied!r}"
+        )
+        logger.info(
+            "Marked %s/%s sensitive for the module (was: %r)",
+            _SENSITIVE_TOOLKIT_TYPE, _SENSITIVE_TOOL_NAME, original.get("sensitive_tools"),
+        )
+
         yield
     finally:
         api.set_guardrails_config(original)
         restored = api.get_guardrails_config()
-        assert restored.get("sensitive_tools") == original.get("sensitive_tools"), (
+        assert (restored.get("sensitive_tools") or {}) == (original.get("sensitive_tools") or {}), (
             "Guardrails config was NOT restored — this is an org-wide side effect. "
             f"expected {original.get('sensitive_tools')!r}, got {restored.get('sensitive_tools')!r}"
         )

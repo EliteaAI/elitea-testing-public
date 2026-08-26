@@ -275,12 +275,11 @@ Provenance verified after `cd ../EliteaUI && git fetch origin` on 2026-08-27.
 | Toolkits submenu item | `toolkits-menuitem` | **on-main ✓** |
 | Message composer | `chat-message-input` | **on-main ✓** |
 | Toolkit participant row (dynamic) | `toolkits-menu-item-toolkit-{project_id}-{toolkit_id}` — live-confirmed as `toolkits-menu-item-toolkit-399-3385` | **on-main ✓** |
+| Toolkits participants badge | `chat-participants-badge-toolkits` — via `ChatPage.is_participants_badge_visible(section="toolkits")` | **on-main ✓** (`CollapsedPerticapantsList.jsx:223`, runtime-composed `chat-participants-badge-${entity.section}`) |
 
-**No new testids are needed for this case.** All nine handles exist and are on
+**No new testids are needed for this case.** All ten handles exist and are on
 `EliteaAI/EliteaUI` `main` — this case is **fully promotable** with zero pending human
 cherry-picks.
-
-| Toolkits participants badge | `chat-participants-badge-toolkits` — via `ChatPage.is_participants_badge_visible(section="toolkits")` | **on-main ✓** (`CollapsedPerticapantsList.jsx:223`, runtime-composed `chat-participants-badge-${entity.section}`) |
 
 **Implementer correction, 2026-08-27 (supersedes the note this replaced).** The AFS
 previously recorded that `ChatPage.add_toolkit_participant()` — the legacy

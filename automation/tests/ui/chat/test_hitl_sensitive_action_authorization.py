@@ -36,8 +36,10 @@ frame. Nothing is mocked, injected or intercepted.
 The flag applies immediately (``requires_restart: []``) and is toolkit-TYPE
 scoped, so it is a real ORG-WIDE side effect while the module runs: the fixture
 captures the original configuration, mutates it additively, and restores the
-captured original verbatim in a ``finally`` (verified by readback). Do not run
-this module under ``pytest-xdist`` alongside artifact-toolkit suites.
+captured original verbatim in a ``finally`` that is armed BEFORE the mutating
+write (so a failure of the readback or its assertion cannot strand the flag),
+verified by readback. Do not run this module under ``pytest-xdist`` alongside
+artifact-toolkit suites.
 
 Each case reaches its OWN fresh Sensitive Action Authorization card (own
 ``conversation_id`` + own ``artifact_toolkit`` — both function-scoped fixtures)
@@ -179,7 +181,7 @@ class TestSensitiveActionCardDisplay:
         artifact_seeded_file: str,
         sensitive_delete_file_toolkit,
     ):
-        """Card shows correct heading, action-name block, and exactly 3 buttons.
+        """Card shows correct heading, action-name block, and all three action buttons.
 
         TRANSIT SUBSTITUTION (declared, AFS § Fidelity Declaration): only the
         precondition is substituted — ``sensitive_delete_file_toolkit`` marks
@@ -236,7 +238,7 @@ class TestSensitiveActionCardDisplay:
             "Cleanup (not a case step) — resolve the pending card with Block so "
             "the conversation is not left paused before it is deleted"
         ):
-            chat.sensitive_action_block_button.first.click()
+            chat.sensitive_action_block_button.click()
             expect(chat.sensitive_action_panel).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)
 
 
