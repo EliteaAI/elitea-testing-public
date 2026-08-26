@@ -1,0 +1,664 @@
+{
+  "batch": "skills-remaining-w3",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-skills-remaining-w3",
+  "gate": {
+    "verdict": "red",
+    "runs": 1,
+    "seconds": [
+      964.89
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/skills/test_agent_skills_validation_attribution_and_token_invalidation.py",
+        "signature": "playwright._impl._errors.TimeoutError: Timeout 30000ms exceeded while waiting for event \"response\" (failed at 260.7s into the run)",
+        "case_ids": [
+          "ELITEA-2601"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/skills/test_agent_with_skills_publishing_flow.py",
+        "signature": "playwright._impl._errors.TimeoutError: Timeout 30000ms exceeded while waiting for event \"response\" (failed at 368.7s into the run)",
+        "case_ids": [
+          "ELITEA-2600"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/skills/test_published_agent_version_cannot_be_modified.py",
+        "signature": "playwright._impl._errors.TimeoutError: Timeout 30000ms exceeded while waiting for event \"response\" (failed at 238.8s into the run)",
+        "case_ids": [
+          "ELITEA-2614"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/skills/test_skill_publish_token_invalidation_and_ttl.py::TestSkillPublishTokenInvalidationAndTTL::test_publish_token_invalidated_by_modification",
+        "signature": "requests.exceptions.HTTPError: 503 Server Error: Service Unavailable for url: https://dev.elitea.ai/api/v2/elitea_core/skill/prompt_lib/399/1663 (63.6s)",
+        "case_ids": [
+          "ELITEA-2597"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/skills/test_skill_publish_token_invalidation_and_ttl.py::TestSkillPublishTokenInvalidationAndTTL::test_publish_token_expires_after_ttl",
+        "signature": "requests.exceptions.HTTPError: 503 Server Error: Service Unavailable for url: https://dev.elitea.ai/api/v2/elitea_core/skills/prompt_lib/399 (0.8s — cascaded from the module's shared fixture)",
+        "case_ids": [
+          "ELITEA-2597"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/skills/test_skill_unpublish_republish_lifecycle.py",
+        "signature": "requests.exceptions.HTTPError: 503 Server Error: Service Unavailable for url: https://dev.elitea.ai/api/v2/elitea_core/skills/prompt_lib/399 (0.8s)",
+        "case_ids": [
+          "ELITEA-2599"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2595",
+      "outcome": "blocked",
+      "note": "review/fix round 1 failed",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed https://github.com/EliteaAI/elitea-testing-public/issues/1463 -- ELITEA-2598's premise that a missing custom skill icon is WARN-level (non-blocking) is false live: it is a deterministic CRITICAL issue that disables the Publish button (status FAIL). Missing tags behaves the same way, which also means ELITEA-2595's happy-path Test Data is missing icon+tag as required prerequisites (not just th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1463"
+        },
+        {
+          "kind": "note",
+          "note": "Known defect #614 (version-selector doesn't auto-navigate/auto-select after a successful Publish, previously only confirmed for agents in ELITEA-1892) reproduces identically for skills -- confirmed live on skill 1560: after Publish succeeded (200), the VERSION dropdown kept showing 'base' as active until the new 'v1.0' version was explicitly re-selected by name. Documented in ELITEA-2595's AFS and… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The 'publish-menuitem' testid (and any DotMenu-based menu item testid in this codebase) is constructed at RUNTIME as `${item.key}-menuitem` by DotMenu.jsx, not a literal string in JSX -- a plain `git grep -- \"publish-menuitem\"` finds nothing even though the testid is real and live-confirmed working. Verification requires reading the menu-item object's `key:` field at its call site plus DotMenu.jsx… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2595 is sanctioned RED, not plain green: every functional step (create, tag+icon, save, Publish wizard through Preparation/Validation/Publishing, version re-select via the #614-tolerant select_version_by_name()+API-tie-breaker, Catalog category+card verification) passes cleanly; the test's terminal soft-assertion surfaces known defect #611 (Publish wizard Stepper leaking MUI props onto the … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/611"
+        },
+        {
+          "kind": "note",
+          "note": "Added a new EliteaUI testid: SkillCategorySection.jsx's Catalog Skills-tab category-heading Typography had NO data-testid at all (unlike the Agents-tab's AgentCategorySection.jsx, which already carries catalog-category-heading-{slug}) — a genuinely different component despite sounding shared. Added the identical pattern via add-data-testid, committed+pushed to EliteaUI/EliteaUI@32ad365f on automat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@32ad365f"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2595's AFS Concrete Handles table named the Publish wizard's Category select trigger as agent-publish-category-select-combobox — live source (PreparationStep.jsx, confirmed against both origin/main and origin/automation/testids after a fresh fetch) shows the real testid is agent-publish-category-select (no -combobox suffix). Amended the AFS in the same PR with the correction and why.",
+          "ref": "test-specs/skills/l2_skill-publishing-wizard-happy-path_ELITEA-2595.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2598: the AI publish_skill_validate gate is sensitive to a fixture name's exact literal text, not just its semantic genericness — appending a uuid suffix to the case's 'skill' name example (e.g. 'skill-a1b2c3d4', intended purely to dodge a display-name collision) downgraded the AI's generic-name signal from a warnings entry (status WARN) to a recommendations entry (status PASS), silently br… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Coverage-completeness gap (both ELITEA-2595 & ELITEA-2598). The AFS Coverage Map claims the published skill's card is verified 'under its selected Category' — matching the TMS case's own step 9/10 wording — but the implementation performs two unrelated, page-wide checks: `CATEGORY_NAME in catalog_page.get_visible_category_heading_texts()` (true if that category section exists ANYWHERE on the page)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_publish_wizard_happy_path.py:356-380 (also test_skill_publish_warn_status_allows_publishing.py:257-273)"
+        },
+        {
+          "kind": "defect",
+          "note": "Minor AFS/implementation drift, non-blocking on its own: the AFS's 'Asserted where' cites 'step 4: dialog visible, Stepper shows 3 steps', but no code checks the Stepper element or its step count — only the version-name-input visibility and Continue-disabled state are asserted. Same gap pre-exists in the agent-flow precedent test, so low risk, but the AFS overstates what's verified.",
+          "ref": "test-specs/skills/l2_skill-publishing-wizard-happy-path_ELITEA-2595.md (Coverage Map row 2) vs test_skill_publish_wizard_happy_path.py:218-230"
+        },
+        {
+          "kind": "note",
+          "note": "Doc-only drift, non-blocking: ELITEA-2596's AFS still cites the wrong testid `agent-publish-category-select-combobox` in its cross-reference list to ELITEA-2595's Handles table. ELITEA-2595's own AFS was correctly amended in this PR (`-combobox` suffix removed) and the actual code/LocatorDescriptor uses the correct `agent-publish-category-select` throughout — this is purely a stale citation that w… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_skill-publishing-ai-validation-blockers_ELITEA-2596.md (Concrete Handles)"
+        },
+        {
+          "kind": "note",
+          "note": "`git diff origin/tests/batch-skills-remaining-w3...origin/tests/2595-2596-2598-skill-publish-wizard | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 2 hits: `SKILL_CARD_PREFIX` (pre-existing class constant, additive use) and `PUBLISH_CATEGORY_OPTION` (new class-level `[data-testid=\"s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "mechanical grep"
+        },
+        {
+          "kind": "note",
+          "note": "Verified: all cited page-object methods/fixtures exist (SkillDetailPage, SkillFormPage, AgentHubPage, SkillAPI, skill_api fixture registered in fixtures/api_fixtures.py — not defined in a test file); `switch_version()` raises `RuntimeError` matching `select_version_by_name`'s catch; `Dialog`/`action` imports correct. Issues #611, #614, #1463 all confirmed OPEN with matching titles/labels. New test… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "n/a"
+        }
+      ],
+      "afs": "test-specs/skills/l2_skill-publishing-wizard-happy-path_ELITEA-2595.md",
+      "branch": "tests/2595-2596-2598-skill-publish-wizard",
+      "pr": 1464
+    },
+    {
+      "id": "ELITEA-2596",
+      "outcome": "blocked",
+      "note": "review/fix round 1 failed",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed https://github.com/EliteaAI/elitea-testing-public/issues/1463 -- ELITEA-2598's premise that a missing custom skill icon is WARN-level (non-blocking) is false live: it is a deterministic CRITICAL issue that disables the Publish button (status FAIL). Missing tags behaves the same way, which also means ELITEA-2595's happy-path Test Data is missing icon+tag as required prerequisites (not just th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1463"
+        },
+        {
+          "kind": "note",
+          "note": "Known defect #614 (version-selector doesn't auto-navigate/auto-select after a successful Publish, previously only confirmed for agents in ELITEA-1892) reproduces identically for skills -- confirmed live on skill 1560: after Publish succeeded (200), the VERSION dropdown kept showing 'base' as active until the new 'v1.0' version was explicitly re-selected by name. Documented in ELITEA-2595's AFS and… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The 'publish-menuitem' testid (and any DotMenu-based menu item testid in this codebase) is constructed at RUNTIME as `${item.key}-menuitem` by DotMenu.jsx, not a literal string in JSX -- a plain `git grep -- \"publish-menuitem\"` finds nothing even though the testid is real and live-confirmed working. Verification requires reading the menu-item object's `key:` field at its call site plus DotMenu.jsx… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2595 is sanctioned RED, not plain green: every functional step (create, tag+icon, save, Publish wizard through Preparation/Validation/Publishing, version re-select via the #614-tolerant select_version_by_name()+API-tie-breaker, Catalog category+card verification) passes cleanly; the test's terminal soft-assertion surfaces known defect #611 (Publish wizard Stepper leaking MUI props onto the … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/611"
+        },
+        {
+          "kind": "note",
+          "note": "Added a new EliteaUI testid: SkillCategorySection.jsx's Catalog Skills-tab category-heading Typography had NO data-testid at all (unlike the Agents-tab's AgentCategorySection.jsx, which already carries catalog-category-heading-{slug}) — a genuinely different component despite sounding shared. Added the identical pattern via add-data-testid, committed+pushed to EliteaUI/EliteaUI@32ad365f on automat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI/EliteaUI@32ad365f"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2595's AFS Concrete Handles table named the Publish wizard's Category select trigger as agent-publish-category-select-combobox — live source (PreparationStep.jsx, confirmed against both origin/main and origin/automation/testids after a fresh fetch) shows the real testid is agent-publish-category-select (no -combobox suffix). Amended the AFS in the same PR with the correction and why.",
+          "ref": "test-specs/skills/l2_skill-publishing-wizard-happy-path_ELITEA-2595.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2598: the AI publish_skill_validate gate is sensitive to a fixture name's exact literal text, not just its semantic genericness — appending a uuid suffix to the case's 'skill' name example (e.g. 'skill-a1b2c3d4', intended purely to dodge a display-name collision) downgraded the AI's generic-name signal from a warnings entry (status WARN) to a recommendations entry (status PASS), silently br… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Coverage-completeness gap (both ELITEA-2595 & ELITEA-2598). The AFS Coverage Map claims the published skill's card is verified 'under its selected Category' — matching the TMS case's own step 9/10 wording — but the implementation performs two unrelated, page-wide checks: `CATEGORY_NAME in catalog_page.get_visible_category_heading_texts()` (true if that category section exists ANYWHERE on the page)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_publish_wizard_happy_path.py:356-380 (also test_skill_publish_warn_status_allows_publishing.py:257-273)"
+        },
+        {
+          "kind": "defect",
+          "note": "Minor AFS/implementation drift, non-blocking on its own: the AFS's 'Asserted where' cites 'step 4: dialog visible, Stepper shows 3 steps', but no code checks the Stepper element or its step count — only the version-name-input visibility and Continue-disabled state are asserted. Same gap pre-exists in the agent-flow precedent test, so low risk, but the AFS overstates what's verified.",
+          "ref": "test-specs/skills/l2_skill-publishing-wizard-happy-path_ELITEA-2595.md (Coverage Map row 2) vs test_skill_publish_wizard_happy_path.py:218-230"
+        },
+        {
+          "kind": "note",
+          "note": "Doc-only drift, non-blocking: ELITEA-2596's AFS still cites the wrong testid `agent-publish-category-select-combobox` in its cross-reference list to ELITEA-2595's Handles table. ELITEA-2595's own AFS was correctly amended in this PR (`-combobox` suffix removed) and the actual code/LocatorDescriptor uses the correct `agent-publish-category-select` throughout — this is purely a stale citation that w… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_skill-publishing-ai-validation-blockers_ELITEA-2596.md (Concrete Handles)"
+        },
+        {
+          "kind": "note",
+          "note": "`git diff origin/tests/batch-skills-remaining-w3...origin/tests/2595-2596-2598-skill-publish-wizard | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 2 hits: `SKILL_CARD_PREFIX` (pre-existing class constant, additive use) and `PUBLISH_CATEGORY_OPTION` (new class-level `[data-testid=\"s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "mechanical grep"
+        },
+        {
+          "kind": "note",
+          "note": "Verified: all cited page-object methods/fixtures exist (SkillDetailPage, SkillFormPage, AgentHubPage, SkillAPI, skill_api fixture registered in fixtures/api_fixtures.py — not defined in a test file); `switch_version()` raises `RuntimeError` matching `select_version_by_name`'s catch; `Dialog`/`action` imports correct. Issues #611, #614, #1463 all confirmed OPEN with matching titles/labels. New test… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "n/a"
+        }
+      ],
+      "afs": "test-specs/skills/l2_skill-publishing-ai-validation-blockers_ELITEA-2596.md",
+      "branch": "tests/2595-2596-2598-skill-publish-wizard",
+      "pr": 1464
+    },
+    {
+      "id": "ELITEA-2597",
+      "outcome": "blocked",
+      "note": "gate red: requests.exceptions.HTTPError: 503 Server Error: Service Unavailable for url: https://dev.elitea.ai/api/v2/elitea_core/skill/prompt_lib/399/1663 (63.6s)",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Skill Publish wizard's modification-invalidation error says 'Agent was modified since validation' on the SKILL flow (should say 'Skill') -- MINOR, cosmetic, mechanism itself correct (Publish is still blocked). Filed as EliteaAI/elitea-testing-public#1465.",
+          "ref": "#1465"
+        },
+        {
+          "kind": "note",
+          "note": "On dispatch, the working tree was on branch tests/2595-2596-2598-skill-publish-wizard with UNCOMMITTED fix-round WIP for PR #1464 (a different unit's implementer response to a reviewer finding, in progress) -- this blocked a direct `git checkout tests/batch-skills-remaining-w3`. Not mine to touch: stashed the exact affected paths only (`git stash push -- <paths>`, message names the owning PR), the… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "SkillAPI's raw PUT to /skill/{mode}/{project}/{skillId}/{versionId} with a nested {\"version\": {\"instructions\": ...}} payload did NOT visibly persist the change in quick exploratory API probing (response echoed old instructions back unchanged); top-level fields DO apply (confirmed via a 'Cannot rename the base version' error on a top-level name change). Used the real UI Save instead for this case's… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "question",
+          "note": "Batch-sequencing gap: ELITEA-2597 was dispatched to the implementer slot while its prerequisite unit (ELITEA-2595/96/98, PR #1464, same batch trunk) was still open/mid-fix-round, not merged. The AFS's Automation Hints assumed the prerequisite's page-object work would be reusable; it wasn't. Worked around by building fresh from the AFS's own verified testid table + a live source read (no scope drif… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1464 (tests/2595-2596-2598-skill-publish-wizard)"
+        },
+        {
+          "kind": "defect",
+          "note": "The Publish wizard's 'Publish' action button (PublishWizardModal.jsx, shared by Agent AND Skill Publish flows) loses its testid entirely the instant a publish attempt is REJECTED — usePublishSkill.hooks.js's handlePublish() unconditionally advances `step` to PUBLISHING before awaiting the mutation result, so a rejection renders a separate, previously-untestid'd disabled-button JSX branch. Fixed fo… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@c9c1f29e, .agents/memory/test-automation-engineer/publish_wizard_step_advances_before_request_resolves_kills_testid.md"
+        },
+        {
+          "kind": "note",
+          "note": "The Publish wizard's AI content-quality gate (publish_skill_validate / publish_validate) flags any 'reply X to any prompt'-style blanket instruction as an unsafe prompt-injection directive and returns 422/FAIL with validation_token: null. Any future Publish-flow fixture (Skill or Agent) reusing a short filler instructions string from a non-Publish test should use bounded, task-specific phrasing in… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/test-automation-engineer/skill_publish_ai_gate_rejects_blanket_reply_instructions.md"
+        },
+        {
+          "kind": "note",
+          "note": "Tags with a hyphen (e.g. 'elitea-2597') are silently rejected by the Tags input — the field appears to accept the type+Enter but no chip commits and no error surfaces. This matches the already-documented root cause behind issue #1445 (confirmed by a sibling test's own comment); not re-filed, just re-encountered. Underscore tag names work correctly.",
+          "ref": "issue #1445 pattern (test_skill_fork_non_base_version.py already documents this)"
+        },
+        {
+          "kind": "defect",
+          "note": "CONFIRMED cross-PR collision: PR #1464 (ELITEA-2595/96/98, same base tests/batch-skills-remaining-w3, still OPEN) independently adds IDENTICALLY-NAMED SkillDetailPage fields (publish_menuitem, publish_version_name_input, publish_category_select, publish_agree_checkbox, publish_continue_button, publish_confirm_button, PUBLISH_CATEGORY_OPTION) and methods (open_publish_wizard, fill_publish_preparati… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Testid reuse of `agent-publish-confirm-button` across two mutually-exclusive JSX branches (PublishWizardModal.jsx: step===VALIDATION&&validationResult vs step===PUBLISHING&&publishError) is a declared improvisation, and the reasoning verifies as sound: confirmed source-side (EliteaUI@2dafb537/@c9c1f29e) that the two branches are genuinely mutually exclusive (`step` is a single value), and BOTH bra… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Steps 4/8 assert `\"modified\"`/`\"expired\"` as case-insensitive substrings of `body['msg']`, not the AFS Coverage Map's stated 'exact msg text, confirmed live this run'. This is a reasonable, arguably better choice given the AFS's own Known Defects section documents the msg wording is objectively wrong for the Skill entity (says 'Agent was modified...', filed as #1465, non-blocking) — a literal exac… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for non-testid handles on the diff: `git diff origin/tests/batch-skills-remaining-w3...origin/tests/2597-skill-publish-token-invalidation-ttl -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 1 hit: `option = self.page.locator(self.PUBLISH_CATEGORY_OPTIO… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Triangulated case (.agents/automation/skills-remaining-w3/cases/ELITEA-2597.md) ↔ AFS ↔ diff for all 12 case steps (Part A steps 1-7, Part B steps 8-12) — every case step has a Coverage Map row, every row's expected result maps to a real assertion at that step in test_skill_publish_token_invalidation_and_ttl.py (not just an end-state check), and both Preconditions ('two browser tabs') and Axis-2 a… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed root cause of the cross-PR duplication risk: SkillDetailPage.publish_* fields/methods are declared at DIFFERENT insertion points in skill_detail_page.py by PR #1464 (after the Export section) and PR #1466/this branch (after the Fork section), so a sequential merge of both produces NO textual git conflict — Python silently lets the second declaration shadow the first at class-body level. … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1464 / PR #1466"
+        },
+        {
+          "kind": "note",
+          "note": "confirm_publish() genuinely conflicted (int vs Response) between the two open sibling PRs; resolved by renaming MY method to confirm_publish_and_capture_response() rather than editing PR #1464's branch, since that branch is outside this dispatch's authority and may be actively worked by another unit. The remaining harmless field/method-name duplication (identical testids/behavior) was intentionall… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_detail_page.py:264"
+        },
+        {
+          "kind": "note",
+          "note": "test_publish_token_expires_after_ttl (the @pytest.mark.slow TTL half, ~320s wall-clock sleep by design) was still executing when this fix-round report had to be finalized under a forced handoff. test_publish_token_invalidated_by_modification, which exercises the identical renamed method and assertion shape, re-confirmed GREEN. Recommend the orchestrator's independent gate re-run both tests to get … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_publish_token_invalidation_and_ttl.py"
+        },
+        {
+          "kind": "question",
+          "note": "Sibling PR EliteaAI/elitea-testing-public#1464 (ELITEA-2595/96/98, tests/2595-2596-2598-skill-publish-wizard, same trunk tests/batch-skills-remaining-w3) is still OPEN and independently declares the SAME SkillDetailPage.publish_* fields (publish_menuitem, publish_version_name_input, publish_category_select, publish_agree_checkbox, publish_continue_button, publish_confirm_button, PUBLISH_CATEGORY_O… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified the confirm_publish_and_capture_response() rename against #1464's actual diff: #1464's confirm_publish() -> int has 3 real int-equality callers across its own test files, and this branch needs response.status/.json() to distinguish the 'modified' vs 'expired' msg text — reusing the shared name would have silently broken whichever PR's tests ran against the textually-later declaration. The… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified the declared-improvisation testid reuse directly in EliteaUI source (commits EliteaAI/EliteaUI@2dafb537, @c9c1f29e, PublishWizardModal.jsx lines ~303/314): `agent-publish-confirm-button` is placed on two genuinely mutually-exclusive JSX branches (`step === PUBLISH_STEPS.VALIDATION && validationResult` vs `step === PUBLISH_STEPS.PUBLISHING && publishError`) — `step` is a single value so th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Re-ran the mechanical grep independently: `git diff origin/tests/batch-skills-remaining-w3...origin/tests/2597-skill-publish-token-invalidation-ttl -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` -> 1 hit: `automation/pages/skill_detail_page.py: option = self.page.locat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map decomposition is legitimate but merges pairs of original case steps into single AFS/test steps (case Part A steps 3+4 -> AFS step 3; case steps 5+6 -> AFS step 4). Both original expected results for the merged-away steps (case step 3: 'skill editor opens in second tab'; case step 5: 'wizard still on post-validation step') are only implicitly proven (the subsequent action would fail/ti… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated all 9 AFS test steps / both Coverage Map halves (Part A steps 1-5, Part B steps 6-9) against the case snapshot's 12 numbered steps and the test file's 5 allure.step blocks per test — every asserted row has a real assertion in test_skill_publish_token_invalidation_and_ttl.py at the claimed step (status codes, error/msg body fields distinguishing 'modified' vs 'expired', inline Alert te… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/skills/l2_skill-publishing-token-invalidation-and-ttl-expiration_ELITEA-2597.md",
+      "branch": "tests/2597-skill-publish-token-invalidation-ttl",
+      "pr": 1466
+    },
+    {
+      "id": "ELITEA-2598",
+      "outcome": "blocked",
+      "note": "review/fix round 1 failed",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed https://github.com/EliteaAI/elitea-testing-public/issues/1463 -- ELITEA-2598's premise that a missing custom skill icon is WARN-level (non-blocking) is false live: it is a deterministic CRITICAL issue that disables the Publish button (status FAIL). Missing tags behaves the same way, which also means ELITEA-2595's happy-path Test Data is missing icon+tag as required prerequisites (not just th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1463"
+        },
+        {
+          "kind": "note",
+          "note": "Known defect #614 (version-selector doesn't auto-navigate/auto-select after a successful Publish, previously only confirmed for agents in ELITEA-1892) reproduces identically for skills -- confirmed live on skill 1560: after Publish succeeded (200), the VERSION dropdown kept showing 'base' as active until the new 'v1.0' version was explicitly re-selected by name. Documented in ELITEA-2595's AFS and… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The 'publish-menuitem' testid (and any DotMenu-based menu item testid in this codebase) is constructed at RUNTIME as `${item.key}-menuitem` by DotMenu.jsx, not a literal string in JSX -- a plain `git grep -- \"publish-menuitem\"` finds nothing even though the testid is real and live-confirmed working. Verification requires reading the menu-item object's `key:` field at its call site plus DotMenu.jsx… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2595 is sanctioned RED, not plain green: every functional step (create, tag+icon, save, Publish wizard through Preparation/Validation/Publishing, version re-select via the #614-tolerant select_version_by_name()+API-tie-breaker, Catalog category+card verification) passes cleanly; the test's terminal soft-assertion surfaces known defect #611 (Publish wizard Stepper leaking MUI props onto the … [clipped; full text in the unit's receipt under .attrs/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/611"
+        },
+        {
+          "kind": "note",
+          "note": "Added a new EliteaUI testid: SkillCategorySection.jsx's Catalog Skills-tab category-heading Typography had NO data-testid at all (unlike the Agents-tab's AgentCategorySection.jsx, which already carries catalog-category-heading-{slug}) — a genuinely different component despite sounding shared. Added the identical pattern via add-data-testid, committed+pushed to EliteaUI/EliteaUI@32ad365f on automat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaUI/EliteaUI@32ad365f"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2595's AFS Concrete Handles table named the Publish wizard's Category select trigger as agent-publish-category-select-combobox — live source (PreparationStep.jsx, confirmed against both origin/main and origin/automation/testids after a fresh fetch) shows the real testid is agent-publish-category-select (no -combobox suffix). Amended the AFS in the same PR with the correction and why.",
+          "ref": "test-specs/skills/l2_skill-publishing-wizard-happy-path_ELITEA-2595.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2598: the AI publish_skill_validate gate is sensitive to a fixture name's exact literal text, not just its semantic genericness — appending a uuid suffix to the case's 'skill' name example (e.g. 'skill-a1b2c3d4', intended purely to dodge a display-name collision) downgraded the AI's generic-name signal from a warnings entry (status WARN) to a recommendations entry (status PASS), silently br… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Coverage-completeness gap (both ELITEA-2595 & ELITEA-2598). The AFS Coverage Map claims the published skill's card is verified 'under its selected Category' — matching the TMS case's own step 9/10 wording — but the implementation performs two unrelated, page-wide checks: `CATEGORY_NAME in catalog_page.get_visible_category_heading_texts()` (true if that category section exists ANYWHERE on the page)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_publish_wizard_happy_path.py:356-380 (also test_skill_publish_warn_status_allows_publishing.py:257-273)"
+        },
+        {
+          "kind": "defect",
+          "note": "Minor AFS/implementation drift, non-blocking on its own: the AFS's 'Asserted where' cites 'step 4: dialog visible, Stepper shows 3 steps', but no code checks the Stepper element or its step count — only the version-name-input visibility and Continue-disabled state are asserted. Same gap pre-exists in the agent-flow precedent test, so low risk, but the AFS overstates what's verified.",
+          "ref": "test-specs/skills/l2_skill-publishing-wizard-happy-path_ELITEA-2595.md (Coverage Map row 2) vs test_skill_publish_wizard_happy_path.py:218-230"
+        },
+        {
+          "kind": "note",
+          "note": "Doc-only drift, non-blocking: ELITEA-2596's AFS still cites the wrong testid `agent-publish-category-select-combobox` in its cross-reference list to ELITEA-2595's Handles table. ELITEA-2595's own AFS was correctly amended in this PR (`-combobox` suffix removed) and the actual code/LocatorDescriptor uses the correct `agent-publish-category-select` throughout — this is purely a stale citation that w… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_skill-publishing-ai-validation-blockers_ELITEA-2596.md (Concrete Handles)"
+        },
+        {
+          "kind": "note",
+          "note": "`git diff origin/tests/batch-skills-remaining-w3...origin/tests/2595-2596-2598-skill-publish-wizard | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 2 hits: `SKILL_CARD_PREFIX` (pre-existing class constant, additive use) and `PUBLISH_CATEGORY_OPTION` (new class-level `[data-testid=\"s… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "mechanical grep"
+        },
+        {
+          "kind": "note",
+          "note": "Verified: all cited page-object methods/fixtures exist (SkillDetailPage, SkillFormPage, AgentHubPage, SkillAPI, skill_api fixture registered in fixtures/api_fixtures.py — not defined in a test file); `switch_version()` raises `RuntimeError` matching `select_version_by_name`'s catch; `Dialog`/`action` imports correct. Issues #611, #614, #1463 all confirmed OPEN with matching titles/labels. New test… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "n/a"
+        }
+      ],
+      "afs": "test-specs/skills/l3_skill-publishing-warn-status-allows-publishing_ELITEA-2598.md",
+      "branch": "tests/2595-2596-2598-skill-publish-wizard",
+      "pr": 1464
+    },
+    {
+      "id": "ELITEA-2599",
+      "outcome": "blocked",
+      "note": "gate red: requests.exceptions.HTTPError: 503 Server Error: Service Unavailable for url: https://dev.elitea.ai/api/v2/elitea_core/skills/prompt_lib/399 (0.8s)",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Core mechanic for the case's 'version coexistence' claim: unpublish is a real deletion of the public catalog entity (unpublish_skill -> {status:'deleted'}), so republishing after an unpublish always gets a NEW public_skill_id. Coexistence only happens when publishing a sibling version of a skill WHILE its current published version stays live (never unpublished) — that reuses the same public_skill_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/_surface.md § Unpublish + republish lifecycle"
+        },
+        {
+          "kind": "note",
+          "note": "UnpublishConfirmModal.jsx hardcodes data-testid=\"agent-unpublish-confirm-button\" regardless of the entityLabel prop it receives, so the skill Unpublish flow reuses the agent-scoped testid verbatim. Same accepted cross-entity naming artifact already documented for agent-publish-* testids in ELITEA-2595/96/98's AFS — not a new defect, just re-confirmed live for the Unpublish button specifically."
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 15 ('if a 4th version is published, verify oldest is handled appropriately') is non-prescriptive — it never states what 'appropriate' means. Not independently exercised beyond 3 coexisting versions this run (turn budget); AFS flags this as a soft/exploratory assertion for the implementer rather than a hard pass/fail gate, so a future run finding no cap enforcement should not be misclassi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_skill-unpublish-republish-lifecycle_ELITEA-2599.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Coverage Map Axis 2 explicitly flags an honest gap: the combination of 'skill attached to an agent, then that skill is unpublished, then the agent still works' was not independently re-executed live together this run — each half (attach mechanics from ELITEA-1735; unpublish mechanics freshly confirmed here) is independently proven, and a source read of ApplicationSkills.jsx shows no publish-st… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_skill-unpublish-republish-lifecycle_ELITEA-2599.md"
+        },
+        {
+          "kind": "note",
+          "note": "Transient 502/503 backend flakiness observed mid-run on publish_skill_validate, correlated with unrelated socket.io polling failures and a CORS error hitting dev.elitea.ai directly in the same short window — recovered fully on immediate retry with no code-side change. Treated as local dev-backend/proxy noise, not a skill-publish-specific defect; AFS recommends a bounded (2-3x) retry around publish… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Coercive imperative skill-instruction phrasing ('CRITICAL: You MUST...Do NOT...') trips publish_skill_validate's AI content-quality/prompt-injection heuristic (422 FAIL), even when the requested transformation itself (uppercase output) is benign. This is a SECOND confirmed trigger shape beyond the already-documented 'blanket reply X to any prompt' pattern (skill_publish_ai_gate_rejects_blanket_rep… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_unpublish_republish_lifecycle.py"
+        },
+        {
+          "kind": "note",
+          "note": "AgentDetailPage.clear_embedded_chat() must not be called immediately after a fresh navigate(agent_id) — ClearChatButton.jsx stays disabled with 0 messages on a fresh page load, so the click hangs until timeout. Only call it between two chat interactions on the SAME page load where a prior message genuinely needs clearing. Documented in agent_embedded_chat_quirks.md finding #7.",
+          "ref": "automation/pages/agent_detail_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Two pre-existing ruff findings in skill_detail_page.py (import-block ordering at the top of the file, and a super(SkillDetailPage, self) call at line 514 that could be super()) predate this change and are outside its scope — left untouched, flagged here rather than silently fixed alongside unrelated additions.",
+          "ref": "automation/pages/skill_detail_page.py"
+        },
+        {
+          "kind": "defect",
+          "note": "CHANGES_REQUESTED (Important, per-step-assertion / \"passing assertion may prove nothing\" gate). AFS Test Step 3 requires: \"source_version_id in response is this NEW version's id, distinct from the original draft version's id\" (AFS confirms live: draft `1679` → published clone `1680`, i.e. version-id vs version-id). The diff instead asserts `source_version_id_v1 != skill_id`, where `skill_id = crea… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_unpublish_republish_lifecycle.py:263-264"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for non-testid handles run against the full diff: `git diff origin/tests/batch-skills-remaining-w3...origin/tests/2599-skill-unpublish-republish-lifecycle -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 2 hits, both compliant: `automation/pages/agent_h… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage-Map triangulation (case snapshot ↔ AFS ↔ diff) walked all 15 case elements against the AFS's 16 test steps and the diff's 16 allure.step blocks: every case step maps to a real assertion at that step (dialog title/body text step 6, 200+`{status:\"deleted\"}` step 7, immediate Catalog-absence step 8, agent-attachment-still-present step 9 — the AFS's own flagged Axis-2 gap, correctly asserted … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Reviewer's wrong-comparison-target finding (source_version_id vs skill_id) is now logged in qa-engineer memory (passing_assertion_may_prove_nothing.md, 'PR #1467/ELITEA-2599' entry) as an occurrence of the general 'wrong comparison target' assertion-honesty shape — worth checking any other spec that captures an id purely for a later inequality/equality diff without independently sourcing the corre… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1467"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding VERIFIED FIXED. Commit 98d0b413 now captures `draft_version_id_v1 = skill_api.get_skill(skill_id)[\"version_details\"][\"id\"]` right after Step 1 and asserts `source_version_id_v1 != draft_version_id_v1` (test_skill_unpublish_republish_lifecycle.py:270-278) instead of the old `!= skill_id`. Cross-checked three ways: (1) AFS test-specs/skills/l3_skill-unpublish-republish-lifecyc… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_unpublish_republish_lifecycle.py:236,270-278"
+        },
+        {
+          "kind": "defect",
+          "note": "NEW finding — Step 7's `confirm_unpublish()` only captures and returns the HTTP status code; the test asserts `unpublish_status == 200` and nothing else. But the AFS explicitly documents the required verification as `POST unpublish_skill/.../{skillId}/{versionId} → 200, {msg: \"Successfully unpublished\", status: \"deleted\"}` (test-specs/skills/l3_skill-unpublish-republish-lifecycle_ELITEA-2599.md:11… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_detail_page.py:1288-1305"
+        },
+        {
+          "kind": "note",
+          "note": "Independent mechanical grep re-run (not just trusting the implementer's self-check paste): `git diff origin/tests/batch-skills-remaining-w3...origin/tests/2599-skill-unpublish-republish-lifecycle -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 2 hits: `self.page.locat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Debugging aid: when the pytest-rerunfailures plugin auto-reruns (pytest.ini global --reruns=2), the terminal output doesn't clearly surface which step/attempt failed. Reading reports/allure-results/*-result.json (steps[].name/status/statusDetails) per attempt is the fast way to confirm a rerun's root cause is unrelated to the change under test, rather than assuming."
+        },
+        {
+          "kind": "note",
+          "note": "Fix commit b0e618d2 resolves the prior blocking finding cleanly: added SkillDetailPage.confirm_unpublish_and_capture_response() (automation/pages/skill_detail_page.py, new method alongside the existing confirm_unpublish()) which parses the unpublish_skill POST response JSON body and attaches http_status; Step 7 of the test now asserts body['msg'] == 'Successfully unpublished' and body['status'] ==… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_detail_page.py:1320"
+        },
+        {
+          "kind": "note",
+          "note": "Deliberately kept confirm_unpublish() (int-returning) as a separate sibling method rather than changing its return type in place, to avoid silently shadowing AgentDetailPage.confirm_unpublish()'s int-returning signature — documented rationale in the new method's docstring, matches the existing confirm_publish()/confirm_publish_and_capture_response() precedent already accepted on this same file.",
+          "ref": "automation/pages/skill_detail_page.py:1348"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical testid-only grep on the full diff (automation/pages/ + automation/tests/) found 3 added .locator(...) call sites, all using class-level [data-testid=...] string constants (SKILL_CARD, SKILL_CARD_PREFIX, PUBLISH_CATEGORY_OPTION) via .format() — compliant with the dynamic-testid canon pattern, no raw handles introduced.",
+          "ref": "automation/pages/skill_detail_page.py:194"
+        }
+      ],
+      "afs": "test-specs/skills/l3_skill-unpublish-republish-lifecycle_ELITEA-2599.md",
+      "branch": "tests/2599-skill-unpublish-republish-lifecycle",
+      "pr": 1467
+    },
+    {
+      "id": "ELITEA-2600",
+      "outcome": "blocked",
+      "note": "gate red: playwright._impl._errors.TimeoutError: Timeout 30000ms exceeded while waiting for event \"response\" (failed at 368.7s into the run)",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Discovery (not a defect): the AGENT publish wizard's AI validation (POST publish_validate) also inspects each attached SKILL's own instructions length (>=100 chars) via a critical_issues[] entry with field:\"skills\" naming the offending skill — this is new information beyond what ELITEA-1892's AFS documents (that AFS only exercised agents with zero attached skills). Folded into the AFS Test Data/Au… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_agent-with-skills-publishing-flow_ELITEA-2600.md"
+        },
+        {
+          "kind": "note",
+          "note": "Skill invocations reuse the existing chat-answer-tool-chip testid (already used for external toolkit calls) but with a distinct text shape confirmed live: \"Skill: {skill_name}\" rather than the \"{toolkit_name}: {tool_name}\" shape the ChatPage page-object docstring currently describes. Worth a docstring update when this AFS is implemented so the next reader isn't surprised.",
+          "ref": "automation/pages/chat_page.py:639"
+        },
+        {
+          "kind": "note",
+          "note": "Case text step 12 (\"Expand the thought process/reasoning panel\") implies a manual expand action; live product auto-expands the Thought accordion by default whenever a skill/tool fires — no separate expand click is needed. Recorded as case-text drift in the AFS Coverage Map (asserted, with drift noted), not filed as a separate clarification ticket since it doesn't change pass/fail — just the automa… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_agent-with-skills-publishing-flow_ELITEA-2600.md"
+        },
+        {
+          "kind": "note",
+          "note": "publish_validate's ≥100-char content-quality gate applies independently to the AGENT's own instructions field, not just to attached skills' instructions — an agent with 3 fully-compliant skills can still 422 on its own short instructions. Not in the original AFS's stated checkpoint (which only called out the per-skill gate); worth folding into the AFS's Test Data guidance if this case is revisited… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1468"
+        },
+        {
+          "kind": "note",
+          "note": "AgentHubPage.search() cannot be reused unmodified on the Catalog's Skills tab — it awaits a hard-coded AGENTS-tab network response (/public_applications/prompt_lib/) that never fires when searching skills (Skills tab fires /public_skills/{mode}/ instead, confirmed via EliteaUI source). Any future case wanting a real search-driven 'No skills found' assertion on the Skills tab will need a dedicated … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "PR #1468"
+        },
+        {
+          "kind": "clarification",
+          "note": "Declared improvisation, verified sound: new testid agent-publish-terms-content (EliteaAI/EliteaUI@59155a8a, PublishingTerms.jsx) sits under src/[fsd]/entities/version/ui/ — NOT src/components/ or src/[fsd]/shared/, the only two directories role-overrides.md § Reviewer slot names for the 'shared component hardcodes a feature-scoped testid' check. Confirmed live via grep that PublishingTerms.jsx (vi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/agent_detail_page.py:542 / EliteaAI/EliteaUI@59155a8a"
+        },
+        {
+          "kind": "note",
+          "note": "Step 4's counter assertion (`assert \"3/\" in detail_page.get_skills_counter_text()`) is a weaker substring check than the AFS's documented expectation (\"Skills counter reads 3/5 skills added.\") — would still pass on an unexpected total (e.g. a hypothetical \"3/10\"). Low risk (the cap is a fixed product constant, not test-controlled), non-blocking nit.",
+          "ref": "automation/tests/ui/skills/test_agent_with_skills_publishing_flow.py:174"
+        },
+        {
+          "kind": "note",
+          "note": "Step 9's Skills-Catalog absence proof (`get_skill_card_count_by_name(name) == 0` for all 3 skills) uses a bare, non-retrying Locator.count() immediately after navigate()+click_skills_tab(), which could in principle read '0' vacuously if the grid hadn't finished rendering rather than because the skill is genuinely absent. Checked this isn't a fresh risk introduced by this PR: the merged sibling ELI… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_agent_with_skills_publishing_flow.py:275-284"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation clean across all three artifacts: case snapshot (.agents/automation/skills-remaining-w3/cases/ELITEA-2600.md, 14 steps) -> AFS Coverage Map (14 rows, all 'asserted', 3 well-grounded Axis-2 additions) -> implementation (13 allure.step blocks + cleanup, 1:1 with AFS steps). Every AFS-claimed assertion verified to exist at its claimed step with a real assert (or a captured/verified stat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_agent_with_skills_publishing_flow.py"
+        }
+      ],
+      "afs": "test-specs/skills/l2_agent-with-skills-publishing-flow_ELITEA-2600.md",
+      "branch": "tests/2600-agent-with-skills-publishing-flow",
+      "pr": 1468
+    },
+    {
+      "id": "ELITEA-2601",
+      "outcome": "blocked",
+      "note": "gate red: playwright._impl._errors.TimeoutError: Timeout 30000ms exceeded while waiting for event \"response\" (failed at 260.7s into the run)",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "New platform discovery (not a defect): the Agent-entity publish 'modified since validation' error uses error code 'validation_failed', while the Skill-entity's analogous case (ELITEA-2597's AFS) uses 'validation_token_invalid' — same underlying stale-token mechanism, different error codes per entity. Any test asserting this error family should check both the error code and the msg text, not msg al… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_agent-with-skills-validation-attribution-and-token-invalidation_ELITEA-2601.md"
+        },
+        {
+          "kind": "note",
+          "note": "skill-card-remove-button testid (agent's attached-skill card, hover-revealed) is NOT unique — it repeats identically on every attached skill card and must be scoped inside the specific card's own [data-testid=\"skill-card-{skill_id}\"] container to target the right one.",
+          "ref": "test-specs/skills/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Second-tab navigation to an agent's Skills/config panel must include ?destTab=configuration&viewMode=owner in the URL — a bare /agents/all/{id} navigation silently lands on the Chat tab instead, hiding the Skills section a Part-B-style cross-tab test needs to interact with.",
+          "ref": "test-specs/skills/_surface.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "Part A's TMS case text implies 'valid skill does not show validation errors' means the valid skill is absent from the validation summary entirely; live behaviour is that it DOES appear, but only in the non-blocking Suggestions section (e.g. 'consider making instructions more descriptive'), never Critical/Warning. This is correct product behaviour (a Suggestion is not an error) — the AFS documents … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_agent-with-skills-validation-attribution-and-token-invalidation_ELITEA-2601.md"
+        },
+        {
+          "kind": "question",
+          "note": "Part B's removal-triggers-token-invalidation direction (case steps 16-18) was not independently confirmed live this run — a test-data confound (reusing an already-content-invalid skill as the attach/detach probe made the subsequent re-validation genuinely FAIL rather than cleanly stale) prevented isolating it cleanly within this session's turn budget. The addition direction (steps 13-15) IS fully … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_agent-with-skills-validation-attribution-and-token-invalidation_ELITEA-2601.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "The AFS's Test Data section originally claimed agent Description/Instructions are \"Warning-level gates only, not Critical\" — wrong for Instructions specifically (an agent's own instructions field independently trips the same >=100-char Critical rule a skill's content does, confirmed live and matching an already-known ELITEA-2600 finding). Corrected in the AFS file itself in this PR.",
+          "ref": "test-specs/skills/l2_agent-with-skills-validation-attribution-and-token-invalidation_ELITEA-2601.md"
+        },
+        {
+          "kind": "note",
+          "note": "New gotcha for the suite: Popper.select_menuitem_by_testid() (components/mui.py) selects via .filter(has_text=name).first — a substring match, not exact. Any test that seeds two named entities attached via a search/select popper (skills, toolkits, participants) where one name is a literal substring of the other will silently attach the WRONG entity with no error. Documented in a new memory entry.",
+          "ref": "automation/components/mui.py"
+        },
+        {
+          "kind": "note",
+          "note": "Part B's removal-direction (case steps 17-18) was explicitly flagged by the analyst as unconfirmed live due to a test-data confound. This implementation resolved the confound (dedicated extra-skill) and confirmed both directions of the publish-token-invalidation mechanism live via the test's own green run — no product defect found.",
+          "ref": "automation/tests/ui/skills/test_agent_skills_validation_attribution_and_token_invalidation.py"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical raw-handle grep on the full diff (automation/pages + automation/tests): `git diff <base>...<branch> -- automation/pages automation/tests | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` → 0 hits. All new locators (publish_error_alert) are class-level LocatorDescriptor(testid… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Page-object diff (automation/pages/agent_detail_page.py) is additive-only: 151 insertions, 0 deletions. All 6 new AgentDetailPage methods (click_publish_continue_and_capture_response, is_publish_confirm_enabled, confirm_publish_and_capture_response, get_publish_error_message, close_publish_wizard, navigate_to_configuration_tab) are new siblings mirroring SkillDetailPage's ELITEA-2597 shapes; no ex… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case snapshot (.agents/automation/skills-remaining-w3/cases/ELITEA-2601.md, 18 steps) ↔ AFS Coverage Map ↔ test diff: every case element (1-18, both Part A and Part B) has a corresponding allure.step block with a REAL assertion at that step (not just an end-state check) — including both Part B directions (skill addition AND removal each independently assert 400/validation_failed/exact… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified a real risk surfaced by test-automation-engineer's own memory (publish_wizard_step_advances_before_request_resolves_kills_testid.md), which explicitly says the Agent-side testid-survives-rejection behavior was 'never exercised by an existing agent test' and only confirmed Skill-side. This PR's assertions (is_publish_confirm_enabled()==False + publish_confirm_button.is_visible()==True afte… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Skill-fixture naming avoids the documented Popper substring-collision gotcha (valid-skill-2601-X / broken-skill-2601-X / extra-skill-2601-X — no name is a substring of another), consistent with the new memory entry the same PR adds documenting the rerun that found this."
+        },
+        {
+          "kind": "note",
+          "note": "No defect-masking patterns found (no pytest.skip/xfail/test.fail/soft-assert-without-ticket) in the new spec file."
+        },
+        {
+          "kind": "note",
+          "note": "Priority marker consistent: AFS l2 (case frontmatter priority: high) → @pytest.mark.p1 (pytest.ini: p1 = Priority 1, high) — no drift."
+        },
+        {
+          "kind": "note",
+          "note": "AFS amendment (Instructions field IS subject to the ≥100-char Critical gate, correcting a stale 'Warning-level only' claim) and the _surface.md digest update both ship in the same PR, correctly reflecting the two reruns' root causes and the removal-direction resolution."
+        }
+      ],
+      "afs": "test-specs/skills/l2_agent-with-skills-validation-attribution-and-token-invalidation_ELITEA-2601.md",
+      "branch": "tests/ELITEA-2601-agent-skills-validation-attribution-token-invalidation",
+      "pr": 1469
+    },
+    {
+      "id": "ELITEA-2614",
+      "outcome": "blocked",
+      "note": "gate red: playwright._impl._errors.TimeoutError: Timeout 30000ms exceeded while waiting for event \"response\" (failed at 238.8s into the run)",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Filed EliteaAI/elitea-testing-public#1470 (MINOR): on a published/embedded agent version, the SkillCard 'Remove skill' icon button keeps its static generic tooltip ('Remove skill') instead of explaining the immutability lock, and SkillVersionSelector's version-change trigger has no Tooltip wrapper at all - both genuinely fail the case's own stated Pass criterion ('Tooltip explains immutability on … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "#1470"
+        },
+        {
+          "kind": "note",
+          "note": "Behavioral nuance load-bearing for automation: General-section form fields (Name/Description/Instructions/Tags) are NOT disabled on a published version - they stay freely editable and the lock is enforced only server-side on Save (PUT .../application/... returns 400 with body {\"error\": \"Version id {id} is published and can not be updated\"}). Skill/Tool attachment controls, by contrast, ARE disable… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift (reverse-masking guard, not filed as separate tracker issues, folded into the AFS's Known Defects section): the case's stated toast text 'Version is published and cannot be updated' omits the dynamic version id and uses 'cannot' vs the live 'can not'; the case's stated Skill-lock tooltip 'This agent version is published and can not be modified' omits 'or embedded'. Live product str… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Corrected a stale claim in existing memory: .agents/memory/qa-engineer/agent_skill_card_remove_control_quirks.md previously said the SkillCard remove button had 'no data-testid' - it now does (skill-card-remove-button, SkillCard.jsx:108), added sometime after that entry was written (consistent with the skills/_surface.md ELITEA-2601 entry which already documented it). Updated the memory entry in p… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Two assertions are declared RED BY DESIGN, tied to already-filed MINOR defect #1470 (filed by the analyst at AFS time): SkillCard's 'remove skill' button and the SkillVersionSelector trigger never show an immutability-explaining tooltip on a locked/published agent version (case's own Pass-criterion #3). Soft-asserted via expect.soft() + '# Known defect: #1470' comments; every other assertion in th… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1470"
+        },
+        {
+          "kind": "note",
+          "note": "4 new testids added on EliteaAI/EliteaUI@2d05a7f1 (automation/testids): agent-add-toolkit-button-tooltip / agent-add-mcp-button-tooltip / agent-add-agent-button-tooltip / agent-add-pipeline-button-tooltip. Needed because ToolMenu.jsx's 4 add buttons wrap a testid'd BaseBtn in a Tooltip whose aria-label MUI clones onto the wrapping Box (no testid before this change), never the nested button — confi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Live-confirmed, non-defect REST quirk: PUT .../elitea_core/application/prompt_lib/... returns 201 (not 200) on a successful update once the version is unlocked. Documented in the test via a SAVE_SUCCESS_STATUSES = (200, 201) constant rather than filed as a bug — the body/reload-persistence assertions are what actually prove success."
+        },
+        {
+          "kind": "note",
+          "note": "AGENT_NAME must leave headroom under MAX_NAME_LENGTH=32 for any planned edit-suffix (e.g. '-EDITED') — a base name that happens to land exactly at 32 chars silently no-ops the edit (0 characters typed), which manifests as Save never becoming enabled rather than an obviously-wrong value. Folded into the existing memory entry as a new variant."
+        },
+        {
+          "kind": "note",
+          "note": "AFS Status/Known-Defects section claims 'Two case-text CLARIFICATIONs filed for imprecise expected strings (the toast and the +Skill tooltip's literal wording)'. Verified against the live tracker (`gh issue list --repo EliteaAI/elitea-testing-public --state all --limit 300 --json number,title,body` filtered for 'ELITEA-2614' in body): only #1470 (the MINOR defect, correctly filed) references this … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_published-agent-version-cannot-be-modified_ELITEA-2614.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS Concrete Handles table has no PROVENANCE column at all (only 'testid' + 'Confirmed live this run?'), so it never distinguishes on-main vs automation/testids-only. Checked directly: `agent-add-agent-button` and the new `agent-add-pipeline-button` are NOT on EliteaAI/EliteaUI main (confirmed via `git grep` against a fresh `git fetch origin` on both refs) — same recurring testid/pattern already l… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_published-agent-version-cannot-be-modified_ELITEA-2614.md"
+        },
+        {
+          "kind": "note",
+          "note": "Case Step 24 ('Attempt to add/remove skills -> Skill modifications are now allowed') is tested asymmetrically: 'remove' is fully click-through-verified (skill actually removed + absence confirmed), 'add' is only verified via the '+Skill' button's enabled state (never actually clicks through to attach a fresh skill). Not blocking — the case's own phrasing is an 'add/remove' OR-style claim (consiste… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_published_agent_version_cannot_be_modified.py:482"
+        }
+      ],
+      "afs": "test-specs/skills/l2_published-agent-version-cannot-be-modified_ELITEA-2614.md",
+      "branch": "tests/ELITEA-2614-published-agent-version-immutability",
+      "pr": 1471
+    }
+  ],
+  "totals": {
+    "blocked": 8
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

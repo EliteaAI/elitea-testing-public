@@ -5,9 +5,11 @@ wait patterns, screenshot helpers, and navigation methods.
 """
 
 import logging
-from playwright.sync_api import Page
+from playwright.sync_api import Locator, Page, expect
 
 from config import settings
+from .locator_descriptor import LocatorDescriptor
+from utils.actions import action
 
 logger = logging.getLogger("elitea.pages")
 
@@ -91,8 +93,133 @@ class BasePage:
         page: Playwright ``Page`` instance.
     """
 
+    # ------------------------------------------------------------------
+    # Sidebar project selector (shared testid, used across all pages)
+    # ------------------------------------------------------------------
+
+    project_selector_trigger = LocatorDescriptor(
+        testid="project-selector-trigger-combobox",
+        description="Sidebar project selector combobox trigger.",
+    )
+
+    # Dynamic testid for project-selector dropdown options
+    SELECT_OPTION = '[data-testid="select-option-{}"]'
+
+    # ------------------------------------------------------------------
+    # Navigation sidebar — collapse/expand chrome (ELITEA-1807)
+    # ------------------------------------------------------------------
+
+    sidebar_collapse_toggle_button = LocatorDescriptor(
+        testid="sidebar-collapse-toggle-button",
+        description="The main navigation sidebar's collapse/expand control — "
+        "the small circular button on the sidebar's right edge "
+        "(`[fsd]/widgets/sidebar-root/ui/Sidebar.jsx`). It is ONE element "
+        "whose icon flips between '<' (expanded) and '>' (collapsed); the "
+        "icons are untagged SVGs, so the state is carried by a "
+        "`data-collapsed=\"true|false\"` attribute on this same element, per "
+        ".agents/testing.md § Locator policy (PR #581: testid = stable "
+        "identity, state = data-* attribute). Testid added for ELITEA-1807 "
+        "(EliteaAI/EliteaUI@9062dff0).",
+    )
+
+    sidebar_settings_button = LocatorDescriptor(
+        testid="sidebar-settings-button",
+        description="'Settings' entry at the bottom of the navigation sidebar. "
+        "Wired through a caller-supplied `testId` prop on the SHARED "
+        "`SidebarButton` component (the compliant shared-component shape — "
+        "the shared component itself hardcodes no feature-scoped testid). "
+        "Added for ELITEA-1807 (EliteaAI/EliteaUI@9062dff0).",
+    )
+
+    sidebar_agent_hub_button = LocatorDescriptor(
+        testid="sidebar-agent-hub-button",
+        description="Agent HUB entry at the bottom of the navigation sidebar. "
+        "Its live LABEL is 'Catalog', not 'Agent HUB' (case texts saying "
+        "'Agent HUB' are stale — clarification "
+        "EliteaAI/elitea-testing-public#1619). Added for ELITEA-1807 "
+        "(EliteaAI/EliteaUI@9062dff0).",
+    )
+
+    # Dynamic testid template — a navigation-sidebar menu entry, keyed by the
+    # section's own `value` (NOT its label): chat, agents, pipelines, skills,
+    # toolkits, mcps, credentials, applications, artifacts. Pre-existing in
+    # EliteaUI (`SidebarBody.jsx` passes testId={`sidebar-menu-item-${value}`});
+    # class-level constant per .claude/rules/page-objects.md.
+    SIDEBAR_MENU_ITEM = '[data-testid="sidebar-menu-item-{}"]'
+
     def __init__(self, page: Page):
         self.page = page
+
+    @action("Switch project")
+    def switch_project(self, project_id: str | int, timeout: int = 10000) -> None:
+        """Switch the active project via the sidebar project selector.
+
+        Opens the ``project_selector_trigger`` combobox and clicks the
+        option matching *project_id*, resolved via the dynamic
+        ``SELECT_OPTION`` template — same pattern as other page objects.
+
+        Args:
+            project_id: Numeric id of the target project (string or int).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Switching active project to id=%s", project_id)
+        self.project_selector_trigger.click()
+        option = self.page.locator(self.SELECT_OPTION.format(project_id))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        self.wait_for_network(timeout=timeout)
+        # Wait for page content to reload after project switch
+        self.page.wait_for_timeout(1000)
+        logger.info("Switched to project id=%s", project_id)
+
+    def sidebar_menu_item(self, value: str) -> Locator:
+        """Return the navigation-sidebar menu entry for *value*.
+
+        Args:
+            value: The section's own key — ``chat``, ``agents``,
+                ``pipelines``, ``skills``, ``toolkits``, ``mcps``,
+                ``credentials``, ``applications`` or ``artifacts``. This is
+                the section's ``value``, not its visible label (``toolkits``
+                renders as "Toolkits & Indexes").
+
+        Returns:
+            Locator for that sidebar entry (the whole ``<ListItem>``: icon
+            plus, when the sidebar is expanded, the label).
+        """
+        return self.page.locator(self.SIDEBAR_MENU_ITEM.format(value))
+
+    def is_sidebar_collapsed(self) -> bool:
+        """Return whether the navigation sidebar is currently collapsed.
+
+        Reads the ``data-collapsed`` state attribute off
+        :attr:`sidebar_collapse_toggle_button` — the toggle renders it from
+        the same ``sideBarCollapsed`` value that chooses which arrow icon to
+        show, so this IS the icon state.
+
+        Returns:
+            ``True`` when the sidebar is in icon-only mode.
+        """
+        return self.sidebar_collapse_toggle_button.get_attribute("data-collapsed") == "true"
+
+    @action("Toggle navigation sidebar")
+    def toggle_sidebar(self, timeout: int = 10000) -> bool:
+        """Click the sidebar collapse/expand control and wait for the flip.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The sidebar's collapsed state AFTER the toggle.
+        """
+        toggle = self.sidebar_collapse_toggle_button
+        toggle.wait_for(state="visible", timeout=timeout)
+        was_collapsed = self.is_sidebar_collapsed()
+        expected = "false" if was_collapsed else "true"
+        toggle.click()
+        # Condition wait on the product's own state attribute — never a sleep.
+        expect(toggle).to_have_attribute("data-collapsed", expected, timeout=timeout)
+        logger.info("Toggled navigation sidebar: collapsed=%s", expected)
+        return expected == "true"
 
     def navigate(self, path: str) -> None:
         """Navigate to *path* relative to ``app_base_url``.
@@ -358,3 +485,14 @@ class BasePage:
         except Exception as e:
             logger.warning(f"Failed to read clipboard: {e}")
             return ""
+
+    def clear_clipboard(self) -> None:
+        """Write an empty string to the system clipboard.
+
+        Precondition hygiene, not a substitution: it removes any stale value so
+        a subsequent read cannot mistake an old copy for a fresh one. The value
+        later asserted on is written by the product under test, never by the
+        test. Same pattern as ``help_center_page.copy_version_info``.
+        """
+        self.page.evaluate("() => navigator.clipboard.writeText('')")
+        logger.info("Cleared clipboard")

@@ -41,3 +41,35 @@ testid name, (c) grep the bare string with `"` AND backtick prefixes so prop/tem
 testids don't false-negative. Never trust the AFS/implementer's provenance column —
 re-derive it, and expect a second hidden testid commit when a case touches a
 component whose sibling flavor already carries the same testid name.
+
+## 3. Fully split composition (`${PREFIX}-suffix` where PREFIX is a named constant) — no grep survives this at all
+Hit on #1297 wave-01 (pipelines-remaining, ELITEA-2038/2036/2009 etc.). EliteaUI's
+pipeline-node testids increasingly use a two-part composition where the prefix is a
+component-level constant and the suffix is appended only at the call site:
+```js
+const AGENT_NODE_TESTID_PREFIX = 'pipeline-agent-node';
+...
+dataTestId={`${AGENT_NODE_TESTID_PREFIX}-input-select`}
+```
+or a map form:
+```js
+const TEST_ID_PREFIX_BY_NODE_TYPE = { custom: 'pipeline-custom-node' };
+const testIdPrefix = TEST_ID_PREFIX_BY_NODE_TYPE[type];
+...
+dataTestId={testIdPrefix ? `${testIdPrefix}-input-select` : undefined}
+```
+The concrete testid string (`pipeline-agent-node-input-select`) **never appears
+literally anywhere in the source** — not as a plain string, not as a backtick
+template with the value inline. Neither fix 1 nor fix 2 above catches this: a
+bare-string grep for `pipeline-agent-node-input-select` (any quote style) returns
+ZERO matches on a ref where the testid demonstrably works, because it is assembled
+at render time from two separately-declared tokens.
+**Fix:** grepping for the concrete testid is the wrong operation entirely here — fall
+back to a **per-component-FILE diff against the ref in question**:
+`git diff origin/main origin/automation/testids -- '<path/to/Component.jsx>'`. If the
+file differs at all, none of its testid wiring — literal, prop-passed, or composed —
+is on that ref yet; if it's identical, all of it is. This is coarser than a
+testid-level check (it can't tell you WHICH testid moved) but it is the only
+check that doesn't silently return a false negative for this composition shape.
+Recognize the shape before reaching for a grep: any `*_TESTID_PREFIX` constant or
+`TEST_ID_PREFIX_BY_*` map in the diff is the signal to switch techniques immediately.

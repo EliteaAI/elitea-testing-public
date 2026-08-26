@@ -43,11 +43,20 @@ the damage looks partial and gets missed).
   to the implementer. Before discarding leaked files, diff each against
   `automation/base` — a "-" line means real content would be destroyed.
 
-## Seen 10×
+## Seen 11×
 
 - #83/ELITEA-1963 — own `reset --hard` before the gate wiped implementer + reviewer memory.
 - #71/ELITEA-1897 — identical command, 2nd time, same "staleness paranoia" trigger.
 - #293/ELITEA-2090/PR#682 — 3rd time; destroyed the reviewer's just-written index line.
+- #1399/wave-01 (2026-08-12) — different shape: a routine `git add -f && commit && push
+  origin automation/base` for campaign-card docs landed on whatever branch the workflow's
+  own subagents had checked out at that instant (a live case branch, mid fix-round) —
+  because I trusted my OWN last branch check from several tool calls earlier instead of
+  re-verifying immediately before this specific commit. Caught by re-checking
+  `git branch --show-current` right after; recovered clean with `git reset HEAD~1`
+  (mixed) — the implementer's uncommitted WIP on that branch was completely untouched
+  (unrelated files). Lesson stated in the rule above ("not once at session start") — this
+  is the case that shows it also means "not once a few tool calls ago, either."
 - …plus 7 earlier occurrence(s) — full per-case detail in the source entries below.
 
 See also: orchestrator_git_reset_hard_clobbers_subagent_memory.md ·

@@ -48,3 +48,21 @@ is not exhaustive, and treating a filtered "no" as ground truth produced a
 false negative here that a 10-second manual check caught. For a small
 handle set (typical AFS Concrete Handles table, &lt;20 testids), skip the
 filter regex entirely and just read the raw `git grep` output per testid.
+
+**Fourth gap, found ELITEA-2003 (2026-08-08): a TEMPLATE-LITERAL testid whose
+search string never appears verbatim in source at all.** `agent-actions-menu-
+button` bare-substring-grepped `origin/main` with ZERO hits (not even stage
+1) — yet the button resolves live and Playwright's own `getByTestId` finds
+it. Cause: `DotMenu.jsx` renders `data-testid={id ? \`${id}-menu-button\` :
+undefined}`, and the caller passes `id="agent-actions"` — the literal string
+`"agent-actions-menu-button"` is assembled at RUNTIME from two separate
+source tokens (`"agent-actions"` + the `-menu-button` suffix template) and
+never exists as a contiguous string anywhere in the repo. No grep variant
+(case-insensitive, unfiltered, `=`-tolerant) can find this — it requires
+reading the RENDERING component's template literal AND separately finding
+which `id`/prefix prop each call site passes. When a testid's provenance
+grep comes back truly empty (not just filtered-empty) but the element
+resolves live via `getByTestId`, suspect a split template + prop pattern:
+grep the SUFFIX only (`-menu-button`, `-menuitem`) to find the rendering
+component, then grep the PREFIX (`"agent-actions"`) separately to find the
+call site(s) that supply it.

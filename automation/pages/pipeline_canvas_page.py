@@ -20,8 +20,31 @@ composition pattern as ``AgentCanvasPage`` + ``AgentFormPage`` in
 ``test_create_agent_via_chat_canvas.py``).
 
 This page object owns only the canvas-specific chrome that has no
-``PipelineDetailPage`` equivalent: the close (X) button and the post-save
-Configuration/Flow editor tab bar.
+``PipelineDetailPage`` equivalent: the close (X) button, the post-save
+Configuration/Flow editor tab bar, and the create-mode Discard button +
+its confirmation modal (ELITEA-2076).
+
+ELITEA-2076 — ``discard_button``/``discard_confirm_modal``/
+``discard_confirm_button`` added. ``BaseEditor.jsx``/``EditorHeader.jsx``
+already rendered a Discard button (via the pre-existing
+``discardButtonTestId`` prop, ELITEA-2089) and its confirmation modal
+(``Button.DiscardButton`` unconditionally opens one before calling the
+caller's ``onDiscard`` — same mechanism ``ToolkitCreationPage`` already
+drives), but neither the modal nor its confirm button had a testid path
+threaded through — only ``CredentialsTabBar.jsx`` called
+``Button.DiscardButton`` directly with ``modalDataTestId``/
+``confirmButtonDataTestId``. Added two new optional props,
+``discardModalTestId``/``discardConfirmButtonTestId``, through
+``BaseEditor.jsx`` -> ``EditorHeader.jsx`` -> the existing
+``Button.DiscardButton`` props (same shape as the pre-existing
+``discardButtonTestId``), supplied ONLY at ``PipelineEditor.jsx``'s call
+site (``pipeline-canvas-discard-button``,
+``pipeline-canvas-discard-confirm-modal``,
+``pipeline-canvas-discard-confirm-button``) — the sibling Agent/MCP chat
+canvases (``AgentEditor.jsx``/``ToolkitEditor.jsx``) are unaffected since
+the new props are optional and caller-supplied
+(``.agents/testing.md`` § "Shared components never hardcode
+feature-scoped testids").
 """
 
 import logging
@@ -38,6 +61,16 @@ logger = logging.getLogger("elitea.pages.pipeline_canvas")
 class PipelineCanvasPage(BasePage):
     """Page object for the in-chat 'Create New Pipeline' canvas panel."""
 
+    title = LocatorDescriptor(
+        testid="pipeline-canvas-title",
+        description=(
+            "Canvas header title Typography ('Create New Pipeline' in create "
+            "mode) — threaded as BaseEditor/EditorHeader's optional "
+            "titleTestId prop, same shape as AgentCanvasPage.title / "
+            "ToolkitCanvasPage.title (ELITEA-2076 fix-round-1 add-data-testid)."
+        ),
+    )
+
     close_button = LocatorDescriptor(
         testid="pipeline-canvas-close-button",
         description=(
@@ -45,6 +78,18 @@ class PipelineCanvasPage(BasePage):
             "threaded as BaseEditor/EditorHeader's optional "
             "closeButtonTestId prop, same shape as "
             "AgentCanvasPage.close_button (ELITEA-2079 add-data-testid)."
+        ),
+    )
+
+    subtitle = LocatorDescriptor(
+        testid="pipeline-canvas-subtitle",
+        description=(
+            "Canvas header subtitle Typography — the version name (e.g. "
+            "'base') rendered next to the title once a real (non-create-mode) "
+            "pipeline is open. Threaded as BaseEditor/EditorHeader's optional "
+            "subtitleTestId prop, same shape as title/close_button above and "
+            "as AgentCanvasPage's own 'agent-canvas-subtitle' "
+            "(ELITEA-2077 add-data-testid)."
         ),
     )
 
@@ -64,6 +109,25 @@ class PipelineCanvasPage(BasePage):
             "it reveals the same EditorPanel PipelineDetailPage drives "
             "standalone."
         ),
+    )
+
+    discard_button = LocatorDescriptor(
+        testid="pipeline-canvas-discard-button",
+        description=(
+            "Discard button in the pipeline canvas header. Disabled until "
+            "the form is dirty (Name/Description typed). Clicking it opens "
+            "discard_confirm_modal (ELITEA-2076)."
+        ),
+    )
+
+    discard_confirm_modal = LocatorDescriptor(
+        testid="pipeline-canvas-discard-confirm-modal",
+        description="Discard confirmation modal (BaseModal) opened by discard_button.",
+    )
+
+    discard_confirm_button = LocatorDescriptor(
+        testid="pipeline-canvas-discard-confirm-button",
+        description="Discard button inside the confirmation modal.",
     )
 
     def __init__(self, page: Page):
@@ -87,3 +151,23 @@ class PipelineCanvasPage(BasePage):
         logger.info("Clicking Flow editor tab")
         self.flow_editor_tab.wait_for(state="visible", timeout=timeout)
         self.flow_editor_tab.click()
+
+    def is_discard_enabled(self, timeout: int = 5000) -> bool:
+        """Return True if the canvas header's Discard button is enabled (form is dirty)."""
+        self.discard_button.wait_for(state="visible", timeout=timeout)
+        return self.discard_button.is_enabled()
+
+    @action("Click Discard on pipeline canvas")
+    def click_discard(self, timeout: int = 5000) -> None:
+        """Click the canvas header's Discard button, opening the confirmation modal (ELITEA-2076)."""
+        logger.info("Clicking Discard on pipeline canvas")
+        self.discard_button.wait_for(state="visible", timeout=timeout)
+        self.discard_button.click()
+        self.discard_confirm_modal.wait_for(state="visible", timeout=timeout)
+
+    @action("Confirm discard on pipeline canvas")
+    def confirm_discard(self, timeout: int = 5000) -> None:
+        """Click Discard inside the confirmation modal and wait for it to close (ELITEA-2076)."""
+        logger.info("Confirming discard on pipeline canvas")
+        self.discard_confirm_button.click()
+        self.discard_confirm_modal.wait_for(state="detached", timeout=timeout)

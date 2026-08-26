@@ -116,6 +116,10 @@ class InteractiveTourCard(BasePage):
     def click_back(self) -> None:
         self.back_button.click()
 
+    @action("Click Skip in the tour dialog")
+    def click_skip(self) -> None:
+        self.skip_button.click()
+
     @action("Click Finish in the tour dialog")
     def click_finish(self) -> None:
         # Same testid as Next — its label flips to "Finish" on the last step.
@@ -144,3 +148,51 @@ class TourCompleteCard(BasePage):
     @action("Click Done in the Tour Complete modal")
     def click_done(self) -> None:
         self.done_button.click()
+
+
+class FirstVisitPromptCard(BasePage):
+    """First-visit prompt: "New here? ... Skip / Start!".
+
+    A modal (``role="dialog" aria-modal="true"``, ``Unstable_TrapFocus``) inside
+    ``InteractiveTourBackdrop``, proposed by ``useProposePendingTour`` when a
+    pending tour flag is set — e.g. after visiting ``/onboarding``, whose
+    ``handlePersonalProjectReady()`` writes
+    ``localStorage["interactive-tour:first-elitea:pending"]``.
+
+    **Its backdrop intercepts pointer events**: while this prompt is open the
+    page underneath is visible but NOT clickable. Any spec that interacts with
+    the destination page after "Jump in now!" must dismiss it first (ELITEA-2241,
+    clarification EliteaAI/elitea-testing-public#1754).
+
+    Do NOT bind to ``interactive-tour-complete-title`` / ``-icon``: those come
+    from the shared ``TourCardHeader`` and name the *tour-complete* card — they
+    leak into this prompt and are mis-scoped for it.
+    """
+
+    prompt = LocatorDescriptor(
+        testid="interactive-tour-first-visit-prompt",
+        description=(
+            "First-visit prompt card root (FirstVisitPrompt.jsx TourCard). "
+            "Added for ELITEA-2241 (EliteaAI/EliteaUI@3ba7967d)."
+        ),
+    )
+    skip_button = LocatorDescriptor(
+        testid="interactive-tour-first-visit-skip-button",
+        description=(
+            "'Skip' button — dismisses the prompt and releases the backdrop. "
+            "Added for ELITEA-2241 (EliteaAI/EliteaUI@3ba7967d)."
+        ),
+    )
+
+    def wait_for(self, timeout: int = 10000) -> None:
+        """Wait for the first-visit prompt to become visible."""
+        self.prompt.wait_for(state="visible", timeout=timeout)
+
+    @action("Skip the first-visit interactive-tour prompt")
+    def click_skip(self) -> None:
+        """Dismiss the prompt via its Skip button.
+
+        Escape also skips (FirstVisitPrompt handleKeyDown), but the button is
+        the documented control and the backdrop swallows stray clicks.
+        """
+        self.skip_button.click()

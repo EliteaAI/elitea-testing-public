@@ -266,6 +266,16 @@ class SecretsPage(BasePage):
     # .agents/testing.md § Locator policy) — chained off an already-testid-scoped
     # row locator (`secret_row.filter(has_text=name)`), same sanctioned pattern
     # as personal_tokens_page.py's TOKEN_NAME_CELL_SELECTOR.
+    # Table column headers (ELITEA-1969 step 5). `SecretsTable.jsx` passes
+    # `GridTableHeader`'s `columnTestIdPrefix="secret"`, which renders
+    # `secret-column-header-{column.field}` — the field ids are `name`,
+    # `secretValue` and `actions` (NOT the visible labels "Name" / "Value" /
+    # "Actions"). Dynamic testid via a class-level template constant, per
+    # .agents/testing.md § Locator policy.
+    SECRET_COLUMN_HEADER_SELECTOR = '[data-testid="secret-column-header-{}"]'
+    # Prefix form, for the "exactly three columns, no fourth" count assertion.
+    SECRET_COLUMN_HEADER_PREFIX_SELECTOR = '[data-testid^="secret-column-header-"]'
+
     SECRET_NAME_CELL_SELECTOR = '[data-testid="secret-name-cell"]'
     SECRET_VALUE_CELL_SELECTOR = '[data-testid="secret-value-cell"]'
     # Used to prove the pending/editing row's inputs render INSIDE the same
@@ -439,6 +449,20 @@ class SecretsPage(BasePage):
         existing row's Name column stays the same static-text cell
         (``secret-name-cell``) shown in view mode."""
         return row.locator(self.SECRET_NAME_INPUT_SELECTOR)
+
+    def column_header(self, field: str):
+        """Return the table column-header locator for *field*.
+
+        Args:
+            field: the column's ``field`` id as defined in ``SecretsTable.jsx``
+                — ``"name"`` | ``"secretValue"`` | ``"actions"``.
+        """
+        return self.page.locator(self.SECRET_COLUMN_HEADER_SELECTOR.format(field))
+
+    def column_headers(self):
+        """Return every rendered column header — used for the bi-directional
+        "exactly these columns, no extras" assertion (ELITEA-1969 step 5)."""
+        return self.page.locator(self.SECRET_COLUMN_HEADER_PREFIX_SELECTOR)
 
     def get_pagination_text(self) -> str:
         """Return the pagination range text, e.g. "1 - 10 of 104"."""

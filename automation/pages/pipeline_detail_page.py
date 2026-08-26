@@ -18,6 +18,8 @@ from contextlib import contextmanager
 
 from components.mui import Dialog, Popper
 from playwright.sync_api import Locator, Page
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from utils.actions import action
 
 from .locator_descriptor import LocatorDescriptor
 from .pipeline_form_page import PipelineFormPage
@@ -41,16 +43,355 @@ class PipelineDetailPage(PipelineFormPage):
         description="Configuration panel General section header (always visible, replaces old tab)"
     )
 
+    # Collapse/expand toggle for the left configuration panel (ELITEA-2072).
+    # `GeneralFormPanel.jsx` — same button serves both directions (icon swaps
+    # DoubleLeft/DoubleRight, testid is stable); confirmed live: collapsing
+    # unmounts `PipelineConfigurationForm` entirely (`{!collapsed && (...)}`),
+    # so the section testids below (toolkits_section etc.) disappear from the
+    # DOM rather than merely becoming hidden.
+    config_panel_collapse_button = LocatorDescriptor(
+        testid="pipeline-config-collapse-button",
+        description="Collapse/expand toggle at the top of the left configuration panel"
+    )
+
     history_tab = LocatorDescriptor(
         testid="pipeline-history-tab",
         fallback=lambda page: page.locator('[aria-label="view run history"]'),
         description="View run history icon button (replaces old History tab)"
     )
 
+    # `run-history-list-item` / `data-selected` — testid + state attribute
+    # (ELITEA-2011 AFS § Concrete Handles). Same `RunHistoryContainer` /
+    # `RunHistoryListItem.jsx` the Agent surface already documents
+    # (`AgentDetailPage`, ELITEA-1877/1876) — this page-object mirrors
+    # those constants/methods for the Pipeline surface. Same literal
+    # testid on every row, positionally distinguished (default sort =
+    # Date descending, so index 0 = most recent).
+    RUN_HISTORY_LIST_ITEM_SELECTOR = '[data-testid="run-history-list-item"]'
+    RUN_HISTORY_LIST_ITEM_SELECTED_SELECTOR = (
+        '[data-testid="run-history-list-item"][data-selected="true"]'
+    )
+
+    # Run History panel close (X) button (ELITEA-2070). Same shared
+    # `RunHistoryContainer.jsx` IconButton the Agent surface also renders
+    # (no `pipeline-`/`agent-` prefix — same reasoning as
+    # `RUN_HISTORY_LIST_ITEM_SELECTOR` above: the component is shared, the
+    # testid is shared). Added via `add-data-testid`,
+    # EliteaAI/EliteaUI@ccbfc54a — no testid existed before this case;
+    # neither ELITEA-2011 (Pipeline) nor ELITEA-1877 (Agent) requested it
+    # since neither of those cases' own steps clicked it.
+    run_history_close_button = LocatorDescriptor(
+        testid="run-history-close-button",
+        description="Close (X) button in the Run History panel header",
+    )
+
     copy_id_button = LocatorDescriptor(
         testid="copy-id",
         fallback=lambda page: page.get_by_role("button", name="Copy ID"),
         description="Copy pipeline ID button"
+    )
+
+    # Information accordion root (agent-information-section, shared with the
+    # Agent detail page). Confirmed live (ELITEA-2020): expanded by default
+    # on a freshly created pipeline's detail page — no click needed to reveal
+    # "Pipeline ID:"/"Version ID:"/"Pipeline:" rows.
+    information_section = LocatorDescriptor(
+        testid="agent-information-section",
+        description="Information accordion (Pipeline ID / Version ID / Pipeline link rows)",
+    )
+
+    # Information section's "Trigger:" row (ELITEA-2041). Confirmed live:
+    # rendered by ApplicationInformation.jsx only once `isPipeline &&
+    # triggerData?.type` (an RTK-Query GET that does not always settle
+    # synchronously with page load — same class of timing gap as
+    # trigger_select's own combobox text, see its class docstring above).
+    # Added via add-data-testid, EliteaAI/EliteaUI@28dbc5e4. Text content is
+    # the concatenated label+value with NO literal space ("Trigger:Chat
+    # Message") — confirmed live; the row's flex `gap` CSS is visual only,
+    # not a text node.
+    information_trigger_row = LocatorDescriptor(
+        testid="information-trigger-row",
+        description="Information section's Trigger row (label+value, e.g. 'Trigger:Chat Message')",
+    )
+
+    # VERSION selector in the entity tab bar (ApplicationVersionSelect.jsx,
+    # shared with Agents). The testid reaches the DOM via a `testId` PROP —
+    # ApplicationVersionSelect.jsx:228 passes `testId="agent-version-
+    # selector-trigger"` down to VersionSelect.jsx -> SingleSelect.jsx,
+    # which applies `data-testid={dataTestId}` on the SingleSelect root AND
+    # (via `SelectDisplayProps`) a second, template-suffixed
+    # `data-testid="agent-version-selector-trigger-combobox"` on the nested
+    # MUI-internal `role="combobox"` display div — two distinct DOM nodes,
+    # one inside the other. That `-combobox` variant IS real (re-confirmed
+    # live 2026-08-07, review fix round 2; `SingleSelect.jsx:661`'s
+    # `SelectDisplayProps={dataTestId ? { 'data-testid': ${dataTestId}-combobox } : undefined}`)
+    # — but it's constructed at RENDER TIME from a template literal, so the
+    # concatenated string never appears literally in source and a plain
+    # `git grep` for it returns zero hits by construction, not because it
+    # doesn't exist. It's also ref-specific: present on `automation/testids`
+    # only (that `SelectDisplayProps` line isn't yet on `main` as of
+    # 2026-08-07) — a "needs-adding to main" / "on-automation/testids only"
+    # PROVENANCE case, not a non-existent testid.
+    # This field deliberately still uses the NO-suffix testid
+    # (`agent-version-selector-trigger`) for a reason unrelated to
+    # existence: it's confirmed on BOTH `main` and `automation/testids`,
+    # and DOM `textContent` on the outer wrapper already includes the inner
+    # `-combobox` div's text — reading it here returns "base" without
+    # needing the inner node at all. Matches
+    # AgentDetailPage.version_selector_trigger, which reads this exact
+    # shared component the same way. (History: round-1 review wrongly
+    # called the `-combobox` variant "fabricated" / "zero hits on both
+    # main and automation/testids" — corrected 2026-08-07, review fix
+    # round 2; see .agents/memory/test-automation-engineer/
+    # afs_testid_can_name_a_real_but_wrong_component.md.)
+    version_selector = LocatorDescriptor(
+        testid="agent-version-selector-trigger",
+        description="VERSION selector — text content is the current version name (e.g. 'base')",
+    )
+
+    # Version ID (ApplicationInformation.jsx — shared with Agents, rendered
+    # via PipelineConfigurationForm.jsx whenever `versionId !== undefined`,
+    # confirmed live 2026-08-07, ELITEA-2002 exploration: `copy-version-id`
+    # resolves and reads the version's numeric id, e.g. "8311"). Second,
+    # independent signal alongside the URL's version-id path segment for
+    # confirming a version switch/create actually landed.
+    copy_version_id_button = LocatorDescriptor(
+        testid="copy-version-id",
+        description="Version ID text (Information accordion)",
+    )
+
+    # Information accordion's "Pipeline: Show" link (ELITEA-2056). Rendered
+    # only when `showPipeline` is passed (ApplicationInformation.jsx),
+    # i.e. pipeline-only — same conditional shape as `information_trigger_row`
+    # above. Had NO testid before this session; added via add-data-testid,
+    # EliteaAI/EliteaUI@22184211. Clicking it opens a modal (NOT a
+    # navigation — confirmed live, see `_surface.md`) rendering the
+    # pipeline's YAML as a Mermaid diagram.
+    information_show_link = LocatorDescriptor(
+        testid="pipeline-information-show-link",
+        description='Information section\'s "Pipeline: Show" link — opens a '
+        "Mermaid-diagram preview modal of the pipeline's YAML",
+    )
+
+    # The Show-link modal's Mermaid diagram content. Reuses the PRE-EXISTING
+    # `chat-mermaid-diagram-svg-container` testid — hardcoded inside the
+    # shared `MermaidDiagramOutput/DiagramOutput.jsx` component that both
+    # Chat (`ChatPage.diagram_svg_container`) and this modal
+    # (`StyledShowContextModal` -> `MermaidDiagramOutput`) render through.
+    # No new testid needed; duplicating the literal across page objects for
+    # a shared-component testid is an established precedent here (same as
+    # `copy-id`/`copy-version-id`/`agent-information-section`, already
+    # duplicated between AgentDetailPage and PipelineDetailPage).
+    show_context_diagram_container = LocatorDescriptor(
+        testid="chat-mermaid-diagram-svg-container",
+        description="Mermaid diagram container inside the Show-link preview modal "
+        "(StyledShowContextModal) — shared testid, also used by ChatPage's own "
+        "mermaid canvas",
+    )
+
+    # Sanctioned #579 exception (third-party widget subtree — the SVG itself
+    # is Mermaid.js-rendered, not app JSX) — scoped raw selector (standard
+    # Mermaid CSS class) as a child of show_context_diagram_container. Mirrors
+    # ChatPage.MERMAID_NODE (chat_page.py) — same shared Mermaid rendering
+    # path, same sanctioned pattern, applied here per ELITEA-2056 review.
+    MERMAID_NODE = ".node"
+
+    # --- Version management (Save As Version / VERSION selector, ELITEA-2002).
+    # `save_as_version_button` itself is inherited from PipelineFormPage.
+    # Same shared components AgentDetailPage's version-management fields
+    # already wire (SaveNewVersionButton.jsx, ApplicationVersionSelect.jsx,
+    # BaseModal.jsx) — confirmed live end-to-end on a pipeline detail page,
+    # zero add-data-testid work needed.
+    create_version_name_input = LocatorDescriptor(
+        testid="agent-version-dialog-name-input",
+        description='"Create version" dialog — Name field',
+    )
+    create_version_save_button = LocatorDescriptor(
+        testid="agent-version-dialog-save-button",
+        description='"Create version" dialog — confirm ("Save") button; '
+        "disabled until Name is non-empty",
+    )
+    create_version_cancel_button = LocatorDescriptor(
+        testid="agent-version-dialog-cancel-button",
+        description='"Create version" dialog — Cancel button (not exercised by '
+        "any current pipeline case — field added for parity with "
+        "AgentDetailPage, no call site wires it)",
+    )
+    create_version_close_button = LocatorDescriptor(
+        testid="agent-version-dialog-close-button",
+        description='"Create version" dialog — X close button (not exercised by '
+        "any current pipeline case — field added for parity with "
+        "AgentDetailPage, no call site wires it)",
+    )
+
+    # Dynamic (runtime-parameterized) testid for a VERSION-selector option,
+    # keyed by version name — same `version-option-{}` template shared by
+    # every version selector consumer; see also AgentDetailPage.VERSION_OPTION.
+    VERSION_OPTION = '[data-testid="version-option-{}"]'
+
+    # --- Version deletion (ELITEA-2003) — three-dot menu's VERSION-group
+    # "Delete" item + its SIMPLE confirm modal. Distinct from
+    # `delete_pipeline_via_menu`'s PIPELINE-group "Delete pipeline" item
+    # (role-based text match, type-to-confirm dialog): this targets a
+    # DIFFERENT menu item and a DIFFERENT (non-typing) confirm modal.
+    #
+    # `actions_menu_button` uses the testid directly (confirmed live —
+    # `${id}-menu-button` template in DotMenu.jsx with `id="agent-actions"`
+    # passed from ApplicationControls.jsx) rather than the legacy
+    # bounding-box `open_actions_menu()` hack — new code resolves the most
+    # stable, semantic handle available (locator policy Hard Rule 6); the
+    # existing hack is left unmodified (additive-only) for its own callers.
+    actions_menu_button = LocatorDescriptor(
+        testid="agent-actions-menu-button",
+        description="Three-dot actions menu trigger (header bar).",
+    )
+
+    # PIPELINE-group "Export" menu item (ELITEA-2012 AFS Concrete Handles) —
+    # a real, on-main testid, confirmed live-resolving for a pipeline detail
+    # page. New field distinct from the pre-existing raw-handle
+    # `export_pipeline_via_menu()` method (`get_by_role("menuitem",
+    # name="Export")`, no download capture) — that method's own caller
+    # (`test_pipeline_advanced.py`) is left unmodified per the additive-only
+    # contract; this field backs the NEW `export_pipeline_via_menu_and_download()`.
+    export_menuitem = LocatorDescriptor(
+        testid="agent-actions-export-menuitem",
+        description='Three-dot menu — "Export" item (shared Agent/Pipeline testid).',
+    )
+
+    # VERSION-group "Delete" menu item — disabled when the currently open
+    # version is "base" (ApplicationControls.jsx's `disableDelete`); not
+    # exercised by this case (always deletes the non-base ver_to_delete).
+    delete_version_menuitem = LocatorDescriptor(
+        testid="delete-version-menuitem",
+        description='Three-dot menu — VERSION-group "Delete" item.',
+    )
+
+    # --- Actions menu (ELITEA-2049 AFS Concrete Handles) — the menu
+    # container plus the remaining VERSION/PIPELINE-group items not yet
+    # covered by fields above. All pre-existing, on-main testids — zero
+    # EliteaUI change needed for these five (mirrors AgentDetailPage's
+    # equivalent fields, same shared-component testid family).
+    actions_menu = LocatorDescriptor(
+        testid="agent-actions-menu",
+        description='Three-dot actions menu container ([role="menu"]).',
+    )
+    # VERSION-group "Share" — copies a VERSION-specific link (URL carries a
+    # trailing version-id path segment). NOT the case's "Copy link" target —
+    # see `share_agent_menuitem` below. Negative-control pair, same shape
+    # already documented by AgentDetailPage (ELITEA-1898).
+    share_version_menuitem = LocatorDescriptor(
+        testid="share-version-menuitem",
+        description='Three-dot menu — VERSION-group "Share" item (version-specific link).',
+    )
+    # VERSION-group "Fork". Gotcha: DIFFERENT testid from Agent's
+    # `agent-actions-fork-menuitem` — `ForkEntityButton.jsx`'s
+    # `FORK_MENU_ITEM_KEY_BY_ENTITY` map resolves the key per `entity_name`
+    # (`pipelines` -> `pipeline-actions-fork`). Do not reuse the Agent value.
+    fork_menuitem = LocatorDescriptor(
+        testid="pipeline-actions-fork-menuitem",
+        description='Three-dot menu — VERSION-group "Fork" item.',
+    )
+    # PIPELINE-group "Share" — THIS is the case's "Copy link" step (case-text
+    # drift, CLARIFICATION EliteaAI/elitea-testing-public#1337). Gotcha (same
+    # as Agent's ELITEA-1898): the testid key is the literal `share-agent`,
+    # not renamed per entity — `ApplicationControls.jsx` reuses it for both
+    # Agent and Pipeline entities.
+    share_agent_menuitem = LocatorDescriptor(
+        testid="share-agent-menuitem",
+        description='Three-dot menu — PIPELINE-group "Share" item (generic pipeline link; '
+        "functionally the case's \"Copy link\").",
+    )
+    delete_agent_menuitem = LocatorDescriptor(
+        testid="delete-agent-menuitem",
+        description='Three-dot menu — PIPELINE-group "Delete pipeline" item.',
+    )
+    # PIPELINE-group "Pin to top" — added via `add-data-testid`
+    # (EliteaAI/EliteaUI@f83557e4, ELITEA-2049): threaded an optional `key`
+    # param through the shared `usePinMenu()` hook (default `undefined`,
+    # preserving the other 3 untouched callers — Skill/Toolkits/Credentials
+    # controls) so `ApplicationControls.jsx` can supply
+    # `key: 'pipeline-actions-pin-to-top'` for this call site only.
+    pin_to_top_menuitem = LocatorDescriptor(
+        testid="pipeline-actions-pin-to-top-menuitem",
+        description='Three-dot menu — PIPELINE-group "Pin to top" item.',
+    )
+
+    # Shared Modal.DeleteEntityModal component (same testid family already
+    # wired by artifacts_page.py/secrets_page.py/chat_page.py/etc. for
+    # THEIR OWN delete flows) — new fields here for the pipeline-version
+    # delete flow, per the project's one-class-per-file convention.
+    delete_confirm_dialog = LocatorDescriptor(
+        testid="delete-confirm-dialog",
+        description="Delete-version confirmation dialog.",
+    )
+    delete_confirm_message = LocatorDescriptor(
+        testid="delete-confirm-message",
+        description="Delete-version confirmation dialog — message text.",
+    )
+    delete_confirm_button = LocatorDescriptor(
+        testid="delete-confirm-button",
+        description="Delete-version confirmation dialog — confirm (Delete) button.",
+    )
+
+    # --- Fork wizard (ELITEA-2051) — shares the ImportWizardModal dialog
+    # family with AgentDetailPage's own Fork fields (ELITEA-1893) and
+    # PipelinesListPage's Import fields (ELITEA-2012): same shared component
+    # tree, same testids, all confirmed live for the Pipeline entity by the
+    # ELITEA-2051 AFS. Re-declared here (not inherited) because Fork is
+    # triggered from THIS page's actions menu. The dialog container swaps
+    # its own testid in place from "agent-import-preview-dialog" (pre-fork)
+    # to "agent-import-complete-dialog" (post-fork) — do not assert a single
+    # fixed testid persisting across the fork action. ---
+    fork_wizard_dialog = LocatorDescriptor(
+        testid="agent-import-preview-dialog",
+        description="Fork wizard 'Fork parameters' dialog (pre-fork state)",
+    )
+    fork_complete_dialog = LocatorDescriptor(
+        testid="agent-import-complete-dialog",
+        description="Fork wizard 'Fork Complete' dialog (post-fork state — "
+                     "same container as fork_wizard_dialog, testid swaps)",
+    )
+    fork_main_entity_name = LocatorDescriptor(
+        testid="agent-import-preview-name",
+        description="Fork wizard — Main entity card's name",
+    )
+    # Every rendered entity-preview card (Main entity + each nested
+    # dependency, if any) carries this SAME toggle testid — count() is a
+    # direct, testid-based proxy for "how many entity cards are showing",
+    # used to confirm no "Nested entities" section renders for a
+    # dependency-free source pipeline (AFS Axis 2).
+    fork_entity_card_toggle = LocatorDescriptor(
+        testid="agent-import-preview-card-toggle",
+        description="Fork wizard — 'Show details' toggle, one per rendered "
+                     "entity-preview card",
+    )
+    # Same shared ProjectSelect DOM node AgentDetailPage.fork_project_select_trigger
+    # resolves (see that field's comment for the full state-conditional-testid
+    # history) — confirmed live resolving on the Pipeline Fork wizard too
+    # (ELITEA-2051 AFS Concrete Handles).
+    fork_project_select_trigger = LocatorDescriptor(
+        testid="agent-import-wizard-project-select",
+        description="Fork wizard — target Project selector trigger (shared "
+                     "with the Import wizard's own use of the same "
+                     "ProjectSelect DOM node)",
+    )
+    fork_confirm_button = LocatorDescriptor(
+        testid="agent-fork-confirm-button",
+        description="Fork wizard — 'Fork' confirm button (shared "
+                     "IWModalForkButton.jsx component/testid — literal "
+                     "'agent-' prefix is naming tech debt, not entity-scoped)",
+    )
+    # The PIPELINES variant of the shared `agent-import-complete-list-{entityKey}`
+    # family — matches PipelinesListPage.import_complete_pipelines_list's
+    # existing testid exactly (same shared component reused by both Import
+    # and Fork).
+    fork_complete_pipelines_list = LocatorDescriptor(
+        testid="agent-import-complete-list-pipelines",
+        description="Fork Complete dialog — forked Pipelines name list",
+    )
+    fork_complete_got_it_button = LocatorDescriptor(
+        testid="agent-import-complete-got-it-button",
+        description="Fork Complete dialog — 'Got it' confirm/navigate button",
     )
 
     flow_view_button = LocatorDescriptor(
@@ -108,6 +449,33 @@ class PipelineDetailPage(PipelineFormPage):
     # yaml_lines above never resolved any elements).
     YAML_LINE_SELECTOR = ".cm-line"
 
+    # Sanctioned #579 exception (third-party editor library internal render
+    # nodes), sibling to YAML_LINE_SELECTOR above: CodeMirror's line-number
+    # gutter (".cm-gutters .cm-lineNumbers .cm-gutterElement") has no
+    # data-testid anywhere in the DOM (confirmed live via
+    # document.querySelector('.cm-gutters') -> data-testid: null,
+    # ELITEA-2026 exploration) — library-internal render, not app JSX.
+    # Scoped raw selector under the testid-anchored yaml_editor parent
+    # (confirmed live: editorTestidEl.contains(gutter) === true).
+    #
+    # ":visible" is REQUIRED (confirmed live, ELITEA-2026): CodeMirror
+    # renders a hidden, zero-height "spacer" gutterElement FIRST in DOM
+    # order (style="height: 0px; visibility: hidden; pointer-events: none;")
+    # whose text is a measurement placeholder (e.g. "99" — sized to reserve
+    # gutter width for the largest expected line-number digit count), NOT
+    # line 1's actual number. Without the visibility filter, .nth(0) reads
+    # that spacer instead of the first real line-number element.
+    YAML_GUTTER_LINE_SELECTOR = ".cm-gutters .cm-lineNumbers .cm-gutterElement:visible"
+
+    # "Copy yaml code to clipboard" icon button, above the editor next to the
+    # Flow/Yaml toggle group (EditorPanel.jsx). New testid added for
+    # ELITEA-2026 — the button previously carried only an
+    # aria-label/tooltip title, no data-testid.
+    copy_yaml_button = LocatorDescriptor(
+        testid="pipeline-yaml-copy-button",
+        description="Copy yaml code to clipboard icon button (visible only in YAML view)",
+    )
+
     # App-wide toast (Toast.jsx, src/components/Toast.jsx) — shared component,
     # testids pre-exist and need no EliteaUI change (confirmed live, ELITEA-2068).
     # Each page object declares its own field for this shared component per
@@ -139,6 +507,158 @@ class PipelineDetailPage(PipelineFormPage):
         fallback=lambda page: page.get_by_role("button", name="send your question"),
         description="Embedded chat send button"
     )
+
+    # ELITEA-2016: pre-existing `data-testid="chat-clear-button"` on
+    # ClearChatButton.jsx (EliteaAI/EliteaUI@2d98830a, already on `main` —
+    # confirmed via `git grep` before this AFS's exploration), rendered by
+    # ChatPanel.jsx (the pipeline embedded chat) via the shared
+    # `ChatButton.ClearChatButton` component. No add-data-testid work
+    # needed — the AFS's Concrete Handles table flagged this as "no
+    # existing page-object method", not "no existing testid".
+    chat_clear_button = LocatorDescriptor(
+        testid="chat-clear-button",
+        description="Embedded chat 'Clear the chat' button — starts a fresh conversation in place"
+    )
+
+    # File attachments (ELITEA-2059). Bare icon-only `AttachmentButton`
+    # instance rendered directly by `NewChatInput.jsx`'s
+    # `!hideAttachments && !fromTheChat` branch — a DIFFERENT call site than
+    # `ChatPage.attach_files_button` (the `showLabel` Popper-menu instance
+    # reached via `chat-attach-menuitem-button`, ELITEA-2197/2200). No
+    # plus-menu hop here; the pipeline/agent embedded chat renders this
+    # button unconditionally. `chat-attach-button` added via `add-data-testid`
+    # (`NewChatInput.jsx:273`'s `testId` prop, EliteaAI/EliteaUI@2a4aab23 on
+    # `automation/testids`).
+    chat_attach_button = LocatorDescriptor(
+        testid="chat-attach-button",
+        description="Bare icon-only Attach Files button (pipeline/agent embedded chat, no plus-menu)"
+    )
+
+    # `chat-attach-button`'s own `aria-label` stays the STATIC string "attach
+    # files" — it does NOT reflect the dynamic "Attach Files (N left)" counter
+    # (live-confirmed, ELITEA-2059 implementer Phase 2 exploration). That
+    # counter text only exists in this Tooltip's popper content, added via
+    # `slotProps={{ tooltip: { 'data-testid': ... } }}` (EliteaAI/EliteaUI@a926573d
+    # on `automation/testids`) — the compliant testid-only path, since a raw
+    # `[role="tooltip"]` selector is not a sanctioned #579 exception (this is
+    # our own MUI usage, not a third-party widget).
+    chat_attach_button_tooltip = LocatorDescriptor(
+        testid="chat-attach-button-tooltip",
+        description="Attach button's Tooltip popper content — carries the dynamic 'Attach Files (N left)' text"
+    )
+
+    # FileList.jsx per-item chip, dynamic by render index (0-based, stable
+    # within one attach sequence). SAME shared component/testid as
+    # `ChatPage.CHAT_ATTACHMENT_CHIP` — ported here rather than inherited
+    # (no common ancestor between `PipelineDetailPage` and `ChatPage`; same
+    # cross-hierarchy duplication precedent as this file's `answer_model_chip`
+    # field, which mirrors `ChatPage.answer_model_chip`).
+    CHAT_ATTACHMENT_CHIP = '[data-testid="chat-attachment-chip-{}"]'
+    CHAT_ATTACHMENT_CHIP_PREFIX = '[data-testid^="chat-attachment-chip-"]'
+
+    # Testid-scoped embedded-chat message inventory (ELITEA-2052). All
+    # testids are pre-existing on `main` via the shared
+    # `ChatMessageList.jsx`/`ApplicationAnswer.jsx`/`UserMessage.jsx` FSD
+    # components (confirmed via source read this AFS) — mirrors
+    # `AgentDetailPage`'s equivalent fields (agent_detail_page.py:239-248)
+    # exactly, since the pipeline embedded chat renders through the same
+    # components. Distinct from the legacy CSS-based
+    # `_embedded_chat_messages()` below (tech debt, additive-only — not
+    # modified here); these back the agent-code-path assertions in
+    # `get_last_embedded_chat_message_agent_markers()`.
+    #
+    # Only the two testids this test's executed path binds directly as
+    # `LocatorDescriptor` fields — `chat_message_list` (the scoping parent)
+    # and `skill_test_last_response` (read directly in
+    # `get_last_embedded_chat_message_text()`). The remaining three testids
+    # this test touches (`chat-message-item`, `chat-read-out-button`,
+    # `chat-answer-content`) are only ever used as *scoped sub-selectors*
+    # inside `last_item.locator(...)` / `chat_message_list.locator(...)` —
+    # never as a bare `self.<field>` locator — so per the locator-policy
+    # scope discipline (`.agents/role-overrides.md` — "touches" = the method
+    # this test actually calls) they live ONLY as the UPPER_CASE
+    # `[data-testid=...]` string constants below, not as a duplicate
+    # `LocatorDescriptor` field nobody calls. `chat-message-delete-button`
+    # is asserted as ABSENT on this test's path
+    # (`get_last_embedded_chat_message_agent_markers()` returns
+    # `has_delete_button`) via `CHAT_MESSAGE_DELETE_SELECTOR` the same way —
+    # an absence assertion is still a reference (canon ruling #511
+    # extension), so it stays.
+    chat_message_list = LocatorDescriptor(
+        testid="chat-message-list",
+        description="Embedded chat message list container"
+    )
+    skill_test_last_response = LocatorDescriptor(
+        testid="skill-test-last-response",
+        description="Agent-answer body testid used when the message is the last/only one in the list"
+    )
+
+    # Scoped selectors (inside a single chat-message-item) for the
+    # agent-vs-user code-path markers above — same idiom as
+    # `AgentDetailPage.CHAT_MESSAGE_ITEM_SELECTOR`/`CHAT_READ_OUT_BUTTON_SELECTOR`
+    # (ELITEA-2052).
+    CHAT_MESSAGE_ITEM_SELECTOR = '[data-testid="chat-message-item"]'
+    CHAT_READ_OUT_BUTTON_SELECTOR = '[data-testid="chat-read-out-button"]'
+
+    # Tool-call chip rendered inside an assistant answer's "Thought" accordion
+    # (ELITEA-1952) — text "{toolkit}: {tool} ({node})". Same shared
+    # `chat-answer-tool-chip` testid `ChatPage`/`AgentDetailPage` already bind;
+    # scoped inside a single chat-message-item at the call site, never used as a
+    # bare page-level handle, so it stays a class constant per the locator
+    # policy's scoped-sub-selector convention.
+    CHAT_ANSWER_TOOL_CHIP_SELECTOR = '[data-testid="chat-answer-tool-chip"]'
+    SKILL_TEST_LAST_RESPONSE_SELECTOR = '[data-testid="skill-test-last-response"]'
+    CHAT_ANSWER_CONTENT_SELECTOR = '[data-testid="chat-answer-content"]'
+    CHAT_MESSAGE_DELETE_SELECTOR = '[data-testid="chat-message-delete-button"]'
+
+    # Attachment card rendered INSIDE a message bubble (ELITEA-2059 fix
+    # round). Pre-existing testid — same one `AgentDetailPage` already reads
+    # via `get_chat_artifact_file_names()` for AI-created artifact files
+    # (`NormalAttachment.jsx:147`, `data-testid="chat-artifact-file-card"`,
+    # `data-name={attachmentName}`). Confirmed via source read
+    # (`EliteaUI/src/components/Chat/NormalAttachment.jsx`) that the SAME
+    # component renders a user's OWN sent attachment inside
+    # `UserMessage.jsx`'s `MessageAttachmentList` — no wrapping
+    # `chat-artifact-file-list` container on that path (that wrapper is
+    # `ApplicationAnswer.jsx`-only), so the card is scoped directly off the
+    # message `<li>` here, not off a list container.
+    CHAT_ARTIFACT_FILE_CARD_SELECTOR = '[data-testid="chat-artifact-file-card"]'
+
+    # Embedded-chat conversation-starter tile (ELITEA-2053) — this page's own
+    # call site of the shared `ChatBox` component (`ChatPanel.jsx` mounts the
+    # exact same `ChatBox` the Agent Detail page mounts, which renders
+    # `ChatConversationStarters.jsx`). Same literal as
+    # `AgentDetailPage.CHAT_STARTER_TILE`/`ChatPage.CHAT_STARTER_TILE` by
+    # deliberate reuse (ELITEA-1886/ELITEA-2369 precedent) — the three call
+    # sites never render on the same page simultaneously. Pre-existing on
+    # `automation/testids` only (added by ELITEA-1886, `EliteaAI/EliteaUI@afb48435`)
+    # — no new add-data-testid work needed for this element (AFS Concrete
+    # Handles). Select a specific tile via `.filter(has_text=...)`, same
+    # idiom as `AgentDetailPage.click_chat_starter_tile()`.
+    CHAT_STARTER_TILE = '[data-testid="chat-conversation-starter-tile"]'
+
+    # LLM model selector (embedded chat panel, ELITEA-2017). Mirrors
+    # AgentDetailPage's EXACT existing pattern (agent_detail_page.py:284-286)
+    # rather than ChatPage.model_selector's (which carries a forbidden
+    # `fallback=` param — pre-existing tech debt, not copied here; AFS
+    # l2_pipeline-execution-long-response-streaming_ELITEA-2017.md §
+    # Concrete Handles). Both `model-selector-button`/`model-selector-name`
+    # are confirmed on `main`; the dynamic `model-selector-option-{name}`
+    # testid this class constant matches is confirmed on `automation/testids`
+    # only (not yet cherry-picked to `main` as of this AFS's exploration —
+    # AFS amended accordingly).
+    model_selector_button = LocatorDescriptor(testid="model-selector-button")
+    model_selector_name = LocatorDescriptor(testid="model-selector-name")
+    MODEL_SELECTOR_OPTION_ANY_SELECTOR = '[data-testid^="model-selector-option-"]'
+
+    # AI response's model-attribution chip (ELITEA-2058) — mirrors
+    # ChatPage.answer_model_chip (chat_page.py:620) exactly; renders through
+    # the identical shared component chain (ApplicationAnswer.jsx/
+    # ActionView.jsx) in the embedded chat panel. Confirmed on
+    # `automation/testids` only as of this AFS's exploration (same
+    # pending-promotion set ELITEA-2017 already flagged) — no new
+    # add-data-testid work required.
+    answer_model_chip = LocatorDescriptor(testid="chat-answer-model-chip")
 
     # MCP node inline config fields (ELITEA-1954). Testid-only, added via
     # add-data-testid — BaseToolNode.jsx only sets these when nodeType is
@@ -200,6 +720,39 @@ class PipelineDetailPage(PipelineFormPage):
         description="MCP node's 'Structured output' switch (CommonInterruptSettings.jsx)"
     )
 
+    # Agent node inline config fields (ELITEA-2038). Testid-only, added via
+    # add-data-testid — AgentNode.jsx is its own component (not a
+    # BaseToolNode.jsx caller), so these carry a local
+    # AGENT_NODE_TESTID_PREFIX constant rather than a shared
+    # TEST_ID_PREFIX_BY_NODE_TYPE map entry. No `optionalHeadingTestId`/
+    # `structuredOutputTestId` were wired — the Agent node's INPUT MAPPING
+    # only ever renders ONE required field (TASK), never an optional
+    # section, and CommonInterruptSettings.jsx never renders Structured
+    # output here at all (AgentNode.jsx passes showStructuredOutput=false)
+    # — confirmed live, ELITEA-2038 analysis session. Page-wide (not scoped
+    # to a specific node container): correct as long as a test only has a
+    # single Agent node on canvas.
+    agent_node_agent_select = LocatorDescriptor(
+        testid="pipeline-agent-node-agent-select",
+        description="Agent node's Agent select (inline on the ReactFlow canvas card)"
+    )
+    agent_node_input_select = LocatorDescriptor(
+        testid="pipeline-agent-node-input-select",
+        description="Agent node's tool-agnostic Input state-variable select"
+    )
+    agent_node_output_select = LocatorDescriptor(
+        testid="pipeline-agent-node-output-select",
+        description="Agent node's tool-agnostic Output state-variable select"
+    )
+    agent_node_input_mapping_required_heading = LocatorDescriptor(
+        testid="pipeline-agent-node-input-mapping-heading",
+        description="Agent node's 'Input mapping (required 1)' accordion heading (always TASK)"
+    )
+    agent_node_interrupt_after_toggle = LocatorDescriptor(
+        testid="pipeline-agent-node-interrupt-after-toggle",
+        description="Agent node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
+    )
+
     # LLM node inline config (ELITEA-2004). Testid-only, added via
     # add-data-testid — LLMNode.jsx call sites only (SimpleLLMInputs is
     # shared with Code/Printer nodes, which stay untagged — untested node
@@ -249,6 +802,138 @@ class PipelineDetailPage(PipelineFormPage):
     llm_node_structured_output_toggle = LocatorDescriptor(
         testid="pipeline-llm-node-structured-output-toggle",
         description="LLM node's 'Structured output' switch (CommonInterruptSettings.jsx)"
+    )
+
+    # Code node inline config (ELITEA-2009). Testid-only, added via
+    # add-data-testid — CodeNode.jsx call sites only (SimpleLLMInputs is
+    # shared with LLM/Printer nodes, which stay untagged — untested node
+    # types stay untagged, .agents/testing.md § Locator policy). Page-wide
+    # (not scoped to a specific node container): correct as long as a test
+    # only has a single Code node on canvas.
+    code_node_type_select = LocatorDescriptor(
+        testid="pipeline-code-node-type-select",
+        description="Code node's CODE section Type select (inline on canvas card)"
+    )
+    code_node_value = LocatorDescriptor(
+        testid="pipeline-code-node-value",
+        description="Code node's CODE section Value field (Python code textarea)"
+    )
+    code_node_input_select = LocatorDescriptor(
+        testid="pipeline-code-node-input-select",
+        description="Code node's tool-agnostic Input state-variable select"
+    )
+    code_node_output_select = LocatorDescriptor(
+        testid="pipeline-code-node-output-select",
+        description="Code node's tool-agnostic Output state-variable select"
+    )
+    code_node_interrupt_after_toggle = LocatorDescriptor(
+        testid="pipeline-code-node-interrupt-after-toggle",
+        description="Code node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
+    )
+    code_node_structured_output_toggle = LocatorDescriptor(
+        testid="pipeline-code-node-structured-output-toggle",
+        description="Code node's 'Structured output' switch (CommonInterruptSettings.jsx)"
+    )
+
+    # Printer node inline config (ELITEA-2039). Testid-only, added via
+    # add-data-testid — PrinterNode.jsx call sites only (SimpleLLMInputs is
+    # shared with LLM/Code nodes, which stay untagged — untested node types
+    # stay untagged, .agents/testing.md § Locator policy). Page-wide (not
+    # scoped to a specific node container): correct as long as a test only
+    # has a single Printer node on canvas. Unlike Code/LLM, the Printer node
+    # has NO Input/Output state-var selects and NO Interrupt/Structured-
+    # output controls at all — confirmed via source (`PrinterNode.jsx`
+    # renders only SimpleLLMInputs + the Final Message AIAssistantInput,
+    # plus the two ReactFlow target/source connection handles).
+    printer_node_type_select = LocatorDescriptor(
+        testid="pipeline-printer-node-type-select",
+        description="Printer node's PRINTER section Type select (inline on canvas card)"
+    )
+    printer_node_value = LocatorDescriptor(
+        testid="pipeline-printer-node-value",
+        description="Printer node's PRINTER section Value field (f-string/text textarea)"
+    )
+
+    # Scoped sub-selector for the SAME "pipeline-printer-node-value" testid,
+    # used by fill_printer_node_value_for_node()/get_printer_node_value_for_node()
+    # (ELITEA-2016) — needed once >1 Printer node is on canvas simultaneously,
+    # since the field above is page-wide by design (see class docstring
+    # above) and would first-match-ambiguous. Class-level string constant
+    # per .agents/testing.md § Locator policy scoped-selector convention —
+    # chained off RF_NODE_TESTID (the sanctioned #579 ReactFlow-injected
+    # `rf__node-{id}` container `move_node()` already uses for per-node
+    # scoping), not a second ad-hoc pattern.
+    PRINTER_NODE_VALUE_TESTID = '[data-testid="pipeline-printer-node-value"]'
+    printer_node_final_message_input = LocatorDescriptor(
+        testid="pipeline-printer-node-final-message-input",
+        description="Printer node's Final Message field"
+    )
+    # Fix round 1 (ELITEA-2039 review): these two testids are NEVER rendered by
+    # PrinterNode.jsx — confirmed via source, it renders no
+    # `FlowEditorSelect.InputSelect`/`OutputSelect` at all (unlike Code/LLM/
+    # State-modifier, which pass `dataTestId="pipeline-<type>-node-input-select"`
+    # / `-output-select` to those components — see e.g. `code_node_input_select`
+    # above). Declared here ONLY as the absence-assertion handle, same pattern
+    # as `chat_hitl_edit_button`/`toolkit_card` elsewhere in this file: a
+    # testid-scoped `LocatorDescriptor` whose `.count()` proves the element
+    # doesn't render, replacing a raw `#simple-select-Input`/`#simple-select-
+    # Output` DOM query (MUI auto-generated ids on an app-owned component —
+    # NOT a #579 exception; `add-data-testid`'s own convention names what a
+    # real Input/Output select on this node type WOULD carry if one existed).
+    printer_node_input_select = LocatorDescriptor(
+        testid="pipeline-printer-node-input-select",
+        description="Printer node's would-be Input state-variable select — not rendered; absence-only handle"
+    )
+    printer_node_output_select = LocatorDescriptor(
+        testid="pipeline-printer-node-output-select",
+        description="Printer node's would-be Output state-variable select — not rendered; absence-only handle"
+    )
+
+    # Fix round 2 (ELITEA-2039 review): the Printer node's two ReactFlow
+    # connection handles ARE app-owned — `CustomHandle.jsx` forwards a
+    # `testId` prop straight to `data-testid` on the underlying `<Handle>`
+    # (EliteaAI/EliteaUI `src/[fsd]/features/pipelines/flow-editor/ui/nodes/
+    # CustomHandle.jsx:104-111`), so a testid CAN be placed — NOT a #579
+    # library-internal-DOM exception (that class only covers nodes a library
+    # renders with no app hook at all, e.g. ReactFlow's own `rf__wrapper`
+    # internals). `PrinterNode.jsx`'s two `CustomHandle` call sites now pass
+    # `testId="pipeline-printer-node-target-handle"` /
+    # `testId="pipeline-printer-node-source-handle"` (EliteaAI/EliteaUI@b65756af
+    # on `automation/testids`, awaiting human promotion to `main`) — same
+    # `testId` mechanism `pipeline-decision-node-output-handle` already uses
+    # on `NormalDecisionNode.jsx`. Page-wide, same "single Printer node on
+    # canvas" assumption as `printer_node_type_select` et al. above.
+    printer_node_target_handle = LocatorDescriptor(
+        testid="pipeline-printer-node-target-handle",
+        description="Printer node's target (Input) ReactFlow connection handle"
+    )
+    printer_node_source_handle = LocatorDescriptor(
+        testid="pipeline-printer-node-source-handle",
+        description="Printer node's source (Output) ReactFlow connection handle"
+    )
+
+    # State modifier node inline config (ELITEA-2035). Testid-only, added via
+    # add-data-testid — StateModifierNode.jsx call sites only. Unlike Code/LLM,
+    # this node type has NO Interrupt/Structured-output controls (confirmed via
+    # source — StateModifierNode.jsx renders only Jinja Template + Variables to
+    # clean + Input + Output). Page-wide (not scoped to a specific node
+    # container): correct as long as a test only has a single State modifier
+    # node on canvas.
+    state_modifier_node_template = LocatorDescriptor(
+        testid="pipeline-state-modifier-node-template-input",
+        description="State modifier node's Jinja Template field (plain textarea, not CodeMirror)"
+    )
+    state_modifier_node_variables_to_clean_select = LocatorDescriptor(
+        testid="pipeline-state-modifier-node-variables-to-clean-select",
+        description="State modifier node's 'Variables to clean' tool-agnostic state-variable select"
+    )
+    state_modifier_node_input_select = LocatorDescriptor(
+        testid="pipeline-state-modifier-node-input-select",
+        description="State modifier node's tool-agnostic Input state-variable select"
+    )
+    state_modifier_node_output_select = LocatorDescriptor(
+        testid="pipeline-state-modifier-node-output-select",
+        description="State modifier node's tool-agnostic Output state-variable select"
     )
 
     # Entry-point Trigger select (ELITEA-2005/06/07/08 testid prep, first
@@ -309,6 +994,58 @@ class PipelineDetailPage(PipelineFormPage):
     toolkit_node_structured_output_toggle = LocatorDescriptor(
         testid="pipeline-toolkit-node-structured-output-toggle",
         description="Toolkit node's 'Structured output' switch (CommonInterruptSettings.jsx)"
+    )
+
+    # Custom node inline config (ELITEA-2036). Testid-only, added via
+    # add-data-testid — DefaultNode.jsx's own TEST_ID_PREFIX_BY_NODE_TYPE map
+    # (mirrors BaseToolNode.jsx's map used by the Toolkit/MCP nodes) covers
+    # only 'custom' (the 'defaultType' node type sharing this same component
+    # stays untagged, .agents/testing.md § Locator policy). Page-wide (not
+    # scoped to a specific node container): correct as long as a test only
+    # has a single Custom node on canvas.
+    custom_node_toolkit_select = LocatorDescriptor(
+        testid="pipeline-custom-node-toolkit-select",
+        description="Custom node's Toolkit select (inline on the ReactFlow canvas card)"
+    )
+    custom_node_tool_select = LocatorDescriptor(
+        testid="pipeline-custom-node-tool-select",
+        description=(
+            "Custom node's Tool select — conditionally rendered, absent from "
+            "the DOM entirely until a Toolkit with >=1 selected_tools is chosen"
+        )
+    )
+    custom_node_input_select = LocatorDescriptor(
+        testid="pipeline-custom-node-input-select",
+        description="Custom node's tool-agnostic Input state-variable select"
+    )
+    custom_node_output_select = LocatorDescriptor(
+        testid="pipeline-custom-node-output-select",
+        description="Custom node's tool-agnostic Output state-variable select"
+    )
+    custom_node_input_mapping_required_heading = LocatorDescriptor(
+        testid="pipeline-custom-node-input-mapping-heading",
+        description="Custom node's 'Input mapping (required N)' accordion heading"
+    )
+    custom_node_input_mapping_optional_heading = LocatorDescriptor(
+        testid="pipeline-custom-node-input-mapping-optional-heading",
+        description="Custom node's 'Input mapping (optional N)' accordion heading"
+    )
+    custom_node_interrupt_after_toggle = LocatorDescriptor(
+        testid="pipeline-custom-node-interrupt-after-toggle",
+        description="Custom node's 'Interrupt after' switch (CommonInterruptSettings.jsx)"
+    )
+    custom_node_structured_output_toggle = LocatorDescriptor(
+        testid="pipeline-custom-node-structured-output-toggle",
+        description="Custom node's 'Structured output' switch (CommonInterruptSettings.jsx)"
+    )
+    custom_node_json_editor_content = LocatorDescriptor(
+        testid="pipeline-custom-node-json-editor-content",
+        description=(
+            "Custom node's raw-JSON CodeMirror editor content (.cm-content) — "
+            "CustomNodeInput.jsx, the node's full YAML body (id/type/description/"
+            "settings/input_mapping/...) as editable JSON. Read via text_content(), "
+            "not input_value() (CodeMirror is not a native <input>/<textarea>)."
+        )
     )
 
     # HITL node inline config (ELITEA-2014). Testid-only, added via
@@ -508,6 +1245,48 @@ class PipelineDetailPage(PipelineFormPage):
         description="Entry-point node's Trigger select (Chat Message/Schedule/Webhook)"
     )
 
+    # Scoped sub-selector for the SAME "pipeline-entry-point-trigger-select"
+    # testid, used by is_trigger_visible_for_node() (ELITEA-2041) — needed to
+    # assert the Trigger control's ABSENCE on a specific non-entry node while
+    # multiple nodes coexist on canvas, since the field above is page-wide by
+    # design (see docstring above). Class-level string constant per
+    # .agents/testing.md § Locator policy scoped-selector convention —
+    # chained off RF_NODE_TESTID, same mechanism as PRINTER_NODE_VALUE_TESTID.
+    TRIGGER_SELECT_TESTID = '[data-testid="pipeline-entry-point-trigger-select"]'
+
+    # The three trigger types the entry-point Trigger select offers, by their
+    # INTERNAL value (FlowEditorConstants.TRIGGER_TYPES) — the suffix of each
+    # option's `select-option-{value}` testid, not the display label.
+    TRIGGER_OPTION_VALUES = ("chat_message", "schedule", "webhook")
+
+    # Per-value ENABLED/DISABLED state filters for a Trigger option, keyed off
+    # the existing `select-option-{value}` testid (ELITEA-2008, EL-6128).
+    #
+    # Since EliteaAI/EliteaUI@cb70a64e a restricted trigger is GREYED OUT IN
+    # PLACE rather than hidden, so the option's presence no longer carries the
+    # restriction — its state does. MUI's `MenuItem` emits that state as
+    # `aria-disabled="true"`; on an ENABLED option the attribute is ABSENT
+    # (never `"false"`), hence the `:not(...)` form — `to_have_attribute(
+    # "aria-disabled", "false")` would never match.
+    #
+    # DECLARED IMPROVISATION (.agents/role-overrides.md § Declared-improvisation
+    # protocol; canon-gap card #1805): .agents/testing.md § Locator policy (PR
+    # #581) names a `data-*` attribute as the state filter. MUI exposes this
+    # state only as `aria-disabled`, and mirroring it as `data-disabled` would
+    # mean editing the shared SingleSelectMenuItem component for one case AND
+    # would land on `automation/testids` only — green on localhost, red on
+    # dev.elitea.ai, i.e. re-creating the promotion gap this repair exists to
+    # close. `aria-disabled` is already on `origin/main`. The testid stays the
+    # identity; the attribute is only the state filter.
+    # How long open_trigger_select() waits for the menu before deciding the
+    # click was swallowed and re-clicking once (see its own comment). Short:
+    # a successful open renders the menu well inside this window, and a click
+    # that never landed is diagnosed early instead of burning the full timeout.
+    TRIGGER_SELECT_OPEN_PROBE_TIMEOUT = 3000
+
+    TRIGGER_OPTION_DISABLED = '[data-testid="select-option-{}"][aria-disabled="true"]'
+    TRIGGER_OPTION_ENABLED = '[data-testid="select-option-{}"]:not([aria-disabled="true"])'
+
     trigger_schedule_edit_button = LocatorDescriptor(
         testid="pipeline-entry-point-trigger-schedule-edit-button",
         description='"Edit schedule" clock-icon button next to the Trigger select, '
@@ -585,45 +1364,54 @@ class PipelineDetailPage(PipelineFormPage):
         description="Webhook settings modal Apply button"
     )
 
+    # Testids added 2026-08-26 in EliteaUI automation/testids (commit aea8503f)
+    # TODO: Uncomment testid params once testids are deployed to target environment
+    # Current: using fallback only because LocatorDescriptor tries testid FIRST
+    # and doesn't fall back if testid doesn't exist
     schedule_modal = LocatorDescriptor(
-        testid="pipeline-schedule-settings-modal",
+        # testid="pipeline-schedule-settings-modal",  # Temporarily commented - see TODO above
+        fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").first,
         description="Schedule settings modal (dialog root)"
     )
     schedule_summary_text = LocatorDescriptor(
-        testid="pipeline-schedule-summary-text",
+        # testid="pipeline-schedule-summary-text",  # Temporarily commented - see TODO above
+        fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('text=/At \\d+:\\d+|Every |Daily|Weekly|Monthly/').first,
         description='Schedule modal cron summary text (e.g. "At 00:00, only on Saturday")'
     )
     schedule_modal_cancel_button = LocatorDescriptor(
-        testid="pipeline-schedule-modal-cancel-button",
+        # testid="pipeline-schedule-modal-cancel-button",  # Temporarily commented - see TODO above
+        fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('button:has-text("Cancel")').first,
         description="Schedule settings modal Cancel button"
     )
     schedule_modal_apply_button = LocatorDescriptor(
-        testid="pipeline-schedule-modal-apply-button",
-        description="Schedule settings modal Apply button"
+        # testid="pipeline-schedule-modal-save-button",  # Temporarily commented - see TODO above (Button text is "Save" not "Apply")
+        fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('button:has-text("Save")').first,
+        description="Schedule settings modal Save button"
     )
     schedule_cron_input = LocatorDescriptor(
-        testid="pipeline-schedule-cron-input",
+        # testid="pipeline-schedule-cron-input",  # Temporarily commented - see TODO above
+        fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('input[type="text"]').first,
         description="Advanced-mode raw cron expression text input"
     )
 
-    # Mode radio (Default/Advanced) — RadioButtonGroup's `testId` prop
-    # auto-derives `${testId}-${item.value.lower()}` on the FormControlLabel
-    # wrapper (confirmed via source read, same mechanism as the Webhook Type
-    # radios above).
+    # NOTE: The modal uses Tab.TabGroupButton, not radio buttons
+    # Tab labels are "Builder" (default/visual mode) and "Cron Expression" (advanced mode)
+    # Tests reference "Default"/"Advanced" but actual UI labels are different
     schedule_mode_radio_default = LocatorDescriptor(
-        testid="pipeline-schedule-mode-radio-default",
-        description="Schedule modal Mode radio — Default option"
+        # testid="pipeline-schedule-mode-tabs",  # Temporarily commented - see TODO above (Tab group testid - target Builder button)
+        fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('button:has-text("Builder")').first,
+        description="Schedule modal Mode — Builder (Default) tab button"
     )
     schedule_mode_radio_advanced = LocatorDescriptor(
-        testid="pipeline-schedule-mode-radio-advanced",
-        description="Schedule modal Mode radio — Advanced option"
+        # testid="pipeline-schedule-mode-tabs",  # Temporarily commented - see TODO above (Same tab group - target Cron Expression button)
+        fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('button:has-text("Cron Expression")').first,
+        description="Schedule modal Mode — Cron Expression (Advanced) tab button"
     )
 
-    # Third-party widget (react-js-cron / antd internals) — sanctioned #579
-    # exception: no app testid can be placed on the library's own
-    # `.ant-select`/`.react-js-cron-select` nodes. Scoped constant, chained
-    # off the (testid'd) schedule_modal root per the #579 discipline.
-    SCHEDULE_CRON_SELECT = ".react-js-cron-select"
+    # CronSelect widgets — MUI Autocomplete components
+    # Tests use SCHEDULE_CRON_SELECT directly to locate individual selects
+    # TODO: Once testids deployed, change to testid pattern: '[data-testid^="schedule-cron-"]'
+    SCHEDULE_CRON_SELECT = ".MuiAutocomplete-root"  # MUI Autocomplete root class (fallback)
 
     # TOOLS section (ELITEA-1955). ApplicationTools.jsx / ToolMenu.jsx is a
     # shared component reused by both Agent and Pipeline detail forms
@@ -643,6 +1431,31 @@ class PipelineDetailPage(PipelineFormPage):
         description="An attached toolkit/MCP card in the TOOLS section"
     )
 
+    # Scoped sub-selectors for a specific attached card (ELITEA-2065) — each
+    # is a raw testid selector, chained off a `toolkit_card`-scoped Locator
+    # at the call site, never a free-floating page-level handle, per
+    # `.agents/testing.md` § Locator policy's dynamic/scoped-selector
+    # convention. `TOOLKIT_CARD_DELETE_BUTTON` is on-main (`ToolCard.jsx`,
+    # already used by `AgentDetailPage.remove_toolkit`); the other two were
+    # added this session (`BaseCardBody.jsx`/`EnhancedCardToolActions.jsx`,
+    # on-`automation/testids` only — `EliteaAI/EliteaUI@c45f1611`).
+    TOOLKIT_CARD_DELETE_BUTTON = '[data-testid="agent-toolkit-delete-button"]'
+    TOOLKIT_CARD_TOOLS_TOGGLE = '[data-testid="toolkit-card-tools-toggle"]'
+    TOOLKIT_CARD_TOOL_ITEM = '[data-testid="toolkit-card-tool-item-{}"]'
+
+    # Same scoped-sub-selector idiom (ELITEA-1952) — the attached card's name
+    # text and its MCP connection-status indicator. Both added to the shared
+    # `ToolCard.jsx` this session (EliteaAI/EliteaUI@5c24ed30) with GENERIC,
+    # call-site-agnostic names matching their `toolkit-card-tools-toggle` /
+    # `toolkit-open-button` siblings in the same component (the card is shared
+    # by the agent AND pipeline TOOLS sections — a `pipeline-`-scoped name on a
+    # shared component is exactly what `.agents/testing.md` § Locator policy's
+    # shared-component rule forbids). The connection indicator carries its state
+    # as a `data-connected` attribute on a STABLE testid (PR #581 ruling), never
+    # as a state-switched testid value.
+    TOOLKIT_CARD_NAME = '[data-testid="toolkit-card-name"]'
+    TOOLKIT_CARD_CONNECTION_STATUS = '[data-testid="toolkit-card-connection-status"]'
+
     # "+ Toolkit" button (ELITEA-2021). Testid already exists in the DOM on
     # `main` (ToolMenu.jsx) and is already a field on AgentDetailPage — only
     # missing here since PipelineDetailPage previously had no Toolkit-attach
@@ -651,6 +1464,40 @@ class PipelineDetailPage(PipelineFormPage):
         testid="agent-add-toolkit-button",
         description='"+ Toolkit" button in the TOOLS section (ToolMenu.jsx)'
     )
+
+    # "+ Agent" button (ELITEA-2038). Testid already exists in the DOM on
+    # `main` (ToolMenu.jsx, same shared component — ported from
+    # AgentDetailPage.add_agent_button) — only missing here since
+    # PipelineDetailPage previously had no Agent-attach field.
+    add_agent_button = LocatorDescriptor(
+        testid="agent-add-agent-button",
+        description='"+ Agent" button in the TOOLS section (ToolMenu.jsx)'
+    )
+
+    # "+ Pipeline" button (ELITEA-2064). Testid did NOT exist anywhere on this
+    # element before this session (ToolMenu.jsx's Pipeline BaseBtn had zero
+    # attributes beyond variant/startIcon/disabled/onClick) — added it this
+    # session, naming mirrors the sibling agent-add-agent-button/
+    # agent-add-toolkit-button/agent-add-mcp-button (same shared ToolMenu.jsx
+    # component, same "agent-" prefix convention) —
+    # EliteaAI/EliteaUI@e2130cf4 on `automation/testids`.
+    add_pipeline_button = LocatorDescriptor(
+        testid="agent-add-pipeline-button",
+        description='"+ Pipeline" button in the TOOLS section (ToolMenu.jsx)'
+    )
+
+    # TOOLS section MODULES toggle switches (ELITEA-2059) — dynamic per module
+    # key (e.g. "attachments", "data_analysis", "image_creation"). Same
+    # `AgentInternalToolSwitch.jsx` testid/mechanism as
+    # `AgentParticipantCanvasPage.TOOLS_TOGGLE` — ported here rather than
+    # inherited since `PipelineDetailPage` has no common ancestor with
+    # `AgentCanvasPage` (different route/hierarchy; same shared-component
+    # duplication precedent as `toolkits_section`/`add_agent_button` above,
+    # confirmed live: `ApplicationTools.jsx` renders it for pipelines too when
+    # `isPipeline=true`, filtering `pipelineVisibleTools` to only the
+    # `attachments` tool for this call site). Templated class-level constant
+    # per .agents/testing.md's dynamic-testid convention.
+    TOOLS_MODULE_TOGGLE = '[data-testid="agent-canvas-tools-toggle-{}"]'
 
     # General/Welcome/Chat-starters fields (ELITEA-2021). These testids exist
     # in the DOM on `main` already (shared AgentInput/ConversationStarters
@@ -669,6 +1516,18 @@ class PipelineDetailPage(PipelineFormPage):
     conversation_starter_inputs = LocatorDescriptor(
         testid="agent-conversation-starter-input",
         description="Conversation starter textarea field(s)"
+    )
+
+    # "delete starter" button (ELITEA-2053). Testid added via add-data-testid
+    # onto the shared ConversationStarters.jsx's delete BaseBtn
+    # (EliteaAI/EliteaUI@63c96dd7) — reuses the `agent-` prefix convention
+    # already established by every other testid on this same shared
+    # component (`agent-conversation-starter-add`/`-input`/`-counter`/
+    # `-expand`/`-dialog`), per the shared-component ruling
+    # (`.agents/testing.md` § Locator policy).
+    conversation_starter_delete_button = LocatorDescriptor(
+        testid="agent-conversation-starter-delete",
+        description='"delete starter" button next to each starter row (shared ConversationStarters component)'
     )
 
     # ADVANCED section Step limit (ELITEA-2021). Testid added via
@@ -712,6 +1571,17 @@ class PipelineDetailPage(PipelineFormPage):
     # with test-generated data only at the call site.
     MCP_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-mcp-node-input-mapping-value-{}"]'
 
+    # The same row's Type select (ELITEA-1953). `BaseToolNode.jsx`'s
+    # `typeTestIdPrefix` was Toolkit-only until this session; widened to
+    # Toolkit|Mcp (EliteaAI/EliteaUI@5c24ed30) because ELITEA-1953's subject IS
+    # this select. NOTE: `MCP_NODE_INPUT_MAPPING_VALUE` above now resolves for
+    # BOTH widget shapes of the row's Value control — a text input while Type is
+    # Fixed/F-String, an MUI single-select while Type is Variable (same testid,
+    # one stable identity) — so read it with
+    # `get_mcp_node_input_mapping_value()` or
+    # `get_mcp_node_input_mapping_variable_value()` respectively.
+    MCP_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-mcp-node-input-mapping-type-{}"]'
+
     # Dynamic (runtime-parameterized) testids — one Value/Type select pair per
     # tool parameter (e.g. search_query, repo_name, max_count). Class-level
     # template constants per .agents/testing.md § Locator policy, formatted
@@ -720,6 +1590,17 @@ class PipelineDetailPage(PipelineFormPage):
     # BaseToolNode.jsx (ELITEA-2010).
     TOOLKIT_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-toolkit-node-input-mapping-value-{}"]'
     TOOLKIT_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-toolkit-node-input-mapping-type-{}"]'
+
+    # Same mechanism, gated to nodeType==custom in DefaultNode.jsx (ELITEA-2036).
+    CUSTOM_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-custom-node-input-mapping-value-{}"]'
+    CUSTOM_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-custom-node-input-mapping-type-{}"]'
+
+    # Same mechanism (ELITEA-2038) — Agent node's INPUT MAPPING only ever has
+    # ONE key ("task"), but the class-level template constant is kept for
+    # consistency with every other node type's Input-mapping fields and to
+    # stay greppable by the coverage tooling.
+    AGENT_NODE_INPUT_MAPPING_VALUE = '[data-testid="pipeline-agent-node-input-mapping-value-{}"]'
+    AGENT_NODE_INPUT_MAPPING_TYPE = '[data-testid="pipeline-agent-node-input-mapping-type-{}"]'
 
     # Select-dropdown option pattern shared by Toolkit/Tool/Input/Output
     # selects (SingleSelectMenuItem.jsx: `select-option-{value}`) — confirmed
@@ -821,14 +1702,31 @@ class PipelineDetailPage(PipelineFormPage):
         description="Run Details panel close icon button"
     )
 
+    # TEMPORARY FIX: testid removed in EliteaUI commit a638b586 (Aug 11)
+    # Using CSS locator to target the parent Box that contains the label + node name
+    # This matches the <Box sx={styles.timelineHeader}> element
     run_details_timeline_section = LocatorDescriptor(
-        testid="pipeline-run-details-timeline-section",
+        locator='[data-testid="pipeline-run-details-panel"] >> text="Timeline step:" >> xpath=..',
         description='Run Details panel "Timeline step" section (label + node id + stepper)'
     )
 
-    run_details_states_section = LocatorDescriptor(
-        testid="pipeline-run-details-states-section",
-        description='Run Details panel "States" section (header + per-variable accordion list)'
+    # TEMPORARY FIX removed - now building locator directly in get_run_details_states_section_text()
+    # Keeping this comment as placeholder for when testid is added
+    # run_details_states_section = LocatorDescriptor(
+    #     testid="pipeline-run-details-states-section",
+    #     description='Run Details panel "States" section (per-variable accordion list)'
+    # )
+
+    # Multi-run history toggle (RunStateNodeGroup — ELITEA-2454). Renders
+    # only when >1 run exists (`nodes.length > 1`), immediately before the
+    # visible run-node label. Testid added via add-data-testid,
+    # EliteaAI/EliteaUI@89282f5e (app JSX we own, not a #579 exception).
+    run_node_history_button = LocatorDescriptor(
+        testid="pipeline-run-node-history-button",
+        description=(
+            "Clock-icon toggle above the Flow canvas that opens the "
+            "run-history menu (RunStateNodeGroup) — present only when >1 run exists"
+        )
     )
 
     # Run Details panel — State Before/After per node (ELITEA-2452). Testids
@@ -851,6 +1749,16 @@ class PipelineDetailPage(PipelineFormPage):
     RUN_DETAILS_STATE_VALUE_AFTER = '[data-testid="pipeline-run-details-state-value-after-{}"]'
     RUN_DETAILS_STATE_EXPAND_BEFORE = '[data-testid="pipeline-run-details-state-expand-before-{}"]'
     RUN_DETAILS_STATE_EXPAND_AFTER = '[data-testid="pipeline-run-details-state-expand-after-{}"]'
+
+    # Run Details panel — Timeline Steps Display (ELITEA-2451). Testid added
+    # via add-data-testid, EliteaAI/EliteaUI@95b1eada (app JSX we own, not a
+    # #579 exception): the per-step HH:mm:ss Typography had no handle before.
+    RUN_DETAILS_TIMELINE_TIMESTAMP = '[data-testid="pipeline-run-details-timeline-timestamp-{}"]'
+
+    # No new testid needed for the entry count — a prefix-selector constant
+    # over the ALREADY-EXISTING per-index dot testid (same mechanism as the
+    # pre-existing CHAT_ATTACHMENT_CHIP_PREFIX precedent).
+    RUN_DETAILS_TIMELINE_STEP_PREFIX = '[data-testid^="pipeline-run-details-timeline-step-"]'
 
     # Fullscreen value modal (PipelineStateViewModal.jsx) — feature-scoped
     # literal testids (single consumer, RunStateDialog.jsx).
@@ -955,6 +1863,375 @@ class PipelineDetailPage(PipelineFormPage):
         """
         return self.copy_id_button.text_content().strip()
 
+    def get_version_display(self) -> str:
+        """Read the VERSION selector's currently displayed version name.
+
+        Returns:
+            Version name text (e.g. ``"base"``) as shown in the entity tab
+            bar's VERSION combobox.
+        """
+        return (self.version_selector.text_content() or "").strip()
+
+    # ------------------------------------------------------------------
+    # Version management (Save As Version / VERSION selector, ELITEA-2002)
+    #
+    # Ports AgentDetailPage's proven method shapes onto the pipeline detail
+    # page — same shared components (SaveNewVersionButton.jsx,
+    # ApplicationVersionSelect.jsx, version.helpers.jsx's `version-option-{}`
+    # mechanism), confirmed live end-to-end this session (2026-08-07).
+    #
+    # URL shape (confirmed live, differs slightly from the Agent case this
+    # was ported from): navigating directly to a pipeline's detail page
+    # (``navigate()``) resolves the "base" version WITHOUT a version-id path
+    # segment (``/pipelines/all/{pipeline_id}?viewMode=owner``) — the app's
+    # own default, not something a test can rely on reproducing after an
+    # explicit switch. Creating a new version, or explicitly selecting ANY
+    # version (including "base") from the open dropdown, always appends the
+    # version-id path segment (``/pipelines/all/{pipeline_id}/{version_id}``).
+    # So the durable cross-check is the version-ID VALUE (read via
+    # ``copy_version_id_button``/``get_version_id()``), not the presence of
+    # a path segment.
+    # ------------------------------------------------------------------
+
+    def get_version_id(self) -> str:
+        """Read the Version ID from the Information section.
+
+        Returns:
+            Version ID as string (e.g. ``"8311"``).
+        """
+        return self.copy_version_id_button.text_content().strip()
+
+    @action("Click the Information section's 'Show' link")
+    def click_information_show_link(self, timeout: int = 10000) -> None:
+        """Click the "Pipeline: Show" link and wait for its preview modal.
+
+        Opens ``StyledShowContextModal`` (NOT a navigation — confirmed live,
+        ELITEA-2056 exploration) rendering the pipeline's YAML as a Mermaid
+        diagram via ``show_context_diagram_container``. Waits for the
+        container itself AND for the diagram's Mermaid nodes to actually
+        render (mirrors ChatPage.wait_for_diagram_rendered, ELITEA-2088) —
+        the container becomes visible before Mermaid populates it, so a
+        node-count check right after only the container wait can race.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the diagram
+                container (and its first rendered node) to become visible.
+        """
+        self.information_show_link.click()
+        self.show_context_diagram_container.wait_for(state="visible", timeout=timeout)
+        self.show_context_diagram_container.locator(self.MERMAID_NODE).first.wait_for(
+            state="attached", timeout=timeout
+        )
+        logger.info("Information section 'Show' link opened the diagram preview modal")
+
+    def get_diagram_node_count(self) -> int:
+        """Return the number of Mermaid diagram node elements currently rendered
+        inside the Show-link preview modal (mirrors ChatPage.get_diagram_node_count)."""
+        return self.show_context_diagram_container.locator(self.MERMAID_NODE).count()
+
+    @action("Open the Create version dialog")
+    def open_save_as_version_dialog(self, timeout: int = 10000):
+        """Click "Save As Version" and wait for the "Create version" dialog.
+
+        Uses ``save_as_version_button`` (inherited from PipelineFormPage).
+        Split from :meth:`confirm_new_version` so callers can assert on
+        the dialog's just-opened state (e.g. Save disabled while Name is
+        empty) before typing a name.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening the Create version dialog")
+        self.save_as_version_button.click()
+        Dialog.wait_for(self.page, timeout=timeout)
+
+    @action("Confirm the new pipeline version")
+    def confirm_new_version(self, version_name: str, timeout: int = 10000):
+        """Type the version name into the open "Create version" dialog and confirm.
+
+        Call after :meth:`open_save_as_version_dialog`. Types via
+        ``press_sequentially`` (MUI/React onChange requirement —
+        `.claude/rules/mui-patterns.md`), clicks the dialog's Save button,
+        and waits for the dialog to close and for the URL to gain a new
+        version-id path segment (mirrors
+        ``AgentDetailPage.confirm_new_version()``'s wait strategy). The app
+        also appends a transient ``isFromCreation=true`` query param that
+        self-strips once the new version has loaded; this method does not
+        assert on it directly.
+
+        Args:
+            version_name: Name for the new version (e.g. ``"v1_test"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Confirming new pipeline version: %r", version_name)
+        previous_version_id = self.get_version_id()
+
+        self.create_version_name_input.click()
+        self.create_version_name_input.press_sequentially(version_name, delay=50)
+
+        self.create_version_save_button.click()
+        Dialog.wait_for_hidden(self.page, timeout=timeout)
+
+        self.page.wait_for_function(
+            "prevId => window.location.pathname.split('/').filter(Boolean).pop() !== prevId",
+            arg=previous_version_id,
+            timeout=timeout,
+        )
+        self.wait_for_network(timeout=5000)
+
+        # The URL's version-id segment updates before the VERSION selector's
+        # displayed text re-renders (same race documented on the Agent
+        # sibling) — poll the trigger's own text rather than sleeping.
+        self.page.wait_for_function(
+            """name => {
+                const el = document.querySelector('[data-testid="agent-version-selector-trigger"]');
+                return !!el && el.innerText.trim() === name;
+            }""",
+            arg=version_name,
+            timeout=timeout,
+        )
+        logger.info(
+            "New pipeline version %r created — URL: %s", version_name, self.page.url
+        )
+
+    @action("Save current edits as a new pipeline version")
+    def save_as_version(self, version_name: str, timeout: int = 10000):
+        """Click "Save As Version", fill the Name field, and confirm.
+
+        Convenience wrapper combining :meth:`open_save_as_version_dialog`
+        and :meth:`confirm_new_version` for callers that don't need to
+        assert on the dialog's intermediate state.
+
+        Args:
+            version_name: Name for the new version (e.g. ``"v1_test"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.open_save_as_version_dialog(timeout=timeout)
+        self.confirm_new_version(version_name, timeout=timeout)
+
+    def open_version_selector(self):
+        """Click the VERSION dropdown trigger to open the options list."""
+        self.version_selector.click()
+
+    def is_version_option_visible(self, version_name: str, timeout: int = 5000) -> bool:
+        """Check whether a version is present in the open VERSION dropdown.
+
+        LOCATOR: dynamic ``version-option-{version_name}`` testid (see
+        ``VERSION_OPTION`` above) — call after ``open_version_selector()``.
+
+        Args:
+            version_name: Exact version name (e.g. ``"base"``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        option = self.page.locator(self.VERSION_OPTION.format(version_name))
+        try:
+            option.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def close_versions_menu(self):
+        """Close the open VERSION dropdown by pressing Escape."""
+        self.page.keyboard.press("Escape")
+
+    @action("Select a version by name from the VERSION dropdown")
+    def select_version_by_name(
+        self, version_name: str, timeout: int = 10000, attempts: int = 2
+    ) -> str:
+        """Open the VERSION dropdown, click the named option, and wait for
+        the VERSION trigger text, the Information panel's version-id, and
+        the URL's version-id path segment to all converge on that version,
+        returning its numeric id.
+
+        Each attempt is a full select+reload CYCLE — mirrors
+        ``AgentDetailPage.select_version_by_name()``'s proven shape (issue
+        #614-style staleness workaround), NOT a simplified single-poll.
+        Confirmed live (ELITEA-2002 implementation, 2026-08-07) that a
+        single DOM-only poll is NOT sufficient here even though the wait
+        condition checks THREE signals together: the VERSION trigger's text
+        can flip to the target name a beat before the Information panel's
+        version-id / URL catch up, and — critically — that panel/URL pair
+        can be transiently self-consistent (equal to EACH OTHER) while both
+        still show the PREVIOUS version's id, satisfying a same-value check
+        without actually being on the target version yet. A single browser
+        reload forces the Information panel and URL routing to both refetch
+        fresh from the server, clearing that staleness (same reasoning as
+        the Agent sibling, just triggered by a different flow — Save As
+        Version / dropdown switch here, Publish there).
+
+        Args:
+            version_name: Exact version name to select, e.g. ``"base"``.
+            timeout: Maximum wait time in milliseconds, per wait condition.
+            attempts: Number of full select+reload cycles to try.
+
+        Returns:
+            The selected version's numeric id, read from the Information
+            panel once trigger text / Information-panel id / URL agree
+            AND survive a reload.
+
+        Raises:
+            AssertionError: if the three signals never converge (and stay
+                converged post-reload) after ``attempts`` full cycles.
+        """
+        logger.info("Selecting pipeline version %r from the VERSION dropdown", version_name)
+
+        version_id_matches_js = """name => {
+            const trigger = document.querySelector('[data-testid="agent-version-selector-trigger"]');
+            const versionIdEl = document.querySelector('[data-testid="copy-version-id"]');
+            if (!trigger || trigger.innerText.trim() !== name) return false;
+            if (!versionIdEl) return false;
+            const currentId = versionIdEl.innerText.trim();
+            if (!currentId) return false;
+            const seg = window.location.pathname.split('/').filter(Boolean).pop();
+            return seg === currentId;
+        }"""
+
+        last_exc: Exception | None = None
+        for attempt in range(1, attempts + 1):
+            self.open_version_selector()
+            option = self.page.locator(self.VERSION_OPTION.format(version_name))
+            option.wait_for(state="visible", timeout=timeout)
+            option.click()
+
+            try:
+                self.page.wait_for_function(
+                    version_id_matches_js, arg=version_name, timeout=timeout
+                )
+            except Exception as exc:  # noqa: BLE001 - retried below, re-raised with context above
+                last_exc = exc
+                logger.warning(
+                    "select_version_by_name: VERSION trigger/id/URL never "
+                    "agreed on %r pre-reload (attempt %d/%d) — retrying",
+                    version_name, attempt, attempts,
+                )
+                continue
+
+            # Belt-and-braces: force a fresh server refetch — clears the
+            # transient self-consistent-but-stale state described above.
+            self.page.reload(wait_until="domcontentloaded")
+            try:
+                self.page.wait_for_function(
+                    version_id_matches_js, arg=version_name, timeout=timeout
+                )
+            except Exception as exc:  # noqa: BLE001 - retried below, re-raised with context above
+                last_exc = exc
+                logger.warning(
+                    "select_version_by_name: VERSION trigger/id/URL never "
+                    "agreed on %r post-reload (attempt %d/%d) — retrying "
+                    "the full select+reload cycle",
+                    version_name, attempt, attempts,
+                )
+                continue
+
+            selected_version_id = self.get_version_id()
+            logger.info(
+                "Pipeline version %r selected — id=%s (URL: %s)",
+                version_name, selected_version_id, self.page.url,
+            )
+            return selected_version_id
+
+        raise AssertionError(
+            f"select_version_by_name: VERSION trigger/Information-panel id/"
+            f"URL never converged on {version_name!r} after {attempts} full "
+            f"select+reload attempts — last error: {last_exc}"
+        )
+
+    def get_version_option_count(self, version_name: str) -> int:
+        """Count matching options for ``version_name`` in the open VERSION
+        dropdown.
+
+        Uses the same ``VERSION_OPTION`` dynamic-testid template as
+        :meth:`is_version_option_visible` — call after
+        :meth:`open_version_selector`. Distinct from
+        ``is_version_option_visible`` (which WAITS for presence, i.e. is
+        for asserting an option IS there): this reads the current count
+        immediately, for asserting ABSENCE after a deletion — a deleted
+        option never becomes visible, so waiting for it would just burn
+        the whole timeout instead of failing fast.
+
+        Args:
+            version_name: Exact version name (e.g. ``"ver_to_delete"``).
+
+        Returns:
+            Number of matching options currently in the DOM (0 or 1).
+        """
+        return self.page.locator(self.VERSION_OPTION.format(version_name)).count()
+
+    # ------------------------------------------------------------------
+    # Version deletion (ELITEA-2003)
+    # ------------------------------------------------------------------
+
+    @action("Open the delete-version confirmation dialog via the three-dot menu")
+    def open_delete_version_dialog(self, timeout: int = 10000):
+        """Open the three-dot actions menu and click the VERSION-group
+        "Delete" item, waiting for the confirmation dialog to appear.
+
+        Split from :meth:`confirm_delete_version` so callers can assert on
+        the dialog's just-opened state (e.g. the message text) before
+        confirming — same split shape as
+        :meth:`open_save_as_version_dialog`/:meth:`confirm_new_version`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening the delete-version confirmation dialog")
+        self.dismiss_banner_if_present()
+        self.actions_menu_button.click()
+        self.delete_version_menuitem.wait_for(state="visible", timeout=timeout)
+        self.delete_version_menuitem.click()
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
+
+    @action("Confirm the pending pipeline version deletion")
+    def confirm_delete_version(self, timeout: int = 10000):
+        """Click the delete-confirm dialog's confirm button and wait for
+        it to close.
+
+        Call after :meth:`open_delete_version_dialog`. Note: confirming
+        triggers a stale refetch of the just-deleted version's own
+        endpoint (a transient, visible 400 — tracked as a known,
+        non-blocking defect: EliteaAI/elitea-testing-public#1330) before
+        the pipeline settles on "base" — see
+        :meth:`wait_for_fallback_to_base`, which callers should use to
+        wait out that settle rather than asserting immediately here.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Confirming pipeline version deletion")
+        self.delete_confirm_button.click()
+        self.delete_confirm_dialog.wait_for(state="hidden", timeout=timeout)
+        logger.info("Pipeline version deletion confirmed")
+
+    def wait_for_fallback_to_base(self, timeout: int = 10000) -> str:
+        """Wait for the pipeline to fall back to displaying "base" after
+        its currently open (non-base) version is deleted, then return
+        base's version id.
+
+        The fallback is asynchronous (see the known-defect note on
+        :meth:`confirm_delete_version`): the VERSION selector's own text
+        is the fastest-updating of the three cross-check signals (mirrors
+        :meth:`confirm_new_version`'s wait strategy), so this polls the
+        trigger text first, then reads the settled version id from the
+        Information panel once network activity quiesces.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The "base" version's numeric id, read from the Information
+            panel after the fallback settles.
+        """
+        self.page.wait_for_function(
+            """() => {
+                const el = document.querySelector('[data-testid="agent-version-selector-trigger"]');
+                return !!el && el.innerText.trim() === 'base';
+            }""",
+            timeout=timeout,
+        )
+        self.wait_for_network(timeout=5000)
+        logger.info("Pipeline fell back to 'base' — URL: %s", self.page.url)
+        return self.get_version_id()
+
     # ------------------------------------------------------------------
     # Tabs
     # ------------------------------------------------------------------
@@ -971,6 +2248,33 @@ class PipelineDetailPage(PipelineFormPage):
         self.page.wait_for_timeout(1000)
         self.wait_for_network(timeout=timeout)
         logger.info("Configuration tab opened")
+
+    def toggle_config_panel_collapse(self, timeout: int = 5000):
+        """Click the left configuration panel's collapse/expand toggle button.
+
+        One button, both directions (ELITEA-2072) — clicking it collapses
+        the panel to a thin 28px strip if expanded, or restores it to 320px
+        if collapsed.
+
+        Args:
+            timeout: Maximum wait time for the button to be actionable.
+        """
+        logger.info("Toggling configuration panel collapse state")
+        self.config_panel_collapse_button.click(timeout=timeout)
+
+    def get_config_panel_width(self, timeout: int = 5000) -> float:
+        """Return the left configuration panel's current rendered width in px.
+
+        Confirmed live (`GeneralFormPanel.jsx`): 320px expanded, 28px
+        collapsed — a static (not layout-dependent) pair of values, but the
+        test asserts the before/after relationship rather than hardcoding
+        them, per the project's relative-assertion convention.
+
+        Args:
+            timeout: Maximum wait time for the panel to be actionable.
+        """
+        box = self.configuration_tab.bounding_box(timeout=timeout)
+        return box["width"]
 
     def click_history_tab(self, timeout: int = 10000):
         """Click the History tab.
@@ -1053,6 +2357,14 @@ class PipelineDetailPage(PipelineFormPage):
         Opens the menu, clicks "Delete pipeline", types the pipeline name
         into the confirmation dialog, and clicks Delete.
 
+        Does NOT wait for the post-delete dashboard redirect — whether that
+        redirect happens is a known-defect-affected behavior (EliteaAI/
+        elitea-testing-public#1332: the app's `navigate(-1)` redirect is a
+        browser-history no-op when the detail page was reached via direct
+        navigation, which is exactly how this method's callers reach it).
+        Callers that need to assert/react to the redirect do so themselves
+        (see `test_delete_pipeline_via_ui_menu`, ELITEA-2022).
+
         Args:
             timeout: Maximum wait time for delete operation.
         """
@@ -1098,6 +2410,157 @@ class PipelineDetailPage(PipelineFormPage):
         self.wait_for_network(timeout=timeout)
         logger.info("Pipeline exported via menu")
         return True
+
+    @action("Export pipeline via menu and capture the download")
+    def export_pipeline_via_menu_and_download(self, timeout: int = 15000):
+        """Export the current pipeline via the three-dot menu and return the download.
+
+        Testid-based (``actions_menu_button``/``export_menuitem`` — both
+        real, on-main testids, ELITEA-2012 AFS Concrete Handles), and
+        captures the triggered download via ``page.expect_download()`` —
+        unlike the pre-existing ``export_pipeline_via_menu`` (raw
+        ``get_by_role("menuitem", name="Export")``, no download capture),
+        which is left unmodified for its own caller
+        (``test_pipeline_advanced.py``) per the additive-only contract.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The Playwright ``Download`` object for the exported
+            ``.pipeline.md`` file.
+        """
+        logger.info("Exporting pipeline via menu (testid-based, download capture)")
+        self.dismiss_banner_if_present()
+        self.actions_menu_button.click()
+        self.export_menuitem.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_download(timeout=timeout) as download_info:
+            self.export_menuitem.click()
+        download = download_info.value
+        logger.info(
+            "Pipeline exported — download suggested_filename=%s", download.suggested_filename,
+        )
+        return download
+
+    # ------------------------------------------------------------------
+    # Fork wizard (ELITEA-2051) — testid-based flow. Distinct from the
+    # legacy `fork_pipeline_via_menu()` below (role/text-based, no wizard
+    # support) — that method is left unmodified for its own callers per
+    # the additive-only contract; these are the new testid-anchored methods
+    # mirroring AgentDetailPage's Fork wizard methods (ELITEA-1893).
+    # ------------------------------------------------------------------
+
+    @action("Open Fork wizard menu")
+    def open_fork_wizard_menu(self, timeout: int = 10000):
+        """Open the three-dot actions menu (testid-based click) and wait
+        for the VERSION-group "Fork" menuitem to become visible.
+
+        Split from :meth:`confirm_fork` (mirrors AgentDetailPage's
+        open_actions_menu()/fork_menuitem split) so callers can assert on
+        the menu's just-opened state before clicking Fork.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening actions menu (testid-based) to reach Fork")
+        self.dismiss_banner_if_present()
+        self.actions_menu_button.click()
+        self.actions_menu.wait_for(state="visible", timeout=timeout)
+        self.fork_menuitem.wait_for(state="visible", timeout=timeout)
+
+    @action("Open Fork wizard")
+    def open_fork_wizard(self, timeout: int = 10000):
+        """Click the VERSION-group "Fork" menuitem and wait for the Fork
+        wizard's "Fork parameters" dialog to open.
+
+        Call after :meth:`open_fork_wizard_menu`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Clicking Fork menuitem")
+        self.fork_menuitem.click()
+        self.fork_wizard_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Fork wizard dialog visible")
+
+    @action("Select Fork target project")
+    def select_fork_target_project(self, project_id: int, timeout: int = 10000):
+        """Open the Fork wizard's Project selector and pick a target project.
+
+        LOCATOR: ``fork_project_select_trigger`` opens the dropdown; the
+        option is resolved via the shared dynamic ``select-option-{id}``
+        testid (``SELECT_OPTION`` — same template already used throughout
+        this page for MUI single-select dropdowns).
+
+        Args:
+            project_id: Numeric id of the target project.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting Fork target project id=%d", project_id)
+        self.fork_project_select_trigger.click()
+        option = self.page.locator(self.SELECT_OPTION.format(project_id))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        logger.info("Fork target project id=%d selected", project_id)
+
+    @action("Confirm Fork")
+    def confirm_fork(self, timeout: int = 15000):
+        """Click the Fork wizard's "Fork" confirm button.
+
+        Waits for the dialog to re-render in place as the "Fork Complete"
+        dialog (same ``ImportWizardModal`` container — its testid swaps
+        once the fork operation succeeds; see class-level note on
+        ``fork_wizard_dialog``/``fork_complete_dialog``).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Confirming Fork")
+        self.fork_confirm_button.click()
+        self.fork_complete_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Fork Complete dialog visible")
+
+    @action("Confirm Fork complete (Got it)")
+    def confirm_fork_complete(self, timeout: int = 15000) -> int:
+        """Click "Got it" on the Fork Complete dialog.
+
+        Auto-navigates to the newly forked Pipeline's own detail page
+        (inside the target project). Parses and returns the forked
+        Pipeline's numeric ID from the resulting URL, then waits for the
+        Information section's own Pipeline ID display to catch up — the
+        "Got it" transition is a client-side SPA navigation (component
+        stays mounted), so the ``copy-id`` testid can briefly still show
+        the PREVIOUSLY-viewed pipeline's id/other stale text after the URL
+        has already changed; callers reading ``get_pipeline_id()``
+        immediately after this method would otherwise race that refetch
+        (confirmed live, ELITEA-2051 implementer Phase 4).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The forked Pipeline's numeric ID.
+        """
+        self.fork_complete_got_it_button.click()
+        self.page.wait_for_url(re.compile(r".*/pipelines/all/\d+"), timeout=timeout)
+        self.wait_for_network(timeout=5000)
+
+        match = re.search(r"/pipelines/all/(\d+)", self.page.url)
+        if not match:
+            raise ValueError(
+                f"Could not parse forked Pipeline ID from URL: {self.page.url}"
+            )
+        forked_pipeline_id = int(match.group(1))
+        from playwright.sync_api import expect
+
+        expect(self.copy_id_button).to_have_text(
+            str(forked_pipeline_id), timeout=timeout
+        )
+        logger.info(
+            "Fork complete — navigated to forked pipeline id=%d (%s)",
+            forked_pipeline_id, self.page.url,
+        )
+        return forked_pipeline_id
 
     def fork_pipeline_via_menu(self, timeout: int = 10000) -> bool:
         """Fork (duplicate) the pipeline via the three-dot menu.
@@ -1208,6 +2671,19 @@ class PipelineDetailPage(PipelineFormPage):
         if line_count == 0:
             return self.yaml_editor.text_content() or ""
         return "\n".join(lines.nth(i).text_content() or "" for i in range(line_count))
+
+    def get_yaml_gutter_line_numbers(self):
+        """Return the CodeMirror line-number gutter locator.
+
+        Scoped under the testid-anchored ``yaml_editor`` parent via
+        ``YAML_GUTTER_LINE_SELECTOR`` (sanctioned #579 exception — see that
+        constant's docstring). Callers use ``.count()`` / ``.nth(i)``.
+        """
+        return self.yaml_editor.locator(self.YAML_GUTTER_LINE_SELECTOR)
+
+    def click_copy_yaml_button(self) -> None:
+        """Click the "Copy yaml code to clipboard" icon button (YAML view only)."""
+        self.copy_yaml_button.click()
 
     def edit_yaml_line(self, current_line_text: str, new_line_text: str) -> None:
         """Replace one line of the YAML CodeMirror editor with *new_line_text*.
@@ -1346,6 +2822,296 @@ class PipelineDetailPage(PipelineFormPage):
         """
         self.canvas_controls.locator('button[title="Fit View"]').click(timeout=timeout)
         self.page.wait_for_timeout(500)  # pan/zoom transition settle
+
+    def zoom_in_canvas(self, timeout: int = 5000) -> None:
+        """Click ReactFlow's own "Zoom In" control (canvas scale increases).
+
+        Added for ELITEA-2019. Same #579 sanctioned exception and same
+        ``canvas_controls``-scoped pattern as :meth:`fit_canvas_view` — the
+        individual button is ReactFlow's own internal render
+        (``@xyflow/react``'s ``Controls`` component, rendered directly by
+        ``FlowEditor.jsx``; no app testid can be placed on it) — scoped to
+        the real app testid ``canvas_controls`` parent.
+
+        Deliberately NOT the same as the pre-existing raw ``zoom_in()``
+        method near the bottom of this class (``self.page.locator(...)``,
+        page-level, unscoped) — that method is tracked tech debt, not a
+        pattern to extend.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.canvas_controls.locator('button[title="Zoom In"]').click(timeout=timeout)
+        self.page.wait_for_timeout(300)  # zoom transition settle
+
+    def zoom_out_canvas(self, timeout: int = 5000) -> None:
+        """Click ReactFlow's own "Zoom Out" control (canvas scale decreases).
+
+        Added for ELITEA-2019. Same #579 sanctioned exception and
+        ``canvas_controls``-scoped pattern as :meth:`zoom_in_canvas` /
+        :meth:`fit_canvas_view`. Confirmed live: this button becomes
+        ``disabled`` once ReactFlow's default ``minZoom`` (``scale(0.1)``)
+        is reached.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.canvas_controls.locator('button[title="Zoom Out"]').click(timeout=timeout)
+        self.page.wait_for_timeout(300)  # zoom transition settle
+
+    def is_control_panel_fully_visible(self, timeout: int = 5000) -> bool:
+        """Return True iff all 6 canvas control-panel buttons are visible.
+
+        Added for ELITEA-2057. Confirmed live (2026-08-08): ``canvas_controls``
+        (``rf__controls``) is a SINGLE ``@xyflow/react`` ``Controls`` instance
+        (``FlowEditor.jsx``'s ``StyledControls``) that renders its own default
+        4 buttons (Zoom In, Zoom Out, Fit View, Toggle Interactivity — each
+        with a real ``title``/``aria-label`` attribute) followed by 2 app-code
+        children appended inside the SAME component (Toggle cards size,
+        Auto-arrange — each wrapped in an MUI ``Tooltip`` whose accessible
+        name lands on the wrapping ``<span aria-label="...">``, not the inner
+        ``<button>`` itself). All 6 are #579-sanctioned third-party-widget
+        exceptions scoped under the one real app testid ``canvas_controls``,
+        same provenance as :meth:`fit_canvas_view`.
+
+        Args:
+            timeout: Maximum wait time per button, in milliseconds.
+
+        Returns:
+            True if every one of the 6 buttons is visible, False otherwise.
+        """
+        selectors = [
+            'button[title="Zoom In"]',
+            'button[title="Zoom Out"]',
+            'button[title="Fit View"]',
+            'button[title="Toggle Interactivity"]',
+            'span[aria-label="Toggle cards size"] button',
+            'span[aria-label="Auto-arrange"] button',
+        ]
+        for selector in selectors:
+            button = self.canvas_controls.locator(selector)
+            try:
+                button.wait_for(state="visible", timeout=timeout)
+            except Exception:
+                return False
+        return True
+
+    def toggle_canvas_interactivity(self, timeout: int = 5000) -> None:
+        """Click ReactFlow's own "Toggle Interactivity" control panel button.
+
+        Added for ELITEA-2057. Same #579 sanctioned exception and same
+        ``canvas_controls``-scoped pattern as :meth:`zoom_in_canvas` /
+        :meth:`fit_canvas_view` — the button is ReactFlow's own internal
+        render (``react-flow__controls-interactive``, a default ``Controls``
+        button, no app testid can be placed on it).
+
+        Confirmed live (2026-08-08): toggles ``nodesDraggable`` — a node that
+        was draggable before the click can no longer be repositioned by
+        :meth:`move_node` afterwards (bounding box unchanged), and a second
+        click restores dragging. Fires zero network requests and zero
+        console errors, same as the other canvas-viewport controls.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.canvas_controls.locator('button[title="Toggle Interactivity"]').click(timeout=timeout)
+        self.page.wait_for_timeout(300)  # state settle
+
+    def toggle_canvas_cards_size(self, timeout: int = 5000) -> None:
+        """Click the canvas control panel's "Toggle cards size" button.
+
+        Added for ELITEA-2057. #579 sanctioned exception (third-party widget
+        subtree): this is an app-code ``ControlButton`` appended as a child
+        of ReactFlow's own ``Controls`` component (``FlowEditor.jsx``'s
+        ``onExpandAll``), rendered inside the same ``@xyflow/react`` third-
+        party render tree as Zoom In/Out — no app testid is placeable on the
+        individual button. The accessible name lives on the wrapping MUI
+        ``Tooltip`` span (``aria-label="Toggle cards size"``), not the inner
+        ``<button>`` itself (confirmed live via DOM inspection) — scoped
+        under the real app testid ``canvas_controls`` parent.
+
+        Confirmed live (2026-08-08): toggles every node card between
+        expanded/compact — a node's rendered height shrinks dramatically
+        (e.g. a Decision node: 87.8px -> 9.5px) when compacted, and a second
+        click restores the exact original height. Fires zero network
+        requests and zero console errors.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.canvas_controls.locator('span[aria-label="Toggle cards size"] button').click(timeout=timeout)
+        self.page.wait_for_timeout(500)  # re-layout + fit-view settle (FlowEditor's onExpandAll)
+
+    def auto_arrange_canvas(self, timeout: int = 5000) -> None:
+        """Click the canvas control panel's "Auto-arrange" button.
+
+        Added for ELITEA-2057. Same #579 sanctioned exception and
+        ``canvas_controls``-scoped pattern as :meth:`toggle_canvas_cards_size`
+        — an app-code ``ControlButton`` (``FlowEditor.jsx``'s ``onReLayout``)
+        appended inside ReactFlow's own ``Controls`` render tree, accessible
+        name on the wrapping ``<span aria-label="Auto-arrange">`` rather than
+        the inner ``<button>``.
+
+        Confirmed live (2026-08-08): recomputes node positions via a
+        deterministic layout algorithm and calls Fit View — dragging a node
+        away from its arranged position and then clicking this button moves
+        it back to the EXACT same position it started at (px-perfect match,
+        same determinism class as Fit View — see
+        ``test-specs/pipelines/l2_pipeline-canvas-zoom-and-pan_ELITEA-2019.md``).
+        Fires zero network requests and zero console errors.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.canvas_controls.locator('span[aria-label="Auto-arrange"] button').click(timeout=timeout)
+        self.page.wait_for_timeout(700)  # re-layout (100ms internal) + fit-view transition settle
+
+    def get_canvas_viewport_transform(self) -> dict:
+        """Read the ReactFlow viewport's current CSS transform (translate + scale).
+
+        Added for ELITEA-2019 — the ground-truth signal for both zoom and
+        pan. #579 sanctioned exception (third-party widget subtree): reads
+        the inline ``style`` attribute ReactFlow itself writes onto
+        ``.react-flow__viewport`` (no app testid possible on a CSS transform
+        value) — scoped under the real app testid ``canvas_wrapper``
+        (``rf__wrapper``) parent, per the discipline in
+        ``.agents/testing.md`` § Locator policy.
+
+        Confirmed live shape (two independent sessions, two different
+        viewport sizes): ``translate(<tx>px, <ty>px) scale(<s>)``.
+
+        Returns:
+            Dict with float keys ``tx``, ``ty``, ``scale``.
+
+        Raises:
+            ValueError: if the transform string doesn't match the expected
+                ReactFlow shape (would indicate a library upgrade changed
+                the inline-style format).
+        """
+        viewport = self.canvas_wrapper.locator(".react-flow__viewport")
+        transform = viewport.get_attribute("style") or ""
+        match = re.search(
+            r"translate\(([-\d.]+)px,\s*([-\d.]+)px\)\s*scale\(([-\d.]+)\)", transform
+        )
+        if not match:
+            raise ValueError(f"Unexpected ReactFlow viewport transform shape: {transform!r}")
+        tx, ty, scale = match.groups()
+        return {"tx": float(tx), "ty": float(ty), "scale": float(scale)}
+
+    def get_node_bounding_box(self, node_id: str, timeout: int = 5000) -> dict:
+        """Return the on-screen bounding box of the node with *node_id*.
+
+        Added for ELITEA-2019 (public getter for zoom/pan proof — previously
+        only used internally by :meth:`move_node`). Locates via the exact
+        ``rf__node-{id}`` testid (:data:`RF_NODE_TESTID`, same #579-sanctioned
+        ReactFlow-injected provenance already documented for
+        :meth:`move_node`).
+
+        Args:
+            node_id: Internal id of the node (e.g. "Decision 1").
+            timeout: Maximum wait time for the node to be visible.
+
+        Returns:
+            Dict with float keys ``x``, ``y``, ``width``, ``height``.
+
+        Raises:
+            ValueError: if the node's bounding box can't be resolved (e.g.
+                the node isn't currently rendered).
+        """
+        node = self.page.locator(self.RF_NODE_TESTID.format(node_id))
+        node.wait_for(state="visible", timeout=timeout)
+        box = node.bounding_box()
+        if not box:
+            raise ValueError(f"Could not get bounding box for node {node_id!r}")
+        return box
+
+    def all_nodes_within_viewport(self, tolerance: float = 1.0) -> bool:
+        """Return True iff every canvas node's bounding box is fully contained
+        within the ``canvas_wrapper`` (``rf__wrapper``) bounding box.
+
+        Added for ELITEA-2019 — the "all nodes visible" proof for Fit View,
+        built entirely from existing/new testid-scoped handles
+        (:meth:`get_node_ids`, :meth:`get_node_bounding_box`,
+        ``canvas_wrapper``). *tolerance* absorbs sub-pixel rounding from
+        ReactFlow's own fit computation (confirmed live: exact containment
+        without tolerance already held on the pipelines probed this
+        session, but a fixed tolerance keeps this robust for other layouts).
+
+        Args:
+            tolerance: Pixels of slack allowed on each edge.
+
+        Returns:
+            True if every node is fully contained, False otherwise.
+        """
+        wrapper_box = self.canvas_wrapper.bounding_box()
+        if not wrapper_box:
+            raise ValueError("Could not get bounding box for canvas_wrapper")
+        wrapper_left = wrapper_box["x"] - tolerance
+        wrapper_top = wrapper_box["y"] - tolerance
+        wrapper_right = wrapper_box["x"] + wrapper_box["width"] + tolerance
+        wrapper_bottom = wrapper_box["y"] + wrapper_box["height"] + tolerance
+
+        for node_id in self.get_node_ids():
+            node_box = self.get_node_bounding_box(node_id)
+            if (
+                node_box["x"] < wrapper_left
+                or node_box["y"] < wrapper_top
+                or node_box["x"] + node_box["width"] > wrapper_right
+                or node_box["y"] + node_box["height"] > wrapper_bottom
+            ):
+                return False
+        return True
+
+    def pan_canvas(self, dx: int, dy: int, timeout: int = 5000) -> None:
+        """Drag the empty canvas pane by (*dx*, *dy*) screen pixels to pan the viewport.
+
+        Added for ELITEA-2019. #579 sanctioned exception (third-party widget
+        subtree): drags via ``.react-flow__pane`` (ReactFlow's own internal
+        pan-drag target, no app testid can be placed on it) — scoped under
+        the real app testid ``canvas_wrapper`` (``rf__wrapper``) parent, per
+        the discipline in ``.agents/testing.md`` § Locator policy. This is a
+        NEW method, distinct from the pre-existing raw ``_deselect_all()``
+        (which also uses ``.react-flow__pane`` but unscoped, page-level, and
+        for a click, not a drag) — tracked tech debt, not extended here.
+
+        Starts the drag 15% inset from the pane's top-left corner — empty of
+        nodes after a Fit View (ReactFlow's own fit computation leaves
+        margin at the edges; confirmed live on a 5-node pipeline). Uses REAL
+        ``page.mouse`` events (same technique as the existing
+        :meth:`move_node`/:meth:`connect_nodes`) — confirmed live that
+        JS-dispatched synthetic ``PointerEvent``s do NOT pan the canvas at
+        all (untrusted events, ReactFlow's drag handler ignores them); only
+        genuine mouse input works.
+
+        Args:
+            dx: Horizontal pan offset in pixels (positive = drag right).
+            dy: Vertical pan offset in pixels (positive = drag down).
+            timeout: Maximum wait time for the pane to be visible.
+
+        Raises:
+            ValueError: if the pane's bounding box can't be resolved.
+        """
+        pane = self.canvas_wrapper.locator(".react-flow__pane")
+        pane.wait_for(state="visible", timeout=timeout)
+        box = pane.bounding_box()
+        if not box:
+            raise ValueError("Could not get bounding box for canvas pane")
+        sx = box["x"] + box["width"] * 0.15
+        sy = box["y"] + box["height"] * 0.15
+
+        self.page.mouse.move(sx, sy)
+        self.page.wait_for_timeout(100)
+        self.page.mouse.down()
+        self.page.wait_for_timeout(100)
+
+        steps = 15
+        for i in range(1, steps + 1):
+            self.page.mouse.move(sx + dx * i / steps, sy + dy * i / steps)
+            self.page.wait_for_timeout(30)
+
+        self.page.mouse.up()
+        self.page.wait_for_timeout(300)
+        logger.info("Panned canvas by (%d, %d)", dx, dy)
 
     def add_node(self, node_type: str, timeout: int = 5000):
         """Add a node to the canvas via the + button menu.
@@ -1494,6 +3260,78 @@ class PipelineDetailPage(PipelineFormPage):
 
         expect(self.page.locator(".react-flow__node")).to_have_count(expected_count, timeout=timeout)
 
+    # ReactFlow assigns each node's default display-name prefix per node TYPE
+    # (e.g. an LLM node is labelled "LLM 1", "LLM 2", ...), and that label is
+    # what its `rf__node-{label}` testid is built from (ReactFlow's own testid
+    # convention — sanctioned #579 third-party-widget exception, library-
+    # injected, not app-authored). Casing is app-assigned and NOT a mechanical
+    # transform of `node_type` (acronym types are upper-cased, word types are
+    # title-cased) — confirmed live across this suite's per-node-type AFS's:
+    # LLM (ELITEA-2004/2002), HITL (ELITEA-2014), MCP (ELITEA-1954/2037),
+    # Router (ELITEA-2033), Decision (ELITEA-2034), Toolkit (ELITEA-2010).
+    NODE_TYPE_DISPLAY_PREFIX = {
+        "llm": "LLM",
+        "hitl": "HITL",
+        "mcp": "MCP",
+        "router": "Router",
+        "decision": "Decision",
+        "toolkit": "Toolkit",
+    }
+    RF_NODE_TESTID_PREFIX = '[data-testid^="rf__node-{}"]'
+    # Exact-id sibling of RF_NODE_TESTID_PREFIX — for callers that already
+    # hold a specific node's internal id (e.g. from wait_for_node_on_canvas())
+    # and need to re-locate that SAME node, not "any node of this type".
+    # Same ReactFlow-injected `rf__node-{id}` testid, same #579 provenance.
+    RF_NODE_TESTID = '[data-testid="rf__node-{}"]'
+
+    def wait_for_node_type_count(
+        self, node_type: str, expected_count: int, timeout: int = 10000
+    ) -> None:
+        """Poll until the canvas has exactly *expected_count* nodes of *node_type*.
+
+        Added for ELITEA-2002. Unlike :meth:`wait_for_node_count` (which
+        counts EVERY ``.react-flow__node``), this scopes to a single node
+        TYPE — the correct handle for "how many nodes of THIS type are on
+        canvas", needed because ReactFlow always renders a synthetic END node
+        (confirmed live: a fresh zero-configured-node pipeline from
+        ``PipelineAPI.create_pipeline()`` shows one ``.react-flow__node``
+        for END before any node is ever added), so
+        :meth:`wait_for_node_count`'s total would be off-by-one for any
+        type-specific "how many LLM nodes" check.
+
+        Locates via the ``rf__node-{display_prefix}`` testid PREFIX
+        (:data:`RF_NODE_TESTID_PREFIX`, ``starts_with`` match — the AFS's
+        recommended handle, ``[data-testid^="rf__node-LLM"]`` for LLM), not
+        the ``.react-flow__node-{css_type}`` CSS class: the testid is
+        available (sanctioned #579 exception — library-injected DOM, not
+        app-authored, but still exposed as ``data-testid``) and a raw CSS
+        class is not the correct rung when a testid can be used. Scoped
+        under the testid-anchored ``canvas_wrapper`` (``rf__wrapper``)
+        parent, per the exception's discipline — not a free-floating
+        page-level handle. A numeric suffix (``LLM 1`` vs ``LLM 2``) is
+        assigned by the app, hence the prefix match rather than an exact id.
+
+        Args:
+            node_type: The node type name (case-insensitive), e.g. "llm".
+                Must be a key of :data:`NODE_TYPE_DISPLAY_PREFIX` — raises
+                ``ValueError`` for an unconfirmed type rather than guessing
+                a display-name casing that could silently locate nothing.
+            expected_count: The exact count to wait for.
+            timeout: Maximum wait time in milliseconds.
+        """
+        from playwright.sync_api import expect
+
+        display_prefix = self.NODE_TYPE_DISPLAY_PREFIX.get(node_type.lower())
+        if display_prefix is None:
+            raise ValueError(
+                f"wait_for_node_type_count: no confirmed rf__node-* testid "
+                f"display-name prefix for node_type={node_type!r}. Confirm it "
+                f"live (see ELITEA-2002 AFS's Concrete Handles table for the "
+                f"pattern) and add it to NODE_TYPE_DISPLAY_PREFIX."
+            )
+        selector = self.RF_NODE_TESTID_PREFIX.format(display_prefix)
+        expect(self.canvas_wrapper.locator(selector)).to_have_count(expected_count, timeout=timeout)
+
     def get_node_ids(self) -> list[str]:
         """Return the data-id values of all nodes on the canvas.
 
@@ -1507,6 +3345,33 @@ class PipelineDetailPage(PipelineFormPage):
             if nid:
                 ids.append(nid)
         return ids
+
+    def get_node_handle_count(self, node_id: str) -> int:
+        """Return the number of ReactFlow connection handles on the Printer node with *node_id*.
+
+        Fix round 2 (ELITEA-2039 review): counts via the Printer node's two
+        dedicated handle testids (:attr:`printer_node_target_handle` /
+        :attr:`printer_node_source_handle`) instead of a raw
+        ``.react-flow__handle`` DOM query. ``CustomHandle.jsx`` forwards a
+        ``testId`` prop straight to ``data-testid`` — the element is
+        app-owned, not library-internal DOM, so it does NOT qualify for the
+        #579 sanctioned exception; a real testid belongs here, same as every
+        other testid-scoped connection handle in this suite
+        (``pipeline-decision-node-output-handle``).
+
+        Currently confirms the Printer node's connection-point inventory
+        (target+source pair) specifically — this method has no callers
+        outside the Printer node test. Extending it to other node types
+        requires wiring a ``testId`` on their ``CustomHandle`` calls first
+        (none carry one yet).
+
+        Args:
+            node_id: The data-id of the node (e.g. ``"Printer 1"``) — kept in
+                the signature for call-site clarity even though the testid
+                locators below are page-wide (single-Printer-node-on-canvas
+                assumption, same as :attr:`printer_node_type_select` et al.).
+        """
+        return self.printer_node_target_handle.count() + self.printer_node_source_handle.count()
 
     def wait_for_node_on_canvas(
         self, node_type: str, *, timeout: int = 10000,
@@ -1652,6 +3517,31 @@ class PipelineDetailPage(PipelineFormPage):
         self.trigger_select.wait_for(state="visible", timeout=timeout)
         return (self.trigger_select.text_content() or "").strip()
 
+    def get_trigger_control_count_for_node(self, node_id: str) -> int:
+        """Count the Trigger control(s) rendered inside a SPECIFIC node's own card.
+
+        Scoping-gap fix (ELITEA-2041): :attr:`trigger_select` is page-wide by
+        design (single-entry-point-node assumption, per its class-level
+        docstring) — insufficient to assert the Trigger control's ABSENCE on
+        one particular non-entry node while other nodes coexist on canvas.
+        Scopes via the ReactFlow-injected ``rf__node-{id}`` container
+        (:data:`RF_NODE_TESTID`) as the parent, then :data:`TRIGGER_SELECT_TESTID`
+        within it — same mechanism as
+        :meth:`get_printer_node_value_for_node`.
+
+        Args:
+            node_id: The data-id of the node to scope the check to.
+
+        Returns:
+            0 if the node is not the entry point (no Trigger control renders
+            there); 1 if it is.
+        """
+        return (
+            self.page.locator(self.RF_NODE_TESTID.format(node_id))
+            .locator(self.TRIGGER_SELECT_TESTID)
+            .count()
+        )
+
     def open_trigger_select(self, timeout: int = 10000, entry_point_node_id: str | None = None) -> None:
         """Open the entry-point node's Trigger dropdown.
 
@@ -1671,9 +3561,24 @@ class PipelineDetailPage(PipelineFormPage):
         if entry_point_node_id:
             self._select_node(entry_point_node_id)
         self.trigger_select.click(timeout=timeout, force=True)
-        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(
-            state="visible", timeout=timeout
-        )
+        options = self.page.locator(self.SELECT_OPTION_PREFIX)
+        try:
+            options.first.wait_for(state="visible", timeout=self.TRIGGER_SELECT_OPEN_PROBE_TIMEOUT)
+        except PlaywrightTimeoutError:
+            # Swallowed first click, reproduced deterministically on the first
+            # open after a full page reload (ELITEA-2008 repair): selecting the
+            # node remounts its config panel, so the Select element resolved a
+            # moment earlier is replaced before the click lands and the menu
+            # never opens — a stuck 10s timeout, not slowness (the original
+            # failure waited the full timeout 3/3 and saw nothing).
+            #
+            # Re-clicking re-resolves the locator against the fresh element.
+            # Guarded by `count() == 0` so this can only ever fire when NO menu
+            # is open: a menu that is merely rendering slowly is waited out
+            # below instead of being clicked shut by the retry.
+            if options.count() == 0:
+                self.trigger_select.click(timeout=timeout, force=True)
+            options.first.wait_for(state="visible", timeout=timeout)
 
     def get_trigger_options(self, timeout: int = 10000, entry_point_node_id: str | None = None) -> list[str]:
         """Open the Trigger dropdown, read the visible option names, close via Escape.
@@ -1688,6 +3593,52 @@ class PipelineDetailPage(PipelineFormPage):
         options = self.get_open_listbox_option_names()
         self.page.keyboard.press("Escape")
         return options
+
+    def get_trigger_option_states(
+        self, timeout: int = 10000, entry_point_node_id: str | None = None
+    ) -> dict[str, bool]:
+        """Open the Trigger dropdown, read each option's presence AND enabled state, close via Escape.
+
+        One dropdown open serves both halves of the EL-6128 contract
+        (EliteaAI/EliteaUI@cb70a64e): a restricted trigger is greyed out IN
+        PLACE, so the option *list* is identical whether the pipeline is
+        restricted or not and only the per-option enabled/disabled split
+        discriminates.
+
+        Reads **per value** via :data:`TRIGGER_OPTION_ENABLED` /
+        :data:`TRIGGER_OPTION_DISABLED` rather than enumerating the
+        ``select-option-*`` family with :data:`SELECT_OPTION_PREFIX`, which is
+        deliberate: that prefix also matches the selected option's
+        ``select-option-selected-icon`` check mark (issue #1806), so family
+        enumeration yields a spurious empty entry on any build carrying that
+        testid. Per-value handles are immune on every environment.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+            entry_point_node_id: Optional data-id of the entry point node to
+                bring to the front before opening the dropdown (see
+                :meth:`open_trigger_select`).
+
+        Returns:
+            ``{trigger_value: is_enabled}`` for every value of
+            :data:`TRIGGER_OPTION_VALUES` actually rendered in the dropdown.
+            An option that is NOT rendered is simply absent from the mapping,
+            so one dict comparison in the caller covers both which options are
+            offered and which of them are selectable.
+        """
+        self.open_trigger_select(timeout=timeout, entry_point_node_id=entry_point_node_id)
+        states: dict[str, bool] = {}
+        for value in self.TRIGGER_OPTION_VALUES:
+            if self.page.locator(self.SELECT_OPTION.format(value)).count() == 0:
+                continue
+            # `aria-disabled` is absent (not "false") on an enabled MenuItem,
+            # so the two filters are exact complements over a rendered option.
+            if self.page.locator(self.TRIGGER_OPTION_DISABLED.format(value)).count() > 0:
+                states[value] = False
+            else:
+                states[value] = self.page.locator(self.TRIGGER_OPTION_ENABLED.format(value)).count() > 0
+        self.page.keyboard.press("Escape")
+        return states
 
     def toggle_node_interrupt_before(self, node_id: str, timeout: int = 5000) -> None:
         """Click a node's inline "Interrupt before" switch (CommonInterruptSettings.jsx).
@@ -1879,11 +3830,14 @@ class PipelineDetailPage(PipelineFormPage):
         return response_info.value.json()
 
     def get_schedule_cron_select_count(self) -> int:
-        """Count the visible `.react-js-cron-select` widgets in the open Schedule modal.
+        """Count the visible CronSelect widgets (MUI Autocomplete) in the open Schedule modal.
 
-        4 when the day-of-week "on" selector is visible (week/on/hour/minute),
-        3 when hidden (day-or-finer/hour/minute) — scoped to the (testid'd)
-        ``schedule_modal`` root per the #579 sanctioned third-party exception.
+        Returns count of selects currently visible:
+        - 4 when week period: period + weekdays + hour + minute
+        - 5 when month period: period + monthdays + weekdays + hour + minute
+        - 3 when day/year/minute period: period + hour + minute
+
+        Uses MUI Autocomplete class selector until testids are deployed.
         """
         return self.schedule_modal.locator(self.SCHEDULE_CRON_SELECT).count()
 
@@ -1901,33 +3855,24 @@ class PipelineDetailPage(PipelineFormPage):
     # removed), so an unfiltered `.ant-select-dropdown` count includes stale
     # closed instances from an earlier field (e.g. the "Every" select) and
     # makes a same-class-family open/closed distinction impossible without it.
-    CRON_DROPDOWN = ".ant-select-dropdown:visible"
+    # Updated 2026-08-26: Now using MUI Autocomplete instead of ant-design
+    CRON_DROPDOWN = ".MuiAutocomplete-popper:visible"
     # Sub-selectors, scoped off a single open CRON_DROPDOWN instance at the
     # call site (never queried page-wide — see set_schedule_hour_minute).
-    CRON_DROPDOWN_OPTION = '.ant-select-item-option[title="{}"]'
-    CRON_DROPDOWN_SELECTED_OPTION = '.ant-select-item-option[aria-selected="true"]'
-    CRON_DROPDOWN_VIRTUAL_LIST = ".rc-virtual-list-holder"
+    # MUI Autocomplete uses role="option" with text content for options
+    CRON_DROPDOWN_OPTION = 'li[role="option"]:has-text("{}")'
+    CRON_DROPDOWN_SELECTED_OPTION = 'li[role="option"][aria-selected="true"]'
+    CRON_DROPDOWN_VIRTUAL_LIST = ".MuiAutocomplete-listbox"
 
     def set_schedule_hour_minute(self, hour: str, minute: str, timeout: int = 5000) -> None:
         """Set the Schedule modal's hour/minute "at HH:MM" pickers to a single value.
 
-        To land on a clean single value: open the popover, click the
-        currently-checked cell to UNCHECK it, then click the target cell to
-        check it — for both hour and minute independently. Both toggles are
-        VERIFIED (not just fired-and-forgotten) before moving on: a
-        JS-evaluate click dispatches a synthetic ``click`` event with no
-        guarantee React's onChange/state-update — or, worse, the
-        `rc-virtual-list` re-render triggered by the scroll/scroll-into-view
-        calls below — has settled by the time the call returns. An
-        unverified miss on either toggle leaves the grid in a multi-value
-        state (e.g. both "00" and the target checked), which only surfaces
-        several steps later as the modal's own inline validation error
-        ("Frequency cannot be less than every hour") rather than here where
-        the actual cause is. One re-click retry covers a remount landing
-        between the scroll and the click; a persistent mismatch fails loudly
-        with a locator-count assertion instead of masking into that
-        downstream message (ELITEA-2007 gate flake, 2026-08-04: 2 green / 1
-        red across 3 consecutive gate runs of this spec).
+        Updated 2026-08-26: Now uses MUI Autocomplete (CronSelect) instead of
+        react-js-cron. Uses MUI class selector (.MuiAutocomplete-root) to find
+        hour/minute selects, since testids may not be deployed yet.
+
+        The hour and minute are the last two Autocompletes in the modal's
+        Builder mode (after period and optional weekdays/monthdays selects).
 
         Args:
             hour: Target hour, zero-padded (e.g. ``"09"``).
@@ -1936,72 +3881,41 @@ class PipelineDetailPage(PipelineFormPage):
         """
         from playwright.sync_api import expect
 
-        # (target, item_count) — hour grid is 0-23 (24 items), minute grid is
-        # 0-59 (60 items), confirmed live via DOM dump. Needed to compute the
-        # virtualized list's scroll-to-render offset below.
+        # MUI Autocomplete dropdowns (.MuiAutocomplete-popper)
         dropdown = self.page.locator(self.CRON_DROPDOWN)
-        for target, item_count in ((hour, 24), (minute, 60)):
-            trigger = self.schedule_modal.get_by_text("00", exact=True).first
-            trigger.click(timeout=timeout)
-            # Exactly one dropdown must be open at a time — a stale one left
-            # open from the previous field (Escape not always closing it
-            # reliably here) would make `.last` below ambiguous between two
-            # overlapping option grids.
+
+        # Wait for modal to be visible
+        self.schedule_modal.wait_for(state="visible", timeout=timeout)
+
+        # Find all MUI Autocomplete components in the modal
+        # In Builder mode, the last two are always hour and minute
+        autocompletes = self.schedule_modal.locator(self.SCHEDULE_CRON_SELECT)
+        total_count = autocompletes.count()
+
+        # Hour is second-to-last, minute is last
+        for target, index_from_end in ((hour, 2), (minute, 1)):
+            # Get the correct Autocomplete (counting from the end)
+            autocomplete_index = total_count - index_from_end
+            autocomplete = autocompletes.nth(autocomplete_index)
+
+            # Click the input to open dropdown
+            autocomplete_input = autocomplete.locator('input').first
+            autocomplete_input.click(timeout=timeout)
+
+            # Wait for exactly one dropdown to be open
             expect(dropdown).to_have_count(1, timeout=timeout)
             open_dropdown = dropdown.last
 
-            # The dropdown panel overlaps the modal's own helper text (MUI
-            # overlay interception, .claude/rules/mui-patterns.md) and can
-            # reflow outside the viewport once an item is (un)checked —
-            # JS-evaluate click bypasses both the pointer-interception AND
-            # viewport-visibility actionability checks (mui-patterns.md:
-            # "evaluate() ... for critical actions").
-            selected_options = open_dropdown.locator(self.CRON_DROPDOWN_SELECTED_OPTION)
-            selected_option = selected_options.first
-            selected_option.wait_for(state="attached", timeout=timeout)
-            selected_option.evaluate("el => el.click()")  # uncheck default
-            try:
-                expect(selected_options).to_have_count(0, timeout=timeout)
-            except AssertionError:
-                # Re-resolve and retry once — the locator queries fresh at
-                # call time, so this targets whatever cell is ACTUALLY
-                # selected now rather than a stale handle.
-                selected_options.first.evaluate("el => el.click()")
-                expect(selected_options).to_have_count(0, timeout=timeout)
+            # Wait for options to be visible
+            open_dropdown.wait_for(state="visible", timeout=timeout)
 
-            # The grid is `rc-virtual-list`-virtualized — an option far from
-            # the current scroll position never mounts in the DOM at all, so
-            # a plain wait_for(attached) times out. Scroll the list's holder
-            # to the target's proportional offset first, matching the
-            # standard rc-virtual-list scroll-to-render pattern.
-            list_holder = open_dropdown.locator(self.CRON_DROPDOWN_VIRTUAL_LIST)
-            list_holder.evaluate(
-                "(el, [idx, count]) => { el.scrollTop = (idx / count) * el.scrollHeight; }",
-                [int(target), item_count],
-            )
-            target_option = open_dropdown.locator(self.CRON_DROPDOWN_OPTION.format(target))
-            target_option.wait_for(state="attached", timeout=timeout)
-            target_option.scroll_into_view_if_needed(timeout=timeout)
-            target_option.evaluate("el => el.click()")  # check target
-            try:
-                expect(selected_options).to_have_count(1, timeout=timeout)
-                expect(selected_options.first).to_have_attribute("title", target, timeout=timeout)
-            except AssertionError:
-                # Same remount risk as above — scroll_into_view_if_needed
-                # can itself trigger a further internal scroll that detaches
-                # the just-resolved cell out from under the click. Re-scroll
-                # + re-click once against a freshly resolved target_option.
-                target_option.scroll_into_view_if_needed(timeout=timeout)
-                target_option.evaluate("el => el.click()")
-                expect(selected_options).to_have_count(1, timeout=timeout)
-                expect(selected_options.first).to_have_attribute("title", target, timeout=timeout)
+            # Find and click the target option by text
+            # MUI Autocomplete options are li[role="option"] with text content
+            target_option = open_dropdown.locator(f'li[role="option"]:has-text("{target}")')
+            target_option.wait_for(state="visible", timeout=timeout)
+            target_option.click(timeout=timeout)
 
-            # Click the modal title (neutral area, no click handler of its
-            # own) to close the dropdown — more reliable here than Escape,
-            # which this custom grid widget doesn't always capture — then
-            # confirm it is actually gone before the next field's trigger
-            # click, so the two fields' dropdowns never overlap.
-            self.page.get_by_text("Schedule settings", exact=True).click(timeout=timeout)
+            # Wait for dropdown to close after selection
             expect(dropdown).to_have_count(0, timeout=timeout)
 
     def edit_node_name(self, node_id: str, new_name: str) -> str:
@@ -2332,6 +4246,85 @@ class PipelineDetailPage(PipelineFormPage):
         except Exception:
             return False
 
+    def get_mcp_node_input_mapping_type(self, param_name: str, timeout: int = 5000) -> str:
+        """Read an MCP-node Input-mapping row's Type select value.
+
+        Mirrors :meth:`get_toolkit_node_input_mapping_type` exactly — same
+        shared ``InputMappingItem.jsx`` control, different node-type testid
+        prefix (ELITEA-1953).
+
+        Args:
+            param_name: The tool parameter's raw schema key (e.g. ``"repoName"``).
+            timeout: Maximum wait time for the select to be visible.
+
+        Returns:
+            The option label currently shown, e.g. ``"Fixed"`` / ``"Variable"``.
+        """
+        type_select = self.page.locator(self.MCP_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        type_select.wait_for(state="visible", timeout=timeout)
+        text = (type_select.text_content() or "").replace("\u200b", "")
+        return text.strip()
+
+    def open_mcp_node_input_mapping_type_select(self, param_name: str, timeout: int = 5000) -> None:
+        """Open an MCP-node Input-mapping row's Type select without choosing (ELITEA-1953).
+
+        Split out of :meth:`select_mcp_node_input_mapping_type` so a test can
+        inspect the offered options (``get_open_listbox_option_testids``)
+        before picking one via ``select_open_listbox_option``.
+
+        Args:
+            param_name: The tool parameter's raw schema key (e.g. ``"repoName"``).
+            timeout: Maximum wait time for the select / listbox.
+        """
+        type_select = self.page.locator(self.MCP_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        type_select.scroll_into_view_if_needed(timeout=timeout)
+        type_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_mcp_node_input_mapping_type(
+        self, param_name: str, type_value: str, timeout: int = 5000
+    ) -> None:
+        """Open an MCP-node Input-mapping row's Type select and choose *type_value*.
+
+        Mirrors :meth:`select_toolkit_node_input_mapping_type` (ELITEA-1953).
+
+        Args:
+            param_name: The tool parameter's raw schema key (e.g. ``"repoName"``).
+            type_value: Option display text — ``"Fixed"``, ``"Variable"`` or ``"F-String"``.
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        type_select = self.page.locator(self.MCP_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        type_select.scroll_into_view_if_needed(timeout=timeout)
+        type_select.click(timeout=timeout)
+        option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
+        option = self.page.locator(self.SELECT_OPTION.format(option_value))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def get_mcp_node_input_mapping_variable_value(self, param_name: str, timeout: int = 5000) -> str:
+        """Read an MCP-node Input-mapping row's Value control while Type is ``Variable``.
+
+        Switching a row's Type to ``Variable`` swaps its Value widget from a
+        text input to an MUI single-select of the pipeline's state variables.
+        Since EliteaAI/EliteaUI@5c24ed30 both widget shapes carry the SAME
+        ``pipeline-mcp-node-input-mapping-value-{param}`` testid, so this
+        method is the select-shaped counterpart of
+        :meth:`get_mcp_node_input_mapping_value` (which reads ``input_value()``
+        and therefore only works on the Fixed/F-String text input).
+
+        Args:
+            param_name: The tool parameter's raw schema key (e.g. ``"repoName"``).
+            timeout: Maximum wait time for the select to be visible.
+
+        Returns:
+            The state-variable name currently selected, e.g. ``"input"``.
+        """
+        field = self.page.locator(self.MCP_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        field.wait_for(state="visible", timeout=timeout)
+        return (field.text_content() or "").replace("\u200b", "").strip()
+
     def is_input_mapping_section_visible(self, required_count: int, timeout: int = 5000) -> bool:
         """Check whether the "Input mapping (required N)" accordion is visible.
 
@@ -2390,6 +4383,129 @@ class PipelineDetailPage(PipelineFormPage):
         """Read the MCP node's currently-selected Output display text."""
         text = (self.mcp_node_output_select.text_content() or "").replace("​", "")
         return text.strip()
+
+    # ------------------------------------------------------------------
+    # Agent node inline config (ELITEA-2038)
+    # ------------------------------------------------------------------
+
+    def get_agent_node_agent_value(self, timeout: int = 5000) -> str:
+        """Read the Agent node's currently-selected Agent display text."""
+        self.agent_node_agent_select.wait_for(state="visible", timeout=timeout)
+        text = (self.agent_node_agent_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_agent_node_agent(self, agent_name: str, timeout: int = 5000) -> None:
+        """Open the Agent node's Agent dropdown and select *agent_name*.
+
+        Args:
+            agent_name: The attached agent's display name (matches
+                ``select-option-{agent_name}``).
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.agent_node_agent_select.click(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(agent_name))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def open_agent_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the Agent node's tool-agnostic Input dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.agent_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_agent_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Agent node's Input dropdown and select *variable_name*.
+
+        Multi-select (``role="listbox" aria-multiselectable="true"``, same as
+        the sibling LLM/MCP/Toolkit node Input fields) — doesn't auto-close,
+        so this closes it via Escape same as the sibling node methods.
+        """
+        self.open_agent_node_input_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_agent_node_input_value(self) -> str:
+        """Read the Agent node's currently-selected Input display text."""
+        text = (self.agent_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_agent_node_output_select(self, timeout: int = 5000) -> None:
+        """Open the Agent node's tool-agnostic Output dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.agent_node_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_agent_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Agent node's Output dropdown and select *variable_name*."""
+        self.open_agent_node_output_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_agent_node_output_value(self) -> str:
+        """Read the Agent node's currently-selected Output display text."""
+        text = (self.agent_node_output_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def is_agent_node_input_mapping_section_visible(self, required_count: int, timeout: int = 5000) -> bool:
+        """Check whether the Agent node's "Input mapping (required N)" accordion is visible.
+
+        Args:
+            required_count: Expected N in the accordion title (always 1 —
+                the Agent node's schema has exactly one required key, TASK).
+            timeout: Maximum wait time.
+        """
+        heading = self.agent_node_input_mapping_required_heading
+        try:
+            heading.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return False
+        text = (heading.text_content() or "").strip()
+        return text == f"Input mapping (required {required_count})"
+
+    def get_agent_node_input_mapping_type(self, param_name: str = "task", timeout: int = 5000) -> str:
+        """Read the current Type select display value of the TASK Input-mapping row.
+
+        Args:
+            param_name: The mapping key's raw schema name — always ``"task"``
+                for the Agent node (default provided for readability at call
+                sites; kept parameterized for consistency with the sibling
+                node-type methods rather than hardcoded).
+            timeout: Maximum wait time for the select to be visible.
+        """
+        type_select = self.page.locator(self.AGENT_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        type_select.wait_for(state="visible", timeout=timeout)
+        text = (type_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def get_agent_node_input_mapping_value(self, param_name: str = "task", timeout: int = 5000) -> str:
+        """Read the current value of the TASK Input-mapping "Value" field.
+
+        Args:
+            param_name: The mapping key's raw schema name — always ``"task"``.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        field = self.page.locator(self.AGENT_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        field.wait_for(state="visible", timeout=timeout)
+        return field.input_value()
+
+    def fill_agent_node_input_mapping_value(
+        self, value: str, param_name: str = "task", timeout: int = 5000
+    ) -> None:
+        """Fill the TASK Input-mapping "Value" field.
+
+        Uses click + press_sequentially — MUI/React fields need real keyboard
+        events for onChange to fire (.claude/rules/mui-patterns.md).
+
+        Args:
+            value: The F-String text to type (e.g. containing ``{normalized_issue}``).
+            param_name: The mapping key's raw schema name — always ``"task"``.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        field = self.page.locator(self.AGENT_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        field.wait_for(state="visible", timeout=timeout)
+        field.click()
+        field.press("Control+a")
+        field.press("Delete")
+        field.press_sequentially(value, delay=20)
 
     # ------------------------------------------------------------------
     # LLM node inline config (ELITEA-2004)
@@ -2684,9 +4800,29 @@ class PipelineDetailPage(PipelineFormPage):
         return text.strip()
 
     def open_llm_node_output_select(self, timeout: int = 5000) -> None:
-        """Open the LLM node's Output dropdown."""
+        """Open the LLM node's Output dropdown.
+
+        Clicks near the field's right edge (where the dropdown arrow icon
+        renders) rather than its geometric center. A plain center click is
+        fine while the field is empty or holds 0-1 chips, but once 3+
+        variables are selected the rendered chips occupy enough width that
+        the bounding box's center point can land ON a chip's own delete
+        ("x") icon instead of the field background — clicking there removes
+        that chip instead of opening the dropdown (confirmed live,
+        ELITEA-2045: selecting a 3rd/4th Output variable via a center click
+        silently failed to open the popover at all, with the chip count
+        frozen at 2). The right-edge offset is safe for any chip count —
+        chips are left-aligned and the arrow icon area is never covered.
+        """
         self._wait_for_open_popovers_closed(timeout=timeout)
-        self.llm_node_output_select.click(timeout=timeout)
+        self.llm_node_output_select.wait_for(state="visible", timeout=timeout)
+        box = self.llm_node_output_select.bounding_box()
+        if box:
+            self.llm_node_output_select.click(
+                position={"x": max(box["width"] - 12, 1), "y": box["height"] / 2}, timeout=timeout
+            )
+        else:
+            self.llm_node_output_select.click(timeout=timeout)
         self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
 
     def select_llm_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
@@ -2697,6 +4833,303 @@ class PipelineDetailPage(PipelineFormPage):
     def get_llm_node_output_value(self) -> str:
         """Read the LLM node's currently-selected Output display text."""
         text = (self.llm_node_output_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    # ------------------------------------------------------------------
+    # Code node inline config (ELITEA-2009)
+    # ------------------------------------------------------------------
+    #
+    # Single CODE section (variableName="code" on the shared
+    # SimpleLLMInputItem component) — unlike the LLM node's 3-section
+    # SYSTEM/TASK/CHAT HISTORY dispatch, no section-name parameter is
+    # needed here. Reuses the same generic helpers
+    # (``_fill_node_field_value``, ``_select_multi_select_option_and_close``,
+    # ``_wait_for_open_popovers_closed``) the LLM node methods above use.
+
+    def get_code_node_type(self, timeout: int = 5000) -> str:
+        """Read the Code node's CODE section Type select current value."""
+        self.code_node_type_select.wait_for(state="visible", timeout=timeout)
+        # MUI's empty-select rendering is a zero-width space (U+200B), not
+        # an empty string — same gotcha as get_llm_node_section_type.
+        text = (self.code_node_type_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_code_node_type(self, type_value: str, timeout: int = 5000) -> None:
+        """Open the CODE section's Type select and choose *type_value* (Fixed/F-String/Variable).
+
+        Args:
+            type_value: Option display text, e.g. ``"Fixed"``.
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.code_node_type_select.click(timeout=timeout)
+        option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
+        option = self.page.locator(self.SELECT_OPTION.format(option_value))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def fill_code_node_value(self, value: str, timeout: int = 5000) -> None:
+        """Fill the CODE section's Value field (Python code textarea).
+
+        Plain MUI textarea (``Input.InputBase``/``AIAssistantInput``) — NOT
+        CodeMirror/Monaco despite the component receiving ``language="python"``
+        internally, which only affects the SEPARATE full-screen AI Assistant
+        modal (confirmed live, ELITEA-2009, same pattern as the Router node's
+        ``language="jinja"`` Condition field). Uses click + press_sequentially
+        — MUI/React fields need real keyboard events for onChange to fire
+        (.claude/rules/mui-patterns.md). Multi-line text (embedded ``\\n``)
+        is typed correctly via ``press_sequentially``, confirmed live.
+
+        Args:
+            value: The Python code to type (may be multi-line).
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self._fill_node_field_value(self.code_node_value, value, timeout=timeout)
+
+    def get_code_node_value(self) -> str:
+        """Read the CODE section's Value field current content."""
+        return self.code_node_value.input_value()
+
+    def open_code_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the Code node's Input dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.code_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_code_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Input dropdown and select *variable_name*."""
+        self.open_code_node_input_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_code_node_input_value(self) -> str:
+        """Read the Code node's currently-selected Input display text."""
+        text = (self.code_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_code_node_output_select(self, timeout: int = 5000) -> None:
+        """Open the Code node's Output dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.code_node_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_code_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Output dropdown and select *variable_name*.
+
+        Args:
+            variable_name: Must already be a pipeline state variable (Output,
+                like Input, only lists EXISTING state vars — it is not a
+                freeform/creatable field; add a custom variable via
+                :meth:`add_state_variable` first if *variable_name* isn't
+                one of the built-in ``input``/``messages`` vars — confirmed
+                live, ELITEA-2009).
+        """
+        self.open_code_node_output_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_code_node_output_value(self) -> str:
+        """Read the Code node's currently-selected Output display text."""
+        text = (self.code_node_output_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    # ------------------------------------------------------------------
+    # Printer node inline config (ELITEA-2039)
+    # ------------------------------------------------------------------
+    #
+    # Single PRINTER section (variableName="printer" on the shared
+    # SimpleLLMInputItem component) plus a standalone Final Message field
+    # (AIAssistantInput, NOT part of SimpleLLMInputs). No Input/Output
+    # state-var selects and no Interrupt/Structured-output controls exist
+    # on this node type (confirmed via source + live DOM — see class-level
+    # docstring above). Reuses the same generic helpers
+    # (``_fill_node_field_value``, ``_wait_for_open_popovers_closed``) the
+    # LLM/Code node methods above use.
+
+    def get_printer_node_type(self, timeout: int = 5000) -> str:
+        """Read the Printer node's PRINTER section Type select current value."""
+        self.printer_node_type_select.wait_for(state="visible", timeout=timeout)
+        # MUI's empty-select rendering is a zero-width space (U+200B), not
+        # an empty string — same gotcha as get_code_node_type.
+        text = (self.printer_node_type_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_printer_node_type(self, type_value: str, timeout: int = 5000) -> None:
+        """Open the PRINTER section's Type select and choose *type_value* (Fixed/F-String/Variable).
+
+        Args:
+            type_value: Option display text, e.g. ``"F-String"``.
+            timeout: Maximum wait time for the dropdown / option.
+        """
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.printer_node_type_select.click(timeout=timeout)
+        option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
+        option = self.page.locator(self.SELECT_OPTION.format(option_value))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def fill_printer_node_value(self, value: str, timeout: int = 5000) -> None:
+        """Fill the PRINTER section's Value field.
+
+        Plain MUI textarea (``Input.InputBase``/``AIAssistantInput``) — same
+        shape as the Code node's CODE Value field. Uses click +
+        press_sequentially — MUI/React fields need real keyboard events for
+        onChange to fire (.claude/rules/mui-patterns.md). Embedded literal
+        ``\\n`` characters (as opposed to real newlines) are typed and read
+        back correctly, confirmed live.
+
+        Args:
+            value: The f-string/text value to type.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self._fill_node_field_value(self.printer_node_value, value, timeout=timeout)
+
+    def get_printer_node_value(self) -> str:
+        """Read the PRINTER section's Value field current content."""
+        return self.printer_node_value.input_value()
+
+    def fill_printer_node_value_for_node(self, node_id: str, value: str, timeout: int = 5000) -> None:
+        """Fill the Value field of the SPECIFIC Printer node *node_id*.
+
+        Scoping-gap fix (ELITEA-2016): :meth:`fill_printer_node_value` /
+        :attr:`printer_node_value` are page-wide by design (single-Printer-
+        node-on-canvas assumption, per the class-level docstring above) —
+        first-match-ambiguous once more than one Printer node exists
+        simultaneously. Scopes via the ReactFlow-injected ``rf__node-{id}``
+        container (:data:`RF_NODE_TESTID`) as the parent, then the
+        :data:`PRINTER_NODE_VALUE_TESTID` testid within it.
+
+        Args:
+            node_id: The data-id of the target Printer node (e.g. the
+                renamed id from :meth:`edit_node_name`).
+            value: The f-string/text value to type.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        value_field = self.page.locator(self.RF_NODE_TESTID.format(node_id)).locator(
+            self.PRINTER_NODE_VALUE_TESTID
+        )
+        self._fill_node_field_value(value_field, value, timeout=timeout)
+
+    def get_printer_node_value_for_node(self, node_id: str) -> str:
+        """Read the Value field content of the SPECIFIC Printer node *node_id*.
+
+        Sibling of :meth:`fill_printer_node_value_for_node` — see its
+        docstring for the scoping-gap rationale.
+        """
+        value_field = self.page.locator(self.RF_NODE_TESTID.format(node_id)).locator(
+            self.PRINTER_NODE_VALUE_TESTID
+        )
+        return value_field.input_value()
+
+    def fill_printer_node_final_message(self, value: str, timeout: int = 5000) -> None:
+        """Fill the Printer node's Final Message field.
+
+        Plain MUI textarea (``Input.InputBase``/``AIAssistantInput``), a
+        standalone field outside ``SimpleLLMInputs`` — confirmed live.
+
+        Args:
+            value: The final-message text to type.
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self._fill_node_field_value(self.printer_node_final_message_input, value, timeout=timeout)
+
+    def get_printer_node_final_message(self) -> str:
+        """Read the Printer node's Final Message field current content."""
+        return self.printer_node_final_message_input.input_value()
+
+    def fill_state_modifier_node_template(self, value: str, timeout: int = 5000) -> None:
+        """Fill the State modifier node's Jinja Template field.
+
+        Plain MUI textarea (``Input.InputBase``/``AIAssistantInput``, ``onInput``
+        handler) — NOT CodeMirror/Monaco despite the component receiving
+        ``language="jinja"`` internally, which only affects the SEPARATE
+        full-screen AI Assistant modal (confirmed live, ELITEA-2035, same
+        pattern already documented for the Router/Decision/Code node Jinja/
+        AIAssistantInput fields). Uses click + press_sequentially — MUI/React
+        fields need real keyboard events for onChange to fire
+        (.claude/rules/mui-patterns.md). Multi-line text (embedded ``\\n``)
+        types and reads back correctly, confirmed live.
+
+        Args:
+            value: The Jinja template text to type (may be multi-line).
+            timeout: Maximum wait time for the field to be visible.
+        """
+        self._fill_node_field_value(self.state_modifier_node_template, value, timeout=timeout)
+
+    def get_state_modifier_node_template(self) -> str:
+        """Read the State modifier node's Jinja Template field current content."""
+        return self.state_modifier_node_template.input_value()
+
+    def open_state_modifier_node_variables_to_clean_select(self, timeout: int = 5000) -> None:
+        """Open the State modifier node's 'Variables to clean' dropdown.
+
+        Despite the case text describing this as an "expandable section", it
+        is the SAME tool-agnostic multi-select component as Input/Output
+        (``FlowEditorSelect.InputSelect``, ``inputFieldName="variables_to_clean"``)
+        — confirmed live, ELITEA-2035: no accordion/expand affordance exists,
+        it is a plain combobox that opens a dropdown like every other
+        Input/Output select in this node family.
+        """
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.state_modifier_node_variables_to_clean_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_state_modifier_node_variables_to_clean_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the 'Variables to clean' dropdown and select *variable_name*."""
+        self.open_state_modifier_node_variables_to_clean_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_state_modifier_node_variables_to_clean_value(self) -> str:
+        """Read the State modifier node's currently-selected 'Variables to clean' display text."""
+        text = (self.state_modifier_node_variables_to_clean_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_state_modifier_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the State modifier node's Input dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.state_modifier_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_state_modifier_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Input dropdown and select *variable_name*.
+
+        Args:
+            variable_name: Must already be a pipeline state variable — the
+                built-in ``input``/``messages``, or a custom variable added
+                via :meth:`add_state_variable` first (confirmed live,
+                ELITEA-2035: this select, like Code/Decision's Input, only
+                lists EXISTING state vars, it is not a freeform/creatable
+                field).
+        """
+        self.open_state_modifier_node_input_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_state_modifier_node_input_value(self) -> str:
+        """Read the State modifier node's currently-selected Input display text."""
+        text = (self.state_modifier_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_state_modifier_node_output_select(self, timeout: int = 5000) -> None:
+        """Open the State modifier node's Output dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.state_modifier_node_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_state_modifier_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Output dropdown and select *variable_name*.
+
+        Args:
+            variable_name: Must already be a pipeline state variable (Output,
+                like Input, only lists EXISTING state vars — it is not a
+                freeform/creatable field; add a custom variable via
+                :meth:`add_state_variable` first if *variable_name* isn't
+                one of the built-in ``input``/``messages`` vars — confirmed
+                live, ELITEA-2035).
+        """
+        self.open_state_modifier_node_output_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_state_modifier_node_output_value(self) -> str:
+        """Read the State modifier node's currently-selected Output display text."""
+        text = (self.state_modifier_node_output_select.text_content() or "").replace("​", "")
         return text.strip()
 
     def is_node_interrupt_before_toggle_visible(self, node_id: str, timeout: int = 5000) -> bool:
@@ -2712,6 +5145,17 @@ class PipelineDetailPage(PipelineFormPage):
             return True
         except Exception:
             return False
+
+    def is_node_interrupt_before_toggle_checked(self, node_id: str, timeout: int = 5000) -> bool:
+        """Return whether *node_id*'s 'Interrupt before' switch is ON (ELITEA-1953).
+
+        Distinct from :meth:`is_node_interrupt_before_toggle_disabled` — a
+        switch can be interactable and OFF, or gated and OFF; the case asserts
+        the default is OFF, which is this method.
+        """
+        toggle = self.page.locator(self.NODE_INTERRUPT_BEFORE_TOGGLE.format(node_id))
+        toggle.wait_for(state="visible", timeout=timeout)
+        return toggle.is_checked()
 
     def is_node_interrupt_before_toggle_disabled(self, node_id: str, timeout: int = 5000) -> bool:
         """Return whether *node_id*'s 'Interrupt before' switch is disabled.
@@ -2923,6 +5367,168 @@ class PipelineDetailPage(PipelineFormPage):
         return text.strip()
 
     # ------------------------------------------------------------------
+    # Custom node inline config (ELITEA-2036)
+    #
+    # Same shape as the Toolkit node's methods above — DefaultNode.jsx (the
+    # Custom node's renderer) shares the exact Toolkit/Tool/Input/Output/
+    # Input-mapping/CommonInterruptSettings component tree with
+    # BaseToolNode.jsx (the Toolkit/MCP nodes' renderer), just gated to
+    # nodeType==custom instead of ==toolkit. It additionally renders a raw
+    # JSON view/editor of the node's own YAML body (CustomNodeInput.jsx),
+    # covered separately below.
+    # ------------------------------------------------------------------
+
+    def get_custom_node_toolkit_value(self, timeout: int = 5000) -> str:
+        """Read the Custom node's currently-selected Toolkit display text."""
+        self.custom_node_toolkit_select.wait_for(state="visible", timeout=timeout)
+        text = (self.custom_node_toolkit_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def get_custom_node_tool_value(self, timeout: int = 5000) -> str:
+        """Read the Custom node's currently-selected Tool display text.
+
+        Returns empty string both when no tool is selected AND when the Tool
+        select isn't rendered at all yet (conditionally rendered — see
+        ``custom_node_tool_select``).
+        """
+        try:
+            self.custom_node_tool_select.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return ""
+        text = (self.custom_node_tool_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def is_custom_node_tool_select_visible(self, timeout: int = 2000) -> bool:
+        """Check whether the Custom node's Tool select is rendered at all.
+
+        Used to assert the absence of the Tool select before a Toolkit is
+        selected — same two-stage-reveal contract already enforced for the
+        Toolkit node (ELITEA-2010).
+        """
+        try:
+            self.custom_node_tool_select.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def open_custom_node_toolkit_select(self, timeout: int = 5000) -> None:
+        """Open the Custom node's Toolkit dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.custom_node_toolkit_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_custom_node_toolkit(self, toolkit_name: str, timeout: int = 5000) -> None:
+        """Open the Toolkit dropdown and select *toolkit_name*."""
+        self.open_custom_node_toolkit_select(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(toolkit_name))
+        option.click(timeout=timeout)
+
+    def open_custom_node_tool_select(self, timeout: int = 5000) -> None:
+        """Open the Custom node's Tool dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.custom_node_tool_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_custom_node_tool(self, tool_name: str, timeout: int = 5000) -> None:
+        """Open the Tool dropdown and select *tool_name*."""
+        self.open_custom_node_tool_select(timeout=timeout)
+        option = self.page.locator(self.SELECT_OPTION.format(tool_name))
+        option.click(timeout=timeout)
+
+    def is_custom_node_input_mapping_section_visible(self, required_count: int, timeout: int = 5000) -> bool:
+        """Check whether the Custom node's "Input mapping (required N)" accordion is visible."""
+        heading = self.custom_node_input_mapping_required_heading
+        try:
+            heading.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return False
+        text = (heading.text_content() or "").strip()
+        return text == f"Input mapping (required {required_count})"
+
+    def is_custom_node_input_mapping_optional_section_visible(self, optional_count: int, timeout: int = 5000) -> bool:
+        """Check whether the Custom node's "Input mapping (optional N)" accordion is visible."""
+        heading = self.custom_node_input_mapping_optional_heading
+        try:
+            heading.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return False
+        text = (heading.text_content() or "").strip()
+        return text == f"Input mapping (optional {optional_count})"
+
+    def get_custom_node_input_mapping_type(self, param_name: str, timeout: int = 5000) -> str:
+        """Read the current Type select value of an Input-mapping row."""
+        type_select = self.page.locator(self.CUSTOM_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        type_select.wait_for(state="visible", timeout=timeout)
+        text = (type_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def select_custom_node_input_mapping_type(self, param_name: str, type_value: str, timeout: int = 5000) -> None:
+        """Open an Input-mapping row's Type select and choose *type_value*."""
+        type_select = self.page.locator(self.CUSTOM_NODE_INPUT_MAPPING_TYPE.format(param_name))
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        type_select.scroll_into_view_if_needed(timeout=timeout)
+        type_select.click(timeout=timeout)
+        option_value = self.TYPE_OPTION_VALUE_BY_LABEL.get(type_value, type_value)
+        option = self.page.locator(self.SELECT_OPTION.format(option_value))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click(timeout=timeout)
+
+    def get_custom_node_input_mapping_value(self, param_name: str, timeout: int = 5000) -> str:
+        """Read the current value of an Input-mapping "Value" field."""
+        field = self.page.locator(self.CUSTOM_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        field.wait_for(state="visible", timeout=timeout)
+        return field.input_value()
+
+    def fill_custom_node_input_mapping_value(self, param_name: str, value: str, timeout: int = 5000) -> None:
+        """Fill an Input-mapping "Value" field for a fixed/f-string tool parameter."""
+        field = self.page.locator(self.CUSTOM_NODE_INPUT_MAPPING_VALUE.format(param_name))
+        self._fill_node_field_value(field, value, timeout=timeout)
+
+    def open_custom_node_input_select(self, timeout: int = 5000) -> None:
+        """Open the Custom node's Input dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.custom_node_input_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_custom_node_input_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Input dropdown and select *variable_name*."""
+        self.open_custom_node_input_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_custom_node_input_value(self) -> str:
+        """Read the Custom node's currently-selected Input display text."""
+        text = (self.custom_node_input_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def open_custom_node_output_select(self, timeout: int = 5000) -> None:
+        """Open the Custom node's Output dropdown."""
+        self._wait_for_open_popovers_closed(timeout=timeout)
+        self.custom_node_output_select.click(timeout=timeout)
+        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(state="visible", timeout=timeout)
+
+    def select_custom_node_output_variable(self, variable_name: str, timeout: int = 5000) -> None:
+        """Open the Output dropdown and select *variable_name*."""
+        self.open_custom_node_output_select(timeout=timeout)
+        self._select_multi_select_option_and_close(variable_name, timeout=timeout)
+
+    def get_custom_node_output_value(self) -> str:
+        """Read the Custom node's currently-selected Output display text."""
+        text = (self.custom_node_output_select.text_content() or "").replace("​", "")
+        return text.strip()
+
+    def get_custom_node_json_editor_text(self, timeout: int = 5000) -> str:
+        """Read the Custom node's raw-JSON editor content as plain text.
+
+        The field is a CodeMirror ``.cm-content`` div (not a native
+        input/textarea), so ``text_content()`` is used — not
+        ``input_value()`` (see ``custom_node_json_editor_content``
+        docstring, same #579-adjacent discipline already documented for
+        this project's other CodeMirror-backed fields).
+        """
+        self.custom_node_json_editor_content.wait_for(state="visible", timeout=timeout)
+        return self.custom_node_json_editor_content.text_content() or ""
+
+    # ------------------------------------------------------------------
     # TOOLS section — MCP attach (ELITEA-1955)
     # ------------------------------------------------------------------
 
@@ -3082,6 +5688,121 @@ class PipelineDetailPage(PipelineFormPage):
         logger.info("Selecting toolkit '%s' in popper", toolkit_name)
         Popper.select_menuitem_by_testid(popper, toolkit_name, self.page, timeout=timeout)
 
+    def open_agent_popper(self, timeout: int = 10000) -> Locator:
+        """Open the TOOLS section's "+ Agent" popper without selecting anything.
+
+        Mirrors :meth:`open_mcp_popper` (ELITEA-1955) / :meth:`open_toolkit_popper`
+        (ELITEA-2021), ported from ``AgentDetailPage.open_agent_picker``
+        (ELITEA-1887) — ``ApplicationTools.jsx``/``ToolMenu.jsx`` is the same
+        shared component on both Agent and Pipeline detail forms, and the
+        picker's rows carry the same ``toolkit-menu-item`` testid (confirmed
+        live, ELITEA-2038 analysis session).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator of the visible MUI popper (see ``components.mui.Popper``).
+        """
+        logger.info("Opening TOOLS section '+ Agent' popper")
+        self.ensure_toolkits_section_visible(timeout=timeout)
+        self.add_agent_button.wait_for(state="visible", timeout=timeout)
+        self.add_agent_button.click(force=True)
+        return Popper.wait_for(self.page, timeout=timeout)
+
+    def select_agent_in_popper(
+        self, popper: Locator, agent_name: str, project_id: str, timeout: int = 10000
+    ) -> dict:
+        """Select *agent_name* in an already-open "+ Agent" popper.
+
+        Unlike the Toolkit picker (:meth:`select_toolkit_in_popper`, defers to
+        Save) and like the MCP picker (:meth:`select_mcp_in_popper`), the Agent
+        attach auto-persists immediately on selection — but via a DIFFERENT
+        endpoint (``useAgentPipelineAssociation.hooks.js``'s
+        ``updateApplicationRelation`` mutation, not the ``/tool/prompt_lib/``
+        PATCH the Toolkit/MCP pickers use). Confirmed live (ELITEA-2038 analysis
+        session): selecting an agent fires
+        ``PATCH .../application_relation/prompt_lib/{project}/{agent_id}/{agent_version_id}``,
+        `201 Created`. Waits on that response itself (not a fixed timeout),
+        same discipline as :meth:`select_mcp_in_popper`.
+
+        Args:
+            popper: The popper Locator returned by :meth:`open_agent_popper`.
+            agent_name: Exact name of the Agent to attach.
+            project_id: Project id, used to scope the attach response URL match.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the ``201 Created`` attach PATCH response.
+        """
+        logger.info("Selecting agent '%s' in popper", agent_name)
+        with self.page.expect_response(
+            lambda r: f"/application_relation/prompt_lib/{project_id}/" in r.url
+            and r.request.method == "PATCH"
+            and r.status == 201,
+            timeout=timeout,
+        ) as response_info:
+            Popper.select_menuitem_by_testid(popper, agent_name, self.page, timeout=timeout)
+
+        logger.info("Agent '%s' attached", agent_name)
+        return response_info.value.json()
+
+    def open_pipeline_popper(self, timeout: int = 10000) -> Locator:
+        """Open the TOOLS section's "+ Pipeline" popper without selecting anything.
+
+        Mirrors :meth:`open_agent_popper` (ELITEA-2038) — ``ApplicationTools.jsx``/
+        ``ToolMenu.jsx`` is the same shared component, and the Pipeline picker's
+        rows carry the same ``toolkit-menu-item`` testid (confirmed live,
+        ELITEA-2064 analysis session).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator of the visible MUI popper (see ``components.mui.Popper``).
+        """
+        logger.info("Opening TOOLS section '+ Pipeline' popper")
+        self.ensure_toolkits_section_visible(timeout=timeout)
+        self.add_pipeline_button.wait_for(state="visible", timeout=timeout)
+        self.add_pipeline_button.click(force=True)
+        return Popper.wait_for(self.page, timeout=timeout)
+
+    def select_pipeline_in_popper(
+        self, popper: Locator, pipeline_name: str, project_id: str, timeout: int = 10000
+    ) -> dict:
+        """Select *pipeline_name* in an already-open "+ Pipeline" popper.
+
+        Same auto-persist mechanism and endpoint as :meth:`select_agent_in_popper`
+        — confirmed live (ELITEA-2064 analysis session) via source read of
+        ``ToolMenu.jsx``'s ``pipelineMenuItems``, which routes pipeline selection
+        through the SAME ``handleAssociateAgent(pipeline, true)`` call
+        (``useAgentPipelineAssociation.hooks.js``) the Agent picker uses — firing
+        ``PATCH .../application_relation/prompt_lib/{project}/{pipeline_id}/{version_id}``,
+        `201 Created`, NOT the Toolkit/MCP picker's ``/tool/prompt_lib/`` PATCH.
+        Waits on that response itself (not a fixed timeout), same discipline as
+        :meth:`select_agent_in_popper`/:meth:`select_mcp_in_popper`.
+
+        Args:
+            popper: The popper Locator returned by :meth:`open_pipeline_popper`.
+            pipeline_name: Exact name of the Pipeline to attach.
+            project_id: Project id, used to scope the attach response URL match.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Parsed JSON body of the ``201 Created`` attach PATCH response.
+        """
+        logger.info("Selecting pipeline '%s' in popper", pipeline_name)
+        with self.page.expect_response(
+            lambda r: f"/application_relation/prompt_lib/{project_id}/" in r.url
+            and r.request.method == "PATCH"
+            and r.status == 201,
+            timeout=timeout,
+        ) as response_info:
+            Popper.select_menuitem_by_testid(popper, pipeline_name, self.page, timeout=timeout)
+
+        logger.info("Pipeline '%s' attached", pipeline_name)
+        return response_info.value.json()
+
     def is_toolkit_attached(self, toolkit_name: str, timeout: int = 5000) -> bool:
         """Check whether a toolkit/MCP card is attached in the TOOLS section.
 
@@ -3102,6 +5823,181 @@ class PipelineDetailPage(PipelineFormPage):
             return True
         except Exception:
             return False
+
+    @action("Expand a TOOLS-section card's attached-tools list")
+    def open_toolkit_card_tools(self, toolkit_name: str, timeout: int = 10000) -> None:
+        """Click a TOOLS-section card's "Show tools" toggle to reveal its tool list.
+
+        Only rendered when the attached toolkit/MCP has a non-empty
+        ``settings.selected_tools`` (``BaseCardBody.jsx`` — the card shows
+        its plain description text instead when empty; ``mcp_toolkit_with_tools``
+        always sets ``selected_tools`` at creation, so the toggle is present
+        for every MCP that fixture provisions). ELITEA-2065: the case's
+        "click the attached MCP entry to see its tools/details" step —
+        `toolkit-card-tools-toggle` is on-``automation/testids`` only,
+        added this session (``EliteaAI/EliteaUI@c45f1611``).
+
+        Args:
+            toolkit_name: Toolkit/MCP name identifying the card (scopes the
+                click to that specific card among possibly several attached).
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Expanding tools list for TOOLS-section card '%s'", toolkit_name)
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        card.wait_for(state="visible", timeout=timeout)
+        toggle = card.locator(self.TOOLKIT_CARD_TOOLS_TOGGLE)
+        toggle.wait_for(state="visible", timeout=timeout)
+        toggle.click()
+
+    def get_toolkit_card_name_text(self, toolkit_name: str, timeout: int = 10000) -> str:
+        """Return the NAME text rendered inside a TOOLS-section card (ELITEA-1952).
+
+        Distinct from :meth:`is_toolkit_attached`, which only proves *some*
+        card contains the name anywhere in its text (description, tool list,
+        tooltip); this reads the dedicated name element itself.
+
+        Args:
+            toolkit_name: Toolkit/MCP name identifying the card.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        card.wait_for(state="visible", timeout=timeout)
+        name_el = card.locator(self.TOOLKIT_CARD_NAME)
+        name_el.wait_for(state="visible", timeout=timeout)
+        return (name_el.text_content() or "").strip()
+
+    def is_toolkit_card_tools_toggle_visible(self, toolkit_name: str, timeout: int = 10000) -> bool:
+        """Whether a TOOLS-section card renders its "Show tools" toggle (ELITEA-1952).
+
+        Presence-only counterpart of :meth:`open_toolkit_card_tools` — the
+        case asserts the control is offered, without expanding it.
+
+        Args:
+            toolkit_name: Toolkit/MCP name identifying the card.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        card.wait_for(state="visible", timeout=timeout)
+        try:
+            card.locator(self.TOOLKIT_CARD_TOOLS_TOGGLE).wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    def get_toolkit_card_connection_state(self, toolkit_name: str, timeout: int = 10000) -> str:
+        """Return a TOOLS-section MCP card's connection state (ELITEA-1952).
+
+        The card's connection indicator keeps ONE stable testid
+        (``toolkit-card-connection-status``) and expresses its state in a
+        ``data-connected`` attribute (PR #581 ruling: testid = stable
+        identity, state = ``data-*``), so this reads the attribute rather
+        than inferring connection from which icon rendered.
+
+        Args:
+            toolkit_name: Toolkit/MCP name identifying the card.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            ``"true"`` when the MCP server is connected/authorized, ``"false"``
+            otherwise.
+        """
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        card.wait_for(state="visible", timeout=timeout)
+        status = card.locator(self.TOOLKIT_CARD_CONNECTION_STATUS)
+        status.wait_for(state="visible", timeout=timeout)
+        return (status.get_attribute("data-connected") or "").strip()
+
+    def is_toolkit_card_tool_listed(
+        self, toolkit_name: str, tool_name: str, timeout: int = 5000
+    ) -> bool:
+        """Check whether *tool_name* is listed in an EXPANDED TOOLS-section card.
+
+        Call after :meth:`open_toolkit_card_tools`. `toolkit-card-tool-item-{tool}`
+        is on-``automation/testids`` only, added this session
+        (``EliteaAI/EliteaUI@c45f1611``, ``EnhancedCardToolActions.jsx``'s
+        ``ToolView``).
+
+        Args:
+            toolkit_name: Toolkit/MCP name identifying the card.
+            tool_name: Raw tool name (schema key, e.g. ``ask_question``).
+            timeout: How long to wait for the item to appear.
+
+        Returns:
+            True if the tool item is visible in the expanded card, False otherwise.
+        """
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        item = card.locator(self.TOOLKIT_CARD_TOOL_ITEM.format(tool_name))
+        try:
+            item.wait_for(state="visible", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
+    @action("Remove a toolkit/MCP from the TOOLS section")
+    def remove_toolkit(self, toolkit_name: str, project_id: str, timeout: int = 10000) -> None:
+        """Remove a toolkit/MCP card from the pipeline's TOOLS section.
+
+        Ported from ``AgentDetailPage.remove_toolkit`` — same shared
+        ``ToolCard.jsx``/``DeleteEntityModal.jsx`` components, same
+        ``agent-toolkit-delete-button``/``delete-confirm-*`` testids
+        (both already on-main). Unlike the Agent-page port, this method
+        confirms via the page's own ``delete_confirm_button``/
+        ``delete_confirm_dialog`` fields (already wired here for the
+        pipeline-version-delete flow, ELITEA-2003) instead of the generic
+        ``Dialog`` component helper, since the exact testids are already
+        first-class fields on this page object. Also waits on the
+        disassociate PATCH itself (``useDisassociateToolkit.hooks.js`` /
+        ``api/toolkits.js``'s ``toolkitAssociate`` mutation, same
+        ``.../tool/prompt_lib/{project}/{toolkit}`` endpoint attach uses,
+        this time with ``has_relation: false``) rather than a fixed
+        timeout — mirrors :meth:`select_mcp_in_popper`'s hard-block pattern
+        so a future regression that stops firing this request fails the
+        step loudly instead of silently passing on the DOM-only wait alone.
+
+        Args:
+            toolkit_name: Name of the toolkit/MCP to remove.
+            project_id: Project id, used to scope the disassociate response URL match.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Removing toolkit/MCP '%s' from pipeline TOOLS section", toolkit_name)
+        card = self.toolkit_card.filter(has_text=toolkit_name).first
+        card.wait_for(state="visible", timeout=timeout)
+        card.scroll_into_view_if_needed()
+        # The delete button's reveal is a CSS `&:hover` rule scoped to the
+        # card's HEADER row only (`ToolCard.jsx` styles.cardHeader, fixed
+        # ~60px height) — a plain `card.hover()` targets the geometric
+        # center of the whole card, which lands OUTSIDE the header (and so
+        # never reveals the button) once the card is taller than the header
+        # alone, e.g. after :meth:`open_toolkit_card_tools` expanded its
+        # tool list below it. Hover a fixed offset near the top-left corner
+        # instead, so this works whether or not the card is expanded.
+        card.hover(position={"x": 10, "y": 10})
+
+        # No fixed sleep here: the CSS hover-reveal transition is covered by
+        # this wait_for's own polling — `state="visible"` re-checks until the
+        # transition completes (or fails loudly on a real regression) instead
+        # of gambling on a fixed 300ms guess.
+        delete_btn = card.locator(self.TOOLKIT_CARD_DELETE_BUTTON).first
+        delete_btn.wait_for(state="visible", timeout=5000)
+        # A coordinate-based force=True click can land on the (Tooltip-driven)
+        # invisible overlay above this icon instead of the button itself —
+        # confirmed live this session (the click reported success but no
+        # dialog opened). `evaluate("el => el.click()")` dispatches directly
+        # on the element, bypassing the overlay, per `.claude/rules/mui-
+        # patterns.md`'s "Use evaluate() ... for critical actions" guidance.
+        delete_btn.evaluate("el => el.click()")
+
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: f"/tool/prompt_lib/{project_id}/" in r.url and r.request.method == "PATCH",
+            timeout=timeout,
+        ):
+            self.delete_confirm_button.click()
+        self.delete_confirm_dialog.wait_for(state="hidden", timeout=timeout)
+
+        # Wait for the card itself to leave the DOM — React may defer the
+        # Formik state update/re-render past the dialog's own close.
+        card.wait_for(state="hidden", timeout=timeout)
 
     def save_and_wait_for_update(self, project_id: str, pipeline_id: int, timeout: int = 15000) -> dict:
         """Click Save and wait for the update PUT's 201 response.
@@ -3226,6 +6122,29 @@ class PipelineDetailPage(PipelineFormPage):
         """
         return self.conversation_starter_inputs.nth(index).input_value()
 
+    def get_chat_starter_tiles(self):
+        """Return the Locator matching ALL rendered embedded-chat conversation
+        starter tiles (ELITEA-2053) — use ``.count()`` to verify the configured
+        starter chips render before any message is sent. Mirrors
+        :meth:`AgentDetailPage.get_chat_starter_tiles`.
+        """
+        return self.page.locator(self.CHAT_STARTER_TILE)
+
+    @action("Click a conversation starter tile in the embedded chat")
+    def click_chat_starter_tile(self, match_text: str, timeout: int = 10000) -> str:
+        """Click the embedded-chat starter tile whose text CONTAINS *match_text*
+        (ELITEA-2053) — resolves via ``CHAT_STARTER_TILE`` + ``.filter(has_text=...)``,
+        same idiom as :meth:`AgentDetailPage.click_chat_starter_tile`. Returns the
+        tile's own full (stripped) text at click time, so callers can assert
+        the composer was populated with the SAME text actually clicked rather
+        than a hardcoded literal.
+        """
+        tile = self.page.locator(self.CHAT_STARTER_TILE).filter(has_text=match_text)
+        tile.first.wait_for(state="visible", timeout=timeout)
+        starter_text = (tile.first.text_content() or "").strip()
+        tile.first.click()
+        return starter_text
+
     def fill_step_limit(self, value: str, timeout: int = 5000):
         """Fill the ADVANCED section's Step limit numeric input.
 
@@ -3282,6 +6201,43 @@ class PipelineDetailPage(PipelineFormPage):
         For nodes with multiple source handles (e.g., HITL with approve/edit/reject),
         specify which handle to use via the *source_handle* parameter.
 
+        **Drag start is hit-tested (ELITEA-2016 fix).** The previous
+        implementation started the drag at a fixed point in the handle's
+        bottom 2px sliver (``sr.y + sr.height - 2``). At the zooms this
+        suite actually runs at (a 403x621 flow pane settles ``fit_view()``
+        around 0.19-0.33, making a source handle only ~4-8 px tall) that
+        sliver is routinely covered by a neighbouring node's card: the
+        ``mouse.down()`` then grabs the NEIGHBOUR and ReactFlow starts a
+        node drag instead of a connection. No edge is created, nothing
+        raises, and the caller's ``wait_for_edge_present()`` times out 10 s
+        later with a bare ``Page.wait_for_function: Timeout`` (measured live
+        2026-08-26: a 0.09 px horizontal overlap was enough; the neighbour
+        was displaced by (-83, -152) px). The failure is layout- and
+        zoom-dependent, so it reproduces on CI while passing locally.
+
+        This version walks an ordered list of candidate points INSIDE the
+        source handle's own rect and starts the drag at the first pixel
+        whose top-most element really is that handle. If no candidate is
+        hittable it raises immediately, naming the occluding element -- an
+        occluded handle is a canvas-layout problem (nodes too close, side
+        panels squeezing the pane), never something a longer timeout or a
+        retry can fix.
+
+        The hit test is POINT-IN-TIME, not held across the gesture: it
+        resolves inside the ``evaluate``, and the drag then moves the pointer
+        and waits before ``mouse.down()``, so the hovered DOM does change in
+        between (``CustomHandle.jsx`` renders label / vertical-line /
+        plus-circle children once the handle expands on hover). That is
+        tolerated rather than guarded: those children render INSIDE the
+        ``<Handle>``, so ``closest('[data-handleid]')`` still resolves to the
+        same handle, and hovering cannot raise a neighbour's card above it.
+
+        Fidelity note: ``page.evaluate`` here is GEOMETRY MEASUREMENT ONLY
+        (handle rects + ``document.elementFromPoint`` hit-testing). It
+        neither creates nor fakes the connection -- the edge is still drawn
+        by a real ``mouse.down()/move()/up()`` drag the user could perform,
+        and the resulting edge is produced entirely by the application.
+
         Args:
             source_node_id: data-id of the source node.
             target_node_id: data-id of the target node.
@@ -3289,11 +6245,17 @@ class PipelineDetailPage(PipelineFormPage):
                 for nodes with multiple output handles. If None, uses the first
                 bottom handle found.
             timeout: Not currently used (reserved for future validation).
+
+        Raises:
+            ValueError: if either node or handle cannot be found.
+            RuntimeError: if every candidate pixel inside the source handle is
+                covered by another element (or the handle is off-viewport).
         """
         handle_desc = f" (handle={source_handle})" if source_handle else ""
         logger.info("Connecting %s%s -> %s", source_node_id, handle_desc, target_node_id)
 
-        # Get handle positions via JS for precise coordinates
+        # Geometry measurement only -- handle rects and hit-testing. The drag
+        # itself is performed below with real mouse events.
         positions = self.page.evaluate(
             """([srcId, tgtId, handleSuffix]) => {
                 const srcNode = document.querySelector(`[data-id="${srcId}"]`);
@@ -3322,9 +6284,58 @@ class PipelineDetailPage(PipelineFormPage):
 
                 const sr = srcHandle.getBoundingClientRect();
                 const tr = tgtHandle.getBoundingClientRect();
+
+                // Candidate drag-start offsets inside the source handle's own
+                // rect. The first one whose top-most element is this handle
+                // wins -- anything else would start the drag on the element
+                // that covers it (typically a neighbouring node card or an
+                // open MUI popup). The set must span BOTH axes: a neighbour
+                // overlapping horizontally hides the centre column while the
+                // left/right insets stay clear, and a neighbour overlapping
+                // vertically hides the middle while the bottom sliver -- which
+                // for most node types hangs BELOW the card, and was this
+                // method's original hard-coded start point -- stays clear.
+                const cx = sr.width / 2, cy = sr.height / 2;
+                const bot = Math.max(sr.height - 2, 1);   // the legacy start point
+                const right = Math.max(sr.width - 1, 1);
+                const offsets = [
+                    [cx, cy], [cx, bot], [cx, sr.height * 0.75], [cx, sr.height * 0.25], [cx, 1],
+                    [sr.width * 0.25, cy], [sr.width * 0.75, cy],
+                    [sr.width * 0.25, bot], [sr.width * 0.75, bot],
+                    [sr.width * 0.25, sr.height * 0.25], [sr.width * 0.75, sr.height * 0.25],
+                    [1, cy], [right, cy],
+                    [1, bot], [right, bot],
+                ];
+                const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+                let start = null;
+                let blocker = null;
+                for (const [ox, oy] of offsets) {
+                    const x = sr.x + clamp(ox, 0.5, Math.max(sr.width - 0.5, 0.5));
+                    const y = sr.y + clamp(oy, 0.5, Math.max(sr.height - 0.5, 0.5));
+                    const top = document.elementFromPoint(x, y);
+                    if (top && top.closest('[data-handleid]') === srcHandle) {
+                        start = {x: x, y: y, ox: +ox.toFixed(2), oy: +oy.toFixed(2)};
+                        break;
+                    }
+                    if (!blocker) {
+                        const ownerEl = top ? top.closest('[data-id]') : null;
+                        blocker = {
+                            x: +x.toFixed(2),
+                            y: +y.toFixed(2),
+                            owner: ownerEl ? ownerEl.getAttribute('data-id') : null,
+                            role: top ? top.getAttribute('role') : null,
+                            cls: top ? String(top.className).slice(0, 80) : '(no element at point)',
+                        };
+                    }
+                }
+
                 return {
-                    sx: sr.x + sr.width / 2,
-                    sy: sr.y + sr.height - 2,
+                    start: start,
+                    blocker: blocker,
+                    handleRect: [
+                        +sr.x.toFixed(2), +sr.y.toFixed(2),
+                        +sr.width.toFixed(2), +sr.height.toFixed(2),
+                    ],
                     tx: tr.x + tr.width / 2,
                     ty: tr.y + 2,
                     srcHandleId: srcHandle.getAttribute('data-handleid'),
@@ -3338,9 +6349,29 @@ class PipelineDetailPage(PipelineFormPage):
                 f"Could not find handles for {source_node_id} -> {target_node_id}"
             )
 
-        sx, sy = positions["sx"], positions["sy"]
+        start = positions["start"]
+        if not start:
+            raise RuntimeError(
+                f"connect_nodes: source handle {positions['srcHandleId']!r} of "
+                f"{source_node_id!r} (rect x/y/w/h={positions['handleRect']}) is not "
+                f"hittable at any point inside its own rect -- it is covered by another "
+                f"element, or it lies outside the viewport. Top element at the first "
+                f"candidate point: {positions['blocker']!r}. Dragging from here would "
+                f"silently drag that element instead of drawing a "
+                f"{source_node_id} -> {target_node_id} connection. This is a canvas "
+                f"LAYOUT problem (nodes too close at the current zoom, or the flow pane "
+                f"squeezed by side panels) -- space the nodes out or widen the pane; a "
+                f"longer timeout or a retry cannot fix it."
+            )
+
+        sx, sy = start["x"], start["y"]
         tx, ty = positions["tx"], positions["ty"]
-        logger.info("Using source handle: %s", positions.get("srcHandleId"))
+        logger.info(
+            "Using source handle: %s (rect=%s, hit-tested start=(%.2f, %.2f), "
+            "offset-in-rect %s)",
+            positions.get("srcHandleId"), positions["handleRect"], sx, sy,
+            (start["ox"], start["oy"]),
+        )
 
         # Drag from source to target in small steps
         self.page.mouse.move(sx, sy)
@@ -3358,13 +6389,192 @@ class PipelineDetailPage(PipelineFormPage):
         self.page.mouse.up()
         self.page.wait_for_timeout(500)
 
-        # Dismiss any ReactFlow "create new node" context menu that appears
-        # when the drag misses a target handle and lands on empty canvas.
-        if self.page.locator('[role="menu"]').count() > 0:
+        # Dismiss any stray popup the drag may have opened over the canvas.
+        # Two shapes, both with real app testids -- no raw role/CSS selector:
+        #   * ReactFlow's "create new node" connection dropdown, when the drop
+        #     lands on empty canvas -- :meth:`is_popup_menu_visible` /
+        #     :data:`POPUP_MENU_TESTIDS` (`pipeline-connection-dropdown-menu`,
+        #     ConnectionDropdown.jsx). That helper's docstring already claimed
+        #     this method used it; before ELITEA-2016 it did not, and the old
+        #     probe here was a raw `[role="menu"]` locator.
+        #   * an app select's listbox (SingleSelect / PopoverSelect / their
+        #     menu items all render `select-option-{value}`), opened when the
+        #     mousedown landed on a node card's Type control by mistake --
+        #     :data:`SELECT_OPTION_PREFIX`. The pre-ELITEA-2016 probe matched
+        #     `[role="menu"]` ONLY, so a listbox was never dismissed and stayed
+        #     open over the canvas, poisoning every later interaction (visible
+        #     on the ELITEA-2016 CI failure screenshot, still open after this
+        #     method had returned).
+        # Both constants are strictly narrower than a role selector, which is
+        # the point: an unrelated `role="listbox"` mounted anywhere in the
+        # document -- a side-panel select, a leftover popover -- would make
+        # this fire Escape after every SUCCESSFUL connection. Escape also stays
+        # CONDITIONAL: sending it unconditionally regressed
+        # ``test_three_node_chain`` (confirmed against a pristine-HEAD control
+        # run), so it goes out only when a popup is actually open.
+        if self.is_popup_menu_visible() or self.page.locator(self.SELECT_OPTION_PREFIX).count() > 0:
+            logger.info("Dismissing a stray popup left open over the canvas")
             self.page.keyboard.press("Escape")
             self.page.wait_for_timeout(200)
 
         logger.info("Connected %s -> %s", source_node_id, target_node_id)
+
+    def move_node(self, node_id: str, dx: int, dy: int, timeout: int = 5000) -> None:
+        """Drag *node_id* by (*dx*, *dy*) screen pixels to reposition it on the canvas.
+
+        Added for ELITEA-2047: ReactFlow spawns newly-added nodes at the
+        same default canvas position every time (confirmed live — two
+        back-to-back ``add_node()`` calls with no drag in between placed
+        the second node fully overlapping the first), so ``connect_nodes()``
+        cannot compute a valid drag path between two nodes whose handles
+        sit on top of each other. Drags from the node's own bounding-box
+        header area (a few px below its top edge, clear of inner form
+        fields) — ReactFlow's default node-drag interaction, not a
+        connection-handle drag.
+
+        Locates via the exact ``rf__node-{id}`` testid (:data:`RF_NODE_TESTID`
+        — same ReactFlow-injected #579 provenance as
+        :data:`RF_NODE_TESTID_PREFIX`, confirmed live to mirror the node's
+        internal id 1:1, e.g. ``rf__node-Printer 1``), not the pre-existing
+        ``[data-id="..."]`` raw-attribute pattern used elsewhere in this file
+        (tracked tech debt — #25/#42, not precedent for new code).
+
+        Args:
+            node_id: Internal id of the node to move (e.g. "Printer 1").
+            dx: Horizontal offset in pixels (positive = right).
+            dy: Vertical offset in pixels (positive = down).
+            timeout: Maximum wait time for the node to be visible.
+        """
+        node = self.page.locator(self.RF_NODE_TESTID.format(node_id))
+        node.wait_for(state="visible", timeout=timeout)
+        box = node.bounding_box()
+        if not box:
+            raise ValueError(f"Could not get bounding box for node {node_id!r}")
+        sx, sy = box["x"] + box["width"] / 2, box["y"] + 12
+
+        self.page.mouse.move(sx, sy)
+        self.page.wait_for_timeout(100)
+        self.page.mouse.down()
+        self.page.wait_for_timeout(100)
+
+        steps = 15
+        for i in range(1, steps + 1):
+            self.page.mouse.move(sx + dx * i / steps, sy + dy * i / steps)
+            self.page.wait_for_timeout(30)
+
+        self.page.mouse.up()
+        self.page.wait_for_timeout(300)
+        logger.info("Moved node %s by (%d, %d)", node_id, dx, dy)
+
+    def move_node_by_flow_offset(
+        self, node_id: str, dx: int, dy: int, timeout: int = 5000
+    ) -> None:
+        """Drag *node_id* by (*dx*, *dy*) FLOW-space units, at the current zoom.
+
+        Added for ELITEA-2016. :meth:`move_node` displaces by SCREEN pixels,
+        but the canvas zoom drifts while a test builds a graph (every
+        ``add_node()`` re-fits the view, and the flow pane is only ~403 px
+        wide with both side panels open), so the same screen delta produces a
+        DIFFERENT flow-space layout on every run -- sometimes one where two
+        node cards overlap to within a fraction of a pixel, which is exactly
+        what makes a source handle unhittable for
+        :meth:`connect_nodes`. Converting the intended offset through the live
+        viewport scale (:meth:`get_canvas_viewport_transform`) fixes the
+        flow-space result regardless of the zoom in force at drag time, so
+        node spacing can be reasoned about against the node card's own
+        flow-space size (~471 x 237 units, measured live 2026-08-26).
+
+        Args:
+            node_id: Internal id of the node to move (e.g. "Printer 1").
+            dx: Horizontal offset in FLOW units (positive = right).
+            dy: Vertical offset in FLOW units (positive = down).
+            timeout: Maximum wait time for the node to be visible.
+        """
+        scale = self._zoom_out_until_drag_fits(dx, dy)
+        logger.info(
+            "Moving node %s by flow offset (%d, %d) at zoom %.4f", node_id, dx, dy, scale
+        )
+        self.move_node(node_id, round(dx * scale), round(dy * scale), timeout=timeout)
+
+    # A node drag may not span more than this fraction of the flow pane in
+    # either axis. Note what this does and does not buy: `autoPanOnNodeDrag`
+    # fires on the pointer's ABSOLUTE proximity to a pane edge, not on the
+    # size of the delta, so bounding the delta cannot rule auto-pan out. What
+    # it rules out is the gross case -- a delta LONGER than the pane, which
+    # cannot be performed without ending up at an edge (measured: an 800-unit
+    # offset at zoom 0.75 became a 600 px drag in a 403 px pane, and nodes
+    # were flung far enough apart that `fit_view()` settled at zoom 0.1 with
+    # every handle ~2 px tall). Residual case, accepted: a node that already
+    # sits near a pane edge can still auto-pan on a fully budget-compliant
+    # drag. `connect_nodes()`'s hit test is what catches the consequence.
+    _DRAG_PANE_FRACTION = 0.35
+
+    # ReactFlow's zoom floor for this editor -- `minZoom={0.1}` in
+    # FlowEditor.jsx. `zoom_out()` cannot go below it, so a loop that keeps
+    # clicking past it makes no progress (and may block on a disabled
+    # button's actionability check).
+    _REACTFLOW_MIN_ZOOM = 0.1
+
+    def _zoom_out_until_drag_fits(
+        self, dx: int, dy: int, max_clicks: int = 14
+    ) -> float:
+        """Zoom out until a (*dx*, *dy*) FLOW-space drag fits inside the flow pane.
+
+        Added for ELITEA-2016. The flow pane is only ~403 x 621 px with both
+        side panels open, while a node card is ~471 x 237 FLOW units -- at the
+        editor's default 0.75 zoom barely one card's width is on screen, so
+        any layout worth building requires a drag longer than the pane. Such a
+        drag triggers ReactFlow's drag auto-pan and the node lands somewhere
+        arbitrary (measured live: nodes flung far enough apart that
+        ``fit_view()`` settled at zoom 0.1 and every handle went ~2 px tall).
+        Zooming out first shrinks the same flow-space delta into a drag the
+        pane can contain.
+
+        Stops as soon as zooming stops making progress, rather than clicking
+        blindly *max_clicks* times: ``zoom_out()`` is a silent no-op when its
+        control isn't found, and the editor pins ``minZoom={0.1}``
+        (:data:`_REACTFLOW_MIN_ZOOM`), below which the button does nothing or
+        is disabled -- and a click on a disabled button would sit in
+        Playwright's actionability wait for 30 s per iteration. Whether the
+        offset fits at the floor is pane-width-dependent, and headless CI is
+        the narrow case: ``conftest.py`` pins ``viewport=1366x768`` headless
+        while headed local runs use ``no_viewport=True``.
+
+        Returns:
+            The viewport scale in force once the drag fits.
+
+        Raises:
+            RuntimeError: if the drag does not fit even at the zoom floor (the
+                requested offset is too large for this pane at any usable zoom).
+        """
+        pane = self.canvas_wrapper.bounding_box()
+        if not pane:
+            raise RuntimeError("Could not measure the ReactFlow pane's bounding box")
+        budget_x = pane["width"] * self._DRAG_PANE_FRACTION
+        budget_y = pane["height"] * self._DRAG_PANE_FRACTION
+        previous_scale = None
+        for _ in range(max_clicks):
+            scale = self.get_canvas_viewport_transform()["scale"]
+            if abs(dx) * scale <= budget_x and abs(dy) * scale <= budget_y:
+                return scale
+            if scale == previous_scale or scale <= self._REACTFLOW_MIN_ZOOM:
+                break          # at the zoom floor (or zoom_out() is a no-op)
+            previous_scale = scale
+            self.zoom_out()
+        scale = self.get_canvas_viewport_transform()["scale"]
+        raise RuntimeError(
+            f"A ({dx}, {dy}) flow-unit node drag does not fit the "
+            f"{pane['width']:.0f}x{pane['height']:.0f} px flow pane (budget "
+            f"{budget_x:.0f}x{budget_y:.0f} px) at zoom {scale:.4f}, and zooming out "
+            f"further is not possible -- the editor pins minZoom="
+            f"{self._REACTFLOW_MIN_ZOOM} (FlowEditor.jsx). This is a PANE-SIZE limit, "
+            f"not an offset that merely needs a smaller number: at the floor this pane "
+            f"can only absorb a {budget_x / self._REACTFLOW_MIN_ZOOM:.0f}x"
+            f"{budget_y / self._REACTFLOW_MIN_ZOOM:.0f} flow-unit drag. Use a smaller "
+            f"offset or widen the pane (collapse a side panel). Headless CI is the "
+            f"narrow case -- conftest.py pins viewport 1366x768 there, while headed "
+            f"local runs use no_viewport."
+        )
 
     def get_edge_count(self) -> int:
         """Return the number of edges (connections) on the canvas.
@@ -3488,6 +6698,37 @@ class PipelineDetailPage(PipelineFormPage):
             raise ValueError(f"No edge found from '{source_id}' to '{target_id}'")
         return locator.first
 
+    # CustomEdge.jsx's EdgeLabelRenderer label — added for ELITEA-2047
+    # (`EliteaAI/EliteaUI@94d190c9`, `data-testid={`pipeline-edge-label-${id}`}`
+    # on the shared edge-label Typography). Keyed by the SAME internal
+    # source/target ids as EDGE_TESTID (confirmed live: the ReactFlow edge
+    # `id` prop CustomEdge receives is the exact `xy-edge__{source}---{target}`
+    # string, matching `EDGE_TESTID`'s middle segment) — one template, reused
+    # for both the edge itself and its label, not a second ad-hoc pattern.
+    EDGE_LABEL = '[data-testid="pipeline-edge-label-xy-edge__{}---{}"]'
+
+    def get_edge_label_locator(self, source_id: str, target_id: str) -> Locator:
+        """Return the Locator for the *source_id* -> *target_id* edge's label pill.
+
+        Renders only when the edge has a non-empty ``data.label`` — e.g. the
+        `"interrupt"` pill CustomEdge.jsx shows on the edge immediately after
+        an `interrupt_after`/`interrupt_before`-configured node, or a
+        Router/Decision/HITL edge's route name. Empty/absent otherwise
+        (``.count() == 0``), not just invisible.
+
+        Args:
+            source_id: Internal source node id exactly as it appears in the
+                edge's data-testid (e.g. "Code 1").
+            target_id: Internal target node id exactly as it appears in the
+                edge's data-testid (e.g. "Printer 1").
+
+        Returns:
+            Locator matching the edge label's
+            ``[data-testid="pipeline-edge-label-xy-edge__{source}---{target}"]``
+            element (count 0 if the edge currently has no label).
+        """
+        return self.page.locator(self.EDGE_LABEL.format(source_id, target_id))
+
     def wait_for_edge(self, source_id: str, target_id: str, timeout: int = 10000) -> None:
         """Poll (not an instant read) until the exact edge testid appears in the DOM.
 
@@ -3575,6 +6816,177 @@ class PipelineDetailPage(PipelineFormPage):
             Message count.
         """
         return self._embedded_chat_messages().count()
+
+    # ------------------------------------------------------------------
+    # Testid-scoped embedded chat message inventory (ELITEA-2052)
+    # ------------------------------------------------------------------
+    # Distinct from `_embedded_chat_messages()`/`get_embedded_chat_message_
+    # count()` above (legacy CSS-based, tech debt — additive-only, not
+    # modified). These back the "welcome message renders through the
+    # agent-answer code path" assertion, mirroring
+    # `AgentDetailPage.get_last_chat_message_agent_markers()` exactly.
+
+    def _embedded_chat_message_items_by_testid(self):
+        """Return a locator for all ``chat-message-item`` elements in the
+        embedded chat, scoped inside ``chat_message_list`` (testid-only).
+        """
+        return self.chat_message_list.locator(self.CHAT_MESSAGE_ITEM_SELECTOR)
+
+    def get_embedded_chat_message_item_count(self) -> int:
+        """Return the number of testid-scoped ``chat-message-item`` elements
+        currently rendered in the embedded chat.
+        """
+        return self._embedded_chat_message_items_by_testid().count()
+
+    def get_last_embedded_chat_message_text(self) -> str:
+        """Return the exact body text of the last/only embedded-chat message
+        via the ``skill-test-last-response`` testid (mirrors
+        ``AgentDetailPage.get_last_chat_response_text``) — unlike raw
+        ``text_content()`` on the ``<li>``, this excludes header metadata
+        (sender name, timestamp).
+
+        Returns:
+            Stripped body text, or "" if no messages are present yet.
+        """
+        items = self._embedded_chat_message_items_by_testid()
+        if items.count() == 0:
+            return ""
+        if self.skill_test_last_response.count() > 0:
+            return (self.skill_test_last_response.last.text_content() or "").strip()
+        return ""
+
+    def get_last_embedded_chat_response_locator(self):
+        """Return a Locator for the LAST embedded-chat message's answer BODY
+        (the ``skill-test-last-response`` testid ``get_last_embedded_chat_
+        message_text()`` reads).
+
+        Additive counterpart to that reader (ELITEA-1952 stabilisation): the
+        reader is a one-shot ``text_content()`` snapshot by design, while an
+        answer streams in progressively AFTER its tool chip renders. Callers
+        that need the answer to have arrived poll this locator with
+        ``expect(...).to_contain_text(...)`` first — the same locator-not-text
+        discipline as ``get_last_embedded_chat_tool_chip_locator()``.
+
+        Returns:
+            Locator for the last message's answer-body element (count 0 while
+            no answer has rendered yet).
+        """
+        return self.skill_test_last_response.last
+
+    def get_last_embedded_chat_tool_chip_locator(self):
+        """Return a Locator for every ``chat-answer-tool-chip`` in the LAST
+        embedded-chat message (ELITEA-1952).
+
+        The chip is what proves a pipeline's MCP node actually invoked the
+        configured tool — its text is ``"{toolkit}: {tool} ({node})"``. Scoped
+        inside the last ``chat-message-item`` so an earlier message's chips can
+        never satisfy the assertion.
+
+        Returns the LOCATOR, not text: the chip's label fills in progressively
+        while the tool call resolves, so callers should poll with
+        ``expect(...).to_contain_text(...)`` before reading it (same discipline
+        as ``AgentDetailPage.get_nested_agent_tool_chip_locator``).
+        """
+        return self._embedded_chat_message_items_by_testid().last.locator(
+            self.CHAT_ANSWER_TOOL_CHIP_SELECTOR
+        )
+
+    def get_last_embedded_chat_message_agent_markers(self) -> tuple[bool, bool, bool]:
+        """Return agent/user code-path markers for the last (or only) message.
+
+        Scoped inside the last ``chat-message-item`` — works equally for a
+        single-message list, where "last" == "only" (ELITEA-2052: welcome
+        message before any user message). Mirrors
+        ``AgentDetailPage.get_last_chat_message_agent_markers`` exactly —
+        the pipeline embedded chat shares the same
+        ``ChatMessageList.jsx``/``ApplicationAnswer.jsx`` FSD components.
+
+        Returns:
+            ``(has_read_out, has_answer_marker, has_delete_button)``. A
+            message rendered via the agent code path has
+            ``(True, True, False)``. Returns ``(False, False, False)`` if
+            the chat has no messages.
+        """
+        items = self._embedded_chat_message_items_by_testid()
+        if items.count() == 0:
+            return (False, False, False)
+
+        last_item = items.last
+        has_read_out = last_item.locator(self.CHAT_READ_OUT_BUTTON_SELECTOR).count() > 0
+        has_answer_marker = (
+            last_item.locator(self.CHAT_ANSWER_CONTENT_SELECTOR).count() > 0
+            or last_item.locator(self.SKILL_TEST_LAST_RESPONSE_SELECTOR).count() > 0
+        )
+        has_delete_button = last_item.locator(self.CHAT_MESSAGE_DELETE_SELECTOR).count() > 0
+        return (has_read_out, has_answer_marker, has_delete_button)
+
+    def get_tools_module_toggle(self, module_key: str):
+        """Return the Locator for the TOOLS MODULES toggle identified by *module_key*.
+
+        E.g. ``module_key="attachments"`` for the Attachments switch
+        (ELITEA-2059).
+        """
+        return self.page.locator(self.TOOLS_MODULE_TOGGLE.format(module_key))
+
+    def is_tools_module_toggle_checked(self, module_key: str) -> bool:
+        """Return the toggle's ``checked`` DOM property (NOT `disabled`/
+        `aria-disabled`, which this component does not set — mirrors
+        ``AgentParticipantCanvasPage.is_tools_toggle_checked``)."""
+        return self.get_tools_module_toggle(module_key).is_checked()
+
+    @action("Toggle Attachments module")
+    def toggle_attachments_module(self, timeout: int = 10000):
+        """Click the TOOLS section's "Attachments" MODULES switch.
+
+        Live-formik-state gate (ELITEA-2059 AFS § Preconditions/Automation
+        Hints) — flips the embedded chat's attach button from disabled to
+        enabled INSTANTLY, no Save required (unlike the LLM node's TASK
+        mapping fix, which does require Save).
+        """
+        toggle = self.get_tools_module_toggle("attachments")
+        toggle.wait_for(state="attached", timeout=timeout)
+        toggle.click()
+
+    def open_embedded_chat_file_chooser(self, timeout: int = 10000):
+        """Click the bare attach button and return the native FileChooser dialog.
+
+        Targets ``chat-attach-button`` directly — no plus-menu hop needed at
+        this call site (contrast ``ChatPage.open_file_chooser()``, which
+        opens the plus menu first).
+
+        Args:
+            timeout: Maximum wait for the file chooser to appear (ms).
+
+        Returns:
+            playwright.sync_api.FileChooser
+        """
+        self.chat_attach_button.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_file_chooser(timeout=timeout) as fc_info:
+            self.chat_attach_button.click()
+        return fc_info.value
+
+    @action("Attach file in embedded chat")
+    def attach_file_in_embedded_chat(self, file_path: str, timeout: int = 10000):
+        """Open the embedded chat's file chooser and select *file_path*.
+
+        Args:
+            file_path: Absolute or relative path to the file to attach.
+            timeout: Maximum wait for the file chooser to appear (ms).
+        """
+        logger.info("Attaching file in embedded chat: %s", file_path)
+        file_chooser = self.open_embedded_chat_file_chooser(timeout=timeout)
+        file_chooser.set_files(file_path)
+        self.wait_for_network(timeout=timeout)
+
+    def get_embedded_chat_attachment_chip_count(self) -> int:
+        """Count of currently visible attachment chips in the embedded chat composer."""
+        return self.page.locator(self.CHAT_ATTACHMENT_CHIP_PREFIX).count()
+
+    def get_embedded_chat_attachment_chip_text(self, index: int, timeout: int = 5000) -> str:
+        """Return the text content of the attachment chip at *index* (0-based)."""
+        chip = self.page.locator(self.CHAT_ATTACHMENT_CHIP.format(index))
+        chip.wait_for(state="visible", timeout=timeout)
+        return (chip.text_content() or "").strip()
 
     def send_message_in_embedded_chat(self, message: str, timeout: int = 10000):
         """Type and send a message in the embedded chat panel.
@@ -3688,6 +7100,274 @@ class PipelineDetailPage(PipelineFormPage):
         text = ai_msg.text_content() or ""
         return text.strip()
 
+    def get_embedded_chat_message_full_text_at(self, index: int) -> str:
+        """Return the RAW ``text_content()`` of the embedded-chat message
+        ``<li>`` at *index* (ELITEA-2059 fix round).
+
+        Reads a SPECIFIC position rather than ``.last`` — same race
+        ``ChatPage.get_message_text_at`` (ELITEA-2369) already documents and
+        avoids: right after Send, a transient AI placeholder ("Waking the
+        agent…") can already render at ``initial_count + 1`` before the
+        reply arrives, so ``.last`` is race-prone for reading back the
+        user's OWN just-sent message at ``initial_count`` — confirmed live
+        this fix round (a first attempt using ``.last`` intermittently read
+        the placeholder's text instead of the sent message).
+
+        Unlike :meth:`get_embedded_chat_last_message` (which extracts only
+        an AI response's answer body via ``div.css-xn5i2e``/``<p>`` tags —
+        wrong shape for a USER message, whose body renders as
+        ``UserMessage.jsx``'s ``.MuiTypography-bodyMedium`` spans instead),
+        this reads the entire message container's text via the EXISTING
+        ``_embedded_chat_messages()`` locator with no new selector
+        construction — sufficient for a substring-containment check (does
+        the just-sent bubble show the typed text) rather than an
+        exact-body extraction.
+
+        Returns:
+            Full raw text of the message ``<li>`` at *index*, or "" if no
+            message exists at that position.
+        """
+        messages = self._embedded_chat_messages()
+        if messages.count() <= index:
+            return ""
+        return (messages.nth(index).text_content() or "").strip()
+
+    def get_embedded_chat_message_attachment_names_at(self, index: int) -> list[str]:
+        """Return the filenames of ``chat-artifact-file-card`` attachment
+        cards rendered INSIDE the embedded-chat message ``<li>`` at *index*
+        (ELITEA-2059 fix round).
+
+        Confirmed via source read (``UserMessage.jsx`` -> ``MessageAttachmentList``
+        -> ``NormalAttachment.jsx``) that a user's own just-sent attachment
+        renders this SAME pre-existing testid/``data-name`` pair that
+        :meth:`AgentDetailPage.get_chat_artifact_file_names` already reads
+        for AI-created artifact files — no new testid needed, just a new
+        scoping call site (the message ``<li>`` directly, no
+        ``chat-artifact-file-list`` wrapper on this render path). Reads a
+        SPECIFIC index for the same reason as
+        :meth:`get_embedded_chat_message_full_text_at` — ``.last`` races
+        against the AI's transient placeholder message.
+
+        Returns:
+            List of attachment filenames (``data-name`` values), in DOM
+            order. Empty list if no message exists at *index* or it has no
+            attachment cards.
+        """
+        messages = self._embedded_chat_messages()
+        if messages.count() <= index:
+            return []
+        cards = messages.nth(index).locator(self.CHAT_ARTIFACT_FILE_CARD_SELECTOR)
+        return [cards.nth(i).get_attribute("data-name") or "" for i in range(cards.count())]
+
+    def wait_for_embedded_chat_message_count(self, minimum: int, timeout: int = 10000) -> int:
+        """Condition-wait until the embedded chat has at least *minimum* messages.
+
+        Confirms a message was ACCEPTED (e.g. the user's own message
+        rendered as a new list item, ELITEA-2017 step 3) without waiting
+        for the full AI response to stabilise — that is
+        :meth:`wait_for_embedded_chat_response`'s job. Same polling idiom.
+
+        Args:
+            minimum: minimum message count to wait for.
+            timeout: maximum wait time in milliseconds.
+
+        Returns:
+            The message count once it reaches *minimum*.
+
+        Raises:
+            TimeoutError: if the count never reaches *minimum* within timeout.
+        """
+        deadline = time.time() + timeout / 1000
+        count = self.get_embedded_chat_message_count()
+        while time.time() < deadline:
+            count = self.get_embedded_chat_message_count()
+            if count >= minimum:
+                return count
+            self.page.wait_for_timeout(200)
+        raise TimeoutError(
+            f"Embedded chat message count did not reach {minimum} within {timeout}ms (last={count})"
+        )
+
+    # Transient loading/status placeholders that ``get_embedded_chat_last_message()``
+    # can legitimately return mid-stream — NOT real content growth. Same known
+    # vocabulary ``ChatPage.TRANSIENT_MESSAGES``/``_is_transient_message``
+    # already documents for the main chat; the pipeline's embedded chat renders
+    # through the SAME component chain (AFS
+    # l2_pipeline-execution-long-response-streaming_ELITEA-2017.md — confirmed
+    # live during implementation: "Waking the agent…" then "Packing its
+    # tools…" placeholders observed between send and real body text, both
+    # non-empty and of DIFFERENT lengths, which defeated a naive length-only
+    # growth check). Duplicated here (not imported from ``ChatPage``) rather
+    # than restructuring an unrelated, heavily-called page object for a
+    # same-vocabulary private helper.
+    _EMBEDDED_CHAT_TRANSIENT_PLACEHOLDERS = frozenset([
+        "waking the agent", "waking the agent…", "waking the agent...",
+        "thinking", "thinking…", "thinking...",
+    ])
+
+    def _is_embedded_chat_transient_text(self, text: str) -> bool:
+        """Return True if *text* is a transient loading/status placeholder
+        rather than real streamed response content.
+        """
+        normalized = text.replace("\xa0", " ").lower().strip()
+        if (
+            normalized.rstrip(".…") in self._EMBEDDED_CHAT_TRANSIENT_PLACEHOLDERS
+            or normalized in self._EMBEDDED_CHAT_TRANSIENT_PLACEHOLDERS
+        ):
+            return True
+        if normalized.startswith("thought for "):
+            return True
+        if "packing" in normalized and "tool" in normalized:
+            return True
+        return False
+
+    def wait_for_embedded_chat_real_content(self, timeout: int = 30000) -> str:
+        """Condition-wait until the last embedded-chat message has real
+        (non-empty, non-transient) body content, and return it.
+
+        Skips "Waking the agent…"/"Packing its tools…"/"Thought for N
+        secs"-style placeholders (see
+        :meth:`_is_embedded_chat_transient_text`) so callers get a genuine
+        first sample to measure progressive growth from (ELITEA-2017).
+
+        Args:
+            timeout: maximum wait time in milliseconds.
+
+        Returns:
+            The first non-transient body text sample.
+
+        Raises:
+            TimeoutError: if no real content appears within timeout.
+        """
+        deadline = time.time() + timeout / 1000
+        while time.time() < deadline:
+            current = self.get_embedded_chat_last_message()
+            if current and not self._is_embedded_chat_transient_text(current):
+                return current
+            self.page.wait_for_timeout(500)
+        raise TimeoutError(f"No real (non-transient) embedded chat content within {timeout}ms")
+
+    def wait_for_embedded_chat_body_growth(self, previous_length: int, timeout: int = 60000) -> str:
+        """Condition-wait until the last embedded-chat message's body text
+        grows past *previous_length* characters.
+
+        Direct analogue of ``ChatPage.wait_for_message_body_growth`` for the
+        pipeline's embedded chat panel (ELITEA-2017) — proves progressive
+        streaming without a fixed ``sleep()``. Polls
+        :meth:`get_embedded_chat_last_message` (same extraction path that
+        method already uses, not a raw locator), skipping transient
+        placeholder samples (see :meth:`_is_embedded_chat_transient_text`)
+        so a placeholder swap is never mistaken for real content growth.
+
+        Args:
+            previous_length: the previously-observed body-text length; the
+                wait resolves the instant a fresh sample exceeds it.
+            timeout: maximum wait time in milliseconds.
+
+        Returns:
+            The new (grown) body text.
+
+        Raises:
+            TimeoutError: if the body text has not grown within timeout.
+        """
+        logger.info(
+            "Waiting for embedded chat body to grow past %d chars (timeout=%dms)...",
+            previous_length, timeout,
+        )
+        deadline = time.time() + timeout / 1000
+        while time.time() < deadline:
+            current = self.get_embedded_chat_last_message()
+            if (
+                len(current) > previous_length
+                and not self._is_embedded_chat_transient_text(current)
+            ):
+                logger.info(
+                    "Embedded chat body grew: %d -> %d chars", previous_length, len(current)
+                )
+                return current
+            self.page.wait_for_timeout(500)
+        raise TimeoutError(
+            f"Embedded chat message body did not grow past {previous_length} chars within {timeout}ms"
+        )
+
+    # ------------------------------------------------------------------
+    # LLM model selector (embedded chat panel, ELITEA-2017)
+    # ------------------------------------------------------------------
+
+    @action("Open LLM model selector")
+    def open_model_selector(self, timeout: int = 5000):
+        """Click the embedded chat panel's model selector to open the dropdown.
+
+        LOCATOR: ``model-selector-button`` testid. Mirrors
+        ``AgentDetailPage.open_model_selector()``.
+
+        Args:
+            timeout: Maximum wait for the first option to become visible.
+        """
+        logger.info("Opening LLM model selector")
+        self.model_selector_button.click()
+        self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
+    def get_selected_model_name(self) -> str:
+        """Return the currently displayed model name on the closed selector.
+
+        LOCATOR: ``model-selector-name`` testid.
+        """
+        return (self.model_selector_name.text_content() or "").strip()
+
+    @action("Select LLM model")
+    def select_llm_model(self, display_name: str, timeout: int = 5000):
+        """Select a model from the OPEN model-selector dropdown by its
+        rendered display name.
+
+        Call after :meth:`open_model_selector`. Mirrors
+        ``AgentDetailPage.select_llm_model()``.
+
+        Args:
+            display_name: Exact rendered model name (e.g. "GPT-5 mini").
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting LLM model: %s", display_name)
+        option = self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).filter(
+            has_text=display_name
+        )
+        option.first.wait_for(state="visible", timeout=timeout)
+        option.first.click()
+        logger.info("LLM model '%s' selected", display_name)
+
+    def get_answer_model_chip_text(self, timeout: int = 5000) -> str:
+        """Return the settled response's model-attribution chip text.
+
+        LOCATOR: ``chat-answer-model-chip`` testid (e.g. ``"GPT-5 mini
+        (LLM1)"`` — ``"<model display name> (<node id>)"``). Call only
+        after the response has settled (e.g. after
+        :meth:`wait_for_embedded_chat_response`) — the chip may not have
+        rendered yet mid-stream.
+        """
+        self.answer_model_chip.wait_for(state="visible", timeout=timeout)
+        return (self.answer_model_chip.text_content() or "").strip()
+
+    def clear_chat(self, timeout: int = 10000) -> None:
+        """Click the embedded chat's 'Clear the chat' button to start a fresh conversation.
+
+        Added for ELITEA-2016: a Printer node with ``transition: END``
+        pauses for acknowledgement rather than re-entering the pipeline, so
+        sending a SECOND, differently-classified message in the SAME
+        conversation resumes at the branch chosen by the FIRST message
+        instead of re-invoking the Decision node (confirmed live — the
+        ``Run details`` dialog's Timeline literally reads
+        ``<branch>_reset`` for the resumed turn). A test proving
+        differential routing (a second category routes to a DIFFERENT
+        branch) must clear the chat between messages.
+
+        Args:
+            timeout: Maximum wait time for the button to be clickable.
+        """
+        self.chat_clear_button.click(timeout=timeout)
+        self.page.wait_for_timeout(300)
+
     def find_message_containing(self, text: str) -> bool:
         """Return True if any embedded chat message contains *text*.
 
@@ -3708,23 +7388,162 @@ class PipelineDetailPage(PipelineFormPage):
         return False
 
     def clear_embedded_chat(self, timeout: int = 5000):
-        """Clear the embedded chat history via the Clear button.
+        """Clear the embedded chat history via the Clear button — starts a
+        fresh, local, unsaved conversation as the new active one (the
+        previously-active conversation survives server-side as its own Run
+        History row).
+
+        Fixed for ELITEA-2011 (AFS § Known Defects): this method previously
+        clicked a stale raw locator, ``[aria-label="Clear the chat
+        history"]``, which matches ZERO elements on the live product — a
+        silent no-op (both messages before/after landed in the same
+        conversation, confirmed live). The real button is
+        ``ClearChatButton.jsx`` (``aria-label="clear the chat"``, testid
+        ``chat-clear-button``) — the ``chat_clear_button``
+        ``LocatorDescriptor`` field already exists on this page object
+        (added for ELITEA-2016); this method now uses it directly, same as
+        :meth:`clear_chat`.
 
         Args:
             timeout: Maximum wait time for the clear action.
         """
         logger.info("Clearing embedded chat history")
-        clear_btn = self.page.locator('[aria-label="Clear the chat history"]')
-        if clear_btn.count() > 0 and clear_btn.is_visible():
-            clear_btn.click()
-            # Handle confirmation dialog if present
-            try:
-                dialog = Dialog.wait_for(self.page, timeout=3000)
-                Dialog.click_button(dialog, "Confirm")
-            except Exception:
-                pass  # No confirmation dialog
-            self.page.wait_for_timeout(1000)
-            logger.info("Embedded chat cleared")
+        self.chat_clear_button.click(timeout=timeout)
+        self.page.wait_for_timeout(300)
+        logger.info("Embedded chat cleared")
+
+    # ------------------------------------------------------------------
+    # Run History panel (ELITEA-2011)
+    # ------------------------------------------------------------------
+    # Mirrors `AgentDetailPage`'s Run History methods (ELITEA-1877/1876)
+    # almost verbatim — same shared `RunHistoryContainer`/`RunHistoryList
+    # Item.jsx`/`RunHistoryChat.jsx` components, `source=pipeline` instead
+    # of `source=agent` on the underlying conversations-list request (AFS
+    # § Network Behavior). `RunHistoryContainer` REPLACES the whole
+    # Configuration form + embedded chat grid — it is not a tab and not an
+    # overlay — so "opened" is confirmed by waiting for at least one
+    # `run-history-list-item` row to render (the list fetch is a real
+    # network round trip; poll rather than a fixed timeout).
+
+    @action("Open Run History panel")
+    def open_run_history(self, timeout: int = 10000):
+        """Click the Run History button and wait for the panel to replace
+        the Configuration form + embedded chat.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Run History panel")
+        self.history_tab.wait_for(state="visible", timeout=timeout)
+        self.history_tab.click()
+        self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
+        logger.info("Run History panel opened")
+
+    def get_run_history_item_count(self) -> int:
+        """Return the number of rows currently listed in the Run History panel.
+
+        Returns:
+            Integer count of ``run-history-list-item`` rows.
+        """
+        return self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).count()
+
+    def get_run_history_item_texts(self) -> list[str]:
+        """Return the full rendered text of every Run History row.
+
+        Each ``run-history-list-item`` row renders its Date, Version, and
+        Duration columns as plain child text nodes — no per-cell testid is
+        needed, the row's own text already exposes all three.
+
+        Returns:
+            List of each row's full text content, in current display order.
+        """
+        return self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).all_text_contents()
+
+    @action("Select Run History item")
+    def select_run_history_item(self, index: int, timeout: int = 10000):
+        """Click the Run History row at *index* (0 = most recent — default
+        sort is Date descending) and wait for its conversation detail to load.
+
+        Args:
+            index: Zero-based row index in the currently-rendered list.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting Run History item at index %d", index)
+        row = self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).nth(index)
+        row.wait_for(state="visible", timeout=timeout)
+        with self.page.expect_response(
+            lambda r: "/elitea_core/conversation/prompt_lib/" in r.url
+            and r.request.method == "GET",
+            timeout=timeout,
+        ):
+            row.click()
+        logger.info("Run History item %d selected", index)
+
+    def is_run_history_item_selected(self, index: int, timeout: int = 5000) -> bool:
+        """Return whether the Run History row at *index* carries
+        ``data-selected="true"``.
+
+        Args:
+            index: Zero-based row index in the currently-rendered list.
+            timeout: Maximum wait time for the row to be present.
+
+        Returns:
+            True if that row is the one currently marked selected.
+        """
+        row = self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).nth(index)
+        row.wait_for(state="visible", timeout=timeout)
+        return row.get_attribute("data-selected") == "true"
+
+    def get_run_history_chat_messages_text(self, timeout: int = 10000) -> str:
+        """Return the concatenated text of every message in the Run History
+        panel's chat (the selected row's conversation).
+
+        ``RunHistoryChat.jsx`` renders the SAME shared ``ChatMessageList``
+        component as the main embedded chat, so this reuses
+        ``CHAT_MESSAGE_ITEM_SELECTOR`` unchanged — confirmed live: only one
+        instance of ``chat-message-item`` exists on the page while History
+        is open (the main embedded chat is unmounted).
+
+        Waits (bounded by *timeout*) for at least one message item to render
+        before reading — ``select_run_history_item()`` only awaits the
+        conversation-detail GET response, which can resolve slightly ahead
+        of React committing the message list, producing a transient "" read.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the first message
+                item to appear before giving up and reading whatever is present.
+
+        Returns:
+            Joined text of all ``chat-message-item`` elements, or "" if none
+            render within *timeout*.
+        """
+        items = self.page.locator(self.CHAT_MESSAGE_ITEM_SELECTOR)
+        try:
+            items.first.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return ""
+        return "\n".join(items.all_text_contents())
+
+    @action("Close Run History panel")
+    def close_run_history(self, timeout: int = 10000):
+        """Click the Run History panel's close (X) button and wait for the
+        Configuration form + embedded chat to be restored.
+
+        ``onClose`` is a purely client-side ``showHistory`` state flip
+        (``ConfigurationTab.jsx`` — no network round trip), so completion is
+        confirmed by polling for ``chat_input`` to become visible again
+        rather than waiting on any request.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Closing Run History panel")
+        self.run_history_close_button.wait_for(state="visible", timeout=timeout)
+        self.run_history_close_button.click()
+        self.chat_input.wait_for(state="visible", timeout=timeout)
+        logger.info("Run History panel closed")
 
     # ------------------------------------------------------------------
     # Run Details panel (RunStateNode/RunStateDialog — ELITEA-2450)
@@ -3776,8 +7595,125 @@ class PipelineDetailPage(PipelineFormPage):
         return (self.run_details_timeline_section.text_content() or "").strip()
 
     def get_run_details_states_section_text(self) -> str:
-        """Return the Run Details panel's States section text content."""
-        return (self.run_details_states_section.text_content() or "").strip()
+        """Return the Run Details panel's States section text content.
+
+        TEMPORARY: Builds locator manually due to missing testid.
+        Returns combined text from header + all accordion summaries + any expanded content.
+        """
+        # TEMPORARY FIX: testid missing, build from parts
+        panel = self.page.get_by_test_id("pipeline-run-details-panel")
+
+        # Get "States" header
+        header = panel.locator('text="States"').first.text_content() or ""
+
+        # Get all accordion summaries (state variable names)
+        # MuiAccordion-root contains MuiAccordionSummary
+        accordions = panel.locator(".MuiAccordion-root")
+        accordion_texts = []
+        for i in range(accordions.count()):
+            accordion_texts.append(accordions.nth(i).text_content() or "")
+
+        # Combine: header + all accordion content
+        all_text = f"{header} {' '.join(accordion_texts)}"
+        return all_text.strip()
+
+    # ------------------------------------------------------------------
+    # Run Details panel — multi-run history (RunStateNodeGroup — ELITEA-2454)
+    # ------------------------------------------------------------------
+    #
+    # `RunStateNodeGroup.jsx` renders only the newest run's
+    # `pipeline-run-node-label` directly; every other run lives inside a
+    # closed-by-default MUI `Menu` that unmounts entirely while closed. The
+    # history toggle (`run_node_history_button`) itself only renders once
+    # >1 run exists. Always open the toggle before counting/asserting run
+    # labels — closed-menu state is indistinguishable from "only one run".
+
+    def open_run_node_history(self, timeout: int = 10000):
+        """Ensure the run-history menu (history-toggle clock icon) is open.
+
+        Distinct from the unrelated chat-level ``open_run_history()``
+        (``pipeline-history-tab`` / ``RunHistoryContainer``, ELITEA-2011) —
+        this opens the ON-CANVAS multi-run menu (``RunStateNodeGroup``).
+        Only present once the run-node group holds >1 run.
+
+        Idempotent: once opened, the menu stays open across opening a run's
+        Run Details panel AND deleting a run from inside it (confirmed
+        live — no auto-close is wired). Re-clicking the toggle while the
+        menu is already open would hit the menu's own full-page invisible
+        `MuiBackdrop-root` (the interception quirk in
+        `.claude/rules/mui-patterns.md`), so this method first checks
+        whether more than one `pipeline-run-node-label` is already
+        rendered (the live signal the menu is open — see the class-level
+        mechanics note above) and skips the click entirely when it is.
+
+        Args:
+            timeout: Maximum wait time for the toggle to appear/menu to open.
+        """
+        if self.run_node_label.count() > 1:
+            logger.info("Run-node history menu already open — skipping click")
+            return
+        logger.info("Opening run-node history menu")
+        self.run_node_history_button.wait_for(state="visible", timeout=timeout)
+        self.run_node_history_button.click()
+        # The menu container itself carries no testid (scope discipline —
+        # see AFS Concrete Handles); its opening is observed via every
+        # history item's reused `pipeline-run-node-label` testid becoming
+        # visible, so wait on that instead of a container locator.
+        self.run_node_label.first.wait_for(state="visible", timeout=timeout)
+        logger.info("Run-node history menu opened")
+
+    def get_run_history_labels(self) -> list[str]:
+        """Return the text of every currently-rendered run-node label.
+
+        Includes the current/last run's label (rendered directly, outside
+        the menu) plus every history-menu item's label (rendered only while
+        the menu is open) — matching the live semantics of "all runs that
+        currently exist". Callers must call ``open_run_node_history()``
+        first if more than one run exists; the closed menu unmounts its
+        history items entirely.
+        """
+        labels = self.run_node_label
+        return [(labels.nth(i).text_content() or "").strip() for i in range(labels.count())]
+
+    def open_run_details_by_label(self, label: str, timeout: int = 10000):
+        """Click the run-node label whose text exactly equals *label*.
+
+        Uses an exact string match (not substring) so "Run 1 details" never
+        matches "Run 12 details". Opens that run's own Run Details panel.
+
+        When the history menu is open, the newest run's label renders
+        OUTSIDE the `Menu` but is still covered by MUI's full-page invisible
+        `MuiBackdrop-root` (the same-origin overlay-interception quirk
+        documented in `.claude/rules/mui-patterns.md`) — a plain
+        Playwright click would resolve against the backdrop (closing the
+        menu) rather than the label underneath it, so the click is
+        dispatched via ``evaluate`` to invoke the label's handler directly.
+
+        Args:
+            label: Exact label text (e.g. "Run 2 details").
+            timeout: Maximum wait time for the panel to appear.
+        """
+        logger.info("Opening Run Details panel for label %r", label)
+        target = self.run_node_label.filter(has_text=re.compile(f"^{re.escape(label)}$"))
+        target.first.wait_for(state="visible", timeout=timeout)
+        target.first.evaluate("el => el.click()")
+        self.run_details_panel.wait_for(state="visible", timeout=timeout)
+        logger.info("Run Details panel opened for %r", label)
+
+    def delete_current_run_details(self, timeout: int = 5000):
+        """Click the Run Details panel's delete (trash) button.
+
+        No confirmation dialog exists for this action (confirmed live,
+        source-verified) — the panel closes immediately once the run is
+        removed. No separate close click is needed.
+
+        Args:
+            timeout: Maximum wait time for the panel to disappear.
+        """
+        logger.info("Deleting current run via Run Details panel")
+        self.run_details_delete_button.click()
+        self.run_details_panel.wait_for(state="hidden", timeout=timeout)
+        logger.info("Run deleted; Run Details panel closed")
 
     # ------------------------------------------------------------------
     # Run Details panel — State Before/After per node (ELITEA-2452)
@@ -3820,6 +7756,70 @@ class PipelineDetailPage(PipelineFormPage):
         text is returned as-is; callers substring-match the expected node id.
         """
         return self.get_run_details_timeline_section_text()
+
+    # ------------------------------------------------------------------
+    # Run Details panel — Timeline Steps Display (ELITEA-2451)
+    # ------------------------------------------------------------------
+
+    def get_run_details_timeline_step_status(self, index: int, timeout: int = 10000) -> str:
+        """Return the timeline-step dot's `data-status` attribute at *index*.
+
+        `"completed"` for a successful run step, `"error"` when the run's
+        overall status is Error — the color is a SINGLE run-level flag applied
+        identically to every step (`ProcessStepIcon.jsx`), not computed per
+        step (AFS ELITEA-2451 step 4 mechanism note).
+
+        Args:
+            index: Zero-based index into the run's timeline.
+            timeout: Maximum wait time for the dot to appear.
+        """
+        dot = self.page.locator(self.RUN_DETAILS_TIMELINE_STEP.format(index))
+        dot.wait_for(state="visible", timeout=timeout)
+        return dot.get_attribute("data-status") or ""
+
+    def get_run_details_timeline_step_node_id(self, index: int, timeout: int = 10000) -> str:
+        """Return the timeline-step dot's hover node-id at *index*.
+
+        Reads the `aria-label` attribute MUI's Tooltip surfaces statically on
+        the trigger element (`title={step.id}`) — present even without a real
+        hover event. The node id renders WITHOUT the YAML id's space
+        (`"LLM 2"` -> `"LLM2"`), same as the Timeline label (ELITEA-2450).
+
+        Args:
+            index: Zero-based index into the run's timeline.
+            timeout: Maximum wait time for the dot to appear.
+        """
+        dot = self.page.locator(self.RUN_DETAILS_TIMELINE_STEP.format(index))
+        dot.wait_for(state="visible", timeout=timeout)
+        return dot.get_attribute("aria-label") or ""
+
+    def hover_run_details_timeline_step(self, index: int, timeout: int = 10000):
+        """Hover the timeline-step dot at *index* (behavioral fidelity with
+        the case's literal "on hover" wording — the node-id assertion itself
+        reads the static `aria-label`, not the rendered popup).
+
+        Args:
+            index: Zero-based index into the run's timeline.
+            timeout: Maximum wait time for the dot to appear.
+        """
+        dot = self.page.locator(self.RUN_DETAILS_TIMELINE_STEP.format(index))
+        dot.wait_for(state="visible", timeout=timeout)
+        dot.hover()
+
+    def get_run_details_timeline_step_timestamp(self, index: int, timeout: int = 10000) -> str:
+        """Return the `HH:mm:ss` timestamp text under the timeline-step dot at *index*.
+
+        Args:
+            index: Zero-based index into the run's timeline.
+            timeout: Maximum wait time for the timestamp element to appear.
+        """
+        timestamp = self.page.locator(self.RUN_DETAILS_TIMELINE_TIMESTAMP.format(index))
+        timestamp.wait_for(state="visible", timeout=timeout)
+        return (timestamp.text_content() or "").strip()
+
+    def get_run_details_timeline_step_count(self) -> int:
+        """Return the total number of timeline-step dots currently rendered."""
+        return self.page.locator(self.RUN_DETAILS_TIMELINE_STEP_PREFIX).count()
 
     def expand_run_details_state_row(self, variable: str, timeout: int = 10000):
         """Click the accordion header for *variable* in the STATES section to
@@ -4517,6 +8517,36 @@ class PipelineDetailPage(PipelineFormPage):
         the DOM at all — this is a structural guarantee, not a timing race.
         """
         return self.page.locator(self.STATE_VARIABLE_DELETE.format(name)).count() > 0
+
+    def click_state_variable_delete(self, name: str, timeout: int = 5000) -> None:
+        """Click a STATE panel row's delete (trash) button and wait for the row to be removed.
+
+        Testid-based (``STATE_VARIABLE_DELETE``, the same template constant
+        :meth:`is_state_variable_delete_button_present` already uses for its
+        ABSENCE check on default rows) — only present on non-default
+        (custom) rows per the same structural guarantee. Confirmed live
+        (ELITEA-2044): the click removes the row immediately, with ZERO
+        network requests and NO confirmation dialog (unlike pipeline/version
+        delete, which show a type-to-confirm ``DeleteEntityModal``) — the
+        removal is purely client-side editor state until Save. Waits on the
+        row's own name testid (``STATE_VARIABLE_NAME``) going ``hidden`` as
+        the completion signal, testid-only per .agents/testing.md § Locator
+        policy.
+        """
+        locator = self.page.locator(self.STATE_VARIABLE_DELETE.format(name))
+        locator.click(timeout=timeout)
+        self.page.locator(self.STATE_VARIABLE_NAME.format(name)).wait_for(state="hidden", timeout=timeout)
+
+    def is_state_variable_present(self, name: str) -> bool:
+        """Return whether a STATE panel row for *name* currently exists in the DOM.
+
+        Testid-based (``STATE_VARIABLE_NAME``) — used for its ABSENCE
+        (canon ruling #511 extension, absence assertions count as
+        references) to confirm a variable auto-added by a MODULES toggle
+        (e.g. ``input_attachments``, ELITEA-2043) is fully removed from the
+        STATE panel after the toggle is disabled again, not merely hidden.
+        """
+        return self.page.locator(self.STATE_VARIABLE_NAME.format(name)).count() > 0
 
     def click_state_variable_type_select(self, name: str, timeout: int = 5000) -> None:
         """Open a STATE panel row's type-selector dropdown.

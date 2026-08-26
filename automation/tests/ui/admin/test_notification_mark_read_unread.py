@@ -27,7 +27,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 EXPECTED_MARK_READ_TOAST = "Notifications marked as read"
 EXPECTED_MARK_UNREAD_TOAST = "Notifications marked as unread"

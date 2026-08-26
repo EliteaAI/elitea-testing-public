@@ -17,15 +17,26 @@ import re
 import time
 
 from playwright.sync_api import Page, expect
+from utils.actions import action
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
-from utils.actions import action
 
 logger = logging.getLogger("elitea.pages.mcp_form")
 
 UI_ELEMENT_TIMEOUT = 10_000
 SAVE_RESPONSE_TIMEOUT = 20_000
+
+# Placeholder labels the detail title shows BEFORE the tool-detail GET is
+# applied to component state. EliteaUI keeps one fallbackLabel per entity
+# type in src/[fsd]/shared/lib/constants/breadcrumb.constants.js:
+#   toolkits -> "Edit Toolkit"   (line 15)
+#   mcps     -> "Edit MCP"       (line 47)
+# Both must be excluded, or the wait below returns immediately on the MCP
+# detail page and callers read the placeholder as if it were the name
+# (found at ELITEA-1923/1924: only "Edit Toolkit" was listed, so the wait
+# was a no-op for every /mcps/all/{id} caller).
+DETAIL_TITLE_PLACEHOLDERS = ("Edit Toolkit", "Edit MCP")
 
 
 class McpFormPage(BasePage):
@@ -57,6 +68,40 @@ class McpFormPage(BasePage):
         "('Still no local MCP available. Follow creation guides in our "
         "Documentation.') — added ELITEA-1921, commit 750d72f7 on "
         "automation/testids",
+    )
+
+    # Type-picker elements added for ELITEA-1949 (EliteaAI/EliteaUI@f4ce7128 +
+    # EliteaAI/EliteaUI@989db4f0 on automation/testids). The heading and the
+    # filter chips render through the SHARED CategoryFilter.jsx, so the testids
+    # are supplied as `titleTestId` / `chipTestIdPrefix` props from the
+    # standalone `/mcps/create` call site only (CreateToolkit.jsx) — the in-chat
+    # MCP canvas (ToolkitEditor.jsx) deliberately keeps the generic
+    # `category-filter-tab` chips that `select_remote_category_tab()` binds to.
+    type_picker_heading = LocatorDescriptor(
+        testid="mcp-type-picker-heading",
+        description="'Choose the MCP type' heading on /mcps/create",
+    )
+    local_documentation_link = LocatorDescriptor(
+        testid="mcp-type-picker-local-documentation-link",
+        description="'Documentation' external link inside the Local MCP "
+        "empty-state message on /mcps/create",
+    )
+    no_results_title = LocatorDescriptor(
+        testid="catalog-no-results-title",
+        description="Type-picker catalog empty-result title ('No MCPs found')",
+    )
+    no_results_description = LocatorDescriptor(
+        testid="catalog-no-results-description",
+        description="Type-picker catalog empty-result description "
+        "('Try adjusting your search terms')",
+    )
+
+    # Per-chip type filters on /mcps/create. Selection state is a `data-*`
+    # attribute on the SAME testid'd element (never a state-switched testid) —
+    # `.agents/testing.md` § Locator policy, PR #581 ruling.
+    TYPE_FILTER_CHIP = '[data-testid="mcp-type-picker-filter-chip-{}"]'
+    TYPE_FILTER_CHIP_SELECTED = (
+        '[data-testid="mcp-type-picker-filter-chip-{}"][data-selected="true"]'
     )
 
     # ------------------------------------------------------------------
@@ -98,6 +143,28 @@ class McpFormPage(BasePage):
         testid="toolkit-field-scopes-input",
         description="Scopes input",
     )
+    # Secret/Password "secret view toggler" rendered beside every SECRET schema
+    # field — added ELITEA-1932. Both testids are emitted generically by the
+    # shared SecretField.jsx (line 342), which passes
+    # testIdPrefix={`${fieldTestId}-toggle`} down to Toggle.jsx, so the pair
+    # exists for free on every secret field (same grammar
+    # CredentialCreatePage.FIELD_SECRET_TOGGLE already uses for credentials).
+    # Active mode is read from `aria-pressed`, never from a class.
+    client_secret_toggle_secret = LocatorDescriptor(
+        testid="toolkit-field-client_secret-input-toggle-secret",
+        description="'Secret' button of the Client Secret secret-view toggler",
+    )
+    client_secret_toggle_password = LocatorDescriptor(
+        testid="toolkit-field-client_secret-input-toggle-password",
+        description="'Password' button of the Client Secret secret-view toggler",
+    )
+    # In Secret mode the native <input> is UNMOUNTED and replaced by a
+    # SingleSelect over the project's secret vault (and vice versa), so exactly
+    # one of client_secret_input_field / client_secret_combobox exists at a time.
+    client_secret_combobox = LocatorDescriptor(
+        testid="toolkit-field-client_secret-input-combobox",
+        description="Client Secret vault SingleSelect — present only in Secret mode",
+    )
     timeout_input = LocatorDescriptor(
         testid="toolkit-field-timeout-input",
         description="Timeout input",
@@ -105,6 +172,22 @@ class McpFormPage(BasePage):
     cache_ttl_input = LocatorDescriptor(
         testid="toolkit-field-cache_ttl-input",
         description="Cache TTL input",
+    )
+    # Info (tooltip) icons rendered inside the Timeout / Cache TTL field
+    # LABELS. ToolBaseProperty.jsx passes `tooltipTestId` through a per-key
+    # allow-list (the pre-existing `k === 'bucket'` precedent) — extended with
+    # `timeout` / `cache_ttl` for ELITEA-1956/1957
+    # (EliteaAI/EliteaUI@25c47d7d on automation/testids). Only the ICON carries
+    # a testid: neither case opens the tooltip, so no
+    # `-info-tooltip-content` sibling was added (#511 — an unreferenced testid
+    # inflates the presence-based coverage metric).
+    timeout_info_icon = LocatorDescriptor(
+        testid="toolkit-field-timeout-info-icon",
+        description="Info (tooltip) icon next to the Timeout field label",
+    )
+    cache_ttl_info_icon = LocatorDescriptor(
+        testid="toolkit-field-cache_ttl-info-icon",
+        description="Info (tooltip) icon next to the Cache TTL field label",
     )
     enable_caching_checkbox = LocatorDescriptor(
         testid="toolkit-field-enable_caching-checkbox",
@@ -140,11 +223,75 @@ class McpFormPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # Detail-page configuration section — added ELITEA-1923/1924.
+    #
+    # On the DETAIL page (unlike the create form) the schema-driven
+    # configuration fields are COLLAPSED behind a "show more" control: no
+    # `toolkit-field-*` element exists in the DOM at all until it is clicked
+    # (verified live 2026-08-24 — polled 15s on a freshly-created MCP, zero
+    # toolkit-field-* testids present). Any detail-page assertion on url /
+    # client_id / timeout / ... must expand the section first.
+    # ------------------------------------------------------------------
+    configuration_show_more = LocatorDescriptor(
+        testid="toolkit-configuration-show-more",
+        description="'Show more' toggle that expands the collapsed "
+        "schema-driven configuration fields on the toolkit/MCP detail page",
+    )
+
+    # ------------------------------------------------------------------
+    # Inline validation helper text (create form) — added ELITEA-1923/1924.
+    #
+    # Two DIFFERENT renderers are involved, which is why the two testids do
+    # not share a prefix:
+    #   * every schema-driven field (url, client_id, timeout, ...) renders
+    #     through ToolBaseProperty.jsx, which already emits
+    #     helperTextTestId={`toolkit-field-${k}-input-helper-text`};
+    #   * Toolkit Name renders through NameDescriptionInput.jsx, which did
+    #     NOT pass helperTextTestId at all — added for ELITEA-1924
+    #     (EliteaAI/EliteaUI@35440c78 on automation/testids).
+    #
+    # Both nodes are UNMOUNTED (not hidden) once the field becomes valid, so
+    # assert their absence with to_have_count(0), never not_to_be_visible().
+    # ------------------------------------------------------------------
+    name_helper_text = LocatorDescriptor(
+        testid="toolkit-form-name-input-helper-text",
+        description="Inline validation message under the Toolkit Name field "
+        "('Field is required')",
+    )
+    url_helper_text = LocatorDescriptor(
+        testid="toolkit-field-url-input-helper-text",
+        description="Inline validation message under the Url field "
+        "('Field is required')",
+    )
+
+    # ------------------------------------------------------------------
     # Save (create form) + detail page title
     # ------------------------------------------------------------------
     save_button = LocatorDescriptor(
         testid="toolkit-form-save-button",
         description="Save button on the create form",
+    )
+    # Create-form Cancel is a two-step gesture rendered by
+    # CreateToolkitToolTabBar.jsx (Button.DiscardButton + its confirm dialog).
+    # Named create_cancel_* / cancel_confirm_* to stay unambiguous next to the
+    # DETAIL page's discard_* trio above — the product labels the two triggers
+    # differently ("Cancel" here, "Discard" there) while both confirm buttons
+    # read "Discard". Naming choice declared in the ELITEA-1960 AFS
+    # § Page-object work.
+    create_cancel_button = LocatorDescriptor(
+        testid="toolkit-form-cancel-button",
+        description="Cancel button on the create form — opens the "
+        "cancel-creation confirmation dialog, cancels nothing by itself",
+    )
+    cancel_confirm_dialog = LocatorDescriptor(
+        testid="toolkit-form-cancel-confirm-dialog",
+        description="Cancel-creation confirmation dialog — the testid lands on "
+        "the MUI Dialog root, so text_content() includes the 'Warning' title "
+        "and both button labels; assert with `in`, never `==`",
+    )
+    cancel_confirm_button = LocatorDescriptor(
+        testid="toolkit-form-cancel-confirm-button",
+        description="'Discard' confirm button inside the cancel-creation dialog",
     )
     detail_save_button = LocatorDescriptor(
         testid="toolkit-detail-save-button",
@@ -156,10 +303,52 @@ class McpFormPage(BasePage):
         description="Discard button on the detail (edit) page — added ELITEA-1929, "
         "EliteaUI PR #572",
     )
+    # Discard raises a confirmation modal before reverting anything (see
+    # McpFormPage.click_discard) — testids added for ELITEA-1928,
+    # EliteaAI/EliteaUI@a51c9318 on automation/testids.
+    discard_confirm_modal = LocatorDescriptor(
+        testid="toolkit-detail-discard-confirm-modal",
+        description="Discard-changes confirmation modal on the detail (edit) page "
+        "— the testid lands on the MUI Dialog root, so text_content() includes "
+        "the title and both button labels",
+    )
+    discard_confirm_button = LocatorDescriptor(
+        testid="toolkit-detail-discard-confirm-button",
+        description="'Discard' confirm button inside the discard-changes modal",
+    )
     detail_title = LocatorDescriptor(
         testid="toolkit-detail-title",
         description="Toolkit detail page name heading (renders 'Edit Toolkit' "
         "placeholder until the tool-detail GET resolves)",
+    )
+
+    # ------------------------------------------------------------------
+    # Breadcrumb trail (detail page only) — added ELITEA-1961.
+    #
+    # `/mcps/all/:id` declares a breadcrumb trail (`breadcrumb.constants.js`)
+    # and `EditToolkit.jsx` renders
+    # `hasBreadcrumbTrail ? <Breadcrumbs/> : (<BackButton/> + title)`, so the
+    # BackButton branch is unreachable on this route no matter how the user
+    # arrived. `back_button` below is therefore bound for an ABSENCE
+    # assertion only, which keeps that finding test-enforced instead of
+    # documentation-only (CLARIFICATION #1731; .agents/testing.md § Locator
+    # policy, #511 extension). `AgentDetailPage` and `SkillDetailPage` already
+    # declare the same shared app-shell testid on their own classes — a third
+    # declaration is the established shape here, not a duplication.
+    # ------------------------------------------------------------------
+    breadcrumbs_nav = LocatorDescriptor(
+        testid="breadcrumbs",
+        description="Breadcrumb <nav> on the MCP detail page (absent on the MCP list page)",
+    )
+    breadcrumb_parent_link = LocatorDescriptor(
+        testid="breadcrumb-item",
+        description="Parent crumb link ('MCPs') inside the breadcrumb trail — "
+        "exactly one of these renders on the MCP detail page",
+    )
+    back_button = LocatorDescriptor(
+        testid="back-button",
+        description="Shared app-shell back arrow — NEVER rendered on /mcps/all/:id; "
+        "bound for the absence assertion of ELITEA-1961 / #1731",
     )
 
     # ------------------------------------------------------------------
@@ -185,6 +374,51 @@ class McpFormPage(BasePage):
         "add-data-testid for ELITEA-1947 (DeleteToolkitButton.jsx's "
         "useDeleteToolkitMenu() menuItem had no key before this case)",
     )
+    # Remaining three-dot menu items — testids added via add-data-testid for
+    # ELITEA-1946/1959 (EliteaAI/EliteaUI, ToolkitsControls.jsx): DotMenu.jsx
+    # wires `testId: item.key`, so Export rendered NO testid at all (its hook
+    # supplies no key) and Copy link rendered the label-derived
+    # `Copy link-menuitem` (space included). Both are now named at the
+    # ToolkitsControls call site, the same shape SkillControls.jsx /
+    # CredentialsControls.jsx already use for their pin item.
+    export_menuitem = LocatorDescriptor(
+        testid="toolkit-actions-export-menuitem",
+        description="'Export' menu item inside the three-dot menu — permanently "
+        "disabled on this surface (aria-disabled=\"true\"); MUI renders disabled "
+        "MenuItems as <li aria-disabled>, which is_enabled() does NOT read as "
+        "disabled — assert the attribute",
+    )
+    fork_menuitem = LocatorDescriptor(
+        testid="toolkit-actions-fork-menuitem",
+        description="'Fork' menu item inside the three-dot menu — disabled on "
+        "this surface (ToolkitsControls passes disabled: true); read "
+        "aria-disabled, not is_enabled()",
+    )
+    copy_link_menuitem = LocatorDescriptor(
+        testid="copy-link-toolkit-menuitem",
+        description="'Copy link' menu item inside the three-dot menu — copies the "
+        "MCP's project-scoped deep link and raises the "
+        "'The link has been copied to the clipboard.' toast",
+    )
+    pin_toggle_menuitem = LocatorDescriptor(
+        testid="pin-toggle-toolkit-menuitem",
+        description="Pin toggle menu item inside the three-dot menu — STABLE "
+        "identity; its pinned state is read from the LABEL ('Pin to top' / "
+        "'Unpin from top'), never from a state-flavoured testid "
+        "(.agents/testing.md § Locator policy)",
+    )
+    # Neutrally-named handle for the shared Toast.jsx node. The pre-existing
+    # `sync_error_toast_message` field below points at the SAME
+    # `toast-message` testid but is named for ELITEA-1934's Load-Tools error
+    # toast; it is left byte-identical for its existing callers (additive-only
+    # rule) and this alias is used wherever the toast is a success message.
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="Shared Toast.jsx message node — auto-dismisses within a few "
+        "seconds, so wait for it in the SAME synchronous chain as the click "
+        "that raises it",
+    )
+
     delete_confirm_dialog = LocatorDescriptor(
         testid="delete-confirm-dialog",
         description="Delete confirmation dialog (DeleteEntityModal, shared across "
@@ -209,6 +443,14 @@ class McpFormPage(BasePage):
     # (a raw DOM query, not a Playwright locator — mirrors BasePage's own
     # evaluate()-based waits, e.g. dismiss_banner_if_present()).
     DETAIL_TITLE_SELECTOR = '[data-testid="toolkit-detail-title"]'
+
+    # Secret-vault dropdown options (ELITEA-1932). Dynamic testid -> class-level
+    # template constant per .agents/testing.md § Locator policy; the option's
+    # testid embeds the stored reference itself, e.g.
+    # select-option-{{secret.auth_token}}.
+    SECRET_SAVED_OPTION = '[data-testid="select-option-{{{{secret.{}}}}}"]'
+    SECRET_SAVED_OPTION_PREFIX = '[data-testid^="select-option-{{secret."]'
+    SECRET_GROUP_HEADER_SAVED = '[data-testid="select-group-header-Saved Secrets"]'
 
     # ------------------------------------------------------------------
     # Tools section (Configuration accordion, "TOOLS" sub-heading) —
@@ -248,6 +490,40 @@ class McpFormPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # Detail action bar (/mcps/all/{id} header row) — added ELITEA-1940.
+    # EL-6277 (EliteaAI/EliteaUI@cb030b7d) moved the Test surface out of the
+    # detail page into its own route and relocated the "view run history"
+    # control here, so both entry points now live in this one action bar
+    # (`ToolkitForm.jsx:525` renders it when `isDetailsActionBar`).
+    # ------------------------------------------------------------------
+    action_bar = LocatorDescriptor(
+        testid="toolkit-action-bar",
+        description="Detail-page action bar container (ToolkitForm.jsx:525) — "
+        "hosts the Test button, the Run History button and the Form/Raw Json "
+        "view toggle. Mounts ASYNCHRONOUSLY after a client-side navigation "
+        "back to the detail page (test-specs/mcp/_surface.md § Sequencing "
+        "gotchas), so callers must wait on it rather than query immediately.",
+    )
+    test_button = LocatorDescriptor(
+        testid="toolkit-test-button",
+        description="'Test' button in the detail action bar (aria-label "
+        "'Test MCP') — navigates to the /mcps/all/{id}/test route (EL-6277). "
+        "DISABLED while the form is dirty (`isTestDisabled={dirty}`), so a "
+        "flow that clicked Load Tools must Save first and wait for this "
+        "button to re-enable.",
+    )
+    run_history_button = LocatorDescriptor(
+        testid="pipeline-history-tab",
+        description="'Run History' button in the detail action bar "
+        "(ViewRunHistoryButton.jsx, aria-label 'view run history') — "
+        "navigates to /toolkits/all/{id}/history?isMCP=true. The "
+        "`pipeline-` prefix is the shared component's DEFAULT testid "
+        "(ViewRunHistoryButton.jsx:16), correct on this surface too and "
+        "already relied on by PipelineDetailPage — do not rename "
+        "(test-specs/mcp/_surface.md § Run History, clarification #1727).",
+    )
+
+    # ------------------------------------------------------------------
     # Connection-status indicator + sync-error toast — added ELITEA-1934.
     # ------------------------------------------------------------------
     connection_status = LocatorDescriptor(
@@ -259,6 +535,16 @@ class McpFormPage(BasePage):
         ".agents/testing.md § Locator policy — one stable testid, the rendered "
         "text is what the case asserts)",
     )
+    connection_status_icon = LocatorDescriptor(
+        testid="toolkit-connection-status-icon",
+        description="State icon (OnlineIcon svg) rendered next to the "
+        "connection-status text inside McpAuthStatus.jsx's status container — "
+        "added via add-data-testid for ELITEA-1936 (EliteaAI/EliteaUI@55dc4f66, "
+        "on automation/testids, human cherry-pick to main pending). The svg had "
+        "no testid, and chaining a raw `svg` selector off connection_status is "
+        "forbidden by .agents/testing.md § Locator policy.",
+    )
+
     login_button = LocatorDescriptor(
         testid="toolkit-connection-login-button",
         description="Login/Logout button next to the connection-status indicator "
@@ -303,6 +589,13 @@ class McpFormPage(BasePage):
     # DETAIL_TITLE_SELECTOR above.
     RAW_JSON_EDITOR_SELECTOR = '[data-testid="toolkit-raw-json-editor-content"]'
 
+    # Key under which the product stores its own per-server MCP connection
+    # record in sessionStorage (McpAuthHelpers / useMcpTokenChange). Read-only
+    # observation handle for ELITEA-1936 step 7 — NOT a locator and NOT a
+    # substitution: the test never writes it, it only reads what the product
+    # wrote after a real connection round-trip.
+    MCP_TOKENS_SESSION_STORAGE_KEY = "elitea_mcp_tokens_v1"
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -314,11 +607,11 @@ class McpFormPage(BasePage):
     def navigate_to_create(self) -> None:
         """Navigate to ``/mcps/create`` and wait for the type-picker to load.
 
-        The "Choose the MCP type" copy has no data-testid (shared
-        ``GroupedCategory``/``CategoryFilter`` title, out of this case's
-        touched-element scope per the testid-only locator policy) — the
-        type-picker having loaded is instead proven via the testid-bearing
-        :attr:`remote_mcp_type_card` becoming visible.
+        The "Choose the MCP type" copy now carries
+        :attr:`type_picker_heading` (``mcp-type-picker-heading``, added for
+        ELITEA-1949). The load wait still keys off the testid-bearing
+        :attr:`remote_mcp_type_card`, which mounts LAST (up to ~3.5s after the
+        navigation) and is therefore the stronger readiness signal.
         """
         self.navigate("/mcps/create")
         self.remote_mcp_type_card.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
@@ -345,6 +638,41 @@ class McpFormPage(BasePage):
         tab = self.category_filter_tab.filter(has_text=re.compile("^Remote$"))
         tab.wait_for(state="visible", timeout=timeout)
         tab.click()
+
+    def type_filter_chip(self, chip_slug: str):
+        """Return the ``/mcps/create`` type-filter chip locator for *chip_slug*.
+
+        *chip_slug* is the slugified category label the product itself emits
+        (``local`` / ``remote``). Mirrors ``McpListPage.type_filter_chip()``
+        (ELITEA-1942) in shape; the pattern lives at class level so the testid
+        inventory stays greppable (``.agents/testing.md`` § Locator policy —
+        dynamic testids).
+        """
+        return self.page.locator(self.TYPE_FILTER_CHIP.format(chip_slug))
+
+    def selected_type_filter_chip(self, chip_slug: str):
+        """Return the *selected-state* locator for a type-filter chip.
+
+        Selection is asserted via the chip's own ``data-selected`` attribute,
+        never via its emotion CSS class hash or computed background colour.
+        """
+        return self.page.locator(self.TYPE_FILTER_CHIP_SELECTED.format(chip_slug))
+
+    @action("Click an MCP type filter chip")
+    def click_type_filter(self, chip_slug: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the ``local``/``remote`` type-filter chip on ``/mcps/create``.
+
+        Filtering here is pure client-side re-grouping — there is NO network
+        request to wait on (unlike the dashboard type filter, ELITEA-1942), so
+        callers wait on the DOM outcome themselves.
+        """
+        chip = self.type_filter_chip(chip_slug)
+        chip.wait_for(state="visible", timeout=timeout)
+        chip.click()
+
+    def is_type_filter_selected(self, chip_slug: str) -> bool:
+        """Return whether the given type-filter chip is currently selected."""
+        return self.type_filter_chip(chip_slug).get_attribute("data-selected") == "true"
 
     @action("Navigate to MCP detail page")
     def navigate_to_detail(self, toolkit_id: int, project_id: str) -> None:
@@ -379,21 +707,120 @@ class McpFormPage(BasePage):
     def _wait_for_detail_data_rendered(self) -> None:
         """Wait past the 'Edit Toolkit' placeholder until real toolkit data renders.
 
-        The detail title (``toolkit-detail-title``) shows a static "Edit
-        Toolkit" placeholder until the tool-detail GET response is applied
-        to component state — the response resolving doesn't guarantee the
-        title has re-rendered yet (one more React tick), so poll the title
-        text itself rather than trusting the network wait alone.
+        The detail title (``toolkit-detail-title``) shows a static
+        entity-specific placeholder ("Edit Toolkit" on /toolkits, "Edit MCP"
+        on /mcps — see :data:`DETAIL_TITLE_PLACEHOLDERS`) until the
+        tool-detail GET response is applied to component state. The response
+        resolving doesn't guarantee the title has re-rendered yet (one more
+        React tick), so poll the title text itself rather than trusting the
+        network wait alone.
         """
         self.name_input.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         self.page.wait_for_function(
-            """(selector) => {
+            """({selector, placeholders}) => {
                 const el = document.querySelector(selector);
-                return !!el && el.textContent.trim() !== '' && el.textContent.trim() !== 'Edit Toolkit';
+                if (!el) return false;
+                const text = el.textContent.trim();
+                return text !== '' && !placeholders.includes(text);
             }""",
-            arg=self.DETAIL_TITLE_SELECTOR,
+            arg={
+                "selector": self.DETAIL_TITLE_SELECTOR,
+                "placeholders": list(DETAIL_TITLE_PLACEHOLDERS),
+            },
             timeout=UI_ELEMENT_TIMEOUT,
         )
+
+    # ------------------------------------------------------------------
+    # Breadcrumb navigation (detail page) — added ELITEA-1961.
+    # ------------------------------------------------------------------
+
+    def get_breadcrumb_text(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Return the breadcrumb trail's full text, e.g. ``MCPs/<toolkit name>``.
+
+        MUI renders the separator as its own node, so ``text_content()``
+        concatenates the crumbs into ``MCPs/<name>`` with no separating
+        whitespace.
+        """
+        self.breadcrumbs_nav.wait_for(state="visible", timeout=timeout)
+        return (self.breadcrumbs_nav.text_content() or "").strip()
+
+    @action("Click the parent breadcrumb link")
+    def click_breadcrumb_parent(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the parent crumb ("MCPs") and wait for the list route.
+
+        This is the product's own in-page navigation control — deliberately
+        NOT ``page.go_back()``, which is a different flow with a different
+        contract (ELITEA-1961 AFS § Automation Hints). The navigation is
+        client-side, so no reload is awaited; callers that need to prove that
+        should watch for the absence of a ``load`` event.
+        """
+        self.breadcrumb_parent_link.first.wait_for(state="visible", timeout=timeout)
+        self.breadcrumb_parent_link.first.click()
+        self.page.wait_for_url("**/mcps/all", timeout=timeout)
+        self.wait_for_network()
+
+    # ------------------------------------------------------------------
+    # Detail action-bar navigation — added ELITEA-1940.
+    # ------------------------------------------------------------------
+
+    @action("Open the Test route from the detail action bar")
+    def open_test_route(self, toolkit_id: int, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the action bar's **Test** button and wait for the Test route.
+
+        EL-6277 made the Test surface its own route
+        (``/mcps/all/{id}/test``) instead of a right-hand region of the
+        detail page. The button is ``disabled`` while the form is dirty
+        (``ToolkitForm.jsx``: ``isTestDisabled={dirty}``) — clicking Load
+        Tools dirties it — so this waits for the button to be ENABLED
+        before clicking rather than clicking into a dead element and
+        timing out later on a panel that never mounted.
+
+        Args:
+            toolkit_id: The MCP's numeric id, used to match the target URL.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.test_button.wait_for(state="visible", timeout=timeout)
+        expect(self.test_button).to_be_enabled(timeout=timeout)
+        self.test_button.click()
+        self.page.wait_for_url(re.compile(rf"/mcps/all/{toolkit_id}/test"), timeout=timeout)
+        logger.info("Opened the Test route for MCP id=%s", toolkit_id)
+
+    def is_test_button_disabled(self, timeout: int = UI_ELEMENT_TIMEOUT) -> bool:
+        """Return whether the action bar's Test button is currently disabled.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the button to render.
+
+        Returns:
+            True while the detail form is dirty (``isTestDisabled={dirty}``).
+        """
+        self.test_button.wait_for(state="visible", timeout=timeout)
+        return self.test_button.is_disabled()
+
+    @action("Open Run History from the detail action bar")
+    def open_run_history(self, toolkit_id: int, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click **Run History** and wait for the run-history route to load.
+
+        MCPs deliberately reuse the toolkit route with an ``isMCP`` query
+        flag (``useToolkitDetailNavigation.hooks.js``), so the destination
+        is ``/toolkits/all/{id}/history?isMCP=true`` — a full page, not a
+        drawer (clarification #1727).
+
+        The action bar mounts asynchronously after a client-side
+        navigation back to the detail page (test-specs/mcp/_surface.md
+        § Sequencing gotchas — an immediate click raised "does not match
+        any elements" live), hence the explicit visibility wait.
+
+        Args:
+            toolkit_id: The MCP's numeric id, used to match the target URL.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.run_history_button.wait_for(state="visible", timeout=timeout)
+        self.run_history_button.click()
+        self.page.wait_for_url(
+            re.compile(rf"/toolkits/all/{toolkit_id}/history"), timeout=timeout
+        )
+        logger.info("Opened Run History for MCP id=%s", toolkit_id)
 
     # ------------------------------------------------------------------
     # Three-dot actions menu + delete-confirm dialog — added ELITEA-1947.
@@ -412,6 +839,66 @@ class McpFormPage(BasePage):
     def get_controls_menu_text(self) -> str:
         """Return the three-dot menu popup's full text content (all menu item labels)."""
         return self.controls_menu.text_content() or ""
+
+    def wait_for_controls_menu_closed(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Wait for the three-dot menu popup to leave the DOM.
+
+        ``DotMenu`` unmounts the popup rather than hiding it, but the unmount
+        runs behind MUI's close TRANSITION — an assertion fired in the same
+        tick as the click that closed it still sees ``count() == 1``
+        (observed live, ELITEA-1959 implementation). This is a framework
+        condition wait, not a sleep.
+        """
+        self.controls_menu.wait_for(state="detached", timeout=timeout)
+
+    @action("Close the three-dot actions menu with Escape")
+    def close_controls_menu_with_escape(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Press Escape and wait for the menu popup to UNMOUNT.
+
+        ``DotMenu`` removes the popup from the DOM rather than hiding it, so
+        the wait (and any caller assertion) must be on ``detached`` /
+        ``count() == 0``, not on ``not_to_be_visible()``.
+        """
+        self.page.keyboard.press("Escape")
+        self.wait_for_controls_menu_closed(timeout=timeout)
+
+    @action("Click the Copy link menu item")
+    def click_copy_link_menu_item(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Click 'Copy link' and return the confirmation toast's text.
+
+        The toast auto-dismisses within a few seconds, so the wait happens in
+        the same synchronous chain as the click (same shape as
+        :meth:`wait_for_sync_error_toast`). Clicking the item also closes the
+        menu — ``DotMenu.jsx``'s ``withClose`` fires on every item click.
+        """
+        self.copy_link_menuitem.click()
+        self.toast_message.wait_for(state="visible", timeout=timeout)
+        return self.toast_message.text_content() or ""
+
+    def get_pin_toggle_menu_label(self) -> str:
+        """Return the pin-toggle menu item's current text ('Pin to top' / 'Unpin from top')."""
+        return self.pin_toggle_menuitem.text_content() or ""
+
+    @action("Click the Pin/Unpin menu item")
+    def click_pin_toggle_menu_item(self, timeout: int = UI_ELEMENT_TIMEOUT):
+        """Click the pin-toggle menu item and wait for the pin API round trip.
+
+        Mirrors ``CredentialDetailPage.click_pin_toggle_menu_item()`` verbatim
+        (the two surfaces share the widget) — waits on the real
+        ``POST``/``DELETE .../social/pin/prompt_lib/{project}/toolkit/{id}``
+        response instead of a fixed sleep.
+
+        Returns:
+            The matched Playwright ``Response`` (201 on pin, 204 on unpin).
+        """
+        toolkit_id = self.get_toolkit_id_from_url()
+        pattern = "/social/pin/prompt_lib/"
+        with self.page.expect_response(
+            lambda r: pattern in r.url and r.url.rstrip("/").endswith(f"/toolkit/{toolkit_id}"),
+            timeout=timeout,
+        ) as response_info:
+            self.pin_toggle_menuitem.click()
+        return response_info.value
 
     @action("Click the Delete menu item")
     def click_delete_menu_item(self) -> None:
@@ -660,13 +1147,102 @@ class McpFormPage(BasePage):
                 scoped inside the editor).
             new_line_text: Full replacement text for that line.
         """
-        line = self.raw_json_editor_content.get_by_text(current_line_text, exact=True)
-        line.click()
+        # Resolve the element handle BEFORE the click: the moment a selection
+        # lands, CodeMirror's selectionMatch extension decorates every OTHER
+        # occurrence of the selected text with `cm-selectionMatch` <span>s, so
+        # re-resolving the same get_by_text() locator afterwards raises a
+        # strict-mode violation (confirmed live at ELITEA-1935 implementation on
+        # a document that also carries `available_mcp_tools`, where a tool name
+        # appears both in `selected_tools` and as a `"value"` entry). The handle
+        # captured here still points at the original `.cm-line` div.
+        line_handle = self.raw_json_editor_content.get_by_text(
+            current_line_text, exact=True
+        ).element_handle()
+        line_handle.click()
         self.page.keyboard.press("Home")
         self.page.keyboard.press("Shift+End")
-        self._wait_for_line_selection_applied(line)
+        self._wait_for_line_selection_applied_handle(line_handle)
         self.page.keyboard.type(new_line_text)
         self._wait_for_text_content_stable(self.raw_json_editor_content)
+
+    @action("Delete a single line from the Raw Json editor")
+    def delete_raw_json_line(self, current_line_text: str) -> None:
+        """Delete the content of one line of the Raw Json CodeMirror editor.
+
+        DECLARED IMPROVISATION — inherits :meth:`fill_raw_json_line`'s
+        lead-approved #579 exception verbatim: the Raw Json editor's per-line
+        ``<div>`` nodes are CodeMirror-internal render nodes, not app JSX, so
+        no testid can be placed on them (analogous to the third-party-widget
+        Stop+flag exception, e.g. ReactFlow's ``rf__wrapper``, per
+        ``.agents/testing.md`` § Locator policy). ``get_by_text()`` scoped
+        inside the testid-anchored ``raw_json_editor_content`` parent (itself a
+        ``LocatorDescriptor(testid=...)`` field) is the sanctioned pattern for
+        this specific canon-gap; do not extend it to any handle that COULD
+        carry a testid.
+
+        Additive sibling of :meth:`fill_raw_json_line` rather than a new mode
+        of it (additive-only shared-caller rule — ``fill_raw_json_line`` has
+        merged callers): same select-then-act discipline, ending in a
+        ``Backspace`` instead of a ``type``. ``keyboard.type("")`` is a no-op,
+        so the existing method cannot express a deletion.
+
+        CodeMirror's ``Home`` is *smart-home* — it moves to the first
+        non-whitespace character — so this clears the line's CONTENT and leaves
+        its leading indentation behind. That whitespace-only line is still
+        valid JSON and the server normalises it away on save (confirmed live,
+        ELITEA-1935 analysis).
+
+        Args:
+            current_line_text: Exact current text of the target line (used to
+                locate the line's div via ``get_by_text(..., exact=True)``
+                scoped inside the editor).
+        """
+        # Handle resolved before the click for the same selectionMatch reason
+        # documented in :meth:`fill_raw_json_line`.
+        line_handle = self.raw_json_editor_content.get_by_text(
+            current_line_text, exact=True
+        ).element_handle()
+        line_handle.click()
+        self.page.keyboard.press("Home")
+        self.page.keyboard.press("Shift+End")
+        self._wait_for_line_selection_applied_handle(line_handle)
+        self.page.keyboard.press("Backspace")
+        self._wait_for_text_content_stable(self.raw_json_editor_content)
+
+    def scroll_raw_json_to_top(self) -> None:
+        """Scroll the Raw Json editor's scrollable ancestor back to the top.
+
+        :meth:`get_raw_json_full` defeats CodeMirror virtualization by scrolling
+        the editor's scrollable ancestor to the BOTTOM and leaves it there. Any
+        per-line edit afterwards (:meth:`fill_raw_json_line` /
+        :meth:`delete_raw_json_line`) then fails with ``Locator.click: Timeout``,
+        because the target line has been virtualized out of the DOM (confirmed
+        live, ELITEA-1935 analysis — one of the three documented traps in
+        ``test-specs/mcp/_surface.md``). Call this between a full read and a
+        subsequent per-line edit.
+
+        Reuses :meth:`get_raw_json_full`'s scrollable-ancestor walk (first
+        ancestor with real overflow) rather than a MUI ``css-*`` class name,
+        which is not a stable selector. The selector fed to ``querySelector``
+        is the class-level :attr:`RAW_JSON_EDITOR_SELECTOR` testid constant.
+        """
+        self.page.evaluate(
+            """(selector) => {
+                const el = document.querySelector(selector);
+                let node = el;
+                while (node && node !== document.body) {
+                    const cs = getComputedStyle(node);
+                    if ((cs.overflowY === 'auto' || cs.overflowY === 'scroll')
+                            && node.scrollHeight > node.clientHeight) {
+                        node.scrollTop = 0;
+                        return true;
+                    }
+                    node = node.parentElement;
+                }
+                return false;
+            }""",
+            self.RAW_JSON_EDITOR_SELECTOR,
+        )
 
     def _wait_for_line_selection_applied(self, line_locator, timeout_ms: int = UI_ELEMENT_TIMEOUT) -> None:
         """Wait until *line_locator*'s content is selected via ``Home``/``Shift+End``.
@@ -680,14 +1256,25 @@ class McpFormPage(BasePage):
         20-char selection). Comparing against the *trimmed* text length is
         the correct equality check here.
         """
-        handle = line_locator.element_handle()
+        self._wait_for_line_selection_applied_handle(
+            line_locator.element_handle(), timeout_ms=timeout_ms
+        )
+
+    def _wait_for_line_selection_applied_handle(self, line_handle, timeout_ms: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Handle-based variant of :meth:`_wait_for_line_selection_applied`.
+
+        Takes an already-resolved ``ElementHandle`` instead of a locator, so the
+        caller can capture the target line BEFORE the click that triggers
+        CodeMirror's ambiguity-creating selectionMatch decorations (see
+        :meth:`fill_raw_json_line`).
+        """
         self.page.wait_for_function(
             """(el) => {
                 const trimmedLen = el.textContent.trim().length;
                 const sel = window.getSelection();
                 return trimmedLen === 0 || (sel && sel.toString().length === trimmedLen);
             }""",
-            arg=handle,
+            arg=line_handle,
             timeout=timeout_ms,
         )
 
@@ -702,6 +1289,75 @@ class McpFormPage(BasePage):
     def get_client_secret_value(self) -> str:
         """Return the raw DOM value of the (visually masked) Client Secret input."""
         return self.client_secret_input_field.input_value()
+
+    @action("Switch the Client Secret field to Secret mode")
+    def switch_client_secret_to_secret_mode(self) -> None:
+        """Click the Client Secret toggler's "Secret" button and wait for the swap.
+
+        Secret mode replaces the native ``<input type="password">`` with the
+        vault ``SingleSelect`` (``SecretField.jsx``), so the wait is on the
+        combobox mounting — not on the button's own ``aria-pressed``, which
+        flips before the field re-renders.
+        """
+        self.client_secret_toggle_secret.click()
+        self.client_secret_combobox.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    def saved_secret_option(self, secret_name: str):
+        """Return the vault-dropdown option locator for saved secret *secret_name*."""
+        return self.page.locator(self.SECRET_SAVED_OPTION.format(secret_name))
+
+    def saved_secret_options(self):
+        """Return every SAVED-SECRETS option currently rendered in the dropdown."""
+        return self.page.locator(self.SECRET_SAVED_OPTION_PREFIX)
+
+    def saved_secrets_group_header(self):
+        """Return the dropdown's "SAVED SECRETS" group header."""
+        return self.page.locator(self.SECRET_GROUP_HEADER_SAVED)
+
+    @action("Open the Client Secret vault dropdown")
+    def open_client_secret_vault_dropdown(self) -> None:
+        """Open the Secret-mode vault dropdown and wait for its first saved option.
+
+        The vault query (``useSecretsListQuery``) is skipped while the field is
+        in Password mode, so the options only start loading once Secret mode is
+        active and the select is opened — wait on a rendered OPTION, not on
+        network idle (same discipline as
+        ``CredentialCreatePage.open_secret_dropdown``).
+        """
+        self.client_secret_combobox.click()
+        self.saved_secret_options().first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    @action("Select a saved secret in the Client Secret vault dropdown")
+    def select_client_secret_saved_secret(self, secret_name: str) -> None:
+        """Pick saved secret *secret_name* and wait for the dropdown to close."""
+        option = self.saved_secret_option(secret_name)
+        option.click()
+        option.wait_for(state="detached", timeout=UI_ELEMENT_TIMEOUT)
+
+    def get_client_secret_display_text(self) -> str:
+        """Return the Secret-mode combobox's displayed secret NAME.
+
+        The combobox shows the human-readable secret name (``auth_token``); the
+        stored reference (``{{secret.auth_token}}``) is only visible in the Raw
+        Json view / the save response.
+        """
+        return self.client_secret_combobox.text_content() or ""
+
+    @action("Blur the Headers JSON editor")
+    def blur_headers_editor(self) -> None:
+        """Move focus out of the Headers editor so its value commits to the form.
+
+        The CodeMirror-backed Headers field propagates on **blur**, not on
+        keystroke: with focus still inside the editor after typing valid JSON,
+        ``toolkit-detail-save-button`` stays disabled (verified live at
+        ELITEA-1931). Blurring also re-formats the JSON to its pretty-printed
+        form, which is why this is a separate, additive method rather than a
+        change to :meth:`fill_headers_json` — that method's merged caller
+        (``test_mcp_create_remote.py``) reads the editor text immediately after
+        filling and must keep seeing the verbatim, unformatted input.
+        """
+        self.headers_editor_content.blur()
+        self._wait_for_text_content_stable(self.headers_editor_content)
 
     @action("Fill Scopes")
     def fill_scopes(self, scopes: str) -> None:
@@ -763,6 +1419,103 @@ class McpFormPage(BasePage):
     # ------------------------------------------------------------------
     # Save + view toggle
     # ------------------------------------------------------------------
+
+    @action("Expand the detail page's configuration section")
+    def expand_configuration_section(self) -> None:
+        """Expand the detail page's collapsed schema-driven configuration fields.
+
+        No-op when the section is already expanded (the "show more" control
+        unmounts once clicked), so this is safe to call unconditionally.
+
+        Needed because the detail page renders NO ``toolkit-field-*`` element
+        until the section is expanded — the create form renders them inline,
+        the detail page does not (found at ELITEA-1923/1924).
+        """
+        # "Already expanded?" is decided on the FIELDS, never on the toggle:
+        # `toolkit-configuration-show-more` mounts asynchronously and is
+        # measurably absent for ~1s after a detail-page load even once
+        # `toolkit-detail-title` has resolved to the real name (polled live at
+        # ELITEA-1930, 10x500ms). A non-waiting `count() == 0` read on the
+        # toggle therefore silently no-op'd, and every following
+        # `toolkit-field-*` read then timed out with a misleading
+        # "element not found". Keying off `url_input` is exact in both
+        # directions: it is already present on the create form and on an
+        # already-expanded section (return immediately, no cost), and absent
+        # exactly when the section still needs expanding.
+        if self.url_input.count() > 0:
+            return
+        self.configuration_show_more.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        self.configuration_show_more.click()
+        self.url_input.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    @action("Click Discard and wait for the confirmation modal")
+    def click_discard(self) -> None:
+        """Click the detail page's Discard button and wait for its confirm modal.
+
+        Discard is a two-step gesture: the first click only opens a
+        ``Warning / Are you sure you want to discard changes?`` modal — the form
+        still holds the edited values and both action buttons stay enabled until
+        :meth:`confirm_discard` is called (verified live at ELITEA-1928). Same
+        shape as ``CredentialDetailPage.click_discard``.
+        """
+        self.detail_discard_button.click()
+        self.discard_confirm_modal.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    def get_discard_confirm_message(self) -> str:
+        """Return the discard-confirm modal's text.
+
+        The testid sits on the MUI ``Dialog`` root, so this includes the
+        "Warning" title and the "Cancel"/"Discard" button labels — assert with
+        ``in``, not ``==``.
+        """
+        return self.discard_confirm_modal.text_content() or ""
+
+    @action("Confirm Discard in the confirmation modal")
+    def confirm_discard(self) -> None:
+        """Confirm the discard and wait for the modal to unmount.
+
+        The modal is removed from the DOM (not hidden) when it closes, so the
+        wait is on ``detached`` — same as ``credential-discard-confirm-modal``.
+        """
+        self.discard_confirm_button.click()
+        self.discard_confirm_modal.wait_for(state="detached", timeout=UI_ELEMENT_TIMEOUT)
+
+    @action("Click Cancel on the create form and wait for the confirmation dialog")
+    def click_cancel_creation(self) -> None:
+        """Click the CREATE form's Cancel button and wait for its confirm dialog.
+
+        Cancel is a two-step gesture: this first click only opens the
+        ``Warning / Are you sure you want to cancel creation of this toolkit?``
+        dialog (``CreateToolkitToolTabBar.jsx`` -> ``setOpenAlert(true)``). The
+        form stays mounted and keeps every entered value until
+        :meth:`confirm_cancel_creation` is called (verified live at
+        ELITEA-1960). Same shape as the detail page's :meth:`click_discard`,
+        different testids.
+        """
+        self.create_cancel_button.click()
+        self.cancel_confirm_dialog.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    def get_cancel_confirm_message(self) -> str:
+        """Return the cancel-creation confirmation dialog's text.
+
+        The testid sits on the MUI ``Dialog`` root (``role="presentation"``),
+        so this returns the "Warning" title, the message and BOTH button
+        labels concatenated — assert with ``in``, not ``==``.
+        """
+        return self.cancel_confirm_dialog.text_content() or ""
+
+    @action("Confirm cancellation of the create form")
+    def confirm_cancel_creation(self) -> None:
+        """Click 'Discard' in the cancel-creation dialog and wait for it to unmount.
+
+        The dialog is removed from the DOM (not hidden), so the wait is on
+        ``detached``. Note the create form itself unmounts too and the type
+        picker re-renders, but the URL does NOT change (it stays
+        ``/mcps/create/mcp``) — CLARIFICATION
+        EliteaAI/elitea-testing-public#1747; callers must not key off the URL.
+        """
+        self.cancel_confirm_button.click()
+        self.cancel_confirm_dialog.wait_for(state="detached", timeout=UI_ELEMENT_TIMEOUT)
 
     def is_save_button_disabled(self) -> bool:
         """Return whether the create form's Save button is currently disabled.
@@ -1110,6 +1863,59 @@ class McpFormPage(BasePage):
         """Return the connection-status indicator's current text ('Not Connected'/'Connected!')."""
         self.connection_status.wait_for(state="visible", timeout=timeout)
         return self.connection_status.text_content() or ""
+
+    @action("Click the connection Login button")
+    def click_connection_login(self) -> None:
+        """Click the connection-status Login button and wait for the flow to settle.
+
+        For a Remote MCP whose server needs no OAuth (the DeepWiki fixture),
+        ``onLogin`` -> ``useMcpAuthCheck.runAuthCheck`` emits an in-page socket
+        ``test_mcp_connection`` event — a protocol-level ``tools/list``
+        round-trip. There is NO external window, NO redirect and NO credential
+        prompt; only a server that genuinely demands OAuth opens
+        ``McpAuthModal`` (McpAuthStatus.jsx, confirmed live ELITEA-1936).
+
+        Waits only for the button to leave its in-flight state (label back off
+        ``Logging in...``). The transient label itself is deliberately NOT
+        asserted anywhere — the DeepWiki round-trip completed faster than a
+        500 ms poll during analysis, so asserting it would be a guaranteed
+        flake.
+        """
+        self.login_button.click()
+        expect(self.login_button).not_to_have_text(
+            "Logging in...", timeout=SAVE_RESPONSE_TIMEOUT
+        )
+
+    def get_mcp_connection_record(self, server_url: str) -> dict | None:
+        """Return the product's own sessionStorage connection record for *server_url*.
+
+        READ-ONLY OBSERVATION, not a substitution: this reads state the PRODUCT
+        wrote (``McpAuthHelpers.setConnectionVerified(url)`` after a successful
+        socket round-trip). Nothing is injected, stubbed or forced — the
+        ``.evaluate()`` call performs a ``sessionStorage.getItem`` and a
+        ``JSON.parse``, and the case's own observable (the status text) is
+        asserted independently in the DOM. Provenance discipline per
+        ``.agents/testing.md`` § Fidelity policy.
+
+        The record is keyed by SERVER URL (not by toolkit id), so it is shared
+        by every toolkit pointing at the same MCP server within one browser
+        context.
+
+        Args:
+            server_url: The MCP server URL the toolkit points at.
+
+        Returns:
+            The per-server record dict (``access_token`` / ``connection_verified``
+            / ``issued_at`` / ``expires_at``), or ``None`` when the product has
+            written no record for that URL.
+        """
+        raw = self.page.evaluate(
+            "(key) => window.sessionStorage.getItem(key)",
+            self.MCP_TOKENS_SESSION_STORAGE_KEY,
+        )
+        if not raw:
+            return None
+        return json.loads(raw).get(server_url)
 
     @action("Wait for the Load-Tools sync-error toast and return its text")
     def wait_for_sync_error_toast(self, timeout: int = 5000) -> str:

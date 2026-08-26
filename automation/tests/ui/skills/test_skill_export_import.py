@@ -26,7 +26,7 @@ from pages.skills_list_page import SkillsListPage
 from pages.skill_form_page import SkillFormPage
 from pages.skill_detail_page import SkillDetailPage
 
-pytestmark = [pytest.mark.ui, pytest.mark.skills]
+pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.new_verified]
 
 UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000

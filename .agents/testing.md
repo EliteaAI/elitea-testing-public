@@ -43,6 +43,15 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
   its deterministic gate, and staying red in CI is the correct signal until the
   product fix ships. Anything else red — flaky, multi-cause, no linked defect —
   blocks. Record the exception explicitly in the closure record.
+  - **`expect.soft` failures ARE reds — there is no "green except for a soft
+    failure" (verified in-venv 2026-08-22, ELITEA-2421/PR #1654).** pytest-playwright
+    0.8.0 wraps every test in `playwright._impl._assertions._soft_scope()`, collects
+    each soft-assertion error and re-raises it (`ExceptionGroup` if >1) at the end of
+    `pytest_runtest_call` (`pytest_playwright.py:45,101-119`) — **pytest outcome
+    FAILED**. So a spec carrying one `expect.soft()` + `# Known defect: #N` **is**
+    sanctioned-RED and owes a closure-record entry; its case stays `blocked-on-#N`,
+    never `automated`. Any AFS / Run Report sentence claiming otherwise mis-steers
+    this gate. (The soft assert is not masking — it is how the red stays visible.)
   - **Closed-set variant (2026-07-18, ELITEA-1892/#615):** "single-cause" does
     not require literally one defect ID to fire every run. A gate run may
     legitimately show any subset of a **closed, enumerable set** of known
@@ -104,21 +113,18 @@ for critical-path fast tests).
 
 ## Coverage tagging (TMS traceability)
 
-The `automation_test_id` back-written to the TMS case is the **CI correlation key** —
-onetest-tms `correlate_results` matches it against the JUnit `code_ref` (`classname + "." +
-name`). It must be the **dotted, `tests.`-rooted** form:
+The `automation_test_id` back-written to the TMS case is the **CI correlation key**.
+It must be the **dotted, `tests.`-rooted "Form C"**:
 `tests.ui.agents.test_agent_management.TestAgentConfiguration.test_agent_toolkits_section_visible`
-— no `automation.` prefix, no `.py`, no `::` (pytest runs from `automation/`, which has no
-`__init__.py`, so `tests` is the import root). **Both** the file-path node-id form
-(`automation/…​.py::Class::method`) **and** the `automation.`-prefixed dotted form fail
-correlation silently — they surface as 🟥 gaps in `automation_coverage`, never a match.
-The mechanical derivation, a self-check one-liner, and the "rebuild `index.json`" caveat live
-in `.agents/test-automation.yaml` § `backwrite_on_done` (canon set by ELITEA-1794 / issue #598,
-2026-07-23). The field is a **list of 1..N** such refs — a bare scalar is a 1-item list, and a
-case may list several (e.g. ELITEA-1050 lists 3); `correlate_results` links the case if **any**
-listed ref matches. One test may also cover several cases (the same ref under multiple case ids).
-Non-pytest surfaces (e.g. Xray cases under `tests/alita-sdk/`) carry a runner-native key like
-`XR04`, not a pytest path — Form C is specifically the pytest `code_ref` shape.
+— no `automation.` prefix, no `.py`, no `::`. **Both** other forms fail correlation
+**silently** (🟥 gap in `automation_coverage`, never an error).
+
+**→ `.agents/test-automation.yaml` § `backwrite_on_done` is the single source** —
+why Form C is the only shape that correlates, the mechanical derivation from a
+node-id, the self-check one-liner against `reports/junit.xml`, the list-of-1..N
+semantics, the non-pytest (Xray) exception, and the "rebuild `index.json`" caveat.
+Canon set by ELITEA-1794 / issue #598, 2026-07-23. **Back-writing is the
+orchestrator's job** — implementers and analysts never write this field.
 
 ## Locator policy (AUTHORITATIVE — overrides any skill's example ladder)
 
@@ -276,6 +282,105 @@ outlaws state-value-switched testids on the same live element.)
   shows non-testid workarounds, prefer adding the testid; the workaround is only
   for elements that fail the stop+flag test).
 
+## Fidelity policy — the observable must be produced by the system (AUTHORITATIVE)
+
+_Companion to § Locator policy. That section governs **how** a test finds a thing;
+this one governs **whether what it observes is real**. Like the locator policy, it
+OVERRIDES any skill's defaults or examples. Seeded 2026-08-14 after the
+response-mocking drift audit — full incident report in the bundle repo:
+`sdlc-skills/bundles/test-automation/incidents/2026-08-14-response-mocking-drift.md`._
+
+**The rule.** An assertion is evidence only if the value it reads was **produced by
+the system under test**, reached through the same path a real consumer would
+trigger. Anything the test authors, injects, forces, or short-circuits between the
+trigger and the observable is a **substitution**.
+
+Substitutions are not exotic and the list is open-ended. Known shapes:
+
+| Shape | Example |
+|---|---|
+| Fabricated response | `page.route(...)` + `route.fulfill()` returning a hand-written body |
+| Injected / forced app state | `page.evaluate()` writing a store or DOM value the product should compute |
+| Wrong-interface precondition | seeding via API what the case says the user creates in the UI |
+| Replaced module or client | `monkeypatch`, stubbed API client, fake transport |
+| Bypassed subject | reusing `auth_state` in a case whose subject IS the login flow |
+
+**The two-tier test — travel vs conclude.** Same principle as the team's *"Reuse to
+travel and to know — never to conclude"*, applied to substitution:
+
+- **Transit substitution** — used ONLY to *reach* the step under test; the case's own
+  observable is still produced by the system. **Allowed**, and must be declared: an
+  AFS **§ Fidelity Declaration** row plus one docstring line naming what was
+  substituted and why.
+- **Terminal substitution** — the case's observable is read off the substituted
+  thing. **Forbidden**, however well justified, unless the case text itself asks
+  (below). A test in this shape proves the test's own payload, not the product.
+
+**The one unconditional exception: the case asks.** When the TMS case text requests
+simulation — *"trigger or simulate a generation failure"*, *"simulate a network
+interruption"*, *"with the service unavailable"* — simulation **is** the subject and
+terminal substitution is correct. Quote the case line in the AFS and the docstring.
+Absent such a line, the case did not ask, and no amount of reasoning supplies it.
+
+**Timing control is NOT substitution.** Delaying a *real* response via `page.route()`
+so a transient state (spinner, skeleton, progress) becomes observable leaves the
+product as the producer of every asserted value. Legitimate, and in active honest use
+(`tests/ui/artifacts/test_artifacts_download_*_zip.py`). This section is not a ban on
+`page.route` — it is a ban on **fabricating what the case came to observe**.
+
+**When the observable cannot be produced honestly, that is a decision, not a puzzle.**
+If the case's expected state cannot be reached against the real system (the product
+never emits it, the data cannot be built, the boundary is unreachable), do NOT
+engineer around it. Stop and route it: AFS `blocked` with § Blocked Steps naming
+exactly what could not be produced → lead → a `question` card for a human. A case
+that cannot be automated faithfully is a decision about scope or about the case
+text — never an implementation detail the analyst or implementer settles alone.
+
+### How to test a NONDETERMINISTIC producer without substituting it
+
+The usual argument for a fabricated response is *"the producer is nondeterministic
+(an LLM, a ranking service, a clock), so I cannot know the values to assert."* That is
+a false dilemma — it skips the third option:
+
+> **Capture the real response and assert the UI against it. The response is the
+> oracle, not a payload you wrote.**
+
+The assertion is then fully deterministic (always satisfiable) while every value still
+comes from the product. The helpers already exist:
+
+```python
+# pages/generate_entity_modal_page_base.py — live, not mocked
+response = modal.click_generate_and_wait_for_response(timeout=LIVE_GENERATE_RESPONSE_TIMEOUT)
+assert response.status == 200
+body = response.json()
+assert body["name"]                                  # the producer produced something
+assert modal.get_review_name() == body["name"]       # the UI carried it through faithfully
+```
+
+Worked precedent in-repo: ELITEA-1909/1911 in `tests/ui/agents/test_agent_build_with_ai.py`
+already run this way, in the same file as the mocked ones.
+
+The three moves this unlocks:
+
+| Instead of | Assert |
+|---|---|
+| `field == HAND_WRITTEN_PAYLOAD["field"]` (a tautology) | `field == response_body["field"]` — a real check that the UI neither dropped nor mangled the data |
+| a fabricated boundary the product never emits | the **invariant**: `rendered_count == len(body["items"])` **and** `rendered_count <= LIMIT` — this catches a real violation in the wild, which a mocked boundary never can |
+| exact strings you chose | shape and constraints: non-empty, within limits, correct types, correct correlation |
+
+**Cost, stated honestly:** a live call costs seconds (10–30 s here) where a mock costs
+milliseconds, and that is real pressure against the N×-green gate below. Accept it —
+wait on the network event, never on a sleep, and flake risk stays low. If a producer
+is so slow or unstable that the honest test is unusable, that is a finding to route
+(`blocked` → lead), not a licence to fabricate.
+
+**Why this is load-bearing.** A substituted test is *more* deterministic than an
+honest one, so it clears the N×-green merge gate more easily (§ Merge gate) —
+selection pressure runs **toward** substitution unless a rule pushes back. And on
+merge it back-writes `execution_type: automated` to the TMS, so the coverage number
+claims a scenario nobody verified. Both failure modes are silent; neither shows up
+as a red test.
+
 ## Test data strategy
 
 - Config/env via `automation/config.py` (pydantic-settings): `.env.test` file BEATS
@@ -350,3 +455,274 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   escalate to a fix-only implementer dispatch only once a pattern is established.
 - API-test conventions are thinner than UI (`.claude/rules/api-tests.md` exists —
   follow it; flag gaps to the lead).
+- Known-noise entry (2026-08-15, chat-remaining wave-02, PR #1518): the workflow's
+  internal gate hit one non-reproducing console-error failure —
+  `test_rename_conversation_paste_beyond_max_length_truncates` (ELITEA-2104) saw a
+  `500 Internal Server Error` on an unrelated resource (not the rename PUT itself,
+  which asserted 200 separately and passed) on 1 of 2 internal-gate runs. Investigated
+  before accepting: the single test ran clean standalone 4×, then the lead's own
+  independent full 6-node-id gate ran clean 3× — 7 consecutive clean runs after the
+  one occurrence. Classified as transient environmental noise, same class as the
+  Montserrat-font-404 and ArtifactsPage entries above — record further occurrences
+  here if this specific 500 repeats on this spec.
+- Known-noise entry (2026-08-15, chat-remaining wave-04, PR #1528): 1 of 5 gate
+  runs over the full 4-spec set hit an extra failure on
+  `test_search_filters_and_modules_panel_toggles` (a pre-existing, unrelated spec —
+  `AssertionError: Locator expected to have text 'Modules configuration updated'`)
+  alongside the 2 declared sanctioned-RED specs. Passed clean standalone and in 4 of
+  the 5 full-file runs (including 2 immediately-following re-runs) — a toast-timing
+  race after rapid module-toggle interactions, not reproduced since. Record further
+  occurrences here if it repeats.
+- **Recurring pattern, now confirmed (3 occurrences, chat-remaining campaign,
+  2026-08-15)**: an "unexpected console errors" assertion (`assert not
+  console_messages`) intermittently fails on a `500 Internal Server Error` from a
+  resource **unrelated to the test's own action** — wave-02 (ELITEA-2093 send-button
+  flow), wave-04 (modules-panel toggle flow, `Modules configuration updated` toast),
+  wave-05 (`test_cancel_folder_creation_discards_folder`). Every occurrence: (a) not
+  the request the test itself drives (never the PUT/POST under test), (b) never
+  reproduced on immediate re-run (standalone or full-file), (c) different spec each
+  time — no single flaky test, a shared background-resource blip. Not yet promoted
+  to a project-wide filter (unlike the `secrets 403` exclusion) because the exact
+  resource differs each time and no common URL pattern has been identified — but
+  three independent occurrences in one session is enough to treat this as a known
+  environmental characteristic, not a fluke. **If a 4th occurrence surfaces, capture
+  the failing resource URL** (not just the status code) so a shared filter can be
+  written; until then, the standard response is: re-run once, and if the console-500
+  doesn't reproduce, it's this pattern.
+- Known-noise entry (2026-08-18/19, chat-remaining wave-12, PR #1567/#1568/#1571
+  merged into `tests/batch-chat-remaining-w12`): 1 of 5 lead-independent gate runs
+  over the full 8-node-id set (3 files: `test_chat_agent_starters_add_remove.py`,
+  `test_regenerate_response.py`, `test_streaming_response.py`) hit this pattern on
+  `test_regenerate_only_on_last_and_click_triggers_new_generation` (ELITEA-2184/
+  2185/2187 family) — byte-identical message, still no URL captured. Not reproduced
+  on the immediately following re-run nor the two after that (3 consecutive clean
+  8/8 runs followed). Another occurrence, not a new class; still short of the URL
+  needed to promote this to a shared filter.
+- Known-noise entry (2026-08-15, chat-remaining wave-07, PR pending): 1 of 4
+  gate runs over the full 11-node-id set hit
+  `test_drag_drop_conversation_back_to_general_list` (ELITEA-2145) —
+  `expect(conversation_list_drop_zone).to_have_attribute("data-drop-active",
+  "true")` waited 10s (24 polls) and never saw the hover-highlight flip, timed
+  out on `"false"`. Passed clean standalone and in 3 consecutive full-file
+  re-runs immediately after. Distinct from the console-500 pattern above —
+  this is a drag-and-drop hover-highlight timing race (`@dnd-kit/core`
+  `PointerSensor` recomputing collision on each mousemove step), not a
+  background-resource blip. Consistent with the analyst's own caution flag on
+  this exact scenario ("folder->general-list not pristine-confirmed... due to
+  scroll/virtualization obstacles"). Record further occurrences here if this
+  specific assertion times out again on this spec.
+- **New noise flavor, first occurrence of a 404 variant (2026-08-15,
+  chat-remaining wave-08, PR #1552)**: the lead's own independent gate hit
+  `assert not console_messages` twice across 3 full-set gate attempts (7
+  runs total counting the workflow's own 3 internal + the lead's 4
+  independent) — `test_pin_empty_folder_retains_empty_state` (1st attempt)
+  and `test_unpin_conversation_via_context_menu` (3rd attempt), different
+  tests each time. Both carried the byte-identical message `"Failed to load
+  resource: the server responded with a status of 404 ()"` — same text twice
+  is a first for this class and suggests one specific static resource (a
+  font/icon, plausibly the same family as the Montserrat-font-404 entry
+  above) intermittently 404s, though the console API still doesn't expose a
+  URL to confirm. Neither occurrence reproduced standalone; 3 consecutive
+  clean full-set runs followed the 2nd occurrence before merge. Distinct
+  bucket from the confirmed 500-flavor recurring pattern above (404, not
+  500) — tracking separately per that pattern's own "different status code
+  ⇒ don't fold in blind" caution. If a URL-carrying occurrence surfaces
+  (e.g. via a `requestfailed` listener upgrade), capture it here to convert
+  this from suspected-font-asset to confirmed.
+- **404 variant, now confirmed (3 occurrences, chat-remaining wave-08/09,
+  2026-08-15)**: 3rd occurrence hit the SAME test as the wave-08 1st
+  occurrence — `test_pin_empty_folder_retains_empty_state` again, byte-identical
+  message, on the lead's 1st independent full-set gate attempt for wave-09 (11
+  node-ids, unchanged test — wave-09 added new classes to the same two files but
+  did not touch this test). Not reproduced standalone (15.86s clean); 3
+  consecutive clean 11/11 full-set runs followed before merge. Two-of-three
+  hits on the same test id strengthens the suspected-static-asset theory (a
+  resource this specific test's flow requests more consistently than others) —
+  still short of a captured URL. Record a 4th occurrence's URL if one surfaces
+  to convert from suspected to confirmed and enable a shared filter.
+- **Session-level heavy-load noise, chat-remaining wave-10 (2026-08-15)**: the
+  lead's own independent gate for wave-10 (participants management, new
+  surface) hit 3 DISTINCT conversation-timing flakes across 2 full-set gate
+  attempts, spanning both a pre-existing test (ELITEA-2167, unrelated to
+  wave-10's own diff) and one of wave-10's own new tests (ELITEA-2174) —
+  variously: `is_participants_badge_visible` true on a landed-stale
+  conversation (root-caused and properly fixed → linked to open #1082, see
+  wave-10's landed entry below), a badge-count mismatch after Cancel, an
+  add-users-dropdown search timeout (root-caused live: correctly excludes an
+  already-participant user off a stale landed conversation, same #1082
+  mechanism, fixed by swapping to the stronger
+  `_open_genuinely_blank_conversation()` guard), and finally that SAME
+  stronger guard itself exhausting its 3-attempt retry budget once. Every
+  occurrence not reproduced standalone. This session had ~6+ continuous hours
+  of heavy automated chat/participant churn (10 waves) against the shared DEV
+  backend by the time these hit — consistent with genuine session-level
+  backend strain rather than a code defect at each individual site. Distinct
+  from the per-test noise patterns above: this is a signal to watch backend
+  load/timing across an extended campaign session, not a single spec's flake.
+  Record further occurrences (and whether they correlate with session
+  duration) here.
+- **Sanctioned-RED, new spec signature (chat-remaining wave-11, 2026-08-16)**:
+  `test_team_users_mention_and_remove_participants.py::TestTeamUsersMentionAndRemoveParticipants::test_team_users_mention_and_remove_participants`
+  (ELITEA-2168, pre-existing, extended by wave-11's ELITEA-2193) now carries a
+  deterministic, single-cause, soft-asserted failure linked to already-open
+  #1119 ("All users" click doesn't insert "@Everyone "). Confirmed 3/3 across
+  the lead's own independent gate runs immediately after landing wave-11's
+  fixes (runs 1, 3, 4 of a 5-run investigation — see below). Merges RED going
+  forward on this signature per § Merge gate's sanctioned-RED exception; the
+  `# Known defect: #1119` comment + soft-assert are already in place in the
+  test. `test_public_conversation_green_icon.py` (ELITEA-2188, same gate run)
+  passed clean every single time.
+- **Known-noise entry (chat-remaining wave-11, 2026-08-16)**: 1 of 5 gate
+  attempts on the same pair above hit the already-confirmed recurring
+  console-500 pattern (unrelated-resource `Failed to load resource: ... 500`)
+  instead of the #1119 signature — non-reproducing on the immediately
+  following re-run (which returned to the #1119 signature). Consistent with
+  the existing recurring-pattern entry above; recorded as another occurrence,
+  not a new class.
+- **#1082 now 100% reproducible on `test_team_users_mention_and_remove_participants.py`
+  (ELITEA-2168's own file), chat-remaining wave-11, ELITEA-2193 implementation
+  (2026-08-15)**: 3 consecutive full-invocation runs (each also exhausting
+  pytest-rerunfailures' own 2 auto-reruns, so 9 total attempts) ALL failed
+  identically in Setup — `_open_blank_conversation()`'s 3-attempt retry never
+  escapes the same two stale, non-blank leftover conversations (`/chat/566`
+  "HI Chat", 5 participants; `/chat/564` "HI Chat", 3 participants — both
+  pre-dating this session, referenced by this wave's own AFS files as the
+  live-analysis targets) — `+Chat` keeps landing back on one of them rather
+  than a genuinely blank composer, so either the Setup's own
+  `initial_count == 0` assertion fails outright, or (once that happens to
+  read 0 message groups) the subsequent `search_and_select_add_user_verified`
+  step times out because the seed user is correctly *excluded* as an
+  already-existing participant of the stale conversation it actually landed
+  on. Root cause and fix pattern are already known — wave-10's entry above
+  links the SAME `#1082` mechanism to a **stronger guard**,
+  `_open_genuinely_blank_conversation()`, already implemented as a suite-local
+  helper in `test_invite_users_add_cancel_close.py` (ELITEA-2167's file) —
+  this file (`test_team_users_mention_and_remove_participants.py`, ELITEA-2168)
+  still has the weaker original guard and was not itself in scope for
+  ELITEA-2193 (a 2-assertion `extend-existing` on this file's Steps 8-9, not a
+  Setup fix — `_open_blank_conversation()` has 4 callers, out of scope to
+  modify under this ticket). ELITEA-2193's own 2 new assertions (tooltip
+  accessible name + warning-icon fill) were independently verified GREEN via
+  an isolated throwaway script driving the SAME live conversation `/chat/566`
+  directly (bypassing Setup) — both passed cleanly first try. Whoever next
+  touches this file's Setup should port the `_open_genuinely_blank_conversation()`
+  pattern from ELITEA-2167's file; until then, expect this spec's gate runs to
+  need a moment when `/chat/566`/`/chat/564` are the most-recently-touched
+  conversations in project 471.
+- **Known-noise entry (2026-08-22, support-assistant wave-02, PR pending)**: the
+  lead's blast-radius run of `test_support_assistant_smoke.py` + the four wave-01
+  support-assistant specs **in one invocation** failed twice on the wave-02 trunk —
+  `test_empty_message_cannot_be_sent` (send button never found: the widget did not
+  open at all) and `test_history_loads_correctly_after_page_refresh`
+  (`to_have_count(12)` saw 13). Investigated before accepting, three controls:
+  (a) the same four wave-01 specs **alone** on the wave-02 trunk → 4/4 PASS;
+  (b) the identical combined set on `automation/base` (no wave-02 code) → 11/11 PASS;
+  (c) the identical combined set repeated on the wave-02 trunk → **11/11 PASS**.
+  So it is neither a wave-02 regression nor a code defect — it is the shared-test-user
+  conversation-pollution class already documented above (`#1082`): every
+  support-assistant spec sends real messages as the same user and none tear down, so a
+  long invocation's later specs read message/history counts that earlier specs moved.
+  Both failing assertions are count-deltas or open-widget-restores against that shared
+  history. This session had ~8h of continuous chat/support-assistant churn behind it.
+  **The durable fix is the rotating/clean test identity noted in the suite-health
+  pointer above, not another guard.** Record further occurrences here.
+- **Suite-health pointer (2026-08-20, not yet actioned):** `#1082`'s root
+  cause is that every chat test shares ONE test-user account, whose
+  conversation history just keeps accumulating across runs — the actual fix
+  is a clean/rotating identity per test, not another guard on top of
+  `_open_blank_conversation()`. PR #1577 (bucket-permissions API tests,
+  OPEN, unrelated feature) independently built exactly the reusable
+  infrastructure shape this would need: a config-driven secondary test user
+  (`TEST_USER_B_EMAIL`/`PASSWORD`), its own `auth_state_user_b` session
+  fixture, and per-user API client fixtures. Worth lifting that pattern
+  (not the PR itself — different purpose) into a chat-dedicated
+  rotating-user fixture the next time `#1082` gets prioritized, instead of
+  re-deriving the same shape from scratch.
+- **Known-noise entry (2026-08-24, mcp wave-01, PR #1722)**: 1 of 4 lead-independent gate
+  runs over the 7-spec MCP set hit an extra failure on
+  `test_mcp_create_validation.py::…[ELITEA-1923]` — `Locator.wait_for: Timeout 10000ms`
+  waiting for `get_by_test_id("toolkit-type-card-mcp")` to be visible on the MCP **type
+  picker** page (`/mcps/create`), i.e. the picker never rendered its cards. Exhausted the
+  spec's reruns within that invocation, then did NOT reproduce in the 3 consecutive full-set
+  runs that followed (each: 7 passed + only the sanctioned-RED ELITEA-1924/#633 failure).
+  It was the first run after a long idle period, consistent with a cold dev-server/route-chunk
+  load rather than a code defect. Distinct from the console-500/404 background-resource
+  patterns above — this is a route-level render lag on a *navigation* step. Record further
+  occurrences here; if it repeats, the fix is an explicit page-ready wait in
+  `McpFormPage`'s type-picker navigation, not a longer timeout.
+- **Known-noise entry, NEW SYMPTOM CLASS — `tests/ui/onboarding/` flakes with a *different*
+  symptom nearly every run (2026-08-24, onboarding wave-02, issue #1397)**: during a
+  docstring-only fix-round on the wave-02 trunk, a test-automation-engineer ran the 5-spec
+  onboarding suite 4× back-to-back and saw **2 reds**, each with an unrelated symptom —
+  run 1: provisioning poll-count assertion `1 >= 2` **plus** a `TargetClosedError` on
+  `test_onboarding_tips_card`; run 3: `test_onboarding_jump_in` `Locator expected to be
+  visible` **plus** a `JSONDecodeError` in provisioning; runs 2 and 4 clean. Crucially, its
+  **pristine-HEAD control run also needed an auto-rerun**, so the reds were not caused by
+  the diff (which changed only four `AFS:` docstring lines and cannot reach runtime).
+  **Weighed against the reds: 9 consecutive clean 5/5 runs** — the workflow's own gate 3/3
+  (53.05/53.00/51.15 s), the lead's independent pre-merge gate 3/3
+  (59.70/58.50/56.31 s), and the lead's re-gate on the exact merge candidate 3/3
+  (57.52/66.13/63.07 s), all with `reruns.json == {}`. Merged on that evidence.
+  What makes this its own bucket rather than one of the entries above: the *symptom class
+  itself* rotates (browser-level `TargetClosedError`, transport-level `JSONDecodeError`,
+  app-level locator timeouts, assertion-level poll counts) instead of one signature
+  recurring — the profile of environment/backend strain under sustained churn, the same
+  family as the `#1082` shared-test-user and session-level heavy-load entries above, not a
+  defect in any one spec. This session had ~4 h of continuous onboarding churn behind it,
+  and every onboarding spec drives real first-login/provisioning state as the same shared
+  test user with no teardown.
+  **Do not bisect an onboarding red against a code change without a pristine-HEAD control
+  run first** — that control is what converted this from "the diff broke it" to "the suite
+  is noisy", and it costs one invocation.
+  Record further occurrences here. If it keeps costing gate time, the durable fix is the
+  rotating/clean test identity named in the § Suite-health pointer above, not a per-spec
+  guard.
+- **400 flavor of the console-noise class, and the URL-capture gap now closed
+  (2026-08-24, onboarding-w4, ELITEA-2234)**: a STANDALONE post-gate invocation of
+  `test_sidebar_notification_badge.py::TestSidebarNotificationBadge::test_bell_shows_red_badge_and_notifications_popover`
+  failed its final "Axis 2 — No console errors" step on **two** unrelated
+  `Failed to load resource: the server responded with a status of 400 (Bad Request)`
+  messages. Same family as the 500 and 404 flavors above: not the requests the test
+  itself drives, non-reproducing (a live MCP walk of the same path returned 200 on
+  every request — `support_assistant/*`, `configurations/models/*`, `budget_warning`,
+  `folder`, `notifications`), and the failure screenshot shows that attempt had landed
+  on a RESTORED conversation in the chat pane rather than the blank composer every
+  passing run gets — i.e. the 400s came from the chat-page restore path the spec merely
+  passes THROUGH. `pytest.ini`'s `--reruns=2` then passed on rerun, so the junit trail
+  records PASS and the signature is invisible there — **the allure result is the only
+  place it exists**; when chasing this class, read `reports/allure-results/*-result.json`,
+  not the junit archive.
+  **The standing ask of this ledger ("capture the failing resource URL") is now
+  implemented**: `automation/utils/console_errors.py` (`collect_console_errors(page)` /
+  `format_console_message(msg)`) renders every console error as
+  `"<type>: <text> @ <url>"`, reading the failing resource's URL from
+  `ConsoleMessage.location` — where the browser actually puts it, since the message TEXT
+  carries only the status code. It is **capture-only**; filtering a known defect stays
+  each spec's own explicit `# Known defect: #N` decision. ELITEA-2234's spec is migrated
+  to it; the other ~230 specs still hand-roll the URL-less
+  `page.on("console", lambda msg: errors.append(f"{msg.type}: {msg.text}"))` shape and
+  should be migrated opportunistically whenever one is touched — the next occurrence on
+  a migrated spec finally names the resource, which is what a shared filter needs.
+  Pinned by `tests/unit/test_console_error_capture_includes_url.py`. Do NOT widen the
+  #1753 filter (or any filter) to swallow 400s — that is masking, not noise handling.
+- **500 flavor — the URL is finally captured (2026-08-26, settings-w03, ELITEA-2275 fix
+  round 1)**: the long-standing ask of the recurring console-500 entry above ("capture the
+  failing resource URL, not just the status code, so a shared filter can be written") is
+  now answered. `test_project_context_save_discard_dirty_state.py` (ELITEA-2275) failed its
+  "no console errors" step on attempt 1 of a post-fix run, and because that spec is migrated
+  to `utils/console_errors.collect_console_errors()` the message carried the resource:
+  `error: Failed to load resource: the server responded with a status of 500 (Internal
+  Server Error) @ http://localhost:5173/socket.io/?EIO=4&transport=polling`.
+  **It is the Socket.IO polling handshake** — a background transport the app opens on every
+  page, unrelated to any test's own action, which is exactly the profile every occurrence of
+  this class has had (never the PUT/POST under test, never reproducing, a different spec each
+  time). pytest-rerunfailures passed it on the immediate rerun, and a fresh standalone
+  invocation ran clean in 9.06 s with `reruns.json == {}`.
+  This is one occurrence, so it does NOT yet license a filter — but it is the first
+  URL-bearing datapoint, and it names a concrete candidate (`/socket.io/` polling) for the
+  shared filter the earlier entries could not write. **Next occurrence: check whether its URL
+  is also `/socket.io/`.** Two matching URLs is enough to filter that ONE endpoint (never the
+  status code, never a blanket 500 rule — that would be masking). The migration ask stands:
+  a spec still hand-rolling the URL-less `page.on("console", …)` shape should be moved to
+  `collect_console_errors()` whenever it is touched, since only migrated specs can produce
+  this evidence.

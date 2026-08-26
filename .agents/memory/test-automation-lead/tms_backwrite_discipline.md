@@ -28,6 +28,15 @@ type: feedback
    script's exact format (`indent=2, ensure_ascii=False`, trailing newline), and
    confirm `git diff --numstat index.json` is small. A brand-new case not yet indexed
    does need a rebuild — then flag the drift separately, don't bundle it.
+4b. **There are TWO indexes — mirror the back-write into both.** The TMS repo root
+   carries `index.json` (all ~2,809 cases) **and** `index_automated.json` (~730, the
+   automated subset). `index_automated.json` is rebuilt out-of-band by someone else:
+   on 2026-08-24 a `chore: rebuild index_automated.json` commit landed *between* two
+   of my back-writes in the same session, so it carried waves 1-2 but not wave 3 —
+   a push rejection was the only reason I noticed it exists. Apply the identical
+   surgical, `path`-matched edit to both files in the same commit. Same format check:
+   both round-trip exactly at `indent=2, ensure_ascii=False` + trailing newline.
+   Verify with `git diff --numstat` — expect ~5 lines per case per file.
 5. **Never commit an `index.json` diff without auditing its removals**, whether you
    generated it or found it in the tree:
    `git diff index.json | grep '^-' | grep -oP '"id": "\K[^"]+' | sort -u`, then

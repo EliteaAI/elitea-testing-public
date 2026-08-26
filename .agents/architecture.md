@@ -66,21 +66,16 @@ and why testid creation is a mandatory step of every case, not an optimization.
 
 ## Why the integration-branch design exists
 
-Locators are testids in EliteaUI JSX → `EliteaAI/EliteaUI` `main` is owned by the
-**product UI team** and their review takes days → deployed envs lag behind on testids
-→ `LocatorDescriptor` has no fallback, so a test bound to an unreviewed testid fails
-hard. So **`automation/testids` is a permanent integration branch on the org repo**
-that accumulates every testid the team ever wrote — merged *and* still-in-review — and
-the local dev server runs it. No agent ever waits on the UI team.
+In one line: EliteaUI `main` is owned by the product UI team (review takes days),
+`LocatorDescriptor` has no fallback, so **`automation/testids` is a permanent
+integration branch accumulating every testid the team ever wrote** — the dev server
+runs it, and no agent ever waits on review latency.
 
-Each testid's commits land directly on `automation/testids` (so agents are unblocked
-instantly) and are **pushed** — that is the agent's terminal step. Promotion to `main`
-is a **human** cherry-pick from `automation/testids`, done out of band; agents open no
-`main` PR (per-case draft-PR flow suspended 2026-07-16 — see `.agents/_reverted/`).
-Tests, meanwhile, accumulate on `automation/base` and reach `main` in periodic
-**batches**, gated on their testids being on `main` and deployed first.
+**→ `.agents/workflow.md` § The core problem this workflow solves / § Testid flow**
+is the single source for the mechanism (commit + push, terminal there; human
+cherry-picks to `main`; per-case draft PRs suspended 2026-07-16).
 
-**Why tests are batched but testids aren't:** testids are leaf additions that don't
-compose; test code is a layered shared substrate (page objects, fixtures, `conftest`),
-so a test branch must be cut from `automation/base` to see prior unpromoted work — and
-review already happens on the `automation/base` PR. Full procedure: `.agents/workflow.md`.
+What lives *only* here — **why tests are batched but testids aren't:** testids are
+leaf additions that don't compose; test code is a layered shared substrate (page
+objects, fixtures, `conftest`), so a test branch must be cut from `automation/base`
+to see prior unpromoted work — and review already happens on the `automation/base` PR.

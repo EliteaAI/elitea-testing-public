@@ -31,7 +31,7 @@ from pages.credential_create_page import CredentialCreatePage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.credentials, pytest.mark.p0, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.credentials, pytest.mark.p0, pytest.mark.regression, pytest.mark.new_verified]
 
 DISPLAY_NAME = "autotest_reqfields_cred2"
 BASE_URL_VALUE = "https://autotest2.atlassian.net"

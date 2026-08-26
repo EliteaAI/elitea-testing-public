@@ -78,10 +78,16 @@ class SkillsListPage(BasePage):
     # severity-scoped toast_alert (see ``get_toast_text()``).
     TOAST_MESSAGE_SELECTOR = '[data-testid="toast-message"]'
 
-    toast_dismiss_button = LocatorDescriptor(
-        testid="toast-dismiss-button",
-        description="Close (X) icon button on the app-wide toast Alert."
-    )
+    # NOTE: no `toast_dismiss_button` field here (removed ELITEA-2428 round 2
+    # fix). It was added in ELITEA-2438 mirroring `ChatPage.toast_dismiss_
+    # button`, but — unlike ChatPage, which wires it via `dismiss_toast_
+    # alert()` — no method or test on THIS page ever called it; it was
+    # genuinely dead code, only masked because a since-fixed reference-
+    # scoping bug in `test_skills_list_page_locator_inventory.py` credited
+    # `ChatPage`'s own `self.toast_dismiss_button.click()` as a (false)
+    # reference for this page's field. Re-add it only alongside a real
+    # dismiss method/caller on SkillsListPage — same rule as
+    # `entity_card_icon` / `table_view_button` above.
 
     search_input = LocatorDescriptor(
         testid="agent-search-input",
@@ -124,11 +130,88 @@ class SkillsListPage(BasePage):
         )
     )
 
+    # ELITEA-2428 — card-view toggle button. Shared ViewToggle.jsx component
+    # hardcodes 'agent-*' as its default prop values and Skills.jsx renders
+    # <ViewToggle /> with no override, so the Skills page's toggle literally
+    # carries this agent-prefixed testid (confirmed live + via source,
+    # ViewToggle.jsx lines 14-15 / Skills.jsx:70 — functionally correct on
+    # this page, not a defect; do not rename). Mirrors
+    # AgentsListPage.card_view_button minus the legacy `fallback=` param
+    # (forbidden in new code). NOTE: the companion `table_view_button` field
+    # is intentionally NOT added here — this case never switches to table
+    # view, and a field this test never calls would be unreferenced dead
+    # code per the "referenced = called on the test's actual code path"
+    # ruling (fix round 2 — round 1's own regression guard had a scoping bug
+    # that let an earlier version of this field ship unreferenced; see
+    # test_skills_list_page_locator_inventory.py). A future case that
+    # exercises table view adds it then.
+    card_view_button = LocatorDescriptor(
+        testid="agent-card-view-button",
+        description="Switch to card view (Skills page reuses the shared "
+                     "ViewToggle.jsx default testid)"
+    )
+
+    # ELITEA-2428 — card icon (shared Card.jsx/EntityIcon; pre-existing on
+    # `automation/testids` only, from ELITEA-1899 — awaiting human
+    # cherry-pick to `main`; see the AFS's Concrete Handles PROVENANCE
+    # note). NOTE: a freshly created skill has no custom icon set, so
+    # EntityIcon.jsx renders the generic `EntityTypeIcon` SVG glyph inside
+    # this container, NOT the `entity-card-icon-img` <img> (that inner
+    # testid only renders when `icon.url` is set — confirmed live this
+    # run; AFS amended accordingly). Only the outer container testid is
+    # wired here since this case's test data is always icon-less; a future
+    # case asserting a CUSTOM icon's src would add the img field then.
+    #
+    # Scoped sub-selector ONLY — no unscoped page-wide LocatorDescriptor
+    # field for this testid. `entity-card-icon` repeats once per visible
+    # card, so the only thing that's ever exercised is a *specific* card's
+    # icon via ``card_icon_locator()`` below (mirrors ``CARD_TAG_CHIP``'s
+    # pattern of a class-level testid constant used inside a
+    # `card.locator(...)` scope); an unscoped field would resolve to the
+    # first card page-wide and go unreferenced (reviewer finding, ELITEA-2428
+    # round 1 — see AgentsListPage.entity_card_icon for the same dead-code
+    # shape, pre-existing tech debt, not replicated here).
+    CARD_ICON_SELECTOR = '[data-testid="entity-card-icon"]'
+
+    # Card's custom-icon `<img>` (inner, shared `Card.jsx`/`EntityIcon`
+    # testid — pre-existing since ELITEA-1899, already flagged as a
+    # page-object gap by ELITEA-2428's own AFS/Automation Hints). Only
+    # renders when the skill has a custom icon set (`icon.url` truthy) —
+    # its presence/absence IS the "custom vs default" signal, distinct from
+    # `entity-card-icon` (the outer container, present unconditionally for
+    # both the `<img>` and the generic `EntityTypeIcon` SVG glyph cases).
+    # Wired here for ELITEA-2605, which is the first case asserting a
+    # CUSTOM icon's src rather than just the container's presence. Scoped
+    # sub-selector only — see :meth:`card_icon_img_locator`.
+    CARD_ICON_IMG_SELECTOR = '[data-testid="entity-card-icon-img"]'
+
+    # ELITEA-2428 — card hover-tooltip description text. Added via
+    # add-data-testid to Card.jsx's descriptionTooltip Typography node
+    # (see AFS Concrete Handles). Only the description node is testid'd
+    # (the sibling title/name Typography is not, per the "referenced =
+    # called on the test's actual code path" ruling — this case only
+    # asserts description).
+    card_description_tooltip = LocatorDescriptor(
+        testid="entity-card-description-tooltip",
+        description="Card hover-tooltip's description text (MUI Popper "
+                     "content, rendered only while the card name is hovered)",
+    )
+
     tags_panel_clear_all = LocatorDescriptor(
         testid="tags-panel-clear-all",
         description=(
             "\"Clear all\" button in the page-header Tags filter panel "
             "(Categories.jsx) — only rendered while a tag filter is active."
+        )
+    )
+
+    tags_panel_empty_state = LocatorDescriptor(
+        testid="tags-panel-empty-state",
+        description=(
+            "Page-header Tags filter panel's empty-state message "
+            "(Categories.jsx, `No {title} to display.`) — rendered instead "
+            "of any chip once the project has zero tags to show. Added "
+            "ELITEA-2433 (was previously untestid'd prose)."
         )
     )
 
@@ -139,6 +222,13 @@ class SkillsListPage(BasePage):
     # Scoped sub-selector — a skill card's own (non-overflow) tag chip.
     # See ``get_card_tags()``.
     CARD_TAG_CHIP = '[data-testid="entity-card-tag-chip"]'
+
+    # Scoped sub-selector — a skill card's "+N" tag-overflow badge (rendered
+    # instead of further chips once the card holds more tags than
+    # ``CardTagSection.jsx``'s ``MAX_NUMBER_TAGS_SHOWN`` (2) — ELITEA-2434
+    # exploration finding: a skill with >2 tags never renders every tag as
+    # its own chip). See ``get_card_tag_overflow_text()``.
+    CARD_TAG_OVERFLOW = '[data-testid="entity-card-tag-overflow"]'
 
     # Dynamic (runtime-parameterized) testid template — a skill card's own
     # "Pin to top"/"Unpin from top" icon button (shared PinButton.jsx
@@ -192,9 +282,39 @@ class SkillsListPage(BasePage):
         self.dismiss_banner_if_present()
         logger.info("Skills list page loaded")
 
+    def verify_dashboard_header_visible(self):
+        """Verify the Skills header is visible.
+
+        Mirrors ``AgentsListPage.verify_dashboard_header_visible()``.
+        Uses global timeout (10s) configured in conftest.py.
+        """
+        self.page_header.wait_for(state="visible")
+        logger.info("Verified dashboard header is visible")
+
     # ------------------------------------------------------------------
     # List queries
     # ------------------------------------------------------------------
+
+    def get_skill_card_names(self, timeout: int = 5000) -> list[str]:
+        """Return names of all skill cards visible on the dashboard.
+
+        Mirrors ``AgentsListPage.get_agent_card_names()``.
+
+        Returns:
+            List of skill name strings.
+        """
+        self.wait_for_network(timeout=timeout)
+        cards = self.skill_card_name
+
+        try:
+            cards.first.wait_for(state="visible", timeout=timeout)
+        except PlaywrightTimeoutError:
+            return []
+
+        names = []
+        for i in range(cards.count()):
+            names.append(cards.nth(i).text_content().strip())
+        return names
 
     def skill_exists_in_list(self, name: str) -> bool:
         """Return True if a skill with the given name is currently visible.
@@ -264,6 +384,93 @@ class SkillsListPage(BasePage):
             (tag_labels.nth(i).text_content() or "").strip()
             for i in range(tag_labels.count())
         ]
+
+    def get_card_tag_overflow_text(self, skill_name: str) -> str:
+        """Return a specific skill card's "+N" tag-overflow badge text.
+
+        LOCATOR: :attr:`CARD_TAG_OVERFLOW`, scoped to the card the same way
+        as :meth:`get_card_tags`. ``CardTagSection.jsx`` only ever renders
+        the first ``MAX_NUMBER_TAGS_SHOWN`` (2) tags as individual chips —
+        a skill with more tags than that shows this overflow badge instead
+        of a 3rd/4th chip (confirmed live/source-side, ELITEA-2434).
+
+        Args:
+            skill_name: The skill's exact name shown on its card
+                (case-insensitive substring match, consistent with
+                :meth:`skill_exists_in_list`).
+
+        Returns:
+            The overflow badge's text (e.g. ``"+2"``), or ``""`` if the
+            card isn't found or has no overflow badge (≤2 tags).
+        """
+        card_name = self.skill_card_name.filter(
+            has_text=re.compile(re.escape(skill_name), re.IGNORECASE)
+        ).first
+        if card_name.count() == 0:
+            return ""
+        card = self.skill_card.filter(has=card_name).first
+        overflow = card.locator(self.CARD_TAG_OVERFLOW)
+        if overflow.count() == 0:
+            return ""
+        return (overflow.first.text_content() or "").strip()
+
+    def card_icon_locator(self, name: str) -> Locator:
+        """Return the ``entity-card-icon`` element for a specific skill's card.
+
+        LOCATOR: scopes ``skill_card`` by visible name text, then reads the
+        card's own ``entity-card-icon`` container testid — the case only
+        requires the icon glyph to be present (see AFS Concrete Handles: "a
+        generic skill glyph, visually present on every card regardless of
+        whether the skill has a custom icon set"), which this container
+        renders for both the custom-icon (``<img>``) and generic-glyph
+        (``EntityTypeIcon`` SVG) cases alike.
+
+        Args:
+            name: Exact skill name to match the card by.
+
+        Returns:
+            The ``Locator`` for that card's icon container.
+        """
+        card = self.skill_card.filter(has_text=name).first
+        return card.locator(self.CARD_ICON_SELECTOR)
+
+    def card_icon_img_locator(self, name: str) -> Locator:
+        """Return the ``entity-card-icon-img`` inner `<img>` for a specific
+        skill's card — present ONLY when the skill has a custom icon set.
+
+        LOCATOR: scopes ``skill_card`` by visible name text (same idiom as
+        :meth:`card_icon_locator`), then reads the card's inner
+        ``entity-card-icon-img`` testid (:attr:`CARD_ICON_IMG_SELECTOR`).
+        Unlike :meth:`card_icon_locator` (the outer container, present for
+        both custom-icon and default-glyph cards), this element's very
+        presence IS the "has custom icon" signal — absent entirely for a
+        skill with no custom icon (ELITEA-2605 AFS Concrete Handles).
+
+        Args:
+            name: Exact skill name to match the card by.
+
+        Returns:
+            The ``Locator`` for that card's inner icon `<img>` (count() == 0
+            when the skill has no custom icon).
+        """
+        card = self.skill_card.filter(has_text=name).first
+        return card.locator(self.CARD_ICON_IMG_SELECTOR)
+
+    def is_card_view_active(self) -> bool:
+        """Check if card view is currently the active list view.
+
+        Mirrors ``AgentsListPage.is_card_view_active()`` — MUI ToggleButton
+        sets ``aria-pressed="true"`` when active.
+
+        Returns:
+            True if card view is active, False otherwise.
+        """
+        try:
+            pressed = self.card_view_button.get_attribute("aria-pressed")
+            return pressed == "true"
+        except Exception:
+            classes = self.card_view_button.get_attribute("class") or ""
+            return "selected" in classes.lower() or "active" in classes.lower()
 
     # ------------------------------------------------------------------
     # Pin/Unpin (ELITEA-2435)
@@ -576,6 +783,29 @@ class SkillsListPage(BasePage):
         self.wait_for_network(timeout=5000)
         self.page.wait_for_timeout(300)
         logger.info("Tag filter cleared — URL: %s", self.page.url)
+
+    @action("Check Tags filter panel empty state")
+    def is_tags_panel_empty(self, timeout: int = 10000) -> bool:
+        """Return True if the page-header Tags filter panel shows its empty state.
+
+        LOCATOR: :attr:`tags_panel_empty_state` (``tags-panel-empty-state``,
+        ``Categories.jsx``) — rendered instead of any ``tags-panel-chip-*``
+        chip once the project has zero tags project-wide. Used as a second,
+        independent signal (alongside the card-level chip check) that a
+        removed tag is gone everywhere, not just off one card.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the empty-state
+                message to render.
+
+        Returns:
+            True if the "No tags to display." message is visible.
+        """
+        try:
+            self.tags_panel_empty_state.wait_for(state="visible", timeout=timeout)
+            return True
+        except PlaywrightTimeoutError:
+            return False
 
     # ------------------------------------------------------------------
     # Import

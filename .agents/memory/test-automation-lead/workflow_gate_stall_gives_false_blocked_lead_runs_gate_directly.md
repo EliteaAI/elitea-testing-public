@@ -1,6 +1,6 @@
 ---
 name: workflow gate stall gives false blocked, lead runs gate directly
-description: batch-build's internal gate agent can stall on git fetch and mark a clean batch "blocked" — recover by running the gate yourself, not by resuming
+description: batch-build's internal gate agent can stall (fetch timeout, OR a real conflict you then fix externally) and leave a stale cached verdict — recover by running the gate yourself, not by resuming
 type: feedback
 ---
 
@@ -39,3 +39,35 @@ If the gate then finds a REAL red (as happened here — see
 that turned out to be a genuine flake), route it through `batch-stabilize`
 as normal; the workflow's build/review work upstream is unaffected either
 way.
+
+## Same trap, different cause: a REAL conflict you fix externally still replays stale
+
+Observed on `settings-w01` (2026-08-26), recovering a batch interrupted by an
+org spend ceiling. The gate call returned a real (non-error) completed
+result: `{verdict: "incomplete", runs: 0, failures: [{signature: "gate-case.mjs
+verdict=conflict — merging origin/automation/base into tests/batch-<slug>
+FAILS..."}]}` — a genuine merge conflict in an additive memory-index file
+(two branches appended different lines in the same region). I fixed it for
+real: checked out the trunk, merged base, resolved the conflict (union both
+sides' lines), pushed. Then resumed the SAME workflow run expecting the gate
+to re-attempt and succeed.
+
+**It didn't — the resumed gate call replayed the identical stale
+`verdict=incomplete` failure**, because `resumeFromRunId` caches by
+`(prompt, opts)`, not by live repo state. My external git fix didn't change
+the gate agent's dispatch prompt, so the cache key was unchanged and the
+call never re-ran — I just paid for another full journal replay + report
+rewrite to rediscover the exact same "fixed already" failure.
+
+**The lesson generalizes past "not-run": ANY gate call that returns a
+completed-but-unproven verdict (`not-run`, `incomplete`, `conflict`) is
+cached as done and will replay verbatim on resume, no matter what you fix
+on disk in between.** Don't resume a second time hoping the fix takes —
+once you've identified the cause and fixed it yourself, finish the job
+yourself too: run `gate-case.mjs` directly (one `--n 1` call per run, per
+`merge_gate_operational_traps.md`), then hand-write the verdict back into
+`report.json` (playbook § Handle a red gate — "write the verdict back before
+the closure comment, not later"). Resuming again only makes sense if you
+expect the workflow's OWN gate agent to discover something new (e.g. you
+haven't touched the repo at all) — never as a way to "confirm" a fix you
+already made.

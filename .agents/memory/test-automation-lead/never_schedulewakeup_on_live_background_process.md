@@ -48,3 +48,28 @@ Don't trust anything about the interrupted run. Re-verify from scratch: current
 branch/commit, PR state (open/mergeable/head SHA unchanged), dev server up —
 then redo the full gate (all N runs, not just the ones that didn't get to
 report). A partial gate result from before the interruption is not evidence.
+
+## Refinement (2026-08-19): `nohup ... & disown` is the exception this entry doesn't cover
+
+The failure mode above is specifically the harness's OWN auto-backgrounding of a
+`Bash` call (it stays attached to that Bash tool-call's tracking, and a
+harness/session restart between turns tears it down with the rest of that
+call's state). A process explicitly detached with `nohup <cmd> > logfile 2>&1 &
+disown` is a DIFFERENT thing — it's a plain OS background process no longer
+tied to the Bash tool call that spawned it, so it survives exactly the
+restarts that kill the harness's auto-backgrounded form. Verified repeatedly
+across a long session with multiple mid-run harness restarts: `nohup pytest
+... & disown`, then `Monitor` polling the log file for a terminal
+`passed|failed` line, survived every restart; the log file kept growing and
+the eventual result was always trustworthy. `ScheduleWakeup` (with a `noop`
+flag + a short `reason`) between checks worked fine here specifically because
+nothing about the wait depended on the *turn* staying alive — only the
+detached process and the log file needed to survive, and both did.
+
+**Practical rule:** for any gate/pytest invocation likely to run long, prefer
+`nohup <cmd> > /tmp/<name>.log 2>&1 & disown` over a bare `Bash` call, then
+poll the log file (`Monitor`, or a plain `tail`/`grep` re-check on each
+wakeup) rather than trusting the Bash tool's own backgrounding. This sidesteps
+the entire class of failure this entry describes, and makes `ScheduleWakeup`
+between checks safe again — the original warning still fully applies to a
+bare, non-disowned `Bash` background task.

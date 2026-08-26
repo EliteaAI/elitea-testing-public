@@ -19,7 +19,9 @@ Usage::
 """
 
 from pathlib import Path
+from typing import Optional
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -41,6 +43,25 @@ class Settings(BaseSettings):
     elitea_api_base: str = ""
     elitea_api_token: str = ""
     elitea_project_id: int = 0
+    # Team project ID for multi-user tests (bucket permissions, sharing)
+    # Team projects have "Manage permissions" feature, unlike private projects
+    elitea_team_project_id: Optional[int] = 0
+
+    @field_validator('elitea_project_id', mode='before')
+    @classmethod
+    def parse_project_id(cls, v):
+        """Parse project ID from string or int, allowing empty string to default to 0."""
+        if v is None or v == "":
+            return 0
+        return int(v)
+
+    @field_validator('elitea_team_project_id', mode='before')
+    @classmethod
+    def parse_team_project_id(cls, v):
+        """Handle empty string from CI environment variables."""
+        if v == '' or v is None:
+            return 0
+        return int(v)
     # URL prefix for the React app routes.  On deployed environments (DEV/STAGE/NEXT)
     # the React Router has basename="/app", so all routes are under /app.
     # On localhost the Vite dev server has no basename, so the prefix is empty.
@@ -80,6 +101,11 @@ class Settings(BaseSettings):
     test_user_email: str = ""
     test_user_password: str = ""
 
+    # Secondary user for multi-user tests (bucket permissions, sharing, etc.)
+    # This user should exist in the Team project with limited/no admin rights
+    test_user_b_email: str = ""
+    test_user_b_password: str = ""
+
     # ------------------------------------------------------------------
     # Browser
     # ------------------------------------------------------------------
@@ -96,8 +122,8 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------
     git_hub_token: str = ""
     github_base_url: str = "https://api.github.com"
-    git_repo: str = "EliteaAI/elitea-testing"
-    github_repo: str = "EliteaAI/elitea-testing"
+    git_repo: str = "EliteaAI/elitea-testing-public"
+    github_repo: str = "EliteaAI/elitea-testing-public"
 
     # ------------------------------------------------------------------
     # MCP (ELITEA-1954)
@@ -187,6 +213,19 @@ class Settings(BaseSettings):
     # this precondition or misrepresent that one. Default "400" ("UI Testing")
     # preserves current behaviour when the key is unset.
     users_team_project_id: str = "400"
+
+    # ------------------------------------------------------------------
+    # Public project id (ELITEA-2051)
+    # ------------------------------------------------------------------
+    # The "Public" project id, used ONLY as the path segment of the
+    # projects-list endpoint's check_public_role probe:
+    #   GET /projects/project/default/{public_project_id}?check_public_role=true
+    # This mirrors EliteaUI's own VITE_PUBLIC_PROJECT_ID (see
+    # ../EliteaUI/src/api/project.js + src/common/constants.js), which is 1 on
+    # the DEV backend — confirmed live 2026-08-26 from the UI's own request.
+    # Config-driven so a deployed env with a different public project id needs
+    # no code change; no .env.test key or CI secret is required today.
+    public_project_id: int = 1
 
     # ------------------------------------------------------------------
     # Default LLM settings for API-created agents / pipelines

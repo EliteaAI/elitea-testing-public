@@ -1,0 +1,159 @@
+{
+  "batch": "skills-remaining-w5",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-skills-remaining-w5",
+  "gate": {
+    "verdict": "red",
+    "runs": 2,
+    "seconds": [
+      189.187152709,
+      176.278290292
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/skills/test_skill_build_with_ai.py",
+        "signature": "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAICancelFromReviewStep::test_cancel_from_review_step_does_not_create_skill FAILED — AssertionError: Expected zero console errors across the whole flow, got: [<ConsoleMessage type=error text=Failed to load resource: the server responded with a status of 404 ()>] / assert not [<ConsoleMessage type=error text=Failed to load resource: the … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "ELITEA-1998"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1986",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Both ELITEA-1986 and ELITEA-1987 hit the same recurring missing-fixture gap as Agents' ELITEA-1903/1904: no EDITOR_TEST_USER_*/VIEWER_TEST_USER_* credential exists anywhere in .env.test or .agents/profile.md, and TEST_USER is admin-equivalent in every project it belongs to. Consolidated onto the existing tracking issue #1314 instead of filing new ones (now covers 3 case pairs across Agents + Skill… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1314"
+        },
+        {
+          "kind": "note",
+          "note": "Skills' 'Build with AI' open button (generate-skill-open-button) is gated by the byte-identical mechanism as Agents' equivalent button: PERMISSIONS.applications.update passed from GenerateSkillButton.jsx into the shared GenerateEntityButton.jsx component. Confirmed via source read, not just live observation -- useful for anyone implementing an API-level substitute later (one substitute test would … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No product or AFS drift found. The AFS was accurate against the live product and against the original TMS case's Coverage Map -- steps 1-3 map cleanly to admin-role assertions, steps 4-6 correctly disposition as 'blocked' pending the shared editor-test-user credential fixture (#1314). Nothing to escalate.",
+          "ref": "test-specs/skills/l2_build-with-ai-button-visible-for-admin-and-editor-roles_ELITEA-1986.md"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map row 1 (\"asserted where: step 1: side-bar + connected status visible\") overstates the implementation. `list_page.navigate()` navigates straight to /skills/all (SkillsListPage.navigate(), automation/pages/skills_list_page.py:250-254) and the test asserts only `list_page.page_header.is_visible()` — there is no sidebar/connected-status check. SkillsListPage has no analog of AgentsListPage… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_build_with_ai_role_visibility.py:56-64"
+        },
+        {
+          "kind": "note",
+          "note": "`p2` and `regression` markers are declared twice — once in the module-level `pytestmark` list and again as method decorators on the same test. Harmless (pytest marker application is idempotent) but inconsistent with the sibling ELITEA-1903 test (test_agent_build_with_ai_role_visibility.py), which puts `p2`/`regression` only at the method-decorator level and keeps `pytestmark` to `ui`/`agents`/`new… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_build_with_ai_role_visibility.py:36"
+        }
+      ],
+      "afs": "test-specs/skills/l2_build-with-ai-button-visible-for-admin-and-editor-roles_ELITEA-1986.md",
+      "branch": "tests/ELITEA-1986-build-with-ai-skill-role-visibility",
+      "pr": 1483
+    },
+    {
+      "id": "ELITEA-1987",
+      "outcome": "blocked",
+      "note": "Entire case blocked -- no VIEWER_TEST_USER_* credential exists, and unlike ELITEA-1986 there is no admin-side partial-coverage path (whole premise is the button's absence). Identical gap to Agents analog ELITEA-1904, tracked in #1314 (commented, not re-filed). Re-verified fresh this session that no escape hatch exists (Settings->Users viewer row is an unusable leftover pending invite, no reset-pas… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Both ELITEA-1986 and ELITEA-1987 hit the same recurring missing-fixture gap as Agents' ELITEA-1903/1904: no EDITOR_TEST_USER_*/VIEWER_TEST_USER_* credential exists anywhere in .env.test or .agents/profile.md, and TEST_USER is admin-equivalent in every project it belongs to. Consolidated onto the existing tracking issue #1314 instead of filing new ones (now covers 3 case pairs across Agents + Skill… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1314"
+        },
+        {
+          "kind": "note",
+          "note": "Skills' 'Build with AI' open button (generate-skill-open-button) is gated by the byte-identical mechanism as Agents' equivalent button: PERMISSIONS.applications.update passed from GenerateSkillButton.jsx into the shared GenerateEntityButton.jsx component. Confirmed via source read, not just live observation -- useful for anyone implementing an API-level substitute later (one substitute test would … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/skills/l2_build-with-ai-button-not-visible-for-viewer-role_ELITEA-1987.md"
+    },
+    {
+      "id": "ELITEA-1992",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Coverage gap closed: no existing merged/trunk spec in the Build-with-AI Skill family (test_skill_build_with_ai.py, ELITEA-1988/1989/1990/1991/1993/2001) ever exercises the real unmocked generate_skill_draft endpoint to assert the AI-generated name's format -- they all mock a pre-chosen compliant name. ELITEA-1992 is the first case to actually validate the platform's real AI-generation output again… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_generated-skill-name-adheres-to-naming-rules_ELITEA-1992.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "Implementer guidance flagged loudly in the AFS: do NOT mock generate_skill_draft for this test, unlike every sibling test in the same file. Mocking would make the naming-rule assertion tautological (testing the analyst's own fixture string, not real AI output) and silently defeat the case's purpose if a well-meaning implementer 'normalizes' it to match neighboring tests.",
+          "ref": "test-specs/skills/l2_generated-skill-name-adheres-to-naming-rules_ELITEA-1992.md"
+        },
+        {
+          "kind": "note",
+          "note": "No product defect or case-text drift found — live behavior matched the case's Pass criteria exactly (AFS: 'Live product behavior matches the case's Pass criteria exactly'). The real, unmocked generate_skill_draft endpoint already returns naming-rule-compliant Skill names."
+        },
+        {
+          "kind": "note",
+          "note": "This test is intentionally the only one in test_skill_build_with_ai.py that hits the real (unmocked) backend — ~25s per run vs ~sub-second for the mocked siblings. If suite runtime/stability against a live LLM call ever becomes an issue, the AFS Automation Hints suggest @pytest.mark.flaky(reruns=1) as the sanctioned mitigation rather than reverting to a mock (which would defeat the case's purpose)… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/skills/l2_generated-skill-name-adheres-to-naming-rules_ELITEA-1992.md",
+      "branch": "tests/1992-generated-skill-name-naming-rules",
+      "pr": 1484
+    },
+    {
+      "id": "ELITEA-1994",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [],
+      "afs": "test-specs/skills/l2_build-with-ai-description-instructions-character-limits_ELITEA-1994.md",
+      "branch": "tests/ELITEA-1994-1995-build-with-ai-description-instructions-character-limits",
+      "pr": 1490
+    },
+    {
+      "id": "ELITEA-1995",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [],
+      "afs": "test-specs/skills/l2_build-with-ai-description-instructions-character-limits_ELITEA-1994.md",
+      "branch": "tests/ELITEA-1994-1995-build-with-ai-description-instructions-character-limits",
+      "pr": 1490
+    },
+    {
+      "id": "ELITEA-1996",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [],
+      "afs": "test-specs/skills/l2_build-with-ai-back-to-prompt-returns-to-input-step-preserves-text_ELITEA-1996.md",
+      "branch": "tests/1996-skill-back-to-prompt-preserves-text",
+      "pr": 1485
+    },
+    {
+      "id": "ELITEA-1997",
+      "outcome": "already-covered",
+      "note": "DUPLICATE DISPATCH — this exact case was already fully processed earlier in this same batch session (skills-remaining-w5): analyst run at 01:37 today (see .agents/memory/qa-engineer/daily/2026-08-13.md), implementer run at 04:45 (PR #1487), merged into tests/batch-skills-remaining-w5 at commit 1211426e ('merge ELITEA-1997, ELITEA-1998 into tests/batch-skills-remaining-w5'), which IS an ancestor of… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [],
+      "afs": "test-specs/skills/l2_build-with-ai-cancel-from-prompt-step-closes-modal-without-creating-a-skill_ELITEA-1997.md"
+    },
+    {
+      "id": "ELITEA-1998",
+      "outcome": "already-covered",
+      "note": "Same duplicate-dispatch situation as ELITEA-1997 (same cluster, same merge commit 1211426e, same implementer PR #1487, test class TestSkillBuildWithAICancelFromReviewStep already in automation/tests/ui/skills/test_skill_build_with_ai.py). Case-text drift already found and filed by the prior analyst run: TMS text says 'Click Cancel' on the review step but the review step has NO Cancel button (only … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [],
+      "afs": "test-specs/skills/l2_build-with-ai-cancel-from-review-step-does-not-create-a-skill_ELITEA-1998.md"
+    },
+    {
+      "id": "ELITEA-2000",
+      "outcome": "already-covered",
+      "note": "DUPLICATE DISPATCH — did no new work. This case is already fully processed and MERGED into this exact batch trunk (tests/batch-skills-remaining-w5) from an earlier session today: analyst AFS commit d3868515, implementer PR #1488 commit 5d353321 (TestSkillBuildWithAICreationFailureRecovery::test_creation_failure_stays_on_review_step_and_retry_succeeds in automation/tests/ui/skills/test_skill_build_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+      "findings": [],
+      "afs": "test-specs/skills/l2_build-with-ai-creation-failure-stays-on-review-step-for-correction_ELITEA-2000.md"
+    }
+  ],
+  "totals": {
+    "blocked": 6,
+    "already-covered": 3
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

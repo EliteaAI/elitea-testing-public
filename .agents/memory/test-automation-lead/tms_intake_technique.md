@@ -42,28 +42,44 @@ type: reference
   Python `hashlib.sha1(path.encode())` re-derivation will not match unless it hashes
   `path + '\n'`. Caused a false "0 files found" on an otherwise-successful fetch.
 
-## The cap
+## The cap — RETIRED 2026-08-10, no discrepancy note owed
 
-`.agents/test-automation.yaml` states `max_new_cards_per_run: 10`. Observed history
-is inconsistent with it ever having been honored (219→436 in a single 2026-07-15
-pass; 256 filed as #726–#982 on 2026-07-23; zero capped-run entries in the daily
-logs between). **File the full delta** — matches actual practice and the mission's
-own task text — but **state the discrepancy explicitly** in the summary issue and
-the operator report every run. Do not unilaterally edit the yaml; the last
-correction of this shape (the already-automated three-condition rule) was
-operator-confirmed before adoption.
+**There is no per-run card cap.** Operator ruling 2026-08-10 ("≤10 cards per run —
+not relevant now"); `.agents/test-automation.yaml` § intake now reads
+`max_new_cards_per_run: unlimited`, and `profile.md` + `project_briefing.md` match.
 
-## Superseded
+**File the full qualifying delta in one sweep.** Never self-split into small
+batches, and **no longer state a discrepancy** in the summary issue or the operator
+report — that obligation existed only while the yaml and practice disagreed
+(219→436 in a single 2026-07-15 pass; 256 filed as #726–#982 on 2026-07-23; zero
+capped-run entries in the daily logs between — the evidence that closed it).
 
-Run 1's strict "already-automated AND-of-three" skip rule and its
-"contradictory metadata → park unfiled" behavior are **wrong and superseded**
-(human-confirmed, run 4, 2026-07-14): every case in that folder is *planned* for
+Wave sizing is a **planning** decision made *after* intake, on the campaign card —
+not an intake-time throttle.
+
+## OVERRULED 2026-08-10 — do NOT act on this section
+
+> ⛔ **Operator ruling 2026-08-10: `.agents/test-automation.yaml` § intake
+> `already_automated_when` STANDS AS WRITTEN.** Exclude a case when **all three**
+> hold: `execution_type: automated` + `status: ready` + non-empty
+> `automation_test_id`. The claim below — that the AND-of-three rule is "wrong and
+> superseded" — is overruled. The yaml, `profile.md` § Task source and
+> `project_briefing.md` are the canon; this section is not.
+>
+> Two indexed sources had disagreed since 2026-07-14; scout surfaced it in the
+> 2026-08-10 retrospective rather than picking a winner, and the operator settled it
+> in favour of the canon.
+
+*(Historical, retained as the record of the run-1/run-4 episode — not a current
+instruction.)* Run 1's strict "already-automated AND-of-three" skip rule and its
+"contradictory metadata → park unfiled" behavior were argued to be superseded (run 4,
+2026-07-14) on the reasoning that every case in that folder is *planned* for
 automation, so its own `execution_type`/`status`/`automation_test_id` are unreliable
-tagging artifacts. **The sole exclusion is: a tracker issue already exists for this
-case id.** A populated real-looking `automation_test_id` is a hint to verify, never a
-skip signal on its own. Module-wide metadata weirdness gets one FYI line in the
-summary — it never withholds filing. (66 `artifacts` cases were wrongly parked in
-run 1 and needed a dedicated run-4 correction pass.)
+tagging artifacts — with "a tracker issue already exists for this case id" as the sole
+exclusion, a populated `automation_test_id` being only a hint to verify. 66 `artifacts`
+cases were parked in run 1 and needed a run-4 correction pass. **That reasoning did not
+survive review; follow the yaml.** Contradictory metadata still goes to the run summary
+per the yaml (`report — never guess, never file, never skip silently`).
 
 ## Seen 3×
 

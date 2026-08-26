@@ -1,6 +1,6 @@
 ---
 name: memory
-description: Per-role persistent memory — durable facts, preferences, decisions, and a daily log, as plain markdown. Use when the user says "remember this" or "log this", asks "what did you learn yesterday", or whenever you discover something worth keeping across sessions.
+description: Use when the user says 'remember this' or 'log this', asks 'what did you learn yesterday', or whenever you discover something worth keeping across sessions. Per-role persistent memory — durable facts, preferences, decisions, and a daily log, as plain markdown.
 license: Apache-2.0
 metadata:
   authors:
@@ -14,6 +14,14 @@ Persistent per-role memory as plain markdown. You — the agent — read and
 write these files directly using your `Read`, `Write`, `Edit`, and `Glob`
 tools. No CLI, no script, no shell-path fragility. Works on any host, from
 any working directory.
+
+**Write it as a vault, not a pile of notes.** `.agents/memory/<role>/` opens
+directly in Obsidian, so entries carry frontmatter properties, aliases, tags
+and `[[wikilinks]]`. That is not decoration: aliases make an entry findable by
+the words you would actually search for, links turn isolated facts into a graph
+you can follow, and the `updated` property tells you what is due for
+re-verification. A human may edit this vault too — **tolerate keys you did not
+write; never strip them**.
 
 ## File layout
 
@@ -122,6 +130,26 @@ longer inject it, so **302 of 302 dispatches in one campaign silently ran on a
 2 KB preview** of their own memory. Dense technical text runs ~2.2 bytes/token,
 not the usual ~4, so a "small" 147 KB entry is ~67,000 tokens.
 
+### Where does this go?
+
+```
+Is it mission/ticket state (status, assignee, acceptance criteria)?
+                                          → the work board, NOT memory
+Would ANOTHER ROLE need it, and is it verified + durable?
+                                          → .agents/knowledge/  (knowledge-curation skill)
+Is it durable for THIS role (>6 months useful)?
+                                          → curated entry here
+Would tomorrow's you want it, but not next quarter's?
+                                          → daily log
+Is it already stated in the repo (code, CLAUDE.md, git history)?
+                                          → nowhere; link to it instead
+```
+
+The middle branch is the one most often missed. A fact one role paid for that
+every role needs is worth **promoting**, not just filing — see the
+`knowledge-curation` skill. Memory that only its author can reach is memory
+nobody benefits from.
+
 ## Four curated types
 
 Every curated entry carries a `type:` field:
@@ -201,18 +229,39 @@ and `<content>`:
    strip leading/trailing underscores. Example: `User Timezone` →
    `user_timezone`.
 2. **Target path**: `.agents/memory/<role>/<slug>.md`.
-3. **`Write`** the file with this exact frontmatter (`name`, `description`,
-   `type` are parsed by memory tooling — don't omit them, don't
-   add extra keys, keep each on one line):
+3. **`Write`** the file with this frontmatter. `name`, `description` and
+   `type` are **required**; the rest make the vault navigable in Obsidian.
+   Unknown keys are tolerated — never rewrite or strip a key a human added.
    ```markdown
    ---
    name: <name>
-   description: <description>
-   type: <type>
+   description: <one line — what a reader GAINS, not what the note is "about">
+   type: <user | feedback | project | reference>
+   aliases: [<words you would actually search for>]
+   tags: [<axis/value>, ...]
+   created: YYYY-MM-DD
+   updated: YYYY-MM-DD
    ---
 
+   ## <section>
+
    <content>
+
+   Related: [[other_entry]] · [[another_entry#Specific section]]
    ```
+
+   - **`aliases`** make `[[service token]]` resolve to `service_token_rotation.md`
+     and let search find the note by the words you'd type, not the slug.
+   - **`tags`** are for **cross-cutting filtering only**, as closed axes —
+     `type/`, `area/`, `status/`. A tag used once filters nothing; it is
+     decoration. Anything expressing a *relationship* is a link, not a tag.
+   - **`updated`** is when the FACT was last re-verified, not when the file
+     was touched.
+   - **`##` headings** make a note anchor-linkable: `[[note#Section]]` beats
+     `[[note]]` when you mean one part of it.
+   - **`Related:`** lines are what make the graph worth opening. An entry with
+     no links is one nobody rediscovers.
+
 4. **The index is a separate decision — not an automatic step.**
 
    **Default: stop here.** The entry is written, permanent, and findable by
@@ -284,6 +333,53 @@ is yours to extend, as long as `MEMORY.md`, `<slug>.md`, and `daily/`
 follow the spec above.
 
 ---
+
+## Keeping the vault honest
+
+- **Correct or delete a fact the moment it stops being true.** A stale entry is
+  worse than none, because it is trusted. Prefer deleting to hedging.
+- **Re-verify `project` entries before acting** — they decay fastest. If the
+  `updated` date is old and the claim matters, check it, then bump the date.
+- **One fact per entry.** If a title needs "and", it is probably two entries —
+  or one entry with two `##` sections so each can be linked separately.
+- **Link liberally.** `[[slug]]` resolves by filename or alias. A `[[link]]`
+  with no matching entry yet is fine: it marks something worth writing.
+- **Never store secrets** — tokens, credentials, customer data. Reference where
+  they live instead.
+
+### Quick audit
+
+This skill ships `scripts/vault.py`, which does it properly — it resolves links by filename **or
+alias** (as Obsidian does), checks anchors, and finds index drift. It also queries the vault as a
+graph, which matters once a role has more notes than you want to read:
+
+```bash
+V=<skills>/memory/scripts/vault.py
+python3 $V lint  .agents/memory/<role> --layer memory
+python3 $V query .agents/memory/<role> --layer memory --text "flaky"
+python3 $V query .agents/memory/<role> --layer memory --type feedback
+python3 $V show  .agents/memory/<role> --layer memory "<alias or filename>"
+python3 $V links .agents/memory/<role> --layer memory <note>
+```
+
+`templates/bases/memory-curated.base` is an Obsidian dashboard for the curated entries — copy it
+into the role directory and open the vault in Obsidian.
+
+It is optional — memory works with your file tools alone. Reach for it when recalling from a large
+vault, or after a rename. Shell fallback if Python is unavailable:
+
+```bash
+role=.agents/memory/<role>
+# entries missing from the index (invisible when recalling)
+for f in $role/*.md; do b=$(basename "$f"); [ "$b" = MEMORY.md ] && continue;
+  grep -q "($b)" $role/MEMORY.md || echo "UNINDEXED $b"; done
+# index lines pointing at deleted entries
+grep -o '](.*\.md)' $role/MEMORY.md | tr -d ']()' | while read -r t; do
+  [ -f "$role/$t" ] || echo "DEAD $t"; done
+```
+
+Run it after a rename or a big cleanup — an unindexed entry is one you will
+never recall, and a dead index line sends you looking for a file that is gone.
 
 ## Snapshot.md — a host convenience that may be absent
 

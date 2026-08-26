@@ -44,7 +44,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.regression, pytest.mark.new_verified]
 
 EXPECTED_WARNING_TEXT = "This token will only be shown once, so make sure to copy and save it."
 EXPECTED_TOAST_TEXT = "The token has been copied to the clipboard."
@@ -59,6 +59,7 @@ class TestPersonalTokenCreateAndVerify:
         "settings-personal-tokens/ELITEA-2280_personal-token-create-and-verify.md",
         "onetest-ai Test Case link",
     )
+    @pytest.mark.blocked
     def test_create_personal_token_and_verify_in_table(self, page):
         """Create a personal token end-to-end (form defaults, Generate, the
         success dialog with warning/name/value/copy-to-clipboard), verify the

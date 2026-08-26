@@ -1,5 +1,70 @@
 # OpenTelemetry roadmap — banked research, not yet built
 
+## UPDATE 2026-08-06 — first REAL Copilot CLI OTel file reviewed (CLI 1.0.78); the join is VERIFIED
+
+A live `copilot --config-dir ./.copilot` session exported OTel to a file
+(user-configured path), and the structure settles several open questions:
+
+- **Format:** plain JSONL, one self-contained object per line
+  (`{"type":"metric"|"span",...}`).
+- **THE JOIN IS VERIFIED:** every span carries
+  `gen_ai.conversation.id`, and it equals the session-state directory id
+  (`<COPILOT_HOME>/session-state/<id>/`) — confirmed by direct match against
+  the same session's `events.jsonl`. Cross-source enrichment is now
+  id-safe; the "unverified id mapping" blocker holds only for the other
+  hosts.
+- **Span tree = exact dispatch structure:** `invoke_agent <lead>` (root) →
+  `execute_tool task` per dispatch → `invoke_agent <sub-agent>` → `chat
+  <model>`. Chat spans carry EXACT per-request tokens including the cache
+  split (`gen_ai.usage.input_tokens` / `output_tokens` /
+  `cache_creation.input_tokens` / `cache_read.input_tokens`) — finer grain
+  than the store's per-model shutdown totals. `invoke_agent` rolls up its
+  OWN chats only (sub-agents not included — parent-only accounting, same
+  convention as ours). `gen_ai.tool.call.id` gives heuristic-free dispatch
+  attribution; `gen_ai.agent.name`/`id`/`description` name each agent;
+  `enduser.pseudo.id` is a stable pseudonymous user id.
+- **Billed cost DOES appear (CLI ≥1.0.78) — but incomplete:**
+  `github.copilot.cost` (premium-request count) + `github.copilot.nano_aiu`
+  (billed) sit on the parent's chat spans and its invoke_agent rollup —
+  measured 44.996 credits there while the same session's `events.jsonl`
+  shutdown billed **68.385** (sub-agent requests carried no cost attrs).
+  No cost/credit METRIC exists at all — billing appears only as span
+  attributes, and only on the parent's. Sub-agents DO carry exact tokens
+  (their invoke_agent + chat spans, cache split included) and per-agent
+  duration/inference-call/tool-call metrics; the token.usage metric sums
+  all requests including sub-agents' but is keyed by model/token-type only
+  — per-agent token split needs the spans.
+  **The store stays authoritative for dollars**; OTel cost attrs are
+  per-request color, not a reconciling total.
+- **Skill loads are span events WITH TRIGGER:** `github.copilot.skill.invoked
+  {skill.name, invocation_trigger: "context-load"|…, source: "project"}` —
+  the store's `skill.invoked` has no trigger, so this is the first signal
+  that distinguishes preloaded (`context-load`) from explicitly invoked
+  skills per request: directly measures the `skills:` vs `skills-on-demand:`
+  economics.
+- **Metrics complement:** `gen_ai.client.token.usage` histograms per
+  model×token.type (sums match span totals), `operation.duration`,
+  `time_to_first_chunk` / `time_per_output_chunk` (latency we have nowhere
+  else), `invoke_agent.{duration,inference_calls,tool_calls}` per agent,
+  `github.copilot.{tool.call.count/duration,agent.turn.count}`.
+
+- **Content-free by design — no prompts, no task text.** The user's message
+  is only an event marker (`github.copilot.user.message` → source +
+  interaction_id, no text); `execute_tool task` spans carry the tool name +
+  call id but NO arguments, so the dispatch brief never appears; the only
+  prose anywhere is static metadata (the agent's frontmatter description,
+  the skills / custom-agent inventory). "What was done" is inferable only
+  structurally (who ran, in what order, which skills loaded, how much it
+  cost). Case attribution and prompt capture stay STORE-side
+  (`events.jsonl` `agentDescription` / user text, the ledger's opt-in
+  prompts) — OTel cannot replace them.
+
+**Reader implication:** an OTel enricher for the copilot host is now
+buildable — join on conversation.id, take structure/latency/cache-split/
+skill-trigger detail from spans, keep dollars from the store. Still not
+merged into the ledger (unchanged decision); the inspector remains the
+surface until an enricher is asked for.
+
 Status as of 2026-08-05: **implemented** — the VS Code chatSessions reader
 (`host: 'copilot-vscode'` in the sweep), the folderOpen auto-task + git-hook
 triggers, `install-hooks.mjs --doctor` / `--otel`, the stdlib OTLP sink
@@ -59,7 +124,7 @@ repo by reading the sibling `workspace.json` (`folder` file-URI; multi-root
 `<Product>` is a family, not one name: `Code`, `Code - Insiders`, `VSCodium`
 (forks like Cursor keep their own product dirs — extensible list). Plus:
 `--user-data-dir` launches are unknowable → config knob
-`vscodeUserDataDirs: []` in `.agents/telemetry/config.json` for explicit extra
+`vscodeUserDataDirs: []` in `.agents/telemetry/automation/config.json` for explicit extra
 roots; `emptyWindowChatSessions/` (chats opened with no folder) has no repo to
 attribute — skip by default, count in verbose output. Same search-don't-assume
 rule already holds for the other hosts: Claude (`CLAUDE_CONFIG_DIR` →

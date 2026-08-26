@@ -9,16 +9,18 @@ type: project
 
 ## The five
 
-1. **#524 — agent create 400s (temperature + reasoning_effort conflict).** OPEN.
-   `AgentAPI.create_agent()` hardcodes `temperature` alongside `reasoning_effort`
-   on a reasoning-capable model (`automation/api/client.py` ~386–390), so the
-   `agent_id` fixture dies across the agents/chat/skills suites. Park before
-   dispatching anything that creates an agent via API.
-   **Carve-out:** skills are unaffected — they POST `/skills/prompt_lib/{id}`
-   with no `temperature`/`reasoning_effort` fields, so a skills-only case need
-   not park. (Details: `bug_524_does_not_affect_skill_create.md`.)
-   **Related:** the house workaround `reasoning_effort: "none"` 500s the moment
-   a test opens embedded chat — use `"low"` for any fixture whose agent will chat.
+1. ~~**#524 — agent create 400s (temperature + reasoning_effort conflict).**~~
+   **STRUCK 2026-08-10 (scout) — root cause FIXED in the framework; do not park on
+   this.** Verified against `automation/api/client.py:_default_llm_settings()`:
+   ```python
+   "temperature": None,            # Match UI default (null)
+   "reasoning_effort": "medium",   # Match UI default
+   ```
+   The hardcoded-`temperature` diagnosis and the `reasoning_effort: "low"`
+   workaround are both dead. `AgentAPI.create_agent()`'s defaults are correct —
+   just call it. (Historical detail: `bug_524_does_not_affect_skill_create.md`;
+   the "none" 500-on-chat lore is superseded — see
+   `.agents/memory/test-automation-engineer/reasoning_effort_none_breaks_embedded_chat.md`.)
 2. **#694 — BaseModal `aria-labelledby` points at a non-existent id.**
    `BaseModal.jsx`'s `Dialog` references `alert-dialog-title` while the real
    title `<h2>` carries a stale `id="variables-dialog-title"` (EL-2863 refactor

@@ -76,6 +76,36 @@ editable element.** A quick live check
 (`playwright-cli --raw eval "el => el.tagName" "getByTestId('...')"`) catches
 it in one line.
 
+## ApplicationTabBar.jsx (Agent + Pipeline detail pages) — call site never threaded the modal props at all (ELITEA-1873)
+
+Distinct from the prop-NAME-mismatch bug above (which is fixed — confirmed
+live this run, `confirmButtonDataTestId` correctly reaches the DOM as
+`data-testid` today). This is a DIFFERENT, sibling gap: **the call site
+itself never passed `modalDataTestId`/`confirmButtonDataTestId` to
+`<Button.DiscardButton>` at all** — `ApplicationTabBar.jsx` (the shared
+tab bar behind BOTH `EditApplication.jsx` (Agent detail) and
+`EditPipeline.jsx` (Pipeline detail), confirmed via `git grep
+ApplicationTabBar`) only ever passed `dataTestId="discard-button"`. The
+confirm modal and its Discard button had ZERO testid, confirmed live via
+`document.querySelector('[role="dialog"]')` DOM probe before the fix.
+
+Fixed by adding the two props at the `ApplicationTabBar.jsx` call site:
+`modalDataTestId="discard-confirm-modal"` +
+`confirmButtonDataTestId="discard-confirm-button"` — **generic names, no
+`agent-`/`pipeline-` prefix**, matching the pre-existing generic
+`discard-button` (shared-component naming rule: the section belongs to
+the CALLER, and here the "caller" is a component used by two different
+callers, so a feature-scoped name would misrepresent it). Benefits BOTH
+Agent and Pipeline discard-confirm flows from one JSX edit —
+`EliteaAI/EliteaUI@cc327ec9` on `automation/testids`.
+
+**Lesson: "the shared button component's testid-forwarding is fixed"
+(prior entry) does NOT mean "every call site actually passes those
+props."** Check the specific call site's JSX, not just the shared
+component's internals — `CredentialsTabBar.jsx` already threaded both
+props (that's how the prop-name bug above was even discoverable), but
+`ApplicationTabBar.jsx` had simply never been touched to add them.
+
 ## Shared-component testid scoping — searchInputTestId
 
 `CategoryFilter`/`GroupedCategory` (`src/[fsd]/shared/ui/filter/` +

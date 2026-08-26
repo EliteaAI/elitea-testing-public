@@ -1,0 +1,289 @@
+{
+  "batch": "pipelines-remaining-w3",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-pipelines-remaining-w3",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      286.302447417,
+      281.24784325,
+      282.495711541
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2027",
+      "outcome": "automated",
+      "note": "CORRECTED BY LEAD 2026-08-09: workflow's own report wrongly marked this 'blocked' (\"subagent completed without calling StructuredOutput\"). Ground-truth verified: PR #1344 (branch tests/ELITEA-2027-pipeline-node-config-verified-via-yaml) is MERGED (2026-08-08T20:29:50Z, into the batch trunk), the extended test function test_llm_node_config_verified_via_yaml exists on the trunk with a correct TMS/AFS docstring reference, and the workflowProgress log shows combined:ELITEA-2027 (built) -> review:ELITEA-2027 (APPROVED) -> merge:ELITEA-2027 all completed before the report phase ran. The 'blocked' entry was a stale/duplicate re-analysis artifact the report writer picked up instead of the real, already-merged outcome. Original findings below are still ELITEA-2027's real analyst/reviewer findings, unaffected by the label bug.",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Dispatch pointed the case snapshot at .agents/automation/pipelines-remaining-w3/cases/ELITEA-2027.md, which does not exist (neither the file nor the '-w3' folder). The case snapshot actually lives in the shared, non-wave-suffixed pool .agents/automation/pipelines-remaining/cases/ELITEA-2027.md that every wave of this campaign reads from (confirmed via the campaign card, .agents/automation/campaign\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The batch trunk tests/batch-pipelines-remaining-w3 did not exist anywhere (local or origin) when this dispatch started, even though the campaign card's log says wave-03 was already 'launched' via a separate workflow run (wf_308e801c-d83 / task w18hrprzc). Created it fresh per the dispatch's own fallback instruction: git checkout -B tests/batch-pipelines-remaining-w3 origin/automation/base && git p\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "clarification",
+          "note": "CHAT HISTORY's YAML input_mapping value for the case's own literal test-data text '[]' serializes as an actual empty YAML/Python list, not the string '[]', once explicitly typed and saved \u2014 confirmed live via a controlled probe (valid-YAML text unquotes on save; a deliberately-invalid-YAML control string quotes). Not a product defect \u2014 documented in the AFS (Axis 2) and a new durable memory entry \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/lextend_pipeline-node-config-verified-via-yaml_ELITEA-2027.md"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical raw-handle grep on the full diff (`git diff origin/automation/base...origin/tests/ELITEA-2027-pipeline-node-config-verified-via-yaml | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'`) returned 0 hits \u2014 no non-testid handles added. All page-object methods called by the new tes\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case snapshot (.agents/automation/pipelines-remaining/cases/ELITEA-2027.md \u2014 dispatch's `-w3` path doesn't exist, matches the shared-pool pattern already logged in memory) against the AFS's Coverage Map and the implemented test: all 7 case steps + preconditions + Expected Final State + Pass/Fail criteria map to real assertions at the claimed steps (Steps 1-10 in the test body match th\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "extend-existing target (test_pipeline_llm_node_system_task_chat_history_config.py, ELITEA-2004) confirmed merged to origin/automation/base (commit 97ac7c97 reachable); PR's actual base is the batch trunk tests/batch-pipelines-remaining-w3, which already carries the AFS commit \u2014 PR diff itself is additive-only (new test function + memory), 0 lines touched in the two pre-existing test functions (ELI\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "CHAT HISTORY value assertion (`chat_history_mapping.get(\"value\") == []`) correctly applies the reverse-masking guard: case text literally says value \"[]\" implying a string, but the AFS documents a live-verified probe showing the backend round-trips typed text as raw YAML, so an unquoted `[]` parses via yaml.safe_load() as an empty list. This is asserted correctly against the live contract rather t\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "No defect-masking patterns found (no pytest.skip/xfail/expect.soft/bare try-except around assertions in the diff); all 12 named case fields (state.input/messages/output1 types, entry_point, node.type/input/input_mapping.system/task/chat_history/output/structured_output/transition) get their own real assertion in Step 10, each with a descriptive failure message quoting the actual parsed value."
+        }
+      ],
+      "afs": "test-specs/pipelines/lextend_pipeline-node-config-verified-via-yaml_ELITEA-2027.md",
+      "branch": "tests/ELITEA-2027-pipeline-node-config-verified-via-yaml",
+      "pr": 1344
+    },
+    {
+      "id": "ELITEA-2029",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Page-object gap (not a product defect): PipelineDetailPage.wait_for_node_on_canvas(node_type) resolves via `.locator(...).first` (DOM order). On a canvas that already has a node of the same type (e.g. pipeline_with_llm_id's pre-existing 'LLM 1'), adding a second node of that type and calling wait_for_node_on_canvas('llm') returns the WRONG (pre-existing) node id, not the new one. Its only other ca\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Confirmed live: a freshly-added, unconnected second node has NO `transition:` key at all in its YAML block \u2014 distinct from the entry-point/only-node default (transition: END always present, per the existing digest note). Recorded in _surface.md."
+        },
+        {
+          "kind": "note",
+          "note": "No tracker board issue (board #9) exists for ELITEA-2029 \u2014 checked via real-time gh issue list, no hit. Not created here (out of this implementer slot's scope); flagged for the lead's Report/intake phase."
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking coverage observation: automation/tests/ui/pipelines/test_pipeline_advanced.py::TestYamlEditor::test_flow_yaml_round_trip (PIPE-021, already merged/pre-existing) performs the same journey shape (add LLM node -> switch to Yaml -> switch back to Flow -> verify node count preserved) but never calls get_yaml_content() and so never asserts the case-defining observable (that the newly-added \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_advanced.py:122"
+        },
+        {
+          "kind": "note",
+          "note": "Dispatch-prompt snapshot path did not exist: .agents/automation/pipelines-remaining-w3/cases/ELITEA-2029.md is not on disk (only pipelines-remaining, -w1, -w2 exist; no -w3 folder). Fell back to .agents/automation/pipelines-remaining/cases/ELITEA-2029.md per the skill's documented fallback and triangulated against that. Worth the orchestrator double-checking the batch-slug used in future w3 dispat\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_flow-to-yaml-sync_ELITEA-2029.md",
+      "branch": "tests/2029-pipeline-flow-to-yaml-sync",
+      "pr": 1345,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          286.302447417,
+          281.24784325,
+          282.495711541
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2067",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Dispatch's stated case-snapshot path (.agents/automation/pipelines-remaining-w3/cases/ELITEA-2067.md) does not exist \u2014 the campaign uses a single shared case-snapshot directory (.agents/automation/pipelines-remaining/cases/) across all waves, not a per-wave one. Found and used the correct file; flagging so future wave-03+ dispatches point at the right path."
+        },
+        {
+          "kind": "note",
+          "note": "Reverse-masking near-miss caught mid-implementation: asserting the literal flow-style string a raw-YAML edit was typed as (output: [messages]) fails after a Save+reload round-trip because the server correctly re-serializes it as block-style YAML (output:\\n  - messages) \u2014 same value, different style, not a defect. Fixed via yaml.safe_load() + parsed-field assertion. Documented in .agents/memory/tes\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulation clean: TMS case snapshot (.agents/automation/pipelines-remaining/cases/ELITEA-2067.md, all 7 steps) == AFS test-specs/pipelines/lextend_pipeline-yaml-editor-edit-and-save_ELITEA-2067.md == implementation diff (origin/tests/batch-pipelines-remaining-w3...origin/tests/ELITEA-2067-pipeline-yaml-editor-edit-save, automation/tests/ui/pipelines/test_pipeline_yaml_flow_sync.py, new test_yam\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Merged-target rule satisfied: covering spec test_yaml_edit_transition_syncs_to_flow_canvas_and_enables_save (ELITEA-2028) verified present on origin/automation/base at commits 2809d52f/362cacbe (git log confirms both on automation/base). extend-existing is legitimate, not a same-batch-only target.",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_yaml_flow_sync.py:45"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical raw-locator grep on the full diff (get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page.locator|.locator() over `git diff origin/tests/batch-pipelines-remaining-w3...origin/tests/ELITEA-2067-pipeline-yaml-editor-edit-save`) returned 0 hits \u2014 zero new locators added, matches PR body claim."
+        },
+        {
+          "kind": "note",
+          "note": "Verified every page-object call the new test makes actually exists and matches claimed behavior: is_save_enabled/is_discard_enabled live on the parent PipelineFormPage (pipeline_form_page.py:334,373) \u2014 not on PipelineDetailPage itself, which is why a first grep of pipeline_detail_page.py alone came up empty; save_and_wait_for_update (pipeline_detail_page.py:4853) matches on PUT .../application/pro\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_form_page.py:334"
+        },
+        {
+          "kind": "note",
+          "note": "pipeline_with_llm_id fixture confirmed to seed output: [] via create_pipeline_with_llm_node's YAML template (api/client.py:689), matching the AFS's claimed pre-edit baseline (\"output: []\") and the test's own pre_edit_yaml assertion. The AFS's 'Save/Discard disabled with zero prior save, unlike ELITEA-2028's 2-node case' claim is not independently verifiable statically, but it is self-checking (ass\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/api/client.py:689"
+        },
+        {
+          "kind": "note",
+          "note": "Reverse-masking guard correctly applied and documented: first implementer pass asserted the literal typed flow-style string post-reload, server correctly round-trips to block-style YAML, fixed to parse with yaml.safe_load() and assert the parsed value. Captured in a properly-committed memory entry (.agents/memory/test-automation-engineer/pipeline_yaml_output_field_round_trips_as_block_style.md) pl\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_yaml_flow_sync.py:283"
+        },
+        {
+          "kind": "note",
+          "note": "Per-step assertion check passed for all 7 numbered steps (step 2 'cursor placed' folded as a documented proxy via edit_yaml_line, same disposition already used and previously approved for ELITEA-2028). No test.fail/skip/xit or weakened asserts anywhere in the diff; step 6's `assert save_response is not None` is a trivial follow-on to save_and_wait_for_update's own strict 201 predicate, not a demot\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_yaml_flow_sync.py:236"
+        },
+        {
+          "kind": "note",
+          "note": "Minor nit (non-blocking): `next(n for n in post_reload_parsed[\"nodes\"] if n[\"id\"] == \"LLM 1\")` at step 7 raises a bare StopIteration with no assertion message if the node id is ever absent \u2014 still fails the test loudly (no masking), just a less diagnostic failure message than the rest of the file's style.",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_yaml_flow_sync.py:293"
+        }
+      ],
+      "afs": "test-specs/pipelines/lextend_pipeline-yaml-editor-edit-and-save_ELITEA-2067.md",
+      "branch": "tests/ELITEA-2067-pipeline-yaml-editor-edit-save",
+      "pr": 1346,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          286.302447417,
+          281.24784325,
+          282.495711541
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2016",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Decision (and legacy Condition) pipeline node types cannot be made the pipeline entry point via the node header's 'Make entrypoint' menu action -- confirmed via source (EliteaUI NodeCardHeader.jsx menuItems logic unconditionally excludes Decision/Condition while keeping the option for Router and every other node type). The only UI path is creating the Decision node first (auto-sets entry_point at \u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1347"
+        },
+        {
+          "kind": "note",
+          "note": "Decision node classification/routing silently no-ops (LLM returns content='{}' with tool_calls=[], pipeline completes without visiting any branch, zero UI error) unless the Decision node's Input combobox includes the built-in 'input' state variable -- required even when the classification prompt only needs the raw chat message, distinct from ELITEA-2034's Input requirement (which was for referenci\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-decision-node-multi-branch-execution_ELITEA-2016.md"
+        },
+        {
+          "kind": "note",
+          "note": "Printer node's chat-visible output comes from the PRINTER section's Value field (input_mapping.printer.value), NOT the separate Final Message field -- a first setup attempt using only Final Message produced an empty '{}' chat response even with correct Decision routing.",
+          "ref": "test-specs/pipelines/l2_pipeline-decision-node-multi-branch-execution_ELITEA-2016.md"
+        },
+        {
+          "kind": "note",
+          "note": "Multi-turn continuation in the same chat conversation resumes execution at the previously-reached branch node rather than re-invoking the Decision node's classification (Printer nodes with transition:END pause for user acknowledgement, matching the platform's own docs) -- a test asserting differential routing across categories must clear the chat between messages, confirmed live via the Run Detail\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-decision-node-multi-branch-execution_ELITEA-2016.md"
+        },
+        {
+          "kind": "note",
+          "note": "printer_node_value / printer_node_final_message_input LocatorDescriptors in pipeline_detail_page.py are page-wide by the ELITEA-2039 author's own documented design ('correct only while a test has a single Printer node') -- ELITEA-2016 is the first case needing THREE simultaneous Printer nodes, so the implementer must add a node_id-scoped variant before calling these methods; using them unscoped ag\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:600"
+        },
+        {
+          "kind": "note",
+          "note": "The in-page fetch behind the pipeline 'Run details' dialog (GET .../elitea_core/conversation/prompt_lib/{project}/{conversation_id}) redirects to a dev.elitea.ai OIDC login and fails with a CORS error when run against localhost:5173 -- confirmed live via a captured console error. The dialog itself still renders correctly from other in-memory state (Timeline/States/Messages panels), so this only bl\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/l2_pipeline-decision-node-multi-branch-execution_ELITEA-2016.md"
+        },
+        {
+          "kind": "note",
+          "note": "Dispatch-stated case snapshot path `.agents/automation/pipelines-remaining-w3/cases/ELITEA-2016.md` does not exist on disk \u2014 the actual case file lives at `.agents/automation/pipelines-remaining/cases/ELITEA-2016.md` (no `-w3` suffix). Used that path for the Phase 1 coverage cross-check instead of stopping."
+        },
+        {
+          "kind": "note",
+          "note": "AFS's Concrete Handles table flagged the embedded chat's clear button as needing a new page-object method (true) but implied a testid gap might also exist \u2014 it did not: `chat-clear-button` was already present on EliteaUI `main` (EliteaAI/EliteaUI@2d98830a) via the shared ClearChatButton component, confirmed via git grep before any EliteaUI work. No add-data-testid / automation/testids commit was n\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Multi-node (3+) canvas placement via move_node()+fit_view() is sensitive to offset magnitude: large/monotonically-increasing offsets zoom fit_view() out so far that connect_nodes()'s drag misses sub-pixel connection handles. Logged as a durable gotcha in .agents/memory/test-automation-engineer/pipeline_add_node_overlap_breaks_connect.md (extended the existing 2-node entry) for the next multi-branc\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "clear_chat() (pipeline_detail_page.py:5588) uses self.page.wait_for_timeout(300) after the click \u2014 technically against .agents/conventions.md's 'No sleep/waitForTimeout \u2014 framework waits only' hard rule. Not blocking: it matches this exact file's dominant existing pattern (50 pre-existing wait_for_timeout call sites, several explicitly documented as animation/transition-settle waits in .claude/rul\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:5588"
+        },
+        {
+          "kind": "note",
+          "note": "Dispatch pointed at .agents/automation/pipelines-remaining-w3/cases/ELITEA-2016.md, which does not exist \u2014 the real case snapshot is at .agents/automation/pipelines-remaining/cases/ELITEA-2016.md (un-suffixed campaign dir; the '-w3' is a trunk/branch wave label, not a snapshot-dir sharding scheme). Triangulated against the correct snapshot; recorded as a qa-engineer memory entry (case_snapshot_dir\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/automation/pipelines-remaining/cases/ELITEA-2016.md"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep on the diff (git diff <base>... | grep -nE raw-locator pattern) returned exactly 2 hits, both in pipeline_detail_page.py:4155/4166 \u2014 self.page.locator(self.RF_NODE_TESTID.format(node_id)).locator(self.PRINTER_NODE_VALUE_TESTID). Both are compliant: RF_NODE_TESTID and PRINTER_NODE_VALUE_TESTID are UPPER_CASE class-level constants whose definitions (lines 2562 and 639) are li\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/pipeline_detail_page.py:4155"
+        }
+      ],
+      "afs": "test-specs/pipelines/l2_pipeline-decision-node-multi-branch-execution_ELITEA-2016.md",
+      "branch": "tests/ELITEA-2016-decision-node-multi-branch-execution",
+      "pr": 1348,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          286.302447417,
+          281.24784325,
+          282.495711541
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2041",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case steps 2/4 say 'Click on the [entry/non-entry] node' to open its 'configuration panel'. Live product: every node card renders fully expanded by default (NodeCard.jsx isExpanded initial state true); clicking the header TOGGLES expand/collapse rather than 'opening' anything, and would risk collapsing the very card the step wants to observe. No click is performed in the test \u2014 the observable (fie\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/pipelines/lextend_pipeline-entry-point-trigger-shown-only-on-entry-node_ELITEA-2041.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case step 6 implies the Information section shows the text 'Trigger: Chat Message' (with a space). Live DOM textContent is 'Trigger:Chat Message' (no space) \u2014 the visual gap is CSS flex `gap`, not a text character. Asserted the live-contract (no-space) string per the reverse-masking guard; not a defect.",
+          "ref": "test-specs/pipelines/lextend_pipeline-entry-point-trigger-shown-only-on-entry-node_ELITEA-2041.md"
+        },
+        {
+          "kind": "note",
+          "note": "One new EliteaUI testid added this session: information-trigger-row on ApplicationInformation.jsx's Trigger row (shared Information accordion, Agents+Pipelines) \u2014 committed+pushed to automation/testids (EliteaAI/EliteaUI@28dbc5e4), not yet on main (human cherry-pick pending, per the standing testid-promotion policy). Closure-record promotability check should include this testid alongside any alrea\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Step 5's Information-row assertion (test_entry_point_trigger_shown_only_on_entry_point_node, Step 5) compares information_trigger_row's text against a dynamically-read entry_trigger_value = get_trigger_type_value() rather than a hardcoded 'Chat Message'. This is a consistency check, matching the case's literal wording ('Information section ... matching entry node's selection') and the AFS's declar\u2026 [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/pipelines/test_pipeline_entry_point_trigger_types_persist.py"
+        },
+        {
+          "kind": "note",
+          "note": "Case snapshot for ELITEA-2041 lives at .agents/automation/pipelines-remaining/cases/ELITEA-2041.md (no '-w3' wave suffix) even though the trunk is tests/batch-pipelines-remaining-w3 \u2014 matches the already-recorded qa-engineer memory entry (case_snapshot_dir_may_not_match_trunk_wave_suffix). No action needed, just confirms the pattern recurred and the existing memory entry is accurate."
+        }
+      ],
+      "afs": "test-specs/pipelines/lextend_pipeline-entry-point-trigger-shown-only-on-entry-node_ELITEA-2041.md",
+      "branch": "tests/ELITEA-2041-entry-point-trigger-shown-only-on-entry-node",
+      "pr": 1349,
+      "gate": {
+        "runs": 3,
+        "seconds": [
+          286.302447417,
+          281.24784325,
+          282.495711541
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "blocked": 1,
+    "automated": 4
+  },
+  "quality_flags": [
+    "extend-rate 3/5 exceeds 0.5 \u2014 blind-audit a sample of the extend/covered conclusions (a second analyst re-analyzing 1-2) before trusting this batch's coverage"
+  ],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

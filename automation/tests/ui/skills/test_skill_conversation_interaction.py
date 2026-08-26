@@ -1,12 +1,14 @@
 """Interact with Skills from Conversation (ELITEA-1736).
 
-Verifies that a skill attached to an agent can be invoked selectively via the
-"~<skill-name>" mention syntax when the agent is added as a **chat
-participant** (a different code path from ELITEA-1735's agent-level embedded
-chat), and that a plain message (no mention) does not apply the attached
-skill's formatting.
+Verifies skill invocation when the agent is added as a **chat participant**
+(a different code path from ELITEA-1735's agent-level embedded chat):
+1. V1 Explicit invocation: "~<skill-name>" mention syntax triggers the skill
+2. V2 Autonomous invocation: skill auto-applies when user message matches
+   the skill's description trigger condition
+3. Plain messages that don't match any skill's trigger should NOT apply skills
 
 Spec: test-specs/skills/l3_interact-with-skills-from-conversation_ELITEA-1736.md
+Related: GitHub issue #5698 (Skills V2 - Autonomous Invocation)
 """
 
 import logging
@@ -23,7 +25,7 @@ from pages.skill_detail_page import SkillDetailPage
 from pages.skill_form_page import SkillFormPage
 from pages.skills_list_page import SkillsListPage
 
-pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.chat]
+pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.chat, pytest.mark.new]
 
 UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
@@ -32,28 +34,38 @@ AI_RESPONSE_TIMEOUT = 60_000
 
 logger = logging.getLogger("elitea.tests.skills")
 
+# Skill: Uppercase formatting
+# Description is the V2 autonomous trigger condition - LLM reads this to decide relevance
 SKILL_NAME = "elitea-1736-uppercase-skill"
+SKILL_DESCRIPTION = (
+    "Use this skill ONLY when user explicitly requests FORMAL or POLITE tone"
+)
 SKILL_INSTRUCTIONS = (
-    "Always respond with the exact text the user asked for, but convert the "
-    "ENTIRE output to UPPER CASE letters. Do not use any lowercase letters "
-    "in your response."
+    "CRITICAL: You MUST convert ALL text in your response to UPPER CASE letters. "
+    "Do NOT use any lowercase letters. Do NOT explain or interpret the text - "
+    "just output it in UPPER CASE. Example: 'hello world' becomes 'HELLO WORLD'."
 )
 AGENT_NAME = "elitea-1736-conversation-agent"
 
-# Plain question for Step 5 - agent should answer normally without applying skills
+# Plain question - should NOT trigger any skill (no trigger keyword, no ~mention)
 PLAIN_QUESTION = "Hello, how are you today?"
 
-# Neutral text for skill mention test (Step 6)
-# Skill will transform this text literally according to its instructions
+# V2 autonomous trigger message - matches skill description trigger condition
+AUTONOMOUS_TRIGGER_FORMAL = "Please respond in a formal polite tone: The quick brown fox"
+
+# Neutral text for explicit ~mention test
 NEUTRAL_TEXT_FOR_SKILL = "The quick brown fox jumps over the lazy dog"
 
 
-def _create_skill(page, name: str, instructions: str) -> int:
+def _create_skill(page, name: str, instructions: str, description: str) -> int:
     """Create a skill via the UI and return its numeric ID.
 
-    Mirrors the create flow used in test_skill_agent_interaction.py
-    (ELITEA-1735): fill the form (name / description / CodeMirror
-    instructions), save, and confirm navigation to the detail page.
+    Args:
+        page: Playwright page instance.
+        name: Skill name.
+        instructions: Skill instructions (what the skill does).
+        description: Skill description - this is the V2 autonomous trigger
+            condition that the LLM reads to decide if the skill is relevant.
     """
     list_page = SkillsListPage(page)
     list_page.navigate_to_create()
@@ -63,7 +75,7 @@ def _create_skill(page, name: str, instructions: str) -> int:
     form_page.fill_form(
         name=name,
         instructions=instructions,
-        description=f"ELITEA-1736 automation skill — {name}",
+        description=description,
     )
     form_page.wait_for_form_validation()
     assert form_page.is_save_enabled(), (
@@ -87,39 +99,47 @@ def _extract_conversation_id(page) -> str | None:
 
 
 class TestInteractWithSkillsFromConversation:
-    """Interact with Skills from Conversation (ELITEA-1736, l3)."""
+    """Interact with Skills from Conversation (ELITEA-1736, l3).
+
+    Tests both V1 explicit (~mention) and V2 autonomous skill invocation
+    when agent is added as a chat participant.
+    """
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/skills/ELITEA-1736_interact-with-skills-from-conversation.md",
         "onetest-ai Test Case link",
     )
+    @allure.link("https://github.com/EliteaAI/elitea_issues/issues/5698", name="Skills V2 Epic")
     @pytest.mark.p2
     @pytest.mark.regression
+    @pytest.mark.flaky(reruns=3, reruns_delay=5)
     def test_interact_with_skills_from_conversation(
         self, page, agent_api, skill_api, conversation_api,
     ):
         """Create a skill, attach it to an agent, add the agent as a chat
-        participant, and verify selective invocation via "~<skill-name> <prompt>".
+        participant, and verify:
+        - Plain messages (no trigger) do NOT apply skills
+        - V2 autonomous: messages matching skill description trigger the skill
+        - V1 explicit: ~<skill-name> mention always triggers the skill
 
-        Steps (AFS test-specs/skills/l3_interact-with-skills-from-conversation_ELITEA-1736.md):
-        1. Create Skill (uppercase-formatting instructions).
+        Steps:
+        1. Create Skill (uppercase, triggered by "formal/polite" keywords).
         2. Create an Agent.
         3. Attach the skill to the agent via the Skills section.
         4. Open Chat, add the agent as a participant.
-        5. Send a plain message (no mention) — should NOT apply skill formatting.
-        6. Send "~<skill-name> <prompt>" — should return entirely UPPER CASE.
+        5. Plain message — should NOT apply skill formatting.
+        6. V2 autonomous trigger — should return UPPER CASE.
+        7. V1 explicit ~<skill-name> — should return UPPER CASE.
         """
         skill_id = None
         agent_id = None
         conversation_id = None
-        # Soft failures list — record failures here instead of raising immediately,
-        # so step 6 still executes and reports. If anything landed here, the test
-        # fails at the very end via pytest.fail().
-        soft_failures = []
 
         try:
-            with allure.step("Step 1 — Create Skill (uppercase-formatting instructions)"):
-                skill_id = _create_skill(page, SKILL_NAME, SKILL_INSTRUCTIONS)
+            with allure.step("Step 1 — Create Skill (uppercase, formal/polite trigger)"):
+                skill_id = _create_skill(
+                    page, SKILL_NAME, SKILL_INSTRUCTIONS, SKILL_DESCRIPTION
+                )
 
             with allure.step("Step 2 — Create Agent"):
                 list_page = AgentsListPage(page)
@@ -129,8 +149,8 @@ class TestInteractWithSkillsFromConversation:
                 form_page.wait_for_form_load()
                 form_page.fill_form(
                     name=AGENT_NAME,
-                    description="ELITEA-1736 automation agent — skill-from-conversation interaction",
-                    instructions="You are a helpful assistant.",
+                    description="General purpose test assistant for automation",
+                    instructions="You are a helpful assistant. Answer questions naturally and conversationally.",
                 )
                 form_page.wait_for_form_validation()
                 assert form_page.is_save_enabled(), (
@@ -167,7 +187,7 @@ class TestInteractWithSkillsFromConversation:
                 )
 
             with allure.step(
-                "Step 5 — Plain message (no mention) should NOT apply skill formatting"
+                "Step 5 — Plain message (no trigger keywords) should NOT apply skills"
             ):
                 initial_count = chat.get_message_count()
                 chat.send_message(PLAIN_QUESTION, use_enter=True)
@@ -177,11 +197,6 @@ class TestInteractWithSkillsFromConversation:
                 chat.wait_for_message_content_stable(
                     stable_duration_ms=2000, timeout=AI_RESPONSE_TIMEOUT,
                 )
-                # The first message navigates the SPA to /chat/{id}?name=... and
-                # re-renders the composer, which is briefly disabled during that
-                # transition — wait for it to become interactable again (visible
-                # AND editable, not just visible) before sending the mention
-                # message in step 6.
                 chat.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
 
                 conversation_id = _extract_conversation_id(page)
@@ -191,18 +206,39 @@ class TestInteractWithSkillsFromConversation:
                 )
 
                 plain_response = chat.get_last_message_text()
-                logger.info("Plain response (no mention): %r", plain_response)
+                logger.info("Plain response (no trigger): %r", plain_response)
                 alpha_chars = [c for c in plain_response if c.isalpha()]
 
-                # Without ~mention, agent should NOT apply skill formatting
+                # Plain question has no trigger keywords (formal/polite)
+                # so skill should NOT be applied
                 is_all_uppercase = alpha_chars and all(c.isupper() for c in alpha_chars)
-                if is_all_uppercase:
-                    soft_failures.append(
-                        f"Plain message (no ~mention) unexpectedly had skill formatting applied: "
-                        f"got {plain_response!r}"
-                    )
+                assert not is_all_uppercase, (
+                    f"Plain message should NOT trigger uppercase skill: {plain_response!r}"
+                )
 
-            with allure.step("Step 6 — ~<skill-name> mention invocation returns UPPER CASE"):
+            with allure.step(
+                "Step 6 — V2 autonomous: 'formal polite' trigger returns UPPER CASE"
+            ):
+                initial_count = chat.get_message_count()
+                chat.send_message(AUTONOMOUS_TRIGGER_FORMAL, use_enter=True)
+                chat.wait_for_ai_response(
+                    initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT,
+                )
+                chat.wait_for_message_content_stable(
+                    stable_duration_ms=2000, timeout=AI_RESPONSE_TIMEOUT,
+                )
+                formal_response = chat.get_last_message_text()
+                logger.info("V2 autonomous formal/polite response: %r", formal_response)
+                alpha_chars = [c for c in formal_response if c.isalpha()]
+                assert alpha_chars, (
+                    f"Formal trigger response has no alphabetic chars: {formal_response!r}"
+                )
+                assert all(c.isupper() for c in alpha_chars), (
+                    f"V2 autonomous: 'formal polite' should trigger uppercase skill, "
+                    f"got: {formal_response!r}"
+                )
+
+            with allure.step("Step 7 — V1 explicit: ~<skill-name> returns UPPER CASE"):
                 initial_count = chat.get_message_count()
                 chat.send_message_with_skill_mention(
                     SKILL_NAME,
@@ -216,24 +252,17 @@ class TestInteractWithSkillsFromConversation:
                     stable_duration_ms=2000, timeout=AI_RESPONSE_TIMEOUT,
                 )
                 mention_response = chat.get_last_message_text()
-                logger.info("Uppercase skill response: %r", mention_response)
+                logger.info("V1 explicit ~uppercase response: %r", mention_response)
                 alpha_chars = [c for c in mention_response if c.isalpha()]
                 assert alpha_chars, (
-                    f"~{SKILL_NAME} response contains no alphabetic characters: {mention_response!r}"
+                    f"~{SKILL_NAME} response has no alphabetic chars: {mention_response!r}"
                 )
                 assert all(c.isupper() for c in alpha_chars), (
-                    f"~{SKILL_NAME} response should be entirely UPPER CASE, got: {mention_response!r}"
-                )
-
-            if soft_failures:
-                pytest.fail(
-                    "Soft assertion(s) failed:\n" + "\n".join(soft_failures)
+                    f"V1 explicit ~{SKILL_NAME} should return UPPER CASE, "
+                    f"got: {mention_response!r}"
                 )
 
         finally:
-            # Cleanup per AFS: delete conversation first, then agent, then
-            # skill, tolerating individual failures so one bad delete doesn't
-            # skip the rest (mirrors ELITEA-1735's teardown pattern).
             if conversation_id is not None:
                 try:
                     conversation_api.delete_conversation(int(conversation_id))

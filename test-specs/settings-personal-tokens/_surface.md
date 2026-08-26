@@ -226,3 +226,31 @@ this digest / grep the component before re-requesting the same prop-thread.
   narrower/mobile viewport was not tested live, flag if a future case needs
   responsive-breakpoint coverage.
 - Console: 0 errors, 0 warnings on page load with 5 populated rows.
+
+## Empty state — reachability, and what it actually renders (ELITEA-2250, 2026-08-24)
+- **Tokens are USER-scoped, not project-scoped** — `useTokenListQuery({ skip:
+  !user.personal_project_id })` takes no project id (`PersonalTokens.jsx:32`).
+  Verified live: switching projects does not change the list. So the empty state
+  needs a *user* with zero tokens; there is no project trick.
+- Live inventory **unchanged since 2026-08-05** (re-verified 2026-08-24): 5 tokens —
+  `for_ui_tests` (never), `Levon` (never), `Marian` (**expired**), `New` (**expired**),
+  `uautomate` (never). The two expired rows **cannot be recreated** (create only
+  offers future expirations) and ELITEA-2284's merged
+  `test_expired_token_shows_expired_icon_and_label` reads its `expired` branch off
+  them → deleting all tokens to reach the empty state is irreversible destruction,
+  not a precondition. `auth_state_user_b` `pytest.skip`s on localhost by design
+  (`session_fixtures.py:133`). ELITEA-2250 is therefore parked **blocked**.
+- **What the empty branch renders** (source-confirmed, `PersonalTokens.jsx:296-306`):
+  `EmptyStatePage` with title `No tokens yet` (testid **`empty-state-title`**, already
+  on `main`), description `Create your first API token.`, an illustration `<img>`, and
+  a `Create` button (`BaseBtn` + plus icon) whose `onCreateClick` navigates to
+  `/settings/create-personal-token`. The Create button and description have **no
+  testid** — they need caller-supplied props on the shared `EmptyStatePage`
+  (`src/[fsd]/entities/empty-state-page/ui/EmptyStatePage.jsx`), which is used by
+  many empty states app-wide.
+- **The empty branch returns BEFORE `DrawerPage`** — in it, `personal-tokens-page-title`,
+  `personal-tokens-search-input`, `personal-tokens-add-button`, the table and all
+  action icons **do not exist**. Assert their absence, not their invisibility.
+- **Mount timing**: a `CircularProgress` (`role="progressbar"`, no testid) covers the
+  page for ~2-2.5 s on every load before either branch renders (measured 2026-08-24,
+  500 ms sampling: rows appear at 2.5 s). Wait on the branch, never on a delay.

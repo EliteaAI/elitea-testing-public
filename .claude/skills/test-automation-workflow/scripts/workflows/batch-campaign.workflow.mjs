@@ -73,13 +73,42 @@ const quote = (s, max = 400) => String(s ?? '')
   .trim()
   .slice(0, max)
 
+// Kept in step with batch-build.workflow.mjs's FOREGROUND_RULE — same measured
+// facts (28ms enforcement on a turn end; blocking sleep works; 600s call cap).
 const FOREGROUND_RULE =
-  'RUN LONG JOBS IN THE FOREGROUND — test suites especially. Let the call block. ' +
-  'If you background one you own it until it exits: poll it every turn until you ' +
-  'have the result. NEVER end a turn waiting for a background job to finish — ' +
-  'nothing will wake you, this workflow blocks on your return, and your silence ' +
-  'is indistinguishable from thinking. If a job is genuinely too long for one ' +
-  'call, say so and run the narrower selection you actually need. '
+  'LONG JOBS — test suites especially. A foreground call is killed at its `timeout` ' +
+  '(default 120s, MAXIMUM 600000ms), so ALWAYS pass timeout: 600000 on a suite run, ' +
+  'and let the call block when the job fits inside it. ' +
+  'When the job does NOT fit in one call: launch it detached, writing its output to a file, ' +
+  'then WAIT with blocking foreground polls — ONE `sleep <n>; <tail the output file>` per call, each with ' +
+  'timeout: 600000 — until it is done. Sleeping in the foreground is legal and cheap: it is ONE turn ' +
+  'however long you sleep. Make the FIRST poll short (~60-120s) — a run that dies in its first minute ' +
+  'must not cost a five-minute blind sleep — then settle at ~`sleep 300`. NEVER chain sleeps inside one ' +
+  'call (`sleep 120; tail; sleep 240; tail`): the chain outlives the call cap and is killed at its own ' +
+  'timeout, taking the tail you already read with it — one sleep, one look, return, repeat. ' +
+  'NEVER end a turn while a job is running — nothing will wake you (measured: you are forced to ' +
+  'report 28ms later, before the job finishes, and neither run_in_background nor Monitor beats that), ' +
+  'this workflow blocks on your return, and your silence is indistinguishable from thinking. ' +
+  'NEVER poll at second-level intervals either — you pay a full context per turn, and a busy-wait ' +
+  'exhausts your turn budget and gets you cut off mid-job. ' +
+  'If a job is too long even for sleep-polling, say so and run the narrower selection you actually need. '
+
+// Stall-retry exhaustion THROWS out of agent() ("agent stalled on all N
+// attempts") instead of returning null — measured 2026-08-17 on a
+// quota-throttled Bedrock setup, where one uncaught stall killed a whole run
+// with its report unwritten. Every direct dispatch here goes through guarded():
+// a throw becomes the null every call site already handles, and the log names
+// the stall so the lead blames the ENVIRONMENT (provider quota, stream
+// stability), not the batch. The per-wave build children need no guard — the
+// wave loop already catches, and the hardened batch-build absorbs its own
+// stalls per unit.
+const isStall = (e) => /stall/i.test(String(e?.message ?? e))
+const guarded = async (what, fn) => {
+  try { return await fn() } catch (e) {
+    log(`${what} ${isStall(e) ? 'infra-stalled (environment — fix the provider before retrying)' : 'threw'}: ${String(e?.message ?? e).slice(0, 120)}`)
+    return null
+  }
+}
 
 /**
  * Should the fix loop go round again? Duplicated from batch-build.workflow.mjs
@@ -171,7 +200,7 @@ if (!plan) {
       rationale: { type: 'string' },
     },
   }
-  const proposed = await agent(
+  const proposed = await guarded('planner', () => agent(
     'You are the campaign PLANNER (campaign-planning.md — read it via the test-automation-workflow skill references). ' +
     `Campaign "${P.campaign}", batch "${P.batch}", base "${P.base}", wave size ~${P.waveSize ?? 5}. ` +
     `Read EVERY case snapshot from disk (do not fetch any TMS): ${P.cases.map((c) => SRC(P.batch, c.id)).join(' , ')}. ` +
@@ -188,7 +217,7 @@ if (!plan) {
     `- policy: carry over ${JSON.stringify(P.policy ?? {})} plus any per-stage model suggestions.\n` +
     'Return rationale as ONE compact paragraph the operator will read — the operator sees your plan, never the case bodies, so the rationale must carry the why.',
     { label: `planner:${P.campaign}`, phase: 'Plan', agentType: 'test-automation-lead', model: 'sonnet', schema: PLAN_SCHEMA }
-  )
+  ))
   if (!proposed) throw new Error('planner agent failed — re-invoke or plan conversationally')
   return {
     stage: 'plan-proposal',
@@ -199,11 +228,11 @@ if (!plan) {
 
 // ---- validated plan present ------------------------------------------------
 if (!plan.campaign || !plan.batch || !plan.base || !Array.isArray(plan.waves) || plan.waves.length === 0) {
-  throw new Error('plan malformed: { campaign, batch, base, heads?, foundation|null, waves: [{slug, caseIds, clusters?}, …], policy? } required')
+  throw new Error('plan malformed: { campaign, batch, base, heads?, foundation|null, waves: [{slug, caseIds, clusters?}, …], casePaths?: {id: repoRelPath}, policy? } required')
 }
 const POLICY = plan.policy ?? {}
 const F = plan.foundation ?? null
-const policyArgs = ['workerModel', 'workerEffort', 'reviewerModel', 'extendImplementerModel', 'agentTypes', 'reviewPanel', 'breakerThreshold', 'budgetReserve', 'fixRounds', 'gateN', 'gateCmd', 'extendRateThreshold']
+const policyArgs = ['workerModel', 'workerEffort', 'reviewerModel', 'extendImplementerModel', 'gateModel', 'agentTypes', 'reviewPanel', 'breakerThreshold', 'budgetReserve', 'fixRounds', 'gateN', 'gateCmd', 'extendRateThreshold']
   .reduce((o, k) => (POLICY[k] != null ? { ...o, [k]: POLICY[k] } : o), {})
 const common = { ...(ROOT ? { root: ROOT } : {}) }
 
@@ -212,10 +241,11 @@ let headsAnalyzed = Array.isArray(A.headsAnalyzed) ? A.headsAnalyzed : []
 if (F && A.foundationMerged !== true) {
   phase('Heads')
   if (!headsAnalyzed.length && Array.isArray(plan.heads) && plan.heads.length) {
-    const headsRun = await workflow({ scriptPath: BUILD }, {
+    const headsRun = await guarded('heads analysis child', () => workflow({ scriptPath: BUILD }, {
       slug: plan.batch,
       base: plan.base,                          // batch-build requires it even for analyzeOnly
-      cases: plan.heads.map((id) => ({ id })),
+      // casePaths: in-repo case sources (no snapshot copy) — see batch-build's SRC
+      cases: plan.heads.map((id) => ({ id, ...(plan.casePaths?.[id] ? { path: plan.casePaths[id] } : {}) })),
       analyzeOnly: true,
       // Own report location: waves share the batch slug (and its snapshot
       // dir) — without this the heads report and every wave's report would
@@ -223,7 +253,7 @@ if (F && A.foundationMerged !== true) {
       reportDir: `.agents/automation/${plan.batch}/heads`,
       ...policyArgs,
       ...common,
-    })
+    }))
     headsAnalyzed = headsRun?.analyzed ?? []
     log(`heads analyzed: ${headsAnalyzed.map((h) => h.id).join(', ') || 'none'}`)
   }
@@ -292,7 +322,7 @@ if (F && A.foundationMerged !== true) {
     },
   }
   const fBranch = F.branch ?? `tests/foundation-${plan.campaign}`
-  const built = await agent(
+  const built = await guarded('foundation implementer', () => agent(
     'You are the implementer building the FOUNDATION pass for a campaign (campaign-planning.md § The stages). ' +
     'You are the ONLY writer in the project\'s one working tree for this stage — nothing else builds while you run. Work on your own branch, stage only your own paths (`git add <paths>`, never `-A`), and leave the tree on that branch. ' +
     // A resumed or retried run arrives at a branch that may already carry most
@@ -312,15 +342,15 @@ if (F && A.foundationMerged !== true) {
     // should never have owned. The case implementer states the rule the
     // foundation was breaking: "green ONCE locally — determinism is the gate's
     // job, not repeated local runs."
-    'Also write ONE smoke spec exercising the new page objects end-to-end (tag it as the surface\'s standing smoke — it stays). Run the smoke green ONCE locally, commit, open the PR — do NOT run the whole suite, the mini-gate does that and it is not your job. ' +
+    'Also write ONE smoke spec exercising the new page objects end-to-end (tag it as the surface\'s standing smoke — it stays). Run the smoke green ONCE locally, commit, and land it per `.agents/profile.md` § Automation PR policy (a PR where the project uses them, otherwise the committed branch is the deliverable) — do NOT run the whole suite, the mini-gate does that and it is not your job. ' +
     FOREGROUND_RULE +
     'No TMS/reporter/analytics wiring (scaffold-minimal rule). Return status ready-for-mini-gate with branch, pr, smoke_spec path — or blocked with notes.',
     { label: `foundation:${plan.campaign}`, phase: 'Foundation', agentType: 'test-automation-engineer', ...(POLICY.workerModel ? { model: POLICY.workerModel } : {}), schema: FOUNDATION_SCHEMA }
-  )
+  ))
   if (!built || built.status !== 'ready-for-mini-gate') {
     return { stage: 'foundation', status: 'blocked', detail: built?.notes ?? 'foundation implementer failed', heads_analyzed: headsAnalyzed, next: 'Unblock the foundation (or set plan.foundation=null) and re-invoke with { plan, headsAnalyzed }.' }
   }
-  const reviewFoundation = (fixNote) => agent(
+  const reviewFoundation = (fixNote) => guarded('foundation review', () => agent(
     `STATIC review of the foundation branch ${built.branch} (PR ${built.pr ?? 'n/a'}) per references/reviewer-contract.md — page objects/fixtures + one smoke spec, no case coverage to triangulate: judge structure, naming vs .agents/testing.md conventions, no defect masking in the smoke, scaffold-minimal (no unsolicited integrations). Read the diff via git diff ${plan.base}...${built.branch}; do NOT execute anything. ` +
     'blocking[] is what must change before this can land; anything else worth saying goes in findings[]. ' +
     (fixNote
@@ -332,7 +362,7 @@ if (F && A.foundationMerged !== true) {
         '`unaddressed` sends it back for another round, which is correct — do not use `persists` to end a loop you are tired of. A NEW item you are raising for the first time needs no status.\n'
       : ''),
     { label: `review:foundation${fixNote ? ':re' : ''}`, phase: 'Foundation', agentType: 'qa-engineer', ...(POLICY.reviewerModel ? { model: POLICY.reviewerModel } : {}), schema: REVIEW_SCHEMA }
-  )
+  ))
 
   // Same contract as the build loop: keep going while anything is merely
   // UNADDRESSED; stop when what is left cannot be moved by another round. The
@@ -353,9 +383,9 @@ if (F && A.foundationMerged !== true) {
     round++
     const prior = rev.blocking.map((b) => quote(b)).join('\n- ')
     const skipped = (rev.blocking_detail ?? []).filter((d) => d.status === 'unaddressed').map((d) => quote(d.item))
-    const fixed = await agent(
+    const fixed = await guarded(`foundation fix round ${round}`, () => agent(
       `Implementer slot — fix round ${round} on the foundation branch ${built.branch} per your test-automation-implementation skill. ` +
-      'You are the ONLY writer in the project\'s one working tree for this stage. Address EACH blocking finding (verify against the code first), keep the smoke spec green ONCE, commit, update the PR — do NOT run the whole suite, that is the mini-gate\'s job. ' +
+      'You are the ONLY writer in the project\'s one working tree for this stage. Load your receiving-code-review skill first if it is not in your context (on-demand, not preloaded). Address EACH blocking finding (verify against the code first), keep the smoke spec green ONCE, commit, update the PR — do NOT run the whole suite, that is the mini-gate\'s job. ' +
       FOREGROUND_RULE + '\n- ' +
       prior +
       (skipped.length
@@ -363,7 +393,7 @@ if (F && A.foundationMerged !== true) {
           + 'Do them. If one genuinely cannot be done on this branch, say so in notes with the reason instead of leaving it silent.'
         : ''),
       { label: `fix:foundation:${round}`, phase: 'Foundation', agentType: 'test-automation-engineer', ...(POLICY.workerModel ? { model: POLICY.workerModel } : {}), schema: FOUNDATION_SCHEMA }
-    )
+    ))
     if (!fixed || fixed.status !== 'ready-for-mini-gate') { stopped = `fix round ${round} failed: ${fixed?.notes ?? 'implementer failed'}`; rev = null; break }
     rev = await reviewFoundation(prior)
   }
@@ -389,7 +419,7 @@ if (F && A.foundationMerged !== true) {
   // the case. Same contract as the batch gate: N CONSECUTIVE green, the gate
   // proves and never fixes, and it is a separate agent from the one that built.
   phase('Mini-gate')
-  const gate = await agent(
+  const gate = await guarded('foundation mini-gate', () => agent(
     `Mini-gate for the campaign foundation. You did not write this code and you do not fix it — you PROVE it, and you report exactly what you saw.\n` +
     `Branch: ${built.branch}. Base: ${plan.base}. Smoke spec: ${built.smoke_spec}.\n` +
     `Run the smoke spec ${GATE_N} CONSECUTIVE deterministic green times, each a clean process against the live env, and run the existing suite green once alongside it — the foundation must not have broken what already passed. ` +
@@ -400,7 +430,7 @@ if (F && A.foundationMerged !== true) {
     FOREGROUND_RULE +
     `Return verdict=green only if you observed ${GATE_N} consecutive green runs.`,
     { label: 'mini-gate:foundation', phase: 'Mini-gate', agentType: 'test-automation-engineer', ...(POLICY.workerModel ? { model: POLICY.workerModel } : {}), schema: GATE_SCHEMA }
-  )
+  ))
   log(`foundation mini-gate: ${gate?.verdict ?? 'not-run'} after ${round} fix round(s)`)
 
   return {
@@ -444,7 +474,7 @@ for (const w of pending) {
     const report = await workflow({ scriptPath: BUILD }, {
       slug: plan.batch,
       base: plan.base,
-      cases: w.caseIds.map((id) => ({ id })),
+      cases: w.caseIds.map((id) => ({ id, ...(plan.casePaths?.[id] ? { path: plan.casePaths[id] } : {}) })),
       integrationBranch: `tests/batch-${w.slug}`,
       // Per-wave report dir: the snapshot dir is shared via the batch slug by
       // design, but each wave must keep its own report.json — the conductor's
@@ -510,7 +540,7 @@ for (const w of pending) {
           return `Wave '${w.slug}' FAILED (${quote(thisWave.detail ?? '', 120)}) — there is NOTHING to land. Diagnose it (its report/journal), then re-invoke with { plan, foundationMerged: true, headsAnalyzed, landedWaves: ${JSON.stringify(landedWaves)} } to retry the wave (resume replays completed units from cache), or drop it from plan.waves to move on.`
         }
         if (thisWave?.status === 'ungated') {
-          return `Wave '${w.slug}' merged units but its gate NEVER RAN (interrupted or dropped) — they are merged-ungated: unproven, NOT blocked, and there is nothing to classify yet. Re-run the wave gate on ${thisWave?.integration_branch ?? 'its trunk'} first (resuming the build with resumeFromRunId replays merges from cache)${thisWave?.report_written ? '' : '; its report.json was never written — derive state from .agents/automation/_returns/ and git (playbook § Interruption)'}. Land only on green, then re-invoke with { plan, foundationMerged: true, headsAnalyzed, landedWaves: ${JSON.stringify(landedWaves)} } to continue.`
+          return `Wave '${w.slug}' merged units but its gate NEVER RAN (interrupted or dropped) — they are merged-ungated: unproven, NOT blocked, and there is nothing to classify yet. Re-run the wave gate on ${thisWave?.integration_branch ?? 'its trunk'} first (resuming the build with resumeFromRunId replays merges from cache)${thisWave?.report_written ? '' : '; its report.json was never written — derive state from .agents/telemetry/automation/returns/ (legacy _returns/) and git (playbook § Interruption)'}. Land only on green, then re-invoke with { plan, foundationMerged: true, headsAnalyzed, landedWaves: ${JSON.stringify(landedWaves)} } to continue.`
         }
         return `Wave '${w.slug}' ended '${thisWave?.status}' — do NOT land it yet: classify its report first (flake/test-code red → batch-stabilize on its trunk; product defect → tracker). Land only when its trunk is worth landing, then re-invoke with { plan, foundationMerged: true, headsAnalyzed, landedWaves: ${JSON.stringify([...landedWaves, w.slug])} }; to skip it instead, re-invoke without adding it to landedWaves.`
       })(),
@@ -538,7 +568,7 @@ return {
   goal: GOAL,
   landing: LANDING,
   landed_waves: landedWaves,
-  next: `Lead: each wave already gated itself and its trunk is ready to land. Land per .agents/profile.md § Automation PR policy — landing granularity is '${LANDING}'${LANDING === 'per-batch' ? ' (land each gated wave before the next starts, so the next cuts its trunk from an updated base)' : ' (accumulate the gated wave branches and land them together at campaign end)'}. Under auto-merge this can be a dispatched closer rather than your own turns: it merges, reads back the merge, mirrors the TMS, transitions the tracker, and returns the EVIDENCE (merge shas + the read-back diff), never just a claim. Then mirror per plan.policy.mirror ('${POLICY.mirror ?? 'campaign-end'}'). A wave that is not 'gated-green': classify its blocked cases from its report (product defect → tracker; flake/test-code → batch-stabilize on that wave's branch; architectural → § Framework architecture) — EXCEPT a wave 'ungated' (gate never ran): its merged-ungated units are unproven, not blocked — re-run its gate before classifying anything, and if report_written is false the report.json on disk is missing: derive its state from .agents/automation/_returns/ and git (playbook § Interruption), never from this summary alone. Investigate quality_flags and extend_divergence (blind-audit sampled extends) before trusting a wave's coverage. ` +
+  next: `Lead: each wave already gated itself and its trunk is ready to land. Land per .agents/profile.md § Automation PR policy — landing granularity is '${LANDING}'${LANDING === 'per-batch' ? ' (land each gated wave before the next starts, so the next cuts its trunk from an updated base)' : ' (accumulate the gated wave branches and land them together at campaign end)'}. Under auto-merge this can be a dispatched closer rather than your own turns: it merges, reads back the merge, mirrors the TMS, transitions the tracker, and returns the EVIDENCE (merge shas + the read-back diff), never just a claim. Then mirror per plan.policy.mirror ('${POLICY.mirror ?? 'campaign-end'}'). A wave that is not 'gated-green': classify its blocked cases from its report (product defect → tracker; flake/test-code → batch-stabilize on that wave's branch; architectural → § Framework architecture) — EXCEPT a wave 'ungated' (gate never ran): its merged-ungated units are unproven, not blocked — re-run its gate before classifying anything, and if report_written is false the report.json on disk is missing: derive its state from .agents/telemetry/automation/returns/ (legacy _returns/) and git (playbook § Interruption), never from this summary alone. Investigate quality_flags and extend_divergence (blind-audit sampled extends) before trusting a wave's coverage. ` +
     (GOAL
       ? `AFTER each wave's merges land, RE-MEASURE THE GOAL — run \`${GOAL.command}\` and log the number on the campaign card under § Goal (metric: ${GOAL.metric}; baseline: ${GOAL.baseline}). A wave gate that passes without a fresh number leaves the campaign blind from there on. `
       : '') +

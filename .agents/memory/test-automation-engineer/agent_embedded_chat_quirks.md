@@ -78,3 +78,13 @@ an agent's embedded chat panel). Source: `automation/pages/agent_detail_page.py`
    for this. A lone welcome message (before any user message) is always
    "last", so `skill-test-last-response` — not `chat-answer-content` — is
    the one that actually fires for that case.
+
+7. **`clear_embedded_chat()` right after a fresh `navigate(agent_id)` times
+   out — `chat-clear-button` starts DISABLED.** Confirmed live during
+   ELITEA-2599: `ClearChatButton.jsx` is disabled whenever the embedded
+   chat has 0 messages, and a full-page `navigate()` always lands on a
+   fresh/empty embedded conversation (nothing to clear yet). Calling
+   `clear_embedded_chat()` there is a no-op you don't need — it just
+   hangs waiting for a button that will never enable. Only call it
+   between two chat interactions ON THE SAME page load (no intervening
+   navigate), where a previous message genuinely needs clearing.

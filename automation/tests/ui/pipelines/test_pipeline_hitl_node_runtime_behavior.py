@@ -46,7 +46,7 @@ from pages.pipeline_detail_page import PipelineDetailPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p2, pytest.mark.regression, pytest.mark.new_verified]
 
 PAUSE_TIMEOUT = 60_000
 RESUME_SETTLE_MS = 8_000
@@ -65,6 +65,7 @@ def _chat_predict_events(frames, inner_type):
     return [f for f in frames if f.get("event") == "chat_predict" and f.get("type") == inner_type]
 
 
+@pytest.mark.blocked(reason="Known product defect - blocked by issue #1103")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
     "automated-full-regression-ui/pipelines/ELITEA-2015_pipeline-hitl-node-runtime-behavior.md",

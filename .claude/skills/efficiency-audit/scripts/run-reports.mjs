@@ -51,14 +51,20 @@ export function findReports(target) {
   if (!existsSync(target)) return [];
   const st = statSync(target);
   if (st.isFile()) return [target];
-  // A batch dir (holds report.json) or the automation root (holds batch dirs).
-  const direct = join(target, 'report.json');
-  if (existsSync(direct)) return [direct];
+  // Walk the WHOLE tree under the target: campaigns nest batch reports in
+  // sub-folders (.agents/automation/<campaign>/<wave>/report.json), so a
+  // one-level scan silently under-counts any campaign that uses them —
+  // field-flagged twice (2026-08-04 and 2026-08-06 audits) before this fix.
+  // Dirent.isDirectory() does not follow symlinks, so a link cycle can't loop.
   const out = [];
-  for (const name of readdirSync(target).sort()) {
-    const p = join(target, name, 'report.json');
-    if (existsSync(p)) out.push(p);
-  }
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const p = join(dir, entry.name);
+      if (entry.isDirectory()) walk(p);
+      else if (entry.name === 'report.json') out.push(p);
+    }
+  };
+  walk(target);
   return out;
 }
 

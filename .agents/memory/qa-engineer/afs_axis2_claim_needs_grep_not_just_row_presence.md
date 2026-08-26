@@ -29,6 +29,17 @@ the letter of "the row exists and cites an Axis 2 bullet" while missing that
 the bullet itself was never implemented. Treat every row's citation as a claim
 to verify mechanically, not a citation to trust.
 
+**Partial-coverage variant (PR #1323/ELITEA-2038):** the mechanism CAN exist and
+still under-cover. The test registered `page.on("console", ...)` before step 0
+and asserted `not console_errors` after the attach step and after save — real
+code, not absent. But the AFS's own Axis 2 line said the check was "added
+throughout" the flow, and the LAST step (a full page reload, step 12) has no
+following assertion at all — a console error introduced only by reload/
+hydration would accumulate into the list and never get read. `grep -c
+"console_errors"` in the test file returning >0 is not proof of full-flow
+coverage; count the assertion sites against the step list, not just against
+zero.
+
 Secondary, same-PR finding worth generalizing: a page-object method
 (`click_first_other_conversation()`) silently required "at least one OTHER
 pre-existing conversation in the target project" to not raise

@@ -16,12 +16,15 @@ Actions:
 """
 
 import logging
+import re
+import time
 import urllib.parse
+
 from playwright.sync_api import Download, Locator, Page, expect
+from utils.actions import action
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
-from utils.actions import action
 
 logger = logging.getLogger("elitea.pages.artifacts")
 
@@ -35,6 +38,9 @@ class ArtifactsPage(BasePage):
     and renders the file table on the right.
 
     URL: /artifacts, /artifacts?bucket={bucket_name}
+
+    Inherits from BasePage:
+    - project_selector_trigger, SELECT_OPTION, switch_project() for project switching
     """
 
     # ------------------------------------------------------------------
@@ -96,6 +102,28 @@ class ArtifactsPage(BasePage):
         description="Save button on the 'New Bucket' form — submits bucket creation",
     )
 
+    bucket_cancel_button = LocatorDescriptor(
+        testid="artifacts-bucket-cancel-button",
+        description="Cancel button on the 'New Bucket' / 'Edit bucket' form "
+        "(ELITEA-1810) — testid already present on CreateBucket.jsx:307; this "
+        "is its first page-object binding. onCancel is a plain navigate(-1): "
+        "it fires NO bucket request, which is exactly what ELITEA-1810's "
+        "Test Step 23 asserts.",
+    )
+
+    bucket_form_heading = LocatorDescriptor(
+        testid="artifacts-bucket-form-heading",
+        description="Heading of the bucket form at /artifacts/create-bucket "
+        "(ELITEA-1810 — new testid, implementer; EliteaAI/EliteaUI "
+        "CreateBucket.jsx:209 Typography). The SAME route serves both the "
+        "create and the edit flow, and this heading's text is the only "
+        "observable that tells them apart ('New Bucket' vs 'Edit bucket' — "
+        "CreateBucket.jsx renders `currentBucket ? 'Edit bucket' : 'New "
+        "Bucket'`). ONE stable testid, state read from the TEXT — never a "
+        "state-switched testid pair (.agents/testing.md § Locator policy, "
+        "PR #581 ruling).",
+    )
+
     bucket_name_helper_text = LocatorDescriptor(
         testid="artifacts-bucket-name-helper-text",
         description="Inline validation helper-text under the Name field on the "
@@ -105,6 +133,24 @@ class ArtifactsPage(BasePage):
         "TextField `FormHelperTextProps={{'data-testid': ...}}`, alongside its "
         "existing `inputProps`-based name-input testid — MUI v5 supports both "
         "prop shapes on the same TextField.",
+    )
+
+    bucket_name_character_counter = LocatorDescriptor(
+        testid="artifacts-bucket-name-character-counter",
+        description="Character counter rendered under the Name field on the "
+        "'New Bucket' form (ELITEA-1818/1819 — new testid, implementer). "
+        "CreateBucket.jsx:248 renders `<Text.CharacterCounter>` ONLY while "
+        "`isFocused('name') && name.length === 56`, so the element is absent "
+        "from the DOM at any other length AND after any blur — never assert "
+        "it once focus has left the field. Text is "
+        "`\"{remaining} characters left\"` (CharacterCounter.jsx), i.e. "
+        "\"0 characters left\" at the limit; the \". You have reached the "
+        "MAXIMUM character limit\" suffix is suppressed at this call site via "
+        "`hideMaxLimitMessage`. Wired prop-only — the shared component already "
+        "accepts a `data-testid` prop (CharacterCounter.jsx:11,20), so no DOM "
+        "node was added. NOTE: the host Box is `display: contents`, so "
+        "`bounding_box()` is None while `is_visible()`/`to_be_visible()` still "
+        "resolve True (confirmed live 2026-08-23).",
     )
 
     # ------------------------------------------------------------------
@@ -152,6 +198,19 @@ class ArtifactsPage(BasePage):
         "bucket's menu is currently open",
     )
 
+    bucket_menu_rename_menuitem = LocatorDescriptor(
+        testid="bucket-menu-rename-menuitem",
+        description="'Rename' item inside a bucket row's dot-menu dropdown "
+        "(ELITEA-1810) — testid added live to BucketItem.jsx's menuItems array "
+        "(a `key: 'bucket-menu-rename'` field, the same DotMenu mechanism as "
+        "the sibling 'bucket-menu-upload-files' / '-pin' / '-delete' keys) and "
+        "pushed to automation/testids (EliteaAI/EliteaUI@c91c2aac). Static "
+        "(not bucket-parameterized). NOTE the label: the TMS cases say 'Edit', "
+        "the live product says 'Rename' (tracked CLARIFICATION #666/#650) — "
+        "clicking it navigates to /artifacts/create-bucket with the bucket "
+        "pre-loaded, i.e. the 'Edit bucket' form.",
+    )
+
     bucket_menu_delete_menuitem = LocatorDescriptor(
         testid="bucket-menu-delete-menuitem",
         description="'Delete' item inside a bucket row's dot-menu dropdown "
@@ -164,6 +223,40 @@ class ArtifactsPage(BasePage):
         "SAME component ELITEA-1847 already testid'd for the file/folder "
         "bulk-delete flow, reused here from the bucket dot-menu entry point.",
     )
+
+    bucket_menu_pin_menuitem = LocatorDescriptor(
+        testid="bucket-menu-pin-menuitem",
+        description="Pin/unpin item inside a bucket row's dot-menu dropdown "
+        "(ELITEA-1820/1821) — testid added live to BucketItem.jsx's menuItems "
+        "array (a `key: 'bucket-menu-pin'` field, the same DotMenu mechanism as "
+        "the sibling 'bucket-menu-upload-files'/'bucket-menu-delete' keys). ONE "
+        "testid serves BOTH states on purpose: the item is a single live "
+        "element whose LABEL flips (`isPinned ? 'Unpin from top' : 'Pin to "
+        "top'`), and .agents/testing.md § Locator policy (PR #581 ruling) "
+        "requires a testid to be stable identity, never state — a "
+        "bucket-menu-pin / bucket-menu-unpin pair would be the outlawed shape. "
+        "Read the state from the dropdown's label text "
+        "(:meth:`get_bucket_menu_items_text`).",
+    )
+
+    # Dynamic testid template — the pin icon rendered next to a PINNED
+    # bucket's name (ELITEA-1820/1821). Added live to BucketItem.jsx's
+    # `isPinned && (...)` wrapper Box (no new DOM node — a pure attribute on
+    # the Box that already wrapped that button).
+    #
+    # The row renders a SECOND, hover-only pin button under
+    # `!isPinned && isHovering`; it is deliberately left UNTAGGED (canon
+    # ruling #511 — testids go only on elements a test's executed path calls),
+    # which is exactly what keeps ELITEA-1821's absence assertion honest:
+    # hovering an unpinned row can never produce a false positive here.
+    BUCKET_PIN_INDICATOR = '[data-testid="artifacts-bucket-pin-indicator-{}"]'
+
+    # Prefix (any-bucket) variant of BUCKET_PIN_INDICATOR — the project-wide
+    # "is anything pinned?" probe. Used both as ELITEA-1820/1821's
+    # precondition check (the case's "alphanumeric order" claim only holds
+    # while nothing is pinned) and as ELITEA-1821's post-unpin assertion that
+    # no OTHER bucket was pinned by mistake.
+    BUCKET_PIN_INDICATOR_ANY_SELECTOR = '[data-testid^="artifacts-bucket-pin-indicator-"]'
 
     # Dynamic testid template — left-panel tree node for a file/folder, keyed
     # by its full relative path (e.g. 'test.txt', or 'a1/sample.txt' when
@@ -283,6 +376,17 @@ class ArtifactsPage(BasePage):
         "client-side duplicate detection against the bucket's already-fetched listing",
     )
 
+    upload_path_cancel_button = LocatorDescriptor(
+        testid="artifacts-upload-path-cancel-button",
+        description="'Cancel' button inside the 'Upload files to ...' dialog "
+        "(ELITEA-1825 — testid added to the pre-existing Button.BaseBtn in "
+        "UploadPathDialog.jsx, attribute-only, EliteaAI/EliteaUI@6d360e82). Its "
+        "onClick is `handleCancel` — the SAME handler BaseModal wires to onClose "
+        "for Escape — but ELITEA-1825's step 8 is literally 'Click Cancel', so the "
+        "button itself is the subject; :meth:`close_upload_path_dialog` remains the "
+        "Escape variant kept for ELITEA-1824's #649 workaround.",
+    )
+
     # ELITEA-1835: separate description Typography (distinct DOM node from
     # upload_path_input above) — reads a GENERIC, bucket-name-free string at
     # bucket root and only interpolates the bucket name once a subfolder is
@@ -345,6 +449,16 @@ class ArtifactsPage(BasePage):
         "original untouched (ELITEA-1828/1831).",
     )
 
+    resolve_duplicates_close_button = LocatorDescriptor(
+        testid="artifacts-resolve-duplicates-close-button",
+        description="X (close) icon in the top-right corner of the 'Resolve duplicates' "
+        "dialog (ELITEA-1833 — new testid, implementer: passes the shared "
+        "Modal.BaseModal's existing closeButtonTestId prop from "
+        "DuplicateResolutionDialog.jsx). Dismisses the whole upload interaction — "
+        "nothing is uploaded and the parent 'Upload files to ...' dialog does NOT "
+        "re-appear.",
+    )
+
     # ------------------------------------------------------------------
     # Success toast (app-wide generic component, reused across features —
     # see skills_list_page.SkillsListPage.import_success_toast_message)
@@ -368,6 +482,12 @@ class ArtifactsPage(BasePage):
     # ArtifactTable.jsx), even for files nested in a subfolder.
     ARTIFACT_ACTIONS_MENU_BUTTON = '[data-testid="artifact-actions-{}-menu-button"]'
 
+    # Prefix+suffix (any-row) variant of ARTIFACT_ACTIONS_MENU_BUTTON — every
+    # rendered file-row actions trigger, regardless of row id (ELITEA-1803).
+    ARTIFACT_ACTIONS_MENU_BUTTON_ANY_SELECTOR = (
+        '[data-testid^="artifact-actions-"][data-testid$="-menu-button"]'
+    )
+
     download_menu_item = LocatorDescriptor(
         testid="artifacts-file-download-menuitem",
         description="'Download' item inside a file row's dot-menu dropdown",
@@ -376,7 +496,25 @@ class ArtifactsPage(BasePage):
     delete_menu_item = LocatorDescriptor(
         testid="artifacts-file-delete-menuitem",
         description="'Delete' item inside a file row's dot-menu dropdown — "
-        "visibility-only in ELITEA-1839, never clicked",
+        "visibility-only in ELITEA-1839; first CLICKED by ELITEA-1844, which "
+        "opens the shared :attr:`delete_confirm_dialog` via DotMenu's "
+        "ActionWithDialog wrapper",
+    )
+
+    # Dynamic testid template — the WHOLE MUI Menu container of a file row's
+    # dot-menu dropdown (ELITEA-1844). Same `${id}-menu` DotMenu convention as
+    # :attr:`file_preview_overflow_menu_container`; parameter is the row's base
+    # name, identical identity semantics to
+    # :attr:`ARTIFACT_ACTIONS_MENU_BUTTON`.
+    ARTIFACT_ACTIONS_MENU = '[data-testid="artifact-actions-{}-menu"]'
+
+    # Scoped sub-selector — the per-item testid'd MenuItems inside a file row's
+    # dropdown (ELITEA-1844). Comma-separated CSS selector list returns matches
+    # in DOM (render) order regardless of clause order, same shape and reasoning
+    # as :attr:`EDITOR_MENU_ITEM_SELECTOR`.
+    ROW_ACTIONS_MENU_ITEM_SELECTOR = (
+        '[data-testid="artifacts-file-download-menuitem"], '
+        '[data-testid="artifacts-file-delete-menuitem"]'
     )
 
     zip_download_progress_dialog = LocatorDescriptor(
@@ -399,6 +537,14 @@ class ArtifactsPage(BasePage):
     # at ArtifactTable.jsx's call site, per the AFS's shared-component
     # testid ruling).
     ARTIFACT_FILE_CHECKBOX = '[data-testid="artifacts-file-checkbox-{}"]'
+
+    # Prefix (any-row) variant of ARTIFACT_FILE_CHECKBOX — every rendered
+    # file-row selection checkbox, regardless of row id. Same
+    # `[data-testid^="…"]` shape already established by
+    # :attr:`BUCKET_ROW_ANY_SELECTOR`. Used by ELITEA-1803 to assert that a
+    # file row carries its checkbox without needing to know the row's
+    # server-assigned id.
+    ARTIFACT_FILE_CHECKBOX_ANY_SELECTOR = '[data-testid^="artifacts-file-checkbox-"]'
 
     select_all_checkbox = LocatorDescriptor(
         testid="artifacts-select-all-checkbox",
@@ -448,6 +594,19 @@ class ArtifactsPage(BasePage):
         "(Cancel-flow testing is out of scope)",
     )
 
+    zip_download_progress_close_button = LocatorDescriptor(
+        testid="artifacts-zip-download-progress-close-button",
+        description="X (close) icon button in the ZIP-download progress "
+        "dialog's header (ELITEA-1843 — new testid, implementer; "
+        "EliteaAI/EliteaUI@b93c631b on automation/testids). Prop-only add: "
+        "`ZipDownloadProgressDialog.jsx` now passes `closeButtonTestId` to "
+        "`Modal.BaseModal`, which already accepted and applied it "
+        "(BaseModal.jsx:35,154) — zero functional impact, same shape as "
+        "ELITEA-1833's `artifacts-resolve-duplicates-close-button`. Wired to "
+        "the SAME `onCancel` handler as "
+        ":attr:`zip_download_progress_cancel_button` (source-confirmed).",
+    )
+
     # ------------------------------------------------------------------
     # Bulk delete flow (ELITEA-1847)
     # ------------------------------------------------------------------
@@ -495,6 +654,56 @@ class ArtifactsPage(BasePage):
         description="'Delete' (confirm) button inside the delete-confirmation "
         "modal (DeleteEntityModal.jsx) — do not confuse with "
         ":attr:`delete_files_button`, the toolbar icon that OPENS this modal.",
+    )
+
+    # ------------------------------------------------------------------
+    # Delete-confirmation modal — remaining elements (ELITEA-1844 / 1845)
+    # ------------------------------------------------------------------
+
+    delete_confirm_title = LocatorDescriptor(
+        testid="delete-confirm-title",
+        description="Delete-confirmation modal's title wrapper "
+        "(DeleteEntityModal.jsx -> BaseModal `titleTestId`), text "
+        "'Delete confirmation'. Pre-existing, on origin/main.",
+    )
+
+    delete_confirm_title_icon = LocatorDescriptor(
+        testid="delete-confirm-title-icon",
+        description="Warning (destructive) icon rendered next to the "
+        "delete-confirmation modal's title — a first-party SVG asset, NOT a "
+        "#579 exception (see ELITEA-2193's correction; testid added there). "
+        "PROVENANCE: EliteaAI/EliteaUI@7b359d32, on `automation/testids` ONLY "
+        "— NOT yet cherry-picked to main (verified 2026-08-22). Pre-existing for "
+        "ELITEA-1844, but still pending human promotion, so this spec is red on "
+        "any deployed env until it lands (prop-wired via BaseModal's "
+        "`titleIconTestId`, so a bare-substring grep of main does not see it).",
+    )
+
+    delete_confirm_entity_name = LocatorDescriptor(
+        testid="delete-confirm-entity-name",
+        description="The emphasised entity-name span inside "
+        ":attr:`delete_confirm_message` — the 'highlighted in blue' file name "
+        "(palette.text.deleteAlertEntityName). ELITEA-1844: new testid, "
+        "attribute-only add on the existing <Typography component='span'> "
+        "(EliteaAI/EliteaUI@e59d0c97, automation/testids). The COLOUR itself "
+        "is not testid-assertable; this element's text is what is asserted.",
+    )
+
+    delete_confirm_close_button = LocatorDescriptor(
+        testid="delete-confirm-close-button",
+        description="X (close) icon in the delete-confirmation modal's header "
+        "(ELITEA-1844: new testid — DeleteEntityModal.jsx now forwards "
+        "`closeButtonTestId` to Modal.BaseModal, which already accepted and "
+        "applied it (BaseModal.jsx:35,154); prop-only, zero functional "
+        "impact. EliteaAI/EliteaUI@08d9bb4f, automation/testids).",
+    )
+
+    delete_confirm_cancel_button = LocatorDescriptor(
+        testid="delete-confirm-cancel-button",
+        description="'Cancel' button inside the delete-confirmation modal "
+        "(DeleteEntityModal.jsx:103) — PRE-EXISTING and on origin/main "
+        "(EliteaAI/EliteaUI@bf4a13ad). First driven by ELITEA-1845; see the "
+        "corrected note at the end of the bulk-delete method block.",
     )
 
     # ------------------------------------------------------------------
@@ -580,6 +789,88 @@ class ArtifactsPage(BasePage):
         ":attr:`file_preview_save_button`.",
     )
 
+    # ------------------------------------------------------------------
+    # File preview/edit — unsaved-changes exit paths (ELITEA-1853/1854/1855)
+    #
+    # TWO DISTINCT modals guard unsaved changes on this surface — do not
+    # conflate them:
+    #   * the header **Discard** button raises `Button.DiscardButton`'s own
+    #     built-in `Modal.BaseModal` (the `artifacts-preview-discard-warning-*`
+    #     family below), message "Are you sure you want to discard changes?";
+    #   * the header **X (close)** button raises `FilePreviewCanvas`'s separate
+    #     `AlertDialog` (the generic `alert-dialog-*` pair below), message
+    #     "You are editing now. Do you want to discard current changes and
+    #     continue?".
+    # Both can be raised from the same editor session.
+    # ------------------------------------------------------------------
+
+    file_preview_discard_warning_dialog = LocatorDescriptor(
+        testid="artifacts-preview-discard-warning-dialog",
+        description="Root of the Warning modal the header Discard button "
+        "raises (ELITEA-1853 — new testid, implementer). The modal lives "
+        "inside the SHARED `Button.DiscardButton` component, which owns its "
+        "own `Modal.BaseModal`; the Artifacts call site (PreviewHeader.jsx) "
+        "supplies the feature-scoped value through the component's "
+        "caller-supplied testId props. The header Discard button NEVER "
+        "discards directly — it always raises this modal first.",
+    )
+
+    file_preview_discard_warning_title = LocatorDescriptor(
+        testid="artifacts-preview-discard-warning-title",
+        description="Title row of the Discard Warning modal (ELITEA-1853 — "
+        "new testid, implementer). Text is exactly 'Warning'. Wraps the "
+        "warning icon plus the title Typography.",
+    )
+
+    file_preview_discard_warning_icon = LocatorDescriptor(
+        testid="artifacts-preview-discard-warning-icon",
+        description="Warning icon inside the Discard Warning modal's title "
+        "(ELITEA-1853 — new testid, implementer; `titleIconTestId` "
+        "pass-through added to the shared DiscardButton this run).",
+    )
+
+    file_preview_discard_warning_close_button = LocatorDescriptor(
+        testid="artifacts-preview-discard-warning-close-button",
+        description="X (close) icon of the Discard Warning modal "
+        "(ELITEA-1853 — new testid, implementer). Asserted present by "
+        "ELITEA-1853's element-inventory step; distinct from "
+        ":attr:`file_preview_close_button`, which closes the whole editor.",
+    )
+
+    file_preview_discard_warning_cancel_button = LocatorDescriptor(
+        testid="artifacts-preview-discard-warning-cancel-button",
+        description="'Cancel' button of the Discard Warning modal "
+        "(ELITEA-1854 — new testid, implementer). Dismisses the modal and "
+        "leaves the unsaved edit intact.",
+    )
+
+    file_preview_discard_warning_confirm_button = LocatorDescriptor(
+        testid="artifacts-preview-discard-warning-confirm-button",
+        description="'Discard' (confirm) button of the Discard Warning modal "
+        "(ELITEA-1853 — new testid, implementer). Label comes from "
+        "`ModalConstants.WARNING_BUTTONS.DISCARD`. Confirming resets the "
+        "editor's edited content — a pure client-side state reset, no "
+        "network request and no toast.",
+    )
+
+    unsaved_changes_alert_content = LocatorDescriptor(
+        testid="alert-dialog-content",
+        description="Message body of the unsaved-changes Warning dialog the "
+        "editor's X (close) button raises when the editor is dirty "
+        "(ELITEA-1855). PRE-EXISTING generic testid on the shared "
+        "`src/components/AlertDialog.jsx` — correctly generic (a shared "
+        "component never hardcodes a feature-scoped testid), and already "
+        "used the same way by `secrets_page.py`. Live text: 'You are editing "
+        "now. Do you want to discard current changes and continue?'.",
+    )
+
+    unsaved_changes_alert_confirm_button = LocatorDescriptor(
+        testid="alert-dialog-confirm-button",
+        description="'Confirm' button of the unsaved-changes Warning dialog "
+        "(ELITEA-1855). PRE-EXISTING generic testid on the shared "
+        "AlertDialog; confirming discards the edit and closes the editor.",
+    )
+
     file_preview_overflow_menu_button = LocatorDescriptor(
         testid="file-preview-overflow-menu-menu-button",
         description="3-dot (ellipsis) actions-menu trigger in the editor "
@@ -644,6 +935,64 @@ class ArtifactsPage(BasePage):
     )
 
     # ------------------------------------------------------------------
+    # File preview/edit — UNSUPPORTED file type ("Preview Not Available")
+    # (ELITEA-1863/1864)
+    #
+    # Rendered by `FilePreviewCanvas/PreviewUnavailable.jsx` whenever
+    # `canPreview` is false — i.e. the file's extension is absent from
+    # `PREVIEWABLE_EXTENSIONS` (`src/utils/filePreview.js`'s
+    # `canPreviewFile`, a filename WHITELIST, never a content sniff), or
+    # the file exceeds the size limit (different `message` prop, out of
+    # scope here). In this branch `PreviewHeader.jsx` wraps Save/Discard
+    # in `{canPreview && ...}`, so those are structurally ABSENT (count 0),
+    # NOT present-but-disabled as they are for images (ELITEA-1862).
+    # ------------------------------------------------------------------
+
+    file_preview_unavailable_icon = LocatorDescriptor(
+        testid="artifacts-preview-unavailable-icon",
+        description="Empty/unavailable-file icon at the top of the "
+        "'Preview Not Available' state (ELITEA-1863 - new testid, "
+        "implementer, PreviewUnavailable.jsx's `<Box component="
+        "{UnavailableIcon}>`; MUI `Box` spreads props, so `data-testid` "
+        "passes straight through - no DOM node added).",
+    )
+
+    file_preview_unavailable_title = LocatorDescriptor(
+        testid="artifacts-preview-unavailable-title",
+        description="'Preview Not Available' heading Typography in the "
+        "unsupported-file-type state (ELITEA-1863 - new testid, "
+        "implementer, PreviewUnavailable.jsx). A literal, not state-derived.",
+    )
+
+    file_preview_unavailable_message = LocatorDescriptor(
+        testid="artifacts-preview-unavailable-message",
+        description="Supporting message Typography rendering the `message` "
+        "prop (ELITEA-1863 - new testid, implementer). Reads 'Preview is "
+        "not supported for this file type.' for a TYPE-gated file; the "
+        "SIZE-gated branch passes a different `sizeLimitMessage` through "
+        "this same node (FilePreviewCanvas/index.jsx).",
+    )
+
+    file_preview_unavailable_formats = LocatorDescriptor(
+        testid="artifacts-preview-unavailable-formats",
+        description="Supported-formats Typography ('Supported formats: txt, "
+        "md, json, ...') in the unsupported-file-type state (ELITEA-1863 - "
+        "new testid, implementer). A long hardcoded literal that will churn "
+        "as formats are added - assert startswith/contains, never full "
+        "equality.",
+    )
+
+    file_preview_unavailable_download_button = LocatorDescriptor(
+        testid="artifacts-preview-unavailable-download-button",
+        description="Centred 'Download' button inside the unsupported-file-"
+        "type state (ELITEA-1863 - new testid, implementer, wired via "
+        "`Button.BaseBtn`'s `...restProps` spread). Calls the same "
+        "`handleDownload` as the panel's 3-dot dropdown item. Distinct from "
+        ":attr:`download_menu_item` (the ROW dropdown's item) and "
+        ":attr:`file_preview_download_menuitem` (the PANEL dropdown's item).",
+    )
+
+    # ------------------------------------------------------------------
     # File preview/edit — markdown mode toggle + image preview
     # (ELITEA-1857/1858/1862)
     # ------------------------------------------------------------------
@@ -700,6 +1049,160 @@ class ArtifactsPage(BasePage):
     # direct parent). Used to target ONE specific known line for editing
     # (ELITEA-1858) rather than blind Control+Home-based nav.
     CM_LINE = ".cm-line"
+
+    # ------------------------------------------------------------------
+    # Landing-page chrome — left-panel storage selector + footer
+    # (ELITEA-1803/1804/1805)
+    # ------------------------------------------------------------------
+
+    buckets_panel_toggle_button = LocatorDescriptor(
+        testid="artifacts-buckets-panel-toggle-button",
+        description="The BUCKETS left panel's collapse/expand control in the "
+        "panel header (BucketHeader.jsx). ONE element whose icon flips "
+        "between '<<' (expanded) and '>>' (collapsed); the icons are "
+        "untagged SVGs, so the state rides a `data-collapsed=\"true|false\"` "
+        "attribute on this same element per .agents/testing.md § Locator "
+        "policy (PR #581 ruling). Collapsing UNMOUNTS the heading, the "
+        "storage selector and the footer (all gated on `!collapsed`) while "
+        "the bucket ROWS merely become invisible "
+        "(`display: collapsed ? 'none' : 'flex'`). Testid added for "
+        "ELITEA-1807 (EliteaAI/EliteaUI@9062dff0).",
+    )
+
+    buckets_heading = LocatorDescriptor(
+        testid="artifacts-buckets-heading",
+        description="'Buckets' heading in the left-panel header. The DOM text "
+        "is 'Buckets' — case texts writing 'BUCKETS' describe the CSS "
+        "text-transform, not the content. (The testid itself is pre-existing "
+        "and already used inline by :meth:`wait_for_page_load`; this field is "
+        "the class-level handle ELITEA-1803 asserts the TEXT through.)",
+    )
+
+    storage_selector = LocatorDescriptor(
+        testid="artifacts-storage-selector",
+        description="Storage-provider row above the bucket list "
+        "(BucketStorageSelector.jsx) — reads the active storage's name, "
+        "'Elitea S3 storage' on this environment. New testid added for "
+        "ELITEA-1803 (EliteaAI/EliteaUI@6449a5c4).",
+    )
+
+    storage_selector_arrow = LocatorDescriptor(
+        testid="artifacts-storage-selector-arrow",
+        description="Dropdown (chevron) icon inside the storage-provider row "
+        "— a DIFFERENT node from :attr:`storage_selector` (the row's own "
+        "container). ELITEA-1803 step 3 asserts both.",
+    )
+
+    buckets_footer_count = LocatorDescriptor(
+        testid="artifacts-buckets-footer-count",
+        description="'Buckets: N' stat in the left-panel footer "
+        "(BucketFooter.jsx). NOTE: label and value are two sibling "
+        "<Typography> nodes inside this Box, so text_content() has NO space "
+        "between them ('Buckets:757') — match with r'Buckets:\\s*(\\d+)'. "
+        "The number is not stable across runs (leaked autotest buckets, "
+        "#636) — cross-check it against "
+        ":meth:`ArtifactsPage.get_rendered_bucket_names` (the panel's own "
+        "DISTINCT rendered rows). An ArtifactAPI.list_buckets() cross-check "
+        "was tried first and measured racy: the buckets listing is "
+        "eventually consistent.",
+    )
+
+    buckets_scroll_container = LocatorDescriptor(
+        testid="artifacts-buckets-scroll-container",
+        description="The BUCKETS left panel's SCROLLABLE Box "
+        "(BucketsPanel.jsx's `bucketListOuterContainer`, `overflowY: auto`) — "
+        "the element ELITEA-1822 calls 'the bucket list panel'. Hover it "
+        "before dispatching a wheel event (the wheel goes to whatever is "
+        "under the cursor) and click its LEFT PADDING GUTTER, never a row, "
+        "to give the keyboard a scroll target without selecting a bucket. "
+        "Added for ELITEA-1822 on EliteaAI/EliteaUI@3c96bc4b.",
+    )
+
+    buckets_footer_size = LocatorDescriptor(
+        testid="artifacts-buckets-footer-size",
+        description="'Size: X MB' stat in the left-panel footer "
+        "(BucketFooter.jsx) — same two-Typography shape as "
+        ":attr:`buckets_footer_count`.",
+    )
+
+    # ------------------------------------------------------------------
+    # Main-panel bucket-info tooltip (ELITEA-1805)
+    # ------------------------------------------------------------------
+
+    bucket_info_button = LocatorDescriptor(
+        testid="artifacts-bucket-info-button",
+        description="Info (i) icon next to the bucket name in the MAIN-panel "
+        "toolbar (BucketInfoTooltip.jsx via ArtifactTableToolbar.jsx). This — "
+        "not the left-panel bucket name — is what reveals the Retention "
+        "Policy / Number of files tooltip; the left-panel name only carries a "
+        "conditional overflow tooltip repeating the name (case-text "
+        "CLARIFICATION #1617). Opens on HOVER, not click (same activation as "
+        "the toolkit-form field tooltip, #669).",
+    )
+
+    bucket_info_tooltip_content = LocatorDescriptor(
+        testid="artifacts-bucket-info-tooltip-content",
+        description="Content box of the bucket-info tooltip — renders "
+        "'Retention Policy: <value>' and 'Number of files: <n>'. Labels and "
+        "values are sibling <Typography> nodes, so text_content() reads "
+        "'Retention Policy:1 YearNumber of files:0' (no separating "
+        "whitespace).",
+    )
+
+    # ------------------------------------------------------------------
+    # File-table column headers + pagination (ELITEA-1803/1804/1805)
+    # ------------------------------------------------------------------
+
+    # Dynamic testid template — one per column, keyed by the column's FIELD
+    # name (not its visible label): name / fileType / size / modified /
+    # actions. 'modified' is the "Last update" column — the field key is NOT
+    # 'lastUpdate'. Wired via the shared GridTableHeader's pre-existing
+    # `columnTestIdPrefix` prop (ArtifactTable.jsx), so no feature-scoped
+    # testid is hardcoded in the shared component.
+    FILE_TABLE_COLUMN_HEADER = '[data-testid="artifacts-file-table-column-header-{}"]'
+
+    # Prefix (any-column) variant of FILE_TABLE_COLUMN_HEADER — matches every
+    # rendered column header. Used to prove the file TABLE itself is absent
+    # for an empty bucket (ELITEA-1805 step 7), which "no file rows" alone
+    # does not.
+    FILE_TABLE_COLUMN_HEADER_ANY = '[data-testid^="artifacts-file-table-column-header-"]'
+
+    # Dynamic testid template — the "No files in this bucket" label rendered
+    # in the LEFT-panel tree under an expanded, empty bucket
+    # (BucketContent.jsx). Bucket-parameterized by necessity: BucketContent is
+    # a SIBLING of the bucket row (BucketItem), inside an untagged wrapper, so
+    # it cannot be scoped under artifacts-bucket-row-{name}; and several
+    # buckets can be expanded at once (/artifacts auto-selects and expands one
+    # on landing), so a page-wide count is never 0.
+    BUCKET_TREE_EMPTY_LABEL = '[data-testid="artifacts-bucket-tree-empty-label-{}"]'
+
+    pagination_page_info = LocatorDescriptor(
+        testid="artifacts-pagination-page-info",
+        description="'{start} - {end} of {total}' counter at the bottom of the "
+        "file table (shared GridTablePagination's pageInfoTestId prop, wired "
+        "from ArtifactTable.jsx). ABSENT entirely when the bucket has no files "
+        "— GridTablePagination returns null at totalRows === 0.",
+    )
+
+    pagination_prev_button = LocatorDescriptor(
+        testid="artifacts-pagination-prev-button",
+        description="Previous-page arrow. Carries a real `disabled` attribute "
+        "on the first page — assert with is_disabled(), never by CSS opacity.",
+    )
+
+    pagination_next_button = LocatorDescriptor(
+        testid="artifacts-pagination-next-button",
+        description="Next-page arrow. Carries a real `disabled` attribute on "
+        "the last page (and on a single-page bucket).",
+    )
+
+    pagination_page_size_combobox = LocatorDescriptor(
+        testid="artifacts-pagination-page-size-select-combobox",
+        description="'Rows per page' select's clickable combobox — the shared "
+        "SingleSelect derives this '-combobox' suffix from the root "
+        "'artifacts-pagination-page-size-select' testid (same shape as "
+        ":attr:`bucket_retention_measure_combobox`). Defaults to '10'.",
+    )
 
     # ------------------------------------------------------------------
     # Init
@@ -860,6 +1363,88 @@ class ArtifactsPage(BasePage):
             return
 
         logger.info("Navigated to bucket '%s', folder '%s'", bucket_name, folder)
+
+    @action("Navigate directly to a file's preview panel")
+    def navigate_to_file_preview(
+        self, bucket_name: str, file_key: str, timeout: int = 15000, _retry: bool = True
+    ) -> None:
+        """Open a file's preview panel directly via the product's preview URL.
+
+        Third sibling of :meth:`navigate_to_bucket` /
+        :meth:`navigate_to_bucket_folder` (ELITEA-1863) - both have merged
+        callers, so they stay byte-identical rather than growing an optional
+        ``file`` kwarg (additive-only on shared-caller files).
+
+        Sets ``?bucket={bucket_name}&file={file_key}`` - the exact params
+        ``Artifacts.jsx`` itself writes whenever a preview is opened
+        (``setSearchParams({ bucket, file })``, ``Artifacts.jsx:290``) and
+        restores from on load (its URL-restore effect,
+        ``Artifacts.jsx:545-570``), which does **not** consult
+        ``canPreview``. Navigating here is therefore ordinary product
+        navigation (a bookmarked / shared preview link), not injected state.
+
+        **Why this exists at all:** an UNSUPPORTED file type has no in-app
+        path to the preview panel - ``ArtifactRowActions.jsx`` gates the
+        "View/Edit file" icon on ``row.canPreview``, and ``ActionsMenu.jsx``'s
+        "Preview file" item renders ``null`` for it. This URL route is the
+        only way to reach the ``PreviewUnavailable`` branch (ELITEA-1863;
+        case-text clarification EliteaAI/elitea-testing-public#1692).
+
+        **Why not** :meth:`open_file_in_editor`: that helper waits on
+        :attr:`file_preview_save_button`, which ``PreviewHeader.jsx`` wraps
+        in ``{canPreview && ...}`` and which therefore never renders in this
+        branch. This method waits on :attr:`file_preview_close_button`
+        instead - present for BOTH the supported and unsupported branches.
+
+        Carries the same ``bucket``-param re-check guard as its two siblings
+        (known product race, issue #638): on a fresh page load
+        ``Artifacts.jsx`` can still be resolving the project id from Redux
+        and silently strip the query params, falling back to the
+        most-recently-used bucket with no error shown.
+
+        Args:
+            bucket_name: Exact name of the bucket (case-sensitive).
+            file_key: Full relative key of the file within the bucket
+                (e.g. ``"report.xlsx"`` or ``"a1/report.xlsx"``).
+            timeout: Maximum wait time in milliseconds.
+
+        Raises:
+            AssertionError: If the ``bucket`` URL param is still wrong after
+                one retry (i.e. the race fired twice in a row).
+        """
+        super().navigate(
+            f"/artifacts?bucket={bucket_name}&file={urllib.parse.quote(file_key)}"
+        )
+        self._wait_for_bucket_panel(bucket_name, timeout=timeout)
+
+        live_bucket_param = urllib.parse.parse_qs(
+            urllib.parse.urlparse(self.page.url).query
+        ).get("bucket", [None])[0]
+        if live_bucket_param != bucket_name:
+            if not _retry:
+                raise AssertionError(
+                    f"Navigation to bucket '{bucket_name}' file '{file_key}' "
+                    f"did not stick after a retry - URL's bucket param is "
+                    f"{live_bucket_param!r} instead (known product race, "
+                    f"issue #638)"
+                )
+            logger.warning(
+                "Bucket param lost after navigating to '%s' (URL now has %r) "
+                "- retrying once (known product race, issue #638)",
+                bucket_name, live_bucket_param,
+            )
+            self.navigate_to_file_preview(
+                bucket_name, file_key, timeout=timeout, _retry=False
+            )
+            return
+
+        # The preview panel is "open" once its X (close) button renders - the
+        # one header control present in BOTH the previewable and the
+        # unsupported branch (PreviewHeader.jsx).
+        self.file_preview_close_button.wait_for(state="visible", timeout=timeout)
+        logger.info(
+            "Navigated to preview of '%s' in bucket '%s'", file_key, bucket_name
+        )
 
     # ------------------------------------------------------------------
     # Wait helpers
@@ -1091,6 +1676,88 @@ class ArtifactsPage(BasePage):
         self.bucket_name_input.type(name)
         logger.info("Filled bucket name field with '%s'", name)
 
+    @action("Clear bucket name field")
+    def clear_bucket_name(self) -> None:
+        """Empty the Name field entirely (ELITEA-1813).
+
+        Additive sibling to :meth:`fill_bucket_name` — NOT reusable as
+        ``fill_bucket_name("")``: ``Locator.type("")`` is a silent no-op that
+        leaves the ``select_text()`` selection in place with the text still
+        present, so the field never actually empties (confirmed live during
+        ELITEA-1813 analysis). The explicit ``press("Delete")`` deletes the
+        selection and fires the ``formik.handleChange`` the MUI/formik field
+        needs (``.claude/rules/mui-patterns.md``).
+
+        Leaves focus IN the field — ELITEA-1813 asserts the pre-blur state
+        (helper text absent, ``aria-invalid="false"``) before deliberately
+        blurring, because ``CreateBucket.jsx:243-244`` gates both on
+        ``formik.touched.name``.
+        """
+        self.bucket_name_input.click()
+        self.bucket_name_input.select_text()
+        self.bucket_name_input.press("Delete")
+        logger.info("Cleared bucket name field")
+
+    @action("Append characters to bucket name field")
+    def append_to_bucket_name(self, text: str) -> None:
+        """Type *text* at the END of the Name field's current value (ELITEA-1819).
+
+        Additive sibling to :meth:`fill_bucket_name`, which always REPLACES
+        the whole value (``select_text()`` + ``type()``) and therefore cannot
+        express an append. ELITEA-1819's subject is the browser's own
+        ``maxLength`` enforcement, so the extra character must arrive as a
+        real key event: ``Locator.type()`` dispatches keydown/keypress/input
+        exactly as a user would, whereas ``fill()`` writes through the DOM
+        value setter and bypasses ``maxLength`` entirely — which would make
+        the test pass for the wrong reason.
+
+        Clicks the field first (so the append works from any prior state) and
+        moves the caret to the end with ``press("End")``. Focus is LEFT in the
+        field on return: :attr:`bucket_name_character_counter` unmounts on
+        blur, so callers asserting the counter after the append depend on it.
+
+        Args:
+            text: Characters to append at the end of the current value.
+        """
+        self.bucket_name_input.click()
+        self.bucket_name_input.press("End")
+        self.bucket_name_input.type(text)
+        logger.info("Appended %r to the bucket name field", text)
+
+    def get_bucket_name_character_counter_text(self, timeout: int = 10000) -> str:
+        """Return the Name field's character-counter text (ELITEA-1818/1819).
+
+        Reads :attr:`bucket_name_character_counter`, which renders only while
+        the Name field is focused AND holds exactly 56 characters — see that
+        field's own description for the gating and the ``display: contents``
+        caveat.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the counter.
+
+        Returns:
+            The counter's stripped text, e.g. ``"0 characters left"``.
+        """
+        self.bucket_name_character_counter.wait_for(state="visible", timeout=timeout)
+        text = (self.bucket_name_character_counter.text_content() or "").strip()
+        logger.info("Bucket-name character counter: %r", text)
+        return text
+
+    def all_bucket_rows(self) -> Locator:
+        """Return a locator matching EVERY currently-rendered bucket row.
+
+        Additive companion to :meth:`any_bucket_row`, which is deliberately
+        ``.first``-scoped (visibility checks) and therefore cannot carry a
+        ``to_have_count()`` assertion. ELITEA-1813 needs the unscoped form to
+        assert the bucket-row count is UNCHANGED across a Cancel with a
+        web-first, auto-retrying assertion rather than a one-shot
+        :meth:`get_visible_bucket_count` read on a ~970-row list.
+
+        Returns:
+            Locator for :attr:`BUCKET_ROW_ANY_SELECTOR` (all matches).
+        """
+        return self.page.locator(self.BUCKET_ROW_ANY_SELECTOR)
+
     def is_bucket_name_invalid(self, timeout: int = 5000) -> bool:
         """Return whether the Name field is currently flagged invalid (ELITEA-1817).
 
@@ -1113,6 +1780,83 @@ class ArtifactsPage(BasePage):
         """
         self.bucket_name_input.wait_for(state="visible", timeout=timeout)
         return self.bucket_name_input.get_attribute("aria-invalid") == "true"
+
+    def is_bucket_name_input_disabled(self, timeout: int = 10000) -> bool:
+        """Return whether the bucket-form Name field is DISABLED (ELITEA-1816).
+
+        The bucket form serves both create and edit off the same route;
+        ``CreateBucket.jsx`` renders the Name field with
+        ``disabled={!!currentBucket}``, so the field is enabled while
+        creating and disabled once an existing bucket is loaded for edit.
+        Non-editability is implemented as a real ``disabled`` attribute —
+        there is NO ``readonly`` attribute on this input (confirmed live
+        during ELITEA-1816 analysis), which is why callers assert this
+        rather than hunting a ``readonly`` that does not exist.
+
+        Same "read a state property off an already testid-anchored locator"
+        shape as :meth:`is_bucket_name_invalid` / :meth:`is_bucket_selected`
+        — no new testid needed.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the field to be
+                visible before reading its state.
+
+        Returns:
+            True when the input carries the ``disabled`` state.
+        """
+        self.bucket_name_input.wait_for(state="visible", timeout=timeout)
+        return self.bucket_name_input.is_disabled()
+
+    def is_bucket_name_input_editable(self, timeout: int = 10000) -> bool:
+        """Return whether the bucket-form Name field is EDITABLE (ELITEA-1816).
+
+        Companion to :meth:`is_bucket_name_input_disabled`: Playwright's
+        ``is_editable()`` is the positive form of the same actionability
+        question (enabled AND not readonly), so asserting BOTH pins the
+        field's state from both directions and survives the product later
+        swapping ``disabled`` for ``readOnly``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the field to be
+                visible before reading its state.
+
+        Returns:
+            True when the input is editable.
+        """
+        self.bucket_name_input.wait_for(state="visible", timeout=timeout)
+        return self.bucket_name_input.is_editable()
+
+    @action("Delete a bucket through the UI dot-menu")
+    def delete_bucket_via_menu(
+        self, bucket_name: str, timeout: int = 15000
+    ) -> None:
+        """Delete *bucket_name* through the left panel's dot-menu -> Delete flow.
+
+        Pure composition over the existing bucket-menu + delete-confirm
+        methods, lifted to the page object because it is now needed by three
+        specs (ELITEA-1810 keeps its own suite-local copy — that spec is
+        sanctioned-RED on defect #1677 and is deliberately left byte-identical
+        — plus ELITEA-1812 and ELITEA-1816, which both create their bucket as
+        a case step and must not leak it into the project, already carrying
+        ~970 buckets, #636). Third repetition is the project's extraction
+        threshold.
+
+        Navigates to the Artifacts root first so it works from anywhere in the
+        flow, and waits for the row to actually disappear — the honest proof
+        the delete landed, rather than the toast.
+
+        Args:
+            bucket_name: Exact (stored, lowercase) bucket name to delete.
+            timeout: Maximum wait time in milliseconds for the row to vanish
+                from the bucket list after confirmation.
+        """
+        self.navigate_to_artifacts()
+        self.wait_for_bucket_in_list(bucket_name, timeout=timeout)
+        self.open_bucket_menu(bucket_name)
+        self.click_bucket_menu_delete_item()
+        self.confirm_delete_bucket()
+        self.wait_for_bucket_removed_from_list(bucket_name, timeout=timeout)
+        logger.info("Deleted bucket '%s' via the UI dot-menu", bucket_name)
 
     @action("Click bucket Save button")
     def click_bucket_save_button(self, timeout: int = 15000):
@@ -1157,6 +1901,211 @@ class ArtifactsPage(BasePage):
         """
         self.bucket_save_button.click()
         logger.info("Clicked bucket Save button (invalid-name path, no response expected)")
+
+    def get_bucket_form_heading_text(self, timeout: int = 10000) -> str:
+        """Return the bucket form's heading text (ELITEA-1810).
+
+        ``/artifacts/create-bucket`` is a SINGLE route serving both flows;
+        ``CreateBucket.jsx`` renders ``currentBucket ? 'Edit bucket' : 'New
+        Bucket'``, so this heading is the only DOM observable that
+        distinguishes an edit-form load (reached via the bucket dot-menu's
+        'Rename' item) from a fresh create-form load. Read the TEXT — the
+        testid is stable identity, per the locator policy.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the heading.
+
+        Returns:
+            The heading's stripped text, e.g. ``"Edit bucket"``.
+        """
+        self.bucket_form_heading.wait_for(state="visible", timeout=timeout)
+        text = (self.bucket_form_heading.text_content() or "").strip()
+        logger.info("Bucket form heading: %r", text)
+        return text
+
+    @action("Select bucket retention measure")
+    def select_retention_measure(self, measure: str, timeout: int = 10000) -> None:
+        """Open the retention-measure select and pick *measure* (ELITEA-1810).
+
+        The measure control is the shared ``SingleSelect``, so its options
+        carry the SAME ``select-option-{value}`` testids every other select
+        in this codebase uses — addressed through :attr:`BasePage.SELECT_OPTION`,
+        the inherited class-level template (never an inline locator, per
+        ``.claude/rules/page-objects.md``).
+
+        Idempotent about the dropdown's OPEN state: a caller may have already
+        opened it (:meth:`open_retention_measure_dropdown`, e.g. to assert the
+        offered options first) or not. Confirmed live — clicking the combobox
+        while it is ALREADY expanded times out, because MUI's own invisible
+        ``MuiBackdrop`` for the open ``menu-expiration_measure`` popover sits
+        over the combobox and intercepts the pointer event. So the open click
+        is issued only when ``aria-expanded`` is not already ``"true"``.
+
+        Args:
+            measure: The option's underlying VALUE — one of ``"days"``,
+                ``"weeks"``, ``"months"``, ``"years"`` (lowercase; the
+                rendered LABEL is capitalized by ``capitalizeFirstChar``).
+            timeout: Maximum wait time in milliseconds.
+        """
+        if self.bucket_retention_measure_combobox.get_attribute("aria-expanded") != "true":
+            self.bucket_retention_measure_combobox.click()
+        option = self.page.locator(self.SELECT_OPTION.format(measure))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        # Wait for the popover (and its pointer-intercepting backdrop) to
+        # unmount before returning — otherwise the caller's next click (e.g.
+        # into the retention-value field) races the closing transition.
+        option.wait_for(state="hidden", timeout=timeout)
+        logger.info("Selected retention measure %r", measure)
+
+    def is_retention_measure_option_visible(self, measure: str) -> bool:
+        """Return whether a retention-measure option is rendered (ELITEA-1810).
+
+        Call after :meth:`open_retention_measure_dropdown`. Used by Test Step
+        5 to prove all four measures are offered.
+
+        Args:
+            measure: ``"days"`` / ``"weeks"`` / ``"months"`` / ``"years"``.
+
+        Returns:
+            True when that option's ``select-option-{measure}`` element is
+            visible.
+        """
+        return self.page.locator(self.SELECT_OPTION.format(measure)).is_visible()
+
+    def get_retention_measure_option_text(self, measure: str) -> str:
+        """Return a retention-measure option's rendered label (ELITEA-1810).
+
+        Args:
+            measure: ``"days"`` / ``"weeks"`` / ``"months"`` / ``"years"``.
+
+        Returns:
+            The option's stripped text, e.g. ``"Months"``.
+        """
+        return (
+            self.page.locator(self.SELECT_OPTION.format(measure)).text_content() or ""
+        ).strip()
+
+    @action("Open bucket retention measure dropdown")
+    def open_retention_measure_dropdown(self, timeout: int = 10000) -> None:
+        """Click the retention-measure combobox to open its option list.
+
+        Separate from :meth:`select_retention_measure` because ELITEA-1810's
+        Test Step 5 asserts the OPEN list's contents before choosing.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the first option.
+        """
+        self.bucket_retention_measure_combobox.click()
+        self.page.locator(self.SELECT_OPTION.format("years")).wait_for(
+            state="visible", timeout=timeout
+        )
+        logger.info("Retention-measure dropdown open")
+
+    def get_retention_measure_text(self) -> str:
+        """Return the retention-measure combobox's current selection text.
+
+        The measure control is a MUI Select rendering a ``div`` — read its
+        ``text_content()``, never ``input_value()``.
+
+        Returns:
+            e.g. ``"Years"`` / ``"Months"`` / ``"Weeks"`` / ``"Days"``.
+        """
+        return (self.bucket_retention_measure_combobox.text_content() or "").strip()
+
+    def get_retention_value(self) -> str:
+        """Return the retention-value field's current value.
+
+        A real ``<input type="number">``, unlike the measure control.
+
+        Returns:
+            The field's value as a string, e.g. ``"10"``.
+        """
+        return self.bucket_retention_value_input.input_value()
+
+    @action("Set bucket retention value")
+    def set_retention_value(self, value: str) -> None:
+        """Replace the retention-value field's contents with *value*.
+
+        The field is ALWAYS pre-populated (``1`` on a fresh form, the stored
+        policy on an edit), so a bare ``type()`` would concatenate
+        (``1`` + ``10`` -> ``110``). Uses the same click + ``select_text()`` +
+        ``type()`` shape :meth:`fill_bucket_name` already established for
+        this form — confirmed live that ``fill()`` / ``Control+A`` do not
+        take on these MUI/formik-controlled fields.
+
+        Args:
+            value: The new retention value, as a string.
+        """
+        self.bucket_retention_value_input.click()
+        self.bucket_retention_value_input.select_text()
+        self.bucket_retention_value_input.type(value)
+        logger.info("Set retention value to %r", value)
+
+    @action("Click bucket Save button (edit — PUT expected)")
+    def click_bucket_save_button_expect_put(self, timeout: int = 15000):
+        """Click Save on the 'Edit bucket' form and return the update response.
+
+        Sibling to :meth:`click_bucket_save_button`, which hardcodes
+        ``r.request.method == "POST"`` in its ``expect_response`` predicate
+        and therefore HANGS on an edit save — an edit is a ``PUT``
+        (``src/api/artifacts.js``'s ``updateBucket``), not a ``POST``.
+        Additive: :meth:`click_bucket_save_button` is untouched and its
+        merged callers keep their exact behaviour.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the response.
+
+        Returns:
+            Playwright ``Response`` object for the bucket-update PUT.
+        """
+        with self.page.expect_response(
+            lambda r: "artifacts/buckets" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as response_info:
+            self.bucket_save_button.click()
+        return response_info.value
+
+    @action("Click bucket Cancel button")
+    def click_bucket_cancel_button(self, timeout: int = 15000) -> None:
+        """Click Cancel on the bucket form and wait for the bucket list again.
+
+        ``onCancel`` is a plain ``navigate(-1)`` — no request fires, so there
+        is nothing to ``expect_response`` on. Waits on the CONDITION that the
+        form's Save button is gone, which is what actually proves the route
+        left the form.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the form to close.
+        """
+        self.bucket_cancel_button.click()
+        self.bucket_save_button.wait_for(state="hidden", timeout=timeout)
+        logger.info("Clicked bucket Cancel button — form closed")
+
+    def get_bucket_row_index(self, bucket_name: str) -> int:
+        """Return a bucket's 0-based position among the rendered bucket rows.
+
+        The Artifacts UI exposes no user-visible bucket ID anywhere in the
+        DOM — buckets are keyed by NAME (``bucket-menu-{name}-…``,
+        ``?bucket={name}``). ELITEA-1810's Test Steps 10/17 ("note the bucket
+        position/ID" / "same position") are therefore automated as this list
+        index, which is the only observable half of that step. Reads through
+        :meth:`get_rendered_bucket_names`, so it inherits its pinned-first
+        ordering semantics.
+
+        Args:
+            bucket_name: Exact bucket name to locate.
+
+        Returns:
+            The bucket's 0-based index in the rendered list.
+
+        Raises:
+            ValueError: If the bucket is not currently rendered.
+        """
+        names = self.get_rendered_bucket_names()
+        index = names.index(bucket_name)
+        logger.info("Bucket %r is at list index %d of %d", bucket_name, index, len(names))
+        return index
 
     def wait_for_bucket_in_list(self, bucket_name: str, timeout: int = 15000) -> None:
         """Wait for a bucket to appear in the left-panel bucket list.
@@ -1357,6 +2306,29 @@ class ArtifactsPage(BasePage):
         self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
         logger.info("Clicked 'Delete' in the open bucket-menu")
 
+    @action("Click bucket-menu 'Rename' item")
+    def click_bucket_menu_rename_item(self, timeout: int = 15000) -> None:
+        """Click the open bucket-menu's 'Rename' item to open the edit form.
+
+        Call :meth:`open_bucket_menu` first — same "caller opens, this
+        clicks" division of responsibility as
+        :meth:`click_bucket_menu_delete_item`.
+
+        Label note (CLARIFICATION #666/#650): the TMS cases call this item
+        "Edit"; the live product renders "Rename". It navigates to the SAME
+        ``/artifacts/create-bucket`` route the create flow uses, with the
+        bucket pre-loaded — the heading flips to "Edit bucket"
+        (:meth:`get_bucket_form_heading_text`), which is what this method
+        waits on as proof the edit form actually loaded.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the edit form.
+        """
+        self.bucket_menu_rename_menuitem.click()
+        self.bucket_form_heading.wait_for(state="visible", timeout=timeout)
+        self.bucket_name_input.wait_for(state="visible", timeout=timeout)
+        logger.info("Clicked 'Rename' in the open bucket-menu — edit form open")
+
     @action("Select files via bucket-menu 'Upload files'")
     def click_bucket_menu_upload_files_item(
         self, file_paths: list[str], timeout: int = 15000
@@ -1436,6 +2408,59 @@ class ArtifactsPage(BasePage):
             return True
         except Exception:
             return False
+
+    # Poll interval for the tree-node geometry settle wait (below).
+    TREE_ITEM_STABLE_POLL_INTERVAL_MS = 100
+
+    def wait_for_tree_item_stable(
+        self,
+        item_key: str,
+        timeout: int = 5000,
+        settle_samples: int = 2,
+    ) -> bool:
+        """Wait until a left-panel tree node stops moving (ELITEA-1836).
+
+        Expanding a folder animates MUI's ``Collapse`` (~300 ms), during
+        which every node inside it slides into place. A click that lands
+        while that enter-transition is still running interrupts it and
+        leaves the subtree mounted — the folder never collapses (product
+        defect #1631; measured 3/3 failures without this wait, 18/18
+        successes with the transition finished).
+
+        A condition wait polled against the geometry the product renders —
+        the same shape as :meth:`wait_until_bucket_row_within_panel`, and
+        the reason a fixed sleep is not used.
+
+        Args:
+            item_key: Full relative key of the tree node to watch (e.g.
+                ``"a1/f2.txt"`` — watch the LAST node of an expanding
+                subtree, it settles last).
+            timeout: Maximum wait in milliseconds.
+            settle_samples: Consecutive identical position reads required.
+
+        Returns:
+            ``True`` once the node's position repeated ``settle_samples``
+            times, ``False`` if the timeout expired first.
+        """
+        item = self.page.locator(self.ARTIFACTS_TREE_ITEM.format(item_key))
+        deadline = time.monotonic() + timeout / 1000
+        previous: tuple[float, float] | None = None
+        stable = 0
+        while True:
+            box = item.bounding_box()
+            current = None if box is None else (round(box["x"], 1), round(box["y"], 1))
+            if current is not None and current == previous:
+                stable += 1
+                if stable >= settle_samples:
+                    logger.info("Tree node '%s' settled at %s", item_key, current)
+                    return True
+            else:
+                stable = 0
+            previous = current
+            if time.monotonic() >= deadline:
+                logger.warning("Tree node '%s' never settled within %sms", item_key, timeout)
+                return False
+            self.page.wait_for_timeout(self.TREE_ITEM_STABLE_POLL_INTERVAL_MS)
 
     @action("Click tree item (left panel)")
     def click_tree_item(self, item_key: str, timeout: int = 10000) -> None:
@@ -1656,6 +2681,29 @@ class ArtifactsPage(BasePage):
         logger.info("Row text for '%s': %r", filename, text)
         return text
 
+    def wait_for_file_row_to_contain_text(
+        self, filename: str, expected_text: str, timeout: int = 10000,
+    ) -> None:
+        """Wait until a named file row renders *expected_text* (ELITEA-1830).
+
+        Auto-retrying sibling of :meth:`get_file_row_text` for values the
+        row only shows AFTER a backend round-trip has landed and the table
+        has refetched (e.g. the 'Last update' / 'Size' cells following an
+        overwrite) — a single-shot ``text_content()`` read there races the
+        refetch. Uses the same testid-anchored row locator
+        (:attr:`ARTIFACT_FILE_ROW` class constant) + ``.filter(has_text=...)``
+        disambiguation, so no new selector is introduced, and Playwright's
+        own auto-retrying ``expect`` rather than a sleep.
+
+        Args:
+            filename: Exact file name identifying the row.
+            expected_text: Substring the row's rendered text must contain.
+            timeout: Maximum wait time in milliseconds.
+        """
+        row = self.page.locator(self.ARTIFACT_FILE_ROW).filter(has_text=filename).first
+        expect(row).to_contain_text(expected_text, timeout=timeout)
+        logger.info("File row '%s' now renders %r", filename, expected_text)
+
     # ------------------------------------------------------------------
     # Per-row checkbox selection (ELITEA-1840)
     # ------------------------------------------------------------------
@@ -1806,6 +2854,99 @@ class ArtifactsPage(BasePage):
         return self.download_files_tooltip.get_attribute("aria-label") or ""
 
     # ------------------------------------------------------------------
+    # ZIP-download progress dialog — cancel flow (ELITEA-1842 / ELITEA-1843)
+    # ------------------------------------------------------------------
+
+    def click_zip_download_cancel_button(self, timeout: int = 10000) -> None:
+        """Click the ZIP-progress dialog's 'Cancel' button (ELITEA-1842).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.zip_download_progress_cancel_button.wait_for(state="visible", timeout=timeout)
+        self.zip_download_progress_cancel_button.click()
+        logger.info("Clicked ZIP-download progress dialog 'Cancel' button")
+
+    def click_zip_download_close_button(self, timeout: int = 10000) -> None:
+        """Click the ZIP-progress dialog's X (close) icon (ELITEA-1843).
+
+        Hits the SAME ``onCancel`` handler as
+        :meth:`click_zip_download_cancel_button` — ``ZipDownloadProgressDialog``
+        passes one ``onCancel`` to both ``BaseModal``'s ``onClose`` (X /
+        backdrop / Escape) and the Cancel button's ``onClick``
+        (source-confirmed + live-confirmed identical outcomes).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.zip_download_progress_close_button.wait_for(state="visible", timeout=timeout)
+        self.zip_download_progress_close_button.click()
+        logger.info("Clicked ZIP-download progress dialog X (close) button")
+
+    def wait_for_zip_progress_at_least(
+        self, current: int, timeout: int = 30000, poll_interval_ms: int = 100
+    ) -> dict:
+        """Poll the ZIP-progress dialog until its counter reaches ``current``.
+
+        The honest replacement for "click Cancel at some arbitrary moment":
+        both ELITEA-1842 and ELITEA-1843 require the cancel to land while the
+        download is genuinely IN PROGRESS, so the test must observe the
+        product reporting real per-file progress before acting.
+
+        Reads only attributes/text of already testid-anchored locators (the
+        same technique :meth:`is_file_checkbox_checked` uses for
+        ``Mui-checked``) — no new raw handles.
+
+        Note: a ``"0 of N files"`` precursor frame (no current-file label yet)
+        precedes the first completion, and a ``"0 of 0 files"`` /
+        ``aria-valuenow="NaN"`` reset frame fires for one tick immediately
+        before the dialog unmounts on a COMPLETED download (ELITEA-1841) —
+        neither satisfies this wait.
+
+        Args:
+            current: Minimum ``current`` value the counter must report.
+            timeout: Maximum wait time in milliseconds.
+            poll_interval_ms: Sampling interval in milliseconds.
+
+        Returns:
+            Dict with ``current``, ``total``, ``valuenow`` and
+            ``current_file`` as observed on the satisfying frame.
+
+        Raises:
+            AssertionError: If the counter never reached ``current`` in time.
+        """
+        deadline = time.monotonic() + (timeout / 1000)
+        last_seen = None
+        while time.monotonic() < deadline:
+            try:
+                counter_text = (
+                    self.zip_download_progress_counter.text_content() or ""
+                ).strip()
+                match = re.match(r"^(\d+) of (\d+) files$", counter_text)
+                if match and int(match.group(1)) >= current:
+                    frame = {
+                        "current": int(match.group(1)),
+                        "total": int(match.group(2)),
+                        "valuenow": self.zip_download_progress_bar.get_attribute(
+                            "aria-valuenow"
+                        ),
+                        "current_file": (
+                            self.zip_download_progress_current_file.text_content() or ""
+                        ).strip(),
+                    }
+                    logger.info("ZIP progress reached %s: %s", counter_text, frame)
+                    return frame
+                last_seen = counter_text or last_seen
+            except Exception as exc:  # transient DOM read during a re-render
+                logger.debug("ZIP progress poll sample skipped: %s", exc)
+            time.sleep(poll_interval_ms / 1000)
+
+        raise AssertionError(
+            f"ZIP progress counter never reached '{current} of N files' within "
+            f"{timeout}ms (last seen: {last_seen!r})"
+        )
+
+    # ------------------------------------------------------------------
     # Bulk delete flow (ELITEA-1847)
     # ------------------------------------------------------------------
 
@@ -1914,6 +3055,123 @@ class ArtifactsPage(BasePage):
             self.delete_confirm_button.click()
         return response_info.value
 
+    @action("Read a file row's actions dropdown item labels")
+    def get_file_actions_menu_item_labels(
+        self, filename: str, timeout: int = 10000,
+    ) -> list[str]:
+        """Return the OPEN row dropdown's item labels, in DOM (render) order.
+
+        Scoped to the row's own menu container
+        (:attr:`ARTIFACT_ACTIONS_MENU`) via
+        :attr:`ROW_ACTIONS_MENU_ITEM_SELECTOR` — a data-testid-based sub-
+        selector, not a raw ``[role="menuitem"]`` lookup — so the read stays
+        inside this project's testid-only locator policy and cannot pick up a
+        different menu that happens to be mounted. Call
+        :meth:`open_file_actions_menu` first.
+
+        Args:
+            filename: Exact base file name whose dropdown is open.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            List of the dropdown's item labels in render order, e.g.
+            ``["Download", "Delete"]`` for a file row (ELITEA-1844).
+        """
+        menu = self.page.locator(self.ARTIFACT_ACTIONS_MENU.format(filename))
+        menu.wait_for(state="visible", timeout=timeout)
+        items = menu.locator(self.ROW_ACTIONS_MENU_ITEM_SELECTOR)
+        items.first.wait_for(state="visible", timeout=timeout)
+        labels = [(items.nth(i).text_content() or "").strip() for i in range(items.count())]
+        logger.info("Row actions menu items for '%s' (in order): %s", filename, labels)
+        return labels
+
+    @action("Click 'Delete' in a file row's actions dropdown")
+    def click_delete_menu_item(self, timeout: int = 10000) -> None:
+        """Click the open row dropdown's 'Delete' item and wait for the modal.
+
+        Sibling of :meth:`click_download_menu_item` (ELITEA-1839), which was
+        deliberately download-only. DotMenu wraps this item in
+        ``ActionWithDialog``, so the click opens the shared
+        :attr:`delete_confirm_dialog` instead of deleting immediately
+        (confirmed live, ELITEA-1844).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the item to be
+                visible and for the confirmation modal to appear.
+        """
+        self.delete_menu_item.wait_for(state="visible", timeout=timeout)
+        self.delete_menu_item.click()
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("'Delete' clicked in the row actions dropdown; confirmation modal open")
+
+    @action("Confirm delete of a single file (delete-confirmation modal)")
+    def confirm_delete_single_artifact(self, timeout: int = 15000):
+        """Click 'Delete' in the modal and return the SINGLE-file DELETE response.
+
+        Third sibling of :meth:`confirm_delete` (bulk files/folders,
+        ``/artifacts/artifacts/…?fname[]=…``) and
+        :meth:`confirm_delete_bucket` (``/artifacts/buckets/…``). A FILE row's
+        dropdown delete drives RTK's ``deleteArtifact`` (SINGULAR) instead —
+        ``DELETE /artifacts/artifact/default/{projectId}/{bucket}?filename=…``
+        (``src/api/artifacts.js:125``, confirmed live ELITEA-1844) — which
+        :meth:`confirm_delete`'s ``"artifacts/artifacts"`` matcher never
+        matches. Both existing methods stay byte-identical.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the response.
+
+        Returns:
+            Playwright ``Response`` object for the matching DELETE request.
+        """
+        with self.page.expect_response(
+            lambda r: "artifacts/artifact/" in r.url and r.request.method == "DELETE",
+            timeout=timeout,
+        ) as response_info:
+            self.delete_confirm_button.click()
+        return response_info.value
+
+    @action("Cancel delete (delete-confirmation modal)")
+    def click_delete_cancel_button(self, timeout: int = 10000) -> None:
+        """Click 'Cancel' in the delete-confirmation modal (ELITEA-1845).
+
+        Fires no network request — ``DeleteEntityModal``'s ``onClose`` only
+        resets local modal state (confirmed live: zero requests, the file and
+        its metadata untouched).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the button.
+        """
+        self.delete_confirm_cancel_button.wait_for(state="visible", timeout=timeout)
+        self.delete_confirm_cancel_button.click()
+        logger.info("'Cancel' clicked in the delete-confirmation modal")
+
+    @action("Close delete-confirmation modal via X")
+    def click_delete_close_button(self, timeout: int = 10000) -> None:
+        """Click the X (close) icon in the delete-confirmation modal (ELITEA-1850).
+
+        Additive sibling of :meth:`click_delete_cancel_button` — ``DeleteEntityModal``
+        passes ONE ``onClose`` handler to both ``Modal.BaseModal`` (the X, the
+        backdrop and Escape) and the ``Cancel`` button, so this control has the
+        same zero-side-effect semantics: no network request, and the file
+        table's ``rowSelectionModel`` (hence every checked checkbox) is left
+        untouched. Confirmed live 2026-08-22.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the X icon.
+        """
+        self.delete_confirm_close_button.wait_for(state="visible", timeout=timeout)
+        self.delete_confirm_close_button.click()
+        logger.info("X (close) clicked in the delete-confirmation modal")
+
+    # CORRECTED (ELITEA-1845, 2026-08-22): the note below is STALE. The
+    # shared DeleteEntityModal's Cancel button DOES carry a testid
+    # (`delete-confirm-cancel-button`, DeleteEntityModal.jsx:103) and it is on
+    # origin/main (EliteaAI/EliteaUI@bf4a13ad, promoted 2026-08-12 — after the
+    # note was written). ELITEA-1845 drives it via
+    # :meth:`click_delete_cancel_button` below, with no raw handle involved.
+    # The note is kept for the record; only its "no testid exists" premise is
+    # wrong — its locator-policy reasoning still stands.
+    #
     # Note (ELITEA-1847): the AFS's Axis-2 "cancel-path regression guard"
     # (select a row, open the modal, click Cancel, confirm zero network +
     # item still present) was verified live during analyst exploration via
@@ -2112,6 +3370,52 @@ class ArtifactsPage(BasePage):
         """
         self.upload_path_upload_button.click()
 
+    @action("Cancel the 'Upload files to ...' dialog")
+    def click_upload_path_cancel_button(self) -> None:
+        """Click 'Cancel' in the 'Upload files to ...' dialog (ELITEA-1825).
+
+        Abandons the upload attempt BEFORE 'Upload' is ever pressed — a
+        different product path from :meth:`click_resolve_duplicates_cancel_button`
+        (which cancels the *second*, duplicate-resolution dialog). Confirmed
+        live: ``handleCancel`` clears the dialog's own folder-path state and
+        closes it without firing any network request.
+
+        Does not wait for the dialog to disappear — call
+        :meth:`wait_for_upload_path_dialog_closed` next.
+        """
+        self.upload_path_cancel_button.click()
+
+    def wait_for_upload_path_dialog_closed(self, timeout: int = 10000) -> None:
+        """Wait for the 'Upload files to ...' dialog to become hidden.
+
+        Additive sibling of :meth:`wait_for_upload_path_dialog`, mirroring
+        :meth:`wait_for_resolve_duplicates_dialog_closed`'s shape — used
+        after :meth:`click_upload_path_cancel_button` (ELITEA-1825).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.upload_path_dialog.wait_for(state="hidden", timeout=timeout)
+        logger.info("'Upload files to ...' dialog closed")
+
+    @action("Type a folder path in the upload-path dialog")
+    def fill_upload_path(self, folder_path: str, timeout: int = 5000) -> None:
+        """Type *folder_path* into the editable Path segment (ELITEA-1825).
+
+        Writes to :attr:`upload_path_input_field` — the native ``<input>``
+        holding the user-typed suffix; the bucket/currentPrefix portion in
+        front of it is a read-only ``InputAdornment`` and is unaffected.
+        Read the value back with :meth:`get_upload_path_typed_value`.
+
+        Args:
+            folder_path: Folder path to type (e.g. ``"probe-folder"``).
+            timeout: Maximum wait time in milliseconds for the input to be
+                visible before typing.
+        """
+        self.upload_path_input_field.wait_for(state="visible", timeout=timeout)
+        self.upload_path_input_field.fill(folder_path)
+        logger.info("Typed upload folder path %r", folder_path)
+
     def click_upload_path_upload_button_and_capture_response(self, timeout: int = 15000):
         """Click 'Upload' and return the matching PUT response (ELITEA-1808).
 
@@ -2196,6 +3500,34 @@ class ArtifactsPage(BasePage):
         duplicate's path is never re-touched.
         """
         self.resolve_duplicates_keep_both_button.click()
+
+    @action("Replace duplicate resolution (overwrites the existing file in place)")
+    def click_resolve_duplicates_replace_button(self) -> None:
+        """Click 'Replace' in the 'Resolve duplicates' dialog.
+
+        Overwrites the existing file IN PLACE — confirmed live (ELITEA-1830):
+        fires exactly one PUT to the ORIGINAL key (no delete-then-create, no
+        '- Copy' variant), so exactly one entry remains in the bucket, with a
+        strictly newer 'lastModified' and the replacement file's bytes/size.
+        """
+        self.resolve_duplicates_replace_button.click()
+
+    @action("Close duplicate resolution dialog via the X icon")
+    def click_resolve_duplicates_close_button(self) -> None:
+        """Click the X (close) icon in the 'Resolve duplicates' dialog header.
+
+        Confirmed live (ELITEA-1833): dismisses the ENTIRE upload interaction
+        with zero network requests — nothing is uploaded, no success toast
+        fires, the original file is untouched, and the parent 'Upload files
+        to ...' dialog does not re-appear.
+
+        Distinct CONTROL from :meth:`click_resolve_duplicates_cancel_button`
+        even though the current build wires both to the same ``onCancel``
+        handler (``DuplicateResolutionDialog.jsx`` passes it to both
+        ``BaseModal``'s ``onClose`` and the Cancel button's ``onClick``) —
+        the wiring can change without either case changing.
+        """
+        self.resolve_duplicates_close_button.click()
 
     def wait_for_resolve_duplicates_dialog_closed(self, timeout: int = 10000) -> None:
         """Wait for the 'Resolve duplicates' dialog to be hidden/removed after Cancel.
@@ -2370,6 +3702,305 @@ class ArtifactsPage(BasePage):
             return False
 
     # ------------------------------------------------------------------
+    # Bucket permissions management
+    # ------------------------------------------------------------------
+
+    # Dynamic testid templates for bucket row and menu button
+    BUCKET_ROW_TESTID = '[data-testid="artifacts-bucket-row-{}"]'
+    BUCKET_MENU_BUTTON_TESTID = '[data-testid="bucket-menu-{}-menu-button"]'
+
+    @action("Open Manage Permissions modal")
+    def open_manage_permissions(self, bucket_name: str, timeout: int = 10000) -> None:
+        """Open the Manage Permissions modal for a bucket via its DotMenu.
+
+        LOCATOR: The bucket row has testid 'artifacts-bucket-row-{name}'.
+        The menu button appears on hover with testid 'bucket-menu-{name}-menu-button'.
+
+        Args:
+            bucket_name: Name of the bucket to manage permissions for.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Opening Manage Permissions for bucket '%s'", bucket_name)
+
+        # Find the bucket row by testid
+        bucket_row = self.page.locator(self.BUCKET_ROW_TESTID.format(bucket_name))
+        bucket_row.wait_for(state="attached", timeout=timeout)
+
+        # Scroll into view and hover to reveal DotMenu
+        bucket_row.scroll_into_view_if_needed()
+        bucket_row.hover()
+        self.page.wait_for_timeout(500)
+
+        # Click the DotMenu button (appears on hover)
+        menu_btn = self.page.locator(self.BUCKET_MENU_BUTTON_TESTID.format(bucket_name))
+        menu_btn.wait_for(state="visible", timeout=timeout)
+        menu_btn.click(force=True)
+        self.page.wait_for_timeout(300)
+
+        # Click "Manage permissions" menu item
+        manage_perms_item = self.page.get_by_role("menuitem", name="Manage permissions")
+        manage_perms_item.wait_for(state="visible", timeout=timeout)
+        manage_perms_item.click()
+
+        # Wait for modal to open
+        self._wait_for_permissions_modal(timeout=timeout)
+        logger.info("Manage Permissions modal opened for '%s'", bucket_name)
+
+    def _wait_for_permissions_modal(self, timeout: int = 10000) -> None:
+        """Wait for the Manage Permissions modal to be visible."""
+        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
+        modal.wait_for(state="visible", timeout=timeout)
+
+    @action("Add permission exception")
+    def add_permission_exception(
+        self,
+        user_name_or_email: str,
+        permission: str,
+        timeout: int = 15000,
+    ) -> None:
+        """Add a user exception in the Manage Permissions modal.
+
+        The modal must already be open (call open_manage_permissions first).
+
+        LOCATOR: Two scenarios for "Add" button:
+        - Empty exceptions list: "Add Exceptions" button (variant="special", with + icon)
+        - Existing exceptions: Small + button with aria-label="Add exception"
+
+        Args:
+            user_name_or_email: User's name or email to search for.
+            permission: Permission level - "Read-only" or "No access".
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Adding permission exception: user=%s, permission=%s",
+                    user_name_or_email, permission)
+
+        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
+        modal.wait_for(state="visible", timeout=timeout)
+
+        # Wait for modal content to fully render
+        self.page.wait_for_timeout(1000)
+
+        # Two button variants depending on whether exceptions exist:
+        # 1. Empty list: "Add Exceptions" button (MuiButton-special with startIcon)
+        # 2. Has exceptions: + button with aria-label="Add exception"
+        add_exceptions_btn = modal.locator('button:has-text("Add Exceptions")')
+        add_exception_btn = modal.locator('button[aria-label="Add exception"]')
+
+        if add_exceptions_btn.count() > 0:
+            add_exceptions_btn.first.scroll_into_view_if_needed()
+            self.page.wait_for_timeout(300)
+            add_exceptions_btn.first.click(force=True)
+        elif add_exception_btn.count() > 0:
+            add_exception_btn.first.scroll_into_view_if_needed()
+            self.page.wait_for_timeout(300)
+            add_exception_btn.first.click(force=True)
+        else:
+            raise Exception("Could not find Add Exceptions or Add exception button")
+
+        self.page.wait_for_timeout(500)
+
+        # Wait for Add exceptions dialog
+        # Use exact text match for heading to distinguish from parent modal's button
+        add_dialog = self.page.locator('[role="dialog"]').filter(
+            has=self.page.locator('span:text-is("Add exceptions")')
+        )
+        add_dialog.wait_for(state="visible", timeout=timeout)
+
+        # Type user name in the autocomplete search (Users field)
+        user_input = add_dialog.locator('input').first
+        user_input.click()
+        user_input.fill(user_name_or_email)
+        self.page.wait_for_timeout(500)
+
+        # Select user from dropdown
+        user_option = self.page.locator(f'[role="option"]:has-text("{user_name_or_email}")').first
+        user_option.wait_for(state="visible", timeout=timeout)
+        user_option.click()
+        self.page.wait_for_timeout(300)
+
+        # Click on dialog header to close user dropdown before opening Permissions
+        dialog_header = add_dialog.locator('h2').first
+        dialog_header.click()
+        self.page.wait_for_timeout(300)
+
+        # Click on Permissions dropdown to open it
+        # The combobox has id="simple-select-Permissions"
+        permissions_dropdown = add_dialog.locator('#simple-select-Permissions')
+        permissions_dropdown.click()
+        self.page.wait_for_timeout(300)
+
+        # Map permission display names to testid values
+        # Options: select-option-read ("Read-only"), select-option-no_access ("No access"),
+        #          select-option-read_write ("Read/write (default)")
+        permission_testid_map = {
+            "Read-only": "select-option-read",
+            "No access": "select-option-no_access",
+            "Read/write (default)": "select-option-read_write",
+        }
+        testid = permission_testid_map.get(permission)
+        if not testid:
+            raise ValueError(f"Unknown permission '{permission}'. Valid: {list(permission_testid_map.keys())}")
+
+        # Select permission option by testid
+        perm_option = self.page.locator(f'[data-testid="{testid}"]')
+        perm_option.wait_for(state="visible", timeout=timeout)
+        perm_option.click()
+        self.page.wait_for_timeout(300)
+
+        # Click Save button
+        save_btn = add_dialog.get_by_role("button", name="Save")
+        save_btn.click()
+
+        # Wait for dialog to close
+        add_dialog.wait_for(state="hidden", timeout=timeout)
+        logger.info("Added permission exception for '%s': %s", user_name_or_email, permission)
+
+    @action("Edit permission exception")
+    def edit_permission_exception(
+        self,
+        user_name_or_email: str,
+        new_permission: str,
+        timeout: int = 15000,
+    ) -> None:
+        """Edit an existing user exception in the Manage Permissions modal.
+
+        The modal must already be open (call open_manage_permissions first).
+
+        Args:
+            user_name_or_email: User's name or email to edit.
+            new_permission: New permission level - "Read/write (default)",
+                "Read-only", or "No access".
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Editing permission exception: user=%s, new_permission=%s",
+                    user_name_or_email, new_permission)
+
+        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
+
+        # Find the user row and click edit button
+        user_row = modal.locator(f'div:has-text("{user_name_or_email}")').first
+        user_row.hover()
+        self.page.wait_for_timeout(300)
+
+        edit_btn = user_row.locator('button').filter(has=self.page.locator('svg')).last
+        edit_btn.click(force=True)
+        self.page.wait_for_timeout(500)
+
+        # Wait for Edit dialog
+        edit_dialog = self.page.locator('[role="dialog"]:has-text("Edit exception")')
+        edit_dialog.wait_for(state="visible", timeout=timeout)
+
+        # Select new permission
+        permission_select = edit_dialog.locator('[role="combobox"], select').first
+        if permission_select.count() == 0:
+            permission_select = edit_dialog.get_by_label("Permissions")
+        permission_select.click()
+        self.page.wait_for_timeout(300)
+
+        # Select permission option
+        perm_option = self.page.locator(f'[role="option"]:has-text("{new_permission}")').first
+        perm_option.wait_for(state="visible", timeout=timeout)
+        perm_option.click()
+        self.page.wait_for_timeout(300)
+
+        # Click Save button
+        save_btn = edit_dialog.get_by_role("button", name="Save")
+        save_btn.click()
+
+        # Wait for dialog to close
+        edit_dialog.wait_for(state="hidden", timeout=timeout)
+        logger.info("Edited permission for '%s' to: %s", user_name_or_email, new_permission)
+
+    @action("Remove permission exception")
+    def remove_permission_exception(
+        self,
+        user_name_or_email: str,
+        timeout: int = 15000,
+    ) -> None:
+        """Remove a user exception by setting their permission to Read/write (default).
+
+        The modal must already be open (call open_manage_permissions first).
+        This effectively restores the user to default permissions.
+
+        Flow:
+        1. Find the user row and click Edit exception (pencil icon)
+        2. In the edit dialog, select "Read/write (default)" permission
+        3. Click Save
+
+        Args:
+            user_name_or_email: User's name or email to restore to default.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Restoring default permission for user=%s", user_name_or_email)
+
+        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
+        modal.wait_for(state="visible", timeout=timeout)
+
+        # Find the user row in exceptions table
+        user_row = modal.locator(f'tr:has-text("{user_name_or_email}")').first
+        if user_row.count() == 0:
+            user_row = modal.locator(f'div:has-text("{user_name_or_email}")').first
+
+        user_row.wait_for(state="visible", timeout=timeout)
+
+        # Click Edit exception button (pencil icon with aria-label="Edit exception")
+        edit_btn = user_row.locator('button').filter(
+            has=self.page.locator('svg')
+        ).first
+        # Or find by parent span with aria-label
+        edit_wrapper = user_row.locator('[aria-label="Edit exception"] button').first
+        if edit_wrapper.count() > 0:
+            edit_wrapper.click()
+        else:
+            edit_btn.click()
+        self.page.wait_for_timeout(500)
+
+        # Wait for Edit exception dialog
+        edit_dialog = self.page.locator('[role="dialog"]').filter(
+            has=self.page.locator('span:text-is("Edit exception")')
+        )
+        edit_dialog.wait_for(state="visible", timeout=timeout)
+
+        # Click on Permissions dropdown
+        permissions_dropdown = edit_dialog.locator('#simple-select-Permissions')
+        permissions_dropdown.click()
+        self.page.wait_for_timeout(300)
+
+        # Select "Read/write (default)" option by testid
+        read_write_option = self.page.locator('[data-testid="select-option-read_write"]')
+        read_write_option.wait_for(state="visible", timeout=timeout)
+        read_write_option.click()
+        self.page.wait_for_timeout(300)
+
+        # Click Save button
+        save_btn = edit_dialog.get_by_role("button", name="Save")
+        save_btn.click()
+
+        # Wait for dialog to close
+        edit_dialog.wait_for(state="hidden", timeout=timeout)
+        self.page.wait_for_timeout(500)
+        logger.info("Restored default permission for '%s'", user_name_or_email)
+
+    def user_has_exception(self, user_name_or_email: str) -> bool:
+        """Check if user already has an exception in the open Manage Permissions modal."""
+        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
+        user_row = modal.locator(f':text("{user_name_or_email}")')
+        return user_row.count() > 0
+
+    @action("Close Manage Permissions modal")
+    def close_manage_permissions_modal(self, timeout: int = 5000) -> None:
+        """Close the Manage Permissions modal by clicking the X button."""
+        modal = self.page.locator('[role="dialog"]:has-text("Manage Permissions")')
+        close_btn = modal.locator('button[aria-label="close"], button:has-text("×")').first
+        if close_btn.count() == 0:
+            # Try clicking outside the modal or pressing Escape
+            self.page.keyboard.press("Escape")
+        else:
+            close_btn.click()
+        modal.wait_for(state="hidden", timeout=timeout)
+        logger.info("Manage Permissions modal closed")
+
+    # ------------------------------------------------------------------
     # Main-panel breadcrumb header helpers (ELITEA-1824)
     # ------------------------------------------------------------------
 
@@ -2415,9 +4046,72 @@ class ArtifactsPage(BasePage):
         logger.info("Breadcrumb folder crumbs: %s", names)
         return names
 
+    @action("Click breadcrumb bucket crumb (main panel header)")
+    def click_breadcrumb_bucket_label(self, timeout: int = 10000) -> None:
+        """Click the bucket crumb in the main-panel breadcrumb (ELITEA-1837).
+
+        Navigates back to the bucket ROOT from inside a subfolder: the
+        product clears ``currentPrefix`` and drops the ``folder`` query
+        param, leaving ``?bucket=<name>``.
+
+        NOTE: ``ArtifactTableToolbar.jsx`` wires this label's ``onClick``
+        **only while a folder prefix is active** — at bucket root the crumb
+        is deliberately inert, so calling this there is a no-op click, not
+        an error.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.breadcrumb_bucket_label.wait_for(state="visible", timeout=timeout)
+        self.breadcrumb_bucket_label.click(timeout=timeout)
+        logger.info("Clicked the breadcrumb bucket crumb (back to bucket root)")
+
     # ------------------------------------------------------------------
     # File preview/edit editor panel (ELITEA-1851/1852/1856)
     # ------------------------------------------------------------------
+
+    def get_file_preview_button(self, filename: str) -> Locator:
+        """Return a locator for *filename*'s row-level "View/Edit file" icon.
+
+        Built from the class-level :attr:`ARTIFACT_FILE_PREVIEW_BUTTON`
+        dynamic-testid constant (ELITEA-1863/1864), same dynamic-identity
+        pattern as :meth:`get_file_row` - spec files never build this
+        locator themselves.
+
+        The icon renders only when ``row.canPreview`` is true
+        (``ArtifactRowActions.jsx``), so for an UNSUPPORTED file type this
+        locator resolves to 0 elements. Prefer
+        ``expect(...).to_have_count(0)`` on it over
+        :meth:`is_file_preview_button_visible` returning False for absence
+        assertions: the web-first assertion auto-retries, so a slow render
+        can never produce a false pass.
+
+        Args:
+            filename: Exact file name (the dynamic testid's suffix).
+
+        Returns:
+            Playwright ``Locator`` for the row's preview icon button.
+        """
+        return self.page.locator(self.ARTIFACT_FILE_PREVIEW_BUTTON.format(filename))
+
+    def get_file_actions_menu_button(self, filename: str) -> Locator:
+        """Return a locator for *filename*'s row-level 3-dot actions trigger.
+
+        Built from the class-level :attr:`ARTIFACT_ACTIONS_MENU_BUTTON`
+        dynamic-testid constant (ELITEA-1864), same dynamic-identity pattern
+        as :meth:`get_file_row`. Exists so specs can assert the trigger's
+        VISIBILITY (e.g. before any hover - the hover-independence guard for
+        EliteaAI/elitea-testing-public#994) without building the locator
+        themselves; :meth:`open_file_actions_menu` remains the way to
+        actually open the menu.
+
+        Args:
+            filename: Exact base file name (the dynamic testid's suffix).
+
+        Returns:
+            Playwright ``Locator`` for the row's dot-menu trigger button.
+        """
+        return self.page.locator(self.ARTIFACT_ACTIONS_MENU_BUTTON.format(filename))
 
     def get_file_row(self, filename: str) -> Locator:
         """Return a locator for a single file row, filtered by displayed name.
@@ -2557,6 +4251,84 @@ class ArtifactsPage(BasePage):
         self.file_preview_file_path.wait_for(state="visible", timeout=timeout)
         return (self.file_preview_file_path.text_content() or "").strip()
 
+    @action("Click 'Download' in the unsupported-preview panel")
+    def click_preview_unavailable_download(self, timeout: int = 10000) -> Download:
+        """Click the centred Download button of the unsupported-preview state.
+
+        Wraps the click in ``page.expect_download`` and returns the captured
+        download (ELITEA-1863). This button calls the very same
+        ``handleDownload`` as the panel's 3-dot dropdown item
+        (``FilePreviewCanvas/index.jsx`` passes it as ``onDownload``), so a
+        single-file stream is expected - never the multi-select ZIP
+        packaging flow.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the download event.
+
+        Returns:
+            Playwright ``Download`` object (caller can use ``download.path()``
+            to read the downloaded bytes).
+
+        Raises:
+            TimeoutError: If no download event fires within *timeout*.
+        """
+        self.file_preview_unavailable_download_button.wait_for(
+            state="visible", timeout=timeout
+        )
+        with self.page.expect_download(timeout=timeout) as download_info:
+            self.file_preview_unavailable_download_button.click()
+
+        download = download_info.value
+        logger.info(
+            "Download started from the unsupported-preview panel -> "
+            "suggested filename: %s",
+            download.suggested_filename,
+        )
+        return download
+
+    def get_preview_unavailable_title_text(self, timeout: int = 10000) -> str:
+        """Return the unsupported-file-type panel's heading text.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The stripped text of :attr:`file_preview_unavailable_title`
+            (``"Preview Not Available"`` in the current product).
+        """
+        self.file_preview_unavailable_title.wait_for(state="visible", timeout=timeout)
+        return (self.file_preview_unavailable_title.text_content() or "").strip()
+
+    def get_preview_unavailable_message_text(self, timeout: int = 10000) -> str:
+        """Return the unsupported-file-type panel's supporting message text.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The stripped text of :attr:`file_preview_unavailable_message`
+            (``"Preview is not supported for this file type."`` for a
+            TYPE-gated file).
+        """
+        self.file_preview_unavailable_message.wait_for(state="visible", timeout=timeout)
+        return (self.file_preview_unavailable_message.text_content() or "").strip()
+
+    def get_preview_unavailable_formats_text(self, timeout: int = 10000) -> str:
+        """Return the unsupported-file-type panel's supported-formats text.
+
+        The sentence is a long hardcoded literal that will churn as formats
+        are added - callers assert ``startswith``/``in``, never full
+        equality (ELITEA-1863 AFS).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The stripped text of :attr:`file_preview_unavailable_formats`.
+        """
+        self.file_preview_unavailable_formats.wait_for(state="visible", timeout=timeout)
+        return (self.file_preview_unavailable_formats.text_content() or "").strip()
+
     def get_file_preview_language_text(self, timeout: int = 10000) -> str:
         """Return the editor panel's language-label text (e.g. 'Python (detected)').
 
@@ -2663,6 +4435,76 @@ class ArtifactsPage(BasePage):
             return True
         except AssertionError:
             return False
+
+    @action("Open the Discard warning modal")
+    def click_file_preview_discard(self, timeout: int = 10000) -> None:
+        """Click the editor header's Discard button and wait for its Warning modal.
+
+        The header Discard button never discards directly — the shared
+        ``Button.DiscardButton`` always raises its own confirmation modal
+        first (confirmed live, ELITEA-1853). This method therefore returns
+        only once that modal is visible.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.file_preview_discard_button.click()
+        self.file_preview_discard_warning_dialog.wait_for(state="visible", timeout=timeout)
+        logger.info("Discard warning modal opened")
+
+    @action("Confirm the Discard warning modal")
+    def confirm_file_preview_discard(self, timeout: int = 10000) -> None:
+        """Click 'Discard' in the Warning modal and wait for it to close.
+
+        Confirming resets the editor's edited content client-side — there is
+        no network request and no toast to wait on, so the modal's own
+        disappearance is the completion signal.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.file_preview_discard_warning_confirm_button.click()
+        self.file_preview_discard_warning_dialog.wait_for(state="hidden", timeout=timeout)
+        logger.info("Discard confirmed")
+
+    @action("Cancel the Discard warning modal")
+    def cancel_file_preview_discard(self, timeout: int = 10000) -> None:
+        """Click 'Cancel' in the Warning modal and wait for it to close.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.file_preview_discard_warning_cancel_button.click()
+        self.file_preview_discard_warning_dialog.wait_for(state="hidden", timeout=timeout)
+        logger.info("Discard cancelled")
+
+    @action("Close the editor with unsaved changes")
+    def click_file_preview_close_with_unsaved_changes(self, timeout: int = 10000) -> None:
+        """Click the editor's X and wait for the unsaved-changes Warning dialog.
+
+        Separate from :meth:`close_file_preview`, which waits for the close
+        button to DISAPPEAR — that never happens while the editor is dirty,
+        because ``FilePreviewCanvas.handleClose`` raises a confirmation
+        dialog instead of closing (ELITEA-1855; the case text omits this
+        step — EliteaAI/elitea-testing-public#1687).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.file_preview_close_button.click()
+        self.unsaved_changes_alert_content.wait_for(state="visible", timeout=timeout)
+        logger.info("Unsaved-changes warning dialog opened")
+
+    @action("Confirm closing the editor with unsaved changes")
+    def confirm_close_with_unsaved_changes(self, timeout: int = 10000) -> None:
+        """Confirm the unsaved-changes dialog and wait for the editor to close.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.unsaved_changes_alert_confirm_button.click()
+        self.file_preview_save_button.wait_for(state="detached", timeout=timeout)
+        logger.info("Editor closed, unsaved changes discarded")
 
     @action("Edit file preview content")
     def edit_file_preview_content(
@@ -2965,3 +4807,606 @@ class ArtifactsPage(BasePage):
         self.page.keyboard.press("End")
         self.page.keyboard.type(append_text)
         logger.info("Appended %r to the CodeMirror line containing %r", append_text, match_text)
+
+    @action("Replace a specific CodeMirror line by matching text")
+    def replace_file_preview_line_containing(
+        self, match_text: str, new_text: str, timeout: int = 10000
+    ) -> None:
+        """Click the ``.cm-line`` containing *match_text* and REPLACE it with *new_text*.
+
+        Sibling of :meth:`edit_file_preview_line_containing`, which only
+        APPENDS. Cases that must rewrite a whole line (ELITEA-1859/1860 —
+        ``# Project Overview`` becomes ``# Modified Heading``) need the
+        select-to-line-start step this method adds: click the target line →
+        ``End`` → ``Shift+Home`` (selects the whole line) → ``type()``
+        (replaces the selection).
+
+        LOCATOR: ``.cm-line`` is CodeMirror-internal render DOM — sanctioned
+        #579 exception (third-party editor library internal render node),
+        scoped under the testid'd :attr:`file_preview_code_content` parent
+        (whose ``.cm-content`` node is these lines' direct parent). Do not
+        extend the exception to any handle that COULD carry a testid.
+
+        Args:
+            match_text: Exact text of the target line to filter by.
+            new_text: Text that replaces the whole line.
+            timeout: Maximum wait time in milliseconds.
+        """
+        target_line = self.file_preview_code_content.locator(self.CM_LINE).filter(
+            has_text=match_text
+        ).first
+        target_line.wait_for(state="visible", timeout=timeout)
+        target_line.click()
+        self.page.keyboard.press("End")
+        self.page.keyboard.press("Shift+Home")
+        self.page.keyboard.type(new_text)
+        logger.info(
+            "Replaced the CodeMirror line containing %r with %r", match_text, new_text
+        )
+
+    # ------------------------------------------------------------------
+    # Landing-page chrome / pagination readers (ELITEA-1803/1804/1805)
+    # ------------------------------------------------------------------
+
+    def get_buckets_footer_count_text(self, timeout: int = 10000) -> str:
+        """Return the left-panel footer's 'Buckets: N' text.
+
+        Args:
+            timeout: How long to wait for the footer stat.
+
+        Returns:
+            Raw text content, e.g. ``"Buckets:757"`` (no separating space —
+            label and value are sibling Typography nodes).
+        """
+        self.buckets_footer_count.wait_for(state="visible", timeout=timeout)
+        return (self.buckets_footer_count.text_content() or "").strip()
+
+    def get_buckets_footer_size_text(self, timeout: int = 10000) -> str:
+        """Return the left-panel footer's 'Size: X' text.
+
+        Args:
+            timeout: How long to wait for the footer stat.
+
+        Returns:
+            Raw text content, e.g. ``"Size:254.8 MB"``.
+        """
+        self.buckets_footer_size.wait_for(state="visible", timeout=timeout)
+        return (self.buckets_footer_size.text_content() or "").strip()
+
+    def column_header(self, field: str) -> Locator:
+        """Return the file-table column header for *field*.
+
+        Args:
+            field: Column FIELD name — ``name``, ``fileType``, ``size``,
+                ``modified`` (the "Last update" column) or ``actions``.
+
+        Returns:
+            Locator for that column's header cell.
+        """
+        return self.page.locator(self.FILE_TABLE_COLUMN_HEADER.format(field))
+
+    def get_column_header_count(self) -> int:
+        """Return how many file-table column headers are rendered.
+
+        Zero means the file TABLE itself is not rendered (empty bucket), which
+        is a stronger statement than "no file rows".
+
+        Returns:
+            Number of rendered column headers.
+        """
+        return self.page.locator(self.FILE_TABLE_COLUMN_HEADER_ANY).count()
+
+    def bucket_tree_empty_label(self, bucket_name: str) -> Locator:
+        """Return the left-tree "No files in this bucket" label for *bucket_name*.
+
+        Args:
+            bucket_name: Name of the bucket whose subtree is inspected.
+
+        Returns:
+            Locator for that bucket's own empty-tree label.
+        """
+        return self.page.locator(self.BUCKET_TREE_EMPTY_LABEL.format(bucket_name))
+
+    def get_pagination_info_text(self, timeout: int = 10000) -> str:
+        """Return the pagination counter text (e.g. ``"1 - 10 of 12"``).
+
+        Args:
+            timeout: How long to wait for the counter.
+
+        Returns:
+            Trimmed counter text.
+        """
+        self.pagination_page_info.wait_for(state="visible", timeout=timeout)
+        return (self.pagination_page_info.text_content() or "").strip()
+
+    def get_rows_per_page_value(self, timeout: int = 10000) -> str:
+        """Return the current 'Rows per page' value (e.g. ``"10"``).
+
+        Args:
+            timeout: How long to wait for the combobox.
+
+        Returns:
+            Trimmed combobox text.
+        """
+        self.pagination_page_size_combobox.wait_for(state="visible", timeout=timeout)
+        return (self.pagination_page_size_combobox.text_content() or "").strip()
+
+    def any_bucket_row(self) -> Locator:
+        """Return the first currently-rendered bucket row (any bucket).
+
+        Uses the shared testid PREFIX (:attr:`BUCKET_ROW_ANY_SELECTOR`) — the
+        caller cares only that the left panel is rendering a bucket list, not
+        which bucket. Visibility, not count, is the meaningful check for a
+        collapsed panel: the rows stay in the DOM behind ``display: none``
+        (ELITEA-1807).
+
+        Returns:
+            Locator for the first matching bucket row.
+        """
+        return self.page.locator(self.BUCKET_ROW_ANY_SELECTOR).first
+
+    def is_buckets_panel_collapsed(self) -> bool:
+        """Return whether the BUCKETS left panel is currently collapsed.
+
+        Reads the ``data-collapsed`` state attribute off
+        :attr:`buckets_panel_toggle_button`, which the product renders from
+        the same ``collapsed`` value that chooses the ``<<``/``>>`` icon.
+
+        Returns:
+            ``True`` when the panel is collapsed.
+        """
+        return self.buckets_panel_toggle_button.get_attribute("data-collapsed") == "true"
+
+    @action("Toggle BUCKETS panel")
+    def toggle_buckets_panel(self, timeout: int = 10000) -> bool:
+        """Click the BUCKETS panel collapse/expand control and wait for the flip.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The panel's collapsed state AFTER the toggle.
+        """
+        toggle = self.buckets_panel_toggle_button
+        toggle.wait_for(state="visible", timeout=timeout)
+        expected = "false" if self.is_buckets_panel_collapsed() else "true"
+        toggle.click()
+        # Condition wait on the product's own state attribute — never a sleep.
+        expect(toggle).to_have_attribute("data-collapsed", expected, timeout=timeout)
+        logger.info("Toggled BUCKETS panel: collapsed=%s", expected)
+        return expected == "true"
+
+    @action("Go to next file page")
+    def click_pagination_next(self, timeout: int = 10000) -> None:
+        """Click the next-page arrow and wait for the table to re-render.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.pagination_next_button.wait_for(state="visible", timeout=timeout)
+        self.pagination_next_button.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Clicked pagination next")
+
+    @action("Go to previous file page")
+    def click_pagination_prev(self, timeout: int = 10000) -> None:
+        """Click the previous-page arrow and wait for the table to re-render.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.pagination_prev_button.wait_for(state="visible", timeout=timeout)
+        self.pagination_prev_button.click()
+        self.wait_for_network(timeout=timeout)
+        logger.info("Clicked pagination prev")
+
+    @action("Hover bucket info icon")
+    def hover_bucket_info_icon(self, timeout: int = 10000) -> None:
+        """Hover the main-panel bucket-info (i) icon to reveal its tooltip.
+
+        The tooltip opens on HOVER, not click (CLARIFICATION #1617 / #669).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.bucket_info_button.wait_for(state="visible", timeout=timeout)
+        self.bucket_info_button.hover()
+        self.bucket_info_tooltip_content.wait_for(state="visible", timeout=timeout)
+        logger.info("Bucket-info tooltip opened")
+
+    def get_bucket_info_tooltip_text(self, timeout: int = 10000) -> str:
+        """Return the bucket-info tooltip's text content.
+
+        Args:
+            timeout: How long to wait for the tooltip content.
+
+        Returns:
+            e.g. ``"Retention Policy:1 YearNumber of files:0"`` — labels and
+            values are sibling Typography nodes, so there is no separating
+            whitespace.
+        """
+        self.bucket_info_tooltip_content.wait_for(state="visible", timeout=timeout)
+        return (self.bucket_info_tooltip_content.text_content() or "").strip()
+
+    # ------------------------------------------------------------------
+    # Bucket pin / unpin flow (ELITEA-1820, ELITEA-1821)
+    # ------------------------------------------------------------------
+
+    def hover_bucket_row(self, bucket_name: str, timeout: int = 10000) -> None:
+        """Hover a bucket row so its 3-dot actions trigger becomes visible.
+
+        Split out of :meth:`open_bucket_menu` (which hovers and clicks in one
+        go) because ELITEA-1820's Test Step 4 asserts the hover-reveal on its
+        own: the trigger's container is ``display:none`` until the row is
+        hovered (``BucketItem.jsx``'s ``menuContainer``).
+
+        Args:
+            bucket_name: Exact name of the bucket row to hover.
+            timeout: Maximum wait time in milliseconds for the row.
+        """
+        row = self.page.locator(self.BUCKET_ROW.format(bucket_name))
+        row.wait_for(state="visible", timeout=timeout)
+        row.hover()
+        logger.info("Hovered bucket row '%s'", bucket_name)
+
+    def bucket_menu_button(self, bucket_name: str) -> Locator:
+        """Return the bucket row's 3-dot actions trigger locator.
+
+        Args:
+            bucket_name: Exact bucket name.
+
+        Returns:
+            Locator for :attr:`BUCKET_MENU_BUTTON` for that bucket.
+        """
+        return self.page.locator(self.BUCKET_MENU_BUTTON.format(bucket_name))
+
+    def bucket_menu_container(self, bucket_name: str) -> Locator:
+        """Return the bucket row's opened dot-menu dropdown container locator.
+
+        Args:
+            bucket_name: Exact bucket name.
+
+        Returns:
+            Locator for :attr:`BUCKET_MENU_CONTAINER` for that bucket.
+        """
+        return self.page.locator(self.BUCKET_MENU_CONTAINER.format(bucket_name))
+
+    def bucket_pin_indicator(self, bucket_name: str) -> Locator:
+        """Return the pin icon shown beside a PINNED bucket's name.
+
+        Args:
+            bucket_name: Exact bucket name.
+
+        Returns:
+            Locator for :attr:`BUCKET_PIN_INDICATOR` for that bucket (count 0
+            while the bucket is unpinned — the element is gated on
+            ``isPinned``).
+        """
+        return self.page.locator(self.BUCKET_PIN_INDICATOR.format(bucket_name))
+
+    def bucket_row(self, bucket_name: str) -> Locator:
+        """Return one bucket's row locator, by exact bucket name.
+
+        Public accessor over :attr:`BUCKET_ROW` so specs assert a row's
+        presence/visibility through the page object's auto-retrying
+        ``expect(...)`` instead of building the selector themselves.
+
+        Args:
+            bucket_name: Exact bucket name.
+
+        Returns:
+            Locator for that bucket's ``artifacts-bucket-row-{name}`` element.
+        """
+        return self.page.locator(self.BUCKET_ROW.format(bucket_name))
+
+    def first_bucket_row(self) -> Locator:
+        """Return the FIRST bucket row currently rendered in the left panel.
+
+        Pinned buckets are rendered in their own list above the unpinned list
+        (``BucketsListContent.jsx``), so "the first rendered row" is exactly
+        the case's "top of the bucket list, above all unpinned buckets".
+
+        Returned as a locator (rather than a name read through
+        :meth:`get_rendered_bucket_names`) so specs can assert position with a
+        web-first, auto-retrying
+        ``expect(...).to_have_attribute("data-testid", ...)`` — the bucket list
+        re-renders ~8-10 s after the pin request returns 200, and a retrying
+        assertion is how that is waited out without a sleep.
+
+        Returns:
+            Locator for the first ``artifacts-bucket-row-*`` element.
+        """
+        return self.page.locator(self.BUCKET_ROW_ANY_SELECTOR).first
+
+    def any_bucket_pin_indicator(self) -> Locator:
+        """Return a locator matching EVERY rendered pin icon in the panel.
+
+        Returns:
+            Locator for :attr:`BUCKET_PIN_INDICATOR_ANY_SELECTOR` — count 0
+            means no bucket in the project is pinned.
+        """
+        return self.page.locator(self.BUCKET_PIN_INDICATOR_ANY_SELECTOR)
+
+    @action("Click bucket-menu pin/unpin item")
+    def click_bucket_menu_pin_item(self, timeout: int = 15000) -> int:
+        """Click the open bucket-menu's 'Pin to top' / 'Unpin from top' item.
+
+        Call :meth:`open_bucket_menu` first — same "caller opens, this clicks"
+        division of responsibility as :meth:`click_bucket_menu_delete_item`.
+
+        Wraps the click in ``expect_response`` for the pin mutation
+        (``PATCH /artifacts/buckets/default/{project}?name={bucket}``, body
+        ``{"is_pinned": <bool>}`` — ``EliteaUI/src/api/artifacts.js``'s
+        ``updateBucketPin``) and returns its status, so a caller can assert the
+        flag actually reached the backend. That matters here: the bucket list
+        re-renders roughly 8-10 seconds AFTER the 200 (live-measured,
+        ``test-specs/artifacts/_surface.md``), so the request and the DOM are
+        genuinely two separate observables.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the PATCH response.
+
+        Returns:
+            The pin request's HTTP status code.
+        """
+        with self.page.expect_response(
+            lambda r: "artifacts/buckets/default" in r.url and r.request.method == "PATCH",
+            timeout=timeout,
+        ) as response_info:
+            self.bucket_menu_pin_menuitem.click()
+        status = response_info.value.status
+        logger.info("Clicked bucket-menu pin/unpin item — PATCH returned %s", status)
+        return status
+
+    def get_rendered_bucket_names(self) -> list[str]:
+        """Return the distinct bucket names currently rendered in the left panel.
+
+        Reads each row's own ``artifacts-bucket-row-{name}`` testid and
+        de-duplicates defensively.
+
+        CORRECTED 2026-08-21 (ELITEA-1820/1821 live analysis): the earlier
+        claim here — that a PINNED bucket is rendered twice — is wrong.
+        ``BucketsPanel.jsx`` splits the list into ``pinnedBuckets`` and
+        ``unpinnedBuckets`` and ``BucketsListContent.jsx`` renders the pinned
+        list ABOVE the unpinned one, so each bucket appears exactly ONCE, with
+        pinned buckets first. The de-duplication is kept as a cheap guard, and
+        the returned ORDER (pinned first, then the unpinned buckets in
+        alphanumeric order) is what ELITEA-1820/1821 assert against.
+
+        This is the oracle ELITEA-1803/1805 use for the left-panel footer's
+        "Buckets: N" stat — ``BucketsPanel.jsx`` feeds the footer
+        ``bucketCount={buckets?.length}``, the same array the list renders, so
+        footer and list must agree within one snapshot. (An API cross-check
+        was tried first and proved racy: the buckets listing is eventually
+        consistent — measured 760 rendered against 762 from
+        ``GET /artifacts/buckets/default/{project}`` seconds after creating
+        buckets.)
+
+        Read-only DOM observation: ``evaluate_all`` here only READS each
+        node's own ``data-testid``; it injects nothing and mutates nothing, so
+        it is not a substitution under the fidelity policy. It is used instead
+        of N per-element round-trips because the panel renders 750+ rows.
+
+        Returns:
+            De-duplicated bucket names, in render order.
+        """
+        prefix = "artifacts-bucket-row-"
+        names: list[str] = []
+        for testid in self.page.locator(self.BUCKET_ROW_ANY_SELECTOR).evaluate_all(
+            "nodes => nodes.map(n => n.getAttribute('data-testid'))"
+        ):
+            if testid and testid.startswith(prefix):
+                name = testid[len(prefix):]
+                if name not in names:
+                    names.append(name)
+        return names
+
+    def file_rows(self) -> Locator:
+        """Return a locator for every rendered file/folder row.
+
+        Public accessor over the pre-existing :meth:`_file_rows` so specs
+        assert row counts through the page object (``expect(...)``'s
+        auto-retry) instead of constructing locators themselves.
+
+        Returns:
+            Locator for the file/folder row collection.
+        """
+        return self._file_rows()
+
+    def file_row_checkboxes(self) -> Locator:
+        """Return a locator for every rendered file-row selection checkbox.
+
+        Returns:
+            Locator matching :attr:`ARTIFACT_FILE_CHECKBOX_ANY_SELECTOR`.
+        """
+        return self.page.locator(self.ARTIFACT_FILE_CHECKBOX_ANY_SELECTOR)
+
+    def file_row_action_buttons(self) -> Locator:
+        """Return a locator for every rendered file-row actions (dot-menu) trigger.
+
+        Returns:
+            Locator matching :attr:`ARTIFACT_ACTIONS_MENU_BUTTON_ANY_SELECTOR`.
+        """
+        return self.page.locator(self.ARTIFACT_ACTIONS_MENU_BUTTON_ANY_SELECTOR)
+
+    def tree_item(self, item_key: str) -> Locator:
+        """Return the left-panel tree node for *item_key*.
+
+        Locator-returning sibling of the pre-existing
+        :meth:`is_tree_item_visible` / :meth:`click_tree_item`, for specs that
+        want ``expect(...)``'s auto-retrying assertions on the node.
+
+        Args:
+            item_key: Full relative path of the file/folder (e.g.
+                ``"sample.txt"`` or ``"a1/sample.txt"``).
+
+        Returns:
+            Locator for that tree node.
+        """
+        return self.page.locator(self.ARTIFACTS_TREE_ITEM.format(item_key))
+
+    # ------------------------------------------------------------------
+    # Buckets-list scrolling (ELITEA-1822)
+    # ------------------------------------------------------------------
+
+    #: Horizontal offset (px) into the scroll container used to click "into the
+    #: bucket list panel" without hitting a row. The container has `padding:
+    #: 1rem`, so 6px from its left edge is always empty gutter — live-verified
+    #: (ELITEA-1822): the click leaves the URL unchanged and selects no bucket.
+    BUCKETS_PANEL_GUTTER_CLICK_X = 6
+
+    #: Poll interval (ms) for the scroll condition waits below. `mouse.wheel()`
+    #: dispatches the event without waiting for the scroll to be applied, so
+    #: the settle is a POLL on the product's own rendered geometry — not a
+    #: fixed sleep standing in for a wait.
+    BUCKETS_SCROLL_POLL_INTERVAL_MS = 100
+
+    def _buckets_scroll_container_box(self) -> dict[str, float]:
+        """Return the buckets scroll container's bounding box.
+
+        Returns:
+            The container's ``bounding_box()`` dict.
+
+        Raises:
+            AssertionError: If the container is not rendered.
+        """
+        box = self.buckets_scroll_container.bounding_box()
+        if box is None:
+            raise AssertionError(
+                "Buckets scroll container (artifacts-buckets-scroll-container) "
+                "is not rendered — is the BUCKETS panel collapsed?"
+            )
+        return box
+
+    @action("Place the cursor over the buckets panel")
+    def hover_buckets_panel(self) -> None:
+        """Move the mouse to the centre of the buckets scroll container.
+
+        Required before :meth:`wheel_buckets_panel`: a wheel event is delivered
+        to whatever sits under the cursor, so without this the page (or the
+        file table) would scroll instead of the bucket list.
+        """
+        box = self._buckets_scroll_container_box()
+        self.page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+
+    @action("Move the cursor off the bucket list")
+    def move_mouse_off_bucket_list(self) -> None:
+        """Park the mouse cursor clear of every bucket row (ELITEA-1823 Step 3).
+
+        Deliberately NOT :meth:`hover_buckets_panel`, which moves to the
+        container's CENTRE — that lands *on* a bucket row and would highlight
+        it. This moves to a point to the RIGHT of the scroll container's own
+        box (the main file panel), so no ``BucketItem`` is under the cursor and
+        every row's ``onMouseLeave`` has fired.
+
+        The offset is measured from the container's testid-anchored bounding
+        box rather than hardcoded: the panel's width changes with the viewport
+        and with the sidebar's collapsed state.
+        """
+        box = self._buckets_scroll_container_box()
+        self.page.mouse.move(box["x"] + box["width"] + 200, box["y"] + box["height"] / 2)
+
+    @action("Wheel-scroll the buckets panel")
+    def wheel_buckets_panel(self, delta_y: int) -> None:
+        """Dispatch one wheel event over the buckets panel.
+
+        Args:
+            delta_y: Wheel delta in px — positive scrolls down, negative up.
+        """
+        self.page.mouse.wheel(0, delta_y)
+
+    @action("Click into the buckets panel")
+    def click_into_buckets_panel(self) -> None:
+        """Click the buckets panel's empty left gutter.
+
+        Gives the keyboard a scroll target (Chromium keeps the clicked scroll
+        container as the arrow-key scroll target even though the container
+        carries no ``tabIndex``) WITHOUT selecting a bucket — clicking a row
+        would select and expand it, which is a different interaction than the
+        one under test.
+        """
+        box = self._buckets_scroll_container_box()
+        self.page.mouse.click(
+            box["x"] + self.BUCKETS_PANEL_GUTTER_CLICK_X,
+            box["y"] + box["height"] - self.BUCKETS_PANEL_GUTTER_CLICK_X,
+        )
+
+    @action("Press a key to scroll the buckets panel")
+    def press_key_in_buckets_panel(self, key: str) -> None:
+        """Press *key* with the buckets panel as the keyboard scroll target.
+
+        Args:
+            key: Playwright key name, e.g. ``"ArrowDown"`` / ``"ArrowUp"``.
+        """
+        self.page.keyboard.press(key)
+
+    def bucket_row_offset_from_panel_top(self, bucket_name: str) -> float | None:
+        """Return how far *bucket_name*'s row sits below the panel's top edge.
+
+        Args:
+            bucket_name: Bucket whose row to measure.
+
+        Returns:
+            ``row_top - container_top`` in px (negative when the row is
+            scrolled above the panel's visible band), or ``None`` when the row
+            has no bounding box.
+        """
+        row_box = self.page.locator(self.BUCKET_ROW.format(bucket_name)).bounding_box()
+        if row_box is None:
+            return None
+        return row_box["y"] - self._buckets_scroll_container_box()["y"]
+
+    def is_bucket_row_within_panel(self, bucket_name: str, tolerance: float = 1.0) -> bool:
+        """Return whether *bucket_name*'s row is fully inside the panel's visible band.
+
+        ``is_visible()`` is the WRONG oracle for this question: a row clipped by
+        the container's ``overflow: auto`` still has a bounding box and no
+        ``visibility: hidden``, so Playwright reports it visible even when it
+        sits 30 000 px below the fold (live-measured, ELITEA-1822). Comparing
+        the row's own box against the container's is what actually answers
+        "can the user see this bucket right now?".
+
+        Args:
+            bucket_name: Bucket whose row to test.
+            tolerance: Sub-pixel slack (px) for the edge comparisons.
+
+        Returns:
+            ``True`` when the whole row lies between the container's top and
+            bottom edges; ``False`` when it is clipped away or not rendered.
+        """
+        row_box = self.page.locator(self.BUCKET_ROW.format(bucket_name)).bounding_box()
+        if row_box is None:
+            return False
+        container = self._buckets_scroll_container_box()
+        return (
+            row_box["y"] >= container["y"] - tolerance
+            and row_box["y"] + row_box["height"] <= container["y"] + container["height"] + tolerance
+        )
+
+    def wait_until_bucket_row_within_panel(
+        self,
+        bucket_name: str,
+        expected: bool = True,
+        timeout: int = 5000,
+    ) -> bool:
+        """Wait for *bucket_name*'s row to be (or stop being) inside the panel.
+
+        A condition wait, polled against the geometry the product renders —
+        needed because ``mouse.wheel()`` returns before the scroll is applied.
+
+        Args:
+            bucket_name: Bucket whose row to watch.
+            expected: Wait for the row to be inside (``True``) or outside
+                (``False``) the panel's visible band.
+            timeout: Maximum wait in milliseconds.
+
+        Returns:
+            ``True`` if the condition held before the timeout, else ``False``.
+        """
+        deadline = time.monotonic() + timeout / 1000
+        while True:
+            if self.is_bucket_row_within_panel(bucket_name) is expected:
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            self.page.wait_for_timeout(self.BUCKETS_SCROLL_POLL_INTERVAL_MS)

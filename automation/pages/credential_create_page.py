@@ -47,12 +47,66 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
     # .agents/testing.md § Locator policy (dynamic testid pattern).
     TYPE_CARD_SELECTOR = '[data-testid="toolkit-type-card-{}"]'
 
-    # Auth-method radiogroup (ELITEA-1962) — dynamic testid template,
-    # `toolkit-field-auth-radio-{slug}` where slug is the option's underlying
-    # VALUE (lowercased, spaces->hyphens), not its label text. E.g. label
-    # "Anonymous" -> slug "none", label "Token" -> slug "token". See the AFS
-    # Concrete Handles table for the full label-to-slug mapping.
-    AUTH_METHOD_RADIO = '[data-testid="toolkit-field-auth-radio-{}"]'
+    # AUTH_METHOD_RADIO + auth_radio() + select_auth_method() were PROMOTED to
+    # CredentialFormFieldsMixin for ELITEA-1981 (the credential DETAIL route
+    # renders the same auth radio group, and ELITEA-1981/1982 assert the
+    # selected auth method there) — the same treatment test_connection_button
+    # got for ELITEA-1970 and FIELD_INPUT for ELITEA-1980. This class inherits
+    # the mixin, so create_page.auth_radio(...) resolves exactly as before.
+
+    # Generic schema-driven field testids (ELITEA-1967). The credential create
+    # form is rendered entirely from the backend schema
+    # (``GET /configurations/available/?section=credentials``), and every field
+    # testid is derived from the schema property key by the shared
+    # ``ToolBaseProperty`` renderer — so these templates cover ANY credential
+    # type without a per-type constant. Class-level template constants per
+    # .agents/testing.md § Locator policy (dynamic testid pattern).
+    #
+    # ``FIELD_INPUT`` and :meth:`field` were PROMOTED to
+    # :class:`CredentialFormFieldsMixin` for ELITEA-1980 (the detail route
+    # renders the same ``ToolBaseProperty`` fields and needs them too) — the
+    # same treatment ``test_connection_button`` got for ELITEA-1970. This class
+    # inherits the mixin, so ``create_page.field(...)`` resolves exactly as
+    # before.
+    # Secret/Password toggle rendered beside every secret field. Second
+    # placeholder is the mode: "secret" | "password".
+    FIELD_SECRET_TOGGLE = '[data-testid="toolkit-field-{}-input-toggle-{}"]'
+    # Enum (dropdown) field, e.g. Jira/Confluence "Hosting".
+    FIELD_SELECT = '[data-testid="toolkit-field-{}-select"]'
+    # --- Secret-field "Secret" mode (ELITEA-1968 / ELITEA-1969) ---------
+    # A SecretField in `secret` mode swaps its native <input> for a
+    # SingleSelect over the project's secret vault. The select's display node
+    # inherits the caller's data-testid with a `-combobox` suffix
+    # (`SingleSelect.jsx` SelectDisplayProps); the native password <input>
+    # (`FIELD_SECRET_INPUT`) is absent in that mode, and vice versa.
+    FIELD_SECRET_COMBOBOX = '[data-testid="toolkit-field-{}-input-combobox"]'
+    # FIELD_SECRET_INPUT + secret_native_input() moved to
+    # CredentialFormFieldsMixin for ELITEA-1970 (the credential DETAIL page
+    # renders the same secret fields); inherited here unchanged.
+    # "Saved Secrets" group-header refresh button — caller-derived testid added
+    # for ELITEA-1969 (EliteaAI/EliteaUI@29214bf1).
+    FIELD_SECRET_REFRESH_BUTTON = (
+        '[data-testid="toolkit-field-{}-input-refresh-secrets-button"]'
+    )
+    # Dropdown group headers. `SingleSelect.jsx` renders
+    # `select-group-header-{group.key}`; SecretField's two group keys are the
+    # literals "Create" and "Saved Secrets" (the rendered TEXT is uppercased by
+    # CSS: "CREATE" / "SAVED SECRETS").
+    SECRET_GROUP_HEADER_CREATE = '[data-testid="select-group-header-Create"]'
+    SECRET_GROUP_HEADER_SAVED = '[data-testid="select-group-header-Saved Secrets"]'
+    # The CREATE-section action option. Its VALUE is the same
+    # `__create_private_secret__` sentinel in every project scope; only its
+    # LABEL changes ("New Private Secret" on the personal project, "New Project
+    # Secret" elsewhere) — see the ELITEA-1968 AFS § Case-text divergence.
+    SECRET_CREATE_OPTION = '[data-testid="select-option-__create_private_secret__"]'
+    # A saved secret's option. The option VALUE is the `{{secret.<name>}}`
+    # template, so the testid embeds the braces literally; `{{` / `}}` below are
+    # str.format escapes that render as single braces.
+    SECRET_SAVED_OPTION = '[data-testid="select-option-{{{{secret.{}}}}}"]'
+    # Prefix form, for counting the saved-secret options (ELITEA-1969 asserts a
+    # baseline+1 delta across the refresh). NOT a format template — the `{{`
+    # here is the literal double brace the testid itself carries.
+    SECRET_SAVED_OPTION_PREFIX = '[data-testid^="select-option-{{secret."]'
 
     # ------------------------------------------------------------------
     # Create-form fields
@@ -75,14 +129,6 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
             "Access Token required field (GitHub credential type, Token auth "
             "method, secret-toggle wrapper — same rendered field family as "
             "api_key_input, relabeled for GitHub's Token auth)."
-        ),
-    )
-    api_error_message = LocatorDescriptor(
-        testid="credential-form-api-error-message",
-        description=(
-            "Server-side API error text rendered below the form on a failed "
-            "Save (CredentialForm.jsx) — e.g. the duplicate-elitea_title "
-            "400 message. Testid added for ELITEA-1978."
         ),
     )
 
@@ -115,6 +161,33 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
         """
         self.navigate(f"/credentials/create-credential/{credential_type}")
         self.wait_for_page_load()
+
+    def open_type_form(self, credential_type: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Navigate to the create form for *credential_type* and settle on the
+        rendered form, NOT on ``networkidle`` (ELITEA-1967).
+
+        Additive sibling of :meth:`navigate_to_type` — that method's
+        :meth:`wait_for_page_load` calls ``wait_for_network()``
+        (``wait_for_load_state("networkidle")``), and the credentials routes do
+        **not** reliably reach network-idle: background traffic against the DEV
+        backend keeps the connection count above zero. Live-observed here on
+        step 8 of a 10-navigation run — 7 navigations settled, the 8th raised a
+        bare ``TimeoutError`` from ``networkidle`` on an already fully-rendered
+        page. The same characteristic is recorded for ``/credentials/all`` in
+        ``test-specs/toolkits-credentials/_surface.md`` (ELITEA-1964) and fixed
+        there the same way.
+
+        The form is schema-driven: it renders only once
+        ``GET /configurations/available/?section=credentials`` has resolved and
+        ``CreateCredential.jsx`` has built ``credentialDetails``. So the
+        Display Name field becoming visible IS the "form is ready" condition —
+        a real product signal, no sleep, no idle heuristic.
+
+        :meth:`navigate_to_type` is left byte-identical for its four existing
+        callers (additive-only on a shared-caller page object).
+        """
+        self.navigate(f"/credentials/create-credential/{credential_type}")
+        self.display_name_input.wait_for(state="visible", timeout=timeout)
 
     def type_card(self, credential_type: str) -> Locator:
         """Return the credential-type selector card locator for *credential_type*.
@@ -171,25 +244,6 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
         self.username_input.select_text()
         self.username_input.press("Backspace")
 
-    def auth_radio(self, method_slug: str) -> Locator:
-        """Return the Auth radio-button locator for *method_slug* (e.g. ``"token"``).
-
-        The testid lands on the MUI ``FormControlLabel`` wrapping the native
-        ``<input type="radio">`` (not the input itself) — live-verified that
-        Playwright's ``is_checked()`` still resolves correctly through this
-        wrapper, so no extra unwrap is needed by callers.
-        """
-        return self.page.locator(self.AUTH_METHOD_RADIO.format(method_slug))
-
-    def select_auth_method(self, method_slug: str) -> None:
-        """Click the Auth radio button matching *method_slug* (e.g. ``"token"``).
-
-        Args:
-            method_slug: The auth option's underlying value slug, not its
-                label text (see :data:`AUTH_METHOD_RADIO` docstring note).
-        """
-        self.auth_radio(method_slug).click()
-
     def set_access_token(self, value: str) -> None:
         """Fill the Access Token field, triggering React onChange.
 
@@ -198,3 +252,79 @@ class CredentialCreatePage(CredentialFormFieldsMixin, BasePage):
         """
         self.access_token_input.click()
         self.access_token_input.press_sequentially(value, delay=20)
+
+    def secret_toggle(self, field_key: str, mode: str) -> Locator:
+        """Return the Secret/Password toggle button of secret field *field_key*.
+
+        Args:
+            field_key: The schema property key (e.g. ``"api_key"``).
+            mode: ``"secret"`` or ``"password"`` — the toggle's two options.
+        """
+        return self.page.locator(self.FIELD_SECRET_TOGGLE.format(field_key, mode))
+
+    def field_select(self, field_key: str) -> Locator:
+        """Return the enum-dropdown locator for schema property *field_key*
+        (e.g. Jira/Confluence ``"hosting"``)."""
+        return self.page.locator(self.FIELD_SELECT.format(field_key))
+
+    # ------------------------------------------------------------------
+    # Secret-field "Secret" mode — vault dropdown (ELITEA-1968 / ELITEA-1969)
+    # ------------------------------------------------------------------
+    def secret_combobox(self, field_key: str) -> Locator:
+        """Return the Secret-mode select display node of secret field
+        *field_key* (present only while the field is in ``secret`` mode)."""
+        return self.page.locator(self.FIELD_SECRET_COMBOBOX.format(field_key))
+
+    def open_secret_dropdown(self, field_key: str) -> None:
+        """Open the Secret-mode vault dropdown of secret field *field_key*.
+
+        Waits on the first SAVED-SECRETS *option*, not on a network idle and not
+        on the group header. The vault query
+        (``GET /secrets/secrets/default/{project}``) is ``skip``-gated on the
+        field's mode, so on the first entry into Secret mode the menu opens
+        BEFORE the list resolves: the group headers render immediately while the
+        group body is still an empty placeholder. Waiting on the header alone
+        therefore returns an open-but-empty dropdown (cost one rerun,
+        ELITEA-1968). ``networkidle`` is unusable on the credentials routes
+        (`.agents/testing.md`, ELITEA-1964/1967).
+
+        Assumes the case's own precondition — at least one saved secret exists
+        in the project's vault.
+        """
+        self.secret_combobox(field_key).click()
+        self.secret_saved_group_header.wait_for(
+            state="visible", timeout=UI_ELEMENT_TIMEOUT
+        )
+        self.saved_secret_options.first.wait_for(
+            state="visible", timeout=UI_ELEMENT_TIMEOUT
+        )
+
+    @property
+    def secret_create_group_header(self) -> Locator:
+        """CREATE group header inside the open vault dropdown."""
+        return self.page.locator(self.SECRET_GROUP_HEADER_CREATE)
+
+    @property
+    def secret_saved_group_header(self) -> Locator:
+        """SAVED SECRETS group header inside the open vault dropdown."""
+        return self.page.locator(self.SECRET_GROUP_HEADER_SAVED)
+
+    @property
+    def secret_create_option(self) -> Locator:
+        """The CREATE-section action option ("New Private Secret" on a personal
+        project, "New Project Secret" on a team project — same testid)."""
+        return self.page.locator(self.SECRET_CREATE_OPTION)
+
+    def saved_secret_option(self, secret_name: str) -> Locator:
+        """Return the vault-dropdown option for the saved secret *secret_name*."""
+        return self.page.locator(self.SECRET_SAVED_OPTION.format(secret_name))
+
+    @property
+    def saved_secret_options(self) -> Locator:
+        """Every saved-secret option currently rendered in the open dropdown."""
+        return self.page.locator(self.SECRET_SAVED_OPTION_PREFIX)
+
+    def secret_refresh_button(self, field_key: str) -> Locator:
+        """Return the SAVED SECRETS group-header refresh button of secret field
+        *field_key* (refetches the vault list without closing the dropdown)."""
+        return self.page.locator(self.FIELD_SECRET_REFRESH_BUTTON.format(field_key))

@@ -71,7 +71,7 @@ from pages.artifacts_page import ArtifactsPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.regression, pytest.mark.new_verified]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (ms unless noted)
@@ -224,6 +224,7 @@ class TestArtifactDownloadAllFilesSelectAllZip:
         "ELITEA-1841_download-flow-all-files-select-all-checkbox-zip.md",
         "onetest-ai Test Case link",
     )
+    @pytest.mark.flaky
     def test_download_all_files_via_select_all_as_zip(
         self, page, artifact_api, artifact_bucket,
     ):

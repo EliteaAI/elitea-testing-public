@@ -5,8 +5,12 @@ type: feedback
 ---
 
 Recurring across the campaign (logged 2026-08-05, reconfirmed 2026-08-06 on
-#876, and again on `elitea-2392-ai-configuration-page`): two separate but
-compounding facts, both requiring the same fix.
+#876, again on `elitea-2392-ai-configuration-page`, and again 2026-08-14 on
+`skills-buildwithai-fidelity-rework` — that run's report writer returned
+`written:false` on its SECOND attempt too, right after the gate agent it
+depends on had also failed twice; see
+`workflow_internal_gate_two_failures_run_it_yourself.md` for that sibling
+pattern): two separate but compounding facts, both requiring the same fix.
 
 1. **The report-writer subagent frequently doesn't write.** It can return
    `{"written": false, "detail": "## Batch Report ... Report files not

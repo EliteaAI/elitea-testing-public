@@ -35,7 +35,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.help_center, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.help_center, pytest.mark.p2, pytest.mark.regression, pytest.mark.new_verified]
 
 # Source of truth: EliteaUI src/[fsd]/features/interactive-tours/lib/constants/
 # sidebarTour.constants.js (17 entries) — confirmed against the live constants
@@ -179,3 +179,207 @@ class TestHelpCenterSidebarTour:
         with allure.step("Verify no console errors occurred during the tour run"):
             assert not console_errors, f"Unexpected console errors during the tour: {list(console_errors)}"
             console_errors.stop()
+
+
+class TestHelpCenterSidebarTourExtras:
+    """Additional Sidebar Interactive Tour behaviors — ELITEA-2226/2228/2229/2230.
+
+    Each test targets a distinct observable not already asserted by
+    ``TestHelpCenterSidebarTour.test_sidebar_interactive_tour_completes_via_next``
+    (ELITEA-2227), reusing the same ``HelpCenterPage`` / ``InteractiveTourCard`` /
+    ``TourCompleteCard`` infrastructure. See each case's own AFS under
+    ``test-specs/help-center/`` for the full Coverage Map.
+    """
+
+    def test_sidebar_interactive_tour_starts_on_link_click(self, page):
+        """ELITEA-2226: clicking the link launches the tour at step 1/17
+        with the ELITEA Logo anchor, exact description text, and all three
+        footer buttons (Skip/Back-disabled/Next) visible together.
+
+        AFS: test-specs/help-center/l2_sidebar-interactive-tour-starts_ELITEA-2226.md
+        """
+        with allure.step("Step 1 — Navigate to Help Center"):
+            help_center = HelpCenterPage(page)
+            help_center.navigate()
+            expect(help_center.page_header).to_be_visible()
+            expect(help_center.page_header).to_have_text("Help Center")
+
+        with allure.step(
+            'Step 2 — Locate the INTERACTIVE TOURS card and verify both tour links are displayed'
+        ):
+            sidebar_link = help_center.resource_link("sidebar-interactive-tour")
+            chat_link = help_center.resource_link("chat-interactive-tour")
+            expect(sidebar_link).to_be_visible()
+            expect(chat_link).to_be_visible()
+
+        with allure.step('Step 3 — Click "Sidebar Interactive Tour"; the tour overlay launches immediately'):
+            tour_page = help_center.open_resource_link_in_new_tab("sidebar-interactive-tour")
+            tour = InteractiveTourCard(tour_page)
+            tour.wait_for_step()
+
+        with allure.step(
+            'Step 4 — Verify the first step is anchored to the ELITEA Logo with the exact description text'
+        ):
+            expect(tour.title).to_have_text(TOUR_STEP_TITLES[0])
+            # Substring match, not full-string equality — per this AFS's own
+            # Concrete Handles guidance (the DOM concatenates <p> boundaries
+            # with no separator, so a brittle full-string equal would break on
+            # incidental whitespace/markdown-render changes even though the
+            # content is correct).
+            expect(tour.description).to_contain_text(
+                "The ELITEA Logo in the sidebar shows the server status."
+            )
+            expect(tour.description).to_contain_text(
+                "Green mark points that server is working."
+            )
+            expect(tour.description).to_contain_text(
+                "Red mark points that server is updating."
+            )
+
+        with allure.step('Step 5 — Verify the step counter shows "1 / 17"'):
+            expect(tour.step_counter).to_have_text(f"1 / {TOUR_TOTAL_STEPS}")
+
+        with allure.step("Step 6 — Verify Skip, Back (disabled), and Next are all visible together"):
+            expect(tour.skip_button).to_be_visible()
+            expect(tour.back_button).to_be_visible()
+            expect(tour.next_button).to_be_visible()
+            assert tour.is_back_disabled(), "Back should be disabled on step 1"
+
+    def test_sidebar_interactive_tour_restarts_after_completion(self, page):
+        """ELITEA-2228: a fully completed tour can be restarted from Help
+        Center — clicking the link again after Finish + Done opens a fresh
+        instance at step 1/17.
+
+        AFS: test-specs/help-center/l2_sidebar-interactive-tour-restarts_ELITEA-2228.md
+        """
+        with allure.step(
+            'Step 1 — Complete the Sidebar Interactive Tour fully via Next through all steps, Finish, Done'
+        ):
+            help_center = HelpCenterPage(page)
+            help_center.navigate()
+            first_run = help_center.open_resource_link_in_new_tab("sidebar-interactive-tour")
+
+            tour = InteractiveTourCard(first_run)
+            tour.wait_for_step()
+            expect(tour.step_counter).to_have_text(f"1 / {TOUR_TOTAL_STEPS}")
+
+            for step_number in range(2, TOUR_TOTAL_STEPS + 1):
+                tour.click_next()
+                expect(tour.step_counter).to_have_text(f"{step_number} / {TOUR_TOTAL_STEPS}")
+
+            tour.click_finish()
+            complete = TourCompleteCard(first_run)
+            complete.wait_for()
+            expect(complete.complete_title).to_have_text("Tour Complete!")
+
+            complete.click_done()
+            Dialog.wait_for_hidden(first_run, timeout=10000)
+
+        with allure.step(
+            'Step 2 — Navigate back to Help Center; the "Sidebar Interactive Tour" link is still visible/clickable'
+        ):
+            expect(help_center.resource_link("sidebar-interactive-tour")).to_be_visible()
+
+        with allure.step('Step 3 — Click "Sidebar Interactive Tour" again; verify it restarts from step 1/17'):
+            second_run = help_center.open_resource_link_in_new_tab("sidebar-interactive-tour")
+            restarted_tour = InteractiveTourCard(second_run)
+            restarted_tour.wait_for_step()
+
+            expect(restarted_tour.step_counter).to_have_text(f"1 / {TOUR_TOTAL_STEPS}")
+            expect(restarted_tour.title).to_have_text(TOUR_STEP_TITLES[0])
+            assert restarted_tour.is_back_disabled(), "Back should be disabled again on a fresh restart"
+
+    @pytest.mark.p1
+    def test_sidebar_interactive_tour_skip_terminates(self, page):
+        """ELITEA-2229: clicking "Skip" mid-tour removes the overlay
+        immediately (no completion modal) and leaves the app fully
+        interactive.
+
+        AFS: test-specs/help-center/l1_sidebar-interactive-tour-skip-terminates_ELITEA-2229.md
+        """
+        with allure.step('Step 1 — Navigate to Help Center and click "Sidebar Interactive Tour"'):
+            help_center = HelpCenterPage(page)
+            help_center.navigate()
+            tour_page = help_center.open_resource_link_in_new_tab("sidebar-interactive-tour")
+
+            tour = InteractiveTourCard(tour_page)
+            tour.wait_for_step()
+
+        with allure.step(
+            'Step 2 — Verify the tour starts at step 1/17 with Skip, Back (disabled), and Next visible'
+        ):
+            expect(tour.step_counter).to_have_text(f"1 / {TOUR_TOTAL_STEPS}")
+            expect(tour.skip_button).to_be_visible()
+            expect(tour.back_button).to_be_visible()
+            expect(tour.next_button).to_be_visible()
+            assert tour.is_back_disabled(), "Back should be disabled on step 1"
+
+        with allure.step('Step 3 — Click "Next" twice to advance to step 3/17'):
+            tour.click_next()
+            expect(tour.step_counter).to_have_text(f"2 / {TOUR_TOTAL_STEPS}")
+            tour.click_next()
+            expect(tour.step_counter).to_have_text(f"3 / {TOUR_TOTAL_STEPS}")
+
+        with allure.step('Step 4 — Click "Skip"'):
+            tour.click_skip()
+
+        with allure.step("Step 5/6 — Verify the tour overlay and spotlight are removed immediately"):
+            # Zero matching [role="dialog"] elements is treated as "hidden" —
+            # raises on timeout, doubling as the removal assertion.
+            Dialog.wait_for_hidden(tour_page, timeout=10000)
+            expect(tour.spotlight).to_have_count(0)
+
+        with allure.step(
+            "Step 7 — Verify the application is fully functional after skipping: sidebar navigation works"
+        ):
+            # Same environment-agnostic proof the covering spec uses for its
+            # own "Done!" case: a real click through Playwright's
+            # actionability engine fails if any overlay still intercepts
+            # pointer events, so a successful click proves the tour backdrop
+            # is gone and the underlying page is interactive again.
+            chat = ChatPage(tour_page)
+            chat.sidebar_toggle.click(timeout=5000)
+
+    def test_sidebar_interactive_tour_back_returns_to_step_one(self, page):
+        """ELITEA-2230: clicking "Back" from step 2/17 returns to step 1/17
+        with matching content, and "Back" becomes disabled again.
+
+        AFS: test-specs/help-center/l2_sidebar-interactive-tour-back-to-step-one_ELITEA-2230.md
+        """
+        with allure.step('Step 1 — Navigate to Help Center and click "Sidebar Interactive Tour"'):
+            help_center = HelpCenterPage(page)
+            help_center.navigate()
+            tour_page = help_center.open_resource_link_in_new_tab("sidebar-interactive-tour")
+
+            tour = InteractiveTourCard(tour_page)
+            tour.wait_for_step()
+            expect(tour.step_counter).to_have_text(f"1 / {TOUR_TOTAL_STEPS}")
+            expect(tour.title).to_have_text(TOUR_STEP_TITLES[0])
+            step_one_description = tour.get_description_text()
+
+        with allure.step('Step 2 — Click "Next" to advance to step 2/17'):
+            tour.click_next()
+            expect(tour.step_counter).to_have_text(f"2 / {TOUR_TOTAL_STEPS}")
+            expect(tour.title).to_have_text(TOUR_STEP_TITLES[1])
+            assert not tour.is_back_disabled(), "Back should be enabled once past step 1"
+
+        with allure.step('Step 3 — Verify the tour is on step 2/17'):
+            expect(tour.step_counter).to_have_text(f"2 / {TOUR_TOTAL_STEPS}")
+
+        with allure.step('Step 4 — Click the "Back" button'):
+            tour.click_back()
+
+        with allure.step("Step 5 — Verify the tour returns to step 1/17"):
+            expect(tour.step_counter).to_have_text(f"1 / {TOUR_TOTAL_STEPS}")
+
+        with allure.step("Step 6 — Verify the tooltip content matches step 1's content"):
+            expect(tour.title).to_have_text(TOUR_STEP_TITLES[0])
+            assert tour.get_description_text() == step_one_description, (
+                "Description after Back-to-step-1 should match the original step 1 content"
+            )
+
+        with allure.step('Step 7 — Verify the step counter updates to "1 / 17"'):
+            expect(tour.step_counter).to_have_text(f"1 / {TOUR_TOTAL_STEPS}")
+
+        with allure.step('Step 8 — Verify the "Back" button is disabled/inactive on step 1/17'):
+            assert tour.is_back_disabled(), "Back should be disabled again after returning to step 1"

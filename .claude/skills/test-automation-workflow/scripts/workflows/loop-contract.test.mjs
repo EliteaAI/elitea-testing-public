@@ -94,21 +94,50 @@ test('the playbook tells a lead running the loop by hand to use the same rule', 
 // parent blocks on a return that never comes. This is NOT implementer-specific:
 // the gate runs the suite N consecutive times, which is the longest job in the
 // pipeline, so it is the most exposed slot of all.
-test('every workflow tells every worker to run long jobs in the foreground', () => {
+// The rule has three legs and every one of them was learned the hard way:
+// name the call ceiling (a suite run silently dies at the 120s default), name
+// blocking sleep as the way to wait (nothing said waiting was legal, so a gate
+// busy-polled itself to death), and forbid ending a turn (measured: enforced
+// 28ms later, no wake by any pattern). A workflow missing any leg leaves the
+// slot with an unsatisfiable instruction.
+test('every workflow tells every worker how to run AND how to wait on long jobs', () => {
   for (const [name, text] of [['build', build], ['campaign', campaign],
     ['stabilize', read('./batch-stabilize.workflow.mjs')]]) {
-    assert.match(text, /RUN LONG JOBS IN THE FOREGROUND/, name);
-    assert.match(text, /NEVER end a turn waiting for a background job/, name);
+    assert.match(text, /timeout: 600000/, name);                        // the ceiling, stated
+    assert.match(text, /sleep 300/, name);                              // how to wait
+    assert.match(text, /NEVER end a turn while a job is running/, name);
     assert.match(text, /nothing will wake you/, name);
+    assert.match(text, /NEVER poll at second-level intervals/, name);
   }
 });
 
 test('the gate slots carry the rule, not just the implementers', () => {
   // batch-build's gate + batch-campaign's mini-gate each state it inline.
-  const gateBuild = build.slice(build.indexOf('Hardening gate for batch'));
-  assert.match(gateBuild.slice(0, 4000), /FOREGROUND_RULE/);
-  const miniGate = campaign.slice(campaign.indexOf('Mini-gate for the campaign foundation'));
-  assert.match(miniGate.slice(0, 3000), /FOREGROUND_RULE/);
+  // Bound each slice by the dispatch's own opts object rather than a character
+  // count, so growing the prompt can never silently drop the assertion.
+  const gateStart = build.indexOf('Hardening gate for batch');
+  const gateBuild = build.slice(gateStart, build.indexOf('label: `gate:', gateStart));
+  assert.match(gateBuild, /FOREGROUND_RULE/);
+  const miniStart = campaign.indexOf('Mini-gate for the campaign foundation');
+  const miniGate = campaign.slice(miniStart, campaign.indexOf('label:', miniStart));
+  assert.match(miniGate, /FOREGROUND_RULE/);
+});
+
+// A fix that lands only in the workflow script silently excludes every host
+// without the Workflow tool — where the orchestrator IS the loop and the
+// playbook's dispatch template is what a gate slot actually receives. That
+// template used to instruct `--n {GATE_N}`, i.e. the exact call shape that
+// killed three gates, so the two paths must be asserted together.
+test('the sequential path gets the same gate run shape, not just the workflow', () => {
+  const p = refs('orchestration-playbook.md');
+  const tpl = p.slice(p.indexOf('Hardening gate for batch {SLUG}'));
+  assert.match(tpl.slice(0, 2000), /`--n 1`, foreground, with timeout: 600000/);
+  assert.match(tpl.slice(0, 2000), /Do NOT pass\n?`--n \{GATE_N\}`/);
+  assert.match(tpl.slice(0, 2000), /sleep 300/);
+  // and the verdict vocabulary matches the workflow's schema
+  assert.match(tpl.slice(0, 2000), /green\|red\|not-run\|incomplete/);
+  assert.doesNotMatch(tpl.slice(0, 1200), /plus `--n \{GATE_N\}`/,
+    'the old template told the gate to run all N in one process');
 });
 
 test('the cross-slot rule is in the docs, so it holds without a workflow too', () => {

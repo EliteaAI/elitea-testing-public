@@ -1,0 +1,502 @@
+{
+  "batch": "chat-remaining-w06",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-chat-remaining-w06",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      214.99,
+      214.21,
+      213.43
+    ],
+    "failures": [],
+    "notes": "Two-part manual gate after workflow gate cut-off: (1) test_chat_folder_rename_checkmark_validation.py (7 tests) gated 3/3 clean BEFORE merge. (2) test_chat_folder_rename_length_boundaries.py (2 tests, ELITEA-2128/2129) was MISSED from the pre-merge gate scope (lead reconstructed the touched-file list from memory instead of git diff, a self-caught process violation — see manual_gate_must_discover_touched_files_via_diff_not_memory.md) and only gated 3/3 clean AFTER the trunk-to-base merge already happened. Delivered code confirmed correct; the gate-before-merge process was violated for this one file."
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2121",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "REGRESSION found and FIXED this session: FolderItem.jsx's dot-menu 'Rename' item lost its testid key (chat-folder-menu-rename-menuitem) to an unrelated main-branch commit (f5e0c325, #764) after ELITEA-2458 had added it. Confirmed via a LIVE pre-fix failure of ELITEA-2458's own merged test (TimeoutError), not just source inspection. Sibling failure shape to the already-tracked #1309 (Delete item's … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "elitea-testing-public#1533"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift, both ELITEA-2121 and ELITEA-2130: case text says the folder context menu shows 'Delete, Edit, Export, Pin or Unpin'. Live-confirmed (source read + browser_snapshot) real 4-item set is 'New chat, Rename, Pin on top (or Unpin), Delete' — 'Edit' doesn't exist (labelled 'Rename', same drift class as the already-documented ELITEA-2099/#1513 conversation-menu drift), 'Export' doesn't ex… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "elitea-testing-public#1534"
+        },
+        {
+          "kind": "note",
+          "note": "A PINNED folder's DraggableFolderItem wrapper renders a genuinely HTML-disabled ancestor button around the row (isDragDisabled=isPinned), so a plain Playwright click on the dot-menu button times out ('element is not enabled') for a pinned folder specifically, even though the button's own .disabled property is false. Confirmed live via Playwright MCP (which has no force option — had to browser_eval… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Two exploration-only folders (ids 212 'New folder_edited', 213 'Pinned Renamed Folder') were left undeleted in the shared DEV project during Playwright-MCP live exploration — MCP evaluate-injected fetch() to the app's own same-origin API fails (documented pre-existing gotcha), and a curl-based cleanup attempt via ELITEA_API_TOKEN 404'd (likely project-id/auth-scope mismatch, not chased further). C… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Blocking — Step-1/Step-2 assertion drift for ELITEA-2121. Case step 1 is 'hover over any existing folder → Three-dot icon appears' and the AFS (test-specs/chat-interface/lextend_folder-rename-via-context-menu-edit-option_ELITEA-2121.md, Coverage Map row 1 + Test Step 1) explicitly claims this is proven 'AFS step 1 / step 1: menu button visible'. But the code's allure.step('Step 1 — Seed a folder, … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py:517-539 (ELITEA-2121, test_folder_rename_via_context_menu_edit_option, Step 1 block)"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking: row 3 ('Folder name editable, checkmark + X icons' → 'asserted') claims the case's 'checkmark and X icons' expected result is asserted at step 3, but the code only checks folder_name_input visibility/value there — the checkmark's existence is only implicitly proven later (Step 5's is_folder_name_confirm_enabled() read) and the X/cancel icon is never asserted or exercised anywhere in … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_folder-rename-via-context-menu-edit-option_ELITEA-2121.md Coverage Map row 3"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking: both tests add assert pin_item.text_content() == 'Pin on top' / == 'Unpin' for the Pin/Unpin menu item's label. For ELITEA-2130 this is a declared Axis-2 addition in the AFS; for ELITEA-2121 the equivalent 'Pin on top' text check is present in the code but not itemized in that AFS's own Axis 2 list (which only mentions asserting item presence, not label text). Harmless, grounded addi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Provenance/fidelity: 0 hits for .mock_|page.route(|route.fulfill(|monkeypatch|.evaluate( on the diff — every observable (menu content, editor pre-fill, PUT/PATCH status+response, displayed name, data-pinned, console cleanliness) is read off the real system. Locator-policy grep: every hit is a [data-testid=...] UPPER_CASE class constant reference (FOLDER_ICON, CONVERSATION_MENU_BUTTON, FOLDER_MENU_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified the two filed tracker issues independently via gh issue view: #1533 (bug, OPEN, the FolderItem.jsx menuItems key-drop regression) and #1534 (question/clarification, OPEN, the case-text menu-label drift) both exist, are correctly labelled per .agents/profile.md § Bug filing, and match the AFS's claims exactly."
+        },
+        {
+          "kind": "note",
+          "note": "Verified EliteaUI@be489cee independently (cd ../EliteaUI && git fetch origin first): on automation/testids, NOT yet on main (matches the AFS's stated promotion status). Isolated the commit's own diff (be489cee~1..be489cee) and ran the role-overrides.md § Zero-functional-impact greps (new hooks / new DOM nodes / non-testid deletions) — all three empty; the commit is exactly 3 additive lines across … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The extend-existing target automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py is confirmed present on origin/automation/base (git cat-file -e) — merged-target rule satisfied for both cases' extend-existing classification."
+        },
+        {
+          "kind": "note",
+          "note": "Fix round 1 on PR #1535: added explicit hover(FOLDER_ICON)+visibility assertion to ELITEA-2121 Step 1, which previously relied on a later step's helper call to implicitly satisfy its own claimed verify. Full covering-spec re-run green 5/5. No new product defects found this round; #1533 (regression, already fixed) and #1534 (case-text drift clarification) from the original implementation remain FYI… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED: ELITEA-2121's Step 1 (label + AFS step 1 both claim 'hover reveals 3-dot menu button' as its own verify) now performs `folder_item.locator(chat.FOLDER_ICON).hover()` + `expect(folder_item.locator(chat.CONVERSATION_MENU_BUTTON).first).to_be_visible(...)` inside Step 1's own allure.step block (test_chat_folder_rename_checkmark_validation.py, Step 1 of test_folder_ren… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2130's Step 2 was checked for the same class of gap (case combines hover+click+verify into one step) and found NOT to need the same explicit split — its case text's own expected result for that step is only 'Context menu visible', with no separate 'three-dot icon appears' clause the way ELITEA-2121's case step 1 has. The AFS agrees (2130's AFS step 2 verify list has no separate icon-visibil… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_pinned-folder-rename-retains-pin-state_ELITEA-2130.md"
+        },
+        {
+          "kind": "note",
+          "note": "Cross-repo verified EliteaUI@be489cee on automation/testids (fresh git fetch first): key: 'chat-folder-menu-rename' restored + key: 'chat-folder-menu-pin' added to FolderItem.jsx's menuItems array, data-pinned={isPinned} added to FolderAccordion.jsx's already-testid'd element. Zero-functional-impact greps (new hooks, new DOM nodes, non-testid deletions) all clean on that commit — matches the AFS's… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@be489cee"
+        },
+        {
+          "kind": "note",
+          "note": "Gotcha for future provenance checks: a bare-substring grep for the FULL runtime-composed testid (e.g. chat-folder-menu-rename-menuitem) false-negatives against both main and automation/testids here, because the source only contains the literal key: 'chat-folder-menu-rename' — the -menuitem suffix is appended at runtime by DotMenu/BasicMenuItem and never appears as source text. Grep the bare key st… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/daily/2026-08-15.md"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_folder-rename-via-context-menu-edit-option_ELITEA-2121.md",
+      "branch": "tests/ELITEA-2121-2130-folder-rename-context-menu",
+      "pr": 1535
+    },
+    {
+      "id": "ELITEA-2122",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "ChatPage.folder_name_cancel_button (chat_page.py:1197) had existed as a LocatorDescriptor field with zero test callers before this case — added defensively in an earlier session alongside the confirm button but never wired to a test. ELITEA-2122 is its first live use.",
+          "ref": "automation/pages/chat_page.py:1197"
+        },
+        {
+          "kind": "note",
+          "note": "AFS was written source-only (no live Playwright re-drive) because the cancel handler (FolderItem.jsx's handleOnCloseEditFolder) is structurally identical to two already independently live-verified sibling discard handlers (ELITEA-2120 folder-creation-cancel, ELITEA-2100 conversation-rename-cancel) already in the surface digest — flagging this per the declared-improvisation discipline in case a rev… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_chat-folder-rename-cancel-via-x-icon_ELITEA-2122.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS/PR-body/daily-memory-log claim 'ChatPage.folder_name_cancel_button ... has zero existing callers anywhere in automation/tests/ ... this test is its first live use' is factually false. `git grep -n \"folder_name_cancel_button\" origin/tests/ELITEA-2122-folder-rename-cancel-x-icon -- automation/tests/` shows 4 pre-existing call sites before this PR: test_chat_folder_creation_custom_name_and_cancel… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py"
+        },
+        {
+          "kind": "note",
+          "note": "Verified positively (not just trusted): the AFS's claim that `chat-folder-menu-rename-menuitem` exists on `automation/testids` but not `main` is correct despite a bare-substring `git grep` for the literal string finding NOTHING on either ref — the testid is runtime-composed (FolderItem.jsx's menuItems array sets `key: 'chat-folder-menu-rename'`, which DotMenu.jsx's renderer maps to `testId: item.k… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_chat-folder-rename-cancel-via-x-icon_ELITEA-2122.md"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_chat-folder-rename-cancel-via-x-icon_ELITEA-2122.md",
+      "branch": "tests/ELITEA-2122-folder-rename-cancel-x-icon",
+      "pr": 1536
+    },
+    {
+      "id": "ELITEA-2123",
+      "outcome": "already-covered",
+      "note": "Byte-identical duplicate of ELITEA-2459's merged test_folder_rename_checkmark_special_chars_and_leading_space_invalid Step 2 (\"Folder$$%%\" data, exact tooltip, checkmark inactive, no-op click, no PUT). Covering spec merged origin/automation/base@5cc8647c (PR #1313). Live-reconfirmed this session via dot-menu Rename flow + browser_fill_form. No gap — all 6 case steps map to existing assertions.",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Both cases are near-total literal duplicates of the already-merged ELITEA-2459 test (same test data strings verbatim: \"Folder$$%%\" and a leading-space scenario). No build half ran — both terminal already-covered. Live-reconfirmed both scenarios against localhost:5173 before classifying, per 'coverage judgments stand on your own execution.'"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift (already documented elsewhere in the digest for sibling cases ELITEA-2121/2130/2456): both cases' step 1 says 'click three-dot icon, click Edit' but the real dot-menu item is labelled 'Rename', not 'Edit'. Not a defect."
+        },
+        {
+          "kind": "note",
+          "note": "Re-hit the documented ChatPage.set_folder_name() 'append not replace' Control+a race during live exploration (a bare Control+a+Backspace left residual text); worked around via browser_fill_form(). Recorded in role memory as a reconfirmation of an existing known gotcha, not a new defect."
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_folder-rename-tooltip-invalid-special-chars_ELITEA-2123.md"
+    },
+    {
+      "id": "ELITEA-2124",
+      "outcome": "already-covered",
+      "note": "All 4 case steps map exactly onto test_folder_rename_checkmark_validation's existing Steps 1-3 (merged commit da71d4b5, PR #1311, ELITEA-2458). No code change. Linked to ELITEA-2458 for TMS back-write.",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Live-reconfirmed this session: the folder dot-menu's 'Delete' item testid (chat-folder-menu-delete-menuitem) is still dead on both main and automation/testids -- same regression as issue #1309 (unresolved), first documented during ELITEA-2458's own session. This is why my own exploration seed folder (id 242, 'W06GapCheck5') was left in the shared DEV project uncleaned -- same class as the ~40 alre… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1309"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift (case step 1 says 'click Edit', the real dot-menu item is labelled 'Rename') applies to all 4 of these cases too, same as the already-filed drift on the sibling ELITEA-2121/2122/2130/2123/2127 cases. Not re-filed -- already tracked as elitea-testing-public#1534.",
+          "ref": "EliteaAI/elitea-testing-public#1534"
+        },
+        {
+          "kind": "note",
+          "note": "MCP browser_run_code_unsafe gotcha recorded in role memory: the chat folder inline-edit (rename) mode does NOT survive across two separate browser_run_code_unsafe tool calls even though the page/auth session persists -- the editor silently closes between calls. The whole open-editor-then-assert sequence must run in ONE script call. Also confirmed the project's documented set_folder_name() 'append … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_folder-rename-checkmark-inactive-when-empty_ELITEA-2124.md"
+    },
+    {
+      "id": "ELITEA-2125",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Live-reconfirmed this session: the folder dot-menu's 'Delete' item testid (chat-folder-menu-delete-menuitem) is still dead on both main and automation/testids -- same regression as issue #1309 (unresolved), first documented during ELITEA-2458's own session. This is why my own exploration seed folder (id 242, 'W06GapCheck5') was left in the shared DEV project uncleaned -- same class as the ~40 alre… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1309"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift (case step 1 says 'click Edit', the real dot-menu item is labelled 'Rename') applies to all 4 of these cases too, same as the already-filed drift on the sibling ELITEA-2121/2122/2130/2123/2127 cases. Not re-filed -- already tracked as elitea-testing-public#1534.",
+          "ref": "EliteaAI/elitea-testing-public#1534"
+        },
+        {
+          "kind": "note",
+          "note": "MCP browser_run_code_unsafe gotcha recorded in role memory: the chat folder inline-edit (rename) mode does NOT survive across two separate browser_run_code_unsafe tool calls even though the page/auth session persists -- the editor silently closes between calls. The whole open-editor-then-assert sequence must run in ONE script call. Also confirmed the project's documented set_folder_name() 'append … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep run per reviewer-contract on `git diff origin/tests/batch-chat-remaining-w06...origin/tests/ELITEA-2124-2125-2126-2131-folder-rename-checkmark-gaps -- automation/` for provenance (`\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\(`) — 0 hits.",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py"
+        },
+        {
+          "kind": "note",
+          "note": "Same diff scope, locator grep (`get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(`) — 0 hits. No new non-testid handle added; all interactions go through existing `chat.*` page-object members (`folder_name_confirm_button`, `folder_name_input`, `folder_name_cancel_button`, `get_folder_item()`, `open_folder_re… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Diff is purely additive: `git diff ... | grep -E '^-[^-]'` on the test file → 0 hits. Confirms the AFS's own stated self-check for ELITEA-2125's inline splice.",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2125 gap assertion inserted exactly at the AFS's declared insertion point — new 'Step 4a' block sits between the existing Step 5 (tooltip) and Step 6 (restore original name) blocks, verified byte-for-byte against the AFS's quoted code block.",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py:236"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage-Map rows verified against the covering test's actual code, not just its existence, for both cases: ELITEA-2125 rows 1/2/4 map to real assertions at the cited steps (pre-fill+focus at Step 1 lines 170-175, 2-char input+disabled at Step 4 lines 218-225, tooltip text at Step 5 lines 231-234). Minor citation slip (non-blocking): AFS row 3 ('checkmark inactive; tooltip visible') cites only 'co… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_folder-rename-checkmark-inactive-two-chars-noop-click_ELITEA-2125.md:124"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2131's new test method independently re-executes steps 1-4 (its own live assertions, not a reference to the covering test) then adds the genuinely new cancel-via-X-with-zero-edits path (steps 5-6): editor-closed + no-PUT-on-cancel, then folder-list text re-read post-close. All match the AFS's Test Steps section and TMS case steps 1-6 one-to-one; cleanup runs in `finally` via `delete_folder_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py:1064"
+        },
+        {
+          "kind": "note",
+          "note": "p3 marker on the new ELITEA-2131 method for a case frontmatter'd `priority: medium` matches the file's own established convention (ELITEA-2121/2130/2122, all also `priority: medium`, all also marked p3) — not new drift introduced by this PR.",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py:1063"
+        },
+        {
+          "kind": "note",
+          "note": "No masking patterns found (no pytest.skip/xfail/test.fail/@Ignore/expect.soft) in the diff; both new/extended assertions are hard asserts with descriptive failure messages.",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_folder-rename-checkmark-inactive-two-chars-noop-click_ELITEA-2125.md",
+      "branch": "tests/ELITEA-2124-2125-2126-2131-folder-rename-checkmark-gaps",
+      "pr": 1537
+    },
+    {
+      "id": "ELITEA-2126",
+      "outcome": "already-covered",
+      "note": "All 4 case steps map onto the merged spec's Steps 1, 4, 7, 8, 9 (2-char inactive -> 3-char active -> click -> PUT 200 -> displayed name 'ABC'). No code change.",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Live-reconfirmed this session: the folder dot-menu's 'Delete' item testid (chat-folder-menu-delete-menuitem) is still dead on both main and automation/testids -- same regression as issue #1309 (unresolved), first documented during ELITEA-2458's own session. This is why my own exploration seed folder (id 242, 'W06GapCheck5') was left in the shared DEV project uncleaned -- same class as the ~40 alre… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1309"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift (case step 1 says 'click Edit', the real dot-menu item is labelled 'Rename') applies to all 4 of these cases too, same as the already-filed drift on the sibling ELITEA-2121/2122/2130/2123/2127 cases. Not re-filed -- already tracked as elitea-testing-public#1534.",
+          "ref": "EliteaAI/elitea-testing-public#1534"
+        },
+        {
+          "kind": "note",
+          "note": "MCP browser_run_code_unsafe gotcha recorded in role memory: the chat folder inline-edit (rename) mode does NOT survive across two separate browser_run_code_unsafe tool calls even though the page/auth session persists -- the editor silently closes between calls. The whole open-editor-then-assert sequence must run in ONE script call. Also confirmed the project's documented set_folder_name() 'append … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_folder-rename-checkmark-active-at-3-chars_ELITEA-2126.md"
+    },
+    {
+      "id": "ELITEA-2127",
+      "outcome": "already-covered",
+      "note": "Duplicate of ELITEA-2459's merged test Step 3 (\" ValidRest\" leading-space scenario, isolates first-char-space rule from length floor — a stronger proof than a bare single space). Covering spec merged origin/automation/base@5cc8647c (PR #1313). Live-reconfirmed this session. No gap — all 4 case steps map to existing assertions.",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Both cases are near-total literal duplicates of the already-merged ELITEA-2459 test (same test data strings verbatim: \"Folder$$%%\" and a leading-space scenario). No build half ran — both terminal already-covered. Live-reconfirmed both scenarios against localhost:5173 before classifying, per 'coverage judgments stand on your own execution.'"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift (already documented elsewhere in the digest for sibling cases ELITEA-2121/2130/2456): both cases' step 1 says 'click three-dot icon, click Edit' but the real dot-menu item is labelled 'Rename', not 'Edit'. Not a defect."
+        },
+        {
+          "kind": "note",
+          "note": "Re-hit the documented ChatPage.set_folder_name() 'append not replace' Control+a race during live exploration (a bare Control+a+Backspace left residual text); worked around via browser_fill_form(). Recorded in role memory as a reconfirmation of an existing known gotcha, not a new defect."
+        }
+      ],
+      "afs": "test-specs/chat-interface/lcovered_folder-rename-first-char-space_ELITEA-2127.md"
+    },
+    {
+      "id": "ELITEA-2128",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2129's own Steps table step 2 Expected Result says 'Only first 64 characters accepted; 65th is not entered' — contradicts the case's own title ('...Beyond 50 Characters'), Test Data (70-char paste string), and steps 3-4 (both correctly say 50). Live execution confirms 50 is the real, internally-consistent boundary (64 is very likely a mix-up with ConversationNameRegExp's separate 3-64-char … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2129"
+        },
+        {
+          "kind": "note",
+          "note": "Behavioral finding worth knowing for any future rename/paste test: pasting over an already-full (MAX-length, e.g. 50-char) input WITHOUT first clearing it is a no-op under a slice(0,MAX) onChange handler — the browser computes the raw concatenated value before onChange fires, and the slice returns the unchanged original content. Still technically satisfies a 'no more than N chars' expectation but … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "One transient, non-reproducing console error ('Failed to load resource: the server responded with a status of 404 ()', no URL in the message text) surfaced once on ELITEA-2128's first full-file run, unrelated to the test's own PUT action. Did not reproduce on an immediate standalone rerun or the final full-file rerun (2/2 clean). Same class as the recurring unrelated-resource console-noise pattern… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2128"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2129's own case text self-contradicts at step 2 (\"Only first 64 characters accepted; 65th is not entered\" vs. the case's own title/Test Data/steps 3-4/Pass criteria, all of which say 50). The AFS documents this thoroughly and correctly asserts the live, internally-consistent 50-char boundary (reverse-masking guard, compliant). The AFS itself recommends filing a lightweight case-text CLARIFI… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_chat-folder-rename-cannot-type-or-paste-beyond-50-chars_ELITEA-2129.md"
+        },
+        {
+          "kind": "note",
+          "note": "Nit, non-blocking: ELITEA-2129's Step 1 (automation/tests/ui/chat/test_chat_folder_rename_length_boundaries.py, test_rename_folder_type_and_paste_beyond_max_length_truncates) asserts only input visibility — no pre-filled-value check (unlike ELITEA-2128's sibling Step 1 in the same file, which does assert input_value() == original name) and no focus check (unlike the covering ELITEA-2458 spec's est… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_length_boundaries.py:274"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_chat-folder-rename-max-50-chars-accepted_ELITEA-2128.md",
+      "branch": "tests/ELITEA-2128-2129-folder-rename-length-boundaries",
+      "pr": 1538
+    },
+    {
+      "id": "ELITEA-2129",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2129's own Steps table step 2 Expected Result says 'Only first 64 characters accepted; 65th is not entered' — contradicts the case's own title ('...Beyond 50 Characters'), Test Data (70-char paste string), and steps 3-4 (both correctly say 50). Live execution confirms 50 is the real, internally-consistent boundary (64 is very likely a mix-up with ConversationNameRegExp's separate 3-64-char … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2129"
+        },
+        {
+          "kind": "note",
+          "note": "Behavioral finding worth knowing for any future rename/paste test: pasting over an already-full (MAX-length, e.g. 50-char) input WITHOUT first clearing it is a no-op under a slice(0,MAX) onChange handler — the browser computes the raw concatenated value before onChange fires, and the slice returns the unchanged original content. Still technically satisfies a 'no more than N chars' expectation but … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "One transient, non-reproducing console error ('Failed to load resource: the server responded with a status of 404 ()', no URL in the message text) surfaced once on ELITEA-2128's first full-file run, unrelated to the test's own PUT action. Did not reproduce on an immediate standalone rerun or the final full-file rerun (2/2 clean). Same class as the recurring unrelated-resource console-noise pattern… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2128"
+        },
+        {
+          "kind": "clarification",
+          "note": "ELITEA-2129's own case text self-contradicts at step 2 (\"Only first 64 characters accepted; 65th is not entered\" vs. the case's own title/Test Data/steps 3-4/Pass criteria, all of which say 50). The AFS documents this thoroughly and correctly asserts the live, internally-consistent 50-char boundary (reverse-masking guard, compliant). The AFS itself recommends filing a lightweight case-text CLARIFI… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/l3_chat-folder-rename-cannot-type-or-paste-beyond-50-chars_ELITEA-2129.md"
+        },
+        {
+          "kind": "note",
+          "note": "Nit, non-blocking: ELITEA-2129's Step 1 (automation/tests/ui/chat/test_chat_folder_rename_length_boundaries.py, test_rename_folder_type_and_paste_beyond_max_length_truncates) asserts only input visibility — no pre-filled-value check (unlike ELITEA-2128's sibling Step 1 in the same file, which does assert input_value() == original name) and no focus check (unlike the covering ELITEA-2458 spec's est… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_length_boundaries.py:274"
+        }
+      ],
+      "afs": "test-specs/chat-interface/l3_chat-folder-rename-cannot-type-or-paste-beyond-50-chars_ELITEA-2129.md",
+      "branch": "tests/ELITEA-2128-2129-folder-rename-length-boundaries",
+      "pr": 1538
+    },
+    {
+      "id": "ELITEA-2130",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "REGRESSION found and FIXED this session: FolderItem.jsx's dot-menu 'Rename' item lost its testid key (chat-folder-menu-rename-menuitem) to an unrelated main-branch commit (f5e0c325, #764) after ELITEA-2458 had added it. Confirmed via a LIVE pre-fix failure of ELITEA-2458's own merged test (TimeoutError), not just source inspection. Sibling failure shape to the already-tracked #1309 (Delete item's … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "elitea-testing-public#1533"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift, both ELITEA-2121 and ELITEA-2130: case text says the folder context menu shows 'Delete, Edit, Export, Pin or Unpin'. Live-confirmed (source read + browser_snapshot) real 4-item set is 'New chat, Rename, Pin on top (or Unpin), Delete' — 'Edit' doesn't exist (labelled 'Rename', same drift class as the already-documented ELITEA-2099/#1513 conversation-menu drift), 'Export' doesn't ex… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "elitea-testing-public#1534"
+        },
+        {
+          "kind": "note",
+          "note": "A PINNED folder's DraggableFolderItem wrapper renders a genuinely HTML-disabled ancestor button around the row (isDragDisabled=isPinned), so a plain Playwright click on the dot-menu button times out ('element is not enabled') for a pinned folder specifically, even though the button's own .disabled property is false. Confirmed live via Playwright MCP (which has no force option — had to browser_eval… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Two exploration-only folders (ids 212 'New folder_edited', 213 'Pinned Renamed Folder') were left undeleted in the shared DEV project during Playwright-MCP live exploration — MCP evaluate-injected fetch() to the app's own same-origin API fails (documented pre-existing gotcha), and a curl-based cleanup attempt via ELITEA_API_TOKEN 404'd (likely project-id/auth-scope mismatch, not chased further). C… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "defect",
+          "note": "Blocking — Step-1/Step-2 assertion drift for ELITEA-2121. Case step 1 is 'hover over any existing folder → Three-dot icon appears' and the AFS (test-specs/chat-interface/lextend_folder-rename-via-context-menu-edit-option_ELITEA-2121.md, Coverage Map row 1 + Test Step 1) explicitly claims this is proven 'AFS step 1 / step 1: menu button visible'. But the code's allure.step('Step 1 — Seed a folder, … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py:517-539 (ELITEA-2121, test_folder_rename_via_context_menu_edit_option, Step 1 block)"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking: row 3 ('Folder name editable, checkmark + X icons' → 'asserted') claims the case's 'checkmark and X icons' expected result is asserted at step 3, but the code only checks folder_name_input visibility/value there — the checkmark's existence is only implicitly proven later (Step 5's is_folder_name_confirm_enabled() read) and the X/cancel icon is never asserted or exercised anywhere in … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_folder-rename-via-context-menu-edit-option_ELITEA-2121.md Coverage Map row 3"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking: both tests add assert pin_item.text_content() == 'Pin on top' / == 'Unpin' for the Pin/Unpin menu item's label. For ELITEA-2130 this is a declared Axis-2 addition in the AFS; for ELITEA-2121 the equivalent 'Pin on top' text check is present in the code but not itemized in that AFS's own Axis 2 list (which only mentions asserting item presence, not label text). Harmless, grounded addi… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Provenance/fidelity: 0 hits for .mock_|page.route(|route.fulfill(|monkeypatch|.evaluate( on the diff — every observable (menu content, editor pre-fill, PUT/PATCH status+response, displayed name, data-pinned, console cleanliness) is read off the real system. Locator-policy grep: every hit is a [data-testid=...] UPPER_CASE class constant reference (FOLDER_ICON, CONVERSATION_MENU_BUTTON, FOLDER_MENU_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Verified the two filed tracker issues independently via gh issue view: #1533 (bug, OPEN, the FolderItem.jsx menuItems key-drop regression) and #1534 (question/clarification, OPEN, the case-text menu-label drift) both exist, are correctly labelled per .agents/profile.md § Bug filing, and match the AFS's claims exactly."
+        },
+        {
+          "kind": "note",
+          "note": "Verified EliteaUI@be489cee independently (cd ../EliteaUI && git fetch origin first): on automation/testids, NOT yet on main (matches the AFS's stated promotion status). Isolated the commit's own diff (be489cee~1..be489cee) and ran the role-overrides.md § Zero-functional-impact greps (new hooks / new DOM nodes / non-testid deletions) — all three empty; the commit is exactly 3 additive lines across … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "The extend-existing target automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py is confirmed present on origin/automation/base (git cat-file -e) — merged-target rule satisfied for both cases' extend-existing classification."
+        },
+        {
+          "kind": "note",
+          "note": "Fix round 1 on PR #1535: added explicit hover(FOLDER_ICON)+visibility assertion to ELITEA-2121 Step 1, which previously relied on a later step's helper call to implicitly satisfy its own claimed verify. Full covering-spec re-run green 5/5. No new product defects found this round; #1533 (regression, already fixed) and #1534 (case-text drift clarification) from the original implementation remain FYI… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking finding RESOLVED: ELITEA-2121's Step 1 (label + AFS step 1 both claim 'hover reveals 3-dot menu button' as its own verify) now performs `folder_item.locator(chat.FOLDER_ICON).hover()` + `expect(folder_item.locator(chat.CONVERSATION_MENU_BUTTON).first).to_be_visible(...)` inside Step 1's own allure.step block (test_chat_folder_rename_checkmark_validation.py, Step 1 of test_folder_ren… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2130's Step 2 was checked for the same class of gap (case combines hover+click+verify into one step) and found NOT to need the same explicit split — its case text's own expected result for that step is only 'Context menu visible', with no separate 'three-dot icon appears' clause the way ELITEA-2121's case step 1 has. The AFS agrees (2130's AFS step 2 verify list has no separate icon-visibil… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_pinned-folder-rename-retains-pin-state_ELITEA-2130.md"
+        },
+        {
+          "kind": "note",
+          "note": "Cross-repo verified EliteaUI@be489cee on automation/testids (fresh git fetch first): key: 'chat-folder-menu-rename' restored + key: 'chat-folder-menu-pin' added to FolderItem.jsx's menuItems array, data-pinned={isPinned} added to FolderAccordion.jsx's already-testid'd element. Zero-functional-impact greps (new hooks, new DOM nodes, non-testid deletions) all clean on that commit — matches the AFS's… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/EliteaUI@be489cee"
+        },
+        {
+          "kind": "note",
+          "note": "Gotcha for future provenance checks: a bare-substring grep for the FULL runtime-composed testid (e.g. chat-folder-menu-rename-menuitem) false-negatives against both main and automation/testids here, because the source only contains the literal key: 'chat-folder-menu-rename' — the -menuitem suffix is appended at runtime by DotMenu/BasicMenuItem and never appears as source text. Grep the bare key st… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/daily/2026-08-15.md"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_pinned-folder-rename-retains-pin-state_ELITEA-2130.md",
+      "branch": "tests/ELITEA-2121-2130-folder-rename-context-menu",
+      "pr": 1535
+    },
+    {
+      "id": "ELITEA-2131",
+      "outcome": "automated",
+      "note": "",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Live-reconfirmed this session: the folder dot-menu's 'Delete' item testid (chat-folder-menu-delete-menuitem) is still dead on both main and automation/testids -- same regression as issue #1309 (unresolved), first documented during ELITEA-2458's own session. This is why my own exploration seed folder (id 242, 'W06GapCheck5') was left in the shared DEV project uncleaned -- same class as the ~40 alre… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "EliteaAI/elitea-testing-public#1309"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift (case step 1 says 'click Edit', the real dot-menu item is labelled 'Rename') applies to all 4 of these cases too, same as the already-filed drift on the sibling ELITEA-2121/2122/2130/2123/2127 cases. Not re-filed -- already tracked as elitea-testing-public#1534.",
+          "ref": "EliteaAI/elitea-testing-public#1534"
+        },
+        {
+          "kind": "note",
+          "note": "MCP browser_run_code_unsafe gotcha recorded in role memory: the chat folder inline-edit (rename) mode does NOT survive across two separate browser_run_code_unsafe tool calls even though the page/auth session persists -- the editor silently closes between calls. The whole open-editor-then-assert sequence must run in ONE script call. Also confirmed the project's documented set_folder_name() 'append … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep run per reviewer-contract on `git diff origin/tests/batch-chat-remaining-w06...origin/tests/ELITEA-2124-2125-2126-2131-folder-rename-checkmark-gaps -- automation/` for provenance (`\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\(`) — 0 hits.",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py"
+        },
+        {
+          "kind": "note",
+          "note": "Same diff scope, locator grep (`get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(`) — 0 hits. No new non-testid handle added; all interactions go through existing `chat.*` page-object members (`folder_name_confirm_button`, `folder_name_input`, `folder_name_cancel_button`, `get_folder_item()`, `open_folder_re… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/chat_page.py"
+        },
+        {
+          "kind": "note",
+          "note": "Diff is purely additive: `git diff ... | grep -E '^-[^-]'` on the test file → 0 hits. Confirms the AFS's own stated self-check for ELITEA-2125's inline splice.",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2125 gap assertion inserted exactly at the AFS's declared insertion point — new 'Step 4a' block sits between the existing Step 5 (tooltip) and Step 6 (restore original name) blocks, verified byte-for-byte against the AFS's quoted code block.",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py:236"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage-Map rows verified against the covering test's actual code, not just its existence, for both cases: ELITEA-2125 rows 1/2/4 map to real assertions at the cited steps (pre-fill+focus at Step 1 lines 170-175, 2-char input+disabled at Step 4 lines 218-225, tooltip text at Step 5 lines 231-234). Minor citation slip (non-blocking): AFS row 3 ('checkmark inactive; tooltip visible') cites only 'co… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/chat-interface/lextend_folder-rename-checkmark-inactive-two-chars-noop-click_ELITEA-2125.md:124"
+        },
+        {
+          "kind": "note",
+          "note": "ELITEA-2131's new test method independently re-executes steps 1-4 (its own live assertions, not a reference to the covering test) then adds the genuinely new cancel-via-X-with-zero-edits path (steps 5-6): editor-closed + no-PUT-on-cancel, then folder-list text re-read post-close. All match the AFS's Test Steps section and TMS case steps 1-6 one-to-one; cleanup runs in `finally` via `delete_folder_… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py:1064"
+        },
+        {
+          "kind": "note",
+          "note": "p3 marker on the new ELITEA-2131 method for a case frontmatter'd `priority: medium` matches the file's own established convention (ELITEA-2121/2130/2122, all also `priority: medium`, all also marked p3) — not new drift introduced by this PR.",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py:1063"
+        },
+        {
+          "kind": "note",
+          "note": "No masking patterns found (no pytest.skip/xfail/test.fail/@Ignore/expect.soft) in the diff; both new/extended assertions are hard asserts with descriptive failure messages.",
+          "ref": "automation/tests/ui/chat/test_chat_folder_rename_checkmark_validation.py"
+        }
+      ],
+      "afs": "test-specs/chat-interface/lextend_folder-rename-no-changes-close-via-x_ELITEA-2131.md",
+      "branch": "tests/ELITEA-2124-2125-2126-2131-folder-rename-checkmark-gaps",
+      "pr": 1537
+    }
+  ],
+  "totals": {
+    "automated": 7,
+    "already-covered": 4
+  },
+  "quality_flags": [
+    "extend-rate 9/11 exceeds 0.5 — blind-audit a sample of the extend/covered conclusions (a second analyst re-analyzing 1-2) before trusting this batch's coverage"
+  ],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": []
+}

@@ -253,7 +253,8 @@ export function parseUnit(records, seen = { msg: new Set(), tool: new Set() }) {
   let turns = 0;
   let toolCalls = 0;
   let toolErrors = 0;
-  const skills = new Set();
+  const skills = new Set();            // REAL `Skill` tool calls — behaviour
+  const skillsAttributed = new Set();  // inherited host attribution — context, not behaviour
   const dispatched = [];
   const stamps = [];
   const usageRecs = [];         // usage-bearing records new to this unit (fed to dedupUsage)
@@ -265,7 +266,13 @@ export function parseUnit(records, seen = { msg: new Set(), tool: new Set() }) {
   for (const rec of records) {
     if (rec.type === 'agent-setting' && rec.agentSetting) agentSetting = rec.agentSetting;
     if (rec.gitBranch) gitBranch = rec.gitBranch;
-    if (rec.attributionSkill) skills.add(rec.attributionSkill);
+    // ATTRIBUTION IS NOT INVOCATION. `attributionSkill` is stamped on records
+    // by the host and sub-agents INHERIT the parent's active skill, so folding
+    // it into `skills` reports loads that never happened: one campaign showed
+    // 4,313 inherited `sync-base-branches` attributions and ZERO real calls,
+    // which read as 94 sub-agents each re-running a 3-repo sync. Kept, because
+    // it answers "under which skill did this run", but never as a Skill call.
+    if (rec.attributionSkill) skillsAttributed.add(rec.attributionSkill);
     if (rec.timestamp) {
       const t = Date.parse(rec.timestamp);
       if (!Number.isNaN(t)) stamps.push(t);
@@ -325,7 +332,7 @@ export function parseUnit(records, seen = { msg: new Set(), tool: new Set() }) {
   }
   const durationMin = Math.round(activeMs / 60000);
   const date = firstTs != null ? localDate(firstTs) : '?';
-  return { usage, agentSetting, gitBranch, date, durationMin, turns, toolCalls, toolErrors, skills, dispatched, startTs: firstTs, endTs: lastTs };
+  return { usage, agentSetting, gitBranch, date, durationMin, turns, toolCalls, toolErrors, skills, skillsAttributed, dispatched, startTs: firstTs, endTs: lastTs };
 }
 
 export function mergeUsage(list) {
@@ -600,7 +607,7 @@ export function collectSessionGroups(projectDirs, { excludeSession, tags = {} } 
       id: c.id, kind: c.kind, parentId: c.parentId, role, usage: p.usage,
       gitBranch: p.gitBranch, date: p.date, durationMin: p.durationMin, turns: p.turns,
       description: c.kind === 'session' ? '(orchestrator/session)' : c.description, projectDir: c.projectDir,
-      toolCalls: p.toolCalls, toolErrors: p.toolErrors, skills: p.skills, dispatched: p.dispatched,
+      toolCalls: p.toolCalls, toolErrors: p.toolErrors, skills: p.skills, skillsAttributed: p.skillsAttributed, dispatched: p.dispatched,
       startTs: p.startTs, endTs: p.endTs, sessionId: c.sessionId,
     });
   }
@@ -699,7 +706,7 @@ function newBucket() {
   return {
     usage: emptyUsage(), costUsd: 0, hasCost: false, costSource: new Set(),
     durationMin: 0, turns: 0, count: 0,
-    toolCalls: 0, toolErrors: 0, skills: new Set(), dispatched: 0,
+    toolCalls: 0, toolErrors: 0, skills: new Set(), skillsAttributed: new Set(), dispatched: 0,
     minStart: null, maxEnd: null,
   };
 }
@@ -713,6 +720,7 @@ function addToBucket(b, unit) {
   b.toolCalls += unit.toolCalls || 0;
   b.toolErrors += unit.toolErrors || 0;
   for (const s of unit.skills || []) b.skills.add(s);
+  for (const s of unit.skillsAttributed || []) b.skillsAttributed.add(s);
   b.dispatched += (unit.dispatched ? unit.dispatched.length : 0);
   if (typeof unit.startTs === 'number' && (b.minStart === null || unit.startTs < b.minStart)) b.minStart = unit.startTs;
   if (typeof unit.endTs === 'number' && (b.maxEnd === null || unit.endTs > b.maxEnd)) b.maxEnd = unit.endTs;
@@ -741,6 +749,7 @@ export function buildRollup(groups, { meteredMap, sessionMap, weight = 'cost', u
         ...unit,
         models: [...(unit.usage.models || [])],
         skills: [...(unit.skills || [])],
+        skillsAttributed: [...(unit.skillsAttributed || [])],
         startedAt: typeof unit.startTs === 'number' ? new Date(unit.startTs).toISOString() : null,
         endedAt: typeof unit.endTs === 'number' ? new Date(unit.endTs).toISOString() : null,
         usage: { ...unit.usage, models: [...(unit.usage.models || [])] },
@@ -776,6 +785,7 @@ export function buildRollup(groups, { meteredMap, sessionMap, weight = 'cost', u
     toolErrors: b.toolErrors,
     toolSuccess: b.toolCalls - b.toolErrors,
     skills: [...b.skills],
+    skillsAttributed: [...b.skillsAttributed],
     subagentsDispatched: b.dispatched,
   });
 
@@ -903,7 +913,13 @@ export function renderMarkdown(rollup, { resolved, label, weight, pricer = 'ccus
   out.push(`- Tokens: in ${t.tokens.input}, out ${t.tokens.output}, cache-read ${t.tokens.cacheRead}, cache-write ${t.tokens.cacheCreation}`);
   out.push(`- Cache-hit rate: ${fmtPct(t.cacheHitRate)}  ·  Output-token share: ${fmtPct(t.outputShare)}`);
   out.push(`- Tool calls: ${t.toolCalls}  (${t.toolSuccess} ok / ${t.toolErrors} err, ${fmtPct(1 - errRate)} success)`);
-  out.push(`- Skills loaded: ${t.skills.length}${t.skills.length ? ` — ${t.skills.join(', ')}` : ''}`);
+  // Two lines, never one: the first is behaviour you can act on, the second is
+  // only which skill the host had active. Merged, the inherited names swamp the
+  // real ones and read as waste that never happened.
+  out.push(`- Skills invoked (real \`Skill\` calls): ${t.skills.length}${t.skills.length ? ` — ${t.skills.join(', ')}` : ''}`);
+  if (t.skillsAttributed?.length) {
+    out.push(`- Skills attributed (host context, INHERITED by sub-agents — not invocations): ${t.skillsAttributed.length} — ${t.skillsAttributed.join(', ')}`);
+  }
   out.push(`- Time: ${t.agentMinutes} agent-min (sum of unit spans; sub-agents run in parallel)  ·  ${t.wallClockMin} min wall-clock span`);
   if (resolved && !delivery) out.push(`- Cost per resolved unit (${resolved} given): ${fmtUsd((t.costUsd || 0) / resolved)}`);
   out.push('');
@@ -926,7 +942,9 @@ export function renderMarkdown(rollup, { resolved, label, weight, pricer = 'ccus
 
   const skillRows = Object.entries(rollup.bySkill || {});
   if (skillRows.length) {
-    out.push('## Skills loaded', '', '| skill | units | turns |', '|---|---|---|');
+    out.push('## Skills invoked', '',
+      '_Real `Skill` tool calls only. Host attribution inherited by sub-agents is NOT counted here — it inflated this table by three orders of magnitude when the two were merged._', '',
+      '| skill | units | turns |', '|---|---|---|');
     for (const [name, s] of skillRows) out.push(`| ${name} | ${s.units} | ${s.turns} |`);
     out.push('');
   }

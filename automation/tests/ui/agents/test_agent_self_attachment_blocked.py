@@ -41,7 +41,7 @@ from playwright.sync_api import expect
 
 from pages.agent_detail_page import AgentDetailPage
 
-pytestmark = [pytest.mark.ui, pytest.mark.agents]
+pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new]
 
 UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
@@ -64,6 +64,7 @@ class TestAgentSelfAttachmentBlocked:
     )
     @pytest.mark.p2
     @pytest.mark.regression
+    @pytest.mark.flaky
     def test_agent_self_attachment_blocked(self, page):
         """Current agent never appears in its own "+ Agent" picker results.
 

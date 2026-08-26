@@ -36,7 +36,7 @@ import allure
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.toolkits]
+pytestmark = [pytest.mark.ui, pytest.mark.toolkits, pytest.mark.new_verified]
 
 # Credential creation can hit race conditions (server-side deduplication or
 # eventual consistency), so allow extra retries beyond the global default.
@@ -413,7 +413,7 @@ class TestGitHubToolkitTestSettings:
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1141_github-toolkit-and-credentials.md", "onetest-ai Test Case link")
     @pytest.mark.p1
-    @_flaky
+    @_flaky  # Tool dropdown sometimes shows "No tools found" - UI race condition, not token issue
     def test_github_toolkit_test_settings(
         self,
         page,

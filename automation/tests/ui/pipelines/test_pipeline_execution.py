@@ -14,6 +14,7 @@ Test IDs:
     PIPE-015: Pipeline with no nodes shows error or empty response
     PIPE-016: Navigate away and re-execute pipeline
     PIPE-017: User message appears in chat alongside AI response
+    ELITEA-2017: Long response streams progressively, no timeout/error, >200 chars
 
 Markers:
     - ui: requires browser
@@ -31,7 +32,7 @@ from pages.pipeline_detail_page import PipelineDetailPage
 from pages.pipelines_list_page import PipelinesListPage
 import allure
 
-pytestmark = [pytest.mark.ui, pytest.mark.pipelines]
+pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.new_verified]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)
@@ -40,6 +41,13 @@ UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
 PIPELINE_EXECUTION_TIMEOUT = 90_000
 STABLE_DURATION_MS = 3_000  # 3 s stability window for streaming LLM responses to finish rendering
+# ELITEA-2017: ceiling for each individual content-growth sample during
+# streaming. Both live analyst runs completed (or hit the token-limit
+# affordance) within ~15-30s overall; sized to match PIPELINE_EXECUTION_TIMEOUT
+# for headroom after a local implementer run hit a 60_000ms growth-wait
+# timeout once (absorbed by pytest.ini's own `--reruns=2
+# --only-rerun="TimeoutError"` policy) — do not shrink below this.
+STREAM_GROWTH_TIMEOUT = 90_000
 
 
 def _assert_response_quality(response: str) -> None:
@@ -54,7 +62,6 @@ def _navigate_to_pipeline_detail(page, pipeline_id):
     """
     detail_page = PipelineDetailPage(page)
     detail_page.navigate(pipeline_id)
-    detail_page.dismiss_banner_if_present()
     return detail_page
 
 
@@ -247,3 +254,160 @@ class TestPipelineChatMessages:
         with allure.step("Step 4 — Verify last response has content"):
             last_response = pipelines.get_embedded_chat_last_message()
             assert len(last_response.strip()) > 3, f"Expected substantive response, got: {last_response!r}"
+
+
+class TestExecutePipelineStreaming:
+    """ELITEA-2017: Pipeline Execution — Long Response Streaming (l2, high).
+
+    AFS: test-specs/pipelines/l2_pipeline-execution-long-response-streaming_ELITEA-2017.md
+    """
+
+    USER_PROMPT = "Write a 500-word essay on AI"
+    MODEL_DISPLAY_NAME = "GPT-5 mini"
+    MIN_RESPONSE_LENGTH = 200
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/pipelines/"
+        "ELITEA-2017_pipeline-execution-long-response-streaming.md",
+        "onetest-ai Test Case link",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/pipelines/"
+        "ELITEA-2058_pipeline-llm-model-selection-in-chat-panel.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p1
+    @pytest.mark.regression
+    def test_long_response_streams_progressively(self, page, pipeline_with_fstring_llm_id):
+        """Pipeline with an LLM entry node (TASK F-String ``{input}``)
+        streams a long response progressively, with no console/network
+        errors, and the settled response exceeds 200 characters. Also
+        covers ELITEA-2058 (Model Selector Menu is visible with a
+        non-empty default model before any switch, and the settled
+        response's model-attribution chip proves execution used the
+        model the user selected, not the pipeline's prior default).
+
+        Steps (AFS):
+        1. Pipeline created with LLM entry node, TASK F-String "{input}"
+           (fixture — API-created, ready for execution).
+        2. [ELITEA-2058] Verify the Model Selector Menu button is visible
+           and shows a non-empty default model name before any switch.
+        3. Select "GPT-5 mini" via the Model Selector Menu.
+        4. Send "Write a 500-word essay on AI".
+        5. Verify the response streams progressively (tokens appear
+           incrementally, not all at once).
+        6. Verify the final response is complete and exceeds 200 characters.
+        7. [ELITEA-2058] Verify the settled response's model-attribution
+           chip names the selected model ("GPT-5 mini"), proving execution
+           used the selected model, not the pipeline's prior default.
+        8. Verify no timeout or error occurs during streaming.
+        """
+        # Registered before Step 1 so console errors / failed requests from
+        # every step are captured — AFS Expected Results require "no
+        # console/network errors" across the whole flow (Axis 2: checked
+        # after every step, not just at the end).
+        console_errors = []
+        page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
+        failed_requests = []
+        page.on("response", lambda resp: failed_requests.append(resp) if resp.status >= 400 else None)
+
+        with allure.step(
+            "Step 1 — Pipeline with LLM entry node (TASK F-String '{input}') "
+            "is created and ready for execution"
+        ):
+            pipelines = _navigate_to_pipeline_detail(page, pipeline_with_fstring_llm_id)
+
+        with allure.step(
+            "Step 2 — [ELITEA-2058] Verify the Model Selector Menu button is "
+            "visible and shows a non-empty default model name before any switch"
+        ):
+            assert pipelines.model_selector_button.is_visible(), (
+                "Model Selector Menu button should be visible in the chat panel"
+            )
+            default_model = pipelines.get_selected_model_name()
+            assert default_model, (
+                "Model selector should display a non-empty default model name "
+                "before any interaction"
+            )
+
+        with allure.step(
+            f"Step 3 — Select a model via the Model Selector Menu "
+            f"('{self.MODEL_DISPLAY_NAME}')"
+        ):
+            pipelines.open_model_selector()
+            pipelines.select_llm_model(self.MODEL_DISPLAY_NAME)
+            assert pipelines.get_selected_model_name() == self.MODEL_DISPLAY_NAME, (
+                f"Model selector should display '{self.MODEL_DISPLAY_NAME}' after selection"
+            )
+
+        with allure.step("Step 4 — Ask a question requiring a lengthy answer"):
+            initial_count = pipelines.get_embedded_chat_message_count()
+            pipelines.send_message_in_embedded_chat(self.USER_PROMPT, timeout=UI_ELEMENT_TIMEOUT)
+            new_count = pipelines.wait_for_embedded_chat_message_count(
+                initial_count + 1, timeout=UI_ELEMENT_TIMEOUT
+            )
+            assert new_count >= initial_count + 1, (
+                f"Message should be sent and appear as a new list item: "
+                f"was {initial_count}, now {new_count}"
+            )
+
+        with allure.step(
+            "Step 5 — Verify the response streams progressively in chat "
+            "(tokens appear incrementally, not all at once)"
+        ):
+            # First REAL (non-transient) sample — skips the "Waking the
+            # agent…"/"Packing its tools…" placeholders that precede body
+            # content (confirmed live during implementation).
+            sample_1_text = pipelines.wait_for_embedded_chat_real_content(
+                timeout=STREAM_GROWTH_TIMEOUT
+            )
+            sample_1_len = len(sample_1_text)
+
+            sample_2_text = pipelines.wait_for_embedded_chat_body_growth(
+                sample_1_len, timeout=STREAM_GROWTH_TIMEOUT
+            )
+            sample_2_len = len(sample_2_text)
+            assert sample_2_len > sample_1_len, (
+                f"Body text should have grown: {sample_1_len} -> {sample_2_len} chars"
+            )
+            assert sample_1_text in sample_2_text, (
+                "Second sample should be a superset of the first (progressive "
+                f"append, not replace/reset): {sample_1_text!r} not found in "
+                f"{sample_2_text!r}"
+            )
+
+        with allure.step(
+            "Step 6 — Verify the final response is complete and exceeds "
+            f"{self.MIN_RESPONSE_LENGTH} characters"
+        ):
+            pipelines.wait_for_embedded_chat_response(
+                initial_count=initial_count,
+                stable_duration_ms=STABLE_DURATION_MS,
+                timeout=PIPELINE_EXECUTION_TIMEOUT,
+            )
+            final_response = pipelines.get_embedded_chat_last_message()
+            assert len(final_response) > self.MIN_RESPONSE_LENGTH, (
+                f"Final response should exceed {self.MIN_RESPONSE_LENGTH} chars, "
+                f"got {len(final_response)}: {final_response!r}"
+            )
+
+        with allure.step(
+            "Step 7 — [ELITEA-2058] Verify the settled response's model-"
+            f"attribution chip names the selected model ('{self.MODEL_DISPLAY_NAME}')"
+        ):
+            chip_text = pipelines.get_answer_model_chip_text()
+            assert self.MODEL_DISPLAY_NAME in chip_text, (
+                f"Response model-attribution chip should name the selected model "
+                f"'{self.MODEL_DISPLAY_NAME}', got: {chip_text!r}"
+            )
+
+        with allure.step("Step 8 — Verify no timeout or error occurred during streaming"):
+            assert not console_errors, f"No console errors expected during streaming: {console_errors}"
+            assert not failed_requests, (
+                f"No failed (>=400) network requests expected during streaming: {failed_requests}"
+            )
+            assert "unexpected error" not in final_response.lower(), (
+                f"Response should not contain an error message: {final_response}"
+            )

@@ -36,3 +36,17 @@ covers the trunk's current tip.)
 #505/ELITEA-2068, #734/ELITEA-2227, #764/ELITEA-2257, #766/ELITEA-2259,
 #779/ELITEA-2272 — every single-case batch today needed this same manual
 landing step; the workflow never does it itself.
+
+## New wrinkle: batch-stabilize's fix round can leave the trunk unpushed
+
+#967/ELITEA-2459 (2026-08-08): after a green re-gate from
+`batch-stabilize.workflow.mjs`, `git fetch origin` + `gh pr create --head
+tests/batch-<slug>` used the STALE origin ref — the fix+re-gate agents had
+committed the diagnosed fix on the *local* trunk checkout but never pushed it,
+so the PR would have landed the pre-fix tree even though the reported gate
+verdict was green. Caught by `git log --oneline origin/tests/batch-<slug>..
+tests/batch-<slug>` showing 2 unpushed commits before opening the PR — pushed
+them, then proceeded as normal. **Always run that diff (or `git status
+-sb` after `git checkout tests/batch-<slug>`) right after a stabilize round,
+before `gh pr create`** — a green re-gate verdict proves the code is right, not
+that origin has it.

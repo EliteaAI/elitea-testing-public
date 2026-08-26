@@ -3,7 +3,7 @@
 Handle cache for live-confirmed handles/quirks on the Agent Hub / Catalog
 surface (`/elitea-catalog`). Not a substitute for execution — verify a handle
 as you use it. One writer at a time; last confirmed by: qa-engineer (analyst
-slot), ELITEA-2369, 2026-08-06.
+slot), ELITEA-2364, 2026-08-10.
 
 ## Conversation-starter tiles — TWO real testid gaps (ELITEA-2369)
 - **Modal's starter list items** (`AgentConversationStarterItem.jsx`, inside
@@ -93,6 +93,12 @@ slot), ELITEA-2369, 2026-08-06.
   `page.url` (`r"/chat/(\d+)"`), delete via
   `ConversationAPI.delete_conversation(conv_id)` in a `finally` block.
 
+## Category filter-rail behavior: single-select vs. multi-select (ELITEA-2352 / ELITEA-2353)
+- **Single-select behavior (ELITEA-2352)**: clicking one category chip filters to that category only — all other category sections disappear. Clicking a different chip replaces the filter (prior chip deselects).
+- **Multi-select accumulation behavior (ELITEA-2353, confirmed live 2026-08-10)**: clicking category chips accumulates filters — clicking "Business Analyst" filters to that category, then clicking "Elitea" while Business Analyst remains selected shows **both** categories' sections simultaneously. Both chips show `data-selected="true"` at the same time. This is automatic in `AgentsTab.jsx`'s `selectedTagNames` state machine (toggle logic: `includes(tag) ? remove(tag) : add(tag)`), not a defect or special behavior. A third click on either selected chip removes it from the set (toggle off).
+- **Verified chip state handling**: `data-selected="true"/"false"` attribute correctly flips on each click, persists across subsequent clicks on OTHER chips, and does not leak focus-state (unlike DOM `[active]` marker which Playwright incorrectly surfaces) — safe to assert on.
+- **Section header positioning**: after multi-select filters, sections appear in the order of their categories in the filter-rail (left to right), not alphabetical or discovery order. Business Analyst appears before Elitea in the filtered output because Business Analyst appears before Elitea in the category-rail chip list.
+
 ## "Business Analyst" (id 31) ALSO satisfies the "no starters/no welcome message" precondition (ELITEA-2368)
 - Not just "User Story Creator" (id 172, used by ELITEA-2356/2365's
   explorations) — "Business Analyst" (id 31, 8 likes, the literal "e.g."
@@ -170,11 +176,13 @@ NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
   `AGENT_CARD_PREFIX` already cover everything this behavior needs. One NEW page-
   object method is needed though: `clear_search()` (select-all+Backspace,
   network-response-aware) — didn't exist before this dispatch.
-- **"No results" state has NO testid** (`Category.NoResultsMessage.jsx`, renders
-  "No agents found" / "Try adjusting your search terms" via
-  `AgentsTab.jsx`'s `noResultsTitle`/`noResultsDescription` props) — not needed for
-  ELITEA-2363 (the case's own search term always matches ≥1 agent), but flag for
-  any future sibling case that specifically tests a zero-match search term.
+
+## "No results" empty state — NO testids, confirmed live (ELITEA-2367)
+- **"No agents found" / "Try adjusting your search terms" messages** (`Category.NoResultsMessage.jsx`, renders via `AgentsTab.jsx`'s `noResultsTitle`/`noResultsDescription` props when `results === []`). **Both messages are SPAN elements with MuiTypography classes only; neither carries a testid** — confirmed via live DOM inspection 2026-08-10 (ELITEA-2367 exploration).
+- Elements: `<span class="MuiTypography-root MuiTypography-headingMedium ...">No agents found</span>` + `<span class="MuiTypography-root MuiTypography-bodyMedium ...">Try adjusting your search terms</span>`, both children of `<div class="MuiBox-root css-cxi1bf">`.
+- **Layout consistency confirmed:** when search matches zero agents, the empty-state messages render in place of the agent-card grid, while the page heading, search input, tabs, and category filter rail all remain visible and functional (not hidden/disabled/collapsed).
+- **Workaround for automation:** use `page.get_by_text("No agents found")` / `page.get_by_text("Try adjusting your search terms")` as fallback locators. **Future enhancement:** add `data-testid="catalog-no-results-title"` and `catalog-no-results-description` to the component (one-line addition to each SPAN) so tests can use stable testid selectors.
+- No console errors during empty-state render; no 4xx/5xx network responses when search matches zero agents.
 
 ## Agent detail modal (`AgentModal.jsx`) — mostly untested, only 3 of ~10 fields have testids
 - Opened by clicking any Catalog agent card; content-ready signal is the
@@ -219,19 +227,23 @@ NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
   Creator" reads "Thuis agent is responsible...") is live product DATA, not a
   UI defect. Assert description non-empty/visible, never the literal string.
 
-## Like/unlike an agent card — testids needed, shared `Like.jsx` component
+## Like/unlike an agent card — testids IMPLEMENTED, shared `Like.jsx` component
 - Heart icon + count on every agent card is the shared `src/components/Like.jsx`
   (also used by the data-table widget and `Card.jsx` for pipelines) via
-  `AgentHubLike.jsx` → `AgentCard.jsx`. **Zero testids anywhere in the chain**
-  (confirmed via source + `git grep`). Because `Like.jsx` is shared, the testid
-  must be a caller-supplied `testId` prop threaded from `AgentCard.jsx`
-  (`catalog-agent-like-button-{application.id}`), not hardcoded inside
-  `Like.jsx` itself — same discipline as `CategoryRail.jsx`'s chip prop.
-- "Liked" state has no accessible signal (icon swaps `HeartIcon`↔`HeartActiveIcon`,
-  confirmed visually via screenshot diff, zero DOM attribute difference) — needs
-  a `data-liked="true"/"false"` attribute on the same button, same precedent as
-  ELITEA-2352's chip `data-selected`. Full detail:
-  `l3_agent-hub-like-agent-from-list-view_ELITEA-2354.md`.
+  `AgentHubLike.jsx` → `AgentCard.jsx`. **Testids now implemented** (confirmed
+  live ELITEA-2355 exploration, 2026-08-10): `catalog-agent-like-button-{application.id}`
+  testid is present on the button element; the attribute is a caller-supplied
+  `testId` prop threaded from `AgentCard.jsx` into the shared `Like.jsx`
+  component (same discipline as `CategoryRail.jsx`'s chip prop). Status on `main`:
+  requires fresh `git fetch origin` + `git grep` to verify (ELITEA-2354 made a
+  false claim about presence on main; re-verify before citing).
+- "Liked" state **now has an accessible signal**: `data-liked="true"/"false"`
+  attribute on the like button (same precedent as ELITEA-2352's chip
+  `data-selected`, implemented alongside the testid). Confirmed live: attribute
+  flips correctly on click, persists across page reload, and the heart icon
+  renders as filled (`HeartActiveIcon`) when `data-liked="true"`, unfilled
+  (`HeartIcon`) when `data-liked="false"`. Full detail (including unlike flow):
+  `l3_agent-hub-unlike-agent-from-list-view_ELITEA-2355.md` (ELITEA-2355 AFS, this dispatch).
 - Endpoints: `POST /api/v2/social/like/prompt_lib/{project_id}/application/{id}`
   → `201` (like); `DELETE` same path → `204` (unlike). Update is optimistic
   client-side (no re-fetch awaited).
@@ -366,6 +378,13 @@ NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
   The page `<title>` (`"ELITEA Catalog - {project name}"`) is a free,
   zero-interaction second confirmation of the active project context.
 
+## "My Liked" filter behavior — confirms like/unlike in filtered view removes agents (ELITEA-2364)
+- Clicking the "My Liked" filter chip (`catalog-agent-category-filter-chip-my-liked`) activates `data-selected="true"` and isolates the "My Liked" section as the sole rendered category.
+- Agents in the "My Liked" view show `data-liked="true"` on their like buttons.
+- **Unliking an agent while in the "My Liked" view removes it from the list immediately** (optimistic client-side update, `DELETE .../social/like/... => 204`). The agent's card and like button are no longer present in the DOM after the unlike click — not hidden/greyed, fully removed. Confirmed live, session 2026-08-10: agent ID 16 appeared in My Liked after a like (count 7→8, `data-liked=true`), then disappeared from the My Liked view after an unlike click (card query returned null).
+- **The "My Liked" chip selection is client-only state and does NOT survive a full page reload** — same as documented above for the multi-select filter behavior. After `page.goto()` or `reload()`, the chip resets to unselected and the unfiltered default view renders; any test that reloads while relying on the "My Liked" filter must re-select it post-reload (confirmed live during ELITEA-2365's cross-tab exploration).
+- Like counts in "My Liked" view correctly reflect the global like count — no stale/cached values observed.
+
 ## Known defects (already tracked elsewhere, not re-filed)
 - #1043 — Catalog agent-preview modal's "Start Chat" button has no
   `disabled={isFetching}` guard; race condition. Only relevant to cases that
@@ -373,6 +392,47 @@ NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
   family member).
 - #1016 — Catalog category "Show more" permanently locks to collapse after
   first click. Only relevant to cases that interact with "Show more".
+
+## Clicking a starter tile INSIDE the modal — direct navigate + pre-populate, no "Start Chat" needed (ELITEA-2093)
+- **Resolved/added during ELITEA-2093 implementation:** `AgentModal.jsx`'s
+  `onSelectStarter` handler (bound to each `AgentConversationStarterItem`'s
+  `onClick`, confirmed via source) fires `onStartConversation(starter)()`
+  (dispatches `setSelectedAgentInfo({agent, starter})`, then
+  `navigate({pathname: Chat, search: 'create=1'})`) AND `onClose()`
+  synchronously off a SINGLE click on a starter item — materially different
+  from the `catalog-agent-modal-start-chat-button` flow (ELITEA-2368/2369):
+  no separate "Start Chat" click, no #1043-style race window to guard with
+  `page.wait_for_timeout(1000)`. Confirmed live: clicking a starter item
+  closed the modal and navigated to `/chat` with the composer already
+  pre-populated, off one click, for "Assistant for ELITEA Documentation"
+  (application id 16, category "Elitea", 3 configured starters: "Help me
+  configure Jira toolkit?", "Tell me about Elitea", "Can I use Azure dev
+  ops repo through Elitea").
+- **Why this click is naturally safe from the #1043 class of race**: unlike
+  the "Start Chat" button (always rendered, clickable before `agentDetails`
+  commits), the starter items themselves only render once
+  `agentDetails?.version_details?.conversation_starters` has data — so any
+  caller that already waited for a starter item to be visible (to read/count
+  them, per this case's own earlier step) is by construction past the same
+  async gap #1043 has to work around separately. New page-object method
+  `AgentHubPage.click_modal_starter_item(match_text)` added this dispatch
+  (filters `MODAL_STARTER_ITEM` by `has_text`, same idiom as
+  `ChatPage.click_chat_starter_tile()`) — zero new testid, reuses the
+  pre-existing `catalog-agent-modal-starter-item`.
+- **Conversation is NOT created by the starter click** — only by the
+  subsequent Send. The click only performs a client-side navigation with
+  `?create=1`; `POST /api/v2/elitea_core/conversations/prompt_lib/{project_id}`
+  fires on Send, same as the ELITEA-2368/2369 siblings' "Start Chat" flow.
+- **Auto-naming resolved near-instantly, no observable "Naming" placeholder
+  window** in this live run (message "Tell me about Elitea" → sidebar title
+  "Tell about Elitea", a word dropped, not a defect — case text only
+  requires "resolves to an auto-generated title"). `ChatPage.wait_for_naming_label_to_resolve()`
+  is no-op-safe for this (its `naming_label.count() > 0` guard skips the wait
+  entirely when the placeholder never rendered) — always call it before
+  reading the sidebar title regardless of whether the placeholder was
+  observed, per the existing `test_conversation_management.py` Step-6
+  precedent (assert title is non-empty and doesn't contain "Naming", never
+  assert the placeholder WAS visible first).
 
 ## Sibling family (not yet analysed as of this entry)
 ELITEA-2351 ("Team project" variant of this exact case — differs from

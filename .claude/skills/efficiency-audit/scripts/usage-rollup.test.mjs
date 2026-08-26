@@ -127,7 +127,10 @@ test('parseUnit: counts tool calls + errors, collects skill names, and records A
   const u = parseUnit(records);
   assert.equal(u.toolCalls, 4);
   assert.equal(u.toolErrors, 1);
-  assert.deepEqual([...u.skills].sort(), ['memory', 'test-automation-workflow']);
+  // `memory` was really invoked; `test-automation-workflow` is only the host's
+  // attribution stamp, which sub-agents inherit — separate channels, never one.
+  assert.deepEqual([...u.skills].sort(), ['memory']);
+  assert.deepEqual([...u.skillsAttributed].sort(), ['test-automation-workflow']);
   assert.deepEqual(u.dispatched, [
     { type: 'qa-engineer', description: 'Analyst: T532' },
     { type: 'unknown', description: 'stop the failing one' },
@@ -170,7 +173,10 @@ test('buildRollup: aggregates tool calls/errors, skills (union), Agent dispatche
     sessionId: 's1', projectDir: '/p', date: '2026-06-01',
     units: [
       { id: 's1', kind: 'session', parentId: null, role: 'lead', usage: { output: 10, input: 0, cacheRead: 0, cacheCreation: 0, models: new Set() }, date: '2026-06-01', durationMin: 5, turns: 3, projectDir: '/p', toolCalls: 20, toolErrors: 4, skills: new Set(['memory']), dispatched: [{ type: 'impl', description: 'a' }, { type: 'impl', description: 'b' }] },
-      { id: 'a', kind: 'subagent', parentId: 's1', role: 'impl', usage: { output: 30, input: 0, cacheRead: 0, cacheCreation: 0, models: new Set() }, date: '2026-06-01', durationMin: 9, turns: 8, projectDir: '/p', toolCalls: 50, toolErrors: 1, skills: new Set(['memory', 'test-automation-workflow']), dispatched: [] },
+      // The sub-agent really invoked `memory`; `test-automation-workflow` is
+      // only the attribution it INHERITED from the lead — the exact pair that
+      // used to be summed into one misleading "skills loaded" figure.
+      { id: 'a', kind: 'subagent', parentId: 's1', role: 'impl', usage: { output: 30, input: 0, cacheRead: 0, cacheCreation: 0, models: new Set() }, date: '2026-06-01', durationMin: 9, turns: 8, projectDir: '/p', toolCalls: 50, toolErrors: 1, skills: new Set(['memory']), skillsAttributed: new Set(['test-automation-workflow']), dispatched: [] },
     ],
   }];
   const r = buildRollup(groups, { meteredMap: new Map([['s1', 3], ['a', 7]]) });
@@ -178,12 +184,17 @@ test('buildRollup: aggregates tool calls/errors, skills (union), Agent dispatche
   assert.equal(r.totals.toolErrors, 5);
   assert.equal(r.totals.toolSuccess, 65);
   assert.equal(r.totals.subagentsDispatched, 2, 'only the lead dispatched (2 Agent calls)');
-  assert.deepEqual(r.totals.skills.sort(), ['memory', 'test-automation-workflow']);
+  // Invocation and attribution are separate channels: `memory` was really
+  // called via the Skill tool, `test-automation-workflow` was only the host's
+  // attribution stamp (which sub-agents inherit). Merging them reports skill
+  // loads that never happened.
+  assert.deepEqual(r.totals.skills.sort(), ['memory']);
+  assert.deepEqual(r.totals.skillsAttributed.sort(), ['test-automation-workflow']);
   assert.equal(r.byRole.lead.subagentsDispatched, 2);
   assert.equal(r.byRole.impl.subagentsDispatched, 0);
-  // bySkill: memory used by both units, workflow by one
+  // bySkill counts INVOCATIONS only — an inherited attribution earns no row.
   assert.equal(r.bySkill.memory.units, 2);
-  assert.equal(r.bySkill['test-automation-workflow'].units, 1);
+  assert.equal(r.bySkill['test-automation-workflow'], undefined);
   // ledger exposes skills as a JSON-safe array
   assert.ok(Array.isArray(JSON.parse(JSON.stringify(r.ledger))[0].skills));
 });

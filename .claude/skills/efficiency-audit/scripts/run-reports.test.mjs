@@ -44,6 +44,18 @@ test('findReports: a file, a batch dir, or the automation root', () => {
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('findReports: campaign reports nested in sub-folders are found (field bug — one-level scan missed wave-*/report.json)', () => {
+  const root = tmp();
+  try {
+    batch(root, 'flat-batch', [{ id: 'TC-1', outcome: 'automated' }]);
+    batch(join(root, 'approved-next50'), 'wave-02-05-merged', [{ id: 'TC-2', outcome: 'automated' }]);
+    batch(join(root, 'approved-next50'), 'wave-06-10', [{ id: 'TC-3', outcome: 'blocked' }]);
+    const found = findReports(root);
+    assert.equal(found.length, 3, `expected flat + 2 nested wave reports, got: ${found.join(', ')}`);
+    assert.ok(found.some((f) => f.includes('wave-02-05-merged')));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('outcomes are counted from the rows, delivered = automated only', () => {
   const root = tmp();
   try {

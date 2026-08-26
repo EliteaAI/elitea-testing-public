@@ -200,7 +200,7 @@ class Popper:
         Returns:
             Locator pointing to the first visible popper.
         """
-        popper = page.locator(".MuiPopper-root")
+        popper = page.locator(".MuiPopper-root").first  # Use .first to avoid strict mode violation
         popper.wait_for(state="visible", timeout=timeout)
         return popper
 

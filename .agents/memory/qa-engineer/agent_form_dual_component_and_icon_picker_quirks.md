@@ -39,3 +39,29 @@ land in ALL of them, not just the one you found first via the component tree fro
   Don't assert on the form Save button for icon persistence; assert on the PUT response or the
   DOM `img.src` update instead. Filed as CLARIFICATION `elitea-testing-public#566` since TMS case
   ELITEA-1899's step 5 ("Click Save") implies a mechanism that doesn't exist for this field.
+
+## Skill icon upload — same dialog, extra asymmetry (ELITEA-2604, confirmed live 2026-08-12)
+
+- **Create mode (no `entityId` yet) vs edit mode (`entityId` present) fire a DIFFERENT number of
+  requests on a successful upload.** Create: one `POST .../upload_skill_icon/prompt_lib/{project}`
+  → 200, applied to local form state only. Edit: the SAME `POST` (200) is immediately followed by a
+  second `PUT .../upload_skill_icon/prompt_lib/{project}/{versionId}` → 200 that applies+persists
+  to the version right away — two toasts fire in sequence ("The image has been uploaded" then "The
+  icon has been changed"), not one. An assertion written against create mode's single-toast
+  behavior (e.g. `SkillFormPage.upload_skill_icon()`'s exact-text toast check) is WRONG if reused
+  verbatim for an edit-mode variant — assert on the network pair or the resulting `img.src` instead.
+- **Oversized-file (>500KB) rejection is 100% server-side**, no client pre-flight check exists —
+  the POST always fires, the backend returns 400 with body `{"error": "File size exceeds 512 KB"}`.
+  The dialog's own tooltip says "less than 500KB" (same numeric limit, inconsistent unit-label
+  string vs the error's "512 KB" — cosmetic, not a bug). Dialog stays open, previous icon retained
+  on rejection.
+- **Two independent, both-testid'd "revert to default" mechanisms exist** — don't assume only one:
+  (a) delete the currently-selected icon from the "Uploaded" gallery (hover-revealed delete
+  `IconButton` inside `UserIconItem.jsx`, **NO testid on that button as of 2026-08-12** — only a
+  `className="deleteButton"`; confirms via `DELETE .../upload_skill_icon/prompt_lib/{project}/
+  {icon_name}` → 200, toast "The icon has been successfully deleted."), or (b) click the "Default"
+  tile (`agent-icon-picker-default-icon`, pre-existing testid) which in edit mode PUTs
+  `{name: "", url: ""}`, toast "The icon has been reset to default icon". Both revert
+  `*-form-icon-img` to an ABSENT `<img>` element (the product's actual default state — never a
+  literal `skill-icon.svg`/similar filename despite some case text implying one), confirmed to
+  survive a full page reload (server-persisted, not optimistic-only).

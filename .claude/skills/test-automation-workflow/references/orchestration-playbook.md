@@ -40,22 +40,76 @@ Then **ONE** TMS sweep: fetch every case and probe each author's metadata direct
 
 **Fetch once, to disk:** write each surviving case's full body to `.agents/automation/<slug>/cases/<ID>.md` — the batch-scoped snapshot the analyst and reviewer read (they re-fetch only if it's missing); keep only id + title + status in your own context. One TMS fetch per case per batch, and both slots triangulate against the identical snapshot — a mid-batch author edit can't silently skew the review.
 
+**Already in the repo? Don't copy.** When the task source IS this repository —
+manual-qa-authored TC files, or case bodies someone already committed as md —
+the source file *is* the snapshot: pass its repo-relative path per case
+(`cases: [{id, path}]` to the workflow; campaigns via `plan.casePaths`; name
+the path in hand dispatches) and skip the `cases/` copy entirely. Git supplies
+everything the copy existed for: the version-of-record is pinned by the intake
+commit, both slots read identical bytes in the same tree, and the drift check
+becomes `git log -- <path>` over the batch window instead of a TMS re-fetch.
+Status gates read the files' frontmatter where present. `cases/` stays for
+bodies fetched from an EXTERNAL system — one body per case, never two.
+
 If `.agents/testing.md` names a known blocking modal (session-expired, forced-password-change, MFA, cookie banner), inject its dismissal snippet into *every* dispatch this batch — not after the first hang. Chunk to batch size **M** (§ Batch pipeline, default 5). If the seeded tracker policy requires visible WIP, create all sub-tasks in one batched write; else the tracker waits for the close sweep.
 
 **Cut and push the batch trunk.** `git checkout -B tests/batch-<slug> <base> && git push -u origin tests/batch-<slug>`. Case branches live under it and their PRs target it; the gate proves it; one PR takes it to base. Push it now, not later: the gate checks out `origin/tests/batch-<slug>`, and a trunk that only exists locally fails the gate for an infrastructure reason that reads as a red case. (On Claude Code the shipped workflow's first build does this for you.) **A batch of one skips the trunk** — the case branch targets base directly.
 
-**Cluster the batch — by DISPATCHING one pass, never by reading the cases yourself.** Grouping similar cases needs their bodies, and your context is the batch's scarcest resource (Critical rule 7), so this is the one Intake step you delegate: dispatch a single agent over the snapshots you just wrote, and take back only the grouping.
+**Cluster AND size the batch — by DISPATCHING one pass, never by reading the cases yourself.** Grouping similar cases needs their bodies, and your context is the batch's scarcest resource (Critical rule 7), so this is the one Intake step you delegate: dispatch a single cheap agent (haiku-tier, read-only — any generic agent type, no role memory needed) over the snapshots you just wrote, and take back only the grouping and the sizing verdicts. The same read answers both questions — sizing rides free on the dispatch you were paying for anyway. The prompt below is self-sufficient: it tells the reader where its verdict contract and tier definitions live, so it never improvises a taxonomy.
 
 ```
-Clustering pass — read the case snapshots at .agents/automation/{SLUG}/cases/*.md
-and group the ones a single analyst could explore in ONE live session: same
-surface, same flow family (field-validation variants, CRUD permutations on one
-entity). Every case's own steps still get executed individually inside that
-session, so group only what shares a setup path — when in doubt, leave it solo.
-Return clusters: [[id, …], …] plus one line of rationale per cluster. Nothing else.
+Clustering + sizing pass — read each case's body (the intake snapshots at
+.agents/automation/{SLUG}/cases/*.md, or the in-repo source paths where intake
+skipped the copy) and return TWO things, nothing else:
+1. clusters: [[id, …], …] — group the ones a single analyst could explore in
+   ONE live session: same surface, same flow family (field-validation
+   variants, CRUD permutations on one entity). Every case's own steps still
+   get executed individually inside that session, so group only what shares a
+   setup path — when in doubt, leave it solo. One line of rationale per cluster.
+2. verdicts: one per case — but FIRST read your contract, in this order:
+   a. .agents/estimation/complexity-taxonomy.json — IF it exists, its tier
+      names/definitions are THIS project's calibrated truth;
+   b. else <skills root>/automation-scoping/references/complexity-taxonomy.md
+      — the bundled tier definitions and modifier list;
+   c. <skills root>/automation-scoping/SKILL.md § "The verdict pass" — the
+      verdict field semantics and rules (~40 lines; read just that section).
+   Then judge each case BODY against the tier DEFINITIONS — what interaction
+   it actually exercises, never keyword-matching — and return per case:
+   { id, tier, tier_rationale, steps, surfaces, new_abstractions, size,
+     size_rationale, modifiers, quality_flags, risk_flags, signals,
+     split_recommended, confidence }.
+   If the automation-scoping skill is not installed (paths above missing),
+   return clusters only and verdicts: [] with a one-line note.
 ```
 
-Pass the result as `args.clusters`. **Do not `cat` the case files.** Field-measured on a live lead session: clustering by hand pulled **14 case bodies — 40,865 bytes, ~10K tokens — into the orchestrator's context**, more than its entire startup injection, before a single case was dispatched. The rule was written down, but in [`campaign-planning.md`](campaign-planning.md) § Clustering, which a flat batch never opens; that is why it is restated here, where Intake actually happens.
+Save the verdicts to `.agents/estimation/<slug>-verdicts.json` and let the script do the arithmetic (never price by hand):
+
+```bash
+node <skills root>/automation-scoping/scripts/score-cases.mjs \
+  .agents/automation/<slug>/cases --verdicts .agents/estimation/<slug>-verdicts.json \
+  --json --out .agents/estimation/<slug>-scored.json
+```
+
+`<skills root>` is the HOST's skills directory — substitute it before
+dispatching: `.claude/skills/` on Claude Code, `.github/skills/` on Copilot
+CLI, `.cursor/skills/` on Cursor (the host is named in
+`.agents/team-comms.md`). The same substitution applies inside the dispatch
+prompt above.
+
+That file is what the close-time sizing join reads: per-case `size` columns, size-class deviation flags, est-vs-actual at batch grain, and the dataset-export fields (`size_tshirt` / `self_size` / `effort`) all come from it. No automation-scoping skill installed → skip the verdicts half silently (clusters alone are still worth the dispatch); the pipeline degrades to reports without size columns, never to a failure. **A scoping-grade scope (20+ cases, a presales backlog) doesn't go through this single pass** — use the scoping skill's own mini-workflow instead (`automation-scoping/scripts/sizing.workflow.mjs` — parallel reader fan-out, same output files), and keep this Intake pass for the batch in hand.
+
+Pass the clusters as `args.clusters`. **Do not `cat` the case files.** Field-measured on a live lead session: clustering by hand pulled **14 case bodies — 40,865 bytes, ~10K tokens — into the orchestrator's context**, more than its entire startup injection, before a single case was dispatched. The rule was written down, but in [`campaign-planning.md`](campaign-planning.md) § Clustering, which a flat batch never opens; that is why it is restated here, where Intake actually happens.
+
+**Declare the session's work scope — now, while the work set is fresh.** Where
+the `tokenomics` capture hooks are enabled (a session-start line names your
+session id and the exact command), one call records what this session is for:
+`node <tokenomics skill>/scripts/work-scope.mjs open --session <id> --intent
+automation --batch <slug> --cases <the ids you just resolved>`. This is the
+durable record every cost/delivery report joins on — declared before the first
+dispatch, it survives a killed session; reconstructed afterwards, it is a
+guess. On a host without the session-start line (older Copilot CLI), use
+`--session auto`. A batch that grows mid-session: re-run `open` with the new
+ids — it merges, never drops.
 
 ### 2. Run — one workflow, one unit at a time (not yours)
 
@@ -87,6 +141,8 @@ The analyst **owns the tree and commits its own work**: AFS and `_surface.md` st
 
 **Tiering — the standalone analyst is for novel ground.** The workflow triages units (accelerant § Rules the script encodes → 6): a unit whose every surface has a `_surface.md` digest and whose steps read routine against it goes to a **combined** analyse+build dispatch — one engineer doing both halves, still executing the case live and still committing the AFS on the trunk before cutting its branch. Running by hand, apply the same judgement yourself; on any doubt — digest missing, novel screen, ambiguous step — the standalone analyst. The cost asymmetry decides doubt: a wasted analyst dispatch costs one dispatch, a combined slot on novel ground costs a bad AFS.
 
+**Manual-qa-verified — don't pay the live run twice.** In a repo that also runs the manual-qa bundle, a case they already executed (a run report — `reports/RUN-*.md` / `reports/metrics/*.json` — with verdict **PASS**, plus their authored case file, commonly `tasks/<suite>/<ID>_*.md`, and the `.agents/manual-qa/` KB) skips the live analysis entirely: one combined dispatch derives the AFS **from that evidence** — steps/expected from their case file cross-checked against the TMS snapshot, selectors from the case file and KB treated as hints against the project's locator strategy, the run id cited as execution provenance — and builds. Run age does not matter; a FAIL/flaky run never qualifies (that unit needs the analyst's eyes, and likely a defect filing). Thin evidence — steps without expected results, no groundable selector — is a `needs-analyst` return, never an invention: the normal analyst chain takes over at the cost of one dispatch. The gate still proves the result N× green either way — the shortcut trades the most expensive slot (live browser analysis), not the proof.
+
 **Implement** — cut the feature branch **from the trunk** (`.agents/workflow.md` convention, typically `tests/<TMS-ID>-<slug>`). The trunk already carries every unit that finished before this one, so page-object and fixture work accumulates by *merge* rather than by branch lineage. Implement, green ONCE locally, ≤ 2 reruns — determinism is the gate's job, not repeated local runs. The AFS is already committed; amend it on this branch if exploration shows it has drifted, so the change is reviewed with the code that motivated it. Open the PR against the **trunk**, never against base.
 
 **Review** — static, on that branch's diff. Then bounded fix rounds.
@@ -97,7 +153,7 @@ On each re-review, the reviewer classifies **every surviving blocker** ([`review
 
 - **Any blocker still `unaddressed`** — nobody acted on it; the diff does not touch the code it names, or the change was cosmetic → **go round again**, and name the skipped items explicitly in the fix dispatch. A fixer handed a bare re-list reads it as new work and skips the same item twice.
 - **Every blocker `persists`** (real attempt against the right code, still failing) **or `external`** (not resolvable on this branch) → **stop.** The obstacle is not effort. Record `blocked` and classify per § R2 cap rule.
-- **…unless every surviving blocker is scoped (`case_ids`) to a proper subset of the unit's cases → split the unit instead** (once per unit). A grouped unit amortizes dispatch cost, and the price was fate-coupling: one policy-stuck case once stranded four merged-ready cases (ELITEA-2211..2215). The carve is one implementer dispatch, and it **keeps sound work deliverable — quarantine, don't delete**. An almost-ready test whose *case* is stuck is a status problem, not a code problem: mark it skipped per project convention with a declared reason quoting the blocker and naming the unit/AFS (family specs: mark just their rows), so the finished code **ships inert on the trunk and re-arms by removing the marker** when the blocker clears. This is the sanctioned exception to the masking hunt — the hunt targets silent skips beneath cases claiming `automated`; a declared quarantine on a case recorded `blocked` claims nothing (same "declared, not discovered" principle as red-by-design). **Removal is the fallback** for code the blocker itself condemns (masking, unsound): then the carve first records the branch head — `preserved@<sha>` leads the blocked note and is written into the AFS with the removed paths — because once the unit merges that commit is in trunk history permanently, and re-entry **restores** (`git checkout <sha> -- <paths>`) instead of rebuilding. Either way the AFS stays on the branch marked blocked with the mode, shared symbols are removed only after a `git grep` proves nothing remaining uses them, and the shrunken unit goes back through review and merges as usual. Running by hand, the same moves apply.
+- **…unless every surviving blocker is scoped (`case_ids`) to a proper subset of the unit's cases → split the unit instead** (once per unit). A grouped unit amortizes dispatch cost, and the price was fate-coupling: one policy-stuck case once stranded four merged-ready cases. The carve is one implementer dispatch, and it **keeps sound work deliverable — quarantine, don't delete**. An almost-ready test whose *case* is stuck is a status problem, not a code problem: mark it skipped per project convention with a declared reason quoting the blocker and naming the unit/AFS (family specs: mark just their rows), so the finished code **ships inert on the trunk and re-arms by removing the marker** when the blocker clears. This is the sanctioned exception to the masking hunt — the hunt targets silent skips beneath cases claiming `automated`; a declared quarantine on a case recorded `blocked` claims nothing (same "declared, not discovered" principle as red-by-design). **Removal is the fallback** for code the blocker itself condemns (masking, unsound): then the carve first records the branch head — `preserved@<sha>` leads the blocked note and is written into the AFS with the removed paths — because once the unit merges that commit is in trunk history permanently, and re-entry **restores** (`git checkout <sha> -- <paths>`) instead of rebuilding. Either way the AFS stays on the branch marked blocked with the mode, shared symbols are removed only after a `git grep` proves nothing remaining uses them, and the shrunken unit goes back through review and merges as usual. Running by hand, the same moves apply.
 
 The distinction is the whole point: *forgotten* and *impossible* look identical in a finding list and are opposites in what they demand. Stopping on "forgotten" ships a nearly-finished unit as `blocked` — neither delivered nor honestly stuck, and nobody goes back to it. Ask the reviewer directly; it is the only party that saw both rounds and the diff between them, and judging by the *wording* of findings just measures phrasing.
 
@@ -107,7 +163,7 @@ Two guards, and both are backstops rather than controls: a **round ceiling** (`f
 
 Merging per unit rather than integrating at the end is deliberate. It keeps the trunk a known state for the next unit, surfaces conflicts small and while their author is still live, and means an interrupted run leaves the trunk carrying exactly the units that finished — which is what makes recovery a `git log` instead of archaeology. `batch-integrate.workflow.mjs` remains as a **repair tool** for re-merging a parked unit, not as a stage.
 
-**Memory is committed like everything else — commit what you produce, where you stand.** Every slot writes durable learnings to `.agents/memory/<role>/` and commits them **by exact path on the branch it is on**: the analyst with its AFS on the trunk, the implementer and reviewer with their work on the case branch, the merge carrying it all to the trunk. When a unit **parks** on a semantic conflict, the merge agent lands its memory anyway (`git checkout <branch> -- .agents/memory/`, commit, push) — the code may not land, but what we learned always does. The lead's close sweep is pure curation: dedupe, promote to `MEMORY.md`, compact — editing committed files, never capturing loose ones.
+**Two memory layers — commit knowledge, keep role memory local (instructions § Agent memory).** Role memory (`.agents/memory/<role>/`) is each role's own working notes: **local and gitignored** — the ignore IS the protection (ignored files survive `git stash -u` and `git clean -fd`; the untracked-not-ignored era lost six entries to one wholesale stash, 2026-08-03). It is never committed and never assumed to exist on another machine. What DOES ship is `.agents/knowledge/` — cross-role, **verified**, durable facts promoted per the `knowledge-curation` skill: every slot commits its promotions **by exact path on the branch it is on**, the same commit-what-you-produce rule as code and AFS. When a unit **parks** on a semantic conflict, the merge agent lands its knowledge promotions anyway (`git checkout <branch> -- .agents/knowledge/`, commit, push) — the code may not land, but what we learned always does. The lead's close sweep curates both layers: local memory via the `memory` skill, the shared layer via `knowledge-curation`.
 
 *Why this rule replaced its predecessor.* The old rule — "role memory never rides a case branch; workers report via `findings[]` and the lead records at close" — existed because field measurement (cov60) found **26 of 32 merge conflicts** were add/add collisions in `MEMORY.md`/`daily/*.md`, from **parallel** case branches cut off one base each creating the same file. Serialization removed the cause: unit N+1's branch is cut *after* unit N merged, so it inherits N's memory and appends — a modify, never an add/add. The old rule's residue was worse than nothing: workers (whose preloaded memory skill says "write what you learn") wrote anyway, the entries sat **untracked for the whole campaign**, and one wholesale stash (field incident 2026-08-03) swept six of them mid-wave while every later agent ran without them. One scoping rule survives from that era: mechanical self-check greps run against the project's code root (e.g. `-- automation/`), never the whole tree, so memory prose can't pollute a diff scan.
 
@@ -118,13 +174,16 @@ Merging per unit rather than integrating at the end is deliberate. It keeps the 
 Once every unit has had its turn, the trunk carries the batch. Gate it, and gate it **twice over, with two different counts**:
 
 - **The batch's new/changed specs, N× consecutive GREEN** (§ Merge gate, default 3), each a clean process against the live env. New code is unproven, so repetition is what catches a flake. Within each run, use the framework's own parallel workers where the env allows — that is a *stronger* gate, not a shortcut, since it surfaces parallel-interaction flakes a per-case run never sees.
-- **The specs this batch could have BROKEN, once.** Already-proven code needs one run to reveal a regression, not N. Scope it by **blast radius**, not by running everything: `git diff --name-only <base>...<trunk>`, keep the non-spec files (page objects, fixtures, helpers, config), and run the specs that import them. A full suite is hours; the blast radius is a handful. If the batch only added spec files and touched nothing shared, there is no blast radius and the run is unnecessary.
+- **The specs this batch could have BROKEN, once.** Already-proven code needs one run to reveal a regression, not N. Scope by **what changed, not what was touched**: read the batch's non-spec diff (page objects, fixtures, helpers, config) hunk by hunk, however this project diffs — git, the PR view, or on a VCS-less project the change list in the briefs. A purely **additive** hunk — a new method, handle or constant that nothing existing calls — has no blast radius: new code cannot break a spec that never calls it. A hunk that **modifies or deletes** existing behavior names an impacted *symbol* (diff hunk headers show the enclosing function); the impacted specs are the ones that *reach* that symbol — search by symbol name, one hop through shared helpers — never "every spec importing the file". Measured live on an 11-case batch: import-level selection swept 57 tests where the truly impacted set was a handful, and the gate agent stalled on the runtime. Import shuffles and formatting are no-ops. Run the set once, selected by node-id/spec. All-additive → no blast radius; say so. A modified symbol in a base class or fixture everything reaches makes the big set *real* — report its size and estimated runtime and hand the lead the run-vs-sample decision instead of silently burning an hour.
 
 The gate is a **separate agent inside the run** — not the implementer (who would be certifying their own work) and not you. That placement is deliberate and was measured: a hand-run gate drained 12 cases while the pipeline delivered 36, at 3h50m and 114 shell calls for 8 merges. Its mechanics are scripted (`scripts/gate/gate-case.mjs` — fetch, checkout, merge base, run N× with timings, verdict); three rules it encodes each cost real time when left to memory:
 
 - **Merge the base FIRST, then gate.** On a busy campaign the base moves under every merge, so a run against a branch that lacks base proves nothing about what will land — gate runs had to be discarded and redone for exactly this.
-- **Gate in this checkout, on a branch — no worktree.** The real tree already has the env file and installed dependencies a worktree would lack. The tree must be **clean**, or checking a branch out eats work in progress; `gate-case.mjs` refuses a dirty tree for that reason. Leave the tree on the trunk when done.
+- **Gate in this checkout, on a branch — no worktree.** The real tree already has the env file and installed dependencies a worktree would lack. Dirt is judged **precisely, not blanketly**: `gate-case.mjs` refuses only a dirty path among the files it is proving (the base…branch diff) or one git itself refuses to overwrite (named by exact path); unrelated noise — logs, other bundles' state, installer-touched configs — never blocks and is booked in the verdict as `carriedDirt`. Leave the tree on the trunk when done.
 - **The gate does not merge, classify, or fix.** A red ends the attempt and goes into the report. Classifying it is yours (§ 3).
+- **One run per call — never all N in one process.** `gate-case.mjs --n 1`, foreground, `timeout: 600000`, repeated N times with the consecutive-green count kept by the agent. `--n <N>` runs them back-to-back inside a single call, and a foreground call cannot exceed 600s: on a real UI batch N=3 is 12–19 minutes, so the call is killed and the agent is stranded holding a suite that is still running. Measured across seven waves: both gates that passed cleanly ran one run per call; all three that failed used one long call. If even a single run doesn't fit, launch it detached and wait with blocking `sleep 300` polls (§ Never idle on a background job).
+
+**A gate cut off mid-flight is `incomplete`, not `not-run`.** They read the same in a report and mean opposite things: `not-run` is "nothing was attempted", `incomplete` is "runs are banked and here is where to resume". Both leave their units `merged-ungated` — unproven, never `blocked` — but only `incomplete` tells the next reader whether one run remains or all N. Whichever it is, when you then run the gate yourself and it goes green, **write that verdict back into the report** (§ 3 Close → Write the verdict back): the recovery isn't finished until the receipt matches it.
 
 **Report** — one write, at the end: `.agents/automation/<slug>/report.json` and `report.md`. One row per input case with its outcome, note and findings, plus the gate verdict and anything parked. This is the only disk write the run makes.
 
@@ -140,7 +199,42 @@ Why one and not N: gating the trunk and then merging case PRs individually **pro
 
 **Handle a red gate.** Classify it — product defect / flake or test-code bug / architectural — then route per § Handling blockers. For a flake or test-code bug the answer is the **stabilize workflow**, not per-case fix dispatches: `scripts/workflows/batch-stabilize.workflow.mjs` diagnoses ALL the failures together before fixing anything, because the gate runs the specs together precisely to surface failures a single-spec run cannot produce — so its unique failures are batch-level by construction. Three separate fix dispatches see three symptoms and never assemble the picture.
 
-**Then ONE close sweep:** back-write the TMS execution and transition the tracker for every merged and parked case (while there, compare each case's live TMS body against its intake snapshot — an author edit mid-batch is a drift flag for the next batch, not a silent skew you absorbed), then **ONE** read-back — this batch mutation across >1 tracker item must be followed by an explicit read-back: re-fetch every affected item, diff against the expected-state map you wrote *before* the mutation, report mismatches. Only then claim "complete" (load `verification-before-completion`).
+**Write the verdict back — before the closure comment, not "later".** Any gate that runs *outside* the workflow's own report write — a re-run after `merged-ungated`, a stabilize round's re-gate, a gate you re-scoped and ran yourself — updates `.agents/automation/<slug>/report.json` **the moment it has a verdict**:
+
+1. `gate.verdict`, `gate.runs`, `gate.seconds` — what actually ran.
+2. Each affected case's outcome: `merged-ungated` → **`automated`** on green, or **`merged-sanctioned-red`** where the red was pre-declared against a ticketed defect. The workflow could not know either — it had already written the file and gone.
+3. Only then the closure record / tracker comment. A closure comment claiming green over a report saying `not-run` is the exact state that keeps happening.
+
+The report is the machine-readable receipt every audit, `--resolved-from`, and the next batch's plan divides by. **This is the single most-repeated miss in the pipeline, and prose has already failed to fix it twice.** Measured on an 11-case batch: a lead-run gate went 3/3 green and merged 11 cases while the report still said `not-run` / `merged-ungated` — zero delivered in the next rollup, 11 proven specs recorded as unproven. Measured again three days later, *with this paragraph already installed*: it recurred three more times in one campaign, and **38 of 69 delivered cases (55%)** were misrecorded or had no receipt at all. So treat it as a hard step with a verification, exactly like the close sweep's read-back: after writing, re-read the file and confirm the totals match what you merged. Recovering the gate without correcting the receipt is half the recovery — and the half nobody can see.
+
+Two records back this step up — use them, don't rely on them replacing it:
+`gate-case.mjs` already appended every verdict to
+`.agents/automation/<slug>/gate-runs.jsonl` the moment it existed (script-
+authored — check it when reconstructing what actually ran), and where the
+`tokenomics` scope contract is active, **record each case's outcome the moment
+it becomes true**, not at "the end": `work-scope.mjs outcome --session <id>
+<ID>=automated` after the write-back, `<ID>=blocked` when you classify a
+blocker, then `work-scope.mjs close --session <id>` after the close sweep.
+**Close generates the batch report** — it recomputes `cost.json` and renders
+`.agents/automation/<slug>/batch-report.md` + `.html` (delivered, per-case
+cost, overhead), cross-checking receipt vs records and printing a **DRIFT**
+warning when they disagree. Drift at close is the miss detector for this
+exact paragraph: fix report.json and re-run `close` — the render is
+idempotent.
+
+**Then publish it — per policy, by dispatch, never by hand.** Read
+`.agents/profile.md` § Reporting policy: absent or `none` → the files in the
+repo ARE the report, flag the missing policy in your closure note and move
+on. A named destination (`tracker-item` / `pr-comment`) → dispatch the
+**publisher** (§ Canonical dispatch templates) — a cheap-tier agent that
+reads the ALREADY-ASSEMBLED `batch-report.md`, posts per the policy's format,
+and returns the URL as evidence. Two rules keep this lean: the publisher
+never assembles or recomputes anything (the script did — an agent re-deriving
+numbers is spend without trust), and you never paste report contents into
+your own context to post them (that is the exact inflation the dispatch
+exists to avoid).
+
+**Then ONE close sweep:** back-write the TMS execution and transition the tracker for every merged and parked case (while there, compare each case's live TMS body against its intake snapshot — in-repo sources: `git log -- <path>` since intake — an author edit mid-batch is a drift flag for the next batch, not a silent skew you absorbed), then **ONE** read-back — this batch mutation across >1 tracker item must be followed by an explicit read-back: re-fetch every affected item, diff against the expected-state map you wrote *before* the mutation, report mismatches. Only then claim "complete" (load `verification-before-completion`).
 
 **Then close-out cleanup.** You decide what merged; the script only refuses. Ask the host in `.agents/workflow.md` § Host (`gh pr list --state merged`, `glab`, `az repos`, the API), then hand the answer in — `--merged` is required and has no fallback probe, because a script that guesses the host guesses silently:
 
@@ -154,15 +248,27 @@ Nothing is deleted without a merged claim naming it, the checked-out branch is n
 
 **Then replan the remainder.** Everything not `automated` is next batch's input. That is the whole recovery mechanism — there is nothing to reconcile first.
 
-**What the batch cost.** The report is also the denominator: `efficiency-audit`'s `usage-rollup.mjs --resolved-from .agents/automation` reads these same `report.json` files and divides metered spend by them, so cost per case is measured rather than remembered. Scope it to the run (`--since`/`--until`) — it reports how much of the window's spend it can tie to this batch's branches, and a window holding a quarter of unrelated work will say so rather than quietly inflating the figure. Two numbers come back and both are worth carrying release over release: **per spec delivered** and **per case examined**. A batch where six of twenty cases automated spent real analysis on the other fourteen, and only the second number admits it. Where the `tokenomics` skill's capture hooks are enabled, the same spend also lands in the git-committed ledger (`.agents/telemetry/`) as each session ends — its `team-report.mjs` joins that ledger to these receipts, so the per-case figure stays answerable after transcripts expire and across the whole team.
+**What the batch cost.** The report is also the denominator: `efficiency-audit`'s `usage-rollup.mjs --resolved-from .agents/automation` reads these same `report.json` files and divides metered spend by them, so cost per case is measured rather than remembered. Scope it to the run (`--since`/`--until`) — it reports how much of the window's spend it can tie to this batch's branches, and a window holding a quarter of unrelated work will say so rather than quietly inflating the figure. Two numbers come back and both are worth carrying release over release: **per spec delivered** and **per case examined**. A batch where six of twenty cases automated spent real analysis on the other fourteen, and only the second number admits it. Where the `tokenomics` skill's capture hooks are enabled, the same spend also lands in the git-committed ledger (`.agents/telemetry/automation/`) as each session ends — its `team-report.mjs` joins that ledger to these receipts, so the per-case figure stays answerable after transcripts expire and across the whole team.
 
 ### The same loop runs work that isn't a case
 
-Cases are the common instance, not the shape. Atomic fixes, batched fixes, framework improvements, a suite-health sweep — all of them plan → run → close identically; only the *investigation* step differs (reproduce a failure rather than execute a case). Investigate → change → review → merge → prove is the same skeleton, and the outcome vocabulary already fits (`automated` = proven and landed; `blocked` = it didn't). `batch-stabilize` is the shipped instance of that: same skeleton, a diagnosis step where the analysis step would be. When you need a shape the shipped scripts don't have, author it per accelerant § Extending — the invariants ride along.
+Cases are the common instance, not the shape. Atomic fixes, batched fixes, framework improvements, a suite-health sweep, a tech-debt batch — all of them plan → run → close identically; only the *investigation* step differs (reproduce a failure or read the code, rather than execute a case). Investigate → change → review → merge → prove is the same skeleton, and the outcome vocabulary already fits (`automated` = proven and landed; `blocked` = it didn't). `batch-stabilize` is the shipped instance of that: same skeleton, a diagnosis step where the analysis step would be. When you need a shape the shipped scripts don't have, author it per accelerant § Extending — the invariants ride along.
+
+**Intake is still yours — there is no adapter for this.** Technical work arrives as a prose ask ("finish the stable-handle migration"), a tracker item, or a sweep request ("work everything under the tech-debt label"). Resolve it the way the seed says — `.agents/profile.md` names the tracker and task source, `workflow.md` the conventions — using the project's own tools (`gh`, an MCP server, the tracker's API). Then the same context frugality as case intake: snapshot each item's body to `.agents/automation/<slug>/items/<id>.md`, keep only id + title in your context, keep the source ref for the close sweep's back-write. Use **tracker-shaped ids** (`TD-123`, a JIRA key) as the unit ids — telemetry attribution keys on them; a freeform slug survives only the workflow path (receipts carry it), not a hand dispatch (see tech-task-brief.md).
+
+**Classify before planning.** The taxonomy already exists: a merged test newly red or flaky → § Suite health / maintenance entry; anything reshaping conventions or primitives → § Framework architecture (plan first, `.agents/testing.md` updated); everything else — a bounded change with a definable blast radius — is a **technical unit** for this loop. A batch may mix kinds; the planning discipline may not.
+
+**Plan each unit as a tech-task brief** — the AFS's sibling for work with no case ([`tech-task-brief.md`](tech-task-brief.md)): source, scope enumerated from the actual code, out-of-scope named, acceptance criteria, blast radius, verification. The brief is the reviewer's first triangulation artifact (source ↔ brief ↔ diff) and the gate's run set; the same quality gate applies — a brief missing a required section is `blocked`, not dispatchable. For a batch, end the plan with a **verification unit named after the hazards the batch created** ("the old fallback handle still works where the new one doesn't exist yet; nothing asserts on the fields the change removed") — never "run the tests". Hazards are the *output* of planning the rest, so that unit is written last.
+
+**Run and gate — one difference.** Build → review → fix rounds → merge on the trunk → ONE hardening gate; every invariant rides along unchanged. The gate's N× set is whatever the batch changed or could have broken: the union of the briefs' blast radii plus any new or changed specs — after the change, "already-proven" no longer applies to them, so they get the full N×, not the single regression pass. On Claude Code, until a shipped script covers this shape, fork per accelerant § Extending (copy `batch-stabilize`, the shipped non-case instance); on other hosts, sequential dispatches as ever. The close sweep back-writes the **source item** (comment, close, label — per the seeded write policy) instead of a TMS execution, with the same read-back discipline.
+
+**Headless changes nothing.** An invocation from CI or a trigger (`claude -p`, a scheduled job, an automation rule) is just the channel the ask arrives on: same seed, same contracts, same one report. The only behavioural difference falls out of the existing rules — a `blocked` unit parks with its question filed on the tracker instead of asked live. That is the whole unattended posture; there is no separate mode to design.
+
+**A repo with its own execution board.** Some projects carry their own agentic planning/execution machinery — a board directory with its own planner and executor skills (an `.octobots/` tree, for example). There the board is the plan of record: fill your role inside *its* loop — its workflow steps dispatch this bundle's agents by name — and do not run a second board or duplicate its state. Standalone, the no-board doctrine stands (§ Where state lives).
 
 ## Outcomes — what a run says about a case
 
-Six terminal outcomes. They say **where a case ended**, not which state machine step it reached — there are no transitions, nothing to validate, and nothing to keep in sync mid-run:
+Eight terminal outcomes. They say **where a case ended**, not which state machine step it reached — there are no transitions, nothing to validate, and nothing to keep in sync mid-run:
 
 | Outcome | Means | Your move |
 |---|---|---|
@@ -170,10 +276,12 @@ Six terminal outcomes. They say **where a case ended**, not which state machine 
 | `already-covered` | an existing merged spec already proves it | close as Rule-6 dedup, link the covering case |
 | `out-of-scope` | the case's author marked it not-actionable | close per project convention (typically Rejected, TMS author-status as evidence) |
 | `un-automatable` | the case itself cannot be automated | close with a note; do NOT re-dispatch |
+| `merged-sanctioned-red` | merged with the batch while its own test is red **by design** — the red was pre-declared against a ticketed open defect's signature, and the gate ran it but excluded it from the green count | close with the ticket ref; re-enters when the defect ships — ticket-driven, not next-batch-driven. Neither `blocked` (its blocker already has a ticket) nor unproven |
 | `blocked` | something about THIS CASE stopped it — data, access, env, a defect, a conflict, a red gate, an R2 cap | classify per § Handling blockers, replan |
 | `not-started` | the run never got to it, for a reason that is not about the case — budget, account ceiling, breaker, or a dispatch that died on the harness (a 403, an interrupt, a killed session) | it is simply next batch's input |
+| `infra-stalled` | the harness killed the slot mid-flight — the model stream stopped making progress and every retry stalled the same way; the case itself was never judged | an ENVIRONMENT failure: check provider throttling (tokens/min quota, stream stability) before re-dispatching anything; the case re-enters the next batch untouched — but check its unit branch for checkpoint commits first |
 
-**`blocked` vs `not-started` is "whose problem is it".** A case whose own environment, data or code stopped it is `blocked` and needs its blocker cleared before anyone re-dispatches it. A case whose dispatch died *for reasons that have nothing to do with it* — the account ceiling, an auth 403, an interrupt — is `not-started`: nothing was learned about the case, and it re-enters the next batch untouched. Re-dispatching a `blocked` case at the same wall wastes a slot; treating a harness death as `blocked` invents a defect that was never observed.
+**`blocked` vs `not-started` is "whose problem is it".** A case whose own environment, data or code stopped it is `blocked` and needs its blocker cleared before anyone re-dispatches it. A case whose dispatch died *for reasons that have nothing to do with it* — the account ceiling, an auth 403, an interrupt — is `not-started`: nothing was learned about the case, and it re-enters the next batch untouched. Re-dispatching a `blocked` case at the same wall wastes a slot; treating a harness death as `blocked` invents a defect that was never observed. **`infra-stalled` is `not-started`'s louder sibling**: the same "nothing was learned", but the death has a name — the model stream stalled under the slot — and the remedy is specific: fix the provider (quota, stream) before spending another dispatch, and look at the unit branch first, because a checkpointing worker may have landed partial work a retry can continue (see § A dispatched slot that stalls).
 
 Two more appear **only in a report rebuilt from an interrupted run** (§ Interruption): `analysed` and `built` — a case that got partway. They are not statuses you manage; they are how far the evidence goes, and both sit in the **remainder** (they are not terminal), so they feed the next batch like anything unfinished.
 
@@ -211,11 +319,13 @@ An interrupted run — crash, kill, API limit, context death — loses nothing, 
 
 **If the run can resume, resume it.** Re-invoke with the SAME scriptPath and args plus `resumeFromRunId`: every completed `agent()` call replays from cache (including live analyst browser runs), and only the failed call onward runs live. Resending the full `cases` array costs nothing. **Write the runId to disk the moment the Workflow call returns it** — the campaign card for a campaign, `.agents/automation/<slug>/` for a flat batch — because a runId that lives only in the conversation does not survive a compaction.
 
+**Editing the script first voids the cache from the first changed call.** The replay cache keys on each `agent()` call's exact (prompt, opts) — patch the workflow script (or anything its prompts interpolate) and every call whose text shifted, plus everything after it, runs LIVE again. Field case (2026-08-17): a lead patched a dispatch prompt, resumed, and reported "analysis cached, replaying" while a fresh analyst re-ran a ~25-minute live browser pass — the money was already spent when the journal said otherwise. After a script edit, expect re-runs from the earliest changed stage, say so in the checkpoint instead of promising a replay, and check the run's journal (`started` without a cached result = live) rather than assuming.
+
 **An operator pause is the same case, pre-packaged.** Pausing a workflow (the TUI's `p`) and unpausing ENDS the run, and the harness appends the exact resume call — scriptPath, runId, args — to the session. Invoke it as given; the agent that was mid-flight when the pause landed re-runs from its start (only *completed* agents cache), which the dispatch prompts are built to survive (branch-exists judgement, AFS already committed). Two constraints ride along: resume in the **same session** that launched the run — its journal and cache live under that session, and a fresh session has nothing to replay (there, use the reading recovery below) — and **do not update the installed bundle between pause and resume**: the cache is keyed on exact prompts, so a changed script re-runs every unit live from the first changed call onward. Finish the run on the scripts it started with; update after.
 
 **If it cannot resume, recovery is READING, not archaeology.** There is no recovery script, and deliberately so: reconstructing a batch means knowing this project's branch naming, its case-id shape and which system holds "did it merge" — conventions a script can only hardcode and get wrong. (One did: it matched case ids with a fixed `UPPERCASE-digits` regex, so a project numbering cases `12345` or `tc-050` got a confident, empty answer.) You read the seed; you already know. Work the four sources in order — each is cheaper than the next, and the last is the one that cannot lie.
 
-**1. Receipts — the structured returns, already on disk.** On Claude Code this bundle's `SubagentStop` hook writes every workflow agent's structured return to `.agents/automation/_returns/<run-id>/<agent-id>.json` as it completes, free, with no dispatch. That IS the inter-stage state the run was passing along, persisted:
+**1. Receipts — the structured returns, already on disk.** On Claude Code this bundle's `SubagentStop` hook writes every workflow agent's structured return to `.agents/telemetry/automation/returns/<run-id>/<agent-id>.json` as it completes, free, with no dispatch (legacy `_returns/` in repos without the telemetry area — check both). That IS the inter-stage state the run was passing along, persisted:
 
 ```json
 { "run_id": "wf_…", "agent_id": "a1b2c3", "agent_type": "qa-engineer",
@@ -251,7 +361,7 @@ A dead receipt often does not say which case it was on — the text is whatever 
   "recovery": { "rebuilt_from": ["receipts", "git"], "note": "no gate receipt — proof is the merge; PR state unconfirmed (no host CLI)" } }
 ```
 
-A finding is `{kind, note, ref}` — `kind` from the four above, `ref` a tracker id or `null`. `totals` counts every row including the non-terminal ones, so it always sums to `cases.length`. `remainder` is optional (any reader can derive it) but worth writing: it is the thing the next batch consumes. The `recovery` block is the honest part — a rebuilt report is evidence-derived, not witnessed, and the next reader deserves to know which, including anything you could not confirm. Feed the remainder — everything not `automated`, `already-covered`, `out-of-scope` or `un-automatable`, which includes the partway outcomes `analysed` and `built` — to the next batch. Where a case is both analysed and stopped, the stop wins: record `blocked` and keep the `afs` path on the row.
+A finding is `{kind, note, ref}` — `kind` from the four above, `ref` a tracker id or `null`. `totals` counts every row including the non-terminal ones, so it always sums to `cases.length`. `remainder` is optional (any reader can derive it) but worth writing: it is the thing the next batch consumes. The `recovery` block is the honest part — a rebuilt report is evidence-derived, not witnessed, and the next reader deserves to know which, including anything you could not confirm. Feed the remainder — everything not `automated`, `already-covered`, `out-of-scope`, `un-automatable` or `merged-sanctioned-red` (its re-entry is ticket-driven, not batch-driven), which includes the partway outcomes `analysed` and `built` — to the next batch. Where a case is both analysed and stopped, the stop wins: record `blocked` and keep the `afs` path on the row.
 
 The `report.md` twin is the same data rendered for a human: a totals line, a table of case id / outcome / note, findings grouped by kind, then the gate verdict with its timings (or a line saying there was none).
 
@@ -297,7 +407,7 @@ The `report.md` twin is the same data rendered for a human: a totals line, a tab
 
 **WIP-commit case branches** so a crash leaves committed state, not a lost working tree — commit partial-but-coherent progress in the case branch as you go. On a transient agent/API death mid-dispatch: inspect the tree (`git status`, `git diff`), discard only the uncommitted partials *you just created* — **restore, don't delete, anything pre-existing** (`git restore <path>` / `git checkout -- <path>`, never `rm`) — then re-dispatch the slot with an explicit "don't redo what's already committed." **Scoped staging always** — `git add <explicit paths>`, never `git add -A` or `git add .`; a stray edit in a shared file must not ride in on an unscoped stage. Push the intake snapshots to origin **before** cutting the first case branch, so every case branch cuts cleanly off `origin`.
 
-**Scoped CLEANING always — the same rule, and the one that actually bit.** `git stash --include-untracked`, `git clean -fd`, `git checkout -- .` and `git reset --hard` are the staging mistake in reverse: they remove work instead of adding it, and they hit exactly the files nothing else protects — `_returns/` receipts (untracked bookkeeping by design) and anything written since the last commit. Field incident (2026-08-03): a slot needed a clean tree before `git checkout <branch>` and ran `git stash --include-untracked` — it swept six memory entries the wave's own agents had just written (including the one later agents were relying on to work around a missing MCP server) plus three run receipts. Recoverable from the stash, but every agent dispatched afterwards ran without them, and nobody noticed for hours. The commit-what-you-produce rule (§ Memory above) shrinks the exposed window from a whole campaign to a single dispatch — but the cleaning rule stands on its own: **if you need a clean tree, stash by path (`git stash push -- <the paths you touched>`) or commit your own work first.** Never sweep what you did not create — and if a dirty tree you don't understand is blocking you, say so in findings rather than clearing it.
+**Scoped CLEANING always — the same rule, and the one that actually bit.** `git stash --include-untracked`, `git clean -fd`, `git checkout -- .` and `git reset --hard` are the staging mistake in reverse: they remove work instead of adding it. Field incident (2026-08-03): a slot needed a clean tree before `git checkout <branch>` and ran `git stash --include-untracked` — it swept six memory entries the wave's own agents had just written (including the one later agents were relying on to work around a missing MCP server) plus three run receipts. Recoverable from the stash, but every agent dispatched afterwards ran without them, and nobody noticed for hours. Two of those victims are structurally protected today — role memory is gitignored and workflow returns live on the telemetry side, both invisible to `stash -u`/`clean -fd` — but anything plain-untracked (an AFS just written, a spec mid-edit, an unpromoted knowledge draft) still vanishes with no diff and no error, so the rule stands: **if you need a clean tree, stash by path (`git stash push -- <the paths you touched>`) or commit your own work first.** Never sweep what you did not create — and if a dirty tree you don't understand is blocking you, say so in findings rather than clearing it.
 
 ## How to dispatch a subagent (host preflight)
 
@@ -320,6 +430,8 @@ Agent(
 For any non-Claude host, use the exact dispatch form `.agents/team-comms.md` documents for it — mechanics differ per host (GitHub Copilot's, for example, is prose-driven, not a structured call). A dispatch in the wrong host's syntax prints as plain text and nothing runs.
 
 ### Dispatching (any host)
+
+**Skill hygiene rides every brief.** On Claude Code a dispatched agent's `skills:` frontmatter content is PRELOADED into its context; on other hosts the injected block is an INVENTORY (names and descriptions, not content). So the worker's rule is: confirm a skill by CHECKING the context — its headings are visible when it is there — and load (Skill tool on Claude, Read by path elsewhere) ONLY what is genuinely absent: the role's `skills-on-demand`, a reference file, or a preload that visibly failed. Re-invoking a skill already in context pastes its full text a second time — measured 2026-08-18: one dispatch re-loaded ten preloaded skills, ~25k tokens of duplicate context in a slot that ended its run at 97% of the window.
 
 Every dispatch shares the project's one working tree — on every host, including Claude Code (the `Agent` tool offers `isolation: "worktree"`, and the shipped workflows deliberately do not use it: see accelerant § Who may run at once). So the orchestrator owns collision avoidance, and the rule is simply **one at a time**: a tree has one state at a time, so dispatch one slot, let it finish, return the tree to the trunk, dispatch the next. The one exception is the read-only fan-out over a *finished* diff (several reviewers — e.g. the reviewPanel lenses — writing nothing); **there, and only there**, fire all the dispatches in a single reply rather than one per turn.
 
@@ -348,7 +460,7 @@ Every dispatch shares the project's one working tree — on every host, includin
 
 A missing seed is a **fallback condition, not a blocker.** If NONE of the `.agents/*` files exist (never scouted), do **not** dead-stop — self-orient by running scout's own onboarding skill.
 
-1. **Load `seeding-a-project` and run it against this repo.** The *same* skill `scout` carries (load on demand via the Skill tool). It detects framework / run command / paths / base branch and writes the `.agents/*` seed. One onboarding procedure, not two that drift — and the seed persists, so the ICs you dispatch aren't blind.
+1. **Load `seeding-automation-project` and run it against this repo.** The *same* skill `scout` carries (load on demand via the Skill tool). It detects framework / run command / paths / base branch and writes the `.agents/*` seed. One onboarding procedure, not two that drift — and the seed persists, so the ICs you dispatch aren't blind.
 2. **Scope it to "seed enough to proceed."** Let the skill infer aggressively; **ask inline only for the blocking unknowns it can't infer** — which TMS (or markdown?), base branch + merge policy, test user / credential env keys, base URL / API base. Mark inferred-but-unverified values `Unconfirmed`; don't re-ask what it already inferred.
 3. **Proceed** on that seed.
 4. **scout stays the dedicated path** — a `claude --agent scout` run adds the full interview and `session-retrospective` seed refresh. Recommend it for proper onboarding, not because your inline seed is thin.
@@ -358,7 +470,7 @@ A missing seed is a **fallback condition, not a blocker.** If NONE of the `.agen
 
 Run before every TMS-case dispatch you make by hand (inside a run, the script does this):
 
-1. **Identify the slot.** New case (start at analyst), a `ready-for-automation` AFS already (start at implementer), or PR already open (route to reviewer)? Work that doesn't arrive as a case — a merged test now red or flaky, a CI failure — enters via § Suite health / maintenance entry below, not via the analyst.
+1. **Identify the slot.** New case (start at analyst), a `ready-for-automation` AFS already (start at implementer), or PR already open (route to reviewer)? Work that doesn't arrive as a case — a merged test now red or flaky, a CI failure — enters via § Suite health / maintenance entry below, not via the analyst; planned technical work (tech-debt, improvements, chores) enters via § The same loop runs work that isn't a case, with a [tech-task brief](tech-task-brief.md) where the AFS would be.
 2. **Check for existing AFS** at `test-specs/<feature>/l<pri>_<slug>_<TMS-ID>.md`: status `ready-for-automation` → skip analyst, go to implementer; other status → analyst slot first (or handle per Critical Rule 3); no AFS → analyst slot first.
 3. **Check the last report** — `.agents/automation/<slug>/report.json`. A case it reports `automated` is done; a case it reports `blocked` needs its blocker cleared before re-dispatch, not another attempt at the same wall.
 4. **Pick the user set** from `.agents/profile.md` § Roles & sample users.
@@ -369,7 +481,7 @@ Skipping the analyst slot when no AFS exists is a hard error. "POM already cover
 
 ## Canonical dispatch templates
 
-Use these verbatim, substituting `{PLACEHOLDER}` fields.
+Use these verbatim, substituting `{PLACEHOLDER}` fields. For a **brief-driven technical unit** (§ The same loop runs work that isn't a case) the implementer and reviewer templates apply as-is with the [tech-task brief](tech-task-brief.md) path standing in for `{AFS_PATH}` and the unit id for `{TMS_ID}` — the slot contracts document the substitutions — and there is no analyst dispatch: the brief replaces the analyst's artifact, written at planning.
 
 ### Analyst dispatch (qa-engineer + test-case-analysis)
 
@@ -421,6 +533,13 @@ branch FROM the trunk, implement, green once locally (≤ 2 reruns on one root
 cause), declare any red-by-design test with its ticket in your report, open the
 PR against the trunk. Leave the tree on your branch; I merge it next.
 
+CHECKPOINT DISCIPLINE — this dispatch can be killed and re-sent without
+warning, and the retry inherits ONLY what is committed. Before writing
+anything, check whether your feature branch already exists with commits from a
+killed attempt: coherent work → continue it and say what you inherited; wrong →
+rebuild those parts and say so. Commit as milestones land (skeleton, first
+green), by exact path; push per the project's push policy.
+
 Per-case parameters:
 - TMS case ID: {TMS_ID}
 - User set: {USER_SET}
@@ -446,6 +565,36 @@ Per-case parameters:
 
 Stage by exact path, never `git add -A` / `git add .`. Leave the tree on your
 branch when you finish; I merge it into the trunk next.
+
+CHECKPOINT DISCIPLINE — this dispatch can be killed and re-sent without
+warning, and the retry inherits ONLY what is committed. Before writing
+anything, check whether your branch already exists with commits from a killed
+attempt: coherent work → continue it and say what you inherited; wrong →
+rebuild those parts and say so. Commit as milestones land (skeleton, first
+green, each fix), by exact path; push per the project's push policy.
+```
+
+### Publisher dispatch (cheap tier — model haiku or the project's cheapest)
+
+Fires only when `.agents/profile.md` § Reporting policy names a destination.
+Delivery only — the report is already assembled by script; an agent
+re-deriving numbers is spend without trust.
+
+```
+Publish the batch report for {SLUG}. Deliver, do not assemble.
+
+1. Read .agents/automation/{SLUG}/batch-report.md — it is complete; change
+   NOTHING about its numbers or claims.
+2. Post it per .agents/profile.md § Reporting policy: destination
+   {tracker-item | pr-comment}, format {summary-with-link | full-body}.
+   summary-with-link = the "What happened" + "What it cost" sections and any
+   DRIFT warnings, plus the repo path of the full file.
+3. Use the project's own tools for the destination (gh / glab / the tracker
+   MCP named in .agents/profile.md). Wrong item is worse than no post — if
+   the policy's item convention doesn't resolve to exactly one target, STOP
+   and return that instead of guessing.
+4. Return the posted URL (or the precise reason nothing was posted). The URL
+   is the evidence; a claim without it is not done.
 ```
 
 ### Merge-back dispatch (test-automation-engineer)
@@ -518,10 +667,19 @@ it — you PROVE it, and you report exactly what you saw.
 - N: {GATE_N} CONSECUTIVE deterministic green runs, each a clean process
 
 Mechanics are scripted — use `scripts/gate/gate-case.mjs` (it fetches, checks the
-branch out here, merges base FIRST, runs N× with timings, refuses a dirty tree).
+branch out here, merges base FIRST, runs N× with timings; refuses only dirt on
+the files it proves — unrelated noise rides the record as `carriedDirt`).
 It REQUIRES `--branch`, `--base` and `--cmd`: resolve the suite command from
 `.agents/testing.md` § Run commands and pass it as `--cmd` with a `{spec}`
-placeholder, plus `--n {GATE_N}` (and `--timeout <s>` against a wedged env).
+placeholder (and `--timeout <s>` against a wedged env).
+
+HOW TO RUN IT — one run per call: `--n 1`, foreground, with timeout: 600000,
+repeated {GATE_N} times, counting the consecutive greens yourself. Do NOT pass
+`--n {GATE_N}`: that runs all {GATE_N} inside one process, which exceeds the
+600s ceiling a foreground call has, and the call is killed mid-run. If ONE run
+does not fit either, launch it detached with `--json` to a file and wait with
+blocking `sleep 300; <check the file>` polls. Never end a turn while a run is in
+flight, and never poll every few seconds.
 
 A red ANYWHERE ends the attempt — do not retry to "see if it passes". Report the
 failing spec, the failure signature and the run number.
@@ -529,7 +687,9 @@ failing spec, the failure signature and the run number.
 Do NOT merge. Do NOT fix. Do NOT classify the red — that is the lead's call
 (product defect / flake / architectural).
 
-Return {verdict: green|red|not-run, runs, green_specs, failures[], notes}.
+Return {verdict: green|red|not-run|incomplete, runs, green_specs, failures[], notes}.
+Use `incomplete` — NOT `not-run` — if you are cut off mid-flight: set runs to the
+number already green and say in notes where to resume.
 ```
 
 **Then the lead classifies a red** (§ Handling blockers). For a flake or a
@@ -605,17 +765,41 @@ So the rule holds for **any** dispatched slot, and the two most exposed are not 
 | **foundation implementer** | smoke + full suite | every wave behind it waits |
 | **analyst** | live browser exploration | the case never reaches a build |
 
-Run long jobs in the **foreground** and let the call block. If you background one, you own it until it exits: poll it every turn until you have the result. Never end a turn with "I'll wait for this to complete".
+**Waiting is legal. Idling is fatal. Busy-polling is fatal and expensive.** Those are three different things, and the difference is what the rule is about:
 
-Measured on the lazy-modal foundation build (2026-07-30): the implementer backgrounded the full suite, wrote *"I'll wait for this full-suite run to complete"*, and stopped. Twelve minutes later the output file was still empty, the conductor still held a `pending` journal entry, and finishing a nearly-complete branch took a human noticing plus a rescue dispatch. Nothing errored — that is the danger. A slot that idles looks exactly like a slot that is thinking.
+1. **A call that fits — let it block.** Pass the maximum timeout (`timeout: 600000`; the default is 120s and will kill a suite run mid-flight). A foreground call cannot exceed **600s**, so "let it block" only works for jobs under ~9 minutes. (A project whose SINGLE run routinely exceeds that can raise the host's cap itself — `BASH_MAX_TIMEOUT_MS` in the Claude Code environment — and stay foreground; that is an operator/env decision, not the slot's.)
+2. **A job that does not fit — launch it detached** (output to a file), then **wait with blocking foreground polls**: ONE `sleep <n>; <tail the file>` per call, each with `timeout: 600000`, until it is done. A sleep costs **one turn no matter how long it is**. Make the FIRST poll short (~60-120s) — a run that dies in its first minute must not cost a five-minute blind sleep — then settle at ~`sleep 300`.
+3. **Never chain sleeps inside one call.** `sleep 120; tail; sleep 240; tail` outlives the call cap and is killed at its own timeout — taking the tail you already read with it (field-measured 2026-08-17: chained polls dying at 10m with exit 143). One sleep, one look, return, repeat.
+4. **Never end a turn while a job runs.** Nothing wakes you.
+5. **Never poll at second-level intervals.** You pay a whole resident context per turn.
 
-If a job is genuinely too long for one call, that is a **finding** (`findings[]`, kind `note`) — surface it and narrow the run. A slow suite is a problem to report, not to hide behind a background job.
+Measured, controlled probe (2026-08-10), two arms: a dispatched slot that ends its turn mid-job is forced to report **28ms later** — the documented `run_in_background` "you will be re-invoked when it exits" path and the Monitor tool **both** lose that race. In the same probe, three blocking 45s foreground sleeps ran untouched. So there is no waking, and sleeping is how you wait.
+
+**The same holds for a HEADLESS lead itself** (`claude -p`, a factory loop, CI): the main thread's turn end is process exit, so every "you will be notified / re-invoked" promise in a tool result — the Monitor tool's above all — is written for interactive sessions and is void there. Field case (2026-08-19, factory mode): a lead that had been correctly sleep-polling a gate run handed the wait to Monitor — whose own result text says *"keep working — do not poll or sleep"* — ended its turn on that advice, and the session exited mid-run with the suite orphaned and the card untouched. In unattended modes, treat Monitor as unavailable and notification promises as lies; the blocking foreground wait is the only wait.
+
+Measured in production, the same week: the wave-01 gate had a 15-minute job and polled `kill -0` every 2 seconds — **27 poll turns, $1.29, 32% of that agent's cost**, and it was cut off before the suite finished. Two `sleep 300` calls would have cost **$0.10** and returned a verdict. Earlier still (2026-07-30, lazy-modal foundation) an implementer backgrounded the suite, wrote *"I'll wait for this full-suite run to complete"*, and stopped: twelve minutes later the output file was still empty, the conductor still held a `pending` journal entry, and finishing a nearly-complete branch took a human noticing plus a rescue dispatch. Nothing errored — that is the danger. A slot that idles looks exactly like a slot that is thinking.
+
+If a job is too long even for sleep-polling, that is a **finding** (`findings[]`, kind `note`) — surface it and narrow the run. A slow suite is a problem to report, not to hide behind a background job.
 
 ### Background-job progress protocol
 
 When you run a background MCP / batch / loop script processing ≥10 items (status sweep, link batch, sub-task creation pass, file-by-file analysis), the script MUST emit incremental progress — append `N/total — <item-key> — <outcome>` to a status file per iteration. Then poll the status file and report progress proactively in your status updates ("link sweep — 32/58 done, no failures").
 
 Silent batches that print only at completion create false "stuck?" interpretations and force the operator to interrupt mid-stream. The fix is single-line-per-iteration logging + proactive polling — not reassurance ("not stuck, just long"). Reassurance scales poorly across multi-hour arcs; progress signals scale trivially.
+
+### A dispatched slot that stalls — environment, not case
+
+The failure the previous two sections cannot explain: a slot that was working normally goes **silent right after a completed tool step** — no new output, no error — and the harness eventually kills it as stalled. On Claude Code's Workflow tool the trace reads `[stall] agent "…" stalled (no progress) after Ns — retrying (n/5)` and, when every retry stalls too, the run's error is `agent stalled on all N attempts (no progress for …ms each)`. On any host the shape is the same: dead air where the next model response should be — sometimes an agent that never produces its **first** token.
+
+**That is the model stream dying under the slot, not the slot thinking and not the case failing.** Field case (2026-08-17, quota-throttled Bedrock): one combined slot burned **11 attempts across two runs** — every kill was dead air after a completed tool result, one attempt received zero model tokens in 15 minutes — while the lead's own small-context turns went through fine. That asymmetry is the diagnostic: big-context dispatches hang while small calls pass = provider throttling (tokens/min quota) or stream instability, not anything about the batch.
+
+The doctrine, on ANY host:
+
+1. **The stalled unit gets `infra-stalled`, the batch continues, and the report always lands.** The workflow scripts now absorb this themselves (a stalled slot is caught, recorded, and the run moves on). On the sequential path — you dispatching subagents by hand on Claude Code or any other host — **you are that try/catch**: record the outcome, move to the next unit, and never let one dead slot leave the whole batch unreported.
+2. **Never classify a stall as `blocked`** — that invents a case defect nobody observed and sends the next session hunting it.
+3. **Check the unit branch before re-dispatching.** A checkpointing worker (the dispatch briefs demand it) may have committed partial work a retry can continue from.
+4. **Consecutive stalls stop the batch.** Three in a row is the environment saying no — the workflow's breaker does this automatically; by hand, stop admitting units and report what happened instead of feeding more dispatches to the same wall.
+5. **The fix is operator-level**, not another dispatch: provider quota (on Bedrock, tokens/min service quotas — note the burndown counts *requested* max output tokens), stream stability, or moving the heavy slot to a less-throttled model. Re-enter the stalled units only after that changes.
 
 ## Handling blockers — classify and route
 
@@ -635,7 +819,7 @@ For all of the above: the classification and action go into your status report, 
 
 ### Suite health / maintenance entry — work that doesn't arrive as a case
 
-A merged test going red or flaky (CI failure, nightly break, keep-the-suite-green duty) enters here — no new TMS case, no analyst pass. Classify per the table above: **product defect** → the bug pipeline (`.agents/profile.md` § Bug filing), park the test red (no masking — a red test exposing a real bug is correct); **surface/AFS drift** (selectors/observables stale) → analyst rerun on the covering case, then a fix-only implementer dispatch; **test-code bug or flake** (timing, state leak, parallel interaction) → `batch-stabilize` when several specs are involved, a fix-only implementer dispatch when it is genuinely one; **framework gap** → § Framework architecture. The fix PR runs the reviewer and the gate like any other.
+A merged test going red or flaky (CI failure, nightly break, keep-the-suite-green duty) enters here — no new TMS case, no analyst pass. Classify per the table above: **product defect** → the bug pipeline (`.agents/profile.md` § Bug filing), park the test red (no masking — a red test exposing a real bug is correct); **surface/AFS drift** (selectors/observables stale) → analyst rerun on the covering case, then a fix-only implementer dispatch; **test-code bug or flake** (timing, state leak, parallel interaction) → `batch-stabilize` when several specs are involved, a fix-only implementer dispatch when it is genuinely one; **framework gap** → § Framework architecture. The fix PR runs the reviewer and the gate like any other. This entry is for the *reactive* single item; planned technical work — a tech-debt sweep, a batch of improvements — goes through § The same loop runs work that isn't a case, each unit carrying a [tech-task brief](tech-task-brief.md).
 
 ## R2 cap rule — never dispatch R3 on the same root cause
 

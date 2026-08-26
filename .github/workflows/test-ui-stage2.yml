@@ -9,7 +9,7 @@ on:
       suite:
         description: 'Test suite'
         type: choice
-        options: [all, agents, admin, artifacts, chat, pipelines, skills, smoke, support_assistant, toolkits, voice]
+        options: [all, agents, admin, artifacts, chat, pipelines, pipelines_2, skills, smoke, support_assistant, toolkits, voice]
         default: all
       custom_suites:
         description: 'Custom suites (comma-separated)'
@@ -21,8 +21,8 @@ on:
         options: ['1', '2', '3', '4', '5', '6', '7', '8', '9']
         default: '9'
       markers:
-        description: 'Pytest markers'
-        default: ''
+        description: 'Pytest markers (default excludes new tests; use "new" for new only, "all" for all tests)'
+        default: 'not new'
       ref:
         description: 'Git branch/tag/SHA'
         type: string
@@ -44,7 +44,7 @@ jobs:
       suite: ${{ inputs.suite || 'all' }}
       custom_suites: ${{ inputs.custom_suites || '' }}
       parallel_jobs: ${{ inputs.parallel_jobs || '9' }}
-      markers: ${{ inputs.markers || '' }}
+      markers: ${{ inputs.markers || 'not new' }}
       ref: ${{ inputs.ref || 'aqa/main-stage2' }}
       publish_to_tms: ${{ inputs.publish_to_tms }}
       tms_report_suffix: ${{ inputs.tms_report_suffix || '' }}
@@ -54,8 +54,6 @@ jobs:
       ELITEA_API_BASE: ${{ secrets.ELITEA_API_BASE_STAGE2 }}
       ELITEA_API_TOKEN: ${{ secrets.ELITEA_API_TOKEN_STAGE2 }}
       ELITEA_PROJECT_ID: ${{ secrets.ELITEA_PROJECT_ID_STAGE2 }}
-      TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL_STAGE2 }}
-      TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD_STAGE2 }}
       # Indexed project IDs for parallel suite execution (env-specific)
       TEST_USER_PROJECT_1: ${{ secrets.TEST_USER_PROJECT_STAGE2_1 }}
       TEST_USER_PROJECT_2: ${{ secrets.TEST_USER_PROJECT_STAGE2_2 }}
@@ -66,7 +64,7 @@ jobs:
       TEST_USER_PROJECT_7: ${{ secrets.TEST_USER_PROJECT_STAGE2_7 }}
       TEST_USER_PROJECT_8: ${{ secrets.TEST_USER_PROJECT_STAGE2_8 }}
       TEST_USER_PROJECT_9: ${{ secrets.TEST_USER_PROJECT_STAGE2_9 }}
-      TEST_USER_PROJECT_10: ${{ secrets.TEST_USER_PROJECT_STAGE2_10 }}
+      TEST_USER_PROJECT_ADMIN: ${{ secrets.TEST_USER_PROJECT_STAGE2_ADMIN }}
       # Indexed tokens for parallel suite execution (env-specific)
       TEST_USER_TOKEN_1: ${{ secrets.TEST_USER_TOKEN_STAGE2_1 }}
       TEST_USER_TOKEN_2: ${{ secrets.TEST_USER_TOKEN_STAGE2_2 }}
@@ -77,28 +75,21 @@ jobs:
       TEST_USER_TOKEN_7: ${{ secrets.TEST_USER_TOKEN_STAGE2_7 }}
       TEST_USER_TOKEN_8: ${{ secrets.TEST_USER_TOKEN_STAGE2_8 }}
       TEST_USER_TOKEN_9: ${{ secrets.TEST_USER_TOKEN_STAGE2_9 }}
-      TEST_USER_TOKEN_10: ${{ secrets.TEST_USER_TOKEN_STAGE2_10 }}
+      TEST_USER_TOKEN_ADMIN: ${{ secrets.TEST_USER_TOKEN_STAGE2_ADMIN }}
+      # Admin user credentials
+      TEST_USER_PASSWORD_ADMIN: ${{ secrets.TEST_USER_PASSWORD_ADMIN }}
       # Indexed user credentials for parallel suite execution
-      TEST_USER_NAME_1: ${{ secrets.TEST_USER_NAME_1 }}
       TEST_USER_PASSWORD_1: ${{ secrets.TEST_USER_PASSWORD_1 }}
-      TEST_USER_NAME_2: ${{ secrets.TEST_USER_NAME_2 }}
       TEST_USER_PASSWORD_2: ${{ secrets.TEST_USER_PASSWORD_2 }}
-      TEST_USER_NAME_3: ${{ secrets.TEST_USER_NAME_3 }}
       TEST_USER_PASSWORD_3: ${{ secrets.TEST_USER_PASSWORD_3 }}
-      TEST_USER_NAME_4: ${{ secrets.TEST_USER_NAME_4 }}
       TEST_USER_PASSWORD_4: ${{ secrets.TEST_USER_PASSWORD_4 }}
-      TEST_USER_NAME_5: ${{ secrets.TEST_USER_NAME_5 }}
       TEST_USER_PASSWORD_5: ${{ secrets.TEST_USER_PASSWORD_5 }}
-      TEST_USER_NAME_6: ${{ secrets.TEST_USER_NAME_6 }}
       TEST_USER_PASSWORD_6: ${{ secrets.TEST_USER_PASSWORD_6 }}
-      TEST_USER_NAME_7: ${{ secrets.TEST_USER_NAME_7 }}
       TEST_USER_PASSWORD_7: ${{ secrets.TEST_USER_PASSWORD_7 }}
-      TEST_USER_NAME_8: ${{ secrets.TEST_USER_NAME_8 }}
       TEST_USER_PASSWORD_8: ${{ secrets.TEST_USER_PASSWORD_8 }}
-      TEST_USER_NAME_9: ${{ secrets.TEST_USER_NAME_9 }}
       TEST_USER_PASSWORD_9: ${{ secrets.TEST_USER_PASSWORD_9 }}
-      TEST_USER_NAME_10: ${{ secrets.TEST_USER_NAME_10 }}
-      TEST_USER_PASSWORD_10: ${{ secrets.TEST_USER_PASSWORD_10 }}
+      # Team project ID for multi-user permission tests (global vars, not env-specific)
+      ELITEA_TEAM_PROJECT_ID: ${{ vars.ELITEA_TEAM_PROJECT_ID }}
       GIT_HUB_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
       BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
       ADO_TOKEN: ${{ secrets.ADO_TOKEN }}

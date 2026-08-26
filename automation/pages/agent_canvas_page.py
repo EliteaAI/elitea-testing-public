@@ -1,31 +1,34 @@
-"""Agent Canvas Page — in-chat "+ Create New Agent" canvas panel (ELITEA-2166).
+"""Agent Canvas Page — in-chat agent canvas panel (ELITEA-2166, ELITEA-2089).
 
 Handles the right-side panel opened from ``ChatPage``'s ``+`` menu -> Agents
--> "+ Create New Agent" (``ChatPage.open_create_new_agent_canvas()``).
+-> "+ Create New Agent" (create mode, ELITEA-2166), and also the edit canvas
+opened by clicking the pencil icon next to a participant in the PARTICIPANTS
+panel (edit mode, ELITEA-2089).
 
-The panel renders the SAME ``CreateAgentForm`` component as the standalone
-``/agents/create`` page — ``AgentFormPage`` already owns the Name/Description/
-Instructions fields and the Save button under those exact testids
-(``agent-name-input`` / ``agent-description-input`` / ``agent-instructions-input``
-/ ``agent-save-button``). Per ``.agents/testing.md`` § Locator policy ("a
-data-testid should appear in exactly one file"), this page object does NOT
-redeclare those fields — reuse ``AgentFormPage(page)`` on the same ``page``
-for filling the form and clicking Save (see the test for the composition
-pattern; ``test_agent_with_toolkit_chat.py`` already composes ``AgentPage``
-+ ``ChatPage`` the same way).
+The panel renders the SAME ``CreateAgentForm`` / ``AgentEditor`` component as
+the standalone ``/agents/create`` and ``/agents/all/{id}`` pages —
+``AgentFormPage`` already owns the Name/Description/Instructions fields and
+the Save button under those exact testids. Per ``.agents/testing.md`` §
+Locator policy ("a data-testid should appear in exactly one file"), this page
+object does NOT redeclare those fields — reuse ``AgentFormPage(page)`` on the
+same ``page`` for filling the form and clicking Save.
 
 This page object owns only the canvas-specific chrome that has no
 ``AgentFormPage`` equivalent: the close (X) button, the title/subtitle
-heading, and the 5 accordion section headers.
+heading, the Discard button, and the 5 accordion section headers.
+
+ELITEA-2089 — ``discard_button`` added (testid ``agent-discard-button`` wired
+in ``EditorHeader.jsx`` via new ``discardButtonTestId`` prop, passed from
+``AgentEditor.jsx`` at its call site — pushed to ``automation/testids``).
 """
 
 import logging
 
 from playwright.sync_api import Page
+from utils.actions import action
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
-from utils.actions import action
 
 logger = logging.getLogger("elitea.pages.agent_canvas")
 
@@ -51,6 +54,15 @@ class AgentCanvasPage(BasePage):
         description=(
             "Canvas subtitle — the active version name (e.g. 'base'). Not "
             "rendered pre-save (no version exists until the agent is created)."
+        ),
+    )
+
+    discard_button = LocatorDescriptor(
+        testid="agent-discard-button",
+        description=(
+            "Discard button in the agent canvas header. Becomes enabled when "
+            "the agent form is dirty (ELITEA-2089). Testid wired in "
+            "EditorHeader.jsx via discardButtonTestId prop from AgentEditor.jsx."
         ),
     )
 

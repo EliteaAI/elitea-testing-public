@@ -21,7 +21,7 @@ from pages.skill_detail_page import SkillDetailPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.skills, pytest.mark.p2, pytest.mark.regression, pytest.mark.new_verified]
 
 UI_ELEMENT_TIMEOUT = 10_000
 

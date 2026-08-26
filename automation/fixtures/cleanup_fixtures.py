@@ -121,7 +121,11 @@ def cleanup_leaked_credentials(_browser_cookies):
     # Final cleanup: delete everything (fetch ALL pages)
     api = CredentialAPI(browser_cookies=_browser_cookies)
     try:
-        items = api.list_all_credentials()
+        try:
+            items = api.list_all_credentials()
+        except Exception as e:
+            logger.warning("Credential cleanup: skipped (no access to project): %s", e)
+            return
 
         if items:
             logger.warning(
@@ -162,7 +166,11 @@ def cleanup_leaked_toolkits_at_end(_browser_cookies):
 
     api = ToolkitAPI(browser_cookies=_browser_cookies)
     try:
-        items = api.list_all_toolkits()
+        try:
+            items = api.list_all_toolkits()
+        except Exception as e:
+            logger.warning("Toolkit cleanup: skipped (no access to project): %s", e)
+            return
 
         if items:
             logger.warning(

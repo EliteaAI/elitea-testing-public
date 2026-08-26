@@ -54,6 +54,13 @@ cd ../EliteaUI && npm run dev                                    # → http://lo
   `LocatorDescriptor(testid="agent-form-save-button")`; `fallback`/`locator` params are
   forbidden. Naming: `{section}-{element}-{type}`. Locators live **only as page-object
   class fields** — never inside methods or specs. Overrides: `.agents/role-overrides.md`.
+- **Fidelity: the observable must be produced by the SYSTEM, not by the test.**
+  Fabricated responses (`route.fulfill`), injected state (`page.evaluate`),
+  wrong-interface preconditions and replaced clients are **substitutions**. Allowed
+  only as *transit* (to reach the step under test, declared) or when the case text
+  asks for simulation. Reading the case's own observable off a substitution is
+  forbidden — if it can't be produced honestly, it goes to a **human**, not around.
+  Delaying a real response for timing control is fine. `.agents/testing.md` § Fidelity policy.
 - **Test steps wrapped in `with allure.step("Step N — …"):`** so they reach reports.
 - **`.env.test` beats shell env vars** (`config.py` orders dotenv first). Edit the file,
   don't export.
@@ -116,7 +123,7 @@ wins over this file.
   there is no PM above him. He is a top-level orchestrator, not a subagent.
 - **`scout`** seeds the project first (`claude --agent scout`): framework, TMS
   adapter, base branch, merge policy, credential matrix. If the project isn't
-  seeded, Tal **self-orients by running the same `seeding-a-project` skill
+  seeded, Tal **self-orients by running the same `seeding-automation-project` skill
   himself** (asking only for blocking unknowns) — he never dead-stops; a
   deliberate `claude --agent scout` run stays the thorough path.
 - **`qa-engineer` (Sage)** fills two slots — **analyst** (writes the AFS) and
@@ -226,4 +233,26 @@ of TMS cases (a single case is a batch of one)
   tickets). Don't invent a write the seed didn't set up, and don't drop one it
   did. Onboarding itself only *captures* this policy — it doesn't perform the
   writes.
+
+## Agent memory — two layers
+
+**`.agents/knowledge/`** — distilled, cross-role, **verified** facts about this project. Committed
+and reviewed. Read its `README.md` before starting, plus the folder covering what you are touching.
+
+**`.agents/memory/<role>/`** — your own working notes and daily log. **Local only** (gitignored,
+never shared between machines), so anything another role needs is invisible there.
+
+When you learn something, choose the layer deliberately. Promote it to `.agents/knowledge/` only if
+**all four** hold — otherwise keep it in your role directory:
+
+1. **Cross-role** — useful to two or more roles, or architecture-level.
+2. **Verified** — you confirmed it against the running system, and the note says how, with a date.
+3. **Durable** — still true once this mission ends.
+4. **Costly to rediscover** — anything obvious from reading the code belongs in the code.
+
+Correct or delete a shared note the moment it stops being true: a stale one misleads every role at
+once. Never commit an unverified claim — it is worse than silence, because it is trusted. Mission
+state belongs on the work board, not in either memory layer.
+
+Use the `memory` skill for the per-role layer and `knowledge-curation` for the shared one.
 <!-- BUNDLE:test-automation END -->

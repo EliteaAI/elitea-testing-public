@@ -1,0 +1,137 @@
+{
+  "batch": "skills-buildwithai-fidelity-rework",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-skills-buildwithai-fidelity-rework",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [214.93, 213.63, 213.39],
+    "run_by": "lead (test-automation-lead), independently, after the workflow's own internal gate agent failed twice (Connection refused, then cut-off-mid-run) and never produced a verdict",
+    "node_ids": [
+      "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAIReviewFormEditableFields::test_loading_state_shows_exact_text_and_review_form_has_no_extra_sections",
+      "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAIReviewFormEditableFields::test_review_form_fields_are_editable_before_creation",
+      "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAIReviewFormEditableFields::test_create_skill_from_unmodified_draft_persists_generated_values",
+      "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAINameFieldValidation::test_name_field_validation_on_invalid_manual_edits",
+      "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAIReviewFormCharacterLimits::test_review_form_field_character_limit_is_enforced[ELITEA-1994-description]",
+      "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAIReviewFormCharacterLimits::test_review_form_field_character_limit_is_enforced[ELITEA-1995-instructions]",
+      "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAIBackToPromptFromReviewStep::test_back_to_prompt_returns_to_input_step_and_preserves_prompt_text",
+      "tests/ui/skills/test_skill_build_with_ai.py::TestSkillBuildWithAICancelFromReviewStep::test_cancel_from_review_step_does_not_create_skill"
+    ],
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-1989",
+      "outcome": "automated",
+      "note": "TERMINAL unit — rewrote entirely: live generate call, response asserted non-empty, review form byte-identical to response.json(). Own gate green 3/3.",
+      "afs": ".agents/automation/skills-buildwithai-fidelity-rework/briefs/terminal-1989.md",
+      "branch": "tests/ELITEA-1989-live-generate-draft",
+      "pr": 1501,
+      "findings": [
+        {"kind": "note", "note": "Mechanical fidelity grep on the unit diff: 0 hits (.mock_/page.route/route.fulfill/monkeypatch/.evaluate). Locator-handle grep: 0 hits.", "ref": "PR #1501"},
+        {"kind": "note", "note": "Reviewer (fresh session) APPROVED; triangulated brief terminal-1989.md's 7 numbered requirements 1:1 against the diff."},
+        {"kind": "clarification", "note": "The pre-existing AFS test-specs/skills/lextend_skill-draft-generated-from-natural-language-description_ELITEA-1989.md still carries the fidelity-audit 'UNDER REVIEW' banner and a stale Automation Hints section — not fixed by this unit (out of scope, code is what shipped); flagged for a future AFS sweep.", "ref": "test-specs/skills/lextend_skill-draft-generated-from-natural-language-description_ELITEA-1989.md"}
+      ]
+    },
+    {
+      "id": "ELITEA-1990",
+      "outcome": "automated",
+      "note": "MIXED unit — pre-populate check converted from PAYLOAD comparison to response.json() comparison; edit/create/detail-page assertions (the case's real subject) unchanged. Own gate green 3/3.",
+      "afs": ".agents/automation/skills-buildwithai-fidelity-rework/briefs/mixed-1990-1991-1993.md",
+      "branch": "tests/1990-1991-1993-live-generate-fidelity-rework",
+      "pr": 1502,
+      "findings": [
+        {"kind": "note", "note": "Mechanical fidelity + locator-handle + masking greps: 0 hits each. Reviewer (fresh session) APPROVED."}
+      ]
+    },
+    {
+      "id": "ELITEA-1991",
+      "outcome": "automated",
+      "note": "MIXED unit — pre-populate check converted from PAYLOAD comparison to response.json() comparison; unmodified-draft persistence chain (the case's real subject) unchanged. Own gate green 3/3.",
+      "afs": ".agents/automation/skills-buildwithai-fidelity-rework/briefs/mixed-1990-1991-1993.md",
+      "branch": "tests/1990-1991-1993-live-generate-fidelity-rework",
+      "pr": 1502,
+      "findings": [
+        {"kind": "note", "note": "Cross-linked issue #139 with the rework landing + PR link (issue stayed CLOSED, not reopened — human's own note that reopening is a human call). Confirmed posted."},
+        {"kind": "test-infra-fix", "note": "The fabricated mock had been masking a live test-infra gap: SkillDetailPage's CodeMirror instructions-editor DOM read silently truncates/garbles long real AI-generated Markdown. Fixed inline by reading via skill_api.get_skill(skill_id)['version_details']['instructions'] (server ground truth) instead of the DOM. Not a product defect — no ticket filed, per the implementer's own note this is an infra-class Phase 5 fix.", "ref": "automation/tests/ui/skills/test_skill_build_with_ai.py:648"}
+      ]
+    },
+    {
+      "id": "ELITEA-1993",
+      "outcome": "automated",
+      "note": "MIXED unit — Step-1 pre-populate check converted from PAYLOAD comparison to response.json() comparison; Steps 2-7 (the case's real subject — name-validation rules) already honest, unchanged. Own gate green 3/3.",
+      "afs": ".agents/automation/skills-buildwithai-fidelity-rework/briefs/mixed-1990-1991-1993.md",
+      "branch": "tests/1990-1991-1993-live-generate-fidelity-rework",
+      "pr": 1502,
+      "findings": [
+        {"kind": "note", "note": "Cross-linked issue #170 with the rework landing + PR link (issue stayed CLOSED, not reopened). Confirmed posted."}
+      ]
+    },
+    {
+      "id": "ELITEA-1994",
+      "outcome": "automated",
+      "note": "TRANSIT unit — one-line mock-to-live swap; no payload-value assertion existed in this test (truncation is the only observable). Own gate green 3/3.",
+      "afs": ".agents/automation/skills-buildwithai-fidelity-rework/briefs/transit-1994-1995-1996-1998.md",
+      "branch": "tests/ELITEA-1994-1995-1996-1998-live-generate",
+      "pr": 1503,
+      "findings": [
+        {"kind": "note", "note": "Mechanical fidelity + locator-handle + masking greps: 0 hits each. Reviewer (fresh session) APPROVED."}
+      ]
+    },
+    {
+      "id": "ELITEA-1995",
+      "outcome": "automated",
+      "note": "TRANSIT unit — same fix as ELITEA-1994 (shared parameterized test). Own gate green 3/3.",
+      "afs": ".agents/automation/skills-buildwithai-fidelity-rework/briefs/transit-1994-1995-1996-1998.md",
+      "branch": "tests/ELITEA-1994-1995-1996-1998-live-generate",
+      "pr": 1503,
+      "findings": []
+    },
+    {
+      "id": "ELITEA-1996",
+      "outcome": "automated",
+      "note": "TRANSIT unit — pre-check name assertion converted from PAYLOAD comparison to response.json() comparison; all other assertions (DOM-removal, prompt-preservation, network/console-absence) byte-identical. Own gate green 3/3.",
+      "afs": ".agents/automation/skills-buildwithai-fidelity-rework/briefs/transit-1994-1995-1996-1998.md",
+      "branch": "tests/ELITEA-1994-1995-1996-1998-live-generate",
+      "pr": 1503,
+      "findings": []
+    },
+    {
+      "id": "ELITEA-1998",
+      "outcome": "automated",
+      "note": "TRANSIT unit — pre-check and negative-check name assertions converted from PAYLOAD comparison to response.json() comparison; all other assertions unchanged. Own gate green 3/3.",
+      "afs": ".agents/automation/skills-buildwithai-fidelity-rework/briefs/transit-1994-1995-1996-1998.md",
+      "branch": "tests/ELITEA-1994-1995-1996-1998-live-generate",
+      "pr": 1503,
+      "findings": [
+        {"kind": "clarification", "note": "The three merged AFS files these tests trace to still carry the fidelity-audit 'UNDER REVIEW' banner plus stale Automation Hints sections recommending the retired mock pattern. Not blocking (implementer worked from the brief, not the stale hints) — recorded for a future AFS sweep.", "ref": "test-specs/skills/*_ELITEA-199{4,6,8}.md"}
+      ]
+    }
+  ],
+  "totals": {
+    "automated": 8
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [],
+  "parked": [],
+  "report_written": true,
+  "report_path": ".agents/automation/skills-buildwithai-fidelity-rework/report.json",
+  "trunk_pr": {
+    "number": 1504,
+    "url": "https://github.com/EliteaAI/elitea-testing-public/pull/1504",
+    "merged": true,
+    "merge_commit": "79e08dea499808711936b8829484b3f6e9994975",
+    "merge_strategy": "squash",
+    "note": "Trunk had one merge conflict against automation/base (two append/append conflicts in daily memory logs, unrelated content) — dispatched to test-automation-engineer for resolution per the no-edit guardrail (memory: no_edit_guardrail_repo_agnostic.md), not self-resolved. Target file (test_skill_build_with_ai.py) confirmed byte-identical before/after that conflict resolution, so the lead's independent gate (run on the pre-conflict-resolution trunk tip) remained valid ground truth for the merged content — verified via git diff before merging."
+  },
+  "tms_backwrite": {
+    "done": true,
+    "commit": "9ab2e49",
+    "repo": "EliteaAI/onetest-ai-tm-Elitea",
+    "fields_changed": ["automation_pr"],
+    "fields_unchanged": ["execution_type", "status", "automation_test_id"],
+    "note": "Rework kept every test's node-id unchanged, so status/execution_type/automation_test_id required no change — only automation_pr updated to point at the merged fidelity-rework PR (#1504) instead of each case's original delivery PR."
+  },
+  "next": "None — batch fully landed: 8/8 automated, gate green 3/3 (lead-run, independent), trunk PR #1504 merged to automation/base, TMS back-written, #170/#139 cross-linked. Non-blocking follow-up recorded as a finding: 3 merged AFS files (ELITEA-1989/1990/1991/1993/1994/1996/1998's traces) still carry stale 'UNDER REVIEW' Automation Hints sections recommending the retired mock pattern — worth a sweep if #1298/#1399's audit closes out AFS files individually, not a blocker for this batch."
+}

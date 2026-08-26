@@ -1,0 +1,106 @@
+name: UI Tests DEV Stable
+run-name: UI Tests DEV Stable [${{ inputs.ref || 'main' }}] [${{ inputs.custom_suites || inputs.suite || 'all' }}]
+
+on:
+  schedule:
+    - cron: '0 23 * * *'
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Test suite'
+        type: choice
+        options: [all, agents, admin, artifacts, chat, pipelines, pipelines_2, skills, smoke, support_assistant, toolkits, voice]
+        default: all
+      custom_suites:
+        description: 'Custom suites (comma-separated). Leave empty to discover all suites dynamically.'
+        type: string
+        default: ''
+      parallel_jobs:
+        description: 'Number of parallel runners (1-9)'
+        type: choice
+        options: ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+        default: '9'
+      markers:
+        description: 'Pytest markers (default: stable tests only - excludes new/blocked/flaky)'
+        default: 'not new and not blocked and not flaky'
+      ref:
+        description: 'Git branch/tag/SHA'
+        type: string
+        default: 'main'
+      publish_to_tms:
+        description: 'Publish results to OneTest TMS'
+        type: boolean
+        default: false
+      tms_report_suffix:
+        description: 'Suffix for TMS report name'
+        type: string
+        default: ''
+
+jobs:
+  test:
+    uses: ./.github/workflows/test-ui-custom.yml
+    with:
+      environment: dev-stable
+      suite: ${{ inputs.suite || 'all' }}
+      custom_suites: ${{ inputs.custom_suites || '' }}
+      parallel_jobs: ${{ inputs.parallel_jobs || '9' }}
+      markers: ${{ inputs.markers || 'not new and not blocked and not flaky' }}
+      ref: ${{ inputs.ref || 'main' }}
+      publish_to_tms: ${{ github.event_name == 'schedule' || inputs.publish_to_tms }}
+      tms_report_suffix: ${{ github.event_name == 'schedule' && 'scheduled' || inputs.tms_report_suffix || '' }}
+      update_correlation: true
+    secrets:
+      ELITEA_URL: ${{ secrets.ELITEA_URL_DEV }}
+      ELITEA_API_BASE: ${{ secrets.ELITEA_API_BASE_DEV }}
+      ELITEA_API_TOKEN: ${{ secrets.ELITEA_API_TOKEN_DEV }}
+      ELITEA_PROJECT_ID: ${{ secrets.ELITEA_PROJECT_ID_DEV }}
+      # Indexed project IDs for parallel suite execution (env-specific)
+      TEST_USER_PROJECT_1: ${{ secrets.TEST_USER_PROJECT_DEV_1 }}
+      TEST_USER_PROJECT_2: ${{ secrets.TEST_USER_PROJECT_DEV_2 }}
+      TEST_USER_PROJECT_3: ${{ secrets.TEST_USER_PROJECT_DEV_3 }}
+      TEST_USER_PROJECT_4: ${{ secrets.TEST_USER_PROJECT_DEV_4 }}
+      TEST_USER_PROJECT_5: ${{ secrets.TEST_USER_PROJECT_DEV_5 }}
+      TEST_USER_PROJECT_6: ${{ secrets.TEST_USER_PROJECT_DEV_6 }}
+      TEST_USER_PROJECT_7: ${{ secrets.TEST_USER_PROJECT_DEV_7 }}
+      TEST_USER_PROJECT_8: ${{ secrets.TEST_USER_PROJECT_DEV_8 }}
+      TEST_USER_PROJECT_9: ${{ secrets.TEST_USER_PROJECT_DEV_9 }}
+      TEST_USER_PROJECT_ADMIN: ${{ secrets.TEST_USER_PROJECT_DEV_ADMIN }}
+      # Indexed tokens for parallel suite execution (env-specific)
+      TEST_USER_TOKEN_1: ${{ secrets.TEST_USER_TOKEN_DEV_1 }}
+      TEST_USER_TOKEN_2: ${{ secrets.TEST_USER_TOKEN_DEV_2 }}
+      TEST_USER_TOKEN_3: ${{ secrets.TEST_USER_TOKEN_DEV_3 }}
+      TEST_USER_TOKEN_4: ${{ secrets.TEST_USER_TOKEN_DEV_4 }}
+      TEST_USER_TOKEN_5: ${{ secrets.TEST_USER_TOKEN_DEV_5 }}
+      TEST_USER_TOKEN_6: ${{ secrets.TEST_USER_TOKEN_DEV_6 }}
+      TEST_USER_TOKEN_7: ${{ secrets.TEST_USER_TOKEN_DEV_7 }}
+      TEST_USER_TOKEN_8: ${{ secrets.TEST_USER_TOKEN_DEV_8 }}
+      TEST_USER_TOKEN_9: ${{ secrets.TEST_USER_TOKEN_DEV_9 }}
+      TEST_USER_TOKEN_ADMIN: ${{ secrets.TEST_USER_TOKEN_DEV_ADMIN }}
+      # Admin user credentials
+      TEST_USER_PASSWORD_ADMIN: ${{ secrets.TEST_USER_PASSWORD_ADMIN }}
+      # Indexed user credentials for parallel suite execution
+      TEST_USER_PASSWORD_1: ${{ secrets.TEST_USER_PASSWORD_1 }}
+      TEST_USER_PASSWORD_2: ${{ secrets.TEST_USER_PASSWORD_2 }}
+      TEST_USER_PASSWORD_3: ${{ secrets.TEST_USER_PASSWORD_3 }}
+      TEST_USER_PASSWORD_4: ${{ secrets.TEST_USER_PASSWORD_4 }}
+      TEST_USER_PASSWORD_5: ${{ secrets.TEST_USER_PASSWORD_5 }}
+      TEST_USER_PASSWORD_6: ${{ secrets.TEST_USER_PASSWORD_6 }}
+      TEST_USER_PASSWORD_7: ${{ secrets.TEST_USER_PASSWORD_7 }}
+      TEST_USER_PASSWORD_8: ${{ secrets.TEST_USER_PASSWORD_8 }}
+      TEST_USER_PASSWORD_9: ${{ secrets.TEST_USER_PASSWORD_9 }}
+      GIT_HUB_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
+      BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
+      ADO_TOKEN: ${{ secrets.ADO_TOKEN }}
+      CONFLUENCE_USERNAME: ${{ secrets.CONFLUENCE_USERNAME }}
+      CONFLUENCE_API_KEY: ${{ secrets.CONFLUENCE_API_KEY }}
+      XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
+      XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
+      ZEPHYR_API_KEY: ${{ secrets.ZEPHYR_API_KEY }}
+      ZEPHYR_ESENTIALS_KEY: ${{ secrets.ZEPHYR_ESENTIALS_KEY }}
+      GITLAB_PRIVATE_TOKEN: ${{ secrets.GITLAB_PRIVATE_TOKEN }}
+      POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
+      JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
+      JIRA_API_KEY: ${{ secrets.JIRA_API_KEY }}
+      JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+      CONFLUENCE_BASE_URL: ${{ secrets.CONFLUENCE_BASE_URL }}
+      CONFLUENCE_SPACE: ${{ secrets.CONFLUENCE_SPACE }}

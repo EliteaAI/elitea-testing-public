@@ -36,6 +36,7 @@ on:
           - artifacts
           - chat
           - pipelines
+          - pipelines_2
           - skills
           - smoke
           - support_assistant
@@ -63,9 +64,9 @@ on:
           - '9'
         default: '9'
       markers:
-        description: 'Pytest markers (e.g., p0, smoke, "p0 or p1")'
+        description: 'Pytest markers (default excludes new tests; use "new" for new only, "all" for all tests)'
         required: false
-        default: ''
+        default: 'not new'
       ref:
         description: 'Git ref (branch, tag, SHA). Leave empty for default.'
         required: false
@@ -109,10 +110,10 @@ on:
         type: string
         default: '9'
       markers:
-        description: 'Pytest markers'
+        description: 'Pytest markers (default excludes new tests; use "new" for new only, "all" for all tests)'
         required: false
         type: string
-        default: ''
+        default: 'not new'
       ref:
         description: 'Git ref (branch, tag, SHA)'
         required: false
@@ -142,7 +143,7 @@ on:
         required: false
       ELITEA_PROJECT_ID:
         required: false
-      # Indexed project IDs for parallel suite execution (env-specific: TEST_USER_PROJECT_[ENV]_X)
+      # Indexed project IDs for parallel suite execution
       TEST_USER_PROJECT_1:
         required: false
       TEST_USER_PROJECT_2:
@@ -161,9 +162,9 @@ on:
         required: false
       TEST_USER_PROJECT_9:
         required: false
-      TEST_USER_PROJECT_10:
+      TEST_USER_PROJECT_ADMIN:
         required: false
-      # Indexed API tokens for parallel suite execution (env-specific: TEST_USER_TOKEN_[ENV]_X)
+      # Indexed API tokens for parallel suite execution
       TEST_USER_TOKEN_1:
         required: false
       TEST_USER_TOKEN_2:
@@ -182,51 +183,31 @@ on:
         required: false
       TEST_USER_TOKEN_9:
         required: false
-      TEST_USER_TOKEN_10:
+      TEST_USER_TOKEN_ADMIN:
         required: false
-      TEST_USER_EMAIL:
-        required: false
-      TEST_USER_PASSWORD:
-        required: false
-      TEST_USER_NAME_1:
-        required: false
+      # Indexed passwords for parallel suite execution
       TEST_USER_PASSWORD_1:
-        required: false
-      TEST_USER_NAME_2:
         required: false
       TEST_USER_PASSWORD_2:
         required: false
-      TEST_USER_NAME_3:
-        required: false
       TEST_USER_PASSWORD_3:
-        required: false
-      TEST_USER_NAME_4:
         required: false
       TEST_USER_PASSWORD_4:
         required: false
-      TEST_USER_NAME_5:
-        required: false
       TEST_USER_PASSWORD_5:
-        required: false
-      TEST_USER_NAME_6:
         required: false
       TEST_USER_PASSWORD_6:
         required: false
-      TEST_USER_NAME_7:
-        required: false
       TEST_USER_PASSWORD_7:
-        required: false
-      TEST_USER_NAME_8:
         required: false
       TEST_USER_PASSWORD_8:
         required: false
-      TEST_USER_NAME_9:
-        required: false
       TEST_USER_PASSWORD_9:
         required: false
-      TEST_USER_NAME_10:
+      TEST_USER_PASSWORD_ADMIN:
         required: false
-      TEST_USER_PASSWORD_10:
+      # Team project ID for multi-user tests (bucket permissions, etc.)
+      ELITEA_TEAM_PROJECT_ID:
         required: false
       GIT_HUB_TOKEN:
         required: false
@@ -334,32 +315,110 @@ jobs:
           SUITE_COUNT=${#SUITE_ARRAY[@]}
           echo "Total suites: $SUITE_COUNT"
 
-          # Distribute suites across users (round-robin, max MAX_USERS jobs)
-          # Each user_idx gets suites: idx, idx+MAX_USERS, idx+2*MAX_USERS, ...
-          # This ensures max MAX_USERS parallel jobs, each with unique credentials
-          declare -A USER_SUITES
-          for i in "${!SUITE_ARRAY[@]}"; do
-            suite="${SUITE_ARRAY[$i]}"
-            user_idx=$(( (i % MAX_USERS) + 1 ))
-            if [ -z "${USER_SUITES[$user_idx]}" ]; then
-              USER_SUITES[$user_idx]="$suite"
+          # SPECIAL HANDLING: Extract 'admin' suite if present - it always runs in separate executor
+          HAS_ADMIN=false
+          ADMIN_REMOVED_SUITES=()
+          for suite in "${SUITE_ARRAY[@]}"; do
+            if [ "$suite" = "admin" ]; then
+              HAS_ADMIN=true
+              echo "Admin suite detected - will run in dedicated executor with suffix 'ADMIN'"
             else
-              USER_SUITES[$user_idx]="${USER_SUITES[$user_idx]},$suite"
+              ADMIN_REMOVED_SUITES+=("$suite")
             fi
           done
 
-          # Build JSON matrix: one entry per user with their assigned suites
+          # Replace SUITE_ARRAY with admin-removed version for distribution
+          SUITE_ARRAY=("${ADMIN_REMOVED_SUITES[@]}")
+
+          # Distribute suites across users using weighted load-balancing
+          # (greedy bin-packing: assign each suite to the executor with minimum current load)
+          # This replaces round-robin to better balance execution time across executors
+
+          # Step 1: Count test files per suite (only when checkout happened)
+          declare -A SUITE_SIZES
+          if [ "${{ inputs.suite }}" = "all" ] && [ -z "${{ inputs.custom_suites }}" ]; then
+            echo "Counting test files per suite for load-balanced distribution..."
+            for suite in "${SUITE_ARRAY[@]}"; do
+              count=$(find "automation/tests/ui/$suite" -type f -name 'test_*.py' 2>/dev/null | wc -l | tr -d ' ')
+              SUITE_SIZES[$suite]=$count
+              echo "  $suite: $count test files"
+            done
+          else
+            # No checkout available (single suite or custom list) - fall back to equal weights
+            echo "Using equal weights (no checkout available for counting)"
+            for suite in "${SUITE_ARRAY[@]}"; do
+              SUITE_SIZES[$suite]=10
+            done
+          fi
+
+          # Step 2: Sort suites by size (largest first) for greedy assignment
+          SORTED_SUITES=()
+          while IFS= read -r line; do
+            SORTED_SUITES+=("$line")
+          done < <(
+            for suite in "${SUITE_ARRAY[@]}"; do
+              echo "${SUITE_SIZES[$suite]} $suite"
+            done | sort -rn | awk '{print $2}'
+          )
+
+          # Step 3: Assign each suite to executor with minimum load (greedy bin-packing)
+          declare -A USER_SUITES
+          declare -A EXECUTOR_LOADS
+          for i in $(seq 1 $MAX_USERS); do
+            EXECUTOR_LOADS[$i]=0
+          done
+
+          for suite in "${SORTED_SUITES[@]}"; do
+            # Find executor with minimum load
+            min_load=999999
+            min_executor=1
+            for i in $(seq 1 $MAX_USERS); do
+              load=${EXECUTOR_LOADS[$i]:-0}
+              if [ $load -lt $min_load ]; then
+                min_load=$load
+                min_executor=$i
+              fi
+            done
+
+            # Assign suite to that executor
+            if [ -z "${USER_SUITES[$min_executor]}" ]; then
+              USER_SUITES[$min_executor]="$suite"
+            else
+              USER_SUITES[$min_executor]="${USER_SUITES[$min_executor]},$suite"
+            fi
+            EXECUTOR_LOADS[$min_executor]=$(( ${EXECUTOR_LOADS[$min_executor]} + ${SUITE_SIZES[$suite]} ))
+          done
+
+          # Log final distribution
+          echo "Final distribution (test files per executor):"
+          for i in $(seq 1 $MAX_USERS); do
+            if [ -n "${USER_SUITES[$i]}" ]; then
+              echo "  Executor $i: ${EXECUTOR_LOADS[$i]} files - ${USER_SUITES[$i]}"
+            fi
+          done
+
+          # Build JSON matrix: one entry per suffix with their assigned suites
           JSON="["
           FIRST=true
-          for user_idx in $(echo "${!USER_SUITES[@]}" | tr ' ' '\n' | sort -n); do
-            suites="${USER_SUITES[$user_idx]}"
+          for suffix in $(echo "${!USER_SUITES[@]}" | tr ' ' '\n' | sort -n); do
+            suites="${USER_SUITES[$suffix]}"
             if [ "$FIRST" = true ]; then
               FIRST=false
             else
               JSON="$JSON,"
             fi
-            JSON="$JSON{\"user_idx\":\"$user_idx\",\"suites\":\"$suites\"}"
+            JSON="$JSON{\"suffix\":\"$suffix\",\"suites\":\"$suites\"}"
           done
+
+          # Add admin suite as separate dedicated executor (if it was present)
+          if [ "$HAS_ADMIN" = true ]; then
+            if [ "$FIRST" = false ]; then
+              JSON="$JSON,"
+            fi
+            JSON="$JSON{\"suffix\":\"ADMIN\",\"suites\":\"admin\"}"
+            echo "Added dedicated admin executor to matrix"
+          fi
+
           JSON="$JSON]"
 
           echo "Matrix JSON: $JSON"
@@ -412,13 +471,21 @@ jobs:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+
       - name: Install dependencies
+        timeout-minutes: 10
         run: |
           python -m pip install --upgrade pip
           pip install pytest-rerunfailures
           pip install -e ".[reporting]"
           playwright install chromium
-          playwright install-deps chromium
+          # Note: playwright install-deps removed - GitHub-hosted runners have deps pre-installed.
+          # This was causing 45+ minute hangs due to Azure apt mirror timeouts.
 
       - name: Install Allure CLI
         if: always()
@@ -435,13 +502,19 @@ jobs:
           # Use secrets from workflow_call if available, otherwise resolve by env name
           ELITEA_URL: ${{ secrets.ELITEA_URL || secrets[format('ELITEA_URL_{0}', steps.env.outputs.upper)] }}
           ELITEA_API_BASE: ${{ secrets.ELITEA_API_BASE || secrets[format('ELITEA_API_BASE_{0}', steps.env.outputs.upper)] }}
-          # Use indexed credentials for parallel execution (fall back to non-indexed for backwards compatibility)
-          # Project IDs: TEST_USER_PROJECT_[ENV]_X passed as TEST_USER_PROJECT_X
-          ELITEA_PROJECT_ID: ${{ secrets[format('TEST_USER_PROJECT_{0}', matrix.user_idx)] || secrets.ELITEA_PROJECT_ID }}
-          # Tokens: TEST_USER_TOKEN_[ENV]_X passed as TEST_USER_TOKEN_X
-          ELITEA_API_TOKEN: ${{ secrets[format('TEST_USER_TOKEN_{0}', matrix.user_idx)] || secrets.ELITEA_API_TOKEN }}
-          TEST_USER_EMAIL: ${{ secrets[format('TEST_USER_NAME_{0}', matrix.user_idx)] || secrets.TEST_USER_EMAIL }}
-          TEST_USER_PASSWORD: ${{ secrets[format('TEST_USER_PASSWORD_{0}', matrix.user_idx)] || secrets.TEST_USER_PASSWORD }}
+          # Use indexed credentials for parallel execution
+          ELITEA_PROJECT_ID: ${{ secrets[format('TEST_USER_PROJECT_{0}', matrix.suffix)] }}
+          ELITEA_API_TOKEN: ${{ secrets[format('TEST_USER_TOKEN_{0}', matrix.suffix)] }}
+          # Username follows pattern: autotest_user_[suffix_lowercase] (e.g., autotest_user_1, autotest_user_admin)
+          # Secrets use uppercase suffix (e.g., TEST_USER_PASSWORD_1, TEST_USER_PASSWORD_ADMIN)
+          TEST_USER_EMAIL: autotest_user_${{ matrix.suffix == 'ADMIN' && 'admin' || matrix.suffix }}
+          TEST_USER_PASSWORD: ${{ secrets[format('TEST_USER_PASSWORD_{0}', matrix.suffix)] }}
+          # Secondary user (User B) for multi-user tests - uses user 9 for all parallel jobs
+          # Note: Job 9 will have same user for primary and secondary, but no multi-user tests there yet
+          TEST_USER_B_EMAIL: autotest_user_9
+          TEST_USER_B_PASSWORD: ${{ secrets.TEST_USER_PASSWORD_9 }}
+          # Team project ID for multi-user permission tests
+          ELITEA_TEAM_PROJECT_ID: ${{ secrets.ELITEA_TEAM_PROJECT_ID }}
           GIT_HUB_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
           BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
           ADO_TOKEN: ${{ secrets.ADO_TOKEN }}
@@ -475,13 +548,15 @@ jobs:
           PYTEST_CMD="$PYTEST_CMD $TEST_PATHS"
 
           MARKERS="${{ inputs.markers }}"
-          if [ -n "$MARKERS" ]; then
+          # "all" means no marker filtering (run all tests)
+          if [ -n "$MARKERS" ] && [ "$MARKERS" != "all" ]; then
             PYTEST_CMD="$PYTEST_CMD -m \"$MARKERS\""
           fi
 
           PYTEST_CMD="$PYTEST_CMD -v --tb=short"
 
-          echo "Running suites '$SUITES' with user index ${{ matrix.user_idx }}"
+          USERNAME="autotest_user_${{ matrix.suffix == 'ADMIN' && 'admin' || matrix.suffix }}"
+          echo "Running suites '$SUITES' with user suffix ${{ matrix.suffix }} ($USERNAME)"
           echo "Running: $PYTEST_CMD"
           eval $PYTEST_CMD
 
@@ -489,8 +564,9 @@ jobs:
         if: always()
         working-directory: automation
         run: |
+          USERNAME="autotest_user_${{ matrix.suffix == 'ADMIN' && 'admin' || matrix.suffix }}"
           echo "## Test Results - ${{ steps.env.outputs.name }} - ${{ matrix.suites }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Suites:** ${{ matrix.suites }} (user index: ${{ matrix.user_idx }})" >> $GITHUB_STEP_SUMMARY
+          echo "**Suites:** ${{ matrix.suites }} (user: $USERNAME)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ -f "reports/junit.xml" ]; then
@@ -538,10 +614,11 @@ jobs:
         id: upload-results
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ steps.env.outputs.name }}-user${{ matrix.user_idx }}-${{ github.run_number }}
+          name: test-results-${{ steps.env.outputs.name }}-user${{ matrix.suffix }}-${{ github.run_number }}
           path: |
             automation/reports/report.html
             automation/reports/junit.xml
+            automation/reports/reruns.json
           retention-days: 14
           if-no-files-found: ignore
 
@@ -550,7 +627,7 @@ jobs:
         id: upload-allure-results
         uses: actions/upload-artifact@v4
         with:
-          name: allure-results-${{ steps.env.outputs.name }}-user${{ matrix.user_idx }}-${{ github.run_number }}
+          name: allure-results-${{ steps.env.outputs.name }}-user${{ matrix.suffix }}-${{ github.run_number }}
           path: automation/reports/allure-results/
           retention-days: 14
           if-no-files-found: ignore
@@ -560,7 +637,7 @@ jobs:
         id: upload-allure-report
         uses: actions/upload-artifact@v4
         with:
-          name: allure-report-${{ steps.env.outputs.name }}-user${{ matrix.user_idx }}-${{ github.run_number }}
+          name: allure-report-${{ steps.env.outputs.name }}-user${{ matrix.suffix }}-${{ github.run_number }}
           path: automation/reports/allure-report/
           retention-days: 14
           if-no-files-found: ignore
@@ -577,7 +654,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-traces-${{ steps.env.outputs.name }}-user${{ matrix.user_idx }}-${{ github.run_number }}
+          name: playwright-traces-${{ steps.env.outputs.name }}-user${{ matrix.suffix }}-${{ github.run_number }}
           path: automation/reports/traces/*.zip
           retention-days: 7
           if-no-files-found: ignore
@@ -692,13 +769,30 @@ jobs:
 
           # Aggregate all JUnit XML files from parallel suite runs
           # Convert JUnit XML to TMS JSON format and determine status
+          # Merge rerun data from conftest.py's reruns.json (pytest-rerunfailures)
           python3 << 'EOF' > report.json
           import json, xml.etree.ElementTree as ET
           import glob
           import os
 
           items = []
-          total = passed = failed = skipped = 0
+          total = passed = failed = skipped = total_reruns = 0
+
+          # Load reruns.json from conftest.py hook (pytest-rerunfailures data)
+          # Format: {"nodeid": {"count": N, "messages": [...]}, ...}
+          reruns_data = {}
+          reruns_files = glob.glob("results/**/reruns.json", recursive=True)
+          if not reruns_files:
+              if os.path.exists("results/reruns.json"):
+                  reruns_files = ["results/reruns.json"]
+          for rf in reruns_files:
+              try:
+                  with open(rf) as f:
+                      data = json.load(f)
+                      reruns_data.update(data)
+                      print(f"Loaded {len(data)} rerun entries from {rf}", file=__import__('sys').stderr)
+              except Exception as e:
+                  print(f"Warning: Failed to load {rf}: {e}", file=__import__('sys').stderr)
 
           # Find all junit.xml files from parallel suite runs
           junit_files = glob.glob("results/**/junit.xml", recursive=True)
@@ -720,21 +814,42 @@ jobs:
                       if f is not None or e is not None:
                           el = f if f is not None else e
                           status = "failed"
-                          msg = ((el.get("message") or "") + " " + (el.text or "")).strip()
+                          msg = ((el.get("message") or "") + " " + (el.text or "")).strip()[:500]  # Truncate large tracebacks
                       elif sk is not None:
                           status, msg = "skipped", ""
                       else:
                           status, msg = "passed", ""
+
+                      # Look up rerun data by nodeid (pytest format: path::Class::method)
+                      # JUnit classname is dotted, need to construct nodeid
+                      # classname: tests.ui.agents.test_agent.TestAgent
+                      # name: test_method[param]
+                      # nodeid: tests/ui/agents/test_agent.py::TestAgent::test_method[param]
+                      nodeid = cls.replace(".", "/") + ".py::" + name.rsplit(".", 1)[-1] if cls else name
+                      # Also try with :: between class and method
+                      if "." in cls:
+                          parts = cls.rsplit(".", 1)
+                          nodeid_alt = parts[0].replace(".", "/") + ".py::" + parts[1] + "::" + name
+                      else:
+                          nodeid_alt = nodeid
+
+                      rerun_info = reruns_data.get(nodeid) or reruns_data.get(nodeid_alt) or {"count": 0, "messages": []}
+                      rerun_count = rerun_info.get("count", 0)
+                      rerun_messages = rerun_info.get("messages", [])
+
                       total += 1
                       passed += status == "passed"
                       failed += status == "failed"
                       skipped += status == "skipped"
+                      total_reruns += rerun_count
                       items.append({
                           "code_ref": code_ref,
                           "name": name,
                           "status": status,
                           "duration_ms": dur,
-                          "failure_message": msg
+                          "failure_message": msg,
+                          "reruns": rerun_count,
+                          "rerun_messages": rerun_messages
                       })
               except Exception as e:
                   print(f"Warning: Failed to parse {junit_file}: {e}", file=__import__('sys').stderr)
@@ -748,7 +863,7 @@ jobs:
               overall_status = "PASSED"
 
           out = {
-              "launch": {"total": total, "passed": passed, "failed": failed, "skipped": skipped},
+              "launch": {"total": total, "passed": passed, "failed": failed, "skipped": skipped, "reruns": total_reruns},
               "items": items
           }
           print(json.dumps(out, indent=2, ensure_ascii=False))
@@ -818,4 +933,260 @@ jobs:
           git add reports/correlation.json reports/coverage.md
           git diff --cached --quiet || \
             git commit -m "correlation: rebuild for ${RUN_ID}"
+          git push
+
+      - name: Generate test dashboard
+        if: always() && inputs.update_correlation == true
+        run: |
+          # Build RUN_ID (same logic as correlation step)
+          DATE=$(date +%Y-%m-%d)
+          ENV_NAME="${{ needs.test.outputs.env-name }}"
+          SUITE="${{ inputs.custom_suites != '' && inputs.custom_suites || inputs.suite }}"
+          SUITE_UPPER=$(echo "$SUITE" | tr '[:lower:]' '[:upper:]' | tr ',' '-')
+          SUFFIX="${{ inputs.tms_report_suffix }}"
+          STATUS=$(cat status.txt)
+          RUN_ID="RUN-ELITEA-${DATE}-${{ github.run_number }}-${ENV_NAME^^}-${SUITE_UPPER}"
+          if [ -n "$SUFFIX" ]; then
+            RUN_ID="${RUN_ID}-$(echo "$SUFFIX" | tr '[:lower:]' '[:upper:]')"
+          fi
+          RUN_ID="${RUN_ID}-${STATUS}"
+          echo "RUN_ID=${RUN_ID}"
+
+          cd tms
+
+          # Generate dashboard.md with Mermaid charts from junit-RUN-*.json files
+          python3 << 'DASHBOARD_EOF' > reports/dashboard.md
+          import json
+          import glob
+          import os
+          from datetime import datetime, timezone
+
+          # Load all junit reports (last 20 for trend)
+          reports = []
+          excluded = []
+          all_files = sorted(glob.glob("reports/automated/junit-RUN-*.json"))[-20:]
+          for f in all_files:
+              try:
+                  with open(f) as fp:
+                      data = json.load(fp)
+                      # Extract run name from filename: junit-RUN-ELITEA-2026-08-20-123-DEV-SMOKE-PASSED.json
+                      name = os.path.basename(f).replace("junit-", "").replace(".json", "")
+                      # Shorten: RUN-ELITEA-2026-08-20-123-DEV-SMOKE-PASSED -> Aug20-123-DEV
+                      parts = name.split("-")
+                      if len(parts) >= 7:
+                          month = datetime.strptime(parts[3], "%Y").strftime("%b") if len(parts[3]) == 4 else parts[3]
+                          try:
+                              month = datetime.strptime(f"{parts[3]}-{parts[4]}-{parts[5]}", "%Y-%m-%d").strftime("%b%d")
+                          except:
+                              month = f"{parts[4]}-{parts[5]}"
+                          short_name = f"{month}-{parts[6]}-{parts[7]}"
+                      else:
+                          short_name = name[:15]
+
+                      launch = data.get("launch", {})
+                      entry = {
+                          "name": short_name,
+                          "full_name": name,
+                          "total": launch.get("total", 0),
+                          "passed": launch.get("passed", 0),
+                          "failed": launch.get("failed", 0),
+                          "skipped": launch.get("skipped", 0),
+                          "reruns": launch.get("reruns", 0),
+                          "file": os.path.basename(f)
+                      }
+                      # Validate numeric fields are integers (skip report if not)
+                      for field in ("total", "passed", "failed", "skipped", "reruns"):
+                          if not isinstance(entry[field], int):
+                              raise TypeError(f"Field '{field}' must be int, got {type(entry[field]).__name__}")
+                      reports.append(entry)
+              except Exception as e:
+                  excluded.append((os.path.basename(f), str(e)))
+
+          # Print statistics
+          import sys
+          print(f"Files available: {len(all_files)}, included: {len(reports)}, excluded: {len(excluded)}", file=sys.stderr)
+          for fname, reason in excluded:
+              print(f"  - {fname}: {reason}", file=sys.stderr)
+
+          if not reports:
+              print("# Test Dashboard\n\nNo test reports found yet.")
+              exit(0)
+
+          # Header
+          print("# Test Dashboard")
+          print(f"\n_Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}_\n")
+
+          # Latest run pie chart
+          latest = reports[-1]
+          print("## Latest Run\n")
+          print(f"**{latest['full_name']}**\n")
+          print("```mermaid")
+          print("pie showData")
+          print(f'    title "Test Results ({latest["total"]} total)"')
+          print(f'    "Passed" : {latest["passed"]}')
+          print(f'    "Failed" : {latest["failed"]}')
+          if latest["skipped"] > 0:
+              print(f'    "Skipped" : {latest["skipped"]}')
+          print("```\n")
+
+          # Stats table for latest
+          print("| Metric | Value |")
+          print("|--------|-------|")
+          print(f"| Total | {latest['total']} |")
+          print(f"| Passed | {latest['passed']} |")
+          print(f"| Failed | {latest['failed']} |")
+          print(f"| Skipped | {latest['skipped']} |")
+          print(f"| Reruns | {latest['reruns']} |")
+          pass_rate = (latest['passed'] / latest['total'] * 100) if latest['total'] > 0 else 0
+          print(f"| Pass Rate | {pass_rate:.1f}% |")
+          print()
+
+          # Trend chart (last 10 runs)
+          trend_runs = reports[-10:]
+          if len(trend_runs) > 1:
+              print("## Trend (Last 10 Runs)\n")
+              names = [r['name'] for r in trend_runs]
+              passed = [r['passed'] for r in trend_runs]
+              failed = [r['failed'] for r in trend_runs]
+              max_val = max(max(passed), 10) + 5
+
+              print("```mermaid")
+              print("xychart-beta")
+              print('    title "Pass/Fail Trend"')
+              print(f'    x-axis [{", ".join(names)}]')
+              print(f'    y-axis "Tests" 0 --> {max_val}')
+              print(f'    bar "Passed" [{", ".join(map(str, passed))}]')
+              print(f'    bar "Failed" [{", ".join(map(str, failed))}]')
+              print("```\n")
+
+              # Reruns trend if any
+              reruns = [r['reruns'] for r in trend_runs]
+              if any(r > 0 for r in reruns):
+                  print("### Reruns Trend\n")
+                  print("```mermaid")
+                  print("xychart-beta")
+                  print('    title "Test Reruns (Flakiness Indicator)"')
+                  print(f'    x-axis [{", ".join(names)}]')
+                  print(f'    y-axis "Reruns" 0 --> {max(reruns) + 3}')
+                  print(f'    line "Reruns" [{", ".join(map(str, reruns))}]')
+                  print("```\n")
+
+          # History table
+          print("## Run History\n")
+          print("| Run | Total | Passed | Failed | Skipped | Reruns | Rate |")
+          print("|-----|-------|--------|--------|---------|--------|------|")
+          for r in reversed(reports[-10:]):
+              rate = (r['passed'] / r['total'] * 100) if r['total'] > 0 else 0
+              status = "✅" if r['failed'] == 0 else "❌"
+              print(f"| {status} {r['name']} | {r['total']} | {r['passed']} | {r['failed']} | {r['skipped']} | {r['reruns']} | {rate:.0f}% |")
+          print()
+
+          print("---")
+          print(f"_Source: `reports/automated/junit-RUN-*.json` ({len(reports)} reports)_")
+          DASHBOARD_EOF
+
+          echo "✓ Generated reports/dashboard.md"
+          cat reports/dashboard.md
+
+          # Generate coverage analysis comparing automation/index.json with TMS index_automated.json
+          # Fetch automation index from main repo (not checked out in this job)
+          curl -sL -H "Authorization: token ${{ secrets.GIT_HUB_TOKEN }}" \
+            "https://raw.githubusercontent.com/EliteaAI/elitea-testing-public/main/automation/index.json" \
+            -o /tmp/automation_index.json || echo '{"tests":[]}' > /tmp/automation_index.json
+
+          python3 << 'COVERAGE_EOF' >> reports/dashboard.md
+          import json
+          import os
+
+          print("\n---\n")
+          print("## TMS Coverage Analysis\n")
+
+          # Load automation index (fetched from elitea-testing-public repo)
+          automation_index_path = "/tmp/automation_index.json"
+          tms_index_path = "index_automated.json"
+
+          if not os.path.exists(automation_index_path):
+              print("_Automation index not found. Run `build-test-index` workflow first._")
+              exit(0)
+
+          if not os.path.exists(tms_index_path):
+              print("_TMS index not found._")
+              exit(0)
+
+          with open(automation_index_path) as f:
+              automation_data = json.load(f)
+          with open(tms_index_path) as f:
+              tms_data = json.load(f)
+
+          # Extract test IDs
+          automation_ids = set(t["automation_test_id"] for t in automation_data.get("tests", []))
+
+          # TMS cases have automation_test_id as a list
+          tms_ids = set()
+          tms_case_map = {}  # test_id -> case info
+          for case in tms_data.get("cases", []):
+              for test_id in case.get("automation_test_id", []):
+                  tms_ids.add(test_id)
+                  tms_case_map[test_id] = {"id": case["id"], "title": case["title"], "status": case.get("status", "")}
+
+          # Calculate differences
+          in_automation_not_tms = automation_ids - tms_ids  # Tests without TMS cases
+          in_tms_not_automation = tms_ids - automation_ids  # Orphan TMS refs (case exists but test doesn't)
+          linked = automation_ids & tms_ids  # Properly linked
+
+          # Summary stats
+          print("| Metric | Count |")
+          print("|--------|-------|")
+          print(f"| Tests in automation | {len(automation_ids)} |")
+          print(f"| Tests linked to TMS cases | {len(linked)} |")
+          print(f"| Tests without TMS case | {len(in_automation_not_tms)} |")
+          print(f"| Orphan TMS refs (test missing) | {len(in_tms_not_automation)} |")
+          coverage = len(linked) / len(automation_ids) * 100 if automation_ids else 0
+          print(f"| **TMS Coverage** | **{coverage:.1f}%** |")
+          print()
+
+          # Coverage pie chart
+          print("```mermaid")
+          print("pie showData")
+          print(f'    title "TMS Linkage ({len(automation_ids)} tests)"')
+          print(f'    "Linked to TMS" : {len(linked)}')
+          print(f'    "No TMS case" : {len(in_automation_not_tms)}')
+          print("```\n")
+
+          # Tests without TMS cases (full list)
+          if in_automation_not_tms:
+              print("### Tests Without TMS Case\n")
+              print("_Tests that exist in automation but have no linked TMS case._\n")
+              print("<details>")
+              print(f"<summary>Show {len(in_automation_not_tms)} unlinked tests</summary>\n")
+              for test_id in sorted(in_automation_not_tms):
+                  print(f"- `{test_id}`")
+              print("\n</details>\n")
+
+          # Orphan TMS refs (full list)
+          if in_tms_not_automation:
+              print("### Orphan TMS References\n")
+              print("_TMS cases reference tests that don't exist in automation (renamed/deleted?)._\n")
+              print("<details>")
+              print(f"<summary>Show {len(in_tms_not_automation)} orphan refs</summary>\n")
+              for test_id in sorted(in_tms_not_automation):
+                  case = tms_case_map.get(test_id, {})
+                  case_id = case.get("id", "?")
+                  print(f"- `{test_id}` ({case_id})")
+              print("\n</details>\n")
+
+          print("---")
+          print(f"_Compared `automation/index.json` ({len(automation_ids)} tests) with `index_automated.json` ({len(tms_ids)} refs)_")
+          COVERAGE_EOF
+
+          echo "✓ Appended TMS coverage analysis"
+
+          # Copy dashboard.md to historical dashboards folder
+          mkdir -p reports/dashboards
+          cp reports/dashboard.md "reports/dashboards/dashboard-${RUN_ID}.md"
+          echo "✓ Copied to reports/dashboards/dashboard-${RUN_ID}.md"
+
+          git add reports/dashboard.md "reports/dashboards/dashboard-${RUN_ID}.md"
+          git diff --cached --quiet || \
+            git commit -m "dashboard: update test metrics for ${RUN_ID}"
           git push

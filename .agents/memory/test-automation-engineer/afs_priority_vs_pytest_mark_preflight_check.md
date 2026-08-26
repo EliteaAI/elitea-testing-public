@@ -1,8 +1,49 @@
 ---
 name: AFS Priority line vs pytest.mark — implementer preflight check
-description: Before handing off any new test, grep the AFS's own "Priority: lN" line against the new test's @pytest.mark.pN decorator — a mismatch silently excludes a self-declared high-priority case from the "p0 or p1" CI gate and is invisible to every other check (locators, additive-only diff, live green run). Caught by review on ELITEA-1846/PR #678 (own p2), ELITEA-2284/PR #1175 (inherited module p2), ELITEA-2310/PR #1186 (own p2, missed a full round), ELITEA-2377/PR #1242 (module-level, l3->p2 not p3, same-round miss), ELITEA-2435/PR #1256 (both module + per-function p3 not p2, fresh single-test file, same-round miss), and ELITEA-2438/PR #1262 (round-1 fix-round dispatch NAMED this exact finding and it still had no visible diff attempt — fixed round 2).
+description: Before handing off any new test, grep the AFS's own "Priority: lN" line against the new test's @pytest.mark.pN decorator — a mismatch silently excludes a self-declared high-priority case from the "p0 or p1" CI gate and is invisible to every other check (locators, additive-only diff, live green run). Caught by review on ELITEA-1846/PR #678 (own p2), ELITEA-2284/PR #1175 (inherited module p2), ELITEA-2310/PR #1186 (own p2, missed a full round), ELITEA-2377/PR #1242 (module-level, l3->p2 not p3, same-round miss), ELITEA-2435/PR #1256 (both module + per-function p3 not p2, fresh single-test file, same-round miss), ELITEA-2438/PR #1262 (round-1 fix-round dispatch NAMED this exact finding and it still had no visible diff attempt — fixed round 2), and ELITEA-2045/PR #1325 (own p2 not p1, l2/high, no fix attempt visible into round 1 review — fixed round 1's own fix-round dispatch).
 type: feedback
 ---
+
+## Recurrence 8 — ELITEA-2044/PR #1366 (fix round found the missing per-function override; first time a regression test was added for this class)
+
+Same root shape as recurrence 2 (module-level `p1` correct for the covering
+ELITEA-2042/high test, new sibling `test_state_panel_delete_custom_variable`
+ELITEA-2044/medium silently inherits it, no marker of its own). New this
+time: added a dedicated unit regression test
+(`tests/unit/test_pipeline_state_panel_priority_markers.py`) that introspects
+`getattr(test_func, "pytestmark", [])` — the function's OWN decorator
+markers, separate from the module-level list pytest merges in at collection
+— and asserts `p2` is present on the sibling and absent (no competing
+priority mark) on the covering test. Verified it goes RED on the pre-fix
+state (removed the decorator locally, reran, confirmed the exact failure
+message, restored the fix) and GREEN with it. This walks back recurrence
+4/6's "no precedent, static metadata isn't testable" conclusion — it IS
+testable via the function object's own `pytestmark` attribute, just not via
+a live pytest run of the test itself.
+
+**Gotcha hit while writing it:** importing the two live UI test functions by
+their real names into the unit-test module caused pytest's
+`python_functions = test_*` collector to re-discover and RE-EXECUTE them
+(with real `page`/`pipeline_id` browser fixtures) as a side effect of the
+import — "collected 4 items" instead of 2, ~36s instead of ~0.02s. Fix:
+alias the import (`as _delete_test_func` / `as _covering_test_func`) so the
+bound names don't match `test_*`. Confirmed via `--collect-only` before/after.
+Any future test that imports a live test function by name (not just for this
+marker check) should alias it the same way, or check `--collect-only` count
+first.
+
+## Recurrence 7 — ELITEA-2045/PR #1325 (own p2 not p1, no fix attempt visible into round 1's own review)
+
+Same lesson, recurrence-3 shape again: `test_pipeline_llm_structured_output_state_variables.py`
+declared module-level `pytest.mark.p2` while its own AFS `Priority: l2 (high)`
+maps to `p1` — confirmed against two l2/high siblings already in the same
+`tests/ui/pipelines/` directory (`test_pipeline_llm_node_system_task_chat_history_config.py`
+ELITEA-2004, `test_pipeline_yaml_flow_sync.py` ELITEA-2028 — both `p1`). Reviewer
+flagged it going into round 1's own review with no visible fix attempt. Fixed in
+the round-1 fix dispatch: one-line `pytestmark` edit, re-ran the spec green once
+(`1 passed in 42.56s`), no other diff. Nothing new about the mechanism — logging
+the 7th hit because the entry's own index line undercounts recurrences past #6
+and a compaction pass should collapse these into a count, not read every narrative.
 
 ## Recurrence 5 — ELITEA-2435/PR #1256 (fresh single-test file, module AND per-function both wrong, same-round miss)
 

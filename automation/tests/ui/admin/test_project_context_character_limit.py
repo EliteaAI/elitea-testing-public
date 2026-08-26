@@ -7,6 +7,14 @@ build, see the AFS's Known Defects section), that characters beyond the
 limit are silently rejected with no console error, and that Save persists
 successfully.
 
+Route note (#1794, repaired 2026-08-26 with ELITEA-2266/2267/2276): the editor
+used to live at ``/settings/project-context?view=create``. That query param was
+retired in the product — ``routes.js`` now declares a real
+``/settings/project-context/edit`` route — so this spec and
+``ProjectContextPage.click_create()`` both waited for a URL that never arrives
+and timed out on every run. The URL assertions below now pin the live route.
+The case-link above was also repointed at the case file's real path.
+
 Test case: ELITEA-2272
 AFS: test-specs/settings-project-params/l2_project-context-character-limit-2500_ELITEA-2272.md
 """
@@ -16,11 +24,15 @@ import logging
 import allure
 import pytest
 from api import APIClient
-from pages.project_context_page import ProjectContextPage
+from pages.project_context_page import (
+    PROJECT_CONTEXT_EDIT_PATH,
+    PROJECT_CONTEXT_PATH,
+    ProjectContextPage,
+)
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p1, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p1, pytest.mark.regression, pytest.mark.new]
 
 MAX_CHARS = 2500
 EXPECTED_LIMIT_TEXT = "0 characters left. You have reached the maximum character limit."
@@ -31,7 +43,7 @@ class TestProjectContextCharacterLimit:
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "settings-project-params/ELITEA-2272_project-context-character-limit-2500.md",
+        "settings/project-params/ELITEA-2272_project-context-character-limit-is-enforced-at-2500-characte.md",
         "onetest-ai Test Case link",
     )
     def test_project_context_character_limit_2500(self, page, clean_project_context, api: APIClient):
@@ -59,12 +71,12 @@ class TestProjectContextCharacterLimit:
                 )
 
             with allure.step(
-                "Step 3 — Click 'Create': URL becomes ?view=create, editor content "
-                "visible, Save is disabled (no edits yet)"
+                "Step 3 — Click 'Create': URL becomes /settings/project-context/edit, "
+                "editor content visible, Save is disabled (no edits yet)"
             ):
                 context_page.click_create()
-                assert "?view=create" in page.url, (
-                    f"Expected URL to contain '?view=create', got {page.url!r}"
+                assert page.url.endswith(PROJECT_CONTEXT_EDIT_PATH), (
+                    f"Expected URL to end with {PROJECT_CONTEXT_EDIT_PATH!r}, got {page.url!r}"
                 )
                 assert context_page.editor_content.is_visible(), (
                     "Expected the CodeMirror editor content area to be visible"
@@ -132,8 +144,9 @@ class TestProjectContextCharacterLimit:
                 assert "Project Context saved" in toast_text, (
                     f"Expected toast text to contain 'Project Context saved', got {toast_text!r}"
                 )
-                assert "?view=" not in page.url, (
-                    f"Expected the '?view=' query param to be gone after save, got {page.url!r}"
+                assert page.url.endswith(PROJECT_CONTEXT_PATH), (
+                    f"Expected the URL to return to {PROJECT_CONTEXT_PATH!r} after save, "
+                    f"got {page.url!r}"
                 )
 
             with allure.step("Side-channel check — no console errors at any step"):

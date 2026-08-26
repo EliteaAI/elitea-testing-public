@@ -22,6 +22,7 @@ Skill "Build with AI" flow via ``GenerateEntityModalPageBase`` — see
 ``generate_skill_modal_page.py`` for the sibling entity page object.
 """
 
+import json
 import logging
 
 from playwright.sync_api import Locator, Page
@@ -39,6 +40,15 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
     # The sole endpoint the modal calls to generate a draft
     # (GenerateAgentModal.jsx -> generateAgentDraftApi.js).
     GENERATE_DRAFT_ROUTE = "**/elitea_core/generate_application_draft/**"
+
+    # The base-agent CREATE endpoint (GenerateAgentModal.jsx:227 ->
+    # useApplicationCreateMutation / api/applications.js's `applicationCreate`
+    # mutation). Added for ELITEA-1916. The SAME URL also serves the
+    # Agents-list GET queries (`applicationList`/`totalApplications` in
+    # applications.js) — mock_create_failure() below scopes its handler to
+    # POST only (route.continue_() for everything else) so a GET while the
+    # mock is installed passes through untouched.
+    CREATE_APPLICATION_ROUTE = "**/elitea_core/applications/prompt_lib/**"
 
     open_button = LocatorDescriptor(
         testid="generate-agent-open-button",
@@ -90,6 +100,27 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
         description="Create Agent button (review step)"
     )
 
+    # --- App-wide toast (Toast.jsx, src/components/Toast.jsx) — shared
+    # component, testids pre-exist and need no EliteaUI change (same
+    # component already used by AgentDetailPage.toast_alert/toast_message,
+    # ChatPage.toast_alert/toast_message, PipelineDetailPage.toast_alert/
+    # toast_message; ELITEA-1916 is the first Build-with-AI-flow case to
+    # need it — the base-create failure path surfaces its error via this
+    # toast, not an inline modal alert, unlike the generate-draft failure
+    # path's `error_alert` above). ---
+    toast_alert = LocatorDescriptor(
+        testid="toast-alert",
+        description="App-wide toast Alert root; carries data-severity (info/warning/error/success).",
+    )
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide toast message text body.",
+    )
+    # Severity-scoped toast alert selector — testid identity + data-severity
+    # state filter, the compliant shape for a state-dependent assertion
+    # (mirrors AgentDetailPage.TOAST_ALERT_SEVERITY / ChatPage.TOAST_ALERT_SEVERITY).
+    TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
+
     # ------------------------------------------------------------------
     # Review-form field access (Name / Description / Instructions) —
     # mirrors GenerateSkillModalPage's review_name_input/review_description_
@@ -105,6 +136,17 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
         description="Review-form Name field (editable before creation)",
     )
 
+    # Name field's client-side validation helper text — added for ELITEA-1913
+    # (GenerateAgentReviewForm.jsx's Name field had zero data-testid on its
+    # MUI FormHelperText element before this case; see the ELITEA-1913 AFS
+    # Concrete Handles — threaded through Input.InputBase's new
+    # `helperTextTestId` prop, same pattern as `tooltipTestId`/
+    # `tooltipContentTestId` in that shared component).
+    review_name_helper_text = LocatorDescriptor(
+        testid="generate-agent-review-name-helper-text",
+        description="Review-form Name field's validation helper text (e.g. \"Name must be 32 characters or less\")",
+    )
+
     review_description_input = LocatorDescriptor(
         testid="generate-agent-review-description-input",
         description="Review-form Description field (editable before creation)",
@@ -114,6 +156,30 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
         testid="generate-agent-review-instructions-input",
         description="Review-form Instructions field (editable before creation)",
     )
+
+    # Welcome Message field — added for ELITEA-1906 (GenerateAgentReviewForm.jsx
+    # had ZERO data-testid on this field before; see the ELITEA-1906 AFS Concrete
+    # Handles). Wired the identical way as Name/Description/Instructions above.
+    review_welcome_message_input = LocatorDescriptor(
+        testid="generate-agent-review-welcome-message-input",
+        description="Review-form Welcome Message field (editable before creation)",
+    )
+
+    # "Chat starters:" section header — added for ELITEA-1906 (case Step 9
+    # requires verifying the section header is visible; the header carried no
+    # testid before this case).
+    review_starters_header = LocatorDescriptor(
+        testid="generate-agent-review-starters-header",
+        description='"Chat starters:" section header (only rendered when conversation_starters is non-empty)',
+    )
+
+    # ------------------------------------------------------------------
+    # Review-form Chat-starter inputs (dynamic, per index) — added for
+    # ELITEA-1906. Per this project's dynamic-testid convention
+    # (.agents/testing.md § Locator policy), a class-level template constant;
+    # never build these inline in a method or in a test/spec file.
+    # ------------------------------------------------------------------
+    REVIEW_STARTER_INPUT = '[data-testid="generate-agent-review-starter-input-{}"]'
 
     # ------------------------------------------------------------------
     # Suggested Resources (review step) — dynamic testids templated per
@@ -128,6 +194,13 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
     RESOURCE_CHECKBOX = '[data-testid="generate-agent-resource-checkbox-{}-{}"]'
     RESOURCE_NAME = '[data-testid="generate-agent-resource-name-{}-{}"]'
     RESOURCE_DESCRIPTION = '[data-testid="generate-agent-resource-description-{}-{}"]'
+    # Prefix-match variant of RESOURCE_ITEM — added for ELITEA-1910, to count
+    # every rendered card for a category regardless of item id (the cap-of-5
+    # check has no single known id to target). Same class-level dynamic-testid
+    # convention as the other RESOURCE_* templates (.agents/testing.md §
+    # Locator policy) — `^=` prefix match on the shared
+    # `generate-agent-resource-item-{entityType}-{id}` naming scheme.
+    RESOURCE_ITEM_PREFIX = '[data-testid^="generate-agent-resource-item-{}-"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -143,6 +216,24 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
         """Return the current value of the review-form Name field."""
         return self.review_name_input.input_value()
 
+    def is_review_name_invalid(self) -> bool:
+        """Whether the review-form Name field currently carries
+        `aria-invalid="true"` (added for ELITEA-1913 — the 32-char maximum
+        validation state)."""
+        return self.review_name_input.get_attribute("aria-invalid") == "true"
+
+    def review_name_helper_text_visible(self) -> bool:
+        """Whether the Name field's validation helper text element is
+        rendered at all (added for ELITEA-1913 — MUI's `FormHelperText`
+        only mounts when `helperText` is truthy)."""
+        return self.review_name_helper_text.count() > 0
+
+    def get_review_name_helper_text(self) -> str:
+        """Return the Name field's validation helper text content. Call
+        `review_name_helper_text_visible()` first — the element may not
+        exist (added for ELITEA-1913)."""
+        return self.review_name_helper_text.text_content() or ""
+
     def get_review_description(self) -> str:
         """Return the current value of the review-form Description field."""
         return self.review_description_input.input_value()
@@ -150,6 +241,19 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
     def get_review_instructions(self) -> str:
         """Return the current value of the review-form Instructions field."""
         return self.review_instructions_input.input_value()
+
+    def get_review_welcome_message(self) -> str:
+        """Return the current value of the review-form Welcome Message field."""
+        return self.review_welcome_message_input.input_value()
+
+    def get_review_starter(self, index: int) -> Locator:
+        """Locator for the review-form Chat-starter input at ``index``
+        (0-based, matching ``conversation_starters`` array order)."""
+        return self.page.locator(self.REVIEW_STARTER_INPUT.format(index))
+
+    def get_review_starter_value(self, index: int) -> str:
+        """Return the current value of the Chat-starter input at ``index``."""
+        return self.get_review_starter(index).input_value()
 
     # ------------------------------------------------------------------
     # Suggested Resources — getters
@@ -169,6 +273,16 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
     def get_resource_item(self, entity_type: str, item_id) -> Locator:
         """Locator for one suggestion card (`SuggestionItem.jsx`)."""
         return self.page.locator(self.RESOURCE_ITEM.format(entity_type, item_id))
+
+    def count_resource_items(self, entity_type: str) -> int:
+        """Count every rendered suggestion card for ``entity_type``,
+        regardless of item id (prefix match on ``RESOURCE_ITEM_PREFIX``).
+
+        Added for ELITEA-1910 (Suggested Skills cap-of-5 check) — unlike
+        ``get_resource_item``, which targets one known id, this counts the
+        full rendered set to check against a category's expected maximum.
+        """
+        return self.page.locator(self.RESOURCE_ITEM_PREFIX.format(entity_type)).count()
 
     def get_resource_name_text(self, entity_type: str, item_id) -> str:
         """The suggestion card's name text."""
@@ -303,3 +417,111 @@ class GenerateAgentModalPage(GenerateEntityModalPageBase):
             create_response.status, skill_get_response.status, skill_patch_response.status,
         )
         return create_response, skill_get_response, skill_patch_response
+
+    # ------------------------------------------------------------------
+    # Create Agent (review step -> created agent) with NO resources
+    # selected — ELITEA-1914. A plain draft (no suggested resources
+    # rendered at all — see the ELITEA-1914 AFS Test Steps) never fires
+    # any toolkit/agent-relation or skill GET/PATCH call, so waiting on
+    # them the way click_approve_and_wait_for_creation() /
+    # click_approve_and_wait_for_skill_creation() do would hang
+    # indefinitely (both enter every expect_response context manager in
+    # one `with` block). This helper waits ONLY on the base-agent create
+    # POST, matching the plain-approve flow's actual network contract.
+    # ------------------------------------------------------------------
+
+    @action("Click Create Agent (no resources)")
+    def click_approve_and_wait_for_agent_created(self, timeout: int = 15000):
+        """Click "Create Agent" and wait for the base-agent create (POST)
+        only — the correct wait for a plain draft with no suggested
+        resources selected (or none rendered at all), where no
+        toolkit/agent-relation or skill GET/PATCH call ever fires.
+
+        Returns:
+            The base-agent create response.
+        """
+        with self.page.expect_response(
+            lambda r: "/elitea_core/applications/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as create_info:
+            self.approve_button.click()
+
+        create_response = create_info.value
+        logger.info("Create Agent (no resources): create=%d", create_response.status)
+        return create_response
+
+    # ------------------------------------------------------------------
+    # Create Agent — response-only wait, for callers that need to make
+    # interim assertions WHILE the request is in flight (ELITEA-1916).
+    # Mirrors GenerateEntityModalPageBase.expect_generate_response(): the
+    # `with` block only starts waiting on `__exit__`, so a caller can
+    # click, then assert transient state (e.g. the "Creating..." label /
+    # disabled state), all before the response is awaited.
+    # ------------------------------------------------------------------
+
+    def expect_create_response(self, timeout: int = 15000):
+        """Context manager: yields Playwright's response-info handle for
+        the base-agent CREATE call (POST .../applications/prompt_lib/{id}),
+        resolved once the block exits.
+
+        Usage::
+
+            with modal.expect_create_response() as response_info:
+                modal.approve_button.click()
+                # interim assertions while the (possibly mocked/delayed)
+                # request is in flight, e.g. the transient "Creating..."
+                # button state
+            response = response_info.value
+        """
+        return self.page.expect_response(
+            lambda response: (
+                "/elitea_core/applications/prompt_lib/" in response.url
+                and response.request.method == "POST"
+            ),
+            timeout=timeout,
+        )
+
+    # ------------------------------------------------------------------
+    # Network mocking — create-application endpoint (ELITEA-1916)
+    # ------------------------------------------------------------------
+
+    def mock_create_failure(
+        self,
+        error_message: str,
+        status: int = 500,
+        delay_ms: int = 300,
+    ):
+        """Install a route mock that fails the base-agent CREATE call
+        (POST .../applications/prompt_lib/{project_id}).
+
+        Scoped to POST only — the same URL also serves the Agents-list GET
+        queries, which are passed through via ``route.continue_()``.
+
+        Args:
+            error_message: Body ``error`` field — surfaced verbatim by
+                ``GenerateEntityModal.jsx``'s ``handleApprove`` catch block
+                (``toastError(buildErrorMessage(err))``), via an app-wide
+                toast (NOT the inline ``error_alert`` the generate-draft
+                failure path uses).
+            status: HTTP status to fulfill with.
+            delay_ms: Artificial latency before fulfilling, so the transient
+                "Creating..." (``isApproving``) state is reliably observable.
+        """
+        def handler(route):
+            if route.request.method != "POST":
+                route.continue_()
+                return
+            self.page.wait_for_timeout(delay_ms)
+            route.fulfill(
+                status=status,
+                content_type="application/json",
+                body=json.dumps({"error": error_message}),
+            )
+
+        self.page.route(self.CREATE_APPLICATION_ROUTE, handler)
+        logger.info("Mocked create-application failure: status=%d error=%r", status, error_message)
+
+    def clear_create_mock(self):
+        """Remove any route mock on the create-application endpoint."""
+        self.page.unroute(self.CREATE_APPLICATION_ROUTE)
+        logger.info("Cleared create-application route mock")

@@ -79,10 +79,42 @@ directions (ELITEA-2435).
   (confirmed live, ELITEA-2435 — path segment is the `PinEntityType` value,
   not always `configuration`; check the entity's `PinEntityType` constant
   for other entities rather than assuming the segment name)
+- Pipelines: `POST/DELETE /api/v2/social/pin/prompt_lib/{project_id}/application/{id}` → 201/204
+  (confirmed live, ELITEA-2025 — pipelines share the `application` path
+  segment with agents, consistent with `PipelineAPI`'s own CRUD docstring)
 
 Both fire synchronously with the UI state change (list reorder /
 menu-label flip) — no separate loading-state UI observed, so
 `page.wait_for_response` on these is sufficient, no polling needed.
+
+## `getPinTestIdSlug()` has no `isPipelineCard` branch — leaks the raw ContentType (confirmed live, ELITEA-2025)
+
+`PinButton.jsx`'s local `getPinTestIdSlug(entityType)` maps
+`credential`/`skill`/`toolkit`/`mcp`/`application` explicitly but has NO
+`isPipelineCard` case, so a pipeline card falls through to
+`String(entityType).toLowerCase()`. On the main Pipelines dashboard
+(`cardContentType={ContentType.PipelineAll}`) this resolves to
+`pipelineall-pin-toggle-button-{id}` — a real, stable, working testid, just a
+naming-convention leak (not `pipeline-pin-toggle-button-{id}` as the
+`{section}-{element}-{type}` convention would predict). Not filed (cosmetic,
+no collision risk within one view) — but **a different pipeline card view**
+(Top/Latest/Trending/Draft/etc., none of which route through
+`isPipelineCard` either) would produce a DIFFERENT testid for the SAME
+pipeline (`pipelinetop-...`, `pipelinelatest-...`). Only `/pipelines/all`
+(`ContentType.PipelineAll`) is confirmed; re-verify before reusing this
+testid shape on another pipeline view.
+
+## Gotcha: reorder timing is ASYMMETRIC between pin and unpin (confirmed live, ELITEA-2025, 3 cycles)
+
+Pinning re-sorts the list/grid **instantly, client-side, no reload needed**.
+Unpinning does **not** — the just-unpinned item stays in its pinned (top)
+position, even though its own button/menu label flips back immediately,
+until a fresh navigate/re-fetch happens. The merged
+`test_credential_pin_unpin.py` already handles this correctly (Step 7b
+re-navigates before asserting the reverted order) — this is now confirmed on
+a second entity (Pipelines), so treat it as a platform-wide `usePin` hook
+behavior. **Never assert order immediately after an unpin click** — always
+re-navigate first, on any entity.
 
 ## Gotcha: pinning the already-topmost item shows no reordering
 

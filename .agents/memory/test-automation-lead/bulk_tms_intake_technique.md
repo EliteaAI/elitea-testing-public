@@ -83,14 +83,23 @@ Correct classification order per case:
 2. Otherwise → file it, regardless of what its own status/execution_type/
    automation_test_id fields say.
 
+> ⛔ **PARTLY OVERRULED 2026-08-10.** The AND-of-three rule itself is **canon** —
+> `.agents/test-automation.yaml` § intake `already_automated_when` stands: skip a
+> case only when all three hold. What run 1 actually got wrong was treating a
+> **partial** match as "contradictory metadata → park unfiled"; a partial match is
+> NOT an exclusion, and contradictory metadata is *reported*, never withheld
+> (yaml: "report — never guess, never file, never skip silently"). Read the
+> paragraph below with that correction. See `tms_intake_technique.md` § OVERRULED.
+
 **Run-1 mistake (corrected in run 4):** treated a strict AND-of-three
 rule (`execution_type: automated` AND `status: ready` AND non-empty
 `automation_test_id`) as grounds to skip, and treated any *partial* match
 of that rule as "contradictory metadata" to park unfiled pending human
-review. That was over-cautious and wrong per the clarified policy — 66
+review. **The skip half was right; the partial-match-parks half was wrong** — 66
 cases (the entire `artifacts` module, all sharing `status: draft` +
-`execution_type: automated` + empty `automation_test_id`) got parked in
-run 1 and had to be filed in a dedicated run-4 correction pass once none
+`execution_type: automated` + empty `automation_test_id` — a *partial* match, so
+never excludable) got parked in run 1 and had to be filed in a dedicated run-4
+correction pass once none
 of them turned out to have an existing board task. **Contradictory-looking
 metadata does not, by itself, block filing — only an existing tracker
 issue does.** If a case's own `automation_test_id` looks genuinely

@@ -27,7 +27,7 @@ from pages.analytics_page import AnalyticsPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p1, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p1, pytest.mark.regression, pytest.mark.new_verified]
 
 EXPECTED_PRESET_LABELS = ("Last 24h", "Last 7d", "Last 30d", "Last 90d")
 EXPECTED_TAB_LABELS = (

@@ -26,13 +26,18 @@ from fixtures.session_fixtures import (
     test_run_id,
     browser,
     auth_state,
+    auth_state_user_b,
 )
 from fixtures.api_fixtures import (
     api,
     _browser_cookies,
+    _browser_cookies_user_b,
     conversation_api,
     agent_api,
     artifact_api,
+    artifact_api_user_b,
+    artifact_api_team_project,
+    artifact_api_user_b_team_project,
     credential_api,
     skill_api,
     toolkit_api,
@@ -43,8 +48,19 @@ from fixtures.data_fixtures import (
     agent_id,
     pipeline_id,
     pipeline_with_llm_id,
+    pipeline_with_fstring_llm_id,
+    pipeline_with_variable_task_llm_id,
     pipeline_with_two_llm_nodes_id,
+    pipeline_three_llm_chain,
     pipeline_with_typed_state_vars_id,
+    pipeline_with_custom_state_var_id,
+    pipeline_llm_reads_state_via_code,
+    pipeline_code_node_multi_var_dict_return,
+    pipeline_code_node_elitea_client_user_info,
+    pipeline_code_node_input_filtering,
+    pipeline_parent_child_state_sharing,
+    pipeline_parent_child_state_sharing_three_node,
+    pipeline_parent_child_state_isolation,
     github_credential,
     github_toolkit,
     github_toolkit_with_selected_tools,
@@ -60,12 +76,15 @@ from fixtures.data_fixtures import (
     invalid_github_credential,
     github_toolkit_with_invalid_credential,
     mcp_toolkit_with_tools,
+    mcp_toolkit_no_tools,
     mcp_pipeline_with_toolkits,
     hitl_runtime_pipeline,
     pipeline_llm_code_end,
     pipeline_llm_printer_disconnected,
     pipeline_llm_printer_connected,
     clean_project_context,
+    project_context_seed,
+    analytics_empty_pipeline_id,
 )
 from fixtures.cleanup_fixtures import (
     cleanup_autotest_pipelines_at_end,
@@ -103,6 +122,10 @@ logger = logging.getLogger("elitea.automation")
 # Fragments land in repo-root coverage/.v8/ (CWD-proof); merged by coverage/report.mjs.
 _COVERAGE = os.environ.get("COVERAGE") == "1"
 _V8_DIR = Path(__file__).parent.parent / "coverage" / ".v8"
+
+# Rerun tracking for TMS reporting (pytest-rerunfailures integration)
+# Collects retry data per test nodeid: {"count": N, "messages": [...]}
+_RERUN_DATA: dict[str, dict] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -388,6 +411,51 @@ def page(context: BrowserContext) -> Page:
     pg.close()
 
 
+@pytest.fixture(autouse=True)
+def dismiss_banner_after_navigation(request):
+    """Dismiss deployment/maintenance banners after navigation.
+
+    Banners (e.g., "Release 2.0.5 - Deployment") overlay the top of the page
+    and intercept clicks on form fields. This fixture wraps page.goto() and
+    page.reload() to automatically dismiss banners after navigation.
+
+    NOTE: Only activates for tests that use the standard `page` fixture.
+    Tests using custom page fixtures (e.g., admin_page, user_b_page) should
+    call dismiss_banner_if_present() explicitly via their page objects.
+    """
+    # Skip if test doesn't use the standard `page` fixture
+    if "page" not in request.fixturenames:
+        yield
+        return
+
+    from pages.base_page import BasePage
+
+    page = request.getfixturevalue("page")
+
+    def _dismiss_banner():
+        base = BasePage(page)
+        base.dismiss_banner_if_present()
+
+    original_goto = page.goto
+    original_reload = page.reload
+
+    def goto_with_banner_dismiss(url, **kwargs):
+        result = original_goto(url, **kwargs)
+        _dismiss_banner()
+        return result
+
+    def reload_with_banner_dismiss(**kwargs):
+        result = original_reload(**kwargs)
+        _dismiss_banner()
+        return result
+
+    page.goto = goto_with_banner_dismiss
+    page.reload = reload_with_banner_dismiss
+    yield
+    page.goto = original_goto
+    page.reload = original_reload
+
+
 # ===========================================================================
 # Screenshot hook — captures only on test failures
 # ===========================================================================
@@ -415,7 +483,7 @@ def pytest_runtest_makereport(item, call):
 
     # Try to find a page fixture in this test
     pg: Page | None = None
-    for fixture_name in ("page", "test_page"):
+    for fixture_name in ("page", "test_page", "user_b_page"):
         if fixture_name in item.funcargs:
             pg = item.funcargs[fixture_name]
             break
@@ -497,11 +565,45 @@ def pytest_runtest_makereport(item, call):
         pass
 
 
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_logreport(report):
+    """Capture rerun data from pytest-rerunfailures for TMS reporting.
+
+    The pytest-rerunfailures plugin sets:
+    - report.rerun = attempt number (0 = first run, 1 = first rerun, etc.)
+    - report.outcome = "rerun" for intermediate failures that will be retried
+
+    We collect this data per nodeid and write it to reports/reruns.json
+    in pytest_sessionfinish for consumption by CI workflows.
+    """
+    if report.when != "call":
+        return
+
+    # Check if this is a rerun (pytest-rerunfailures sets report.rerun)
+    rerun_count = getattr(report, "rerun", 0)
+    if rerun_count == 0:
+        return
+
+    nodeid = report.nodeid
+    if nodeid not in _RERUN_DATA:
+        _RERUN_DATA[nodeid] = {"count": 0, "messages": []}
+
+    _RERUN_DATA[nodeid]["count"] = rerun_count
+
+    # Capture failure message for this attempt (if any)
+    if report.outcome == "rerun" and report.longrepr:
+        msg = str(report.longrepr)[:1000]  # Truncate long tracebacks
+        _RERUN_DATA[nodeid]["messages"].append(msg)
+
+
 def pytest_sessionfinish(session, exitstatus):
-    """Archive reports after test session completes.
+    """Archive reports and write rerun data after test session completes.
 
     Creates timestamped copies of report.html and junit.xml in reports/archive/
     so you can keep historical test results.
+
+    Also writes reports/reruns.json with rerun data captured from
+    pytest-rerunfailures for TMS reporting.
 
     Note: HTML report may not exist yet (pytest-html writes after this hook).
     Use pytest_terminal_summary for post-HTML archiving.
@@ -515,6 +617,12 @@ def pytest_sessionfinish(session, exitstatus):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     # Store timestamp for use in terminal_summary hook
     session.config._archive_timestamp = timestamp  # type: ignore
+
+    # Write reruns.json for TMS reporting (pytest-rerunfailures data)
+    reruns_file = reports_dir / "reruns.json"
+    reruns_file.write_text(json.dumps(_RERUN_DATA, indent=2, ensure_ascii=False) + "\n")
+    total_reruns = sum(d["count"] for d in _RERUN_DATA.values())
+    print(f"  [RERUNS] Wrote {reruns_file} ({len(_RERUN_DATA)} tests, {total_reruns} total reruns)")
 
     # Archive JUnit XML (available at this point)
     junit_xml = reports_dir / "junit.xml"

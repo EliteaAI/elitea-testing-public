@@ -33,10 +33,10 @@ Usage:
 """
 
 import pytest
-from tests.ui.pipelines.helpers import _navigate_to_detail, _navigate_to_canvas
+from tests.ui.pipeline_helpers import _navigate_to_detail, _navigate_to_canvas
 import allure
 
-pytestmark = [pytest.mark.ui, pytest.mark.pipelines]
+pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.new_verified]
 
 
 def _add_llm_node_and_connect(pipelines) -> str:
@@ -178,6 +178,70 @@ class TestDiscardChanges:
             assert restored_name == original_name, (
                 f"Name should revert to '{original_name}' after discard, "
                 f"got '{restored_name}'"
+            )
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/"
+        "automated-full-regression-ui/pipelines/ELITEA-2048_pipeline-unsaved-changes-and-discard.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p1
+    def test_save_discard_button_states_toggle_on_edit_and_discard(self, page, pipeline_id):
+        """ELITEA-2048: Save/Discard are disabled on a clean pipeline, become
+        enabled once the name is edited, and return to disabled after Discard
+        reverts the edit."""
+        with allure.step("Step 1 — Navigate to pipeline detail page"):
+            pipelines = _navigate_to_detail(page, pipeline_id)
+
+        with allure.step("Step 2 — Verify Save and Discard are initially disabled"):
+            assert not pipelines.is_save_enabled(), (
+                "Save button should be disabled on a clean, unedited pipeline"
+            )
+            assert not pipelines.is_discard_enabled(), (
+                "Discard button should be disabled on a clean, unedited pipeline"
+            )
+
+        with allure.step("Step 3 — Modify the pipeline name"):
+            original_name = pipelines.get_name()
+            # Fixed short literal, not an append to original_name: the
+            # pipeline_id fixture already names pipelines at the field's own
+            # 32-char maxLength (MAX_NAME_LENGTH, EliteaUI/src/common/
+            # constants.js), so appending a suffix gets silently dropped by
+            # the input's maxlength — same reason the covering test's own
+            # test_discard_reverts_name_change uses a fixed literal too.
+            modified_name = "autotest_name_modified"
+            pipelines.update_name(modified_name)
+            assert pipelines.get_name() == modified_name, (
+                "Name field should show the modified value"
+            )
+
+        with allure.step("Step 4 — Verify Save button becomes enabled"):
+            assert pipelines.is_save_enabled(), (
+                "Save button should be enabled once the form is dirty"
+            )
+
+        with allure.step("Step 5 — Verify Discard button becomes enabled"):
+            assert pipelines.is_discard_enabled(), (
+                "Discard button should be enabled once the form is dirty"
+            )
+
+        with allure.step("Step 6 — Click Discard"):
+            pipelines.click_discard()
+            pipelines.wait_for_detail_page_load()
+
+        with allure.step("Step 7 — Verify pipeline name reverts to the original value"):
+            restored_name = pipelines.get_name()
+            assert restored_name == original_name, (
+                f"Name should revert to '{original_name}' after discard, "
+                f"got '{restored_name}'"
+            )
+
+        with allure.step("Step 8 — Verify Save and Discard return to the disabled state"):
+            assert not pipelines.is_save_enabled(), (
+                "Save button should be disabled again after discard"
+            )
+            assert not pipelines.is_discard_enabled(), (
+                "Discard button should be disabled again after discard"
             )
 
 
@@ -342,7 +406,6 @@ class TestMultiNodeTopology:
             pipelines.page.reload()
             pipelines.wait_for_network()
             pipelines.wait_for_detail_page_load()
-            pipelines.dismiss_banner_if_present()
             pipelines.wait_for_canvas()
 
         with allure.step("Step 5 — Verify nodes persist after reload"):

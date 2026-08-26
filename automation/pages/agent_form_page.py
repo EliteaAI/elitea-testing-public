@@ -8,12 +8,12 @@ Handles: /agents/create and /agents/all/{id} (edit mode)
 
 import logging
 import re
-from playwright.sync_api import Page
+
+from playwright.sync_api import Locator, Page
+from utils.actions import action
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
-from utils.actions import action
-
 
 logger = logging.getLogger("elitea.pages.agent_form")
 
@@ -156,14 +156,57 @@ class AgentFormPage(BasePage):
 
     discard_button = LocatorDescriptor(
         testid="discard-button",
-        fallback=lambda page: page.get_by_role("button", name="Discard"),
-        description="Discard changes button"
+        description="Discard changes button (tab-bar) — ApplicationTabBar.jsx, "
+        "shared between the Agent and Pipeline detail pages. Rendered "
+        "unconditionally; only `disabled` toggles with form dirtiness. "
+        "Confirmed live on the Agent detail page (ELITEA-1873) — the "
+        "`fallback=` that used to sit here was dead code (LocatorDescriptor "
+        "never invokes it when a testid is set), same pattern already fixed "
+        "on `PipelineFormPage.discard_button`.",
+    )
+
+    # ------------------------------------------------------------------
+    # Discard confirmation modal (ApplicationTabBar.jsx's `Button.DiscardButton`
+    # → `Modal.BaseModal`). Testids added via `add-data-testid` for ELITEA-1873
+    # — the modal and its confirm button previously carried NO testid (the
+    # call site didn't thread `DiscardButton`'s `modalDataTestId`/
+    # `confirmButtonDataTestId` props, even though `BaseModal` already
+    # supports them — same threading-gap shape as the credential flow's
+    # `CredentialsTabBar.jsx` fix, ELITEA-1971). Shared component → generic
+    # names, matching the pre-existing generic `discard-button`.
+    # ------------------------------------------------------------------
+    discard_confirm_modal = LocatorDescriptor(
+        testid="discard-confirm-modal",
+        description="Discard confirmation modal (BaseModal) — shared Agent/Pipeline tab bar",
+    )
+    discard_confirm_button = LocatorDescriptor(
+        testid="discard-confirm-button",
+        description="Discard button inside the confirmation modal",
     )
 
     save_as_version_button = LocatorDescriptor(
         testid="agent-save-as-version-button",
         description="Save as new version button"
     )
+
+    # ------------------------------------------------------------------
+    # Tags (ELITEA-1878, ELITEA-1879). Testid-only, threaded via
+    # ApplicationEditForm.jsx's TagEditor call site (Agent branch,
+    # `isFromPipeline` ternary) onto the shared TagEditor/AutoCompleteDropDown
+    # component's `inputTestId`/`chipTestId`/`chipDeleteTestId` props — same
+    # mechanism as PipelineFormPage.tags_input/tags_chip, but the Agent
+    # branch's chip testids are dynamic (parameterized by tag name) rather
+    # than static, so each committed chip stays independently addressable.
+    # See `.agents/testing.md`'s dynamic-testid class-constant pattern.
+    # ------------------------------------------------------------------
+    tags_input = LocatorDescriptor(
+        testid="agent-tags-input",
+        description="Tags Autocomplete input field (real <input>, MUI TextField)",
+    )
+
+    # Dynamic (runtime-parameterized) testid templates.
+    AGENT_TAGS_CHIP = '[data-testid="agent-tags-chip-{}"]'
+    AGENT_TAGS_CHIP_DELETE = '[data-testid="agent-tags-chip-delete-{}"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -328,6 +371,25 @@ class AgentFormPage(BasePage):
         """Read the current value of the Name field."""
         return self.name_input.input_value()
 
+    def is_name_invalid(self, timeout: int = 5000) -> bool:
+        """Return whether the Name field is currently flagged invalid (ELITEA-1900).
+
+        Reads the ``aria-invalid`` attribute of the already testid-anchored
+        :attr:`name_input` — same "read an attribute of an existing
+        testid-anchored locator" shape as
+        :meth:`ArtifactsPage.is_bucket_name_invalid`. No new testid needed.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the field itself
+                to be visible before reading its attribute.
+
+        Returns:
+            True if ``aria-invalid="true"``, False otherwise (including
+            ``"false"`` or the attribute being absent).
+        """
+        self.name_input.wait_for(state="visible", timeout=timeout)
+        return self.name_input.get_attribute("aria-invalid") == "true"
+
     def get_description(self) -> str:
         """Read the current value of the Description field."""
         return self.description_input.input_value()
@@ -339,6 +401,22 @@ class AgentFormPage(BasePage):
     def get_welcome_message(self) -> str:
         """Read the current value of the Welcome Message field."""
         return self.welcome_message_input.input_value()
+
+    def get_tag_chip(self, tag_name: str) -> Locator:
+        """Return the locator for a single committed tag chip by tag name.
+
+        Args:
+            tag_name: The tag's text (used to build the dynamic testid).
+        """
+        return self.page.locator(self.AGENT_TAGS_CHIP.format(tag_name))
+
+    def get_tag_chip_delete_icon(self, tag_name: str) -> Locator:
+        """Return the locator for a tag chip's delete icon by tag name.
+
+        Args:
+            tag_name: The tag's text (used to build the dynamic testid).
+        """
+        return self.page.locator(self.AGENT_TAGS_CHIP_DELETE.format(tag_name))
 
     # ------------------------------------------------------------------
     # Actions
@@ -357,6 +435,41 @@ class AgentFormPage(BasePage):
         self.save_button.evaluate("el => el.click()")
         self.wait_for_network(timeout=timeout)
 
+    @action("Add tag")
+    def add_tag(self, tag_name: str, timeout: int = 5000):
+        """Type a tag into the Tags combobox and commit it with Enter.
+
+        Pure client-side Formik state before Save — confirmed live (AFS
+        ELITEA-1878): no debounce/delay needed, the chip renders immediately
+        after Enter.
+
+        Args:
+            tag_name: Tag text to type and commit.
+            timeout: Maximum wait time for the input to be visible.
+        """
+        logger.info("Adding tag '%s'", tag_name)
+        self.tags_input.wait_for(state="visible", timeout=timeout)
+        self.tags_input.click()
+        self.tags_input.press_sequentially(tag_name, delay=20)
+        self.tags_input.press("Enter")
+
+    @action("Remove tag")
+    def remove_tag(self, tag_name: str, timeout: int = 5000):
+        """Click a tag chip's delete icon, removing it from the field.
+
+        Pure client-side Formik state — confirmed live (AFS ELITEA-1879): no
+        network request fires from this click alone, only on the subsequent
+        Save.
+
+        Args:
+            tag_name: The tag's text (used to build the dynamic testid).
+            timeout: Maximum wait time for the chip's delete icon to be visible.
+        """
+        logger.info("Removing tag '%s'", tag_name)
+        delete_icon = self.get_tag_chip_delete_icon(tag_name)
+        delete_icon.wait_for(state="visible", timeout=timeout)
+        delete_icon.click()
+
     def is_save_enabled(self) -> bool:
         """Check if the Save button is enabled.
 
@@ -364,6 +477,36 @@ class AgentFormPage(BasePage):
             True if Save button is enabled, False otherwise.
         """
         return self.save_button.is_enabled()
+
+    def is_discard_enabled(self) -> bool:
+        """Check if the Discard button is enabled (form is dirty).
+
+        Returns:
+            True if Discard button is enabled, False otherwise.
+        """
+        return self.discard_button.is_enabled()
+
+    @action("Click discard")
+    def click_discard(self, timeout: int = 5000) -> None:
+        """Click the tab-bar Discard button, opening the confirmation modal.
+
+        Args:
+            timeout: Maximum wait time for the modal to become visible.
+        """
+        logger.info("Clicking Discard")
+        self.discard_button.click()
+        self.discard_confirm_modal.wait_for(state="visible", timeout=timeout)
+
+    @action("Confirm discard")
+    def confirm_discard(self, timeout: int = 5000) -> None:
+        """Click Discard inside the confirmation modal and wait for it to close.
+
+        Args:
+            timeout: Maximum wait time for the modal to close.
+        """
+        self.discard_confirm_button.click()
+        self.discard_confirm_modal.wait_for(state="detached", timeout=timeout)
+        logger.info("Discard confirmed")
 
     @action("Click cancel")
     def click_cancel(self, timeout: int = 5000):
@@ -412,6 +555,35 @@ class AgentFormPage(BasePage):
 
         logger.info("Saved and navigation completed")
 
+    @action("Save (capturing the raw PUT response)")
+    def save_and_capture_response(self, timeout: int = 15000):
+        """Click Save and return the raw PUT ``.../application/...``
+        Response, WITHOUT waiting for success or navigation.
+
+        Additive sibling of :meth:`save_and_wait` / :meth:`click_save` —
+        those assume the save SUCCEEDS (they only wait for network idle,
+        discarding the response). Callers asserting a REJECTED save on a
+        locked/published version (ELITEA-2614 — the server returns 400
+        with an ``error`` field naming the exact version id) need the
+        response itself, not just an idle-network heuristic.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The matched Playwright ``Response`` for the
+            ``PUT .../elitea_core/application/prompt_lib/...`` call.
+        """
+        logger.info("Clicking Save (capturing response)")
+        with self.page.expect_response(
+            lambda r: "/elitea_core/application/prompt_lib/" in r.url and r.request.method == "PUT",
+            timeout=timeout,
+        ) as save_info:
+            self.save_button.evaluate("el => el.click()")
+        response = save_info.value
+        logger.info("Save response captured — status=%d", response.status)
+        return response
+
     # ------------------------------------------------------------------
     # Field update helpers
     # ------------------------------------------------------------------
@@ -419,8 +591,42 @@ class AgentFormPage(BasePage):
     def update_text_field(self, field_name: str, value: str, wait_for_validation: bool = True):
         """Update text field with React-compatible pattern.
 
-        Uses click + select all + type to trigger React onChange.
-        Waits for validation if requested.
+        Uses click + select all + type (INSTANT, no inter-keystroke delay) to
+        trigger React onChange, then defensively verifies the field actually
+        holds ``value`` and retries once if not.
+
+        Why instant typing, not a `press_sequentially(..., delay=N)` like
+        `fill_form()` uses for the CREATE form: these fields (Name/
+        Description/Instructions/Welcome message on the DETAIL/edit page) are
+        wrapped by the shared `StyledInputEnhancer`/`InputBase` component
+        (``src/[fsd]/shared/ui/input/InputBase.jsx``), which defaults
+        ``enableAutoBlur=True`` and drives it via ``useAutoBlur()``
+        (``src/hooks/useAutoBlur.jsx``) — a hook that, on every keystroke,
+        (re)starts a **10ms** timer that BLURS THEN REFOCUSES the field when
+        it fires. Typing with ANY per-keystroke delay ≥ ~10ms (confirmed live
+        at `delay=20`, matching `fill_form`'s own delay) lets that timer fire
+        BETWEEN keystrokes, so the field blurs+refocuses repeatedly WHILE
+        still receiving keystrokes — confirmed live to produce a real "Warning:
+        Maximum update depth exceeded" React loop warning on Save
+        (`test_import_agent_recreates_skills_with_new_ids.py`'s console-error
+        assertion caught it 2/2 runs at delay=20, 0/1 at instant-typing).
+        Typing instantly keeps every real keystroke gap under that 10ms
+        window in the overwhelming majority of cases, so the timer only ever
+        fires once, after typing fully stops (the intended, safe path).
+
+        Instant typing still leaves a NARROW residual race: on rare occasions
+        (observed live, ELITEA-2614 — 1 of 3 runs) a slow tick of the browser/
+        IPC event loop lets the 10ms timer fire mid-typing anyway, and the
+        resulting blur+refocus interacts with the DOM's in-flight keystrokes
+        to leave the field holding a corrupted value (part of the OLD text's
+        tail duplicated back in — e.g. "...test's publish-immutability test
+        UNLOCKED" instead of "...test UNLOCKED" when replacing a ~62-char
+        Description with a ~71-char string). Because that race is real but
+        rare and NOT eliminated by typing speed alone, the fix closes it with
+        a defensive verify: read the field back immediately after typing, and
+        if it doesn't match `value` (the rare race fired), re-select-all and
+        retype once — a hard failure only if the SECOND attempt is also wrong,
+        which would indicate something other than this specific timing race.
 
         Args:
             field_name: Field to update ("name", "description", "instructions")
@@ -438,9 +644,26 @@ class AgentFormPage(BasePage):
             raise ValueError(f"Unknown field: {field_name}. Must be one of {list(field_map.keys())}")
 
         field = field_map[field_name]
-        field.click()
-        field.press("ControlOrMeta+a")  # Works on both macOS (Cmd+A) and Windows/Linux (Ctrl+A)
-        field.type(value)
+
+        def _type_value() -> None:
+            field.click()
+            field.press("ControlOrMeta+a")  # Works on both macOS (Cmd+A) and Windows/Linux (Ctrl+A)
+            field.type(value)  # INSTANT (no delay) — see docstring: a real delay trips the 10ms auto-blur race
+
+        _type_value()
+
+        if field.input_value() != value:
+            logger.warning(
+                "%s field value mismatch after typing (auto-blur race) — retrying once: "
+                "expected %r, got %r",
+                field_name, value, field.input_value(),
+            )
+            _type_value()
+            actual = field.input_value()
+            assert actual == value, (
+                f"{field_name} field still shows a corrupted value after a retry "
+                f"(auto-blur race not the cause): expected {value!r}, got {actual!r}"
+            )
 
         if wait_for_validation:
             self.wait_for_form_validation()

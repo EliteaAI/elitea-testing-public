@@ -24,7 +24,7 @@ from pages.pipelines_list_page import PipelinesListPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p2, pytest.mark.regression, pytest.mark.new_verified]
 
 FORM_SAVE_TIMEOUT = 15_000
 UI_ELEMENT_TIMEOUT = 10_000

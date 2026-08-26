@@ -1,0 +1,451 @@
+{
+  "batch": "skills-remaining-w2",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-skills-remaining-w2",
+  "gate": {
+    "verdict": "red",
+    "runs": 1,
+    "seconds": [
+      172.2,
+      94.59
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/skills/test_skill_custom_icon_visibility_across_ui.py::TestSkillCustomIconVisibilityAcrossUI::test_skill_custom_icon_visible_across_ui",
+        "signature": "AssertionError: Not on detail page: http://localhost:5173/agents/create?viewMode=owner — raised in pages/agent_detail_page.py:669 verify_on_detail_page(), called from the test's Step 7 (create the disposable agent) immediately after agent_form_page.save_and_wait_for_navigation(); URL never settled on /agents/all/<id>. Not one of the two sanctioned RED-BY-DESIGN signatures (#570) — new/unclassified… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+        "case_ids": [
+          "ELITEA-2605"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/skills/test_skill_fork_end_to_end.py::TestSkillForkEndToEnd::test_fork_skill_end_to_end",
+        "signature": "SANCTIONED RED-BY-DESIGN (per dispatch). Known defect https://github.com/EliteaAI/elitea-testing-public/issues/570: validateDOMNesting <p>-in-<p> console-error on the shared Fork Complete dialog, soft-asserted via expect.soft; rest of the flow (steps 8-11) passed cleanly. Reproduced 1/1 on this informational (single, not-3x) run — matches the previously-documented signature exactly, nothing new.",
+        "case_ids": [
+          "ELITEA-2602"
+        ]
+      },
+      {
+        "spec": "automation/tests/ui/skills/test_skill_fork_non_base_version.py::TestSkillForkNonBaseVersion::test_fork_non_base_skill_version",
+        "signature": "SANCTIONED RED-BY-DESIGN (per dispatch). Known defect https://github.com/EliteaAI/elitea-testing-public/issues/570: validateDOMNesting <p>-in-<p> console-error on the shared Fork Complete dialog, soft-asserted; rest of the flow (steps 8-9) passed cleanly. Reproduced 1/1 on this informational (single, not-3x) run — matches the previously-documented signature exactly, nothing new.",
+        "case_ids": [
+          "ELITEA-2603"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2439",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Case ELITEA-2439 text describes a standalone 'Copy Link' button with a tooltip/icon-change confirmation. Live product (SkillControls.jsx) has two separate 'Share' menuitems inside the skill-controls-menu-button overflow menu (share-version-menuitem / share-skill-menuitem) and confirms via a toast ('The link has been copied to the clipboard.'), not a tooltip. Filed as EliteaAI/elitea-testing-public… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1451"
+        },
+        {
+          "kind": "note",
+          "note": "A skill's base-version Information-panel 'Version ID' can differ from the Skill ID even though the URL shows only one digit segment while on base (confirmed live: skill 951 shows Version ID 979 in the Information panel while its URL is just /skills/all/951). SkillDetailPage.get_version_id()'s URL-only parsing returns the skill id for base, not the true version id. Doesn't affect this case (named v… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator grep (role-overrides.md, run on the full diff origin/tests/batch-skills-remaining-w2...origin/tests/2439-skill-copy-link): `grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` — 0 hits (verified with a Python re equivalent since local grep -E choked on the paren-balanced … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_detail_page.py:761-786"
+        },
+        {
+          "kind": "note",
+          "note": "Verified the two new testids' PROVENANCE claim by reading source rather than trusting grep — a bare `git grep -- \"share-version-menuitem\"` on both `origin/main` and `origin/automation/testids` returns NOTHING (runtime-composed value, exactly the workflow.md § Closure record 'runtime-composed' caveat). Confirmed instead via `DotMenu.jsx`: `data-testid={testId ? \\`${testId}-menuitem\\` : undefined}` … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_copy-link-copies-valid-url-to-correct-skill-version_ELITEA-2439.md"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case-text drift issue EliteaAI/elitea-testing-public#1451 (labels `question`+`case-text-drift`, state OPEN) checked and is a real, correctly-framed sibling of #1288/#1337 (not a duplicate) — matches the PR body's claim exactly.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1451"
+        },
+        {
+          "kind": "note",
+          "note": "Coverage Map row for case Step 4 ('Paste the link into a new browser tab') cites 'Test Step 4' as covering the `new_page.goto()` action, but in the actual test file the clipboard read happens inside allure Step 3's helper call and the `new_page.goto()` happens inside allure Step 5 — a numbering-label drift between the AFS's own 5-step '## Test Steps' narrative and the implementation's 6 allure.ste… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_copy-link-copies-valid-url-to-correct-skill-version_ELITEA-2439.md"
+        },
+        {
+          "kind": "note",
+          "note": "`_copy_link_via_menuitem()`'s toast wait (`detail_page.version_toast_message.wait_for(state=\"visible\")`) is reused for both the VERSION-group and SKILL-group Share clicks; only the first call's toast text is asserted. If the first toast is still on-screen when the second click fires, the second wait_for(visible) could pass without proving a NEW toast appeared for that click — but no test assertion… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_copy_link.py:48-74"
+        }
+      ],
+      "afs": "test-specs/skills/l2_copy-link-copies-valid-url-to-correct-skill-version_ELITEA-2439.md",
+      "branch": "tests/2439-skill-copy-link",
+      "pr": 1452
+    },
+    {
+      "id": "ELITEA-2441",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Recommend the implementer assert absence at the network layer (zero elitea_core/conversations* requests during the test-panel send/response cycle) as the primary, load-bearing check — a before/after count comparison alone can't distinguish \"never created\" from \"created then auto-deleted within the same flow\". Two secondary ground truths (ConversationAPI.list_conversations() total/id, and ChatPage.… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_test-panel-does-not-create-new-chat-conversation_ELITEA-2441.md"
+        },
+        {
+          "kind": "note",
+          "note": "Live Chat sidebar (project Private/399) has ~a dozen leftover ELITEA2459RenameTest/ABC folders (not conversations) — apparent uncleaned test data from a prior ELITEA-2459 run. Not filed as a defect (no reproducible trigger observed this run, out of ELITEA-2441's own scope) but flagged so a naive sidebar button/heading count doesn't misread them as conversations; testid-scoped counting (ChatPage.CO… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": ".agents/memory/qa-engineer/test_panel_conversation_isolation.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS's Concrete Handles table lists the Skill create form Name/Description/Instructions-editor/Save-button testids as 'skill-name-input-field' / 'skill-description-input-field' / 'skill-instructions-editor-content' / 'skill-save-button', but the actual SkillFormPage LocatorDescriptor fields use 'skill-name-input' / 'skill-description-input' (no '-field' suffix) per pages/skill_form_page.py. Not a d… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_test-panel-does-not-create-new-chat-conversation_ELITEA-2441.md"
+        },
+        {
+          "kind": "defect",
+          "note": "BLOCKING — POM-discipline violation: `chat_page.page.locator(chat_page.CONVERSATION_ITEM_PREFIX)` is built inline in the spec file (lines 136-138) instead of calling the pre-existing page-object method `ChatPage.get_conversation_item_rows()` (automation/pages/chat_page.py:2852-2857), which already returns exactly that locator ('for count assertions'). `.agents/testing.md` § Locator policy and `.cl… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_test_panel_no_new_conversation.py:136"
+        },
+        {
+          "kind": "note",
+          "note": "Non-blocking: AFS Coverage Map row 1 claims 'Asserted where: step 1: DOM count of chat-conversation-item-* = 1; cross-checked against ConversationAPI.list_conversations().total = 1', but the implementation only captures the API baseline at step 1 — the DOM count is never read at step 1; `baseline_sidebar_count` at step 4 is derived from `len(baseline_ids)` (API), not an actual step-1 DOM read, so … [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_test-panel-does-not-create-new-chat-conversation_ELITEA-2441.md:119"
+        },
+        {
+          "kind": "note",
+          "note": "Everything else checked clean. Triangulation: TMS case snapshot ↔ AFS ↔ diff all agree, case's 4 steps map 1:1 to AFS steps to allure.step blocks. Per-step assertions verified real (not just end-state): step 2 asserts verify_on_detail_page() (real URL assert), non-empty test-panel response, and zero elitea_core/conversations* requests — confirmed the request listener is registered before skill cre… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_test_panel_no_new_conversation.py"
+        },
+        {
+          "kind": "note",
+          "note": "Root-cause note for the reviewer/lead: the inline locator slipped through round 0 because a compliant testid constant (CONVERSATION_ITEM_PREFIX) was used directly via page.locator() instead of via the existing ChatPage.get_conversation_item_rows() wrapper method — a valid selector string does not exempt inline construction from the class-level-field-only rule. Fixed by using the existing method; n… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_test_panel_no_new_conversation.py:136"
+        },
+        {
+          "kind": "note",
+          "note": "Prior blocking POM-discipline finding (inline chat_page.page.locator(chat_page.CONVERSATION_ITEM_PREFIX) at test_skill_test_panel_no_new_conversation.py:136-138) is VERIFIED FIXED: the diff now calls the pre-existing chat_page.get_conversation_item_rows() wrapper (chat_page.py:2852) instead of constructing a locator inline. Mechanical grep on the full scoped PR diff (git diff origin/tests/batch-sk… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_test_panel_no_new_conversation.py:136-139"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case snapshot (.agents/automation/skills-remaining-w2/cases/ELITEA-2441.md) -> AFS (test-specs/skills/l3_test-panel-does-not-create-new-chat-conversation_ELITEA-2441.md) -> implementation diff. Case's 4 steps map 1:1 to AFS Coverage Map (all rows disposed 'asserted', no drift). Every asserted row has a real assertion at its own step in the code: step1 baseline capture (no assertion ne… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_test-panel-does-not-create-new-chat-conversation_ELITEA-2441.md"
+        },
+        {
+          "kind": "note",
+          "note": "PR #1453 diff touches only two files (the new spec + the implementer's own daily memory log) — no page-object or AFS changes, consistent with the AFS's own claim of zero testid gaps and full handle reuse. No defect masking (no pytest.skip/xit/test.fail/weakened asserts), no unscoped network-listener false-positive risk (the conversation-request assertion is checked at the end of Step 2, strictly b… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/tests/ui/skills/test_skill_test_panel_no_new_conversation.py"
+        }
+      ],
+      "afs": "test-specs/skills/l3_test-panel-does-not-create-new-chat-conversation_ELITEA-2441.md",
+      "branch": "tests/ELITEA-2441-test-panel-no-new-conversation",
+      "pr": 1453
+    },
+    {
+      "id": "ELITEA-2442",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Confirmed live: SkillTestPanel's AI-response action row (Read aloud/Copy/Regenerate/Delete) is the exact same shared ApplicationAnswer.jsx component tree as the Chat ChatBox — same pattern already documented for ELITEA-2436's model-selector. All four testids (chat-read-out-button, chat-copy-button, chat-regenerate-button, chat-delete-button) already exist on main; only SkillDetailPage's page-objec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "ELITEA-2442"
+        },
+        {
+          "kind": "note",
+          "note": "Voice features (VOICE_FEATURES_ENABLED/VOICE_FEATURES_TEMPORARILY_DISABLED in common/constants.js) default ON/not-disabled on localhost since their env vars are unset in EliteaUI/.env — confirmed live via the speaking-mode controls rendering and the Read-out button rendering at all (it's conditionally rendered on the flag, not just disabled). Worth knowing for any other voice/TTS-adjacent case run… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/skills/l3_test-panel-response-actions-enabled_ELITEA-2442.md",
+      "branch": "tests/2442-test-panel-response-actions-enabled",
+      "pr": 1454
+    },
+    {
+      "id": "ELITEA-2602",
+      "outcome": "blocked",
+      "note": "gate red: SANCTIONED RED-BY-DESIGN (per dispatch). Known defect https://github.com/EliteaAI/elitea-testing-public/issues/570: validateDOMNesting <p>-in-<p> console-error on the shared Fork Complete dialog, soft",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Case-text drift (not a product bug): ELITEA-2602/2603's Test Data literal tag values (test-tag, fork-demo, v2-tag) contain hyphens, silently rejected by the live Tags field (0 network calls, chip never created) — same root cause already tracked as elitea-testing-public#1445 (filed for ELITEA-2433's regression-v1). Commented the new occurrence there rather than re-filing; substituted underscore var… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1445#issuecomment-5261237028"
+        },
+        {
+          "kind": "clarification",
+          "note": "Filed new clarification: the Fork wizard's 'Main entity' preview card never renders Tags for any entity type (Agent/Pipeline/Skill share the same IWModalContent.jsx component) — ELITEA-2602 case step 7 says the expanded card shows 'instructions, tags, etc.' but tags are absent, confirmed via DOM text-content check with two tags present on the source skill. Not a defect (the fork operation itself c… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1455"
+        },
+        {
+          "kind": "note",
+          "note": "Testid gap (marked in AFS, not added — analyst marks, implementer adds per contract): EntityIcon in CreateSkillForm.jsx passes no data-testid at all (Agent's equivalent call sites got agent-form-icon-button for ELITEA-1899, Skill never did). Needs skill-form-icon-button."
+        },
+        {
+          "kind": "note",
+          "note": "Testid gap (marked, not added): SelectIconDialog.jsx's Upload IconButton (shared across every entity's icon picker) has no data-testid at all — only a tooltip accessible name. Affects Agent/Pipeline/Skill icon upload alike, confirmed via source read."
+        },
+        {
+          "kind": "note",
+          "note": "Fork menuitem naming inconsistency (not a defect, functional as-is): the skill Fork menuitem's testid is the generic `fork-menuitem`, not entity-scoped like Agent's `agent-actions-fork-menuitem`/Pipeline's `pipeline-actions-fork-menuitem`, because SkillControls.jsx implements Fork via its own useForkSkill() hook rather than the shared ForkEntityButton.jsx/useForkEntityMenu() hook the other entitie… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing known console defect #570 (validateDOMNesting <p>-in-<p> on IWModalSucceedContent.jsx, previously confirmed for Agent/Pipeline Fork) reproduces for Skills too — third entity type, same shared component, same cause. Not a new finding; handle with the existing soft-assert + '# Known defect: #570' pattern.",
+          "ref": "570"
+        },
+        {
+          "kind": "note",
+          "note": "No SkillAPI client exists in automation/api/ yet (unlike PipelineAPI/AgentAPI) — for ELITEA-2602 this is fine since the case itself tests the create-form UI, but future skill cases needing fast setup will want one added."
+        },
+        {
+          "kind": "defect",
+          "note": "Known OPEN defect #570 (validateDOMNesting console warning on the shared Fork/Import Complete dialog) reproduces on Skill Fork as a THIRD entity type, for both base and non-base version forks. Not a new bug — commented the occurrence on #570 rather than filing separately (dedup policy). Both new tests soft-assert it and are correctly sanctioned-RED until it ships.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/570#issuecomment-5261388675"
+        },
+        {
+          "kind": "note",
+          "note": "SkillDetailPage.get_version_id() returns the SKILL id (not the real DB version id) when called on a base version — its URL-derivation fallback is correct for its existing Save-As-Version callers but would silently produce a wrong value for any future lineage/parent_version_id comparison. Documented in memory (skill_get_version_id_returns_skill_id_on_base_not_real_db_id.md); not modified (existing … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS's Concrete Handles table listed the Fork wizard project-select trigger testid as agent-import-wizard-project-select-combobox; live source confirms the real testid is agent-import-wizard-project-select (no -combobox suffix, same value AgentDetailPage already uses). Used the correct live value; did not separately amend the AFS file since the implementation is what ships and the discrepancy is no… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_fork-skill-end-to-end_ELITEA-2602.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS handle-table drift, non-blocking: test-specs/skills/l2_fork-skill-end-to-end_ELITEA-2602.md § Concrete Handles lists the Fork wizard's project-select trigger as `agent-import-wizard-project-select-combobox`, but automation/pages/skill_detail_page.py's new `fork_project_select_trigger` field (and the pre-existing AgentDetailPage.fork_project_select_trigger it mirrors) uses testid `agent-import-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_fork-skill-end-to-end_ELITEA-2602.md:232"
+        },
+        {
+          "kind": "note",
+          "note": "Both tests are correctly merged sanctioned-RED: issue #570 (validateDOMNesting <p>-in-<p> on the shared Fork Complete dialog) confirmed OPEN via `env -u GITHUB_TOKEN gh issue view 570`, and both tests use the identical soft_failures/pytest.fail() pattern already established in automation/tests/ui/agents/test_fork_agent_to_different_project.py — no masking, deterministic single-cause, linked. Every… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Declared improvisation (SkillDetailPage.get_version_id() returning the skill id, not the real DB version id, on a base version) is well-reasoned, correctly worked around via SkillAPI.get_skill() for the lineage assertions in both tests, and properly memorialized at .agents/memory/test-automation-engineer/skill_get_version_id_returns_skill_id_on_base_not_real_db_id.md (entry-only, no MEMORY.md inde… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator-policy grep on the full diff (git diff origin/tests/batch-skills-remaining-w2...origin/tests/2602-2603-fork-skill -- automation/ | grep -nE '(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') returned exactly 4 hits, all `.format(...)` calls on class-level `[data-testid=\"…-{}\"]` templat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/skills/l2_fork-skill-end-to-end_ELITEA-2602.md",
+      "branch": "tests/2602-2603-fork-skill",
+      "pr": 1456
+    },
+    {
+      "id": "ELITEA-2603",
+      "outcome": "blocked",
+      "note": "gate red: SANCTIONED RED-BY-DESIGN (per dispatch). Known defect https://github.com/EliteaAI/elitea-testing-public/issues/570: validateDOMNesting <p>-in-<p> console-error on the shared Fork Complete dialog, soft",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "Case-text drift (not a product bug): ELITEA-2602/2603's Test Data literal tag values (test-tag, fork-demo, v2-tag) contain hyphens, silently rejected by the live Tags field (0 network calls, chip never created) — same root cause already tracked as elitea-testing-public#1445 (filed for ELITEA-2433's regression-v1). Commented the new occurrence there rather than re-filing; substituted underscore var… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1445#issuecomment-5261237028"
+        },
+        {
+          "kind": "clarification",
+          "note": "Filed new clarification: the Fork wizard's 'Main entity' preview card never renders Tags for any entity type (Agent/Pipeline/Skill share the same IWModalContent.jsx component) — ELITEA-2602 case step 7 says the expanded card shows 'instructions, tags, etc.' but tags are absent, confirmed via DOM text-content check with two tags present on the source skill. Not a defect (the fork operation itself c… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1455"
+        },
+        {
+          "kind": "note",
+          "note": "Testid gap (marked in AFS, not added — analyst marks, implementer adds per contract): EntityIcon in CreateSkillForm.jsx passes no data-testid at all (Agent's equivalent call sites got agent-form-icon-button for ELITEA-1899, Skill never did). Needs skill-form-icon-button."
+        },
+        {
+          "kind": "note",
+          "note": "Testid gap (marked, not added): SelectIconDialog.jsx's Upload IconButton (shared across every entity's icon picker) has no data-testid at all — only a tooltip accessible name. Affects Agent/Pipeline/Skill icon upload alike, confirmed via source read."
+        },
+        {
+          "kind": "note",
+          "note": "Fork menuitem naming inconsistency (not a defect, functional as-is): the skill Fork menuitem's testid is the generic `fork-menuitem`, not entity-scoped like Agent's `agent-actions-fork-menuitem`/Pipeline's `pipeline-actions-fork-menuitem`, because SkillControls.jsx implements Fork via its own useForkSkill() hook rather than the shared ForkEntityButton.jsx/useForkEntityMenu() hook the other entitie… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Pre-existing known console defect #570 (validateDOMNesting <p>-in-<p> on IWModalSucceedContent.jsx, previously confirmed for Agent/Pipeline Fork) reproduces for Skills too — third entity type, same shared component, same cause. Not a new finding; handle with the existing soft-assert + '# Known defect: #570' pattern.",
+          "ref": "570"
+        },
+        {
+          "kind": "note",
+          "note": "No SkillAPI client exists in automation/api/ yet (unlike PipelineAPI/AgentAPI) — for ELITEA-2602 this is fine since the case itself tests the create-form UI, but future skill cases needing fast setup will want one added."
+        },
+        {
+          "kind": "defect",
+          "note": "Known OPEN defect #570 (validateDOMNesting console warning on the shared Fork/Import Complete dialog) reproduces on Skill Fork as a THIRD entity type, for both base and non-base version forks. Not a new bug — commented the occurrence on #570 rather than filing separately (dedup policy). Both new tests soft-assert it and are correctly sanctioned-RED until it ships.",
+          "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/570#issuecomment-5261388675"
+        },
+        {
+          "kind": "note",
+          "note": "SkillDetailPage.get_version_id() returns the SKILL id (not the real DB version id) when called on a base version — its URL-derivation fallback is correct for its existing Save-As-Version callers but would silently produce a wrong value for any future lineage/parent_version_id comparison. Documented in memory (skill_get_version_id_returns_skill_id_on_base_not_real_db_id.md); not modified (existing … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS's Concrete Handles table listed the Fork wizard project-select trigger testid as agent-import-wizard-project-select-combobox; live source confirms the real testid is agent-import-wizard-project-select (no -combobox suffix, same value AgentDetailPage already uses). Used the correct live value; did not separately amend the AFS file since the implementation is what ships and the discrepancy is no… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_fork-skill-end-to-end_ELITEA-2602.md"
+        },
+        {
+          "kind": "note",
+          "note": "AFS handle-table drift, non-blocking: test-specs/skills/l2_fork-skill-end-to-end_ELITEA-2602.md § Concrete Handles lists the Fork wizard's project-select trigger as `agent-import-wizard-project-select-combobox`, but automation/pages/skill_detail_page.py's new `fork_project_select_trigger` field (and the pre-existing AgentDetailPage.fork_project_select_trigger it mirrors) uses testid `agent-import-… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_fork-skill-end-to-end_ELITEA-2602.md:232"
+        },
+        {
+          "kind": "note",
+          "note": "Both tests are correctly merged sanctioned-RED: issue #570 (validateDOMNesting <p>-in-<p> on the shared Fork Complete dialog) confirmed OPEN via `env -u GITHUB_TOKEN gh issue view 570`, and both tests use the identical soft_failures/pytest.fail() pattern already established in automation/tests/ui/agents/test_fork_agent_to_different_project.py — no masking, deterministic single-cause, linked. Every… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Declared improvisation (SkillDetailPage.get_version_id() returning the skill id, not the real DB version id, on a base version) is well-reasoned, correctly worked around via SkillAPI.get_skill() for the lineage assertions in both tests, and properly memorialized at .agents/memory/test-automation-engineer/skill_get_version_id_returns_skill_id_on_base_not_real_db_id.md (entry-only, no MEMORY.md inde… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical locator-policy grep on the full diff (git diff origin/tests/batch-skills-remaining-w2...origin/tests/2602-2603-fork-skill -- automation/ | grep -nE '(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()') returned exactly 4 hits, all `.format(...)` calls on class-level `[data-testid=\"…-{}\"]` templat… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/skills/l3_fork-non-base-skill-version_ELITEA-2603.md",
+      "branch": "tests/2602-2603-fork-skill",
+      "pr": 1456
+    },
+    {
+      "id": "ELITEA-2604",
+      "outcome": "blocked",
+      "note": "build failed: agent({schema}): subagent completed without calling StructuredOutput (after in-conversation nudge)",
+      "findings": [
+        {
+          "kind": "defect",
+          "note": "New testid gap (not a functional defect, but implementer-blocking work): the per-uploaded-icon delete button in EliteaUI's UserIconItem.jsx (shared icon-picker gallery, used by Agent/Skill/Pipeline) carries NO data-testid at all -- only a non-unique className=\"deleteButton\". It's hover-revealed (CSS visibility toggle, element is in the DOM the whole time). This blocks automating the literal \"click… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_skill-custom-icon-upload-and-validation_ELITEA-2604.md#part-d"
+        },
+        {
+          "kind": "clarification",
+          "note": "Case steps 19/21 name a literal default icon file skill-icon.svg. The live product's actual default state is an ABSENT <img> element (an inline SVG placeholder rendered by EntityTypeIcon, no discrete skill-icon.svg asset/URL ever appears in the DOM) -- same pattern already documented for Agents in ELITEA-1899's AFS. Not filed as a separate tracker issue (same reverse-masking pattern as ELITEA-1899… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "UI-text inconsistency (cosmetic, not filed): the icon-picker dialog's header tooltip says \"less than 500KB\" while the server's rejection error says \"File size exceeds 512 KB\" for the same limit (500 KiB = 512,000 bytes, so numerically consistent, just inconsistent unit-label strings). Does not affect the case's pass/fail criterion."
+        },
+        {
+          "kind": "note",
+          "note": "One unrelated 404 (GET .../elitea_core/skill/prompt_lib/399/1499) appeared in the console log, but network-request-sequence timing shows it followed a DELETE that happened BEFORE this run's own skill (also assigned id 1499 by the DB) was ever created -- consistent with leftover state from a prior session sharing the same browser instance, not something this case's own flow triggered. Not reproduce… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/skills/l2_skill-custom-icon-upload-and-validation_ELITEA-2604.md"
+    },
+    {
+      "id": "ELITEA-2605",
+      "outcome": "blocked",
+      "note": "build failed: agent({schema}): subagent completed without calling StructuredOutput (after in-conversation nudge)",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "3 new testid gaps for the implementer: skill-menu-item-icon-img (SkillMenu.jsx dropdown item), skill-card-icon-img (SkillCard.jsx agent SKILLS-section card), skill-mention-item-icon-img (MentionSkillList.jsx chat ~mention item). All three are the identical icon_meta?.url ? <EliteAImage/> : <SkillIcon/> pattern at 3 different JSX call sites — each needs its own testid via add-data-testid, none shar… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l2_skill-custom-icon-visibility-across-ui_ELITEA-2605.md"
+        },
+        {
+          "kind": "note",
+          "note": "Reusable insight logged to qa-engineer memory and the surface digest: a shared image component (EliteAImage) accepting a data-testid prop does NOT mean every caller passes one — future icon/avatar-visibility cases on other entities (agents, pipelines, MCPs) should grep each individual JSX call site rather than assume testid coverage follows from the component's capability.",
+          "ref": "test-specs/skills/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Reopening an agent by a bare /agents/all/{id} URL (no ?viewMode=owner) hits the wrong public_application endpoint and 404s — this is pre-existing, already-documented behavior (role-overrides.md § 4xx/5xx cross-check), reproduced again live this run by my own navigation shortcut during cleanup, not a new defect and not part of ELITEA-2605's own 17 case steps."
+        },
+        {
+          "kind": "note",
+          "note": "tests/batch-skills-remaining-w2 had uncommitted ELITEA-2604 work sitting directly on the trunk at dispatch start (page object diff + full test file + AFS notes + 2 memory entries) — apparently an interrupted prior implementer session that never committed/branched/PR'd. Quarantined onto tests/2604-skill-custom-icon-upload-and-validation (pushed, commit 55ae0f93) rather than absorbing it into ELITEA… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "tests/2604-skill-custom-icon-upload-and-validation"
+        },
+        {
+          "kind": "note",
+          "note": "No product/visual defect found for ELITEA-2605 itself — the custom skill icon renders byte-identically (same uploaded src) across all 5 named UI locations. Three pure automation-locator gaps closed via add-data-testid (skill-menu-item-icon-img, skill-card-icon-img, skill-mention-item-icon-img), pushed to EliteaAI/EliteaUI@ccc8c001 on automation/testids — awaiting human cherry-pick to main for depl… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "page.wait_for_timeout(300) after an Escape popper-close (test_skill_custom_icon_visibility_across_ui.py:241) — sanctioned by ui-tests.md's own CSS-transition/hover examples and used identically in 5+ sibling files under tests/ui/skills/; non-blocking.",
+          "ref": "automation/tests/ui/skills/test_skill_custom_icon_visibility_across_ui.py:241"
+        },
+        {
+          "kind": "note",
+          "note": "Redundant @pytest.mark.p2/@pytest.mark.regression decorators duplicate the module-level pytestmark list — pre-existing convention across ≥5 sibling files, not introduced by this diff; non-blocking.",
+          "ref": "automation/tests/ui/skills/test_skill_custom_icon_visibility_across_ui.py:79-80"
+        },
+        {
+          "kind": "note",
+          "note": "Verified (not just trusted) the 3 new testids against EliteaAI/EliteaUI@ccc8c001: correctly scoped to the custom-icon (EliteAImage) branch only, default SkillIcon branch untagged — compliant same-element-conditional-pair shape. Also confirmed EliteAImage.jsx forwards data-testid onto the rendered <img> for real."
+        },
+        {
+          "kind": "note",
+          "note": "Verified the AFS's 'not extend-existing against ELITEA-2428' justification directly against ELITEA-2428's test code — that spec only asserts the outer entity-card-icon container on a no-custom-icon skill, never the inner <img>/src match, so ready-for-automation was the correct classification."
+        }
+      ],
+      "afs": "test-specs/skills/l2_skill-custom-icon-visibility-across-ui_ELITEA-2605.md",
+      "branch": "tests/2605-skill-custom-icon-visibility-across-ui",
+      "pr": 1457
+    },
+    {
+      "id": "ELITEA-2606",
+      "outcome": "blocked",
+      "note": "gate red for the batch — this spec did not itself fail; the batch is not proven until the red is resolved",
+      "findings": [
+        {
+          "kind": "note",
+          "note": "Confirmed mechanism (server-side, network-verified): 'Save As Version' copies the base version's meta.icon_meta into the new version at creation time via the POST skill/prompt_lib/{project}/{skillId} response body itself -- not a client-side carryover. Same 'preserved by reference' guarantee as skill Fork (ELITEA-2602/2603) but through a different endpoint (create-version POST vs skill_export_fork… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_skill-custom-icon-persistence-on-save-as-version_ELITEA-2606.md"
+        },
+        {
+          "kind": "note",
+          "note": "No testid gaps found for this case -- every locator on the executed flow was already pre-existing from prior ELITEA-1738/2437/2604 rework, so this case needs zero add-data-testid work before implementation, unlike most of its sibling icon/version cases."
+        },
+        {
+          "kind": "clarification",
+          "note": "SkillAPI.get_skill(skill_id) (automation/api/client.py:1460) cannot target a specific version's icon_meta -- it always hits the bare /skill/prompt_lib/{project}/{skillId} endpoint with no versionId segment. Flagged as an optional small additive extension (version_id param) in the AFS's Automation Hints for the implementer to consider if they want an API-level per-version assertion in addition to t… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "test-specs/skills/l3_skill-custom-icon-persistence-on-save-as-version_ELITEA-2606.md"
+        },
+        {
+          "kind": "note",
+          "note": "SkillDetailPage.get_version_id()'s docstring (\"on the initial base version ... Version ID equals the Skill ID\") is only accurate for the very-first create-flow redirect. Once a second version exists and the VERSION dropdown is used to switch back to \"base\", the URL carries an explicit 2-segment form with base's own real (different) database version-id — confirmed live this run. Not a product defec… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_detail_page.py:944 (get_version_id docstring)"
+        },
+        {
+          "kind": "note",
+          "note": "New method confirm_create_version_capturing_response() duplicates ~9 lines of save_as_version()'s confirm logic (toast wait+assert, URL-change wait_for_function, wait_for_network) verbatim, just to add response capture. page-objects.md's 'Critical: NO Method Duplication' rule applies in spirit even within one class. A cleaner additive-only alternative: add an optional `capture_response: bool = Fal… [clipped; full text in the unit's receipt under .agents/automation/_returns/]",
+          "ref": "automation/pages/skill_detail_page.py:1060-1099"
+        },
+        {
+          "kind": "note",
+          "note": "Mechanical grep for non-testid handles added in automation/pages/ or automation/tests/ (git diff origin/tests/batch-skills-remaining-w2...origin/tests/ELITEA-2606-skill-icon-persistence-save-as-version | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\(')): 0 hits. Diff is fully additive (0 … [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        },
+        {
+          "kind": "note",
+          "note": "Triangulated case snapshot (.agents/automation/skills-remaining-w2/cases/ELITEA-2606.md) <-> AFS (test-specs/skills/l3_skill-custom-icon-persistence-on-save-as-version_ELITEA-2606.md) <-> PR diff. All 13 case steps + 4 preconditions have Coverage-Map rows; every 'asserted' row maps to a real, per-step assertion in the test (not just an end-state check) — e.g. step 4's dialog-title assert, step 5's… [clipped; full text in the unit's receipt under .agents/automation/_returns/]"
+        }
+      ],
+      "afs": "test-specs/skills/l3_skill-custom-icon-persistence-on-save-as-version_ELITEA-2606.md",
+      "branch": "tests/ELITEA-2606-skill-icon-persistence-save-as-version",
+      "pr": 1458
+    }
+  ],
+  "totals": {
+    "blocked": 8
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "spec": "automation/tests/ui/skills/test_skill_fork_end_to_end.py",
+      "test_id": "automation/tests/ui/skills/test_skill_fork_end_to_end.py::TestSkillForkEndToEnd::test_fork_skill_end_to_end",
+      "ticket": "https://github.com/EliteaAI/elitea-testing-public/issues/570",
+      "why": "Known OPEN defect #570 (validateDOMNesting <p>-in-<p> console warning on the shared Fork Complete dialog) reproduces on Skill's fork flow, confirmed live 1/1; soft-asserted, every other assertion passes cleanly.",
+      "case_ids": [
+        "ELITEA-2602"
+      ],
+      "unit": "ELITEA-2602+ELITEA-2603"
+    },
+    {
+      "spec": "automation/tests/ui/skills/test_skill_fork_non_base_version.py",
+      "test_id": "automation/tests/ui/skills/test_skill_fork_non_base_version.py::TestSkillForkNonBaseVersion::test_fork_non_base_skill_version",
+      "ticket": "https://github.com/EliteaAI/elitea-testing-public/issues/570",
+      "why": "Same known OPEN defect #570 reproduces on the non-base-version fork flow, confirmed live 1/1; soft-asserted, every other assertion passes cleanly.",
+      "case_ids": [
+        "ELITEA-2603"
+      ],
+      "unit": "ELITEA-2602+ELITEA-2603"
+    }
+  ],
+  "parked": []
+}

@@ -2,7 +2,1563 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-06 (ELITEA-2452 analysis).
+> place, don't append duplicate entries. Last updated: 2026-08-26 (ELITEA-2008
+> failure triage, EL-6128 trigger-restriction drift).
+
+## Entry-point Trigger restriction — EL-6128 GREYS OUT instead of HIDING; and `select-option-selected-icon` poisons `select-option-*` enumeration (confirmed live, 2026-08-26, ELITEA-2008 triage)
+
+**Two independent facts, both live-confirmed on `automation/testids` @ 0-behind-`origin/main`.**
+
+**① The Trigger dropdown no longer hides restricted options — it disables them in place.**
+EliteaAI/EliteaUI@cb70a64e + @15099206 + @07e0e9b1 (EL-6128, on `origin/main` 2026-08-24/25) changed
+`TriggerTypeSelector.jsx` from `TRIGGER_OPTIONS.filter(...)` to
+`TRIGGER_OPTIONS.map(opt => opt.value === chat_message ? opt : {...opt, disabled: true})`.
+
+- Restricted state (Printer / HITL / non-empty `interrupt_before|after` in the **saved** YAML):
+  all three options render; `select-option-schedule` and `select-option-webhook` carry
+  **`aria-disabled="true"`** (+ MUI `Mui-disabled` class); `select-option-chat_message` does not.
+- Unrestricted state: **no `aria-disabled` attribute at all** on any option — absent, *not* `"false"`.
+  So an "is enabled" check must be `:not([aria-disabled="true"])`, never `== "false"`.
+- **The option NAME list is `['Chat Message','Schedule','Webhook']` in BOTH states.** Any assertion
+  written against names alone now proves nothing. Assert the enabled/disabled split.
+- The restriction is still gated on the **last-SAVED** YAML (`values.version_details.instructions`),
+  not the live canvas — unchanged by EL-6128, re-confirmed live 2026-08-26.
+- Predicate widened to `hasInteractiveElements || hasDelegatedOauthToolkit` — a saved delegated-OAuth
+  toolkit now restricts the trigger too. **No TMS case covers that yet.**
+- The `Trigger` label tooltip gained a reason sentence, but its info icon has **no testid**
+  (`<span data-info-tooltip="true">`), so it is not assertable without new UI work.
+
+Handles, all **on `origin/main`** (verified 2026-08-26 after `git fetch origin`) — no new testids needed:
+`pipeline-entry-point-trigger-select`, `select-option-{chat_message|schedule|webhook}` (shared template
+`SingleSelectMenuItem.jsx:117`), `pipeline-node-interrupt-before-toggle-{node_id}`, `agent-save-button`.
+
+**② `select-option-selected-icon` breaks `get_open_listbox_option_names()` on localhost.**
+EliteaAI/EliteaUI@b0a7d61a (2026-08-24, **`automation/testids` only, NOT on `main`**) put
+`data-testid="select-option-selected-icon"` on the ✓ icon *inside* the selected `MenuItem`. It matches
+`SELECT_OPTION_PREFIX = '[data-testid^="select-option-"]'` (`pipeline_detail_page.py:1580`), so every
+enumeration returns a spurious `''` for the selected option:
+
+```
+localhost baseline: ['Chat Message', '', 'Schedule', 'Webhook']
+```
+
+Bites localhost only today; **breaks DEV the moment a human cherry-picks b0a7d61a**. Affects ~40
+`SELECT_OPTION_PREFIX` references + `test_pipeline_entry_point_trigger_types_persist.py` and the two
+`pipelines_2` MCP-node specs. Root fix = rename the icon testid out of the `select-option-` namespace.
+Same commit also added `data-selected` on options — **also `automation/testids`-only, do not build
+DEV-bound assertions on it.**
+
+## MCP node — the 4 Tools ADD triggers, the Tools card's untestid'd name/connection-status, input-mapping TYPE gaps, and LIVE MCP-node EXECUTION (confirmed live, 2026-08-24, ELITEA-1952/1953)
+
+Extends § "MCP node — inline config panel, CONDITIONALLY rendered (…ELITEA-2037)"
+below; everything there still holds. New this session, all live-confirmed on
+pipeline `9506` with MCP toolkit `autotest_mcp_w05` (DeepWiki fixture):
+
+- **All four TOOLS ADD triggers already carry testids and are already
+  `PipelineDetailPage` fields** (`pipeline_detail_page.py:1374/1399/1408/1420),
+  all on `origin/main`: `agent-add-toolkit-button`, `agent-add-mcp-button`,
+  `agent-add-agent-button`, `agent-add-pipeline-button`. **Visible text is
+  `Toolkit`/`MCP`/`Agent`/`Pipeline` — the `+` is a separate icon**, so a case
+  text saying `"+ MCP"` must not be matched as a string.
+- **The attached-tool card (`agent-toolkit-card`) has TWO testid gaps.** Its
+  children are: an untestid'd MCP `<svg>` icon, an untestid'd
+  `<div class="MuiTypography-root MuiTypography-bodyMed">` holding the **name**,
+  `toolkit-card-tools-toggle` ("Show tools"), `toolkit-open-button`,
+  `agent-toolkit-delete-button`, and an untestid'd `<button>` reading **`Log in`**
+  — that button IS the card's **connection status** for an unauthenticated Remote
+  MCP. Recommended: `pipeline-tools-card-name`,
+  `pipeline-tools-card-connection-status`. ⚠️ **Distinct from
+  `toolkit-connection-status`** (that one is `McpAuthStatus.jsx` on the MCP
+  *detail* page, not the pipeline Tools card).
+- **Input-mapping row shape**: `HeadingChip(DisplayName)` + a **`Type` select**
+  (options `select-option-fixed` / `-variable` / `-fstring`, i.e. Fixed/Variable/
+  F-String) + a `Value` control. The heading text is `Input mapping (required N)`
+  — sentence case with the count, NOT the uppercase "INPUT MAPPING (REQUIRED)"
+  several case texts use. **No JSON-schema data type is displayed** anywhere; the
+  "Type" the UI shows is the *mapping* type.
+- **Two live testid gaps on the MCP node's input mapping** (both are one-line
+  widenings of existing plumbing, exact lines in
+  `test-specs/pipelines/lextend_mcp-node-input-mapping-configuration_ELITEA-1953.md`):
+  1. the **Type select** — `BaseToolNode.jsx:208-212` passes `typeTestIdPrefix`
+     only for `nodeType === Toolkit`; MCP gets `undefined`, leaving two identical
+     `id="simple-select-Type"` controls per node (positional only). The comment in
+     that file says it was scoped to Toolkit "because the MCP node's equivalent
+     select is untouched by any test" — ELITEA-1953 is that test, so widening it
+     now SATISFIES #511 rather than violating it.
+  2. the **Variable-branch Value select** — `InputMappingItem.jsx:245-255` (the
+     non-enum, non-string `Select.SingleSelect`) has no `dataTestId`, while the
+     other two branches already pass `dataTestId={valueTestId}` (lines 146, 170).
+- **Switching a row's Type to `Variable` SWAPS the Value WIDGET** — the text input
+  (and with it `pipeline-mcp-node-input-mapping-value-{param}`) is **removed from
+  the DOM** and replaced by a state-variable select auto-set to `input`
+  (`id="simple-select-[object Object]"` — a cosmetic id-computation slip, not a
+  functional defect; never locate on it). Same behaviour class as the LLM/HITL
+  finding at § "LLM/HITL node Type+Value field" below. The Type change is
+  **per-row**: the sibling row keeps `Fixed`.
+- **Default toggle states on a fresh MCP node** (re-confirmed, and the nuance the
+  case texts get wrong): all three are **unchecked**. `Interrupt before` is
+  additionally `disabled` *because the node is the entry point*; `Interrupt after`
+  *because `transition == END`*; **`Structured output` is NOT `disabled`** — just
+  unchecked. A case text saying "disabled by default" means OFF, not the
+  `disabled` attribute.
+- **Persistence through Save + full reload is clean** for: per-row Type,
+  Variable-branch value, Fixed value, Toolkit, Tool, input-mapping heading, and all
+  three toggle states. `PUT …/application/prompt_lib/{project}/{id}` → 201.
+- **THERE IS NO `START` NODE.** A fresh pipeline's canvas holds only `END`; "start"
+  is the node's `Trigger`/entry-point property
+  (`pipeline-entry-point-trigger-select`, which the sole node auto-acquires). The
+  `MCP 1 → END` edge is **auto-created** from the node's default `transition` —
+  it does not exist at add time (edge count 0 right after "Add node → MCP") but is
+  present after Save + reload as
+  `rf__edge-xy-edge__MCP 1---EliteAPipelineEnd`. Any case step saying
+  "connect START → X → END" is case-text drift with nothing to drag.
+- **LIVE MCP-NODE EXECUTION WORKS AND IS ASSERTABLE (new capability on this
+  surface).** Sending a message in the embedded chat on a saved pipeline whose MCP
+  node has a Toolkit+Tool runs the tool for real. The assistant message then
+  contains `chat-answer-thought-accordion` → **`chat-answer-tool-chip` whose text
+  is exactly `"{toolkit_name}: {tool_name} (MCP1)"`** (e.g.
+  `autotest_mcp_w05: ask_question (MCP1)`) plus `skill-test-last-response` holding
+  the real tool output. **That chip is the observable that proves the MCP node ran
+  the SELECTED tool** — a non-empty answer alone does not (a silent LLM-only
+  fallback would also produce one). `chat-answer-tool-chip` is on `origin/main` and
+  already wired on `ChatPage`/`AgentDetailPage`, but NOT yet on
+  `PipelineDetailPage` — page-object work only, no EliteaUI change. Wall clock this
+  session: ~11 s "Thought" + streaming, ~40 s end to end. Budget 180 s, wait on the
+  last message's `chat-delete-button`, never a sleep.
+- **⚠️ Enter does NOT send in the embedded chat composer.** Filling
+  `chat-message-input` and pressing Enter leaves the text in the field and posts
+  nothing — `chat-send-button` must be clicked.
+  `PipelineDetailPage.send_message_in_embedded_chat()` already does this; do not
+  "simplify" it to a keypress.
+- **The pipeline CREATE form requires Description as well as Name** —
+  `agent-save-button` stays `disabled` until both are filled. (Only relevant if a
+  case creates the pipeline through the UI; specs normally use the `pipeline_id`
+  API fixture.)
+
+
+## Code node — input filtering (elitea_state scoping), confirmed live, clean pass (2026-08-09, ELITEA-2449)
+
+Confirms `.claude/skills/elitea-pipeline/references/yaml-schema.md:238-241`'s
+documented contract via live execution: **a Code node's `elitea_state` inside
+the pyodide sandbox contains ONLY the variables listed in that node's own
+`input:`** — a state variable declared in the pipeline's `state:` block AND
+written by an EARLIER node in the SAME run (so it has a real, non-empty value)
+is still completely absent from `elitea_state.keys()` if it isn't in the
+Code node's `input:` list. Confirmed live twice (2 disposable probe pipelines,
+ids 8823/8824, `var_a`/`var_b`/`var_c` set by 3 chained `state_modifier` nodes,
+Code node `input: [var_a, var_b]` only): `list(elitea_state.keys())` renders as
+exactly `['var_a', 'var_b']` and `'var_c' in elitea_state` is `False`, even
+though `var_c` independently shows a real value (`"CCC"`) in ITS OWN Run
+Details row at the same timeline step. **The two facts don't contradict each
+other** — a variable's Run Details row/value visibility is a pipeline-run-level
+fact (any variable declared in `state:` gets a row); a Code node's ability to
+READ a variable via `elitea_state` is scoped strictly to that node's own
+`input:` list. Don't conflate them when reading Run Details evidence for a
+"was this excluded" claim — read the CONSUMING node's own output/result value,
+not a sibling variable's unrelated row.
+
+- **`get_code_node_input_value()` (`PipelineDetailPage`, ELITEA-2009) returns
+  chip text with NO separator for a multi-variable selection** — confirmed
+  live: selecting `var_a` then `var_b` renders `.text_content()` as
+  `"var_avar_b"`, not `"var_a, var_b"` (that comma-joined form is only the
+  HIDDEN input's value, not what the visible-chip-container text read
+  returns). Any assertion against a 2+-variable Input selection must use
+  substring/membership checks (`"var_a" in value and "var_b" in value`), never
+  an exact-string match — ELITEA-2009/2446 never exercised this because both
+  only ever selected ONE variable.
+- **Calling `select_code_node_input_variable()` twice in a row (once per
+  variable) is safe and requires no new method** — confirmed live.
+  `_select_multi_select_option_and_close()`'s internal `Escape` + "wait for
+  popover fully closed" means the SECOND call's `open_code_node_input_select()`
+  reopens a genuinely-closed popover rather than toggling an already-open one
+  shut. No race, no gotcha. **BUT this is safe ONLY when the Input starts
+  EMPTY** — resolved during ELITEA-2449 implementation: re-invoking
+  `select_code_node_input_variable("var_a")`/`("var_b")` against a Code node
+  whose Input is ALREADY `[var_a, var_b]` (this AFS's own recommended fixture,
+  pre-set via YAML at creation) TOGGLES both chips OFF instead of confirming
+  them — `option.click()` on an already-checked MUI multi-select MenuItem is a
+  plain toggle. Confirmed live: `get_code_node_input_value()` returned `""`
+  after the two calls against that fixture. The implementer's test verifies
+  step 3 READ-ONLY (no `select_code_node_input_variable()` calls at all) when
+  the fixture pre-sets Input via YAML — reserve the two-call sequence for a
+  Code node whose Input genuinely starts empty (a freshly-added node, per
+  ELITEA-2009's own test).
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l3_code-node-input-filtering-selective-state-access_ELITEA-2449.md`.
+
+## Run Details STATES panel — Before/After values are PER-TIMELINE-STEP, not run-level (confirmed live, 2026-08-09, ELITEA-2444)
+
+**Correction/refinement to the ELITEA-2443 digest's implicit assumption below.**
+ELITEA-2443's test reads `state_1`/`state_2` Before/After after selecting only the
+LAST timeline entry and gets correct values — this made it LOOK like the STATES
+panel shows run-level (whole-run) Before/After snapshots. It doesn't. Confirmed
+live on ELITEA-2444's fixture (parent declares `state_1`/`state_2`, child declares
+`state_1`/`state_3` — `state_2` is NOT in the child's own `state:`/node input-output
+anywhere): with the LAST timeline step selected (the child's own final CODE node),
+`state_2`'s Before AND After both render as **empty strings** — not because the
+value is unset (it demonstrably is `"parent_only_value"`, set by the parent's own
+CODE1 node), but because **the currently-selected step's own input/output
+declaration doesn't include `state_2`, so the panel has nothing to show for that
+step**. Selecting timeline step 0 (the parent's own CODE1 execution) makes
+`state_2`'s After render correctly (`'"parent_only_value"'`). ELITEA-2443's own
+fixture never hit this because its child declared BOTH `state_1` and `state_2`, so
+every timeline step had both variables in scope regardless of which step was
+selected.
+
+- **Practical rule for any future case reading Before/After for a variable NOT
+  declared/used by every node in the run**: pick the timeline step whose OWN
+  input/output actually includes that variable — the step immediately AFTER the
+  node that writes it (for the After value) or immediately BEFORE (for the Before
+  value) — never assume "select the last step" is a safe universal convention.
+  Full worked example (two-step Before/After comparison across an Agent-node
+  boundary): `test-specs/pipelines/l2_pipeline-subgraph-non-common-state-isolation_ELITEA-2444.md`
+  Test Step 12.
+- **A variable's Run Details ROW EXISTENCE, by contrast, IS a clean run-level
+  fact** — `get_run_details_state_row_locator(variable).count() == 0` for a
+  variable the PARENT's own `state:` block never declares (confirmed at every one
+  of the run's 4 timeline steps, same `0` result throughout) — only the
+  Before/After VALUE rendering is step-scoped, not the row's existence. This is
+  the mechanism ELITEA-2444 uses to prove a child-only variable (`state_3`) never
+  leaks into the parent's panel.
+- Confirmed via `page.evaluate()` DOM queries (`document.querySelectorAll`) rather
+  than the accessibility-tree snapshot — the snapshot silently omits empty-text
+  value boxes, which looks identical to "element not found" at a glance. Use
+  `element.textContent` via `browser_evaluate`/a real pytest assertion when a
+  Before/After value might legitimately be an empty string; don't rely on
+  presence-in-snapshot alone.
+
+## Run History panel — Pipeline surface (SAME shared component as the Agent surface's ELITEA-1877, confirmed live, 2026-08-09, ELITEA-2011)
+
+The Pipeline detail page's embedded-chat "view run history" icon
+(`pipeline-history-tab`, `ViewRunHistoryButton.jsx`) opens the exact same
+`RunHistoryContainer`/`RunHistoryList`/`RunHistoryChat` stack already documented
+for Agents in `test-specs/agents/_surface.md` / `l2_run-history-select-past-run-loads-messages_ELITEA-1877.md`
+— `ConfigurationTab.jsx` wires it with `source={ParticipantEntityTypes.Pipeline}`,
+`entityId={applicationId}`. Confirmed live on pipeline ids 8757/8758/8759:
+
+- **`PipelineDetailPage.clear_embedded_chat()` is a silent no-op** — it clicks a
+  stale `[aria-label="Clear the chat history"]` locator matching zero elements
+  (the real button is `ClearChatButton.jsx`, `aria-label="clear the chat"`,
+  `data-testid="chat-clear-button"` — a correct `chat_clear_button`
+  `LocatorDescriptor` field already exists on the same page object but the method
+  ignores it). Confirmed twice: the broken method → only 1 run-history entry after
+  2 sent messages (both landed in one conversation); `self.chat_clear_button.click()`
+  directly → 2 distinct entries, as expected. **Any test needing to start a fresh
+  pipeline conversation must call `chat_clear_button` directly (or the method must
+  be fixed first) — do not trust `clear_embedded_chat()` as-is.**
+- **`run-history-list-item` (+ its `data-selected` state) is on
+  `automation/testids` only, NOT yet on `main`** (added during ELITEA-1877's
+  `add-data-testid` work — `EliteaAI/EliteaUI@a5a9d0f5` — shared component, so it
+  serves BOTH the Agent and Pipeline surfaces once promoted). Verified via
+  `git fetch origin` + `git grep -- "run-history-list-item" origin/main -- src/`
+  (no hit) vs `origin/automation/testids` (hit, `RunHistoryListItem.jsx:143`).
+- **`PipelineDetailPage` has NO run-history methods yet** (only a stale,
+  pre-shared-component `click_history_tab()`/`get_history_entries()` pair using
+  raw CSS selectors like `table tbody tr` / `[class*="version"]` — these predate
+  the current `ViewRunHistoryButton`/`RunHistoryContainer` implementation and
+  match nothing live; do not use them for this feature). Mirror
+  `AgentDetailPage`'s `open_run_history()` / `get_run_history_item_count()` /
+  `select_run_history_item(index)` / `get_run_history_chat_messages_text()`
+  almost verbatim — same shared component, same behavior confirmed live.
+- The history panel REPLACES the Configuration form + embedded chat entirely
+  (`ConfigurationTab.jsx`: `{showHistory && <RunHistoryContainer/>}` /
+  `{!showHistory && (...)}`, mutually exclusive) — not an overlay/modal.
+- The close (`X`, `aria-label="close run history"`) button IS wired and works on
+  the Pipeline surface too (same fix already observed for Agents, the
+  previously-filed `#1093`) — confirmed live: closing returns
+  `chat-message-input` etc. to the DOM. No testid on it yet (aria-label only);
+  not requested here since no dispatched case's steps touch it yet.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-run-history-panel-view-executions_ELITEA-2011.md`.
+- **Sibling case flag — RESOLVED (2026-08-09, ELITEA-2070 analysis + implementation):**
+  `ELITEA-2070` ("Pipeline — Run History Panel") classified `extend-existing` against
+  this ELITEA-2011 test (merged onto the batch trunk, `30041066`) — its only gap vs.
+  ELITEA-2011 is the "close run history panel" step. **The close (`X`) button had no
+  testid** (`aria-label="close run history"` only, `RunHistoryContainer.jsx:77-84`) —
+  ELITEA-2070 requested + added `run-history-close-button` (no `pipeline-`/`agent-`
+  prefix, same reasoning as `run-history-list-item`: the shared component serves both
+  surfaces), `EliteaAI/EliteaUI@ccbfc54a` on `automation/testids`. Confirmed live twice
+  during analysis (empty-history AND populated-history states, pipeline id 8056
+  `AutoTest_Pipeline_probe_2020`): close removes the panel, restores Configuration
+  form + embedded chat. ~~fires zero network requests~~ — **corrected during
+  implementation (live pytest run, same class as the ELITEA-2072 collapse/expand
+  recurrence below):** the `onClose` handler itself is a pure state flip with no fetch
+  call, but closing unmounts Run History and remounts the Configuration form, which
+  independently re-fires ITS OWN view-population requests (tools/toolkits/tags/
+  applications/index_types) unrelated to Run History — a console-only/click-only probe
+  during analysis missed this because it didn't capture actual requests. The precise,
+  durable claim (and what the implemented test asserts): closing does **not** re-fetch
+  the conversations list. Full detail:
+  `lextend_pipeline-run-history-panel-close_ELITEA-2070.md`.
+- **Case-text drift flagged by ELITEA-2070**: the case's step 6 names a "status" element
+  in the execution-detail view that doesn't exist as a distinct UI element — only
+  message + response content renders (an errored run's response is distinguishable by
+  its text/disclosure content, not a separate status field). Treated as clarification,
+  not a defect — see the ELITEA-2070 AFS § Known Defects.
+
+## Tools section "+ Pipeline" button — 4th ADD trigger, no testid before this session, same auto-persist mechanism as Agent attach (confirmed live, 2026-08-09, ELITEA-2064)
+
+`ToolMenu.jsx`'s Tools section (`agent-toolkits-section`) renders 4 independent ADD
+triggers — Toolkit, MCP, Agent, **Pipeline** — sharing one `UnifiedDropdown` popper
+component and one flat attached-item list (`agent-toolkit-card`), same "no sub-tab"
+root cause already documented for MCP (`#1149`) and Agent (`#530`) above.
+
+- **The "+ Pipeline" `BaseBtn` had ZERO attributes beyond `variant`/`startIcon`/
+  `disabled`/`onClick`** — no testid existed anywhere on it before this session
+  (confirmed via source read of `ToolMenu.jsx` lines ~638-660). Added
+  `data-testid="agent-add-pipeline-button"` this session, naming mirrors the
+  pre-existing sibling `agent-add-agent-button`/`agent-add-toolkit-button`/
+  `agent-add-mcp-button` (same shared component, same `agent-` prefix) —
+  `EliteaAI/EliteaUI@e2130cf4` on `automation/testids` (awaiting human promotion to
+  `main`).
+- **Selecting a pipeline in the popper auto-persists immediately via
+  `PATCH .../application_relation/prompt_lib/{project}/{pipeline_id}/{version_id}`
+  → `201`** — the SAME endpoint/mechanism the Agent picker uses
+  (`useAgentPipelineAssociation.hooks.js`'s `updateApplicationRelation`, called with
+  `isPipeline=true`; confirmed via source read of `ToolMenu.jsx`'s
+  `pipelineMenuItems` → `handleAssociateAgent(pipeline, true)`), **NOT** the
+  Toolkit/MCP picker's `PATCH .../tool/prompt_lib/{project}/` endpoint or the
+  Toolkit picker's defer-to-Save behavior. Confirmed live: attaching pipeline id
+  8676 (version 8938) to pipeline id 8675 (project 399) fired exactly
+  `PATCH .../application_relation/prompt_lib/399/8676/8938` → `201`.
+- **The pipeline's own `Save` button (`agent-save-button`) stays disabled after
+  the attach** — same behavior as the Agent-node Tools-section attach (ELITEA-2038):
+  the attach's own PATCH already persisted everything, so there is no local dirty
+  state left for Save to act on. A case describing "Save Pipeline A" after an attach
+  is describing an inert click, not a state-changing one — assert Save's disabled
+  state, don't click it.
+- **Popper rows share the same `toolkit-menu-item` testid** as every other
+  `UnifiedDropdown` popper (Toolkit/MCP/Agent/Pipeline) — confirmed via source
+  (`UnifiedDropdown.jsx:308,344`) and live click-through this session.
+- Full flow + page-object gap list:
+  `test-specs/pipelines/l2_pipeline-attach-pipeline-as-tool_ELITEA-2064.md`.
+
+## Information section "Show" link — new testid, opens a Mermaid modal (NOT navigation), deterministic console defect on single-node diagrams (confirmed live, 2026-08-09, ELITEA-2056)
+
+Confirmed live via `page.request` (Bearer `VITE_DEV_TOKEN`) + Playwright MCP against
+three disposable single-LLM-node probe pipelines (ids 8669/8670/8671, `instructions`
+YAML matching the `pipeline_with_llm_id` fixture exactly):
+
+- **The Information section's Pipeline ID / Version ID / Trigger rows all resolve
+  exactly as the ELITEA-2020/ELITEA-2041 digest entries already document** — no new
+  findings there. `copy-id` text == the pipeline's numeric id, `copy-version-id` text
+  == the version's numeric id, `information-trigger-row` text ==
+  `"Trigger:Chat Message"` (default trigger, no literal space — CSS flex `gap`, same
+  as ELITEA-2041's finding).
+- **Copy ID / Copy Version ID both fire a real `toastInfo` (info-severity `toast-alert`)
+  with DISTINCT wording** — confirmed live: `"The ID has been copied to the
+  clipboard."` for Copy ID, `"The Version ID has been copied to the clipboard."` for
+  Copy Version ID. Both are pure client-side `navigator.clipboard.writeText()` calls
+  (`CopyToClipboardButton.jsx`) — zero network requests, same class as the
+  ELITEA-2026 YAML-copy button.
+- **The "Pipeline: Show" link had NO testid anywhere** (`ApplicationInformation.jsx`,
+  the `showPipeline`-guarded block — same conditional shape as the pre-existing
+  `information-trigger-row`). Added `data-testid="pipeline-information-show-link"`
+  this session (`EliteaAI/EliteaUI@22184211`, `automation/testids`), confirmed live
+  via HMR immediately after push.
+- **Clicking "Show" does NOT navigate anywhere — it opens a `Dialog` modal**
+  (`StyledShowContextModal`, `contextLabel="Pipeline"`, `renderContextAsMermaid`)
+  rendering the pipeline's YAML as a Mermaid diagram. **Case-text drift** (not a
+  product defect, reverse-masking guard applies): ELITEA-2056's own step 9 says
+  "navigates to pipeline YAML or visual representation" — the product satisfies only
+  the "visual representation" branch, via a modal, not a route change. Assert the
+  modal + diagram, not a URL/navigation.
+- **The modal's Mermaid content is identifiable via the PRE-EXISTING
+  `chat-mermaid-diagram-svg-container` testid** — same shared
+  `MermaidDiagramOutput/DiagramOutput.jsx` component the chat surface already uses,
+  hardcoded testid inside the shared component (tracked naming tech debt per the
+  ELITEA-2053 chat-starters digest entry, NOT fixed here). Confirmed live: resolves
+  to exactly 1 element inside the opened dialog, containing 6 `<svg>` nodes for a
+  single-LLM-node pipeline. Cross-page duplication of the same testid literal across
+  `ChatPage`/`PipelineDetailPage` page objects is an established precedent already
+  (same pattern as `copy-id`/`copy-version-id`/`agent-information-section` duplicated
+  between `AgentDetailPage` and `PipelineDetailPage`).
+- **Deterministic (2/2) console defect on opening the Show-link modal for a
+  single-node pipeline** — `InvalidStateError: Failed to execute 'inverse' on
+  'SVGMatrix': The matrix is not invertible.`, thrown from `svg-pan-zoom`'s
+  `resetZoom` (`SvgPanZoom.zoomAtPoint` → `.zoom` → `.resetZoom` →
+  `DiagramOutput.jsx:298 renderDiagram`). The diagram still renders visually (SVG
+  present) — functionally non-blocking. Filed as
+  [`EliteaAI/elitea-testing-public#1368`](https://github.com/EliteaAI/elitea-testing-public/issues/1368),
+  a **sibling** of the pre-existing `#1045` (same `svg-pan-zoom` library, different
+  call site — #1045 is the in-chat Mermaid **canvas editor**, this is the read-only
+  **Show-link preview**). Any future case that opens this same modal on a
+  minimal/single-node pipeline should expect this error and soft-assert around it
+  with `# Known defect: #1368`, not assert zero console errors unscoped.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-information-section_ELITEA-2056.md`.
+
+## STATE panel — custom variable delete button: no confirm dialog, zero network on click (confirmed live, 2026-08-09, ELITEA-2044)
+
+The custom row's delete (trash) `IconButton` (`pipeline-state-variable-delete-{name}`, already
+added during ELITEA-2042's `add-data-testid` work — no new testid needed for ELITEA-2044) removes
+the row **immediately on click**, with **zero network requests and no confirmation dialog** —
+unlike pipeline/version delete (`DeleteEntityModal`, type-to-confirm). The removal is purely
+client-side editor state; it only persists once Save is clicked (`PUT
+.../application/prompt_lib/{project}/{pipeline_id}` → 201), and the post-save YAML `state:`
+section omits the deleted key entirely (assert by key ABSENCE, not by key count — MODULES-driven
+vars like `input_attachments`, ELITEA-2043, are an orthogonal source of extra keys). Confirmed
+live end-to-end (add `custom_output` → delete it → Save → Yaml view shows only `input`/`messages`)
+on pipeline id 8652. Full detail: `lextend_pipeline-state-panel-delete-custom-variable_ELITEA-2044.md`.
+
+## Attachments module auto-adds/removes an IMMUTABLE `input_attachments` (list) STATE var — instant, zero network, zero new testids (confirmed live, 2026-08-09, ELITEA-2043)
+
+Confirmed live via Playwright MCP on a fresh pipeline (id 8652): clicking the
+"Attachments" MODULES toggle (`agent-canvas-tools-toggle-attachments`) — the
+SAME switch ELITEA-2059 already documents — instantly adds/removes an
+`input_attachments` row in the STATE panel, with a checked toggle and NO
+delete button (same structural immutability as the built-in `input`/
+`messages` rows, ELITEA-2042). Zero Save, zero network requests, zero
+console errors, in either direction. All handles (STATE panel drawer/rows,
+MODULES toggle, Yaml view) already existed from prior cases — no
+`add-data-testid` work needed.
+
+- **Refinement to the ELITEA-2027 digest finding above** ("`state:`
+  top-level key only appears once at least one CUSTOM state variable
+  exists"): enabling Attachments also triggers the `state:` key to render
+  (with `input`/`messages` types now shown too, not just the newly-added
+  `input_attachments`) — even though `input_attachments` isn't a
+  user-added custom variable in the STATE-panel-`+`-button sense. **And the
+  key does NOT revert to fully absent after disabling Attachments again in
+  the same session** — after toggling off, the YAML still shows
+  `state: {input: {type: str}, messages: {type: list}}` rather than no
+  `state:` key at all. Not a defect (the case only needs
+  `input_attachments`'s absence, which holds) — but any assertion here
+  must check for the KEY's absence within `state`, not the whole `state`
+  section's absence, or it becomes session-order-dependent.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-state-panel-attachments-module_ELITEA-2043.md`.
+
+## "Pipeline tabs" = real BROWSER tabs, not an in-app widget; project-name title suffix is NOT "Private" (confirmed live, 2026-08-09, ELITEA-2062)
+
+Confirmed live via Playwright MCP `browser_tabs` (list/new/select/close) driving two
+real tabs in the SAME authenticated context, on pre-existing pipelines
+`AutoTest_Pipeline_probe_2020` (id 8056) and `probe-pipeline` (id 6934):
+
+- **The product has NO in-app "multiple open pipeline tabs" UI feature.**
+  `PipelinesListPage.open_pipeline_by_name()` → `card.click()` is a plain SPA
+  route push (confirmed via source: `Card.jsx`'s `handleCardClick`, no
+  `target="_blank"`, no anchor) — clicking a second pipeline card REPLACES the
+  first pipeline's route in the same tab, it does not add a tab to any
+  in-app tab strip. Any case whose text says "tablist" / "tab" / "close
+  button (X)" for pipelines (or agents/toolkits — same `Card.jsx`) is
+  describing the browser's OWN tab strip, testable via
+  `page.context.new_page()` / `Page.bring_to_front()` / `Page.close()` —
+  the same idiom already merged in
+  `test_agent_hub_my_liked_reload_cross_tab_sync.py` (Tab A/Tab B pattern)
+  and used by `pipeline_detail_page.py:6917` (`context.expect_page()` for
+  the toolkit "open in new tab" button).
+- **`document.title`'s project-name suffix is NOT the sidebar's "Private"
+  label** — confirmed live: title reads `"Pipeline: <name> -
+  project_user_659"`, not `"... - Private"`, even though the sidebar
+  combobox shows `"Project: Private"`. Root cause (source read,
+  `../EliteaUI/src/hooks/useSelectedProject.jsx`):
+  `useSelectedProjectName()` returns the loaded project's real `name` field
+  from Redux (`project?.name`), defaulting to the literal string `"Private"`
+  ONLY before that object loads. `test_agent_hub_page_loads_private_project.py`'s
+  `EXPECTED_PROJECT_NAME = "Private"` constant is therefore NOT a safe
+  precedent to copy for a NEW title assertion on this project/environment —
+  capture the project-name suffix dynamically at runtime (split the
+  dashboard's own title, `"Pipelines: all - {project_name}"`, on `" - "`)
+  instead of hardcoding `"Private"`. Unclear whether the existing hardcoded
+  constant is itself stale for its own test; out of this case's scope to
+  fix, flagged here for whoever next touches page-title assertions.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-multiple-browser-tabs_ELITEA-2062.md`.
+
+## Chat starters — shared `ConversationStarters.jsx` component; embedded-chat chip testid is FREE (already fixed by ELITEA-1886 on the Agent surface) (confirmed live, 2026-08-09, ELITEA-2053)
+
+Confirmed live via Playwright MCP + `browser_run_code_unsafe` on a fresh disposable
+pipeline (id 8583):
+
+- **The pipeline's "Chat starters" left-panel section is the EXACT SAME
+  `src/components/ConversationStarters.jsx` component the Agent form uses** —
+  confirmed via source read: `PipelineConfigurationForm.jsx` and
+  `ApplicationConfigurationForm.jsx` both import it. All its testids
+  (`agent-conversation-starters-section` — rendered here as
+  `agent-canvas-section-chat-starters`, `agent-conversation-starter-add`,
+  `agent-conversation-starter-input`, `agent-conversation-starter-counter`, the
+  fullscreen-dialog set) are shared literals despite the `agent-` prefix — this
+  predates the current shared-component-testid ruling and is tracked tech debt,
+  not something to fix opportunistically on an unrelated case.
+- **Section renders already expanded by default** — same pattern as
+  Welcome-message/Advanced (ELITEA-2052/2021's note). No click needed to reach
+  the "+ Starter" button.
+- **The "delete starter" button has NO testid anywhere** (`main` or
+  `automation/testids`) — only `aria-label="delete starter"` on the shared
+  component's delete `BaseBtn`. No existing test (agent or pipeline surface)
+  exercises it. First case to need it: ELITEA-2053 (step 3, "verify existing
+  starter shows a delete button") — flagged `needs-adding` in that AFS.
+- **The embedded-chat starter CHIP (`chat-conversation-starter-tile`) needs NO
+  new `add-data-testid` work for the pipeline surface** — `ChatPanel.jsx`
+  (pipeline's right-side chat) mounts the identical shared `ChatBox` component
+  (`@/[fsd]/features/chat/ui`) the Agent Detail page mounts, which renders the
+  same `ChatConversationStarters.jsx` call site ELITEA-1886 already wired
+  (`EliteaAI/EliteaUI@afb48435`, on `automation/testids` only, confirmed via
+  fresh `git fetch origin` + `git grep` — absent on `origin/main`). One
+  component instance, two routes — the fix travels for free. Confirmed live:
+  `[data-testid="chat-conversation-starter-tile"]` count==1 with the exact
+  saved starter text, in the pipeline's embedded chat panel.
+- **Clicking the chip is pre-fill-only, one-shot** — same `hasStarterBeenSent`
+  mechanic ELITEA-1886 documented for the Agent surface (shared `ChatBox.jsx`
+  state, not a re-implementation): click sets `chat-message-input`'s value to
+  the exact starter text and the tile immediately disappears (count 1→0); it
+  does NOT auto-send. Confirmed live via `browser_run_code_unsafe`.
+- **Zero console errors, zero network 4xx/5xx** across add-starter → Save →
+  reload → click-chip. Save fires `POST .../applications/prompt_lib/399` →
+  `201`; reload's `GET .../application/prompt_lib/399/{id}` → `200` seeds the
+  chip from the saved `conversation_starters` list — same zero-extra-network
+  shape as the Welcome message (ELITEA-2052).
+- `PipelineDetailPage` already had `conversation_starter_add_button`/
+  `conversation_starter_inputs`/`add_conversation_starter()`/
+  `get_conversation_starter_value()` from a prior case (ELITEA-2021) — no
+  changes needed. Still missing (as of this session): a `CHAT_STARTER_TILE`
+  class constant + `get_chat_starter_tiles()`/`click_chat_starter_tile()`
+  methods (mirrors `AgentDetailPage`'s existing implementation exactly).
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-chat-starters-visible-and-clickable_ELITEA-2053.md`.
+
+## Canvas Zoom/Pan/Fit-View — pure client-side ReactFlow viewport state, deterministic Fit View, zero new testids (confirmed live, 2026-08-08, ELITEA-2019)
+
+Confirmed live via TWO independent browser sessions (Playwright MCP on a 5-node
+Decision+3-Printer pipeline id 8401, and CDP/`browser-verify` on the same pipeline
+at a controlled 1400x1000 viewport — cross-checked, both agree):
+
+- **Zoom In/Out and Fit View are already wired via the existing `canvas_controls`
+  testid (`rf__controls`) + `fit_canvas_view()` pattern** — the individual buttons
+  (`button[title="Zoom In"/"Zoom Out"/"Fit View"]`) are ReactFlow's OWN `Controls`
+  component (`@xyflow/react`, rendered directly by `FlowEditor.jsx`), #579
+  sanctioned third-party-widget exception, same provenance `fit_canvas_view()`
+  already documents. **Pre-existing raw `zoom_in()`/`zoom_out()` methods near the
+  bottom of `pipeline_detail_page.py` use an UNSCOPED `self.page.locator(...)`**
+  (tracked tech debt, not scoped under `canvas_controls`) — do not reuse them for
+  new work; add `canvas_controls`-scoped siblings instead (mirrors
+  `fit_canvas_view()` exactly).
+- **The ReactFlow viewport transform (`translate(Xpx, Ypx) scale(S)`, inline style
+  on `.react-flow__viewport`) is the ground-truth signal for both zoom and pan** —
+  confirmed live: one Zoom In click on a Fit-View baseline of `scale(0.206152)`
+  produced `scale(0.247382)` (Playwright MCP session; default viewport); a probed
+  node's `getBoundingClientRect()` grew from 97.1x87.8px to 116.5x105.4px in lockstep.
+  Zoom Out symmetrically decreases scale and clamps at ReactFlow's default `minZoom`
+  (observed `scale(0.1)`, Zoom Out button then `disabled` — not asserted by
+  ELITEA-2019, noted for awareness).
+- **Pan tracks the mouse drag delta EXACTLY (px-perfect), and only via REAL/CDP-level
+  mouse events — synthetic JS-dispatched `PointerEvent`s (`dispatchEvent`) do
+  NOTHING.** Confirmed on the CDP session: a drag of (+100, +150) screen px on
+  `.react-flow__pane` moved the viewport transform from `translate(12.9193px,
+  348.199px)` to `translate(112.919px, 498.199px)` — an exact match — and the same
+  probed node's bounding box shifted by the identical (+100, +150). A prior attempt
+  dispatching synthetic `PointerEvent`s via `page.evaluate()` (mousedown/move/up
+  sequence, `isPrimary: true`) produced **zero** transform change — confirmed
+  twice — because they are untrusted events and ReactFlow's pane-drag handler (like
+  most real drag implementations) does not react to them. **Automation
+  implication**: the implementer's `pan_canvas()` page-object method MUST use
+  Playwright's real `page.mouse.move/down/up` (same technique the existing
+  `move_node()`/`connect_nodes()` already use for node drags) — never
+  `page.evaluate()`-dispatched synthetic pointer events.
+- **Fit View is FULLY DETERMINISTIC for a static node layout** — clicking it a
+  second time, after an intervening Zoom In + pan away, restored the EXACT same
+  transform (`translate(12.9193px, 348.199px) scale(0.118012)`) the first Fit View
+  click produced. This makes an exact-transform-match assertion viable for "returns
+  to all-nodes-visible state" (step 7), stronger than a qualitative visibility check
+  alone.
+- **"All nodes visible" is verifiable purely via existing testids** — every node's
+  bounding box (via the existing `RF_NODE_TESTID`/`RF_NODE_TESTID_PREFIX` #579-
+  sanctioned class constants) fully contained within `canvas_wrapper`'s
+  (`rf__wrapper`) bounding box, confirmed live on all 5 nodes of the Decision
+  pipeline immediately after Fit View. No new testid needed anywhere in this flow —
+  `canvas_wrapper`, `canvas_controls`, and `RF_NODE_TESTID` already existed before
+  this session.
+- **Zoom/pan/Fit-View fire ZERO network requests** — confirmed via console+network
+  capture across the whole sequence on both sessions: pure client-side CSS
+  `transform` state on `.react-flow__viewport`, not part of `pipeline_settings`
+  (not persisted — a reload resets to the default Fit View). Distinct from node
+  CONFIGURATION changes elsewhere in this suite, which DO trigger
+  `PUT .../application/prompt_lib/{project}/{id}` on Save.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-canvas-zoom-and-pan_ELITEA-2019.md`.
+
+## Canvas Control Panel — all 6 buttons are ONE `canvas_controls` render tree; Zoom Out was an unused pre-existing method; Toggle Interactivity/cards-size/Auto-arrange are deterministic round-trips (confirmed live, 2026-08-08, ELITEA-2057)
+
+Confirmed live via Playwright MCP + CDP (`browser_run_code_unsafe`) on the SAME
+pipeline (id 8401, Decision + 3 Printer branches) the ELITEA-2019 session probed:
+
+- **`canvas_controls` (`rf__controls`) wraps ALL 6 buttons, not just
+  Zoom/Fit-View** — `FlowEditor.jsx`'s `StyledControls` is `styled(Controls)`
+  from `@xyflow/react`; ReactFlow's OWN 4 default buttons (Zoom In, Zoom Out,
+  Fit View, Toggle Interactivity — each with a real `title`/`aria-label` DOM
+  attribute) render first, followed by 2 app-code children appended in the
+  SAME component via `ControlButton` (Toggle cards size → `onExpandAll`,
+  Auto-arrange → `onReLayout`). Confirmed via `outerHTML` dump: the two
+  app-code buttons have NO `title`/`aria-label` on the `<button>` itself —
+  the accessible name lives on the wrapping MUI Tooltip `<span
+  aria-label="...">` instead. Locators: `button[title="Toggle
+  Interactivity"]` vs `span[aria-label="Toggle cards size"] button` /
+  `span[aria-label="Auto-arrange"] button`, all scoped under
+  `canvas_controls`.
+- **Zoom Out (`zoom_out_canvas()`) existed since ELITEA-2019 but no test
+  ever calls it** — confirmed by reading the merged `test_canvas_zoom_pan_and_fit_view`
+  (only `zoom_in_canvas()` is invoked). A real, un-flagged coverage gap
+  until ELITEA-2057 closed it.
+- **Toggle Interactivity is a real drag lock/unlock, but the drag-test
+  methodology has a false-negative trap**: dragging via a node's MID-BODY
+  coordinates on a Printer-type node (mostly `Value`/`Final Message` text
+  inputs) silently fails to move the node regardless of interactivity state
+  — the mouse-down lands on an `<input>`/`<textarea>`, not the ReactFlow
+  node wrapper. Zero displacement then looks identical to "interactivity is
+  off" but isn't. The existing `move_node()` (`pipeline_detail_page.py`,
+  added ELITEA-2047) already avoids this — it drags from the node's header
+  strip (`box.y + 12`) — so REUSE it for interactivity probes; don't build a
+  fresh drag helper that samples the bounding-box center. With `move_node`,
+  confirmed live: interactivity OFF → zero displacement; ON → exact-delta
+  displacement, in either order, fully reversible.
+- **Toggle cards size is a deterministic boolean round-trip, BUT it
+  RE-LAYOUTS node POSITIONS too, not just card visuals** — one click
+  collapses EVERY node's rendered height (confirmed live: a Decision node
+  went 87.8px → 9.5px), a second click restores the EXACT original height.
+  Backed by `FlowEditor.jsx`'s `expandAll` state + `onExpandAll`, which also
+  calls `onReLayout` (recomputes ALL node positions, same function
+  Auto-arrange uses) + a delayed `fitView()` — it is NOT a pure
+  resize-in-place. **Test-methodology consequence (confirmed live during
+  ELITEA-2057 implementation, 2 fix rounds):** if a node was manually
+  dragged (e.g. an interactivity probe) before the FIRST toggle click, a
+  plain `fit_canvas_view()` baseline does NOT land on the same basis the
+  post-toggle measurements will be on — the round-trip "restore exact
+  height" assertion produced a false mismatch (232.9px vs 251.2px, then
+  304.0px vs 251.2px on a second plain-Fit-View attempt) because Fit View
+  alone fits whatever positions are CURRENTLY on screen, while the toggle's
+  own `onReLayout` recomputes positions from scratch. Fix: call
+  `auto_arrange_canvas()` (not `fit_canvas_view()`) to establish the
+  "expanded" baseline before the first Toggle-cards-size click — this puts
+  the canvas on the SAME `onReLayout`-computed basis every subsequent
+  toggle/re-arrange call in the test will also land on, making the
+  round-trip exact. (`FlowEditor.jsx`'s `onReLayout(specifiedExpandAll)`
+  also has a latent `specifiedExpandAll || expandAll` falsy-OR: when
+  transitioning expanded→compact, `specifiedExpandAll` is `false`, and
+  `false || expandAll` silently falls through to the STALE `expandAll`
+  closure value instead — not confirmed as a visible product defect this
+  session, noted for a future analyst who touches node SPACING/positions
+  specifically during a compact-mode transition.)
+- **Auto-arrange is fully deterministic for a static graph — same
+  determinism class as Fit View (ELITEA-2019)**: dragging a node away from
+  its auto-arranged position (via `move_node`, from the header strip) and
+  then clicking Auto-arrange moves it back to the EXACT same bounding box
+  it started at (px-perfect match on both x/y), not merely "some
+  rearrangement". `onReLayout` recomputes positions via a deterministic
+  layout algorithm, not randomization.
+- **Zero network requests, zero console errors** for Zoom Out, Toggle
+  Interactivity, Toggle cards size, and Auto-arrange — same pure-client-side
+  class already documented for Zoom In/Pan/Fit-View above.
+- **Dragging a node (e.g. via `move_node`, used as the interactivity/
+  auto-arrange probe) DOES flip the pipeline's Save/Discard dirty state**
+  (confirmed live) — unlike viewport zoom/pan, which don't. Not asserted by
+  ELITEA-2057 (no Save performed), noted for the next analyst who touches
+  node-drag + Save/Discard together.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/lextend_pipeline-canvas-control-panel_ELITEA-2057.md`
+  (extends `test_pipeline_canvas_zoom_and_pan.py` — see that file for the
+  new `test_canvas_control_panel_*` test).
+
+## Decision node execution/routing — entry-point mechanism, Input-variable requirement, and Printer's real output field (confirmed live, 2026-08-08, ELITEA-2016)
+
+Full end-to-end live probe: Decision node + 3 Printer branches, wired through to `END`,
+saved, reloaded, and actually EXECUTED via the embedded chat (first live execution of a
+Decision node's routing anywhere in this suite — ELITEA-2034 only proved static
+configuration/edge persistence, never ran the pipeline). Full case detail:
+`test-specs/pipelines/l2_pipeline-decision-node-multi-branch-execution_ELITEA-2016.md`.
+
+- **A Decision node can only become the pipeline's `entry_point` by being the FIRST node
+  added to a new pipeline.** Confirmed via source
+  (`EliteaUI/src/[fsd]/features/pipelines/flow-editor/ui/nodes/BaseNode/NodeCardHeader.jsx`,
+  the node header's `menuItems`): the "Make entrypoint" per-node menu action is
+  **unconditionally excluded for Decision (and legacy Condition) node types** — Router and
+  every other node type keep it. `PipelineDetailPage.make_node_entrypoint()` silently has
+  NO effect on a Decision node (the menu item it looks for doesn't exist). Use
+  `get_entrypoint_node_id()` to assert entry-point instead, and always add the Decision
+  node BEFORE any other node when a case needs it to be the entry point. Filed as
+  [EliteaAI/elitea-testing-public#1347](https://github.com/EliteaAI/elitea-testing-public/issues/1347).
+- **The Decision node's `Input` combobox must include the built-in `input` state variable
+  for classification/routing to work AT ALL** — this is NOT the same requirement ELITEA-2034
+  documented (that case wired specific custom state vars because its *prompt text*
+  referenced them by name). Here, even with a prompt that only needs the raw chat message,
+  omitting `input` from the Input combobox makes the underlying LLM tool-call return
+  `content: '{}'`, `tool_calls: []` — the pipeline run completes at the Decision node
+  without ever executing a branch, with NO error surfaced anywhere in the UI. Confirmed via
+  3 repeated identical runs without `input` wired (always `{}`) vs. correct routing on every
+  run once `select_decision_node_input_variables(["input"])` was added.
+- **Printer's "Final Message" field is NOT what renders in the chat response — "Value" is.**
+  `input_mapping.printer.value` (the PRINTER section's Value field, Type=Fixed) is what
+  gets printed; `final_message` is a separate, unrelated field. A test asserting "which
+  branch fired" via chat text must set Value, not Final Message (confirmed live: Final-Message-only
+  setup produced `{}` even with correct routing).
+- **Multi-turn continuation resumes at the last-reached node, not back at Decision.** A
+  Printer node with `transition: END` pauses for acknowledgement (per the platform's own
+  docs); sending a second, differently-classified message in the SAME chat conversation does
+  NOT re-invoke Decision's classification — the run's "Run details" Timeline step reads e.g.
+  `bug_responder_reset` and reuses the FIRST classification. A test proving differential
+  routing (two categories → two different branches) must clear the chat
+  (`[aria-label="clear the chat"]`, no existing page-object method) between messages.
+- **Edge testid shape change across save/reload, reconfirmed with this case's own edges**
+  (same phenomenon ELITEA-2034 first documented): pre-save
+  `rf__edge-xy-edge__Decision 1nodes-bug_respondertarget` / `rf__edge-xy-edge__Decision
+  1default_output-ENDtarget` → post-reload `rf__edge-xy-edge__Decision 1---bug_responder`
+  (nodes-handle edges drop the `nodes`/`target` suffixes) / `rf__edge-xy-edge__Decision
+  1default_output---END` (keeps `default_output`, drops `target`). Also newly observed:
+  branch→END edges use the END node's literal internal id `EliteAPipelineEnd` post-reload
+  (`rf__edge-xy-edge__bug_responder---EliteAPipelineEnd`), not the `END` id used everywhere
+  else in this suite's edge assertions — a case asserting a branch→END edge post-reload
+  needs this exact string, not `edge_exists()`'s looser prefix match (which still works,
+  since it substring-matches).
+- **`printer_node_value`/`printer_node_final_message_input` LocatorDescriptors are
+  page-wide** (ELITEA-2039's own docstring already flags this as "correct only while a test
+  has a single Printer node") — this case is the FIRST with three simultaneous Printer
+  nodes on canvas; the existing unscoped helper methods need a `node_id`-scoped variant
+  before use here (see the AFS's Concrete Handles table for the exact fix).
+- **The in-page conversation-detail fetch (`GET .../conversation/prompt_lib/{project}/
+  {conversation_id}`, used by the "Run details" dialog) redirects to a `dev.elitea.ai` OIDC
+  login and fails with a CORS error on localhost** — confirmed live via a console error
+  capture. The "Run details" dialog itself still renders fully (Timeline/States/Messages
+  panels populate from a different source), so this doesn't block reading run state through
+  the UI, only a raw REST call to that specific endpoint.
+
+## Node config via YAML — exact serialization shapes confirmed live, incl. a CHAT HISTORY value-type nuance (confirmed live, 2026-08-08, ELITEA-2027)
+
+Full live probe of a fresh pipeline's YAML view, from a bare/untouched LLM node through a fully
+configured one (SYSTEM Fixed/"Act as helper", TASK F-String/"{input}", CHAT HISTORY Fixed/"[]",
+Input=[input], Output=[output1] where `output1` is a freshly-created custom state variable). Case
+detail + exact gap patch: `test-specs/pipelines/lextend_pipeline-node-config-verified-via-yaml_ELITEA-2027.md`.
+
+- **`state:` top-level key only appears once at least one CUSTOM state variable exists.** A bare
+  pipeline with only the built-in `input`/`messages` vars has NO `state:` key in its YAML at all —
+  confirmed live (matches `test_pipeline_yaml_editor_view.py`'s fixture, which deliberately uses
+  `pipeline_with_custom_state_var_id` rather than a bare pipeline, for exactly this reason). Any
+  case asserting `state:` content needs at least one custom variable added first (STATE panel's
+  `add_state_variable()`, already proven by ELITEA-2042).
+- **A lone, freshly-added, unconfigured LLM node's default YAML** (no Save needed to observe —
+  reflects live in-memory `yamlJsonObject` state):
+  ```yaml
+  entry_point: LLM 1
+  nodes:
+    - id: LLM 1
+      type: llm
+      input: []
+      input_mapping:
+        chat_history: {type: fixed, value: []}
+        system: {type: fixed, value: ''}
+        task: {type: fixed, value: ''}
+      output: []
+      structured_output: false
+      transition: END
+  ```
+  `transition: END` is present even for a single node with no outgoing edge — a lone node is
+  simultaneously the entry point and the terminal node. Default Type for ALL THREE of SYSTEM/TASK/
+  CHAT HISTORY is `fixed` (matches the UI's own default).
+- **CHAT HISTORY's YAML `value` is an empty LIST (`[]`), not the string `"[]"`, when the field
+  holds exactly the two characters `[]`** — confirmed via a controlled probe: typing `[]` (valid
+  YAML flow-sequence syntax) into the Value textarea and saving serializes to `value: []`
+  (unquoted; `yaml.safe_load()` parses this as an empty Python `list`), while typing a
+  non-YAML-parseable control string (`[][]`) serializes to `value: '[][]'` (quoted; parses as a
+  `str`). The backend does not force a string type here — it round-trips whatever was typed as
+  YAML, and `"[]"` happens to double as valid YAML for an empty list. **Not a defect** — a
+  case/test asserting this field's value must compare against the empty list `[]`, not the string
+  `"[]"`, per the reverse-masking guard (assert the live contract, not the case's literal wording).
+- **A custom state variable IS selectable as a node's Output**, not just Input (ELITEA-2042 only
+  proved Input) — confirmed live: `select-option-output1` appears in the Output select's popover
+  once the STATE panel's `output1` variable exists, identical `select-option-{value}` mechanism.
+- **No new testids needed anywhere in this flow** — STATE panel, LLM node fields, Output select,
+  YAML view toggle/editor all reuse pre-existing testids from ELITEA-2004/2026/2042.
+
+## Pipeline tags — Categories.jsx tag filter panel + CardTagSectionItem chips are FULLY shared with Skills, zero new testid work (confirmed live, 2026-08-08, ELITEA-2013)
+
+The Pipelines dashboard's right-side "Tags" panel (`PrivatePipelinesList.jsx` →
+`RightInfoPanel.jsx` → `Categories.jsx`, same component tree for the
+`cardContentType !== ApplicationAdmin` case that every non-admin private
+pipeline view uses) is the identical shared component
+`SkillsListPage`'s tag filter already drives (ELITEA-1740). Confirmed by
+source read AND live DOM: `Categories.jsx` hardcodes
+`data-testid={\`tags-panel-chip-${name}\`}` (line 336) and
+`data-testid="tags-panel-clear-all"` (line 299) directly — entity-agnostic,
+no per-caller prop gating. Same for card-level tag chips:
+`CardTagSectionItem.jsx` hardcodes `entity-card-tag-chip`/
+`entity-card-tag-overflow` (line 22), rendered by the shared `Card.jsx` for
+Pipelines exactly as for Skills.
+
+- **`PipelinesListPage` has NO tag-filter methods yet** (unlike
+  `SkillsListPage`) — this is pure page-object-plumbing work for whoever
+  implements ELITEA-2013, not testid work. Mirror
+  `SkillsListPage.filter_by_tag()`/`clear_tag_filter()`/`get_card_tags()`
+  (`automation/pages/skills_list_page.py:127-141,230-265,519-578`)
+  line-for-line; only the grid-refetch URL substring changes:
+  `/elitea_core/applications/prompt_lib/` (pipelines, `agents_type=pipeline`)
+  vs `/elitea_core/skills/prompt_lib/` (skills).
+- **Tag input/chip on the create/edit form** (`pipeline-tags-input`/
+  `pipeline-tags-chip`, pre-existing from ELITEA-2021) confirmed live and
+  reused as-is — `PipelineFormPage.add_tag()` (type + Enter) already exists
+  and is sufficient for BOTH new and pre-existing-tag-by-exact-name cases;
+  no `select_existing_tag()` analog is needed for Pipelines (unlike Skills'
+  `SkillFormPage.select_existing_tag()`) because `TagEditor.jsx`'s
+  `handleOnChangeTags` transparently reuses an existing tag id on exact-name
+  match regardless of whether it was typed or clicked from the dropdown.
+- **No `getOptionTestId` wired for the Pipeline branch's Tags autocomplete
+  dropdown** (`ApplicationEditForm.jsx:174-188` only threads `inputTestId`/
+  `chipTestId`, not `getOptionTestId` — unlike some other consumers of the
+  shared `AutoCompleteDropDown.jsx`). Not a gap for THIS case (type+Enter
+  reuse covers it, see above) — would be a genuine testid-needed escalation
+  only if a future case specifically needs to click an existing-tag option
+  out of the dropdown listbox for Pipelines.
+- Full case detail: `test-specs/pipelines/l2_pipeline-tags-add-and-filter_ELITEA-2013.md`.
+
+## Dashboard view toggle (Card vs Table) — `entity-card-name` count + `?view=` URL param are the layout-format proof, no new testid needed (confirmed live, 2026-08-08, ELITEA-2024)
+
+`PipelinesListPage.table_view_button`/`card_view_button` (testids
+`pipeline-table-view`/`pipeline-card-view`, wired in `Pipelines.jsx` on the
+shared `ViewToggle.jsx` component — same component Agents/MCPs/etc. use with
+their own testid overrides) both resolve correctly live and are **on
+`automation/testids` but NOT yet on `main`** (fresh `git fetch origin` this
+session: `git grep` hit on `origin/automation/testids` only, at
+`src/pages/Pipelines/Pipelines.jsx:274-275`).
+
+- **Default view is Card list view** — confirmed live: fresh `/pipelines/all`
+  load renders the Card list view button `[pressed]` (`aria-pressed="true"`),
+  Table view button unpressed. `PipelinesListPage` has NO method asserting
+  this default state — `is_card_view_active()`/`is_table_view_active()` exist
+  but the merged test (`test_view_toggle_table_and_card`,
+  `test_pipeline_management.py:87`) never calls them before its first click.
+- **View state lives in the URL, not just component state**: `ViewToggle.jsx`
+  writes `SearchParams.View` (`?view=table`/`?view=cards`) via
+  `useSetUrlSearchParams`; `useIsTableView.js` reads it back
+  (`searchParams.get(SearchParams.View) === ViewOptions.Table`) to drive
+  `CardList.jsx`'s `shouldRenderTable` ternary between `DataTable` (table) and
+  `DataCards` (card grid). Pure client-side, no XHR fires on toggle click.
+- **Strongest layout-format proof, testid-only, no new testid work**: the
+  `entity-card-name` testid (`Card.jsx:210`, existing `LocatorDescriptor`
+  field) is rendered ONLY by the card-view `Card` component — `DataTable`
+  (table view) never renders it. Confirmed live:
+  `document.querySelectorAll('[data-testid="entity-card-name"]').length` was
+  `12` in card view (matching the 12 visible pipelines) and dropped to `0`
+  immediately after switching to table view, back to `12` on switching back.
+  Combine with the `?view=table`/`?view=cards` URL param for a
+  belt-and-braces layout assertion — neither needs a new testid.
+- **Testid gap that's genuinely NOT needed for this case** (flag for a future
+  table-specific case only): table view's column headers ("Name &
+  Description"/"Authors"/"Created"/"Actions", `GridTableHeader.jsx`) carry NO
+  `data-testid` for Pipelines — `DataTable.jsx` only passes
+  `columnTestIdPrefix` for `isMCPs`, `undefined` otherwise. The
+  `entity-card-name`-absence + URL-param combo above is sufficient without it.
+- Full gap analysis + exact patch: `test-specs/pipelines/lextend_pipeline-dashboard-view-toggle-default-and-layout_ELITEA-2024.md`.
+
+## Three-dot Actions menu — full live-confirmed testid map, both groups (confirmed live, 2026-08-08, ELITEA-2049)
+
+Full DOM query of `[data-testid="agent-actions-menu"] [role="menuitem"]` on a
+pipeline detail page (`FullDetailsPipe_probe2`, id 6754, base version). Two
+groups, both rendered by the SAME shared `ApplicationControls.jsx` component
+Agent detail pages use — testid keys mostly carry the literal `agent`/`share-agent`
+naming regardless of entity type (tech debt, not a bug):
+
+| Group | Label | Testid | Notes |
+|---|---|---|---|
+| VERSION | Set as a default | `set-as-a-default-menuitem` | disabled (always, for the currently-open version) |
+| VERSION | Export | `agent-actions-export-menuitem` | shared Agent/Pipeline testid |
+| VERSION | Share (version-specific link) | `share-version-menuitem` | shared testid, NOT case-text's "Copy link" target |
+| VERSION | Fork | `pipeline-actions-fork-menuitem` | **entity-scoped** — differs from Agent's `agent-actions-fork-menuitem` (`ForkEntityButton.jsx`'s `FORK_MENU_ITEM_KEY_BY_ENTITY` map) |
+| VERSION | Delete ("Delete version") | `delete-version-menuitem` | disabled while open version is `base` |
+| PIPELINE | Share (generic link — **this is "Copy link"**) | `share-agent-menuitem` | same literal key as Agent's PIPELINE-analog item — testid does NOT rename per entity |
+| PIPELINE | Pin to top | **none — testid gap** | `usePinMenu.hooks.jsx`'s menu-item object has no `key` field at all (only shared hook without one); needs an optional `key` param threaded from each of its 4 callers (`ApplicationControls`/`SkillControls`/`ToolkitsControls`/`CredentialsControls`) — see AFS for the exact minimal-scope fix |
+| PIPELINE | Delete pipeline | `delete-agent-menuitem` | same testid as Agent's "Delete agent" — only the LABEL switches per `isFromPipeline` |
+
+**Case-text drift, 3rd occurrence of the same pattern**: no case that says
+"Copy link" as a menu-item label will ever find one literally — it's always
+"Share" (`useCopyLinkMenu({ label: 'Share', ... })` overrides the hook's own
+default `'Copy link'` label at every call site observed so far). Filed as a
+sibling clarification each time a new surface hits it: #1288 (Agent Detail),
+#1218 (Agent Hub modal), #1337 (Pipeline Detail, this session) — all
+cross-linked. If a 4th surface hits this (e.g. Skill/Toolkit/Credential
+three-dot menus), the same treatment applies: sibling, not duplicate, cross-link.
+
+**Clipboard-read via MCP browser hangs — use the pytest pattern instead.** A
+raw `page.evaluate("async () => await navigator.clipboard.readText()")` call
+through the Playwright MCP browser (no test-context permission grant, no
+interactive-dialog handler) hung indefinitely (~30 min) waiting on a
+permission prompt that can never resolve outside a real Playwright test
+process. The suite's own established pattern — `page.context.grant_permissions
+(["clipboard-read","clipboard-write"])` once, then `page.wait_for_function
+("async () => { const t = await navigator.clipboard.readText(); return
+t.length > 0; }")` — works fine inside pytest (already proven by
+`test_agent_copy_version_link.py`, ELITEA-1898) because the test-context
+permission grant pre-authorizes it; there is no equivalent MCP-side grant
+call. Don't reattempt the direct call in a future MCP exploration session —
+confirm toast text/visibility live instead, and defer clipboard-content
+verification to the implementer's pytest run.
+
+## Pipeline Export — downloaded `.pipeline.md` frontmatter shape confirmed on TWO pipelines; no `nodes`/`state` verified by the existing spec (confirmed live, 2026-08-08, ELITEA-2050)
+
+Extends `test_pipeline_import_via_file.py` (ELITEA-2012) rather than a fresh spec — that
+test already exports+downloads+parses the file but only asserts `name`/`description`/
+`agent_type`/`conversation_starters`, never `nodes`/`entry_point`/`pipeline_settings`.
+Details + exact gap patch: `test-specs/pipelines/lextend_pipeline-export-verify-structure_ELITEA-2050.md`.
+
+- **Export top-level YAML shape depends on whether the pipeline has any non-END node.**
+  A pipeline with only an `END` node (`FullDetailsPipe_probe2`, id 6754) exports WITHOUT
+  a top-level `entry_point`/`nodes` key at all — only `pipeline_settings.nodes` (canvas,
+  containing just the `END` entry) is present. A pipeline with a real node (LLM, per
+  ELITEA-2012's own pipeline) exports WITH `entry_point: <node id>` and a top-level
+  `nodes:` list (each entry: `id`/`type`/`input`/`input_mapping`/`output`/`transition`).
+  Any case asserting "nodes" in the export must use a pipeline with a real node — an
+  empty/bare pipeline makes a "non-empty nodes list" assertion meaningless.
+- **No literal `state` top-level key exists anywhere in the export** — confirmed via
+  source read (`EliteaUI/src/pages/Common/Components/useExport.js`: pipelines/
+  applications export is a server-rendered `GET .../export_import/prompt_lib/{project}/{id}
+  ?format=md` fetch, blob-downloaded client-side, no client "state" concept at all). A
+  case asking to verify "state" in the export should be read as `pipeline_settings`
+  (canvas nodes/edges/positions) — the closest structural analogue — not a literal key
+  match.
+- **Case-text drift "JSON file" reconfirmed on a SECOND TMS case (ELITEA-2050) via the
+  SAME underlying mechanism** as ELITEA-2012's already-filed
+  [#1334](https://github.com/EliteaAI/elitea-testing-public/issues/1334) — commented on
+  the existing issue rather than filing a duplicate (same object: `useExport.js`'s
+  `doExport` hard-codes `format=md` for `pipelines`/`applications`, no `format=json` path
+  exists at all).
+
+## Pipeline Import via File — Export downloads Markdown (not JSON), Import shares Agent/Skill's ImportWizardModal wholesale, one new testid needed (confirmed live, 2026-08-08, ELITEA-2012)
+
+Full round trip (create → export → delete → import → verify → execute) confirmed live end-to-end,
+no product defect. Details in `test-specs/pipelines/l2_pipeline-import-via-file_ELITEA-2012.md`.
+
+- **Export format is Markdown YAML-frontmatter (`.pipeline.md`), never JSON** — the case text
+  says "JSON file downloads"; live product's `ExportApplicationButton.jsx` always calls
+  `doExport({ format: ExportFormat.MD })()` (same for Agents). Filed as case-text drift:
+  `EliteaAI/elitea-testing-public#1334`. Filename pattern:
+  `<slugified-pipeline-name>.pipeline.md`. Content is a `---`-fenced YAML block:
+  `name`/`description`/`model`/`max_tokens`/`agent_type: pipeline`/`step_limit`/
+  `conversation_starters`/`entry_point`/`nodes` (each with `input_mapping`/`output`/
+  `transition`)/`pipeline_settings` (canvas edges + node positions).
+- **Import (`useImport.hooks.js`) accepts ONLY `.md`/`.zip`** (`fileInput.accept =
+  '.md,.zip,text/markdown,application/zip'`) — exactly what Export produces, so the round trip
+  works even though the case's "JSON" wording doesn't match. Import button click
+  (`ToolbarImportButton.jsx`'s `openFileDialog`) opens a native OS file chooser DIRECTLY, no
+  intermediate menu — same pattern as `AgentsListPage.import_agent()`.
+- **Testid gap — `pipelines-import-button` needed.** `ToolbarImportButton.jsx` already accepts
+  an optional `testId` prop and forwards it to `data-testid`; the Agents call site
+  (`src/pages/Applications/Applications.jsx:113`) already wires
+  `testId="agents-import-button"` (ELITEA-1795, EliteaUI draft PR #552) but the Pipelines call site
+  (`src/pages/Pipelines/Pipelines.jsx:272`, `<ToolbarImportButton />`) passes NO prop at all —
+  confirmed on both `origin/main` and `origin/automation/testids`. Low-risk mechanical fix:
+  thread `testId="pipelines-import-button"`, same mechanism.
+- **Everything downstream of the click already works for pipelines with ZERO new testid work** —
+  the Import parameters preview dialog, its confirm button, and the Import Complete dialog +
+  "Got it" button are the SAME shared `ImportWizardModal`/`IWModal*` component tree Agent and
+  Skill import already use (`agent-import-preview-dialog`, `agent-import-confirm-button`,
+  `agent-import-complete-dialog`, `agent-import-complete-got-it-button` — all `agent-` prefixed
+  by existing convention despite being entity-agnostic). Confirmed live: used all four directly
+  with zero add-data-testid work.
+- **Pipeline-specific addition to the shared preview dialog**: a "Pipeline Diagram" section
+  (Start → {node names} → END, mermaid-like) that the Agent import preview does NOT render (Agent
+  shows Skills/Nested-entities cards instead). Not required by any of ELITEA-2012's assertions
+  (text fields + post-import canvas state suffice) — no testid added, per the "touches" scoping
+  rule.
+- **Execution gotcha, NOT an import defect**: an LLM node with Task field left at its default
+  (`Type=Fixed`, empty Value) 400s on chat send
+  (`"messages.0: user messages must have non-empty content"`) — reproduced BEFORE any
+  export/import involvement (same config existed on the original pipeline). Fixed by mapping
+  `Type=Variable, Value=input` via the existing shared `select-option-{}` dynamic-testid
+  convention. Any pipeline case that needs a working chat execution assertion must configure the
+  LLM node's Task field this way — not an import-specific requirement.
+  **Refinement (2026-08-09, ELITEA-2059)**: this fix requires an explicit **Save**
+  (`agent-save-button`) to take effect at execution time — the live formik-state change alone is
+  NOT enough (confirmed: response stayed "I didn't receive any text or image" until Save was
+  clicked, on an otherwise-correctly-mapped Task field). This is DIFFERENT from module-level
+  toggles like "Attachments" (see below), which gate the chat UI's *availability* instantly with
+  no save needed — don't conflate the two when writing setup code. **Also model-specific**: even
+  with the Task fix + Save, the shared fixture `test-pipeline`'s (id 6938) DEFAULT chat model
+  (Anthropic Claude 4.5 Sonnet) still 400s on **every** message, attachment or not —
+  `"No fallback model group found for original model_group=1_eu.anthropic.claude-sonnet-4-5-...".`
+  This is a DEV-backend LLM-provider-routing gap for that one model, not attach/import-specific.
+  Switching to **GPT-5.2** (`pipelines.select_llm_model("GPT-5.2")`) works reliably.
+  `PipelineAPI.create_pipeline_with_llm_node()` already defaults to `settings.default_model_name`
+  = `"gpt-5.2"` (`automation/config.py:196`) — a FRESH pipeline created via that helper avoids
+  this gotcha entirely; only the shared UI fixture needs the manual model switch.
+- **Minor, already-tracked, non-blocking**: the Import Complete dialog's `IWModalSucceedContent.jsx`
+  emits a benign React `validateDOMNesting` (`<div>` in `<p>`) console warning — tracked at
+  `EliteaAI/elitea-testing-public#570` (originally filed against Agent/Skill import); this session
+  added a comment confirming it also fires for Pipeline import (same shared component, no new
+  issue filed).
+- **Delete pipeline via three-dot menu** reused for cleanup — `delete-agent-menuitem` (NOT
+  `delete-pipeline-menuitem`, per the existing gotcha below) + auto-redirect to `/pipelines/all`
+  reconfirmed live.
+
+**Resolved/added during ELITEA-2012 implementation (2026-08-08):** `pipelines-import-button`
+testid added — `EliteaAI/EliteaUI@257cd359` on `automation/testids` (awaiting human promotion to
+`main`). `test_pipeline_import_via_file.py` (full create → export → delete → import → verify →
+execute round trip) green on first local run — confirmed live, matches this digest entry exactly:
+the auto-redirect after delete DOES fire correctly when the detail page was reached entirely via
+in-app SPA navigation (dashboard → "+ Pipeline" → Save → detail page), unlike ELITEA-2022's own
+test (`test_delete_pipeline_via_ui_menu`, sanctioned-RED #1332) whose setup reaches the detail page
+via a direct `page.goto()` (no prior in-app history entry) — the redirect defect is specifically a
+browser-history no-op, not a general product break. **Confirmed via source read:** the shared
+`IWModalEntityCard.jsx`/`IWModalEntityCardWrapper.jsx` preview-dialog fields (Type/Description/
+Chat-starters/Step-limit) carry NO `data-testid` at this call site (the wrapper's `subtitleTestId`
+prop is unwired here) — full config-equivalence verification was done on the imported pipeline's
+detail page (UI fields + `pipeline_api.get_pipeline()` API readback for node structure) instead of
+inside the preview dialog; see the AFS's own implementer-amendment note on Step 5 for detail. New
+page-object surface: `PipelinesListPage.import_pipeline()`/`confirm_pipeline_import()`/
+`confirm_import_complete()` (mirrors `AgentsListPage`'s import trio) + `PipelineDetailPage.
+export_pipeline_via_menu_and_download()` (testid-based, `page.expect_download()` — distinct from
+the pre-existing raw-handle `export_pipeline_via_menu()`, left unmodified for its own caller).
+
+## Delete pipeline via three-dot menu — auto-redirect confirmed correct; existing merged spec masks the redirect assertion by navigating manually (confirmed live, 2026-08-08, ELITEA-2022)
+
+`test_delete_pipeline_via_ui_menu` (`test_pipeline_management.py:391`, merged to
+`origin/automation/base`) already drives the full delete flow correctly (three-dot
+menu → "Delete pipeline" → type-to-confirm dialog → `DELETE .../application/
+prompt_lib/{project}/{id}` → `204`), but its own Step 4 calls
+`list_page.navigate()` instead of asserting the app's automatic redirect — so a
+future regression to the auto-redirect would go undetected. Live-reconfirmed this
+session: after clicking the confirm dialog's "Delete" button, the URL transitions
+on its own from `/pipelines/all/{id}?...` to `/pipelines/all` with zero manual
+navigation and zero console errors. Classified `extend-existing`, not a defect —
+see `test-specs/pipelines/lextend_delete-pipeline-via-actions-menu_ELITEA-2022.md`
+for the gap assertion + exact patch shape.
+
+**Testid gotcha for "Delete pipeline"**: the PIPELINE-group menu item's testid is
+`delete-agent-menuitem`, NOT `delete-pipeline-menuitem` — `ApplicationControls.jsx`
+reuses one shared `deleteApplicationMenuItem` object (key `delete-agent`) for both
+Agent and Pipeline entities; only the visible label switches
+(`Delete ${isFromPipeline ? 'pipeline' : 'agent'}`). Confirmed live via
+`page.getByTestId('delete-agent-menuitem')` resolving correctly on a pipeline
+detail page. Both `open_actions_menu()` and `delete_pipeline_via_menu()` in
+`PipelineDetailPage` still use bounding-box/text-role fallbacks internally
+(pre-existing tech debt, unchanged by this case) despite the real testids
+existing and resolving correctly — same situation ELITEA-2003's AFS already
+flagged for the three-dot button itself.
+
+## Interrupt before/after — pause works, plain-chat resume is a CONFIRMED DEFECT (`#1327`), pipeline-level YAML field (confirmed live, 2026-08-08, ELITEA-2047)
+
+`interrupt_before`/`interrupt_after` (`CommonInterruptSettings.jsx`, every node type
+sharing it — LLM/Code/MCP/Toolkit/Custom/Decision/Agent, NOT the HITL **node type**) is
+a genuine LangGraph-checkpoint feature, distinct from HITL's dedicated
+approve/edit/reject resume wiring (ELITEA-2015, `#1103`). Confirmed on pipeline id 8159
+(`Code 1 -> Printer 1 -> END`):
+
+- **YAML shape — pipeline-level, NOT per-node.** `interrupt_after` is a TOP-LEVEL
+  pipeline YAML key holding a list of node ids (`entry_point: Code 1\ninterrupt_after:\n
+  - Code 1\nnodes:\n  ...`), unlike `structured_output` which nests under the node.
+  Don't assert `nodes[0].interrupt_after` — it isn't there.
+- **Disabled-state gating (same `CommonInterruptSettings.jsx` logic already documented
+  for every node type)**: "Interrupt before" disabled while the node is the entry
+  point; "Interrupt after" disabled while the node has no outgoing transition
+  (`transition: END` or none) — a LONE freshly-added node always has both disabled; a
+  real 2-node pipeline with an edge is required to exercise "Interrupt after".
+- **Pause DOES work correctly, live-confirmed**: executing via embedded chat runs the
+  interrupted node, THEN pauses — `interrupt` pill on the canvas edge right after the
+  node; the WHOLE node config panel goes `disabled`/locked; chat header shows a
+  "Run is in progress" spinner + clickable "Run N details" + "Stop run"; chat
+  auto-posts *"How to proceed? To resume the pipeline - type anything..."*.
+- **Resume via plain chat is BROKEN — `EliteaAI/elitea-testing-public#1327`,
+  reproduced independently in TWO sessions** (an earlier `test-automation-engineer`
+  implementation attempt, then this analysis session, same pipeline). Sending a plain
+  message (e.g. `"continue"`) — the UI's OWN advertised instruction — does NOT resume:
+  it spawns a **second, distinct Run History entry** (different duration — i.e. a new
+  run, not a resumed one) rather than continuing the checkpointed run; the SAME "How to
+  proceed?" hint re-appears verbatim; Printer 1 never executes; the `interrupt` pill and
+  locked panel persist. "Run is in progress"/"Stop run" vanish from the header (a
+  half-cleanup, neither a clean resume nor a clean failure). Zero console errors —
+  silent behavioral defect, not a crash. **Distinct from `#1103`** (that's HITL-node-
+  specific `chat_continue_predict{hitl_resume:true, hitl_action}`; this toggle has no
+  action buttons at all, only the "type anything" text hint, and that hint doesn't work).
+- **Testid gaps (not yet added)**: the "Run is in progress" header banner, the "Run N
+  details" trigger label, the "Stop run" button, and the `interrupt` canvas edge pill
+  all have ZERO `data-testid` — confirmed via live DOM/innerText checks, no stable
+  selector isolated beyond coarse text/accessible-name matching this session. Left as
+  gaps for whichever implementer needs them (recommended names in the AFS's Concrete
+  Handles table) rather than guessed/added blind.
+- **WebSocket-frame capture not attempted this session** — `PipelineDetailPage.
+  capture_websocket_frames()` (pytest-fixture-level, same pattern as ELITEA-2015's HITL
+  test) can't be retrofitted onto an already-open Playwright-MCP browser session; the
+  implementer automating step 8's soft-assert doesn't strictly need it (DOM/Run-History
+  evidence is sufficient), but a future deep-dive into WHY resume fails (never sends a
+  resume-shaped frame vs. sends one the backend ignores) should use it.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-interrupt-before-after-toggles_ELITEA-2047.md`.
+
+## Structured output toggle — default disabled, correctly persists both directions through save + reload, YAML matches (confirmed live, 2026-08-08, ELITEA-2046)
+
+Confirmed live end-to-end on the LLM node's `pipeline-llm-node-structured-output-toggle`
+(chosen as the representative instance — the toggle is wired via the same shared
+`CommonInterruptSettings.jsx` component on every node type that renders it: LLM/Code/
+MCP/Toolkit/Custom, per the existing digest entries below): a freshly-added node's
+toggle reads `checked === false` before any interaction (no click needed to observe the
+default); click → `checked === true` → Save (`PUT .../application/prompt_lib/{project}/{id}`
+→ `201`) → full page reload (canonical URL, per the ELITEA-1954 404-on-bare-URL gotcha) →
+toggle still `checked === true`; click again → `checked === false` → Save → reload →
+still `checked === false`. YAML's `structured_output` field matched at both checkpoints
+(`true` then `false`) — read directly via the on-screen `pipeline-yaml-editor` tab, NOT
+`pipeline_api.get_pipeline()`: this single-node, no-extra-fields pipeline's YAML is only
+19 lines, well under the ~32-34-line truncation threshold documented below for `#1025`
+(confirmed live — no truncation observed at either state), so the API-readback workaround
+ELITEA-2045's 40-line document needed does not apply here. No product defect — case text
+matched live behavior exactly on all 5 steps. Full flow + page-object gap list (none — zero
+new testids needed): `test-specs/pipelines/l2_pipeline-structured-output-toggle-persistence_ELITEA-2046.md`.
+
+## LLM node Output multi-select drops a selection if you don't close-then-reopen between picks (confirmed live, 2026-08-08, ELITEA-2045)
+
+Selecting more than one variable in the LLM node's Output combobox **inside a
+single open popover** silently drops selections beyond the first one or two —
+confirmed live this session: `name` then `age` (still inside one open/close
+cycle, immediately back-to-back) registered correctly, but adding `hobbies`
+immediately after in the SAME open popover did not register at all (the Save
+payload's `output:` list came back with only `[name, age]` until `hobbies`/
+`metadata` were each selected in their OWN open→select→Escape→reopen cycle).
+This matches (and reconfirms) the existing `_select_multi_select_option_and_close()`
+helper's own docstring warning — **the fix is already the default behavior of
+`select_llm_node_output_variable(name)`, which performs one full open/select/
+close cycle per call**; the bug only bites a caller who manually opens the
+popover once and clicks multiple `select-option-*` targets before closing.
+Automation implication: always call `select_llm_node_output_variable(name)`
+once per variable, never batch clicks inside one manually-held-open popover.
+
+## Pipeline YAML tab silently truncates long documents — reconfirmed on a DIFFERENT node/pipeline shape (2026-08-08, ELITEA-2045, `EliteaAI/elitea-testing-public#1025`)
+
+Already filed during ELITEA-2010 (Toolkit node, 41-line document, cutoff at
+line 32) — reproduced again this session on a single-LLM-node pipeline with
+4 typed custom output variables + `structured_output: true` (40-line
+document, cutoff at line 34, i.e. right after `output:\n      - name`,
+before `- age`/`- hobbies`/`- metadata`/`structured_output: true`/
+`transition: END`). Confirmed **display-only**: the PUT-save response body's
+`version_details.instructions` field has the full, correct YAML; only the
+`pipeline-yaml-editor` CodeMirror DOM (and thus `get_yaml_content()`) is
+truncated. `.cm-scroller.scrollHeight === .cm-scroller.clientHeight` in both
+cases — the editor believes there's nothing more to scroll to, so there is
+**no UI-reachable workaround** (confirmed: resizing the browser viewport
+taller, e.g. 1400×2200, makes the full document render — the root cause is
+viewport-height-driven, not a hard line-count cap). **Automation
+implication, reconfirmed**: for any pipeline whose full node YAML is likely
+to exceed ~32-34 rendered lines at a normal test viewport, verify content via
+`pipeline_api.get_pipeline(pipeline_id)["version_details"]["instructions"]`
+(parsed with `yaml.safe_load`) instead of `switch_to_yaml_view()` +
+`get_yaml_content()` — the same pattern `test_pipeline_yaml_editor_invalid_syntax.py`
+(ELITEA-2068) and `test_pipeline_advanced.py` already use for server-truth
+readback. Full case detail:
+`test-specs/pipelines/l2_llm-node-structured-output-state-variables_ELITEA-2045.md`.
+
+## Printer node — SimpleLLMInputs (PRINTER section) + standalone Final Message field, NO Input/Output selects, NO Interrupt/Structured-output controls (confirmed live, 2026-08-08, ELITEA-2039)
+
+`PrinterNode.jsx` renders the SAME shared `FlowEditorSettings.SimpleLLMInputs`
+component as the Code node (single mapping key `printer`, default
+`{type: 'fixed', value: ''}` via `usePrinterInputMapping.js`) plus a
+standalone `AIAssistantInput` for `final_message` — confirmed via source AND
+live DOM. **Unlike every other configurable node type in this suite
+(LLM/Code/HITL/MCP/Toolkit/Router/Decision/State-modifier/Custom/Agent),
+Printer has NO `FlowEditorSelect.InputSelect`/`OutputSelect` and NO
+`FlowEditorSettings.CommonInterruptSettings` at all** — confirmed via source
+read (`PrinterNode.jsx` imports neither) and live DOM (`#simple-select-Input`/
+`#simple-select-Output` both resolve to 0 matches inside the node; no
+"Interrupt"/"Structured output" substrings in the node's text content). Only
+the two generic ReactFlow `CustomHandle` connection points (`target` top,
+`source` bottom) exist — the case's own step 8 wording ("Printer node has
+only Output handle (no Input combobox visible in panel)") already correctly
+anticipates this, no case-text drift.
+
+- **Zero testids existed on `PrinterNode.jsx` before this session** — added a
+  `PRINTER_NODE_INPUT_TEST_IDS` map (same shape as `CODE_NODE_INPUT_TEST_IDS`
+  in `CodeNode.jsx`, ELITEA-2009) wiring `testIdsByKey={{printer: {...}}}` on
+  the `SimpleLLMInputs` call site, plus `inputProps={{'data-testid': ...}}`
+  directly on the `AIAssistantInput` call site for Final Message (MUI
+  `TextField`'s `htmlInput` slot — the "needs `inputProps`, not a bare
+  `data-testid` prop" pattern already documented elsewhere in this digest for
+  the Webhook/Schedule modal fields) — `EliteaAI/EliteaUI@955f88b9` on
+  `automation/testids`.
+- **Type select's 3 options are Fixed/F-String/Variable, default `Fixed`** —
+  same `TYPE_OPTION_VALUE_BY_LABEL` mechanism as every other SimpleLLMInputs
+  call site in this suite, confirmed live.
+- **PRINTER Value and Final Message are both plain MUI textareas, NOT
+  CodeMirror** — confirmed live via `tagName === 'TEXTAREA'`, same pattern as
+  every other `AIAssistantInput`/`SimpleLLMInputItem` field in this suite.
+  Embedded literal `\n` (backslash+n, not a real newline) types and reads
+  back exactly via `press_sequentially()`, same convention as the Code node's
+  Python-code Value field.
+- **Save + full page reload correctly persists** PRINTER Type, Value, and
+  Final Message (confirmed live round-trip this session, zero console errors
+  at every checkpoint). Same `PUT .../application/prompt_lib/{project}/{id}`
+  → 201 mechanism as every other pipeline-node-configuration case in this
+  family.
+- Full flow, handles, and page-object gap list:
+  `test-specs/pipelines/l2_pipeline-printer-node-configuration_ELITEA-2039.md`.
+
+**Resolved/added during ELITEA-2039 fix round 2 implementation:** the two
+generic `CustomHandle` connection points (target/source, line 21 above) also
+now carry real testids — `CustomHandle.jsx` (EliteaUI
+`src/[fsd]/features/pipelines/flow-editor/ui/nodes/CustomHandle.jsx:104-111`)
+forwards a `testId` prop straight to `data-testid`, so this is an app-owned
+hook, NOT a #579 library-internal-DOM exception (round-1 code incorrectly
+treated `.react-flow__handle` as the sanctioned class `get_node_count()` uses
+for the ReactFlow node-container CSS class — that class has no such hook,
+these handles do). `PrinterNode.jsx`'s two `CustomHandle` call sites now pass
+`testId="pipeline-printer-node-target-handle"` /
+`testId="pipeline-printer-node-source-handle"` —
+`EliteaAI/EliteaUI@b65756af` on `automation/testids` (awaiting human
+promotion to `main`). Same mechanism `NormalDecisionNode.jsx` already uses
+for `pipeline-decision-node-output-handle`. Any future node type wiring a
+`CustomHandle` testid should follow this same `testId` prop, not a raw DOM
+query.
+
+## Agent node — own component (NOT a `BaseToolNode.jsx` caller), single-select-as-toolkit, TASK-only input mapping, DIFFERENT attach endpoint (confirmed live, 2026-08-08, ELITEA-2038)
+
+`AgentNode.jsx` is its OWN standalone component — unlike Toolkit/MCP (which
+share `BaseToolNode.jsx`'s `TEST_ID_PREFIX_BY_NODE_TYPE` map), it renders its
+own JSX tree directly: `FlowEditorSelect.ToolSelect` (label "Agent",
+`filterTypes: tool => tool.type === ToolTypes.application.value`) →
+`FlowEditorSelect.InputSelect` → `FlowEditorSelect.OutputSelect` →
+`FlowEditorSettings.InputMapping` (gated `{!isOrphan && ...}`, same
+two-stage-reveal as Toolkit/MCP) → `FlowEditorSettings.CommonInterruptSettings`
+with `showStructuredOutput={false}` (so Structured output NEVER renders for
+this node type — permanent, not a testid gap). Confirmed live: **zero testids
+existed on this component before this session** — added a local
+`AGENT_NODE_TESTID_PREFIX = 'pipeline-agent-node'` constant (same shape as
+`BaseToolNode.jsx`'s prefix, but as a standalone const since AgentNode has no
+map to key into) wiring 6 fields (Agent select, Input/Output selects,
+Input-mapping value/type/required-heading, Interrupt-after toggle) —
+`EliteaAI/EliteaUI@2859a9d0` on `automation/testids`.
+
+- **Attaching an Agent to the Tools section uses a DIFFERENT endpoint from
+  Toolkit/MCP**, despite sharing the same `ToolMenu.jsx` UI and the same
+  `toolkit-menu-item`-testid popper rows. Toolkit/MCP attach fires
+  `PATCH .../tool/prompt_lib/{project}/`; Agent attach fires
+  `PATCH .../application_relation/prompt_lib/{project}/{agent_id}/{agent_version_id}`
+  (`useAgentPipelineAssociation.hooks.js`'s `updateApplicationRelation`
+  mutation) — confirmed via source read AND live network capture, both
+  return `201 Created` and both auto-persist immediately on popper
+  selection (same *behavior*, different *mechanism* — a test asserting the
+  wrong endpoint string would silently never resolve its
+  `page.expect_response()` wait and time out instead of failing fast on a
+  wrong assertion).
+- **The Agent-as-tool's Input-mapping schema has exactly ONE required key,
+  `task` (displayed "Task"), and ZERO optional keys** — confirmed live:
+  "Input mapping (required 1)" renders with no sibling "optional" accordion.
+  Its Type select's **default value is already "F-String"** (`fstring`), NOT
+  "Fixed" like every sibling node's tool-parameter Input-mapping fields —
+  confirmed live via DOM read before any interaction. A case describing "set
+  Type to F-String" is describing the pre-existing default, not an action;
+  document as a clarification, don't treat as a defect.
+- **Same custom-state-var precondition as every other node-config case in
+  this family** (Code/2009, State modifier/2035, Custom/2036, MCP/2037):
+  Input/Output combos list only `input`/`messages` on a fresh pipeline —
+  variables the case's Test Data table implies as pre-existing must be added
+  via the STATE panel's "+" control first (`add_state_variable()`).
+- **Save + full page reload correctly persists** Agent selection, Input (both
+  multi-select variables), Output, and TASK Type+Value (confirmed live
+  round-trip this session, zero console errors at every checkpoint). Same
+  `PUT .../application/prompt_lib/{project}/{id}` → `201` mechanism as every
+  other pipeline-node-configuration case in this family.
+- Full flow, handles, and page-object gap list:
+  `test-specs/pipelines/l2_pipeline-agent-node-integration_ELITEA-2038.md`.
+
+## Custom node — SAME component tree as Toolkit node + a unique raw-JSON dual view (confirmed live, 2026-08-08, ELITEA-2036)
+
+`DefaultNode.jsx` renders BOTH the `custom` and `defaultType` node types
+(`FlowEditor.jsx`'s `nodeTypes` map) — confirmed via source. For `custom`
+specifically, the rendered fields are the EXACT same component tree
+`BaseToolNode.jsx` uses for the Toolkit/MCP nodes: `ToolSelect` (Toolkit
+select) → conditional `Tool` `SingleSelect` (absent from DOM until a
+Toolkit with `selected_tools` is chosen) → `FlowEditorSelect.InputSelect` →
+`FlowEditorSelect.OutputSelect` → `FlowEditorSettings.InputMapping`
+(Type+Value per parameter, REQUIRED/OPTIONAL accordions once a Tool is
+selected) → `FlowEditorSettings.CommonInterruptSettings` (Interrupt
+before/after, Structured output). **Additionally**, Custom uniquely renders
+`FlowEditorSettings.CustomNodeInput` at the bottom — a raw-JSON CodeMirror
+view/editor of the node's own full YAML body (id/type/description/settings/
+input_mapping/...), present on NO other node type in this suite. Same
+always-expanded-inline pattern (no click-to-open) as every other node type.
+
+- **Precondition case-text drift, same class as Toolkit/Router nodes.** The
+  case ELITEA-2036 doesn't mention attaching a toolkit as a precondition,
+  but "Type + Value for input mapping" is unreachable until a Toolkit (with
+  `selected_tools`) is attached to TOOLS and selected in the node — same
+  two-stage reveal already documented for ELITEA-2010 (Toolkit node) and
+  ELITEA-2033 (Router node). Filed as a CLARIFICATION in the AFS, not a bug.
+- **Zero testids existed on `DefaultNode.jsx`/`CustomNodeInput.jsx` before
+  this session** — added a `TEST_ID_PREFIX_BY_NODE_TYPE` map (mirrors
+  `BaseToolNode.jsx`'s, gated to `type === 'custom'`) wiring 8
+  ALREADY-SUPPORTED props (`data-testid` on `ToolSelect`/`SingleSelect`,
+  `dataTestId` on `InputSelect`/`OutputSelect`, 4 props on `InputMapping`, 2
+  on `CommonInterruptSettings`) — zero shared-component changes needed. The
+  raw-JSON view needed ONE new prop (`contentTestId`, forwarded to
+  `Field.CodeMirrorEditor`'s pre-existing `contentTestId` support — same
+  mechanism as `toolkit-raw-json-editor-content`/`skill-instructions-editor-content`
+  elsewhere in the codebase). Full testid list: `test-specs/pipelines/l2_pipeline-custom-node-configuration_ELITEA-2036.md`
+  § Concrete Handles.
+- **Raw-JSON view reading convention**: `text_content()` on the
+  `[data-testid="pipeline-custom-node-json-editor-content"]` `.cm-content`
+  div, NOT `input_value()` — CodeMirror is not a native input/textarea,
+  same convention as this project's other CodeMirror-content-reading code.
+
+## State modifier node — inline config panel, zero Interrupt/Structured-output controls (confirmed live, 2026-08-08, ELITEA-2035)
+
+Same always-expanded-inline pattern as every other node type. Node body, in
+DOM order (confirmed via source, `StateModifierNode.jsx`): Trigger (only if
+entry point) → **Jinja Template** (`AIAssistantInput`, `label="Jinja
+Template"`, `name="template"`, `language="jinja"` — same "language prop ≠
+CodeMirror" trap already documented 3× for this node family, plain textarea
+confirmed live via `fill()`) → **Variables to clean** (`FlowEditorSelect.InputSelect`,
+`inputFieldName="variables_to_clean"`) → **Input** (`FlowEditorSelect.InputSelect`,
+`inputFieldName="input"`) → **Output** (`FlowEditorSelect.OutputSelect`,
+`outputFieldName="output"`). Unlike Code/LLM, this node type has **NO**
+`CommonInterruptSettings`/structured-output controls at all — confirmed via
+source, no such import/usage in `StateModifierNode.jsx`.
+
+- **"Variables to clean" is NOT an expandable/accordion section — case-text
+  drift, filed as a CLARIFICATION.** It is the exact SAME
+  `FlowEditorSelect.InputSelect` component as Input, just a different
+  `inputFieldName`/`label` — a plain multi-select combobox, confirmed live
+  via DOM inspection (no accordion, no expand icon, no collapsed state
+  anywhere in the node body). The case's step 4 ("Expand 'Variables to
+  clean' section (if applicable)") describes a mechanism that doesn't
+  exist; the AFS instead asserts the field is present and openable as a
+  dropdown. Same class of finding as the Decision-outputs/Routes
+  clarifications already filed for sibling pipeline-node cases.
+- **Zero testids anywhere inside the node body before this session**
+  (confirmed via `git grep` for `state-modifier`/`state_modifier` on
+  `automation/testids` — only non-UI hits: i18n prompt-template key, node
+  type constant, icon import, palette color). Added this session:
+  `pipeline-state-modifier-node-template-input` (on `AIAssistantInput`'s
+  `inputProps`, same mechanism as the Decision AFS's Description field),
+  `pipeline-state-modifier-node-variables-to-clean-select` /
+  `-input-select` / `-output-select` (on the 3 `FlowEditorSelect` call
+  sites' pre-existing `dataTestId` prop — zero new component code, matches
+  the Code/Decision node testid-plumbing pattern exactly).
+- **State variables are NOT built-in** — same pattern as every other node
+  type in this family (Decision/Code/Router): a fresh pipeline's Input/
+  Output combos on the State modifier node list only `input`/`messages`
+  until custom vars are added via the `STATE` panel's "+" control. The
+  case's own Test Data table names `issue_details` (Input) and
+  `normalized_issue` (Output) as if pre-existing; live-confirmed neither is
+  built-in.
+- **Save + full page reload correctly persists** Jinja Template text,
+  Input, and Output (confirmed live round-trip this session, zero console
+  errors at every checkpoint). `PUT .../application/prompt_lib/{project}/{id}`
+  returns 201, same as every other pipeline-node-configuration case in this
+  family.
+- Full flow, handles, and page-object gap list: `l2_pipeline-state-modifier-node-configuration_ELITEA-2035.md`.
+
+## Save As Version (`agent-save-as-version-button` + dialog) works on Pipelines exactly like Agents (confirmed live, 2026-08-07, ELITEA-2002)
+
+- **`ApplicationTabBar.jsx` (which renders `SaveNewVersionButton.jsx`) is shared by
+  `EditPipeline.jsx` too** — same shared component `AgentDetailPage` already wires as
+  `save_as_version_button`/`create_version_*` fields. Confirmed live end-to-end on a
+  pipeline detail page: `agent-save-as-version-button` (enabled only when the form is
+  dirty — e.g. after adding a canvas node via `pipeline-add-node-button` →
+  `pipeline-add-node-menu-item-llm`), `agent-version-dialog-name-input`,
+  `agent-version-dialog-save-button` (disabled while Name is empty), and the dynamic
+  `[data-testid="version-option-{name}"]` (`VERSION_OPTION` template, same mechanism as
+  `AgentDetailPage.VERSION_OPTION`) all resolve and behave identically to the Agents
+  side. **`PipelineDetailPage` has none of these as fields yet** (only
+  `version_selector`/`get_version_display()` for READING existed before this session) —
+  zero `add-data-testid` work needed, purely a page-object-generator gap; port
+  `AgentDetailPage`'s method shapes (`open_save_as_version_dialog()`,
+  `confirm_new_version()`, `select_version_by_name()`, etc.) rather than reinventing.
+- **Switching versions swaps canvas node state independently per version** — confirmed
+  live: added 1 LLM node (`[data-testid^="rf__node-LLM"]`, sanctioned #579 ReactFlow
+  wrapper handle) → Save As Version as `v1_test` → switch to `base` → 0 LLM nodes on
+  canvas → switch back to `v1_test` → 1 LLM node again, config intact. No leakage either
+  direction. The VERSION selector's URL also changes its version-id path segment
+  (`/pipelines/all/{pipeline_id}/{version_id}`) on every switch/create — a second,
+  independent signal beyond the trigger's `textContent`, cheap to assert alongside it.
+- **`discard-button` IS live-wired on the Pipeline detail page** (present, correctly
+  reflects dirty state) — a divergence from the digest's existing Agents note that this
+  same testid is NOT rendered on `AgentDetailPage` (pre-existing, unrelated gap noted
+  there, not this session's concern).
+- **Seeding for a clean baseline**: `PipelineAPI.create_pipeline()` (zero-node, real
+  empty `pipeline_settings`) loads with Save/Discard correctly **disabled** — confirmed
+  live. Reconfirms the existing "Seeding gotcha" entry below (avoid
+  `create_pipeline_with_nodes()` for any case needing a clean dirty-state baseline) from
+  the version-flow angle specifically. **See the CORRECTION below on Save As Version's
+  OWN enabled state — it does NOT join Save/Discard in this disabled baseline.**
+  **CORRECTION (2026-08-07, ELITEA-2002 implementation) — "Save As Version enabled
+  only when the form is dirty" (two bullets above, and the original "Save/Save-As-
+  Version/Discard all correctly disabled" baseline claim just above) is FALSE for
+  `agent-save-as-version-button`.** Re-verified live against a fresh zero-node pipeline
+  (`ApplicationTabBar.jsx` source read + live DOM check, both agree): `ApplicationTabBar.jsx`
+  renders `<SaveNewVersionButton onSuccess={onSuccess} />` with **no `disabled` prop
+  passed at all** — `SaveNewVersionButton.jsx`'s own `disabled={isSavingNewVersion ||
+  disabled}` therefore only ever reflects `isSavingNewVersion` (a mid-request state),
+  never form dirtiness. Confirmed on a clean, zero-node pipeline immediately after
+  navigate (and again after a 3s settle, to rule out a load-race): Save = disabled,
+  Discard = disabled, **Save As Version = enabled**. This is a shared-component fact
+  (`ApplicationTabBar.jsx` is the same component `AgentDetailPage` wires), not a
+  pipeline-only quirk — `test_agent_save_as_version.py` never actually asserted the
+  pre-edit disabled state either (only "enabled once dirty", which stays true — dirty
+  is a superset of "always enabled", so that assertion doesn't contradict this). The
+  correct clean-baseline assertion is: Save disabled, Discard disabled, **Save As
+  Version enabled** (available at any time, not gated on dirtiness) — see
+  `l2_create-pipeline-version_ELITEA-2002.md` for the corrected AFS text and
+  `test_pipeline_create_version.py` for the corrected assertions.
+- **Resolved during ELITEA-2002 implementation (2026-08-07) — version-switch needs the
+  SAME reload-based belt-and-braces `select_version_by_name()` already uses on
+  `AgentDetailPage`, not a simplified single-poll.** A single DOM-only poll (trigger
+  text == target name AND Information-panel version-id == URL's version-id path
+  segment) is NOT sufficient: the VERSION trigger's text can flip to the target name a
+  beat before the Information panel's version-id / URL catch up, and that panel/URL
+  pair can be transiently self-consistent (equal to EACH OTHER) while BOTH still show
+  the PREVIOUS version's id — satisfying the same-value check without actually being on
+  the target version yet (observed live: switching to "base" resolved the poll while
+  `copy-version-id` and the URL segment both still read the just-created `v1_test`
+  version's id). `PipelineDetailPage.select_version_by_name()` now ports the Agent
+  method's full select+reload-cycle shape (2 attempts) to force a fresh server refetch,
+  which clears it. Not the Agent-specific #614 Publish bug (different trigger flow —
+  dropdown switch here, not Publish) but the same underlying staleness class.
+- Full flow, handles, and page-object gap list: `l2_create-pipeline-version_ELITEA-2002.md`.
+
+## Sidebar "+" create control and the VERSION selector (confirmed live, 2026-08-07, ELITEA-2020)
+
+- **`sidebar-create-button`** (the shared `CreateEntityButton.jsx`, same
+  testid already wired on `AgentsListPage`/`ToolkitsListPage`/
+  `CredentialsListPage`/`ChatPage`) is exactly the "+" control next to the
+  "Pipeline" label the case describes — confirmed live: while on
+  `/pipelines/all`, the button's `currentLabel` resolves to "Pipeline" (per
+  `RouteToLabelMap`) and clicking it navigates straight to
+  `/pipelines/create?viewMode=owner` (no dropdown, per
+  `isSimpleCreateRoute`). Not yet a `PipelinesListPage` field — added this
+  session (`sidebar_create_button` + `click_create_pipeline()`).
+- **VERSION selector on the pipeline detail page**: `data-testid` is
+  threaded via a `testId` PROP (`ApplicationVersionSelect.jsx:228`,
+  `testId="agent-version-selector-trigger"`), NOT a literal `data-testid=`
+  string — a bare-substring `git grep` for `data-testid.*agent-version-
+  selector` finds nothing; grep for the prop name
+  (`testId="agent-version-selector-trigger"`) instead, same caveat as the
+  MCP-node testids and the closure-record two-stage-grep note.
+  **CORRECTION (2026-08-07, review fix round 1) — ITSELF CORRECTED (2026-08-07,
+  review fix round 2):** round 1 claimed the original "renders TWO testids,
+  `agent-version-selector-trigger` (outer wrapper) +
+  `agent-version-selector-trigger-combobox` (inner combobox)" line was
+  **fabricated**, based on a literal-string `git grep` for
+  `agent-version-selector-trigger-combobox` returning zero hits on both
+  `main` and `automation/testids`. **That "fabricated" verdict was itself
+  wrong.** The `-combobox` variant IS real: `SingleSelect.jsx:661`
+  (`../EliteaUI`, `automation/testids` ref) applies
+  `SelectDisplayProps={dataTestId ? { 'data-testid': \`${dataTestId}-combobox\` } : undefined}`
+  — a template literal MUI spreads onto the nested `role="combobox"` display
+  div (a real, different DOM node from the outer wrapper `data-testid`).
+  The literal-string grep is the wrong check for a template-constructed
+  testid: the concatenated string never appears verbatim in source, so it
+  ALWAYS greps to zero regardless of whether the mechanism exists — the
+  correct check is `git grep -n -- "-combobox" <ref> -- src/`, which finds
+  the `SelectDisplayProps` line. Ref-specific: **0 hits on `main`, 1 hit on
+  `automation/testids`** (re-verified 2026-08-07 with a fresh `git fetch
+  origin` on both refs) — `needs-adding to main` / `on-automation/testids
+  only`, not non-existent.
+  **The page-object choice is unaffected**: `version_selector` still uses
+  the NO-suffix `agent-version-selector-trigger` testid, because it's
+  confirmed on BOTH refs and DOM `textContent` on the outer wrapper already
+  includes the inner `-combobox` div's text (returns "base" either way) —
+  not because the suffixed variant doesn't exist. Full trace:
+  `.agents/memory/test-automation-engineer/
+  afs_testid_can_name_a_real_but_wrong_component.md` (ELITEA-2020 addenda).
+  Shared component — same one Agents' detail page uses via
+  `AgentDetailPage.version_selector_trigger` (`_surface.md` doesn't need a
+  duplicate Agents entry; behavior is identical).
+- **Name field has a hard 32-char cap (`MAX_NAME_LENGTH`,
+  `src/common/constants.js`), and typing beyond it silently truncates
+  rather than erroring** — confirmed live: `pressSequentially`/`type()` of a
+  41-char name left the field holding exactly the first 32 chars, no
+  validation message. Same root cause as the `pipeline_id` fixture's own
+  `[:32]` truncation noted in the ELITEA-2023 AFS, but this one bites ANY
+  manually-generated name, not just the fixture. Keep generated pipeline
+  names ≤32 chars total (e.g. `autotest_pipe_min_<8hex>` = 27 chars) —
+  don't assume a longer descriptive prefix + suffix is safe.
+- **Information section confirmed reachable without an explicit expand
+  click** — `agent-information-section`'s accordion renders
+  `Mui-expanded`/open by default on a freshly created pipeline's detail page
+  (same as the ADVANCED section note elsewhere in this digest). "Pipeline
+  ID:" sits next to the pre-existing `copy-id` button
+  (`PipelineDetailPage.copy_id_button`/`get_pipeline_id()`, unmodified,
+  confirmed still correct); a sibling "Version ID:" / `copy-version-id`-style
+  button also exists in the same section (not needed by ELITEA-2020, noted
+  for any future case that touches Version ID specifically).
+
+## Dashboard search — typing alone does NOT filter the grid; Enter/send-icon required (confirmed live, 2026-08-07, ELITEA-2023)
+
+- **`PipelinesListPage.search()` (as merged) never actually filters the
+  dashboard grid.** It only does `search_input.fill(query)` — no Enter, no
+  send-icon click. Per `SearchBar.jsx` (shared by Pipelines/Agents/MCP/
+  Credentials/Toolkits/Skills): typing only updates local state + opens a
+  real, API-backed **suggestions popover** (`SuggestionList.jsx`, 500ms
+  debounce); the grid-narrowing dispatch (`onSearch()`) fires ONLY on
+  `Enter` or a click on `data-testid="search-send-button"`. Confirmed live:
+  typed "YAML" + waited past debounce → grid unchanged (still 11 pipelines);
+  pressed Enter → grid narrowed to exactly 1 (`autotest_YAML_search_probe`).
+  This means `test_search_pipeline_by_name`/`test_search_pipeline_no_results`
+  (merged, `test_pipeline_management.py::TestSearchPipeline`) pass via the
+  suggestions popover, not the grid filter — real grid-filter coverage is
+  new (see `lextend_pipeline-dashboard-search-filter-and-clear_ELITEA-2023.md`).
+  Sibling pages already fixed this correctly — reuse their pattern:
+  `automation/pages/mcp_list_page.py::search()` (types, `press("Enter")`,
+  waits network + ~1.5s settle) / `credentials_list_page.py`.
+- **`search-clear-button` testid exists but has no `PipelinesListPage` field
+  yet** — confirmed live (`page.getByTestId('search-clear-button')`
+  resolves). Add `search_clear_button = LocatorDescriptor(testid="search-clear-button")`.
+- **No sibling of the MCP/#585 · Credentials/#551 "clear-from-zero-match
+  redirects to /create" defect on Pipelines** — reproduced the identical
+  trigger (search a term with zero matches → empty state → click Clear) and
+  the Pipelines dashboard correctly restores the full grid, stays on
+  `/pipelines/all`. Confirmed clean; don't assume it needs fixing too.
+- **Search-input placeholder**: exactly `Let's find something amazing!`
+  (confirmed via live accessibility snapshot, matches `SearchBar.jsx`
+  literal and the merged `search_input` LocatorDescriptor's dead `fallback=`
+  string — testid `pipeline-search-input` is what actually resolves).
+- **Case-text drift filed**: `EliteaAI/elitea-testing-public#1302` —
+  ELITEA-2023 Steps 3–4 imply live-as-you-type filtering; live product
+  needs explicit Enter/send-icon activation (same `SearchBar.jsx` mechanism
+  as ELITEA-2162's `#1114` clarification for the Chats search folder-list
+  behavior — recurring pattern across every dashboard using this component).
+
+## YAML editor view — line numbers, copy button, `state:` key precondition (confirmed live, 2026-08-07, ELITEA-2026)
+
+- **`state:` key requires a CUSTOM state variable — `input`/`messages` alone
+  never produce it.** Confirmed both directions: a plain
+  `pipeline_with_llm_id`-shaped pipeline's Yaml view shows ONLY
+  `entry_point:`/`nodes:` (zero `state:` key, verified via
+  `[data-testid="pipeline-yaml-editor"].textContent`); the identical shape
+  plus an explicit `state:` block in `PipelineAPI.create_pipeline()`'s
+  `instructions` param round-trips a `state:` section correctly. Filed as a
+  clarification (case-text drift, not a defect):
+  `EliteaAI/elitea-testing-public#1299` — any case whose Test Data implies
+  "any pipeline with nodes" guarantees a `state:` keyword must instead seed
+  a custom state var explicitly (same `instructions`-param technique
+  ELITEA-2453's fixture uses).
+- **Line-number gutter has ZERO testid, but IS a sanctioned #579 exception**
+  — confirmed live via `document.querySelector('.cm-gutters')` →
+  `data-testid: null`, AND confirmed the gutter is a DOM descendant of the
+  `pipeline-yaml-editor` testid parent (`editorTestidEl.contains(gutter)` →
+  `true`). Scoped raw handle: `.cm-gutters .cm-lineNumbers .cm-gutterElement`
+  chained off `yaml_editor`, same precedent/shape as the existing
+  `YAML_LINE_SELECTOR = ".cm-line"` class constant — add a sibling constant
+  rather than a new page-object field.
+- **"Copy yaml code to clipboard" button has NO testid** — only
+  `aria-label="Copy yaml code to clipboard"` (confirmed via a full
+  `document.querySelectorAll('button')` grep). Genuine `add-data-testid` gap,
+  not previously flagged by another case. Recommend `pipeline-yaml-copy-button`.
+- **Copy click produces the SAME shared `toast-alert` component every other
+  page already uses** (`data-testid="toast-alert"`, `data-severity="info"`,
+  text `"The code has been copied to the clipboard."`) — `PipelineDetailPage.
+  get_toast_alert("info")` / `get_toast_text()` already exist and work
+  unmodified, no new plumbing needed. Toast auto-dismisses fast (~1-2s
+  observed) — wait for it immediately after the click, not a step later.
+- **`navigator.clipboard.readText()` unprivileged HANGS INDEFINITELY, no
+  error, no timeout** — confirmed live (ad-hoc MCP scratch session, no
+  `context` fixture): a bare `page.evaluate(() =>
+  navigator.clipboard.readText())` silently stalled the calling tool for the
+  full idle timeout; the browser page itself stayed fully responsive
+  throughout (confirmed via a snapshot immediately after recovery) — this is
+  a permission-prompt stall, not a crash. **BUT the real pytest `context`
+  fixture (`automation/conftest.py:281`) already grants
+  `permissions=["clipboard-read", "clipboard-write"]` suite-wide** — so
+  inside an actual test this call is safe and resolves immediately (see
+  role memory `clipboard_read_hangs_without_permission_grant.md`, from
+  ELITEA-2280). Only ad-hoc/scratch sessions need the explicit
+  `context.grant_permissions(...)` workaround.
+- **Toggling Flow⇄Yaml and clicking Copy are both pure client-side
+  operations** — zero network requests for either, confirmed via
+  `browser_network_requests` across both probe pipelines. Zero console
+  errors/warnings throughout.
 
 ## Run Details panel (`RunStateNode`/`RunStateDialog`) — opened after pipeline execution (confirmed live, 2026-08-06, ELITEA-2450)
 
@@ -63,6 +1619,64 @@
   Cosmetic only — panel renders and functions correctly. Don't assert a
   blanket "zero console errors" through the panel-open step for this flow;
   scope around this one known signature.
+
+### Timeline Stepper — per-step dot/tooltip/timestamp handles (confirmed live, 2026-08-09, ELITEA-2451)
+
+Confirmed live via a fresh 3-node plain-LLM chain (`LLM 1 → LLM 2 → LLM 3 → END`,
+pipeline id 8767, `afs_2451_probe2`, deleted at session end):
+
+- **Dot color is a SINGLE run-level flag, not per-step.** `ProcessStepIcon.jsx`
+  receives `isError={data.status === PipelineStatus.Error}` — identical value
+  passed to EVERY step in the map. For a `Completed` run, all N dots render
+  `palette.status.published` (green); there is no per-step success/fail color.
+  **`data-status` needs adding** to the dot (mirrors the existing
+  `pipeline-run-details-status-badge` `data-status` pattern) so automation
+  never has to assert a literal CSS color.
+- **The dot's `aria-label` attribute already carries the node id**
+  (`StyledTooltip title={step.id}` — MUI surfaces this as a static
+  `aria-label` on the trigger, confirmed via `outerHTML` read:
+  `aria-label="LLM1"`, NOT a `title` attribute) — present even before a real
+  hover event fires, confirmed via accessibility snapshot immediately on
+  panel open. Same space-stripping as the Timeline label (`"LLM 2"` →
+  `"LLM2"`). Read via `get_attribute("aria-label")` on the EXISTING
+  `pipeline-run-details-timeline-step-{index}` testid — no new handle
+  needed. Same technique already documented in role memory,
+  `artifacts_bucket_search_testid_gaps_and_tooltip_aria_label_technique.md`,
+  for a different MUI Tooltip call site. A real `.hover()` also renders the
+  visual popup (screenshot:
+  `test-results/screenshots/ELITEA-2451-step-hover-tooltip.png`).
+- **The per-step timestamp (`HH:mm:ss`, e.g. `13:32:19`) has NO testid** — a
+  plain `Typography` sibling of the dot inside the same `Step`
+  (`RunStateDialog.jsx:285-290`). **Needs adding**:
+  `pipeline-run-details-timeline-timestamp-{index}` (dynamic, same `index` as
+  the dot, so the two stay correlated).
+- **Layout is horizontal (left-to-right), NOT top-to-bottom** — plain MUI
+  `Stepper`, no `orientation="vertical"` override. Bounding-box read of 3
+  dots after a completed run: Y constant (~302–303px) while X increases
+  monotonically with execution order (371 → 852 → 1336). Case-text drift
+  (case step 7 says "top to bottom"); filed
+  `EliteaAI/elitea-testing-public#1375`. Assert execution order via DOM-index
+  + ascending-timestamp correlation, not axis/pixel position.
+- **Entry count == executed-node count, ONLY for plain (non-structured-output)
+  nodes.** A `structured_output: true` LLM node renders TWO timeline entries
+  per execution (ELITEA-2453 finding) — do not use a structured-output
+  fixture for any test asserting "N entries == N executed nodes".
+- **New prefix-selector constant, no new testid**: counting all dots reuses
+  the EXISTING per-index testid via a `[data-testid^="pipeline-run-details-
+  timeline-step-"]` prefix selector — same mechanism as the pre-existing
+  `CHAT_ATTACHMENT_CHIP_PREFIX` constant elsewhere in `pipeline_detail_page.py`.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l3_run-details-timeline-steps-display_ELITEA-2451.md`.
+
+**Resolved/added during ELITEA-2451 implementation:** both `needs-adding` gaps
+above landed via `add-data-testid`, `EliteaAI/EliteaUI@95b1eada` on
+`automation/testids` (not yet on `main` — human cherry-pick pending): the
+timeline-step dot's `data-status` (`"error"`/`"completed"`, mirroring
+`pipeline-run-details-status-badge`) and
+`pipeline-run-details-timeline-timestamp-{index}` on the per-step `Typography`.
+New fixture `pipeline_three_llm_chain` /
+`build_three_llm_chain_nodes()` added to `automation/fixtures/data_fixtures.py`
+(exact YAML shape as this section's probe pipeline).
 
 ## LLM/HITL node Type+Value field — `Variable` Type swaps the Value field's WIDGET, not just its behaviour (confirmed live, 2026-08-04, ELITEA-2040)
 
@@ -177,6 +1791,18 @@
   dialog) already exists and works as documented — reused unmodified,
   pre-existing raw-handle tech debt (positional `MuiIconButton-colorTertiary`
   + `get_by_role("menuitem", name="Delete")`), not newly introduced.
+  **Resolved/added during ELITEA-2060 analysis:** case text phrasing like
+  "the node's action buttons (two small buttons on the node header)... click
+  the delete button (trash icon)" describes this EXACT mechanism, not a
+  separate quick-action control — confirmed via source
+  (`NodeCardHeader.jsx`): the two header `IconButton`s are Expand/Collapse +
+  the `DotMenu` 3-dot trigger (both visible by default since `NodeCard.jsx`
+  defaults `isExpanded=true`); the "Delete" menu item renders a `DeleteIcon`
+  (trash glyph) beside its label. No standalone trash-icon header button
+  exists anywhere in the pipelines flow-editor — grep confirms `DeleteIcon`
+  is referenced only once, inside this dropdown. A future case worded this
+  way is `already-covered` by `test_pipeline_canvas_delete_node.py`, not a
+  new interaction to discover.
 - **Deleting an EDGE**: click the edge (`.react-flow__edge`, gains a
   `selected` CSS class), press the `Delete` keyboard key → a
   `role="dialog"` confirmation appears ("Delete confirmation — Are you
@@ -262,6 +1888,20 @@ flow-editor/ui/settings/TriggerTypeSelector.jsx` + `PipelineWebhookModal.jsx` +
   Type"` to `Checkbox.RadioButtonGroup`, which does not consume/render a `label` prop at all — the
   Mode radio group has no visible heading. Locate by the two option labels ("Default"/"Advanced")
   instead.
+
+**Added/resolved during ELITEA-2041 implementation (2026-08-08):** confirmed live that the Trigger
+control is EXCLUSIVE to the entry-point node's own card — a non-entry node's card (Code, Printer;
+tried 2 types) renders zero "Trigger" DOM content at all, on an UNSAVED canvas (no Save needed —
+`isEntrypoint` is driven purely by client-side canvas state, not the saved YAML, unlike the
+Chat-Message-only RESTRICTION logic documented above which IS save-gated). Also confirmed the
+`ApplicationInformation.jsx` Information section's own "Trigger:" row reads from the SAME
+`useGetPipelineTriggerQuery` hook as the node-level combobox (one shared data source) and is
+subject to the identical async-population gap (absent on first paint, present ~1–2s later — wait
+for visibility, never read immediately). That row had NO testid; added
+`information-trigger-row` (`EliteaAI/EliteaUI@28dbc5e4`) on the row's wrapping `<Box>`. **DOM
+textContent has no space between label and value** (`"Trigger:Chat Message"`, not `"Trigger: Chat
+Message"` — the visual gap is CSS `flex gap`, not a text character) — assert the no-space form.
+Full detail: `test-specs/pipelines/lextend_pipeline-entry-point-trigger-shown-only-on-entry-node_ELITEA-2041.md`.
 
 ## YAML editor ⇄ Flow canvas sync (confirmed live, 2026-08-03, ELITEA-2028)
 
@@ -371,6 +2011,25 @@ fields despite the testid existing in the DOM: `agent-welcome-message-input`,
   forwards `data-testid` to the underlying textarea. Label text `"Notes"` is the only
   current handle.
 
+**Resolved during ELITEA-2021 implementation (2026-08-08) — both gaps above are
+CLOSED, this section is stale for them.** `pipeline-step-limit-input`,
+`pipeline-editor-notes-section`, `pipeline-editor-notes-input` all exist as
+`LocatorDescriptor` fields on `PipelineDetailPage` (`automation/pages/pipeline_detail_page.py:1388-1405`)
+and are on `automation/testids` (not yet on `main` — confirmed via fresh `git fetch
+origin` + `git grep`, 2026-08-09). `test_pipeline_create_full_details_persist.py`
+(merged to `origin/automation/base` @ `2ff0fc96`) already exercises the full
+fill→save→reload→persist round trip for both fields via `fill_step_limit()`/
+`get_step_limit()` and `fill_editor_notes()`/`get_editor_notes()`
+(`pipeline_detail_page.py:5588-5627`). **Confirmed during ELITEA-2054/ELITEA-2055
+analysis (2026-08-09): both cases are `already-covered` by that spec** — same
+fields, same Save→reload→re-read mechanism, only the literal step-limit digit
+string / notes text differ, which isn't a distinguishing observable. Traceability
+AFS: `lcovered_pipeline-advanced-step-limit-persist_ELITEA-2054.md` /
+`lcovered_pipeline-editor-notes-persist_ELITEA-2055.md`. A future case asking for
+either field's persistence again should dedup against
+`test_pipeline_create_full_details_persist.py` the same way, not re-derive from
+this now-stale gap list.
+
 ## HITL node — inline config panel (confirmed live, 2026-08-02, ELITEA-2014/2015)
 
 The Human-in-the-loop node (`HITLNode.jsx`) renders its ENTIRE config always
@@ -475,6 +2134,79 @@ before/after → Structured output.
   SYSTEM/TASK/CHAT HISTORY (Type+Value) and Input/Output. Save returns `PUT
   .../application/prompt_lib/{project}/{id}` → `201`. Zero console errors, zero
   failed requests, across every run.
+
+## Code node — inline config panel, single CODE section (confirmed live, 2026-08-08, ELITEA-2009)
+
+Same always-expanded-inline pattern as every other node type. Shares the SAME
+`SimpleLLMInputs`/`SimpleLLMInputItem` components as the LLM node
+(ELITEA-2004), but with exactly ONE input-mapping key (`code`, not
+system/task/chat_history) — `useCodeInputMapping.js`'s `getDefaultCodeInputMapping()`
+returns `{ code: { type: 'fixed', value: '' } }`.
+
+- **Node body, in DOM order**: Trigger (only if entry point) → **CODE**
+  section (Type select + Value field) → **Input** (tool-agnostic state-var
+  multi-select) → **Output** (same) → Interrupt before/after → Structured
+  output. Matches the case text's step-3 list EXACTLY, no case-text drift on
+  section presence — confirmed live via full node `innerText` dump.
+- **CODE section's displayed heading is CSS-uppercased "Code", not a
+  literal "CODE" string** — `Chip.HeadingChip label={capitalizeFirstChar(variableName.replaceAll('_',
+  ' '))}` renders `variableName="code"` as `"Code"`; the visual all-caps is
+  `text-transform` styling. Same pattern as every other `SimpleLLMInputItem`
+  section heading (SYSTEM/TASK/CHAT HISTORY on the LLM node render "System"/
+  "Task"/"Chat history" as literal text content too).
+- **Value field is a plain MUI textarea (`#code-value`, stable unique DOM
+  id), NOT CodeMirror/Monaco** — despite `SimpleLLMInputItem.jsx` passing
+  `language="python"` when `variableName.toLowerCase() === 'code'` (and Type
+  ∈ {fixed, fstring}). Confirmed via source (`AIAssistantInput.jsx`: `language`
+  only feeds `detectedLanguage`/`specifiedLanguage`, consumed ONLY by the
+  separate full-screen `AIAssistantModal`, never by the inline
+  `Input.InputBase`/`StyledInputEnhancer` field itself) AND live DOM
+  (`document.querySelector('#code-value').tagName === 'TEXTAREA'`). Same
+  "language prop ≠ CodeMirror" trap already documented for the Router node's
+  `Condition` field (`language="jinja"`) and the Decision node's
+  `Description` field — a THIRD confirmed instance of this pattern in this
+  node-type family. Multi-line text (embedded `\n`) types and reads back
+  correctly via `press_sequentially()`/`.input_value()` — no CodeMirror
+  per-line-scoping technique needed.
+- **Output combobox uses the SAME `useInputOptions()` hook as Input** — both
+  `InputSelect.jsx` and `OutputSelect.jsx` only ever list EXISTING pipeline
+  state variables (`input`/`messages` on a fresh pipeline); neither is a
+  freeform/creatable field. A case wanting to set Output to a
+  not-yet-existing name (e.g. `result`) must first create it as a custom
+  state variable via the `STATE` panel's "+" control
+  (`open_state_panel()` + `add_state_variable(name)`, pre-existing methods
+  from ELITEA-2034, reused unmodified) — confirmed live: the Output option
+  list was `["input", "messages"]` before creating `result`, and
+  `["input", "messages", "result"]` (with a live `select-option-result`)
+  immediately after. Same "state vars not built-in" pattern already
+  documented for the Decision node's Input select (ELITEA-2034) — this is
+  now confirmed on THREE separate node types' Input/Output-family selects.
+- **Interrupt before/after disabled-state**: Interrupt before is `disabled`
+  while the Code node is the pipeline's entry point (true for the first node
+  on an empty pipeline); Interrupt after is `disabled` while the node's
+  `transition` is `END` (also true for a single freshly-added node with no
+  outgoing edge) — identical `CommonInterruptSettings.jsx` logic already
+  confirmed for every other node type in this family.
+- **Testid gap — zero testids anywhere inside the node body before this
+  session** (only `node-menu-menu-button` + the unconditional dynamic
+  `pipeline-node-interrupt-before-toggle-{node_id}` + the entry-point
+  Trigger select pre-existed). **Closed in this session**: `dataTestId`/
+  `testIdsByKey`/`interruptAfterTestId`/`structuredOutputTestId` props wired
+  at `CodeNode.jsx`'s call sites (all prop plumbing already existed
+  generically, same mechanism ELITEA-2004 used for the LLM node) —
+  `pipeline-code-node-type-select`, `pipeline-code-node-value`,
+  `pipeline-code-node-input-select`, `pipeline-code-node-output-select`,
+  `pipeline-code-node-interrupt-after-toggle`,
+  `pipeline-code-node-structured-output-toggle`. Single commit
+  `EliteaAI/EliteaUI@92fc6ec4` on `automation/testids` (awaiting human
+  promotion to `main`). No further `add-data-testid` work needed for this
+  node type's config fields.
+- Save persists everything correctly; full-reload round-trip confirmed for
+  CODE (Type+Value), Input, and Output. Save returns `PUT
+  .../application/prompt_lib/{project}/{id}` → `201`. Zero console
+  errors/warnings, zero failed requests, across every checkpoint.
+- Full flow, handles, and page-object gap list:
+  `l2_pipeline-code-node-configuration_ELITEA-2009.md`.
 
 ## MCP node — inline config panel, CONDITIONALLY rendered (confirmed live, 2026-08-04, ELITEA-2037)
 
@@ -1014,3 +2746,1003 @@ is a legitimate empty state, not an error state).
   case step requires exactly 1 timeline entry); worth a closer look if a future case
   needs to assert exact timeline-entry counts for a structured-output node.
   Full handle table + fixture recipe: `l3_run-details-multiple-state-variables-different-types_ELITEA-2453.md`.
+
+## Run Details panel — multi-run history toggle (RunStateNodeGroup) — the clock icon is EASY TO MISS (confirmed live, 2026-08-09, ELITEA-2454)
+
+**Read this before concluding "only one run ever exists" from a quick DOM
+check — it's a trap I fell into myself mid-session (filed then retracted
+`EliteaAI/elitea-testing-public#1377`).**
+
+- **`pipelineRunNodes` (`useRunEvent.hooks.js`) genuinely accumulates one
+  entry per execution** — 3 sequential chat messages in one conversation on
+  a single-LLM-node pipeline produced 3 real, independently-deletable
+  entries. Each gets a distinct id (`` `EliteA_Pipeline__State_${nextRunName}` ``)
+  and the reducer correctly appends (`prev.find(id match)` fails → `[...prev, new]`).
+- **The trap**: `RunStateNodeGroup.jsx` only ever renders ONE
+  `[data-testid="pipeline-run-node-label"]` directly (the newest/`last`
+  run) — every older run lives inside a MUI `Menu`
+  (`id="runNodes-history-menu"`, no `data-testid`) that is **entirely
+  unmounted while closed** (MUI's default `Menu` behaviour — children don't
+  exist in the DOM until `open=true`). So `document.querySelectorAll('[data-testid="pipeline-run-node-label"]').length === 1`
+  and `!document.getElementById('runNodes-history-menu')` are BOTH true
+  regardless of how many runs actually exist, UNLESS you first open the
+  history toggle. Checking either of those without opening the toggle first
+  is a false "only 1 run" reading.
+- **The toggle itself (`historyWrapper` `Box`, `RunStateNodeGroup.jsx:41-46`,
+  wraps a `<ClockIcon />`) renders as a sibling immediately BEFORE the
+  visible run-node `Box`, ONLY when `nodes.length > 1` — and has ZERO
+  testid, `aria-label`, or Tooltip** (confirmed via
+  `grep -n "data-testid" RunStateNodeGroup.jsx` — no hits). **Needs adding**:
+  `pipeline-run-node-history-button`. Not yet added as of this session (the
+  first implementer to pick up ELITEA-2454 owns it).
+- **Clicking a label inside the open history menu opens ITS OWN
+  `RunStateDialog` (same testids as ELITEA-2450) WITHOUT closing the
+  menu** — confirmed live: menu stayed mounted (`#runNodes-history-menu`
+  still present) while the panel for the clicked run was open.
+- **Delete via the panel's `pipeline-run-details-delete-button` removes
+  ONLY that run** (`deleteRunNode(id)` → `array.filter(id !== deleted)`) —
+  confirmed live twice, in both directions (deleting the newest first, then
+  an older one from inside the menu): every other run's label/status/content
+  is untouched. When the array drops back to length 1, the toggle AND the
+  menu disappear from the DOM entirely (the group re-renders via the bare
+  single-node branch) — this is the verifiable, live form of "deleted run no
+  longer appears in history."
+- **How to correctly assert "N runs exist" without a menu-container
+  testid** (deliberately NOT requesting one — scope discipline, only the
+  elements a test touches get testids): open the history toggle FIRST, THEN
+  count ALL `[data-testid="pipeline-run-node-label"]` elements on the page
+  (this naturally includes the last/current run plus every now-mounted menu
+  item). Do this BEFORE concluding anything about run count.
+  Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_run-details-delete-run-from-history_ELITEA-2454.md`.
+
+## Subgraph state sharing via Agent node calling a pipeline-as-tool — CONFIRMED LIVE the state IS shared (2026-08-09, ELITEA-2443)
+
+- **"Subgraph" in a case title ≠ the `SubgraphNode.jsx`/`pipeline` flow-editor node
+  type.** That node type is LEGACY/deprecated — NOT one of the 11 items in the Add
+  Node menu (ELITEA-2030's live-verified exact list has no "Pipeline" entry) — and
+  the bundled `elitea-pipeline` skill's `yaml-schema.md` says outright: *"Nested
+  pipelines are gone → delegate to an `agent` node."* A case titled "Subgraph
+  State Sharing" that says "add an Agent node calling the child pipeline" in its
+  own steps is describing the CORRECT current mechanism, not case-text drift —
+  don't go looking for a nonexistent add-node-menu "Pipeline"/"Subgraph" entry.
+- **An Agent node's `tool:` YAML field alone does NOT resolve a pipeline** — even
+  byte-correct. Confirmed live: authoring `tool: <child_pipeline_name>` directly
+  renders `"Agent not found — select a replacement or delete this node"` until the
+  child pipeline is ALSO attached via the Tools section's "+ Pipeline" popper
+  (`agent-add-pipeline-button` → `select_pipeline_in_popper()`, same
+  `PATCH .../application_relation/prompt_lib/{project}/{id}/{version_id}` → `201`
+  mechanism as ELITEA-2064/ELITEA-2038). Only after the attach does the Agent
+  node's "Agent" combobox show the child's name and the node stop erroring.
+- **Common-named state variables ARE shared between parent and child, confirmed
+  live** — this is the actual, surprising result, and it contradicts what the
+  Agent node's own documented schema implies. A `code` node in a 1-node child
+  pipeline set `state_1="child_value"`/`state_2=99`; the PARENT pipeline (which
+  declared the SAME two variable names in its own `state:` block) showed, in its
+  OWN Run Details panel, `state_1` Before=`"parent_value"` (the parent's own prior
+  write) → After=`"child_value"`, and `state_2` Before=`""` → After=`99` — i.e.
+  the child's writes propagate back into the parent's SAME-NAMED variables
+  automatically. This happens despite the `agent` node's `input_mapping` only
+  ever configuring a `task` string (per `elitea-pipeline` skill's own schema
+  doc) — there is no explicit state-mapping field on the node; the sharing is
+  implicit, keyed purely by variable NAME identity across the two pipelines'
+  `state:` blocks.
+- **The child's own execution is NOT opaque — its timeline nests inside the SAME
+  Run Details panel as the parent's.** A 2-node parent (code→agent(child)) calling
+  a 1-node child produced a 5-entry timeline in ONE panel:
+  `["pyodide" (parent's own code node), "<child_name>" ×2, "pyodide" (child's own
+  code node), "AGENT1"]` — not a single opaque "AGENT1" entry. This is new
+  territory beyond ELITEA-2450/2451/2452/2453 (all single, non-nested pipelines)
+  — a future case needing exact nested-timeline shapes should treat the entry
+  count/order as fixture-shape-dependent, not a fixed constant.
+- **Zero new testid work needed** — every handle this case exercises
+  (Tools-section attach popper, Agent node's Agent-combobox, Run Details
+  timeline/state rows) already exists from ELITEA-2030/2038/2064/2450-2454's own
+  implementation work.
+  Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-subgraph-state-sharing-common-vars_ELITEA-2443.md`.
+- **Resolved/added during ELITEA-2443 implementation:** the "5-entry timeline
+  ending in a distinct `AGENT1` wrap-up" shape above is confirmed
+  fixture-shape-dependent, not the only live shape. The implementer's own
+  minimal parent (`CODE1 → AGENT1(tool=child) → END`) + child (`CODE1 → END`)
+  recipe — structurally the same "2-node parent / 1-node child" description —
+  produced only **4** entries: `["pyodide" (parent's own code node),
+  "<child_name>" ×2, "pyodide" (child's own code node)]`, with NO trailing
+  `AGENT1` entry. Selecting whichever entry is actually LAST still satisfies
+  case step 6 ("click on the Agent node step in the timeline") and yields the
+  same Before/After values for `state_1`/`state_2`, because in both shapes the
+  child's own `code` node is what performs the write. A future case needing
+  an exact nested-timeline shape must verify live against its OWN fixture
+  recipe rather than assuming either the 5-entry or the 4-entry count.
+
+## CONFIRMED DEFECT: a node chained via `transition:` immediately after an Agent node's nested-pipeline tool call never executes (2026-08-09, ELITEA-2445, `EliteaAI/elitea-testing-public#1381`)
+
+- **What's new vs ELITEA-2443/2444's own fixtures:** both of THOSE parent
+  pipelines end `AGENT1`'s own `transition:` at `END` — neither ever tries to
+  chain a THIRD node after the Agent-node-with-pipeline-tool hop. ELITEA-2445
+  asks for exactly that shape (`Node_A → Agent_Node(child) → Node_C → END`), and
+  live-probing it live-2445 surfaced a genuine product defect nobody had hit yet.
+- **Repro (throwaway probe, same fixture/page-object technique as ELITEA-2443's
+  merged test):** parent `CODE1(sets state_1) → AGENT1(tool=<attached child>) →
+  CODE2(reads state_1 via `alita_state.get`, writes a distinguishable marker) →
+  END`. Run reports `Completed`, but `CODE2` NEVER executes: no distinct timeline
+  entry for it, and its marker value never appears anywhere in state. The
+  timeline silently stops at the SAME 4 entries a 2-node (`CODE1→AGENT1→END`,
+  no trailing node) parent produces: `["pyodide"(CODE1), <child_name> ×2,
+  "pyodide"(child's own code node)]`.
+- **Control probe (isolates the cause):** an otherwise-identical
+  `CODE1 → CODE2` chain with NO agent/pipeline-tool hop in between executes
+  BOTH nodes correctly (`timeline_count=2`, both markers visible) — so this is
+  NOT a generic multi-hop `transition:` chaining bug. It is specific to "a node
+  chained right after an `agent`-type node whose `tool:` resolves to a nested
+  pipeline attached via the Tools-section popper."
+- **Consequence for automating ELITEA-2445:** the case's "Node_C" premise (case
+  steps 5, 8) is genuinely BLOCKED by this defect — write it as
+  `expect.soft()` + `# Known defect: #1381` (sanctioned-RED /
+  `.agents/testing.md` analysis-time entry), NOT skipped/masked. The REST of
+  the case (Node_A's own Before/After, the Agent node's Before/After, the
+  Completed badge) is unaffected and already asserted by the merged
+  `test_pipeline_subgraph_state_sharing.py` (ELITEA-2443) — see
+  `test-specs/pipelines/lextend_pipeline-subgraph-node-c-state-propagation_ELITEA-2445.md`.
+- **A future case chaining anything after an Agent-node-with-pipeline-tool
+  hop will hit this same wall** — don't re-derive it; cite `#1381`.
+
+## Pipelines dashboard — Search grid filter/clear (confirmed live, 2026-08-07, ELITEA-2023)
+
+**Resolved/added during ELITEA-2023 implementation:**
+- **`PipelinesListPage.pipeline_exists_in_list()` (legacy raw `text="..."` locator)
+  does NOT reliably match a card name while the dashboard's active search is
+  highlighting the matched substring.** Card.jsx's highlight renders the name
+  split across nested `<span>` fragments (e.g. `<span>autotest_</span><span
+  class="css-...">YAML</span><span>_search_...</span>`). `element.textContent`
+  concatenates correctly (`"autotest_YAML_search_..."`), but Playwright's exact
+  `text="..."` locator engine (`:text-is()`) does **not** match the parent on
+  that concatenated text in the split-node case — confirmed via a live
+  reproduction (`page.locator('text="<exact-name>"').count()` → `0` against the
+  identical page state where `el.textContent` was correct). This is a Playwright
+  quirk, not a DOM/app bug. **Fix:** added `PipelinesListPage.entity_card_name`
+  (`LocatorDescriptor(testid="entity-card-name")`, the same shared `Card.jsx`
+  testid used by `AgentsListPage`/`CredentialsListPage`/`McpListPage`/
+  `SkillsListPage`) + `get_card_names()`, which reads each card's own
+  `.text_content()` directly — robust to the split-node highlighting. Use
+  `get_card_names()` (membership check) instead of `pipeline_exists_in_list()`
+  whenever the grid may be in a filtered/highlighted state; `pipeline_exists_in_list()`
+  remains correct for unfiltered/baseline and absence checks (no highlighting
+  present there).
+- **`PipelinesListPage.search()`/`clear_search()` were fill-only (no Enter, no
+  Clear-icon click)** — confirmed the AFS's finding live: typing alone only opens
+  the suggestions popover, never narrows the dashboard grid; the actual filter
+  dispatch fires only on Enter or the send-icon click (shared `SearchBar.jsx`).
+  Both methods now mirror `McpListPage.search()`/`clear_search()` — click + Enter
+  for search, a new `search_clear_button` (`testid="search-clear-button"`) click
+  for clear. The two pre-existing `TestSearchPipeline` tests
+  (`test_search_pipeline_by_name`, `test_search_pipeline_no_results`) still pass
+  unchanged after this fix — confirmed green alongside the new test in the same
+  local run (determinism is the merge gate's job, not repeated local runs).
+  Full handle table + AFS: `lextend_pipeline-dashboard-search-filter-and-clear_ELITEA-2023.md`.
+
+## Interrupt before/after toggles — implementation-time facts (ELITEA-2047, 2026-08-08)
+
+**Resolved/added during ELITEA-2047 implementation:**
+
+- **Two back-to-back `add_node()` calls place the second node fully
+  overlapping the first** — ReactFlow spawns every freshly-added node at the
+  SAME default canvas position (confirmed live via screenshot: Printer 1
+  landed directly on top of Code 1, handles inaccessible to
+  `connect_nodes()`'s bounding-box-based drag). Added
+  `PipelineDetailPage.move_node(node_id, dx, dy)` — a generic drag-to-
+  reposition helper (locates via the exact `rf__node-{id}` testid, new
+  class constant `RF_NODE_TESTID`) — call it on the second node BEFORE
+  `fit_view()` + `connect_nodes()` whenever two UI-added nodes need
+  connecting. `dx=450, dy=100` (horizontal separation, clear of the taller
+  Code node's expanded height) was sufficient; a smaller vertical-only
+  offset (`dy=250`) was NOT (Code node's filled Value field makes it too
+  tall).
+- **A drag-created (pre-Save) edge's testid carries the ReactFlow
+  source/target HANDLE ids as a suffix, with NO `---` separator** —
+  confirmed live: `rf__edge-xy-edge__Code 1source-Printer 1target`, not the
+  clean post-reload `rf__edge-xy-edge__Code 1---Printer 1` shape
+  `EDGE_TESTID`/`wait_for_edge()` expect. Use `wait_for_edge_present()`
+  (already existed for this exact reason — see its own Decision-node
+  docstring) for any edge-existence wait BEFORE Save; `wait_for_edge()`
+  only becomes valid after Save + a reload re-parses the pipeline from its
+  saved YAML.
+- **The "interrupt" edge-label pill (`CustomEdge.jsx`'s `EdgeLabelRenderer`
+  `Typography`, rendering `data.label`) had NO testid** — this is APP JSX,
+  not ReactFlow-internal (it just happens to render inside the `rf__wrapper`
+  subtree via a portal), so the AFS's proposed #579 third-party exception
+  did not apply. Added `data-testid={`pipeline-edge-label-${id}`}` (same
+  `id` prop as the edge's own `EDGE_TESTID`, confirmed live to match 1:1),
+  `EliteaAI/EliteaUI@94d190c9` on `automation/testids`. New
+  `PipelineDetailPage.EDGE_LABEL` constant + `get_edge_label_locator()`.
+  This same label renders route names on Router/Decision/HITL edges too —
+  the testid is generic, not interrupt-specific.
+- **The AFS's "Chat auto-posts a distinct 'How to proceed?...' hint message"
+  claim does NOT reproduce** — re-checked on a fresh pipeline (2 independent
+  test runs + a manual probe on the AFS's own exploration pipeline, id
+  8159) with a further 10s settle wait beyond normal response
+  stabilisation: the chat shows exactly 2 messages (trigger + Code 1's
+  execution-result bubble), never a 3rd hint bubble. Not a defect — the
+  pause mechanism itself (edge pill, locked config panel, run-in-progress
+  node label) is unaffected and was NOT asserted via this hint text in the
+  shipped test. See the AFS's own Step 6 for the full correction.
+- **Config-panel "locked while paused" verification differs by field type**:
+  the Value textarea and the Interrupt-after/Structured-output Switches
+  expose a real native `disabled` HTML attribute (readable via
+  `.is_disabled()`); the Type/Input/Output MUI Selects do NOT — they only
+  gain the `Mui-disabled` CSS class (no `disabled`/`aria-disabled`
+  attribute), so `.is_disabled()` on those returns a false negative. Assert
+  via `"Mui-disabled" in locked_select.get_attribute("class")` instead
+  (established pattern elsewhere in this suite, e.g.
+  `test_pipeline_edge_deletion.py`'s `edge.get_attribute("class")` check).
+
+## Delete pipeline version via three-dot menu — falls back to base cleanly; one benign console 400 (confirmed live, 2026-08-08, ELITEA-2003)
+
+The VERSION-group "Delete" menu item (`delete-version-menuitem`, under the SAME
+`agent-actions-menu-button` three-dot menu `delete_pipeline_via_menu()` already uses
+for whole-pipeline delete — `ApplicationControls.jsx`, shared by Agents AND
+Pipelines via `isFromPipeline`) deletes only the currently-open NON-base version and
+correctly falls back the app to `base` — confirmed live end-to-end: create
+`ver_to_delete` via Save As Version → open actions menu → click `delete-version-
+menuitem` → `Modal.DeleteEntityModal` confirm dialog (`delete-confirm-dialog` /
+`delete-confirm-message` / `delete-confirm-button` / `delete-confirm-cancel-button`)
+→ click Delete → `DELETE .../version/prompt_lib/{project}/{pipeline}/{version}` →
+`200` → VERSION dropdown no longer lists the deleted version, selector/URL/
+Information-panel Version ID all agree on `base`'s original id.
+
+- **`agent-actions-menu-button` is a REAL testid, on `origin/main` already** — the
+  existing `PipelineDetailPage.open_actions_menu()` uses a bounding-box JS hack
+  instead (`pipeline_detail_page.py:1606-1634`, predates this session) but doesn't
+  need to: `DotMenu.jsx:354` renders `data-testid={id ? \`${id}-menu-button\` :
+  undefined}` and `ApplicationControls.jsx:233` passes `id="agent-actions"` →
+  `agent-actions-menu-button` resolves cleanly via Playwright's `getByTestId` (self-
+  confirmed this session). **Bare-substring `git grep "actions-menu-button"` gives a
+  FALSE NEGATIVE** here (it's a template literal, not a literal string) — verify by
+  reading `DotMenu.jsx`'s template directly, same two-stage-grep caveat
+  `workflow.md`'s closure-record section already documents for other testids.
+- **The VERSION-group "Delete" item is DISABLED when the open version is `base`**
+  (`ApplicationControls.jsx`'s `disableDelete`: gates on `default_version_id` match
+  OR `name === LATEST_VERSION_NAME` i.e. `'base'`) — confirmed via source
+  (`VersionDelete.jsx` also returns `null` outright for `type='button'` in that
+  case). Not exercised this session (case always deletes a non-base version) — a
+  future case could assert the disabled state directly.
+- **Delete triggers a `check_version_in_use` GET first** (before the confirm dialog
+  even renders): `{in_use: false}` (this session's case — a fresh, unreferenced
+  version) shows the simple `Modal.DeleteEntityModal`; `{in_use: true}` would instead
+  show `AgentDetails.VersionReplacementModal` (source-read only, not exercised) —
+  worth a dedicated future case for the in-use/referenced-version path.
+- **`delete-confirm-dialog`/`delete-confirm-message`/`delete-confirm-button`/
+  `delete-confirm-cancel-button` (shared `DeleteEntityModal.jsx`) are on
+  `automation/testids` only, NOT yet on `origin/main`** — confirmed via fresh
+  `git fetch origin` + direct file read of `origin/main`'s `DeleteEntityModal.jsx`
+  (only `delete-confirm-name-input` exists there; the other four attributes are
+  testids-branch-only). Several ALREADY-MERGED page objects
+  (`artifacts_page.py`, `secrets_page.py`, `chat_page.py`, `personal_tokens_page.py`,
+  `mcp_form_page.py`, `admin_users_page.py`) already reference this same testid
+  family for their OWN delete flows — this is pre-existing, not a gap introduced by
+  this case. `delete-version-menuitem` itself (`ApplicationControls.jsx`'s
+  `key: 'delete-version'` + `DotMenu.jsx`'s `testId: item.key` mechanism) IS already
+  on `origin/main`, unlike the confirm-dialog testids.
+- **Known defect, filed
+  [EliteaAI/elitea-testing-public#1330](https://github.com/EliteaAI/elitea-testing-public/issues/1330):**
+  after the `DELETE` succeeds, the client fires exactly one stale `GET` against the
+  just-deleted version id (`400 {"error": "Application[{id}] version[{deleted_id}]
+  not found"}`, visible in `browser_console_messages`) before settling on the
+  fallback `base` version — deterministic 1/1 this session, benign (final UI state
+  is always correct, no toast/visible error), but a genuine client-side state-
+  sequencing race worth a soft-assert/comment in the implemented test rather than
+  ignoring. Full network sequence + AFS:
+  `test-specs/pipelines/l2_delete-pipeline-version-falls-back-to-base_ELITEA-2003.md`.
+
+## Fork wizard — full live-confirmed handle map (ELITEA-2051, 2026-08-08)
+
+Executed the FULL Fork flow (menu → wizard → target-project select → confirm →
+complete → navigate → cleanup) for a Pipeline, not just menu-item visibility
+(ELITEA-2049 only confirmed the menuitem exists). Source `Pipeline UI Testing`
+(id 4, project `UI Testing`/400) → forked into `Private`/399 → new id `8243`.
+Every Fork-wizard testid is **shared verbatim with the Agent-entity Fork flow**
+(`ImportWizardModal`/`IWModal*` component family — same testids ELITEA-1893's
+AFS documented for Agents, all reconfirmed live here for Pipelines): the
+literal `agent-` prefix in these testids is naming tech debt, NOT
+entity-scoped — do not expect a `pipeline-` variant for any of these:
+
+| Element | Testid | Notes |
+|---|---|---|
+| Fork menuitem (entity-scoped, unlike the rest) | `pipeline-actions-fork-menuitem` | the ONE Fork-flow testid that IS entity-scoped (`ForkEntityButton.jsx`'s `FORK_MENU_ITEM_KEY_BY_ENTITY` map) |
+| Fork wizard dialog (pre-fork / post-fork) | `agent-import-preview-dialog` / `agent-import-complete-dialog` | same container swaps testid in place |
+| Wizard Project selector trigger | `agent-import-wizard-project-select-combobox` | shared with Agent Fork |
+| Wizard project dropdown option | `select-option-{projectId}` | numeric, project-id-keyed |
+| Main-entity preview name / toggle | `agent-import-preview-name` / `agent-import-preview-card-toggle` | toggle count() == number of entity cards |
+| **Pipeline Diagram mermaid preview (Pipeline-only, no Agent equivalent)** | `chat-mermaid-diagram-svg-container` | showed "Diagram syntax error detected" for THIS session's source pipeline — not filed (not isolated as a general defect vs this pipeline's own data) — see AFS § Known Defects |
+| Fork confirm button | `agent-fork-confirm-button` | same component regardless of entity — `IWModalForkButton.jsx`'s `forkFuncMap` has no `pipelines` key; pipelines are backend-classified as `agents`/`agent_type=pipeline`, dispatched via the same `forkAgent` mutation |
+| Fork-complete list (entity-keyed) | `agent-import-complete-list-pipelines` | the **pipelines** variant of `agent-import-complete-list-{entityKey}` — confirms the family ELITEA-1893's AFS predicted but never itself confirmed |
+| "Got it" button | `agent-import-complete-got-it-button` | drives navigation into the target project, onto the forked pipeline |
+| **"Forked from" link — Pipelines LIST page card (Card view)** | **none — testid needed** | `<a aria-label="Forked from - Original pipeline" href=".../pipelines/all/{sourceId}/{sourceVersionId}?viewMode=owner">`, no `data-testid`. Source: `EliteaUI/src/components/Fork/IconLinkWithToolTip.jsx` (SHARED — also used by `DataTableNameCell`/`DataTableRow` for Table view, and by Agents/Skills list cards, not just Pipelines). **This is the element the case text's "dashboard card" step actually names** — do not confuse with the next row. |
+| Forked-pipeline DETAIL page — "Forked from:" row (Information accordion) | none observed | inside `agent-information-section`; a SEPARATE, also-correct rendering of the same fact — NOT what the case's "dashboard card" step means |
+| Network — fork data-fetch (menu click, before target selected) | `GET /elitea_core/export_import/prompt_lib/{sourceProject}/{sourceId}?fork=true&follow_version_ids={versionId}` → 200 | populates the wizard preview |
+| Network — fork confirm | `POST /elitea_core/fork/prompt_lib/{targetProjectId}` → 201 | body: `{main_entity:'agents', applications:[...]}` |
+
+**Known defect #570 (validateDOMNesting `<p>`-in-`<p>` on the Fork/Import Complete
+dialog) reproduces for Pipeline Fork too** (1/1 this session) — same root cause,
+same filed issue, not re-filed.
+
+Full AFS: `test-specs/pipelines/l2_pipeline-fork-to-different-project_ELITEA-2051.md`.
+
+## Pipelines dashboard — card "Pin to top" toggle, distinct from ELITEA-2049's detail-page menu item (confirmed live, 2026-08-08, ELITEA-2025)
+
+**Two completely different "Pin to top" surfaces exist for Pipelines — do not
+conflate them:**
+1. **Dashboard card hover icon** (this entry) — a standalone `PinButton.jsx`
+   icon button rendered directly on each `Card.jsx` (visible on hover or when
+   already pinned), driven by the `usePin()` hook. **Has a working testid.**
+2. **Pipeline detail page's three-dot Actions menu item** — a menu item inside
+   `DotMenu.jsx`, driven by the SEPARATE `usePinMenu.hooks.jsx` hook, which has
+   **no testid at all** (see `l2_pipeline-three-dot-menu-actions_ELITEA-2049.md`
+   § Concrete Handles — that gap is real and still open; unrelated to this entry).
+
+**Dashboard card testid, confirmed live**: `pipelineall-pin-toggle-button-{id}`
+(`[data-testid]` on the `IconButton` inside `PinButton.jsx`) — on
+`automation/testids` only (origin `EliteaAI/EliteaUI@b54bc281`, "[EL-1974] add
+data-testid for credential pin/unpin controls"), **NOT yet on `main`**
+(`git grep -- "pin-toggle-button" origin/main -- src/` → 0 hits this session).
+The `pipelineall` prefix is a naming-convention leak, not a functional issue:
+`PinButton.jsx`'s local `getPinTestIdSlug()` has no `isPipelineCard` branch, so
+it falls through to `String(entityType).toLowerCase()` on
+`ContentType.PipelineAll` (`'PipelineAll'` → `'pipelineall'`). Stable and
+unique for the `/pipelines/all` dashboard specifically — **but a DIFFERENT
+pipeline card view (Top/Latest/Trending/Draft/etc.) would get a DIFFERENT
+testid for the SAME pipeline**, since none of those `ContentType.Pipeline*`
+values route through `isPipelineCard` either. Untested by ELITEA-2025 (scoped
+to `/pipelines/all` only); a future case touching another pipeline card view
+should re-verify before assuming this same testid shape.
+
+**Reorder timing is ASYMMETRIC — confirmed live, 3 pin/unpin cycles this
+session**: pinning re-sorts the grid **instantly, client-side, no reload
+needed**. Unpinning does **not** — the just-unpinned card stays at the top of
+the grid (even though its own button label flips back to "Pin to top"
+immediately) until a fresh navigate/re-fetch happens. This is the SAME shape
+the merged `test_credential_pin_unpin.py` already codifies (its Step 7b
+explicitly re-navigates before asserting the reverted order) — evidently a
+platform-wide `usePin`/social-pin-endpoint behavior, not a pipeline-specific
+one. Any future pin/unpin test on any entity should follow the same
+re-navigate-before-asserting-reverted-order shape; asserting order immediately
+after an unpin click will flakily fail against genuinely-correct behavior.
+
+Network: `POST /api/v2/social/pin/prompt_lib/{project}/application/{id}` → `201`
+(pin), `DELETE .../application/{id}` → `204` (unpin) — pipelines share the
+`application` API path segment with agents (same as `PipelineAPI`'s own
+docstring already notes for CRUD).
+
+Full AFS: `test-specs/pipelines/l2_pipeline-dashboard-pin-to-top_ELITEA-2025.md`.
+
+## Flow → YAML sync + `wait_for_node_on_canvas()` same-type collision (confirmed live, 2026-08-08, ELITEA-2029)
+
+- **`wait_for_node_on_canvas(node_type)` resolves via `.first` — wrong node
+  when the canvas already has another node of that same type.** Its
+  selector is `.react-flow__node-{type}` `.first` (DOM/document order), so
+  on `pipeline_with_llm_id` (already has an "LLM 1" node), adding a SECOND
+  LLM node and calling `wait_for_node_on_canvas("llm")` returns `"LLM 1"`
+  (the pre-existing node), not the real new node id (`"LLM 2"`). Its only
+  other existing caller (ELITEA-2030's test) adds to an EMPTY canvas, where
+  `.first` happens to be correct — this collision doesn't show up there.
+  **Reliable pattern for a non-empty starting canvas:** snapshot
+  `get_node_ids()` before the add, snapshot again after, take the set
+  difference — still call `wait_for_node_on_canvas(type, …)` first (to
+  settle/wait for the DOM attach), just don't trust its return value as the
+  new node's id when the canvas wasn't empty beforehand. Not filed as a
+  page-object defect (its one real caller is unaffected); flag if a second
+  case hits the same collision.
+- **Add-node menu is testid-based and preferred over the legacy raw-handle
+  `add_node()`:** `get_add_node_menu_items()` (opens the menu) +
+  `select_add_node_menu_item("llm", …)` (internal type key, not display
+  label) — added ELITEA-2030, confirmed working live here too. `add_node()`
+  itself remains valid pre-existing tech debt for tests that already use it
+  (#25/#42), but a NEW test should use the testid-based pair.
+- **A freshly-added, unconnected second node has NO `transition:` key at
+  all in its YAML entry** — distinct from the entry-point/only-node default
+  (`transition: END` always present, per the "Node config via YAML" note
+  above). Confirmed live: `pipeline_with_llm_id` + one UI-added LLM node,
+  read via `get_yaml_content()` before any Save — the new node's YAML block
+  ends after `structured_output: false`, no `transition:` line, until it's
+  wired to a target or the user connects/saves it.
+- **Adding a node, switching Yaml⇄Flow view, and reading YAML content are
+  all client-side — zero network requests**, confirmed live (matches
+  ELITEA-2030's own Network Behavior note for add-node; extends it to
+  cover the view-switch + read too, same as ELITEA-2028's YAML-edit
+  direction already established for the reverse flow).
+
+Full AFS: `test-specs/pipelines/l2_flow-to-yaml-sync_ELITEA-2029.md`.
+
+**Resolved/added during ELITEA-2061 implementation (2026-08-09):** the
+per-type incrementing-name behavior (`getNormalInitialNodeId()` in
+`flowEditor.helpers.js`) is confirmed live for a SECOND type beyond LLM:
+adding "Code" nodes to an empty pipeline that already has two LLM nodes
+("LLM 1", "LLM 2") produces "Code 1" — the counter is per-type (keyed off
+which candidate id string collides with existing node ids), not a single
+canvas-wide counter. `wait_for_node_count(expected_total)` (added
+ELITEA-2033) combined with the `get_node_ids()` before/after diff above is
+sufficient to identify each newly-added node reliably — no new page-object
+method or testid was needed for this case.
+
+## Left configuration panel collapse/expand — pure client-side `useState`, one new testid (confirmed live, 2026-08-09, ELITEA-2072)
+
+Confirmed live via CDP browser probe on `AutoTest_Pipeline_probe_2020` (pipeline
+id 8056, `?viewMode=owner`) — a **direct navigation to `/pipelines/all/<id>` WITHOUT
+`?viewMode=owner` 400s** on `GET .../public_application/prompt_lib/<id>` (the
+role-overrides.md "4xx from the UI" split: this endpoint requires the owner
+viewMode param for a private pipeline — UI-side, not a backend bug; the existing
+`PipelineFormPage.navigate_to_edit()` / `PipelineDetailPage.navigate()` already
+append `?viewMode=owner`, so any test going through the page object is unaffected
+— this only bit a raw manual URL probe):
+
+- **The "left configuration panel" the case means is `GeneralFormPanel.jsx`**
+  (rendered by `ConfigurationTab.jsx`, testid `pipeline-config-tab` — the
+  pre-existing `configuration_tab` `LocatorDescriptor`), NOT any per-node inline
+  config panel (those are a different, node-scoped concept documented elsewhere
+  in this digest, e.g. "State modifier node — inline config panel"). It sits
+  alongside the ReactFlow canvas and the embedded chat panel, all three visible
+  simultaneously on `/pipelines/all/{id}` — no tab click needed.
+- **Collapse toggle had NO testid before this case** — one `IconButton` with no
+  `data-testid`, same click handler for both directions (icon swaps
+  `DoubleLeftIcon`/`DoubleRightIcon`, purely visual). Added
+  `pipeline-config-collapse-button` via `add-data-testid`
+  (`EliteaAI/EliteaUI@74ba8918`) — a single static testid, no state-ternary
+  concern (#277 doesn't apply: the testid VALUE never changes, only the icon
+  inside it does).
+- **Collapsing UNMOUNTS the configuration sections entirely** — `{!collapsed &&
+  (<PipelineConfigurationForm .../>)}` in `GeneralFormPanel.jsx`, confirmed live:
+  after collapse, `agent-toolkits-section` / `pipeline-step-limit-input` /
+  `pipeline-editor-notes-section` / `agent-information-section` all disappear
+  from the DOM (`querySelector` returns `null`), not merely `display:none`. Use
+  `to_have_count(0)` for the collapsed-state assertion, `to_be_visible()` for the
+  expanded-state one — same "absence assertion counts as a reference" pattern as
+  canon #511.
+- **Panel width is a static CSS pair, safe to assert exactly**: `maxWidth`/
+  `minWidth` ternary in `GeneralFormPanel.jsx` — 320px expanded, 28px collapsed,
+  confirmed live via `bounding_box()["width"]` on the `configuration_tab`
+  locator (NOT viewport/layout-dependent, unlike the canvas wrapper's width
+  below). The round trip is exact — re-expanding returns to 320px precisely, no
+  drift.
+- **Canvas area visibly grows when the panel collapses** — confirmed live:
+  `.react-flow` wrapper (testid `rf__wrapper`, the pre-existing `canvas_wrapper`
+  field) went from 765px to 1057px on a fixed viewport after one collapse click.
+  This value IS viewport/layout-dependent (unlike the panel's own 28px/320px
+  pair) — assert the relative increase, not a hardcoded px value.
+- **Pure client-side `useState` toggle — but EXPAND fires read-only GET
+  refetches, confirmed live via the actual pytest run (correcting an earlier
+  console-only probe that under-checked network).** `onClickCollapsed` in
+  both `GeneralFormPanel.jsx` and the sibling `ChatPanel.jsx` is plain
+  `setState`, no API call — collapse itself fires zero requests of any kind
+  (confirmed empty capture on the collapse click). But **expand REMOUNTS
+  `PipelineConfigurationForm`**, including the TOOLS section
+  (`ApplicationTools`), which fetches its own supporting lists on mount — the
+  R1 test run captured 7 `GET`s on expand, all `prompt_lib`-scoped: `tags`,
+  `tools`×2 (`mcp=false`/`true`), `toolkits`, `applications`×2
+  (`agents_type=classic`/`pipeline`), `upload_icon`. This is normal
+  remount behavior, not a defect. The guard that DOES hold both directions:
+  no `PUT` (persist) call ever fires — assert with
+  `capture_requests_matching(substring, method="PUT")`, not an unfiltered
+  capture. Lesson for future toggle/remount cases: a `console`-only live
+  probe is NOT sufficient evidence for a "zero network requests" AFS claim —
+  capture actual requests before asserting an empty set, or narrow the claim
+  to the method that matters (persist), matching this project's
+  `afs_claims_need_full_sweep_and_grep` memory pattern (previously observed
+  on ELITEA-2019's Axis-2 claim, now also on ELITEA-2072's).
+- **Sibling pattern, not yet a case:** `ChatPanel.jsx` (right-side embedded chat)
+  has the IDENTICAL collapse/expand shape (own `useState`, own un-testid'd
+  `IconButton`, same icon-swap) — no case in this campaign currently exercises
+  it; if one arrives, reuse this exact approach (one new testid, unmount-based
+  absence assertions, static-width exact-match).
+
+Full AFS: `test-specs/pipelines/l2_pipeline-collapse-left-panel_ELITEA-2072.md`.
+
+## Embedded chat panel (`ChatPanel.jsx`) — shares components with the main `ChatPage` chat (ELITEA-2017)
+
+Confirmed live (2026-08-09): the pipeline detail page's embedded chat renders
+AI responses through the EXACT SAME component chain as the main conversation
+chat (`ApplicationAnswer.jsx`/`ActionView.jsx`/`RotatingMessages.jsx`) — the
+"Thought for `<n>` secs" accordion + model-chip pattern documented for regular
+chat in `test-specs/chat-interface/l2_streaming-response-progressive-display_ELITEA-2181.md`
+appears identically here (e.g. `GPT-5 mini (LLM1)` chip, same accordion shape).
+Practical consequence: the 6 testids ELITEA-2181 flagged `needs-adding` are
+ALREADY implemented (confirmed via `git grep` on both refs, 2026-08-09) —
+`chat-answer-thought-accordion`, `chat-answer-model-chip`,
+`chat-answer-loading-placeholder`, `chat-copy-button`, `chat-regenerate-button`,
+`chat-answer-pause-scroll-toggle` — on `automation/testids` only (not yet on
+`main`); they work for THIS surface too since localhost serves that branch.
+Any future embedded-chat case needing those elements should treat them as
+already-implemented-pending-promotion, not a fresh gap.
+
+- **Model selector on the embedded chat**: closed button/current-model text
+  resolves via `model-selector-name` testid (on-main ✓); open-dropdown options
+  via the dynamic `model-selector-option-{model-slug}` pattern (e.g.
+  `model-selector-option-gpt-5-mini`), on-main ✓, exact case-text match
+  confirmed for "GPT-5 mini". `PipelineDetailPage` has NO page-object field or
+  `select_model()` method for this yet — mirror `AgentDetailPage`'s existing
+  compliant pattern (`model_selector_button`/`model_selector_name` fields +
+  `MODEL_SELECTOR_OPTION_ANY_SELECTOR` class constant), NOT `ChatPage.model_selector`'s
+  (which carries a forbidden `fallback=` param — pre-existing tech debt, do
+  not copy).
+- **Message send**: `chat-message-input`/`chat-send-button` — same testids as
+  `ChatPage`, already wired on `PipelineDetailPage.chat_input`/`chat_send_button`.
+- **Progressive-text extraction**: `PipelineDetailPage.get_embedded_chat_last_message()`
+  (`pipeline_detail_page.py:5914`) is the direct analogue of `ChatPage`'s body-extraction
+  method — reuse for poll-and-compare progressive-streaming assertions (sample
+  ≥2s apart, assert growth, never shrinks). Internally falls back to a raw CSS
+  class selector (`div.css-xn5i2e`) — pre-existing tech debt, not to be extended.
+- **Observed once (not reproduced): "Token limit reached mid-response. Press
+  'Continue' to see more."** appeared mid-essay on one of two live runs asking
+  for a long response (~730 chars in, well past any reasonable 200-char
+  threshold). Not an error state (no console error, no failed request, no red
+  banner) — a deliberate continuation affordance, likely tied to the pipeline's
+  default/unconfigured LLM max-token budget. Does not reproduce every run (the
+  other run's essay completed naturally at ~1800 chars). Note for any future
+  case asserting FULL response completeness (not just a >200-char minimum):
+  this is a real, intermittent behavior to account for, not a flake to ignore.
+
+Full AFS: `test-specs/pipelines/l2_pipeline-execution-long-response-streaming_ELITEA-2017.md`.
+
+**Resolved/added during ELITEA-2017 implementation (2026-08-09):**
+- **Provenance correction**: the dynamic `model-selector-option-{model-slug}`
+  testid (`LLMModelsMenu.jsx`) is on `automation/testids` ONLY — NOT on `main`
+  as this digest and the AFS both originally stated. Verified via
+  `git fetch origin` + `git grep "model-selector-option" origin/main -- src/`
+  (0 hits) vs `origin/automation/testids` (1 hit). `model-selector-button`/
+  `model-selector-name` ARE on-main; only the per-option testid is
+  testids-only, same pending-promotion bucket as the accordion/chip testids
+  noted above. Usable today locally either way.
+- `PipelineDetailPage` now HAS the model-selector page-object surface this
+  digest called out as missing: `model_selector_button`/`model_selector_name`
+  fields, `MODEL_SELECTOR_OPTION_ANY_SELECTOR` class constant,
+  `open_model_selector()`/`get_selected_model_name()`/`select_llm_model()`
+  methods — mirrors `AgentDetailPage`'s pattern exactly, per this digest's
+  own guidance. Any future embedded-chat case needing model selection should
+  reuse these rather than re-adding them.
+- New `PipelineDetailPage.wait_for_embedded_chat_real_content()` /
+  `wait_for_embedded_chat_body_growth()` helpers: the naive
+  "poll `get_embedded_chat_last_message()`, assert growth" approach this
+  digest recommends is NOT sufficient on its own — the embedded chat renders
+  transient placeholders ("Waking the agent…", "Packing its tools…",
+  "Thought for `<n>` secs") as non-empty body text before real streamed
+  content starts, and a length-only growth check can be fooled by a
+  placeholder SWAP (shorter placeholder -> longer placeholder, no real
+  content yet). Both new methods filter transient text (same known
+  vocabulary as `ChatPage._is_transient_message`) before treating a sample
+  as real. Any future progressive-streaming assertion on this surface should
+  reuse these, not re-derive a naive length-only poll.
+- New fixture `pipeline_with_fstring_llm_id` (`fixtures/data_fixtures.py`) —
+  single LLM node, TASK F-String `{input}`, entry->END, via the generic
+  `PipelineAPI.create_pipeline_with_nodes()`. Satisfies the F-String
+  precondition `pipeline_with_llm_id` does not (that fixture hardcodes
+  TASK as `fixed`/`''`).
+
+**ELITEA-2058 (extend-existing, confirmed live 2026-08-09):** the model-chip
+proof for "execution actually used the selected model" — the missing piece
+the ELITEA-2017 test never asserted. Opened a pre-existing pipeline
+(`test-pipeline`, id `6938`), read the closed selector's DEFAULT label
+(`"Anthropic Claude 4.5 Sonnet"`) before touching it, switched to
+`"GPT-5 mini"` via the existing `open_model_selector()`/`select_llm_model()`,
+sent a message, and read `[data-testid="chat-answer-model-chip"]` on the
+settled response: `count == 1`, text `"GPT-5 mini (LLM1)"` — i.e.
+`"<selected model> (<node id>)"`, confirming execution used the newly
+selected model, not the pipeline's prior default. `PipelineDetailPage` has
+NO `answer_model_chip` field/getter yet — mirror `ChatPage.answer_model_chip`
+(`chat_page.py:620`) exactly; the testid itself needs no `add-data-testid`
+work (see provenance table below, same pending-promotion bucket ELITEA-2017
+already flagged). Full extension AFS:
+`test-specs/pipelines/lextend_pipeline-llm-model-selection-and-execution-usage_ELITEA-2058.md`.
+
+**Resolved/added during ELITEA-2058 implementation (2026-08-09):**
+- `PipelineDetailPage.answer_model_chip` field (`testid="chat-answer-model-chip"`)
+  + `get_answer_model_chip_text()` getter added (`pipeline_detail_page.py`,
+  near the other model-selector methods) — mirrors `ChatPage.answer_model_chip`
+  exactly, as flagged above. Waits for the chip to become visible, then
+  returns its trimmed text.
+- The gap assertions landed as an in-place extension of
+  `TestExecutePipelineStreaming::test_long_response_streams_progressively`
+  (`tests/ui/pipelines/test_pipeline_execution.py`) — a new Step 2 (button
+  visible + non-empty default model, captured before any switch) and a new
+  Step 7 (chip text contains `MODEL_DISPLAY_NAME`, read right after the
+  existing Step 6 final-response assertion). Ran green first try
+  (`test_long_response_streams_progressively PASSED`, 52.11s) against
+  `test-pipeline` id `6938` — no product defect, no case-text drift.
+
+## Embedded chat panel — Welcome message renders via the SAME shared FSD chat
+components as the agent surface; the "Welcome message" left-panel section is
+always expanded by default (confirmed live, 2026-08-09, ELITEA-2052)
+
+Confirmed live via Playwright MCP against a fresh pipeline (id `8580`,
+`agent-welcome-message-input` = `"Hello! How can I help you today?"`):
+
+- **The pipeline detail page's embedded chat panel seeds its history from
+  the SAME `ChatHelpers.getWelcomeMessage()`/`getInitialChatHistory()` helper
+  (`chat.helpers.js`) that ELITEA-1885 documented for the agent surface** —
+  confirmed via source read: `usePipelineChat.hooks.js` calls the identical
+  helper `useApplicationChat.hooks.js` uses, keyed off
+  `pipelineVersionDetails.welcome_message` instead of
+  `applicationVersionDetails.welcome_message`. Same rendering path
+  (`ChatMessageList.jsx`/`ApplicationAnswer.jsx`), same testids:
+  `chat-message-list`, `chat-message-item`, `chat-read-out-button`,
+  `skill-test-last-response` (asserted when the message is last/only —
+  it always is for a lone welcome message), `chat-answer-content` (absence
+  check when last), `chat-message-delete-button` (absence check, proves
+  agent-not-user rendering). All confirmed present/absent exactly as
+  ELITEA-1885 documented for agents — **none of these are yet
+  `LocatorDescriptor` fields on `PipelineDetailPage`** (they only exist on
+  `AgentDetailPage`); add sibling fields with the same testids rather than
+  cross-importing from `AgentDetailPage` (project convention — see
+  ELITEA-2021's note on `PipelineDetailPage`/`AgentFormPage` being siblings,
+  not a class hierarchy).
+- **The "Welcome message" accordion in the left panel renders ALREADY
+  EXPANDED by default** — same pattern as the pre-existing "Advanced"
+  section (`agent-canvas-section-advanced`, documented in ELITEA-2021's
+  AFS). A case that says "expand the Welcome message section" needs no
+  click; `welcome_message_input.wait_for(state="visible")` already proves
+  the section is open. The accordion header DOES carry a testid
+  (`agent-canvas-section-welcome-message`, `WelcomeMessage.jsx`) but it is
+  **on `automation/testids` ONLY** (added 2026-07-21,
+  EliteaAI/EliteaUI@353be956, for the unrelated ELITEA-2166 in-chat-canvas
+  case — confirmed absent on `origin/main` via fresh `git fetch origin` +
+  `git grep` this session). No case has needed it yet since the section is
+  never actually collapsed in practice; don't add a page-object field for it
+  speculatively (canon #511 — only what a test's executed path calls).
+- **"Open a new chat session" has no distinct UI action on the pipeline
+  detail route** — the embedded chat panel is always mounted (same
+  live-product shape ELITEA-1885 found on the agent detail page). A
+  full-page reload (`page.goto`, not an SPA route change) is the closest
+  equivalent to a pristine "new session" and was confirmed to reproduce the
+  welcome-message-only state identically to the immediately-post-save state.
+- Welcome-message seeding is **zero-network beyond the existing detail-page
+  GET** — `GET /api/v2/elitea_core/application/prompt_lib/{project}/{id}`
+  returns `version_details.welcome_message`, which the hook reads client-side
+  to seed `chatHistory`. No WebSocket wait is needed for this specific
+  assertion (distinct from AI-generated responses elsewhere on this surface,
+  e.g. ELITEA-2017's streaming case).
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-welcome-message-shown-before-first-input_ELITEA-2052.md`.
+
+## Attach Files in Chat — bare icon `AttachmentButton` call site (NO plus-menu), testid-less; module toggle is instant, Task-field fix needs Save (confirmed live, 2026-08-09, ELITEA-2059)
+
+Confirmed live via Playwright MCP on the shared `test-pipeline` fixture (id 6938):
+
+- **The pipeline's (and Agent's) embedded chat panel renders a DIFFERENT `AttachmentButton`
+  instance than the general Chat page.** ELITEA-2197/2200 (Chat-interface surface) exercise the
+  `showLabel` instance inside `PlusChatButton.jsx`'s Popper `MenuList`
+  (`testId="chat-attach-menuitem-button"`), reached via a "+" plus-menu button. The embedded
+  chat panel (`ChatPanel.jsx` → shared `ChatBox` → `NewChatInput.jsx`, `isAgentsPage=true`)
+  renders **no plus-menu button at all** — confirmed via
+  `document.querySelector('[data-testid="plus-menu-button"]')` returning `null` — and instead
+  renders the **bare, icon-only** `ChatButton.AttachmentButton` directly
+  (`NewChatInput.jsx:272-278`, the `!hideAttachments && !fromTheChat` branch). This bare instance
+  has **zero testid** (`data-testid` attribute is literally `null` on the live DOM node) — needs
+  `add-data-testid` work. Recommended name: `chat-attach-button` — this exact string was
+  previously DEAD/STALE on `ChatPage.attach_files_button` (ELITEA-2197 confirmed zero hits
+  anywhere in `EliteaUI/src`, since re-pointed to `chat-attach-menuitem-button`), freeing it for
+  the call site it always semantically described. `NewChatInput.jsx` is shared chat
+  infrastructure (used by both Agent and Pipeline embedded chat) — name carries no
+  `agent-`/`pipeline-` prefix.
+- **The "Attach Files (N left)" text is a TOOLTIP, not a rendered label**, at this call site
+  (`showLabel` is falsy here) — it's the accessible name via `AttachmentButton.jsx`'s
+  `processStatus` memo (`!showLabel` branch wraps the button in a `<Tooltip title={processStatus}>`).
+  Don't expect a visible `<Typography>` "Attach Files" + counter pair like the Popper's
+  `showLabel` variant renders — assert via `aria-label="attach files"` (static) and read the
+  tooltip/title text only if the counter value itself needs verifying.
+- **The "Attachments" MODULES switch (`agent-canvas-tools-toggle-attachments`) gates the attach
+  button's `disabled` state INSTANTLY, purely client-side, no Save required** — confirmed live:
+  toggling the switch flips the button from `disabled` to enabled with zero network requests,
+  before any Save click. This is `useAgentAttachments`'s `disableAttachments = !internal_tools
+  .includes('attachments')`, read straight from formik's live `version_details.meta.internal_tools`
+  — contrast this with the Task-field execution fix below, which DOES require Save. On
+  `automation/testids` only (`AgentInternalToolSwitch.jsx:108`), absent on `main` — confirmed via
+  `git fetch origin` + `git grep` both refs. `ApplicationTools.jsx` filters
+  `pipelineVisibleTools` to only the `attachments` tool for `isPipeline=true`, so this is the
+  ONLY Modules card a pipeline's Tools accordion ever shows.
+- **A bare `llm`-type node cannot extract an attached file's actual content** — only a path-like
+  reference reaches the model's text context. Confirmed live (model GPT-5.2, Task correctly
+  mapped `type=variable value=input`, pipeline saved): asking the model to quote the attached
+  file's exact text got "I can't access the contents of that attachment from here (I don't have
+  file-browsing access to attachments/…/elitea2059_testfile.txt)." — an honest, correct answer
+  given the node's wiring (its `Toolkits` field is `disabled` on this entry node), NOT an
+  Attach-Files defect. Any case whose Pass criteria require literal content processing (RAG-style
+  summarization etc.) needs an additional toolkit/artifact-reading node — out of scope for a
+  minimal "attach + send" assertion, which should assert response-without-error +
+  filename-acknowledgment instead of literal content-quoting.
+- **The chat's own DEFAULT model on this DEV backend 400s on every message** (see the amended
+  note under "Execution gotcha" above) — same root cause class as the ELITEA-2012 finding, now
+  confirmed to be model-specific (`Anthropic Claude 4.5 Sonnet` has no fallback model group
+  configured) rather than purely a Task-field issue. `GPT-5.2` works reliably; it's also
+  `settings.default_model_name`, so a freshly-`create_pipeline_with_llm_node`-created pipeline
+  sidesteps this without any extra model-switch step.
+- **Zero console errors** across the full attach → send → response sequence.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l2_pipeline-attach-files-in-chat_ELITEA-2059.md`.
+
+## Pipeline chat panel has NO fullscreen-mode toggle — feature-parity gap vs Agent/Skill/Toolkit-Index surfaces (confirmed live + source, 2026-08-09, ELITEA-2071)
+
+Confirmed live via Playwright MCP on pre-existing pipeline `probe-pipeline` (id
+6934): the chat panel header has **no fullscreen/expand button anywhere**.
+The only header icon is a **collapse** toggle (`ChatPanel.jsx`'s
+`onClickCollapsed`, `DoubleLeftIcon`/`DoubleRightIcon` `IconButton`, no
+testid on either `main` or `automation/testids`) that shrinks the chat panel
+itself to a ~28px strip — the opposite direction of "fullscreen," and it does
+**not** touch the left configuration panel (verified: clicking it live left
+every left-panel section — General/Tools/Welcome message/Chat
+starters/Advanced/Editor Notes/Information — fully visible and unchanged;
+zero console errors).
+
+- **Root cause (source, `EliteaAI/EliteaUI` `automation/testids`):** the
+  Agent/Skill/Toolkit-Index chat surfaces each wire a real
+  `FullScreenToggle` component (`src/components/Chat/FullScreenToggle.jsx`)
+  via genuine `useState`-backed `isFullScreenChat`/`setIsFullScreenChat`
+  (`Applications/ConfigurationTab.jsx:220`, `SkillTestPanel.jsx:67`,
+  `IndexChat.jsx:21`). The **Pipeline** surface's own
+  `Pipelines/Components/ConfigurationTab.jsx:205` only carries a hardcoded
+  **dead literal** `isFullScreenChat: false` in the settings object — no
+  state, no setter — and `ChatPanel.jsx` never imports `FullScreenToggle` at
+  all. Looks like a genuine feature-parity gap (stubbed but never wired for
+  Pipelines), not a case-authoring mistake.
+- **If this is ever fixed for Pipelines**, expect the implementation to
+  mirror the Agent surface's wiring closely — check `test-specs/agents/` for
+  a sibling fullscreen-chat AFS first (none existed as of this session)
+  before re-deriving handles.
+- Filed: [`elitea-testing-public#1363`](https://github.com/EliteaAI/elitea-testing-public/issues/1363).
+  Full flow: `test-specs/pipelines/l2_pipeline-fullscreen-chat-mode_ELITEA-2071.md`
+  (status `defect-found`).
+
+## Attachments MODULES toggle IS server-persisted across Save + reload; attach-button `disabled` attribute lags ~2s behind on the FIRST post-reload render — use auto-retrying assertions (confirmed live, 2026-08-09, ELITEA-2066)
+
+Confirmed live via Playwright MCP (disposable pipeline id 8663, created and
+deleted via UI): toggling `agent-canvas-tools-toggle-attachments` ON, Save,
+then a **hard reload** (`navigate()`, not a same-page re-check) shows the
+toggle's `checked` DOM property correctly `true` immediately — but the
+embedded chat's `chat-attach-button`'s `disabled` attribute can still read
+`true` for up to ~2s after that same reload, before syncing to match (settled
+`disabled=false` confirmed after a short wait). Same lag pattern in the OFF
+direction was NOT observed (disabling synced instantly on the live/unreloaded
+page — ELITEA-2059 already established this) but wasn't specifically
+re-tested post-reload for the OFF direction; treat the lag as a general
+post-reload-mount characteristic of this component pairing, not an ON-only
+quirk.
+
+- **Automation implication:** a one-shot `.is_disabled()` read taken
+  immediately after `wait_for_detail_page_load()`/`wait_for_canvas()` can
+  observe the WRONG (pre-sync) value and produce a flaky false-negative on an
+  otherwise-correct persistence assertion. Use Playwright's auto-retrying
+  `expect(locator).to_be_enabled(timeout=...)` /
+  `.to_be_disabled(timeout=...)` for any post-reload check of
+  `chat_attach_button` — it polls until the DOM settles, absorbing the lag
+  for free. The toggle's own `checked` property does NOT need this treatment
+  (reads correctly immediately).
+- **Not a defect** — the persisted VALUE was always correct on reload in
+  every observation; only the button's own attribute took a moment to catch
+  up. No console errors, zero extra network requests beyond the toggle's
+  existing zero-network-request behavior (ELITEA-2059/ELITEA-2043) and the
+  Save PUT itself.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/lextend_pipeline-modules-attachments-toggle-persists_ELITEA-2066.md`
+  (extends `automation/tests/ui/pipelines/test_pipeline_attach_files_in_chat.py`, ELITEA-2059).
+
+## Code node — multi-key dict return updates several state vars in one execution (confirmed live, 2026-08-09, ELITEA-2447)
+
+Direct follow-on to ELITEA-2446 (below) — same Code-node dict-literal-return
+mechanism, but with THREE state vars of THREE distinct types (`summary`/str,
+`count`/number, `tags`/list) written by ONE Code node in ONE execution, via a
+SINGLE bare dict literal with 3 keys as the script's last statement.
+Confirmed live (fixture pipeline id 8816, `STATE1(state_modifier) → CODE1(code)
+→ END`, deleted at session end):
+
+- **The case's own literal script text is ALREADY the confirmed-working form**
+  — unlike ELITEA-2446's case text (a plain assignment, silently broken), this
+  case's `data = elitea_state.get('summary', '') {'summary': ..., 'count':
+  ..., 'tags': ...}` ends with a bare 3-key dict literal and worked exactly
+  as written, first try. No case-text drift found on this case.
+- **A Code node's Output multi-select accepts a variable that is ALSO in that
+  same node's own `input` list** — `input: [summary]` and
+  `output: [summary, count, tags]` together, confirmed live: no validation
+  error, the combobox renders all 3 chips, and Run Details correctly shows
+  `summary` updated by the SAME node that also read it. New observation, not
+  previously documented for this node family.
+- **All three types render correctly under ONE `pyodide` timeline entry**:
+  `summary` (str) Before `"Draft summary text"` → After
+  `"Draft summary text [processed]"` (string concat); `count` (number) Before
+  `""` (empty — genuinely present, not missing, confirmed via
+  `browser_evaluate`) → After `"3"` (bare numeral, `len(...)` word count);
+  `tags` (list) Before `"[]"` → After `'["processed","automated"]'` (JSON
+  array). Reconfirms ELITEA-2453's per-type `JSON.stringify` rendering rules
+  on a Code node instead of an LLM node, and reconfirms ELITEA-2446's
+  `"pyodide"` timeline-label convention on a second, independent fixture.
+- **A `state_modifier` node (not an LLM node) is the recommended way to seed a
+  deterministic starting value for a variable a Code node will then process**
+  — a fixed Jinja template with no variables (`template: 'Draft summary
+  text'`, `output: [summary]`) sets the value literally, avoiding
+  LLM-response nondeterminism for any downstream assertion that depends on
+  the seeded value's exact content/length (here, `count = len(data.split())`).
+- Console: same already-filed `#1267` Stepper prop-leak warning reproduced,
+  no new defect.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l3_code-node-return-dict-multiple-state-vars_ELITEA-2447.md`.
+
+## Code node — execution & build-method gotchas (confirmed live, 2026-08-09, ELITEA-2446)
+
+- **Building `LLM 1 → Code 1 → END` via the Flow Editor's "Add node" button does
+  NOT auto-connect the nodes.** 4 live probe runs (disposable pipeline id 8809,
+  created and deleted via UI) each landed with `LLM 1` and `Code 1` as two
+  INDEPENDENT `transition: END` edges — confirmed via the YAML view
+  (`- id: LLM 1 ... transition: END` immediately followed by `- id: Code 1`, no
+  edge between them) and via the canvas's own edge labels ("Edge from LLM 1 to
+  END" + "Edge from Code 1 to END", never "LLM 1 to Code 1"). The Code node never
+  executes as a result — confirmed via Run Details showing only ONE timeline
+  entry (`LLM1`) across all 4 runs, `pipeline-run-details-timeline-step-1` never
+  matching any element. **Not a product execution defect** — every fixture in
+  this suite that needs a REAL multi-node execution (`pipeline_llm_code_end`,
+  `pipeline_with_typed_state_vars_id`, the subgraph-sharing fixtures, etc.)
+  already builds via `PipelineAPI.create_pipeline()`/`create_pipeline_with_nodes()`
+  with an EXPLICIT `transition:` field per node, which sidesteps this entirely.
+  **Automation implication:** any case that needs the pipeline to actually
+  EXECUTE end-to-end (as opposed to ELITEA-2009's UI-config-persistence-only
+  case, which never executes) must build via YAML/API, never via live
+  Flow-Editor node-placement clicks, when multiple nodes must chain.
+- **A Code node's script must end with a bare dict-literal expression, not an
+  assignment, for `structured_output: true` to route the value into the
+  declared `output:` variable.** `code_output = f"Processed: {result}"` (plain
+  assignment) confirmed live to produce NO state update (`code_output` stays
+  `""`/`""` Before/After in Run Details) even with `input`/`output`/
+  `structured_output` all configured correctly and the node's transition
+  correctly wired. `{"code_output": f"Processed: {result}"}` (dict literal as
+  the LAST statement) confirmed live to work correctly. Matches
+  `.claude/skills/elitea-pipeline/references/yaml-schema.md`'s own documented
+  Code Node rule verbatim ("Return a dict literal as the LAST expression...
+  Do NOT use a top-level `return`") — this is documented, expected behavior,
+  not a defect; case texts that show a plain-assignment script (as ELITEA-2446's
+  own source case does) are case-text drift, not a product bug.
+- **`elitea_state.get(...)` IS a valid accessor** (an alias of `alita_state.get(...)`,
+  both restored by the sandbox's state preamble per the same yaml-schema.md
+  reference) — confirmed live reading a correctly-populated value once the
+  dict-literal-return fix above was applied. No case-text drift on the accessor
+  name itself.
+- Full flow, handles, and Coverage Map:
+  `test-specs/pipelines/l3_code-node-read-elitea-state-variables_ELITEA-2446.md`.
+
+**Resolved/added during ELITEA-2446 implementation:** the Run Details timeline
+label for a Code node's step reads `"pyodide"` (the Python-sandbox executor's
+name — visible in the chat panel as the tool-call chip "Python Sandbox:
+pyodide_sandbox"), **not** the space-stripped YAML id (`"Code1"`) that
+ELITEA-2450/2452 confirmed for LLM/Printer nodes. That convention does not
+generalize to Code nodes — `get_run_details_selected_timeline_step_id()` after
+`select_run_details_timeline_step(1, ...)` on an `LLM 1 -> Code 1 -> END`
+pipeline returns text containing `"pyodide"`, confirmed live via
+`test_pipeline_code_node_reads_state_variable.py`. Filed:
+[EliteaAI/elitea-testing-public#1385](https://github.com/EliteaAI/elitea-testing-public/issues/1385).
+
+**Also confirmed during ELITEA-2446 implementation:** this case's 2-node YAML
+(multi-line Code script + 2 custom state vars) is long enough to hit the
+ALREADY-FILED `EliteaAI/elitea-testing-public#1025` Pipeline-YAML-tab
+viewport-truncation defect (same one `test_pipeline_llm_structured_output_
+state_variables.py`, ELITEA-2045, already routes around) — the UI YAML tab
+never rendered the Code node's `input`/`output` fields. The test verifies
+those fields via `pipeline_api.get_pipeline()` server-truth readback instead
+of `pipeline_page.get_yaml_content()`. No new issue filed — same root cause,
+same established workaround pattern.
+
+## MCP node — Input-mapping Type control + Tools-card composition + live MCP execution (**Resolved/added during ELITEA-1952/1953 implementation, 2026-08-24**)
+
+Implementation-time facts confirmed by the implementer while building
+`test_mcp_node_executes_selected_tool` (ELITEA-1952) and
+`test_mcp_node_input_mapping_type_and_toggles_persist` (ELITEA-1953) in
+`automation/tests/ui/pipelines/test_pipeline_mcp_node_fresh_attach.py`.
+Behaviour/scope claims elsewhere in this digest are unchanged.
+
+**New testids (EliteaAI/EliteaUI, `automation/testids`):**
+
+| Testid | Where | Commit |
+|---|---|---|
+| `pipeline-mcp-node-input-mapping-type-{param}` | `BaseToolNode.jsx` — `typeTestIdPrefix` widened from Toolkit-only to `Toolkit \| Mcp` | EliteaAI/EliteaUI@5c24ed30 |
+| `pipeline-mcp-node-input-mapping-value-{param}` (Variable branch) | `InputMappingItem.jsx` — the enum/variable `Select.SingleSelect` | EliteaAI/EliteaUI@7a5fce32 |
+| `toolkit-card-name` | `ToolCard.jsx` — the card's name Typography | EliteaAI/EliteaUI@5c24ed30 |
+| `toolkit-card-connection-status` (+ `data-connected="true\|false"`) | `ToolCard.jsx` — the MCP Online/Offline status-icon Box | EliteaAI/EliteaUI@5c24ed30 |
+
+**The Variable mapping type does NOT render the "no-enum" select branch.**
+`FlowEditorHelpers.getEnumList('variable', …)` returns the state-variable list
+(`flowEditor.helpers.js:162`), so `enumList` is non-empty and
+`InputMappingItem.jsx` renders its FIRST branch
+(`dataType !== 'array' || type === 'variable'`), not the final `Select.SingleSelect`
+the ELITEA-1953 AFS pointed at. A testid placed on the final select never appears
+in the DOM. Cost one rerun to find.
+
+**One row Value testid, two widget shapes — two different readers.** Since
+EliteaAI/EliteaUI@7a5fce32 the row's Value control keeps the same testid whether
+Type is Fixed/F-String (a text input) or Variable (a state-variable select). Read
+it with `get_mcp_node_input_mapping_value()` (`input_value()`) in the first case
+and `get_mcp_node_input_mapping_variable_value()` (`text_content()`) in the
+second. Handy side effect: a `text_content()` read returning `"input"` PROVES the
+widget swapped, because a text input has no text content — that is how the tests
+assert the swap now that the old absence assertion is void.
+
+**The canvas Control Panel intercepts Input-mapping clicks.** A freshly-added node
+spawns above ReactFlow's bottom-left `rf__controls` panel; once the Input-mapping
+rows render, the node card extends down over it and the panel's "Fit View" button
+intercepts the pointer on the Type select's click (Playwright names `rf__controls`
+as the intercepting subtree). Remedy: `move_node(node_id, dx=450, dy=0)` right
+after adding the node — the same remedy
+`test_pipeline_interrupt_before_after_toggles.py:87` already uses.
+
+**Connection status belongs on the indicator, not the Log-in button.** The AFS
+proposed tagging the card's `Log in` button as the connection-status control, but
+`McpLogInButton` returns `null` once the MCP is authorized — a testid whose
+PRESENCE flips with state, outlawed by the PR #581 ruling. The Online/Offline
+indicator Box is always rendered for an MCP card, so it carries the stable testid
+and expresses state in `data-connected`. A freshly-provisioned, never-authenticated
+Remote MCP reads `"false"` (confirmed live).
+
+**Live MCP execution from the embedded chat is stable and ~40 s.** Sending the
+repo name as the chat message (with `repoName` bound Type=Variable to the `input`
+state variable and `question` left Fixed) drives the DeepWiki fixture MCP end to
+end. Proof the node ran the SELECTED tool is the `chat-answer-tool-chip` inside the
+last `chat-message-item`, text `"{toolkit}: ask_question (MCP1)"` — asserted with
+`to_contain_text("{toolkit}: ask_question")` rather than the full string, since the
+node-id segment renders without its space. Answer body (~1 kB) asserted by shape
+only. Whole test: 39 s, zero console errors, green first try.
+
+**Saving RE-INITIALISES the whole flow graph — post-save canvas reads must be
+polled** (*Resolved during the ELITEA-1952 flake fix, 2026-08-24*). The Save
+PUT's `201` is NOT the point at which the canvas is settled. The response
+updates the RTK Query cache, which re-runs `PipelineEditor.jsx`'s init effect
+("Triggers on initial load and after save when RTK Query cache updates",
+`PipelineEditor.jsx:347`) → `initThePipeline` → `resetFlag` → `FlowEditor.jsx`
+rebuilds the graph wholesale (`setFlowNodes(initialNodes)` /
+`setFlowEdges(initialEdges)`, plus a 150 ms `setTimeout` Redux sync,
+`FlowEditor.jsx:176-195`). During that window the canvas is momentarily EMPTY —
+both merge-gate failure screenshots showed a blank canvas with the TOOLS card
+intact. A one-shot `edge_testid_present()` / `.count()` read fired right after
+`save_and_wait_for_update()` lands inside it on ~40 % of runs (2 of 5 gate runs;
+a diagnostic run measured the edge re-appearing **0.09 s** after the one-shot
+read returned `False`). Use `wait_for_edge()` (polls the same exact edge testid
+via `expect().to_have_count(1)`) — or any auto-retrying assertion — for ANY
+canvas read after a Save; never a one-shot boolean.
+
+**The embedded-chat tool chip marks the START of a tool call, not the end**
+(*same fix*). `wait_for_embedded_chat_response()` stabilises on the whole
+`chat-message-item`'s text, which is already non-empty and unchanging (the chip
++ "Thought" header) while the MCP round trip is still in flight — so it can
+return while the run indicator still spins at 0 % and the answer body is `""`.
+Poll the answer BODY (`skill-test-last-response`, via
+`get_last_embedded_chat_response_locator()`) with
+`expect(...).to_contain_text(re.compile(r"[\s\S]{N,}"))` before reading it with
+`get_last_embedded_chat_message_text()`.
+
+## Entry-point Trigger select — restriction is now a DISABLED state, and the first post-reload click is swallowed (**Resolved/added during ELITEA-2008 repair implementation, 2026-08-26**)
+
+**The trigger restriction no longer hides options — it greys them out in place**
+(EliteaAI/EliteaUI@cb70a64e, EL-6128, on `main` 2026-08-24). Any assertion that reads only
+the option NAME list can no longer distinguish a restricted pipeline from an unrestricted
+one — both render `Chat Message, Schedule, Webhook`. Confirmed live:
+
+```
+select-option-chat_message      aria-disabled = None     <- enabled
+select-option-selected-icon     aria-disabled = None     <- NOT an option, see below
+select-option-schedule          aria-disabled = "true"   <- restricted
+select-option-webhook           aria-disabled = "true"   <- restricted
+```
+
+An **enabled option carries no `aria-disabled` attribute at all** — absent, never `"false"` —
+so the enabled check must be `:not([aria-disabled="true"])`, never
+`to_have_attribute("aria-disabled", "false")`. Use
+`PipelineDetailPage.get_trigger_option_states()` (added by this repair): opens the dropdown
+once, returns `{trigger_value: is_enabled}` read per value, closes via Escape.
+
+**`get_open_listbox_option_names()` / `SELECT_OPTION_PREFIX` are unsafe on localhost
+(issue #1806).** The prefix `[data-testid^="select-option-"]` also matches
+`select-option-selected-icon`, the ✓ icon INSIDE the selected MenuItem
+(EliteaAI/EliteaUI@b0a7d61a, on `automation/testids` only), so enumeration returns a spurious
+empty entry: `['Chat Message', '', 'Schedule', 'Webhook']`. Verified live 2026-08-26, and
+verified pre-existing by a control run against the unmodified page object —
+`test_pipeline_entry_point_trigger_types_persist.py::test_entry_point_trigger_types_persist`
+fails on exactly this, on localhost only, today. **Read per value, not by family**, and the
+spec is immune on both localhost and DEV.
+
+**The FIRST click on the Trigger select after a full page reload is swallowed.** Selecting the
+node remounts its config panel and replaces the Select element the click already resolved, so
+the menu never opens and the wait burns its whole timeout (reproduced 3/3 at 10 s; a second
+click opens it immediately). `open_trigger_select()` now absorbs this: 3 s probe wait, then —
+only if no option element exists at all — one re-click. Anything else driving this select
+after a reload should expect the same and reuse that method rather than clicking directly.

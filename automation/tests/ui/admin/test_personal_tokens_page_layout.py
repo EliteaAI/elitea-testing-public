@@ -20,7 +20,7 @@ from pages.personal_tokens_page import PersonalTokensPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 EXPECTED_COLUMN_COUNT = 4
 EXPECTED_ACTION_ICON_COUNT = 4

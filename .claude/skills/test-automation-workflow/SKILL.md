@@ -1,6 +1,6 @@
 ---
 name: test-automation-workflow
-description: "Use when TMS test cases need to become automated tests — a single case or a batch. Batch pipeline: units run one at a time on a batch trunk — live analysis, implement, static review, merge back — then one N×-green hardening gate per batch and one TMS/tracker mirror sweep. Pluggable TMS (Zephyr/TestRail/Xray/Azure/markdown)."
+description: "Use when TMS test cases need to become automated tests — a single case or a batch — or when technical suite work (tech-debt, migrations, improvements, suite health) needs planning and batching. Batch pipeline: units run one at a time on a batch trunk — live analysis (or a tech-task brief for non-case units), implement, static review, merge back — then one N×-green hardening gate per batch and one TMS/tracker mirror sweep. Pluggable TMS (Zephyr/TestRail/Xray/Azure/markdown)."
 license: Apache-2.0
 metadata:
   authors:
@@ -23,7 +23,7 @@ If you arrived here looking for routing / slot defaults / "when to involve tech-
 
 This skill section IS the orchestrator-slot contract for the test-automation pipeline. When any agent is filling the orchestrator role — `test-automation-lead` by default, or any other agent named in `.agents/team-comms.md` § Roster — role, behavior, dispatch mechanics, and decision rules are fixed here so the role is **portable**: load this skill + point the roster at any orchestrator-capable agent.
 
-**Role.** Route test-automation work through the analyst → implementer → reviewer pipeline, gate AFS quality, classify blockers and route them, own the automation merge, own test-framework architecture decisions.
+**Role.** Route test-automation work through the analyst → implementer → reviewer pipeline, gate AFS quality, classify blockers and route them, own the automation merge, own test-framework architecture decisions. Cases are the common instance, not the boundary: technical work — tech-debt, migrations, improvements, suite health — runs the same loop with a [tech-task brief](references/tech-task-brief.md) where the AFS would be (playbook § The same loop runs work that isn't a case).
 
 **Session context — read once at session start.** Typically auto-imported via your agent's `AGENT.md`; if your agent doesn't auto-import, read them now:
 
@@ -33,7 +33,7 @@ This skill section IS the orchestrator-slot contract for the test-automation pip
 - `.agents/team-comms.md` — host, dispatch syntax, installed roster
 - `.agents/role-overrides.md` (if present) — slot substitutions when the default agent isn't installed
 
-Missing files are tolerated; when ALL are absent the project was never seeded — **self-orient by running the `seeding-a-project` skill yourself** (scout's own onboarding procedure — load it on demand), asking the user only for the blocking unknowns it can't infer, then proceed — rather than dead-stopping. Full procedure: [`references/orchestration-playbook.md`](references/orchestration-playbook.md) § Self-orientation.
+Missing files are tolerated; when ALL are absent the project was never seeded — **self-orient by running the `seeding-automation-project` skill yourself** (scout's own onboarding procedure — load it on demand), asking the user only for the blocking unknowns it can't infer, then proceed — rather than dead-stopping. Full procedure: [`references/orchestration-playbook.md`](references/orchestration-playbook.md) § Self-orientation.
 
 **Per-batch parameters** (caller / user provides):
 
@@ -46,11 +46,28 @@ Missing files are tolerated; when ALL are absent the project was never seeded �
 - After each merge: tracker close + TMS back-write + user notification
 - Escalations classified and routed (see playbook § Handling blockers)
 
-**One report, not a running state.** A run says where each case ended — six terminal outcomes (`automated` · `already-covered` · `out-of-scope` · `un-automatable` · `blocked` · `not-started`), each with any `findings[]` it produced, written once to `.agents/automation/<slug>/report.{json,md}`. One outcome is deliberately NOT terminal: `merged-ungated` — the unit is built, reviewed and merged on the trunk but an interrupted run's gate never produced a verdict. It means "re-run the gate", never "failed"; labelling such units `blocked` is how a dead run's summary once claimed `blocked: 14` while 13 of 14 were merged (playbook § anti-patterns). There is no board and no mid-run bookkeeping, because nothing reads progress while the run is live. That is also the compaction story: an interrupted run resumes from cache (`resumeFromRunId`), or you rebuild it by reading what is already on disk — the hook's receipts, the run journal, then git — and write the report yourself (playbook § Interruption and resumption). Either way the **remainder** feeds the next batch. What the orchestrator writes down the moment it learns it — because nothing else holds it — is the runId, operator decisions, and checkpoint args (playbook § Where state lives, § Interruption).
+**One report, not a running state.** A run says where each case ended — seven terminal outcomes (`automated` · `already-covered` · `out-of-scope` · `un-automatable` · `merged-sanctioned-red` — merged while red *by design*, the red pre-declared against a ticketed open defect · `blocked` · `not-started`), each with any `findings[]` it produced, written once to `.agents/automation/<slug>/report.{json,md}`. One outcome is deliberately NOT terminal: `merged-ungated` — the unit is built, reviewed and merged on the trunk but an interrupted run's gate never produced a verdict. It means "re-run the gate", never "failed"; labelling such units `blocked` is how a dead run's summary once claimed `blocked: 14` while 13 of 14 were merged (playbook § anti-patterns). And when a re-run gate — yours, or a stabilize round's — finally produces the verdict, **write it back into the report** (playbook § Close): the report is the receipt every audit and next-batch plan reads; a recovered-green batch left `merged-ungated` scores as undelivered. There is no board and no mid-run bookkeeping, because nothing reads progress while the run is live. That is also the compaction story: an interrupted run resumes from cache (`resumeFromRunId`), or you rebuild it by reading what is already on disk — the hook's receipts, the run journal, then git — and write the report yourself (playbook § Interruption and resumption). Either way the **remainder** feeds the next batch. What the orchestrator writes down the moment it learns it — because nothing else holds it — is the runId, operator decisions, and checkpoint args (playbook § Where state lives, § Interruption).
 
 **Default execution shape — workflows, standing opt-in.** On Claude Code, a batch of ANY size — one case included — runs as ONE deterministic workflow via the shipped scripts ([`references/workflow-accelerant.md`](references/workflow-accelerant.md)) — it merges each unit as it is approved and gates the trunk, then hands back the report. **This skill's instruction is the standing explicit opt-in the Workflow tool's multi-agent gate requires** — the orchestrator neither asks the operator again nor re-litigates the gate per batch, and falls back to sequential dispatches only for the accelerant's § When NOT to use it (an atomic fix, an unseeded project, no Workflow tool, or an operator supervising step by step — a batch of one is NOT an exception; it runs through the workflow like any other); a shape no shipped script fits is authored/forked per accelerant § Extending, not hand-run. On every other host: sequential dispatches, same contracts — the outcome vocabulary, the findings channel, the gate's independence, and **the fix loop's stop conditions** (rounds continue while any blocker is `unaddressed`; they stop only when what remains is `persists` or `external` — [`reviewer-contract.md`](references/reviewer-contract.md) § On a RE-REVIEW) hold on both paths. Where a script runs the loop on Claude Code, the orchestrator *is* the loop elsewhere; nothing about the contract changes, only who executes it. Either way the orchestrator stays **context-frugal** (playbook Critical rule 7): plans, dispatches, and verdicts in context; payloads — case bodies, diffs, logs — on disk and in PRs where the slots read them.
 
-**Full playbook** — the batch loop, dispatch mechanics, pre-flight checklists, canonical dispatch templates, AFS quality gate, status discipline, tracker discipline, status reporting, handling blockers, R2 cap rule, framework architecture (greenfield / framework-scale / mid-flow), merge protocol, anti-patterns — lives in [`references/orchestration-playbook.md`](references/orchestration-playbook.md). Load it once at session start.
+**Dispatch card** — the routine Workflow invocation, so the accelerant only needs opening for its edge cases (extending/forking, model tiering, quota resume, § When NOT to use it):
+
+```js
+Workflow({
+  scriptPath: "<installed skill dir>/scripts/workflows/batch-build.workflow.mjs",
+  args: {
+    slug: "<batch-slug>",                   // names .agents/automation/<slug>/
+    base: "origin/<base-branch>",           // from .agents/profile.md
+    cases: [{ id: "TC-101", title: "…" }],  // intake is yours — bodies snapshotted before dispatch
+    // clusters: [["TC-1","TC-2"]]          // plan-declared flow-variant clusters
+    // gateN, gateCmd, fixRounds, skipGate  // loop/gate knobs — defaults are right
+  }
+})
+```
+
+Write the **runId to disk the moment the call returns** (context-fragile). Crash or pause → re-invoke the same scriptPath+args plus `resumeFromRunId` (completed units replay from cache). Red gate classified flake/test-code → `batch-stabilize.workflow.mjs` on the trunk. The report and case rows land in `.agents/automation/<slug>/report.{json,md}`.
+
+**Full playbook** — the batch loop, dispatch mechanics, pre-flight checklists, canonical dispatch templates, AFS quality gate, status discipline, tracker discipline, status reporting, handling blockers, R2 cap rule, framework architecture (greenfield / framework-scale / mid-flow), merge protocol, anti-patterns — lives in [`references/orchestration-playbook.md`](references/orchestration-playbook.md). **Load it by situation, not by ritual.** On the workflow path the scripts carry the loop and the report's `next:` names your close moves — open the specific section when its moment arrives: red gate → § Handling blockers · interrupted run → § Interruption and resumption · unseeded project → § Self-orientation · framework decision → § Framework architecture · non-case batch → § The same loop runs work that isn't a case · batch close (scope outcomes, batch report, publish) → § 3. Close. Running the loop **by hand** — no Workflow tool, another host, sequential dispatches — the playbook *is* the loop: read it before the first dispatch.
 
 **Wiring this role on a project.** To swap the default orchestrator for another agent (e.g. PM):
 
@@ -91,7 +108,7 @@ Steps 1–4 belong to the analyst slot (driven by [`test-case-analysis`](../test
 
 ### 1. Discover framework
 
-Before anything, read what scout / seeding-a-project produced:
+Before anything, read what scout / seeding-automation-project produced:
 
 - `AGENTS.md` — tech stack, test commands
 - `.agents/testing.md` — test framework, commands, fixtures, CI
@@ -179,7 +196,7 @@ Full checklist in [references/reviewer-contract.md](references/reviewer-contract
 1. **Intake** *(lead)* — resolve the case list, dedup against existing AFS files, snapshot each case body to `.agents/automation/<slug>/cases/<ID>.md`, cluster similar cases.
 2. **Per unit, in order** — analyse live (the analyst owns the tree and commits its own AFS to the trunk) → implement on a branch cut from the trunk → static review → fix rounds to APPROVED → merge back, tree returns to the trunk. **Nothing overlaps:** one tree has one state at a time, and ordering is the only thing that reconciles slots needing different ones.
 3. **Build loop** — per unit: implement, then static-review, then fix rounds **until the reviewer approves** — a round more whenever a blocker went unaddressed; stop only when every survivor is `persists`/`external` (reviewer-contract § On a RE-REVIEW; runaway backstop 8). **Sequential** — implementers write code in the one working tree.
-4. **Gate** — once every unit has merged, the trunk carries the batch: N consecutive deterministic green runs over its specs together (default 3), **plus one run of the specs the batch could have broken** (the blast radius of any shared file it touched). The gate is **its own agent** — never the implementer certifying its own work.
+4. **Gate** — once every unit has merged, the trunk carries the batch: N consecutive deterministic green runs over its specs together (default 3), **plus one run of the specs the batch could have broken** — the blast radius, scoped by what the batch *modified*, not what it touched: specs reaching a changed symbol are in; purely additive changes to shared files pull in nothing (playbook § The loop → Run). The gate is **its own agent** — never the implementer certifying its own work.
 5. **Report** — one write: per-case outcome + findings + gate verdict. Then the lead merges, routes findings, and replans whatever isn't `automated`.
 
 Phases 2–5 are ONE `Workflow` call on Claude Code and the same sequence of dispatches everywhere else. There are no intermediate status writes: the run reports once, and an interrupted one is recovered from git + the run journal, never rebuilt by hand.
@@ -210,11 +227,12 @@ Full mechanics and defaults (M/K/N) live in [`references/orchestration-playbook.
 - [`references/browser-tools.md`](references/browser-tools.md) — browser-tool triage for analyst execution.
 - [`test-automation-implementation`](../test-automation-implementation/SKILL.md) — the implementer's own skill (preloaded by `test-automation-engineer`): slot contract, six-phase loop, Run Report template, the 12 Hard Rules.
 - [`references/reviewer-contract.md`](references/reviewer-contract.md) — reviewer slot contract: static-review checklist, triangulate-three-artifacts, masking checks.
+- [`references/tech-task-brief.md`](references/tech-task-brief.md) — the unit contract for work that isn't a case (tech-debt, migrations, improvements): required sections, quality gate, example. Sits where the AFS sits; its blast radius is the gate's run set.
 - [`references/framework-architecture.md`](references/framework-architecture.md) — orchestrator's framework-architecture reference: greenfield bootstrap, framework-scale work, mid-flow escalation.
-- `scripts/gate/gate-case.mjs` — the **mechanical** half of the gate: fetch, check the branch out in this checkout (no worktree; it refuses a dirty tree), merge the base first, run the spec N× with timings, return a verdict. It never merges a PR, classifies a red, or resolves a conflict.
+- `scripts/gate/gate-case.mjs` — the **mechanical** half of the gate: fetch, check the branch out in this checkout (no worktree; dirt is refused only when it touches the files being proved or collides with the checkout/merge — unrelated noise rides the verdict as `carriedDirt`), merge the base first, run the spec N× with timings, return a verdict. It never merges a PR, classifies a red, or resolves a conflict.
 - `scripts/cleanup.mjs` — close-out sweep for delivered branches and any leftover worktrees, dry-run by default. **You decide, it refuses:** you read `.agents/workflow.md` § Host and ask that system what merged; `--merged` is required and has no fallback probe, and nothing is deleted without a merged claim naming it. The remote comes from `git remote`, not from an assumption.
 - `scripts/git-env.mjs` — the few facts a script may read for itself (today: which remote). It states the rule the other scripts follow: **read facts, take conventions as parameters, refuse to guess anything else.**
-- **Recovering an interrupted run has no script, on purpose** — it needs this project's branch naming, case-id shape and PR host, which are seed conventions a script can only hardcode wrongly. The procedure is playbook § Interruption and resumption: read the receipts the `SubagentStop` hook already wrote (`.agents/automation/_returns/`), then the run journal, then git, then write the report.
+- **Recovering an interrupted run has no script, on purpose** — it needs this project's branch naming, case-id shape and PR host, which are seed conventions a script can only hardcode wrongly. The procedure is playbook § Interruption and resumption: read the receipts the `SubagentStop` hook already wrote (`.agents/telemetry/automation/returns/`, legacy `_returns/`), then the run journal, then git, then write the report.
 - [`references/workflow-accelerant.md`](references/workflow-accelerant.md) — Claude Code's **default** batch path: the whole batch as one deterministic workflow via `scripts/workflows/batch-build.workflow.mjs` (any batch size, one included; exceptions in its § When NOT to use it), which integrates inline (one integrator agent) and gates internally; `batch-integrate.workflow.mjs` remains for the lead's standalone integrate jobs. Also `batch-stabilize.workflow.mjs` for a red gate classified as a flake or test-code bug — batch-level diagnosis before any fix. Other hosts use sequential dispatches, same contracts.
 - [`references/campaign-planning.md`](references/campaign-planning.md) — composing batches for scale: campaigns (waves + foundation pass + clusters of similar cases), plan proposed by a dispatched planner, conducted by `scripts/workflows/batch-campaign.workflow.mjs`; the lead reviews plans and reads one report per wave, never case bodies.
 - [`agents/test-automation-lead/AGENT.md`](../../agents/test-automation-lead/AGENT.md) — orchestration: slot routing, dispatch templates, AFS gating, automation merge gate, framework architecture.

@@ -12,6 +12,7 @@ Usage::
 
 import logging
 from typing import Optional
+from urllib.parse import quote
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -213,6 +214,62 @@ class APIClient:
         pass
 
 
+class ProjectAPI:
+    """Read the acting user's project memberships (ELITEA-2051).
+
+    Hits the SAME endpoint the UI's own project selector uses
+    (``../EliteaUI/src/api/project.js``)::
+
+        GET /projects/project/default/{public_project_id}?check_public_role=true
+
+    — verified live 2026-08-26 against ``localhost:5173``'s own network trace.
+    The ``public_project_id`` path segment mirrors EliteaUI's
+    ``VITE_PUBLIC_PROJECT_ID`` and comes from ``settings.public_project_id``.
+
+    Authentication mirrors :class:`PipelineAPI` exactly (browser session
+    cookies, Bearer-token fallback) so the API identity is the same one the
+    browser under test is acting as — a test that resolves projects here and
+    then drives the UI must see the same membership list the UI sees.
+
+    Args:
+        browser_cookies: List of cookie dicts from ``BrowserContext.cookies()``.
+        base_url: API root (defaults to ``ELITEA_API_BASE`` env var).
+    """
+
+    def __init__(
+        self,
+        browser_cookies: list[dict],
+        base_url: str | None = None,
+    ):
+        self.base_url = (base_url or settings.elitea_api_base).rstrip("/")
+
+        self._session = _create_retry_session()
+        for c in browser_cookies:
+            self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
+        if not browser_cookies and settings.elitea_api_token:
+            self._session.headers.update({"Authorization": f"Bearer {settings.elitea_api_token}"})
+
+        logger.debug("ProjectAPI initialised — base_url=%s", self.base_url)
+
+    def _projects_url(self) -> str:
+        return f"{self.base_url}/projects/project/default/{settings.public_project_id}"
+
+    def list_projects(self) -> list[dict]:
+        """Return the acting user's project memberships.
+
+        Each entry carries at least ``id``, ``name`` and ``owner_id``.
+        """
+        url = self._projects_url()
+        logger.debug("LIST projects %s", url)
+        resp = self._session.get(url, params={"check_public_role": "true"})
+        _raise_for_status(resp)
+        return resp.json()
+
+    def close(self):
+        """Close the underlying HTTP session."""
+        self._session.close()
+
+
 class ConversationAPI:
     """Manage chat conversations via the Elitea API.
 
@@ -336,6 +393,68 @@ class ConversationAPI:
         resp = self._session.put(
             url,
             json={"name": new_name},
+            headers={"Content-Type": "application/json"},
+        )
+        _raise_for_status(resp)
+        return resp.json()
+
+    def create_folder(self, name: str) -> dict:
+        """Create a chat folder and return its JSON representation.
+
+        ELITEA-2098 addition: no ``FolderAPI`` client exists yet — folder
+        endpoints share the conversations project scope, so they live here
+        alongside ``rename_conversation``/``delete_conversation`` per the
+        "extend, don't duplicate" abstraction-layer rule.
+
+        Args:
+            name: Folder display name.
+
+        Returns:
+            Folder JSON (``id``, ``name``, ``owner_id``, ``position``, ``meta``).
+            The server fills ``owner_id`` from the auth session — the
+            ``FolderCreate`` OpenAPI schema lists it as required, but it is
+            NOT sent in the request body (same pattern already relied on for
+            ``author_id`` on conversation create).
+        """
+        url = f"{self.base_url}/elitea_core/folder/prompt_lib/{self.project_id}"
+        logger.debug("CREATE folder %s name=%s", url, name)
+        resp = self._session.post(
+            url, json={"name": name}, headers={"Content-Type": "application/json"},
+        )
+        _raise_for_status(resp)
+        return resp.json()
+
+    def delete_folder(self, folder_id: int) -> None:
+        """Delete a folder. Returns ``None`` on success (HTTP 204).
+
+        Args:
+            folder_id: Numeric folder ID.
+        """
+        url = f"{self.base_url}/elitea_core/folder/prompt_lib/{self.project_id}/{folder_id}"
+        logger.debug("DELETE folder %s", url)
+        resp = self._session.delete(url)
+        _raise_for_status(resp)
+
+    def move_conversation_to_folder(self, conversation_id: int, folder_id: int) -> dict:
+        """Move a conversation into *folder_id* via PUT ``folder_id`` on the
+        singular ``/conversation/`` endpoint (same endpoint as
+        :meth:`rename_conversation`, different field).
+
+        Args:
+            conversation_id: Numeric conversation ID.
+            folder_id: Numeric folder ID to move the conversation into.
+
+        Returns:
+            Updated conversation JSON.
+        """
+        url = (
+            f"{self.base_url}/elitea_core/conversation/prompt_lib"
+            f"/{self.project_id}/{conversation_id}"
+        )
+        logger.debug("MOVE conversation %s -> folder %s", url, folder_id)
+        resp = self._session.put(
+            url,
+            json={"folder_id": folder_id},
             headers={"Content-Type": "application/json"},
         )
         _raise_for_status(resp)
@@ -1061,6 +1180,21 @@ class CredentialAPI:
         logger.info("list_all_credentials: fetched %d credentials", len(all_items))
         return all_items
 
+    def list_credential_types(self) -> list[str]:
+        """Return the credential type keys present in the project.
+
+        Reads ``GET /configurations/types/{project_id}`` — the SAME endpoint
+        that backs the credentials list page's right-hand TYPES filter panel,
+        so it is the honest oracle for "which type chips should the panel
+        render" (ELITEA-1966). Returns only types for which at least one
+        credential exists, e.g. ``["github", "jira", "s3_api_credentials"]``.
+        """
+        url = f"{self.base_url}/configurations/types/{self.project_id}"
+        logger.debug("LIST credential types %s", url)
+        resp = self._session.get(url)
+        _raise_for_status(resp)
+        return resp.json().get("rows", [])
+
     def create_github_credential(
         self, display_name: str, base_url: str, token: str, elitea_title: Optional[str] = None
     ) -> dict:
@@ -1096,6 +1230,55 @@ class CredentialAPI:
             "shared": False,
         }
         logger.debug("CREATE github credential %s name=%s title=%s", url, display_name, title)
+        resp = self._session.post(
+            url, json=payload, headers={"Content-Type": "application/json"}
+        )
+        if not resp.ok:
+            logger.error(
+                "Failed to create credential: status=%s body=%s",
+                resp.status_code,
+                resp.text[:500],
+            )
+        _raise_for_status(resp)
+        return resp.json()
+
+    def create_jira_credential(
+        self, display_name: str, base_url: str, username: str, api_key: str, elitea_title: Optional[str] = None
+    ) -> dict:
+        """Create a JIRA credential and return its JSON representation.
+
+        Args:
+            display_name: Human-readable name for the credential.
+            base_url: JIRA base URL (e.g. ``https://your-domain.atlassian.net``).
+            username: JIRA username (email).
+            api_key: JIRA API key/token.
+            elitea_title: Optional unique identifier (auto-generated with timestamp if not provided).
+
+        Returns:
+            Dict with ``id``, ``elitea_title``, ``label`` (display name), etc.
+        """
+        import time
+        url = self._credentials_url()
+        # Auto-generate unique elitea_title if not provided
+        if not elitea_title:
+            timestamp = str(int(time.time() * 1000))  # millisecond precision
+            safe_name = display_name.replace(' ', '_').replace('-', '_').lower()[:30]
+            title = f"jira_{safe_name}_{timestamp}"
+        else:
+            title = elitea_title
+
+        payload = {
+            "type": "jira",
+            "elitea_title": title,
+            "label": display_name,
+            "data": {
+                "base_url": base_url,
+                "username": username,
+                "api_key": api_key,
+            },
+            "shared": False,
+        }
+        logger.debug("CREATE jira credential %s name=%s title=%s", url, display_name, title)
         resp = self._session.post(
             url, json=payload, headers={"Content-Type": "application/json"}
         )
@@ -1233,6 +1416,36 @@ class ArtifactAPI:
             resp = self._session.delete(url_id)
         _raise_for_status(resp)
 
+    def set_bucket_pinned(self, bucket_name: str, is_pinned: bool) -> None:
+        """Set (or clear) a bucket's "pinned to top" flag.
+
+        Mirrors the UI's own pin mutation exactly — ``PATCH
+        /artifacts/buckets/default/{project_id}?name={bucket}`` with body
+        ``{"is_pinned": <bool>}`` (``EliteaUI/src/api/artifacts.js``'s
+        ``updateBucketPin``). Note the QUERY-string bucket form: the
+        path-segment form used by :meth:`delete_bucket` is not what this
+        endpoint accepts.
+
+        Added for the ELITEA-1820/1821 pin/unpin tests' TEARDOWN — a leaked
+        *pinned* bucket would sit at the top of every project member's
+        bucket list forever (bucket deletion itself is unreliable, see
+        ``#636``), so those tests clear the flag before deleting. It is
+        cleanup, never an observable: both tests pin and unpin through the
+        UI, which is what they verify.
+
+        Args:
+            bucket_name: Name of the bucket to pin/unpin.
+            is_pinned: ``True`` to pin to top, ``False`` to unpin.
+        """
+        url = f"{self._buckets_url()}?name={quote(bucket_name)}"
+        logger.debug("PATCH bucket pin %s is_pinned=%s", url, is_pinned)
+        resp = self._session.patch(
+            url,
+            json={"is_pinned": is_pinned},
+            headers={"Content-Type": "application/json"},
+        )
+        _raise_for_status(resp)
+
     def list_bucket_files(self, bucket_name: str) -> list[str]:
         """List all file keys in a bucket via the S3 listing API.
 
@@ -1364,6 +1577,78 @@ class ArtifactAPI:
         """Close the underlying HTTP session."""
         self._session.close()
 
+    # -------------------------------------------------------------------------
+    # Permission enforcement test helpers (return response, don't raise)
+    # -------------------------------------------------------------------------
+
+    def get_file_raw(self, bucket_name: str, file_key: str) -> "requests.Response":
+        """GET a file without raising on error status — for permission testing.
+
+        Args:
+            bucket_name: Name of the bucket.
+            file_key: Full key of the file.
+
+        Returns:
+            Raw requests.Response object (check .status_code).
+        """
+        url = (
+            f"{self.base_url}/artifacts/artifact/default"
+            f"/{self.project_id}/{bucket_name}/{file_key}"
+        )
+        logger.debug("GET file (raw) %s", url)
+        return self._session.get(url)
+
+    def upload_file_raw(
+        self,
+        bucket_name: str,
+        filename: str,
+        content: bytes,
+    ) -> "requests.Response":
+        """POST (upload) a file without raising on error — for permission testing.
+
+        Args:
+            bucket_name: Name of the bucket.
+            filename: Name for the uploaded file.
+            content: File content as bytes.
+
+        Returns:
+            Raw requests.Response object (check .status_code).
+        """
+        url = f"{self.base_url}/artifacts/artifacts/default/{self.project_id}/{bucket_name}"
+        files = {"file": (filename, content)}
+        logger.debug("POST file (raw) %s filename=%s", url, filename)
+        return self._session.post(url, files=files)
+
+    def delete_file_raw(self, bucket_name: str, filename: str) -> "requests.Response":
+        """DELETE a file without raising on error — for permission testing.
+
+        Args:
+            bucket_name: Name of the bucket.
+            filename: Name of the file to delete.
+
+        Returns:
+            Raw requests.Response object (check .status_code).
+        """
+        url = f"{self.base_url}/artifacts/artifact/default/{self.project_id}/{bucket_name}"
+        params = {"filename": filename}
+        logger.debug("DELETE file (raw) %s filename=%s", url, filename)
+        return self._session.delete(url, params=params)
+
+    def bucket_exists(self, bucket_name: str) -> bool:
+        """Check if a bucket exists by attempting to list its files.
+
+        Args:
+            bucket_name: Name of the bucket to check.
+
+        Returns:
+            True if bucket exists, False otherwise.
+        """
+        try:
+            self.list_bucket_files(bucket_name)
+            return True
+        except Exception:
+            return False
+
 
 class SkillAPI:
     """Manage skills via the Elitea API.
@@ -1454,6 +1739,24 @@ class SkillAPI:
         }
         logger.debug("CREATE skill %s name=%s", url, name)
         resp = self._session.post(url, json=payload)
+        _raise_for_status(resp)
+        return resp.json()
+
+    def get_skill(self, skill_id: int) -> dict:
+        """Fetch a single skill by *skill_id*.
+
+        Uses the **singular** ``/skill/`` path segment. Added for
+        ELITEA-2602/ELITEA-2603 (Fork verification) — the source of truth
+        for field/tags/icon/lineage assertions instead of re-deriving them
+        from the DOM (mirrors ``AgentAPI.get_agent()``/
+        ``PipelineAPI.get_pipeline()``).
+
+        Args:
+            skill_id: The numeric skill ID.
+        """
+        url = self._skill_url(skill_id)
+        logger.debug("GET skill %s", url)
+        resp = self._session.get(url)
         _raise_for_status(resp)
         return resp.json()
 

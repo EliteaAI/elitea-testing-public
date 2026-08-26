@@ -48,6 +48,43 @@ real observed repro numbers through the comparison before trusting it:
 `100 < 48` is `False` — the check would never have fired on the confirmed
 repro. Capture the baseline with the getter you will later compare against.
 
+**4. The `if` condition must go TRUE on the CURRENT buggy symptom, not on a
+deviation from it.** `soft_failures.append(...)` existing is necessary but
+NOT sufficient — trace which branch actually fires TODAY, while the defect
+is open. Compliant shape (`test_pipeline_hitl_node_runtime_behavior.py`
+#1103): `if restarted_types: soft_failures.append(...)` — true exactly when
+the symptom occurs, so the test is RED now and flips GREEN automatically
+once fixed. The inverted shape (ELITEA-2445 R0, PR #1382) wrote
+`if timeline_count != _EXPECTED_COUNT_WITH_BLOCKED_NODE: soft_failures.append(...)`
+— true only if the defect got FIXED or something else changed — so the test
+was GREEN for an open, confirmed, filed defect and would only go RED if the
+defect were fixed. Mechanically identical shape, opposite meaning; the
+reviewer's mechanical grep (and a skim for "does soft_failures exist") can't
+catch it — you have to read which branch is live. Self-check before
+shipping any known-defect soft-assert: plug in the CURRENT observed repro
+values and confirm the condition evaluates TRUE right now.
+
+**5. An immediate `pytest.fail()`/`raise` inside a known-defect classify
+block silently skips every step written AFTER it — including unrelated
+side-channel checks the AFS still claims as covered.** Copying only the
+"fail early on the confirmed signature" half of the pattern without the
+"defer + run everything else + fail last" half breaks any assertion placed
+after the classify block, on exactly the run where the defect fires — which,
+for a deterministic known defect, is EVERY run. Symptom: an AFS Gap
+assertion (e.g. "no console/JS errors") is on paper covered by the new test,
+but the console-error `allure.step` never shows up as `passed` in the
+Allure report because the test terminated before reaching it. Fix: mirror
+the FULL shape — `soft_failures.append(...)` (not `pytest.fail`/`raise`) on
+the confirmed-defect branch, gate only the correct-path assertions behind
+`if run_executed_correctly:`, run every OTHER step (including side-channel
+checks) unconditionally, and defer `pytest.fail()` to the very end. Verify
+by reading the Allure step-level `status` for the later step after a re-run,
+not just the overall test outcome — a RED test can still hide an unreached
+assertion inside it. (ELITEA-2210 fix round 2, PR #1603 — a fresh test class
+added in fix round 1 copied the classify-and-fail idiom but terminated
+immediately in both branches, leaving its own "no console/JS errors" check
+dead code on the 3/3-confirmed path.)
+
 ## Seen 1× (three distinct traps, one case) + 1 related
 
 - ELITEA-1799 / PR #608 — GH#607 sanctioned-RED assertion: dispatch-suggested `expect.soft(get_by_text(...))` was a new raw locator (Trap 1); the defect needs >~100 message groups but `start_new_chat()` guarantees a fresh small conversation, so it never went RED (Trap 2); `get_message_count()` vs `get_assistant_message_count()` cross-compared, caught in review (Trap 3).

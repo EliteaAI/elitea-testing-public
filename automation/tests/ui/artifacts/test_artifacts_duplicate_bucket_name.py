@@ -56,7 +56,7 @@ from pages.artifacts_page import ArtifactsPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.regression, pytest.mark.new_verified]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (ms)

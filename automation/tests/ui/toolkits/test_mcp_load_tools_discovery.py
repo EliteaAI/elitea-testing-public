@@ -22,7 +22,7 @@ from pages.mcp_form_page import McpFormPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.toolkits, pytest.mark.p2, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.toolkits, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 MCP_URL = "https://mcp.deepwiki.com/mcp"
 EXPECTED_EMPTY_STATE_TEXT = 'No tools to display for now. To get tools from MCP press button “Load Tools”'

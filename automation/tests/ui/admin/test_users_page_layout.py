@@ -24,7 +24,7 @@ from pages.admin_users_page import AdminUsersPage
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p1, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p1, pytest.mark.regression, pytest.mark.new]
 
 EXPECTED_COLUMN_COUNT = 5
 EXPECTED_SEARCH_PLACEHOLDER = "Search "
@@ -42,6 +42,7 @@ class TestUsersPageLayout:
         "settings/users-and-roles/ELITEA-2292_users-page-loads-with-correct-layout-and-components.md",
         "onetest-ai Test Case link",
     )
+    @pytest.mark.blocked
     def test_users_page_layout_and_components(self, page):
         """Page header, search input, batch Edit/Delete/Invite buttons,
         5-column table (with correct per-column sortability), and the

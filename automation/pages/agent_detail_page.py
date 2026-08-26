@@ -90,8 +90,13 @@ class AgentDetailPage(AgentFormPage):
     # testid also starts with the `version-option-` prefix but lives on a
     # nested non-option child <svg>, not the option MenuItem itself. Purely
     # testid-keyed (no role/CSS-structure dependency).
+    # VERSION_OPTION_ANY: matches version dropdown option items. Excludes:
+    # - version-option-pin-icon (nested pin icon inside option)
+    # - version-option-set-default-* items (action menu items for "Set as default")
     VERSION_OPTION_ANY = (
-        '[data-testid^="version-option-"]:not([data-testid="version-option-pin-icon"])'
+        '[data-testid^="version-option-"]'
+        ':not([data-testid="version-option-pin-icon"])'
+        ':not([data-testid^="version-option-set-default-"])'
     )
 
     # --- Variables section (ELITEA-1884 testid-only rework — added via
@@ -127,12 +132,47 @@ class AgentDetailPage(AgentFormPage):
     # ELITEA-1887, pushed to automation/testids commit ce74cd40. See
     # open_agent_picker() below.
     add_agent_button = LocatorDescriptor(testid="agent-add-agent-button")
+    # "+ Pipeline" add button (ToolMenu.jsx) — opens a popper listing
+    # project pipelines that could be attached as sub-agent tools. Added
+    # ELITEA-2614 — pre-existing testid on the live app, simply never had a
+    # page-object field before this dispatch.
+    add_pipeline_button = LocatorDescriptor(testid="agent-add-pipeline-button")
+    # Tooltip wrappers for the 4 Tools "+ X" add buttons above — added via
+    # `add-data-testid` in the ELITEA-2614 testid-only rework
+    # (EliteaAI/EliteaUI@2d05a7f1 on `automation/testids`), mirroring the
+    # pre-existing `agent_add_skill_button_tooltip` pattern (SkillMenu.jsx).
+    # MUI's `Tooltip` clones its `title` onto `aria-label` on its IMMEDIATE
+    # child — here the wrapping `<Box component="span">`, NOT the nested
+    # `BaseBtn` that carries the button's own testid above — so a separate
+    # testid on the wrapper is the only testid-only way to read the
+    # tooltip text (`lockedTooltip` / the "Save the ... first" ternary in
+    # `ToolMenu.jsx`). See get_add_toolkit_button_tooltip() etc. below.
+    add_toolkit_button_tooltip = LocatorDescriptor(testid="agent-add-toolkit-button-tooltip")
+    add_mcp_button_tooltip = LocatorDescriptor(testid="agent-add-mcp-button-tooltip")
+    add_agent_button_tooltip = LocatorDescriptor(testid="agent-add-agent-button-tooltip")
+    add_pipeline_button_tooltip = LocatorDescriptor(testid="agent-add-pipeline-button-tooltip")
     toolkit_card = LocatorDescriptor(testid="agent-toolkit-card")
     toolkit_delete_button = LocatorDescriptor(testid="agent-toolkit-delete-button")
     toolkit_search_input = LocatorDescriptor(testid="toolkit-search-input")
     toolkit_warning_banner = LocatorDescriptor(testid="credential-warning-banner")
     toolkit_reload_button = LocatorDescriptor(testid="toolkit-reload-button")
     toolkit_open_button = LocatorDescriptor(testid="toolkit-open-button")
+
+    # Agent/Pipeline-type tool card's version selector (ELITEA-1951 — added
+    # via add-data-testid to AgentPipelineVersionSelector.jsx; zero
+    # data-testid existed on this component before). Dynamic, keyed by
+    # `tool.id` (the attached-tool relation id) — same class-constant +
+    # `.format()` pattern as VERSION_OPTION/VARIABLE_ROW above. The `_ANY`
+    # variants enumerate the trigger/menu when `tool.id` isn't known in
+    # advance (this case attaches exactly one Agent-type tool, so `.first`
+    # on the ANY selector is unambiguous — same idiom as
+    # SKILL_VERSION_OPTION_ANY_SELECTOR).
+    AGENT_TOOL_VERSION_SELECTOR_TRIGGER = '[data-testid="agent-tool-version-selector-trigger-{}"]'
+    AGENT_TOOL_VERSION_SELECTOR_MENU = '[data-testid="agent-tool-version-selector-menu-{}"]'
+    AGENT_TOOL_VERSION_OPTION = '[data-testid="agent-tool-version-option-{}-{}"]'
+    AGENT_TOOL_VERSION_SELECTOR_TRIGGER_ANY = '[data-testid^="agent-tool-version-selector-trigger-"]'
+    AGENT_TOOL_VERSION_SELECTOR_MENU_ANY = '[data-testid^="agent-tool-version-selector-menu-"]'
+    AGENT_TOOL_VERSION_OPTION_ANY = '[data-testid^="agent-tool-version-option-"]'
 
     # --- Selectors for scoped use (inside parent locators) ---
     # BannerMessage component always uses "credential-warning-banner" testid
@@ -144,6 +184,37 @@ class AgentDetailPage(AgentFormPage):
     CHAT_ARTIFACT_FILE_LIST_SELECTOR = '[data-testid="chat-artifact-file-list"]'
     CHAT_ARTIFACT_FILE_CARD_SELECTOR = '[data-testid="chat-artifact-file-card"]'
     CHAT_ANSWER_CONTENT_SELECTOR = '[data-testid="chat-answer-content"]'
+    # Outer "Thought for <n> secs" reasoning/tool accordion + its chip-row
+    # children (existing testids, ELITEA-2211..2215 batch — same shared
+    # ApplicationThinkView.jsx/ActionView.jsx components ChatPage's
+    # standalone /chat surface renders through; this page's own scoped
+    # string constants per the established CHAT_ANSWER_CONTENT_SELECTOR
+    # precedent above, since the embedded chat panel is a distinct DOM
+    # scope from ChatPage's LocatorDescriptor fields for the same testids).
+    CHAT_ANSWER_THOUGHT_ACCORDION_SELECTOR = '[data-testid="chat-answer-thought-accordion"]'
+    CHAT_ANSWER_MODEL_CHIP_SELECTOR = '[data-testid="chat-answer-model-chip"]'
+    CHAT_ANSWER_TOOL_CHIP_SELECTOR = '[data-testid="chat-answer-tool-chip"]'
+    # Nested sub-agent accordion (ELITEA-1951 — added via add-data-testid to
+    # SubAgentAccordion.jsx, which previously carried zero data-testid).
+    # Dynamic, keyed by the invoked sub-agent's exact name (matches the
+    # component's `name` prop, `ApplicationThinkView.jsx`'s
+    # `displayName = subEntry?.name || childError?.name || instanceKey`).
+    # `_SUMMARY` is the clickable AccordionSummary (reads `aria-expanded`
+    # directly, MUI forwards it to the root button element); `_DETAILS`
+    # scopes the model/tool chip lookups to THIS nested accordion only,
+    # avoiding a collision with the parent's own top-level chips.
+    NESTED_AGENT_ACCORDION_SUMMARY = '[data-testid="chat-answer-nested-agent-accordion-summary-{}"]'
+    NESTED_AGENT_ACCORDION_DETAILS = '[data-testid="chat-answer-nested-agent-accordion-details-{}"]'
+    # Embedded-chat conversation-starter tile (ELITEA-1886) — this page's own
+    # call site of the shared EllipsisTextWithTooltip, ChatConversationStarters.jsx,
+    # mounted inside the embedded ChatBox on THIS route (/agents/all/{id}). Same
+    # literal as ChatPage.CHAT_STARTER_TILE (ELITEA-2369's standalone /chat/{id}
+    # landing-view call site, NewConversationView.jsx) by deliberate reuse — the
+    # two call sites never render on the same page simultaneously, so there is
+    # no collision risk in sharing the testid (AFS ELITEA-1886 Concrete Handles).
+    # Static testid, one per rendered tile; select a specific tile via
+    # .filter(has_text=...), same idiom as ChatPage.click_chat_starter_tile().
+    CHAT_STARTER_TILE = '[data-testid="chat-conversation-starter-tile"]'
     # Agent-only child (TTS read-out button) and its non-last/last-message
     # sibling testid — scoped, per-message-item lookups used by
     # get_last_chat_message_agent_markers() (ELITEA-1885) to distinguish an
@@ -171,7 +242,21 @@ class AgentDetailPage(AgentFormPage):
     # constants): scoped within a single skill's card (resolved via
     # `_skill_card()`), so no per-skill dynamic suffix is needed.
     SKILL_CARD_REMOVE_BUTTON_SELECTOR = '[data-testid="skill-card-remove-button"]'
+    # Attached-skill SkillCard's custom-icon <img> (ELITEA-2605 — new testid,
+    # EliteaAI/EliteaUI@ccc8c001). Same-element-conditional-pair shape as
+    # SKILL_MENU_ITEM_ICON_IMG_SELECTOR above — only the `EliteAImage`
+    # (custom-icon) branch is tagged, the default `SkillIcon` glyph is not.
+    # Scope via ``_skill_card(skill_name).locator(...)``, never page-wide
+    # (the testid repeats once per attached-skill card).
+    SKILL_CARD_ICON_IMG_SELECTOR = '[data-testid="skill-card-icon-img"]'
     SKILL_MENTION_ITEM_SELECTOR = '[data-testid="skill-mention-item-{}"]'
+    # `~`-mention popper row's custom-icon <img> (ELITEA-2605 — new testid,
+    # EliteaAI/EliteaUI@ccc8c001, `MentionSkillList.jsx`). Same
+    # same-element-conditional-pair shape as SKILL_MENU_ITEM_ICON_IMG_SELECTOR
+    # / SKILL_CARD_ICON_IMG_SELECTOR above — only the `EliteAImage`
+    # (custom-icon) branch is tagged. Scope via ``.locator()`` off an
+    # already name-filtered row from :meth:`get_chat_mention_item`.
+    SKILL_MENTION_ITEM_ICON_IMG_SELECTOR = '[data-testid="skill-mention-item-icon-img"]'
     # Version-selector testids (ELITEA-1789 testid-only rework — added via
     # add-data-testid to SkillVersionSelector.jsx; see EliteaUI draft PR #545).
     SKILL_VERSION_TRIGGER_SELECTOR = '[data-testid="skill-version-selector-trigger-{}"]'
@@ -183,6 +268,24 @@ class AgentDetailPage(AgentFormPage):
     # MenuItems while their Menu is closed, so only one card's menu items
     # are ever in the DOM at a time.
     SKILL_VERSION_OPTION_ANY_SELECTOR = '[data-testid^="skill-version-option-"]'
+
+    # Shared UnifiedDropdown row testid (SkillMenu.jsx attach popper, same
+    # component `Popper.select_menuitem_by_testid` in components/mui.py
+    # already targets by raw string) — promoted to a class-level constant
+    # here so :meth:`open_skill_menu`/:meth:`get_skill_menu_item` (ELITEA-2605)
+    # don't repeat the literal. NOT unique per row (repeats once per
+    # dropdown item, same as every other `UnifiedDropdown` consumer) —
+    # callers must filter by text/name.
+    TOOLKIT_MENU_ITEM_SELECTOR = '[data-testid="toolkit-menu-item"]'
+    # SkillMenu dropdown row's custom-icon <img> (ELITEA-2605 — new testid,
+    # EliteaAI/EliteaUI@ccc8c001). Same-element-conditional-pair shape: only
+    # the custom-icon (`EliteAImage`) branch carries this testid, the
+    # default `SkillIcon` glyph branch is untagged (`.agents/testing.md` §
+    # Locator policy, "only the used branch is named"). Scope with
+    # ``.locator()`` off an already name-filtered row from
+    # :meth:`get_skill_menu_item` — never page-wide (the testid repeats
+    # once per row).
+    SKILL_MENU_ITEM_ICON_IMG_SELECTOR = '[data-testid="skill-menu-item-icon-img"]'
 
     # --- Sensitive action authorization ---
     sensitive_action_panel = LocatorDescriptor(testid="sensitive-action-panel")
@@ -316,6 +419,40 @@ class AgentDetailPage(AgentFormPage):
     # at once for the same version.
     publish_version_menuitem = LocatorDescriptor(testid="publish-version-menuitem")
     unpublish_version_menuitem = LocatorDescriptor(testid="unpublish-version-menuitem")
+    # VERSION-group "Share" menuitem (ELITEA-1898 — pre-existing testid, no
+    # EliteaUI change needed). Same `DotMenu.jsx` `testId: item.key` ->
+    # `data-testid={testId}-menuitem` mechanism as the menuitems above
+    # (`key: 'share-version'` in `ApplicationControls.jsx`'s
+    # `useCopyLinkMenu()`). Copies a VERSION-specific link (the URL contains
+    # a trailing version-id path segment).
+    share_version_menuitem = LocatorDescriptor(testid="share-version-menuitem")
+    # AGENT-group "Share" menuitem — SAME mechanism, `key: 'share-agent'`.
+    # Copies a generic, version-less agent link (no trailing version-id
+    # segment). Kept here as the negative-control target for ELITEA-1898's
+    # URL-shape contrast — both items are literally labelled "Share" and are
+    # visually identical, so accidentally clicking this one instead of
+    # `share_version_menuitem` is a very plausible mistake (AFS Axis 2).
+    share_agent_menuitem = LocatorDescriptor(testid="share-agent-menuitem")
+
+    # --- App-wide toast (Toast.jsx, src/components/Toast.jsx) — shared
+    # component, testids pre-exist and need no EliteaUI change (same
+    # component already used by ChatPage.toast_alert/toast_message and
+    # PipelineDetailPage.toast_alert/toast_message; ELITEA-1898 is the first
+    # case to need it on the Agent detail page, per existing repo precedent
+    # of each page object declaring its own field for this shared
+    # component). ---
+    toast_alert = LocatorDescriptor(
+        testid="toast-alert",
+        description="App-wide toast Alert root; carries data-severity (info/warning/error/success).",
+    )
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="App-wide toast message text body.",
+    )
+    # Severity-scoped toast alert selector — testid identity + data-severity
+    # state filter, the compliant shape for a state-dependent assertion
+    # (mirrors ChatPage.TOAST_ALERT_SEVERITY / PipelineDetailPage.TOAST_ALERT_SEVERITY).
+    TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
 
     # --- Fork wizard (ELITEA-1893) — shares the ImportWizardModal dialog
     # family with the Agents-list Import flow (AgentsListPage's
@@ -426,6 +563,33 @@ class AgentDetailPage(AgentFormPage):
                      "(disabled while the AI publish_validate gate reports "
                      "any Critical issue; canPublish = status !== 'FAIL')",
     )
+    publish_error_alert = LocatorDescriptor(
+        testid="publish-wizard-error-alert",
+        description="Publish wizard — inline error Alert (Validation step), "
+                     "renders a rejected publish's error message (agent "
+                     "entity: validation_failed — 'modified since "
+                     "validation'). Pre-existing testid, added by "
+                     "ELITEA-2597's implementer on the shared "
+                     "PublishWizardModal.jsx component "
+                     "(EliteaAI/EliteaUI@2dafb537, automation/testids); "
+                     "confirmed live (ELITEA-2601) to render unmodified for "
+                     "the Agent flow — no new testid needed, exposed here "
+                     "only because AgentDetailPage never wired it before.",
+    )
+    publish_terms_content = LocatorDescriptor(
+        testid="agent-publish-terms-content",
+        description=(
+            "Publish wizard, Preparation step — the scrollable Publishing "
+            "Terms disclosure text box (PublishingTerms.jsx/TermsContent.jsx, "
+            "ELITEA-2600). Contains the platform's documented guarantee that "
+            "attached Skills/sub-agents are embedded, not stripped, and are "
+            "never independently catalog-listed. Added via add-data-testid "
+            "on the shared component's only call site (PreparationStep.jsx), "
+            "following that call site's existing agent-publish-* naming even "
+            "though the component is entityLabel-shared with the skill-"
+            "publish wizard (same pre-existing precedent as its siblings)."
+        ),
+    )
     # Dynamic (runtime-parameterized) testid for the Publish wizard's
     # Category dropdown options — same shared `select-option-{value}` family
     # (SingleSelectMenuItem.jsx) as FORK_PROJECT_OPTION above, keyed here by
@@ -518,6 +682,32 @@ class AgentDetailPage(AgentFormPage):
         super(AgentDetailPage, self).navigate(f"/agents/all/{agent_id}?viewMode=owner")
         self.wait_for_page_load()
         logger.info("Navigated to agent %d and page loaded", agent_id)
+
+    @action("Navigate to agent's Configuration tab (second-tab-safe)")
+    def navigate_to_configuration_tab(self, agent_id: int):
+        """Navigate directly to the agent's Configuration/Skills panel.
+
+        ELITEA-2601 gotcha, confirmed live: opening a SECOND browser tab on
+        a bare ``/agents/all/{id}`` URL (even with ``?viewMode=owner``)
+        lands on the Chat tab, not the Configuration/Skills panel — the
+        ``destTab=configuration`` query param is REQUIRED to land there
+        directly. Added as a sibling of :meth:`navigate` (not a change to
+        it) because that method's existing behaviour has real callers
+        across the suite that already reach Configuration reliably in a
+        SINGLE-tab flow (the default-active-tab difference only manifests
+        for a genuinely fresh second tab/page).
+
+        Args:
+            agent_id: The numeric agent ID.
+        """
+        super(AgentDetailPage, self).navigate(
+            f"/agents/all/{agent_id}?destTab=configuration&viewMode=owner"
+        )
+        self.wait_for_page_load()
+        logger.info(
+            "Navigated to agent %d Configuration tab (second-tab-safe) and page loaded",
+            agent_id,
+        )
 
     # ------------------------------------------------------------------
     # Wait helpers
@@ -1395,6 +1585,44 @@ class AgentDetailPage(AgentFormPage):
         self.wait_for_network(timeout=timeout)
         logger.info("Agent '%s' attached as a sub-agent tool", agent_name)
 
+    @action("Attach agent (testid-scoped selection)")
+    def attach_agent_by_testid(self, agent_name: str, timeout: int = 10000):
+        """Attach another Agent as a sub-agent tool, selecting it via the
+        ``toolkit-menu-item`` testid instead of :meth:`attach_agent`'s raw
+        ``li[role="menuitem"]:has-text(...)`` CSS selection (ELITEA-1951).
+
+        Additive sibling to :meth:`attach_agent` — added because
+        :meth:`attach_agent` (via ``Popper.select_menuitem``) was found, during
+        this case's implementation, to intermittently fail on a real Playwright
+        mouse-simulated ``.click()``: the item visibly highlights (hover state)
+        and its overflow tooltip (``TypographyWithConditionalTooltip``, shown
+        for a truncated agent name) renders, but the click never reaches the
+        underlying ``<li>`` — no attach request fires (or the backend rejects
+        a stale reference) and the popper never closes. A raw JS
+        ``element.click()`` and a testid-scoped Playwright ``.click()`` both
+        landed reliably in the SAME scenario, so the likely cause is a MUI
+        Tooltip-portal overlay intercepting the mouse-simulated click's
+        computed coordinates specifically when the tooltip is showing — not
+        reproducible via a role-based or testid-scoped locator in the same
+        live testing. ``Popper.select_menuitem`` itself is NOT modified — it
+        has other merged callers relying on its current behavior unchanged
+        (`.claude/rules/page-objects.md` § shared-caller files); this method
+        mirrors :meth:`Popper.select_menuitem_by_testid`'s existing (ELITEA-1735)
+        testid-scoped pattern instead, applied here to the Agent picker (whose
+        items already carry ``toolkit-menu-item`` via the shared
+        ``UnifiedDropdown`` component, confirmed live — no new testid needed).
+
+        Args:
+            agent_name: Exact name of the Agent to attach as a sub-agent tool.
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Attaching agent '%s' as a sub-agent tool (testid-scoped)", agent_name)
+        popper = self.open_agent_picker(timeout=timeout)
+        Popper.select_menuitem_by_testid(popper, agent_name, self.page, timeout=timeout)
+        self.page.wait_for_timeout(1000)
+        self.wait_for_network(timeout=timeout)
+        logger.info("Agent '%s' attached as a sub-agent tool (testid-scoped)", agent_name)
+
     def is_toolkit_attached(self, toolkit_name: str, timeout: int = 5000) -> bool:
         """Check whether a toolkit is attached to the agent.
 
@@ -1415,6 +1643,45 @@ class AgentDetailPage(AgentFormPage):
             return True
         except Exception:
             return False
+
+    @action("Open tool version selector")
+    def open_tool_version_selector(self, timeout: int = 10000) -> Locator:
+        """Open the version selector menu on the (single) attached
+        Agent/Pipeline-type tool card (ELITEA-1951).
+
+        Assumes exactly one Agent/Pipeline-type tool is attached — this
+        case's flow — so the `_ANY`-suffixed trigger selector's `.first` is
+        unambiguous (`tool.id` isn't known client-side in advance; same
+        idiom as ``SKILL_VERSION_OPTION_ANY_SELECTOR``).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator of the opened version-selector menu (scoped via
+            ``AGENT_TOOL_VERSION_SELECTOR_MENU_ANY``).
+        """
+        trigger = self.page.locator(self.AGENT_TOOL_VERSION_SELECTOR_TRIGGER_ANY).first
+        trigger.wait_for(state="visible", timeout=timeout)
+        trigger.click()
+        menu = self.page.locator(self.AGENT_TOOL_VERSION_SELECTOR_MENU_ANY).first
+        menu.wait_for(state="visible", timeout=timeout)
+        return menu
+
+    def get_tool_version_selector_trigger_text(self, timeout: int = 10000) -> str:
+        """Return the (single) attached tool card's version-selector trigger text.
+
+        E.g. "base" for a sub-agent whose only version is "base".
+        """
+        trigger = self.page.locator(self.AGENT_TOOL_VERSION_SELECTOR_TRIGGER_ANY).first
+        trigger.wait_for(state="visible", timeout=timeout)
+        return (trigger.text_content() or "").strip()
+
+    def get_tool_version_option_texts(self, timeout: int = 10000) -> list[str]:
+        """Return the text of every option row in the (already-open) version menu."""
+        options = self.page.locator(self.AGENT_TOOL_VERSION_OPTION_ANY)
+        options.first.wait_for(state="visible", timeout=timeout)
+        return [(options.nth(i).text_content() or "").strip() for i in range(options.count())]
 
     @action("Remove toolkit")
     def remove_toolkit(self, toolkit_name: str, timeout: int = 10000):
@@ -1888,6 +2155,49 @@ class AgentDetailPage(AgentFormPage):
             )
         logger.info("Skill '%s' attached to agent (counter: %r -> %r)", skill_name, counter_before, counter_after)
 
+    @action("Open the '+ Skill' attach dropdown (read-only)")
+    def open_skill_menu(self, timeout: int = 10000) -> Locator:
+        """Open the Skills-section "+ Skill" attach dropdown (SkillMenu.jsx)
+        and return the MuiPopper Locator, WITHOUT selecting any item.
+
+        Read-only companion to :meth:`attach_skill` (which opens + selects +
+        attaches in one call, ELITEA-1735) — added for ELITEA-2605, which
+        needs to inspect a candidate row (its custom-icon `<img>`) BEFORE
+        deciding whether to select it. Does not change attachment state;
+        callers that only inspect should close the popper afterward (e.g.
+        ``page.keyboard.press("Escape")``) rather than clicking a row, or
+        call :meth:`attach_skill` separately (which re-opens its own popper
+        fresh) to actually attach.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator for the open MuiPopper-root.
+        """
+        logger.info("Opening '+ Skill' dropdown (read-only)")
+        self.ensure_skills_section_visible(timeout=timeout)
+        self.agent_add_skill_button.wait_for(state="visible", timeout=timeout)
+        self.agent_add_skill_button.click(force=True)
+        return Popper.wait_for(self.page, timeout=timeout)
+
+    def get_skill_menu_item(self, popper: Locator, skill_name: str, timeout: int = 5000) -> Locator:
+        """Return the SkillMenu dropdown row Locator for an exact skill name.
+
+        LOCATOR: :attr:`TOOLKIT_MENU_ITEM_SELECTOR`, filtered by name text
+        (same shared-row testid :meth:`attach_skill` selects via
+        ``Popper.select_menuitem_by_testid`` — not unique per row, so this
+        must stay scoped to *popper* and filtered by *skill_name*).
+
+        Args:
+            popper: The open MuiPopper Locator (from :meth:`open_skill_menu`).
+            skill_name: Exact name of the skill row to locate.
+            timeout: Maximum wait time in milliseconds.
+        """
+        row = popper.locator(self.TOOLKIT_MENU_ITEM_SELECTOR).filter(has_text=skill_name).first
+        row.wait_for(state="visible", timeout=timeout)
+        return row
+
     @action("Open Create New Skill from Agent")
     def open_create_new_skill(self, timeout: int = 10000):
         """Open the "+ Skill" dropdown and click "Create new".
@@ -1994,6 +2304,60 @@ class AgentDetailPage(AgentFormPage):
         except Exception:
             return None
 
+    def _get_tool_add_button_tooltip(self, wrapper: Locator, timeout: int) -> str | None:
+        """Shared implementation for the 4 Tools "+ X" button tooltip getters.
+
+        Args:
+            wrapper: The button's Tooltip-wrapper `LocatorDescriptor` field
+                (e.g. :attr:`add_toolkit_button_tooltip`).
+            timeout: Maximum wait time in milliseconds.
+        """
+        try:
+            wrapper.wait_for(state="visible", timeout=timeout)
+            return wrapper.get_attribute("aria-label")
+        except Exception:
+            return None
+
+    def get_add_toolkit_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ Toolkit" button's tooltip text (`lockedTooltip`
+        when the version is locked, or the "Save first" hint when unsaved).
+
+        See :attr:`add_toolkit_button_tooltip`'s docstring for why the
+        wrapper (not the button) carries the `aria-label`. Returns None if
+        the wrapper never appears within the timeout.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return self._get_tool_add_button_tooltip(self.add_toolkit_button_tooltip, timeout)
+
+    def get_add_mcp_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ MCP" button's tooltip text — see
+        :meth:`get_add_toolkit_button_tooltip`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return self._get_tool_add_button_tooltip(self.add_mcp_button_tooltip, timeout)
+
+    def get_add_agent_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ Agent" button's tooltip text — see
+        :meth:`get_add_toolkit_button_tooltip`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return self._get_tool_add_button_tooltip(self.add_agent_button_tooltip, timeout)
+
+    def get_add_pipeline_button_tooltip(self, timeout: int = 5000) -> str | None:
+        """Return the "+ Pipeline" button's tooltip text — see
+        :meth:`get_add_toolkit_button_tooltip`.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        return self._get_tool_add_button_tooltip(self.add_pipeline_button_tooltip, timeout)
+
     def _skills_section_content(self):
         """Return a locator scoped to the Skills accordion's content container.
 
@@ -2059,6 +2423,29 @@ class AgentDetailPage(AgentFormPage):
         ).filter(has_text=skill_name).first
         card.wait_for(state="visible", timeout=timeout)
         return card
+
+    def get_skill_card_icon_src(self, skill_name: str, timeout: int = 5000) -> str:
+        """Return an attached skill's SkillCard custom-icon `<img>` src, or
+        `""` if the card shows the default (non-custom) glyph instead.
+
+        LOCATOR: :attr:`SKILL_CARD_ICON_IMG_SELECTOR`, scoped to the card
+        resolved by :meth:`_skill_card` (ELITEA-2605). Mirrors
+        ``SkillFormPage.get_form_icon_src()``'s "absence = default icon"
+        convention — the `EliteAImage` `<img>` only renders when
+        `skill.icon_meta.url` is set; the default `SkillIcon` SVG glyph
+        renders instead (no `<img>`, no src) otherwise.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        icon_img = card.locator(self.SKILL_CARD_ICON_IMG_SELECTOR)
+        try:
+            icon_img.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            return ""
+        return icon_img.get_attribute("src") or ""
 
     def _get_skill_id_from_card(self, card: Locator) -> str:
         """Extract the skill_id embedded in a card's `skill-card-{skill_id}` testid.
@@ -2196,6 +2583,140 @@ class AgentDetailPage(AgentFormPage):
     def close_versions_menu(self):
         """Close the open Versions menu by pressing Escape."""
         self.page.keyboard.press("Escape")
+
+    def get_skill_version_selector_trigger(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Return the version-selector trigger Locator for a skill's card.
+
+        LOCATOR: `skill-version-selector-trigger-{skill_id}`
+        (`SKILL_VERSION_TRIGGER_SELECTOR`), scoped off :meth:`_skill_card`
+        — same handle :meth:`open_skill_version_selector` clicks, exposed
+        directly for callers (ELITEA-2614) that need to inspect the
+        trigger itself (e.g. its `aria-label`) rather than open the menu.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        skill_id = self._get_skill_id_from_card(card)
+        return card.locator(self.SKILL_VERSION_TRIGGER_SELECTOR.format(skill_id))
+
+    @action("Select a skill's version from the Versions menu")
+    def select_skill_version(self, skill_name: str, version_name: str, timeout: int = 10000):
+        """Open a skill card's version selector and click a specific version option.
+
+        LOCATOR: reuses :meth:`open_skill_version_selector`'s skill_id
+        resolution + trigger click to open the "Versions" menu, then clicks
+        the target entry via ``SKILL_VERSION_OPTION_SELECTOR`` — the
+        template constant already defined at class level (ELITEA-1789
+        testid-only rework), never previously called from a public method
+        (ELITEA-1789's own case only ever had one saved version, so
+        selecting a non-base option was never exercised — ELITEA-2610 is
+        the first caller). Selecting a version is an immediate API-level
+        auto-save (PATCH .../skill/prompt_lib/{project}/{skill_id} -> 201),
+        mirroring :meth:`attach_skill`'s counter-polling pattern: rather
+        than trust networkidle alone, poll the trigger's own text until it
+        reflects *version_name* before returning, so callers can safely
+        send the next chat message right after this call.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            version_name: Exact version name to select (e.g. "casual", "base").
+            timeout: Maximum wait time in milliseconds.
+        """
+        logger.info("Selecting version %r for skill %r", version_name, skill_name)
+        self.open_skill_version_selector(skill_name, timeout=timeout)
+
+        option = self.page.locator(self.SKILL_VERSION_OPTION_SELECTOR.format(version_name))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+
+        card = self._skill_card(skill_name, timeout=timeout)
+        skill_id = self._get_skill_id_from_card(card)
+        trigger = card.locator(self.SKILL_VERSION_TRIGGER_SELECTOR.format(skill_id))
+
+        deadline = time.time() + timeout / 1000
+        current = ""
+        while time.time() < deadline:
+            current = (trigger.text_content() or "").strip()
+            if current == version_name:
+                break
+            self.page.wait_for_timeout(300)
+
+        if current != version_name:
+            logger.warning(
+                "Version trigger did not update to %r within timeout (still %r)",
+                version_name, current,
+            )
+        logger.info("Skill %r version selector now shows %r", skill_name, current)
+
+    @action("Attempt to open a skill's version selector (locked version — expect no-op)")
+    def attempt_open_skill_version_selector(self, skill_name: str, timeout: int = 5000) -> bool:
+        """Click a skill card's version-selector trigger and report whether
+        the Versions menu actually opened.
+
+        On a locked (published/embedded) agent version,
+        `SkillVersionSelector.jsx`'s trigger has `onClick={isUpdating ||
+        disabled ? undefined : handleOpen}` — clicking a `Box` with no
+        `onClick` handler is a legal Playwright click that simply does
+        nothing (source-confirmed, ELITEA-2614). Distinguishes an
+        intentional "attempt and observe no-op" from
+        :meth:`open_skill_version_selector`, which asserts the menu DOES
+        open and would just time out here without telling the caller
+        whether the click itself was refused or merely slow.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds for the trigger
+                itself; the post-click menu check uses a short fixed
+                window (menus that DO open render near-instantly).
+
+        Returns:
+            True if the Versions menu opened after the click, False if it
+            stayed closed (the expected outcome on a locked version).
+        """
+        trigger = self.get_skill_version_selector_trigger(skill_name, timeout=timeout)
+        trigger.wait_for(state="visible", timeout=timeout)
+        trigger.click()
+        return self.is_versions_menu_open(skill_name, timeout=1500)
+
+    @action("Hover a skill's card to reveal its hover-only action buttons")
+    def hover_skill_card(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Hover a skill's card and return its Locator, revealing the
+        hover-only "remove skill" / "open in new tab" icon buttons
+        (`SkillCard.jsx`'s `actionButton` style flips `display:none` ->
+        `flex` only on the card's `:hover` CSS rule).
+
+        Extracted from :meth:`remove_skill`'s hover-prep steps for callers
+        (ELITEA-2614) that need to ASSERT on the revealed buttons
+        (disabled state, `aria-label`) without actually removing anything.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds for the card itself.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        card.scroll_into_view_if_needed()
+        card.hover()
+        self.page.wait_for_timeout(500)  # hover-reveal CSS transition
+        return card
+
+    def get_skill_card_remove_button(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Return the "remove skill" icon button Locator for a skill's card.
+
+        LOCATOR: `SKILL_CARD_REMOVE_BUTTON_SELECTOR`, scoped off
+        :meth:`_skill_card` (same handle :meth:`remove_skill` clicks).
+        DOM-attribute reads (`get_attribute("aria-label")`,
+        `is_disabled()`) work regardless of the card's hover state; callers
+        that need real VISIBILITY should call :meth:`hover_skill_card`
+        first.
+
+        Args:
+            skill_name: Exact name of the attached skill.
+            timeout: Maximum wait time in milliseconds.
+        """
+        card = self._skill_card(skill_name, timeout=timeout)
+        return card.locator(self.SKILL_CARD_REMOVE_BUTTON_SELECTOR)
 
     def is_remove_skill_button_visible(self, skill_name: str, timeout: int = 5000) -> bool:
         """Point-in-time check: is the "remove skill" icon button currently
@@ -2428,6 +2949,52 @@ class AgentDetailPage(AgentFormPage):
         """
         return self._embedded_chat_messages().count()
 
+    def get_last_message_tool_chip_texts(self, timeout: int = 10000) -> list[str]:
+        """Return the text of every ``chat-answer-tool-chip`` in the LAST
+        embedded-chat message, scoped to that message only (ELITEA-2610).
+
+        Distinct from :meth:`get_nested_agent_tool_chip_texts`, which is
+        scoped INSIDE a nested sub-agent's own accordion details (a parent
+        agent invoking another agent as a tool). This reader is for the
+        TOP-LEVEL case — an agent invoking a skill directly, no nested
+        sub-agent involved — and scopes to the last ``chat-message-item``
+        so that across multiple turns in one conversation, only the most
+        recent turn's chip(s) are read, never an earlier turn's.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for at least one
+                chip to appear in the last message.
+
+        Returns:
+            List of chip text strings (e.g. ``["Skill: my-skill-name"]``).
+        """
+        last_msg = self._embedded_chat_messages().last
+        chips = last_msg.locator(self.CHAT_ANSWER_TOOL_CHIP_SELECTOR)
+        chips.first.wait_for(state="visible", timeout=timeout)
+        return [(chips.nth(i).text_content() or "").strip() for i in range(chips.count())]
+
+    def get_chat_starter_tiles(self):
+        """Return the Locator matching ALL rendered embedded-chat conversation
+        starter tiles (ELITEA-1886) — use ``.count()`` to verify the configured
+        starter chips render before any message is sent.
+        """
+        return self.page.locator(self.CHAT_STARTER_TILE)
+
+    @action("Click a conversation starter tile in the embedded chat")
+    def click_chat_starter_tile(self, match_text: str, timeout: int = 10000) -> str:
+        """Click the embedded-chat starter tile whose text CONTAINS *match_text*
+        (ELITEA-1886) — resolves via ``CHAT_STARTER_TILE`` + ``.filter(has_text=...)``,
+        same idiom as :meth:`ChatPage.click_chat_starter_tile`. Returns the
+        tile's own full (stripped) text at click time, so callers can assert
+        the composer was populated with the SAME text actually clicked rather
+        than a hardcoded literal.
+        """
+        tile = self.page.locator(self.CHAT_STARTER_TILE).filter(has_text=match_text)
+        tile.first.wait_for(state="visible", timeout=timeout)
+        starter_text = (tile.first.text_content() or "").strip()
+        tile.first.click()
+        return starter_text
+
     def get_last_chat_message_agent_markers(self) -> tuple[bool, bool, bool]:
         """Return agent/user code-path markers for the last (or only) message.
 
@@ -2531,6 +3098,50 @@ class AgentDetailPage(AgentFormPage):
         self.chat_send_button.wait_for(state="visible", timeout=timeout)
         self.chat_send_button.click()
         logger.info("Mention message sent (~%s)", skill_name)
+
+    @action("Type ~ in embedded chat")
+    def type_tilde_in_chat(self, timeout: int = 10000) -> Locator:
+        """Type "~" in the embedded chat message input and wait for the
+        "Mention skill" popper to appear, WITHOUT selecting any item.
+
+        Read-only counterpart to :meth:`send_chat_message_with_mention`
+        (ELITEA-2605) — that method types "~", selects a row, appends a
+        prompt, and sends in one call; this method stops right after the
+        popper opens, so a caller can inspect a row (e.g. its custom-icon
+        `<img>`) before deciding whether to select it. Mirrors
+        :meth:`type_tilde_in_instructions`'s read-only shape for the
+        Instructions-field mention entry point.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator scoped to the open ``skill_mention_list`` popper.
+        """
+        logger.info("Typing ~ in embedded chat to open mention popper")
+        self.chat_message_input.wait_for(state="visible", timeout=timeout)
+        self.chat_message_input.click()
+        self.chat_message_input.press_sequentially("~", delay=50)
+        self.skill_mention_list.wait_for(state="visible", timeout=timeout)
+        return self.skill_mention_list
+
+    def get_chat_mention_item(self, skill_name: str, timeout: int = 5000) -> Locator:
+        """Return the embedded-chat "~"-mention popper row Locator for an
+        exact skill name.
+
+        LOCATOR: :attr:`SKILL_MENTION_ITEM_SELECTOR`, scoped to the open
+        ``skill_mention_list`` popper (call after :meth:`type_tilde_in_chat`).
+
+        Args:
+            skill_name: Exact name of the attached skill to look for.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.skill_mention_list.wait_for(state="visible", timeout=timeout)
+        row = self.skill_mention_list.locator(
+            self.SKILL_MENTION_ITEM_SELECTOR.format(skill_name)
+        ).first
+        row.wait_for(state="visible", timeout=timeout)
+        return row
 
     # ------------------------------------------------------------------
     # LLM model selector (embedded chat panel, ELITEA-1881)
@@ -2770,14 +3381,33 @@ class AgentDetailPage(AgentFormPage):
 
         while time.time() < deadline:
             try:
-                # Try to get content from skill-test-last-response (preferred)
+                # Read ONLY from skill-test-last-response — never fall back to
+                # the raw <li> text. ApplicationAnswer.jsx renders the header
+                # (participant name, "to"/"Message" reply-to text, relative
+                # timestamp) and the "Thought for Ns" accordion OUTSIDE the
+                # `Answer` element that carries this testid, and both of
+                # those can go static (and pass a naive stability check)
+                # before the real answer body starts streaming — the
+                # "...toMessage less than a minute ago Thought for less than
+                # a second..." false-stable signature. Treating "testid not
+                # yet rendered" as content is exactly what let that header
+                # text masquerade as a stabilized response.
                 if self.skill_test_last_response.count() > 0:
                     current = self.skill_test_last_response.last.text_content() or ""
                 else:
-                    # Fallback to full message text
-                    current = messages.last.text_content() or ""
+                    current = ""
             except Exception:
                 current = ""
+
+            if not current.strip():
+                # Not ready yet (testid absent, or Answer rendered with no
+                # content inside it). Reset the stability window instead of
+                # letting an empty/absent read masquerade as "unchanged".
+                logger.debug("skill-test-last-response not present or empty, waiting...")
+                last_content = ""
+                stable_start = time.time()
+                self.page.wait_for_timeout(300)
+                continue
 
             # Skip if still showing loading message
             is_loading = any(phrase in current for phrase in loading_phrases)
@@ -2786,14 +3416,7 @@ class AgentDetailPage(AgentFormPage):
                 self.page.wait_for_timeout(300)
                 continue
 
-            # Skip if content looks like metadata (no actual answer yet)
-            # Real answers are longer and don't contain "toMessage" pattern
-            if current and len(current) < 100 and "toMessage" in current:
-                logger.debug("Content appears to be metadata, waiting: %r", current[:80])
-                self.page.wait_for_timeout(300)
-                continue
-
-            if current and current == last_content:
+            if current == last_content:
                 if (time.time() - stable_start) * 1000 >= stable_duration_ms:
                     logger.info("Embedded chat response stabilized (%d chars)", len(current))
                     return
@@ -2929,6 +3552,129 @@ class AgentDetailPage(AgentFormPage):
             return ""
         return (messages.last.text_content() or "").strip()
 
+    def get_outer_thought_accordion(self, timeout: int = 10000) -> Locator:
+        """Return the last embedded-chat message's outer "Thought for Ns"
+        accordion (``chat-answer-thought-accordion``, existing testid,
+        ELITEA-2211..2215 batch).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        accordion = self._embedded_chat_messages().last.locator(
+            self.CHAT_ANSWER_THOUGHT_ACCORDION_SELECTOR
+        )
+        accordion.wait_for(state="visible", timeout=timeout)
+        return accordion
+
+    @action("Expand nested sub-agent accordion")
+    def expand_nested_agent_accordion(self, agent_name: str, timeout: int = 10000) -> Locator:
+        """Expand the nested sub-agent accordion for *agent_name* inside the
+        last message's outer thought accordion (ELITEA-1951).
+
+        LOCATOR: ``NESTED_AGENT_ACCORDION_SUMMARY`` — a testid added via
+        ``add-data-testid`` to ``SubAgentAccordion.jsx``, keyed by the exact
+        invoked sub-agent name. Idempotent: does nothing if already expanded
+        (reads ``aria-expanded`` first, MUI forwards it to the summary's
+        root element).
+
+        Args:
+            agent_name: Exact name of the invoked sub-agent.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The summary Locator (post-expansion).
+        """
+        self.get_outer_thought_accordion(timeout=timeout)
+        summary = self.page.locator(self.NESTED_AGENT_ACCORDION_SUMMARY.format(agent_name))
+        summary.wait_for(state="visible", timeout=timeout)
+        if summary.get_attribute("aria-expanded") != "true":
+            summary.click()
+            self.page.wait_for_timeout(300)  # accordion expand transition
+        return summary
+
+    def get_nested_agent_accordion_details(self, agent_name: str, timeout: int = 10000) -> Locator:
+        """Return the (expanded) nested sub-agent accordion's details container.
+
+        Scoped via ``NESTED_AGENT_ACCORDION_DETAILS`` — expands the
+        accordion first if it isn't already (details unmount from the DOM
+        while collapsed, per ``SubAgentAccordion.jsx``'s
+        ``slotProps={{transition: {unmountOnExit: true}}}``).
+
+        Args:
+            agent_name: Exact name of the invoked sub-agent.
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.expand_nested_agent_accordion(agent_name, timeout=timeout)
+        details = self.page.locator(self.NESTED_AGENT_ACCORDION_DETAILS.format(agent_name))
+        details.wait_for(state="visible", timeout=timeout)
+        return details
+
+    def get_nested_agent_tool_chip_locator(
+        self, agent_name: str, toolkit_name: str | None = None, timeout: int = 10000
+    ) -> Locator:
+        """Return the Locator for ``chat-answer-tool-chip`` elements inside the
+        nested sub-agent accordion for *agent_name*.
+
+        **Two DISTINCT chips share this testid inside the same details
+        container** (confirmed live, ELITEA-1951 implementation) — DOM order:
+        (1) the PARENT's own "called this agent as a tool" chip, text is just
+        the bare agent name (never changes — it's not a toolkit/tool call, so
+        there is no "{toolkit}: {tool}" segment to fill in); (2) the
+        sub-agent's OWN nested MCP tool-call chip, text
+        "{toolkit}: {tool} ({agent})". Pass *toolkit_name* to filter to
+        chip (2) specifically — omitting it (or using ``.first``) risks
+        matching chip (1) instead, which is a real implementation mistake
+        this case's own AFS didn't flag (its documented DOM order didn't
+        mention chip (1) as living inside the details container too).
+
+        Returns the LOCATOR, not read text — the chip's final "{toolkit}: {tool}
+        ({agent})" text fills in progressively while the sub-agent's own tool
+        call resolves (a bare ``.text_content()`` right after visibility can
+        catch an in-flight intermediate render). Callers should poll for the
+        expected text via ``expect(locator.first).to_contain_text(...)``
+        before reading it.
+
+        Args:
+            agent_name: Exact name of the invoked sub-agent.
+            toolkit_name: If given, filter to the chip whose text contains
+                this toolkit name (disambiguates from the agent-name-only chip).
+            timeout: Maximum wait time in milliseconds.
+        """
+        details = self.get_nested_agent_accordion_details(agent_name, timeout=timeout)
+        chips = details.locator(self.CHAT_ANSWER_TOOL_CHIP_SELECTOR)
+        if toolkit_name:
+            chips = chips.filter(has_text=toolkit_name)
+        return chips
+
+    def get_nested_agent_tool_chip_texts(
+        self, agent_name: str, toolkit_name: str | None = None, timeout: int = 10000
+    ) -> list[str]:
+        """Return the text of every ``chat-answer-tool-chip`` inside the
+        nested sub-agent accordion for *agent_name* — pass *toolkit_name* to
+        filter to the sub-agent's own MCP tool-call chip specifically (see
+        :meth:`get_nested_agent_tool_chip_locator`'s docstring: TWO chips
+        share this testid, only one of them is a toolkit/tool call).
+
+        Reads a snapshot of CURRENT text — callers that need the tool call's
+        FINAL, settled text should poll via
+        :meth:`get_nested_agent_tool_chip_locator` + ``expect(...).to_contain_text()``
+        first (see that method's docstring for why).
+        """
+        chips = self.get_nested_agent_tool_chip_locator(
+            agent_name, toolkit_name=toolkit_name, timeout=timeout
+        )
+        chips.first.wait_for(state="visible", timeout=timeout)
+        return [(chips.nth(i).text_content() or "").strip() for i in range(chips.count())]
+
+    def get_nested_agent_model_chip_texts(self, agent_name: str, timeout: int = 10000) -> list[str]:
+        """Return the text of every ``chat-answer-model-chip`` inside the
+        nested sub-agent accordion for *agent_name*.
+        """
+        details = self.get_nested_agent_accordion_details(agent_name, timeout=timeout)
+        chips = details.locator(self.CHAT_ANSWER_MODEL_CHIP_SELECTOR)
+        chips.first.wait_for(state="visible", timeout=timeout)
+        return [(chips.nth(i).text_content() or "").strip() for i in range(chips.count())]
+
     # ------------------------------------------------------------------
     # Run History panel (ELITEA-1877)
     # ------------------------------------------------------------------
@@ -2962,6 +3708,19 @@ class AgentDetailPage(AgentFormPage):
             Integer count of ``run-history-list-item`` rows.
         """
         return self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).count()
+
+    def get_run_history_item_texts(self) -> list[str]:
+        """Return the full rendered text of every Run History row (ELITEA-1876).
+
+        Each ``run-history-list-item`` row renders its Date, Version, and
+        Duration columns as plain child ``<Typography>`` text nodes
+        (``RunHistoryTooltipCell.jsx``) — no per-cell testid is needed, the
+        row's own text already exposes all three.
+
+        Returns:
+            List of each row's full text content, in current display order.
+        """
+        return self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).all_text_contents()
 
     @action("Select Run History item")
     def select_run_history_item(self, index: int, timeout: int = 10000):
@@ -2998,7 +3757,7 @@ class AgentDetailPage(AgentFormPage):
         row.wait_for(state="visible", timeout=timeout)
         return row.get_attribute("data-selected") == "true"
 
-    def get_run_history_chat_messages_text(self) -> str:
+    def get_run_history_chat_messages_text(self, timeout: int = 10000) -> str:
         """Return the concatenated text of every message in the Run History
         panel's chat (the selected row's conversation).
 
@@ -3008,11 +3767,24 @@ class AgentDetailPage(AgentFormPage):
         confirmed live: only one instance of ``chat-message-list`` exists on
         the page while History is open (the main embedded chat is unmounted).
 
+        Waits (bounded by *timeout*) for at least one message item to render
+        before reading — ``select_run_history_item()`` only awaits the
+        conversation-detail GET response, which can resolve slightly ahead of
+        React committing the message list, producing a transient "" read.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the first message
+                item to appear before giving up and reading whatever is present.
+
         Returns:
             Joined text of all ``chat-message-item`` elements, or "" if none
-            are present yet.
+            render within *timeout*.
         """
         messages = self._embedded_chat_messages()
+        try:
+            messages.first.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            logger.warning("No Run History chat message rendered within %dms", timeout)
         count = messages.count()
         if count == 0:
             return ""
@@ -3363,6 +4135,118 @@ class AgentDetailPage(AgentFormPage):
         logger.info("Publish confirmed — status=%d", status)
         return status
 
+    @action("Continue from Publish wizard Preparation step, capturing the raw response")
+    def click_publish_continue_and_capture_response(self, timeout: int = 15000):
+        """Click "Continue" and wait for the ``publish_validate`` response,
+        returning the raw Playwright ``Response`` (not just the status).
+
+        Additive sibling of :meth:`click_publish_continue` — that method's
+        ``int``-only return is an established contract with real callers
+        (``test_agent_publish_unpublish_version.py``,
+        ``test_agent_version_selector_order.py``); this method exists
+        because callers that need the response BODY (``critical_issues[]``/
+        ``warnings[]``/``recommendations[]`` — each entry carrying
+        ``field``/``context``/``issue``/``fix``, per
+        ``ValidationResult.jsx``'s ``buildPlainText()``) cannot get it from
+        an ``int``. Mirrors ``SkillDetailPage.click_publish_continue()``'s
+        own ``Response``-returning shape (ELITEA-2597), added here for the
+        AGENT entity (ELITEA-2601 — per-skill validation-issue attribution
+        assertions need the ``context: "skill: <name>"`` field, which only
+        the response body carries).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The matched Playwright ``Response`` for the
+            ``publish_validate`` call.
+        """
+        logger.info("Clicking Publish wizard Continue (capturing response)")
+        with self.page.expect_response(
+            lambda r: "publish_validate" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as validate_info:
+            self.publish_continue_button.click()
+        response = validate_info.value
+        self.publish_confirm_button.wait_for(state="visible", timeout=timeout)
+        logger.info("publish_validate responded status=%d", response.status)
+        return response
+
+    def is_publish_confirm_enabled(self) -> bool:
+        """Return whether the Validation step's "Publish" button is enabled.
+
+        Mirrors ``SkillDetailPage.is_publish_confirm_enabled()`` — added
+        here for the AGENT entity (ELITEA-2601), which previously only had
+        ``is_publish_continue_enabled()`` for the Preparation step.
+        """
+        return self.publish_confirm_button.is_enabled()
+
+    @action("Confirm Publish, capturing the raw response")
+    def confirm_publish_and_capture_response(self, timeout: int = 15000):
+        """Click the Validation step's "Publish" button and wait for the
+        ``publish`` request to resolve, returning the raw Playwright
+        ``Response`` (not just the status).
+
+        Additive sibling of :meth:`confirm_publish` — same reconciliation
+        rationale as :meth:`click_publish_continue_and_capture_response`
+        above: ``confirm_publish()`` is an established ``int``-returning
+        contract with real callers, so a ``Response``-returning override
+        would silently shadow it. Callers that need the response BODY's
+        ``error``/``msg`` fields (e.g. distinguishing the AGENT entity's
+        ``validation_failed`` "modified since validation" rejection,
+        ELITEA-2601) use this method instead. Mirrors
+        ``SkillDetailPage.confirm_publish_and_capture_response()``.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            The matched Playwright ``Response`` for the ``publish`` call.
+        """
+        logger.info("Confirming Publish (capturing response)")
+        with self.page.expect_response(
+            lambda r: "/publish/prompt_lib/" in r.url and r.request.method == "POST",
+            timeout=timeout,
+        ) as publish_info:
+            self.publish_confirm_button.click()
+        response = publish_info.value
+        logger.info("Publish confirmed — status=%d", response.status)
+        return response
+
+    def get_publish_error_message(self, timeout: int = 5000) -> str:
+        """Return the Publish wizard's inline error Alert text.
+
+        LOCATOR: ``publish-wizard-error-alert`` (pre-existing, shared with
+        the Skill flow — see the ``publish_error_alert`` field docstring).
+        Renders the SAME ``msg`` text the ``publish`` response body
+        carries, inline in the Validation step, once a rejected publish
+        attempt (e.g. a stale ``validation_failed`` token) lands.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.publish_error_alert.wait_for(state="visible", timeout=timeout)
+        return (self.publish_error_alert.text_content() or "").strip()
+
+    @action("Close Publish wizard via Escape")
+    def close_publish_wizard(self, timeout: int = 5000):
+        """Close the Publish wizard dialog by pressing Escape.
+
+        Mirrors ``SkillDetailPage.close_publish_wizard()`` — added here for
+        the AGENT entity (ELITEA-2601). Escape calls the SAME ``onClose``
+        handler as the (untestid'd) "Cancel" button, and both re-opening
+        and closing reset the shared wizard's state, so re-opening after
+        this always starts a fresh Preparation step (confirmed live,
+        ELITEA-2601, matching the Skill flow's already-documented shape).
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dialog to hide.
+        """
+        logger.info("Closing Publish wizard via Escape")
+        self.page.keyboard.press("Escape")
+        self.publish_confirm_button.wait_for(state="hidden", timeout=timeout)
+        logger.info("Publish wizard closed")
+
     @action("Select a version by name from the VERSION dropdown")
     def select_version_by_name(
         self, version_name: str, timeout: int = 10000, attempts: int = 2
@@ -3491,6 +4375,59 @@ class AgentDetailPage(AgentFormPage):
             f"status staleness — caller must independently confirm via the "
             f"API before treating this as the known defect) — last error: "
             f"{last_exc}"
+        )
+
+    def wait_for_version_trigger_and_id(
+        self, version_name: str, version_id: str, timeout: int = 10000
+    ) -> None:
+        """Wait until the VERSION selector trigger AND the Information
+        panel's version-id both agree with the given ``(version_name,
+        version_id)`` pair.
+
+        Same client-state race documented on :meth:`confirm_new_version`
+        ("the URL's version-id segment updates before the VERSION
+        selector's displayed text re-renders — a race, not a fixed delay")
+        and :meth:`select_version_by_name` (the three-way
+        trigger/version-id/URL convergence check) — this is the two-way
+        (trigger, version-id) form for a caller that already trusts the URL
+        (e.g. a fresh tab opened by navigating directly to a
+        version-specific copied link, ELITEA-1898) and only needs the
+        CLIENT-SIDE render state to catch up post-navigation.
+
+        LOCATOR: polls ``agent-version-selector-trigger`` and
+        ``copy-version-id`` via ``document.querySelector`` inside the
+        predicate — ``wait_for_function`` executes in-page JS, which cannot
+        reference a Playwright ``Locator`` directly, so the two testids
+        (also the ``version_selector_trigger`` / ``copy_version_id_button``
+        ``LocatorDescriptor`` fields above) are inlined as literal
+        ``[data-testid="…"]`` strings here rather than duplicated as a
+        second selector elsewhere.
+
+        Args:
+            version_name: Expected VERSION-selector trigger text, e.g.
+                ``"v1-test"``.
+            version_id: Expected version id, as rendered by
+                ``copy-version-id`` (i.e. :meth:`get_version_id`'s value).
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.page.wait_for_function(
+            """([name, expectedId]) => {
+                const trigger = document.querySelector(
+                    '[data-testid="agent-version-selector-trigger"]'
+                );
+                const versionIdEl = document.querySelector(
+                    '[data-testid="copy-version-id"]'
+                );
+                if (!trigger || trigger.innerText.trim() !== name) return false;
+                if (!versionIdEl) return false;
+                return versionIdEl.innerText.trim() === expectedId;
+            }""",
+            arg=[version_name, version_id],
+            timeout=timeout,
+        )
+        logger.info(
+            "VERSION trigger/version-id converged on name=%r id=%r",
+            version_name, version_id,
         )
 
     def wait_for_publish_status_menuitem(

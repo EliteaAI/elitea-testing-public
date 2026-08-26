@@ -1,8 +1,8 @@
 ---
 name: efficiency-audit
-description: Measure the token/cost/time efficiency of AI coding-agent work — per session, per role, per day, and per individual sub-agent — with every dollar metered by ccusage. Use when the user asks "what did this cost", cost per session/role/test case, which role/sub-agent burned the most, tool-call/skill/time breakdowns, "before vs after" cost comparisons, or wants to audit AI spend over time.
+description: Use when the user asks 'what did this cost', cost per session/role/test case, which role or sub-agent burned the most, tool-call/skill/time breakdowns, 'before vs after' cost comparisons, or wants to audit AI spend over time. Measures the token/cost/time efficiency of AI coding-agent work — per session, per role, per day, and per individual sub-agent — with every dollar metered by ccusage.
 license: Apache-2.0
-compatibility: Requires Node 18+. **Claude Code:** reads transcripts under $CLAUDE_CONFIG_DIR/projects (else ~/.claude/projects, ~/.config/claude/projects) and prices every dollar with `ccusage` (auto-run via `npx ccusage@latest`). **GitHub Copilot:** pass `--host copilot` — reads ~/.copilot/session-state/*/events.jsonl (also $COPILOT_HOME and a repo-local ./.copilot; all existing roots are searched), needs no ccusage, and takes cost from Copilot's own billed figure (`session.shutdown.totalNanoAiu`, AI credits at $0.01 each). Parent-session roles come from the `subagent.selected` event (CLI ≥1.0.63; older streams report role-less sessions) and loaded skills from `skill.invoked`. Sessions predating GitHub's 2026-06-01 usage-based billing carry no credit figure and report tokens with cost n/a. This store is CLI-only — VS Code Copilot SIDEBAR sessions live in VS Code's own workspaceStorage and are covered by the `tokenomics` skill's ledger, not by this audit. `build-report-html.mjs` renders either host's `--json` snapshot as one self-contained HTML page. `--resolved-from` works on both hosts and needs no workflow: it reads the pipeline's `.agents/automation/<slug>/report.json`, whether that was written by the batch workflow or by the lead at close (including after rebuilding an interrupted run).
+compatibility: "Requires Node 18+. Claude Code: reads local transcripts, prices via `npx ccusage@latest`. GitHub Copilot CLI: pass `--host copilot` — reads ~/.copilot/session-state, cost from Copilot's own billed credits, no ccusage. VS Code Copilot sidebar sessions are covered by the `tokenomics` skill's ledger, not this audit. Host detail: § Hosts & data sources."
 metadata:
   authors:
     - Alexander Bychinskiy
@@ -10,6 +10,28 @@ metadata:
 ---
 
 # Efficiency Audit
+
+## Hosts & data sources
+
+- **Claude Code** — reads transcripts under `$CLAUDE_CONFIG_DIR/projects`
+  (else `~/.claude/projects`, `~/.config/claude/projects`) and prices every
+  dollar with `ccusage` (auto-run via `npx ccusage@latest`).
+- **GitHub Copilot CLI** — `--host copilot` reads
+  `~/.copilot/session-state/*/events.jsonl` (also `$COPILOT_HOME` and a
+  repo-local `./.copilot`; all existing roots are searched), needs no ccusage,
+  and takes cost from Copilot's own billed figure
+  (`session.shutdown.totalNanoAiu`, AI credits at $0.01 each). Parent-session
+  roles come from the `subagent.selected` event (CLI ≥1.0.63; older streams
+  report role-less sessions), loaded skills from `skill.invoked`. Sessions
+  predating GitHub's 2026-06-01 usage-based billing carry no credit figure and
+  report tokens with cost n/a. This store is CLI-only — VS Code Copilot
+  **sidebar** sessions live in VS Code's own workspaceStorage and are covered
+  by the `tokenomics` skill's ledger, not by this audit.
+- `build-report-html.mjs` renders either host's `--json` snapshot as one
+  self-contained HTML page. `--resolved-from` works on both hosts and needs no
+  workflow: it reads the pipeline's `.agents/automation/<slug>/report.json`,
+  whether written by the batch workflow or by the lead at close (including
+  after rebuilding an interrupted run).
 
 Answer "what did this **cost**, and **who** spent it" for AI coding-agent work —
 down to the individual sub-agent — with **ccusage as the single source of every
@@ -47,7 +69,21 @@ sessions — which is the `tokenomics` skill's ledger.
 ## Step 0 — clarify the scope first
 
 The hard part of an audit is *which sessions to count*, and that's a
-conversation, not an assumption. Before running, pin down with the user:
+conversation, not an assumption. **Offer options, don't interrogate**: when
+the ask is open-ended ("audit this", "what did we spend?"), put ONE question
+to the user with the standard audits as suggested options — on a host with a
+question tool (AskUserQuestion), use it; otherwise list them inline:
+
+1. **Period rollup** *(recommended default)* — this repo, a named window,
+   receipts join (`--since … --resolved-from`) → totals, by-role, $/case.
+2. **This batch's cost** — window aligned to one batch, `--resolved-from
+   .agents/automation/<slug>`.
+3. **Before/after** — a prior snapshot (or earlier window) vs now, both
+   deltas (§ Snapshots).
+4. **One session, deep** — a single session's sub-agent breakdown from the
+   `--json` ledger.
+
+What each needs pinned before running:
 
 - **Which project(s)?** This repo (default, from cwd), a specific transcript
   dir, or all projects (`--all-projects`).
@@ -82,8 +118,13 @@ Concretely, where the shipped path runs out:
 **What must survive whichever route you take** — these are the reason the skill
 is trusted, and they do not bend:
 
-1. **Never compute a price.** Every dollar comes from the host's own meter. If
-   you cannot get one, the answer is "unavailable", never a plausible number.
+1. **Never compute a price yourself.** Every dollar comes from the host's own
+   meter — ccusage pricing each request *record* (exact model + cache split),
+   or Copilot's billed credits at the published conversion. Those are metered
+   and billed figures, and they're fine. What's forbidden is DERIVING dollars
+   from aggregate token counts with an assumed model/cache mix when no record
+   or billed figure exists — that guess looks plausible and silently corrupts
+   every comparison it enters. No record → "unavailable", never a number.
 2. **`n/a` is not `0`.** An unpriced unit, an unreadable git repo, an unknown
    count — report the ignorance. A zero claims something.
 3. **Two denominators, never one.** Any cost-per-case figure says which cases
@@ -170,8 +211,11 @@ ccusage's session figure.
 5. **Report honestly.** Every headline dollar is ccusage-metered. Flag the
    method, any fallback rows, and the caveats below.
 
-6. **For a page someone else will read** — a lead reviewing the release, a
-   manager asking what the pipeline costs — render the snapshot:
+6. **The page is part of the default deliverable, not an extra.** Unless the
+   user asked for one quick figure inline, finish the audit by rendering the
+   HTML report and handing over BOTH artifacts — the markdown rollup (the
+   working answer) and the page (what gets shown to a lead, attached to a
+   ticket, kept). An audit that ends as terminal scrollback wasn't delivered:
 
    ```
    node {skill}/scripts/usage-rollup.mjs --resolved-from .agents/automation --json > rollup.json

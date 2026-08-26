@@ -97,9 +97,10 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
   **back-link comment**, never a second card. (Two real incidents: elitea_support#1231
   via a stale support-agent config; elitea_issues#6039 via `file-app-bug` Step 4 —
   both removed.)
-- **Dedup rule**: before filing, check with the real-time list API — NOT `--search`
-  (the search index lags minutes and causes duplicate filings, cf. #17/#18):
-  `env -u GITHUB_TOKEN gh issue list --state all --limit 200 --json title | grep "ELITEA-<id>"`.
+- **Dedup rule (intake cards)**: never `--search` — the index lags minutes and
+  causes duplicate filings (#17/#18). Exact command:
+  `.agents/test-automation.yaml` § `intake.dedup` (single source).
+  *Bug* dedup is a different, wider check — see § Bug filing below.
 
 ### Test Management System (TMS)
 - **System**: onetest (custom — markdown cases + GitHub-issue executions, MCP server `onetest-tms`)
@@ -112,8 +113,10 @@ Identity rule below excludes from `gh` tracker writes. Neither is a tracker iden
   `onetest-ai-tm-Elitea/tests/automated-full-regression-ui/` (other folders may come later)
 - **Selector**: tag `automated:UI:regression`, status `draft`
 - **Intake rules**: see `.agents/test-automation.yaml` § intake (dedup key
-  `[Automate][ELITEA-<id>]` in title, ≤10 new cards per run, already-automated
-  exclusion, contradictory-metadata → report not guess)
+  `[Automate][ELITEA-<id>]` in title, already-automated exclusion,
+  contradictory-metadata → report not guess). **No per-run card cap** — retired
+  2026-08-10 by operator ruling; file the whole qualifying set in one sweep. Wave
+  sizing is a planning decision made *after* intake, on the campaign card.
 
 ### Knowledge base
 - **System**: readme-only + `docs/` (mkdocs) + `onetest-ai-tm-Elitea/docs/` for TMS docs

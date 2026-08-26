@@ -10,8 +10,13 @@ The Support Assistant is a reusable chatbot plugin that:
 - Can expand to full view mode
 """
 
+import base64
+import json
 import logging
+import mimetypes
+import re
 import time
+from pathlib import Path
 from playwright.sync_api import Page
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -113,6 +118,176 @@ class SupportAssistantPage(BasePage):
         fallback=lambda page: page.locator('.elitea-assistant-messages').first,
         description="Messages container area"
     )
+
+    # ------------------------------------------------------------------
+    # Testid-only locators (policy-compliant — .agents/testing.md § Locator
+    # policy). Added for ELITEA-2418; the ``fallback=`` fields above are
+    # pre-policy tech debt (#25/#42) kept for their existing callers.
+    #
+    # Testid provenance: ``sidebar-support-assistant-button`` lives in
+    # EliteaUI (``src/[fsd]/widgets/sidebar-root/ui/SidebarBody.jsx``); the
+    # ``support-assistant-*`` ones live in the connected first-party repo
+    # ``EliteaAI/elitea_assistant`` (canon #705), aliased into the local dev
+    # server by ``VITE_ASSISTANT_LOCAL=1``.
+    # ------------------------------------------------------------------
+
+    sidebar_launcher = LocatorDescriptor(
+        testid="sidebar-support-assistant-button",
+        description="Sidebar Support Assistant launcher (the element owning onClick)"
+    )
+
+    widget = LocatorDescriptor(
+        testid="support-assistant-widget",
+        description="Support Assistant widget window"
+    )
+
+    widget_header_title = LocatorDescriptor(
+        testid="support-assistant-widget-title",
+        description="Support Assistant widget header title"
+    )
+
+    message_input_field = LocatorDescriptor(
+        testid="support-assistant-message-input",
+        description="Support Assistant message input textarea"
+    )
+
+    send_message_button = LocatorDescriptor(
+        testid="support-assistant-send-button",
+        description="Support Assistant Send message button"
+    )
+
+    message_items = LocatorDescriptor(
+        testid="support-assistant-message-item",
+        description="Support Assistant conversation message items (repeated)"
+    )
+
+    # ELITEA-2419 — copy-to-clipboard affordance on assistant responses.
+    # Testids live in the connected first-party repo EliteaAI/elitea_assistant
+    # (EliteaAI/elitea_assistant@216da01 on its ``automation/testids`` branch).
+    message_copy_buttons = LocatorDescriptor(
+        testid="support-assistant-message-copy-button",
+        description="Copy-to-clipboard button on a completed assistant response bubble"
+    )
+
+    message_bubbles = LocatorDescriptor(
+        testid="support-assistant-message-bubble",
+        description="Message bubble (user or assistant) inside a message item"
+    )
+
+    # Scoped / state-filtered forms of the testids above. UPPER_CASE class
+    # constants are the sanctioned shape for a selector that must be composed
+    # at call time (.agents/testing.md § Locator policy) — the copied state is
+    # a ``data-*`` attribute, never a second testid value.
+    MESSAGE_COPY_BUTTON = '[data-testid="support-assistant-message-copy-button"]'
+    MESSAGE_COPY_BUTTON_COPIED = '[data-testid="support-assistant-message-copy-button"][data-copied="true"]'
+    MESSAGE_COPY_BUTTON_IDLE = '[data-testid="support-assistant-message-copy-button"][data-copied="false"]'
+    ASSISTANT_MESSAGE_ITEM = '[data-testid="support-assistant-message-item"][data-role="assistant"]'
+    USER_MESSAGE_ITEM = '[data-testid="support-assistant-message-item"][data-role="user"]'
+    MESSAGE_BUBBLE = '[data-testid="support-assistant-message-bubble"]'
+
+    # ELITEA-2423 — conversation-history panel. Testids live in the connected
+    # first-party repo EliteaAI/elitea_assistant
+    # (EliteaAI/elitea_assistant@7413180 on its ``automation/testids`` branch),
+    # ``src/components/chat/ChatHeader.tsx``.
+    history_toggle_button = LocatorDescriptor(
+        testid="support-assistant-history-button",
+        description="Support Assistant conversation-history toggle button"
+    )
+
+    history_dropdown = LocatorDescriptor(
+        testid="support-assistant-history-dropdown",
+        description="Support Assistant conversation-history dropdown panel"
+    )
+
+    history_items = LocatorDescriptor(
+        testid="support-assistant-history-item",
+        description="Support Assistant conversation-history entries (repeated)"
+    )
+
+    # ELITEA-2421 — file attachments. Testids live in the connected first-party
+    # repo EliteaAI/elitea_assistant (EliteaAI/elitea_assistant@1960c8e on its
+    # ``automation/testids`` branch), ``src/components/chat/MessageInput.tsx``
+    # and ``src/components/chat/attachments/AttachmentChip.tsx``.
+    attach_file_button = LocatorDescriptor(
+        testid="support-assistant-attach-button",
+        description="Support Assistant Attach file button (opens the file picker)"
+    )
+
+    attachment_chips = LocatorDescriptor(
+        testid="support-assistant-attachment-chip",
+        description="Attachment chips staged in the composer (repeated)"
+    )
+
+    # ELITEA-2420 — drag-and-drop attachment. Testids live in the connected
+    # first-party repo EliteaAI/elitea_assistant
+    # (EliteaAI/elitea_assistant@e134bfc on its ``automation/testids`` branch),
+    # ``src/components/chat/MessageInput.tsx``.
+    #
+    # The drop zone is the ALWAYS-MOUNTED input-area div that owns
+    # ``onDragEnter``/``onDragOver``/``onDragLeave``/``onDrop`` — its testid is
+    # stable identity; the drag-over state stays a CSS modifier class, never a
+    # second testid value (PR #581 ruling).
+    drop_zone = LocatorDescriptor(
+        testid="support-assistant-drop-zone",
+        description="Composer input area that owns the drag-and-drop handlers"
+    )
+
+    # The overlay is rendered only while ``isDragOver`` is true
+    # (``{isDragOver && <div …>Drop files here</div>}``). Its own MOUNT encodes
+    # the state, so presence/absence is the assertion and no extra ``data-*``
+    # attribute is added — same accepted shape as
+    # ``support-assistant-history-dropdown``.
+    drop_overlay = LocatorDescriptor(
+        testid="support-assistant-drop-overlay",
+        description='"Drop files here" affordance shown while a file drag is over the composer'
+    )
+
+    # ELITEA-2424 — the "New chat" header button. Testid added in the
+    # connected first-party repo EliteaAI/elitea_assistant
+    # (EliteaAI/elitea_assistant@583b5dd on its ``automation/testids`` branch),
+    # ``src/components/chat/ChatHeader.tsx``. The legacy :attr:`new_chat_button`
+    # field above resolves the same button by ``aria-label`` (pre-policy tech
+    # debt #25/#42) and is left byte-identical for its existing callers.
+    new_chat_button_testid = LocatorDescriptor(
+        testid="support-assistant-new-chat-button",
+        description="Widget header 'New chat' button (starts a fresh conversation)"
+    )
+
+    # An item is rendered ``disabled`` exactly when it IS the currently-open
+    # conversation (``ChatHeader.tsx``:
+    # ``disabled={conversation.uuid === currentConversationId}``). The native
+    # attribute already encodes that state, so no second testid and no extra
+    # ``data-*`` attribute is needed — filter on it from a class constant
+    # (.agents/testing.md § Locator policy).
+    HISTORY_ITEM_OPENABLE = '[data-testid="support-assistant-history-item"]:not([disabled])'
+
+    # ELITEA-2426 — expand-during-generation handles. All four testids added in
+    # the connected first-party repo EliteaAI/elitea_assistant
+    # (EliteaAI/elitea_assistant@0e3fcc1 on its ``automation/testids`` branch).
+    # The legacy :attr:`expand_button` / :attr:`collapse_button` fields above
+    # resolve the same toggle by ``aria-label`` (pre-policy tech debt #25/#42)
+    # and are left byte-identical for their existing callers.
+    expand_toggle_button = LocatorDescriptor(
+        testid="support-assistant-expand-button",
+        description="Widget header expand/collapse toggle (aria-label is 'Expand chat' in BOTH states)"
+    )
+
+    stop_generation_button = LocatorDescriptor(
+        testid="support-assistant-stop-button",
+        description="'Stop generation' button — rendered only while a reply is in flight"
+    )
+
+    status_message = LocatorDescriptor(
+        testid="support-assistant-status-message",
+        description="In-flight status line above the assistant bubble ('Starting up...', ...)"
+    )
+
+    # Expanded state is a ``data-*`` attribute on the element that already
+    # carries the widget testid — the shape .agents/testing.md § Locator policy
+    # requires (PR #581 ruling), never a state-switched testid value. Composed
+    # at call time from UPPER_CASE class constants, the sanctioned form.
+    WIDGET_EXPANDED = '[data-testid="support-assistant-widget"][data-expanded="true"]'
+    WIDGET_COMPACT = '[data-testid="support-assistant-widget"][data-expanded="false"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -524,3 +699,645 @@ class SupportAssistantPage(BasePage):
             input_locator = self.page.get_by_placeholder("Type a message...")
         input_locator.wait_for(state="visible", timeout=timeout)
         logger.info("Widget ready")
+
+    # ------------------------------------------------------------------
+    # Testid-based helpers (ELITEA-2418) — additive; the legacy helpers above
+    # keep their existing callers byte-identical.
+    # ------------------------------------------------------------------
+
+    @action("Open Support Assistant via sidebar launcher")
+    def open_widget_via_sidebar(self, timeout: int = 10000):
+        """Open the widget with a REAL pointer click on the sidebar launcher.
+
+        Distinct from :meth:`open_widget`, which JS-clicks the floating button.
+        A native click on ``button.elitea-assistant-button`` is intercepted by
+        the MUI Tooltip clone; the sidebar wrapper is the element that actually
+        carries ``onClick={onToggleAssistant}``, so clicking it is the genuine
+        user-equivalent gesture (no ``page.evaluate``).
+
+        Args:
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Opening Support Assistant widget via sidebar launcher")
+        self.sidebar_launcher.click()
+        self.widget_header_title.wait_for(state="visible", timeout=timeout)
+        self.message_input_field.wait_for(state="visible", timeout=timeout)
+        logger.info("Support Assistant widget opened")
+
+    def get_message_item_count(self) -> int:
+        """Count conversation message items via their testid.
+
+        The widget restores the previous session on open, so this is a
+        BASELINE to diff against — never expect an absolute value.
+
+        Returns:
+            Number of message items currently rendered
+        """
+        return self.message_items.count()
+
+    @action("Set Support Assistant input text")
+    def set_message_text(self, text: str):
+        """Replace the input content with ``text`` using real input events.
+
+        ``fill`` dispatches the events React's controlled ``<textarea>``
+        actually listens to; assigning ``value`` directly does not update
+        component state (see #1581 — a false defect produced exactly that way).
+
+        Args:
+            text: Text to place in the input (``""`` clears it)
+        """
+        self.message_input_field.fill(text)
+
+    # ------------------------------------------------------------------
+    # Copy-to-clipboard helpers (ELITEA-2419) — additive.
+    # ------------------------------------------------------------------
+
+    def get_copy_button_count(self) -> int:
+        """Count the copy-to-clipboard buttons currently rendered.
+
+        A copy button exists only on a COMPLETED assistant message
+        (``MessageItem.tsx``: ``!isStreaming && !isAnimating``), which makes
+        this count the most accurate "reply finished" signal on this surface.
+        A fresh chat already has one (the greeting), so this is always a
+        BASELINE to diff against — never an absolute expectation.
+
+        Returns:
+            Number of copy buttons rendered in the conversation
+        """
+        return self.message_copy_buttons.count()
+
+    def last_assistant_item(self):
+        """Locator for the most recent assistant message item.
+
+        Returns:
+            Playwright Locator for the last ``data-role="assistant"`` item
+        """
+        return self.page.locator(self.ASSISTANT_MESSAGE_ITEM).last
+
+    def last_user_item(self):
+        """Locator for the most recent user message item.
+
+        Returns:
+            Playwright Locator for the last ``data-role="user"`` item
+        """
+        return self.page.locator(self.USER_MESSAGE_ITEM).last
+
+    def copy_button_in(self, message_item):
+        """Locator for the copy button inside a given message item.
+
+        Args:
+            message_item: A message-item Locator (see :meth:`last_assistant_item`)
+
+        Returns:
+            Playwright Locator scoped to that item's copy button
+        """
+        return message_item.locator(self.MESSAGE_COPY_BUTTON)
+
+    def bubble_in(self, message_item):
+        """Locator for the message bubble inside a given message item.
+
+        Args:
+            message_item: A message-item Locator
+
+        Returns:
+            Playwright Locator scoped to that item's bubble
+        """
+        return message_item.locator(self.MESSAGE_BUBBLE)
+
+    @action("Send Support Assistant message")
+    def send_message_via_testid(self, text: str, timeout: int = 10000):
+        """Type ``text`` and click Send using the testid-based handles.
+
+        Additive counterpart to the legacy :meth:`send_message`, which builds
+        raw locators inside its body (pre-policy tech debt #25/#42) and is kept
+        byte-identical for its existing callers.
+
+        Args:
+            text: Message text to send
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Sending Support Assistant message: %s", text[:50])
+        self.set_message_text(text)
+        self.send_message_button.click(timeout=timeout)
+
+    # ------------------------------------------------------------------
+    # Navigation-persistence helpers (ELITEA-2422) — additive.
+    # ------------------------------------------------------------------
+
+    def user_message_item_with_text(self, text: str):
+        """Locator for the user message item(s) carrying *text*.
+
+        Composed from the existing :attr:`USER_MESSAGE_ITEM` class constant —
+        no new handle. Used as a same-session proof: after an in-app route
+        change the message a test sent BEFORE navigating must still be
+        rendered, which a reset session would not satisfy.
+
+        The widget restores whatever conversation the test user already has,
+        so a prior run's copy of *text* may already be present. Callers take a
+        baseline count first and assert a delta, never an absolute.
+
+        Args:
+            text: Substring to match against the item's rendered text
+
+        Returns:
+            Playwright Locator for the matching user message items
+        """
+        return self.page.locator(self.USER_MESSAGE_ITEM).filter(has_text=text)
+
+    # ------------------------------------------------------------------
+    # Conversation-history helpers (ELITEA-2423) — additive.
+    #
+    # The legacy :meth:`open_history`, :meth:`get_history_session_count` and
+    # :meth:`select_history_session` build ``button.elitea-assistant-history-item``
+    # locators inside their bodies (pre-policy tech debt #25/#42); they are left
+    # byte-identical for their existing callers.
+    # ------------------------------------------------------------------
+
+    @action("Open Support Assistant conversation history")
+    def open_history_via_testid(self, timeout: int = 10000):
+        """Open the history dropdown using the testid-based handles.
+
+        The caller is expected to have already asserted that
+        :attr:`history_toggle_button` is enabled — the button is ``disabled``
+        while ``history.length === 0`` (``ChatHeader.tsx``), which makes that
+        assertion the honest "the conversation list has loaded" wait on this
+        surface rather than a network or timing heuristic.
+
+        Args:
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Opening Support Assistant conversation history")
+        self.history_toggle_button.click(timeout=timeout)
+        self.history_dropdown.wait_for(state="visible", timeout=timeout)
+
+    def get_history_item_count_via_testid(self) -> int:
+        """Count the conversation entries listed in the history dropdown.
+
+        History is shared test-account data that other runs add to, so this is
+        a BASELINE to compare against itself across a refresh — never an
+        absolute expectation.
+
+        Returns:
+            Number of history entries currently rendered
+        """
+        return self.history_items.count()
+
+    def first_openable_history_item(self):
+        """Locator for the first history entry that can actually be opened.
+
+        Entries are ``disabled`` when they are the currently-open conversation,
+        so "open a previous session" means the first ``:not([disabled])`` entry
+        — clicking index 0 right after a page refresh is a no-op, because the
+        widget auto-restores the list's first conversation.
+
+        Returns:
+            Playwright Locator for the first enabled history entry
+        """
+        return self.page.locator(self.HISTORY_ITEM_OPENABLE).first
+
+    def newest_history_item(self):
+        """Locator for the most recent conversation in the history dropdown.
+
+        The list is newest-first and the client PREPENDS a conversation it
+        creates (``chat.hook.ts``: ``setHistory(prev => [created, ...prev])``),
+        so index 0 is the session the current run just produced — which is why
+        the caller may assert its content rather than search the list for it.
+
+        Composed from the existing :attr:`history_items` descriptor — no new
+        handle. Distinct from :meth:`first_openable_history_item`, which skips
+        the currently-open conversation; index 0 is only ``:not([disabled])``
+        once a New chat has cleared ``currentConversationId``.
+
+        Returns:
+            Playwright Locator for the newest history entry (index 0)
+        """
+        return self.history_items.first
+
+    # ------------------------------------------------------------------
+    # Attachment helpers (ELITEA-2421) — additive. The legacy
+    # :meth:`attach_file` drives the pre-policy ``attach_button`` fallback
+    # field and waits on the network; it is left byte-identical for its
+    # existing callers.
+    # ------------------------------------------------------------------
+
+    @action("Attach file to Support Assistant message")
+    def attach_file_via_testid(self, file_path: str, timeout: int = 10000):
+        """Open the file picker from the testid-based attach button and pick *file_path*.
+
+        No network wait afterwards: the upload fires on **Send**, not on
+        attach (``MessageInput.handleSend`` -> ``startUpload``), so attaching
+        only stages a PENDING chip in local state. Waiting for the network here
+        would either time out or pass vacuously — the caller asserts the chip
+        instead.
+
+        Args:
+            file_path: Path to the file to attach
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Attaching file to Support Assistant message: %s", file_path)
+        with self.page.expect_file_chooser(timeout=timeout) as fc_info:
+            self.attach_file_button.click(timeout=timeout)
+        fc_info.value.set_files(file_path)
+
+    def user_message_items(self):
+        """Locator for every user message item in the conversation.
+
+        Composed from the existing :attr:`USER_MESSAGE_ITEM` class constant —
+        no new handle. The plural counterpart to :meth:`last_user_item`, for
+        callers that assert a count delta rather than inspect the newest item.
+
+        Returns:
+            Playwright Locator for all ``data-role="user"`` message items
+        """
+        return self.page.locator(self.USER_MESSAGE_ITEM)
+
+    def get_user_message_item_count(self) -> int:
+        """Count the user message items currently rendered.
+
+        The widget restores the previous session on open, so this is a
+        BASELINE to diff against — never an absolute expectation.
+
+        Returns:
+            Number of user message items rendered in the conversation
+        """
+        return self.user_message_items().count()
+
+    def get_attachment_chip_count(self) -> int:
+        """Count the attachment chips currently staged in the composer.
+
+        The composer is cleared on a successful send
+        (``chat.hook.ts`` ``clearAttachments()``), so this returning to 0 after
+        Send distinguishes "chip cleared by design" from "chip never existed".
+
+        Returns:
+            Number of attachment chips rendered in the composer
+        """
+        return self.attachment_chips.count()
+
+    # ------------------------------------------------------------------
+    # Drag-and-drop attachment helpers (ELITEA-2420) — additive.
+    #
+    # Playwright cannot drive a native OS-level file drag (Finder/Explorer):
+    # there is no browser API surface for it. The technique below is the one
+    # already merged and reviewed as :meth:`pages.chat_page.ChatPage.
+    # drag_and_drop_file` on the main chat composer — build a synthetic
+    # ``DataTransfer`` holding a REAL ``File`` reconstructed in-page from the
+    # real file's own bytes, and dispatch ``DragEvent``s at the testid'd drop
+    # zone.
+    #
+    # Fidelity: this substitutes only the INPUT GESTURE, which is not the
+    # system under test; from ``handleDragEnter``/``handleDrop`` onward the
+    # product code path is byte-identical to a human drag, and every asserted
+    # value (overlay render, chip, Send state, upload status, predict frame,
+    # reply) is product-produced. TRANSIT ONLY — nothing observable is
+    # fabricated (.agents/testing.md § Fidelity policy).
+    #
+    # The gesture is exposed as three composable phases rather than one call
+    # because the drag-over affordance must be asserted to REVERT mid-gesture
+    # (``handleDragLeave`` decrements ``dragCounterRef``), which a monolithic
+    # enter-over-drop helper cannot express.
+    # ------------------------------------------------------------------
+
+    # Constructing the DataTransfer is done once and shared by every phase.
+    # ``handleDragEnter`` reads only ``dataTransfer.types``, ``handleDragLeave``
+    # reads nothing, and ``handleDrop`` reads ``dataTransfer.files`` — so each
+    # phase builds its own transfer and none depends on another's state.
+    # Events MUST carry ``bubbles``/``cancelable``: React listens at the root
+    # container, and the handlers call ``preventDefault()``.
+    _DISPATCH_DRAG_EVENTS_JS = """(el, args) => {
+        const [b64, name, mime, types] = args;
+        const binary = atob(b64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        const file = new File([bytes], name, { type: mime });
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        for (const type of types) {
+            el.dispatchEvent(new DragEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer,
+            }));
+        }
+    }"""
+
+    def _dispatch_drag_events(self, file_path: str, event_types: list, timeout: int) -> None:
+        """Dispatch *event_types* as ``DragEvent``s carrying *file_path* at the drop zone.
+
+        Args:
+            file_path: Absolute or relative path to a real file on disk
+            event_types: Ordered DOM event names, e.g. ``["dragenter"]``
+            timeout: Maximum wait for the drop zone to be visible (ms)
+        """
+        path = Path(file_path)
+        file_b64 = base64.b64encode(path.read_bytes()).decode("ascii")
+        mime_type = mimetypes.guess_type(path.name)[0] or "text/plain"
+
+        self.drop_zone.wait_for(state="visible", timeout=timeout)
+        self.drop_zone.evaluate(
+            self._DISPATCH_DRAG_EVENTS_JS,
+            [file_b64, path.name, mime_type, event_types],
+        )
+
+    @action("Drag file over Support Assistant composer")
+    def drag_file_over_composer(self, file_path: str, timeout: int = 10000):
+        """Begin a file drag over the composer (``dragenter`` + ``dragover``).
+
+        Leaves the drag in progress: the caller asserts the drop overlay is
+        visible, then either :meth:`drag_leave_composer` or
+        :meth:`drop_file_on_composer`.
+
+        Args:
+            file_path: Path to the real file being dragged
+            timeout: Maximum wait for the drop zone to be visible (ms)
+        """
+        logger.info("Dragging file over Support Assistant composer: %s", file_path)
+        self._dispatch_drag_events(file_path, ["dragenter", "dragover"], timeout)
+
+    @action("Drag leave Support Assistant composer")
+    def drag_leave_composer(self, file_path: str, timeout: int = 10000):
+        """End a drag WITHOUT dropping (``dragleave``).
+
+        ``handleDragLeave`` decrements ``dragCounterRef`` and clears
+        ``isDragOver`` when it reaches 0, so this must be paired 1:1 with the
+        ``dragenter`` deliveries that preceded it.
+
+        Args:
+            file_path: Path to the real file being dragged (the handler ignores
+                the payload, but the event is built the same way)
+            timeout: Maximum wait for the drop zone to be visible (ms)
+        """
+        logger.info("Dragging file away from Support Assistant composer")
+        self._dispatch_drag_events(file_path, ["dragleave"], timeout)
+
+    @action("Drop file on Support Assistant composer")
+    def drop_file_on_composer(self, file_path: str, timeout: int = 10000):
+        """Complete a drag by dropping the file on the composer.
+
+        Delivers the full ``dragenter`` -> ``dragover`` -> ``drop`` sequence so
+        the call is self-contained regardless of whether a drag is already in
+        progress: ``handleDrop`` resets ``dragCounterRef`` to 0 unconditionally,
+        so the counter cannot leak.
+
+        Args:
+            file_path: Path to the real file being dropped
+            timeout: Maximum wait for the drop zone to be visible (ms)
+        """
+        logger.info("Dropping file on Support Assistant composer: %s", file_path)
+        self._dispatch_drag_events(file_path, ["dragenter", "dragover", "drop"], timeout)
+
+    # ------------------------------------------------------------------
+    # Assistant context payload — outbound Socket.IO frame capture
+    # (ELITEA-2424 / ELITEA-2425) — additive.
+    #
+    # EliteaUI builds ``support_assistant_context`` in
+    # ``src/[fsd]/widgets/support-assistant/lib/hooks/useAssistantContext.hooks.js``
+    # and hands it to ``<EliteaAssistant supportAssistantContext={...}>``; the
+    # assistant emits it with every message from ``src/lib/hooks/chat.hook.ts``.
+    #
+    # Fidelity: ``page.on("websocket")`` is PASSIVE OBSERVATION — no
+    # ``route``/``fulfill``, nothing intercepted, delayed, rewritten or
+    # fabricated. It is the same class of evidence as reading a response body
+    # (.agents/testing.md § Fidelity policy).
+    # ------------------------------------------------------------------
+
+    #: Socket.IO event carrying a user message plus the assistant context.
+    SUPPORT_PREDICT_EVENT = "support_predict"
+    #: Socket.IO event carrying the Support Assistant's own DEPLOYMENT project.
+    CHAT_ENTER_ROOM_EVENT = "chat_enter_room"
+
+    #: Socket.IO packet framing: ``42["event", {...}]`` — a numeric prefix
+    #: followed by the JSON ``[event, payload]`` array.
+    _SOCKET_IO_FRAME = re.compile(r"^\d+(\[.*\])$", re.S)
+
+    def capture_sent_socket_frames(self) -> list:
+        """Start collecting every frame the page SENDS on any websocket.
+
+        Must be called BEFORE the first navigation: ``page.on("websocket")``
+        only fires for sockets opened after the listener is attached.
+
+        Returns:
+            The live list the listener appends to (grows as frames are sent)
+        """
+        frames: list = []
+        self.page.on(
+            "websocket",
+            lambda ws: ws.on("framesent", lambda payload: frames.append(payload)),
+        )
+        return frames
+
+    @classmethod
+    def _decode_socket_frame(cls, frame) -> tuple:
+        """Decode one Socket.IO frame into ``(event, payload)``.
+
+        Args:
+            frame: Raw frame text (non-JSON control frames are ignored)
+
+        Returns:
+            ``(event_name, payload)`` or ``(None, None)`` when the frame is not
+            an event packet
+        """
+        if not isinstance(frame, str):
+            return (None, None)
+        match = cls._SOCKET_IO_FRAME.match(frame)
+        if match is None:
+            return (None, None)
+        try:
+            decoded = json.loads(match.group(1))
+        except ValueError:
+            return (None, None)
+        if not isinstance(decoded, list) or len(decoded) < 2:
+            return (None, None)
+        return (decoded[0], decoded[1])
+
+    @classmethod
+    def last_frame_payload(cls, frames: list, event: str):
+        """Payload of the most recent *event* frame in *frames*.
+
+        Args:
+            frames: List returned by :meth:`capture_sent_socket_frames`
+            event: Socket.IO event name to look for
+
+        Returns:
+            The payload dict, or ``None`` when the event was never sent
+        """
+        for frame in reversed(list(frames)):
+            name, payload = cls._decode_socket_frame(frame)
+            if name == event and isinstance(payload, dict):
+                return payload
+        return None
+
+    @classmethod
+    def last_assistant_context(cls, frames: list) -> dict:
+        """``support_assistant_context`` of the most recent sent message.
+
+        Args:
+            frames: List returned by :meth:`capture_sent_socket_frames`
+
+        Returns:
+            The context dict the product sent, or ``{}`` when no
+            ``support_predict`` frame was captured. ``filterDefined`` in the
+            builder hook DROPS undefined keys, so callers read optional entity
+            fields with ``.get(...)`` rather than assuming they exist.
+        """
+        payload = cls.last_frame_payload(frames, cls.SUPPORT_PREDICT_EVENT)
+        if not payload:
+            return {}
+        context = payload.get("support_assistant_context")
+        return context if isinstance(context, dict) else {}
+
+    @classmethod
+    def last_enter_room_project_id(cls, frames: list):
+        """Project id on the most recent ``chat_enter_room`` frame.
+
+        This is the Support Assistant's OWN deployment project (observed 536),
+        which is not one of the acting user's selectable projects — the
+        mechanical form of ELITEA-2424's "NOT the internal Support Assistant
+        deployment project" clause.
+
+        Args:
+            frames: List returned by :meth:`capture_sent_socket_frames`
+
+        Returns:
+            The deployment project id, or ``None`` when the frame is absent
+        """
+        payload = cls.last_frame_payload(frames, cls.CHAT_ENTER_ROOM_EVENT)
+        return payload.get("project_id") if payload else None
+
+    @action("Start new Support Assistant chat")
+    def start_new_chat_via_testid(self, timeout: int = 15000):
+        """Start a fresh conversation using the testid-based header button.
+
+        Additive counterpart to the legacy :meth:`start_new_chat`, which
+        resolves the button by ``aria-label`` and waits on a fixed 1 s timer
+        (pre-policy tech debt #25/#42) — that method is left byte-identical for
+        its existing callers.
+
+        The wait is the product's own signal rather than a timer: a fresh
+        session is not empty — the assistant posts a greeting, and a copy
+        button renders only on a COMPLETED assistant message, so waiting for
+        the first copy button guarantees the greeting has landed before a
+        caller takes its baseline count.
+
+        Args:
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Starting a new Support Assistant chat")
+        self.new_chat_button_testid.click(timeout=timeout)
+        self.message_copy_buttons.first.wait_for(state="visible", timeout=timeout)
+
+    def get_last_assistant_text(self) -> str:
+        """Rendered text of the most recent assistant reply.
+
+        Composed from the existing :meth:`last_assistant_item` /
+        :meth:`bubble_in` helpers — no new handle.
+
+        Returns:
+            The reply bubble's rendered text
+        """
+        return self.bubble_in(self.last_assistant_item()).inner_text()
+
+    # ------------------------------------------------------------------
+    # Expand-during-generation helpers (ELITEA-2426) — additive.
+    # ------------------------------------------------------------------
+
+    def expanded_widget(self):
+        """Locator matching the widget only while it is in full-view mode.
+
+        Reads the product-rendered ``data-expanded`` state attribute rather
+        than the legacy ``--expanded`` modifier class that
+        :meth:`is_fullview_mode` greps (kept byte-identical for its callers).
+
+        Returns:
+            Playwright Locator for the expanded widget
+        """
+        return self.page.locator(self.WIDGET_EXPANDED)
+
+    def compact_widget(self):
+        """Locator matching the widget only while it is in compact mode.
+
+        Returns:
+            Playwright Locator for the non-expanded widget
+        """
+        return self.page.locator(self.WIDGET_COMPACT)
+
+    @action("Toggle Support Assistant full view")
+    def toggle_fullview_via_testid(self, timeout: int = 10000):
+        """Click the header expand/collapse toggle using its testid.
+
+        Additive counterpart to the legacy :meth:`expand_to_fullview` /
+        :meth:`collapse_to_widget`, which bind the ``aria-label`` field and
+        then sleep 500 ms for the animation. No sleep here: the caller asserts
+        the product's own ``data-expanded`` state attribute instead, which
+        Playwright polls (the geometry is animated and would read a
+        mid-transition value — AFS § How this surface works, point 5).
+
+        Args:
+            timeout: Maximum wait time in milliseconds
+        """
+        logger.info("Toggling Support Assistant full view")
+        self.expand_toggle_button.click(timeout=timeout)
+
+    def assistant_message_items(self):
+        """Locator for every assistant message item in the conversation.
+
+        Composed from the existing :attr:`ASSISTANT_MESSAGE_ITEM` class
+        constant — no new handle. The plural counterpart to
+        :meth:`last_assistant_item`, for callers asserting a count delta.
+
+        Returns:
+            Playwright Locator for all ``data-role="assistant"`` items
+        """
+        return self.page.locator(self.ASSISTANT_MESSAGE_ITEM)
+
+    def get_assistant_message_item_count(self) -> int:
+        """Count the assistant message items currently rendered.
+
+        The item mounts as soon as the request is sent (before any content
+        exists), so this is an IDENTITY signal — "is it still the same single
+        message?" — never a reply-ready one. A fresh session already has the
+        greeting, so diff against a baseline.
+
+        Returns:
+            Number of assistant message items rendered
+        """
+        return self.assistant_message_items().count()
+
+    def get_last_assistant_text_or_empty(self) -> str:
+        """Rendered text of the newest assistant bubble, ``""`` when absent.
+
+        While a reply is in flight and a status message is showing, the bubble
+        is not rendered at all (``MessageItem.tsx``: ``showBubble = role ===
+        'user' || content || (!hasStatusMessage && isStreaming)``), so the
+        strict :meth:`get_last_assistant_text` would raise. This tolerant form
+        is what an in-flight snapshot needs: "no bubble yet" and "an empty
+        bubble" are the same observation — zero rendered characters.
+
+        Returns:
+            The newest assistant bubble's text, or ``""`` when none is rendered
+        """
+        bubble = self.bubble_in(self.last_assistant_item())
+        if bubble.count() == 0:
+            return ""
+        return bubble.inner_text()
+
+    @classmethod
+    def count_frames(cls, frames: list, event: str) -> int:
+        """How many *event* frames the page has SENT so far.
+
+        The protocol-level proof that a re-render did not re-issue the
+        request: one send must produce exactly one ``support_predict`` frame
+        for the whole flow.
+
+        Args:
+            frames: List returned by :meth:`capture_sent_socket_frames`
+            event: Socket.IO event name to count
+
+        Returns:
+            Number of matching event frames captured
+        """
+        return sum(
+            1 for frame in list(frames) if cls._decode_socket_frame(frame)[0] == event
+        )

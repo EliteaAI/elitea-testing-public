@@ -301,6 +301,32 @@ class ToolkitTestSettingsPage(BasePage):
         field_input.click()
         field_input.press_sequentially(value, delay=20)
 
+    @action("Replace a tool-parameter field's value")
+    def set_param_field(self, field_key: str, value: str, timeout: int = 10000) -> None:
+        """Replace *field_key*'s parameter input value with *value*.
+
+        Additive sibling of :meth:`fill_param_field` (added ELITEA-1940,
+        which runs the same tool twice with different parameters):
+        ``fill_param_field`` types into whatever is already there, which
+        APPENDS on a second run. This clears first, using the same
+        select-all + Backspace discipline as ``McpFormPage._fill_text_input``
+        (a bare ``fill()`` does not fire React's onChange on MUI inputs —
+        ``.claude/rules/mui-patterns.md``).
+
+        Args:
+            field_key: The field's schema property key (e.g. ``"repoName"``).
+            value: Text the field should end up holding.
+            timeout: Maximum wait time in milliseconds.
+        """
+        field_input = self.get_param_input(field_key)
+        field_input.wait_for(state="visible", timeout=timeout)
+        field_input.click()
+        field_input.select_text()
+        self.page.keyboard.press("Backspace")
+        expect(field_input).to_have_value("", timeout=timeout)
+        field_input.press_sequentially(value, delay=20)
+        expect(field_input).to_have_value(value, timeout=timeout)
+
     # ------------------------------------------------------------------
     # Run tool
     # ------------------------------------------------------------------

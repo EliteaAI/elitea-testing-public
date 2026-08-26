@@ -69,7 +69,7 @@ from playwright.sync_api import expect
 
 logger = logging.getLogger("elitea.tests.chat")
 
-pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.regression]
+pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.regression, pytest.mark.new]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)
@@ -375,3 +375,52 @@ class TestChatFolderCreation:
                         baseline_folder_id,
                         exc,
                     )
+
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/chat/ELITEA-2118_chat-folder-name-edited-inline-during-creation-with-default-name-saved.md",
+        "onetest-ai Test Case link",
+    )
+    @pytest.mark.p2
+    def test_create_folder_default_name_checkmark_active(self, page):
+        """ELITEA-2118 — closes the one gap in ELITEA-2132's own coverage: the
+        confirm (checkmark) icon is explicitly proven ACTIVE for the untouched
+        default "New folder" name at folder-creation time
+        (data-disabled="false"), which test_create_folder_via_chats_header_icon
+        never asserts (it only checks icon VISIBILITY). Every other step of
+        this case (editor opens pre-filled, confirm saves with the default
+        name, editor closes, name renders as plain text) is already proven by
+        that covering test — not re-asserted here. Opens the editor and closes
+        it via CANCEL (never confirms) so this test creates no real folder and
+        needs no cleanup.
+
+        Spec: test-specs/chat-interface/lextend_chat-folder-creation-checkmark-active-state_ELITEA-2118.md
+        """
+        chat = ChatPage(page)
+
+        with allure.step("Step 1 — Navigate to chat, open the create-folder editor"):
+            chat.navigate_to_chat()
+            chat.wait_for_page_load()
+            chat.click_create_folder_button(timeout=UI_ELEMENT_TIMEOUT)
+
+        with allure.step(
+            "Step 2 — Verify the default name remains unchanged in the input"
+        ):
+            assert chat.folder_name_input.input_value() == DEFAULT_FOLDER_NAME, (
+                f"Input should still read {DEFAULT_FOLDER_NAME!r} — untouched"
+            )
+
+        with allure.step(
+            "Step 3 — Verify the checkmark icon is ACTIVE for the untouched "
+            "default name (case step 4 — the gap this test closes)"
+        ):
+            assert chat.is_folder_name_confirm_enabled(), (
+                'chat-folder-name-confirm-button should carry '
+                'data-disabled="false" for the untouched default name '
+                f"{DEFAULT_FOLDER_NAME!r} (3-char minimum satisfied, "
+                "isNewFolder short-circuits the change-requirement)"
+            )
+
+        # Cleanup (not a case step — no allure.step needed): close the
+        # editor via cancel. No real folder was ever created by this test.
+        chat.folder_name_cancel_button.click()
+        chat.folder_name_input.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
