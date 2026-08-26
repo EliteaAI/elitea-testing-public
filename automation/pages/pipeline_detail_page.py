@@ -6201,6 +6201,43 @@ class PipelineDetailPage(PipelineFormPage):
         For nodes with multiple source handles (e.g., HITL with approve/edit/reject),
         specify which handle to use via the *source_handle* parameter.
 
+        **Drag start is hit-tested (ELITEA-2016 fix).** The previous
+        implementation started the drag at a fixed point in the handle's
+        bottom 2px sliver (``sr.y + sr.height - 2``). At the zooms this
+        suite actually runs at (a 403x621 flow pane settles ``fit_view()``
+        around 0.19-0.33, making a source handle only ~4-8 px tall) that
+        sliver is routinely covered by a neighbouring node's card: the
+        ``mouse.down()`` then grabs the NEIGHBOUR and ReactFlow starts a
+        node drag instead of a connection. No edge is created, nothing
+        raises, and the caller's ``wait_for_edge_present()`` times out 10 s
+        later with a bare ``Page.wait_for_function: Timeout`` (measured live
+        2026-08-26: a 0.09 px horizontal overlap was enough; the neighbour
+        was displaced by (-83, -152) px). The failure is layout- and
+        zoom-dependent, so it reproduces on CI while passing locally.
+
+        This version walks an ordered list of candidate points INSIDE the
+        source handle's own rect and starts the drag at the first pixel
+        whose top-most element really is that handle. If no candidate is
+        hittable it raises immediately, naming the occluding element -- an
+        occluded handle is a canvas-layout problem (nodes too close, side
+        panels squeezing the pane), never something a longer timeout or a
+        retry can fix.
+
+        The hit test is POINT-IN-TIME, not held across the gesture: it
+        resolves inside the ``evaluate``, and the drag then moves the pointer
+        and waits before ``mouse.down()``, so the hovered DOM does change in
+        between (``CustomHandle.jsx`` renders label / vertical-line /
+        plus-circle children once the handle expands on hover). That is
+        tolerated rather than guarded: those children render INSIDE the
+        ``<Handle>``, so ``closest('[data-handleid]')`` still resolves to the
+        same handle, and hovering cannot raise a neighbour's card above it.
+
+        Fidelity note: ``page.evaluate`` here is GEOMETRY MEASUREMENT ONLY
+        (handle rects + ``document.elementFromPoint`` hit-testing). It
+        neither creates nor fakes the connection -- the edge is still drawn
+        by a real ``mouse.down()/move()/up()`` drag the user could perform,
+        and the resulting edge is produced entirely by the application.
+
         Args:
             source_node_id: data-id of the source node.
             target_node_id: data-id of the target node.
@@ -6208,11 +6245,17 @@ class PipelineDetailPage(PipelineFormPage):
                 for nodes with multiple output handles. If None, uses the first
                 bottom handle found.
             timeout: Not currently used (reserved for future validation).
+
+        Raises:
+            ValueError: if either node or handle cannot be found.
+            RuntimeError: if every candidate pixel inside the source handle is
+                covered by another element (or the handle is off-viewport).
         """
         handle_desc = f" (handle={source_handle})" if source_handle else ""
         logger.info("Connecting %s%s -> %s", source_node_id, handle_desc, target_node_id)
 
-        # Get handle positions via JS for precise coordinates
+        # Geometry measurement only -- handle rects and hit-testing. The drag
+        # itself is performed below with real mouse events.
         positions = self.page.evaluate(
             """([srcId, tgtId, handleSuffix]) => {
                 const srcNode = document.querySelector(`[data-id="${srcId}"]`);
@@ -6241,9 +6284,58 @@ class PipelineDetailPage(PipelineFormPage):
 
                 const sr = srcHandle.getBoundingClientRect();
                 const tr = tgtHandle.getBoundingClientRect();
+
+                // Candidate drag-start offsets inside the source handle's own
+                // rect. The first one whose top-most element is this handle
+                // wins -- anything else would start the drag on the element
+                // that covers it (typically a neighbouring node card or an
+                // open MUI popup). The set must span BOTH axes: a neighbour
+                // overlapping horizontally hides the centre column while the
+                // left/right insets stay clear, and a neighbour overlapping
+                // vertically hides the middle while the bottom sliver -- which
+                // for most node types hangs BELOW the card, and was this
+                // method's original hard-coded start point -- stays clear.
+                const cx = sr.width / 2, cy = sr.height / 2;
+                const bot = Math.max(sr.height - 2, 1);   // the legacy start point
+                const right = Math.max(sr.width - 1, 1);
+                const offsets = [
+                    [cx, cy], [cx, bot], [cx, sr.height * 0.75], [cx, sr.height * 0.25], [cx, 1],
+                    [sr.width * 0.25, cy], [sr.width * 0.75, cy],
+                    [sr.width * 0.25, bot], [sr.width * 0.75, bot],
+                    [sr.width * 0.25, sr.height * 0.25], [sr.width * 0.75, sr.height * 0.25],
+                    [1, cy], [right, cy],
+                    [1, bot], [right, bot],
+                ];
+                const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+                let start = null;
+                let blocker = null;
+                for (const [ox, oy] of offsets) {
+                    const x = sr.x + clamp(ox, 0.5, Math.max(sr.width - 0.5, 0.5));
+                    const y = sr.y + clamp(oy, 0.5, Math.max(sr.height - 0.5, 0.5));
+                    const top = document.elementFromPoint(x, y);
+                    if (top && top.closest('[data-handleid]') === srcHandle) {
+                        start = {x: x, y: y, ox: +ox.toFixed(2), oy: +oy.toFixed(2)};
+                        break;
+                    }
+                    if (!blocker) {
+                        const ownerEl = top ? top.closest('[data-id]') : null;
+                        blocker = {
+                            x: +x.toFixed(2),
+                            y: +y.toFixed(2),
+                            owner: ownerEl ? ownerEl.getAttribute('data-id') : null,
+                            role: top ? top.getAttribute('role') : null,
+                            cls: top ? String(top.className).slice(0, 80) : '(no element at point)',
+                        };
+                    }
+                }
+
                 return {
-                    sx: sr.x + sr.width / 2,
-                    sy: sr.y + sr.height - 2,
+                    start: start,
+                    blocker: blocker,
+                    handleRect: [
+                        +sr.x.toFixed(2), +sr.y.toFixed(2),
+                        +sr.width.toFixed(2), +sr.height.toFixed(2),
+                    ],
                     tx: tr.x + tr.width / 2,
                     ty: tr.y + 2,
                     srcHandleId: srcHandle.getAttribute('data-handleid'),
@@ -6257,9 +6349,29 @@ class PipelineDetailPage(PipelineFormPage):
                 f"Could not find handles for {source_node_id} -> {target_node_id}"
             )
 
-        sx, sy = positions["sx"], positions["sy"]
+        start = positions["start"]
+        if not start:
+            raise RuntimeError(
+                f"connect_nodes: source handle {positions['srcHandleId']!r} of "
+                f"{source_node_id!r} (rect x/y/w/h={positions['handleRect']}) is not "
+                f"hittable at any point inside its own rect -- it is covered by another "
+                f"element, or it lies outside the viewport. Top element at the first "
+                f"candidate point: {positions['blocker']!r}. Dragging from here would "
+                f"silently drag that element instead of drawing a "
+                f"{source_node_id} -> {target_node_id} connection. This is a canvas "
+                f"LAYOUT problem (nodes too close at the current zoom, or the flow pane "
+                f"squeezed by side panels) -- space the nodes out or widen the pane; a "
+                f"longer timeout or a retry cannot fix it."
+            )
+
+        sx, sy = start["x"], start["y"]
         tx, ty = positions["tx"], positions["ty"]
-        logger.info("Using source handle: %s", positions.get("srcHandleId"))
+        logger.info(
+            "Using source handle: %s (rect=%s, hit-tested start=(%.2f, %.2f), "
+            "offset-in-rect %s)",
+            positions.get("srcHandleId"), positions["handleRect"], sx, sy,
+            (start["ox"], start["oy"]),
+        )
 
         # Drag from source to target in small steps
         self.page.mouse.move(sx, sy)
@@ -6277,9 +6389,31 @@ class PipelineDetailPage(PipelineFormPage):
         self.page.mouse.up()
         self.page.wait_for_timeout(500)
 
-        # Dismiss any ReactFlow "create new node" context menu that appears
-        # when the drag misses a target handle and lands on empty canvas.
-        if self.page.locator('[role="menu"]').count() > 0:
+        # Dismiss any stray popup the drag may have opened over the canvas.
+        # Two shapes, both with real app testids -- no raw role/CSS selector:
+        #   * ReactFlow's "create new node" connection dropdown, when the drop
+        #     lands on empty canvas -- :meth:`is_popup_menu_visible` /
+        #     :data:`POPUP_MENU_TESTIDS` (`pipeline-connection-dropdown-menu`,
+        #     ConnectionDropdown.jsx). That helper's docstring already claimed
+        #     this method used it; before ELITEA-2016 it did not, and the old
+        #     probe here was a raw `[role="menu"]` locator.
+        #   * an app select's listbox (SingleSelect / PopoverSelect / their
+        #     menu items all render `select-option-{value}`), opened when the
+        #     mousedown landed on a node card's Type control by mistake --
+        #     :data:`SELECT_OPTION_PREFIX`. The pre-ELITEA-2016 probe matched
+        #     `[role="menu"]` ONLY, so a listbox was never dismissed and stayed
+        #     open over the canvas, poisoning every later interaction (visible
+        #     on the ELITEA-2016 CI failure screenshot, still open after this
+        #     method had returned).
+        # Both constants are strictly narrower than a role selector, which is
+        # the point: an unrelated `role="listbox"` mounted anywhere in the
+        # document -- a side-panel select, a leftover popover -- would make
+        # this fire Escape after every SUCCESSFUL connection. Escape also stays
+        # CONDITIONAL: sending it unconditionally regressed
+        # ``test_three_node_chain`` (confirmed against a pristine-HEAD control
+        # run), so it goes out only when a popup is actually open.
+        if self.is_popup_menu_visible() or self.page.locator(self.SELECT_OPTION_PREFIX).count() > 0:
+            logger.info("Dismissing a stray popup left open over the canvas")
             self.page.keyboard.press("Escape")
             self.page.wait_for_timeout(200)
 
@@ -6331,6 +6465,116 @@ class PipelineDetailPage(PipelineFormPage):
         self.page.mouse.up()
         self.page.wait_for_timeout(300)
         logger.info("Moved node %s by (%d, %d)", node_id, dx, dy)
+
+    def move_node_by_flow_offset(
+        self, node_id: str, dx: int, dy: int, timeout: int = 5000
+    ) -> None:
+        """Drag *node_id* by (*dx*, *dy*) FLOW-space units, at the current zoom.
+
+        Added for ELITEA-2016. :meth:`move_node` displaces by SCREEN pixels,
+        but the canvas zoom drifts while a test builds a graph (every
+        ``add_node()`` re-fits the view, and the flow pane is only ~403 px
+        wide with both side panels open), so the same screen delta produces a
+        DIFFERENT flow-space layout on every run -- sometimes one where two
+        node cards overlap to within a fraction of a pixel, which is exactly
+        what makes a source handle unhittable for
+        :meth:`connect_nodes`. Converting the intended offset through the live
+        viewport scale (:meth:`get_canvas_viewport_transform`) fixes the
+        flow-space result regardless of the zoom in force at drag time, so
+        node spacing can be reasoned about against the node card's own
+        flow-space size (~471 x 237 units, measured live 2026-08-26).
+
+        Args:
+            node_id: Internal id of the node to move (e.g. "Printer 1").
+            dx: Horizontal offset in FLOW units (positive = right).
+            dy: Vertical offset in FLOW units (positive = down).
+            timeout: Maximum wait time for the node to be visible.
+        """
+        scale = self._zoom_out_until_drag_fits(dx, dy)
+        logger.info(
+            "Moving node %s by flow offset (%d, %d) at zoom %.4f", node_id, dx, dy, scale
+        )
+        self.move_node(node_id, round(dx * scale), round(dy * scale), timeout=timeout)
+
+    # A node drag may not span more than this fraction of the flow pane in
+    # either axis. Note what this does and does not buy: `autoPanOnNodeDrag`
+    # fires on the pointer's ABSOLUTE proximity to a pane edge, not on the
+    # size of the delta, so bounding the delta cannot rule auto-pan out. What
+    # it rules out is the gross case -- a delta LONGER than the pane, which
+    # cannot be performed without ending up at an edge (measured: an 800-unit
+    # offset at zoom 0.75 became a 600 px drag in a 403 px pane, and nodes
+    # were flung far enough apart that `fit_view()` settled at zoom 0.1 with
+    # every handle ~2 px tall). Residual case, accepted: a node that already
+    # sits near a pane edge can still auto-pan on a fully budget-compliant
+    # drag. `connect_nodes()`'s hit test is what catches the consequence.
+    _DRAG_PANE_FRACTION = 0.35
+
+    # ReactFlow's zoom floor for this editor -- `minZoom={0.1}` in
+    # FlowEditor.jsx. `zoom_out()` cannot go below it, so a loop that keeps
+    # clicking past it makes no progress (and may block on a disabled
+    # button's actionability check).
+    _REACTFLOW_MIN_ZOOM = 0.1
+
+    def _zoom_out_until_drag_fits(
+        self, dx: int, dy: int, max_clicks: int = 14
+    ) -> float:
+        """Zoom out until a (*dx*, *dy*) FLOW-space drag fits inside the flow pane.
+
+        Added for ELITEA-2016. The flow pane is only ~403 x 621 px with both
+        side panels open, while a node card is ~471 x 237 FLOW units -- at the
+        editor's default 0.75 zoom barely one card's width is on screen, so
+        any layout worth building requires a drag longer than the pane. Such a
+        drag triggers ReactFlow's drag auto-pan and the node lands somewhere
+        arbitrary (measured live: nodes flung far enough apart that
+        ``fit_view()`` settled at zoom 0.1 and every handle went ~2 px tall).
+        Zooming out first shrinks the same flow-space delta into a drag the
+        pane can contain.
+
+        Stops as soon as zooming stops making progress, rather than clicking
+        blindly *max_clicks* times: ``zoom_out()`` is a silent no-op when its
+        control isn't found, and the editor pins ``minZoom={0.1}``
+        (:data:`_REACTFLOW_MIN_ZOOM`), below which the button does nothing or
+        is disabled -- and a click on a disabled button would sit in
+        Playwright's actionability wait for 30 s per iteration. Whether the
+        offset fits at the floor is pane-width-dependent, and headless CI is
+        the narrow case: ``conftest.py`` pins ``viewport=1366x768`` headless
+        while headed local runs use ``no_viewport=True``.
+
+        Returns:
+            The viewport scale in force once the drag fits.
+
+        Raises:
+            RuntimeError: if the drag does not fit even at the zoom floor (the
+                requested offset is too large for this pane at any usable zoom).
+        """
+        pane = self.canvas_wrapper.bounding_box()
+        if not pane:
+            raise RuntimeError("Could not measure the ReactFlow pane's bounding box")
+        budget_x = pane["width"] * self._DRAG_PANE_FRACTION
+        budget_y = pane["height"] * self._DRAG_PANE_FRACTION
+        previous_scale = None
+        for _ in range(max_clicks):
+            scale = self.get_canvas_viewport_transform()["scale"]
+            if abs(dx) * scale <= budget_x and abs(dy) * scale <= budget_y:
+                return scale
+            if scale == previous_scale or scale <= self._REACTFLOW_MIN_ZOOM:
+                break          # at the zoom floor (or zoom_out() is a no-op)
+            previous_scale = scale
+            self.zoom_out()
+        scale = self.get_canvas_viewport_transform()["scale"]
+        raise RuntimeError(
+            f"A ({dx}, {dy}) flow-unit node drag does not fit the "
+            f"{pane['width']:.0f}x{pane['height']:.0f} px flow pane (budget "
+            f"{budget_x:.0f}x{budget_y:.0f} px) at zoom {scale:.4f}, and zooming out "
+            f"further is not possible -- the editor pins minZoom="
+            f"{self._REACTFLOW_MIN_ZOOM} (FlowEditor.jsx). This is a PANE-SIZE limit, "
+            f"not an offset that merely needs a smaller number: at the floor this pane "
+            f"can only absorb a {budget_x / self._REACTFLOW_MIN_ZOOM:.0f}x"
+            f"{budget_y / self._REACTFLOW_MIN_ZOOM:.0f} flow-unit drag. Use a smaller "
+            f"offset or widen the pane (collapse a side panel). Headless CI is the "
+            f"narrow case -- conftest.py pins viewport 1366x768 there, while headed "
+            f"local runs use no_viewport."
+        )
 
     def get_edge_count(self) -> int:
         """Return the number of edges (connections) on the canvas.
