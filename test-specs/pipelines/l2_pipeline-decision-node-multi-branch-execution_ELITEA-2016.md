@@ -59,8 +59,9 @@ CLARIFICATION below — this is not cosmetic.
      id, `Decision 1`); `get_entrypoint_node_id() == "Decision 1"` (confirms the Decision
      node is the pipeline's entry point — see CLARIFICATION).
 2. Add three Printer nodes via the canvas "+" button → "Printer" (`add_node("Printer")` ×3),
-   repositioning each with `move_node()` between adds (ELITEA-2047 gotcha — default add
-   position overlaps the previous node), then rename them via `edit_node_name(node_id,
+   repositioning each with `move_node_by_flow_offset()` between adds (ELITEA-2047 gotcha —
+   default add position overlaps the previous node; ELITEA-2016 — offsets are FLOW-space,
+   not screen px, so the layout no longer drifts with the zoom), then rename them via `edit_node_name(node_id,
    new_name)` to `bug_responder`, `feature_responder`, `question_responder`.
    - **Verify**: `get_node_ids()` includes `Decision 1`, `bug_responder`, `feature_responder`,
      `question_responder`, `END`.
