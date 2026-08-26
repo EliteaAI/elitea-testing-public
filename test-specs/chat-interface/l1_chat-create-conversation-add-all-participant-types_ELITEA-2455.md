@@ -7,17 +7,22 @@
 - **Environment Explored**: local (`http://localhost:5173`, `EliteaAI/EliteaUI` on `automation/testids`, DEV backend)
 - **User set**: `${TEST_USER}` — on localhost, `auth_state`/`VITE_DEV_TOKEN` skips explicit Keycloak login
 - **Analyst**: test-automation-engineer (combined analyst+implementer slot, batch `elitea-2455-chat-participants`)
-- **Status**: **defect-found** — executed live end-to-end through Step 13 (all
-  four addable participant types individually confirmed workable); a real,
-  reproducible product defect (filed EliteaAI/elitea-testing-public#1279)
-  BLOCKS reliably combining an Agent participant and a Pipeline participant in
-  the same conversation, which the case's own flow requires before Steps
-  14–20 (section order, distinct icons, no-duplicates, Send, owner icon, "all
-  participants visible", misconfiguration warning) become meaningfully
-  assertable. Per `.agents/testing.md` § Merge gate's analysis-time-entry
-  bullet, this is genuinely **blocking** (prevents reaching later steps), not
-  an isolable tail assertion — `defect-found`, not a soft-asserted
-  `ready-for-automation`.
+- **Re-analysed**: 2026-08-26 by qa-engineer (analyst slot) on the re-attempt directive
+  (human dragged EliteaAI/elitea-testing-public#963 back to `Approved` with "Proceed")
+- **Status**: **defect-found** — CONFIRMED AGAIN, and the underlying defect is now
+  characterised as *worse* than the original park recorded. 16 fresh live repetitions
+  this pass (see § Re-attempt evidence) show the second Agent-or-Pipeline participant
+  add silently no-ops in **13 of 16 runs**, in **BOTH orders**, with a **completely
+  clean console** in every silent-drop run. The "Pipeline-then-Agent is a viable
+  workaround" line in EliteaAI/elitea-testing-public#1279's own body does **not** hold:
+  Pipeline→Agent failed **0/6** with no settle and **0/6** with every product-observable
+  condition-wait this UI exposes. The only variant that ever worked used a **fixed
+  1500 ms wall-clock delay** (banned by `.agents/conventions.md` § Hard don'ts) and was
+  still only 3/4. Steps 14, 15, 19 (four sections in order, distinct icon per type, all
+  participants visible under their sections) are the case's **central subject** and are
+  permanently unsatisfiable while this is open — this is "blocks further exploration"
+  under `.agents/testing.md` § Merge gate's analysis-time-entry bullet, not an isolable
+  tail assertion that a soft-assert could keep visible.
 
 ## Preconditions
 - User is logged in to the Elitea platform (`${TEST_USER}` / dev-auth on localhost).
@@ -91,9 +96,9 @@ fixture — no new fixture required).
 | 4 Click + icon | popup menu opens | live step 4 | `plus-menu-button` click | asserted |
 | 5 Verify popup menu items | Attach Files (10 left), Modules, Agents, Pipelines, Toolkits, MCPs, Invite Users | live step 5 | `chat-attach-menuitem-button` text, `internal-tools-menuitem`/`agents-menuitem`/`pipelines-menuitem`/`toolkits-menuitem`/`mcps-menuitem` visible, `get_open_plus_menu_item_count() == 5` | asserted, WITH clarification: **Invite Users is absent, not merely present-but-disabled**, for this suite's Private project (`PlusChatButton.jsx`'s `!isPrivateProject` guard — source-confirmed, not a defect) |
 | 6 Click Agents, verify submenu | search field + "+ Create New Agent" + agent list | live step 6 | `agents-search-input` visible, `agents-create-new-button` visible | asserted (in isolation — see row 7/9 below for the coexistence blocker) |
-| 7 Select an agent, verify AGENTS section | agent appears with name/version/icon | live step 7 | `agents-menu-item-agent-{project}-{id}` click → `chat-participant-row-application_{id}_{project}` visible | asserted WHEN the agent is added ALONE or added AFTER the pipeline (see #1279); **NOT reliably asserted when added BEFORE the pipeline** — confirmed live 2/2 times in that order the SECOND add (pipeline) silently no-ops, and even in the working order the automated pytest run itself intermittently failed to render the agent row within 10s (once observed) — this is the core #1279 finding |
+| 7 Select an agent, verify AGENTS section | agent appears with name/version/icon | live step 7 | `agents-menu-item-agent-{project}-{id}` click → `chat-participant-row-application_{id}_{project}` visible | asserted WHEN the agent is the FIRST agent/pipeline participant added (8/8 live this pass). **Re-attempt correction (2026-08-26): NOT asserted when the agent is the SECOND such add — 0/6 with no settle, 0/6 with every product-observable condition-wait.** The order does not matter (see § Re-attempt evidence); the previously-recorded "add the agent after the pipeline" workaround is retired |
 | 8 Click +, Pipelines, verify submenu | "+ Create New Pipeline" + pipeline list | live step 8 | `pipelines-search-input` visible, `pipelines-create-new-button` visible | asserted (in isolation) |
-| 9 Select a pipeline, verify PIPELINES section | pipeline appears | live step 9 | `pipelines-menu-item-pipeline-{project}-{id}` click → `chat-participant-row-pipeline_{id}_{project}` visible | **blocked** — see #1279: Agent-then-Pipeline order is a confirmed SILENT NO-OP (pipeline never added, no error); Pipeline-then-Agent order adds both but throws a console error/exception (`version/prompt_lib` 400 + `icon_meta` TypeError) during the Agent add, and even that order's overall reliability was NOT reproduced 2/2 in the automated pytest harness (see row 7) |
+| 9 Select a pipeline, verify PIPELINES section | pipeline appears | live step 9 | `pipelines-menu-item-pipeline-{project}-{id}` click → `chat-participant-row-pipeline_{id}_{project}` visible | **blocked** — #1279, re-confirmed 2026-08-26 over 16 repetitions. Whichever of Agent/Pipeline is added SECOND is silently dropped, in both orders, with a clean console (13/16 runs). No product-observable condition distinguishes the safe moment (measured 0.00 s gap, 6/6); the only mitigation is a fixed wall-clock delay, which is banned here and still fails 1/4 |
 | 10 Click +, Toolkits, verify toggle submenu | toggle switches per toolkit | live step 10 | `toolkits-search-input` visible (via `open_toolkits_submenu()`) | asserted (in isolation, confirmed with a freshly-created toolkit both via a scratch script and inside the fixture chain) |
 | 11 Enable a toolkit, verify TOOLKITS section | toolkit appears | live step 11 | `toolkits-menu-item-toolkit-{project}-{id}` click → `chat-participant-row-toolkit_{id}_{project}` visible | asserted in isolation; **not independently re-verified in COMBINATION with a stable agent+pipeline pair**, since row 9 blocks reaching that combined state reliably |
 | 12 Click +, MCPs, verify toggle submenu | toggle switches per MCP | live step 12 | `mcps-search-input` visible | asserted (in isolation) |
@@ -145,10 +150,12 @@ fixture — no new fixture required).
   returning 400 when the Agent is added AFTER the Pipeline.
 
 ## Known Defects Found During Exploration
-- **[BLOCKING]** EliteaAI/elitea-testing-public#1279 — Adding a Pipeline
-  participant after an Agent participant is a silent no-op; the reverse
-  order works but throws a console error/exception, and was not reliably
-  reproduced 2/2 even in the automated harness. Sibling of #684 (same
+- **[BLOCKING]** EliteaAI/elitea-testing-public#1279 — **re-confirmed and
+  re-characterised 2026-08-26 (16 live repetitions, evidence commented on the
+  issue).** Whichever of Agent/Pipeline is added SECOND is silently dropped —
+  **both orders**, clean console, 13/16 runs. No honest settle condition exists
+  (§ Re-attempt evidence). The issue body's "reverse order is a viable
+  workaround for test automation" is retired. Sibling of #684 (same
   participant-state `version_id` mixup family the parked ELITEA-2094
   investigation documented — "can crash immediately, crash later at Send,
   silently misclassify a badge into the wrong PARTICIPANTS section, or
@@ -167,11 +174,73 @@ fixture — no new fixture required).
   ELITEA-2094 investigation, both in the same participant-state instability
   family as #1279.
 
+## Re-attempt evidence (2026-08-26, analyst slot) — the question the re-attempt existed to settle
+
+The re-attempt directive asked one thing: **is the combined Agent+Pipeline state reachable
+reliably enough for an N=3 merge gate?** Answer, from 16 live repetitions in the real
+pytest/page-object harness (fresh `agent_id` + fresh `pipeline_with_llm_id` + fresh
+UI-created conversation per repetition, `HEADLESS=true`, localhost:5173 / DEV backend):
+
+| Variant between the two adds | Order | Result |
+|---|---|---|
+| No settle — straight to the 2nd add (`wait_for_network` only) | Pipeline→Agent | **0/6** — 2nd add silently dropped |
+| Condition-wait: 1st row visible + `chat-switch-participant-button` visible | Pipeline→Agent | **0/3** — silently dropped |
+| Same + `networkidle` | Pipeline→Agent | **0/3** — silently dropped |
+| Fixed 1500 ms wall-clock delay after each add | Pipeline→Agent | 2/2 OK |
+| Fixed 1500 ms wall-clock delay after each add | Agent→Pipeline | 1/2 (one silent drop) |
+
+Four findings that change the picture the park was based on:
+
+1. **It is not order-dependent.** Both orders drop the second participant. #1279's
+   "Pipeline-then-Agent … a viable workaround for test automation" is **retired** (new
+   evidence commented on that issue, 2026-08-26).
+2. **No honest settle condition exists.** Every product-observable candidate was already
+   satisfied at the instant of the drop — measured gap between (row visible / switch-
+   participant button visible / `networkidle`) and the second add was **0.00 s in 6/6
+   runs**, because all three resolve together at ~1.7–2.2 s. Only raw elapsed wall-clock
+   time past that changes the outcome, i.e. client-side participant state settles *after*
+   every DOM and network signal has gone quiet. A fixed `sleep` is the only known
+   mitigation and it is forbidden here — and it is ~75 % reliable anyway.
+3. **The silent-drop runs have a CLEAN console.** No 400, no `icon_meta` TypeError, no
+   toast, no error UI. The `version/prompt_lib` 400 documented on #1279 appeared only in
+   the runs that **succeeded** — it is a symptom of the working path, not of the drop.
+   (Consequence: a console-error assertion cannot detect this failure mode at all.)
+4. **Toolkit/MCP participants are unaffected.** Back-to-back Toolkit→MCP adds in one open
+   popper are reliable (ELITEA-2203's merged
+   `tests/ui/chat/test_slash_mention_toolkit_and_mcp_participants.py` does exactly that
+   and is green). The race is specific to the version-carrying Agent/Pipeline types.
+
+**Why this is `defect-found` and NOT `ready-for-automation` + soft-assert.** The
+analysis-time-entry bullet's own boundary is whether the defect *blocks further
+exploration*. Here it does not merely fail one tail assertion: the four-section panel state
+the case is built around never exists, so Steps **14** (four sections in order), **15**
+(distinct icon per type — and the only testid-backed per-type icon signal is the collapsed
+badge, which likewise never shows four), **19** (all participants visible under their
+sections) and the 2nd half of **16** are all permanently unsatisfiable, plus Step **9**
+itself. That is 5 of the case's 20 steps — including its structural core — not an isolable
+tail. Soft-asserting all of them would produce a cascading multi-assertion red whose
+"expected" state nobody has ever observed, which is not the single, deterministic,
+isolable signature § Merge gate's sanctioned-RED exception is written for.
+
+**What a re-re-attempt should do first (cheap, ~4 min):** re-run the 6-rep no-settle probe
+(shape recorded in § Automation Hints below). If the second add starts landing without a
+fixed delay, #1279 has been fixed and the rest of this AFS — handles, fixtures, test data —
+is ready to implement as-is.
+
 ## Blocked Steps
-- Steps 9, 14–20 (see Coverage Map) — blocked by EliteaAI/elitea-testing-public#1279.
-  Re-attempt once #1279 is fixed; the Concrete Handles table above and the
-  page-object method shapes named in § Automation Hints below should still
-  be valid and save significant re-discovery time.
+- Steps 9, 14–20 (see Coverage Map) — blocked by EliteaAI/elitea-testing-public#1279,
+  **re-confirmed 2026-08-26 over 16 live repetitions** (§ Re-attempt evidence).
+  Re-attempt once #1279 is fixed — the unblock signal is mechanical: the second
+  Agent/Pipeline participant add lands without a fixed wall-clock delay. The Concrete
+  Handles table above and the page-object method shapes in § Automation Hints are
+  re-validated as of this pass and save significant re-discovery time.
+- **Not blocked, and worth harvesting separately if this case stays parked:** Steps 1–6,
+  10–13 and 20 are all independently workable today. Step 20's headline observable
+  (yellow misconfiguration warning, `chat-participant-warning-icon`) needs only a
+  misconfigured toolkit (`github_toolkit_with_invalid_credential`) plus the Toolkit/MCP
+  add path, neither of which touches the Agent/Pipeline race — a narrower TMS case
+  covering "misconfigured participant shows a warning" would be automatable now. Raised
+  as a `note` finding to the lead, not actioned here (out of this case's scope).
 
 ## Automation Hints
 - Framework: Playwright + pytest, per `.agents/testing.md`.
@@ -204,4 +273,22 @@ fixture — no new fixture required).
   / `chat-participant-row-pipeline_{pipeline_id}_{project_id}`), never by
   `get_participant_row_by_name()`'s text filter, when both are present.
 - No testids needed adding to EliteaUI for this case — every handle above
-  already exists on `automation/testids`.
+  already exists on `automation/testids` (re-verified live 2026-08-26: the
+  `pipelines-search-input` / `agents-search-input` / `pipelines-menu-item-pipeline-{p}-{id}`
+  / `agents-menu-item-agent-{p}-{id}` / `chat-participant-row-{uniqueId}` /
+  `chat-participant-warning-icon` handles all resolved first try).
+- **Unblock probe (re-run this FIRST on any future re-attempt, ~4 min).** A throwaway
+  parameterized pytest (6 reps, fresh `agent_id` + `pipeline_with_llm_id` + fresh
+  UI-created conversation per rep) that: `navigate_to_chat()` →
+  `click_create_conversation()` → `expand_participants_panel_via_toggle()` → add
+  Pipeline via `plus_menu_button` → `pipelines_menuitem` → `[data-testid="pipelines-search-input"]`
+  → `[data-testid="pipelines-menu-item-pipeline-{proj}-{pid}"]` → `wait_for_network()` →
+  wait for `chat-participant-row-pipeline_{pid}_{proj}` → repeat for the Agent →
+  assert `chat-participant-row-application_{aid}_{proj}` visible within 10 s. Six greens
+  means #1279 is fixed and this AFS is implementable as written.
+- **A console-error assertion cannot detect the #1279 drop** — the silent-drop runs have a
+  clean console; the `version/prompt_lib` 400 fires only on the runs that SUCCEED. Do not
+  write "no console errors" as the guard for this behaviour.
+- **A brand-new, unsent conversation is not persisted** (URL stays `/chat`, no id) — a
+  page reload before the first Send clears all participants (confirmed live, 4/4). Any
+  reload-based persistence check must come after Step 17's Send.

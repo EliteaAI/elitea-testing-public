@@ -862,6 +862,37 @@ sibling and should follow the identical pattern).
   chat-canvas AND standalone) — filter it the same way `test_edit_instructions`
   filters its own known #538 noise.
 
+## Agent/Pipeline participant SECOND-ADD silent drop — re-characterised (ELITEA-2455, 2026-08-26)
+- **Supersedes the "order-dependent" framing in the 2026-08-06 section below.** Re-run
+  live over **16 repetitions** through the real pytest/page-object harness (fresh
+  `agent_id` + `pipeline_with_llm_id` + fresh UI-created conversation each time):
+  whichever of Agent/Pipeline is added **second** is silently dropped — **in BOTH
+  orders**, 13/16 runs. Evidence commented on EliteaAI/elitea-testing-public#1279.
+- **Measured breakdown:** no settle between adds → 0/6 (Pipeline→Agent). Condition-wait
+  on the 1st participant's row visible + `chat-switch-participant-button` visible →
+  0/3. Same + `networkidle` → 0/3. Fixed **1500 ms wall-clock** delay after each add →
+  Pipeline→Agent 2/2, Agent→Pipeline 1/2.
+- **There is NO honest settle condition.** Row-visible, `chat-switch-participant-button`
+  visible and `networkidle` all resolve together at ~1.7–2.2 s — the measured gap between
+  them and the failing second add was **0.00 s in 6/6 runs**. Only raw elapsed wall-clock
+  time changes the outcome, i.e. client participant state settles after every DOM/network
+  signal is quiet. A fixed `sleep` is the only known mitigation, is banned here
+  (`.agents/conventions.md`), and is still only ~75 % reliable.
+- **The silent-drop runs have a COMPLETELY CLEAN console** — no 400, no `icon_meta`
+  TypeError, no toast. The `version/prompt_lib` 400 documented on #1279 fires only on the
+  runs that SUCCEED. **Never use a console-error assertion as the guard for this
+  behaviour** — it cannot see the failure.
+- **Toolkit and MCP participants are unaffected** — back-to-back Toolkit→MCP adds in one
+  open popper are reliable (ELITEA-2203's merged spec does exactly that, green). The race
+  is specific to the version-carrying Agent/Pipeline participant types.
+- **A brand-new, UNSENT conversation is not persisted** — URL stays `/chat` with no id, and
+  a reload clears every participant (confirmed 4/4 live). Any persistence/reload check must
+  come after the first Send.
+- Any case needing an Agent **and** a Pipeline as simultaneous chat participants is still
+  unautomatable. Cheap unblock probe (~4 min) recorded in
+  `l1_chat-create-conversation-add-all-participant-types_ELITEA-2455.md` § Automation Hints —
+  run it first before spending analysis time on such a case.
+
 ## Agent + Pipeline participant coexistence — BLOCKING instability (ELITEA-2455, 2026-08-06)
 - **CONFIRMED BLOCKING DEFECT, filed EliteaAI/elitea-testing-public#1279**
   (sibling of #684 — same participant-state `version_id` mixup family the
