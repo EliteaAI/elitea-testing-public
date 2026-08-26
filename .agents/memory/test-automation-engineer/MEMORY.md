@@ -141,3 +141,4 @@
 - [is_visible(timeout=) does not poll](locator_is_visible_timeout_kwarg_does_not_poll.md) — one-shot read, kwarg ignored; use .wait_for(state="visible") to actually wait
 - [Catalog Start Chat needs extra wait (#1043)](catalog_start_chat_1043_needs_extra_wait.md) — open_agent_by_name()'s wait alone isn't enough; add wait_for_timeout(1000) before click_start_chat()
 - [Chat Agent+Pipeline coexistence broken (#1279)](chat_agent_pipeline_participant_coexistence_broken.md) — check before automating any case combining them
+- [Deferred soft-failure drain must be unskippable](deferred_soft_failure_drain_must_be_unskippable.md) — drain from `finally`, or a later hard failure eats it
