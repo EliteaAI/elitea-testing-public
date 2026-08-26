@@ -2,8 +2,8 @@
 
 Covers ELITEA-2211..2214 — the "+ > Toolkits" direct-toolkit-call flow (no
 agent) that triggers the Sensitive Action Authorization card when a tool is
-marked sensitive via Admin UI Guardrails, and the three ways to resolve it
-(Authorize / Block / Block with Comment).
+marked sensitive in the org's Guardrails configuration, and the three ways to
+resolve it (Authorize / Block / Block with Comment).
 
 Test Cases (1 manual = 1 auto each, 4 cases in this module):
 - ELITEA-2211: Sensitive Action Authorization Card Displays When Toolkit Called Directly
@@ -17,18 +17,27 @@ Specs:
 - test-specs/chat-interface/l2_hitl-sensitive-action-block_ELITEA-2213.md
 - test-specs/chat-interface/l2_hitl-sensitive-action-block-with-comment_ELITEA-2214.md
 
-**CONFIRMED ENVIRONMENT LIMITATION (not a defect — matches existing project
-precedent):** the Admin Guardrails route (``/admin/app/configuration#guardrails``)
-returns "Page not found" on ``localhost:5173`` — the same, already-documented
-gap ``test_guardrails_live_reload.py`` / ``test_guardrails_cleanup_only.py``
-carry their ``pytest.mark.guardrails`` marker for. These four tests carry the
-same marker for the same reason: excluded from the local dev loop
-(``-m "not guardrails"``), run in CI against a deployed env where the Admin
-UI IS served. `sensitive_delete_file_toolkit` (module-scoped fixture,
-``fixtures/data_fixtures.py``) marks ``artifact``/``delete_file`` sensitive
-ONCE for the whole module and removes it once at teardown — sensitivity is
-toolkit-TYPE scoped, not per-instance (AFS § Preconditions), so this is a
-real project-wide side effect while the module runs.
+PRECONDITION — TRANSIT SUBSTITUTION (AFS § Fidelity Declaration): the
+``sensitive_delete_file_toolkit`` module-scoped fixture
+(``fixtures/data_fixtures.py``) marks ``artifact``/``delete_file`` sensitive
+through the guardrails **config REST endpoint**
+(``PUT {api}/admin/plugin_config_values/administration/guardrails``), not
+through the Admin UI, because the Admin UI is a separate deployed application
+that ``localhost:5173`` does not serve at all (there is no ``/admin`` route in
+``EliteaUI/src/routes.js``; issue #1140 tracks the route, and
+``test_guardrails_live_reload.py`` / ``test_guardrails_cleanup_only.py``
+genuinely do test that UI and keep their ``guardrails`` marker — this module
+does not). The substitution only *reaches* the step under test: every
+observable these four cases assert on — the card, its heading, its action name,
+its three buttons, and whether the tool actually executed — is produced end to
+end by the real LLM → real tool call → real backend interrupt → real WebSocket
+frame. Nothing is mocked, injected or intercepted.
+
+The flag applies immediately (``requires_restart: []``) and is toolkit-TYPE
+scoped, so it is a real ORG-WIDE side effect while the module runs: the fixture
+captures the original configuration, mutates it additively, and restores the
+captured original verbatim in a ``finally`` (verified by readback). Do not run
+this module under ``pytest-xdist`` alongside artifact-toolkit suites.
 
 Each case reaches its OWN fresh Sensitive Action Authorization card (own
 ``conversation_id`` + own ``artifact_toolkit`` — both function-scoped fixtures)
@@ -43,12 +52,14 @@ existing buckets — the LLM asks a clarifying question instead ("which
 bucket(s)?"). These tests use an unambiguous message naming the bucket and
 file explicitly instead (AFS § Test Data).
 
-Two new testids added to EliteaUI for this cluster's own executed path:
+Testids this cluster added to EliteaUI for its own executed path —
 ``sensitive-action-block-button``, ``sensitive-action-block-with-comment-button``,
 ``sensitive-action-block-comment-input``, ``sensitive-action-block-comment-submit-button``
 (``ChatHitlActions.jsx`` / ``BlockWithCommentControl.jsx``), plus the shared
 ``chat-answer-tool-chip`` ask (ELITEA-2212 asserts presence, ELITEA-2213
-asserts absence — canon ruling #277 shape (b)).
+asserts absence — canon ruling #277 shape (b)) — are all present on
+``EliteaAI/EliteaUI`` ``main`` (verified 2026-08-27), so nothing here waits on a
+cherry-pick.
 """
 
 import logging
@@ -58,10 +69,13 @@ import pytest
 from api import ArtifactAPI
 from pages.chat_page import ChatPage
 from playwright.sync_api import expect
+from utils.console_errors import collect_console_errors
 
 logger = logging.getLogger("elitea.tests.chat")
 
-pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p2, pytest.mark.regression, pytest.mark.guardrails, pytest.mark.new]
+# No ``guardrails`` marker: the precondition is a REST config write, not the
+# Admin UI, so this module belongs in the local loop (AFS rework delta row 3).
+pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p2, pytest.mark.regression, pytest.mark.new]
 
 # ---------------------------------------------------------------------------
 # Timeout constants (milliseconds)
@@ -75,8 +89,8 @@ SENSITIVE_TOOL_NAME = "delete_file"
 
 # Response phrases that would indicate the delete actually went through —
 # used as the "does NOT claim success" half of the loose Block-acknowledgement
-# signal (AFS: exact LLM wording is non-deterministic and was not verifiable
-# locally — see ELITEA-2213/2214's own "format not verified live" note).
+# signal (AFS: the exact LLM wording is non-deterministic, so the assertion is
+# on what the response must NOT claim, not on a literal string).
 _SUCCESS_CLAIM_PHRASES = (
     "deleted successfully",
     "has been deleted",
@@ -95,27 +109,42 @@ def _unambiguous_delete_message(bucket_name: str, file_key: str) -> str:
 
 
 def _reach_sensitive_action_card(
-    page, conversation_id: str, toolkit_name: str, bucket_name: str, file_key: str
+    page, conversation_id: str, toolkit: dict, file_key: str
 ) -> ChatPage:
     """Shared setup for ELITEA-2211..2214 — reach a FRESH Sensitive Action
     Authorization card in *this test's own* conversation.
 
     Covers each case's own steps 1 ("add toolkit via + > Toolkits", "toolkit
-    in PARTICIPANTS") through the card becoming visible. The successful tool
-    invocation itself (accordion appears, sensitive-action card appears
-    naming ``delete_file``) is the observable proof the toolkit really was
-    added as a participant — this legacy "+ > Toolkits" flow has no separate
-    stable participants-list testid to assert against (confirmed via grep of
-    ``chat_page.py``; the dynamic ``TOOLKIT_PARTICIPANT_MENU_ITEM`` template
-    belongs to the newer slash-mention flow, ELITEA-2202/2203/2204, not this
-    one) — a downstream causal signal is stronger evidence than a UI-only
-    chip check would be anyway.
+    in PARTICIPANTS") through the card becoming visible.
+
+    The toolkit row is resolved by its dynamic testid
+    (``add_toolkit_participant_via_slash_menu``), NOT by the legacy
+    name-search flow (``add_toolkit_participant``). That is both the
+    locator-policy-compliant shape (``.agents/testing.md`` § Locator policy —
+    the legacy flow resolves by accessible name / ``:has-text``) and a
+    correctness fix: the legacy flow types into a non-debounced search field
+    and clicks whatever ``li[role="menuitem"]`` matches first, which was
+    observed live (2026-08-27, 3/3 runs) to leave the toolkit UNATTACHED —
+    the LLM then had no tool to call, answered that it had deleted the file
+    while the file was still in the bucket, and no HITL interrupt ever fired.
+    The attachment is therefore asserted explicitly here (AFS step 3's own
+    "Toolkits in this conversation" verification) instead of being inferred
+    from a downstream signal.
     """
     chat = ChatPage(page)
+    toolkit_name = toolkit["name"]
+    bucket_name = toolkit["bucket_name"]
     chat.navigate_to_chat(conversation_id=conversation_id)
 
     with allure.step(f"Step 1 — Add toolkit '{toolkit_name}' via + > Toolkits (no agent)"):
-        chat.add_toolkit_participant(toolkit_name)
+        chat.add_toolkit_participant_via_slash_menu(
+            project_id=toolkit["project_id"], toolkit_id=toolkit["id"], timeout=UI_ELEMENT_TIMEOUT,
+        )
+        chat.close_plus_menu_popper()
+        assert chat.is_participants_badge_visible(section="toolkits"), (
+            f"TOOLKITS participants badge should appear after adding '{toolkit_name}' "
+            "— without it the model has no tool to call and cannot trigger the HITL interrupt"
+        )
 
     with allure.step("Step 2 — Send message triggering the sensitive action"):
         chat.send_message(_unambiguous_delete_message(bucket_name, file_key))
@@ -150,22 +179,23 @@ class TestSensitiveActionCardDisplay:
         artifact_seeded_file: str,
         sensitive_delete_file_toolkit,
     ):
-        """Card shows correct heading, action-name block, and exactly 3 buttons."""
-        toolkit_name = artifact_toolkit["name"]
-        bucket_name = artifact_toolkit["bucket_name"]
+        """Card shows correct heading, action-name block, and exactly 3 buttons.
 
-        console_issues = []
+        TRANSIT SUBSTITUTION (declared, AFS § Fidelity Declaration): only the
+        precondition is substituted — ``sensitive_delete_file_toolkit`` marks
+        ``artifact``/``delete_file`` sensitive over REST because the Admin UI is
+        not served on localhost. The card itself and every value asserted below
+        come from the real backend HITL flow.
+        """
+        toolkit_name = artifact_toolkit["name"]
+
+        console_issues = collect_console_errors(page)
         page_errors = []
 
-        def _on_console(msg):
-            if msg.type == "error":
-                console_issues.append(msg)
-
-        page.on("console", _on_console)
         page.on("pageerror", lambda e: page_errors.append(str(e)))
 
         chat = _reach_sensitive_action_card(
-            page, conversation_id, toolkit_name, bucket_name, artifact_seeded_file
+            page, conversation_id, artifact_toolkit, artifact_seeded_file
         )
 
         with allure.step("Step 4 — Verify heading text 'Sensitive Action Authorization Required'"):
@@ -174,13 +204,14 @@ class TestSensitiveActionCardDisplay:
             )
 
         with allure.step(
-            "Step 5 — Verify 'Agent is about to perform:' + the tool name "
-            "(CLARIFICATION: assert the fixture's real tool_name as a "
-            "substring, not the case's illustrative 'aaa.delete_file' format "
-            "— unverified live, precondition unreachable on localhost)"
+            "Step 5 — Verify 'Agent is about to perform:' + the composed "
+            "'{toolkit_name}.{tool_name}' action name (the case's "
+            "'aaa.delete_file' is the literal format — live-verified)"
         ):
             expect(chat.sensitive_action_panel).to_contain_text("Agent is about to perform:")
-            expect(chat.sensitive_action_panel).to_contain_text(SENSITIVE_TOOL_NAME)
+            expect(chat.sensitive_action_panel).to_contain_text(
+                f"{toolkit_name}.{SENSITIVE_TOOL_NAME}"
+            )
 
         with allure.step(
             "Step 6 — Verify all three buttons render: Authorize, Block, Block with Comment"
@@ -192,10 +223,21 @@ class TestSensitiveActionCardDisplay:
             )
 
         with allure.step("Side-channel check — no console/JS errors across the whole flow"):
+            # Errors only. The backend also emits an unhandled `parallel_hitl_ready`
+            # socket message during this flow, which the frontend logs as a
+            # console.WARNING (# Known defect: #1831) — a warning is not captured
+            # here, and this assertion must not be widened to swallow it.
             assert not console_issues and not page_errors, (
-                f"Unexpected console errors: {[m.text for m in console_issues]!r}; "
+                f"Unexpected console errors: {console_issues!r}; "
                 f"page errors: {page_errors!r}"
             )
+
+        with allure.step(
+            "Cleanup (not a case step) — resolve the pending card with Block so "
+            "the conversation is not left paused before it is deleted"
+        ):
+            chat.sensitive_action_block_button.first.click()
+            expect(chat.sensitive_action_panel).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)
 
 
 # ===========================================================================
@@ -227,7 +269,7 @@ class TestSensitiveActionAuthorize:
         bucket_name = artifact_toolkit["bucket_name"]
 
         chat = _reach_sensitive_action_card(
-            page, conversation_id, toolkit_name, bucket_name, artifact_seeded_file
+            page, conversation_id, artifact_toolkit, artifact_seeded_file
         )
 
         with allure.step(
@@ -300,11 +342,10 @@ class TestSensitiveActionBlock:
     ):
         """Block closes the card without executing — file survives, no tool
         chip renders, and the LLM response acknowledges the block."""
-        toolkit_name = artifact_toolkit["name"]
         bucket_name = artifact_toolkit["bucket_name"]
 
         chat = _reach_sensitive_action_card(
-            page, conversation_id, toolkit_name, bucket_name, artifact_seeded_file
+            page, conversation_id, artifact_toolkit, artifact_seeded_file
         )
 
         with allure.step(
@@ -339,8 +380,8 @@ class TestSensitiveActionBlock:
 
         with allure.step(
             "Step — Verify the LLM response acknowledges the block (loose "
-            "signal — non-empty, does not claim success — exact wording "
-            "unverifiable locally, precondition unreachable, see AFS note)"
+            "signal — non-empty, does not claim success; the exact wording is "
+            "LLM-nondeterministic, see AFS note)"
         ):
             last_text = chat.get_last_message_text()
             assert last_text.strip(), "Expected a non-empty LLM response acknowledging the block"
@@ -386,11 +427,10 @@ class TestSensitiveActionBlockWithComment:
         (source-confirmed: NOT an MUI Dialog — case's own "Modal" wording is
         imprecise, the observable is unaffected), records the typed reason,
         and blocks execution the same way plain Block does."""
-        toolkit_name = artifact_toolkit["name"]
         bucket_name = artifact_toolkit["bucket_name"]
 
         chat = _reach_sensitive_action_card(
-            page, conversation_id, toolkit_name, bucket_name, artifact_seeded_file
+            page, conversation_id, artifact_toolkit, artifact_seeded_file
         )
 
         with allure.step(
@@ -425,7 +465,7 @@ class TestSensitiveActionBlockWithComment:
 
         with allure.step(
             "Step — Verify the LLM response acknowledges the block (same "
-            "loose signal as ELITEA-2213 — exact wording unverifiable locally)"
+            "loose signal as ELITEA-2213 — wording is LLM-nondeterministic)"
         ):
             last_text = chat.get_last_message_text()
             assert last_text.strip(), "Expected a non-empty LLM response acknowledging the block"

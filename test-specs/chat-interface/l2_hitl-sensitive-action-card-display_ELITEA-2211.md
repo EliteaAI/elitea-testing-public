@@ -280,11 +280,35 @@ Provenance verified after `cd ../EliteaUI && git fetch origin` on 2026-08-27.
 `EliteaAI/EliteaUI` `main` — this case is **fully promotable** with zero pending human
 cherry-picks.
 
-*Note:* `ChatPage.add_toolkit_participant()` (the legacy accessible-name/`:has-text` flow
-the merged test calls) still works and was exercised live. The newer
-`add_toolkit_participant_via_slash_menu(project_id, toolkit_id)` resolves the same row by
-its dynamic testid and is the policy-compliant shape — a reasonable, optional upgrade while
-reworking this module, but not required by this case.
+| Toolkits participants badge | `chat-participants-badge-toolkits` — via `ChatPage.is_participants_badge_visible(section="toolkits")` | **on-main ✓** (`CollapsedPerticapantsList.jsx:223`, runtime-composed `chat-participants-badge-${entity.section}`) |
+
+**Implementer correction, 2026-08-27 (supersedes the note this replaced).** The AFS
+previously recorded that `ChatPage.add_toolkit_participant()` — the legacy
+accessible-name/`:has-text` search flow the merged test called — "still works... a
+reasonable, optional upgrade, but not required by this case". **It is required.** In the
+automated path that flow left the toolkit **UNATTACHED 3 runs out of 3** while reporting no
+error: the model then had no `delete_file` tool, answered *"The file ... has been
+successfully deleted"* anyway, and the seeded file was still in the bucket (verified via
+`ArtifactAPI.list_bucket_files` after the run). No tool call ⇒ no backend interrupt ⇒ no
+card, and the failure surfaced only as "the card did not appear". Root cause: that flow
+types into the plus-menu's **non-debounced** search field and then clicks
+`li[role="menuitem"]:has-text(...)`.first — the same race `chat_page.py`'s
+`add_toolkit_participant_via_slash_menu()` docstring already warns about, and
+`_surface.md` already records the legacy flow as **not reusable** for the toggle-switch
+Toolkits rows.
+
+The implementation therefore attaches via
+`add_toolkit_participant_via_slash_menu(project_id, toolkit_id)` (dynamic testid — also the
+locator-policy-compliant shape) and asserts the attachment explicitly with **AFS step 3's
+own primary verification**, the "Toolkits in this conversation" badge, rather than inferring
+it from the downstream card. `artifact_toolkit` already yields `project_id`, so no fixture
+change was needed. The same helper serves ELITEA-2212/2213/2214.
+
+*Provenance correction:* `_surface.md` recorded the plus-menu row testids as "on
+`automation/testids` only, not yet on `main`". They **are on `main`** —
+`PlusChatSubmenu.jsx:131` composes `` `${sectionKey}-menu-item-${item.key}` `` at runtime,
+which a bare-substring grep for `toolkits-menu-item` cannot see (the exact false-negative
+class `.agents/workflow.md` § Closure record warns about).
 
 ---
 
