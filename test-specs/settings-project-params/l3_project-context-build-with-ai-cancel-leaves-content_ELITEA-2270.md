@@ -90,7 +90,7 @@ No `page.route`, `route.fulfill`, `monkeypatch`, `page.evaluate` or mock of any 
 | Toolbar **Edit with AI** | `ai-edit-project-context-open-button` | on-main ✓ |
 | Edit-with-AI dialog | `ai-edit-project-context-modal` | pre-existing on `automation/testids` |
 | Edit-with-AI **Cancel** | `ai-edit-project-context-cancel-button` | pre-existing on `automation/testids` |
-| Dialog titles | `generate-project-context-title` / `ai-edit-project-context-title` | **added during this case** — EliteaAI/EliteaUI@aacfb6e on `automation/testids`; both ride `Modal.BaseModal`'s pre-existing `titleTestId` prop (the shared `GenerateEntityModal` gained a one-line additive pass-through for it) |
+| Dialog titles | `generate-project-context-title` / `ai-edit-project-context-title` | **added during this case** — EliteaAI/EliteaUI@18db47e7 on `automation/testids`; both ride `Modal.BaseModal`'s pre-existing `titleTestId` prop (the shared `GenerateEntityModal` gained a one-line additive pass-through for it) |
 | Editor (CodeMirror) | `project-context-editor-content` | on-main ✓ |
 | Editor wrapper (scope for `.cm-line`) | `project-context-editor-wrapper` | on `automation/testids` only |
 | Save / Discard | `project-context-save-button` / `project-context-discard-button` | Save on-main ✓; Discard on `automation/testids` |

@@ -361,7 +361,7 @@ rejects >2500 chars with a toast, **replaces** (never appends) the editor conten
 **New page object: `GenerateProjectContextModalPage`** (`automation/pages/generate_project_context_modal_page.py`)
 — third subclass of `GenerateEntityModalPageBase`, alongside the Agent and Skill ones.
 
-**Follow-up testid commit (same wave).** EliteaAI/EliteaUI@aacfb6e adds
+**Follow-up testid commit (same wave).** EliteaAI/EliteaUI@18db47e7 adds
 `generate-project-context-title` and `ai-edit-project-context-title` so a spec can assert
 WHICH AI dialog opened without a raw `<h2>` handle (the editor toolbar hosts two). Both
 ride `Modal.BaseModal`'s **pre-existing** `titleTestId` prop; the shared

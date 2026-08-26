@@ -85,7 +85,7 @@ than mocked away.
 | **Generate Draft** | `generate-project-context-submit-button` | added during this case (same commit) — `generateButtonTestId` |
 | Review **Project Background** field | `generate-project-context-review-background-input` | added during this case (same commit) — `slotProps.htmlInput['data-testid']`, lands on the real `<textarea>` so `input_value()` works |
 | **Apply** | `generate-project-context-approve-button` | added during this case (same commit) — `approveButtonTestId` |
-| Dialog title | `generate-project-context-title` | added during this case — EliteaAI/EliteaUI@aacfb6e on `automation/testids`; `GenerateEntityModal` gained an additive `titleTestId` pass-through to `Modal.BaseModal`'s pre-existing `titleTestId` prop |
+| Dialog title | `generate-project-context-title` | added during this case — EliteaAI/EliteaUI@18db47e7 on `automation/testids`; `GenerateEntityModal` gained an additive `titleTestId` pass-through to `Modal.BaseModal`'s pre-existing `titleTestId` prop |
 | Editor (CodeMirror) | `project-context-editor-content` | on-main ✓ |
 | Editor wrapper (scope for `.cm-line`) | `project-context-editor-wrapper` | on `automation/testids` only (EliteaAI/EliteaUI@b05bbc9a) |
 | Save | `project-context-save-button` | on-main ✓ |
