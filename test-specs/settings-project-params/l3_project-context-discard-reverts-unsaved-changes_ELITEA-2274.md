@@ -44,7 +44,8 @@ drift already filed as **#1792**; no new ticket.
 
 ### generate-per-test
 - Seed body: `## ELITEA-2274 baseline\n\nSaved content that Discard must restore.`
-- Appended marker (the "change" of case step 3): `\n\nUNSAVED EDIT`.
+- Appended marker (the "change" of case step 3): `\nUNSAVED EDIT` — one new line, so the
+  appended text is the editor's own last line and can be asserted exactly.
 
 ## Fidelity Declaration
 
@@ -72,8 +73,8 @@ drift already filed as **#1792**; no new ticket.
      comparison vacuous).
    - **Verify**: Save and Discard are **disabled** (nothing changed yet) and the
      Discard button's label is exactly `Discard` (edit mode, not `Cancel`).
-4. **Make a change** — case step 3: click at the end of the content and type
-   `UNSAVED EDIT` on a new line.
+4. **Make a change** — case step 3: move the caret to the end of the document
+   (`ControlOrMeta+End`, CodeMirror's own binding) and type `UNSAVED EDIT` on a new line.
    - **Verify**: the editor's lines now differ from `baseline` and end with
      `UNSAVED EDIT`.
    - **Verify**: Save and Discard are now **enabled**.

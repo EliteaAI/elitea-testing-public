@@ -236,7 +236,11 @@ toggle ON for real. Declare any explicit flag in the spec docstring **and** the 
 
 ## Resolved/added during ELITEA-2268/2273/2274/2275 analysis+implementation (test-automation-engineer, 2026-08-26)
 
-**Testid added** — `project-context-preview` on the editor's markdown-preview `Box`
+**Testids added (two).** `project-context-saved-content` on the SAVED view's content
+`Box` (`ProjectContextSavedView.jsx`) — EliteaAI/EliteaUI@452a21a2 — is the app-owned scope
+for asserting the saved view's rendered markdown (react-markdown's `<h2>`/`<li>` carry no
+testid of their own, and the settings page renders other headings outside it). And
+`project-context-preview` on the editor's markdown-preview `Box`
 (`ProjectContextEditor.jsx`, the `mode !== 'edit'` branch). EliteaAI/EliteaUI@5681f22e on
 `automation/testids`, pushed; awaiting the human cherry-pick to `main`. Plain attribute on
 the existing node — no new DOM node, no hook, no component change. It is **required**, not
