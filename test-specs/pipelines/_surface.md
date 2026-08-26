@@ -3709,3 +3709,40 @@ Poll the answer BODY (`skill-test-last-response`, via
 `get_last_embedded_chat_response_locator()`) with
 `expect(...).to_contain_text(re.compile(r"[\s\S]{N,}"))` before reading it with
 `get_last_embedded_chat_message_text()`.
+
+## Entry-point Trigger select — restriction is now a DISABLED state, and the first post-reload click is swallowed (**Resolved/added during ELITEA-2008 repair implementation, 2026-08-26**)
+
+**The trigger restriction no longer hides options — it greys them out in place**
+(EliteaAI/EliteaUI@cb70a64e, EL-6128, on `main` 2026-08-24). Any assertion that reads only
+the option NAME list can no longer distinguish a restricted pipeline from an unrestricted
+one — both render `Chat Message, Schedule, Webhook`. Confirmed live:
+
+```
+select-option-chat_message      aria-disabled = None     <- enabled
+select-option-selected-icon     aria-disabled = None     <- NOT an option, see below
+select-option-schedule          aria-disabled = "true"   <- restricted
+select-option-webhook           aria-disabled = "true"   <- restricted
+```
+
+An **enabled option carries no `aria-disabled` attribute at all** — absent, never `"false"` —
+so the enabled check must be `:not([aria-disabled="true"])`, never
+`to_have_attribute("aria-disabled", "false")`. Use
+`PipelineDetailPage.get_trigger_option_states()` (added by this repair): opens the dropdown
+once, returns `{trigger_value: is_enabled}` read per value, closes via Escape.
+
+**`get_open_listbox_option_names()` / `SELECT_OPTION_PREFIX` are unsafe on localhost
+(issue #1806).** The prefix `[data-testid^="select-option-"]` also matches
+`select-option-selected-icon`, the ✓ icon INSIDE the selected MenuItem
+(EliteaAI/EliteaUI@b0a7d61a, on `automation/testids` only), so enumeration returns a spurious
+empty entry: `['Chat Message', '', 'Schedule', 'Webhook']`. Verified live 2026-08-26, and
+verified pre-existing by a control run against the unmodified page object —
+`test_pipeline_entry_point_trigger_types_persist.py::test_entry_point_trigger_types_persist`
+fails on exactly this, on localhost only, today. **Read per value, not by family**, and the
+spec is immune on both localhost and DEV.
+
+**The FIRST click on the Trigger select after a full page reload is swallowed.** Selecting the
+node remounts its config panel and replaces the Select element the click already resolved, so
+the menu never opens and the wait burns its whole timeout (reproduced 3/3 at 10 s; a second
+click opens it immediately). `open_trigger_select()` now absorbs this: 3 s probe wait, then —
+only if no option element exists at all — one re-click. Anything else driving this select
+after a reload should expect the same and reuse that method rather than clicking directly.

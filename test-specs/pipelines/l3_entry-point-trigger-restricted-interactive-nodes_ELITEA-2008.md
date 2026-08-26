@@ -578,6 +578,54 @@ Implementation notes:
 - Nothing else about the test changes — same fixture, same 8 steps, same Save-gating, same
   `allure.step` wrapping, no new markers.
 
+### Shipped — implementation record (2026-08-26, PR for issue #1802)
+
+What actually landed, where it differs from the work order above. Amended by the implementer
+per `.agents/role-overrides.md` § Implementer slot (the AFS states the SHIPPED truth).
+
+**① The name-list half of rows ①/② was NOT kept — presence is asserted per value instead.**
+The work-order table says "keep the name-list check and add the enabled check". Keeping
+`get_trigger_options() == [...]` was not possible: that helper enumerates via
+`SELECT_OPTION_PREFIX`, which on localhost also matches `select-option-selected-icon`
+(Known Defect ① / issue #1806), so the name list reads
+`['Chat Message', '', 'Schedule', 'Webhook']` and the assertion is RED on localhost while
+green on DEV — reproduced live this session, and confirmed as pre-existing by a control run
+against the unmodified page object. Widening the expectation to tolerate the `''` was
+explicitly forbidden by the dispatch, and so was fixing the prefix here.
+
+Shipped instead: `PipelineDetailPage.get_trigger_option_states()` returns
+`{trigger_value: is_enabled}` read **per value**, and each step asserts one dict equality.
+Presence is still asserted — a missing option is an absent key and fails the comparison —
+so nothing is lost, and the test is immune to #1806 on **both** localhost and DEV. What
+changes is the identity anchor: options are keyed by their testid value
+(`chat_message`/`schedule`/`webhook`) rather than their display label ("Chat Message"/…).
+That is the same identity the amended § Test Steps and § Concrete Handles already specify,
+and it is the more stable of the two.
+
+**② New implementation-time finding — the first click on the Trigger select after a full
+page reload is SWALLOWED.** Not previously recorded in this AFS. Reproduced deterministically:
+post-reload, `_select_node()` + click leaves the menu closed and the 10 s wait expires with
+zero options; an immediate second click opens it (options then render correctly). Mechanism:
+selecting the node remounts its config panel, replacing the Select element that the click had
+already resolved. This is what made the first repair attempt fail 3/3 at Step 5 — an
+infrastructure failure, NOT the product contract (the contract itself was confirmed live in
+the same session: `{'chat_message': True, 'schedule': False, 'webhook': False}` post-Save).
+
+Fixed in `open_trigger_select()`: wait `TRIGGER_SELECT_OPEN_PROBE_TIMEOUT` (3 s) for the menu,
+and only if **no** option element exists at all (`count() == 0`, i.e. the click never landed)
+re-click once and wait the full timeout. The `count() == 0` guard is load-bearing — it stops
+the retry from clicking shut a menu that is merely rendering slowly. Strictly more robust than
+the previous behaviour (it can only convert a timeout into a success), and the other caller
+spec (`test_pipeline_entry_point_trigger_types_persist.py`) was re-run against it.
+
+**③ Console-error capture migrated** to `utils/console_errors.collect_console_errors()` per
+work-order row ⑧ and `.agents/testing.md` § Known issues, so a future occurrence of the
+recurring background-resource noise class on this spec names the failing resource URL.
+
+**④ `get_trigger_options()` is left in place, untouched** (additive-only on a shared page
+object). It now has no caller in this spec but remains the public helper the rest of the
+trigger cluster uses; it is the method #1806 will fix.
+
 ## Automation Hints
 
 - Framework: Playwright + pytest, testid-only `LocatorDescriptor`. This case needs NO new

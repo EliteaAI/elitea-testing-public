@@ -18,6 +18,7 @@ from contextlib import contextmanager
 
 from components.mui import Dialog, Popper
 from playwright.sync_api import Locator, Page
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from utils.actions import action
 
 from .locator_descriptor import LocatorDescriptor
@@ -1252,6 +1253,39 @@ class PipelineDetailPage(PipelineFormPage):
     # .agents/testing.md § Locator policy scoped-selector convention —
     # chained off RF_NODE_TESTID, same mechanism as PRINTER_NODE_VALUE_TESTID.
     TRIGGER_SELECT_TESTID = '[data-testid="pipeline-entry-point-trigger-select"]'
+
+    # The three trigger types the entry-point Trigger select offers, by their
+    # INTERNAL value (FlowEditorConstants.TRIGGER_TYPES) — the suffix of each
+    # option's `select-option-{value}` testid, not the display label.
+    TRIGGER_OPTION_VALUES = ("chat_message", "schedule", "webhook")
+
+    # Per-value ENABLED/DISABLED state filters for a Trigger option, keyed off
+    # the existing `select-option-{value}` testid (ELITEA-2008, EL-6128).
+    #
+    # Since EliteaAI/EliteaUI@cb70a64e a restricted trigger is GREYED OUT IN
+    # PLACE rather than hidden, so the option's presence no longer carries the
+    # restriction — its state does. MUI's `MenuItem` emits that state as
+    # `aria-disabled="true"`; on an ENABLED option the attribute is ABSENT
+    # (never `"false"`), hence the `:not(...)` form — `to_have_attribute(
+    # "aria-disabled", "false")` would never match.
+    #
+    # DECLARED IMPROVISATION (.agents/role-overrides.md § Declared-improvisation
+    # protocol; canon-gap card #1805): .agents/testing.md § Locator policy (PR
+    # #581) names a `data-*` attribute as the state filter. MUI exposes this
+    # state only as `aria-disabled`, and mirroring it as `data-disabled` would
+    # mean editing the shared SingleSelectMenuItem component for one case AND
+    # would land on `automation/testids` only — green on localhost, red on
+    # dev.elitea.ai, i.e. re-creating the promotion gap this repair exists to
+    # close. `aria-disabled` is already on `origin/main`. The testid stays the
+    # identity; the attribute is only the state filter.
+    # How long open_trigger_select() waits for the menu before deciding the
+    # click was swallowed and re-clicking once (see its own comment). Short:
+    # a successful open renders the menu well inside this window, and a click
+    # that never landed is diagnosed early instead of burning the full timeout.
+    TRIGGER_SELECT_OPEN_PROBE_TIMEOUT = 3000
+
+    TRIGGER_OPTION_DISABLED = '[data-testid="select-option-{}"][aria-disabled="true"]'
+    TRIGGER_OPTION_ENABLED = '[data-testid="select-option-{}"]:not([aria-disabled="true"])'
 
     trigger_schedule_edit_button = LocatorDescriptor(
         testid="pipeline-entry-point-trigger-schedule-edit-button",
@@ -3527,9 +3561,24 @@ class PipelineDetailPage(PipelineFormPage):
         if entry_point_node_id:
             self._select_node(entry_point_node_id)
         self.trigger_select.click(timeout=timeout, force=True)
-        self.page.locator(self.SELECT_OPTION_PREFIX).first.wait_for(
-            state="visible", timeout=timeout
-        )
+        options = self.page.locator(self.SELECT_OPTION_PREFIX)
+        try:
+            options.first.wait_for(state="visible", timeout=self.TRIGGER_SELECT_OPEN_PROBE_TIMEOUT)
+        except PlaywrightTimeoutError:
+            # Swallowed first click, reproduced deterministically on the first
+            # open after a full page reload (ELITEA-2008 repair): selecting the
+            # node remounts its config panel, so the Select element resolved a
+            # moment earlier is replaced before the click lands and the menu
+            # never opens — a stuck 10s timeout, not slowness (the original
+            # failure waited the full timeout 3/3 and saw nothing).
+            #
+            # Re-clicking re-resolves the locator against the fresh element.
+            # Guarded by `count() == 0` so this can only ever fire when NO menu
+            # is open: a menu that is merely rendering slowly is waited out
+            # below instead of being clicked shut by the retry.
+            if options.count() == 0:
+                self.trigger_select.click(timeout=timeout, force=True)
+            options.first.wait_for(state="visible", timeout=timeout)
 
     def get_trigger_options(self, timeout: int = 10000, entry_point_node_id: str | None = None) -> list[str]:
         """Open the Trigger dropdown, read the visible option names, close via Escape.
@@ -3544,6 +3593,52 @@ class PipelineDetailPage(PipelineFormPage):
         options = self.get_open_listbox_option_names()
         self.page.keyboard.press("Escape")
         return options
+
+    def get_trigger_option_states(
+        self, timeout: int = 10000, entry_point_node_id: str | None = None
+    ) -> dict[str, bool]:
+        """Open the Trigger dropdown, read each option's presence AND enabled state, close via Escape.
+
+        One dropdown open serves both halves of the EL-6128 contract
+        (EliteaAI/EliteaUI@cb70a64e): a restricted trigger is greyed out IN
+        PLACE, so the option *list* is identical whether the pipeline is
+        restricted or not and only the per-option enabled/disabled split
+        discriminates.
+
+        Reads **per value** via :data:`TRIGGER_OPTION_ENABLED` /
+        :data:`TRIGGER_OPTION_DISABLED` rather than enumerating the
+        ``select-option-*`` family with :data:`SELECT_OPTION_PREFIX`, which is
+        deliberate: that prefix also matches the selected option's
+        ``select-option-selected-icon`` check mark (issue #1806), so family
+        enumeration yields a spurious empty entry on any build carrying that
+        testid. Per-value handles are immune on every environment.
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+            entry_point_node_id: Optional data-id of the entry point node to
+                bring to the front before opening the dropdown (see
+                :meth:`open_trigger_select`).
+
+        Returns:
+            ``{trigger_value: is_enabled}`` for every value of
+            :data:`TRIGGER_OPTION_VALUES` actually rendered in the dropdown.
+            An option that is NOT rendered is simply absent from the mapping,
+            so one dict comparison in the caller covers both which options are
+            offered and which of them are selectable.
+        """
+        self.open_trigger_select(timeout=timeout, entry_point_node_id=entry_point_node_id)
+        states: dict[str, bool] = {}
+        for value in self.TRIGGER_OPTION_VALUES:
+            if self.page.locator(self.SELECT_OPTION.format(value)).count() == 0:
+                continue
+            # `aria-disabled` is absent (not "false") on an enabled MenuItem,
+            # so the two filters are exact complements over a rendered option.
+            if self.page.locator(self.TRIGGER_OPTION_DISABLED.format(value)).count() > 0:
+                states[value] = False
+            else:
+                states[value] = self.page.locator(self.TRIGGER_OPTION_ENABLED.format(value)).count() > 0
+        self.page.keyboard.press("Escape")
+        return states
 
     def toggle_node_interrupt_before(self, node_id: str, timeout: int = 5000) -> None:
         """Click a node's inline "Interrupt before" switch (CommonInterruptSettings.jsx).
