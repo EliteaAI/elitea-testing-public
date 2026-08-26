@@ -57,3 +57,4 @@
 - [Run the merged spec before reusing its page object](stale_route_broke_merged_project_context_test.md) — a retired route can have red-lined it months ago
 - [Seeded precondition can swallow a case step's ACTION](seeded_precondition_can_swallow_a_case_step_action.md) — check every seed param against the case's own steps
 - [Repairing a neighbour spec leaves ITS AFS stale](repairing_a_neighbour_spec_leaves_its_afs_stale.md) — grep every touched spec's AFS, not just the dispatched ones
+- [Shared modal base class invites orphan testids](shared_modal_base_class_invites_orphan_testids.md) — filled-in base placeholders become #511 orphan testids
