@@ -195,6 +195,8 @@ This is a case-text **CLARIFICATION**, not a product defect (reverse-masking gua
    - Live: **FAILS** — count 0 throughout. Control run with guardrails off renders
      `Anthropic Claude 4.5 Sonnet`, so the expectation itself is correct.
    - ⇒ **`expect.soft()` + `# Known defect: #1834`.**
+   - ⚠️ **SUPERSEDED by § Implementer amendment row A** — over 7 post-rework runs the chip
+     rendered in 4 and was absent in 3. Still soft, still #1834, but nondeterministic.
 9. **Verify the toolkit/tool chip renders** (`chat-answer-tool-chip`, text
    `"{toolkit_name}: {tool_name}"`). *(Case step 4, tool half.)*
    - Live: **PASSES** — but it is already present *before* Authorize is clicked. Keep it as a
@@ -208,6 +210,10 @@ This is a case-text **CLARIFICATION**, not a product defect (reverse-masking gua
       produced no answer at all. The composer check alone is therefore a weak reading of "the
       conversation continues normally"; step 8's model chip is what actually carries that
       meaning, and it is soft-asserted.
+    - ⚠️ **PARTLY SUPERSEDED by § Implementer amendment row B** — the composer half holds 7/7,
+      but the panel does **not** stay gone when checked ~90 s after the click (as the implemented
+      step ordering does): it is back, with live buttons, 7/7. Filed as **#1835**; the assertion
+      is now `expect.soft()` + `# Known defect: #1835`.
 11. **Side-channel** — no console **errors** across the flow (0 observed, 5/5). The unhandled
     `parallel_hitl_ready` socket message is a console **warning** (#1831) and must **not** be
     filtered into or out of this assertion.
@@ -301,9 +307,48 @@ Target:
 | 6 | **Renumber the `allure.step` labels.** They currently all read `"Step — …"`; `.agents/testing.md` § Step reporting requires `"Step N — …"`, one per AFS step. | important |
 | 7 | The `_reach_sensitive_action_card()` helper, the badge assertion and `close_plus_menu_popper()` are **correct as merged** — all three re-verified live this pass. Do not change them. | — |
 
-**Sanctioned-RED bookkeeping.** Once reworked this spec merges RED with signature
-"#1834: file not deleted + model chip absent" — a single cause, two soft failures. Record it in
-the closure record; the TMS case goes to `blocked-on-#1834`, **not** `automated`.
+**Sanctioned-RED bookkeeping.** Once reworked this spec merges RED. **The signature is not the
+one predicted here — see § Implementer amendment below, which supersedes this paragraph.** Record
+it in the closure record; the TMS case goes to `blocked-on-#1834`/`#1835`, **not** `automated`.
+
+---
+
+## Implementer amendment — 2026-08-27 (7 live runs, post-rework)
+
+_Written by the implementer per `test-automation-implementation` § Hard Rules → 11 (amend the AFS
+in-place when execution shows drift). It supersedes the rows it names; everything else in this AFS
+was re-confirmed._
+
+The rework was implemented and the spec was run **7 times end to end** on
+`http://localhost:5173`. Two of this AFS's claims did not survive contact:
+
+| # | AFS said | 7 live runs said | Consequence |
+|---|---|---|---|
+| A | § Test Steps step 8 / Coverage Map row "4 Chips: LLM model chip": the model chip's count is **0 throughout** the authorize flow | The chip **rendered in 4 of 7 runs** and was absent in 3. Nondeterministic, not a stable red. | The assertion stays soft and stays #1834-linked, but it is the **subset-firing member** of a closed set (`.agents/testing.md` § Merge gate, closed-set variant) — not a per-run guaranteed failure. Anyone gating this spec must expect the sub-exception count to alternate between 2 and 3. |
+| B | § Test Steps step 10 / Coverage Map row "5 Conversation continues normally": composer editable **and panel stays gone** — "both pass" | The composer is editable (**7/7 pass**), but the panel does **NOT** stay gone: it is closed at ~0.13 s after the Authorize click (Step 5, hard, 7/7 pass) and **present again with live buttons ~90 s later, 7/7**. | Filed as **#1835** (`bug`, OPEN) — a sibling of #1834, plausibly the same dropped-resume root cause, filed separately because it is a different observable. The panel assertion now states the CORRECT behaviour under `expect.soft` + `# Known defect: #1835`, so Step 11's side-channel check still runs. |
+
+**Why the AFS missed B, most likely:** this AFS's own step ordering puts a ≤90 s execution poll
+*before* the "conversation continues normally" check, so the implemented spec reads the panel ~90 s
+after the click. The analysis pass observed the panel shortly after the click, when it is genuinely
+gone. Nothing in the analysis was wrong at the moment it was observed — the state simply changes
+later, and only the automated ordering exposes it.
+
+**The revised sanctioned-RED signature — a closed, enumerable set, every member OPEN, linked and
+soft-routed, all reported on every run:**
+
+| Member | Symptom | Fired |
+|---|---|---|
+| **#1834** | seeded file still in the bucket 90 s after Authorize (backend listing) | **7/7** |
+| **#1835** | the resolved sensitive-action card is rendered again ~90 s later | **7/7** |
+| **#1834** | LLM-model chip never renders | **3/7** |
+
+Nothing outside this set failed in any run: no `AttributeError`, no strict-mode violation, no
+unrelated-handle timeout, and **0 console errors, 7/7** (AFS step 11 holds).
+
+**Also confirmed unchanged this pass:** § Rework delta row 1 (`expect.poll` really is absent from
+Python Playwright — the merged spec could not run), row 7 (the helper, badge assertion and
+`close_plus_menu_popper()` are correct as merged), the card latency band, the tool chip's presence
+(and its uselessness as execution evidence), and the bucket-delete 404 on teardown (7/7).
 
 ### Risk flagged to the lead — ELITEA-2213 (not re-analysed here)
 
@@ -379,6 +424,10 @@ cherry-picks.
   toolkit tool never executes; the turn dies silently (no execution, no model chip, no answer,
   no error). Deterministic 4/4 across two harnesses; guardrails-off control proves the tool and
   toolkit are fine. **This is the case's own subject** — see § Classification note.
+- **#1835 (filed during implementation, 2026-08-27)** — the sensitive-action card, correctly
+  closed ~0.13 s after Authorize, is rendered **again** ~90 s later with live buttons, as if the
+  interrupt were still pending. 7/7. Sibling of #1834 and plausibly the same dropped-resume root
+  cause, filed separately because it is a different observable. See § Implementer amendment row B.
 - **#1831 (pre-existing, MINOR)** — the backend emits a `parallel_hitl_ready` WebSocket message
   the frontend has no handler for; logs `console.warn('unknown message type', …)` and returns
   early at `src/components/Chat/hooks.js:1658`, skipping the `setChatHistory` update. Re-observed
