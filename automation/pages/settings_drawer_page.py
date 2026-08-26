@@ -88,6 +88,11 @@ class SettingsDrawerPage(BasePage):
     # in each method body.
     SETTINGS_NAV_ITEMS_IN_MENU = '[data-testid="settings-drawer-menu"] [data-testid^="settings-nav-item-"]'
 
+    # Scoped selector for the menu container itself -- class-level UPPER_CASE
+    # constant per `.claude/rules/page-objects.md` "Scoped selectors", used by
+    # `nav_item_visibility_metrics()` (ELITEA-2260).
+    SETTINGS_DRAWER_MENU = '[data-testid="settings-drawer-menu"]'
+
     #: Accessible text of a log-out control, as rendered by the live product
     #: ("Log out", with the space). Tolerant of casing/spacing. Used only for
     #: the drift's absence assertion (see `drawer_logout_controls`).
@@ -202,3 +207,48 @@ class SettingsDrawerPage(BasePage):
         inventory to stay in that order.
         """
         return self.page.locator(self.SETTINGS_NAV_ITEMS_IN_MENU).last
+
+    def nav_item_visibility_metrics(self, tab_id: str) -> dict:
+        """Geometry needed to prove a drawer nav item is visible WITHOUT scrolling.
+
+        ELITEA-2260. Returns a dict with:
+
+        ``menu_scroll_height`` / ``menu_client_height`` / ``menu_scroll_top``
+            The drawer menu's own scroll state. ``scroll_height <= client_height``
+            with ``scroll_top == 0`` means the menu does not overflow at all --
+            i.e. nothing in it *can* require scrolling.
+        ``item_inside_menu``
+            The item's box lies entirely within the menu's visible box.
+        ``item_inside_viewport``
+            The item's box lies entirely within the browser viewport.
+
+        READ-ONLY: this is a pure measurement of what the product rendered --
+        no state is injected, nothing is scrolled, nothing is clicked (see
+        `.agents/testing.md` § Fidelity policy). `scrollHeight`/`clientHeight`
+        have no Playwright API equivalent, so they are read in-page, the same
+        way `nav_item_ids_in_order()` above reads rendered testids.
+        """
+        metrics: list[dict] = self.page.locator(self.SETTINGS_DRAWER_MENU).evaluate_all(
+            """(menus, sel) => menus.map(menu => {
+                const item = menu.querySelector(sel);
+                if (!item) return { item_found: false };
+                const m = menu.getBoundingClientRect();
+                const i = item.getBoundingClientRect();
+                return {
+                    item_found: true,
+                    menu_scroll_height: menu.scrollHeight,
+                    menu_client_height: menu.clientHeight,
+                    menu_scroll_top: menu.scrollTop,
+                    item_inside_menu: i.top >= m.top && i.bottom <= m.bottom,
+                    item_inside_viewport:
+                        i.top >= 0 && i.bottom <= window.innerHeight &&
+                        i.left >= 0 && i.right <= window.innerWidth,
+                };
+            })""",
+            arg=self.SETTINGS_NAV_ITEM.format(tab_id),
+        )
+        assert len(metrics) == 1, (
+            f"Expected exactly one settings-drawer-menu element, found {len(metrics)}"
+        )
+        logger.info("Drawer visibility metrics for %s: %s", tab_id, metrics[0])
+        return metrics[0]

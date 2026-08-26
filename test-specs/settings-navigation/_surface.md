@@ -162,3 +162,15 @@ Not a family AFS — the three cases differ in **steps** (static inventory
 check vs full click-through vs navigate-away-and-back), not only in data, so
 each has its own spec per `test-case-analysis` SKILL.md § Execute. All three
 share this digest and the same drift ticket (#1772).
+
+**Resolved/added during ELITEA-2260 implementation (2026-08-26):** the drawer's
+PERSONAL group renders **no badge or counter next to any item**, Notifications
+included — `SettingsDrawer.jsx` renders `icon + label` only; verified live at both
+1728x861 and the headless test viewport 1366x768 (drawer innerText carries no digit;
+zero `MuiBadge` nodes inside `settings-drawer`). The product's unread indication is a
+boolean red dot on the app sidebar header bell (`sidebar-notifications-bell-icon
+[data-has-messages]`), covered by ELITEA-2234. Also confirmed: the whole 12-item menu
+fits without scrolling at 1366x768 (`settings-drawer-menu` `scrollHeight ==
+clientHeight == 617`, `scrollTop == 0`), so "last PERSONAL item visible without
+scrolling" is a stable assertion at the framework viewport. ELITEA-2260's "unread count
+badge" step is another occurrence of the #1772 drift — commented there, not re-filed.
