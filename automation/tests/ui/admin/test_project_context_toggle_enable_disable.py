@@ -16,9 +16,15 @@ mechanism does not exist. Routed as clarification #1792.
 Precondition substitution (declared, TRANSIT ONLY): a non-empty Project Context
 is seeded via the API by the ``project_context_seed`` fixture, because the
 toggle only renders in the saved view (an empty project shows the empty state,
-which has no toggle at all — #1793). Every asserted value here — the PUT
-status, the toggle state after a hard reload, the banner text, the button
-states — is produced by the product.
+which has no toggle at all — #1793). **The seed writes CONTENT only** — it
+deliberately passes no ``enabled`` argument, so the fixture carries the
+product's own current flag forward (``serverData?.enabled ?? true``, and the
+fixture seeds onto a freshly-deleted resource, so that is the server's own
+default). That matters because case step 2's observable IS the flag ("Verify
+the toggle is ON by default"): had the seed written ``enabled=True``, step 2
+would have asserted a value the test itself authored. Every asserted value
+here — the PUT status, the default-ON state, the toggle state after a hard
+reload, the banner text, the button states — is produced by the product.
 
 Test case: ELITEA-2267
 AFS: test-specs/settings-project-params/l2_project-context-toggle-enable-disable_ELITEA-2267.md
@@ -67,8 +73,12 @@ class TestProjectContextToggleEnableDisable:
         drawer = SettingsDrawerPage(page)
         console_errors = collect_console_errors(page)
 
-        with allure.step("Setup — seed a non-empty, enabled Project Context (transit only; the toggle needs it)"):
-            project_context_seed(SEED_CONTENT, enabled=True)
+        with allure.step(
+            "Setup — seed CONTENT only (transit only; the toggle needs a non-empty context). "
+            "No 'enabled' is authored: the default-ON state is case step 2's own observable, "
+            "so it is left to the product"
+        ):
+            project_context_seed(SEED_CONTENT)
 
         with allure.step("Step 1 — Navigate to Settings -> Project Context: the saved view's toggle card renders"):
             context_page.navigate_to_saved_view()

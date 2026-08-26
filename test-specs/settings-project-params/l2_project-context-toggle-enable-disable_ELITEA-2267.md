@@ -48,7 +48,9 @@ persisted state. No step and no assertion is dropped. Clarification #1792 filed.
   non-emptiness matters.
 
 ### API used for setup/teardown only
-- `PUT .../project-context` `{content, enabled: true}` → 200 (seed).
+- `PUT .../project-context` `{content, enabled}` → 200 (seed). The seed sends
+  **content only** in spirit: `enabled` is echoed back from a preceding `GET`, never
+  chosen by the test (§ Fidelity Declaration).
 - `DELETE .../project-context` → 200, or **404 when unset** (teardown must tolerate).
   Reuse/extend `clean_project_context` (`automation/fixtures/data_fixtures.py:2521`).
 
@@ -56,13 +58,22 @@ persisted state. No step and no assertion is dropped. Clarification #1792 filed.
 
 | What is substituted | Transit or terminal | Authority / real observable |
 |---|---|---|
-| Precondition seeding of a non-empty Project Context via `PUT` rather than typing + saving in the UI | **Transit** | The case's observable is the *toggle's persisted state*, read off the live UI after a real reload, and produced by the product's own `PUT`/`GET` round-trip. The seed only establishes "a context exists". |
+| Precondition seeding of a non-empty Project Context's **`content`** via `PUT` rather than typing + saving in the UI | **Transit** | The case's observable is the *toggle's persisted state*, read off the live UI after a real reload, and produced by the product's own `PUT`/`GET` round-trip. The seed only establishes "a context exists". |
+| The **`enabled` flag** carried by that same `PUT` | **Not substituted at all** (amended in review round 1) | Case step 2's observable IS the flag — "Verify the toggle is **ON by default**". The seed therefore passes **no `enabled` argument**: `project_context_seed` defaults it to `None`, meaning "`GET` the resource and echo the product's own value back", mirroring `serverData?.enabled ?? true` (`ProjectContextSavedView.jsx:27`). The fixture seeds onto a freshly-deleted resource, so the echoed value is the **server's own default**. Every later flip (steps 3 and 7) is a real click on the real switch, waited on the product's own `PUT`. |
 
 No terminal substitution. No fabricated responses, no injected state.
 
+**Review-round-1 amendment.** The first implementation seeded `enabled=True` and
+then asserted "ON by default" — a tautology reading case step 2's observable off
+a test-authored value. Pinned against regression by
+`automation/tests/unit/test_project_context_seed_enabled_flag_not_authored.py`.
+
 ## Test Steps
 
-1. **Setup** — `DELETE` (tolerate 404), then `PUT` `{content: "<seed>", enabled: true}`.
+1. **Setup** — `DELETE` (tolerate 404), then `PUT` `{content: "<seed>"}` — **content
+   only**. The `enabled` flag is case step 2's own observable ("ON by default"), so
+   it is never authored: the fixture `GET`s the (just-deleted) resource and echoes
+   the product's own value, i.e. the server default. See § Fidelity Declaration.
 2. Navigate to `${BASE_URL}/settings/project-context`.
    - **Verify**: the toggle card `project-context-toggle-card` (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) is
      visible — confirms the saved view rendered and the precondition held.
@@ -135,7 +146,7 @@ body `{content, enabled}` → 200.
 | # | Case element | Expected result | Covered by | Asserted where | Disposition |
 |---|---|---|---|---|---|
 | 1 | Navigate to Settings → Project Context | page loads | Step 2 | toggle card visible | covered |
-| 2 | Toggle is ON by default | checked | Step 3 | `project-context-enable-toggle` checked + banner count 0 + Edit enabled | covered |
+| 2 | Toggle is ON by default | checked | Step 3 | `project-context-enable-toggle` checked + banner count 0 + Edit enabled | covered — and the **default** is the product's own: the setup seeds `content` only and never authors `enabled` (§ Fidelity Declaration) |
 | 3 | Click the toggle to turn it OFF | responds, state shown | Step 4 | unchecked + banner text + Edit/Edit-with-AI disabled | covered |
 | 4 | Click Save | saved | Step 4 | the auto-fired `PUT` → 200 | covered, mechanism differs — **clarification #1792** (no Save button exists) |
 | 5 | Navigate away and back | page loads | Step 5 | nav General → Project Context, card visible | covered |

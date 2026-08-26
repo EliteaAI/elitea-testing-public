@@ -211,6 +211,25 @@ the latter (and at a truncated slug) and 404'd; repaired in the same commit. Ver
 path with `find ../onetest-ai-tm-Elitea/tests -name "*<id>*"` before writing a case link.
 
 **New fixture: `project_context_seed`** (`automation/fixtures/data_fixtures.py`, registered
-in `conftest.py`). Yields `(content, enabled=True) -> dict`; deletes before and after,
+in `conftest.py`). Yields `(content, enabled=None) -> dict`; deletes before and after,
 tolerating the API's 404. Use it for any test touching the toggle or the saved view — the
 toggle only exists while `content` is non-empty.
+
+⚠️ **Seed CONTENT, not the enable flag** (settled in ELITEA-2266/2267/2276 review round 1,
+2026-08-26). The one `PUT` carries both `content` and `enabled`, and on this surface the
+flag is frequently the *case's own observable* — "the toggle is ON by default"
+(ELITEA-2266 step 6, ELITEA-2267 step 2) or the result of a user ACTION, "Turn the Project
+Context toggle ON" (ELITEA-2276 step 6). Seeding `enabled=True` and then asserting the
+switch is checked is a **terminal substitution**: the assertion reads a value the test
+wrote, and it looks perfectly healthy (deterministic, exact-equality, green).
+
+So `enabled` defaults to `None` = **carry the product's own flag forward**: the callable
+`GET`s the resource and echoes its value back, mirroring the product's own
+`serverData?.enabled ?? true` (`ProjectContextSavedView.jsx:27`,
+`ProjectContextEditor.jsx:157`). On a freshly-deleted resource the `GET` returns the
+server's own default, so "ON by default" is *observed*. Pass an explicit `enabled=` only
+to establish a **precondition** you then act on — ELITEA-2276 Phase B seeds
+`enabled=False` to restore the OFF state its own earlier click produced, then clicks the
+toggle ON for real. Declare any explicit flag in the spec docstring **and** the AFS
+§ Fidelity Declaration; pinned by
+`automation/tests/unit/test_project_context_seed_enabled_flag_not_authored.py`.

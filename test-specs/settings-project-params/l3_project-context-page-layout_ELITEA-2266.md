@@ -72,14 +72,25 @@ they are **not** asserted and **not** silently dropped. Clarification #1792 file
 
 | What is substituted | Transit or terminal | Authority / real observable |
 |---|---|---|
-| Precondition seeding of a non-empty Project Context via `PUT` instead of typing it in the editor | **Transit** | The case's observables are *which components render*, all read off the live rendered UI. The seed only reaches the saved view. **Every** asserted value in this spec is produced by the product. |
+| Precondition seeding of a non-empty Project Context's **`content`** via `PUT` instead of typing it in the editor | **Transit** | The case's observables are *which components render*, all read off the live rendered UI. The seed only reaches the saved view. **Every** asserted value in this spec is produced by the product. |
+| The **`enabled` flag** carried by that same `PUT` | **Not substituted at all** (amended in review round 1) | Case step 6's observable IS the flag — "An ON/OFF toggle (**enabled by default**)". The seed therefore passes **no `enabled` argument**: `project_context_seed` defaults it to `None`, meaning "`GET` the resource and echo the product's own value back", mirroring the product's own `serverData?.enabled ?? true` (`ProjectContextSavedView.jsx:27`). The fixture seeds onto a freshly-deleted resource, so the value it echoes is the **server's own default**. Step 3's `to_be_checked()` therefore observes the product's default, never one the test wrote. |
 
 No other substitution. No `route.fulfill`, no `page.evaluate` state injection.
+
+**Review-round-1 amendment.** The first implementation seeded `enabled=True` and
+then asserted the switch was checked — reading case step 6's observable off a
+value the test authored (a **terminal** substitution under `.agents/testing.md`
+§ Fidelity policy, invisible because only the *content* seed had been declared).
+Pinned against regression by
+`automation/tests/unit/test_project_context_seed_enabled_flag_not_authored.py`.
 
 ## Test Steps
 
 1. **Setup** — `DELETE` any existing Project Context (tolerate 404), then `PUT`
-   `{content: "<seed>", enabled: true}` for `${ELITEA_PROJECT_ID}`.
+   `{content: "<seed>"}` for `${ELITEA_PROJECT_ID}` — **content only**. The
+   `enabled` flag is case step 6's own observable, so it is never authored: the
+   fixture `GET`s the (just-deleted) resource and echoes the product's own value,
+   i.e. the server default. See § Fidelity Declaration.
 2. Navigate to `${BASE_URL}/settings/project-context` (bare path — project convention).
    - **Verify**: `settings-content` is visible.
    - **Verify**: the page header reads exactly **`Project Context`**
@@ -201,7 +212,7 @@ ai-edit-project-context-open-button        main:YES  testids:YES
 | 3 | Toggle card shown at top | card visible | Step 3 | `project-context-toggle-card` visible | covered (saved view only — #1792) |
 | 4 | Title "Project Context" | exact text | Step 3 | `project-context-toggle-card-title` | covered |
 | 5 | Description text explaining the feature | exact text | Step 3 | `project-context-toggle-card-description` | covered |
-| 6 | ON/OFF toggle, enabled by default | checked | Step 3 | `project-context-enable-toggle` checked | covered |
+| 6 | ON/OFF toggle, enabled by default | checked | Step 3 | `project-context-enable-toggle` checked | covered — and the **default** is the product's own: the setup seeds `content` only and never authors `enabled` (§ Fidelity Declaration), so this reads the server's default rather than a value the test wrote |
 | 7 | "Project Background" section shown below | — | — | — | **clarification #1792** — no such section exists in the product |
 | 8 | Section title "Project Background" | — | — | — | **clarification #1792** — string exists only inside the AI-generate review modal, never as a section title |
 | 9 | Subtitle (goals, terminology, workflows, constraints) | — | — | — | **clarification #1792** — no such subtitle anywhere |

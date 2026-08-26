@@ -67,18 +67,35 @@ so the case text gets fixed rather than this shape becoming doctrine.
 
 | What is substituted | Transit or terminal | Authority / real observable |
 |---|---|---|
-| Per-phase seeding of a non-empty Project Context via `PUT` rather than typing + saving it in the UI | **Transit** | The case's observable is *the empty save succeeding*, driven by a real click on the real Save button and read off the product's own `PUT` response, toast and resulting view. The seed only restores "a context exists" so the toggle is reachable. |
+| Per-phase seeding of a non-empty Project Context's **`content`** via `PUT` rather than typing + saving it in the UI | **Transit** | The case's observable is *the empty save succeeding*, driven by a real click on the real Save button and read off the product's own `PUT` response, toast and resulting view. The seed only restores "a context exists" so the toggle is reachable. |
+| **Phase A** — the `enabled` flag on that same `PUT` | **Not substituted at all** | Phase A passes **no `enabled` argument**; `project_context_seed` carries the product's own flag forward (`GET`-and-echo, mirroring `serverData?.enabled ?? true`). Case step 2 — "Turn the Project Context toggle OFF" — is then performed by a real click, waited on the product's own `PUT`. |
+| **Phase B** — `enabled: false` on that same `PUT` | **Transit** (a precondition, not an observable) | It restores the OFF state Phase A's own real click produced and the empty save erased along with the toggle. Case step 6 — "Turn the Project Context toggle ON" — is then performed by a **real click** on the real switch (step 8b), and the ON state is asserted off the product's `PUT` 200 + the re-rendered switch. The phase asserts the switch is **unchecked before** and **checked after**, so a regression back to a seeded ON state fails on the pre-click assertion. |
 
 No terminal substitution. The clearing and the saving are performed through the real
-editor, with real keyboard input.
+editor, with real keyboard input, and **both** of the case's toggle steps (2 and 6)
+are real clicks.
+
+**Review-round-1 amendment.** The first implementation satisfied case step 6 — an
+**ACTION** — by re-seeding `enabled=true` via the API and then asserting the switch
+was checked: a user action replaced by an API write, with the step's observable read
+straight off it (terminal substitution, `.agents/testing.md` § Fidelity policy). Only
+the *content* seed had been declared, which is what made it invisible. Pinned against
+regression by
+`automation/tests/unit/test_project_context_seed_enabled_flag_not_authored.py`.
 
 ## Test Steps
 
 ### Phase A — empty save with the toggle OFF (case steps 1-5)
 
-1. **Setup A** — `DELETE` (tolerate 404), then `PUT` `{content: "<seed A>", enabled: true}`.
+1. **Setup A** — `DELETE` (tolerate 404), then `PUT` `{content: "<seed A>"}` —
+   **content only**; `enabled` is echoed back from a preceding `GET` (the server
+   default here), never chosen by the test. Case step 2 turns the toggle OFF by a
+   real click at step 3. See § Fidelity Declaration.
 2. Navigate to `${BASE_URL}/settings/project-context`.
    - **Verify**: `project-context-toggle-card` (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) is visible.
+   - **Verify**: `project-context-enable-toggle` is **checked** on arrival — the
+     product's own default (the seed authored no flag), asserted so step 3's OFF
+     click is a real state change rather than a coin flip.
 3. **Turn the toggle OFF** (case step 2). Click `project-context-enable-toggle`
    (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*), waiting on the real `PUT` response.
    - **Verify**: response status **200**; the toggle is **unchecked**;
@@ -112,11 +129,21 @@ editor, with real keyboard input.
 
 ### Phase B — empty save with the toggle ON (case steps 6-9, re-ordered)
 
-7. **Setup B** — `PUT` `{content: "<seed B>", enabled: true}` (re-establishes both a
-   non-empty context and the ON state, which is also the product's default).
+7. **Setup B** — `PUT` `{content: "<seed B>", enabled: false}` — an explicit,
+   **declared precondition**: it restores the OFF state step 3's own real click
+   produced and step 6's empty save erased along with the toggle itself, so case
+   step 6 has a real control to act on. It is NOT the step's observable.
+   *(Amended in review round 1 — see § Fidelity Declaration.)*
 8. Reload `${BASE_URL}/settings/project-context`.
-   - **Verify**: `project-context-enable-toggle` is **checked** (case step 6's intent —
-     the toggle is ON), and `project-context-disabled-banner` count is **0**.
+   - **Verify**: `project-context-enable-toggle` is **unchecked** and
+     `project-context-disabled-banner` is **visible** — the precondition case step 6
+     acts from, asserted so the ON state below is a real state change.
+8b. **Turn the Project Context toggle ON** (case step 6 — an **ACTION**): click
+    `project-context-enable-toggle`, waiting on the real `PUT` response.
+    - **Verify**: response status is **200** (the saved view has no Save button —
+      `handleToggle` fires the `PUT` immediately).
+    - **Verify**: the toggle is now **checked** and `project-context-disabled-banner`
+      count is **0** — both produced by the product, not by the seed.
 9. Click `project-context-edit-button` (enabled now that the toggle is ON — the
    contrast with step 3 is the point).
    - **Verify**: URL is `${BASE_URL}/settings/project-context/edit`.
@@ -166,17 +193,18 @@ as a substitute for a UI observable):
 | 3 | Clear all content from the Project Background editor | no error | Steps 4-5 (decomposed: reach the editor by URL, then clear) | editor text `""`, counter `2500 characters left.` | covered; **route reached by direct URL because Edit is disabled when OFF** — declared, #1793 |
 | 4 | Click Save | responds | Step 6 | real click on `project-context-save-button` | covered |
 | 5 | Verify the settings save without error | saved, no error | Step 6 | `PUT` 200 + toast `Project Context saved` + URL leaves `/edit` + no console errors | covered |
-| 6 | Turn the Project Context toggle ON | no error | Steps 7-8 (phase B re-establishes content, then asserts the toggle is ON) | `project-context-enable-toggle` checked, banner count 0 | covered as an independent phase — **not in sequence**, because after step 5 no toggle exists (#1793) |
+| 6 | Turn the Project Context toggle ON | no error | Steps 7-8b (phase B re-establishes the OFF precondition, then performs the ACTION) | real click on `project-context-enable-toggle` → `PUT` 200, switch checked, banner count 0 (and unchecked asserted BEFORE the click) | covered as an independent phase — **not in sequence**, because after step 5 no toggle exists (#1793). The step is an ACTION and is performed as one: re-seeding `enabled=true` and asserting checked was the review-round-1 defect. |
 | 7 | Clear all content from the Project Background editor | no error | Steps 9-10 | editor text `""`, Save enabled | covered |
 | 8 | Click Save | responds | Step 11 | real click | covered |
 | 9 | Verify the settings save without error | saved, no error | Step 11 | `PUT` 200 + toast + empty state renders | covered |
 | P | Precondition: user logged in | — | Setup | `auth_state` | covered |
-| P2 | (implicit) a Project Context exists | — | Setup A / Setup B | seeded via `PUT` | covered — not stated by the case; without it there is no toggle and no content to clear |
+| P2 | (implicit) a Project Context exists | — | Setup A / Setup B | `content` seeded via `PUT` | covered — not stated by the case; without it there is no toggle and no content to clear. The seed carries `content` only in Phase A; Phase B's explicit `enabled: false` is the declared OFF precondition for case element 6, never its observable (§ Fidelity Declaration). |
 
 ### Axis 2 — observables asserted beyond the case
 
 | Observable | Why |
 |---|---|
+| `project-context-enable-toggle` **unchecked** before case element 6's click (step 8) | Makes the ON state a product-produced state CHANGE rather than a state the setup already arranged — the assertion a regression back to a seeded ON would trip. |
 | `project-context-edit-button` **disabled** while OFF (step 3) and **enabled** while ON (step 9) | This is the live fact that makes the re-ordering necessary. Asserting both branches makes the workaround visible and test-enforced, so if the product later enables Edit when OFF the test says so instead of the workaround quietly outliving its reason. |
 | The empty state renders and the toggle count is **0** after each empty save | The case's own step 6 assumes the opposite. Asserting the real post-save state pins #1793's behaviour, so a fix (toggle shown in the empty state) turns this test red and prompts the case to be re-ordered back. |
 | `PUT` status 200 on every save | "Saves without error" needs a real success signal; the product's own response is the honest one, and it distinguishes "the toast rendered" from "the server accepted it". |

@@ -17,8 +17,14 @@ bottom" as the case says (same clarification).
 
 Precondition substitution (declared, TRANSIT ONLY): a non-empty Project Context
 is seeded via the API by the ``project_context_seed`` fixture, because the
-toggle card only renders in the saved view. Every value this test asserts is
-produced by the product and read off the live UI.
+toggle card only renders in the saved view. **The seed writes CONTENT only** —
+it deliberately passes no ``enabled`` argument, so the fixture carries the
+product's own current flag forward (``serverData?.enabled ?? true``). That
+matters here because case step 6's observable IS the flag ("An ON/OFF toggle
+(enabled by default)"): had the seed written ``enabled=True``, step 3's
+``to_be_checked()`` would have asserted a value the test itself authored.
+Every value this test asserts is produced by the product and read off the
+live UI.
 
 Test case: ELITEA-2266
 AFS: test-specs/settings-project-params/l3_project-context-page-layout_ELITEA-2266.md
@@ -73,8 +79,12 @@ class TestProjectContextPageLayout:
         drawer = SettingsDrawerPage(page)
         console_errors = collect_console_errors(page)
 
-        with allure.step("Setup — seed a non-empty, enabled Project Context (transit only; the toggle card needs it)"):
-            project_context_seed(SEED_CONTENT, enabled=True)
+        with allure.step(
+            "Setup — seed CONTENT only (transit only; the toggle card needs a non-empty "
+            "context). No 'enabled' is authored: the flag is case step 6's own observable, "
+            "so it is left to the product's default"
+        ):
+            project_context_seed(SEED_CONTENT)
 
         with allure.step(
             "Step 1-2 — Navigate to Settings -> Project Context: page loads, "

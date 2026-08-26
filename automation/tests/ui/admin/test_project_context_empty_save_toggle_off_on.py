@@ -30,6 +30,23 @@ is the only state in which the toggle exists. The clearing and the saving —
 the case's actual subject — are performed through the real editor with real
 keyboard input, and every asserted value comes from the product.
 
+What the seed does and does NOT author (review round 1): the same ``PUT``
+carries the enable flag, and BOTH of this case's toggle steps are ACTIONS —
+step 2 "Turn the Project Context toggle OFF" and step 6 "Turn the Project
+Context toggle ON". Neither is satisfied by the seed:
+
+* **Phase A** passes no ``enabled`` at all, so the fixture carries the
+  product's own flag forward (``serverData?.enabled ?? true``); case step 2 is
+  then performed by a real click on the real switch.
+* **Phase B** passes ``enabled=False`` — an explicit, declared PRECONDITION,
+  not an observable. It restores the OFF state that Phase A's own real click
+  produced and that the empty save then erased along with the toggle, so case
+  step 6 has a real control to act on. Step 6 itself is a real click, waited on
+  the product's own ``PUT``; the phase asserts the switch is UNCHECKED before
+  it and CHECKED after, so the ON state is a product-produced state change and
+  a future regression back to "re-seed ``enabled=True`` and assert checked"
+  fails on the pre-click assertion.
+
 Test case: ELITEA-2276
 AFS: test-specs/settings-project-params/l3_empty-project-background-save-toggle-off-on_ELITEA-2276.md
 """
@@ -77,12 +94,19 @@ class TestProjectContextEmptySaveToggleOffOn:
 
         # ---------------- Phase A — empty save with the toggle OFF (case steps 1-5) ----------------
 
-        with allure.step("Setup A — seed a non-empty, enabled Project Context (transit only)"):
-            project_context_seed(SEED_CONTENT_PHASE_A, enabled=True)
+        with allure.step(
+            "Setup A — seed CONTENT only (transit only). No 'enabled' is authored: the "
+            "fixture carries the product's own flag forward, and case step 2 turns the "
+            "toggle OFF by a real click below"
+        ):
+            project_context_seed(SEED_CONTENT_PHASE_A)
 
         with allure.step("Step A1 — Navigate to Settings -> Project Context: the toggle card renders (case step 1)"):
             context_page.navigate_to_saved_view()
             expect(context_page.toggle_card).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            # The seed authored no flag, so this is the PRODUCT's state — and pinning it
+            # makes the OFF click below a real state change rather than a coin flip.
+            expect(context_page.enable_toggle).to_be_checked()
 
         with allure.step(
             "Step A2 — Turn the toggle OFF: the product's own PUT returns 200, the switch is "
@@ -145,16 +169,37 @@ class TestProjectContextEmptySaveToggleOffOn:
 
         # ---------------- Phase B — empty save with the toggle ON (case steps 6-9) ----------------
 
-        with allure.step("Setup B — re-seed a non-empty, enabled Project Context (transit only)"):
-            project_context_seed(SEED_CONTENT_PHASE_B, enabled=True)
+        with allure.step(
+            "Setup B — re-seed content with the toggle explicitly OFF (declared PRECONDITION, "
+            "not an observable): it restores the OFF state step A2's real click produced and "
+            "the empty save erased along with the toggle, so case step 6 has a control to act on"
+        ):
+            project_context_seed(SEED_CONTENT_PHASE_B, enabled=False)
 
-        with allure.step("Step B1 — Reload the page: the toggle is ON, with no 'turned off' banner (case step 6)"):
+        with allure.step(
+            "Step B1 — Reload the page: the toggle card is back and the switch is OFF with "
+            "the 'turned off' banner showing — the precondition case step 6 acts from"
+        ):
             context_page.navigate_to_saved_view()
+            expect(context_page.enable_toggle).not_to_be_checked()
+            expect(context_page.disabled_banner).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+
+        with allure.step(
+            "Step B2 — Turn the Project Context toggle ON by a real click on the real "
+            "switch (case step 6): the product's own PUT returns 200, the switch becomes "
+            "checked and the 'turned off' banner disappears — the ON state is produced by "
+            "the product, never by the seed"
+        ):
+            response = context_page.click_enable_toggle_and_wait_for_put()
+            assert response.status == 200, (
+                f"Expected the Project Context PUT to return 200 when turning the toggle back ON, "
+                f"got {response.status} — {response.url}"
+            )
             expect(context_page.enable_toggle).to_be_checked()
             expect(context_page.disabled_banner).to_have_count(0)
 
         with allure.step(
-            "Step B2 — Click Edit — enabled now that the toggle is ON, the contrast with "
+            "Step B3 — Click Edit — enabled now that the toggle is ON, the contrast with "
             "step A2 being the point: the editor opens on the real saved content"
         ):
             expect(context_page.edit_button).to_be_enabled()
@@ -162,13 +207,13 @@ class TestProjectContextEmptySaveToggleOffOn:
             expect(page).to_have_url(f"{settings.app_base_url}{PROJECT_CONTEXT_EDIT_PATH}")
             expect(context_page.editor_content).to_have_text(SEED_CONTENT_PHASE_B)
 
-        with allure.step("Step B3 — Clear all content from the editor: empty, Save enabled (case step 7)"):
+        with allure.step("Step B4 — Clear all content from the editor: empty, Save enabled (case step 7)"):
             context_page.clear_editor_content()
             expect(context_page.editor_content).to_have_text("")
             expect(context_page.save_button).to_be_enabled()
 
         with allure.step(
-            "Step B4 — Click Save: the settings save WITHOUT error — PUT 200, the "
+            "Step B5 — Click Save: the settings save WITHOUT error — PUT 200, the "
             "'Project Context saved' toast, and the empty state renders (case steps 8-9)"
         ):
             response = context_page.click_save_and_wait_for_put()
