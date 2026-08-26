@@ -31,11 +31,33 @@ read"/"Mark selected as unread" depending on the current selection's read
 state (state lives in the accessible name, not the testid, per
 ``.agents/testing.md`` § "Testid = stable identity"). ``toast-message`` is the
 pre-existing app-wide toast testid (see ``ArtifactsPage.success_toast_message``).
+
+Locator provenance (ELITEA-2255 / ELITEA-2256, adds page-layout and pagination
+coverage — ``EliteaAI/EliteaUI@7f772acc`` on ``automation/testids``, not yet on
+``main``): every handle below is CALL-SITE wiring of a prop the shared component
+already accepted, except two plain attribute adds in ``NotificationTableToolbar.jsx``.
+``notifications-center-header`` is a new ``data-testid`` on the toolbar's header
+``<Typography>``; ``notifications-search-input`` uses ``SimpleSearchBar``'s existing
+``data-testid`` prop (threaded onto its ``InputBase`` ``inputProps``);
+``notifications-delete-selected-button`` uses ``DeleteEntityButton``'s existing
+``testId`` prop; ``notifications-select-all-checkbox`` and
+``notifications-column-header-{field}`` use ``GridTableHeader``'s existing
+``selectAllCheckboxTestId`` / ``columnTestIdPrefix`` props;
+``notifications-pagination-{prev-button,page-info,page-size-select}`` use
+``GridTablePagination``'s existing ``prevButtonTestId`` / ``pageInfoTestId`` /
+``pageSizeSelectTestId`` props. ``notifications-pagination-page-size-select-combobox``
+is derived automatically by ``SingleSelect.jsx``
+(``SelectDisplayProps={{'data-testid': `${dataTestId}-combobox`}}``) — it is the
+CLICKABLE display node, whereas the bare ``…-page-size-select`` testid lands on the
+MUI ``Select`` root. ``notifications-page-size-option-{n}`` is a per-option ``testId``
+supplied at the ``NotificationTable.jsx`` call site and consumed by the pre-existing
+``SingleSelectMenuItem.jsx`` line ``data-testid={option.testId ?? …}`` — caller-supplied,
+so no other ``SingleSelect`` in the app gains a testid.
 """
 
 import logging
 
-from playwright.sync_api import Page
+from playwright.sync_api import Locator, Page
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -90,6 +112,60 @@ class NotificationCenterPage(BasePage):
     # Dynamic testid template — per-row checkbox, keyed by notification id
     # (ELITEA-2259). Same shape as ArtifactsPage.ARTIFACT_FILE_CHECKBOX.
     NOTIFICATION_ROW_CHECKBOX = '[data-testid="notification-checkbox-{}"]'
+
+    # ---- ELITEA-2255: page layout / header ----
+    page_header = LocatorDescriptor(
+        testid="notifications-center-header",
+        description='Toolbar page header — renders the literal text "Notifications Center"',
+    )
+    search_input = LocatorDescriptor(
+        testid="notifications-search-input",
+        description='Toolbar search field (SimpleSearchBar\'s inner <input>, placeholder "Search")',
+    )
+    delete_selected_button = LocatorDescriptor(
+        testid="notifications-delete-selected-button",
+        description="Toolbar delete-selected (trash) button — disabled until a row is selected",
+    )
+    select_all_checkbox = LocatorDescriptor(
+        testid="notifications-select-all-checkbox",
+        description="Table header's select-all checkbox — the case's 'checkbox' column",
+    )
+
+    # ---- ELITEA-2256: pagination footer ----
+    page_info_label = LocatorDescriptor(
+        testid="notifications-pagination-page-info",
+        description='Pagination range label, format "{start} - {end} of {total}"',
+    )
+    prev_page_button = LocatorDescriptor(
+        testid="notifications-pagination-prev-button",
+        description='Pagination "Previous page" button — disabled on the first page',
+    )
+    page_size_select = LocatorDescriptor(
+        testid="notifications-pagination-page-size-select",
+        description="Rows-per-page select ROOT (MUI Select). Read its text here; "
+        "CLICK page_size_select_combobox instead — the root is not the clickable node.",
+    )
+    page_size_select_combobox = LocatorDescriptor(
+        testid="notifications-pagination-page-size-select-combobox",
+        description="Rows-per-page select's clickable display node (SingleSelect derives "
+        "this testid from the root's via SelectDisplayProps)",
+    )
+
+    # Dynamic testid template — one per grid-table data column, keyed by the
+    # column's `field` (event_type / notification_text / created_at). Class-level
+    # per `.agents/testing.md` § Locator policy (inline get_by_test_id(f"...") is
+    # not the compliant shape).
+    NOTIFICATION_COLUMN_HEADER = '[data-testid="notifications-column-header-{}"]'
+
+    # Dynamic testid template — one per rows-per-page option (5/10/50/100).
+    PAGE_SIZE_OPTION = '[data-testid="notifications-page-size-option-{}"]'
+
+    # Scoped compound selector — every rendered row checkbox, scoped inside the
+    # table body's own testid. Used to read the rendered row-id set without
+    # touching a raw (non-testid) handle.
+    ROW_CHECKBOXES_IN_BODY = (
+        '[data-testid="notification-table-body"] [data-testid^="notification-checkbox-"]'
+    )
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -264,3 +340,68 @@ class NotificationCenterPage(BasePage):
             f"Pagination did not terminate (Next page still enabled) within the "
             f"safety cap of {max_pages} pages — {len(texts)} row(s) collected so far"
         )
+
+    # ------------------------------------------------------------------
+    # ELITEA-2255 — layout reads
+    # ------------------------------------------------------------------
+
+    def column_header(self, field: str) -> Locator:
+        """Table column header for *field* (``event_type``/``notification_text``/``created_at``)."""
+        return self.page.locator(self.NOTIFICATION_COLUMN_HEADER.format(field))
+
+    def column_header_texts(self, fields: list[str]) -> list[str]:
+        """Rendered label of each column header in *fields*, in the order given."""
+        return [self.column_header(field).inner_text().strip() for field in fields]
+
+    def is_delete_selected_enabled(self, timeout: int = UI_ELEMENT_TIMEOUT) -> bool:
+        """Return whether the toolbar's delete-selected button is currently enabled."""
+        self.delete_selected_button.wait_for(state="visible", timeout=timeout)
+        return not self.delete_selected_button.is_disabled()
+
+    # ------------------------------------------------------------------
+    # ELITEA-2256 — pagination
+    # ------------------------------------------------------------------
+
+    def get_page_info(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Return the pagination range label's rendered text, e.g. ``"1 - 50 of 89"``."""
+        self.page_info_label.wait_for(state="visible", timeout=timeout)
+        return self.page_info_label.inner_text().strip()
+
+    def get_page_size_value(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Return the rows-per-page select's currently displayed value, e.g. ``"50"``."""
+        self.page_size_select.wait_for(state="visible", timeout=timeout)
+        return self.page_size_select.inner_text().strip()
+
+    def select_page_size(self, page_size: int, timeout: int = NAVIGATION_TIMEOUT):
+        """Open the rows-per-page select, choose *page_size*, and wait for the
+        resulting notification-list GET.
+
+        Returns the matched Playwright ``Response`` so callers can assert the
+        request's own ``limit``/``offset`` and use the response body as the oracle
+        for the rendered row count (`.agents/testing.md` § How to test a
+        NONDETERMINISTIC producer without substituting it).
+        """
+        self.page_size_select_combobox.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        self.page_size_select_combobox.click()
+        option = self.page.locator(self.PAGE_SIZE_OPTION.format(page_size))
+        option.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        with self.page.expect_response(
+            self._is_notifications_list_response, timeout=timeout
+        ) as response_info:
+            option.click()
+        logger.info("Selected rows-per-page = %s", page_size)
+        return response_info.value
+
+    def get_rendered_row_ids(self) -> list[int]:
+        """Return the notification ids of every row currently rendered, in display order.
+
+        Read off each row's ``notification-checkbox-{id}`` testid (scoped inside the
+        table body's testid) — the ids the product actually rendered, not a
+        test-authored list.
+        """
+        prefix = "notification-checkbox-"
+        testids: list[str] = self.page.locator(self.ROW_CHECKBOXES_IN_BODY).evaluate_all(
+            "els => els.map(el => el.getAttribute('data-testid'))"
+        )
+        return [int(t[len(prefix) :]) for t in testids if t and t.startswith(prefix)]
+
