@@ -1339,34 +1339,42 @@ class PipelineDetailPage(PipelineFormPage):
         fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").first,
         description="Schedule settings modal (dialog root) - USING FALLBACK due to missing testid"
     )
+    # TEMPORARY WORKAROUND: Child element testids also missing
     schedule_summary_text = LocatorDescriptor(
-        testid="pipeline-schedule-summary-text",
-        description='Schedule modal cron summary text (e.g. "At 00:00, only on Saturday")'
+        # testid="pipeline-schedule-summary-text",  # DISABLED - testid doesn't exist
+        fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('text=/At \\d+:\\d+|Every |Daily|Weekly|Monthly/').first,
+        description='Schedule modal cron summary text (e.g. "At 00:00, only on Saturday") - USING FALLBACK'
     )
     schedule_modal_cancel_button = LocatorDescriptor(
-        testid="pipeline-schedule-modal-cancel-button",
-        description="Schedule settings modal Cancel button"
+        # testid="pipeline-schedule-modal-cancel-button",  # DISABLED - testid doesn't exist
+        fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('button:has-text("Cancel")').first,
+        description="Schedule settings modal Cancel button - USING FALLBACK"
     )
     schedule_modal_apply_button = LocatorDescriptor(
-        testid="pipeline-schedule-modal-apply-button",
-        description="Schedule settings modal Apply button"
+        # testid="pipeline-schedule-modal-apply-button",  # DISABLED - testid doesn't exist
+        # NOTE: Button text is "Save" not "Apply" in the shared Schedule.ScheduleModal component
+        fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('button:has-text("Save")').first,
+        description="Schedule settings modal Apply/Save button - USING FALLBACK"
     )
     schedule_cron_input = LocatorDescriptor(
-        testid="pipeline-schedule-cron-input",
-        description="Advanced-mode raw cron expression text input"
+        # testid="pipeline-schedule-cron-input",  # DISABLED - testid doesn't exist
+        fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('input[type="text"]').first,
+        description="Advanced-mode raw cron expression text input - USING FALLBACK"
     )
 
-    # Mode radio (Default/Advanced) — RadioButtonGroup's `testId` prop
-    # auto-derives `${testId}-${item.value.lower()}` on the FormControlLabel
-    # wrapper (confirmed via source read, same mechanism as the Webhook Type
-    # radios above).
+    # TEMPORARY WORKAROUND: Mode selection testids missing
+    # NOTE: The modal uses Tab.TabGroupButton, not radio buttons
+    # Tab labels are "Builder" (default/visual) and "Cron Expression" (advanced/text)
+    # The test references "Default" and "Advanced" but actual UI has different labels
     schedule_mode_radio_default = LocatorDescriptor(
-        testid="pipeline-schedule-mode-radio-default",
-        description="Schedule modal Mode radio — Default option"
+        # testid="pipeline-schedule-mode-radio-default",  # DISABLED - testid doesn't exist
+        fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('button:has-text("Builder")').first,
+        description="Schedule modal Mode — Builder (Default) tab - USING FALLBACK"
     )
     schedule_mode_radio_advanced = LocatorDescriptor(
-        testid="pipeline-schedule-mode-radio-advanced",
-        description="Schedule modal Mode radio — Advanced option"
+        # testid="pipeline-schedule-mode-radio-advanced",  # DISABLED - testid doesn't exist
+        fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('button:has-text("Cron Expression")').first,
+        description="Schedule modal Mode — Cron Expression (Advanced) tab - USING FALLBACK"
     )
 
     # Third-party widget (react-js-cron / antd internals) — sanctioned #579
