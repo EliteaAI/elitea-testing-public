@@ -4213,3 +4213,112 @@ Flow-graph-dirty-state Discard flow, one layer deeper than ELITEA-2076
 - **No product defect found** — this flow behaves exactly as the case
   describes; zero clarifications needed.
 - AFS: `test-specs/chat-interface/l2_pipeline-flow-editor-add-llm-node-discard-changes_ELITEA-2078.md`.
+
+## Agent/Pipeline participant SECOND-ADD silent drop — re-characterised (ELITEA-2455, 2026-08-26)
+- **Supersedes the "order-dependent" framing in the 2026-08-06 section below.** Re-run
+  live over **16 repetitions** through the real pytest/page-object harness (fresh
+  `agent_id` + `pipeline_with_llm_id` + fresh UI-created conversation each time):
+  whichever of Agent/Pipeline is added **second** is silently dropped — **in BOTH
+  orders**, 13/16 runs. Evidence commented on EliteaAI/elitea-testing-public#1279.
+- **Measured breakdown:** no settle between adds → 0/6 (Pipeline→Agent). Condition-wait
+  on the 1st participant's row visible + `chat-switch-participant-button` visible →
+  0/3. Same + `networkidle` → 0/3. Fixed **1500 ms wall-clock** delay after each add →
+  Pipeline→Agent 2/2, Agent→Pipeline 1/2.
+- **There is NO honest settle condition.** Row-visible, `chat-switch-participant-button`
+  visible and `networkidle` all resolve together at ~1.7–2.2 s — the measured gap between
+  them and the failing second add was **0.00 s in 6/6 runs**. Only raw elapsed wall-clock
+  time changes the outcome, i.e. client participant state settles after every DOM/network
+  signal is quiet. A fixed `sleep` is the only known mitigation, is banned here
+  (`.agents/conventions.md`), and is still only ~75 % reliable.
+- **The silent-drop runs have a COMPLETELY CLEAN console** — no 400, no `icon_meta`
+  TypeError, no toast. The `version/prompt_lib` 400 documented on #1279 fires only on the
+  runs that SUCCEED. **Never use a console-error assertion as the guard for this
+  behaviour** — it cannot see the failure.
+- **Toolkit and MCP participants are unaffected** — back-to-back Toolkit→MCP adds in one
+  open popper are reliable (ELITEA-2203's merged spec does exactly that, green). The race
+  is specific to the version-carrying Agent/Pipeline participant types.
+- **A brand-new, UNSENT conversation is not persisted** — URL stays `/chat` with no id, and
+  a reload clears every participant (confirmed 4/4 live). Any persistence/reload check must
+  come after the first Send.
+- Any case needing an Agent **and** a Pipeline as simultaneous chat participants is still
+  unautomatable. Cheap unblock probe (~4 min) recorded in
+  `l1_chat-create-conversation-add-all-participant-types_ELITEA-2455.md` § Automation Hints —
+  run it first before spending analysis time on such a case.
+
+## Agent + Pipeline participant coexistence — BLOCKING instability (ELITEA-2455, 2026-08-06)
+- **CONFIRMED BLOCKING DEFECT, filed EliteaAI/elitea-testing-public#1279**
+  (sibling of #684 — same participant-state `version_id` mixup family the
+  parked ELITEA-2094 investigation documented): adding an Agent participant
+  THEN a Pipeline participant to the same conversation is a **silent
+  no-op** on the Pipeline add — the item resolves, clicks, the popper's
+  network-idle wait completes, no error is shown, but no Pipeline
+  participant is ever created. The REVERSE order (Pipeline first, then
+  Agent) DOES add both, but throws `GET
+  /elitea_core/version/prompt_lib/{project}/{agent}/{version}` → 400 +
+  `TypeError: Cannot read properties of undefined (reading 'icon_meta')`
+  at `ChatBox.jsx:1601` during the Agent add — and even THAT order was not
+  reliably reproduced 2/2 in the automated pytest harness (worked live via
+  manual Playwright MCP driving, failed once inside the real pytest run
+  with the identical page-object methods). This matches ELITEA-2094's own
+  characterization exactly: "can crash immediately, crash later at Send,
+  silently misclassify a badge into the wrong PARTICIPANTS section, or
+  resolve with ZERO VISIBLE SYMPTOM depending on timing."
+- **Any case needing an Agent AND a Pipeline as SIMULTANEOUS chat
+  participants is currently blocked by this** — not just ELITEA-2455.
+  Re-check this instability first before spending analysis time on such a
+  case; consider the same `defect-found`/park classification ELITEA-2094
+  reached until #1279 (and its siblings #684/#687/#689) are resolved.
+- **Agent-only, Pipeline-only, Toolkit-only, and MCP-only adds are all
+  independently reliable** (each confirmed live, both via a scratch
+  Playwright MCP script and inside the real fixture-driven pytest harness)
+  — the instability is specifically about Agent+Pipeline COEXISTENCE, not
+  the individual add mechanisms.
+- **Testid patterns confirmed for the Agents/Pipelines submenus** (select-
+  and-close semantics, mirroring the already-documented Toolkits/MCPs
+  toggle-switch shapes above): `agents-search-input` / `pipelines-search-input`
+  (generic `PlusChatSubmenu.jsx` `${sectionKey}-search-input` template, no
+  new testid needed); `agents-menu-item-agent-{project_id}-{agent_id}` /
+  `pipelines-menu-item-pipeline-{project_id}-{pipeline_id}` (same generic
+  `${sectionKey}-menu-item-${item.key}` template, `item.key` confirmed via
+  `useDropdownData.jsx`'s `agentMenuItems`/`pipelineMenuItems`:
+  `agent-${project_id}-${id}` / `pipeline-${project_id}-${id}`). Both
+  already render on `automation/testids` — no `add-data-testid` work
+  needed for this whole surface.
+- **`chat-attach-menuitem-button` is ALREADY wired** (`AttachmentButton.jsx`'s
+  `testId` prop, consumed at the plus-menu popper call site in
+  `PlusChatButton.jsx`) — supersedes this file's earlier File-attachments
+  section note that it "needs a `testId` prop threaded through" (that work
+  had already landed by this pass; only newly CONSUMED, not added).
+- **`chat-participants-badge-icon-{section}`** (collapsed-badge-only,
+  commit `8971529f`, pre-dates this pass) is the ONLY testid-backed
+  distinct-icon-per-participant-type signal anywhere in this component
+  family — the EXPANDED panel's per-row `EntityIcon` (`ParticipantItem.jsx`)
+  carries no testid or per-type attribute at all (confirmed via full-file
+  read). A case needing "distinct icon per type" while the panel stays
+  EXPANDED has no in-panel testid signal; must toggle to collapsed
+  specifically for that check.
+- **`close_plus_menu_popper()`'s `chat-message-list` outside-click target
+  does not exist on a brand-new, UNSENT conversation** (`NewConversationView`
+  renders `chat-new-conversation-greeting` instead, confirmed live) — a case
+  driving the plus-menu popper before the first Send needs a different
+  outside-click target (e.g. the greeting container itself, confirmed live
+  to correctly trigger the same `ClickAwayListener` dismissal).
+- **`agent_id` and `pipeline_with_llm_id` fixtures produce COLLIDING display
+  names** — both derive from the identical `f"autotest_{request.node.name}"[:32]`
+  pattern (`data_fixtures.py`). `ChatPage.get_participant_row_by_name()`'s
+  text-filter can't disambiguate them when both are participants in the
+  same conversation — resolve by the row's UNIQUE-ID testid instead
+  (`chat-participant-row-application_{agent_id}_{project_id}` /
+  `chat-participant-row-pipeline_{pipeline_id}_{project_id}`).
+- **Composer placeholder attribute race, low-confidence** (filed
+  EliteaAI/elitea-testing-public#1278): `[data-testid="chat-message-input"]`'s
+  `placeholder` HTML attribute read empty (`""`) in 4/4 dedicated checks
+  early in this session, but correctly showed `"Type your message..."` in a
+  later screenshot AND a later live re-check (same session, more elapsed
+  time / more page interactions before the check). Not confirmed as a
+  hard, reliably-reproducing defect — likely a timing race resolved by
+  some async condition (participant list load? user-settings fetch?) not
+  yet isolated. Worth a dedicated, isolated repro (fresh page, immediate
+  check, then poll at fixed intervals) if picked up again — don't hard-
+  assert the placeholder text without a wait-for-condition, and don't treat
+  a single early-check failure as proof.

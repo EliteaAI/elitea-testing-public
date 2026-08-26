@@ -59,3 +59,28 @@
 - [Settings backlog (#1398)](settings_area_backlog_1398.md) — 3 waves done: 22 delivered, 6 blocked (#1780/#1781/#1789)
 - [Reproduce locally before accepting an environment-specific framing](environment_specific_framing_needs_a_local_reproduction_first.md) — triage dispatch line
 - [A green CI run can mean zero tests ran](ci_green_can_mean_zero_tests_ran.md) — pytest exits 0 on all-skip; check JUnit skipped vs tests
+- [No-edit guardrail is repo-agnostic](no_edit_guardrail_repo_agnostic.md) — 3× violated; conflicts are dispatched
+- [#524 blocks ALL agent creation](blocker_524_blocks_all_agent_creation.md) — still OPEN; kills the agent_id fixture
+- [Isolated-defect assert can ship GREEN](isolated_defect_can_ship_green.md) — verify its logic by hand, not colour
+- [EL-5708 broke indexes_tab](indexes_tab_removed_by_el5708_toolkit_detail_page_stale.md) — count_config_tabs fails
+- [Workflow gate stall = false blocked](workflow_gate_stall_gives_false_blocked_lead_runs_gate_directly.md) — check journal.jsonl, run gate yourself
+- [Gate hard-fail vs soft-stall](workflow_gate_hard_failure_vs_soft_stall_different_recovery.md) — StructuredOutput never called → plain resume works
+- [Long gate Bash calls get infra-killed](long_running_gate_bash_calls_get_infra_killed.md) — retry on 0 FAILED, don't diagnose red
+- [Case→issue mapping isn't in the snapshot](tms_case_to_issue_mapping_not_in_snapshot.md) — capture at intake; strict `[Automate][ELITEA-<id>]` match, not bare-ID
+- [Testid provenance: bulk not per-case](testid_provenance_bulk_check_for_multi_case_closure.md) — one dump+diff for the whole wave; `+`-lines only
+- [Workflow tool: use scriptPath, not workflow('name',...)](workflow_tool_named_registry_is_empty_use_scriptpath.md) — named registry is empty; wrapper-script call fails silently-fast
+- [build_index MCP verb can silently no-op](build_index_mcp_verb_can_silently_no_op.md) — omit `repo:` arg entirely; it misroutes to ~/.onetest-workspaces
+- [batch-build never opens trunk→base PR](batch_workflow_never_opens_trunk_to_base_pr.md) — lead always `gh pr create`+merge it by hand, every batch
+- [Workflow new-ground blocker needs blocking_detail too](workflow_new_ground_blocker_needs_blocking_detail_too.md) — `blocked` may be a loop-control gap, not unfixable — read the finding first
+- [Workflow R2 cap is total, not per-cause](batch_workflow_r2_counter_is_total_not_per_cause.md) — verify per-cause via the implementer's own notes + `gh pr view` before accepting an "R2 cap exceeded" park
+- [TMS ids CAN collide across modules](onetest_case_id_can_collide_across_modules.md) — SYSTEMIC (150+ ids); run `grep -h '^id: ELITEA-' -r tests/ | sort | uniq -d` every intake
+- [Report outcome "blocked" can still mean LAND IT](batch_report_case_outcome_blocked_can_still_mean_land_it.md) — check `gate.verdict`+`next` before parking a sanctioned-RED case
+- [Gate red at runs=1 — confirm before parking](gate_red_at_1_run_lead_confirms_sanctioned_red_before_landing.md) — internal gate honestly stops at 1 red; run your own N=3 before classifying
+- [Workflow status:failed ≠ work lost](workflow_hard_failure_can_still_have_landed_real_work.md) — check git+journal.jsonl, then just resume; don't redo
+- [gh project rate-limit hits the READ, not the mutation](gh_project_rate_limit_on_verification_read_not_the_mutation.md) — item-edit likely already succeeded; retry the verify read, don't redo the edit
+- [Blast-radius red doesn't block gate verdict](blast_radius_red_does_not_block_gate_verdict.md) — trust `gate.verdict`; route unrelated blast-radius failures as their own untriaged issue
+- [Workflow resume needs args too](workflow_resume_requires_args_too.md) — `{scriptPath, resumeFromRunId}` alone throws "args required"; always resend the same `args`
+- [Blast-radius can go UNOBSERVED](gate_blast_radius_can_go_unobserved_lead_must_complete_it.md) — a timed-out run isn't a red one; lead must actually re-run it before landing
+- [Report-writer agent can refuse the disk write](report_writer_agent_can_refuse_disk_write.md) — check `.agents/automation/<slug>/report.json` actually exists (and isn't clipped) after every batch; write it yourself if not
+- [Trunk→base PR can use a stale head](trunk_to_base_pr_can_use_stale_head_missing_report_commit.md) — `gh pr create` right after completion can miss the report-writer's own commit; verify `gh pr view --json files` includes report.json post-merge
+- [Agent+Pipeline chat participants](chat_participant_version_id_mixup_defect_family.md) — #1279 drops 2nd add 13/16
