@@ -114,3 +114,58 @@ future case adds a `data-is-seen` (or similar) attribute to the row.
   2026-08-04 — comfortably enough for any case needing "N unread
   notifications" without seeding; discover ids dynamically from the list
   response rather than hardcoding, since this is real growing DEV history.
+
+## Notifications Center layout + pagination (ELITEA-2255 / ELITEA-2256, confirmed live 2026-08-26)
+
+**Testids added this session** — `EliteaAI/EliteaUI@7f772acc` on `automation/testids`,
+NOT yet on `main` (human cherry-picks). All are call-site wiring of props the shared
+`grid-table` / shared-ui components ALREADY accepted, except the two plain attribute
+adds in `NotificationTableToolbar.jsx`:
+
+| Testid | How | Component |
+|---|---|---|
+| `notifications-center-header` | new `data-testid` attribute | `NotificationTableToolbar.jsx` header `<Typography>` |
+| `notifications-search-input` | `data-testid` prop (already threaded to `InputBase.inputProps`) | `SimpleSearchBar` call site |
+| `notifications-delete-selected-button` | `testId` prop (already accepted) | `DeleteEntityButton` call site |
+| `notifications-select-all-checkbox` | `selectAllCheckboxTestId` prop (already accepted) | `GridTableHeader` call site |
+| `notifications-column-header-{event_type,notification_text,created_at}` | `columnTestIdPrefix="notifications"` (already accepted) | `GridTableHeader` call site |
+| `notifications-pagination-{prev-button,page-info,page-size-select}` | `prevButtonTestId` / `pageInfoTestId` / `pageSizeSelectTestId` (already accepted) | `GridTablePagination` call site |
+| `notifications-pagination-page-size-select-combobox` | derived automatically by `SingleSelect.jsx` (`SelectDisplayProps`) — **this is the clickable node**; the bare `…-page-size-select` testid is the `Select` ROOT and clicking it is unreliable | `SingleSelect` |
+| `notifications-page-size-option-{5,10,50,100}` | per-option `testId` on the call site's `pageSizeSelectOptions` — consumed by the PRE-EXISTING `SingleSelectMenuItem.jsx` line `data-testid={option.testId ?? \`select-option-${option.value}\`}` | `NotificationTable.jsx` |
+
+⇒ **`SingleSelectMenuItem` already gives every select option a testid** (falling back to
+`select-option-{value}`). For a scoped, collision-free handle pass `testId` on the option
+object at the call site instead of relying on the generic fallback. No shared-component
+edit was needed for the dropdown.
+
+**Pagination facts (live 2026-08-26):** default `pageSize` 50; options `[5, 10, 50, 100]`;
+page-info format is `` `${startRow} - ${endRow} of ${totalRows}` `` — ASCII hyphen with
+spaces, e.g. `"1 - 50 of 89"` (the case text's `"1–50 of 195"` en-dash example is an
+illustration only). `GridTablePagination` returns `null` when `totalRows === 0`.
+89 notifications on the test account this session (was 67 on 2026-08-04 — it grows).
+
+**"Permanent loading state" is provable without a loading testid:** `GridTableContainer`
+renders loading / empty / table as three MUTUALLY EXCLUSIVE branches
+(`isLoading ? … : isEmpty ? … : children`), so a visible `notification-table-body` plus a
+real page-info range IS positive proof that `isFetching` resolved false. Do **not** add a
+testid to `GridTableContainer`'s loading node — it is shared by every grid table in the
+app and that would be a blanket add.
+
+**Toolbar action buttons (live):** exactly TWO — the single mark read/unread toggle
+(`notification-mark-toggle-button`, accessible name `"Mark selected as unread"` when the
+selection is empty) and the delete button (`aria-label="delete entity"`). Both are
+`disabled` until at least one row is selected.
+
+## Settings-drawer Notifications entry (ELITEA-2260, confirmed live 2026-08-26)
+
+- `settings-nav-item-notifications` is the LAST item of the drawer's PERSONAL group and
+  needs **no scrolling** at either 1728x861 or the headless test viewport 1366x768:
+  `settings-drawer-menu` has `scrollHeight == clientHeight == 617`, `scrollTop == 0`, and
+  the entry's box (top 630 / bottom 662) sits inside the menu box (top 61 / bottom 678).
+- **There is NO badge of any kind in the Settings drawer** — `SettingsDrawer.jsx` renders
+  `icon + label` only; the drawer's innerText contains no digit and there are zero
+  `MuiBadge` nodes inside `settings-drawer`. The product's unread indication is a
+  **boolean red dot**, not a count, on the app sidebar header bell
+  (`sidebar-notifications-bell-icon[data-has-messages]`, ELITEA-2234). ELITEA-2260's
+  step 4 ("unread count badge next to Notifications") is therefore case-text drift —
+  commented on clarification EliteaAI/elitea-testing-public#1772, not filed as a bug.
