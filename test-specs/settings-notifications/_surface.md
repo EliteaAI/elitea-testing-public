@@ -395,6 +395,23 @@ client inside a spec: `tests/ui/chat/test_delete_confirmation_modal_ui_validatio
 that does not exist yet when the listener is bound. `BrowserContext.on("console")` covers
 every page in the context, including popups opened later.
 
+**Resolved/added during ELITEA-2261/2263 implementation (fix round 1, 2026-08-26):**
+the popup's known background noise is a `403` on `/api/v2/secrets/secrets/default/{project}`
+and a `500` on `/api/v2/elitea_core/project_info/prompt_lib/{id}/project-info`. Any spec
+filtering them MUST pair the **status text with the URL marker** — never the URL alone,
+which would swallow a future different status on the same resource
+(`.agents/testing.md` § Merge gate). Shape:
+`KNOWN_BACKGROUND_NOISE_SIGNATURES = (("status of 403", "/secrets/secrets/default/"), …)`,
+pinned by `automation/tests/unit/test_notification_link_console_noise_filter_scope.py`.
+
+Also measured live: the bucket page's artifacts reads carry the project as a **query
+param**, not a path segment — `GET /artifacts/s3/?project_id=399&format=json` and
+`GET /artifacts/s3/{bucket}?project_id=399&format=json`. (The test-side
+`ArtifactAPI._buckets_url()` shape `/artifacts/buckets/default/{project_id}` is the API
+client's own, NOT what the UI issues.) A `"/artifacts/" in url` response listener also
+catches ~35 Vite dev-server module fetches under `/src/[fsd]/features/artifacts/` — filter
+with `"/src/" not in url` before using them.
+
 **Live targets that worked this session (they rot — always discover at runtime):**
 mention notification `109487` → conversation `5883` ("Hello", project 406);
 retention warning `111978` → bucket `autotest-1816-182606` (project 399, empty bucket,
