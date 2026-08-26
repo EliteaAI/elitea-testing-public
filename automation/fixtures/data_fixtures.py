@@ -2539,6 +2539,57 @@ def clean_project_context(api: APIClient):
         logger.warning("Failed to delete Project Context in teardown: %s", exc)
 
 
+@pytest.fixture
+def project_context_seed(api: APIClient):
+    """Yield a callable that seeds the active project's Project Context.
+
+    The Project Context enable-toggle, its card and the saved view only render
+    when ``content`` is non-empty (``ProjectContextContent.hasContent``) — an
+    empty project shows the empty state, which has no toggle at all. Tests that
+    exercise the toggle or the saved view therefore need a non-empty context as
+    a precondition.
+
+    Seeding via ``PUT`` is a **transit substitution** (``.agents/testing.md``
+    § Fidelity policy): it only establishes "a context exists" so the control
+    under test is reachable. Every observable the specs assert — the toggle's
+    persisted state, the save response, the toast, the rendered view — is still
+    produced by the product itself.
+
+    Deletes before (clean start) and after (teardown), tolerating the API's
+    404 "Project context not found" in both directions — ELITEA-2266/2267/2276.
+
+    Yields:
+        Callable ``(content: str, enabled: bool = True) -> dict`` returning the
+        API's own response body for the seeded context.
+
+    Example::
+
+        def test_x(page, project_context_seed):
+            project_context_seed("ELITEA-2267 toggle seed.")
+    """
+    path = f"/elitea_core/project_context/prompt_lib/{api.project_id}/project-context"
+
+    def _seed(content: str, enabled: bool = True) -> dict:
+        resp = api.put(path, json={"content": content, "enabled": enabled})
+        resp.raise_for_status()
+        logger.info(
+            "Seeded Project Context for project %s (enabled=%s, %d chars)",
+            api.project_id,
+            enabled,
+            len(content),
+        )
+        return resp.json()
+
+    _delete_project_context(api)
+
+    yield _seed
+
+    try:
+        _delete_project_context(api)
+    except Exception as exc:
+        logger.warning("Failed to delete Project Context in teardown: %s", exc)
+
+
 @pytest.fixture(scope="session")
 def analytics_empty_pipeline_id(pipeline_api: PipelineAPI):
     """Create an empty pipeline for analytics testing.
