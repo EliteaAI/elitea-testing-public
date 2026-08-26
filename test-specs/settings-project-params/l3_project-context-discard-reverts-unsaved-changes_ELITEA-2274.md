@@ -44,13 +44,14 @@ drift already filed as **#1792**; no new ticket.
 
 ### generate-per-test
 - Seed body: `## ELITEA-2274 baseline\n\nSaved content that Discard must restore.`
-- Appended marker (the "change" of case step 3): `\n\nUNSAVED EDIT`.
+- Appended marker (the "change" of case step 3): `\nUNSAVED EDIT` — one new line, so the
+  appended text is the editor's own last line and can be asserted exactly.
 
 ## Fidelity Declaration
 
 | What is substituted | Transit or terminal | Authority / real observable |
 |---|---|---|
-| Precondition seeding of the Project Context **`content`** via `PUT` instead of typing + saving it in the UI | **Transit** | It only establishes "saved content exists" so the editor opens in edit mode with a Discard button. The case's observable is the *revert*, and the baseline it is compared against is **read off the product** in step 3 (`get_editor_text()`), not taken from the seed string — so even a seed that mismatched would not make this test pass falsely. |
+| Precondition seeding of the Project Context **`content`** via `PUT` instead of typing + saving it in the UI | **Transit** | It only establishes "saved content exists" so the editor opens in edit mode with a Discard button. The case's observable is the *revert*, and the baseline it is compared against is **read off the product** in step 3 (`get_editor_lines()`), not taken from the seed string — so even a seed that mismatched would not make this test pass falsely. |
 | The **`enabled` flag** carried by that same `PUT` | **Not substituted** | `project_context_seed` is called with `content` only; `enabled` defaults to `None` = echo the product's own current value (`.agents/testing.md`, pinned by `tests/unit/test_project_context_seed_enabled_flag_not_authored.py`). This case never asserts the flag. |
 
 `page.evaluate` is used only for the clipboard write behind the paste gesture
@@ -72,8 +73,8 @@ drift already filed as **#1792**; no new ticket.
      comparison vacuous).
    - **Verify**: Save and Discard are **disabled** (nothing changed yet) and the
      Discard button's label is exactly `Discard` (edit mode, not `Cancel`).
-4. **Make a change** — case step 3: click at the end of the content and type
-   `UNSAVED EDIT` on a new line.
+4. **Make a change** — case step 3: move the caret to the end of the document
+   (`ControlOrMeta+End`, CodeMirror's own binding) and type `UNSAVED EDIT` on a new line.
    - **Verify**: the editor's lines now differ from `baseline` and end with
      `UNSAVED EDIT`.
    - **Verify**: Save and Discard are now **enabled**.

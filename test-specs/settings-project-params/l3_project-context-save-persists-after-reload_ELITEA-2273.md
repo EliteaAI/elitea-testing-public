@@ -83,7 +83,9 @@ status via `page.expect_response` (never a fabricated one).
 7. **The previously entered content is shown** — case step 6, asserted on both readings.
    - **Verify (saved view)**: the rendered markdown shows a heading whose text is
      `Project Overview. This is a test project.` — the `##` line rendered as `<h2>`.
-     react-markdown output ⇒ **#579**, scoped to `settings-content`.
+     react-markdown output ⇒ **#579**, scoped to the saved view's own app-owned
+     container `project-context-saved-content` (*added during implementation —
+     EliteaAI/EliteaUI@452a21a2*; the settings page renders other headings outside it).
    - **Verify (editor)**: click **Edit** (`project-context-edit-button`); the editor's
      rendered line is byte-identical to the string pasted in step 3 — raw markdown,
      `##` included. This is the case's literal "the editor shows the previously entered
@@ -103,8 +105,8 @@ status via `page.expect_response` (never a fabricated one).
 | Saved-view toggle card | `project-context-toggle-card` | on `automation/testids` only (EliteaAI/EliteaUI@b05bbc9a) | live 2026-08-26 |
 | Saved-view Edit button | `project-context-edit-button` | on `automation/testids` only (EliteaAI/EliteaUI@b05bbc9a) | live 2026-08-26 |
 | Discard button | `project-context-discard-button` | on `automation/testids` only (EliteaAI/EliteaUI@b05bbc9a) | live 2026-08-26 |
-| Settings content pane (render scope) | `settings-content` | on `automation/testids` only | live 2026-08-26 |
-| Rendered heading | *(no testid — #579)* `h2` scoped to `settings-content` | react-markdown-internal | live 2026-08-26 |
+| Saved-view content area (render scope) | `project-context-saved-content` | on `automation/testids` only — **added during this case's implementation**, EliteaAI/EliteaUI@452a21a2; awaiting human promotion to main | live 2026-08-26 |
+| Rendered heading | *(no testid — #579)* `h2` scoped to `project-context-saved-content` | react-markdown-internal | live 2026-08-26 |
 
 ## Coverage Map
 

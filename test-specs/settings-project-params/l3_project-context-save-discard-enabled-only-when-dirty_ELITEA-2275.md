@@ -48,7 +48,7 @@ already filed as **#1792**; no new ticket.
 
 | What is substituted | Transit or terminal | Authority / real observable |
 |---|---|---|
-| Precondition seeding of the Project Context **`content`** via `PUT` | **Transit** | It only satisfies the case's own "with existing saved content" precondition so the editor opens in edit mode. Every asserted value — each button's `disabled` state at each phase, the label, the post-Discard navigation — is produced by the product. The seed's *text* is never asserted. |
+| Precondition seeding of the Project Context **`content`** via `PUT` | **Transit** | It only satisfies the case's own "with existing saved content" precondition so the editor opens in edit mode. Every asserted value — each button's `disabled` state at each phase, the label, the post-Discard navigation, the reverted content — is produced by the product. The seed's *text* is never asserted: the baseline the post-Discard content is compared against is **read off the editor at step 2** (the ELITEA-2274 pattern), never the seed constant. |
 | The **`enabled` flag** on that `PUT` | **Not substituted** | Seeded with `content` only; `enabled` defaults to `None` = echo the product's own value. This case never asserts the flag. |
 
 No `route.fulfill`, no injected state. This case types a real keystroke; it does not
@@ -64,6 +64,9 @@ need the clipboard path at all.
      really in force, not an empty create-mode editor).
    - **Verify**: the sibling button's label is exactly `Discard` (edit mode). In create
      mode the same button reads `Cancel` and calls a different handler.
+   - **Read the baseline off the product here** — `get_editor_lines()`, not the seed
+     constant. Guard it twice so step 6's comparison cannot go vacuous: the baseline is
+     non-empty, and it does not already contain the character step 4 will type.
 3. **Buttons are inactive when nothing has changed** — case step 2.
    - **Verify**: `project-context-save-button` is **disabled**.
    - **Verify**: `project-context-discard-button` is **disabled**.
@@ -85,6 +88,9 @@ need the clipboard path at all.
    - **Verify**: the typed character is absent from the editor's content — the buttons
      are inactive *because there is nothing unsaved*, not because the change silently
      stuck.
+   - **Verify**: the content matches the **step-2 baseline** exactly (the lines read off
+     the product before the edit) — the revert restored what was there, it did not merely
+     drop the character.
 7. **Teardown** — fixture deletes the Project Context (tolerates 404).
 
 ## Concrete Handles
@@ -107,7 +113,7 @@ need the clipboard path at all.
 | 2 | Save and Discard inactive when no changes made | holds | Step 3 | `to_be_disabled()` on both | asserted |
 | 3 | Make a change in the editor | completes | Step 4 | editor content ends with the typed character | asserted |
 | 4 | Save and Discard become active | holds | Step 5 | `to_be_enabled()` on both | asserted |
-| 5 | Click Discard — buttons become inactive again | holds (final state) | Step 6 | both count 0 right after the click (product left the editor) **and** both disabled on the re-opened editor | asserted (location divergence declared) |
+| 5 | Click Discard — buttons become inactive again | holds (final state) | Step 6 | both count 0 right after the click (product left the editor) **and** both disabled on the re-opened editor, whose content is back to the step-2 baseline with the typed character gone | asserted (location divergence declared) |
 | P | Precondition: user logged in | — | Setup | `auth_state` | covered |
 | P | Precondition: existing saved content | — | Setup | `project_context_seed` (transit, declared) | covered |
 
