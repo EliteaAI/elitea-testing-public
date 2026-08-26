@@ -264,6 +264,28 @@ class AIProvidersPage(BasePage):
         description='LLMs section "Low-tier" model selector -- clickable combobox node.',
     )
 
+    # -- Per-section loading placeholder (ELITEA-2251) -------------------
+    # `ConfigurationSection.jsx`'s `isLoading` branch renders the section
+    # title plus a `Typography` reading exactly "Loading..." and nothing
+    # else -- no accordion, no cards, no selectors. One placeholder per
+    # section (7), regardless of whether that section will turn out to be
+    # empty once loaded (the hide-when-empty check happens AFTER the
+    # loading branch). The testid is templated from the already-threaded
+    # `sectionTestId`, the same derived-id pattern the component already
+    # uses for `${sectionTestId}-default-selector` --
+    # EliteaAI/EliteaUI@c49f61bc.
+    llms_section_loading = LocatorDescriptor(
+        testid="ai-providers-section-llms-loading",
+        description='LLMs section "Loading..." placeholder -- present only '
+        "while the configurations request is in flight",
+    )
+
+    # Every section's loading placeholder at once (used for the exact
+    # per-section count and for the "loading is over" assertion). Scoped
+    # sub-selector class constant per `.agents/testing.md` Locator policy;
+    # both halves are `data-testid` matches, no raw handle.
+    SECTION_LOADING_SELECTOR = '[data-testid^="ai-providers-section-"][data-testid$="-loading"]'
+
     # Generic, repeated-per-card testid (same pattern as `secret-row` /
     # `token_row`) -- scoped sub-selector constant per
     # `.agents/testing.md` Locator policy.
@@ -359,6 +381,33 @@ class AIProvidersPage(BasePage):
         ``expect(...).to_have_count(0)`` assertions (the badge Typography
         unmounts entirely when its tier flag goes false -- not merely hidden)."""
         return self.card_for_model(model_display_name).locator(self.TIER_BADGE_SELECTOR).filter(has_text=badge_text)
+
+    def section_loading_placeholders(self) -> Locator:
+        """Return the locator matching EVERY section's "Loading..." placeholder.
+
+        Resolves to 7 elements (one per ``ConfigurationSection`` call site in
+        ``ConfigurationsPanel.jsx``) while the combined configurations request
+        is in flight, and to 0 once it resolves -- whether the section then
+        renders content or is hidden for being empty.
+        """
+        return self.page.locator(self.SECTION_LOADING_SELECTOR)
+
+    def populated_section_headers(self) -> list[tuple[str, Locator]]:
+        """Return the (label, header locator) pairs for the sections that
+        actually render for the shared ``${TEST_USER}`` project.
+
+        Vector Storage and AI Credentials have zero configured items and are
+        therefore absent by design (``ConfigurationSection.jsx`` returns
+        ``null`` for an empty section) -- see
+        :meth:`navigate_and_capture_vectorstorage_response`.
+        """
+        return [
+            ("LLMs", self.llms_section_header),
+            ("Embedding Models", self.embedding_models_section_header),
+            ("Image Generation", self.image_generation_section_header),
+            ("Speech Recognition (ASR)", self.asr_section_header),
+            ("Text to Speech (TTS)", self.tts_section_header),
+        ]
 
     def get_configuration_card_count(self) -> int:
         """Return the number of ``ConfigurationCard`` elements currently in the DOM.

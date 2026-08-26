@@ -171,3 +171,62 @@ Three call shapes on page load, all independently 200 for this project:
   directly on the card. Any future case identifying a `ConfigurationCard` by
   exact model name should reuse `AIProvidersPage.card_for_model()` rather than
   re-deriving this.
+
+## Loading state — what it is, and how to observe it honestly (ELITEA-2251, 2026-08-24)
+- The loading indicator on this page is **per-section text, not a spinner**:
+  `ConfigurationSection.jsx:88-105` renders the section title plus a `Typography`
+  reading exactly `Loading...` while `isLoading`. **7 of them** render together
+  (LLMs, Embedding Models, Vector Storage, Image Generation, ASR, TTS, AI
+  Credentials) — the count is stable even though Vector Storage is hidden once
+  loaded, because the hide-when-empty check happens *after* the loading branch.
+  **No testid** — needs `{sectionTestId}-loading`, the same derived-id pattern the
+  component already uses for `${sectionTestId}-default-selector` (`:148`).
+- The only `role="progressbar"` in this flow is the app's **route-chunk/Suspense**
+  spinner (~1.5 s on a cold `goto`, <250 ms on an in-app click). It is a *different*
+  indicator and is gone before the section loading state appears — never assert it
+  for this page's data-loading contract.
+- **Timing control that works** (sanctioned by `.agents/testing.md` § Fidelity
+  policy — the real response is delayed, never fabricated):
+  `page.route('**/api/v2/configurations/configurations/**', h)` where `h` waits N s
+  then `route.continue()`s. Measured with N=6 s via direct `goto`: progressbar
+  0-1.5 s → 7× `Loading...` 2.0-8.5 s → 12 `ai-providers-section-*` testids at 9.0 s,
+  0 console errors. With N=4 s via an in-app click from `/settings/tokens`: 7×
+  `Loading...` 0.25-4.75 s → 12 section testids at 5.0 s. Remember `page.unroute`.
+- Without a delay the whole fetch completes in well under a second — do not try to
+  catch the loading state by racing it.
+
+## Resolved/added during ELITEA-2251 implementation (2026-08-24)
+- **`{sectionTestId}-loading` now exists** on `ConfigurationSection.jsx`'s `isLoading`
+  branch (`data-testid={sectionTestId ? \`${sectionTestId}-loading\` : undefined}` on the
+  `Loading...` `Typography`) — EliteaAI/EliteaUI@c49f61bc, on `automation/testids`, NOT yet
+  cherry-picked to `main`. Resolves this digest's "**No testid** — needs
+  `{sectionTestId}-loading`" note above. All 7 sections get one; the count is 7 while the
+  combined configurations GET is in flight and 0 afterwards.
+- **Do NOT count section roots with the bare `[data-testid^="ai-providers-section-"]`
+  prefix** — it also matches the derived `-default-selector` / `-high-tier-model-selector`
+  / `-low-tier-model-selector` testids. That is why 12 nodes are observed for 5 rendered
+  sections. Use the 5 named section-header descriptors
+  (`AIProvidersPage.populated_section_headers()`), or the compound
+  `[data-testid^="ai-providers-section-"][data-testid$="-loading"]`
+  (`AIProvidersPage.SECTION_LOADING_SELECTOR`) for the loading placeholders.
+- **A `time.sleep()` inside a `page.route` handler does NOT work for delaying a SINGLE
+  request in Playwright's sync API** (it does work for the artifacts-download tests only
+  because those delay many requests in sequence). Sync-API route handlers run on the same
+  OS thread as the test body, so the sleep freezes the test body too and it resumes at the
+  same instant the response lands — racing the re-render it wants to observe. **Working
+  pattern: hold and release** — the handler appends the `Route` object to a list and
+  returns; the test body asserts the transient state, then calls `route.continue_()` on
+  each held route. Fully deterministic, no guessed delay constant, same fidelity class
+  (the product's own request is continued, never fulfilled). Always release in a `finally`
+  and `page.unroute(...)`.
+- **`AIProvidersPage.navigate()` (i.e. `BasePage.navigate()`) is unusable while a request
+  is held** — it waits for `networkidle`, which can never be reached; use
+  `page.goto(f"{settings.app_base_url}{AI_PROVIDERS_PATH}", wait_until="domcontentloaded")`.
+- **The loading branch replaces the whole section**: no accordion header, no cards, no
+  selectors — so `ai-providers-section-llms` has count 0 while loading. It is a legitimate
+  "content has arrived" proof.
+- **Dev-server gotcha (cost one rerun):** the FIRST test run right after editing a JSX file
+  loaded the pre-edit module (testid absent) even though the Vite dev server was already
+  serving the updated transform (`curl` confirmed). The identical re-run passed. If a
+  brand-new testid is "not found" on the first run after adding it, re-run once before
+  debugging the JSX.
