@@ -111,9 +111,22 @@ class TestProjectContextBuildWithAI:
             modal.fill_prompt(PROJECT_DESCRIPTION)
             expect(modal.generate_button).to_be_enabled()
 
-            response = modal.click_generate_and_wait_for_response(
+            # The dialog's own INPUT -> LOADING -> REVIEW transition is asserted
+            # while the live call is in flight, which is why the response wait is
+            # opened explicitly here instead of using
+            # click_generate_and_wait_for_response() (that helper blocks until the
+            # response, by which time the transient loading step is gone).
+            with modal.expect_generate_response(
                 timeout=LIVE_GENERATE_RESPONSE_TIMEOUT
-            )
+            ) as response_info:
+                modal.generate_button.click()
+                modal.wait_for_loading_visible(timeout=UI_ELEMENT_TIMEOUT)
+                expect(modal.loading_indicator).to_contain_text(
+                    "Generating project context draft"
+                )
+            response = response_info.value
+            modal.wait_for_loading_hidden(timeout=LIVE_GENERATE_RESPONSE_TIMEOUT)
+
             assert response.status == 200, (
                 f"Live generate-draft call failed: {response.status} {response.url}"
             )
