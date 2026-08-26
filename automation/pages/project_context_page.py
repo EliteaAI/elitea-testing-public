@@ -67,6 +67,12 @@ class ProjectContextPage(BasePage):
         testid="project-context-create-button",
         description="Empty-state 'Create' button — navigates to /settings/project-context/edit",
     )
+    build_with_ai_button = LocatorDescriptor(
+        testid="project-context-build-with-ai-button",
+        description="Empty-state 'Build with AI' button — navigates to "
+        "/settings/project-context/edit AND auto-opens the generate-draft dialog "
+        "(onNavigate('create', { openAi: true }))",
+    )
     editor_content = LocatorDescriptor(
         testid="project-context-editor-content",
         description="CodeMirror editor content node (.cm-content) — the "
@@ -161,6 +167,23 @@ class ProjectContextPage(BasePage):
         "while preview (eye) mode is selected",
     )
 
+    #: The "Edit with AI" dialog opened from THIS page's editor toolbar
+    #: (``AIEditProjectContextModal.jsx``). Its open button is
+    #: :attr:`ai_edit_button` above; these two complete the open→cancel pair
+    #: ELITEA-2270 exercises. Both testids pre-exist in EliteaUI — nothing was
+    #: added for them. A full page object for the dialog's refine/apply wizard is
+    #: deliberately not built here: no case has needed it yet.
+    ai_edit_modal = LocatorDescriptor(
+        testid="ai-edit-project-context-modal",
+        description="'Edit with AI' modal container (MUI Dialog root; no keepMounted, "
+        "so its count is 0 while closed)",
+    )
+    ai_edit_cancel_button = LocatorDescriptor(
+        testid="ai-edit-project-context-cancel-button",
+        description="'Edit with AI' dialog's Cancel button (prompt step) — closes it "
+        "without refining anything",
+    )
+
     #: CodeMirror's line-number gutter. **#579 exception 2** (third-party editor
     #: library internal render node): CodeMirror owns this DOM entirely — it is
     #: not app JSX, so no ``data-testid`` can be placed on it. Always scoped to
@@ -221,6 +244,83 @@ class ProjectContextPage(BasePage):
         self.page.wait_for_url(f"**{PROJECT_CONTEXT_EDIT_PATH}", timeout=10000)
         self.editor_content.wait_for(state="visible", timeout=10000)
         logger.info("Clicked Create — editor opened")
+
+    def click_build_with_ai(self) -> None:
+        """Click the EMPTY STATE's 'Build with AI' button and wait for the editor route.
+
+        Additive sibling of :meth:`click_create` (left byte-identical for its
+        merged callers): this button navigates to the same
+        ``/settings/project-context/edit`` route but with router state
+        ``{ openAi: true }``, which ``ProjectContextEditor``'s first-render
+        effect turns into an auto-opened generate-draft dialog. The dialog
+        itself is driven by
+        :class:`~pages.generate_project_context_modal_page.GenerateProjectContextModalPage`,
+        so this method deliberately waits only on the route — the caller asserts
+        the dialog.
+
+        Note the editor's CodeMirror pane is NOT waited on here: the auto-opened
+        dialog sits over it, and waiting for a covered element is a needless
+        race.
+        """
+        self.build_with_ai_button.click()
+        self.page.wait_for_url(f"**{PROJECT_CONTEXT_EDIT_PATH}", timeout=10000)
+        logger.info("Clicked empty-state 'Build with AI' — editor route opened")
+
+    def open_ai_edit_modal(self) -> None:
+        """Open the editor toolbar's 'Edit with AI' dialog and wait for it.
+
+        Only reachable while the editor content is NON-empty:
+        ``ProjectContextEditor.jsx`` renders ``content.trim() ?
+        <AIEditProjectContextButton/> : <GenerateProjectContextButton/>``, so on
+        an untouched editor this button does not exist at all (clarification
+        #1797).
+        """
+        self.ai_edit_button.click()
+        self.ai_edit_modal.wait_for(state="visible", timeout=10000)
+        logger.info("Opened the 'Edit with AI' dialog")
+
+    def cancel_ai_edit_modal(self) -> None:
+        """Cancel the 'Edit with AI' dialog and wait for it to close.
+
+        Cancelling from the prompt step issues no network request, so the
+        dialog's removal from the DOM is the only readiness condition.
+        """
+        self.ai_edit_cancel_button.click()
+        self.ai_edit_modal.wait_for(state="detached", timeout=10000)
+        logger.info("Cancelled the 'Edit with AI' dialog")
+
+    def import_markdown_file(self, file_path: str, expected_lines: list[str]) -> bool:
+        """Import *file_path* through the toolbar's 'Import from markdown file' control.
+
+        The product clicks a hidden ``<input type="file" accept=".md,text/markdown">``
+        programmatically (``handleImportClick`` → ``fileInputRef.current.click()``),
+        which raises the browser's native OS file picker. Playwright's
+        ``expect_file_chooser`` intercepts that picker — the gesture a user's OS
+        dialog performs — leaving the application's own ``handleFileUpload`` /
+        ``FileReader`` path completely intact. This is **not** a substitution of
+        the system under test: the product still reads and parses the file.
+
+        The hidden ``<input>`` carries no ``data-testid`` and should not get one —
+        it is never referenced by a locator on any test's executed path (#511);
+        the chooser is a browser event, not a DOM handle.
+
+        Args:
+            file_path: Absolute path to the ``.md`` file to import.
+            expected_lines: The file's own lines, used as the web-first wait
+                condition so the caller never reads a half-applied editor.
+
+        Returns:
+            ``True`` when the chooser accepted a single file only (the product
+            handles ``files?.[0]``), so the caller can assert that contract.
+        """
+        with self.page.expect_file_chooser(timeout=10000) as chooser_info:
+            self.import_button.click()
+        chooser = chooser_info.value
+        is_single_file = not chooser.is_multiple()
+        chooser.set_files(file_path)
+        expect(self.editor_lines()).to_have_text(expected_lines, timeout=10000)
+        logger.info("Imported %s (%d lines) into the Project Context editor", file_path, len(expected_lines))
+        return is_single_file
 
     def set_editor_content_via_paste(self, text: str) -> None:
         """Replace the editor's content by clearing it, then clipboard-pasting *text*.
