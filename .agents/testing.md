@@ -726,3 +726,19 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   a spec still hand-rolling the URL-less `page.on("console", …)` shape should be moved to
   `collect_console_errors()` whenever it is touched, since only migrated specs can produce
   this evidence.
+- **`#1082` pollution class — first MATCHED CONTROL PAIR (2026-08-27, ELITEA-1802/#110, PR #1828)**:
+  the long-standing ask *"do not attribute a support-assistant/onboarding red to a diff without a
+  pristine-HEAD control run first"* finally has a clean worked pair on the same spec file, minutes
+  apart, same machine, same session. Full-file `test_support_assistant_smoke.py` (7 tests):
+  - **with** the ELITEA-1802 diff → `7 passed, 2 rerun in 116.64s`, `reruns.json` = `{test_history_restore_and_continue: 2}`
+  - **pristine `automation/base`**, no diff → `7 passed, 2 rerun in 118.20s`, `reruns.json` = `{test_history_restore_and_continue: 2}`
+
+  **Byte-identical signature, same test, same rerun count, ±1.6s wall clock.** The diff touched a
+  *different* class (`TestSupportAssistantAttachments`, which pytest runs LAST at 100% while history
+  runs at 71% — so it cannot reach history within a run), plus a module-wide import-block sort that
+  cannot reach runtime. Conclusion: the reruns are the documented shared-test-user conversation
+  pollution, not a regression.
+  Cost: one extra 118s invocation, and it converted "the diff might have broken it" into evidence.
+  **Run the control BEFORE reasoning about blame** — the reasoning above is only trustworthy because
+  the control agreed with it. The durable fix remains the rotating/clean test identity in
+  § Suite-health pointer, not a per-spec guard.
