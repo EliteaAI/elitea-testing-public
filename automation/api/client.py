@@ -22,6 +22,11 @@ from config import settings
 
 logger = logging.getLogger("elitea.api")
 
+#: Admin plugin-config path for the guardrails settings (blocked toolkits/tools,
+#: sensitive tools).  The ``administration`` mode segment is the one a standard
+#: user may read AND write; ``prompt_lib`` returns 403 ``access_denied``.
+GUARDRAILS_CONFIG_PATH = "/admin/plugin_config_values/administration/guardrails"
+
 
 def _default_llm_settings(model_name: str = None) -> dict:
     """Return default LLM settings for agent/pipeline creation.
@@ -208,6 +213,57 @@ class APIClient:
         url = f"{self.base_url}{path}"
         logger.debug("DELETE %s", url)
         return requests.delete(url, headers=self._headers_for_method("DELETE"), **kwargs)
+
+    # --- Admin plugin configuration ---
+
+    def get_guardrails_config(self) -> dict:
+        """Return the org-wide guardrails plugin configuration ``values`` object.
+
+        ``GET {api}/admin/plugin_config_values/administration/guardrails`` —
+        the endpoint the Admin UI's Guardrails screen reads. The response is
+        ``{"values": {...}, "fields_meta": {...}}``; only ``values`` is
+        returned, because that is the object :meth:`set_guardrails_config`
+        writes back.
+
+        Note the ``administration`` mode segment: the ``prompt_lib`` variant of
+        the same path is denied (403 ``access_denied``) to a standard user,
+        while ``administration`` is readable and writable (verified live
+        2026-08-27, ELITEA-2211).
+
+        Returns:
+            dict: every guardrails setting, including ``sensitive_tools``
+            (``{toolkit_type: [tool_name, ...]}``), ``blocked_toolkits`` and
+            ``blocked_tools``.
+        """
+        resp = self.get(GUARDRAILS_CONFIG_PATH)
+        _raise_for_status(resp)
+        return resp.json()["values"]
+
+    def set_guardrails_config(self, values: dict) -> dict:
+        """Write the org-wide guardrails plugin configuration.
+
+        ``PUT {api}/admin/plugin_config_values/administration/guardrails``.
+
+        The endpoint replaces the whole object, so ``values`` MUST be a
+        complete configuration: read :meth:`get_guardrails_config`, mutate the
+        one key you need, and pass the result back. Passing a partial object
+        drops every setting it omits.
+
+        **This is an ORG-WIDE write.** Callers are responsible for capturing
+        the original configuration first and restoring it verbatim afterwards,
+        including on failure.
+
+        Args:
+            values: the complete ``values`` object to store.
+
+        Returns:
+            dict: the API's response, e.g.
+            ``{"saved": true, "requires_restart": []}`` — an empty
+            ``requires_restart`` means the change is live immediately.
+        """
+        resp = self.put(GUARDRAILS_CONFIG_PATH, json={"values": values})
+        _raise_for_status(resp)
+        return resp.json()
 
     def close(self):
         """No-op — APIClient uses module-level requests, not a session."""

@@ -27,14 +27,13 @@ Fixtures:
 - invalid_github_credential: GitHub credential with invalid token
 - github_toolkit_with_invalid_credential: GitHub toolkit using invalid credential
 """
+import copy
 import logging
 import time
 
 import pytest
 from api import AgentAPI, APIClient, ArtifactAPI, ConversationAPI, CredentialAPI, PipelineAPI, SkillAPI, ToolkitAPI
 from config import settings
-from pages.guardrails_admin_page import GuardrailsAdminPage
-from playwright.sync_api import Browser
 
 logger = logging.getLogger("elitea.automation.fixtures.data")
 
@@ -1851,46 +1850,98 @@ def artifact_seeded_file(artifact_toolkit: dict, artifact_api: ArtifactAPI, requ
     return file_key
 
 
+#: Guardrails "sensitive tools" precondition for ELITEA-2211..2214 — the key is
+#: the toolkit TYPE, not a toolkit instance, so this is an ORG-WIDE setting.
+_SENSITIVE_TOOLKIT_TYPE = "artifact"
+_SENSITIVE_TOOL_NAME = "delete_file"
+
+
 @pytest.fixture(scope="module")
-def sensitive_delete_file_toolkit(browser: Browser, auth_state):
+def sensitive_delete_file_toolkit(api: APIClient):
     """Mark ``artifact``/``delete_file`` sensitive for the whole test module.
 
-    Sensitivity is toolkit-TYPE scoped
-    (``GuardrailsAdminPage.add_sensitive_tool("artifact", "delete_file")``),
-    not per-toolkit-instance, so marking/removing it ONCE per module (rather
-    than once per test) avoids redundant admin round-trips across
-    ELITEA-2211..2214's four cases, per those AFS's own Cleanup section —
-    same pattern ``test_guardrails_live_reload.py``'s
-    ``TestSensitiveToolLiveReload`` already established.
+    TRANSIT SUBSTITUTION (AFS § Fidelity Declaration, ELITEA-2211): the
+    precondition is written through the guardrails **config REST endpoint**
+    instead of the Admin UI, because the Admin UI is a separate deployed
+    application that ``localhost:5173`` does not serve at all (no ``/admin``
+    route in ``EliteaUI/src/routes.js``; issue #1140). This only *reaches* the
+    step under test — the case's own observable (the Sensitive Action
+    Authorization card, its heading, its action name and its three buttons) is
+    still produced end to end by the real LLM → real tool call → real backend
+    interrupt → real WebSocket frame. Nothing about the card is mocked,
+    injected or intercepted.
+
+    Sensitivity is toolkit-TYPE scoped, not per-toolkit-instance, so the flag
+    is set ONCE per module rather than once per test — the four cases
+    ELITEA-2211..2214 share one window, and a short window matters because the
+    setting is **org-wide** while it is set: any other suite calling
+    ``delete_file`` on ANY artifact toolkit meanwhile would hit the
+    authorization card. Do not run this module under ``pytest-xdist``
+    alongside artifact-toolkit tests.
+
+    The write is read-mutate-restore: the current configuration is captured
+    verbatim, ``sensitive_tools`` is mutated ADDITIVELY (any entry another
+    suite or a human already set stays in place), and the captured original is
+    PUT back in a ``finally`` — never a hardcoded ``{}``, which would silently
+    wipe somebody else's configuration. The restore is verified by readback and
+    fails LOUDLY, because a botched restore corrupts the org for everyone.
+
+    **The ``try`` opens BEFORE the mutating PUT, not after it.** Everything
+    that can raise once org-wide state is dirty — the readback GET, its
+    assertion, the log — sits inside the protected region. Were the ``try`` to
+    open after the write, a transient 5xx on the readback (or the assertion
+    firing, which is the very thing it exists to do) would abort the fixture
+    during SETUP; pytest does not run the teardown half of a fixture that
+    raised in setup, so the sensitive flag would stay set on the shared
+    backend permanently, with nothing to self-heal it.
+
+    **Mutate and restore are deliberately asymmetric**, and setup's half is the
+    generous one: setup ADDS to whatever ``sensitive_tools`` it found, while
+    teardown PUTs the captured original *wholesale*. So if a concurrent actor
+    added an entry during the module's window, teardown wins and that entry is
+    lost. That is the ordered behaviour (ELITEA-2211 AFS § Rework delta row 7):
+    restoring exactly what we captured is the only way to guarantee we leave no
+    residue of our own, and a read-modify-write restore would reopen the very
+    race it tried to close. It is acceptable here because this module is
+    serial-only by contract (never under ``pytest-xdist``, see above) and the
+    window is one module long — but it is the reason the window must stay short.
 
     Module scope means this fixture's setup/teardown run ONCE for whichever
     single test module requests it, even though it is centrally defined here
     (fixture location rule — ``.claude/rules/api-patterns.md``).
     """
-    ctx = browser.new_context(
-        storage_state=auth_state, viewport={"width": 1920, "height": 1080}
-    )
-    ctx.set_default_timeout(15000)
-    ctx.set_default_navigation_timeout(30000)
-    page = ctx.new_page()
+    original = api.get_guardrails_config()
 
-    guardrails = GuardrailsAdminPage(page)
-    guardrails.navigate_to_guardrails()
-    guardrails.add_sensitive_tool("artifact", "delete_file")
-    guardrails.save_configuration()
-    logger.info("Marked artifact/delete_file sensitive for the module")
+    sensitive_tools = copy.deepcopy(original.get("sensitive_tools") or {})
+    tools = list(sensitive_tools.get(_SENSITIVE_TOOLKIT_TYPE, []))
+    if _SENSITIVE_TOOL_NAME not in tools:
+        tools.append(_SENSITIVE_TOOL_NAME)
+    sensitive_tools[_SENSITIVE_TOOLKIT_TYPE] = tools
 
-    yield
-
+    # The try opens BEFORE the write: from here on the org-wide config may be
+    # dirty, so every subsequent statement must be covered by the restore.
     try:
-        guardrails.remove_sensitive_tool("delete_file")
-        guardrails.save_configuration()
-        logger.info("Removed artifact/delete_file from the sensitive list")
-    except Exception as exc:
-        logger.warning("Failed to remove sensitive tool 'delete_file' during teardown: %s", exc)
+        api.set_guardrails_config({**original, "sensitive_tools": sensitive_tools})
+
+        applied = api.get_guardrails_config().get("sensitive_tools") or {}
+        assert _SENSITIVE_TOOL_NAME in applied.get(_SENSITIVE_TOOLKIT_TYPE, []), (
+            f"Guardrails readback should list {_SENSITIVE_TOOLKIT_TYPE}/{_SENSITIVE_TOOL_NAME} "
+            f"as sensitive, got: {applied!r}"
+        )
+        logger.info(
+            "Marked %s/%s sensitive for the module (was: %r)",
+            _SENSITIVE_TOOLKIT_TYPE, _SENSITIVE_TOOL_NAME, original.get("sensitive_tools"),
+        )
+
+        yield
     finally:
-        page.close()
-        ctx.close()
+        api.set_guardrails_config(original)
+        restored = api.get_guardrails_config()
+        assert (restored.get("sensitive_tools") or {}) == (original.get("sensitive_tools") or {}), (
+            "Guardrails config was NOT restored — this is an org-wide side effect. "
+            f"expected {original.get('sensitive_tools')!r}, got {restored.get('sensitive_tools')!r}"
+        )
+        logger.info("Restored the original guardrails configuration")
 
 
 # ---------------------------------------------------------------------------

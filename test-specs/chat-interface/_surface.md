@@ -2255,8 +2255,31 @@ handle ELITEA-2458 added was reused verbatim and all resolved correctly.
   items (`` `${sectionKey}-menu-item-${item.key}` ``, live-confirmed concrete
   shape: `toolkits-menu-item-toolkit-{project_id}-{toolkit_id}` /
   `mcps-menu-item-mcp-{project_id}-{toolkit_id}`) are all real testids —
-  **on `automation/testids` only**, commit `73595e8d` ("add data-testid for
-  plus-menu entity items/rows (ELITEA-2094)"), not yet on `main`.
+  introduced on `automation/testids` in commit `73595e8d` ("add data-testid for
+  plus-menu entity items/rows (ELITEA-2094)").
+  - **Corrected/verified during ELITEA-2211 implementation (2026-08-27):** these
+    row testids **ARE on `main`** — `PlusChatSubmenu.jsx:131` composes
+    `` `${sectionKey}-menu-item-${item.key}` `` at RUNTIME, so a bare-substring
+    grep for `toolkits-menu-item` returns nothing on either ref (the exact
+    false-negative class `.agents/workflow.md` § Closure record warns about).
+    Grep the composed template, not the rendered value. Same for
+    `chat-participants-badge-${entity.section}`
+    (`CollapsedPerticapantsList.jsx:223`, also on `main`), which backs
+    `ChatPage.is_participants_badge_visible(section=...)`.
+  - **Consequence of using the legacy flow anyway, confirmed during ELITEA-2211
+    implementation (2026-08-27, 3 runs of 3):** `add_toolkit_participant()`
+    silently leaves the toolkit UNATTACHED — no exception, no timeout. The model
+    then has no tool, HALLUCINATES the result ("the file has been successfully
+    deleted" while the file is still in the bucket, verified via
+    `ArtifactAPI.list_bucket_files`), and any downstream assertion that depends
+    on a real tool call (a HITL card, a tool chip, a backend side effect) fails
+    with a misleading symptom. Prefer
+    `add_toolkit_participant_via_slash_menu(project_id, toolkit_id)` and ASSERT
+    the attach (`is_participants_badge_visible`) before sending the message.
+    Four merged specs outside this module still call the legacy helper
+    (`test_direct_toolkit_call_complete_flow.py` ×2,
+    `test_toolkit_parameterized.py`, `test_github_toolkit.py`) — suite-health
+    debt, flagged to the lead, not touched by ELITEA-2211.
 - **Quirk, confirmed live**: closing the plus-menu popper (`Escape`) and
   re-clicking `plus-menu-button` to switch from the Toolkits submenu to the
   MCPs submenu **toggles the whole popper CLOSED** instead of reopening it —
