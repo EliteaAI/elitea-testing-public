@@ -79,6 +79,15 @@ class SettingsDrawerPage(BasePage):
     # `` `settings-section-header-${section.section.toLowerCase()}` ``.
     SETTINGS_SECTION_HEADER = '[data-testid="settings-section-header-{}"]'
 
+    # Scoped compound selector -- every rendered nav item, scoped inside the
+    # drawer menu's own testid (`settings-drawer-menu`), matched by the
+    # `settings-nav-item-` testid prefix. Class-level UPPER_CASE constant per
+    # `.claude/rules/page-objects.md` "Scoped selectors" -- used by
+    # `nav_item_ids_in_order()` and `last_personal_nav_item()` so the compound
+    # selector lives in exactly one place instead of being duplicated inline
+    # in each method body.
+    SETTINGS_NAV_ITEMS_IN_MENU = '[data-testid="settings-drawer-menu"] [data-testid^="settings-nav-item-"]'
+
     #: Accessible text of a log-out control, as rendered by the live product
     #: ("Log out", with the space). Tolerant of casing/spacing. Used only for
     #: the drift's absence assertion (see `drawer_logout_controls`).
@@ -137,15 +146,37 @@ class SettingsDrawerPage(BasePage):
     def drawer_logout_controls(self) -> Locator:
         """Handle for asserting that **no** 'Log out' control exists in the drawer.
 
-        Scoped raw handle, sanctioned exception (`.agents/testing.md`
-        § Locator policy, #579 discipline): an absence assertion cannot be
-        keyed on a testid for a thing that does not exist, so a text-scoped
-        child handle is the only shape available. The parent is the real app
-        testid `settings_drawer` and the raw handle is chained off it, never
-        free-floating at page level. Do not extend this shape to any handle
+        DECLARED IMPROVISATION -- canon gap, escalated to the lead
+        (`.agents/role-overrides.md` § Declared-improvisation protocol), NOT
+        the #579 exception. #579 sanctions a scoped raw handle only for two
+        shapes -- a third-party widget subtree, or a third-party editor
+        library's internal render nodes -- neither of which applies here: the
+        Settings drawer is first-party EliteaUI JSX we own, so a missing
+        testid there is normally "work to do", not a stop+flag case
+        (`.agents/testing.md` § Locator policy: "Missing testid on the target?
+        That is work to do, not a reason to rung down.").
+
+        The reason that escape hatch doesn't close this gap: the AFS asserts
+        ABSENCE of a 'Log out' drawer control that the live product never
+        renders at all (case-text drift, clarification #1772,
+        `EliteaAI/elitea-testing-public#1772`) -- there is no JSX node to add
+        a testid to, so "add the testid" is not an available action for an
+        element that does not exist. `.agents/testing.md`'s absence-assertion
+        rulings (#511 extension, #277) both presuppose a testid that exists on
+        an alternate/untested branch; they don't cover "the branch itself was
+        never authored". Canon is silent on this exact case, hence the
+        escalation rather than a citation.
+
+        Chosen shape, and why it's the most spirit-compliant option available
+        pending the lead's ruling: a text-scoped child handle chained off the
+        real app testid parent (`settings_drawer`), never free-floating at
+        page level -- this keeps the SAME discipline #579 requires (bounded
+        blast radius, parent is a real testid) even though the exception
+        itself doesn't formally apply. Do not extend this shape to any handle
         that COULD carry a testid. (Same pattern as
         `pages.settings_profile_page.SettingsProfilePage.drawer_logout_controls`
-        on the sibling ELITEA-2252 case.)
+        on the sibling ELITEA-2252 case -- also flagged there, not yet
+        resolved by a canon addition.)
         """
         return self.settings_drawer.get_by_text(self.LOGOUT_LABEL_PATTERN)
 
@@ -157,9 +188,9 @@ class SettingsDrawerPage(BasePage):
         callers slice by their own known-item-count rather than this method
         guessing the split.
         """
-        testids: list[str] = self.page.locator(
-            '[data-testid="settings-drawer-menu"] [data-testid^="settings-nav-item-"]'
-        ).evaluate_all("els => els.map(el => el.getAttribute('data-testid'))")
+        testids: list[str] = self.page.locator(self.SETTINGS_NAV_ITEMS_IN_MENU).evaluate_all(
+            "els => els.map(el => el.getAttribute('data-testid'))"
+        )
         prefix = "settings-nav-item-"
         return [t[len(prefix) :] if t.startswith(prefix) else t for t in testids]
 
@@ -170,4 +201,4 @@ class SettingsDrawerPage(BasePage):
         actually last (e.g. Notifications), rather than trusting the known
         inventory to stay in that order.
         """
-        return self.page.locator('[data-testid="settings-drawer-menu"] [data-testid^="settings-nav-item-"]').last
+        return self.page.locator(self.SETTINGS_NAV_ITEMS_IN_MENU).last
