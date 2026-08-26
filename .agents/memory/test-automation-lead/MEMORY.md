@@ -87,3 +87,5 @@
 - [Two-half cases](two_half_case_blocked_if_either_half_is_terminal.md) — one reproducible half ≠ ready-for-automation
 - [Resumed parked card](stale_parked_card_reanalyse_dont_rebase.md) — re-analyse fresh; a stale branch is a rewrite
 - [Blocked case AFS](blocked_case_afs_still_lands.md) — analysis-only output is docs: merge it, no gate applies
+- [Guardrails config via REST](admin_plugin_config_mode_segment.md) — mode `administration`, not `prompt_lib`; Admin UI is a separate app
+- [A blocker proves a symptom, not a cause](blocker_premise_symptom_vs_cause.md) — verify the CAUSE before honouring a park

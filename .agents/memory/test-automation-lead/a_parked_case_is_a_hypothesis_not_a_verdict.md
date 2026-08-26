@@ -2,10 +2,10 @@
 name: A parked case is a hypothesis, not a verdict
 description: Re-test an area card's parked/escalated cases when the ground changes — two "do not schedule" parks dissolved on inspection and cost a whole extra wave
 type: feedback
-aliases: [parked case, escalated do not schedule, deferred case, do-not-schedule, re-examine park, area backlog leftovers]
+aliases: [parked case, escalated do not schedule, deferred case, do-not-schedule, re-examine park, area backlog leftovers, blocked on a bug, waiting on, misdiagnosed blocker, stale park]
 tags: [area/planning, type/lesson]
 created: 2026-08-24
-updated: 2026-08-24
+updated: 2026-08-27
 ---
 
 ## The rule
@@ -38,6 +38,12 @@ Both parks in the wave-1 plan were wrong, in different ways:
   blocker on automating them, and honouring the park would have left two cases
   (one of them **p1**) unautomated on a card that was otherwise complete.
 
+## Third failure mode: the park's premise was never TRUE
+
+A park can be wrong on the day it was written, dressed as a root-cause analysis —
+the most expensive mode, because waiting changes nothing. Worked case and the
+re-test procedure: [[blocker_premise_symptom_vs_cause]].
+
 ## How to act on it
 
 - **Send it to analysis; do not pre-decide either way.** The analyst executes
@@ -55,4 +61,4 @@ Same family as the wave-1 lesson on this card — an analyst's `needs-escalation
 premises were checkable in minutes and both were false. Escalations and parks
 decay the same way.
 
-Related: [[afs_gate_rulings]] · [[tms_backwrite_discipline]]
+Related: [[afs_gate_rulings]] · [[tms_backwrite_discipline]] · [[admin_plugin_config_mode_segment]]
