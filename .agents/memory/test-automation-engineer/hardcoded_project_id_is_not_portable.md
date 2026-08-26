@@ -39,6 +39,12 @@ the merged test selected 399 as source AND target and timed out on
   reserved for a missing external credential (`GIT_HUB_TOKEN`); a skip here hides a
   broken environment as green (lead ruling, 2026-08-26).
 
+**Guard the config default too.** `elitea_project_id` is typed `int = 0` with a
+`"" -> 0` validator, so an unset key yields `0` — never a real membership, therefore
+invisible to any "is it in the candidate list" filter, and the run dies far downstream on
+a `select-option-0` timeout. Any settings key that defaults to `0`/`""` needs its own
+explicit non-positive guard naming the env key, not just a downstream filter.
+
 ## Two traps this pairs with
 
 1. **Fork excludes the currently-selected project from its target dropdown**

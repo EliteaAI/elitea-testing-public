@@ -252,10 +252,7 @@ class ProjectAPI:
         logger.debug("ProjectAPI initialised — base_url=%s", self.base_url)
 
     def _projects_url(self) -> str:
-        return (
-            f"{self.base_url}/projects/project/default/"
-            f"{settings.public_project_id}"
-        )
+        return f"{self.base_url}/projects/project/default/{settings.public_project_id}"
 
     def list_projects(self) -> list[dict]:
         """Return the acting user's project memberships.

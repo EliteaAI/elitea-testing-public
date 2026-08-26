@@ -716,6 +716,33 @@ clean-process invocations):**
 * Lint: `ruff` per-file error counts unchanged from `automation/base` for
   `config.py`/`api/client.py`, and one pre-existing `E501` removed from `api/__init__.py`.
 
+**Fix round 1 (2026-08-26, reviewer APPROVED + lead-elected recommendations).** Two
+precondition guards now front `_resolve_source_project_id()`, both `pytest.fail`, neither
+weakening anything the case verifies:
+
+1. **Non-positive `TARGET_PROJECT_ID`.** `config.py` types `elitea_project_id` as
+   `int = 0` with a `"" -> 0` validator, so an unset `ELITEA_PROJECT_ID` silently yields
+   `0` — never a real membership, therefore invisible to the candidate filter, and the run
+   would have died ~200 lines later on a `select-option-0` timeout, i.e. reproducing the
+   exact non-diagnostic symptom this card was filed for. The guard fails immediately and
+   names `ELITEA_PROJECT_ID` as the unset/invalid key.
+2. **No usable source project.** The message now names BOTH exclusions (the fork target
+   *and* the public project), since `candidates` drops both.
+
+Both guard paths were exercised directly and confirmed to raise `Failed` with the intended
+message. `_projects_url()` was also joined onto one line (fits ruff's 120-char limit).
+Re-gated 3× in clean processes after the fix: signature unchanged — `source=400
+target=399` every run, Steps 1-10 pass, sole failure the pre-existing #570 soft-assertion.
+
+**Precondition narrowing, stated explicitly (reviewer question 1):** the case's
+precondition allows the source pipeline to come from a different project *"e.g. via Agent
+HUB or shared link"*. Agent HUB is the **public** project, and the resolver deliberately
+excludes it as a fork SOURCE — the test creates its own source pipeline via the API, and
+API pipeline-create in the public project is not a supported precondition (it is a
+read/browse surface, not a per-user authoring project). The fork MECHANIC under test is
+identical from any source project, so nothing the case verifies is weakened; the narrowing
+is only about *where the source pipeline is authored*.
+
 **Still open (unchanged from § Unverified above):** DEV is provable only by a CI run
 (open questions 1–2 — whether `autotest_user_<n>`'s second project carries pipeline-create
 rights). The sibling `test_fork_agent_to_different_project.py` (open question 4) is

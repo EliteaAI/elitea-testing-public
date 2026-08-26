@@ -113,11 +113,26 @@ def _resolve_source_project_id(browser_cookies: list[dict]) -> int:
       is deterministic run-to-run rather than "whatever the API listed
       first".
 
-    Fails loudly (never skips) when the user belongs to no second project:
-    that is the case's own precondition ("a pipeline from a DIFFERENT
-    project") being unmeetable, and a silent skip would drop this case's
-    coverage without anyone noticing.
+    Fails loudly (never skips) on either unmeetable precondition — an
+    unset/invalid ``ELITEA_PROJECT_ID``, or a user who belongs to no usable
+    second project. A silent skip would drop this case's coverage without
+    anyone noticing, and a silent pass-through would surface ~200 lines
+    later as a non-diagnostic `select-option-<id>` locator timeout (exactly
+    the misleading symptom issue #1800 was filed for).
     """
+    # `ELITEA_PROJECT_ID` unset/empty coerces to 0 in config.py (int = 0 plus
+    # a "" -> 0 validator), and 0 is never a real membership — so it would
+    # slip past the candidate filter below and only die much later on a
+    # `select-option-0` timeout. Fail here instead, naming the key.
+    if TARGET_PROJECT_ID <= 0:
+        pytest.fail(
+            "ELITEA-2051 precondition unmet: the fork TARGET project id "
+            f"resolved to {TARGET_PROJECT_ID!r}. ELITEA_PROJECT_ID is unset "
+            "or invalid — it must be the acting user's own ('Private') "
+            "project id (TEST_USER_PROJECT_<n> in CI). Set it in "
+            "automation/.env.test (or the CI env) and re-run."
+        )
+
     project_api = ProjectAPI(browser_cookies=browser_cookies)
     try:
         projects = project_api.list_projects()
@@ -132,9 +147,12 @@ def _resolve_source_project_id(browser_cookies: list[dict]) -> int:
     if not candidates:
         pytest.fail(
             "ELITEA-2051 precondition unmet: the acting user belongs to no "
-            f"project other than the fork target ({TARGET_PROJECT_ID}); the "
-            "case requires a second project to fork FROM. Memberships read "
-            f"from the projects-list endpoint: {member_ids}"
+            "project usable as a fork SOURCE — every membership is either "
+            f"the fork target ({TARGET_PROJECT_ID}, ELITEA_PROJECT_ID) or "
+            f"the public project ({settings.public_project_id}, both "
+            "excluded). The case requires a second, non-public project to "
+            f"fork FROM. Memberships read from the projects-list endpoint: "
+            f"{member_ids}"
         )
 
     preferred = int(settings.users_team_project_id)
