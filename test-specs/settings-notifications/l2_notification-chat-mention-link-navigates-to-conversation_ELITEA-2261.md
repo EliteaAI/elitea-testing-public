@@ -62,7 +62,13 @@
      (framework wait on `page.wait_for_url` / a `expect(...).to_have_url` regex — never a sleep).
      The `/{projectId}` prefix is consumed by the project switcher and the query string is
      rewritten by the app.
-   - **Verify**: popup path == `/chat/{conversation_id}`.
+   - **Verify**: popup path == `/chat/{conversation_id}` **or**
+     `/{notification.project_id}/chat/{conversation_id}` — AMENDED during ELITEA-2261
+     implementation (2026-08-26): the switcher consumes the `/{projectId}` segment only
+     when a switch is actually required. Project 406 ≠ the selected 399 here, so it IS
+     consumed; ELITEA-2263's notification lives in the already-selected project 399 and
+     its segment SURVIVES (`/399/artifacts?bucket=…`). Both shapes name the same page of
+     the same project; the spec accepts exactly those two and nothing else.
    - Live 2026-08-26: `http://localhost:5173/chat/5883?name=Hello`, title
      `"Chat: Hello - Bugs & Features"` (project 406 — the notification's own project, not the
      user's personal one).
@@ -97,7 +103,8 @@
 ## Expected Results
 - The in-message link's `href` is built entirely from the notification's own `meta`
   (`conversation_id`, `message_id`) and `project_id`.
-- Clicking it opens a new tab on `/chat/{conversation_id}` in the notification's project.
+- Clicking it opens a new tab on `/chat/{conversation_id}` in the notification's project
+  (the `/{project_id}` segment survives when that project is already selected — see step 4).
 - The conversation renders its message list; no "Conversation not found" dialog.
 - The notification's read state is unchanged by the click.
 
@@ -110,7 +117,7 @@
 | Step 1 — Navigate to Settings → Notifications | page/section loads | `navigate_and_get_rows()` | step 1 | covered |
 | Step 2 — Find a "[User] mentioned you in [Chat link]" notification | produces expected UI state | search + live-target discovery | step 2 | covered (decomposed: search, parse href, liveness probe) |
 | Step 3 — Click the Chat link in the notification text | control responds | click on `notification-message-link` | step 3 | covered |
-| Step 4 — Browser navigates to the referenced chat conversation | condition holds | popup URL == `/chat/{conversation_id}` | step 4 | covered (new TAB, not in-tab navigation) |
+| Step 4 — Browser navigates to the referenced chat conversation | condition holds | popup URL == `/chat/{conversation_id}` or `/{project_id}/chat/{conversation_id}` (amended) | step 4 | covered (new TAB, not in-tab navigation) |
 | Step 5 — Chat opens without a "not found" error | condition holds | `alert-dialog-content` count 0 + `chat-message-list` visible | step 5 | covered |
 | Step 6 — Navigate back, notification now in read state | page loads / state read | read state re-read after return | step 6 | **clarification** — product does not mark read on link click; asserted as unchanged. #1786 |
 | Expected final state | notification read | — | — | **clarification** (same as step 6) |
@@ -134,7 +141,7 @@ None — the whole flow is read-only. Close the popup tab; clear the search fiel
 | Row checkbox (dynamic, row key) | `[data-testid="notification-checkbox-{id}"]` | on-`automation/testids` only | `NOTIFICATION_ROW_CHECKBOX` |
 | Row message cell | `[data-testid="notification-message-text"]` | on-main ✓ | |
 | Row message typography (colour) | `[data-testid="notification-message-typography"]` | on-`automation/testids` only (EliteaAI/EliteaUI@e0d98f4a) | `ROW_MESSAGE_TYPOGRAPHY` |
-| **In-message link** | `[data-testid="notification-message-link"]` | **needs-adding** | see § Testid work below |
+| **In-message link** | `[data-testid="notification-message-link"]` | **ADDED during implementation** — on-`automation/testids` only (EliteaAI/EliteaUI@9733742f) | see § Testid work below |
 | Search input | `[data-testid="notifications-search-input"]` | on-`automation/testids` only | |
 | Page-info label | `[data-testid="notifications-pagination-page-info"]` | on-`automation/testids` only | |
 | "Conversation not found" dialog | `[data-testid="alert-dialog-content"]` | on-main ✓ | shared AlertDialog; used as an **absence** assertion (canon #511 extension: absence assertions are references) |

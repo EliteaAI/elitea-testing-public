@@ -353,3 +353,49 @@ references) — there is no chat-specific not-found testid and none is needed.
 Re-typing a term the session already fetched serves from the RTK-Query cache and fires **no**
 request — `page.wait_for_response(... "search=")` then times out. Wait on the **rendered row
 count** instead (mirrors the existing note about clearing the field). Cost one failed probe.
+
+## Resolved/added during ELITEA-2261 + ELITEA-2263 implementation (2026-08-26, test-automation-engineer)
+
+**Testid added — `EliteaAI/EliteaUI@9733742f` on `automation/testids`, NOT yet on `main`.**
+Closes the "the in-message `<Link>` has no testid" gap flagged above:
+
+| Testid | How | Component |
+|---|---|---|
+| `notification-message-link` | caller-supplied additive prop thread — `NotificationTable.jsx` `renderCell` passes `linkTestId` → `NotificationListItem` forwards it → `NotificationListItemMessage` renders `data-testid={linkTestId}` on the EXISTING `<Link target="_blank">` | shared with the sidebar popover, so caller-supplied (`context='list'` gains nothing) |
+
+Prop plumbing only — no new DOM node, no hook, no removed markup (zero-functional-impact
+greps: 0 hits on hooks, 0 on new nodes, the single `-` line is the destructure line itself).
+The scoped constant `NotificationCenterPage.ROW_MESSAGE_LINK` is live and unambiguous —
+both specs assert `get_row_link_count(id) == 1` before using it, and both passed.
+
+**⚠️ CORRECTION to the "the `/{projectId}` prefix is consumed by the project switcher"
+claim above — it is consumed ONLY when a switch is actually required.** Measured live
+2026-08-26 across the two implemented cases:
+
+| Case | Notification project | Selected project | Landing URL |
+|---|---|---|---|
+| ELITEA-2261 (`chat_user_mentioned`) | 406 "Bugs & Features" | 399 "Private" | `/chat/5883?name=Hello` — segment **consumed** |
+| ELITEA-2263 (`bucket_expiration_warning`) | 399 "Private" | 399 "Private" | `/399/artifacts?bucket=autotest-1816-182606` — segment **survives** |
+
+⇒ any spec asserting a landing path on this surface must accept BOTH
+`{prefix}/<route>` and `{prefix}/{project_id}/<route>` (exactly those two, nothing else) —
+asserting only the stripped form is a guaranteed red whenever the notification happens to
+belong to the currently-selected project. Cost one rerun to learn.
+
+**Liveness probing is cheap through the existing API clients, no new client needed:**
+`ConversationAPI(browser_cookies=_browser_cookies, project_id=<notification.project_id>)
+.get_conversation_raw(id).status_code == 200` and
+`ArtifactAPI(browser_cookies=_browser_cookies, project_id=…).bucket_exists(name)`. Both
+take `project_id` in the constructor, which matters because the notification's project is
+NOT necessarily `settings.elitea_project_id`. Precedent for constructing a per-project
+client inside a spec: `tests/ui/chat/test_delete_confirmation_modal_ui_validation.py:57`.
+
+**Console capture must be attached to the CONTEXT, not the page** —
+`collect_console_errors(page.context)` — because the flow's second half runs in a POPUP
+that does not exist yet when the listener is bound. `BrowserContext.on("console")` covers
+every page in the context, including popups opened later.
+
+**Live targets that worked this session (they rot — always discover at runtime):**
+mention notification `109487` → conversation `5883` ("Hello", project 406);
+retention warning `111978` → bucket `autotest-1816-182606` (project 399, empty bucket,
+proved OPEN via `artifacts-bucket-tree-empty-label-autotest-1816-182606`).

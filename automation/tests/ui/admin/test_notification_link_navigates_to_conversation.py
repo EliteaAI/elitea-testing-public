@@ -270,10 +270,19 @@ class TestNotificationChatMentionLinkNavigation:
                     re.compile(rf"/chat/{conversation_id}(\?|$)"), timeout=POPUP_URL_TIMEOUT
                 )
                 popup_path = urllib.parse.urlparse(popup.url).path
-                assert popup_path == f"{settings.app_prefix}/chat/{conversation_id}", (
+                # The href carries the notification's own ``/{project_id}`` prefix, which
+                # the project switcher consumes when it actually has to switch (measured
+                # live 2026-08-26: ``/chat/5883`` for project 406 while 399 was selected).
+                # It stays in the URL when no switch is needed — see ELITEA-2263's
+                # ``/399/artifacts`` — so both shapes are accepted and nothing else is.
+                accepted_paths = (
+                    f"{settings.app_prefix}/chat/{conversation_id}",
+                    f"{settings.app_prefix}/{project_id}/chat/{conversation_id}",
+                )
+                assert popup_path in accepted_paths, (
                     f"The new tab did not land on the notification's own conversation: "
-                    f"expected path {settings.app_prefix}/chat/{conversation_id}, "
-                    f"got {popup_path!r} (full URL {popup.url!r})"
+                    f"expected one of {accepted_paths}, got {popup_path!r} "
+                    f"(full URL {popup.url!r})"
                 )
 
             with allure.step('Step 5 — The chat opens without a "not found" error'):

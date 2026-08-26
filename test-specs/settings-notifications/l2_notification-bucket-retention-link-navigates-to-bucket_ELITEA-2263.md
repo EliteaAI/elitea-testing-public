@@ -58,9 +58,16 @@
 
 4. **Case step 4** — verify the new tab lands on the referenced artifact bucket.
    - Wait (framework wait, never a sleep) for the popup URL to settle at
-     `/artifacts?bucket={bucket_name}` — the `/{projectId}` prefix is consumed by the
-     project switcher.
-   - **Verify**: popup path == `/artifacts`, query param `bucket` == `bucket_name`;
+     `…/artifacts?bucket={bucket_name}`.
+   - **AMENDED during ELITEA-2263 implementation (2026-08-26): the `/{projectId}` prefix
+     is NOT always consumed.** The project switcher drops it only when a switch is
+     actually required. This notification's project (399, the personal project) is
+     already the selected one, so the segment SURVIVES: the live landing URL is
+     `http://localhost:5173/399/artifacts?bucket=autotest-1816-182606`, not
+     `/artifacts?bucket=…`. (ELITEA-2261's mention notification lives in project 406,
+     a real switch, and its segment IS consumed — hence the digest's original claim.)
+   - **Verify**: popup path == `/artifacts` **or** `/{notification.project_id}/artifacts`
+     — exactly those two, nothing else — and query param `bucket` == `bucket_name`;
      the project selector shows the notification's project (live 2026-08-26: `Private`,
      project 399, title `"Artifacts - project_user_659"`).
 
@@ -95,7 +102,7 @@
 | Step 1 — Navigate to Settings → Notifications | page/section loads | `navigate_and_get_rows()` | step 1 | covered |
 | Step 2 — Find a "Bucket [bucket link] will start deleting files…" notification | produces expected UI state | search + live-bucket discovery | step 2 | covered (decomposed: search, parse href, liveness check) |
 | Step 3 — Click the bucket link | control responds | click on `notification-message-link` | step 3 | covered |
-| Step 4 — Browser navigates to the referenced artifact bucket | condition holds | popup URL `/artifacts?bucket={name}` + project | step 4 | covered (new TAB, not in-tab navigation) |
+| Step 4 — Browser navigates to the referenced artifact bucket | condition holds | popup URL `/artifacts?bucket={name}` or `/{project_id}/artifacts?bucket={name}` (amended) + project | step 4 | covered (new TAB, not in-tab navigation) |
 | Step 5 — Bucket page opens without a "not found" error | condition holds | bucket row visible + bucket tree opened | step 5 | covered |
 | Expected final state | bucket page opens cleanly | same as step 5 | step 5 | covered |
 
@@ -117,7 +124,7 @@ None — read-only. Close the popup tab; clear the search field.
 | Notification row (repeats) | `[data-testid="notification-row"]` | on-main ✓ | scope per row via checkbox id |
 | Row checkbox (dynamic) | `[data-testid="notification-checkbox-{id}"]` | on-`automation/testids` only | `NOTIFICATION_ROW_CHECKBOX` |
 | Row message cell | `[data-testid="notification-message-text"]` | on-main ✓ | |
-| **In-message link** | `[data-testid="notification-message-link"]` | **needs-adding** | identical work item to ELITEA-2261 — add ONCE, both specs consume it |
+| **In-message link** | `[data-testid="notification-message-link"]` | **ADDED during implementation** — on-`automation/testids` only (EliteaAI/EliteaUI@9733742f) | one add, consumed by ELITEA-2261 and ELITEA-2263 |
 | Search input | `[data-testid="notifications-search-input"]` | on-`automation/testids` only | |
 | Bucket row (dynamic) | `[data-testid="artifacts-bucket-row-{name}"]` | on-main ✓ | `ArtifactsPage.BUCKET_ROW` |
 | Bucket empty-tree label (dynamic) | `[data-testid="artifacts-bucket-tree-empty-label-{name}"]` | on-`automation/testids` only | `ArtifactsPage.BUCKET_TREE_EMPTY_LABEL` — proof the bucket is OPENED |

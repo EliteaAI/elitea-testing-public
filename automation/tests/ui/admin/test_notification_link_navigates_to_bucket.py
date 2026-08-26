@@ -245,10 +245,22 @@ class TestNotificationBucketRetentionLinkNavigation:
                     re.compile(r"/artifacts\?.*bucket="), timeout=POPUP_URL_TIMEOUT
                 )
                 parsed = urllib.parse.urlparse(popup.url)
-                assert parsed.path == f"{settings.app_prefix}/artifacts", (
-                    f"The new tab did not land on the artifacts page: expected path "
-                    f"{settings.app_prefix}/artifacts, got {parsed.path!r} "
-                    f"(full URL {popup.url!r})"
+                # The href carries the notification's own ``/{project_id}`` prefix.
+                # The project switcher CONSUMES that segment only when a switch is
+                # actually required — when the notification's project is already the
+                # selected one it stays in the URL (measured live 2026-08-26:
+                # ``/399/artifacts?bucket=…`` for project 399, the personal project,
+                # against ``/chat/5883`` for ELITEA-2261's project 406). Both shapes
+                # name the SAME page of the SAME project, so both are accepted and
+                # nothing else is.
+                accepted_paths = (
+                    f"{settings.app_prefix}/artifacts",
+                    f"{settings.app_prefix}/{project_id}/artifacts",
+                )
+                assert parsed.path in accepted_paths, (
+                    f"The new tab did not land on the artifacts page of the "
+                    f"notification's own project: expected one of {accepted_paths}, "
+                    f"got {parsed.path!r} (full URL {popup.url!r})"
                 )
                 landed_bucket = urllib.parse.parse_qs(parsed.query).get("bucket", [None])[0]
                 assert landed_bucket == bucket_name, (
