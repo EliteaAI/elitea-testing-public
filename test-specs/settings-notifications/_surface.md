@@ -275,3 +275,81 @@ at 4 s, comfortably past the product's 600 ms debounce.
 use `is_seen ? 'text.primary' : 'text.secondary'` — so in this dark theme READ is
 `text.primary` = `rgb(169, 183, 193)` and UNREAD is `text.secondary` =
 `rgb(255, 255, 255)`. Counterintuitive naming; assert the difference, never the token.
+
+## In-message LINKS — where they point and what clicking one does (ELITEA-2261/2262/2263, confirmed live 2026-08-26)
+
+**Clicking a notification link opens a NEW TAB.** `NotificationListItemMessage.jsx` renders
+every link segment as `<Link href={resolvedHref} target="_blank" rel="noopener noreferrer">`
+with **no `onClick`**. Consequences for any case on this surface:
+- automation must use `page.expect_popup()` / `context.expect_page()` — an in-tab
+  `wait_for_url` will hang;
+- the notifications page is never left, so a case step saying "navigate back" is drift;
+- **no mark-seen mutation fires** — clicking a link does NOT mark the notification read
+  (colour identical before/after + reload: `rgb(255,255,255)` both times on notification
+  `109821`). Clarification #1786, sibling of #1784 (row click, same behaviour).
+
+**The `<Link>` has NO testid** (not on `main`, not on `automation/testids`). Needed:
+`notification-message-link`, added as a **caller-supplied additive prop** (`linkTestId`)
+threaded `NotificationTable.jsx` `renderCell` → `NotificationListItem` →
+`NotificationListItemMessage`, exactly like the existing `messageTestId`
+(EliteaAI/EliteaUI@e0d98f4a). A STATIC value is right — disambiguate by row scoping:
+```python
+ROW_MESSAGE_LINK = ('[data-testid="notification-row"]:has([data-testid="notification-checkbox-{}"]) '
+                    '[data-testid="notification-message-link"]')
+```
+Every row on this account renders exactly **one** `<a target="_blank">` (checked across all
+89 rows' rendered pages), so the scoped selector is unambiguous. `parseMessage()` could emit
+several link segments in principle — index the suffix only if a case ever needs it.
+
+**Where each event type's link points** (`resolveHref()` in
+`entities/notifications/lib/helpers/notification.helpers.js`, all URLs prefixed with the
+notification's OWN `project_id`, not the user's selected project):
+
+| event_type | href shape | Landing URL after the SPA's project switch |
+|---|---|---|
+| `chat_user_mentioned` / `chat_user_added` | `/{project_id}/chat?conversation={meta.conversation_id}&message_id={meta.message_id}` | `/chat/{conversation_id}` (query rewritten to `?name=…` when it resolves) |
+| `index_data_changed` | `/{project_id}/toolkits/indexes/{meta.toolkit_id}?index_name={meta.index_name}` | `/toolkits/indexes/{toolkit_id}` — or silently the LIST when the toolkit is gone |
+| `bucket_expiration_warning` | `/{project_id}/artifacts?bucket={meta.bucket_name}` | `/artifacts?bucket={name}` |
+| `personal_access_token_expiring` | `/settings/tokens` | |
+| `budget_*` | `/{project_id}/settings/usage` (+ `?scope=user` for member budgets) | |
+| `agent_unpublished` | `/{project_id}/agents/all/{app_id}/{version_id}?viewMode=owner` | |
+
+**The `/{projectId}` prefix is consumed by the project switcher** — the popup's final URL has
+no project segment. Wait for the path to settle (`/chat/\d+`) before asserting; a
+`domcontentloaded`-only wait reads the pre-switch URL and lies (cost one probe round).
+
+### ⚠️ Notification targets ROT — liveness must be discovered, never assumed
+The history is real user history and the entities it references get deleted. Measured
+2026-08-26:
+
+| Type | Rows | Targets still alive |
+|---|---|---|
+| `chat_user_mentioned` | 12 | some — `5883` ("Hello", 18 msgs) and `4165` ("HI Chat", 29 msgs) open; `7839`, `4205` are gone |
+| `bucket_expiration_warning` | 41 | few — most name autotest buckets the retention policy already deleted; `autotest-1816-182606` survives |
+| `index_data_changed` | 7 | **none** — toolkits 30/118/137/146 all 400; surviving toolkits in that project are ids 850–890 |
+
+⇒ any "click the link and check the target opened" spec must pick its row by **probing the
+product for a live target first** (transit read), and fail loudly when none exists. Picking
+"the newest row" is a guaranteed red — the newest bucket warning today targets a deleted
+bucket.
+
+### Discriminators — did the target actually open?
+| Surface | Opened | Broken/dead target |
+|---|---|---|
+| Chat | `chat-message-list` visible, `chat-message-item` ≥ 1, **no** `alert-dialog-content` | `alert-dialog-content` present ("Conversation not found — … does not exist in your project or you don't have access to it"), backend `400` on `/elitea_core/conversation/prompt_lib/{proj}/{conv}` |
+| Artifacts | `artifacts-bucket-row-{name}` visible **and** the bucket tree expanded (`artifacts-bucket-tree-empty-label-{name}` or a file list) | URL still carries `?bucket=…` but no such bucket row — **URL alone is not an assertion** |
+| Toolkit indexes | (never reached — see below) | URL silently falls back to `/toolkits/indexes` (the LIST), **no error message at all**, `400` on `/elitea_core/tool/prompt_lib/{proj}/{toolkit}` |
+
+Note the inconsistency worth knowing: chat shows an explicit not-found dialog, toolkits fail
+silently to a list. Not filed as a defect (out of ELITEA-2262's scope), recorded here.
+
+### The `alert-dialog-content` handle
+`src/components/AlertDialog.jsx` already carries static `alert-dialog-content` /
+`alert-dialog-confirm-button` (both on `main`). It is app-wide/shared, so use it for the
+**absence** assertion on the chat popup (canon #511 extension: absence assertions are
+references) — there is no chat-specific not-found testid and none is needed.
+
+### Search-cache trap when scripting this surface
+Re-typing a term the session already fetched serves from the RTK-Query cache and fires **no**
+request — `page.wait_for_response(... "search=")` then times out. Wait on the **rendered row
+count** instead (mirrors the existing note about clearing the field). Cost one failed probe.
