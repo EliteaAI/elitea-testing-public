@@ -150,6 +150,12 @@ class ProjectContextPage(BasePage):
         "query is in flight",
     )
 
+    preview_pane = LocatorDescriptor(
+        testid="project-context-preview",
+        description="Markdown preview pane — replaces the CodeMirror editor entirely "
+        "while preview (eye) mode is selected",
+    )
+
     #: CodeMirror's line-number gutter. **#579 exception 2** (third-party editor
     #: library internal render node): CodeMirror owns this DOM entirely — it is
     #: not app JSX, so no ``data-testid`` can be placed on it. Always scoped to
@@ -157,6 +163,27 @@ class ProjectContextPage(BasePage):
     #: :meth:`line_number_gutter`. Do NOT extend this handle to any node that
     #: COULD carry a testid.
     EDITOR_GUTTERS = ".cm-gutters"
+
+    #: CodeMirror's per-line render nodes and its line-number gutter elements.
+    #: **#579 exception 2** (third-party editor library internal render nodes),
+    #: same node family and same discipline as :attr:`EDITOR_GUTTERS`: CodeMirror
+    #: renders this DOM itself, so no ``data-testid`` can be placed on it. Always
+    #: scoped to the app-owned ``project-context-editor-wrapper`` testid parent.
+    #: Needed because ``.cm-content``'s ``textContent`` concatenates the document
+    #: with NO newlines ("## H- a- b"), so a multi-line body can only be asserted
+    #: line by line.
+    EDITOR_LINES = ".cm-line"
+    #: ``:visible`` excludes CodeMirror's hidden width-measuring element (renders
+    #: the text "9" with ``visibility: hidden``), leaving exactly the real numbers.
+    EDITOR_LINE_NUMBERS = ".cm-lineNumbers .cm-gutterElement:visible"
+
+    #: react-markdown's rendered output inside the preview pane. **#579**
+    #: (third-party library internal render nodes — named explicitly in
+    #: ``.agents/testing.md`` § Locator policy). Always scoped to the app-owned
+    #: ``project-context-preview`` testid parent: the app sidebar renders its own
+    #: ``<li>`` elements, so an unscoped handle cannot disambiguate.
+    PREVIEW_HEADING_2 = "h2"
+    PREVIEW_LIST_ITEM = "li"
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -391,3 +418,158 @@ class ProjectContextPage(BasePage):
         self.page.wait_for_url(lambda url: url.endswith(PROJECT_CONTEXT_PATH), timeout=10000)
         logger.info("Saved Project Context — PUT => %s", response.status)
         return response
+
+    def editor_lines(self) -> Locator:
+        """Return CodeMirror's per-line nodes, scoped to the editor wrapper.
+
+        **Sanctioned raw-handle exception #579 (case 2 — third-party editor
+        library internal render node)**, identical in kind to
+        :meth:`line_number_gutter`: CodeMirror owns this DOM, so no
+        ``data-testid`` can be placed on a line. Scoped to the app-owned
+        ``project-context-editor-wrapper`` testid parent via the class constant
+        :attr:`EDITOR_LINES`.
+
+        Why it is needed rather than a plain text assertion on
+        ``project-context-editor-content``: CodeMirror renders every line as its
+        own ``div``, so the content node's ``textContent`` runs the document
+        together with **no newlines** — ``"## Project Overview- First bullet"``.
+        A multi-line body is therefore only assertable line by line.
+
+        Boundary: do NOT extend this exception to any node that COULD carry a
+        testid — every app-owned element on this page has one.
+        """
+        return self.editor_wrapper.locator(self.EDITOR_LINES)
+
+    def get_editor_lines(self) -> list[str]:
+        """Return the editor's rendered lines, in document order.
+
+        Blank lines come back as ``""`` (confirmed live 2026-08-26).
+        """
+        return self.editor_lines().all_text_contents()
+
+    def line_numbers(self) -> Locator:
+        """Return the editor's visible line-number elements (see :attr:`EDITOR_LINE_NUMBERS`).
+
+        Same #579 exception-2 scope as :meth:`line_number_gutter`, one level
+        finer so the *numbers themselves* can be asserted rather than merely the
+        gutter's presence.
+        """
+        return self.editor_wrapper.locator(self.EDITOR_LINE_NUMBERS)
+
+    def preview_headings(self) -> Locator:
+        """Return the level-2 headings react-markdown rendered in the preview pane.
+
+        **Sanctioned raw-handle exception #579** (third-party library internal
+        render nodes — ``.agents/testing.md`` § Locator policy names
+        react-markdown output explicitly). react-markdown generates this DOM from
+        the markdown source, so the heading is not app JSX and cannot carry a
+        testid. Scoped to the app-owned ``project-context-preview`` testid parent
+        via :attr:`PREVIEW_HEADING_2`.
+
+        Boundary: the pane container itself DOES carry a testid
+        (``project-context-preview``, added for exactly this reason) — do not use
+        a page-level handle for anything here.
+        """
+        return self.preview_pane.locator(self.PREVIEW_HEADING_2)
+
+    def preview_list_items(self) -> Locator:
+        """Return the list items react-markdown rendered in the preview pane.
+
+        Same #579 exception and same scoping as :meth:`preview_headings`. The
+        scoping is load-bearing rather than stylistic: the application sidebar
+        renders its own ``<li>`` elements, so an unscoped handle would match nine
+        navigation entries alongside the two bullets under test.
+        """
+        return self.preview_pane.locator(self.PREVIEW_LIST_ITEM)
+
+    def paste_markdown(self, text: str) -> None:
+        """Replace the editor's content with multi-line *text* via a real paste.
+
+        Additive sibling of :meth:`set_editor_content_via_paste` (left
+        byte-identical for its merged ELITEA-2272 caller), which waits on
+        ``expect(editor_content).to_have_text(text)`` — an assertion a multi-line
+        body can never satisfy, because ``.cm-content``'s ``textContent`` carries
+        no newlines. This variant waits per line instead.
+
+        **Paste, not keystrokes, is required for markdown.** CodeMirror's
+        ``markdown()`` extension auto-continues list items on Enter: typing
+        ``"## H\\n- a\\n- b\\nplain"`` character by character produced
+        ``"- - b"`` and ``"  - plain"`` live (2026-08-26). A paste is a single
+        transaction with no Enter keypresses and lands the text verbatim, while
+        still passing through CodeMirror's own ``EditorState.transactionFilter``
+        exactly like typed input.
+
+        The clipboard write is the only ``page.evaluate`` here and is not a
+        substitution of the system under test: it loads the *browser's*
+        clipboard so the paste gesture has something to paste; the product still
+        processes the paste itself. Same pattern as
+        :meth:`set_editor_content_via_paste`.
+
+        Args:
+            text: Replacement content; ``\\n``-separated lines.
+        """
+        self.editor_content.click()
+        self.page.keyboard.press("ControlOrMeta+a")
+        self.page.keyboard.press("Backspace")
+        expect(self.editor_content).to_have_text("", timeout=5000)
+
+        self.page.evaluate("(text) => navigator.clipboard.writeText(text)", text)
+        self.page.keyboard.press("ControlOrMeta+v")
+        expect(self.editor_lines()).to_have_text(text.split("\n"), timeout=10000)
+        logger.info("Pasted %d markdown lines into Project Context editor", len(text.split("\n")))
+
+    def type_at_end_of_content(self, text: str) -> None:
+        """Move the caret to the end of the document and type *text* for real.
+
+        ``ControlOrMeta+End`` is CodeMirror's own document-end binding, so this
+        is the gesture a user performs — no ``evaluate``, no injected state.
+        A web-first assertion confirms the keystrokes landed before returning.
+        """
+        self.editor_content.click()
+        self.page.keyboard.press("ControlOrMeta+End")
+        self.page.keyboard.type(text)
+        expect(self.editor_lines().last).to_contain_text(text.split("\n")[-1], timeout=5000)
+        logger.info("Typed %r at the end of the Project Context editor", text)
+
+    def click_preview_mode(self) -> None:
+        """Switch the editor to preview (eye) mode and wait for the swap.
+
+        The two panes are mutually exclusive (``mode === 'edit' ? <CodeMirror> :
+        <Markdown>``), so the readiness condition is the CodeMirror pane being
+        GONE plus the preview pane being visible — not a timeout.
+        """
+        self.mode_preview_button.click()
+        expect(self.mode_preview_button).to_have_attribute("aria-pressed", "true")
+        expect(self.preview_pane).to_be_visible(timeout=10000)
+        expect(self.editor_content).to_have_count(0)
+        logger.info("Switched Project Context editor to preview mode")
+
+    def click_code_view_mode(self) -> None:
+        """Switch the editor back to code view (``</>``) mode and wait for the swap."""
+        self.mode_edit_button.click()
+        expect(self.mode_edit_button).to_have_attribute("aria-pressed", "true")
+        expect(self.editor_content).to_be_visible(timeout=10000)
+        expect(self.preview_pane).to_have_count(0)
+        logger.info("Switched Project Context editor to code-view mode")
+
+    def click_discard(self) -> None:
+        """Click Discard and wait for the product's own reaction.
+
+        ``ProjectContextEditor.handleDiscard`` clears ``isDirty`` and calls
+        ``onNavigate('saved')`` — Discard **leaves the editor** rather than
+        staying put with reverted text (confirmed live 2026-08-26). The wait
+        therefore pins the saved route and the saved view, which is what the
+        product actually does.
+
+        Note the sibling label: this same button reads ``Cancel`` in create mode
+        and calls ``handleCancel`` (→ empty state), a different flow. Callers
+        that depend on edit-mode semantics should assert the label first.
+        """
+        self.discard_button.click()
+        self.page.wait_for_url(lambda url: url.endswith(PROJECT_CONTEXT_PATH), timeout=10000)
+        self.wait_for_saved_view()
+        logger.info("Discarded Project Context edits — returned to the saved view")
+
+    def is_discard_enabled(self) -> bool:
+        """Return True if the Discard/Cancel button is currently enabled."""
+        return self.discard_button.is_enabled()
