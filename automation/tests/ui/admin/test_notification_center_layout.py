@@ -145,6 +145,10 @@ class TestNotificationCenterLayout:
             expect(notif_page.select_all_checkbox).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
             for field, label in EXPECTED_COLUMNS:
                 expect(notif_page.column_header(field)).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            # DOM-order read: column_header_texts() queries the three headers as a
+            # single CSS union, so the returned order is document order, not the
+            # order of the argument list. That is what makes this an ORDER
+            # assertion and not three independent label assertions.
             rendered_labels = notif_page.column_header_texts([f for f, _ in EXPECTED_COLUMNS])
             assert rendered_labels == [label for _, label in EXPECTED_COLUMNS], (
                 f"Expected column headers {[label for _, label in EXPECTED_COLUMNS]} in DOM "

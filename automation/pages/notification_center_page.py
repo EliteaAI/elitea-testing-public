@@ -352,9 +352,27 @@ class NotificationCenterPage(BasePage):
         """Table column header for *field* (``event_type``/``notification_text``/``created_at``)."""
         return self.page.locator(self.NOTIFICATION_COLUMN_HEADER.format(field))
 
-    def column_header_texts(self, fields: list[str]) -> list[str]:
-        """Rendered label of each column header in *fields*, in the order given."""
-        return [self.column_header(field).inner_text().strip() for field in fields]
+    def column_header_texts(self, fields: list[str], timeout: int = UI_ELEMENT_TIMEOUT) -> list[str]:
+        """Rendered labels of the *fields* column headers, **in the order the DOM
+        renders them** — deliberately NOT in the order of *fields*.
+
+        ELITEA-2255 step 5 asserts the three data columns read "Type",
+        "Notification", "Date & Time" *in that order*. Resolving each header by
+        its own testid and returning them in the caller's order (the shape this
+        method had before fix-round 1) proves each label exists but is blind to
+        column ORDER: it returns the argument order no matter how the DOM is
+        laid out, so a swapped-column regression passes.
+
+        A comma-joined CSS union is matched with ``querySelectorAll``
+        semantics, so its matches come back in **document order** and the
+        argument order cannot influence the result — which is what makes the
+        caller's ``== [expected labels]`` comparison an order assertion.
+        Pinned by ``tests/unit/test_notification_column_header_dom_order.py``.
+        """
+        union = ", ".join(self.NOTIFICATION_COLUMN_HEADER.format(field) for field in fields)
+        headers = self.page.locator(union)
+        headers.first.wait_for(state="visible", timeout=timeout)
+        return [text.strip() for text in headers.all_inner_texts()]
 
     def is_delete_selected_enabled(self, timeout: int = UI_ELEMENT_TIMEOUT) -> bool:
         """Return whether the toolbar's delete-selected button is currently enabled."""
