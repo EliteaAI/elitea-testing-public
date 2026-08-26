@@ -5948,6 +5948,15 @@ class PipelineDetailPage(PipelineFormPage):
         panels squeezing the pane), never something a longer timeout or a
         retry can fix.
 
+        The hit test is POINT-IN-TIME, not held across the gesture: it
+        resolves inside the ``evaluate``, and the drag then moves the pointer
+        and waits before ``mouse.down()``, so the hovered DOM does change in
+        between (``CustomHandle.jsx`` renders label / vertical-line /
+        plus-circle children once the handle expands on hover). That is
+        tolerated rather than guarded: those children render INSIDE the
+        ``<Handle>``, so ``closest('[data-handleid]')`` still resolves to the
+        same handle, and hovering cannot raise a neighbour's card above it.
+
         Fidelity note: ``page.evaluate`` here is GEOMETRY MEASUREMENT ONLY
         (handle rects + ``document.elementFromPoint`` hit-testing). It
         neither creates nor fakes the connection -- the edge is still drawn
@@ -6105,24 +6114,30 @@ class PipelineDetailPage(PipelineFormPage):
         self.page.mouse.up()
         self.page.wait_for_timeout(500)
 
-        # Dismiss any stray popup the drag may have opened over the canvas:
-        # ReactFlow's own "create new node" menu (role="menu") when the drop
-        # lands on empty canvas, and a MUI Select listbox (role="listbox")
-        # from a node card the mousedown hit by mistake. The pre-ELITEA-2016
-        # probe checked role="menu" ONLY, so a listbox was never dismissed and
-        # stayed open over the canvas, poisoning every later interaction (seen
-        # on the ELITEA-2016 CI failure screenshot, still open after this
-        # method returned). The probe is a ``document.querySelector`` DOM READ
-        # rather than a Playwright locator: these are transient third-party
-        # portal overlays that carry no app testid, and this project locates by
-        # data-testid only. Escape stays CONDITIONAL -- sending it
-        # unconditionally regressed ``test_three_node_chain`` (confirmed
-        # against a pristine-HEAD control run), so it goes out only when a
-        # popup is actually open.
-        stray_popup_open = self.page.evaluate(
-            """() => !!document.querySelector('[role="menu"], [role="listbox"]')"""
-        )
-        if stray_popup_open:
+        # Dismiss any stray popup the drag may have opened over the canvas.
+        # Two shapes, both with real app testids -- no raw role/CSS selector:
+        #   * ReactFlow's "create new node" connection dropdown, when the drop
+        #     lands on empty canvas -- :meth:`is_popup_menu_visible` /
+        #     :data:`POPUP_MENU_TESTIDS` (`pipeline-connection-dropdown-menu`,
+        #     ConnectionDropdown.jsx). That helper's docstring already claimed
+        #     this method used it; before ELITEA-2016 it did not, and the old
+        #     probe here was a raw `[role="menu"]` locator.
+        #   * an app select's listbox (SingleSelect / PopoverSelect / their
+        #     menu items all render `select-option-{value}`), opened when the
+        #     mousedown landed on a node card's Type control by mistake --
+        #     :data:`SELECT_OPTION_PREFIX`. The pre-ELITEA-2016 probe matched
+        #     `[role="menu"]` ONLY, so a listbox was never dismissed and stayed
+        #     open over the canvas, poisoning every later interaction (visible
+        #     on the ELITEA-2016 CI failure screenshot, still open after this
+        #     method had returned).
+        # Both constants are strictly narrower than a role selector, which is
+        # the point: an unrelated `role="listbox"` mounted anywhere in the
+        # document -- a side-panel select, a leftover popover -- would make
+        # this fire Escape after every SUCCESSFUL connection. Escape also stays
+        # CONDITIONAL: sending it unconditionally regressed
+        # ``test_three_node_chain`` (confirmed against a pristine-HEAD control
+        # run), so it goes out only when a popup is actually open.
+        if self.is_popup_menu_visible() or self.page.locator(self.SELECT_OPTION_PREFIX).count() > 0:
             logger.info("Dismissing a stray popup left open over the canvas")
             self.page.keyboard.press("Escape")
             self.page.wait_for_timeout(200)
@@ -6207,10 +6222,23 @@ class PipelineDetailPage(PipelineFormPage):
         self.move_node(node_id, round(dx * scale), round(dy * scale), timeout=timeout)
 
     # A node drag may not span more than this fraction of the flow pane in
-    # either axis: ReactFlow auto-pans the viewport once the pointer nears a
-    # pane edge (`autoPanOnNodeDrag`), which adds an unpredictable extra
-    # displacement on top of the requested delta.
+    # either axis. Note what this does and does not buy: `autoPanOnNodeDrag`
+    # fires on the pointer's ABSOLUTE proximity to a pane edge, not on the
+    # size of the delta, so bounding the delta cannot rule auto-pan out. What
+    # it rules out is the gross case -- a delta LONGER than the pane, which
+    # cannot be performed without ending up at an edge (measured: an 800-unit
+    # offset at zoom 0.75 became a 600 px drag in a 403 px pane, and nodes
+    # were flung far enough apart that `fit_view()` settled at zoom 0.1 with
+    # every handle ~2 px tall). Residual case, accepted: a node that already
+    # sits near a pane edge can still auto-pan on a fully budget-compliant
+    # drag. `connect_nodes()`'s hit test is what catches the consequence.
     _DRAG_PANE_FRACTION = 0.35
+
+    # ReactFlow's zoom floor for this editor -- `minZoom={0.1}` in
+    # FlowEditor.jsx. `zoom_out()` cannot go below it, so a loop that keeps
+    # clicking past it makes no progress (and may block on a disabled
+    # button's actionability check).
+    _REACTFLOW_MIN_ZOOM = 0.1
 
     def _zoom_out_until_drag_fits(
         self, dx: int, dy: int, max_clicks: int = 14
@@ -6227,32 +6255,50 @@ class PipelineDetailPage(PipelineFormPage):
         Zooming out first shrinks the same flow-space delta into a drag the
         pane can contain.
 
+        Stops as soon as zooming stops making progress, rather than clicking
+        blindly *max_clicks* times: ``zoom_out()`` is a silent no-op when its
+        control isn't found, and the editor pins ``minZoom={0.1}``
+        (:data:`_REACTFLOW_MIN_ZOOM`), below which the button does nothing or
+        is disabled -- and a click on a disabled button would sit in
+        Playwright's actionability wait for 30 s per iteration. Whether the
+        offset fits at the floor is pane-width-dependent, and headless CI is
+        the narrow case: ``conftest.py`` pins ``viewport=1366x768`` headless
+        while headed local runs use ``no_viewport=True``.
+
         Returns:
             The viewport scale in force once the drag fits.
 
         Raises:
-            RuntimeError: if the drag still does not fit after *max_clicks*
-                zoom-out steps (the requested offset is too large for this
-                pane at any usable zoom).
+            RuntimeError: if the drag does not fit even at the zoom floor (the
+                requested offset is too large for this pane at any usable zoom).
         """
         pane = self.canvas_wrapper.bounding_box()
         if not pane:
             raise RuntimeError("Could not measure the ReactFlow pane's bounding box")
         budget_x = pane["width"] * self._DRAG_PANE_FRACTION
         budget_y = pane["height"] * self._DRAG_PANE_FRACTION
+        previous_scale = None
         for _ in range(max_clicks):
             scale = self.get_canvas_viewport_transform()["scale"]
             if abs(dx) * scale <= budget_x and abs(dy) * scale <= budget_y:
                 return scale
+            if scale == previous_scale or scale <= self._REACTFLOW_MIN_ZOOM:
+                break          # at the zoom floor (or zoom_out() is a no-op)
+            previous_scale = scale
             self.zoom_out()
         scale = self.get_canvas_viewport_transform()["scale"]
         raise RuntimeError(
-            f"A ({dx}, {dy}) flow-unit node drag still does not fit the "
-            f"{pane['width']:.0f}x{pane['height']:.0f} px flow pane after {max_clicks} "
-            f"zoom-out steps (zoom is {scale:.4f}, budget "
-            f"{budget_x:.0f}x{budget_y:.0f} px). Use a smaller offset or widen the "
-            f"pane (collapse a side panel) -- dragging further than the pane makes "
-            f"ReactFlow auto-pan and the node lands somewhere arbitrary."
+            f"A ({dx}, {dy}) flow-unit node drag does not fit the "
+            f"{pane['width']:.0f}x{pane['height']:.0f} px flow pane (budget "
+            f"{budget_x:.0f}x{budget_y:.0f} px) at zoom {scale:.4f}, and zooming out "
+            f"further is not possible -- the editor pins minZoom="
+            f"{self._REACTFLOW_MIN_ZOOM} (FlowEditor.jsx). This is a PANE-SIZE limit, "
+            f"not an offset that merely needs a smaller number: at the floor this pane "
+            f"can only absorb a {budget_x / self._REACTFLOW_MIN_ZOOM:.0f}x"
+            f"{budget_y / self._REACTFLOW_MIN_ZOOM:.0f} flow-unit drag. Use a smaller "
+            f"offset or widen the pane (collapse a side panel). Headless CI is the "
+            f"narrow case -- conftest.py pins viewport 1366x768 there, while headed "
+            f"local runs use no_viewport."
         )
 
     def get_edge_count(self) -> int:

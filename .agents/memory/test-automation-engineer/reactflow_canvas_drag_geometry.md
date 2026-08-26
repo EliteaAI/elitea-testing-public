@@ -39,6 +39,9 @@ computed start and print each element's `closest('[data-id]')`. If the top
 owner is not the source node, it is this.
 
 **Bonus:** `connect_nodes()`'s stray-popup cleanup used to probe
-`[role="menu"]` only, so a MUI **Select listbox** (`role="listbox"`) opened
-by a misfired mousedown was never dismissed and stayed over the canvas. It
-now presses Escape unconditionally — no locator, covers every popup shape.
+`[role="menu"]` only, so a MUI **Select listbox** opened by a misfired
+mousedown was never dismissed and stayed over the canvas. It now uses
+`is_popup_menu_visible()` (`POPUP_MENU_TESTIDS`) OR `SELECT_OPTION_PREFIX`
+— both already existed in the same file. Escape stays CONDITIONAL: sending
+it unconditionally regressed `test_three_node_chain` (pristine-HEAD control
+confirmed it), because it fires after *successful* connections too.
