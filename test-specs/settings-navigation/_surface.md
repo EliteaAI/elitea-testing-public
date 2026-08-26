@@ -67,8 +67,27 @@ All four Settings-drawer testids were added in one commit,
 content pane and Profile logout button"), on a **different, not-yet-merged**
 elitea-testing-public branch (`tests/ELITEA-2252-settings-profile-logout-visible`)
 — but testids promote to `automation/testids` independently of the test-repo
-PR's merge state, so they are live on the dev server regardless. Nothing left
-for this cluster to add.
+PR's merge state, so they are live on the dev server regardless.
+
+**Resolved/added during ELITEA-2242/2243/2244 implementation (2026-08-26):**
+ELITEA-2242 step 2 needs a positive handle for the drawer's two group headers
+("PROJECT"/"PERSONAL") — the analyst's exploration didn't need one (headers
+weren't asserted individually), but the implementer's Coverage Map cross-check
+found the AFS step required a real assertion target, and no testid existed on
+the plain `<Box component="span">{section.section}</Box>` header nodes
+(`SettingsDrawer.jsx`). Per `.agents/testing.md` § Locator policy ("Missing
+testid on the target? That is work to do, not a reason to rung down"), added
+`data-testid={`settings-section-header-${section.section.toLowerCase()}`}` —
+`settings-section-header-project` / `settings-section-header-personal` — on
+`automation/testids` (`EliteaAI/EliteaUI@529e2e4d`), not yet on `main`. Class
+constant: `SettingsDrawerPage.SETTINGS_SECTION_HEADER =
+'[data-testid="settings-section-header-{}"]'`. Also note: this JSX lives under
+`src/[fsd]/` — the dev server served a stale module for this edit until a
+manual restart (`vite_hmr_misses_fsd_bracket_dirs.md` /
+`vite_dev_server_stale_on_onedrive.md` in
+`.agents/memory/test-automation-engineer/` — the pattern recurred exactly as
+documented; curl the served module before trusting a "0 elements" result on
+any `src/[fsd]/` edit).
 
 ## Confirmed drawer inventory (Private project, this session)
 
