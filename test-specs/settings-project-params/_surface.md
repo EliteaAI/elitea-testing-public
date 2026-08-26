@@ -233,3 +233,58 @@ to establish a **precondition** you then act on — ELITEA-2276 Phase B seeds
 toggle ON for real. Declare any explicit flag in the spec docstring **and** the AFS
 § Fidelity Declaration; pinned by
 `automation/tests/unit/test_project_context_seed_enabled_flag_not_authored.py`.
+
+## Resolved/added during ELITEA-2268/2273/2274/2275 analysis+implementation (test-automation-engineer, 2026-08-26)
+
+**Testid added** — `project-context-preview` on the editor's markdown-preview `Box`
+(`ProjectContextEditor.jsx`, the `mode !== 'edit'` branch). EliteaAI/EliteaUI@5681f22e on
+`automation/testids`, pushed; awaiting the human cherry-pick to `main`. Plain attribute on
+the existing node — no new DOM node, no hook, no component change. It is **required**, not
+convenience: the app sidebar renders its own `<li>` elements, so an unscoped assertion on
+the rendered markdown cannot disambiguate.
+
+**Editor toolbar modes — confirmed live.** `</>` (`project-context-mode-edit-button`) is the
+default (`aria-pressed="true"` on load) and renders CodeMirror; the eye
+(`project-context-mode-preview-button`) swaps the whole pane for
+`<Markdown renderHtml={false}>`. **The two panes are mutually exclusive** — in preview mode
+`project-context-editor-content` AND `project-context-editor-wrapper` are both absent from
+the DOM (count 0), and in edit mode `project-context-preview` is. Switching back restores
+the raw source verbatim (state lives in `content`, not in the DOM).
+
+⚠️ **Keystroke typing MANGLES multi-line markdown — paste instead.** CodeMirror's
+`markdown()` extension auto-continues list items on Enter: `pressSequentially` of
+`"## H\n- a\n- b\nplain"` produced `- - b` and `  - plain` (confirmed live 2026-08-26).
+A clipboard paste is one transaction with no Enter keypresses and lands the text
+byte-for-byte. New page-object method `paste_markdown()` does this and waits per-line;
+`set_editor_content_via_paste()` (single-line, merged caller) is untouched.
+
+⚠️ **CodeMirror `.cm-content` has NO newlines in `textContent`** — each line is its own
+`.cm-line` div, so `expect(editor_content).to_have_text("a\nb")` can never pass. Assert
+per line against the `.cm-line` list instead (`ProjectContextPage.editor_lines()`, a #579
+exception-2 raw handle scoped to `project-context-editor-wrapper`, same discipline as the
+gutter). The gutter also renders a hidden sizing element (text `"9"`) alongside the real
+numbers — filter to digits, or assert the numbers you expect are present.
+
+⚠️ **Discard LEAVES the editor.** `handleDiscard` = `setIsDirty(false)` + `onNavigate('saved')`
+→ back to `/settings/project-context`. It does NOT stay put showing reverted text, so
+"the editor reverts" and "the buttons go inactive again" are only observable on the editor
+you next open. Same for **Save** (`onNavigate('saved')`), so a post-save "the editor still
+shows…" reading of any case is wrong on this surface. The sibling button is `Cancel` in
+create mode and calls `handleCancel` → **empty state**, a different flow: assert the label
+before trusting which one you are exercising.
+
+**Save/Discard gating** — `disabled={!isDirty || isSaving}` on both. Confirmed: disabled on
+a freshly-opened editor (create AND edit), enabled after a single character, disabled again
+on the editor re-opened after a Discard. `isDirty` is set by ANY edit, never cleared by
+editing back to the original text.
+
+**Markdown blank lines are load-bearing in the case bodies.** `- item\nPlain text.` renders
+as ONE `<li>` (CommonMark lazy continuation), so a plain-text-paragraph assertion needs a
+blank line before it. Confirmed live in the preview pane.
+
+**Pre-existing console error on this surface (not ours):** React's
+`Warning: React does not recognize the 'disableUnderline' prop on a DOM element` fires
+around the settings pages. Observed once via Playwright MCP when switching to preview mode; whether it
+reaches a pytest run's `collect_console_errors` is run-dependent. If a spec on this
+surface trips it, it is
+app noise unrelated to project-context — investigate before filtering, never filter blind.
