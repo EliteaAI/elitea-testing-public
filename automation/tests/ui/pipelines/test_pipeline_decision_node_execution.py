@@ -121,12 +121,17 @@ def test_decision_node_routes_execution_to_correct_branch(page, pipeline_id):
             new_printer_id = (set(pipeline_page.get_node_ids()) - node_ids_before).pop()
             # ELITEA-2047 gotcha: every add_node() spawns at the same default
             # canvas position, overlapping whatever was added before it —
-            # move each one clear before the next add. Modest, distinct
-            # offsets per node (mirroring the proven single-node dx=450/
-            # dy=100 pattern in test_pipeline_interrupt_before_after_toggles.py)
-            # — large offsets zoom fit_view() out so far the connection
-            # handles become sub-pixel and drag-connect misses them.
-            pipeline_page.move_node(new_printer_id, 280, 90 * (i + 1))
+            # move each one clear before the next add.
+            # ELITEA-2016: the offsets are FLOW-space, not screen px. The zoom
+            # drifts as nodes are added, so a screen-px delta produced an
+            # arbitrary flow-space layout run to run — sometimes one where two
+            # printer cards overlapped to within 0.09 px, which silently made
+            # the source handle unhittable and cost Step 4 its bug_responder→END
+            # edge (CI failed 3/3 while localhost passed on a luckier zoom).
+            # A node card measures ~471 x 237 flow units, so a 350-unit vertical
+            # pitch keeps consecutive cards ~113 units apart, and dx=800 clears
+            # the Decision node's own column.
+            pipeline_page.move_node_by_flow_offset(new_printer_id, 800, 350 * (i + 1))
             renamed_id = pipeline_page.edit_node_name(new_printer_id, target_name)
             assert renamed_id == target_name, (
                 f"edit_node_name should return the verbatim new name as the node's new "
