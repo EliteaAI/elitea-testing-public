@@ -51,9 +51,15 @@
    - Live 2026-08-26 (dark theme): message `rgb(255, 255, 255)`, date
      `rgb(255, 255, 255)`, link `rgb(41, 184, 245)`.
 
-4. **Case step 4 — click the notification row.** Click the subject row's message cell
-   (`notification-message-text` scoped to the subject row) and wait out the mutation
+4. **Case step 4 — click the notification row.** Click the subject row's **date cell**
+   (`notification-date-text` scoped to the subject row) and wait out the mutation
    window (assert on the absence of a `PUT`, see § Network Behavior).
+   - **Amended during implementation (ELITEA-2258, 2026-08-26):** the original AFS named
+     the *message* cell. Its `<Typography>` embeds an inline `<Link target="_blank">`, so
+     a centre-click can land on the anchor and open a tab — that is the case's *other*
+     branch ("or open the linked entity"), not the row click, and it makes the step
+     non-deterministic. The date cell is link-free and sits in the same row, so it is an
+     unambiguous row click. The assertion is unchanged.
    - **Verify (live contract, case-text drift — see § Known Defects)**: the click does
      **NOT** mark the notification read — no bulk-mark `PUT` is issued, the subject's
      message/date colours are **unchanged** from step 3, and a fresh list fetch still
