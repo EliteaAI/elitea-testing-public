@@ -1322,58 +1322,54 @@ class PipelineDetailPage(PipelineFormPage):
         description="Webhook settings modal Apply button"
     )
 
-    # TEMPORARY WORKAROUND (2026-08-25): testid missing/changed in EliteaUI
-    # Tests failing: test_pipeline_entry_point_trigger_types_persist, test_schedule_trigger_settings_modal
-    # TODO: Add data-testid="pipeline-schedule-settings-modal" to Schedule.ScheduleModal in EliteaUI
-    # TODO: Then restore testid parameter and remove this workaround comment
+    # Testids added 2026-08-26 in EliteaUI automation/testids (commit aea8503f)
+    # TODO: Uncomment testid params once testids are deployed to target environment
+    # Current: using fallback only because LocatorDescriptor tries testid FIRST
+    # and doesn't fall back if testid doesn't exist
     schedule_modal = LocatorDescriptor(
-        # testid="pipeline-schedule-settings-modal",  # DISABLED - testid doesn't exist
+        # testid="pipeline-schedule-settings-modal",  # Temporarily commented - see TODO above
         fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").first,
-        description="Schedule settings modal (dialog root) - USING FALLBACK due to missing testid"
+        description="Schedule settings modal (dialog root)"
     )
-    # TEMPORARY WORKAROUND: Child element testids also missing
     schedule_summary_text = LocatorDescriptor(
-        # testid="pipeline-schedule-summary-text",  # DISABLED - testid doesn't exist
+        # testid="pipeline-schedule-summary-text",  # Temporarily commented - see TODO above
         fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('text=/At \\d+:\\d+|Every |Daily|Weekly|Monthly/').first,
-        description='Schedule modal cron summary text (e.g. "At 00:00, only on Saturday") - USING FALLBACK'
+        description='Schedule modal cron summary text (e.g. "At 00:00, only on Saturday")'
     )
     schedule_modal_cancel_button = LocatorDescriptor(
-        # testid="pipeline-schedule-modal-cancel-button",  # DISABLED - testid doesn't exist
+        # testid="pipeline-schedule-modal-cancel-button",  # Temporarily commented - see TODO above
         fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('button:has-text("Cancel")').first,
-        description="Schedule settings modal Cancel button - USING FALLBACK"
+        description="Schedule settings modal Cancel button"
     )
     schedule_modal_apply_button = LocatorDescriptor(
-        # testid="pipeline-schedule-modal-apply-button",  # DISABLED - testid doesn't exist
-        # NOTE: Button text is "Save" not "Apply" in the shared Schedule.ScheduleModal component
+        # testid="pipeline-schedule-modal-save-button",  # Temporarily commented - see TODO above (Button text is "Save" not "Apply")
         fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('button:has-text("Save")').first,
-        description="Schedule settings modal Apply/Save button - USING FALLBACK"
+        description="Schedule settings modal Save button"
     )
     schedule_cron_input = LocatorDescriptor(
-        # testid="pipeline-schedule-cron-input",  # DISABLED - testid doesn't exist
+        # testid="pipeline-schedule-cron-input",  # Temporarily commented - see TODO above
         fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('input[type="text"]').first,
-        description="Advanced-mode raw cron expression text input - USING FALLBACK"
+        description="Advanced-mode raw cron expression text input"
     )
 
-    # TEMPORARY WORKAROUND: Mode selection testids missing
     # NOTE: The modal uses Tab.TabGroupButton, not radio buttons
-    # Tab labels are "Builder" (default/visual) and "Cron Expression" (advanced/text)
-    # The test references "Default" and "Advanced" but actual UI has different labels
+    # Tab labels are "Builder" (default/visual mode) and "Cron Expression" (advanced mode)
+    # Tests reference "Default"/"Advanced" but actual UI labels are different
     schedule_mode_radio_default = LocatorDescriptor(
-        # testid="pipeline-schedule-mode-radio-default",  # DISABLED - testid doesn't exist
+        # testid="pipeline-schedule-mode-tabs",  # Temporarily commented - see TODO above (Tab group testid - target Builder button)
         fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('button:has-text("Builder")').first,
-        description="Schedule modal Mode — Builder (Default) tab - USING FALLBACK"
+        description="Schedule modal Mode — Builder (Default) tab button"
     )
     schedule_mode_radio_advanced = LocatorDescriptor(
-        # testid="pipeline-schedule-mode-radio-advanced",  # DISABLED - testid doesn't exist
+        # testid="pipeline-schedule-mode-tabs",  # Temporarily commented - see TODO above (Same tab group - target Cron Expression button)
         fallback=lambda page: page.locator('[role="dialog"]').filter(has_text="Schedule Settings").locator('button:has-text("Cron Expression")').first,
-        description="Schedule modal Mode — Cron Expression (Advanced) tab - USING FALLBACK"
+        description="Schedule modal Mode — Cron Expression (Advanced) tab button"
     )
 
-    # Third-party widget (react-js-cron / antd internals) — sanctioned #579
-    # exception: no app testid can be placed on the library's own
-    # `.ant-select`/`.react-js-cron-select` nodes. Scoped constant, chained
-    # off the (testid'd) schedule_modal root per the #579 discipline.
-    SCHEDULE_CRON_SELECT = ".react-js-cron-select"
+    # CronSelect widgets — MUI Autocomplete components
+    # Tests use SCHEDULE_CRON_SELECT directly to locate individual selects
+    # TODO: Once testids deployed, change to testid pattern: '[data-testid^="schedule-cron-"]'
+    SCHEDULE_CRON_SELECT = ".MuiAutocomplete-root"  # MUI Autocomplete root class (fallback)
 
     # TOOLS section (ELITEA-1955). ApplicationTools.jsx / ToolMenu.jsx is a
     # shared component reused by both Agent and Pipeline detail forms
@@ -3707,11 +3703,14 @@ class PipelineDetailPage(PipelineFormPage):
         return response_info.value.json()
 
     def get_schedule_cron_select_count(self) -> int:
-        """Count the visible `.react-js-cron-select` widgets in the open Schedule modal.
+        """Count the visible CronSelect widgets (MUI Autocomplete) in the open Schedule modal.
 
-        4 when the day-of-week "on" selector is visible (week/on/hour/minute),
-        3 when hidden (day-or-finer/hour/minute) — scoped to the (testid'd)
-        ``schedule_modal`` root per the #579 sanctioned third-party exception.
+        Returns count of selects currently visible:
+        - 4 when week period: period + weekdays + hour + minute
+        - 5 when month period: period + monthdays + weekdays + hour + minute
+        - 3 when day/year/minute period: period + hour + minute
+
+        Uses MUI Autocomplete class selector until testids are deployed.
         """
         return self.schedule_modal.locator(self.SCHEDULE_CRON_SELECT).count()
 
@@ -3729,12 +3728,14 @@ class PipelineDetailPage(PipelineFormPage):
     # removed), so an unfiltered `.ant-select-dropdown` count includes stale
     # closed instances from an earlier field (e.g. the "Every" select) and
     # makes a same-class-family open/closed distinction impossible without it.
-    CRON_DROPDOWN = ".ant-select-dropdown:visible"
+    # Updated 2026-08-26: Now using MUI Autocomplete instead of ant-design
+    CRON_DROPDOWN = ".MuiAutocomplete-popper:visible"
     # Sub-selectors, scoped off a single open CRON_DROPDOWN instance at the
     # call site (never queried page-wide — see set_schedule_hour_minute).
-    CRON_DROPDOWN_OPTION = '.ant-select-item-option[title="{}"]'
-    CRON_DROPDOWN_SELECTED_OPTION = '.ant-select-item-option[aria-selected="true"]'
-    CRON_DROPDOWN_VIRTUAL_LIST = ".rc-virtual-list-holder"
+    # MUI Autocomplete uses role="option" with text content for options
+    CRON_DROPDOWN_OPTION = 'li[role="option"]:has-text("{}")'
+    CRON_DROPDOWN_SELECTED_OPTION = 'li[role="option"][aria-selected="true"]'
+    CRON_DROPDOWN_VIRTUAL_LIST = ".MuiAutocomplete-listbox"
 
     def set_schedule_hour_minute(self, hour: str, minute: str, timeout: int = 5000) -> None:
         """Set the Schedule modal's hour/minute "at HH:MM" pickers to a single value.
