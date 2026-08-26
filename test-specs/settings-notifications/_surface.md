@@ -416,3 +416,24 @@ with `"/src/" not in url` before using them.
 mention notification `109487` → conversation `5883` ("Hello", project 406);
 retention warning `111978` → bucket `autotest-1816-182606` (project 399, empty bucket,
 proved OPEN via `artifacts-bucket-tree-empty-label-autotest-1816-182606`).
+
+**Resolved during ELITEA-2263 stabilization (settings-w02 gate round 1, 2026-08-26) —
+the artifacts bucket page is SLOW and its "empty" state is indistinguishable from its
+"still loading" state.** `Artifacts.jsx:709-731` renders "Buckets: 0 / Size: 0B /
+No buckets created yet" whenever `queryParams.selectedBucket` is falsy, which includes the
+whole in-flight window: the `?bucket=` deep-link selection (`Artifacts.jsx:487-520`) can
+only resolve once `allBuckets` has loaded. Measured in project 399 (1 049 buckets, ~205 KB
+response — the account leaks `autotest-*` buckets): the `GET /artifacts/s3/?project_id=399`
+list read takes **10.5-12.7 s from the API client and 14.8-18.0 s end-to-end in a fresh
+tab**, with the bucket row visible at 16.9 / 18.5 / **20.1 s** on an IDLE machine. Any spec
+opening this page must therefore **wait on that response event, not on an element budget** —
+register `page.context.expect_event("response", predicate=…)` for
+`/artifacts/s3/?project_id=<pid>` BEFORE the action that opens the page, and resolve it
+before asserting any bucket row (worked shape:
+`tests/ui/admin/test_notification_link_navigates_to_bucket.py`, pinned by
+`tests/unit/test_notification_bucket_link_list_read_gate.py`). Note the *contents* read
+`/artifacts/s3/{bucket}?...` is a different, later call and cannot serve as the gate.
+Also note Playwright's `expect(...).to_be_visible` failure text matches none of
+`pytest.ini`'s `--only-rerun` patterns, so this failure class never gets an auto-rerun —
+the wait is the only lever. **Suite-level follow-up (not fixed here): the 1 017 leaked
+`autotest-*` buckets in project 399 make every artifacts-touching spec slower every week.**

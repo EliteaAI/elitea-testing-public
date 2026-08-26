@@ -58,6 +58,7 @@ from api.client import ArtifactAPI
 from config import settings
 from pages.artifacts_page import ArtifactsPage
 from pages.notification_center_page import PAGE_INFO_PATTERN, NotificationCenterPage
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
 from utils.console_errors import collect_console_errors
 
@@ -109,8 +110,42 @@ ARTIFACTS_PROJECT_SCOPE_RE = re.compile(r"/artifacts/s3/[^?#]*\?(?:[^#]*&)?proje
 #: rebuilt byte-for-byte from the notification's own ``meta.bucket_name``.
 ENCODE_URI_COMPONENT_SAFE = "!~*'()-._"
 
+#: URL shape of the popup's OWN project-scoped BUCKET-LIST read — the call whose
+#: response the artifacts page needs before it can render ANY bucket row, and
+#: therefore the condition Step 5 waits on instead of a magic element budget.
+#: The LIST call carries an empty bucket segment (``/artifacts/s3/?project_id=399``);
+#: the per-bucket CONTENTS call (``/artifacts/s3/{bucket}?project_id=399``) is a
+#: different, later request and must NOT satisfy this gate.
+#:
+#: Why the gate exists (measured live 2026-08-26, gate failure of this spec):
+#: ``Artifacts.jsx`` renders its EMPTY state ("Buckets: 0 / No buckets created yet")
+#: for the whole in-flight window, because the ``?bucket=`` deep-link selection can
+#: only resolve once ``allBuckets`` has loaded. In the DEV account's project 399
+#: (1 049 buckets, ~205 KB) that list call alone measured 10.5-12.7 s from the API
+#: client and 14.8-18.0 s end-to-end in a fresh tab on an IDLE machine, so a
+#: fixed 20 s element budget left no margin at all and failed on a busy run.
+BUCKET_LIST_READ_URL_RE_TEMPLATE = r"/artifacts/s3/\?(?:[^#]*&)?project_id={}(?:&|$|#)"
+
 POPUP_URL_TIMEOUT = 30_000
-POPUP_ELEMENT_TIMEOUT = 20_000
+
+#: Budget for the bucket-list READ above. Deliberately generous: the wait is
+#: condition-based (it returns the instant the response event fires), it scales
+#: with the project's bucket count, and an unused budget costs nothing.
+BUCKET_LIST_READ_TIMEOUT = 120_000
+
+#: Budget for RENDERING once that read has landed — a non-virtualized list of
+#: ~1 000 rows plus the bucket tree. Raised from 20 s after the gate failure above:
+#: 20 s was below the *fetch* cost alone, so it never measured rendering at all.
+POPUP_ELEMENT_TIMEOUT = 60_000
+
+#: Budget for resolving which of two MUTUALLY EXCLUSIVE tree outcomes rendered —
+#: the "No files in this bucket" label (empty bucket) or file rows (non-empty one).
+#: Kept at the original 20 s ON PURPOSE and deliberately NOT tied to
+#: :data:`POPUP_ELEMENT_TIMEOUT`: by this point the page has already rendered (the
+#: bucket-list read landed and the bucket row is visible), so this is a race
+#: resolution, not a page-load wait — and every second of it is spent in full on
+#: the non-empty branch before the file-count fallback runs.
+BUCKET_TREE_PROBE_TIMEOUT = 20_000
 
 
 def _is_known_background_noise(message: str) -> bool:
@@ -132,6 +167,18 @@ def _is_known_background_noise(message: str) -> bool:
 def _flow_console_errors(messages: list[str]) -> list[str]:
     """Drop the two documented background-resource noise signatures, keep everything else."""
     return [message for message in messages if not _is_known_background_noise(message)]
+
+
+def _bucket_list_read_matcher(project_id) -> re.Pattern[str]:
+    """Regex matching the popup's project-scoped bucket-LIST read for *project_id*.
+
+    Built from :data:`BUCKET_LIST_READ_URL_RE_TEMPLATE`, so it matches
+    ``/artifacts/s3/?project_id=<pid>&format=json`` and rejects both the
+    per-bucket contents call (``/artifacts/s3/{bucket}?project_id=<pid>``) and any
+    other project's list call — a prefix-collision-safe project match, not a
+    substring one.
+    """
+    return re.compile(BUCKET_LIST_READ_URL_RE_TEMPLATE.format(re.escape(str(project_id))))
 
 
 def _expected_retention_href(row: dict) -> str:
@@ -263,98 +310,127 @@ class TestNotificationBucketRetentionLinkNavigation:
                 ),
             )
 
-            with allure.step("Step 3 — Click the bucket link inside the notification text"):
-                pages_before = len(page.context.pages)
-                popup = notif_page.click_message_link_expecting_popup(notification_id)
-                assert len(page.context.pages) == pages_before + 1, (
-                    f"Expected exactly one new tab after clicking the link, page count went "
-                    f"{pages_before} -> {len(page.context.pages)}"
-                )
+            bucket_list_read_re = _bucket_list_read_matcher(project_id)
 
-            with allure.step("Step 4 — The new tab lands on the referenced artifact bucket"):
-                popup.wait_for_url(
-                    re.compile(r"/artifacts\?.*bucket="), timeout=POPUP_URL_TIMEOUT
-                )
-                parsed = urllib.parse.urlparse(popup.url)
-                # The href carries the notification's own ``/{project_id}`` prefix.
-                # The project switcher CONSUMES that segment only when a switch is
-                # actually required — when the notification's project is already the
-                # selected one it stays in the URL (measured live 2026-08-26:
-                # ``/399/artifacts?bucket=…`` for project 399, the personal project,
-                # against ``/chat/5883`` for ELITEA-2261's project 406). Both shapes
-                # name the SAME page of the SAME project, so both are accepted and
-                # nothing else is.
-                accepted_paths = (
-                    f"{settings.app_prefix}/artifacts",
-                    f"{settings.app_prefix}/{project_id}/artifacts",
-                )
-                assert parsed.path in accepted_paths, (
-                    f"The new tab did not land on the artifacts page of the "
-                    f"notification's own project: expected one of {accepted_paths}, "
-                    f"got {parsed.path!r} (full URL {popup.url!r})"
-                )
-                landed_bucket = urllib.parse.parse_qs(parsed.query).get("bucket", [None])[0]
-                assert landed_bucket == bucket_name, (
-                    f"The new tab's bucket query param is {landed_bucket!r}, not the "
-                    f"notification's own bucket {bucket_name!r}"
-                )
-
-            with allure.step(
-                'Step 5 — The bucket page opens without a "not found" error, on the '
-                "correct bucket"
-            ):
-                popup_artifacts = ArtifactsPage(popup)
-                expect(popup_artifacts.bucket_row(bucket_name)).to_be_visible(
-                    timeout=POPUP_ELEMENT_TIMEOUT
-                )
-                empty_label = popup_artifacts.bucket_tree_empty_label(bucket_name)
-                try:
-                    empty_label.wait_for(state="visible", timeout=POPUP_ELEMENT_TIMEOUT)
-                    bucket_opened = True
-                    logger.info("Bucket %s opened and is empty", bucket_name)
-                except Exception:
-                    bucket_opened = popup_artifacts.get_file_count() > 0
-                    logger.info(
-                        "Bucket %s empty-label absent; rendered file rows: %s",
-                        bucket_name, popup_artifacts.get_file_count(),
+            # Gate the bucket-page assertions on the popup's OWN bucket-list read
+            # having LANDED — a framework wait on the real response event, registered
+            # BEFORE the click so it cannot be missed, rather than an element timeout
+            # racing a 10-18 s fetch (see BUCKET_LIST_READ_URL_RE_TEMPLATE).
+            with page.context.expect_event(
+                "response",
+                predicate=lambda resp: bucket_list_read_re.search(resp.url) is not None,
+                timeout=BUCKET_LIST_READ_TIMEOUT,
+            ) as bucket_list_read:
+                with allure.step("Step 3 — Click the bucket link inside the notification text"):
+                    pages_before = len(page.context.pages)
+                    popup = notif_page.click_message_link_expecting_popup(notification_id)
+                    assert len(page.context.pages) == pages_before + 1, (
+                        f"Expected exactly one new tab after clicking the link, page count went "
+                        f"{pages_before} -> {len(page.context.pages)}"
                     )
-                assert bucket_opened, (
-                    f"Bucket {bucket_name!r} is listed but was never OPENED — neither its "
-                    '"No files in this bucket" empty label nor any file row rendered. '
-                    "Landing on the right URL is not enough; a deleted bucket produces "
-                    "exactly this shape."
-                )
 
-                failed_artifacts_reads = [
-                    (status, url) for status, url in artifacts_responses if status >= 400
-                ]
-                assert not failed_artifacts_reads, (
-                    f"The artifacts/bucket listing failed on the backend: "
-                    f"{failed_artifacts_reads}"
-                )
+                with allure.step("Step 4 — The new tab lands on the referenced artifact bucket"):
+                    popup.wait_for_url(
+                        re.compile(r"/artifacts\?.*bucket="), timeout=POPUP_URL_TIMEOUT
+                    )
+                    parsed = urllib.parse.urlparse(popup.url)
+                    # The href carries the notification's own ``/{project_id}`` prefix.
+                    # The project switcher CONSUMES that segment only when a switch is
+                    # actually required — when the notification's project is already the
+                    # selected one it stays in the URL (measured live 2026-08-26:
+                    # ``/399/artifacts?bucket=…`` for project 399, the personal project,
+                    # against ``/chat/5883`` for ELITEA-2261's project 406). Both shapes
+                    # name the SAME page of the SAME project, so both are accepted and
+                    # nothing else is.
+                    accepted_paths = (
+                        f"{settings.app_prefix}/artifacts",
+                        f"{settings.app_prefix}/{project_id}/artifacts",
+                    )
+                    assert parsed.path in accepted_paths, (
+                        f"The new tab did not land on the artifacts page of the "
+                        f"notification's own project: expected one of {accepted_paths}, "
+                        f"got {parsed.path!r} (full URL {popup.url!r})"
+                    )
+                    landed_bucket = urllib.parse.parse_qs(parsed.query).get("bucket", [None])[0]
+                    assert landed_bucket == bucket_name, (
+                        f"The new tab's bucket query param is {landed_bucket!r}, not the "
+                        f"notification's own bucket {bucket_name!r}"
+                    )
 
-                # The notification's OWN project — not merely "an artifacts page".
-                # The landing path cannot carry this proof: the `/{project_id}`
-                # segment survives only when no switch is required, so the bare
-                # `/artifacts` form names no project. The reads the popup actually
-                # issued do, and a same-named bucket in another project would show
-                # up here as a foreign project id.
-                observed_projects = {
-                    match.group(1)
-                    for _status, url in artifacts_responses
-                    if (match := ARTIFACTS_PROJECT_SCOPE_RE.search(url))
-                }
-                # Vite serves the feature's own JS modules from paths containing
-                # "/artifacts/" too — only the REST reads carry a project.
-                artifacts_rest_urls = [
-                    url for _status, url in artifacts_responses if "/src/" not in url
-                ]
-                assert observed_projects == {str(project_id)}, (
-                    f"The new tab did not read the artifacts of the notification's own "
-                    f"project {project_id}: the artifacts REST calls it issued were scoped "
-                    f"to project(s) {sorted(observed_projects) or 'none'} "
-                    f"(calls observed: {artifacts_rest_urls or 'none'})"
-                )
+                with allure.step(
+                    'Step 5 — The bucket page opens without a "not found" error, on the '
+                    "correct bucket"
+                ):
+                    try:
+                        bucket_list_response = bucket_list_read.value
+                    except PlaywrightTimeoutError as exc:
+                        raise AssertionError(
+                            f"The new tab never completed its bucket-list read for the "
+                            f"notification's project {project_id} within "
+                            f"{BUCKET_LIST_READ_TIMEOUT} ms, so the artifacts page could not "
+                            f"resolve the ?bucket= deep link and was still rendering its empty "
+                            f"state. Artifacts responses observed: "
+                            f"{[url for _status, url in artifacts_responses] or 'none'}"
+                        ) from exc
+                    logger.info(
+                        "Popup bucket-list read landed: %s %s",
+                        bucket_list_response.status, bucket_list_response.url,
+                    )
+
+                    popup_artifacts = ArtifactsPage(popup)
+                    expect(popup_artifacts.bucket_row(bucket_name)).to_be_visible(
+                        timeout=POPUP_ELEMENT_TIMEOUT
+                    )
+                    empty_label = popup_artifacts.bucket_tree_empty_label(bucket_name)
+                    try:
+                        empty_label.wait_for(
+                            state="visible", timeout=BUCKET_TREE_PROBE_TIMEOUT
+                        )
+                        bucket_opened = True
+                        logger.info("Bucket %s opened and is empty", bucket_name)
+                    except Exception:
+                        bucket_opened = popup_artifacts.get_file_count() > 0
+                        logger.info(
+                            "Bucket %s empty-label absent; rendered file rows: %s",
+                            bucket_name, popup_artifacts.get_file_count(),
+                        )
+                    assert bucket_opened, (
+                        f"Bucket {bucket_name!r} is listed but was never OPENED — neither its "
+                        '"No files in this bucket" empty label nor any file row rendered. '
+                        "Landing on the right URL is not enough; a deleted bucket produces "
+                        "exactly this shape."
+                    )
+
+                    failed_artifacts_reads = [
+                        (status, url) for status, url in artifacts_responses if status >= 400
+                    ]
+                    assert not failed_artifacts_reads, (
+                        f"The artifacts/bucket listing failed on the backend: "
+                        f"{failed_artifacts_reads}"
+                    )
+
+                    # The notification's OWN project — not merely "an artifacts page".
+                    # The landing path cannot carry this proof: the `/{project_id}`
+                    # segment survives only when no switch is required, so the bare
+                    # `/artifacts` form names no project. The reads the popup actually
+                    # issued do, and a same-named bucket in another project would show
+                    # up here as a foreign project id.
+                    observed_projects = {
+                        match.group(1)
+                        for _status, url in artifacts_responses
+                        if (match := ARTIFACTS_PROJECT_SCOPE_RE.search(url))
+                    }
+                    # Vite serves the feature's own JS modules from paths containing
+                    # "/artifacts/" too — only the REST reads carry a project.
+                    artifacts_rest_urls = [
+                        url for _status, url in artifacts_responses if "/src/" not in url
+                    ]
+                    assert observed_projects == {str(project_id)}, (
+                        f"The new tab did not read the artifacts of the notification's own "
+                        f"project {project_id}: the artifacts REST calls it issued were scoped "
+                        f"to project(s) {sorted(observed_projects) or 'none'} "
+                        f"(calls observed: {artifacts_rest_urls or 'none'})"
+                    )
 
             with allure.step("Axis 2 — No console errors attributable to this flow"):
                 popup.close()

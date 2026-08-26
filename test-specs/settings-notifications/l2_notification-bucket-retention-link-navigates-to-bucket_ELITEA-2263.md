@@ -98,6 +98,21 @@
      `111985`): the URL still carries `?bucket=…` but no `artifacts-bucket-row-…` and no
      tree panel for it — that is the failure shape this step must catch. **Note the URL
      alone is NOT a sufficient assertion.**
+   - **Amended during stabilization (settings-w02 gate, 2026-08-26) — this step MUST wait on
+     the popup's own bucket-list RESPONSE, not on an element budget.** The
+     deleted-bucket failure shape above is byte-identical to the *still-loading* shape:
+     `Artifacts.jsx:709-731` renders the artifacts EMPTY state ("Buckets: 0 / No buckets
+     created yet") for the entire in-flight window, because the `?bucket=` deep-link
+     selection (`Artifacts.jsx:487-520`) can only resolve once `allBuckets` has loaded. In
+     the DEV account's project 399 (1 049 buckets, ~205 KB) the list read measured
+     10.5-12.7 s from the API client and 14.8-18.0 s end-to-end in a fresh idle tab
+     (row visible at 16.9 / 18.5 / 20.1 s), so the original flat 20 s element budget sat
+     *below the fetch cost alone* and produced a red gate that read exactly like a missing
+     bucket. The spec now registers a context-level `expect_event("response", …)` for
+     `/artifacts/s3/?project_id={project_id}` **before** the click and resolves it before
+     asserting the row (`BUCKET_LIST_READ_URL_RE_TEMPLATE` / `BUCKET_LIST_READ_TIMEOUT`);
+     the element budget is a post-read *render* budget only. Pinned by
+     `automation/tests/unit/test_notification_bucket_link_list_read_gate.py`.
 
 ## Expected Results
 - The retention-warning link's `href` is built from the notification's own
@@ -156,7 +171,11 @@ exercise; the case's own observable is still produced live.
 
 ## Network Behavior
 - List GET (+ `search=`) as documented in `test-specs/settings-notifications/_surface.md`.
-- Popup: the artifacts bucket-listing GETs for the notification's project.
+- Popup: the artifacts bucket-listing GETs for the notification's project —
+  `GET /artifacts/s3/?project_id={id}&format=json` (the whole bucket list, and the
+  gating read for step 5) followed by `GET /artifacts/s3/{bucket}?project_id={id}&format=json`
+  (that bucket's contents). **The list read is SLOW and its cost scales with the project's
+  bucket count** — 10-18 s in project 399 (1 049 buckets); see step 5's amendment.
 - Known environmental noise: a `403` on `/api/v2/secrets/secrets/default/{project}` and a
   `500` on `/api/v2/elitea_core/project_info/prompt_lib/{id}/project-info` were observed on
   the popup and are unrelated to this flow (`.agents/testing.md` § Known issues — background
