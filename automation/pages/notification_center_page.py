@@ -56,11 +56,34 @@ MUI ``Select`` root. ``notifications-page-size-option-{n}`` is a per-option ``te
 supplied at the ``NotificationTable.jsx`` call site and consumed by the pre-existing
 ``SingleSelectMenuItem.jsx`` line ``data-testid={option.testId ?? …}`` — caller-supplied,
 so no other ``SingleSelect`` in the app gains a testid.
+
+Locator provenance (ELITEA-2258, adds read/unread visual-distinction
+coverage — ``EliteaAI/EliteaUI@e0d98f4a`` on ``automation/testids``, not yet
+on ``main``): the pre-existing ``notification-message-text`` testid sits on
+the message cell's wrapper ``<Box>``, whose computed ``color`` is the
+inherited default and does NOT change with ``is_seen`` — the read/unread
+colour lives on the inner ``<Typography>`` nodes. Two testids were added for
+those: ``notification-message-typography`` is caller-supplied, additive prop
+plumbing only (``NotificationTable.jsx``'s ``renderCell`` passes
+``messageTestId`` → ``NotificationListItem`` forwards it as ``testId`` →
+``NotificationListItemMessage`` renders it as ``data-testid`` on the EXISTING
+``<Typography sx={{ color: textColor }}>``); caller-supplied because both
+components are shared with the sidebar bell popover (``context='list'``),
+which must not gain a testid it never uses (`.agents/testing.md` § shared
+components / blanket-add ban). ``notification-date-text`` is a plain
+``data-testid`` attribute on the ``created_at`` ``<Typography>`` rendered by
+``NotificationTable.jsx``'s own ``renderCell`` — a page-owned file, no shared
+component touched.
+
+ELITEA-2264 (search filtering) needed NO new testid — ``notifications-search-input``
+and ``notifications-pagination-page-info`` already exist (``EliteaAI/EliteaUI@7f772acc``).
 """
 
 import logging
+import re
 
-from playwright.sync_api import Locator, Page
+from playwright.sync_api import Locator, Page, expect
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -77,6 +100,22 @@ NAVIGATION_TIMEOUT = 15_000
 # for the list response the table renders from.
 NOTIFICATIONS_LIST_URL_SUBSTRING = "/notifications/notifications/prompt_lib/"
 NOTIFICATIONS_LIST_URL_MARKER = "sort_by=created_at"
+
+# Query param the list GET gains once the debounced search term reaches
+# ``MIN_SEARCH_LENGTH`` (2) — ELITEA-2264. Its PRESENCE distinguishes a
+# filtered list fetch from the unfiltered one, and its ABSENCE is what proves
+# the search was cleared.
+NOTIFICATIONS_SEARCH_URL_MARKER = "search="
+
+# Page-info label format rendered by ``GridTablePagination``: "1 - 50 of 89"
+# (ASCII hyphen, spaces around it).
+PAGE_INFO_PATTERN = re.compile(r"^(\d+)\s*-\s*(\d+)\s+of\s+(\d+)$")
+
+# Bounded window used to prove a request did NOT fire. Comfortably longer than
+# the product's 600 ms search debounce, so "nothing fired" is a real verdict
+# and not an impatient one. This is a framework wait (``expect_request``
+# timing out), never a sleep.
+NO_REQUEST_SETTLE_TIMEOUT = 4_000
 
 
 class NotificationCenterPage(BasePage):
@@ -169,6 +208,27 @@ class NotificationCenterPage(BasePage):
     ROW_CHECKBOXES_IN_BODY = (
         '[data-testid="notification-table-body"] [data-testid^="notification-checkbox-"]'
     )
+
+    # ---- ELITEA-2258: per-row colour sources + click target ----
+    # Each of these repeats once per rendered row, so they are scoped to ONE row
+    # through that row's own ``notification-checkbox-{id}`` testid. Every hop of
+    # the selector is a ``[data-testid=`` term (`.agents/testing.md` § Locator
+    # policy — no raw handles, no inline ``get_by_test_id(f"...")``).
+    ROW_MESSAGE_TYPOGRAPHY = (
+        '[data-testid="notification-row"]:has([data-testid="notification-checkbox-{}"]) '
+        '[data-testid="notification-message-typography"]'
+    )
+    ROW_DATE_TEXT = (
+        '[data-testid="notification-row"]:has([data-testid="notification-checkbox-{}"]) '
+        '[data-testid="notification-date-text"]'
+    )
+
+    #: ``getComputedStyle`` read used by the colour getters below. This is a
+    #: READ of a value the product itself computed, not a substitution: nothing
+    #: is fabricated, injected or replaced (`.agents/testing.md` § Fidelity
+    #: policy). Precedent in-repo: ``agent_form_page.py`` reads a computed colour
+    #: the same way. There is no other way to observe a computed colour.
+    COMPUTED_COLOR_JS = "el => window.getComputedStyle(el).color"
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -426,3 +486,244 @@ class NotificationCenterPage(BasePage):
         )
         return [int(t[len(prefix) :]) for t in testids if t and t.startswith(prefix)]
 
+
+    # ------------------------------------------------------------------
+    # ELITEA-2258 — read/unread visual distinction
+    # ------------------------------------------------------------------
+
+    def _row_message_typography(self, notification_id) -> Locator:
+        return self.page.locator(self.ROW_MESSAGE_TYPOGRAPHY.format(notification_id))
+
+    def _row_date_text(self, notification_id) -> Locator:
+        return self.page.locator(self.ROW_DATE_TEXT.format(notification_id))
+
+    def get_row_message_color(self, notification_id, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Return the computed ``color`` of the row's message ``<Typography>``.
+
+        The colour the PRODUCT computed from its own theme tokens
+        (``text.primary``/``text.secondary``, driven by ``is_seen``) — the test
+        only reads it. Callers must compare colours to each other, never to a
+        hardcoded rgb string: these are theme tokens and a palette or light/dark
+        change would break a literal while the read-vs-unread contract still holds.
+        """
+        element = self._row_message_typography(notification_id)
+        element.wait_for(state="visible", timeout=timeout)
+        return element.evaluate(self.COMPUTED_COLOR_JS)
+
+    def get_row_date_color(self, notification_id, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Return the computed ``color`` of the row's ``created_at`` ``<Typography>``.
+
+        Same read-only, product-computed semantics as ``get_row_message_color``.
+        """
+        element = self._row_date_text(notification_id)
+        element.wait_for(state="visible", timeout=timeout)
+        return element.evaluate(self.COMPUTED_COLOR_JS)
+
+    def wait_for_row_colors_to_change(
+        self,
+        notification_id,
+        previous_message_color: str,
+        previous_date_color: str,
+        timeout: int = UI_ELEMENT_TIMEOUT,
+    ) -> None:
+        """Block until the row's message AND date colours differ from the given
+        baselines.
+
+        Re-rendering after the mark-read refetch is asynchronous, so reading the
+        colours straight after the PUT resolves can race the repaint. These are
+        auto-retrying web-first assertions on the same computed-style oracle the
+        getters read — a framework wait, never a sleep.
+        """
+        expect(self._row_message_typography(notification_id)).not_to_have_css(
+            "color", previous_message_color, timeout=timeout
+        )
+        expect(self._row_date_text(notification_id)).not_to_have_css(
+            "color", previous_date_color, timeout=timeout
+        )
+
+    def click_row_expecting_no_mark_mutation(
+        self, notification_id, settle_timeout: int = NO_REQUEST_SETTLE_TIMEOUT
+    ) -> bool:
+        """Click the row (its date cell) and report whether NO bulk-mark request fired.
+
+        Returns:
+            ``True`` when no ``PUT`` to the notifications endpoint was observed
+            within *settle_timeout* — i.e. the click did not change the row's
+            read state.
+
+        The DATE cell is the click target rather than the message cell because
+        the message cell's ``<Typography>`` embeds an inline ``<Link
+        target="_blank">``: clicking it can land on the anchor and open a tab,
+        which is a different case element ("open the linked entity"). The date
+        cell is link-free, so this is an unambiguous row click.
+
+        Absence is proven with a bounded ``expect_request`` that is EXPECTED to
+        time out — a framework wait, not a sleep.
+        """
+        fired = True
+        try:
+            with self.page.expect_request(
+                lambda request: (
+                    NOTIFICATIONS_LIST_URL_SUBSTRING in request.url and request.method == "PUT"
+                ),
+                timeout=settle_timeout,
+            ):
+                cell = self._row_date_text(notification_id)
+                cell.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+                cell.click()
+        except PlaywrightTimeoutError:
+            fired = False
+        logger.info(
+            "Clicked row %s; bulk-mark PUT observed within %dms: %s",
+            notification_id,
+            settle_timeout,
+            fired,
+        )
+        return not fired
+
+    def restore_notification_unread(self, notification_id) -> None:
+        """Cleanup helper — put *notification_id* back into the unread state.
+
+        Idempotent: reloads to read the server's current truth first and does
+        nothing when the notification is already unread, so it is safe to call
+        from a ``finally`` block whatever the test's outcome was.
+        """
+        if notification_id is None:
+            return
+        rows = self.reload_and_get_rows()
+        current = {row["id"]: row["is_seen"] for row in rows}
+        if current.get(notification_id) is not True:
+            logger.info("Notification %s already unread — nothing to restore", notification_id)
+            return
+        self.check_notification_checkbox(notification_id)
+        restored_rows = self.click_mark_toggle()
+        restored = {row["id"]: row["is_seen"] for row in restored_rows}
+        assert restored.get(notification_id) is False, (
+            f"Cleanup failed to restore notification {notification_id} to unread: "
+            f"is_seen={restored.get(notification_id)!r}"
+        )
+        logger.info("Restored notification %s to unread", notification_id)
+
+    # ------------------------------------------------------------------
+    # ELITEA-2264 — search filtering
+    # ------------------------------------------------------------------
+
+    def _is_notifications_search_response(self, response) -> bool:
+        """True for a notification-list GET that carries a ``search=`` parameter."""
+        return (
+            self._is_notifications_list_response(response)
+            and NOTIFICATIONS_SEARCH_URL_MARKER in response.url
+        )
+
+    def _is_notifications_unfiltered_response(self, response) -> bool:
+        """True for a notification-list GET that carries NO ``search=`` parameter."""
+        return (
+            self._is_notifications_list_response(response)
+            and NOTIFICATIONS_SEARCH_URL_MARKER not in response.url
+        )
+
+    def _sync_rendered_rows_with(self, response, timeout: int = UI_ELEMENT_TIMEOUT) -> list[dict]:
+        """Wait until the table renders exactly as many rows as *response* returned.
+
+        The response resolving does not mean React has committed the new rows;
+        this pins the DOM to the product's own payload before any caller reads
+        rendered text or ids.
+        """
+        rows = response.json()["rows"]
+        expect(self.notification_row).to_have_count(len(rows), timeout=timeout)
+        return rows
+
+    def search_notifications(self, term: str, timeout: int = NAVIGATION_TIMEOUT):
+        """Type *term* into the search field and wait for the debounced filtered GET.
+
+        Waits on the RESPONSE (the product's 600 ms ``useDebounceValue`` window),
+        never on a sleep, then syncs the rendered row count with that response.
+
+        Returns:
+            The matched Playwright ``Response`` — callers assert its URL params
+            and use its body as the oracle for what should be rendered.
+        """
+        self.search_input.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        with self.page.expect_response(
+            self._is_notifications_search_response, timeout=timeout
+        ) as response_info:
+            self.search_input.fill(term)
+        response = response_info.value
+        self._sync_rendered_rows_with(response)
+        logger.info("Searched notifications for %r -> %s", term, response.url)
+        return response
+
+    def clear_search(self, timeout: int = NAVIGATION_TIMEOUT):
+        """Clear the search field and wait for the resulting UNFILTERED list GET.
+
+        Returns:
+            The matched Playwright ``Response`` (its URL carries no ``search=``).
+        """
+        self.search_input.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        with self.page.expect_response(
+            self._is_notifications_unfiltered_response, timeout=timeout
+        ) as response_info:
+            self.search_input.fill("")
+        response = response_info.value
+        self._sync_rendered_rows_with(response)
+        logger.info("Cleared notification search -> %s", response.url)
+        return response
+
+    def fill_search_expecting_no_request(
+        self, term: str, settle_timeout: int = NO_REQUEST_SETTLE_TIMEOUT
+    ) -> bool:
+        """Type *term* into the search field and report whether NO list request fired.
+
+        Used for the ``MIN_SEARCH_LENGTH`` boundary: a query shorter than 2
+        characters is deliberately ignored by the product, so nothing should be
+        requested. Absence is proven with a bounded ``expect_request`` that is
+        EXPECTED to time out — a framework wait, not a sleep.
+
+        Returns:
+            ``True`` when no notification-list request was observed within
+            *settle_timeout*.
+        """
+        self.search_input.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        fired = True
+        try:
+            with self.page.expect_request(
+                lambda request: (
+                    NOTIFICATIONS_LIST_URL_SUBSTRING in request.url
+                    and NOTIFICATIONS_SEARCH_URL_MARKER in request.url
+                ),
+                timeout=settle_timeout,
+            ):
+                self.search_input.fill(term)
+        except PlaywrightTimeoutError:
+            fired = False
+        logger.info(
+            "Typed %r into search; search-carrying request observed within %dms: %s",
+            term,
+            settle_timeout,
+            fired,
+        )
+        return not fired
+
+    def get_search_value(self, timeout: int = UI_ELEMENT_TIMEOUT) -> str:
+        """Return the search field's currently displayed value."""
+        self.search_input.wait_for(state="visible", timeout=timeout)
+        return self.search_input.input_value()
+
+    def get_page_total(self, timeout: int = UI_ELEMENT_TIMEOUT) -> int:
+        """Return the total row count parsed out of the pagination range label.
+
+        The label is the product's own rendering of the server's ``total``; this
+        parses ``"{start} - {end} of {total}"`` and fails loudly on any other shape.
+        """
+        info = self.get_page_info(timeout=timeout)
+        match = PAGE_INFO_PATTERN.match(info)
+        assert match, (
+            f"Pagination range label did not match the expected "
+            f"'{{start}} - {{end}} of {{total}}' format, got {info!r}"
+        )
+        return int(match.group(3))
+
+    def get_rendered_message_texts(self, timeout: int = UI_ELEMENT_TIMEOUT) -> list[str]:
+        """Return every rendered row's message text, in display order."""
+        self.notification_message_text.first.wait_for(state="visible", timeout=timeout)
+        return self.notification_message_text.all_inner_texts()
