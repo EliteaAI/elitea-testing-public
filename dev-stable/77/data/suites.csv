@@ -1,0 +1,1108 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Wed Aug 26 04:52:12 UTC 2026","Wed Aug 26 04:53:00 UTC 2026","48185","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_speed_and_volume_controls","TC2: Speed and Volume Slider Adjustments.
+        TC-1917
+        "
+"passed","Wed Aug 26 04:52:55 UTC 2026","Wed Aug 26 04:53:34 UTC 2026","39685","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+        "
+"passed","Wed Aug 26 04:53:55 UTC 2026","Wed Aug 26 04:54:22 UTC 2026","27850","tests.ui.chat","test_chat_interface","TestContextAndSettings","","","test_edit_context_settings","TC-CHAT-019: Edit context settings."
+"skipped","Wed Aug 26 05:07:55 UTC 2026","Wed Aug 26 05:07:55 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[bitbucket]","Add toolkit to chat, send a message, verify tool execution."
+"passed","Wed Aug 26 04:55:30 UTC 2026","Wed Aug 26 04:56:13 UTC 2026","42580","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantLauncher","","","test_widget_state_persists_after_close_reopen","Conversation state persists when closing and reopening widget.
+
+        Covers: 2.2.3
+        "
+"passed","Wed Aug 26 04:49:03 UTC 2026","Wed Aug 26 04:49:44 UTC 2026","40152","tests.ui.agents","test_agent_add_variables_persist_after_reload","TestAgentAddVariablesPersistAfterReload","","","test_add_two_variables_and_verify_they_persist_after_reload","Adding two {{variable}} references to Instructions, entering their
+        values, and saving persists both name+value pairs after a
+        full-navigation reload — asserted via both the DOM and the Save PUT
+        response body."
+"passed","Wed Aug 26 04:52:03 UTC 2026","Wed Aug 26 04:52:20 UTC 2026","17379","tests.ui.pipelines_2","test_pipeline_management","TestCreatePipeline","","","test_create_pipeline_via_ui","PIPE-002: Create a pipeline through the UI form and verify it appears."
+"passed","Wed Aug 26 05:03:28 UTC 2026","Wed Aug 26 05:03:53 UTC 2026","24587","tests.ui.artifacts","test_artifacts_upload_multiple_files","TestArtifactsUploadMultipleFiles","","","Upload multiple files at once via the toolbar upload button","Select 3 files in one native-picker call, upload, verify metadata.
+
+        Read-only from the fresh bucket's perspective going in — the bucket
+        itself is the test's own mutation (via ``artifact_bucket``, deleted
+        in its own teardown), the minimal state this observable inherently
+        requires (workflow skill Hard Rule 10): the case's own subject IS
+        the multi-file upload, so there is no pre-existing empty bucket to
+        assert against read-only.
+        "
+"passed","Wed Aug 26 05:00:44 UTC 2026","Wed Aug 26 05:01:07 UTC 2026","23368","tests.ui.skills","test_skill_copy_link","TestSkillCopyLink","","","test_copy_link_copies_valid_url_to_correct_skill_and_version","The VERSION-group ""Share"" action copies a URL containing the
+        version id as a distinct path segment (contrasted against the
+        SKILL-group ""Share"" action, which omits it); navigating to that URL
+        — even via a fresh tab — opens the correct Skill at the correct
+        named version, with no ""not found"" error."
+"passed","Wed Aug 26 04:54:33 UTC 2026","Wed Aug 26 04:54:57 UTC 2026","24853","tests.ui.artifacts","test_artifacts_download_single_file_dropdown","TestArtifactDownloadSingleFileDropdown","","","Single file downloads immediately via the actions dropdown, with no ZIP packaging","Downloading via the dropdown's 'Download' item is immediate, no ZIP.
+
+        Read-only from the bucket's perspective at the end: the bucket is
+        mutated exactly once (seeded with ``a1/sample.txt``) — the minimal
+        state this observable inherently requires (workflow skill Hard
+        Rule 10) — then every assertion reads that state without further
+        mutation (Delete is verified visible, never clicked).
+        "
+"passed","Wed Aug 26 04:52:13 UTC 2026","Wed Aug 26 04:52:39 UTC 2026","25896","tests.ui.artifacts","test_artifacts_create_bucket_upload_file","TestArtifactCreateBucketAndUploadFile","","","Create a bucket via the '+ Artifact Bucket' form and upload a file via the bucket-row dot-menu","Create a bucket via the form, upload a file via the bucket-menu.
+
+        The bucket is the test's own mutation (created via the UI, deleted
+        in teardown) — the minimal state this observable inherently
+        requires (workflow skill Hard Rule 10): the case's own subject IS
+        bucket creation, so there is no pre-existing stable bucket to
+        assert against read-only.
+        "
+"passed","Wed Aug 26 05:00:25 UTC 2026","Wed Aug 26 05:01:02 UTC 2026","36399","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[confluence]","Create a credential through the UI form for any toolkit type."
+"passed","Wed Aug 26 04:50:28 UTC 2026","Wed Aug 26 04:50:43 UTC 2026","15008","tests.ui.pipelines","test_pipeline_advanced","TestDiscardChanges","","","test_discard_reverts_name_change","PIPE-022: Edit name, click Discard, and verify original name restored."
+"passed","Wed Aug 26 05:05:28 UTC 2026","Wed Aug 26 05:05:44 UTC 2026","16031","tests.ui.pipelines_2","test_pipeline_state_panel_default_and_custom_variables","","","","test_state_panel_delete_custom_variable","STATE panel: a custom variable's delete button removes it; defaults stay immutable; removal persists in YAML."
+"passed","Wed Aug 26 05:09:12 UTC 2026","Wed Aug 26 05:09:23 UTC 2026","11148","tests.ui.pipelines_2","test_pipeline_three_dot_menu_actions","","","","test_pipeline_three_dot_menu_actions","Three-dot menu shows all expected items; PIPELINE-group ""Share""
+    (the case's ""Copy link"") copies the pipeline URL with a toast
+    confirmation; Escape closes the menu."
+"passed","Wed Aug 26 04:55:05 UTC 2026","Wed Aug 26 04:55:57 UTC 2026","51145","tests.ui.agents","test_agent_copy_version_link","TestAgentCopyVersionLink","","","test_copy_version_link_produces_version_specific_url","The VERSION-group ""Share"" action copies a URL containing the
+        version id as a distinct path segment (contrasted against the
+        AGENT-group ""Share"" action, which omits it); navigating to that URL
+        — even via a fresh tab, through the project-switch redirect hop —
+        opens the correct agent at the correct named version."
+"broken","Wed Aug 26 04:56:28 UTC 2026","Wed Aug 26 04:56:28 UTC 2026","0","tests.ui.pipelines_2","test_pipeline_mcp_node_change_toolkit_and_tool","","","","test_mcp_node_change_toolkit_and_tool","Change an MCP node's Toolkit and Tool; verify reset/repopulate + persistence."
+"passed","Wed Aug 26 04:52:20 UTC 2026","Wed Aug 26 04:52:40 UTC 2026","19780","tests.ui.pipelines_2","test_pipeline_management","TestCreatePipeline","","","test_create_pipeline_required_fields_validation","Save button should be disabled when required fields are empty."
+"passed","Wed Aug 26 04:52:20 UTC 2026","Wed Aug 26 04:53:02 UTC 2026","41568","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_attach_files_button_sends_file_with_message","TC-CHAT-011: Attach file and send message with attachment."
+"passed","Wed Aug 26 04:56:44 UTC 2026","Wed Aug 26 04:57:24 UTC 2026","40354","tests.ui.pipelines","test_pipeline_chat_starters_visible_and_clickable","","","","test_pipeline_chat_starters_visible_and_clickable","Saved chat starter renders as a clickable chip that pre-fills the chat input."
+"passed","Wed Aug 26 05:02:02 UTC 2026","Wed Aug 26 05:02:21 UTC 2026","18742","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[confluence]","Create a toolkit through the UI form for any toolkit type."
+"passed","Wed Aug 26 04:50:39 UTC 2026","Wed Aug 26 04:51:06 UTC 2026","26639","tests.ui.agent_hub","test_agent_hub_like_agent_list_view","TestAgentHubLikeAgentListView","","","test_agent_hub_like_agent_from_list_view","Liking an unliked agent card increments its count, fills the heart
+        icon, and persists across a full page refresh; unliking (cleanup)
+        restores the original baseline."
+"passed","Wed Aug 26 04:53:37 UTC 2026","Wed Aug 26 04:53:52 UTC 2026","15045","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_multiple_conversation_starters_have_counters","Each conversation starter field has its own counter.
+        TC-1684
+        "
+"passed","Wed Aug 26 04:51:15 UTC 2026","Wed Aug 26 04:51:26 UTC 2026","11698","tests.ui.pipelines_2","test_pipeline_management","TestPipelineDashboard","","","test_pipeline_dashboard_loads","PIPE-001: Dashboard loads with header and search input."
+"passed","Wed Aug 26 04:53:24 UTC 2026","Wed Aug 26 04:53:47 UTC 2026","23346","tests.ui.pipelines_2","test_pipeline_management","TestEditPipeline","","","test_edit_pipeline_description","Edit a pipeline's description and verify the change persists."
+"passed","Wed Aug 26 04:55:48 UTC 2026","Wed Aug 26 04:56:08 UTC 2026","20553","tests.ui.pipelines_2","test_pipeline_management","TestSearchPipeline","","","test_search_pipeline_no_results","Searching for a non-existent pipeline should show no results."
+"broken","Wed Aug 26 05:09:47 UTC 2026","Wed Aug 26 05:09:47 UTC 2026","0","tests.ui.pipelines_2","test_pipeline_tools_section_mcp_add_view_remove","","","","test_tools_section_mcp_add_view_remove","Attach an MCP to TOOLS, view its tools, remove it, and verify removal persists."
+"passed","Wed Aug 26 04:59:53 UTC 2026","Wed Aug 26 05:00:24 UTC 2026","31616","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[jira]","Create a credential through the UI form for any toolkit type."
+"passed","Wed Aug 26 04:50:41 UTC 2026","Wed Aug 26 04:51:28 UTC 2026","47448","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'bucket_one'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Wed Aug 26 04:56:37 UTC 2026","Wed Aug 26 04:57:14 UTC 2026","36711","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantNewSession","","","test_new_chat_creates_fresh_session","New Chat button starts a fresh support session.
+
+        Covers: 3.5.1, 3.5.2
+
+        Also covers ELITEA-1799's Expected Final State clause 3 (""previous
+        session preserved in history, not lost"") via a soft assertion —
+        known defect #607, stays red once the account's active conversation
+        exceeds the ~100-message-group threshold.
+        "
+"passed","Wed Aug 26 05:07:56 UTC 2026","Wed Aug 26 05:08:17 UTC 2026","20203","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[confluence]","Add toolkit to chat, send a message, verify tool execution."
+"passed","Wed Aug 26 04:59:59 UTC 2026","Wed Aug 26 05:01:19 UTC 2026","80751","tests.ui.pipelines_2","test_pipeline_run_details_delete_run_from_history","","","","test_run_details_delete_run_from_history","Deleting a run from history removes only that run; others stay intact."
+"passed","Wed Aug 26 05:11:01 UTC 2026","Wed Aug 26 05:11:15 UTC 2026","14054","tests.ui.pipelines_2","test_pipeline_yaml_flow_sync","","","","test_yaml_edit_transition_syncs_to_flow_canvas_and_enables_save","A YAML transition edit re-wires the Flow edge and enables Save."
+"passed","Wed Aug 26 05:13:01 UTC 2026","Wed Aug 26 05:13:12 UTC 2026","10720","tests.ui.pipelines","test_pipeline_flow_to_yaml_sync","","","","test_add_node_in_flow_view_syncs_to_yaml","A node added in Flow view is immediately reflected in the YAML view
+    and remains on canvas after switching back to Flow view."
+"passed","Wed Aug 26 04:52:55 UTC 2026","Wed Aug 26 04:53:47 UTC 2026","51497","tests.ui.skills","test_export_agent_with_attached_skills","TestExportAgentWithAttachedSkills","","","test_export_agent_with_attached_skills","Create a Skill + an Agent, attach the Skill, export the Agent via
+        the actions overflow menu, and verify the downloaded file's raw
+        content embeds the Skill's full content verbatim.
+
+        Steps (AFS test-specs/skills/l3_export-agent-with-attached-skills_ELITEA-1794.md):
+        1. Create a Skill via UI, with a planted unique marker string in its
+           instructions.
+        2. Create an Agent via UI.
+        3. Attach the Skill to the Agent (case precondition).
+        4. Confirm the Agent detail view is open with the Skill attached
+           (already satisfied by step 3).
+        5. Open the agent-actions overflow menu; click ""Export"" (VERSION
+           group); verify a file download is initiated.
+        6. Verify the downloaded file has a `.md`-suffixed name.
+        7. Read the downloaded file's raw content; verify it's a YAML
+           frontmatter + markdown body, with the Skill's name, `base`
+           version, and full instructions (including the marker) embedded
+           verbatim in the `skills:` list.
+        "
+"passed","Wed Aug 26 05:02:37 UTC 2026","Wed Aug 26 05:03:11 UTC 2026","34353","tests.ui.chat","test_pin_conversation","TestPinConversationViaPinOnTop","","","test_pin_conversation_via_pin_on_top","Pin a conversation via the context menu's ""Pin on top"" item.
+
+        Steps (AFS
+        test-specs/chat-interface/l3_pin-conversation-via-pin-on-top_ELITEA-2149.md):
+        1. Hover conv_target, click its 3-dot menu; verify the item label
+           reads ""Pin on top"" before clicking it.
+        2. Verify the conversation moved to the pinned section: still
+           resolves to exactly 1 element, ``data-pinned=""true""``,
+           bounding-box Y above the ""Today"" heading.
+        3. Verify a pin icon renders inside the pinned conversation (0->1
+           transition — captured before/after the click).
+        4. Verify conv_target is no longer in its original (""Today"") date
+           group.
+        5. Verify panel order: pinned conversation renders above the
+           unpinned conversation list (2-tier live check per AFS
+           Automation Hints option (a); the full 4-tier order — pinned
+           folders, pinned conversations, unpinned folders, unpinned
+           conversations — is source-confirmed via Conversations.jsx's
+           literal render order, not independently re-derived live here
+           since this case's own steps produce zero pinned folders to
+           compare against).
+        "
+"failed","Wed Aug 26 04:56:09 UTC 2026","Wed Aug 26 04:57:32 UTC 2026","83384","tests.ui.agents","test_agent_embedded_chat_conversation_starter_chips","TestConversationStarterChipsVisibleAndClickable","","","test_conversation_starter_chips_visible_and_clickable","Both configured starters render as chips in the embedded chat
+        before any message, clicking one pre-fills the input (no auto-send,
+        chip row disappears immediately), and explicitly sending it produces
+        a real agent response."
+"passed","Wed Aug 26 05:04:06 UTC 2026","Wed Aug 26 05:04:24 UTC 2026","18390","tests.ui.agents","test_agent_with_github_toolkit","TestRemoveToolkitFromAgent","","","test_remove_toolkit_from_agent","Add a toolkit, then remove it, and verify it's gone."
+"passed","Wed Aug 26 05:07:33 UTC 2026","Wed Aug 26 05:07:54 UTC 2026","20478","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[jira]","Add toolkit to chat, send a message, verify tool execution."
+"passed","Wed Aug 26 04:58:28 UTC 2026","Wed Aug 26 04:58:43 UTC 2026","14829","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantAttachments","","","test_attach_button_present_and_opens_picker","Attach button opens file picker dialog.
+
+        Covers: 7.1.1, 7.1.2
+        "
+"broken","Wed Aug 26 05:06:29 UTC 2026","Wed Aug 26 05:06:48 UTC 2026","19851","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[confluence]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Wed Aug 26 04:48:58 UTC 2026","Wed Aug 26 04:49:09 UTC 2026","11399","tests.ui.admin","test_analytics_default_load","TestAnalyticsDefaultLoad","","","test_analytics_page_default_load","Header, date filter bar (4 presets, ""Last 24h"" active by default,
+        From/To 1 day apart), 7-tab bar with Overview selected, and the page
+        settling out of its loading state all render as specified."
+"skipped","Wed Aug 26 05:00:25 UTC 2026","Wed Aug 26 05:00:25 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[gitlab]","Create a credential through the UI form for any toolkit type."
+"passed","Wed Aug 26 05:14:21 UTC 2026","Wed Aug 26 05:14:41 UTC 2026","20255","tests.ui.pipelines","test_pipeline_hitl_node_configuration","","","","test_hitl_node_configuration_and_router_mapping","Configure a HITL node's fields; verify they persist through Save + reload."
+"passed","Wed Aug 26 04:49:01 UTC 2026","Wed Aug 26 04:49:21 UTC 2026","20136","tests.ui.pipelines","test_pipeline_add_node_menu","","","","test_add_node_menu_lists_types_adds_node_and_dismisses","Add Node menu lists exactly 11 types in order; LLM selection adds a
+    node with config visible; Escape dismisses without adding a node."
+"passed","Wed Aug 26 04:56:09 UTC 2026","Wed Aug 26 04:56:32 UTC 2026","22668","tests.ui.artifacts","test_artifacts_file_preview_actions_dropdown","TestArtifactFilePreviewActionsDropdown","","","Editor panel's actions dropdown contains Copy Content, Download, Delete and each works correctly","The editor panel's dropdown shows the right items and each action works."
+"passed","Wed Aug 26 04:51:06 UTC 2026","Wed Aug 26 04:51:22 UTC 2026","15995","tests.ui.agent_hub","test_agent_hub_open_agent_detail_modal","TestAgentHubOpenAgentDetailModal","","","test_agent_hub_open_agent_detail_modal","Clicking a Catalog agent card opens the preview modal as an overlay,
+        displaying icon, name, owner, liked status, overflow menu, close
+        button, description, CHAT STARTERS section, Welcome Message section,
+        and the Start Chat button — read-only, zero console errors, zero
+        4xx/5xx."
+"failed","Wed Aug 26 05:05:36 UTC 2026","Wed Aug 26 05:05:48 UTC 2026","12181","tests.ui.agents","test_import_agent_valid_md_file","TestImportAgentValidMdFile","","","test_import_agent_valid_md_file","Import a hand-authored (not app-exported) ``.md`` file and verify
+        the resulting Agent's Name/Description/Instructions/Model all match
+        the source file verbatim.
+
+        Steps (AFS
+        test-specs/agents/l2_import-valid-agent-md-file-correct-config_ELITEA-1901.md):
+        1. Navigate to the Agents dashboard; verify header, Import button,
+           and existing agent cards render.
+        2. Click the Import button and select the hand-authored ``.md``
+           fixture; verify the ""Import parameters"" preview dialog opens.
+        3. Verify the dialog shows an entity card for the agent (name
+           matches the fixture verbatim).
+        4. Confirm the dialog's Import button; verify the ""Import Complete""
+           success dialog lists the new agent, backed by a
+           ``201 Created`` on the import_wizard endpoint.
+        5. Click ""Got it""; verify auto-navigation to the new Agent's detail
+           page, then re-open the Agents dashboard and verify a card with
+           the correct name.
+        6. Open the imported agent; verify Name, Description, Instructions,
+           and Model all match the source file verbatim.
+        "
+"passed","Wed Aug 26 05:06:45 UTC 2026","Wed Aug 26 05:06:57 UTC 2026","12235","tests.ui.skills","test_skill_version_set_default","TestSkillVersionSetDefault","","","test_version_dropdown_set_default_shows_control_and_confirmation","Version dropdown shows a pin/set-as-default control per row;
+        confirming sets the named version as default and shows a
+        confirmation toast plus a persistent pin-icon/reorder indicator."
+"passed","Wed Aug 26 04:58:06 UTC 2026","Wed Aug 26 04:58:47 UTC 2026","40762","tests.ui.agents","test_agent_embedded_chat_shift_enter","TestAgentEmbeddedChatShiftEnter","","","test_shift_enter_new_line_enter_sends","Shift+Enter inserts a newline without sending; Enter submits the
+        accumulated multi-line message and triggers a response."
+"passed","Wed Aug 26 05:10:50 UTC 2026","Wed Aug 26 05:10:59 UTC 2026","9190","tests.ui.pipelines_2","test_pipeline_yaml_editor_view","","","","test_pipeline_yaml_editor_view","Flow/Yaml toggle -> YAML editor with line numbers -> Copy to clipboard."
+"passed","Wed Aug 26 04:51:34 UTC 2026","Wed Aug 26 04:52:01 UTC 2026","26845","tests.ui.chat","test_chat_interface","TestMessageActions","","","test_copy_message_to_clipboard","TC-CHAT-008: Copy message to clipboard."
+"skipped","Wed Aug 26 05:07:54 UTC 2026","Wed Aug 26 05:07:54 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[gitlab]","Add toolkit to chat, send a message, verify tool execution."
+"passed","Wed Aug 26 04:52:28 UTC 2026","Wed Aug 26 04:52:56 UTC 2026","27969","tests.ui.pipelines","test_pipeline_advanced","TestMultiNodeTopology","","","test_save_multi_node_pipeline","PIPE-030b: Build a multi-node pipeline, save, and verify persistence."
+"passed","Wed Aug 26 04:51:32 UTC 2026","Wed Aug 26 04:52:12 UTC 2026","39148","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_selection_from_chat","TC1: Voice Selection via TTS Controls in Chat.
+        TC-1918, TC-1915
+        "
+"skipped","Wed Aug 26 05:04:04 UTC 2026","Wed Aug 26 05:04:04 UTC 2026","0","tests.ui.artifacts","test_bucket_permissions_api","TestBucketPermissionsAPI","","","Read-only: GET allowed, POST/DELETE return 403 Forbidden","Verify that 'Read-only' permission allows GET but blocks POST and DELETE.
+
+        ELITEA-2494: User B with 'Read-only' exception can read files (GET returns 200)
+        but cannot write or delete (POST/DELETE return 403 Forbidden).
+
+        Steps:
+        1. Admin sets User B to 'Read-only' for the test bucket (UI)
+        2. Verify GET request returns 200 OK with file content (API as User B)
+        3. Verify POST (upload) request returns 403 Forbidden (API as User B)
+        4. Verify DELETE request returns 403 Forbidden (API as User B)
+        5. Cleanup: Restore User B to default permissions (UI)
+        "
+"passed","Wed Aug 26 05:12:13 UTC 2026","Wed Aug 26 05:13:00 UTC 2026","46914","tests.ui.pipelines","test_pipeline_execution","TestExecutePipelineStreaming","","","test_long_response_streams_progressively","Pipeline with an LLM entry node (TASK F-String ``{input}``)
+        streams a long response progressively, with no console/network
+        errors, and the settled response exceeds 200 characters. Also
+        covers ELITEA-2058 (Model Selector Menu is visible with a
+        non-empty default model before any switch, and the settled
+        response's model-attribution chip proves execution used the
+        model the user selected, not the pipeline's prior default).
+
+        Steps (AFS):
+        1. Pipeline created with LLM entry node, TASK F-String ""{input}""
+           (fixture — API-created, ready for execution).
+        2. [ELITEA-2058] Verify the Model Selector Menu button is visible
+           and shows a non-empty default model name before any switch.
+        3. Select ""GPT-5 mini"" via the Model Selector Menu.
+        4. Send ""Write a 500-word essay on AI"".
+        5. Verify the response streams progressively (tokens appear
+           incrementally, not all at once).
+        6. Verify the final response is complete and exceeds 200 characters.
+        7. [ELITEA-2058] Verify the settled response's model-attribution
+           chip names the selected model (""GPT-5 mini""), proving execution
+           used the selected model, not the pipeline's prior default.
+        8. Verify no timeout or error occurs during streaming.
+        "
+"failed","Wed Aug 26 04:50:57 UTC 2026","Wed Aug 26 04:52:55 UTC 2026","117754","tests.ui.skills","test_agent_max_five_skills_limit","TestAgentMaxFiveSkillsLimit","","","test_max_five_skills_attach_limit","Create 5 Skills + an Agent, attach all 5 Skills one at a time,
+        verify the add-skill control disables at 5/5 with a tooltip (rather
+        than a literal 6th-click rejection), and verify persistence via a
+        full page reload.
+
+        Steps (AFS test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md):
+        1. Create 5 Skills via UI. A 6th distinct skill is looked up via the
+           project's existing skills (via ``skill_api``) rather than assumed
+           by name — any pre-existing skill satisfies the case's ""6 distinct
+           Skills"" precondition.
+        2. Create an Agent.
+        3. Skills section starts at 0/5, add-skill control enabled.
+        4-8. Attach Skills 1-5 one at a time; counter increments ""N/5 skills
+           added."" and a card renders after each attach.
+        9. Add-skill control becomes disabled the instant 5/5 is reached,
+           with an accessible tooltip — a 6th skill cannot be attached.
+        10. Confirm persistence via a full page reload (attach is
+           auto-saved via API; no explicit agent-level Save is available).
+        "
+"passed","Wed Aug 26 04:57:33 UTC 2026","Wed Aug 26 04:58:06 UTC 2026","32912","tests.ui.agents","test_agent_embedded_chat_send_message","TestAgentEmbeddedChatSendMessage","","","test_send_message_via_enter_and_verify_non_empty_response","Typing ""PING"" and pressing Enter yields a non-empty response
+        containing ""PONG"", and clears the chat input."
+"passed","Wed Aug 26 04:50:18 UTC 2026","Wed Aug 26 04:51:14 UTC 2026","56746","tests.ui.pipelines_2","test_pipeline_llm_structured_output_state_variables","","","","test_llm_structured_output_parses_into_state_variables","LLM node with Structured output enabled parses a response into 4 typed state variables."
+"failed","Wed Aug 26 05:04:25 UTC 2026","Wed Aug 26 05:04:39 UTC 2026","13896","tests.ui.pipelines_2","test_pipeline_schedule_trigger_settings_modal","","","","test_schedule_trigger_settings_modal","Schedule settings modal: Default/Advanced modes, dynamic summary, and persistence."
+"passed","Wed Aug 26 04:55:57 UTC 2026","Wed Aug 26 04:59:12 UTC 2026","194958","tests.ui.chat","test_image_creation","TestImageCreation","","","test_create_image[detailed_description]","Create image from text prompt and verify image appears in response."
+"passed","Wed Aug 26 05:07:22 UTC 2026","Wed Aug 26 05:08:43 UTC 2026","80899","tests.ui.pipelines_2","test_pipeline_subgraph_state_sharing","","","","test_subgraph_state_sharing_common_vars","Common-named state vars (state_1/state_2) are shared between a parent pipeline and a
+    child pipeline attached as a tool to its Agent node."
+"failed","Wed Aug 26 04:54:40 UTC 2026","Wed Aug 26 04:55:25 UTC 2026","44865","tests.ui.pipelines_2","test_pipeline_management","TestDeletePipeline","","","test_delete_pipeline_via_ui_menu","Create a pipeline, delete via the UI three-dot menu, and verify removal.
+
+        Extends coverage for ELITEA-2022 (test-specs/pipelines/lextend_delete-
+        pipeline-via-actions-menu_ELITEA-2022.md) — additive Step 4 assertion
+        that the app auto-redirects to the Pipelines dashboard as a direct
+        consequence of the delete action (previously this test drove its own
+        navigation afterward, masking the redirect entirely).
+
+        **Known product defect (step 4, sanctioned RED):** the redirect
+        (`navigate(-1)` in EliteaUI's `useDeleteApplication`) is a browser-
+        history no-op when the detail page was reached via direct navigation
+        — exactly this test's own setup (Step 2: `detail_page.navigate(pid)`,
+        a `page.goto()`, no prior in-app history entry). Confirmed live via
+        Playwright MCP (8s poll, no redirect, 0 console errors). Filed as
+        `EliteaAI/elitea-testing-public#1332`. Per `.agents/testing.md` §
+        Merge gate's analysis-time exception, Step 4's redirect assertion is
+        `soft_failures`-tagged `# Known defect: #1332`; Step 5 (pipeline
+        actually gone) is unaffected and stays a hard assertion — it reaches
+        the dashboard itself since the redirect can't be relied on while
+        #1332 stays open.
+        "
+"passed","Wed Aug 26 04:50:07 UTC 2026","Wed Aug 26 04:50:18 UTC 2026","11742","tests.ui.agents","test_agent_build_with_ai_role_visibility","TestAgentBuildWithAIButtonRoleVisibility","","","test_build_with_ai_button_visible_for_admin_role","Magic Wand (""Build with AI"") button is visible, correctly
+        labelled, and functional (opens the generation modal) for the
+        admin-equivalent TEST_USER on the New Agent creation page."
+"passed","Wed Aug 26 04:56:47 UTC 2026","Wed Aug 26 04:56:54 UTC 2026","6715","tests.ui.admin","test_personal_token_create_and_verify","TestPersonalTokenCreateAndVerify","","","test_expired_token_shows_expired_icon_and_label","ELITEA-2284 (steps 2-3) — an existing expired token's Expiration
+        cell shows the gray/expired state icon and the exact 'Expired'
+        label. Read-only: uses existing live project data, no token created
+        or deleted. (ELITEA-2284 steps 4-5 — active token, green icon, 'in X
+        days' — are already asserted by
+        test_create_personal_token_and_verify_in_table's Step 12 above; not
+        repeated here.)"
+"passed","Wed Aug 26 04:51:39 UTC 2026","Wed Aug 26 04:52:18 UTC 2026","38775","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_text_truncated_with_warning","Verify text over limit is truncated to 768 chars with warning message.
+        TC-1686
+
+        Tests both collapsed mode and fullscreen mode.
+        "
+"passed","Wed Aug 26 04:48:39 UTC 2026","Wed Aug 26 04:48:59 UTC 2026","19713","tests.ui.toolkits","test_credential_required_fields_validation","TestCredentialRequiredFieldsValidation","","","test_create_credential_required_fields_validation","Save reflects required-field state; Display Name clearing is a known defect."
+"passed","Wed Aug 26 05:08:50 UTC 2026","Wed Aug 26 05:09:12 UTC 2026","21088","tests.ui.pipelines","test_pipeline_entry_point_trigger_types_persist","","","","test_entry_point_trigger_types_persist","All 3 trigger types are listed, selectable, persist, and travel with the entry point."
+"broken","Wed Aug 26 05:05:02 UTC 2026","Wed Aug 26 05:05:24 UTC 2026","22284","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[jira]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Wed Aug 26 04:59:02 UTC 2026","Wed Aug 26 05:00:14 UTC 2026","71750","tests.ui.pipelines","test_pipeline_code_node_input_filtering","","","","test_code_node_input_filtering_selective_state_access","A Code node's elitea_state only exposes vars listed in its own input:, excluding others set earlier."
+"passed","Wed Aug 26 05:02:00 UTC 2026","Wed Aug 26 05:02:16 UTC 2026","16140","tests.ui.artifacts","test_artifacts_upload_duplicate_detected_modal","TestArtifactUploadDuplicateDetectedModal","","","Uploading a same-named file opens the 'Resolve duplicates' modal with the correct message, filename, and all four action buttons","Uploading a same-named file opens 'Resolve duplicates' with full content.
+
+        Read-only from the bucket's perspective: the bucket is seeded once
+        with the duplicate-detection target, then the test never mutates
+        state further — it only inspects the modal that opens (workflow
+        skill Hard Rule 10 — minimal mutation for the observable).
+        "
+"passed","Wed Aug 26 04:50:54 UTC 2026","Wed Aug 26 04:51:35 UTC 2026","41026","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+
+        Acceptance Criteria #1 & #3: Counter visible in Full Screen mode,
+        warning displays at limit.
+        "
+"passed","Wed Aug 26 05:04:04 UTC 2026","Wed Aug 26 05:04:25 UTC 2026","20362","tests.ui.pipelines_2","test_pipeline_run_history_view_executions","TestPipelineRunHistoryPanelClose","","","test_run_history_panel_closes_and_restores_chat","Closing the Run History panel (after selecting an entry) removes
+        the panel from the DOM and restores the Configuration form +
+        embedded chat, with zero network requests fired by the close itself."
+"passed","Wed Aug 26 05:04:15 UTC 2026","Wed Aug 26 05:05:10 UTC 2026","55106","tests.ui.skills","test_skill_tag_filter","TestSkillTagFilter","","","test_filter_skills_by_tag","Create 3 skills with shared/unique tags; verify tag-filter narrowing.
+
+        Steps (see AFS for full detail):
+        1. Capture baseline grid state; create Skill A (formatting, output),
+           Skill B (formatting, english), Skill C (translation); verify all
+           3 plus any pre-existing skills are visible with their own tags.
+        2. Filter by `formatting` (shared tag) — verify exactly Skill A and
+           Skill B are shown, Skill C is excluded.
+        3. Clear the filter, then filter by `translation` (unique tag) —
+           verify exactly Skill C is shown.
+        4. Clear the filter, then filter by `output` (unique tag) — verify
+           exactly Skill A is shown.
+        5. Clear the filter — verify the grid is restored to the baseline
+           plus the 3 new skills.
+        "
+"skipped","Wed Aug 26 05:02:01 UTC 2026","Wed Aug 26 05:02:01 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[bitbucket]","Create a toolkit through the UI form for any toolkit type."
+"failed","Wed Aug 26 04:57:52 UTC 2026","Wed Aug 26 04:58:05 UTC 2026","13346","tests.ui.pipelines_2","test_pipeline_mcp_node_fresh_attach","","","","test_mcp_node_fresh_attach","Fresh-attach an MCP, add + configure an MCP node, save, verify reload persistence."
+"passed","Wed Aug 26 04:59:09 UTC 2026","Wed Aug 26 04:59:26 UTC 2026","17712","tests.ui.pipelines_2","test_pipeline_nodes","TestAddNode","","","test_add_human_in_the_loop_node_and_connect_to_end","PIPE-031: Add a HITL node and connect it to END."
+"passed","Wed Aug 26 05:09:12 UTC 2026","Wed Aug 26 05:09:29 UTC 2026","16951","tests.ui.pipelines","test_pipeline_entry_point_trigger_types_persist","","","","test_entry_point_trigger_shown_only_on_entry_point_node","Trigger control renders ONLY on the entry-point node; Information section mirrors it.
+
+    TMS: ELITEA-2041
+    (test-specs/pipelines/lextend_pipeline-entry-point-trigger-shown-only-on-entry-node_ELITEA-2041.md)
+    "
+"passed","Wed Aug 26 04:52:58 UTC 2026","Wed Aug 26 04:53:22 UTC 2026","24169","tests.ui.pipelines_2","test_pipeline_management","TestEditPipeline","","","test_edit_pipeline_name","Edit a pipeline's name and verify the change persists."
+"passed","Wed Aug 26 04:52:00 UTC 2026","Wed Aug 26 04:52:21 UTC 2026","21613","tests.ui.pipelines","test_pipeline_advanced","TestMultiNodeTopology","","","test_three_node_chain","PIPE-030: Build a three-node chain: LLM → Code → END."
+"passed","Wed Aug 26 05:10:39 UTC 2026","Wed Aug 26 05:10:50 UTC 2026","10761","tests.ui.pipelines_2","test_pipeline_yaml_editor_invalid_syntax","","","","test_yaml_editor_invalid_syntax_blocks_save","Invalid YAML in the editor enables Save but is rejected server-side on attempt."
+"passed","Wed Aug 26 04:59:48 UTC 2026","Wed Aug 26 05:00:43 UTC 2026","54902","tests.ui.skills","test_skill_agent_version_selector","TestAttachSkillToAgentWithVersionSelector","","","test_attach_skill_to_agent_with_version_selector","Create a skill + agent, attach the skill, and verify the version
+        selector shows the default version, opens a real Versions menu, and
+        persists across a full page reload.
+
+        Steps (AFS test-specs/skills/l3_attach-skill-to-agent-with-version-selector_ELITEA-1789.md):
+        1. Create a Skill with a saved `base` version.
+        2. Create an Agent.
+        3. Locate the Skills attachment section (expanded by default).
+        4-5. Attach the Skill; verify the counter updates and the card renders.
+        6. Verify the attached Skill card shows a version selector, and that
+           clicking it (via a correctly-scoped `.version-text` locator, NOT a
+           role-based one) opens a real ""Versions"" menu — hard-asserted
+           functional flow per the AFS (known defect #46 is a handle-quality/
+           accessibility gap, not a flaky functional failure).
+        7. Confirm the default version (`base`) is shown pre-selected, both
+           on the card and as the sole entry in the opened Versions menu.
+        8. Confirm persistence via a full page reload (no explicit
+           agent-level Save is available — attach is auto-saved via API).
+        "
+"passed","Wed Aug 26 05:02:00 UTC 2026","Wed Aug 26 05:02:20 UTC 2026","19911","tests.ui.pipelines_2","test_pipeline_run_details_panel","","","","test_run_details_panel_opens_after_execution","Run Details panel opens after execution and shows header/status/controls/sections."
+"passed","Wed Aug 26 05:04:26 UTC 2026","Wed Aug 26 05:05:04 UTC 2026","38229","tests.ui.pipelines","test_pipeline_decision_node_configuration","","","","test_decision_node_configuration_and_edge_wiring","Configure a Decision node's fields; verify they + their edges persist through Save + reload."
+"passed","Wed Aug 26 05:01:04 UTC 2026","Wed Aug 26 05:01:33 UTC 2026","28129","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[github]","Create a toolkit through the UI form for any toolkit type."
+"passed","Wed Aug 26 04:57:17 UTC 2026","Wed Aug 26 04:57:39 UTC 2026","21937","tests.ui.artifacts","test_artifacts_file_preview_markdown_default_mode","TestArtifactFilePreviewMarkdownDefaultMode","","","Markdown file opens in Preview mode by default with Save/Discard inactive","A Markdown file opens with Preview active, rendered, editing blocked."
+"passed","Wed Aug 26 05:02:34 UTC 2026","Wed Aug 26 05:02:44 UTC 2026","10786","tests.ui.pipelines","test_pipeline_collapse_left_panel","","","","test_collapse_and_expand_left_configuration_panel","Collapsing the left configuration panel shrinks it and unmounts its
+    sections while the canvas grows; expanding it again restores the exact
+    original width and remounts every section."
+"passed","Wed Aug 26 04:52:19 UTC 2026","Wed Aug 26 04:52:34 UTC 2026","15849","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_visible_and_updates","Character counter appears when typing and updates in real-time.
+        TC-1685
+        Acceptance Criteria #1 (extended to Conversation Starters).
+
+        Note: Counter only appears after typing, not initially.
+        "
+"passed","Wed Aug 26 05:01:52 UTC 2026","Wed Aug 26 05:02:37 UTC 2026","44236","tests.ui.skills","test_skill_export_import","TestSkillExportImportNonBaseVersion","","","test_import_skill_non_base_version","Export a skill's ver_1 version, import the file, verify the round trip.
+
+        Steps (see AFS for full detail):
+        1. Create a Skill with base version; note the source skill ID.
+        2. Edit instructions, click ""Save As Version"" → create `ver_1`.
+        3. With `ver_1` selected, export via the overflow menu; verify
+           the downloaded filename embeds the version name.
+        4. Read the exported file; verify frontmatter (incl. `elitea_version`)
+           and instructions body.
+        5. Navigate to Skills list; import the exported file; verify the
+           Import parameters dialog previews the ver_1 content.
+        6. Confirm import; verify navigation + unique new skill ID.
+        7. Verify imported skill's version is `base` and fields match the
+           exported ver_1 content.
+        8. Edit + save the imported skill; verify a clean save.
+        "
+"passed","Wed Aug 26 05:08:28 UTC 2026","Wed Aug 26 05:08:40 UTC 2026","11362","tests.ui.pipelines","test_pipeline_edge_deletion","","","","test_delete_edge_resets_source_transition_and_persists","Deleting the LLM 1 -> Printer 1 edge removes it, resets LLM 1's
+    transition to END, and the removal persists after Save + reload."
+"failed","Wed Aug 26 05:06:52 UTC 2026","Wed Aug 26 05:07:31 UTC 2026","39543","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[github]","Add toolkit to chat, send a message, verify tool execution."
+"failed","Wed Aug 26 04:51:42 UTC 2026","Wed Aug 26 04:52:02 UTC 2026","19689","tests.ui.pipelines_2","test_pipeline_management","TestPipelineDashboard","","","test_view_toggle_table_and_card","Dashboard should support switching between table and card views.
+
+        Extended for ELITEA-2024 (AFS:
+        test-specs/pipelines/lextend_pipeline-dashboard-view-toggle-default-and-layout_ELITEA-2024.md)
+        with default-state (Step 3) and actual-rendered-layout (Steps 5 & 7)
+        assertions — the original ELITEA-0855 coverage (button visibility +
+        button aria-pressed state) is unchanged.
+        "
+"passed","Wed Aug 26 04:53:12 UTC 2026","Wed Aug 26 04:53:55 UTC 2026","43033","tests.ui.artifacts","test_artifacts_delete_subfolder_checkbox","TestArtifactDeleteSubfolderCheckbox","","","Selecting 2 individual files via checkbox (partial selection) drives the header checkbox indeterminate and deletes only those files","Checking 2 file checkboxes (partial selection) drives the header
+        'select all' checkbox into the INDETERMINATE state, leaves sibling
+        folder checkboxes unchecked, and deleting via the toolbar removes
+        only the 2 selected files — subfolders completely unaffected.
+
+        Own fresh `artifact_bucket` instance (function-scoped fixture) —
+        deliberately NOT sharing state with `test_delete_subfolder_via_checkbox`
+        above, since that test's own core assertion (a1 gets deleted) directly
+        conflicts with this test's own precondition (a1 must survive).
+        "
+"passed","Wed Aug 26 04:51:04 UTC 2026","Wed Aug 26 04:51:26 UTC 2026","21447","tests.ui.pipelines","test_pipeline_advanced","TestMakeEntrypoint","","","test_make_node_entrypoint","PIPE-024: Set a node as entrypoint via the three-dot menu."
+"passed","Wed Aug 26 05:01:36 UTC 2026","Wed Aug 26 05:02:00 UTC 2026","23593","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[jira]","Create a toolkit through the UI form for any toolkit type."
+"failed","Wed Aug 26 04:52:40 UTC 2026","Wed Aug 26 04:52:56 UTC 2026","15558","tests.ui.pipelines_2","test_pipeline_management","TestCreatePipeline","","","test_create_pipeline_minimal_via_sidebar_button","ELITEA-2020: Create a pipeline via the sidebar '+' control, with only
+        the required Name + Description fields, and verify the resulting
+        pipeline gets a unique numeric ID (URL + Information section) and
+        defaults to the ""base"" VERSION.
+
+        Extends TestCreatePipeline (test-specs/pipelines/lextend_create-
+        pipeline-minimal-sidebar_ELITEA-2020.md) — additive to
+        test_create_pipeline_via_ui, which navigates via a direct URL instead
+        of the sidebar control and never asserts the Information section or
+        VERSION selector.
+        "
+"passed","Wed Aug 26 04:49:02 UTC 2026","Wed Aug 26 04:49:20 UTC 2026","18049","tests.ui.agent_hub","test_agent_hub_close_agent_detail_modal","TestAgentHubCloseAgentDetailModal","","","test_agent_hub_close_agent_detail_modal","Clicking the X button in the agent detail modal closes the modal,
+        and the user remains on the Catalog list view — read-only, zero
+        console errors, zero 4xx/5xx."
+"passed","Wed Aug 26 04:50:20 UTC 2026","Wed Aug 26 04:50:36 UTC 2026","15935","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_visible_and_updates_realtime","Character counter appears when typing and updates in real-time.
+        TC-1688, TC-1685
+        Acceptance Criteria #1: Real-time character counter visible.
+        "
+"passed","Wed Aug 26 04:51:33 UTC 2026","Wed Aug 26 04:51:52 UTC 2026","19635","tests.ui.agent_hub","test_agent_hub_search_bar_filters_in_real_time","TestAgentHubSearchBarFiltersInRealTime","","","test_agent_hub_search_bar_filters_in_real_time","Typing a partial term into the Catalog search bar filters the
+        agent list in real time via a single debounced request; clearing
+        the typed text restores the exact original unfiltered set."
+"broken","Wed Aug 26 05:06:52 UTC 2026","Wed Aug 26 05:06:52 UTC 2026","0","tests.ui.agents","test_mcp_attach_via_tools_section","TestMcpAttachViaToolsSection","","","test_mcp_attach_via_tools_section","Attach a Remote MCP to an agent, verify persistence across reload,
+        then remove it and verify removal persists too.
+
+        Steps (AFS test-specs/agents/l3_mcp-attach-via-tools-section_ELITEA-1950.md):
+        1. Navigate to the agent detail page.
+        2. Verify the Tools section is expanded.
+        3. Verify the Toolkit/MCP add buttons are visible (live-accurate
+           equivalent of the case's ""tool type tabs"" — see module docstring).
+        4. Click ""+ MCP""; the shared popper opens with search + menu items.
+        5. Select the target MCP by name.
+        6. Verify the MCP appears as a card in the Tools section.
+        7. Verify the attach auto-saves (PATCH .../tool/prompt_lib/... -> 201;
+           no separate agent-level Save step exists for this flow).
+        8. Reload; verify the MCP is still attached.
+        9. Remove the MCP; confirm the ""Remove MCP?"" dialog; verify it's gone,
+           including after a fresh reload.
+
+        Args:
+            page: Playwright page fixture.
+            agent_id: Fresh agent created by fixture (auto-cleanup).
+            mcp_toolkit_with_tools: Fresh MCP toolkit created by fixture (auto-cleanup).
+        "
+"passed","Wed Aug 26 04:58:56 UTC 2026","Wed Aug 26 05:01:06 UTC 2026","129961","tests.ui.artifacts","test_artifacts_multi_file","TestArtifactMultiFileDownload","","","Agent creates files at root and in subfolder — all visible and accessible","Agent creates files at root and under a sub-path — all visible and accessible.
+
+        ELITEA-1327 regression: when an agent creates N files in a single tool call,
+        all N files must be downloadable via the UI.  Before the fix, only the last
+        file written would be persisted; all earlier files were silently lost.
+        "
+"passed","Wed Aug 26 04:55:49 UTC 2026","Wed Aug 26 04:56:07 UTC 2026","17792","tests.ui.pipelines","test_pipeline_canvas_delete_node","","","","test_delete_middle_node_removes_its_edges_and_persists","Deleting the middle node (Code 1) removes it + both its edges; LLM 1
+    and END remain; the deletion persists after Save + reload."
+"passed","Wed Aug 26 05:04:15 UTC 2026","Wed Aug 26 05:04:25 UTC 2026","9927","tests.ui.pipelines","test_pipeline_dashboard_pin_to_top","","","","test_pipeline_dashboard_pin_to_top","Pinning a pipeline moves it to the top of the dashboard list; unpinning reverts it."
+"passed","Wed Aug 26 04:52:05 UTC 2026","Wed Aug 26 04:52:18 UTC 2026","12950","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_model_selector_opens_menu","TC-CHAT-010, TC-CHAT-020: Model selector shows current model and opens menu."
+"passed","Wed Aug 26 05:03:20 UTC 2026","Wed Aug 26 05:04:03 UTC 2026","42358","tests.ui.agents","test_agent_with_github_toolkit","TestAddToolkitToAgent","","","test_add_toolkit_to_agent","Add a GitHub toolkit to an existing agent via the UI, then chat."
+"passed","Wed Aug 26 04:53:00 UTC 2026","Wed Aug 26 04:53:58 UTC 2026","57811","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_settings_sync","TC3: Settings Synchronization from Personalization to Chat.
+        TC-1916
+        Personalization settings are baseline defaults that apply to Chat.
+        Chat changes are temporary/session-only and do NOT sync back to Personalization.
+        "
+"passed","Wed Aug 26 05:11:38 UTC 2026","Wed Aug 26 05:12:13 UTC 2026","35118","tests.ui.pipelines","test_pipeline_execution","TestPipelineChatMessages","","","test_multiple_executions_accumulate","PIPE-014, PIPE-018: Multiple sequential executions accumulate messages."
+"failed","Wed Aug 26 05:08:40 UTC 2026","Wed Aug 26 05:08:50 UTC 2026","9595","tests.ui.pipelines","test_pipeline_entry_point_trigger_restricted_interactive_nodes","","","","test_entry_point_trigger_restricted_interactive_nodes","Chat-Message-only restriction gates on the SAVED version, for Printer/HITL/interrupts alike."
+"passed","Wed Aug 26 04:50:30 UTC 2026","Wed Aug 26 04:51:32 UTC 2026","62161","tests.ui.settings","test_set_llm_model_default_high_low_tier","TestSetLLMModelTiers","","","test_set_llm_model_default_high_low_tier","Selecting a different model for the LLMs section's Default tier
+        updates the selector text immediately (no Save action), swaps the
+        ""Default"" badge from the old model's card to the new model's card,
+        and changes the model a brand-new /chat composer starts with.
+        High-tier and Low-tier show the same selector+badge mechanics but do
+        NOT change the new-chat composer's model (case-text drift, see module
+        docstring). Original values are restored in a finally block."
+"passed","Wed Aug 26 04:50:46 UTC 2026","Wed Aug 26 04:51:03 UTC 2026","16800","tests.ui.pipelines","test_pipeline_advanced","TestDiscardChanges","","","test_save_discard_button_states_toggle_on_edit_and_discard","ELITEA-2048: Save/Discard are disabled on a clean pipeline, become
+        enabled once the name is edited, and return to disabled after Discard
+        reverts the edit."
+"passed","Wed Aug 26 04:51:30 UTC 2026","Wed Aug 26 04:53:38 UTC 2026","127401","tests.ui.admin","test_guardrails_live_reload","TestBlockedToolLiveReload","","","test_blocked_tool_live_reload_case_insensitive","Verify blocked tool takes effect immediately with case-insensitive matching."
+"broken","Wed Aug 26 05:14:02 UTC 2026","Wed Aug 26 05:14:19 UTC 2026","17905","tests.ui.pipelines","test_pipeline_fork_to_different_project","TestPipelineForkToDifferentProject","","","test_pipeline_fork_to_different_project","Fork a Pipeline into a different project and verify the forked
+        pipeline's configuration + attribution, then clean up.
+
+        Steps (AFS
+        test-specs/pipelines/l2_pipeline-fork-to-different-project_ELITEA-2051.md):
+        1. Create the source Pipeline via API in project 400 (""UI
+           Testing""); navigate to it via the sidebar project switcher +
+           Pipelines dashboard card (precondition — a pipeline from
+           another project, accessible to the user).
+        2. Open the pipeline-actions overflow menu; verify the VERSION
+           group shows ""Fork"" enabled.
+        3. Click ""Fork""; verify the Fork wizard dialog opens showing the
+           Project selector and Main-entity preview card.
+        4. Select a target project DIFFERENT from the source (399,
+           ""Private""); verify the Fork button becomes enabled.
+        5. Verify the entity-preview card shows the Main entity only (no
+           ""Nested entities"" section, since the source has no attached
+           toolkits/skills/nested agents).
+        6. Click ""Fork""; verify the fork POST returns 201 Created and the
+           dialog re-renders as ""Fork Complete"".
+        7. Click ""Got it""; verify navigation into the target project, onto
+           the new forked Pipeline.
+        8. Verify the forked pipeline's ID/Version ID are new and unique,
+           and its Name/Description/Step Limit match the source exactly.
+        9. Verify the forked pipeline's dashboard card (Card list view,
+           target project) shows a ""Forked from"" attribution icon-link.
+        10. Clean up: delete the forked pipeline via the UI; verify the
+            DELETE call returns 204 No Content.
+        "
+"passed","Wed Aug 26 04:49:16 UTC 2026","Wed Aug 26 04:49:38 UTC 2026","21489","tests.ui.pipelines_2","test_pipeline_llm_node_system_task_chat_history_config","","","","test_llm_node_system_type_walks_fixed_fstring_variable","Walk the LLM node's SYSTEM Type through Fixed -> F-String -> Variable.
+
+    TMS: ELITEA-2040 — extend-existing over this file's ELITEA-2004 test
+    (test-specs/pipelines/
+    lextend_pipeline-input-mapping-types-fixed-fstring-variable_ELITEA-2040.md).
+    ELITEA-2004 never selects ""Variable""; this test closes that gap: the
+    Type select's full 3-option set, the Value field's DOM-widget swap
+    (<textarea> -> MUI Select) on entering Variable mode, the Variable
+    Value-select's option list (the pipeline's own state variables), and
+    Type=Variable/Value=<state var> persistence through Save + reload. Does
+    not modify ELITEA-2004's test above.
+    "
+"passed","Wed Aug 26 04:51:19 UTC 2026","Wed Aug 26 04:51:31 UTC 2026","11684","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_cannot_send_empty_message","TC-CHAT-007: Cannot send empty message."
+"passed","Wed Aug 26 05:02:47 UTC 2026","Wed Aug 26 05:03:11 UTC 2026","24156","tests.ui.skills","test_skill_pin_unpin","TestSkillPinUnpin","","","test_skill_pin_moves_to_top_and_unpin_reverts","Pinning a skill (via the detail-page menu) moves it to the top of
+        the list; unpinning (same menu) reverts it."
+"passed","Wed Aug 26 04:57:38 UTC 2026","Wed Aug 26 04:58:20 UTC 2026","41797","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestPipelineCredentialIndicators","","","test_pipeline_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Pipeline."
+"passed","Wed Aug 26 04:56:56 UTC 2026","Wed Aug 26 04:57:15 UTC 2026","18840","tests.ui.artifacts","test_artifacts_file_preview_image_restricted_controls","TestArtifactFilePreviewImageRestrictedControls","","","Image file opens directly as image preview with inactive/absent edit controls","An image file renders directly, with edit controls absent or disabled."
+"passed","Wed Aug 26 04:52:38 UTC 2026","Wed Aug 26 04:52:53 UTC 2026","14215","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
+
+        Acceptance Criteria #2.
+        "
+"passed","Wed Aug 26 04:59:15 UTC 2026","Wed Aug 26 04:59:39 UTC 2026","23958","tests.ui.help_center","test_help_center_sidebar_tour","TestHelpCenterSidebarTour","","","test_sidebar_interactive_tour_completes_via_next",""
+"failed","Wed Aug 26 04:49:02 UTC 2026","Wed Aug 26 04:50:22 UTC 2026","79777","tests.ui.chat","test_agent_with_toolkit_chat","TestAgentWithToolkitInChat","","","test_agent_with_toolkit_executes_in_chat","Create agent with toolkit, add agent as participant in chat, verify toolkit executes.
+
+        The toolkit is attached to the agent (not the conversation directly).
+        This tests the agent-owns-toolkit execution path in real chat (/chat).
+        "
+"passed","Wed Aug 26 05:15:31 UTC 2026","Wed Aug 26 05:15:40 UTC 2026","8125","tests.ui.pipelines","test_pipeline_information_section","","","","test_pipeline_information_section","Information section — Pipeline ID/Version ID/Trigger/Show link + copy buttons."
+"passed","Wed Aug 26 04:54:52 UTC 2026","Wed Aug 26 04:55:09 UTC 2026","16915","tests.ui.chat","test_chat_interface","TestSidebarNavigation","","","test_navigate_to_agents_from_sidebar","TC-CHAT-022: Navigate to Agents from sidebar."
+"passed","Wed Aug 26 05:05:09 UTC 2026","Wed Aug 26 05:05:27 UTC 2026","17956","tests.ui.pipelines_2","test_pipeline_state_panel_default_and_custom_variables","","","","test_state_panel_default_and_custom_variables","STATE panel: default vars are immutable, a custom var can be added/typed and is usable downstream."
+"passed","Wed Aug 26 04:57:14 UTC 2026","Wed Aug 26 04:58:09 UTC 2026","54901","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantHistory","","","test_history_restore_and_continue","User can restore a previous session and continue messaging.
+
+        Covers: 6.1.1, 6.2.1, 6.2.3
+        "
+"passed","Wed Aug 26 05:00:15 UTC 2026","Wed Aug 26 05:01:31 UTC 2026","76108","tests.ui.pipelines","test_pipeline_code_node_multi_var_dict_return","","","","test_code_node_return_dict_multiple_state_vars","A Code node whose script's final statement is a 3-key dict literal writes all 3 state vars in one execution."
+"passed","Wed Aug 26 05:08:44 UTC 2026","Wed Aug 26 05:09:12 UTC 2026","28253","tests.ui.pipelines_2","test_pipeline_tags_add_and_filter","","","","test_pipeline_tags_add_and_filter","Create 2 pipelines with shared/unique tags; verify tag chips + filter narrowing.
+
+    Steps (see AFS for full detail):
+    1. Create Pipeline 1 (tags: regression, smoke) via the create form's Tags
+       field; verify both chips render in the form.
+    2. Create Pipeline 2 (tags: regression, integration); verify both chips
+       render in the form.
+    3. Navigate to the dashboard; verify both pipelines visible, each card
+       showing its own tags.
+    4. Filter by ""smoke"" — verify exactly Pipeline 1 is shown, URL carries
+       ``tags=smoke``.
+    5. Clear filter, filter by shared tag ""regression"" — verify exactly both
+       pipelines are shown.
+    6. Clear filter — verify URL reverts (no ``tags`` param) and the full
+       list (including both disposable pipelines) is restored.
+    7. Zero console errors across the whole flow.
+    "
+"passed","Wed Aug 26 05:06:06 UTC 2026","Wed Aug 26 05:06:45 UTC 2026","39052","tests.ui.skills","test_skill_test_panel_version_instructions","TestSkillTestPanelVersionInstructions","","","test_test_panel_uses_selected_skill_version_instructions","Switching the VERSION selector changes which version's instructions
+        the test panel's AI response reflects — v1 (""Always say V1"") vs
+        base (""Always say BASE"") for the identical prompt."
+"broken","Wed Aug 26 05:03:33 UTC 2026","Wed Aug 26 05:03:52 UTC 2026","19183","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[github]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Wed Aug 26 04:57:25 UTC 2026","Wed Aug 26 04:57:50 UTC 2026","24658","tests.ui.pipelines","test_pipeline_code_node_configuration","","","","test_code_node_configuration_and_persistence","Configure a Code node's CODE/Input/Output fields; verify they persist through Save + reload."
+"passed","Wed Aug 26 05:02:38 UTC 2026","Wed Aug 26 05:02:46 UTC 2026","8420","tests.ui.skills","test_skill_export_import","TestSkillImportMissingFrontmatter","","","test_import_skill_missing_frontmatter_shows_validation_error","Upload a .md file missing the required `name` frontmatter key.
+
+        Steps (see AFS for full detail):
+        1. Navigate to Skills list; capture baseline skill count/IDs.
+        2. Click Import, select the fixture file; native file chooser opens.
+        3. Complete the upload; verify NO ""Import parameters"" dialog appears,
+           and an error toast shows a message naming the missing fields.
+        4. Verify no Skill was created (API IDs unchanged) and no
+           `skill_import` network request fired at all.
+        "
+"passed","Wed Aug 26 05:11:19 UTC 2026","Wed Aug 26 05:11:37 UTC 2026","17758","tests.ui.pipelines","test_pipeline_execution","TestPipelineChatMessages","","","test_user_message_visible","PIPE-017: User message appears in chat alongside AI response."
+"passed","Wed Aug 26 04:54:18 UTC 2026","Wed Aug 26 04:55:08 UTC 2026","49494","tests.ui.pipelines","test_pipeline_attach_files_in_chat","","","","test_attachments_toggle_persists_across_save_and_reload","Attachments MODULES toggle + attach-button state survive Save + reload, both directions.
+
+    ELITEA-2059's own test proves the ON-direction, live/unsaved causal link
+    (toggle -> attach button, instant, no Save needed). This test proves the
+    stronger, Save-gated claim ELITEA-2066's case asks for: after Save and a
+    hard page reload, the toggle AND the attach button still reflect the
+    persisted state — in both the enable and disable direction.
+    "
+"passed","Wed Aug 26 05:04:01 UTC 2026","Wed Aug 26 05:04:14 UTC 2026","12463","tests.ui.skills","test_skill_search","TestSkillSearch","","","test_search_skills_by_name","Search the Skills grid by partial name, exact name, a
+        non-existent name, then clear — verifying the grid's exact visible
+        set at each step (not just presence/absence of one name), so a
+        regression that only breaks the grid while leaving the separate
+        suggestions popover working would be caught.
+        "
+"passed","Wed Aug 26 05:11:15 UTC 2026","Wed Aug 26 05:11:28 UTC 2026","12490","tests.ui.pipelines_2","test_pipeline_yaml_flow_sync","","","","test_yaml_edit_persists_after_save_and_reload","A YAML `output:` edit reflects in the Flow node config, enables Save, and survives reload.
+
+    TMS: ELITEA-2067
+    (test-specs/pipelines/lextend_pipeline-yaml-editor-edit-and-save_ELITEA-2067.md)
+
+    Extends the YAML<->Flow sync coverage this file already establishes (ELITEA-2028) one stage
+    further: that test proves a YAML edit reflects on the canvas AND enables Save, but never
+    clicks Save nor reloads. This test edits a different field (the LLM node's `output:` list,
+    the case's own worked example — ""change a node's output variable name""), verifies the change
+    reflected in the node's own inline config panel (not the canvas edge), then clicks Save and
+    reloads to prove the edit round-trips through a full browser reload, not just in-memory
+    client state.
+
+    The `pipeline_with_llm_id` fixture (single LLM node -> END, `output: []`, never saved in this
+    session) is ALREADY the clean baseline this case needs — unlike ELITEA-2028's own test, no
+    second node / prior Save is required to establish a disabled Save/Discard starting point.
+    "
+"passed","Wed Aug 26 04:49:02 UTC 2026","Wed Aug 26 04:49:20 UTC 2026","17970","tests.ui.settings","test_ai_providers_page_sections_load_without_error","TestAIProvidersPageSections","","","test_ai_providers_page_sections_load_without_error","Every populated section (LLMs/Embedding/Image Gen/ASR/TTS) renders with
+        its default selector(s) and >=1 configuration card, in the expected
+        order; Vector Storage (zero-config) is correctly absent; AI Credentials
+        is either rendered with >=1 card OR correctly absent if empty; zero
+        console errors, zero non-2xx across every configurations endpoint."
+"passed","Wed Aug 26 04:53:50 UTC 2026","Wed Aug 26 04:53:58 UTC 2026","8184","tests.ui.pipelines_2","test_pipeline_management","TestEditPipeline","","","test_pipeline_detail_page_loads","Navigate to a pipeline's detail page and verify form fields match."
+"passed","Wed Aug 26 04:56:24 UTC 2026","Wed Aug 26 04:56:42 UTC 2026","17863","tests.ui.pipelines","test_pipeline_canvas_zoom_and_pan","","","","test_canvas_control_panel_zoom_out_interactivity_cards_size_and_auto_arrange","Extends the ELITEA-2019 coverage above with the case's remaining
+    control-panel buttons: visibility of all 6 buttons, Zoom Out (the
+    pre-existing `zoom_out_canvas()` method was never exercised by any
+    test before this), Toggle Interactivity (lock/unlock node dragging),
+    Toggle cards size (compact/expanded node height, exact round trip), and
+    Auto-arrange (deterministic layout — a dragged-away node returns to its
+    exact original position)."
+"passed","Wed Aug 26 05:05:43 UTC 2026","Wed Aug 26 05:06:05 UTC 2026","22642","tests.ui.skills","test_skill_test_panel_response_actions","TestSkillTestPanelResponseActions","","","test_test_panel_response_actions_enabled","Read aloud and Copy to clipboard are enabled and clickable on a
+        completed test-panel response."
+"passed","Wed Aug 26 04:50:04 UTC 2026","Wed Aug 26 04:51:30 UTC 2026","86105","tests.ui.admin","test_guardrails_live_reload","TestBlockedToolkitLiveReload","","","test_blocked_toolkit_live_reload_case_insensitive","Verify blocked toolkit takes effect immediately with case-insensitive matching."
+"passed","Wed Aug 26 05:14:42 UTC 2026","Wed Aug 26 05:15:31 UTC 2026","48983","tests.ui.pipelines","test_pipeline_import_via_file","","","","test_pipeline_import_via_file","Export a pipeline, delete the original, import the file back, verify the round trip."
+"passed","Wed Aug 26 04:53:37 UTC 2026","Wed Aug 26 04:54:17 UTC 2026","40253","tests.ui.pipelines","test_pipeline_attach_files_in_chat","","","","test_attach_files_in_chat","Attach a file in the pipeline's embedded chat; pipeline processes it without error."
+"passed","Wed Aug 26 04:56:58 UTC 2026","Wed Aug 26 04:57:37 UTC 2026","38545","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestToolkitCredentialIndicators","","","test_toolkit_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Toolkit."
+"passed","Wed Aug 26 04:55:27 UTC 2026","Wed Aug 26 04:55:46 UTC 2026","18925","tests.ui.pipelines_2","test_pipeline_management","TestSearchPipeline","","","test_search_pipeline_by_name","Search for a pipeline by name on the dashboard."
+"passed","Wed Aug 26 05:01:32 UTC 2026","Wed Aug 26 05:02:32 UTC 2026","59924","tests.ui.pipelines","test_pipeline_code_node_reads_state_variable","","","","test_code_node_reads_elitea_state_variable","Code node reads a custom state variable via elitea_state.get(...) and writes a processed value into another."
+"passed","Wed Aug 26 04:55:57 UTC 2026","Wed Aug 26 04:57:48 UTC 2026","111501","tests.ui.skills","test_import_agent_recreates_skills_with_new_ids","TestImportAgentRecreatesSkillsWithNewIds","","","test_import_agent_recreates_skills_with_new_ids","Export an Agent with an attached Skill, import it, verify a new
+        Skill entity (new unique ID) is created and correctly linked.
+
+        Steps (AFS test-specs/skills/l3_import-agent-recreates-skills-with-new-ids_ELITEA-1795.md):
+        1. (Precondition setup, mirrors ELITEA-1794) Create a Skill + an
+           Agent, attach the Skill, export the Agent via the actions
+           overflow menu.
+        2. Navigate to the Agents list; click ""Import""; verify a native
+           file chooser opens.
+        3. Select the exported file; verify the ""Import parameters""
+           preview dialog previews the embedded Agent + Skill content.
+        4. Confirm the dialog's Import button; verify the ""Import
+           Complete"" success dialog lists 1 agent + 1 skill.
+        5. Click ""Got it""; verify auto-navigation to the new Agent's
+           detail page with a new, distinct Agent ID.
+        6. Verify the imported Agent's Skills section shows the Skill
+           attached (waiting on the async application_skills fetch, not
+           asserting on first paint) and the API response's skill_id is
+           new/unique.
+        7. Navigate to the Skills list; verify two cards share the Skill's
+           name (source + imported); verify the imported Skill's own
+           detail page shows a new ID and verbatim content; verify the
+           source Skill AND the source Agent are both unaffected by the
+           import (Axis 2 additions — import must be purely additive).
+        8. Edit + save the imported Agent; verify a clean save.
+        "
+"passed","Wed Aug 26 04:48:58 UTC 2026","Wed Aug 26 04:49:51 UTC 2026","53136","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: '1bucket'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Wed Aug 26 05:00:30 UTC 2026","Wed Aug 26 05:01:18 UTC 2026","48160","tests.ui.agents","test_agent_remove_variable","TestAgentRemoveVariable","","","test_remove_variable_and_verify_removal_persists","Removing a {{variable}} reference from Instructions removes its
+        Variables row immediately (client-side, before Save), and the
+        removal persists after Save + a full-navigation reload, while other
+        variables remain intact."
+"passed","Wed Aug 26 04:56:11 UTC 2026","Wed Aug 26 04:56:25 UTC 2026","14164","tests.ui.pipelines_2","test_pipeline_management","TestPipelineIsolation","","","test_fixture_creates_fresh_pipeline","Verify the pipeline_id fixture produces a valid pipeline."
+"passed","Wed Aug 26 04:49:44 UTC 2026","Wed Aug 26 04:50:07 UTC 2026","22810","tests.ui.settings","test_context_management_toggle","TestContextManagementToggle","","","test_automatic_summarization_toggle_enables_disables_own_fields","Toggling Automatic Summarization OFF disables its own fields; ON re-enables them (ELITEA-2377).
+
+        Distinct observable from ``test_context_management_toggle_enables_disables_fields``
+        (ELITEA-2374): that test drives the *parent* Context Management toggle
+        and observes the Automatic Summarization sub-section mount/unmount as
+        a unit from the OUTSIDE. This test drives the Automatic Summarization
+        toggle itself and observes its own two children (Summarization
+        Instructions, Target Summary Tokens) — a DIFFERENT disable mechanism:
+        a real ``disabled`` prop (``MemorySummarization.jsx``), not a
+        conditional unmount. Fields stay mounted; assert
+        ``to_be_disabled()`` / ``to_be_enabled()``, never ``to_have_count(0)``.
+
+        AFS: test-specs/settings-user-profile/
+        lextend_automatic-summarization-toggle-enables-disables-fields_ELITEA-2377.md
+        "
+"passed","Wed Aug 26 04:50:07 UTC 2026","Wed Aug 26 04:50:30 UTC 2026","22277","tests.ui.settings","test_context_management_toggle","TestContextManagementToggle","","","test_target_summary_tokens_range_validation","Target Summary Tokens rejects values outside [100, 4096] client-side (ELITEA-2378).
+
+        Distinct observable from ``test_automatic_summarization_toggle_enables_disables_own_fields``
+        (ELITEA-2377): that test drives the Automatic Summarization toggle and
+        observes Target Summary Tokens' visible/enabled state as a SIDE EFFECT
+        of the toggle. This test drives Target Summary Tokens' OWN value and
+        observes its client-side min/max range validation (100-4096 — Yup
+        schema ``profileValidationSchema.summary_llm_settings.max_tokens`` in
+        ``src/[fsd]/features/settings/lib/helpers/profile.helpers.js``,
+        limits sourced from ``VALIDATION_LIMITS.MAX_TOKENS`` in
+        ``src/[fsd]/widgets/context-budget/lib/constants.js``): an out-of-range
+        value flips ``aria-invalid=""true""`` and BLOCKS the autosave submit
+        (``useFormikAutoSaveOnBlur`` calls ``validateForm()`` before
+        ``submitForm()`` and returns early on errors); an in-range value
+        autosaves normally.
+
+        AFS: test-specs/settings-user-profile/
+        lextend_target-summary-tokens-range-validation_ELITEA-2378.md
+        "
+"passed","Wed Aug 26 05:08:04 UTC 2026","Wed Aug 26 05:08:17 UTC 2026","13518","tests.ui.pipelines","test_pipeline_delete_version","","","","test_delete_pipeline_version_falls_back_to_base","Deleting a non-base version via the three-dot menu removes it from
+    the VERSION dropdown and the pipeline automatically falls back to
+    ""base"" — VERSION selector, URL, and Information panel all agree."
+"passed","Wed Aug 26 05:01:19 UTC 2026","Wed Aug 26 05:01:50 UTC 2026","31670","tests.ui.agents","test_agent_save_as_version","TestAgentSaveAsVersion","","","test_save_as_version_creates_named_version_visible_in_dropdown","Editing Instructions and clicking Save As Version creates a named
+        version that appears (and is active) in the VERSION dropdown; switching
+        back to 'base' reverts the Instructions field to its original content
+        (ELITEA-1890, Step 8)."
+"passed","Wed Aug 26 04:56:34 UTC 2026","Wed Aug 26 04:56:53 UTC 2026","19586","tests.ui.artifacts","test_artifacts_file_preview_edit_save","TestArtifactFilePreviewEditSave","","","Editing file content and saving persists the change","Editing content and clicking Save persists the change to the backend."
+"passed","Wed Aug 26 05:02:46 UTC 2026","Wed Aug 26 05:03:15 UTC 2026","29438","tests.ui.pipelines_2","test_pipeline_run_details_timeline_steps","","","","test_run_details_timeline_steps_display","Run Details Timeline shows one entry per executed node: green dot, node-id tooltip, timestamp, in order."
+"passed","Wed Aug 26 04:50:46 UTC 2026","Wed Aug 26 04:51:16 UTC 2026","30319","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_send_text_message","TC-CHAT-003, TC-CHAT-004: Send message and verify history."
+"passed","Wed Aug 26 04:59:28 UTC 2026","Wed Aug 26 04:59:55 UTC 2026","27064","tests.ui.pipelines_2","test_pipeline_printer_node_configuration","","","","test_printer_node_configuration_and_persistence","Configure a Printer node's PRINTER/Final Message fields; verify they persist through Save + reload."
+"skipped","Wed Aug 26 05:05:26 UTC 2026","Wed Aug 26 05:05:26 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[bitbucket]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Wed Aug 26 05:04:40 UTC 2026","Wed Aug 26 05:04:56 UTC 2026","15797","tests.ui.pipelines_2","test_pipeline_state_modifier_node_configuration","","","","test_state_modifier_node_configuration_and_persistence","Configure a State modifier node's Jinja Template/Input/Output; verify they persist through Save + reload."
+"passed","Wed Aug 26 04:54:09 UTC 2026","Wed Aug 26 04:54:39 UTC 2026","29871","tests.ui.pipelines_2","test_pipeline_management","TestDeletePipeline","","","test_delete_pipeline_via_api","Create a pipeline, delete via API, and verify it's gone from the UI."
+"passed","Wed Aug 26 04:59:16 UTC 2026","Wed Aug 26 04:59:31 UTC 2026","15155","tests.ui.agents","test_agent_name_character_limit","","","","test_agent_name_truncated_at_32_characters","Name field truncates input to 32 chars, no error at the limit, Save
+    enables once Description is also filled (ELITEA-1900).
+
+    Read-only: no agent is created, edited, or deleted.
+    "
+"skipped","Wed Aug 26 05:00:25 UTC 2026","Wed Aug 26 05:00:25 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[bitbucket]","Create a credential through the UI form for any toolkit type."
+"skipped","Wed Aug 26 05:02:00 UTC 2026","Wed Aug 26 05:02:00 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[gitlab]","Create a toolkit through the UI form for any toolkit type."
+"passed","Wed Aug 26 04:56:54 UTC 2026","Wed Aug 26 04:57:04 UTC 2026","10240","tests.ui.admin","test_personal_token_create_and_verify","TestPersonalTokenCreateAndVerify","","","test_invalid_token_name_shows_error_and_keeps_generate_disabled","ELITEA-2286 — a token name containing any character outside
+        [a-zA-Z0-9_-] (special characters or a space) shows the validation
+        error and keeps Generate disabled; replacing it with a conforming name
+        clears the error and re-enables Generate. Read-only against the
+        create-token FORM: never clicks Generate, creates no token, needs no
+        cleanup. (The empty-name-disables-Generate and
+        fresh-valid-name-enables-Generate observables are already asserted by
+        test_create_personal_token_and_verify_in_table's Step 2/Step 3 — not
+        repeated here.)"
+"passed","Wed Aug 26 04:57:53 UTC 2026","Wed Aug 26 04:58:58 UTC 2026","64984","tests.ui.pipelines","test_pipeline_code_node_elitea_client_user_info","","","","test_code_node_elitea_client_user_info","A Code node calling elitea_client.get_user_data() writes the authenticated user's data into a state variable."
+"passed","Wed Aug 26 05:10:19 UTC 2026","Wed Aug 26 05:10:34 UTC 2026","15370","tests.ui.pipelines","test_pipeline_execution","TestPipelineExecutionEdgeCases","","","test_empty_pipeline_execution","PIPE-015: Executing a pipeline with no nodes (only END)."
+"skipped","Wed Aug 26 04:55:56 UTC 2026","Wed Aug 26 04:55:56 UTC 2026","0","tests.ui.chat","test_context_management","TestContextManagementSettings","","","test_context_budget_reflects_profile_max_tokens[32k_tokens]","Context Budget panel in chat shows the max tokens set in profile.
+
+        Parameterized to verify:
+        - P1 (10,000 tokens): Standard value propagates correctly
+        - P2 (32,000 tokens): Updated value propagates (not cached)
+
+        Cleanup: deletes the created conversation via API.
+        "
+"passed","Wed Aug 26 04:57:48 UTC 2026","Wed Aug 26 04:59:48 UTC 2026","119314","tests.ui.skills","test_remove_attached_skill_from_agent","TestRemoveAttachedSkillFromAgent","","","test_remove_attached_skill_from_agent","Create two Skills + an Agent, attach both, remove Skill B via the
+        hover-revealed remove control + confirmation dialog, and verify Skill
+        A remains attached while Skill B survives standalone.
+
+        Steps (AFS test-specs/skills/l3_remove-attached-skill-from-agent_ELITEA-1792.md):
+        1. Create Skill A and Skill B via UI.
+        2. Create an Agent.
+        3. Attach both Skills to the Agent (precondition for this case).
+        4. Locate the hover-revealed ""remove skill"" control for Skill B.
+        5. Click it; confirm the ""Remove skill?"" dialog; Skill B is removed
+           from the UI list while Skill A remains.
+        6. Confirm persistence via a full page reload (detach auto-saves via
+           API; no explicit agent-level Save is available for this action).
+        7. Reopen the Agent (same reload satisfies this — no separate
+           close/reopen gesture exists in the live flow); only Skill A is
+           attached.
+        8. Navigate directly to Skill B's detail page and to the Skills list;
+           Skill B still exists standalone (detached, not deleted).
+        "
+"passed","Wed Aug 26 05:02:18 UTC 2026","Wed Aug 26 05:02:52 UTC 2026","34135","tests.ui.artifacts","test_artifacts_upload_duplicate_keep_both","TestArtifactUploadDuplicateKeepBoth","","","'Keep both' in 'Resolve duplicates' saves both the original and a renamed copy with distinct timestamps","Keep both uploads a renamed copy; the original duplicate is never re-touched."
+"passed","Wed Aug 26 05:10:36 UTC 2026","Wed Aug 26 05:11:18 UTC 2026","42356","tests.ui.pipelines","test_pipeline_execution","TestPipelineExecutionEdgeCases","","","test_navigate_away_and_reexecute","PIPE-016: Navigate away from the pipeline and return to re-execute."
+"passed","Wed Aug 26 05:05:13 UTC 2026","Wed Aug 26 05:05:42 UTC 2026","29703","tests.ui.skills","test_skill_test_panel_no_new_conversation","TestSkillTestPanelNoNewConversation","","","test_test_panel_does_not_create_new_chat_conversation","Running a test prompt via the SkillTestPanel must not create a
+        new Chat conversation — verified via network capture, Chat sidebar
+        DOM count, and the Conversations API ground truth."
+"passed","Wed Aug 26 05:01:07 UTC 2026","Wed Aug 26 05:01:52 UTC 2026","44386","tests.ui.skills","test_skill_export_import","TestSkillExportImport","","","test_export_and_import_skill_base_version","Export a skill's base version, import the file, verify the round trip.
+
+        Steps (see AFS for full detail):
+        1. Navigate to create-skill form; Save starts disabled.
+        2. Fill name/description/tags/instructions; Save enables.
+        3. Save; note the source skill ID.
+        4. Export the base version via the overflow menu; verify .md download.
+        5. Read the exported file; verify frontmatter + instructions body.
+        6. Navigate to Skills list; click Import; verify file chooser.
+        7. Upload the exported file; verify the Import parameters dialog.
+        8. Confirm import; verify navigation + success toast + new unique ID.
+        9. Verify imported skill's version/name/description/tags/instructions.
+        10. Edit + save the imported skill; verify a clean save.
+        "
+"passed","Wed Aug 26 04:49:21 UTC 2026","Wed Aug 26 04:49:44 UTC 2026","23298","tests.ui.settings","test_context_management_toggle","TestContextManagementToggle","","","test_context_management_toggle_enables_disables_fields","Toggling Context Management OFF unmounts token fields + summarization; ON restores them.
+
+        Steps map 1:1 to the AFS steps (see module docstring for the AFS path).
+        "
+"passed","Wed Aug 26 04:58:11 UTC 2026","Wed Aug 26 04:58:28 UTC 2026","17505","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantViewModes","","","test_expand_collapse_fullview","Widget can expand to full view and collapse back.
+
+        Covers: 2.3.1, 2.3.2, 2.3.3
+        "
+"passed","Wed Aug 26 04:49:43 UTC 2026","Wed Aug 26 04:50:16 UTC 2026","33358","tests.ui.pipelines_2","test_pipeline_llm_node_system_task_chat_history_config","","","","test_llm_node_config_verified_via_yaml","Configure an LLM node fully, then verify every field via the parsed YAML view.
+
+    TMS: ELITEA-2027 — extend-existing over this file's ELITEA-2004 test
+    (test-specs/pipelines/
+    lextend_pipeline-node-config-verified-via-yaml_ELITEA-2027.md).
+    Establishes YAML-based verification (parse the pipeline's YAML view and
+    assert field values) as a working, reusable technique for validating
+    node configuration end-to-end, instead of re-reading individual UI
+    fields — the case's own stated purpose. Reuses ELITEA-2004's LLM node
+    config methods and ELITEA-2042's state-panel / yaml.safe_load() pattern.
+    Does not modify either existing test above.
+    "
+"passed","Wed Aug 26 04:51:23 UTC 2026","Wed Aug 26 04:51:32 UTC 2026","9417","tests.ui.agent_hub","test_agent_hub_page_loads_private_project","TestAgentHubPageLoadsPrivateProject","","","test_agent_hub_page_loads_private_project","Agent Hub (Catalog) page loads without error for a Private-project
+        user: heading, search bar, full category filter rail, and agent
+        cards are all visible, with zero console errors."
+"passed","Wed Aug 26 04:59:32 UTC 2026","Wed Aug 26 05:00:30 UTC 2026","58209","tests.ui.agents","test_agent_publish_unpublish_version","TestAgentPublishUnpublishVersion","","","test_publish_draft_version_then_unpublish_reverts_to_draft","Publishing a Draft version clones it into a Published version and
+        makes Unpublish available; clicking Unpublish reverts that version's
+        status back to Draft."
+"passed","Wed Aug 26 05:09:30 UTC 2026","Wed Aug 26 05:09:49 UTC 2026","19057","tests.ui.pipelines","test_pipeline_execution","TestExecutePipeline","","","test_pipeline_response_is_meaningful","PIPE-011, PIPE-012: Execute a simple pipeline and verify meaningful response."
+"passed","Wed Aug 26 04:53:58 UTC 2026","Wed Aug 26 04:54:21 UTC 2026","22692","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_preview_personalization","TC4: Voice Personalization Controls in Settings Page.
+        TC-1914
+        "
+"passed","Wed Aug 26 05:10:16 UTC 2026","Wed Aug 26 05:10:38 UTC 2026","21495","tests.ui.pipelines_2","test_pipeline_welcome_message_shown_before_first_input","","","","test_pipeline_welcome_message_shown_before_first_input","Welcome message renders automatically before any user input."
+"passed","Wed Aug 26 04:50:39 UTC 2026","Wed Aug 26 04:50:50 UTC 2026","10713","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
+
+        Acceptance Criteria #2: Counter turns red when 0 characters remain.
+        "
+"passed","Wed Aug 26 04:50:23 UTC 2026","Wed Aug 26 04:50:39 UTC 2026","16053","tests.ui.agent_hub","test_agent_hub_like_agent_from_modal","TestAgentHubLikeAgentFromModal","","","test_agent_hub_like_agent_from_modal","Like an agent from the expanded detail modal: toggle state, increment
+        count, and verify persistence across modal close/reopen and in the
+        card list."
+"passed","Wed Aug 26 04:52:41 UTC 2026","Wed Aug 26 04:53:10 UTC 2026","29307","tests.ui.artifacts","test_artifacts_delete_subfolder_checkbox","TestArtifactDeleteSubfolderCheckbox","","","Selecting a subfolder via checkbox and confirming toolbar delete removes the folder and its contents; other items unaffected","Deleting a subfolder via checkbox removes it and its contents only.
+
+        Bucket is mutated exactly once at setup (seeded with 5 keys — the
+        minimal fresh state this observable inherently requires, since the
+        case's own purpose is destructive: deleting part of the bucket's
+        contents; workflow skill Hard Rule 10) — every assertion afterward
+        reads that state (plus the one delete mutation the case itself
+        drives) without further seeding.
+        "
+"passed","Wed Aug 26 04:51:27 UTC 2026","Wed Aug 26 04:51:39 UTC 2026","12568","tests.ui.pipelines","test_pipeline_advanced","TestActionsMenu","","","test_three_dot_menu_lists_items","PIPE-028: The three-dot menu should contain expected items."
+"passed","Wed Aug 26 05:04:56 UTC 2026","Wed Aug 26 05:05:08 UTC 2026","11361","tests.ui.pipelines_2","test_pipeline_state_panel_attachments_module","","","","test_state_panel_attachments_module","Enabling Attachments auto-adds an immutable input_attachments STATE var; disabling removes it."
+"passed","Wed Aug 26 04:48:42 UTC 2026","Wed Aug 26 04:49:14 UTC 2026","31749","tests.ui.pipelines_2","test_pipeline_llm_node_system_task_chat_history_config","","","","test_llm_node_system_task_chat_history_config","Configure an LLM node's SYSTEM/TASK/CHAT HISTORY + Input/Output; verify persistence."
+"passed","Wed Aug 26 04:52:10 UTC 2026","Wed Aug 26 04:52:20 UTC 2026","10060","tests.ui.agent_hub","test_agent_hub_trending_category","TestAgentHubTrendingCategory","","","test_agent_hub_trending_category_displays_agents","Verify Trending category filter shows agents when selected.
+
+        Steps:
+        1. Navigate to Agent Hub (Catalog)
+        2. Click the Trending category filter chip
+        3. Verify the filter is highlighted/active
+        4. Verify agents are displayed under Trending section
+        5. Verify the section header ""Trending"" is visible
+        "
+"passed","Wed Aug 26 04:53:59 UTC 2026","Wed Aug 26 04:54:08 UTC 2026","8189","tests.ui.pipelines_2","test_pipeline_management","TestEditPipeline","","","test_pipeline_has_configuration_and_history_tabs","Pipeline detail page shows configuration panel and history button."
+"passed","Wed Aug 26 05:02:53 UTC 2026","Wed Aug 26 05:03:26 UTC 2026","32984","tests.ui.artifacts","test_artifacts_upload_duplicate_skip","TestArtifactUploadDuplicateSkip","","","'Skip' in 'Resolve duplicates' uploads only the non-duplicate file, leaves the duplicate untouched","Skip uploads ONLY the non-duplicate file; the duplicate is never touched."
+"passed","Wed Aug 26 04:54:29 UTC 2026","Wed Aug 26 04:54:48 UTC 2026","19352","tests.ui.chat","test_chat_interface","TestSidebarNavigation","","","test_open_close_sidebar","TC-CHAT-021: Open/close sidebar drawer."
+"passed","Wed Aug 26 05:05:45 UTC 2026","Wed Aug 26 05:06:01 UTC 2026","15822","tests.ui.pipelines_2","test_pipeline_structured_output_toggle_persistence","","","","test_pipeline_structured_output_toggle_persistence","Structured output toggle on an LLM node persists both directions through save + reload."
+"passed","Wed Aug 26 04:53:38 UTC 2026","Wed Aug 26 04:56:26 UTC 2026","168134","tests.ui.admin","test_guardrails_live_reload","TestSensitiveToolLiveReload","","","test_sensitive_tool_live_reload_case_insensitive","Verify sensitive tool triggers authorization dialog immediately after config change."
+"passed","Wed Aug 26 04:56:25 UTC 2026","Wed Aug 26 04:56:28 UTC 2026","2445","tests.ui.pipelines_2","test_pipeline_management","TestPipelineIsolation","","","test_fixture_cleanup_cycle","Verify that creating and deleting pipelines via the API works."
+"passed","Wed Aug 26 05:01:51 UTC 2026","Wed Aug 26 05:02:26 UTC 2026","35409","tests.ui.agents","test_agent_save_as_version_preserves_skills","TestAgentSaveAsVersionPreservesSkills","","","test_agent_save_as_version_preserves_skills","Create a Skill + Agent (both via UI), attach the Skill, Save As
+        Version, and verify the Skill is still attached under the new
+        version — confirmed both via the UI and a fresh API response."
+"passed","Wed Aug 26 05:05:07 UTC 2026","Wed Aug 26 05:05:36 UTC 2026","29062","tests.ui.agents","test_build_with_ai_skill_from_agent","TestBuildWithAISkillFromAgent","","","test_build_with_ai_skill_auto_attaches_and_redirects_to_agent","Creating a Skill via Build with AI from an Agent's SKILLS section
+        redirects back to the Agent editor (never the Skill details page),
+        auto-attaches the new Skill once the async attach chain completes,
+        and the attachment persists after Save + reload.
+
+        Steps (AFS
+        test-specs/agents/l2_build-with-ai-skill-from-agent-auto-attaches-and-redirects_ELITEA-1999.md):
+        1. Open the fixture Agent for editing; in the SKILLS section click
+           ""+ Skill"" -> ""Create new""; verify navigation to
+           /skills/create?source_application_id=...&return_url=....
+        2. Click ""Build with AI""; fill the prompt; click Generate; verify
+           the generate-draft POST resolves 200 and the review form shows
+           the generated Name/Description/Instructions.
+        3. Click ""Create Skill""; verify the creation POST resolves 201 and
+           the URL transitions to /agents/all/{agent_id}?..., NOT to a
+           Skill-details URL.
+        4. Verify the user lands on the Agent editor, not the Skill details
+           page.
+        5. Verify the new Skill is automatically attached (async — poll,
+           do not assert immediately, see SKILL_ATTACH_TIMEOUT).
+        6. Save the Agent and reload it; verify the attached Skill is still
+           present and correctly linked.
+        "
+"passed","Wed Aug 26 04:58:44 UTC 2026","Wed Aug 26 04:58:58 UTC 2026","14503","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_page_loads","The home page should load without errors."
+"passed","Wed Aug 26 04:59:21 UTC 2026","Wed Aug 26 04:59:52 UTC 2026","30354","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[github]","Create a credential through the UI form for any toolkit type."
+"passed","Wed Aug 26 05:03:51 UTC 2026","Wed Aug 26 05:04:15 UTC 2026","24000","tests.ui.pipelines","test_pipeline_custom_node_configuration","","","","test_custom_node_configuration","Add a Custom node, configure Toolkit/Tool/Input-mapping/Input/Output; verify persistence."
+"passed","Wed Aug 26 05:10:01 UTC 2026","Wed Aug 26 05:10:16 UTC 2026","14843","tests.ui.pipelines_2","test_pipeline_webhook_trigger_settings_modal","","","","test_webhook_trigger_settings_modal","Webhook settings modal: full field inventory, type switching, and persistence."
+"passed","Wed Aug 26 04:55:11 UTC 2026","Wed Aug 26 04:55:43 UTC 2026","32016","tests.ui.pipelines","test_pipeline_attach_pipeline_as_tool","","","","test_attach_pipeline_as_tool","Attach a second pipeline as a tool via TOOLS ""+ Pipeline""; verify save/reload persistence."
+"skipped","Wed Aug 26 05:03:53 UTC 2026","Wed Aug 26 05:03:53 UTC 2026","0","tests.ui.artifacts","test_bucket_permissions_api","TestBucketPermissionsAPI","","","No Access: All API operations return 403 Forbidden","Verify that 'No access' permission blocks GET, POST, and DELETE API calls.
+
+        ELITEA-2493: User B with 'No access' exception cannot access the bucket
+        via direct API calls — all operations must return 403 Forbidden.
+
+        Steps:
+        1. Admin sets User B to 'No access' for the test bucket (UI)
+        2. Verify GET request returns 403 Forbidden (API as User B)
+        3. Verify POST (upload) request returns 403 Forbidden (API as User B)
+        4. Verify DELETE request returns 403 Forbidden (API as User B)
+        5. Cleanup: Restore User B to default permissions (UI)
+        "
+"passed","Wed Aug 26 04:49:43 UTC 2026","Wed Aug 26 04:50:03 UTC 2026","20258","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_yaml_content_reflects_pipeline","PIPE-020: YAML content should reflect the pipeline structure."
+"passed","Wed Aug 26 04:53:00 UTC 2026","Wed Aug 26 04:53:33 UTC 2026","33001","tests.ui.pipelines","test_pipeline_agent_node_integration","","","","test_agent_node_fresh_attach","Fresh-attach an Agent, add + configure an Agent node, save, verify reload persistence."
+"passed","Wed Aug 26 04:58:45 UTC 2026","Wed Aug 26 04:59:04 UTC 2026","18845","tests.ui.pipelines_2","test_pipeline_node_auto_increment_naming","","","","test_node_auto_increment_naming_by_type","Nodes of the same type auto-name with an incrementing number; a
+    different type's counter starts independently at 1."
+"passed","Wed Aug 26 04:58:08 UTC 2026","Wed Aug 26 04:58:44 UTC 2026","36765","tests.ui.pipelines_2","test_pipeline_multiple_browser_tabs","","","","test_pipeline_multiple_browser_tabs","Two pipelines opened in separate browser tabs keep independent titles
+    and content; switching to / closing one tab has zero effect on the other."
+"passed","Wed Aug 26 04:58:58 UTC 2026","Wed Aug 26 04:59:15 UTC 2026","16582","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_main_content_visible","The main content area should render after navigation."
+"passed","Wed Aug 26 04:54:22 UTC 2026","Wed Aug 26 04:55:12 UTC 2026","50487","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_settings_not_visible_by_default","TC5: Voice settings are NOT displayed in Chat by default.
+
+        Regression test for bug #5235: Read-out control was inappropriately
+        visible in default Chat window state.
+
+        Expected:
+            Voice settings controls should only appear when Read-out and
+            Voice mode features are explicitly activated.
+
+        Related:
+            - Bug: https://github.com/EliteaAI/elitea_issues/issues/5235
+        "
+"passed","Wed Aug 26 04:56:13 UTC 2026","Wed Aug 26 04:56:36 UTC 2026","23424","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantMessaging","","","test_send_message_and_receive_response","User can send a message and receive AI response.
+
+        Covers: 3.2.1-3.2.7, 3.2.9
+        "
+"broken","Wed Aug 26 05:07:09 UTC 2026","Wed Aug 26 05:08:01 UTC 2026","52082","tests.ui.pipelines","test_pipeline_decision_node_execution","","","","test_decision_node_routes_execution_to_correct_branch","Decision node classifies chat input and routes execution to the matching branch; config persists."
+"passed","Wed Aug 26 04:51:30 UTC 2026","Wed Aug 26 04:52:12 UTC 2026","42197","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'bucket one'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Wed Aug 26 04:50:10 UTC 2026","Wed Aug 26 04:50:22 UTC 2026","12042","tests.ui.agent_hub","test_agent_hub_filter_single_category","TestAgentHubFilterSingleCategory","","","test_agent_hub_filter_by_single_category","Clicking a single category filter-rail chip selects that chip and
+        filters the Agent Hub content to that category's agents only."
+"passed","Wed Aug 26 05:08:18 UTC 2026","Wed Aug 26 05:08:28 UTC 2026","9891","tests.ui.pipelines","test_pipeline_edge_creation","","","","test_drag_connect_creates_edge_replacing_prior_transition","Dragging LLM 1 -> Printer 1 creates the edge, replacing LLM 1's prior
+    -> END edge; the new edge survives Save + reload."
+"passed","Wed Aug 26 05:09:25 UTC 2026","Wed Aug 26 05:09:46 UTC 2026","21736","tests.ui.pipelines_2","test_pipeline_toolkit_node_config_and_input_mapping","","","","test_toolkit_node_config_and_input_mapping","Attach a toolkit, configure a Toolkit node's Tool + Input mapping; verify persistence."
+"passed","Wed Aug 26 04:50:30 UTC 2026","Wed Aug 26 04:50:42 UTC 2026","11869","tests.ui.chat","test_chat_interface","TestPageLoadAndRendering","","","test_chat_page_loads_with_functional_input","TC-CHAT-001, TC-CHAT-002: Chat page loads with functional message input."
+"passed","Wed Aug 26 04:58:20 UTC 2026","Wed Aug 26 04:59:18 UTC 2026","57896","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestAgentCredentialIndicators","","","test_agent_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Agent."
+"passed","Wed Aug 26 05:04:28 UTC 2026","Wed Aug 26 05:05:04 UTC 2026","36400","tests.ui.agents","test_agent_with_github_toolkit","TestChatWithAgentToolkit","","","test_agent_chat_with_github_toolkit","Add toolkit to agent, chat via /chat, verify toolkit execution."
+"passed","Wed Aug 26 04:52:20 UTC 2026","Wed Aug 26 04:52:43 UTC 2026","22907","tests.ui.agent_hub","test_empty_state","TestCatalogEmptyState","","","Empty state displays when search matches no agents","Verify that when a search term matches zero agents, the 'No agents found' and 'Try adjusting your search terms' messages display. Page heading, search input, tabs, and filter rail remain visible and functional. No agent cards present."
+"passed","Wed Aug 26 05:06:02 UTC 2026","Wed Aug 26 05:07:21 UTC 2026","79085","tests.ui.pipelines_2","test_pipeline_subgraph_state_isolation","","","","test_subgraph_state_sharing_non_common_state_isolation","Non-common state vars stay isolated between a parent pipeline and a child
+    pipeline attached as a tool to its Agent node: state_3 (child-only) never
+    surfaces in the parent's Run Details, state_2 (parent-only) is untouched by
+    the child, and state_1 (common) IS shared (sanity control)."
+"passed","Wed Aug 26 04:49:46 UTC 2026","Wed Aug 26 04:50:06 UTC 2026","20355","tests.ui.agents","test_agent_back_navigation","","","","test_back_button_from_agent_detail_returns_to_intact_agents_list","Back button on agent detail page returns to Agents dashboard with
+    the list intact (ELITEA-1869).
+
+    Uses agent_id fixture to ensure at least one agent exists.
+    "
+"skipped","Wed Aug 26 04:56:39 UTC 2026","Wed Aug 26 04:56:46 UTC 2026","7577","tests.ui.admin","test_notification_text_content","TestNotificationTextContent","","","test_notification_text_content_renders_correctly","All 4 known notification types render their exact expected templates;
+        no row (of any type) shows raw JSON, broken HTML, or ""undefined"" text."
+"passed","Wed Aug 26 04:58:27 UTC 2026","Wed Aug 26 04:58:49 UTC 2026","21790","tests.ui.artifacts","test_artifacts_file_preview_open_editor_ui","TestArtifactFilePreviewOpenEditorUI","","","Opening a supported text file via the View/Edit icon shows the full editor UI","Opening a file via the View/Edit icon renders the full editor UI contract."
+"passed","Wed Aug 26 04:56:08 UTC 2026","Wed Aug 26 04:56:22 UTC 2026","14007","tests.ui.pipelines","test_pipeline_canvas_zoom_and_pan","","","","test_canvas_zoom_pan_and_fit_view","Fit View shows all nodes; Zoom In enlarges the canvas; dragging pans
+    the viewport by the exact delta; Fit View again restores the exact
+    original all-nodes-visible transform."
+"passed","Wed Aug 26 04:50:06 UTC 2026","Wed Aug 26 04:50:24 UTC 2026","17503","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_flow_yaml_round_trip","PIPE-021: Toggle Flow → YAML → Flow preserves the canvas."
+"skipped","Wed Aug 26 04:55:56 UTC 2026","Wed Aug 26 04:55:56 UTC 2026","0","tests.ui.chat","test_context_management","TestContextManagementSettings","","","test_context_budget_reflects_profile_max_tokens[10k_tokens]","Context Budget panel in chat shows the max tokens set in profile.
+
+        Parameterized to verify:
+        - P1 (10,000 tokens): Standard value propagates correctly
+        - P2 (32,000 tokens): Updated value propagates (not cached)
+
+        Cleanup: deletes the created conversation via API.
+        "
+"passed","Wed Aug 26 04:49:22 UTC 2026","Wed Aug 26 04:49:39 UTC 2026","17063","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_yaml_view_toggle","PIPE-019: Switch to YAML view and verify the editor is visible."
+"broken","Wed Aug 26 04:56:09 UTC 2026","Wed Aug 26 04:56:09 UTC 2026","744","tests.ui.pipelines_2","test_pipeline_management","TestSearchPipeline","","","test_search_placeholder_and_dashboard_grid_filters_and_clears","ELITEA-2023: search filters the dashboard grid (not just the
+        suggestions popover) and Clear restores the full, unfiltered list.
+
+        Unlike ``test_search_pipeline_by_name``/``test_search_pipeline_no_results``
+        above (which exercise the suggestions popover via the old fill-only
+        ``search()``), this asserts the actual grid-narrowing filter, which
+        activates only on Enter — see ``PipelinesListPage.search()`` docstring.
+        "
+"passed","Wed Aug 26 04:53:47 UTC 2026","Wed Aug 26 04:55:56 UTC 2026","129116","tests.ui.skills","test_ghost_skill_after_agent_removed","TestGhostSkillAfterAgentRemoved","","","test_ghost_skill_not_shown_after_agent_participant_removed","Create a skill, attach it to an agent, add the agent as a chat
+        participant, confirm '~mention' shows the skill, dismiss, remove the
+        participant, and confirm the skill no longer appears in '~mention'
+        afterward.
+
+        Steps (AFS test-specs/skills/l3_ghost-skill-not-shown-after-agent-participant-removed_ELITEA-1793.md):
+        1. Create Skill, create Agent, attach the skill to the agent.
+        2. Open Chat, add the agent as a participant.
+        3. Type '~' — the ""Mention skill"" popper lists the attached skill.
+        4. Dismiss the popper with Escape without selecting anything.
+        5. Remove the agent from the chat's participants.
+        6. Type '~' again — the removed agent's skill should NOT be listed.
+        7. Control check: a fresh conversation that never had a participant
+           shows the correct ""No skills attached to this agent"" empty state.
+        "
+"passed","Wed Aug 26 04:54:01 UTC 2026","Wed Aug 26 04:54:26 UTC 2026","25487","tests.ui.artifacts","test_artifacts_download_multiple_files_zip","TestArtifactDownloadMultipleFilesZip","","","Selecting 2 files via checkbox and clicking 'Download files' downloads them as a ZIP with a live progress dialog","Selecting 2 files and clicking 'Download files' produces a ZIP.
+
+        Read-only from the bucket's perspective at the end: the bucket is
+        mutated exactly once (seeded with 4 files under ``a1/``) — the
+        minimal state this observable inherently requires (workflow skill
+        Hard Rule 10) — then every assertion reads that state without
+        further mutation.
+        "
+"passed","Wed Aug 26 04:53:06 UTC 2026","Wed Aug 26 04:53:19 UTC 2026","12687","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_internal_tools_panel_shows_all_tools","TC-CHAT-012: Internal tools panel displays all available tools."
+"passed","Wed Aug 26 04:55:02 UTC 2026","Wed Aug 26 04:56:08 UTC 2026","66665","tests.ui.artifacts","test_artifacts_duplicate_bucket_name","TestArtifactDuplicateBucketName","","","Duplicate bucket name is rejected; no duplicate is created","Attempting to create a bucket with a colliding name is rejected.
+
+        The precondition bucket is a genuine mutation the observable
+        requires (workflow skill Hard Rule 10: the case's own subject is
+        ""does the system reject a name that collides with something real"",
+        so a real collision target must exist) — created via the SAME ""New
+        Bucket"" UI form the duplicate-attempt itself uses, keeping both
+        creations on the identical code path the case exercises (not the
+        ``artifact_bucket`` API fixture).
+        "
+"passed","Wed Aug 26 04:49:03 UTC 2026","Wed Aug 26 04:50:57 UTC 2026","113704","tests.ui.skills","test_agent_instructions_tilde_mention","TestTildeMentionListsOnlyAttachedSkills","","","test_tilde_mention_in_instructions_lists_only_attached_skills","Attach 2 of 3 distinct Skills to an Agent, then verify the ""~""
+        mention panel in the Instructions field is scoped to only the
+        attached 2 — the 3rd (unattached) Skill never appears, including
+        on a second, independent ""~"" trigger after clearing the field.
+
+        Steps (AFS test-specs/skills/l3_tilde-mention-lists-only-attached-skills_ELITEA-1791.md):
+        1. Confirm/create 3 distinct Skills (reuse a pre-existing one as
+           Skill A, looked up via API rather than assumed by name — same
+           environment-robustness rule as ELITEA-1790's cleanup note —
+           falling back to creating it fresh if none exists), create an
+           Agent, attach Skill A + Skill B, leave Skill C unattached.
+        2. Click the Instructions field — becomes focused/editable.
+        3-4. Type ""~"" — ""Mention skill"" panel appears, listing exactly
+           Skill A and Skill B; Skill C is asserted absent by exact-name
+           locator (not merely a row count).
+        5. Select Skill A — inserts ""~<skill-name>"" as plain text.
+        6. Select-all + delete, retype ""~"" — same 2-item scoped list
+           reappears; Skill C still absent (re-evaluated live).
+        "
+"passed","Wed Aug 26 04:58:48 UTC 2026","Wed Aug 26 04:59:15 UTC 2026","27729","tests.ui.agents","test_agent_icon_management","TestAgentIconManagement","","","test_agent_icon_change_persists_on_list_card","Selecting a new icon in the picker updates the header immediately
+        and the identical icon persists on the agent's dashboard card."
+"passed","Wed Aug 26 04:55:13 UTC 2026","Wed Aug 26 04:55:30 UTC 2026","16902","tests.ui.chat","test_chat_interface","TestSearchAndErrorHandling","","","test_search_conversations_dialog","TC-CHAT-023: Search conversations."
+"passed","Wed Aug 26 05:09:50 UTC 2026","Wed Aug 26 05:10:17 UTC 2026","27333","tests.ui.pipelines","test_pipeline_execution","TestExecutePipeline","","","test_message_count_starts_at_zero_and_grows","PIPE-013: Fresh pipeline starts at zero messages and count grows with each send."
+"passed","Wed Aug 26 04:55:13 UTC 2026","Wed Aug 26 04:55:30 UTC 2026","17063","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantLauncher","","","test_launcher_visible_and_opens_widget","Launcher is visible and opens Support Assistant widget.
+
+        Covers: 2.1.1, 2.2.1, 2.2.2
+        "
+"passed","Wed Aug 26 05:01:21 UTC 2026","Wed Aug 26 05:02:00 UTC 2026","38827","tests.ui.pipelines_2","test_pipeline_run_details_multiple_state_variables","","","","test_run_details_multiple_state_variables_different_types","Run Details STATES section renders 4 typed custom variables, each independently expandable."
+"passed","Wed Aug 26 04:53:22 UTC 2026","Wed Aug 26 04:53:32 UTC 2026","9790","tests.ui.chat","test_chat_interface","TestHashSearch","","","test_hash_search_participants","TC-CHAT-017: Use # to search participants."
+"passed","Wed Aug 26 05:02:07 UTC 2026","Wed Aug 26 05:02:36 UTC 2026","28781","tests.ui.chat","test_open_existing_conversation_from_this_week_section","TestOpenExistingConversationFromThisWeekSection","","","test_open_existing_conversation_from_this_week_section","Verify This Week section is collapsed by default and expanding it
+        allows clicking a conversation which displays full history and active input.
+
+        Steps (from AFS):
+        1. Navigate to the Chats page
+        2. Locate the This Week section and verify it is collapsed by default
+        3. Click the This Week section header to expand it
+        4. Click on a conversation from the This Week list
+        5. Verify the message input field is active and ready for input
+        6. Verify the correct model or agent name is displayed in the input bar
+        7. Verify the PARTICIPANTS panel reflects the correct participant
+
+        Setup: Ensure at least one conversation exists in ""This Week"" section.
+        "
+"passed","Wed Aug 26 05:05:49 UTC 2026","Wed Aug 26 05:06:51 UTC 2026","61978","tests.ui.agents","test_import_agent_zip_nested_agent_dependencies","TestImportAgentZipNestedAgentDependencies","","","test_import_agent_zip_nested_agent_dependencies","Export a main Agent with a nested Agent dependency attached
+        (produces a .zip), import it back, and verify both entities are
+        recreated with new IDs and correctly linked.
+
+        Steps (AFS test-specs/agents/l3_import-agent-zip-nested-dependencies_ELITEA-1902.md):
+        1. (Precondition setup) Create a nested Agent, then a main Agent
+           with the nested Agent attached via the ""+ Agent"" picker.
+        2. Export the main Agent via the actions overflow menu; verify a
+           `.zip` file is downloaded.
+        3. Unzip and inspect the archive's contents; verify it contains one
+           `.agent.md` per entity (main + nested), and the main entity's
+           frontmatter references the nested Agent.
+        4. Navigate to Agents list; import the `.zip`; verify the ""Import
+           parameters"" preview dialog opens.
+        5. Verify the import wizard lists entity cards for the main agent
+           AND the nested dependency.
+        6. Confirm the dialog's Import button; verify the ""Import
+           Complete"" success dialog.
+        7. Verify the success dialog lists both new entities (""2 agents"").
+        8. Click ""Got it""; verify the main agent and nested agent are both
+           created with new, distinct IDs and correctly linked (Tools
+           section shows the nested agent attached).
+        "
+"passed","Wed Aug 26 04:49:21 UTC 2026","Wed Aug 26 04:49:52 UTC 2026","31181","tests.ui.agent_hub","test_agent_hub_copy_link_from_modal","TestAgentHubCopyLinkFromModal","","","test_copy_link_from_modal_navigates_to_agent","Copy a link from the agent detail modal's Share action, navigate to it
+        in a new page context, and verify the modal auto-opens showing the same
+        agent's details (name, description, starters, welcome message)."
+"passed","Wed Aug 26 04:57:41 UTC 2026","Wed Aug 26 04:58:25 UTC 2026","44436","tests.ui.artifacts","test_artifacts_file_preview_markdown_raw_edit_save","TestArtifactFilePreviewMarkdownRawEditSave","","","Markdown file Raw tab enables editing; Save persists and Preview auto-shows the change","Raw tab enables editing; Save persists the change and re-shows it in Preview."
+"passed","Wed Aug 26 04:59:18 UTC 2026","Wed Aug 26 05:02:07 UTC 2026","169006","tests.ui.chat","test_image_creation","TestImageCreation","","","test_create_image[minimal_prompt]","Create image from text prompt and verify image appears in response."
+"skipped","Wed Aug 26 05:05:26 UTC 2026","Wed Aug 26 05:05:26 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[gitlab]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Wed Aug 26 04:56:39 UTC 2026","Wed Aug 26 04:57:11 UTC 2026","32059","tests.ui.pipelines_2","test_pipeline_mcp_node_empty_toolkit_before_attach","","","","test_mcp_node_empty_toolkit_before_attach","MCP node Toolkit dropdown is empty before attach, populates after."
+"passed","Wed Aug 26 05:02:27 UTC 2026","Wed Aug 26 05:03:17 UTC 2026","50888","tests.ui.agents","test_agent_version_selector_order","TestAgentVersionSelectorOrder","","","test_version_selector_lists_versions_in_correct_order","The VERSION dropdown lists all versions with name+date metadata,
+        Draft versions above an unpinned base, base last when unpinned, and
+        the pinned/default version at the top with a pin icon — with no
+        independent Published-before-Draft tier (CLARIFICATION #1091)."
+"passed","Wed Aug 26 04:49:52 UTC 2026","Wed Aug 26 04:50:40 UTC 2026","47730","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'new-bucket$'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Wed Aug 26 04:51:52 UTC 2026","Wed Aug 26 04:52:09 UTC 2026","16076","tests.ui.agent_hub","test_agent_hub_start_conversation_creates_new_chat","TestAgentHubStartConversationCreatesNewChat","","","test_agent_hub_start_conversation_creates_new_chat","Starting a conversation from a Catalog agent's detail modal creates a
+        new chat and redirects the user to the Chat interface with the
+        blank-conversation welcome message displayed."
+"passed","Wed Aug 26 04:53:35 UTC 2026","Wed Aug 26 04:53:53 UTC 2026","17512","tests.ui.chat","test_chat_interface","TestHashSearch","","","test_add_participant_via_hash_search","TC-CHAT-018: Add participant via # search and select option.
+
+        The hash search feature detects '#' via keydown events, so we must
+        use press_sequentially() instead of fill() to trigger it.
+        "
+"passed","Wed Aug 26 05:01:13 UTC 2026","Wed Aug 26 05:01:59 UTC 2026","46325","tests.ui.artifacts","test_artifacts_upload_duplicate_cancel","TestArtifactUploadDuplicateCancel","","","Cancel in 'Resolve duplicates' modal aborts entire upload, including the non-duplicate file","Cancel in the duplicate-resolution modal stops the WHOLE upload.
+
+        Read-only from the fresh bucket's perspective at the end: the bucket
+        is deliberately mutated once (seeded with sample.txt) so the
+        duplicate can be triggered at all — this is the minimal state the
+        observable inherently requires (workflow skill Hard Rule 10) — then
+        the test proves that mutation is the ONLY one that ever lands.
+        "
+"passed","Wed Aug 26 04:55:57 UTC 2026","Wed Aug 26 04:56:09 UTC 2026","11499","tests.ui.agents","test_agent_create_button_navigation","","","","test_create_button_navigates_to_create_agent_page","Sidebar create-agent button navigates to an empty Create Agent form
+    with Save disabled by default (ELITEA-1870).
+
+    Read-only: no agent is created, edited, or deleted.
+    "
+"passed","Wed Aug 26 04:51:44 UTC 2026","Wed Aug 26 04:51:58 UTC 2026","14345","tests.ui.pipelines","test_pipeline_advanced","TestActionsMenu","","","test_export_pipeline_if_available","PIPE-029: Export pipeline via menu (skips if not available)."
+"passed","Wed Aug 26 05:02:46 UTC 2026","Wed Aug 26 05:03:24 UTC 2026","37215","tests.ui.pipelines","test_pipeline_create_full_details_persist","","","","test_create_pipeline_full_details_persist_after_reload","Create a pipeline with all fields populated; verify persistence after reload."
+"passed","Wed Aug 26 05:03:26 UTC 2026","Wed Aug 26 05:03:49 UTC 2026","23462","tests.ui.pipelines","test_pipeline_create_version","","","","test_create_pipeline_version_save_list_switch_preserves_canvas_state","Save As Version creates 'v1_test' with the LLM node preserved;
+    switching to 'base' shows the original (node-less) topology; switching
+    back to 'v1_test' restores the LLM node — each version's canvas state is
+    independently preserved with no cross-version leakage."
+"failed","Wed Aug 26 05:03:17 UTC 2026","Wed Aug 26 05:04:04 UTC 2026","46864","tests.ui.pipelines_2","test_pipeline_run_history_view_executions","TestPipelineRunHistoryViewExecutions","","","test_run_history_panel_lists_and_shows_execution_details","Executing a pipeline twice creates 2 Run History entries; opening
+        the panel lists both, and clicking an entry loads that execution's
+        own message + response content into the right-hand panel."
+"passed","Wed Aug 26 04:49:54 UTC 2026","Wed Aug 26 04:50:10 UTC 2026","16233","tests.ui.agent_hub","test_agent_hub_filter_multiple_categories","TestAgentHubFilterMultipleCategories","","","test_agent_hub_filter_by_multiple_categories","Clicking multiple category filter-rail chips accumulates filters:
+        both chips remain selected and agents from both categories display
+        simultaneously in separate labeled sections."
+"passed","Wed Aug 26 05:02:21 UTC 2026","Wed Aug 26 05:02:45 UTC 2026","24269","tests.ui.pipelines_2","test_pipeline_run_details_state_before_after","","","","test_run_details_state_before_after_per_node","Run Details STATES section shows correct per-variable Before/After per timeline step."
+"broken","Wed Aug 26 04:54:22 UTC 2026","Wed Aug 26 04:56:58 UTC 2026","155886","tests.ui.toolkits","test_toolkit_creation_create_bucket_verify_list_files","TestToolkitCreationCreateBucketVerifyListFiles","","","Create an Artifact toolkit (creates a bucket as a side effect), run List files, verify the bucket in Artifacts","Create my-artifact-toolkit/new-bucket via the Save path, verify
+        List files, verify the new bucket in Artifacts — with mandatory
+        pre/post cleanup for the case's own literal test data.
+        "
+"passed","Wed Aug 26 04:55:35 UTC 2026","Wed Aug 26 04:55:53 UTC 2026","18184","tests.ui.chat","test_chat_interface","TestSearchAndErrorHandling","","","test_handle_message_send_failure","TC-CHAT-024: Handle message send failure gracefully."
+"passed","Wed Aug 26 04:51:27 UTC 2026","Wed Aug 26 04:51:38 UTC 2026","11250","tests.ui.pipelines_2","test_pipeline_management","TestPipelineDashboard","","","test_pipeline_created_via_api_visible_in_dashboard","Pipeline created via API fixture should appear in the dashboard."
