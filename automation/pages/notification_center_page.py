@@ -223,6 +223,18 @@ class NotificationCenterPage(BasePage):
         '[data-testid="notification-date-text"]'
     )
 
+    # ---- ELITEA-2261 / ELITEA-2263: the in-message link ----
+    # ``NotificationListItemMessage.jsx`` renders every link segment of the
+    # parsed message as a single ``<Link target="_blank">``. The testid is
+    # STATIC and repeats once per row, so — exactly like the two constants
+    # above — it is scoped to ONE row through that row's own
+    # ``notification-checkbox-{id}`` testid. Every hop is a ``[data-testid=``
+    # term (`.agents/testing.md` § Locator policy).
+    ROW_MESSAGE_LINK = (
+        '[data-testid="notification-row"]:has([data-testid="notification-checkbox-{}"]) '
+        '[data-testid="notification-message-link"]'
+    )
+
     #: ``getComputedStyle`` read used by the colour getters below. This is a
     #: READ of a value the product itself computed, not a substitution: nothing
     #: is fabricated, injected or replaced (`.agents/testing.md` § Fidelity
@@ -736,3 +748,63 @@ class NotificationCenterPage(BasePage):
         """Return every rendered row's message text, in display order."""
         self.notification_message_text.first.wait_for(state="visible", timeout=timeout)
         return self.notification_message_text.all_inner_texts()
+
+    # ------------------------------------------------------------------
+    # ELITEA-2261 / ELITEA-2263 — the in-message link
+    # ------------------------------------------------------------------
+
+    def _row_message_link(self, notification_id) -> Locator:
+        return self.page.locator(self.ROW_MESSAGE_LINK.format(notification_id))
+
+    def get_row_link_count(self, notification_id) -> int:
+        """Return how many in-message links the given row renders.
+
+        ``parseMessage()`` can in principle emit several link segments; every
+        row on this account renders exactly one, which is what makes the
+        row-scoped selector unambiguous. Callers assert this rather than
+        assuming it.
+        """
+        return self._row_message_link(notification_id).count()
+
+    def get_row_link_attributes(self, notification_id, timeout: int = UI_ELEMENT_TIMEOUT) -> dict:
+        """Return the row's in-message link as the product rendered it.
+
+        Returns:
+            ``{"href": str, "target": str, "rel": str, "text": str}`` — all read
+            straight off the DOM node ``resolveHref()`` produced. Nothing here is
+            test-authored; callers compare these against the notification's OWN
+            ``meta``/``project_id`` from the list response.
+        """
+        link = self._row_message_link(notification_id)
+        link.wait_for(state="visible", timeout=timeout)
+        return {
+            "href": link.get_attribute("href"),
+            "target": link.get_attribute("target"),
+            "rel": link.get_attribute("rel"),
+            "text": (link.inner_text() or "").strip(),
+        }
+
+    def click_message_link_expecting_popup(
+        self, notification_id, timeout: int = NAVIGATION_TIMEOUT
+    ) -> Page:
+        """Click the row's in-message link and return the NEW TAB it opens.
+
+        The anchor is ``target="_blank"`` with no ``onClick`` handler
+        (``NotificationListItemMessage.jsx``), so the notifications page is
+        never left and an in-tab ``wait_for_url`` would hang forever. The click
+        is wrapped in ``context.expect_page()`` — a framework wait on the real
+        popup event, never a sleep.
+
+        Returns:
+            The popup :class:`~playwright.sync_api.Page`. Callers own closing it.
+        """
+        link = self._row_message_link(notification_id)
+        link.wait_for(state="visible", timeout=timeout)
+        with self.page.context.expect_page(timeout=timeout) as popup_info:
+            link.click()
+        popup = popup_info.value
+        popup.wait_for_load_state("domcontentloaded")
+        logger.info(
+            "Clicked notification %s in-message link -> popup %s", notification_id, popup.url
+        )
+        return popup
