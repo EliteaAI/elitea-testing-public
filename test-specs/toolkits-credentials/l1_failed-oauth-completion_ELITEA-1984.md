@@ -8,8 +8,9 @@
   `automation/testids` → DEV backend `https://dev.elitea.ai/api/v2`), project 399
   "Private" (`Test Bot`)
 - **User set**: `${TEST_USER}` (nominal — `auth_state` no-op on localhost)
-- **Analyst**: qa-engineer (analyst slot), 2026-08-24
-- **Status**: **blocked**
+- **Analyst**: qa-engineer (analyst slot), 2026-08-24 — **re-executed live 2026-08-26**
+  (credentials-w03 re-dispatch; see § Re-verification 2026-08-26)
+- **Status**: **blocked** (unchanged after re-verification)
 - **Blocked on**: no real OAuth provider test identity (§ Blocked Steps) — a human
   decision: provision one, or rescope the case
 - **Filed**: **#1713** (`bug`) — closing the OAuth popup gives no feedback for
@@ -172,3 +173,105 @@ scope field and a popup-URL assertion.
   Root cause: `createAuthorizationMonitor` never polls `authWindow.closed`. Shared
   dialog → the same gap affects the MCP / toolkit / OpenAPI OAuth flows.
 - No other defect. No crash, no console error, no stuck app state.
+
+## Re-verification — 2026-08-26 (credentials-w03 re-dispatch)
+
+The case was re-dispatched into wave `credentials-w03`. **Nothing has unblocked**,
+so the verdict stands — but this run produced a *sharper* blocker and two handle
+corrections that a rescope (or a future run with a provider identity) needs.
+
+**What was checked before re-executing**
+
+| Gate | State on 2026-08-26 |
+|---|---|
+| #1713 (the step-8 defect) | **OPEN**, unchanged since 2026-08-23 |
+| #1708 `[Decision] ELITEA-1983 / ELITEA-1985 need a real Microsoft OAuth identity — provide one, or descope?` | **OPEN** — the identical decision, still unanswered. **ELITEA-1984 belongs to it** (commented there rather than opening a second card) |
+| A Microsoft/Entra identity in `.env.test` | none — no `*OAUTH*`/`*TENANT*`/`*AZURE*`/`*ENTRA*` key exists |
+
+**Re-executed live** (headless Chromium, project 399, two API-seeded SharePoint
+Delegated credentials, both deleted after the run):
+
+| # | Step | Observed 2026-08-26 | vs 2026-08-24 |
+|---|---|---|---|
+| 1-2 | Open credential → Login | detail page renders `Delegated`; Login → real `POST /configurations/check_connection/399/sharepoint` → **401 + `requires_authorization`**, dialog opens | identical |
+| 3 | Type `Invalid.Scope.xyz` | prefill read `offline_access Sites.Read.All`; after edit the field reads `Invalid.Scope.xyz`; **Authorize stays enabled** | identical |
+| 4 | Authorize | exactly one popup, scope carried through **verbatim** | identical, **plus** the correction below |
+| 5 | Provider shows an error / denies | **still not observable** — see the sharpened finding below | sharpened |
+| 7-8 | Close the popup → wait | dialog stays visible on `Authorizing…`, Authorize disabled, **no message at +5 / +20 / +45 / +75 s**; Cancel still closes the dialog; zero console errors beyond the expected `check_connection` 401 | identical (the +305 s generic timeout is not re-measured — already established, and it costs >5 min per run) |
+
+### Sharpened blocker — the 404 was the *tenant*, not the ceiling
+
+The 2026-08-24 run concluded "the provider answers a bare 404 and never redirects
+back". That is true **only for the placeholder tenant**, and it understated what is
+reachable. Re-running the same flow against a **real** discovery endpoint
+(`https://login.microsoftonline.com/common`, still with the placeholder client id)
+shows the product doing real OIDC discovery and the provider serving its real page:
+
+```
+placeholder tenant → https://login.microsoftonline.com/placeholder-tenant/v2.0/oauth2/authorize
+                     ?response_type=code&client_id=placeholder-client-id
+                     &redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fmcp-auth-callback
+                     &state=<43-char random>&scope=Invalid.Scope.xyz
+                     → HTTP 404, empty body, blank popup      (synthetic path — discovery failed)
+
+real `common`      → https://login.microsoftonline.com/common/oauth2/v2.0/authorize
+                     ?response_type=code&client_id=placeholder-client-id
+                     &redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fmcp-auth-callback
+                     &state=<43-char>&nonce=<43-char>&scope=openid+Invalid.Scope.xyz
+                     → Microsoft's REAL sign-in page, title "Sign in to your account"
+                       (canonical Microsoft path + `nonce` + `openid` — discovery succeeded)
+```
+
+Two consequences:
+
+1. The authorize URL's **shape is discovery-dependent** — `{endpoint}/v2.0/oauth2/authorize`
+   (synthetic fallback) vs Microsoft's canonical `/oauth2/v2.0/authorize` with `nonce`
+   and an `openid`-prefixed scope. A spec asserting the URL must assert against the
+   credential's own endpoint and tolerate both shapes, or pin the credential to the
+   placeholder tenant (deterministic, offline, no third-party dependency).
+2. **What is actually missing is a Microsoft *user* identity, not just a tenant.**
+   Microsoft's `common` endpoint accepts the request and shows sign-in *before*
+   validating the client, so the flow now dies at "somebody must sign in", not at a
+   404. Reaching step 5's *denial* (and therefore step 6's error message, which is only
+   reachable via a `?error=…` redirect back to `/mcp-auth-callback`) needs
+   **(a)** a registered Entra app whose redirect URI includes `/mcp-auth-callback` and
+   **(b)** a Microsoft account able to sign in and consent. Both are test data this
+   project does not have — the identical ask as #1708.
+
+   Driving Microsoft's real sign-in form with a real account is also **not** something
+   this run may improvise: it is third-party UI, credentials the project does not hold,
+   and per `.agents/testing.md` § Fidelity policy the alternative (fabricating the
+   callback) is a **terminal substitution**. Route to human — unchanged.
+
+### Handle correction — `popup.url` reads `about:blank`, always
+
+`McpAuthModal.onAuthorize` opens `window.open('about:blank', …)` **first** and assigns
+`location` afterwards, so the popup handed back by `page.expect_popup()` reports
+`about:blank` at that instant — reading `popup.url` there (or even ~4 s later, as this
+run's first probe did) yields `about:blank` and an empty body, which is easy to
+misread as "the provider returned nothing". The implementer must settle first:
+
+```python
+with page.expect_popup() as popup_info:
+    modal.authorize_button.click()
+popup = popup_info.value
+popup.wait_for_url(re.compile(r"login\.microsoftonline\.com"), timeout=20_000)
+assert "scope=Invalid.Scope.xyz" in popup.url
+```
+
+Evidence (this run):
+`automation/test-results/screenshots/ELITEA-1984-step-05-provider-placeholder.png` (blank 404 page),
+`…/ELITEA-1984-step-05-provider-real-common.png` (Microsoft's real sign-in page).
+
+### The rescope proposal, restated for the decision-maker
+
+Unchanged in substance from § What IS honestly automatable today, and now
+re-confirmed live. If a human descopes steps 5-6, the honest remainder is a single
+`p1` spec costing ~40 s: steps 1-4 (invalid scope carried verbatim into the real
+authorize URL, exactly one popup) + the graceful-degradation contract (no crash, no
+console error, dialog alive, **Cancel still works**) + step 8 asserted as the
+*correct* behaviour with `expect.soft()` + `# Known defect: #1713` — which makes the
+spec sanctioned-RED today (`.agents/testing.md` § Merge gate) and flips green when
+the popup-close detection ships. **That descope is a human call** (it drops the case's
+own step 5-6 observables — § declared-improvisation ceiling), which is why this
+analysis still returns `blocked` rather than making it itself.
