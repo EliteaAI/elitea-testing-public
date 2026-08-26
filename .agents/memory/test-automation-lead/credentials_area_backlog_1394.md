@@ -5,7 +5,7 @@ type: project
 aliases: [credentials backlog, ELITEA-1983, ELITEA-1985, SharePoint OAuth]
 tags: [area/credentials, status/blocked]
 created: 2026-08-24
-updated: 2026-08-24
+updated: 2026-08-27
 ---
 
 ## State
@@ -32,6 +32,37 @@ What IS covered without an identity: the whole Elitea-side surface up to the
 authorization hand-off (Login-button gating, the Configuration OAuth dialog's
 pre-populated fields off a real `check_connection` 401, Cancel) — ELITEA-1981
 and ELITEA-1982 do exactly that, honestly.
+
+## ELITEA-1984 was re-opened once and re-blocked — do NOT try a third time
+
+I re-opened it (wave-03, 2026-08-27) on the hypothesis that its `blocked` verdict
+misapplied the analysis-time sanctioned-RED rule: #1713 showed the cancel path
+reproducing live with **no** Microsoft identity, so the observable looked
+system-produced. **The hypothesis was half right, and half right is blocked.**
+
+The case has two halves:
+
+| Half | Steps | Status |
+|---|---|---|
+| User **cancels** (closes the popup) | 7-8 | reproducible — this is #1713 |
+| **Provider denies** authorization | 5-6 | terminal — needs a registered client |
+
+Steps 5-6 are the case's *subject*, and Elitea's error box is only reachable when
+the provider **redirects back** with `error=...` to `/mcp-auth-callback`. That
+needs a registered Entra app **and** an account that can sign in and consent —
+Microsoft validates the client *after* sign-in on `common`, so nothing short of a
+real user reaches a denial. Simulating the callback is terminal substitution.
+
+Sharper than the original ask, and worth knowing: with a **real** discovery
+endpoint (`login.microsoftonline.com/common`) Elitea does real OIDC discovery and
+Microsoft serves its actual sign-in page — the "bare 404" in the first AFS was an
+artifact of the *placeholder tenant* only. Corrected in the merged AFS.
+
+**Option 2 on #1708 is a descope** (drop steps 5-6, keep steps 1-4 + graceful
+degradation + step 8 soft-asserted against #1713) — a ~40 s spec the AFS already
+specifies completely, so no third exploration is needed if a human approves it.
+Dropping steps changes *what is verified*, which is exactly the decision an agent
+may not make alone (role-overrides § declared-improvisation, ceiling).
 
 ## Live debt on this surface
 

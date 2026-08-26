@@ -84,3 +84,4 @@
 - [Report-writer agent can refuse the disk write](report_writer_agent_can_refuse_disk_write.md) — check `.agents/automation/<slug>/report.json` actually exists (and isn't clipped) after every batch; write it yourself if not
 - [Trunk→base PR can use a stale head](trunk_to_base_pr_can_use_stale_head_missing_report_commit.md) — `gh pr create` right after completion can miss the report-writer's own commit; verify `gh pr view --json files` includes report.json post-merge
 - [Agent+Pipeline chat participants](chat_participant_version_id_mixup_defect_family.md) — #1279 drops 2nd add 13/16
+- [Two-half cases](two_half_case_blocked_if_either_half_is_terminal.md) — one reproducible half ≠ ready-for-automation
