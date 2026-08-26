@@ -292,3 +292,71 @@ around the settings pages. Observed once via Playwright MCP when switching to pr
 reaches a pytest run's `collect_console_errors` is run-dependent. If a spec on this
 surface trips it, it is
 app noise unrelated to project-context — investigate before filtering, never filter blind.
+
+## Resolved/added during ELITEA-2269/2270/2271 analysis+implementation (test-automation-engineer, 2026-08-26)
+
+**The Build-with-AI flow is the SHARED `GenerateEntityModal`** — the same component the
+Agents/Skills "Build with AI" flows use (`entities/generate-entity-with-ai/`), wrapped by
+`GenerateProjectContextButton` → `GenerateProjectContextModal` →
+`GenerateProjectContextReviewForm`. So `automation/pages/generate_entity_modal_page_base.py`
+applies here unchanged: the shell steps are INPUT → LOADING → REVIEW, `Generate Draft` is
+also the retry control, and the review step's actions are `Back to prompt` + `Apply`.
+
+**Testids added (seven, all caller-supplied on props the shared components ALREADY
+accepted — no shared-component change).** EliteaAI/EliteaUI@d6eb52b6 on
+`automation/testids`, pushed; awaiting the human cherry-pick to `main`:
+
+| Testid | Where | How it is wired |
+|---|---|---|
+| `project-context-build-with-ai-button` | `ProjectContextEmptyState.jsx` | plain `data-testid` |
+| `generate-project-context-open-button` | `GenerateProjectContextButton.jsx` | `GenerateEntityButton`'s pre-existing `buttonTestId` |
+| `generate-project-context-modal` / `-prompt-input` / `-loading-indicator` / `-submit-button` / `-cancel-button` / `-approve-button` | `GenerateProjectContextModal.jsx` | `GenerateEntityModal`'s pre-existing `modalTestId` / `promptInputTestId` / `loadingIndicatorTestId` / `generateButtonTestId` / `cancelButtonTestId` / `approveButtonTestId` props (all were `undefined` for project context until now) |
+| `generate-project-context-review-background-input` | `GenerateProjectContextReviewForm.jsx` | `slotProps.htmlInput['data-testid']` — lands on the real `<textarea>`, so `input_value()` reads the draft directly |
+
+`ai-edit-project-context-*` (modal, prompt-input, cancel/generate/refine/apply, open-button,
+close-button, error-alert, loading-indicator) were **already** fully wired in
+`AIEditProjectContextModal.jsx` — nothing to add for the Edit-with-AI flow.
+
+⚠️ **The toolbar's AI control SWAPS on content** (`ProjectContextEditor.jsx`:
+`content.trim() ? <AIEditProjectContextButton/> : <GenerateProjectContextButton/>`).
+Empty editor ⇒ **Build with AI**; one character of content ⇒ **Edit with AI**, and the
+Build-with-AI button is gone from the DOM entirely. Confirmed live 2026-08-26. This makes
+ELITEA-2270's literal step order ("enter manual content, then click Build with AI")
+unexecutable — filed as clarification **#1797**. They are two different dialogs:
+Build with AI generates a draft from a project description
+(`POST /elitea_core/generate_project_context_draft/prompt_lib/{project_id}`),
+Edit with AI refines the content already in the editor.
+
+**Two mount points for the SAME Build-with-AI modal.** The empty state's Build-with-AI
+button navigates with `onNavigate('create', { openAi: true })`; `ProjectContextEditor`'s
+first-render effect then opens a *separate* `GenerateProjectContextModal` instance
+(rendered at the component's bottom, ~line 370) — not the toolbar button's. Only one is
+ever mounted: `Modal.BaseModal` has **no `keepMounted`**, so a closed dialog's testid count
+is 0 (verified). The shared testids therefore never collide.
+
+⚠️ **`page.goto('/settings/project-context/edit')` can re-open the AI modal.** The browser
+restores the history entry's router state on a same-URL reload, so a goto after an
+`openAi: true` navigation lands with the dialog already open. Reach the editor via the
+empty state's **Create** button when you need a closed dialog.
+
+⚠️ **Navigating away from a DIRTY editor fires a native `beforeunload` dialog** (the
+`useNavBlocker` + `blockCondition: isDirty` wiring). Playwright MCP surfaces it as a modal
+state that blocks `browser_navigate`; in pytest, avoid navigating while dirty, or handle
+the dialog. Teardown via the API (`clean_project_context`) is unaffected.
+
+**Live generate-draft latency**: ~5–20 s observed. `POST .../generate_project_context_draft/prompt_lib/399`
+→ 200 with `{"project_background": "<markdown>"}`. The response body IS the oracle — assert
+the review field and the editor against it (`.agents/testing.md` § nondeterministic producer),
+never against a hand-written payload. Apply does **not** save: after Apply the API `GET` still
+reports `content: ""` and Save merely becomes enabled.
+
+**Import from markdown file** (`project-context-import-button`) opens a real OS file chooser
+via a hidden `<input type="file" accept=".md,text/markdown">` clicked programmatically —
+drive it with Playwright's `expect_file_chooser()` (the `<input>` itself has no testid and
+should not get one: it would be unreferenced, #511). `handleFileUpload` normalises CRLF→LF,
+rejects >2500 chars with a toast, **replaces** (never appends) the editor content, and sets
+`isDirty`. Cursor lands at the END of the imported text. Fixture file committed at
+`test-data/project-context/elitea-2271-import.md`.
+
+**New page object: `GenerateProjectContextModalPage`** (`automation/pages/generate_project_context_modal_page.py`)
+— third subclass of `GenerateEntityModalPageBase`, alongside the Agent and Skill ones.
