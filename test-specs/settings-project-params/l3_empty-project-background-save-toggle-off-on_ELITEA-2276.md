@@ -78,12 +78,12 @@ editor, with real keyboard input.
 
 1. **Setup A** — `DELETE` (tolerate 404), then `PUT` `{content: "<seed A>", enabled: true}`.
 2. Navigate to `${BASE_URL}/settings/project-context`.
-   - **Verify**: `project-context-toggle-card` (*testid needed*) is visible.
+   - **Verify**: `project-context-toggle-card` (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) is visible.
 3. **Turn the toggle OFF** (case step 2). Click `project-context-enable-toggle`
-   (*testid needed*), waiting on the real `PUT` response.
+   (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*), waiting on the real `PUT` response.
    - **Verify**: response status **200**; the toggle is **unchecked**;
-     `project-context-disabled-banner` (*testid needed*) is visible.
-   - **Verify**: `project-context-edit-button` (*testid needed*) is **disabled** —
+     `project-context-disabled-banner` (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) is visible.
+   - **Verify**: `project-context-edit-button` (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) is **disabled** —
      this is the live fact that forces the direct-URL route below, so assert it rather
      than silently working around it.
 4. Navigate directly to `${BASE_URL}/settings/project-context/edit`.
@@ -97,7 +97,7 @@ editor, with real keyboard input.
      `2500 characters left.` (confirmed live — note the trailing space before the
      conditional limit clause; normalize whitespace when comparing).
    - **Verify**: `project-context-save-button` is now **enabled**, and
-     `project-context-discard-button` (*testid needed*) is enabled.
+     `project-context-discard-button` (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) is enabled.
 6. **Click Save** (case step 4), waiting on the real `PUT` response.
    - **Verify**: response status is **200** — the case's literal
      "settings save without error" (case step 5).
@@ -141,11 +141,11 @@ editor, with real keyboard input.
 | Empty-state Create button | `project-context-create-button` | **on-main ✓** | live 2026-08-26 |
 | Success toast | `toast-message` | pre-existing, app-wide (reused by `NotificationCenterPage` / `ArtifactsPage` / `ProjectContextPage`) | live 2026-08-26 |
 | Settings content pane | `settings-content` | on `automation/testids` only | live 2026-08-26 |
-| Toggle card container | `project-context-toggle-card` | **needs-adding** (`EnableToggleCard.jsx` root) | — |
-| Enable toggle (switch input) | `project-context-enable-toggle` | **needs-adding** — caller-supplied prop from `EnableToggleCard.jsx` into shared `Switch.BaseSwitch` | — |
-| "turned off" banner | `project-context-disabled-banner` | **needs-adding** — caller-supplied prop into shared `Banner.BannerMessage` | — |
-| Saved-view Edit button | `project-context-edit-button` | **needs-adding** (`ProjectContextSavedView.jsx`) | — |
-| Editor Discard/Cancel button | `project-context-discard-button` | **needs-adding** (`ProjectContextEditor.jsx`) | — |
+| Toggle card container | `project-context-toggle-card` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (`EnableToggleCard.jsx` root) | — |
+| Enable toggle (switch input) | `project-context-enable-toggle` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) — caller-supplied prop from `EnableToggleCard.jsx` into shared `Switch.BaseSwitch` | — |
+| "turned off" banner | `project-context-disabled-banner` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) — caller-supplied prop into shared `Banner.BannerMessage` | — |
+| Saved-view Edit button | `project-context-edit-button` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (`ProjectContextSavedView.jsx`) | — |
+| Editor Discard/Cancel button | `project-context-discard-button` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (`ProjectContextEditor.jsx`) | — |
 
 **Endpoints observed** (used for `expect_response` waits and for setup/teardown, never
 as a substitute for a UI observable):
@@ -193,8 +193,9 @@ as a substitute for a UI observable):
   a `bug`: no step produced an error and no assertion in this AFS fails — the case's
   step *order* is what the product contradicts.
 - **#1794 (suite, pre-existing)** — `ProjectContextPage.click_create()` still waits for
-  the retired `?view=create` URL and times out (reproduced live). Fix the page object's
-  route before extending it.
+  the retired `?view=create` URL and times out (reproduced live). **RESOLVED during
+  implementation** (2026-08-26): the page object and the merged ELITEA-2272 spec both
+  now pin `/settings/project-context/edit`.
 - **#1792** — case-text layout drift.
 
 ## Blocked Steps

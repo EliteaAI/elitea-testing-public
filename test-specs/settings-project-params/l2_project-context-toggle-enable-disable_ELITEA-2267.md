@@ -64,12 +64,12 @@ No terminal substitution. No fabricated responses, no injected state.
 
 1. **Setup** — `DELETE` (tolerate 404), then `PUT` `{content: "<seed>", enabled: true}`.
 2. Navigate to `${BASE_URL}/settings/project-context`.
-   - **Verify**: the toggle card `project-context-toggle-card` (*testid needed*) is
+   - **Verify**: the toggle card `project-context-toggle-card` (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) is
      visible — confirms the saved view rendered and the precondition held.
 3. **Toggle is ON by default** (case step 2).
-   - **Verify**: `project-context-enable-toggle` (*testid needed*) is **checked**.
-   - **Verify**: `project-context-disabled-banner` (*testid needed*) count is **0**.
-   - **Verify**: the saved-view `project-context-edit-button` (*testid needed*) is
+   - **Verify**: `project-context-enable-toggle` (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) is **checked**.
+   - **Verify**: `project-context-disabled-banner` (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) count is **0**.
+   - **Verify**: the saved-view `project-context-edit-button` (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) is
      **enabled**.
 4. **Turn the toggle OFF** (case step 3). Click the toggle and wait on the real network
    response — `page.expect_response` on
@@ -110,10 +110,10 @@ No terminal substitution. No fabricated responses, no injected state.
 | Settings nav → Project Context | `settings-nav-item-project-context` (dynamic, `SettingsDrawer.jsx:102`) | on `automation/testids` only | live 2026-08-26 |
 | Settings nav → General | `settings-nav-item-project-general` (same dynamic pattern) | on `automation/testids` only | live 2026-08-26 |
 | "Edit with AI" button | `ai-edit-project-context-open-button` | **on-main ✓** | live 2026-08-26 |
-| Toggle card container | `project-context-toggle-card` | **needs-adding** (`EnableToggleCard.jsx` root) | — |
-| Enable toggle (switch input) | `project-context-enable-toggle` | **needs-adding** — caller-supplied prop from `EnableToggleCard.jsx` into shared `Switch.BaseSwitch`; never hardcode inside `shared/ui` | — |
-| "turned off" banner | `project-context-disabled-banner` | **needs-adding** — caller-supplied prop into shared `Banner.BannerMessage` | — |
-| Saved-view Edit button | `project-context-edit-button` | **needs-adding** (`ProjectContextSavedView.jsx`) | — |
+| Toggle card container | `project-context-toggle-card` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (`EnableToggleCard.jsx` root) | — |
+| Enable toggle (switch input) | `project-context-enable-toggle` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) — caller-supplied prop from `EnableToggleCard.jsx` into shared `Switch.BaseSwitch`; never hardcode inside `shared/ui` | — |
+| "turned off" banner | `project-context-disabled-banner` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) — caller-supplied prop into shared `Banner.BannerMessage` | — |
+| Saved-view Edit button | `project-context-edit-button` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (`ProjectContextSavedView.jsx`) | — |
 
 **State is asserted via the element's own checked/disabled state, never via a
 state-switched testid** (`.agents/testing.md` § Locator policy, PR #581 ruling). The
@@ -161,8 +161,9 @@ body `{content, enabled}` → 200.
   Does **not** affect this case (which keeps content non-empty throughout), but it is
   why the precondition is load-bearing.
 - **#1794 (suite, pre-existing)** — `ProjectContextPage.click_create()` still waits for
-  the retired `?view=create` URL and times out. This case does not use `click_create()`,
-  but the implementer will be editing the same page object.
+  the retired `?view=create` URL and times out. **RESOLVED during implementation**
+  (2026-08-26): the page object and the merged ELITEA-2272 spec both now pin
+  `/settings/project-context/edit`.
 - **#1792** — case-text layout drift.
 
 ## Blocked Steps

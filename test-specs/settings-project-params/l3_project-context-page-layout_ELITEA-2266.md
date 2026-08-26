@@ -83,22 +83,22 @@ No other substitution. No `route.fulfill`, no `page.evaluate` state injection.
 2. Navigate to `${BASE_URL}/settings/project-context` (bare path — project convention).
    - **Verify**: `settings-content` is visible.
    - **Verify**: the page header reads exactly **`Project Context`**
-     (`project-context-page-title`, *testid needed*).
+     (`project-context-page-title`, *added during implementation — EliteaAI/EliteaUI@b05bbc9a*).
 3. **Toggle card** (saved view, top of the content area).
-   - **Verify**: `project-context-toggle-card` (*testid needed*) is visible.
+   - **Verify**: `project-context-toggle-card` (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) is visible.
    - **Verify**: its title reads exactly `Project Context`
-     (`project-context-toggle-card-title`, *testid needed*).
+     (`project-context-toggle-card-title`, *added during implementation — EliteaAI/EliteaUI@b05bbc9a*).
    - **Verify**: its description reads exactly
      `Project-specific background information that the AI uses to generate more accurate and relevant responses, tailored to your workflows, data, and goals.`
-     (`project-context-toggle-card-description`, *testid needed*) — confirmed live,
+     (`project-context-toggle-card-description`, *added during implementation — EliteaAI/EliteaUI@b05bbc9a*) — confirmed live,
      byte-identical, default prop in `EnableToggleCard.jsx`.
-   - **Verify**: the toggle `project-context-enable-toggle` (*testid needed*) is
+   - **Verify**: the toggle `project-context-enable-toggle` (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) is
      **checked** — enabled by default. Confirmed live: a freshly created context comes
      back `enabled: true`.
    - **Verify**: the "turned off" banner `project-context-disabled-banner`
-     (*testid needed*) has count **0** while the toggle is ON (absence assertion —
+     (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) has count **0** while the toggle is ON (absence assertion —
      first-class per `.agents/testing.md` § Locator policy).
-4. Open the editor: click **Edit** (`project-context-edit-button`, *testid needed*).
+4. Open the editor: click **Edit** (`project-context-edit-button`, *added during implementation — EliteaAI/EliteaUI@b05bbc9a*).
    - **Verify**: URL is `${BASE_URL}/settings/project-context/edit`.
    - Note for the implementer: **do not** reuse `ProjectContextPage.click_create()`
      until #1794's route fix lands — it waits for the retired `?view=create`.
@@ -108,21 +108,21 @@ No other substitution. No `route.fulfill`, no `page.evaluate` state injection.
      "Build with AI" — `ProjectContextEditor.jsx` swaps `GenerateProjectContextButton`
      for `AIEditProjectContextButton` when `content.trim()` is truthy. Confirmed live.
    - **Verify**: the upload/import icon button `project-context-import-button`
-     (*testid needed*) is visible. Its tooltip/accessible name is
+     (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) is visible. Its tooltip/accessible name is
      `Import from markdown file` (confirmed live).
    - **Verify**: the code-view (`</>`) mode button `project-context-mode-edit-button`
-     (*testid needed*) is visible **and** is the selected mode on load
+     (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) is visible **and** is the selected mode on load
      (`[data-testid="project-context-mode-edit-button"][aria-pressed="true"]` — state as
      a `data-*`/ARIA attribute filter on a stable testid, per `.agents/testing.md`;
      never a state-switched testid).
    - **Verify**: the preview (eye) mode button `project-context-mode-preview-button`
-     (*testid needed*) is visible and `aria-pressed="false"`.
+     (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) is visible and `aria-pressed="false"`.
 6. **Editor with line numbers**.
    - **Verify**: `project-context-editor-content` (**pre-existing**) is visible and
      carries the seeded text.
    - **Verify**: the line-number gutter is rendered. CodeMirror owns that DOM, so this
      is a **#579 exception 2** (third-party editor internal render node): add
-     `project-context-editor-wrapper` (*testid needed*) on the editor's wrapper `Box`
+     `project-context-editor-wrapper` (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) on the editor's wrapper `Box`
      and scope the raw handle to it —
      `self.editor_wrapper.locator(GUTTERS)` with a class constant
      `GUTTERS = ".cm-gutters"`. Document the exception in the method docstring
@@ -131,7 +131,7 @@ No other substitution. No `route.fulfill`, no `page.evaluate` state injection.
 7. **Save and Discard**.
    - **Verify**: `project-context-save-button` (**pre-existing**) is visible and
      **disabled** (no edit yet — `isDirty` false).
-   - **Verify**: `project-context-discard-button` (*testid needed*) is visible, its text
+   - **Verify**: `project-context-discard-button` (*added during implementation — EliteaAI/EliteaUI@b05bbc9a*) is visible, its text
      is exactly **`Discard`** (edit mode; it reads `Cancel` in create mode — confirmed
      live both ways), and it is **disabled**.
    - **Note**: both buttons sit in the page **header**, not "at the bottom" as the case
@@ -141,7 +141,7 @@ No other substitution. No `route.fulfill`, no `page.evaluate` state injection.
      `automation/utils/console_errors.py`'s `collect_console_errors(page)` (the
      URL-capturing helper), not the hand-rolled URL-less shape.
    - **Verify**: no `CircularProgress` spinner remains in `settings-content`
-     (absence assertion on `project-context-loader`, *testid needed* on the
+     (absence assertion on `project-context-loader`, *added during implementation — EliteaAI/EliteaUI@b05bbc9a* on the
      `ProjectContextContent.jsx` loading `Box`) — this is the case's literal
      "no permanent loading state" observable.
 9. **Teardown** — `DELETE` the Project Context (tolerate 404).
@@ -158,19 +158,19 @@ No other substitution. No `route.fulfill`, no `page.evaluate` state injection.
 | Char counter | `project-context-char-counter` | **on-main ✓** | live 2026-08-26 |
 | "Edit with AI" button | `ai-edit-project-context-open-button` | **on-main ✓** | live 2026-08-26 |
 | Saved-view dot menu | `project-context-actions-menu-button` (from `DotMenu id="project-context-actions"`) | on `automation/testids` (generic DotMenu pattern) | live 2026-08-26 |
-| Page header title | `project-context-page-title` | **needs-adding** (`DrawerPageHeader` title in `ProjectContextSavedView.jsx` / `ProjectContextEmptyState.jsx`) | — |
-| Toggle card container | `project-context-toggle-card` | **needs-adding** (`EnableToggleCard.jsx` root `Box`) | — |
-| Toggle card title | `project-context-toggle-card-title` | **needs-adding** (`EnableToggleCard.jsx` title `Typography`) | — |
-| Toggle card description | `project-context-toggle-card-description` | **needs-adding** (`EnableToggleCard.jsx` description `Typography`) | — |
-| Enable toggle (switch input) | `project-context-enable-toggle` | **needs-adding** — `Switch.BaseSwitch` is a **shared** component, so pass a caller-supplied `testId`-style prop from `EnableToggleCard.jsx` (feature-scoped call site); never hardcode a feature testid inside `shared/ui` | — |
-| "turned off" banner | `project-context-disabled-banner` | **needs-adding** (`Banner.BannerMessage` in `ProjectContextSavedView.jsx`; shared component ⇒ caller-supplied prop) | — |
-| Saved-view Edit button | `project-context-edit-button` | **needs-adding** (`ProjectContextSavedView.jsx`) | — |
-| Editor Discard/Cancel button | `project-context-discard-button` | **needs-adding** (`ProjectContextEditor.jsx`, the `isCreate ? handleCancel : handleDiscard` button) | — |
-| Import-from-markdown icon | `project-context-import-button` | **needs-adding** (`ProjectContextEditor.jsx` toolbar) | — |
-| Edit-mode (`</>`) tab button | `project-context-mode-edit-button` | **needs-adding** (`TabGroupButton` `arrayBtn` entry `value: 'edit'`; shared component ⇒ caller-supplied prop per entry) | — |
-| Preview-mode (eye) tab button | `project-context-mode-preview-button` | **needs-adding** (same, `value: 'preview'`) | — |
-| Editor wrapper (gutter scope) | `project-context-editor-wrapper` | **needs-adding** (`ProjectContextEditor.jsx` `styles.editorWrapper` `Box`) | — |
-| Loading spinner | `project-context-loader` | **needs-adding** (`ProjectContextContent.jsx` `isLoading` `Box`) | — |
+| Page header title | `project-context-page-title` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (`DrawerPageHeader` title in `ProjectContextSavedView.jsx` / `ProjectContextEmptyState.jsx`) | — |
+| Toggle card container | `project-context-toggle-card` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (`EnableToggleCard.jsx` root `Box`) | — |
+| Toggle card title | `project-context-toggle-card-title` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (`EnableToggleCard.jsx` title `Typography`) | — |
+| Toggle card description | `project-context-toggle-card-description` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (`EnableToggleCard.jsx` description `Typography`) | — |
+| Enable toggle (switch input) | `project-context-enable-toggle` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) — `Switch.BaseSwitch` is a **shared** component, so pass a caller-supplied `testId`-style prop from `EnableToggleCard.jsx` (feature-scoped call site); never hardcode a feature testid inside `shared/ui` | — |
+| "turned off" banner | `project-context-disabled-banner` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (`Banner.BannerMessage` in `ProjectContextSavedView.jsx`; shared component ⇒ caller-supplied prop) | — |
+| Saved-view Edit button | `project-context-edit-button` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (`ProjectContextSavedView.jsx`) | — |
+| Editor Discard/Cancel button | `project-context-discard-button` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (`ProjectContextEditor.jsx`, the `isCreate ? handleCancel : handleDiscard` button) | — |
+| Import-from-markdown icon | `project-context-import-button` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (`ProjectContextEditor.jsx` toolbar) | — |
+| Edit-mode (`</>`) tab button | `project-context-mode-edit-button` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (`TabGroupButton` `arrayBtn` entry `value: 'edit'`; shared component ⇒ caller-supplied prop per entry) | — |
+| Preview-mode (eye) tab button | `project-context-mode-preview-button` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (same, `value: 'preview'`) | — |
+| Editor wrapper (gutter scope) | `project-context-editor-wrapper` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (`ProjectContextEditor.jsx` `styles.editorWrapper` `Box`) | — |
+| Loading spinner | `project-context-loader` | on `automation/testids` (**added during ELITEA-2266/2267/2276 implementation** — EliteaAI/EliteaUI@b05bbc9a; awaiting human promotion to main) (`ProjectContextContent.jsx` `isLoading` `Box`) | — |
 
 **Not touched by this case** (add no testid): "Copy to clipboard" toolbar button,
 dot-menu Copy/Delete items, the empty-state "Create"/"Build with AI" pair (this case
@@ -227,7 +227,8 @@ ai-edit-project-context-open-button        main:YES  testids:YES
 
 - **#1794 (suite, pre-existing, BLOCKS reuse)** — `ProjectContextPage.click_create()`
   and `tests/ui/admin/test_project_context_character_limit.py` still expect
-  `?view=create`. Reproduced live 2026-08-26:
+  `?view=create`. **RESOLVED during implementation** (2026-08-26): both now pin
+  `/settings/project-context/edit`. Reproduced live 2026-08-26:
   `TimeoutError: waiting for navigation to "**/settings/project-context?view=create"`.
   Not caused by this case; the implementer must repair the page object's route
   (one line) before extending it.
