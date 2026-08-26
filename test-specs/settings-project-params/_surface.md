@@ -2,7 +2,9 @@
 
 Covers Settings → Project (section) tabs, starting with **Project Context**.
 Confirmed live against `http://localhost:5173` on `EliteaUI` `automation/testids`,
-project `Private` (`${ELITEA_PROJECT_ID}` = 399), 2026-08-05.
+project `Private` (`${ELITEA_PROJECT_ID}` = 399). First written 2026-08-05;
+**substantially revised 2026-08-26** (ELITEA-2266/2267/2276) — the `?view=` query-param
+model is GONE, and the toggle card / saved view are new here.
 
 ## Navigation
 
@@ -16,14 +18,54 @@ project `Private` (`${ELITEA_PROJECT_ID}` = 399), 2026-08-05.
 
 ## Project Context feature (`src/[fsd]/features/settings/ui/project-context/`)
 
-Three views, switched by `ProjectContextContent.jsx` based on `?view=` query
-param + whether `serverData.content` is non-empty:
+Three views, switched by `ProjectContextContent.jsx` on **route** + whether
+`serverData.content` is non-empty. **The `?view=` query param was retired** — there are
+now two real routes (`src/routes.js`):
 
-| View | Component | When shown |
-|---|---|---|
-| Empty state | `ProjectContextEmptyState.jsx` | no `?view=`, `content` empty |
-| Editor (create/edit) | `ProjectContextEditor.jsx` | `?view=create` or `?view=edit` |
-| Saved view | `ProjectContextSavedView.jsx` | no `?view=`, `content` non-empty |
+```js
+ProjectContext:     '/settings/project-context',
+ProjectContextEdit: '/settings/project-context/edit',
+```
+
+| View | Component | When shown | Contains |
+|---|---|---|---|
+| Empty state | `ProjectContextEmptyState.jsx` | `/settings/project-context`, `content` empty | header, "Still no Project Context", **Create** + **Build with AI**. **No toggle, no editor, no Save.** |
+| Saved view | `ProjectContextSavedView.jsx` | `/settings/project-context`, `content` non-empty | header + Edit with AI / Edit / dot-menu, **the enable toggle card**, rendered markdown. **No editor, no Save.** |
+| Editor | `ProjectContextEditor.jsx` | `/settings/project-context/edit` | breadcrumb `Project Context / Create\|Edit`, **Save** + **Cancel**(create)/**Discard**(edit) in the **header** (top-right, NOT at the bottom), edit/preview tab group, Build-with-AI *or* Edit-with-AI, Import, Copy, line-numbered CodeMirror, char counter. **No toggle.** |
+
+⚠️ **`?view=create` is dead — it broke a merged test.** `ProjectContextPage.click_create()`
+and `tests/ui/admin/test_project_context_character_limit.py` still wait for it and time
+out (`TimeoutError: waiting for navigation to "**/settings/project-context?view=create"`,
+reproduced 2026-08-26). Tracked as **#1794**; fix the page object's route before
+extending it.
+
+### Enable toggle (`EnableToggleCard.jsx`) — saved view only
+
+- Renders ONLY when `content` is non-empty. Any test touching the toggle must seed
+  content first (API `PUT`), or there is nothing to click.
+- **Defaults to ON**; a freshly created context comes back `enabled: true`.
+- **There is no Save button for it** — `handleToggle` fires `PUT` immediately
+  (auto-save). Confirmed live: flip → `PUT ... => 200`, state survives an in-app nav
+  round-trip *and* a full reload.
+- Turning it OFF shows a banner, exact text:
+  `Project Context is turned off. The project background is not applied to AI responses or workflows.`
+- Turning it OFF also **disables Edit and Edit with AI** (`disabled={!enabled}`) — the
+  editor is unreachable by clicking. The `/settings/project-context/edit` **route is
+  unguarded** though, so direct-URL navigation still opens a working editor.
+- **Saving empty content makes the toggle vanish** (`hasContent` false → empty state,
+  which has no toggle). Re-creating content brings it back **still OFF** —
+  `handleSave` sends `enabled: serverData?.enabled ?? true`. Tracked as **#1793**.
+- Card title/description default props, exact:
+  `Project Context` /
+  `Project-specific background information that the AI uses to generate more accurate and relevant responses, tailored to your workflows, data, and goals.`
+
+### Permissions gate
+
+`PERMISSIONS.projectContext.view` / `.edit`. On some projects (observed on
+**"Bugs & Features"**) the saved view renders a banner
+*"You don't have permission to edit this setting."* and the toggle is `disabled`.
+Project **399 "Private"** has full edit rights — use it. Project options in the
+selector carry `data-testid="select-option-<projectId>"`.
 
 - `MAX_CHARS` = `PROJECT_CONTEXT_MAX_LEN` = **2500**, defined in
   `src/[fsd]/features/settings/lib/constants/projectContext.constants.js`.
@@ -57,17 +99,34 @@ token) — no dedicated entity client exists yet for Project Context. Useful
 for test **setup/teardown** (guarantee empty-state precondition, clean up
 after) without needing any UI testids in `ProjectContextSavedView.jsx`.
 
-## Testids (as of 2026-08-05)
+## Testids (verified 2026-08-26, fresh `git fetch origin` in ../EliteaUI)
 
-None exist in `src/[fsd]/features/settings/ui/project-context/` yet. Four
-requested by ELITEA-2272's AFS (all `testid needed`, not yet added):
-`project-context-create-button`, `project-context-editor-content` (via
-`contentTestId` prop — same pattern as `skill-instructions-editor-content` /
-`toolkit-raw-json-editor-content`), `project-context-save-button`,
-`project-context-char-counter`. `ProjectContextSavedView.jsx`'s
-Edit/Delete/toggle controls are untouched so far (API-based cleanup avoids
-needing them) — a future case exercising the saved view's own UI will need
-its own testids there.
+**Present** — the four from ELITEA-2272 landed and are now on **`origin/main`** too:
+
+| Testid | main | automation/testids |
+|---|---|---|
+| `project-context-create-button` | YES | YES |
+| `project-context-editor-content` (via `contentTestId` prop on shared `CodeMirrorEditor`) | YES | YES |
+| `project-context-save-button` | YES | YES |
+| `project-context-char-counter` | YES | YES |
+| `ai-edit-project-context-open-button` | YES | YES |
+| `settings-content` | no | YES |
+| `settings-nav-item-project-context` / `-project-general` (dynamic, `settings-nav-item-${tab.id}`, `SettingsDrawer.jsx:102`) | no | YES (grep-invisible — composed at runtime) |
+| `project-context-actions-menu-button` (from `DotMenu id="project-context-actions"`; menu items `delete-menuitem`, `delete-confirm-button`) | — | YES |
+
+**Still needed** (requested by the ELITEA-2266/2267/2276 AFS trio, none added yet):
+`project-context-page-title`, `project-context-toggle-card`,
+`project-context-toggle-card-title`, `project-context-toggle-card-description`,
+`project-context-enable-toggle`, `project-context-disabled-banner`,
+`project-context-edit-button`, `project-context-discard-button`,
+`project-context-import-button`, `project-context-mode-edit-button`,
+`project-context-mode-preview-button`, `project-context-editor-wrapper`,
+`project-context-loader`.
+
+Note: the enable **Switch**, the **Banner** and the **TabGroupButton** are all
+`shared/ui` components — their testids must be **caller-supplied props** wired at the
+project-context call site, never hardcoded inside `shared/` (`.agents/testing.md`
+§ Locator policy).
 
 ## Gotchas
 
@@ -81,3 +140,32 @@ its own testids there.
   `SkillFormPage.fill_instructions()`) but is much slower for 2500+ chars —
   prefer paste for large fills, typing for small/short-input tests where
   keystroke-level events matter.
+
+## Editor toolbar & content (confirmed live 2026-08-26)
+
+- Toolbar, left→right: mode tab group (`</>` = *Edit mode*, eye = *Preview mode*), then
+  **Build with AI** (empty content) *or* **Edit with AI** (non-empty content — the
+  component swaps on `content.trim()`), then an icon button with accessible name
+  `Import from markdown file`, then one with `Copy to clipboard`.
+- Save is gated on `isDirty` only; the sibling button is **Cancel** in create mode and
+  **Discard** in edit mode (the ELITEA-2272 AFS mentions them only jointly).
+- Line numbers: CodeMirror's `.cm-gutters`, a **library-internal** node — #579 exception
+  2 applies. Scope the raw handle to a real app testid on the wrapper `Box`
+  (`project-context-editor-wrapper`, still to be added).
+- Char counter with an empty editor reads exactly `2500 characters left. ` (trailing
+  space before the conditional limit clause — normalize whitespace when comparing).
+  It is `visibility: hidden` unless the editor has focus.
+
+## Deleting a context through the UI
+
+Saved view → `project-context-actions-menu-button` → `delete-menuitem` → confirmation
+dialog *"Are you sure you want to delete Project Context?"* → `delete-confirm-button`.
+Useful when an API teardown isn't wired; the API `DELETE` is still the cheaper path.
+
+## No "Project Background" section exists
+
+The case texts for this module describe a *"Project Background"* section with a
+goals/terminology/workflows/constraints subtitle. `grep -rn "Project Background" src/`
+on both `origin/main` and `automation/testids` returns exactly two hits, neither a
+section heading (a label in `GenerateProjectContextReviewForm.jsx`, a placeholder in
+`AIEditProjectContextModal.jsx`). Do not go looking for it. Tracked as **#1792**.
