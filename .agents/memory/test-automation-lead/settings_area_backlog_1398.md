@@ -6,9 +6,14 @@ created: 2026-08-26
 updated: 2026-08-26
 ---
 
-## Status after waves w01 + w02 (2026-08-26)
+## Status after waves w01 + w02 + w03 (2026-08-26)
 
-**Running total: 12 delivered, 6 blocked on human decisions, ~110 not yet attempted.**
+**Running total: 22 delivered, 6 blocked on human decisions, ~100 not yet attempted.**
+
+### Wave settings-w03 — `settings/project-params` (10 cases)
+
+**10/10 automated** (PR #1799) — first clean sweep on this backlog. Lead gate 3/3 green, workflow gate 3/3 green, no red at any point.
+Also repaired #1794: the merged ELITEA-2272 spec had been failing every run since the product retired `?view=create` for a real `/edit` route. Filed clarifications #1792/#1793/#1797 (Project Context was redesigned by EL-5888; the case texts describe a single-page layout that no longer exists — AFS assert the live contract per the reverse-masking guard).
 
 ### Wave settings-w02 — `settings/notifications` (9 cases)
 
@@ -38,9 +43,9 @@ full provenance table + SHAs.
   Deliberately NOT grouped into w01: they need multiple identities (admin vs
   viewer/monitor role, an unauthenticated session), a different setup shape
   than the rest of the root `settings` cases.
-- **7 more sub-areas, ~106 cases**: `ai-configuration` (24), `user-profile` (17),
+- **6 more sub-areas, ~96 cases**: `ai-configuration` (24), `user-profile` (17),
   `analytics` (15), `users-and-roles` (15), `secrets` (14),
-  `personal-tokens` (11), `project-params` (10). (`notifications` done in w02.)
+  `personal-tokens` (11). (`notifications` done in w02, `project-params` in w03.)
 
 ## Pattern for the next wave
 
