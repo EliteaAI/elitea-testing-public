@@ -76,10 +76,14 @@ class AgentDetailPage(AgentFormPage):
     VERSION_OPTION = '[data-testid="version-option-{}"]'
 
     # Scoped sub-selector for the pin icon rendered INSIDE a version option
-    # (ELITEA-1891 testid-only rework — added via add-data-testid to
-    # version.helpers.jsx's buildVersionOption(); see EliteaUI
-    # automation/testids commit 4e5b819d). Only rendered on the option whose
-    # id equals the agent's `meta.default_version_id` — chain off the
+    # (ELITEA-1891 testid-only rework — added via add-data-testid; see EliteaUI
+    # automation/testids commit 4e5b819d. EliteaAI/EliteaUI@cf648e9a / PR #857
+    # later MOVED it out of version.helpers.jsx's buildVersionOption() into the
+    # extracted VersionIconBlock.jsx — same testid value, same position inside
+    # the option). Only rendered on the option whose
+    # id equals the agent's `meta.default_version_id`, and only when that
+    # version is NOT published (a published version renders a publish icon in
+    # the same slot instead) — chain off the
     # ALREADY-testid'd `VERSION_OPTION.format(name)` parent, never a
     # page-level handle: `self.page.locator(self.VERSION_OPTION.format(name))
     # .locator(self.VERSION_OPTION_PIN_ICON)`.

@@ -7,21 +7,36 @@ sequence — ``base`` (Draft, initially pinned) -> ``v1-early-draft`` (Draft)
 newest) -> re-pin ``v1-early-draft`` as the default — then opens the VERSION
 dropdown and verifies every ordering rule and metadata field in one pass.
 
-Case-text drift (CLARIFICATION, filed as
-https://github.com/EliteaAI/elitea-testing-public/issues/1091): the TMS case
-describes a three-tier ordering (Pinned -> Published -> Draft -> base). The
-live sort algorithm (``VersionSelect.jsx``'s ``versionSelectOptions``
-comparator) has no Published/Draft status tier at all — the real rule is
-``[pinned] -> [everything else by created_at descending, Published/Draft
-interleaved] -> [base, unless base is itself pinned]``. This test asserts the
-real rule (Step 7), not the case's literal wording — reverse-masking guard,
-live product behavior is correct.
+CASE-TEXT DRIFT — two filed CLARIFICATIONS, both reverse-masking guards
+(the live product is correct; the case text is stale):
 
-Two new testids were added for this case (EliteaUI automation/testids commit
-4e5b819d):
+- https://github.com/EliteaAI/elitea-testing-public/issues/1091 — the TMS case
+  describes a three-tier ordering (Pinned -> Published -> Draft -> base). The
+  live comparator has no Published/Draft status tier at all.
+- https://github.com/EliteaAI/elitea-testing-public/issues/1877 — the case (and
+  this test's original assertions) also assumed a *pinned-first* tier. EliteaAI/EliteaUI@cf648e9a
+  ("Feat/el 6302/enhancement of version select", PR EliteaAI/EliteaUI#857,
+  merged to EliteaUI ``main`` 2026-08-27) deliberately DELETED that tier from
+  ``VersionSelect.jsx``'s comparator (the two ``defaultVersionID`` early
+  returns), leaving the comment *"Default version stays in its chronological
+  position — not pinned to top."*
+
+THE CURRENT PRODUCT RULE, which this test asserts:
+``[every version by created_at DESCENDING] -> [base ALWAYS last]`` — no pinned
+tier, no status tier. The pin *icon* was deliberately kept
+(``VersionIconBlock.jsx``, still ``data-testid="version-option-pin-icon"`` +
+``aria-label="Default version"``) and is now the SOLE indicator of the default
+version: position and pin are decoupled, so ``base`` can be simultaneously
+pinned AND last. This test therefore asserts the pin icon's *migration*
+(Step 8) and, separately, that re-pinning does NOT reorder the dropdown.
+
+Both testids this case relies on are pre-existing and present on EliteaUI
+``main`` (verified by two-ref grep at repair time):
 - ``version-option-pin-icon`` — scoped inside the already-testid'd
-  ``version-option-{name}`` parent (``version.helpers.jsx``'s
-  ``buildVersionOption()``).
+  ``version-option-{name}`` parent. #857 MOVED it from
+  ``version.helpers.jsx``'s ``buildVersionOption()`` into the extracted
+  ``VersionIconBlock.jsx``; the testid value and its DOM position inside the
+  option are unchanged.
 - ``agent-set-default-version-confirm-button`` — wired via a
   ``confirmButtonTestId`` prop at THIS page's own call site
   (``useSetDefaultVersion.hooks.jsx``), since ``SetDefaultVersionDialog.jsx``
@@ -32,6 +47,7 @@ Spec: test-specs/agents/l2_version-selector-lists-all-versions-order-metadata_EL
 
 import re
 import uuid
+from datetime import datetime, timedelta
 
 import allure
 import pytest
@@ -53,7 +69,51 @@ V1_NAME = "v1-early-draft"
 V2_NAME = "v2-published"
 V3_NAME = "v3-latest-draft"
 
-OPTION_TEXT_PATTERN = re.compile(r"^(?P<name>.+) - (?P<date>\d{2}\.\d{2}\.\d{4})$")
+# Version-option text since EliteaAI/EliteaUI@cf648e9a (PR EliteaAI/EliteaUI#857).
+# The option's name and its metadata line are now SIBLING nodes inside the same
+# `version-option-{name}` element (`VersionSelectOption.jsx`), so the element's
+# own text_content() concatenates them with NO separator — verified live on
+# localhost:5173 at repair time:
+#     "baseAug 13, 2026, 11:15 · by Test Bot"
+# The metadata half is built by `version.helpers.jsx`'s formatVersionMeta() as
+# "{Mon DD, YYYY, HH:MM} · by {author}" — i.e. #857 ADDED a time-of-day and an
+# author segment to what used to be a bare "{name} - {DD.MM.YYYY}". The author
+# segment always renders (author_name -> author_email -> the literal
+# "Author unavailable"), so requiring it is safe, not brittle.
+# `name` is non-greedy so it stops at the first real timestamp; the step's own
+# `match.group("name") == V2_NAME` assertion is what pins the split down.
+OPTION_TEXT_PATTERN = re.compile(
+    r"^(?P<name>.+?)"
+    r"(?P<created_date>[A-Z][a-z]{2} \d{2}, \d{4}), "
+    r"(?P<created_time>\d{2}:\d{2})"
+    r" · by (?P<author>\S.*)$"
+)
+
+# formatVersionMeta() renders the month via
+# `toLocaleString('en-US', {month: 'short'})`, i.e. always these abbreviations
+# regardless of the machine locale — so build the expected string from a fixed
+# table rather than from Python's locale-dependent `%b`.
+_MONTH_ABBR = (
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+)
+
+
+def _acceptable_created_dates() -> set[str]:
+    """The ``"Mon DD, YYYY"`` strings a version created by THIS run may
+    legitimately show.
+
+    formatVersionMeta() derives the parts from ``new Date(created_at)`` using
+    the browser's LOCAL timezone, and the browser runs on this same machine,
+    so ``datetime.now()`` is the right clock to compare against. The
+    ten-minutes-ago entry exists solely so a run straddling local midnight
+    can't false-fail — the versions under test are seconds old.
+    """
+    now = datetime.now()
+    return {
+        f"{_MONTH_ABBR[when.month - 1]} {when.day:02d}, {when.year}"
+        for when in (now, now - timedelta(minutes=10))
+    }
 
 
 def _build_dedicated_agent_payload(name: str) -> dict:
@@ -106,15 +166,19 @@ class TestAgentVersionSelectorOrder:
     )
     @allure.issue(
         "https://github.com/EliteaAI/elitea-testing-public/issues/1091",
-        "CLARIFICATION #1091 — ordering rule case-text drift",
+        "CLARIFICATION #1091 — no Published-before-Draft ordering tier",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/elitea-testing-public/issues/1877",
+        "CLARIFICATION #1877 — no pinned-first ordering tier (EliteaUI #857)",
     )
     @pytest.mark.p1
     @pytest.mark.regression
     def test_version_selector_lists_versions_in_correct_order(self, page, agent_api):
-        """The VERSION dropdown lists all versions with name+date metadata,
-        Draft versions above an unpinned base, base last when unpinned, and
-        the pinned/default version at the top with a pin icon — with no
-        independent Published-before-Draft tier (CLARIFICATION #1091)."""
+        """The VERSION dropdown lists all versions with name + creation-time +
+        author metadata, sorted purely by created_at descending with 'base'
+        always last, and marks the default version with a pin icon whose
+        position is independent of the sort (CLARIFICATIONs #1091 and #1877)."""
         with allure.step("Precondition — create a dedicated disposable agent ('base' version)"):
             agent_name = f"elitea-1891-ord-{uuid.uuid4().hex[:8]}"[:32]
             agent = agent_api.create_agent_full(_build_dedicated_agent_payload(agent_name))
@@ -184,19 +248,24 @@ class TestAgentVersionSelectorOrder:
 
             with allure.step(
                 "Precondition — confirm 'base' is STILL the pinned/default "
-                "version at this point (sorts first, with a pin icon) — the "
-                "state the re-pin below is about to change"
+                "version at this point (pin icon) AND that it nonetheless "
+                "sorts LAST — position and pin are decoupled since EliteaUI "
+                "#857 (CLARIFICATION #1877) — then capture the pre-re-pin "
+                "order for the differential assertion in Step 8"
             ):
                 detail_page.open_version_selector()
                 order_before_repin = detail_page.get_version_option_order(
                     timeout=UI_ELEMENT_TIMEOUT
                 )
-                assert order_before_repin[0] == "base", (
-                    "'base' should still sort first (pinned/default) before "
-                    f"the re-pin below, got order {order_before_repin!r}"
-                )
                 assert detail_page.is_version_option_pinned("base"), (
                     "'base' should still show the pin icon before the re-pin"
+                )
+                assert order_before_repin[-1] == "base", (
+                    "'base' should sort LAST even while it IS the "
+                    "pinned/default version — the comparator puts base last "
+                    "unconditionally and no longer hoists the default to the "
+                    f"top (EliteaAI/EliteaUI@cf648e9a), got order "
+                    f"{order_before_repin!r}"
                 )
                 detail_page.close_versions_menu()
 
@@ -243,25 +312,43 @@ class TestAgentVersionSelectorOrder:
                 )
 
             with allure.step(
-                "Step 4 — Verify each entry shows version name and creation "
-                "date (baked into the SAME text node — not a separate 'time' "
-                "component despite the case text saying 'date/time')"
+                "Step 4 — Verify each entry shows the version name plus its "
+                "creation date AND time of day AND author (one option "
+                "element, name and metadata as sibling nodes — EliteaUI #857 "
+                "added the time and the author to what used to be a bare "
+                "'{name} - {DD.MM.YYYY}')"
             ):
                 option_text = detail_page.get_version_option_text(V2_NAME)
                 match = OPTION_TEXT_PATTERN.match(option_text)
                 assert match is not None, (
-                    f"Version option text should match '{{name}} - "
-                    f"{{DD.MM.YYYY}}', got {option_text!r}"
+                    "Version option text should be the version name "
+                    "immediately followed by '{Mon DD, YYYY, HH:MM} · by "
+                    f"{{author}}', got {option_text!r}"
                 )
                 assert match.group("name") == V2_NAME, (
                     f"Version option text's name part should be {V2_NAME!r}, "
                     f"got {match.group('name')!r}"
                 )
+                acceptable_dates = _acceptable_created_dates()
+                assert match.group("created_date") in acceptable_dates, (
+                    "Version option's creation date should be today — the "
+                    "version was created seconds ago by this very test — "
+                    f"expected one of {sorted(acceptable_dates)}, got "
+                    f"{match.group('created_date')!r} in {option_text!r}"
+                )
+                assert match.group("author") != "Author unavailable", (
+                    "Version option should name the real author who created "
+                    f"the version, got {match.group('author')!r}"
+                )
 
-            with allure.step("Step 5 — Verify 'base' version appears last"):
+            with allure.step(
+                "Step 5 — Verify 'base' version appears last (unconditionally "
+                "— the comparator sinks 'base' regardless of pin state; see "
+                "the same assertion made against a PINNED base in the "
+                "precondition above)"
+            ):
                 assert order[-1] == "base", (
-                    "'base' should be last now that it is no longer the "
-                    f"pinned/default version, got order {order!r}"
+                    f"'base' should be the last option, got order {order!r}"
                 )
 
             with allure.step("Step 6 — Verify Draft named versions appear above base"):
@@ -287,14 +374,17 @@ class TestAgentVersionSelectorOrder:
                 )
 
             with allure.step(
-                f"Step 8 — Verify the pinned/default version ({V1_NAME!r}) "
-                "appears at the top with a pin icon, and (same dropdown-open, "
-                "same read) that 'base' simultaneously moved to last — "
-                "proving steps 5 and 8 are the SAME rule, not two independent "
-                "ones"
+                f"Step 8 — Verify the pin icon MIGRATED to the new default "
+                f"version ({V1_NAME!r}) and left 'base', while the dropdown "
+                "order stayed byte-identical to the pre-re-pin read — "
+                "position and pin are decoupled since EliteaUI #857 "
+                "(CLARIFICATION #1877), so re-pinning must NOT reorder"
             ):
-                assert order[0] == V1_NAME, (
-                    f"{V1_NAME!r} should be first (pinned/default), got order {order!r}"
+                assert order == order_before_repin, (
+                    "Re-pinning a version must not reorder the VERSION "
+                    "dropdown — the comparator sorts by created_at only "
+                    f"(EliteaAI/EliteaUI@cf648e9a). Order before the re-pin "
+                    f"was {order_before_repin!r}, after it {order!r}"
                 )
                 assert detail_page.is_version_option_pinned(V1_NAME), (
                     f"{V1_NAME!r} should show the pin icon now that it is "
