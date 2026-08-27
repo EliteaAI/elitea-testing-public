@@ -6,9 +6,26 @@ created: 2026-08-26
 updated: 2026-08-26
 ---
 
-## Status after waves w01–w04 (2026-08-27)
+## Status after waves w01–w05 (2026-08-28)
 
-**Running total: 32 delivered, 7 blocked on human decisions, ~89 not yet attempted.**
+**Running total (CORRECTED): 33 `automated`, 12 `merged-sanctioned-red`, 8 blocked, ~75 not yet attempted.**
+
+⚠️ **A sanctioned-RED case is NOT delivered coverage.** `.agents/testing.md` § Merge gate:
+it stays `blocked-on-#N` and is never back-written `execution_type: automated`.
+On 2026-08-28 I corrected three of my own earlier back-writes that broke this —
+ELITEA-2243 (#1771, w01), ELITEA-2289 (#1884, w04), ELITEA-2291 (#1885, w04) —
+back to draft/manual + `sanctioned_red: <ticket>`, keeping `automation_test_id` for
+CI correlation. Count dropped 36 -> 33. **Re-check prior waves whenever this rule comes up.**
+
+### Wave settings-w05 — `settings/secrets` (14 cases)
+
+4 automated (ELITEA-2345/2346/2348/2349) + 9 `merged-sanctioned-red` (all on OPEN #1203;
+ELITEA-2340 also #1903) + 1 blocked (ELITEA-2333 -> #1780). PR #1912.
+The workflow's report was wrong twice — cluster A mislabelled `blocked` on a HARNESS
+StructuredOutput failure though PR #1902 had merged, and ELITEA-2333/2348/2349 were
+**missing from the report entirely** because cluster D's PR #1911 was still open at run end.
+Carried #1911 to APPROVED by hand through 3 fix rounds and merged it.
+Filed: #1901, #1903, #1909, #1910.
 
 ### Wave settings-w04 — `settings/personal-tokens` (11 cases)
 
@@ -48,9 +65,9 @@ full provenance table + SHAs.
   Deliberately NOT grouped into w01: they need multiple identities (admin vs
   viewer/monitor role, an unauthenticated session), a different setup shape
   than the rest of the root `settings` cases.
-- **5 more sub-areas, ~85 cases**: `ai-configuration` (24), `user-profile` (17),
-  `analytics` (15), `users-and-roles` (15), `secrets` (14).
-  (`notifications` w02, `project-params` w03, `personal-tokens` w04.)
+- **4 more sub-areas, ~71 cases**: `ai-configuration` (24), `user-profile` (17),
+  `analytics` (15), `users-and-roles` (15).
+  (`notifications` w02, `project-params` w03, `personal-tokens` w04, `secrets` w05.)
 
 ## Pattern for the next wave
 
