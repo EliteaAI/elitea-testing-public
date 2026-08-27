@@ -61,3 +61,7 @@
 - [Optional oracle field disarms the gate for rows lacking it](an_optional_config_field_can_disarm_a_gate_for_one_row.md) — pair it with pytest.skip + a static "every row classifiable" invariant
 - [Version sort: no pinned tier](version_dropdown_sort_lost_its_pinned_tier.md) — EliteaUI #857: date desc, base last
 - [Rendered timestamps are server UTC](rendered_timestamps_are_server_utc_not_local.md) — assert vs API created_at
+- [Stale vite modules](vite_dev_server_serves_stale_modules_on_onedrive.md) — new testid missing? restart the dev server
+- [Single-line JSX testid forces a prettier reflow](single_line_jsx_testid_forces_a_prettier_reflow.md) — declare it or Step-5.5 blocks
+- [expect.soft() cannot soft-assert a parsed value](expect_soft_does_not_apply_to_plain_python_values.md) — use soft_failures + pytest.fail()
+- [Gate --cmd pipe masks pytest exit code](gate_cmd_pipe_masks_pytest_exit_code.md) — never pipe pytest inside gate-case.mjs --cmd; redirect

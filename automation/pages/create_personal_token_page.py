@@ -117,6 +117,25 @@ class CreatePersonalTokenPage(BasePage):
         description="Generic app-wide toast — shows the Copy confirmation text.",
     )
 
+    # Expiration-unit dropdown options (ELITEA-2282/2283). The shared
+    # `SingleSelectMenuItem.jsx` renders
+    # ``data-testid={option.testId ?? `select-option-${option.value}`}``, so the
+    # five `EXPIRATION_MEASURES` values (`src/common/constants.js`) are addressable
+    # as `select-option-never|days|weeks|hours|minutes`. The `{}` parameter is a
+    # value from the app's own closed set, never test-generated data. Class-level
+    # template + prefix constant per .agents/testing.md § Locator policy
+    # (dynamic testids stay in the greppable inventory; an inline
+    # `get_by_test_id(f"...")` is NOT the compliant shape).
+    # ⚠️ The same shared component ALSO renders a `select-option-selected-icon`
+    # check mark inside whichever option is currently selected
+    # (`SingleSelectMenuItem.jsx:141`), so a bare `^="select-option-"` prefix
+    # counts options + 1 (measured live: 6 for a 5-option select). The prefix
+    # constant excludes it, so "how many options are offered?" stays answerable.
+    EXPIRATION_MEASURE_OPTION_SELECTOR = '[data-testid="select-option-{}"]'
+    EXPIRATION_MEASURE_OPTION_PREFIX_SELECTOR = (
+        '[data-testid^="select-option-"]:not([data-testid="select-option-selected-icon"])'
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -166,6 +185,56 @@ class CreatePersonalTokenPage(BasePage):
     def get_expiration_value(self) -> str:
         """Return the expiration numeric value input's current value."""
         return self.expiration_value_input.input_value()
+
+    def get_expiration_measure_option(self, measure: str):
+        """Return the Locator for one option of the OPEN expiration-unit
+        dropdown (*measure* is an `EXPIRATION_MEASURES` value: ``never`` /
+        ``days`` / ``weeks`` / ``hours`` / ``minutes``).
+
+        The menu renders in a portal at page level, not inside the form, so
+        this is deliberately a page-level locator. Only one select exists on
+        this page, which is what makes the shared, app-wide generic
+        ``select-option-*`` testid unambiguous here — do not carry that
+        assumption to a page with several selects.
+        """
+        return self.page.locator(self.EXPIRATION_MEASURE_OPTION_SELECTOR.format(measure))
+
+    def get_expiration_measure_option_count(self) -> int:
+        """Return the number of options rendered by the OPEN expiration-unit
+        dropdown (matched by the shared ``select-option-`` prefix)."""
+        return self.page.locator(self.EXPIRATION_MEASURE_OPTION_PREFIX_SELECTOR).count()
+
+    def open_expiration_measure_dropdown(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the expiration-unit combobox and wait for its option list to
+        render (anchored on the always-present ``days`` option, never a delay)."""
+        self.expiration_measure_combobox.click()
+        self.get_expiration_measure_option("days").wait_for(
+            state="visible", timeout=timeout
+        )
+
+    def select_expiration_measure(self, measure: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Open the expiration-unit dropdown, click *measure*'s option, and
+        wait for the combobox to display the selected label.
+
+        Waiting on the combobox's own text is the real signal the selection
+        landed (the menu close animation is not).
+        """
+        self.open_expiration_measure_dropdown(timeout=timeout)
+        self.get_expiration_measure_option(measure).click()
+        expect(self.expiration_measure_combobox).to_have_text(
+            measure.capitalize(), timeout=timeout
+        )
+
+    def fill_expiration_value(self, value: str) -> None:
+        """Replace the expiration numeric value input's content with *value*.
+
+        ``ControlOrMeta+a`` IS reliable on this input — the ``useAutoBlur``
+        select-all race documented for the Name field is scoped to
+        ``create-personal-token-name-input`` only (surface digest).
+        """
+        self.expiration_value_input.click()
+        self.expiration_value_input.press("ControlOrMeta+a")
+        self.expiration_value_input.press_sequentially(value, delay=20)
 
     def click_generate(self, timeout: int = UI_ELEMENT_TIMEOUT):
         """Click Generate; wait for the token-create POST to resolve 200,

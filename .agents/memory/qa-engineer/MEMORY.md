@@ -42,3 +42,7 @@
 - [Prove cross-branch divergence with merge-tree](prove_cross_branch_divergence_with_merge_tree.md) — identical code at a different anchor still conflicts
 - [Optional oracle field silently disables the gate](optional_oracle_field_silently_disables_the_gate.md) — check EVERY config entry, not the captured two
 - [Rendered dates = server UTC](rendered_timestamps_are_server_utc_not_browser_local.md) — never assert vs datetime.now
+- [Grid-table sort: first click is DESC](grid_table_sort_first_click_is_descending.md) — useTableSort defaults to asc; case texts get it backwards
+- [Prefix testid selector ok](prefix_testid_selector_passes_the_locator_grep.md) — `[data-testid^=` is compliant
+- [Composed testids evade grep](runtime_composed_testids_invisible_to_grep.md) — grep the template, not the value
+- [CodeMirror testid](codemirror_body_contenttestid_and_inner_text.md) — contentTestId exists; not #579
