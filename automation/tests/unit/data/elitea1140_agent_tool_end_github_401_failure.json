@@ -1,0 +1,47 @@
+{
+  "type": "agent_tool_end",
+  "stream_id": "c6f9ef41-62b9-4711-8e66-91704b1b102c",
+  "message_id": "84975768-fe89-4f66-a2f4-4cccc64fe68f",
+  "question_id": "ba41b414-efdd-4ef3-a6b1-c2bf68df53f1",
+  "content": "Failed to list branches: 401 {\"message\": \"Bad credentials\", \"documentation_url\": \"https://docs.github.com/rest\", \"status\": \"401\"}",
+  "thinking": null,
+  "response_metadata": {
+    "tool_name": "list_branches_in_repo",
+    "tool_run_id": "01a042a2-32f1-7a91-9761-8a2f74294011",
+    "tool_meta": {
+      "name": "list_branches_in_repo",
+      "description": "Repository: EliteaAI/elitea-testing-public\nToolkit: Probegithub_expiredTK1787824297621\n\nThis tool will fetch a list of all branches in the repository. It will return the name of each branch. No input parameters are required.",
+      "metadata": {
+        "toolkit_name": "Probegithub_expiredTK1787824297621",
+        "toolkit_type": "github",
+        "display_name": "Probe github_expired TK 1787824297621"
+      }
+    },
+    "metadata": {
+      "thread_id": "c6f9ef41-62b9-4711-8e66-91704b1b102c",
+      "ls_integration": "langgraph",
+      "langgraph_step": 2,
+      "langgraph_node": "agent",
+      "langgraph_triggers": "('branch:to:agent',)",
+      "langgraph_path": "('__pregel_pull', 'agent')",
+      "langgraph_checkpoint_ns": "agent:55d0a546-bc6e-0aa4-7d66-5c54c6cf2a85",
+      "checkpoint_ns": "agent:55d0a546-bc6e-0aa4-7d66-5c54c6cf2a85",
+      "toolkit_name": "Probegithub_expiredTK1787824297621",
+      "toolkit_type": "github",
+      "tool_name": "list_branches_in_repo",
+      "display_name": "Probe github_expired TK 1787824297621"
+    },
+    "finish_reason": "stop",
+    "tool_output": "Failed to list branches: 401 {\"message\": \"Bad credentials\", \"documentation_url\": \"https://docs.github.com/rest\", \"status\": \"401\"}",
+    "timestamp_start": "2026-08-27T09:52:01.265921+00:00",
+    "timestamp_finish": "2026-08-27T09:52:01.499327+00:00"
+  },
+  "references": [],
+  "sio_event": "chat_predict",
+  "created_at": "2026-08-27T09:52:01.499614Z",
+  "parent_message_id": null,
+  "agent_name": null,
+  "execution_generation": "cb04da2c-5a69-49c3-8f2d-5976a35070ea",
+  "event": "chat_predict",
+  "_direction": "received"
+}

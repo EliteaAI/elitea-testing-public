@@ -58,6 +58,14 @@ class ToolkitConfig:
     chat_response_keywords: list[str]  # keywords expected in AI response
 
     # Optional fields
+    # Anchored regex the toolkit's own ``agent_tool_end`` ``tool_output`` must
+    # match on a SUCCESSFUL tool execution. Populate ONLY from a live capture,
+    # never from an inference: an inferred pattern re-creates the false-RED
+    # this field exists to remove, one layer down on the wire (ELITEA-1140 /
+    # #1817 — the first inferred github pattern was refuted by capture).
+    # Empty means "never captured" — the test then asserts the tool ran and
+    # that the UI carried a result through, and classifies nothing.
+    tool_output_success_pattern: str = ""
     test_tool_params: dict = field(default_factory=dict)  # field_label -> value for tool params
     credential_check: dict = field(default_factory=dict)  # {url, auth_env_vars} for pre-validation
     extra_form_fields: dict = field(default_factory=dict)
@@ -86,6 +94,11 @@ TOOLKIT_CONFIGS = {
         test_tool_result_content='"main"',
         chat_message="List branches in the repository",
         chat_response_keywords=["branch", "found", "repository"],
+        # Captured live 2026-08-27 (3 runs, byte-identical 7 818 chars):
+        # list_branches_in_repo returns a JSON array of {"name", "protected"}
+        # objects. NOT the "Branches in <owner>/<repo>:" prose — that is the
+        # LLM's narration of the array (ELITEA-1140 AFS § Q1).
+        tool_output_success_pattern=r'^\[\s*\{[^}]*"name"\s*:',
     ),
 
     "jira": ToolkitConfig(
@@ -107,6 +120,9 @@ TOOLKIT_CONFIGS = {
         test_tool_result_content="project",
         chat_message="List all Jira projects",
         chat_response_keywords=["project", "jira"],
+        # Captured live 2026-08-27 (3 runs): list_projects returns
+        # "Found <n> projects:\n[{...}]".
+        tool_output_success_pattern=r"^Found \d+ projects:",
     ),
 
     "gitlab": ToolkitConfig(
@@ -198,5 +214,22 @@ TOOLKIT_CONFIGS = {
         test_tool_params={"Label": "test"},
         chat_message="Use the list_pages_with_label tool to list pages with label 'test' in Confluence",
         chat_response_keywords=["page", "list", "label"],
+        # Captured live 2026-08-27 against epamelitea.atlassian.net, space AT.
+        # list_pages_with_label returns a JSON array of {"id", "title"} objects.
+        # BOTH branches of this alternation were observed, neither inferred:
+        #   * `[]`                              — label 'test' (the shipped
+        #     label) currently matches zero pages in space AT
+        #   * `[{"id": "182419457", "title": …}, …]` — same tool, label
+        #     'test-automated', captured to learn the non-empty shape
+        # A real auth failure was captured too (credential with a corrupted
+        # API key) and is prose, not JSON: "Tool execution error!\n\nPossible
+        # root causes: Confluence rejected the request …" — so the anchor
+        # discriminates. All three payloads are pinned in
+        # tests/unit/test_toolkit_chat_error_oracle.py.
+        # NOTE: confluence's failure shape is NOT github's "Failed to list
+        # branches: 401 …" — another reason this field is capture-only.
+        # The non-empty branch names the observed first key ("id") so the
+        # pattern cannot also match github's array of {"name", "protected"}.
+        tool_output_success_pattern=r'^\[\s*(\]|\{\s*"id"\s*:)',
     ),
 }
