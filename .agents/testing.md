@@ -845,3 +845,29 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   `DIAGRAM_RENDER_TIMEOUT`. Evidence lives in `reports/allure-results/*-result.json` (the rerun makes
   junit record PASS); grep by `fullName`. Record further occurrences here — if the rate rises, the fix
   is a bounded re-ask of the generate prompt in Step 2, not a longer `DIAGRAM_RENDER_TIMEOUT`.
+- **`networkidle` setup flake, mechanism named and tracked as #1847 (2026-08-27, ELITEA-1790/#1811)**:
+  gate run 2 of 3 on the ELITEA-1790 repair burned both of pytest-rerunfailures' reruns on a raw
+  uncaught `playwright._impl._errors.TimeoutError: Timeout 10000ms exceeded` at **Step 1**, inside
+  `SkillsListPage.navigate_to_create()` → `BasePage.wait_for_network()` →
+  `page.wait_for_load_state("networkidle", timeout=10000)`. Two consecutive failures, then a pass;
+  a full re-gate immediately after was **3/3 clean with `reruns.json == {}` each**.
+  **This is not a new noise flavor — it is the first one in this ledger with a named, structural
+  mechanism.** `networkidle` resolves only after 500 ms of zero network connections, and this app
+  holds a **persistent Socket.IO polling transport open on every page** (the same
+  `/socket.io/?EIO=4&transport=polling` already captured in the console-500 entry above). A
+  continuous poll and a "500 ms of silence" wait are in direct tension, so every one of the
+  **143 `wait_for_network` call sites** in `automation/pages/` is a race that degrades exactly where
+  it hurts most — a loaded CI box against a deployed env. Playwright's own docs mark `networkidle`
+  DISCOURAGED for precisely this reason.
+  **Matched control was run before assigning blame** (the #1082 discipline): the ELITEA-1790 diff
+  touches exactly ONE file (the spec), so swapping that file to its `origin/main` version runs the
+  pristine spec against byte-identical shared page objects. Control: **2/2 clean**. That is too few
+  runs to exonerate a low-rate flake, and the honest reading is that the mechanism is **pre-existing
+  and shared**, while the repair adds a 6th `navigate_to_create()` per run (6 skills created instead
+  of 5) and therefore **+20% exposure** to it. Recorded rather than smoothed over.
+  **Response when this fires: re-gate.** It is a raw uncaught error at a *precondition*, upstream of
+  every assertion the spec makes, so it can never be a member of a sanctioned-RED set and 2-of-3 is
+  never acceptable. The durable fix is #1847 (wait on the element the caller actually needs, not on
+  network silence) — not a longer timeout, which only widens the window the race has to win in.
+  ⚠️ **The reruns make junit record PASS**, so this class is invisible in the junit trail — evidence
+  lives only in `reports/allure-results/*-result.json` (allure status `broken`). Grep by `fullName`.
