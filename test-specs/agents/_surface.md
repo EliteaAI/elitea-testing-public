@@ -94,12 +94,14 @@ confirmed by: qa-engineer analyst, ELITEA-2358 run (2026-08-10).
   are obsolete.*
 - ⚠️ **The rendered time is the SERVER's wall clock, labelled as local.** `version.helpers.jsx`'s
   `formatVersionMeta()` does `new Date(created_at)` + local getters WITHOUT the codebase's own
-  `convertTime()` 'Z'-normalizer (`src/common/convertChatConversationMessages.js:25`), which the
+  `convertTime()` 'Z'-normalizer (`src/common/convertChatConversationMessages.js`), which the
   notification and chat renderers DO call. The backend sends naive stamps, so there is no offset to
   convert from and the local getters return the string's own digits. **Never assert a rendered timestamp
   against the test machine's clock** — derive the expectation from the API's own `created_at`
   (`test_agent_version_selector_order.py::_expected_created_label` is the worked mirror). The
-  UTC-vs-local inconsistency between this dropdown and notifications/chat is a filed product observation.
+  UTC-vs-local inconsistency between this dropdown and notifications/chat is filed as
+  EliteaAI/elitea-testing-public#1879. **When #1879 is fixed the mirror goes stale — update the mirror,
+  not the product**: drop its naive-verbatim branch (always normalize to UTC, then convert to local).
 - `version-option-set-default-{version_name}` — **NEW in #857.** A hover "Set as default" affordance on
   every non-default, non-published option (`VersionIconBlock.jsx`). It shares the `version-option-`
   prefix, so a bare `[data-testid^="version-option-"]` order-read counts it as an option. Use
@@ -144,7 +146,7 @@ EliteaAI/elitea-testing-public#1877 (no pinned-first tier).
   2026-08-27: on `main` AND on `automation/testids`).
   ⚠️ It does **not** render on a PUBLISHED default version — `VersionIconBlock` checks
   `status === 'published'` FIRST and returns a publish icon in that same slot.
-- Pin icon on the CLOSED trigger (`VersionSelect.jsx:197`, `customRenderValue`) — **still NO testid**
+- Pin icon on the CLOSED trigger (`VersionSelect.jsx`'s `customRenderValue`) — **still NO testid**
   (re-verified 2026-08-27). Flag it if a future case must assert the pin on the closed selector.
 - `PUT/POST .../default_version/prompt_lib/{project}/{agentId}` fires on confirm.
 

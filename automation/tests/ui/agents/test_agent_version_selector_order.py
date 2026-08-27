@@ -116,23 +116,30 @@ def _expected_created_label(created_at: str) -> tuple[str, str]:
     What it mirrors, and why the mirror is shaped this way: this backend
     serializes NAIVE timestamps (no ``Z``, no offset). The codebase has its own
     normalizer for that — ``convertTime()`` in
-    ``src/common/convertChatConversationMessages.js:25``, which appends ``Z``
-    when a stamp carries neither — and the notification and chat renderers call
-    it. ``version.helpers.jsx:6-13`` does NOT: it runs ``new Date(created_at)``
-    on the raw string and then reads ``getDate()/getFullYear()/getHours()/
-    getMinutes()``. With no offset in the input there is nothing to convert
-    from, so those local getters hand back the string's own digits — the
-    dropdown renders the SERVER's wall clock, labelled as local.
+    ``src/common/convertChatConversationMessages.js``, which appends ``Z`` when
+    a stamp carries neither — and the notification and chat renderers call it.
+    ``version.helpers.jsx``'s ``formatVersionMeta()`` does NOT: it runs
+    ``new Date(created_at)`` on the raw string and then reads
+    ``getDate()/getFullYear()/getHours()/getMinutes()``. With no offset in the
+    input there is nothing to convert from, so those local getters hand back
+    the string's own digits — the dropdown renders the SERVER's wall clock,
+    labelled as local.
 
     Hence: a naive stamp is used VERBATIM. A tz-aware stamp (should the backend
     ever start sending one) is converted to local first, which is what
     ``new Date()`` + the local getters would then genuinely do. Either branch
     reproduces the product's own arithmetic rather than assuming a timezone.
 
-    (The UTC-vs-local inconsistency between this dropdown and the notification/
-    chat renderers is a real product observation, filed separately by the lead.
-    This helper deliberately mirrors the product as it is — it does not
-    compensate for it, which would hide the very thing that was filed.)
+    ⚠️ WHEN PRODUCT BUG #1879 IS FIXED, THIS MIRROR GOES STALE — UPDATE THE
+    MIRROR, NOT THE PRODUCT. The UTC-vs-local inconsistency between this
+    dropdown and the notification/chat renderers is filed as
+    https://github.com/EliteaAI/elitea-testing-public/issues/1879. The day
+    ``formatVersionMeta()`` starts calling ``convertTime()``, the dropdown will
+    render true local time and this helper's naive-verbatim branch will be
+    wrong — the fix is to drop that branch (always normalize to UTC, then
+    convert to local), NOT to relax the assertion. This helper deliberately
+    mirrors the product as it is rather than compensating for it, so that the
+    filed bug stays visible instead of being silently absorbed by the test.
     """
     stamp = datetime.fromisoformat(created_at)
     if stamp.tzinfo is not None:
@@ -365,22 +372,38 @@ class TestAgentVersionSelectorOrder:
                     f"got {match.group('name')!r}"
                 )
                 v2_created_at = next(
-                    version["created_at"]
-                    for version in agent_api.get_agent(agent_id)["versions"]
-                    if version["name"] == V2_NAME
+                    (
+                        version["created_at"]
+                        for version in agent_api.get_agent(agent_id)["versions"]
+                        if version["name"] == V2_NAME
+                    ),
+                    None,
+                )
+                assert v2_created_at is not None, (
+                    f"The API should report a {V2_NAME!r} version for agent "
+                    f"{agent_id} — it is the oracle this step's date/time "
+                    "assertions compare against, so its absence must fail by "
+                    "name here rather than as a bare StopIteration"
                 )
                 expected_date, expected_time = _expected_created_label(v2_created_at)
                 assert match.group("created_date") == expected_date, (
                     f"Version option's rendered creation DATE should be the "
                     f"one the API reports for {V2_NAME!r} — raw created_at "
                     f"{v2_created_at!r} renders as {expected_date!r} — got "
-                    f"{match.group('created_date')!r} in {option_text!r}"
+                    f"{match.group('created_date')!r} in {option_text!r}. If "
+                    "this fails only by a day boundary, see the TIME assertion "
+                    "below — the same #1879 cause shifts the date at the edges"
                 )
                 assert match.group("created_time") == expected_time, (
                     f"Version option's rendered creation TIME should be the "
                     f"one the API reports for {V2_NAME!r} — raw created_at "
                     f"{v2_created_at!r} renders as {expected_time!r} — got "
-                    f"{match.group('created_time')!r} in {option_text!r}"
+                    f"{match.group('created_time')!r} in {option_text!r}. If "
+                    "the delta equals this machine's UTC offset, product bug "
+                    "#1879 has been FIXED (formatVersionMeta() now calls "
+                    "convertTime()) — update _expected_created_label()'s "
+                    "mirror to always normalize to UTC first; do NOT relax "
+                    "this assertion"
                 )
                 assert match.group("author") != "Author unavailable", (
                     "Version option should name the real author who created "

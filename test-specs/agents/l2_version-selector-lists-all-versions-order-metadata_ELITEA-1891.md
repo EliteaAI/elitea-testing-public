@@ -94,15 +94,18 @@ in one pass:
    - **The rendered date AND time are asserted against the API's own `created_at` for that version — the
      response is the oracle** (`.agents/testing.md` § Fidelity policy). Do NOT compare against the test
      machine's clock: `formatVersionMeta()` runs `new Date(created_at)` + local getters **without** the
-     codebase's own `convertTime()` `Z`-normalizer (`src/common/convertChatConversationMessages.js:25`,
+     codebase's own `convertTime()` `Z`-normalizer (`src/common/convertChatConversationMessages.js`,
      which the notification and chat renderers DO call), and the backend sends NAIVE stamps — so there is
      no offset to convert from and the getters return the string's own digits. The dropdown therefore
      shows the **server's** wall clock labelled as local, and any clock-based expectation false-fails by
      `|server UTC − machine local|` (up to ±14 h) while passing on UTC CI runners. Mirror the product's
      arithmetic instead: naive stamp → use verbatim; tz-aware stamp → convert to local first.
      (`test_agent_version_selector_order.py::_expected_created_label` is the worked mirror.) The
-     UTC-vs-local inconsistency itself is a real product observation, filed separately by the lead — the
-     test mirrors it rather than compensating for it, so the filing stays visible.
+     UTC-vs-local inconsistency itself is a real product bug, filed as
+     [EliteaAI/elitea-testing-public#1879](https://github.com/EliteaAI/elitea-testing-public/issues/1879)
+     — the test mirrors it rather than compensating for it, so the filing stays visible. **When #1879 is
+     fixed this mirror goes stale: update the MIRROR, not the product** — drop its naive-verbatim branch
+     (always normalize to UTC, then convert to local); never relax the assertion.
 5. Verify base version appears last.
    - **AMENDED post-#857 — Verify PASSES UNCONDITIONALLY.** The pre-#857 condition recorded here
      ("only once `base` is not itself the pinned/default version") is **OBSOLETE**: the comparator's
