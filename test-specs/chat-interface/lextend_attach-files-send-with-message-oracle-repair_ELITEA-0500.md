@@ -12,7 +12,7 @@
 - **Environment Explored**: local (`http://localhost:5173`, EliteaUI `automation/testids`, DEV backend), project 471 "Elitea Testing Team", model **GPT-5.4**
 - **User set**: `${TEST_USER}` — on localhost `auth_state`/`VITE_DEV_TOKEN` skips Keycloak (renders as "Test Bot"/"TB")
 - **Analyst**: qa-engineer (analyst slot), 2026-08-28
-- **Status**: `extend-existing` — modifies an existing merged spec; **one removal needs lead sign-off** (§ Sign-off required)
+- **Status**: `extend-existing` — modifies an existing merged spec. **No assertion is deleted** (the proposed deletion was withdrawn after the corrected-oracle experiment), so **no human sign-off is required.**
 - **Triage class**: **A (test-code oracle defect) + case over-reach**, with a **D**-flavoured trigger-side nondeterminism amplifier. **NOT B, NOT C, NOT E, NOT F.**
 
 > ⚠️ **The board card names ELITEA-1142 — that is wrong.** ELITEA-1142 maps to four
@@ -187,11 +187,11 @@ Preserve `TestConversationUIElements`, the test name, `@allure.issue`, `@pytest.
 
 | # | Remove | Why this is not a weakening |
 |---|---|---|
-| R1 | Step 7's `file_acknowledged` token-echo assertion + the `normalized_response` line | Verifies a requirement **absent from ELITEA-0500**, through the most nondeterministic path in the system. Removing an assertion the case never specified does not reduce the case's coverage. ⚠️ **But see § Sign-off required — there IS a transient gap on `main`.** |
+| ~~R1~~ | ~~Step 7's `file_acknowledged` token-echo assertion~~ — **WITHDRAWN 2026-08-28 after the corrected-oracle experiment (§ Corrected-oracle hit rate). KEEP the assertion; fix the oracle instead.** | The token proved **8/8 reliably present** under a correct oracle. Deleting it would have removed working coverage to work around a test-side bug. |
 | R2 | Step 7's `"waking" not in ai_response` assertion | Subsumed — the repaired test no longer reads AI prose at all. |
 | R3 | Step 3's `pytest.skip(...)` fallback | **Masking** (above). An unattachable file must fail. |
 | R4 | The 3-tier raw-handle fallback ladder (direct input → `expect_file_chooser` → plus-menu popper) and its `try/except` swallowing | Legacy pre-policy raw handles (#25/#42 tech debt, not precedent); tier 1 drives the hidden decoy. Replaced by one testid'd path. |
-| R5 | Step 5's `wait_for_ai_response` + `wait_for_network(AI_RESPONSE_TIMEOUT)` | The repaired test asserts nothing about AI prose, so it must not depend on the defective oracle. Message-count growth is awaited on the DOM directly. |
+| R5 | Step 5's `wait_for_ai_response` **as currently implemented** | **Replace, don't drop** — the test still needs a settled turn (it keeps the token assertion). Use the corrected settle condition in § Corrected-oracle hit rate, and read via `get_message_text_at(initial_count + 1)`, never `.last`. |
 
 ### KEEP / ADD — case-faithful assertion set
 
@@ -294,32 +294,70 @@ None.
 
 ---
 
-## Sign-off required (preserve-the-nature rail)
+## Corrected-oracle hit rate — the experiment that withdrew R1
 
-R1 deletes an assertion. Per `adjust-automated-test` § Step 3, that needs **explicit human sign-off
-recorded in the PR body** — I do not take it unilaterally. The honest statement of the trade:
+**Question:** under a corrected oracle, is the token assertion reliably satisfiable?
+**Answer: 8/8. R1 is withdrawn — no deletion, no coverage loss.**
 
-- **Against the case (ELITEA-0500): not a weakening.** The token echo is not a case element. Its
-  removal costs the case nothing, and the repair *adds* coverage of Step 1, which is currently
-  verified by nothing at all.
-- **Against `main` as a whole: a genuine, temporary gap.** The observable "an attachment's content
-  actually reaches the model" is covered honestly by ELITEA-2201
-  (`test_send_message_with_attachments_verify_included.py`, per-file marker assertion at
-  `:241`) — but **that test is on `automation/base` and NOT yet on `main`**:
+Corrected settle condition (every signal system-produced; nothing fabricated, injected or routed):
 
-  ```
-  test_send_message_with_attachments_verify_included.py   main:no   base:YES
-  test_attach_files_10_file_limit_warning.py              main:YES  base:YES
-  ```
+- `chat-stop-generation-button` **not** visible — the product's own "generating" flag
+- Copy button visible on message index `initial_count + 1`
+- both stable across >=2 consecutive polls spanning >=1.2 s (defeats the ~0.6 s flicker)
+- read via `get_message_text_at(initial_count + 1)` — **never** `.last`
 
-  So between this repair landing on `main` and ELITEA-2201's promotion, `main` has no test asserting
-  that attachment content reaches the model.
+Frames pumped with `page.wait_for_timeout()`, never `time.sleep` (the sync API only dispatches
+`framereceived` inside a Playwright call — `utils/websocket_frames.py`).
 
-**My recommendation:** accept R1. The assertion was never a reliable guard — it passes or fails on
-the model's mood, so its removal loses a *signal that was already noise*, and the coverage it
-nominally provided returns (deterministically, per-file, already-hardened) the moment ELITEA-2201
-promotes. Taking the optional Axis-2 upload-response assertion closes most of the gap immediately
-and deterministically. But this is the lead's call to record, not mine.
+| run | settled | token | secs | tool-read (frame evidence) |
+|---|---|---|---|---|
+| 1 | yes | **yes** | 20.4 | yes |
+| 2 | yes | **yes** | 19.6 | yes |
+| 3 | yes | **yes** | 19.8 | yes |
+| 4 | yes | **yes** | 18.5 | yes |
+| 5 | yes | **yes** | 21.1 | yes |
+| 6 | yes | **yes** | 20.8 | yes |
+| 7 | yes | **yes** | 19.6 | yes |
+| V | yes | **yes** | 18.8 | yes (frame-dump verification run) |
+
+**8/8 settled, 8/8 token present**, settle 18.5–21.1 s (mean 19.8 s) — a tight, deterministic band.
+
+**Tool-read evidence is a real frame, not an inference.** The tool lifecycle rides
+`chat_predict_attachment` frames (this flow emits **no** `agent_tool_end` and no `agent_llm_chunk`):
+
+```
+event='chat_predict_attachment' dir='received'
+response_metadata -> {"tool_name": "read_multiple_files",
+                      "tool_output": {"<uuid>/test_automation_file.txt":
+                        "This file contains the unique token AUTOTEST_ATTACH_7X9 and was attached by automated testing."},
+                      "finish_reason": "stop", "execution_time_seconds": 0.1797}
+```
+
+The `attachments` read tool ran and returned the file's real content in **every** run — including
+runs whose prose claimed the content was already "embedded". So the model's narration style varies,
+but the **tool call does not**: the content reliably reaches the model.
+
+### Honest limits of this result
+
+1. **All 8 runs are localhost / GPT-5.4. The DEV red was never reproduced** — not by these 8, and
+   not by the 3 earlier runs of the *unmodified* test (also 3/3 green). So this experiment shows the
+   token is **reliably satisfiable under a correct oracle here**; it does not by itself prove the DEV
+   failure was H1 rather than a DEV-specific trigger-side miss.
+2. **What does point hard at H1:** the tool ran 8/8 and the DEV capture
+   (*"…Let me read the file directly…."*) is the model **announcing** that tool call. That is an
+   intermediate narration, which is exactly the state the broken oracle can read and the corrected
+   one cannot.
+3. **Residual risk if DEV differs** (different default model, slower backend): the token assertion
+   could still miss occasionally there. Mitigation is the deterministic frame oracle below — not a
+   deletion.
+
+### Stronger option now available (recommended addition)
+
+The `chat_predict_attachment` frame carries `response_metadata.tool_output` with the file's **actual
+content**. Asserting the token against *that* is fully deterministic and system-produced — it proves
+the attachment reached the model without depending on the model's prose at all. Recommend keeping
+the prose assertion **and** adding the frame assertion; the frame one is the durable guard if DEV's
+model turns out to narrate differently.
 
 ## Stale correlation keys in ELITEA-0500 (separate defect — flagged, not fixed)
 
@@ -366,13 +404,15 @@ Recommend a `question` card, not a silent fix inside this repair.
 
 ## Questions for a human (I did not guess)
 
-1. **Sign off R1?** (delete the token-echo assertion) — options: (a) accept as specced, ELITEA-2201
-   restores the observable on promotion; (b) accept **and** take the optional Axis-2 upload-response
-   assertion; (c) reject and keep an AI-content assertion in this test, broadened 2201-style.
-   **Recommend (b)** — case-faithful, deterministic, and closes the `main` gap now.
-2. **Fix the shared oracle?** — options: (a) separate `question`/tech-debt card, repair lands first;
-   (b) fold the oracle fix into this repair. **Recommend (a)** — the blast radius (every chat spec)
-   should not ride a single-test repair PR, and this repair does not depend on it.
+1. ~~**Sign off R1?**~~ — **RESOLVED without a human, by experiment.** 8/8 token present under a
+   corrected oracle, so the assertion is kept and nothing is deleted. No sign-off needed. The only
+   open sub-choice is whether to also add the deterministic `tool_output` frame assertion —
+   **recommend yes** (durable guard if DEV's model narrates differently).
+2. **Fix the shared oracle?** — now load-bearing: this repair KEEPS the token assertion, so it
+   needs a correct settle. Options: (a) fix `wait_for_ai_response` centrally (fixes every chat spec,
+   wide blast radius); (b) land the corrected settle **locally in this spec** first, raise a
+   tech-debt card for the central fix. **Recommend (b)** — proven condition, no suite-wide risk on a
+   single-test repair PR.
 3. **Back-write ELITEA-0500's two stale `automation_test_id` entries?** — options: (a) drop the two
    missing refs; (b) keep `test_attach_files_button_opens_picker` and author it as new `[Automate]`
    work. **Recommend (a) now + (b) as a follow-up card** — noting the repair's step 2 already
@@ -387,6 +427,7 @@ Recommend a `question` card, not a silent fix inside this repair.
 |---|---|
 | Attach control visible near composer (ELITEA-0500 Step 1) | `<repo-root>/ELITEA-0500-step-01-attach-button-visible.png` (absolute: `/Users/Alexander_Bychinskiy/Library/CloudStorage/OneDrive-EPAM/Github/EliteaAutomationFactory/elitea-testing-public/ELITEA-0500-step-01-attach-button-visible.png`) |
 | Full oracle timeline, 3 instrumented runs (per-poll copy-button state + extracted body) | `/tmp/afs-attach/ELITEA-0500-oracle-timeline.json` |
+| Corrected-oracle hit-rate, 8 runs (settled/token/secs/tool-read + events) | `/tmp/afs-attach/hitrate.jsonl` |
 
 The scratch probe used to produce the timelines was deleted after the run — it is not a deliverable
 and nothing in the repo references it.
