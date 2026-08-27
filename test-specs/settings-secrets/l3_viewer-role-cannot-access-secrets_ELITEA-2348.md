@@ -180,6 +180,18 @@ wired into `SettingsDrawerPage` / `BasePage`.
   project scoping. Still blocking: two roles simultaneously, or an admin-vs-viewer
   contrast on the *same* project.
 
+## Implementation outcome (test-automation-engineer, 2026-08-28)
+
+Shipped as
+`automation/tests/ui/admin/test_viewer_role_cannot_access_secrets.py::TestViewerRoleCannotAccessSecrets::test_viewer_role_is_not_offered_the_secrets_section`.
+Green first run, **0 reruns**.
+
+**No page-object change was needed** — `SettingsDrawerPage.nav_item()` /
+`nav_item_ids_in_order()` / `settings_drawer_menu` and `BasePage.switch_project()`
+covered every handle. The spec adds a suite-local `_assert_drawer_healthy()` guard
+(drawer menu visible + `project-general` present + nav list non-empty) that runs before
+every absence assertion, and restores the control project in a `finally`.
+
 ## Blocked Steps
 - None for the Viewer half. Steps 4-6 are **un-executable**, not blocked — there is no
   work that would unblock them short of the product gaining a Monitor role (#1909).

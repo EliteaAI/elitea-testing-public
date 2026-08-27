@@ -54,14 +54,19 @@ in play.
      chars of full app chrome.
 
 2. **Verify a user-friendly error message is shown (not a blank page or raw stack trace).**
-   - **Verify**: `toast-alert` visible, and its class contains `MuiAlert-colorError`
-     (the product classified this as an **error**, not info — contrast #1121, where a
-     toast used the wrong severity).
+   - **Verify**: the toast is present **with error severity**, located as
+     `[data-testid="toast-alert"][data-severity="error"]` — `Toast.jsx` renders
+     `data-severity={severity}` alongside the testid, so state is asserted by
+     **attribute filter on a stable testid**, the shape `.agents/testing.md`
+     § Locator policy requires (the product classified this as an **error**, not
+     info — contrast #1121, where a toast used the wrong severity).
    - **Verify**: `toast-message` text is **non-empty**.
    - **Verify (the "not a raw stack trace" half, asserted as an invariant on both the
-     toast text and the whole page body)**: contains none of
-     `TypeError`, `Uncaught`, `at Object.`, `.jsx:`, `.js:`, `    at ` — i.e. no
+     toast text and the Settings content pane `settings-content`)**: contains none of
+     `TypeError`, `Uncaught`, `at Object.`, `.jsx:`, `.js:`, `\n    at ` — i.e. no
      stack frame, no exception class, no source-file coordinate leaked to the user.
+     (Scoped to `settings-content`, not a raw `body` handle: a React error boundary
+     renders inside that pane, and it is a real app testid.)
    - *Live:* toast present, `MuiAlert-colorError`, message = `Unknown error`, no stack
      marker anywhere in the body, toast still present after a further 6 s (error toasts
      do not fast-auto-hide).
@@ -100,6 +105,8 @@ in play.
 | Secret row | `secret-row` | **on-main ✓** | 0 in failure state, `min(api_count, 10)` after recovery |
 | Toast container | `toast-alert` | **on-main ✓** (`src/components/Toast.jsx:60`) | severity read from its class list |
 | Toast message | `toast-message` | **on-main ✓** (`src/components/Toast.jsx:74`) | the text asserted for shape |
+| Toast severity filter | `TOAST_ALERT_SEVERITY` = `[data-testid="toast-alert"][data-severity="{}"]` | **on-main ✓** (`data-severity` at `src/components/Toast.jsx:61`) | class constant on `SecretsPage`; state via `data-*` filter, never a state-switched testid |
+| Settings content pane | `settings-content` | **on-`automation/testids`** (`src/[fsd]/pages/settings/index.jsx:268`; NOT yet on `main`) | scope for the no-stack-trace check; already used by `SettingsDrawerPage.settings_content` |
 
 *(Provenance verified with `cd ../EliteaUI && git fetch origin` + `git grep … origin/main -- src/`, 2026-08-28.)*
 
@@ -111,9 +118,12 @@ in play.
   **additive** page-object method (e.g. `navigate_expecting_no_rows()`) that goes to the
   route and waits on the page shell instead. Do not modify `navigate()` — it has many
   merged callers (`.agents/role-overrides.md` § additive-only).
-- Toast severity: assert with `to_have_class(re.compile(r"MuiAlert-colorError"))` on the
-  **testid-located** `toast-alert` element. That is an attribute assertion on a compliant
-  locator, not a raw CSS handle.
+- Toast severity: **use the `data-severity` attribute filter**, not a MUI class regex.
+  `Toast.jsx:61` renders `data-severity={severity}` next to the testid, so
+  `SecretsPage.TOAST_ALERT_SEVERITY` (`[data-testid="toast-alert"][data-severity="{}"]`)
+  is the compliant class-constant shape. *(Superseded during implementation — the
+  original note here proposed a `MuiAlert-colorError` class assertion before the
+  `data-severity` attribute was found.)*
 - `route.abort("failed")` (not `fulfill`) — nothing is authored, only the transport is cut.
 - **`page.unroute` before the reload**, and let `expect_response` capture the real `200`
   so the recovery assertions read the product's own payload.
@@ -147,7 +157,7 @@ in play.
 ### Axis 2 — asserted beyond the case
 | Observable | Why |
 |---|---|
-| The toast's **severity** is `error`, not info/warning | the case says "error message"; a blue info toast for a failed load would satisfy a text-only check while misinforming the user (#1121 is that exact defect on another surface) |
+| The toast's **severity** is `error`, not info/warning (via `data-severity="error"`) | the case says "error message"; a blue info toast for a failed load would satisfy a text-only check while misinforming the user (#1121 is that exact defect on another surface) |
 | The failure-state page still renders its **shell** (title + "+") | this is the case's "not a blank page" made mechanical — a whole-page crash and a graceful error look identical to a toast-only assertion |
 | The recovered rows' names are **a subset of the live API response's names** | proves the UI carried the backend's data through rather than re-rendering stale/leftover state; a bare count check would pass on stale rows |
 | The list response is asserted `200` **with items**, not just "rows appeared" | the #1773 trap — on this surface a table can look settled because the query never ran. Proving the endpoint answered is what makes step 4 real |
@@ -162,6 +172,17 @@ in play.
   measured in the failure state. Deliberately outside this spec's assertions.
 - **#1773 (bug, OPEN)** — unrelated 403 path, but the reason step 3 asserts the response
   status rather than trusting the rendered table.
+
+## Implementation outcome (test-automation-engineer, 2026-08-28)
+
+Shipped as
+`automation/tests/ui/admin/test_secrets_error_state_on_network_failure.py::TestSecretsErrorStateOnNetworkFailure::test_secrets_error_state_on_network_failure_and_recovery`.
+Green first run, **0 reruns** (2 passed in 27.67 s alongside ELITEA-2348).
+
+`SecretsPage` gained **three additive members only** — `navigate_expecting_no_rows()`,
+the `toast_alert` / `toast_message` / `settings_content` descriptors and the
+`TOAST_ALERT_SEVERITY` constant. `navigate()` is **byte-identical**
+(`git diff … | grep -E '^-[^-]'` on `pages/secrets_page.py` → no output).
 
 ## Blocked Steps
 - None.

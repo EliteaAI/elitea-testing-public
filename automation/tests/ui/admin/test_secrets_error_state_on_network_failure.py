@@ -131,11 +131,14 @@ class TestSecretsErrorStateOnNetworkFailure:
                 f"Case step 2 — the error message must not be a raw stack trace, "
                 f"found {toast_markers} in {message!r}"
             )
-            body_text = page.locator("body").inner_text()
-            body_markers = _stack_markers_in(body_text)
-            assert not body_markers, (
+            # Scoped to the Settings content pane (a real app testid): a React
+            # error boundary would render its trace there, and the pane is
+            # exactly what the case means by "the page".
+            pane_text = secrets_page.settings_content.inner_text()
+            pane_markers = _stack_markers_in(pane_text)
+            assert not pane_markers, (
                 f"Case step 2 — no raw stack trace may reach the user, found "
-                f"{body_markers} in the rendered page body"
+                f"{pane_markers} in the rendered Settings content pane"
             )
             logger.info("Failure-state toast message rendered: %r", message)
             allure.attach(

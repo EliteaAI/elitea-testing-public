@@ -433,6 +433,16 @@ class SecretsPage(BasePage):
         testid="toast-message",
         description="Toast body text",
     )
+    #: The Settings content pane (`src/[fsd]/pages/settings/index.jsx:268`,
+    #: shared with `SettingsDrawerPage.settings_content`). Used by ELITEA-2349
+    #: as the SCOPE for the case's "not a raw stack trace" check — a React
+    #: error boundary would render inside this pane, and it is a real app
+    #: testid rather than a raw `body` handle.
+    settings_content = LocatorDescriptor(
+        testid="settings-content",
+        description="Settings content pane hosting the Secrets table",
+    )
+
     #: Severity-filtered toast. `Toast.jsx` renders `data-severity={severity}`
     #: alongside the testid, so state is asserted by ATTRIBUTE FILTER on a
     #: stable testid -- the shape `.agents/testing.md` § Locator policy
