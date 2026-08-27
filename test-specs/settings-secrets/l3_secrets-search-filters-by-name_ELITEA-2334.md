@@ -58,13 +58,20 @@
 1. Navigate to `${BASE_URL}/settings/secrets`.
    - **Verify**: `secret_row` count ≥ 2 and the total (parsed from the range label) ≥ 2 —
      the case's own precondition, asserted.
-   - **Verify**: `secrets-search-input` is visible, placeholder exactly `Search`, value
-     empty.
-   - **Capture** `total_all` (from the range label) and the full name set. Because the
-     project holds 121 secrets across pages, the **full name set is read by raising the
-     page size to `100`** — the filter must be compared against the *whole* dataset, not
-     just page 1, or "shows only matching names" becomes a page-1 statement. Derive the
-     probe from that full set.
+   - **Capture the FULL name set** (`SecretsPage.collect_all_row_names()`, shipped): it
+     raises the page size to `100` and walks the pagination to the last page, collecting
+     every name. The filter must be compared against the *whole* dataset — with 121
+     secrets on 10-row pages, "shows only matching names" judged from page 1 alone would
+     call a broken filter correct. Then **re-navigate** so the case's own steps start from
+     a fresh first page at the default size with an empty search field (searching while
+     parked on a high page index would render an empty table, since `usePagination` does
+     not reset the page on a search).
+   - **Verify**: the collected name count equals the pagination total (a mismatch means
+     the walk missed rows), and `secrets-search-input` is visible, placeholder exactly
+     `Search`, value empty.
+   - Derive the probe from the full set: the first prefix that filters to a **proper,
+     non-empty subset of at most 10 rows** (so the matches fit one default page), failing
+     loudly with a named reason if the live data cannot satisfy it.
 
 2. Type the probe into the search field **one character at a time**
    (`press_sequentially`), **without pressing Enter**.
@@ -144,6 +151,13 @@
 
 ## Known Defects / Clarifications
 - **#1203 (OPEN)** — React "Maximum update depth exceeded" on mount; isolated soft failure.
+
+> **Implementation outcome (2026-08-27):** `#1203` **did** fire in the automated run —
+> 32-41 occurrences per test across all five specs of this wave — even though the live
+> Playwright-MCP walk of the identical flow produced **zero**. Every functional assertion
+> passed; the spec is therefore **sanctioned-RED on this one signature** and flips green
+> when the product fix ships. Counts commented on `#1203`; the live-vs-automated split is
+> recorded in the surface digest.
 
 ## Blocked Steps
 None.

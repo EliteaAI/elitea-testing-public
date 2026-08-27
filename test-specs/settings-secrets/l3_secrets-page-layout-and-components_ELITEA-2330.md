@@ -163,5 +163,12 @@ reference format correctly for new rows.
   the same `soft_failures`/`pytest.fail()` idiom the sibling secrets specs already use —
   never filtered away.
 
+> **Implementation outcome (2026-08-27):** `#1203` **did** fire in the automated run —
+> 32-41 occurrences per test across all five specs of this wave — even though the live
+> Playwright-MCP walk of the identical flow produced **zero**. Every functional assertion
+> passed; the spec is therefore **sanctioned-RED on this one signature** and flips green
+> when the product fix ships. Counts commented on `#1203`; the live-vs-automated split is
+> recorded in the surface digest.
+
 ## Blocked Steps
 None.
