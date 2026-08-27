@@ -89,3 +89,4 @@
 - [Blocked case AFS](blocked_case_afs_still_lands.md) — analysis-only output is docs: merge it, no gate applies
 - [Guardrails config via REST](admin_plugin_config_mode_segment.md) — mode `administration`, not `prompt_lib`; Admin UI is a separate app
 - [A blocker proves a symptom, not a cause](blocker_premise_symptom_vs_cause.md) — verify the CAUSE before honouring a park
+- [Never accept a partial merge gate](never_accept_a_partial_gate.md) — non-member failure mid-gate ⇒ re-gate from scratch + check shared state
