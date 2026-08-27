@@ -161,5 +161,13 @@ injected state, no mocked client.
   an illustration, not a contract ⇒ **no clarification filed**; the AFS asserts the live
   text exactly.
 
+> **Implementation outcome (2026-08-27, `test_secret_name_uniqueness_within_project.py`):**
+> every functional assertion PASSED on the first run — duplicate create → **400**, error
+> toast `Secret "<name>" already exists`, rejected row still in edit mode with the typed
+> name, exactly one row with that name after a reload, and the survivor still holding its
+> **original** value (revealed via a fresh server GET — no silent overwrite).
+> `click_save_button_expect_rejection()` was required exactly as the AFS predicted.
+> `#1203` fired **33 times**, so the spec is **sanctioned-RED** on that one signature.
+
 ## Blocked Steps
 None.

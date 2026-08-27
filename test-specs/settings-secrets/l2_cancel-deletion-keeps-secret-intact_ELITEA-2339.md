@@ -145,5 +145,12 @@ No `page.route`, no `route.fulfill`, no injected state, no mocked client.
 - **#1222 (OPEN)** — three-dot menu open is non-deterministic under automation; mitigated
   by the existing `open_row_actions_menu()` workaround, not asserted here.
 
+> **Implementation outcome (2026-08-27, `test_secret_cancel_deletion_keeps_secret.py`):**
+> every functional assertion PASSED on the first run — dialog copy exact, Delete button
+> disabled before typing, **zero DELETE requests** across the whole flow, row + masked
+> value unchanged before and after a reload. `open_row_actions_menu()`'s workaround was
+> used unconditionally and worked. `#1203` fired **35 times**, so the spec is
+> **sanctioned-RED** on that one signature.
+
 ## Blocked Steps
 None.

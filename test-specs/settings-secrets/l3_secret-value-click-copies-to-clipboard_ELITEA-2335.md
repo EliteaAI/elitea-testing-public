@@ -174,5 +174,14 @@ automated run (see § Implementation outcome).
   `The <name> values have been copied.` The "e.g." makes this an illustration, not a
   contract, so **no clarification is filed**; the AFS asserts the live text exactly.
 
+> **Implementation outcome (2026-08-27, `test_secret_value_click_copies_to_clipboard.py`):**
+> every functional assertion PASSED on the first run — including the part this AFS could
+> not observe live: **the clipboard readback works in the pytest context**
+> (`clipboard == secret_value == reveal_response.json()["value"]`, and `!=` the masked
+> reference). The `info` toast was caught reliably by a web-first `expect(...)` attached
+> immediately after the click. `#1203` fired **45 times** in that run (vs **0** in the
+> Playwright-MCP walk of the identical flow), so the spec is **sanctioned-RED on that one
+> signature** and flips green when the product fix ships.
+
 ## Blocked Steps
 None.
