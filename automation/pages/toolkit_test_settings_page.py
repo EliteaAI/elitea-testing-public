@@ -315,7 +315,7 @@ class ToolkitTestSettingsPage(BasePage):
         """
         self.run_tool_button.wait_for(state="visible", timeout=timeout)
         self.run_tool_button.click()
-        logger.info("Clicked RUN TOOL")
+        logger.info("Clicked the run-tool button ('Run Test')")
 
     def get_welcome_message_text(self, timeout: int = 10000) -> str:
         """Return the center panel's current message-list text.

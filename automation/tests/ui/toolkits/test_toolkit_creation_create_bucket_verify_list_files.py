@@ -9,10 +9,12 @@ tooltip), fills Name="my-artifact-toolkit"/Bucket="new-bucket" and Saves
 (persisting BOTH a toolkit AND — as a server-side side effect of the SAME
 create call — a bucket, confirmed at the network level: exactly one POST to
 the toolkit-create endpoint, none to any bucket-create endpoint), then
-exercises the toolkit-detail page's TEST SETTINGS panel end-to-end: selects
-"List files", runs it against the just-created empty bucket, and verifies
-the result. Finally confirms the new bucket is visible, searchable, and
-shows the correct empty-bucket state in the Artifacts section.
+opens the standalone Test Toolkit surface from the detail view's action bar
+(``/toolkits/{tab}/{id}/test`` — the #1616 redesign moved it off the detail
+view) and exercises it end-to-end: selects "List files", runs it against the
+just-created empty bucket, and verifies the result. Finally confirms the
+new bucket is visible, searchable, and shows the correct empty-bucket state
+in the Artifacts section.
 
 Known findings (see AFS § Known Defects — neither blocking):
 - [CLARIFICATION #669] the case's step-15 text says "click" the Bucket
@@ -46,14 +48,15 @@ step-by-step disposition):
        is the ONLY mutating call (no separate bucket-create POST).
 22-23. Verify the detail header shows the toolkit name; verify the URL
        reflects the new toolkit ID.
-24.    Verify the Configuration/Indexes tabs are shown.
-25.    Verify the TEST SETTINGS panel (model selector, Tool dropdown,
-       welcome message).
+24.    Verify the Configuration form and the Indexes side panel are
+       both shown on the detail view.
+24b.   Open the Test Toolkit surface via the action-bar "Test" button.
+25.    Verify the Test Settings column's tool-selection entry point.
 26-28. Open the Tool dropdown; verify it lists all 16 tools including
        "List files"; select it.
 29.    Verify the "List files" parameter panel (Bucket Name, Folder,
-       Recursive, Include, Skip, RUN TOOL).
-30-31. Click RUN TOOL; verify the result (`{'total': 0, 'rows': []}`).
+       Recursive, Include, Skip, "Run Test").
+30-31. Click "Run Test"; verify the result (`{'total': 0, 'rows': []}`).
 32-36. Navigate to Artifacts; search "new"; verify "new-bucket" is listed.
 37-39. Select "new-bucket"; verify the header + the empty-bucket state.
 
@@ -102,7 +105,15 @@ pytestmark = [pytest.mark.ui, pytest.mark.regression, pytest.mark.toolkits, pyte
 # Form loads in ~10 seconds (user verified) - increased from 10_000 to 20_000 for safety margin
 UI_ELEMENT_TIMEOUT = 20_000
 NAVIGATION_TIMEOUT = 15_000
-TOOL_RUN_TIMEOUT = 15_000
+# The tool run is an LLM-mediated conversation turn, not a bare REST call
+# (AFS § Network Behavior: RUN TOOL posts a conversation + participant and the
+# tool executes server-side inside it), so the budget has to cover the model's
+# turn, not the tool's own ~0.3s. 15_000 was an outlier against this suite's
+# 30-120s norms for live LLM waits and timed out at Step 31 on 2026-08-27 with
+# the assistant message present but still empty — see the ELITEA-1866 Run
+# Report. Sibling test_credential_usage_in_toolkit_flows.py uses 20_000 and its
+# own comment already warns that is tight under batch conditions.
+TOOL_RUN_TIMEOUT = 60_000
 DELETE_RESPONSE_TIMEOUT = 15_000
 
 # The case's own literal Test Data — NOT placeholders (unlike sibling
@@ -124,13 +135,6 @@ EXPECTED_TOOLTIP_TEXT = (
     "The bucket name must: • Start with a lowercase letter "
     "• Contain only lowercase letters, numbers, and hyphens "
     "• Be unique within your project"
-)
-
-# Live-confirmed exact welcome message (TestTools.jsx's
-# generateWelcomeMessage(isTestTools=True)).
-EXPECTED_WELCOME_MESSAGE = (
-    "Welcome! Select a tool from the Test Settings panel and click "
-    "'RUN TOOL' to see the results here."
 )
 
 # Filed separately as github.com/EliteaAI/elitea-testing-public#656
@@ -529,17 +533,20 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                 )
 
             with allure.step(
-                "Step 24 — Verify the Configuration tab and the Indexes "
-                "section are shown on the detail view"
+                "Step 24 — Verify the Configuration surface and the Indexes "
+                "surface are both shown on the detail view"
             ):
-                # EXPECTED-RESULT CHANGE (EliteaUI EL-5947): the case text says
-                # "Configuration and Indexes TABS". Indexes is no longer a tab —
-                # the redesign moved it INSIDE the Configuration tab as an
-                # accordion, and the tab array's only other entry ('Test') ships
-                # `display: 'none'` with empty content, so exactly one tab
-                # renders. The observable the case cares about (both surfaces are
-                # reachable on the detail view) is unchanged and asserted below;
-                # only their shape moved. The TMS case text needs the same update.
+                # EXPECTED-RESULT CHANGE (elitea-testing-public#1616): the case
+                # text says "Configuration and Indexes TABS". Indexes has moved
+                # twice. EL-5947 first folded it into the Configuration tab as an
+                # accordion; #1616 then removed that accordion too and made
+                # Indexes a right-hand SIDE PANEL inside the Configuration tab
+                # (IndexesPanel.jsx, root `toolkit-indexes-panel`), rendered
+                # whenever the toolkit's schema exposes index tools. The tab
+                # array now holds exactly one entry, so one tab renders. The
+                # observable the case cares about (both surfaces are reachable on
+                # the detail view) is unchanged and asserted below; only their
+                # shape moved. The TMS case text needs the same update.
                 toolkit_detail.wait_for_config_surface(timeout=UI_ELEMENT_TIMEOUT)
                 # The Configuration tab is ATTACHED and selected, but the strip
                 # is not displayed (one real tab), so `to_be_visible()` would
@@ -550,14 +557,33 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                 expect(toolkit_detail.configuration_tab).to_have_attribute(
                     "aria-selected", "true", timeout=UI_ELEMENT_TIMEOUT,
                 )
-                # Indexes — now an accordion inside Configuration — IS visible.
-                expect(toolkit_detail.indexes_accordion).to_be_visible(
+                # Indexes — now a side panel beside Configuration — IS visible.
+                # Asserted on the panel ROOT: this toolkit has no PgVector
+                # connection / Embedding Model (the case never configures them),
+                # so `indexingBlocker` suppresses every INNER handle
+                # (toolkit-indexes-count / -add-button / -empty-state) at
+                # runtime. The root is the only honest handle in this state.
+                expect(toolkit_detail.indexes_panel).to_be_visible(
                     timeout=UI_ELEMENT_TIMEOUT,
                 )
 
             with allure.step(
-                "Step 25 — Verify the TEST SETTINGS panel is visible with "
-                "Tool dropdown (empty state)"
+                "Step 24b — Open the Test Toolkit surface via the detail "
+                "view's action-bar 'Test' button"
+            ):
+                # NEW STEP (elitea-testing-public#1616): the entire TEST SETTINGS
+                # surface has LEFT the toolkit detail view. EditToolkit.jsx's tab
+                # array no longer carries a 'Test' entry; the surface now lives on
+                # its own route, /toolkits/{tab}/{id}/test. Without this
+                # navigation step, steps 25-31 cannot pass at all. Reached via the
+                # product's own action-bar button rather than a forced URL, so the
+                # navigation stays exercised rather than substituted. The TMS case
+                # text needs this step inserted between 24 and 25.
+                toolkit_detail.open_test_surface(timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step(
+                "Step 25 — Verify the Test Toolkit view shows the tool "
+                "selection entry point (empty state)"
             ):
                 # UI CHANGE: Model selector only appears AFTER selecting a tool.
                 # The panel initially shows EMPTY STATE with empty_state_tool_select.
@@ -565,11 +591,13 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                 expect(test_settings.empty_state_tool_select).to_be_visible(
                     timeout=UI_ELEMENT_TIMEOUT,
                 )
-                # UI CHANGE: Welcome message text and location changed.
-                # Old: "Welcome! Select a tool..." in chat-message-list
-                # New: "Test toolkit Choose a tool..." as plain text (no testid)
-                # Skipping welcome message assertion - UI redesign changed both
-                # text and structure. TODO: Add testid for empty state message.
+                # UI CHANGE (#1616): there is no welcome message any more, in any
+                # form. ToolkitTestResults.jsx early-returns `null` while
+                # `messages` is empty, so the Results column renders NOTHING
+                # before the first run and `chat-message-list` does not exist yet.
+                # The obsolete welcome-message assertion is therefore not
+                # replaceable, not merely relocated — the observable is gone from
+                # the product. The TMS case text needs the same update.
 
             with allure.step("Step 26 — Click the Tool dropdown"):
                 test_settings.empty_state_tool_select.click()
@@ -605,29 +633,53 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
             with allure.step(
                 "Step 28b — Verify model information appears after tool selection"
             ):
-                # Model selector only becomes visible AFTER selecting a tool
-                # UI CHANGE: Model display format may have changed in recent redesign
-                # Check if testid exists first, otherwise use text fallback
-                if test_settings.model_selector_button.count() > 0:
-                    expect(test_settings.model_selector_button).to_be_visible(
-                        timeout=UI_ELEMENT_TIMEOUT,
-                    )
-                    model_name = test_settings.model_selector_name.text_content() or ""
-                else:
-                    # Fallback: Check for model info as text (testid may be missing)
-                    model_text = page.locator('text=/Model.*Anthropic|Model.*Claude|Model.*GPT/i').first
-                    expect(model_text).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-                    model_name = model_text.text_content() or ""
+                # Model selector only becomes visible AFTER selecting a tool.
+                #
+                # EXPECTED-RESULT CHANGE — a STRENGTHENING, lead-approved and
+                # declared (elitea-testing-public#1815). This assertion used to be
+                # conditional: `if model_selector_button.count() > 0` … `else`
+                # a raw page-level text-matching handle on the pattern
+                # /Model.*Anthropic|Model.*Claude|Model.*GPT/i. Source
+                # settles what that hedge was covering — ToolkitTestSettings.jsx
+                # renders LLMModelSelector with `variant="field"`, whose
+                # `if (variant === 'field')` early return emits ONLY
+                # `model-selector-name`; `model-selector-button` belongs to the
+                # ButtonGroup variant and is never rendered on this surface. So
+                # the `if` branch was dead and the `else` branch — a raw text
+                # locator, a locator-policy violation living in the spec file —
+                # was the only one ever taken. The check is now unconditional
+                # against the product's own testid. Nothing that was verified
+                # stops being verified: the same observable (the Test surface
+                # displays the model that will be used, and that text names a
+                # real model) is asserted, through a compliant handle.
+                expect(test_settings.model_selector_name).to_be_visible(
+                    timeout=UI_ELEMENT_TIMEOUT,
+                )
+                model_name = test_settings.model_selector_name.text_content() or ""
 
                 assert model_name.strip(), (
                     "Model information should show a non-empty model name "
                     "(model-specific — not asserted on the exact value)"
                 )
+                # Carried over from the replaced `else` branch, whose regex
+                # asserted the displayed text names an actual model vendor.
+                # Deliberately FAMILY-level, never the exact model or version
+                # (the default model is environment-specific and changes) — if
+                # the platform's default moves to a vendor family not listed
+                # here, add it: that is catalogue drift, not a product defect.
+                assert re.search(
+                    r"anthropic|claude|gpt|openai|gemini|llama|mistral",
+                    model_name,
+                    re.IGNORECASE,
+                ), (
+                    "Model name should name a recognizable model vendor/family, "
+                    f"got: {model_name!r}"
+                )
 
             with allure.step(
                 "Step 29 — Verify the 'List files' parameter panel shows "
-                "Bucket Name, Folder, Recursive, Include, Skip, and RUN "
-                "TOOL"
+                "Bucket Name, Folder, Recursive, Include, Skip, and the "
+                "'Run Test' button"
             ):
                 for field_key in ("bucket_name", "folder", "recursive", "include", "skip"):
                     assert test_settings.is_param_field_visible(
@@ -638,7 +690,7 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                 )
 
             with allure.step(
-                "Step 30 — Click RUN TOOL, leaving all parameter fields "
+                "Step 30 — Click 'Run Test', leaving all parameter fields "
                 "at their default (empty) values, per the case's own "
                 "literal step sequence"
             ):
@@ -661,10 +713,10 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
 
             with allure.step(
                 "Side-channel check — no NEW console errors across the "
-                "Save + TEST SETTINGS/RUN TOOL flow (steps 20-31)"
+                "Save + Test Toolkit surface / tool-run flow (steps 20-31)"
             ):
                 assert not console_errors, (
-                    "Unexpected console errors during Save/RUN TOOL: "
+                    "Unexpected console errors during Save/tool run: "
                     f"{[m.text for m in console_errors]}"
                 )
 

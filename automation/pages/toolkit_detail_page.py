@@ -15,6 +15,7 @@ Enhancement #5114: Added support for credential status indicators:
 
 import json
 import logging
+import re
 
 from playwright.sync_api import Locator, Page, expect
 
@@ -60,18 +61,44 @@ class ToolkitDetailPage(BasePage):
         "the detail view's top tab strip",
     )
 
-    # Indexes is NO LONGER a sibling tab. The toolkit-detail redesign
-    # (EliteaUI EL-5947) moved it INSIDE the Configuration tab as an
-    # accordion, and the only other entry in the tab array ('Test') ships
-    # `display: 'none'` with empty content — so the strip renders exactly
-    # one visible tab. The former `indexes_tab`
-    # (`toolkit-detail-indexes-tab`) no longer exists in EliteaUI on any
-    # branch; this accordion testid is the current handle, and it is
-    # present on BOTH `main` and `automation/testids`.
-    indexes_accordion = LocatorDescriptor(
-        testid="toolkit-indexes-accordion",
-        description="Indexes accordion rendered inside the Configuration "
-        "tab (replaced the former standalone Indexes tab in EL-5947)",
+    # Indexes has now moved TWICE, and this field tracks the second move.
+    #   1. EliteaUI EL-5947 removed the standalone Indexes *tab*
+    #      (`toolkit-detail-indexes-tab`) and folded Indexes INTO the
+    #      Configuration tab as an accordion (`toolkit-indexes-accordion`).
+    #   2. A further redesign (elitea-testing-public#1616, live-confirmed
+    #      2026-08-27) removed the accordion too: Indexes is now a
+    #      right-hand SIDE PANEL inside the Configuration tab —
+    #      `IndexesPanel.jsx`, root `toolkit-indexes-panel`, rendered by
+    #      `ConfigurationTab.jsx` whenever the toolkit's schema exposes
+    #      index tools. `toolkit-indexes-accordion` is absent from BOTH
+    #      `origin/main` and `origin/automation/testids`.
+    #
+    # Use the panel's ROOT, never its contents: on a bare toolkit with no
+    # PgVector connection / Embedding Model configured, `indexingBlocker`
+    # is set and the panel renders only its banner — `toolkit-indexes-count`,
+    # `toolkit-indexes-add-button` and `toolkit-indexes-empty-state` are all
+    # absent at runtime despite existing on `main`. The panel root is the
+    # only handle that honestly proves the Indexes surface is reachable in
+    # that state.
+    indexes_panel = LocatorDescriptor(
+        testid="toolkit-indexes-panel",
+        description="Indexes side panel (IndexesPanel.jsx root) rendered "
+        "beside the Configuration form on the toolkit detail view — "
+        "replaced the former Indexes accordion (#1616), which itself had "
+        "replaced the standalone Indexes tab (EL-5947)",
+    )
+
+    # Action-bar "Test" button on the detail view (ToolkitForm.jsx, rendered
+    # when `isDetailsActionBar && handleShowTest`). This is the PRODUCT's own
+    # route to the Test surface, which the #1616 redesign moved out of the
+    # detail view entirely and onto `/toolkits/:tab/:toolkitId/test`. The
+    # button is disabled while the form is dirty; it is enabled immediately
+    # after a Save.
+    test_button = LocatorDescriptor(
+        testid="toolkit-test-button",
+        description="'Test' button in the toolkit detail view's action bar "
+        "— navigates to the standalone Test Toolkit surface at "
+        "/toolkits/{tab}/{id}/test",
     )
 
     # ------------------------------------------------------------------
@@ -135,19 +162,44 @@ class ToolkitDetailPage(BasePage):
         the Configuration *and Indexes* tabs, expect >= 2") described a
         two-tab strip that no longer exists (EliteaUI EL-5947).
 
-        Waits on the **Indexes accordion**, not the Configuration tab: with
-        only one real tab left (the array's other entry, 'Test', ships
-        ``display: 'none'`` with empty content) the strip itself is not
-        displayed, so ``configuration_tab`` resolves to a HIDDEN
-        ``role="tab"`` element — present and ``aria-selected="true"``, but
-        never visible. Callers assert its *attachment*, and the accordion's
-        *visibility*.
+        Waits on the **Indexes side panel**, not the Configuration tab: the
+        detail view's tab array now holds exactly ONE entry, so the strip
+        itself is not displayed and ``configuration_tab`` resolves to a
+        HIDDEN ``role="tab"`` element — present and ``aria-selected="true"``,
+        but never visible. Callers assert its *attachment*, and the Indexes
+        panel's *visibility*.
+
+        The waited-on handle moved from ``toolkit-indexes-accordion`` to
+        ``toolkit-indexes-panel`` with the #1616 redesign — see
+        :attr:`indexes_panel` for why the panel ROOT is the only honest
+        handle for a toolkit with no PgVector/Embedding Model configured.
 
         Args:
             timeout: Maximum wait time in milliseconds for the Indexes
-                accordion to become visible.
+                side panel to become visible.
         """
-        self.indexes_accordion.wait_for(state="visible", timeout=timeout)
+        self.indexes_panel.wait_for(state="visible", timeout=timeout)
+
+    def open_test_surface(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Open the standalone Test Toolkit surface from the detail view.
+
+        The #1616 redesign moved the whole TEST SETTINGS surface off the
+        detail view and onto its own route,
+        ``/toolkits/{tab}/{toolkit_id}/test``. Navigation goes through the
+        product's OWN control — the action-bar :attr:`test_button` — rather
+        than forcing the URL, so the navigation itself stays exercised
+        instead of substituted.
+
+        Args:
+            timeout: Maximum wait time in milliseconds, applied both to the
+                button becoming visible and to the URL transition.
+        """
+        self.test_button.wait_for(state="visible", timeout=timeout)
+        self.test_button.click()
+        self.page.wait_for_url(
+            re.compile(r".*/toolkits/[^/]+/\d+/test"), timeout=timeout
+        )
+        logger.info("Opened the Test Toolkit surface")
 
     def navigate_to_toolkit(self, toolkit_id: int) -> None:
         """Navigate to toolkit detail page and wait for load.
