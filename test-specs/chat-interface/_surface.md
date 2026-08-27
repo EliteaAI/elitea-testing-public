@@ -2496,16 +2496,21 @@ as a possible transit-path fragility for a from-scratch driver, not filed as
 a product defect (never observed via the real test suite's own fixtures).
 
 ## HITL sensitive-action authorization card + direct-toolkit-call chip rendering (ELITEA-2211..2215)
-- **Admin UI Guardrails (`${ELITEA_URL}/admin/app/configuration#guardrails`)
-  is NOT served on `localhost:5173`** — confirmed live this pass
-  (`page.goto()`, body text literally `"Page not found. Try Home page"`,
-  under the normal app shell/sidebar). This is a pre-existing, ALREADY
-  DOCUMENTED constraint (`tests/ui/admin/test_guardrails_cleanup_only.py`'s
-  own comment: "Admin UI isn't served on localhost"); every case in this
-  cluster whose precondition is "toolkit configured with HITL authorization"
-  (ELITEA-2211/2212/2213/2214) needs the SAME `pytest.mark.guardrails`
-  marker + CI-against-deployed-env execution path the existing
-  `TestSensitiveToolLiveReload` (ELITEA-1696) already uses — not a new gap.
+- **CORRECTED 2026-08-27 (ELITEA-2211/2212 re-analysis) — this cluster runs in the
+  LOCAL loop; the entry below it about `pytest.mark.guardrails` + CI-only is RETIRED.**
+  The Admin UI genuinely is not on `localhost:5173` (it is a SEPARATE deployed
+  application — there is no `/admin` route in `EliteaUI/src/routes.js`; #1140), but the
+  guardrails config is reachable by REST as the standard test user under the
+  **`administration`** mode segment (`prompt_lib` is the 403):
+  `GET|PUT {ELITEA_API_BASE}/admin/plugin_config_values/administration/guardrails`
+  -> `200 {"saved": true, "requires_restart": []}`, live IMMEDIATELY (no restart, no
+  re-attach, no fresh conversation). PUT requires the FULL values object: read it,
+  mutate `sensitive_tools` additively, PUT it back; restore the captured original
+  verbatim in a `finally` (org-wide side effect). Wired as
+  `APIClient.get_guardrails_config()` / `set_guardrails_config()` and the
+  `sensitive_delete_file_toolkit` fixture. Cases ELITEA-2211..2214 carry NO
+  `guardrails` marker. `test_guardrails_live_reload.py` /
+  `test_guardrails_cleanup_only.py` DO test the Admin UI and keep theirs.
 - **Sensitivity is toolkit-TYPE scoped, not per-toolkit-instance.**
   `GuardrailsAdminPage.add_sensitive_tool(toolkit_type, tool_name)` marks
   the tool sensitive for EVERY toolkit of that type project-wide. Any new
@@ -2516,26 +2521,29 @@ a product defect (never observed via the real test suite's own fixtures).
   is the sensitive-action card's source** (read in full this pass, not just
   grepped). Confirmed testids: `sensitive-action-panel` (container, only
   rendered when `guardrail_type` is `sensitive_tool`/`parallel_sensitive_tools`),
-  `sensitive-action-authorize-button`. **NO testid exists** on: the "Block"
-  button (same component, `variant="alarm"`), or ANY element in
-  `BlockWithCommentControl.jsx` (collapsed trigger, expanded textarea,
-  Cancel button, Submit button) — confirmed via full-file read of both
-  components, zero `data-testid` occurrences outside the two named above.
-  These testids currently exist ONLY on `AgentDetailPage`
-  (`sensitive_action_panel`/`sensitive_action_authorize_button` fields,
-  `pages/agent_detail_page.py:188-189`) — `ChatPage` (the main chat, used
-  by this cluster's "no agent" flow) has ZERO HITL/sensitive-action
-  `LocatorDescriptor`s today; they need to be added there too (same
-  underlying React component, same testids apply).
+  `sensitive-action-authorize-button`. **STALE-CLAIM CORRECTION 2026-08-27: the
+  "NO testid exists on Block / BlockWithCommentControl" note is RETIRED — those
+  testids were added by the ELITEA-2211..2214 implementation and are now on
+  `EliteaAI/EliteaUI` `main`** (verified with a fresh `git fetch origin`):
+  `sensitive-action-block-button`, `sensitive-action-block-with-comment-button`,
+  `sensitive-action-block-comment-input`,
+  `sensitive-action-block-comment-submit-button`. `ChatPage` now carries all six as
+  `LocatorDescriptor` fields (`chat_page.py:986-1022`) — it no longer has zero.
 - **The Block-with-Comment collapsed trigger and its expanded-state Submit
   button are TWO SEPARATE DOM elements with the SAME visible label**
   ("Block with Comment") — `BlockWithCommentControl.jsx` swaps its entire
   return branch on `open` state (not a same-element ternary, so canon
   ruling #277's same-element-pair rule does not apply here). Each needs its
   own distinct testid; text-based disambiguation would be ambiguous/fragile.
-- **Toolkit/tool-call chip has NO testid** (`ActionView.jsx:360`,
-  `data-testid={toolkitType === 'model' ? 'chat-answer-model-chip' : undefined}` —
-  only the `model` branch is named). Confirmed live (direct toolkit call,
+- **Toolkit/tool-call chip NOW HAS a testid — `chat-answer-tool-chip`** (on `main`,
+  verified 2026-08-27; `ChatPage.answer_tool_chip`, `chat_page.py:942`). The old
+  "only the `model` branch is named" note is RETIRED — `ActionView.jsx`'s ternary now
+  names both branches (canon ruling #277 shape (b)).
+  **The tool chip is NOT evidence that the tool executed** (live-verified 2026-08-27,
+  every run): it renders from the PENDING tool-call intent and is already present
+  WHILE the sensitive-action card is still awaiting a decision. The **model chip** is
+  the turn-completed signal — absent for the whole (broken) authorize flow, present
+  (`Anthropic Claude 4.5 Sonnet`) on a guardrails-off control run. Confirmed live (direct toolkit call,
   no agent, `delete_file` on a fresh artifact toolkit): the rendered chip
   text is `"{toolkit_name}: {tool_name}"` (colon-separated, via
   `ActionView.jsx`'s `buildTitle(': ', true)`) — e.g.
@@ -2544,6 +2552,32 @@ a product defect (never observed via the real test suite's own fixtures).
   Haiku) alongside exactly ONE toolkit/tool chip — don't assert a fixed
   chip count without accounting for the model-chip count being
   data-dependent.
+- **#1834 (2026-08-27) — Authorize is a silent no-op.** Clicking Authorize on the
+  sensitive-action card closes it in 0.1 s and then NOTHING happens: the tool never
+  executes (file still in the bucket after 90 s, backend-verified), no model chip
+  renders, the assistant turn ends as bare "Thought for less than a second" and
+  persists EMPTY after reload, while the app keeps firing `beforeunload`. Zero console
+  errors, zero failed HTTP requests. Deterministic 4/4 across two harnesses; the
+  guardrails-off control completes normally, so the tool and toolkit are fine and only
+  the HITL approve/resume path is broken. ELITEA-2212 is `ready-for-automation`
+  (sanctioned-RED, soft-asserted, `# Known defect: #1834`).
+- **Do NOT sanity-check the HITL card in the Playwright MCP browser.** Its long-lived
+  context swallowed the FIRST click on every card action (Authorize and Block, 4/4)
+  while both clean Playwright contexts worked first-click (3/3). It is an MCP-session
+  artifact, not product behaviour — and it looks exactly like a product bug.
+- **`close_plus_menu_popper()` after adding a toolkit is load-bearing, not hygiene.**
+  Leaving the plus-menu popper open makes its tooltip subtree intercept pointer events
+  and the Authorize click fails with a Playwright interception error (live 2026-08-27).
+  It must be a neutral click on `chat-message-list`, NOT Escape (ELITEA-2203 quirk).
+- **Always assert the "Toolkits in this conversation" badge before sending.** A
+  silently unattached toolkit makes the LLM answer "has been successfully deleted"
+  with the file untouched, no tool chip and no card — it looks like a product bug and
+  is not one. Reproduced twice on 2026-08-27 when the badge check was omitted.
+- **Card latency after send: 3.9-6.0 s live** (5 runs, 2026-08-27). Keep
+  `SENSITIVE_ACTION_TIMEOUT` at 30 s.
+- **Bucket delete 404s on teardown, 9/9** (`p--{project_id}.{bucket_name}`) for buckets
+  created minutes earlier — pre-existing, swallowed by the fixture, source of the
+  project's bucket pollution.
 - **Message-composer mechanics (from-scratch script, not the `ChatPage`
   fixture chain):** `page.keyboard.press("Enter")` after typing into the
   composer does NOT submit the message — confirmed live, the text just sat

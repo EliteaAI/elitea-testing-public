@@ -62,9 +62,34 @@ Testids this cluster added to EliteaUI for its own executed path —
 asserts absence — canon ruling #277 shape (b)) — are all present on
 ``EliteaAI/EliteaUI`` ``main`` (verified 2026-08-27), so nothing here waits on a
 cherry-pick.
+
+SANCTIONED-RED (``.agents/testing.md`` § Merge gate, closed-set variant):
+ELITEA-2212 (``TestSensitiveActionAuthorize``) is EXPECTED to end pytest-FAILED.
+Its closed, enumerable set of known defects — all on the one dropped
+authorize-resume, all OPEN, all soft-routed so every one of them is reported on
+every run — is:
+
+* **#1834** — the toolkit tool never executes (seeded file still in the bucket
+  90 s after Authorize). Fired **7 of 7** runs, 2026-08-27.
+* **#1835** — the sensitive-action card, correctly closed ~0.1 s after
+  Authorize, is rendered AGAIN ~90 s later with live buttons. Fired **7 of 7**.
+* **#1834** — the LLM-model chip never renders. Fired **3 of 7**; the chip DID
+  render in the other four runs. This is the subset-firing member the
+  closed-set variant explicitly allows.
+
+**What a gate operator should expect, so nobody mistakes it for a new symptom:**
+the failure is a ``BaseExceptionGroup`` whose sub-exception count legitimately
+alternates between **2 and 3** — 2 when the model chip happens to render, 3 when
+it does not. **Both are the SAME signature.** A new symptom means a failure
+naming something OUTSIDE the three bullets above; anything else is this set.
+
+Every affected assertion states the CORRECT behaviour, so the spec flips green
+unchanged when the product is fixed. A green run is a signal that these defects
+were fixed, not that the test drifted.
 """
 
 import logging
+import time
 
 import allure
 import pytest
@@ -85,9 +110,26 @@ pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p2, pytest.mark.regr
 UI_ELEMENT_TIMEOUT = 15_000
 CHAT_RESPONSE_TIMEOUT = 60_000
 SENSITIVE_ACTION_TIMEOUT = 30_000
+# Deliberately short: "the resolved card stays gone" is a settled state by the
+# time it is checked, so a long retry window would only make the assertion more
+# lenient (`to_have_count(0)` retries until the count reaches 0).
+PANEL_STAYS_GONE_TIMEOUT = 5_000
 
 SENSITIVE_TOOLKIT_TYPE = "artifact"
 SENSITIVE_TOOL_NAME = "delete_file"
+
+# Backend-execution poll budget (SECONDS — these are `time` values, not
+# Playwright timeouts). Once Authorize is granted the tool runs asynchronously
+# on the backend, so the deletion becomes observable some time after the card
+# closes; the AFS measured the honest flow at ~25 s to the card and budgets up
+# to 90 s of execution polling.
+EXECUTION_POLL_TIMEOUT_S = 90
+EXECUTION_POLL_INTERVAL_S = 3
+
+# The OPEN product defect this module's ELITEA-2212 test is red on.
+KNOWN_DEFECT_AUTHORIZE_NO_EXECUTION = "#1834"
+# Sibling of #1834 (possibly the same root cause): the resolved card comes back.
+KNOWN_DEFECT_CARD_REAPPEARS = "#1835"
 
 # Response phrases that would indicate the delete actually went through —
 # used as the "does NOT claim success" half of the loose Block-acknowledgement
@@ -108,6 +150,35 @@ def _unambiguous_delete_message(bucket_name: str, file_key: str) -> str:
         f'Use delete_file toolkit to delete a file named "{file_key}" from '
         f'bucket "{bucket_name}". Execute the tool now, do not ask for clarification.'
     )
+
+
+def _poll_bucket_until_file_absent(
+    artifact_api: ArtifactAPI,
+    bucket_name: str,
+    file_key: str,
+    timeout_s: int = EXECUTION_POLL_TIMEOUT_S,
+    interval_s: int = EXECUTION_POLL_INTERVAL_S,
+) -> list[str]:
+    """Poll the bucket listing until ``file_key`` is gone, or the deadline passes.
+
+    Returns the LAST observed listing, so the caller asserts on real backend
+    ground truth rather than on a boolean this helper decided.
+
+    Why a ``time.sleep`` loop and not a framework wait (AFS § Rework delta row
+    1): the oracle here is a REST read of the backend, not anything the browser
+    renders — there is no locator to wait on and no request the page will make.
+    ``expect.poll(...)`` does NOT exist in Python Playwright (it is the
+    JavaScript API; ``hasattr(expect, "poll") is False`` on 1.61.0), so the
+    merged version of this assertion could not execute at all. This is a real
+    deadline poll over a real backend condition, exits as soon as the condition
+    holds, and is NOT a sleep standing in for a UI wait.
+    """
+    deadline = time.monotonic() + timeout_s
+    remaining_files = artifact_api.list_bucket_files(bucket_name)
+    while file_key in remaining_files and time.monotonic() < deadline:
+        time.sleep(interval_s)
+        remaining_files = artifact_api.list_bucket_files(bucket_name)
+    return remaining_files
 
 
 def _reach_sensitive_action_card(
@@ -256,6 +327,14 @@ class TestSensitiveActionAuthorize:
         "onetest-ai Test Case link",
     )
     @pytest.mark.p2
+    # reruns=0 because this spec is SANCTIONED-RED (#1834 + #1835): it is expected
+    # to fail, so `pytest.ini`'s global `--reruns=2` could never rescue it — it
+    # could only multiply wall clock and put retry noise in the record. Verified
+    # by observation 2026-08-27 that the marker overrides the CLI value in this
+    # venv (pytest-rerunfailures 16.4): an unmarked test failing on an
+    # `--only-rerun` pattern ran 3x/10.06s, the same test marked reruns=0 ran
+    # 1x/0.03s.
+    @pytest.mark.flaky(reruns=0)
     def test_authorize_executes_toolkit_tool_directly(
         self,
         page,
@@ -266,21 +345,58 @@ class TestSensitiveActionAuthorize:
         sensitive_delete_file_toolkit,
     ):
         """Authorize closes the card and the delete_file call genuinely executes
-        (backend-verified via ArtifactAPI, not just a UI-only signal)."""
+        (backend-verified via ArtifactAPI, not just a UI-only signal).
+
+        TRANSIT SUBSTITUTION (declared, AFS § Fidelity Declaration): only the
+        precondition is substituted — ``sensitive_delete_file_toolkit`` marks
+        ``artifact``/``delete_file`` sensitive over REST
+        (``PUT {api}/admin/plugin_config_values/administration/guardrails``)
+        because the Admin UI is a separate deployed application localhost does
+        not serve (#1140). Every observable asserted below — the card closing,
+        the file being gone from the bucket, the chips, the composer, the
+        console — is produced end to end by the real LLM → real tool call →
+        real backend interrupt → real WebSocket frame. Nothing is mocked,
+        injected or intercepted.
+
+        SANCTIONED-RED — # Known defect: #1834, # Known defect: #1835. Three of
+        this case's expected results do not hold today, all downstream of the one
+        dropped authorize-resume (module docstring enumerates the closed set).
+        Each is asserted here as the CORRECT behaviour and each is SOFT, so every
+        later step still runs and every member of the set is reported on every
+        run, and the spec flips green unchanged when the product is fixed.
+
+        Two soft channels are used, one per observable shape — ``expect.soft``
+        wherever a locator exists (model chip, card-stays-gone: a bounded
+        framework wait applies and Playwright reports the failure whatever else
+        happens), and a ``soft_failures`` entry drained from a ``finally`` by
+        ``pytest.fail`` for the backend file listing, which has no locator
+        (``expect.poll`` is the JavaScript API and does not exist here).
+
+        Weakening any of these assertions, skipping the test, or reading
+        "execution" off the tool chip would all be masking.
+
+        Step numbering continues from ``_reach_sensitive_action_card`` (its
+        Steps 1-3 = AFS steps 2-4); Steps 4-10 below are AFS steps 5-11.
+        """
         toolkit_name = artifact_toolkit["name"]
         bucket_name = artifact_toolkit["bucket_name"]
+
+        # Soft-failure sink for the #1834 symptom that has no locator to assert
+        # on (the backend file listing). Drained once, loudly, at the end of the
+        # test — never swallowed (`.agents/testing.md` § Merge gate).
+        soft_failures: list[str] = []
+
+        console_issues = collect_console_errors(page)
+        page_errors: list[str] = []
+        page.on("pageerror", lambda e: page_errors.append(str(e)))
 
         chat = _reach_sensitive_action_card(
             page, conversation_id, artifact_toolkit, artifact_seeded_file
         )
 
         with allure.step(
-            "Step — Verify all three action buttons are visible on THIS "
-            "case's own card instance (independent verification — fix round "
-            "1: the AFS Coverage Map row 1 previously cited ELITEA-2211, a "
-            "same-batch/not-yet-merged spec, as the sole site of this "
-            "assertion, which is not a valid merged-target citation; this "
-            "case now asserts it independently too)"
+            "Step 4 — Verify all three action buttons are visible on this "
+            "case's own card instance"
         ):
             expect(chat.sensitive_action_authorize_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
             expect(chat.sensitive_action_block_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
@@ -288,35 +404,105 @@ class TestSensitiveActionAuthorize:
                 timeout=UI_ELEMENT_TIMEOUT
             )
 
-        with allure.step("Step — Click Authorize; verify the card closes"):
+        with allure.step("Step 5 — Click Authorize; verify the card closes"):
             chat.sensitive_action_authorize_button.first.click()
             expect(chat.sensitive_action_panel).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)
 
-        with allure.step(
-            "Step — Verify the toolkit call actually executes: the fixture "
-            "file is genuinely gone from the bucket (backend ground truth, "
-            "not a UI-only signal)"
-        ):
-            def _file_deleted() -> bool:
-                return artifact_seeded_file not in artifact_api.list_bucket_files(bucket_name)
+        # `try`/`finally` so the #1834 evidence can NEVER be lost: without it, a
+        # hard failure in any later step aborts before the drain and silently
+        # discards a recorded soft failure (observed 3/3 on 2026-08-27 — the
+        # file-not-deleted finding vanished behind the Step 9 failure). The
+        # `finally` raise chains onto whatever else failed, so both surface.
+        try:
+            with allure.step(
+                "Step 6 — Verify the toolkit tool genuinely executed: the seeded "
+                "file is gone from the bucket (backend ground truth)"
+            ):
+                # Known defect: #1834 — the file is still present after the full
+                # poll budget: Authorize resumes nothing. Backend listing is the
+                # only honest oracle: the card closing and the tool chip both
+                # render whether or not the tool ran.
+                remaining_files = _poll_bucket_until_file_absent(
+                    artifact_api, bucket_name, artifact_seeded_file
+                )
+                if artifact_seeded_file in remaining_files:
+                    soft_failures.append(
+                        f"Tool did not execute: '{artifact_seeded_file}' is still in bucket "
+                        f"'{bucket_name}' {EXECUTION_POLL_TIMEOUT_S}s after Authorize "
+                        f"(listing: {remaining_files})"
+                    )
 
-            expect.poll(_file_deleted, timeout=CHAT_RESPONSE_TIMEOUT).to_be_truthy()
+            with allure.step(
+                "Step 7 — Verify the LLM-model chip renders (the signal that the "
+                "authorized turn actually completed)"
+            ):
+                # Known defect: #1834 — the chip is absent on SOME runs of the
+                # broken authorize flow (1 of 4 on 2026-08-27; it rendered in the
+                # other three). It is the subset-firing member of the closed set
+                # (`.agents/testing.md` § Merge gate, closed-set variant), which
+                # is why it must be soft rather than hard: it is a real symptom,
+                # not a stable one. The expectation itself is correct — a
+                # guardrails-OFF control run renders the chip every time.
+                # `expect.soft` (not the `soft_failures` list) because this one
+                # has a locator to wait on: the chip appears when the authorized
+                # turn completes, which in a fixed product can land after the
+                # deletion is observable, so a bounded framework wait is what
+                # makes it flip green reliably rather than racing.
+                expect.soft(chat.answer_model_chip.first).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
-        with allure.step(
-            "Step — Verify tool-execution chips: an LLM-model chip AND a "
-            "toolkit/tool chip showing '{toolkit_name}: delete_file'"
-        ):
-            expect(chat.answer_model_chip.first).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-            expect(chat.answer_tool_chip).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
-            expect(chat.answer_tool_chip).to_contain_text(f"{toolkit_name}: {SENSITIVE_TOOL_NAME}")
+            with allure.step(
+                f"Step 8 — Verify the toolkit/tool chip renders '{toolkit_name}: {SENSITIVE_TOOL_NAME}'"
+            ):
+                # NOT execution evidence, and must never be read as such: the chip
+                # is rendered from the PENDING tool-call intent and is already
+                # present while the card is still open, before Authorize is clicked
+                # (live-verified every run, AFS § What this pass established). It is
+                # kept because the case's step 4 asks for it. `.first` guards the
+                # strict-mode violation a second tool call would cause.
+                expect(chat.answer_tool_chip.first).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                expect(chat.answer_tool_chip.first).to_contain_text(
+                    f"{toolkit_name}: {SENSITIVE_TOOL_NAME}"
+                )
 
-        with allure.step("Step — Verify the conversation continues normally (composer re-enabled)"):
-            assert chat.message_input.is_editable(), (
-                "Message input should be editable again after authorization completes"
-            )
-            assert chat.sensitive_action_panel.count() == 0, (
-                "Sensitive action panel should stay gone once resolved"
-            )
+            with allure.step(
+                "Step 9 — Verify the conversation continues normally (composer "
+                "re-enabled, panel stays gone)"
+            ):
+                assert chat.message_input.is_editable(), (
+                    "Message input should be editable again after authorization completes"
+                )
+                # Known defect: #1835 — the card, correctly closed ~0.1s after
+                # the Authorize click (Step 5 asserts that, hard, and it passes),
+                # is rendered AGAIN by the time this step runs ~90s later, with
+                # live buttons, as if the interrupt were still pending. Asserted
+                # as the CORRECT behaviour and soft-routed so Step 10's
+                # side-channel check still runs and reports.
+                expect.soft(
+                    chat.sensitive_action_panel,
+                    f"Known defect {KNOWN_DEFECT_CARD_REAPPEARS}: the resolved "
+                    "sensitive-action card must stay gone",
+                ).to_have_count(0, timeout=PANEL_STAYS_GONE_TIMEOUT)
+
+            with allure.step("Step 10 — Side-channel: no console/JS errors across the whole flow"):
+                # Errors only. The backend also emits an unhandled `parallel_hitl_ready`
+                # socket message during this flow, which the frontend logs as a
+                # console.WARNING (# Known defect: #1831) — a warning is not captured
+                # here, and this assertion must not be widened to swallow it.
+                assert not console_issues and not page_errors, (
+                    f"Unexpected console errors: {console_issues!r}; "
+                    f"page errors: {page_errors!r}"
+                )
+
+        finally:
+            if soft_failures:
+                # Sanctioned-RED terminal signal (see the docstring). Raised from
+                # `finally` so it reports even when a later step failed hard —
+                # Python chains the two, so neither finding is lost.
+                pytest.fail(
+                    f"# Known defect: {KNOWN_DEFECT_AUTHORIZE_NO_EXECUTION} — Authorize closed "
+                    "the sensitive-action card but the toolkit tool never executed:\n  - "
+                    + "\n  - ".join(soft_failures)
+                )
 
 
 # ===========================================================================
