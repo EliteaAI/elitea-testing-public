@@ -40,3 +40,4 @@
 - [Tests own their preconditions](test_owns_its_own_preconditions.md) — borrowed pre-existing data = green when dirty, red when clean
 - [CI login failure becomes SKIP](ci_login_failure_becomes_skip.md) — a green dev-stable job can mean the test never ran; grep the log
 - [Rendered dates = server UTC](rendered_timestamps_are_server_utc_not_browser_local.md) — never assert vs datetime.now
+- [Verify handles against main, not the tree](verify_handles_against_main_not_working_tree.md) — localhost serves testids; main-targeted specs need origin/main
