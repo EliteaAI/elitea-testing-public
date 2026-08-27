@@ -100,3 +100,5 @@
 - [DEV-only red? read the screenshot first](dev_only_red_check_the_screenshot_first.md) — allure-results (not test-results) carry it; then check the TMS case contract before calling an assertion a mask
 - [SendMessage resume can't be awaited](sendmessage_cannot_be_awaited_in_unattended_mode.md) — unattended: use a fresh foreground Agent; never two ICs on one live project
 - [Disprove the convenient root cause](disproof_beats_a_plausible_root_cause.md) — ask what symptom each rival cause produces; accept "undetermined"
+- [A new testid inside a CI-red fix is self-defeating](a_new_testid_inside_a_ci_red_fix_is_self_defeating.md) — repair path: promotion ordering beats "missing testid ⇒ add it"; file a card that owns testid+assertion+promotion together
+- [Grep your PR body for closing keywords](check_pr_body_for_closing_keywords_before_opening.md) — an action before `gh pr create`, not a fact to recall; commit bodies too
