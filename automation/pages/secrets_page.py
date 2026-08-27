@@ -104,6 +104,25 @@ SHARED ``DeleteEntityModal.jsx`` component, whose testids
 ``delete-confirm-button``) already exist app-wide — same repo precedent as
 ``personal_tokens_page.py``'s own declaration of this shared modal.
 
+Locator provenance (ELITEA-2330/2331/2332/2334/2342, listing layout / sorting /
+pagination / search / masked-value format): FOUR new testids, all pure additive
+props on pre-existing shared components, committed onto ``automation/testids`` as
+``EliteaAI/EliteaUI@249c0186`` — ``secrets-search-input`` (``DrawerPageHeader``'s
+already-supported ``slotProps.searchInput.testId``, landing on the native
+``<input>`` via ``SimpleSearchBar``'s ``inputProps``) and
+``secrets-pagination-prev-button`` / ``-next-button`` / ``-page-size-select``
+(``GridTablePagination``'s already-supported ``prevButtonTestId`` /
+``nextButtonTestId`` / ``pageSizeSelectTestId``, the same wiring
+``artifacts-pagination-*`` and ``notifications-pagination-*`` already use). No DOM
+node, hook or state was added and nothing was removed (zero-functional-impact rule).
+``secrets-pagination-page-size-select-combobox`` is derived automatically by
+``SingleSelect`` from the root testid via ``SelectDisplayProps`` — the root node is
+not clickable, the combobox node is. NO new testid was needed for the column
+headers (``secret-column-header-{field}``), the sort control
+(``secret-sort-icon-name``, both emitted by the shared ``GridTableHeader`` from the
+already-wired ``columnTestIdPrefix="secret"``) or the rows-per-page options
+(``select-option-{n}``, the shared ``SingleSelectMenuItem``'s pre-existing default).
+
 Locator provenance (ELITEA-2347, edit-value flow / name-field-readonly): zero
 new testids needed — every handle this case touches (``secret-actions-menu-
 edit-value``, ``secret-value-input``, ``secret-name-input``, ``secret-name-
@@ -117,6 +136,7 @@ this session (AFS § Concrete Handles).
 """
 
 import logging
+import re
 
 from playwright.sync_api import Page, expect
 
@@ -181,6 +201,49 @@ class SecretsPage(BasePage):
         testid="secrets-pagination-info",
         description='Pagination range text — "N - M of T"',
     )
+    # ---- ELITEA-2330/2332/2334: header search + pagination controls ----
+    # All four testids added by this batch (EliteaAI/EliteaUI@249c0186 on
+    # `automation/testids`) as pure additive props on pre-existing shared
+    # components — `DrawerPageHeader`'s `slotProps.searchInput.testId` and
+    # `GridTablePagination`'s `prevButtonTestId` / `nextButtonTestId` /
+    # `pageSizeSelectTestId`. No DOM node, hook or state was added.
+    search_input = LocatorDescriptor(
+        testid="secrets-search-input",
+        description="Header search field — the NATIVE <input> (SimpleSearchBar "
+        'forwards data-testid through inputProps), placeholder "Search". '
+        "Filters client-side per keystroke; no Enter, no submit, no debounce.",
+    )
+    prev_page_button = LocatorDescriptor(
+        testid="secrets-pagination-prev-button",
+        description='Pagination "previous page" arrow — disabled on the first page',
+    )
+    next_page_button = LocatorDescriptor(
+        testid="secrets-pagination-next-button",
+        description='Pagination "next page" arrow — disabled on the last page',
+    )
+    page_size_select = LocatorDescriptor(
+        testid="secrets-pagination-page-size-select",
+        description="Rows-per-page select ROOT (MUI Select). Read its text here; "
+        "CLICK page_size_select_combobox instead — the root is not the clickable "
+        "node (same split as notification_center_page.py).",
+    )
+    page_size_select_combobox = LocatorDescriptor(
+        testid="secrets-pagination-page-size-select-combobox",
+        description="Rows-per-page select's clickable display node — SingleSelect "
+        "derives this testid from the root's via SelectDisplayProps.",
+    )
+    name_cell = LocatorDescriptor(
+        testid="secret-name-cell",
+        description="Name cell — repeats once per rendered row; use with "
+        "expect(...).to_have_text([...]) to assert the whole rendered order.",
+    )
+    value_cell = LocatorDescriptor(
+        testid="secret-value-cell",
+        description="Masked-value cell — repeats once per rendered row; renders the "
+        'literal reference template "{{secret.<name>}}" until the row-level eye '
+        "toggle reveals the plaintext (ELITEA-2343, a different case).",
+    )
+
     name_error = LocatorDescriptor(
         testid="secret-name-error",
         description="Name-field validation error text, visible only while "
@@ -275,6 +338,17 @@ class SecretsPage(BasePage):
     SECRET_COLUMN_HEADER_SELECTOR = '[data-testid="secret-column-header-{}"]'
     # Prefix form, for the "exactly three columns, no fourth" count assertion.
     SECRET_COLUMN_HEADER_PREFIX_SELECTOR = '[data-testid^="secret-column-header-"]'
+    # Sort control, emitted by the shared `GridTableHeader` from the SAME
+    # `columnTestIdPrefix="secret"` that produces the column headers, and ONLY
+    # for a column whose config sets `sortable: true` — so `name` has one and
+    # `secretValue` / `actions` do not (asserted both ways by ELITEA-2331).
+    SECRET_SORT_ICON_SELECTOR = '[data-testid="secret-sort-icon-{}"]'
+    # Rows-per-page option (ELITEA-2332). Pre-existing GENERIC testid: the shared
+    # `SingleSelectMenuItem` defaults to `data-testid={option.testId ??
+    # `select-option-${option.value}`}`, and only one select menu is ever mounted
+    # at a time on this page (0 such nodes in the DOM when closed, confirmed
+    # live), so no scoping is required.
+    PAGE_SIZE_OPTION_SELECTOR = '[data-testid="select-option-{}"]'
 
     SECRET_NAME_CELL_SELECTOR = '[data-testid="secret-name-cell"]'
     SECRET_VALUE_CELL_SELECTOR = '[data-testid="secret-value-cell"]'
@@ -744,3 +818,129 @@ class SecretsPage(BasePage):
         :meth:`capture_requests_matching` themselves (see the test)."""
         toggle_button = self.get_row_visibility_toggle_button(row)
         toggle_button.click()
+
+    # ------------------------------------------------------------------
+    # ELITEA-2330 / 2331 / 2332 / 2334 / 2342 — listing layout, sorting,
+    # pagination, search and the masked-value reference format.
+    # All additive: no existing method body is touched.
+    # ------------------------------------------------------------------
+
+    def sort_icon(self, field: str):
+        """Return the sort-control locator for *field*.
+
+        Args:
+            field: the column's ``field`` id from ``SecretsTable.jsx`` —
+                ``"name"`` | ``"secretValue"`` | ``"actions"``. Only ``name`` is
+                ``sortable: true``, so the other two resolve to zero elements
+                (asserted as such by ELITEA-2331).
+        """
+        return self.page.locator(self.SECRET_SORT_ICON_SELECTOR.format(field))
+
+    def click_column_header(self, field: str) -> None:
+        """Click the *field* column header to toggle its sort direction.
+
+        Sorting is client-side over the FULL dataset — no network request
+        fires, so callers assert the re-render with an auto-retrying
+        ``expect`` on the rendered cells, never a wait on a response.
+        """
+        self.column_header(field).click()
+
+    def get_row_names(self) -> list[str]:
+        """Return the rendered rows' secret names, in rendered order."""
+        return [(text or "").strip() for text in self.name_cell.all_text_contents()]
+
+    def get_row_values(self) -> list[str]:
+        """Return the rendered rows' masked Value-cell texts, in rendered order."""
+        return [(text or "").strip() for text in self.value_cell.all_text_contents()]
+
+    def get_pagination_total(self, timeout: int = UI_ELEMENT_TIMEOUT) -> int:
+        """Return the total row count parsed out of the ``"N - M of T"`` range label.
+
+        The label is the product's own arithmetic, so every expectation built on
+        it stays correct as the project's secret count changes — unlike a
+        hardcoded total, which would break on the next secret anyone creates.
+        """
+        self.pagination_info.wait_for(state="visible", timeout=timeout)
+        text = self.get_pagination_text()
+        match = re.search(r"of\s+(\d+)\s*$", text)
+        if not match:
+            raise AssertionError(
+                f"Could not parse a total out of the pagination label {text!r} "
+                '(expected the "N - M of T" shape)'
+            )
+        return int(match.group(1))
+
+    def click_next_page(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Advance to the next page and wait for the range label to change.
+
+        Pure client-side state (``usePagination``) — the wait is on the rendered
+        label, never on a network response (none fires).
+        """
+        before = self.get_pagination_text()
+        self.next_page_button.click()
+        expect(self.pagination_info).not_to_have_text(before, timeout=timeout)
+
+    def select_page_size(self, page_size: int, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Open the rows-per-page select, choose *page_size*, and wait for the
+        table to re-render at the new size.
+
+        ``handlePageSizeChange`` also resets the page to the first one — callers
+        that care assert that separately (ELITEA-2332 step 6).
+        """
+        self.page_size_select_combobox.wait_for(state="visible", timeout=timeout)
+        self.page_size_select_combobox.click()
+        option = self.page.locator(self.PAGE_SIZE_OPTION_SELECTOR.format(page_size))
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+        expect(self.page_size_select).to_have_text(str(page_size), timeout=timeout)
+        logger.info("Selected rows-per-page = %s", page_size)
+
+    def collect_all_row_names(self, max_pages: int = 20) -> list[str]:
+        """Return EVERY secret name in the current (unfiltered) list, by walking
+        the pagination at the largest available page size.
+
+        Needed because the project holds far more secrets than one page shows:
+        a filter assertion computed from page 1 alone would call a broken filter
+        correct. Safety-capped at *max_pages* trips so a pagination regression
+        fails loudly instead of looping forever.
+        """
+        self.select_page_size(100)
+        names: list[str] = []
+        for _ in range(max_pages):
+            names.extend(self.get_row_names())
+            if self.next_page_button.is_disabled():
+                break
+            self.click_next_page()
+        else:
+            raise AssertionError(
+                f"Pagination did not reach the last page within {max_pages} pages — "
+                "suspect a pagination regression"
+            )
+        return names
+
+    def type_search(self, term: str) -> None:
+        """Replace the search field's content with *term*, typing it one
+        character at a time.
+
+        ``press_sequentially`` (not ``fill``) so every keystroke fires React's
+        ``onChange`` — which is what the per-keystroke filter contract under
+        test actually reacts to (`.claude/rules/mui-patterns.md`).
+        """
+        self.search_input.click()
+        self.search_input.fill("")
+        self.search_input.press_sequentially(term, delay=20)
+
+    def clear_search(self) -> None:
+        """Clear the search field (fires ``onChange`` with an empty value).
+
+        ``fill("")`` is reliable on this control — it is a plain MUI
+        ``InputBase`` with no ``useAutoBlur``, unlike the create-row Name input
+        whose ``Control+a`` unreliability is documented on
+        :meth:`clear_and_type_name`.
+        """
+        self.search_input.click()
+        self.search_input.fill("")
+
+    def get_search_value(self) -> str:
+        """Return the search field's current value."""
+        return self.search_input.input_value()
