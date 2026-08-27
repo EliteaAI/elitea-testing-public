@@ -55,3 +55,5 @@
 - [A test owns its preconditions](test_owns_its_preconditions.md) — create every entity the case needs; borrowed data passes dirty, fails clean
 - [Comment quoting a removed raw locator](comment_quoting_removed_raw_locator_trips_reviewer_grep.md) — trips the reviewer's grep; describe it in prose
 - [Early-return null does not mean the observable is gone](early_return_null_does_not_mean_the_observable_is_gone.md) — grep the product for the TEXT before writing "removed"
+- [Version sort: no pinned tier](version_dropdown_sort_lost_its_pinned_tier.md) — EliteaUI #857: date desc, base last
+- [Rendered timestamps are server UTC](rendered_timestamps_are_server_utc_not_local.md) — assert vs API created_at

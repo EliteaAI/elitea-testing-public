@@ -86,29 +86,68 @@ confirmed by: qa-engineer analyst, ELITEA-2358 run (2026-08-10).
 ## VERSION selector (all pre-existing, confirmed live repeatedly across ELITEA-1888/1889/1892/1890/1891)
 - `agent-version-selector-trigger` — combobox trigger, text = current version name only (no date/status).
 - `version-option-{version_name}` — dynamic per-option testid (`AgentDetailPage.VERSION_OPTION` template).
-  Option text = `"{name} - {DD.MM.YYYY}"` (date baked into the SAME node's text, no separate handle; no
-  time-of-day shown despite some case text saying "date/time").
+  **UPDATED post-#857 (during ELITEA-1891 repair, 2026-08-27):** option text =
+  `"{name}{Mon DD, YYYY, HH:MM} · by {author}"` — e.g. `"baseAug 13, 2026, 11:15 · by Test Bot"`. Name and
+  metadata are now SIBLING nodes inside the same element (`VersionSelectOption.jsx`), so `text_content()`
+  concatenates them with **NO separator**. The case text's "date/time" IS now satisfied — #857 added the
+  time of day and an author. *The pre-#857 `"{name} - {DD.MM.YYYY}"` form and the "no time-of-day" note
+  are obsolete.*
+- ⚠️ **The rendered time is the SERVER's wall clock, labelled as local.** `version.helpers.jsx`'s
+  `formatVersionMeta()` does `new Date(created_at)` + local getters WITHOUT the codebase's own
+  `convertTime()` 'Z'-normalizer (`src/common/convertChatConversationMessages.js`), which the
+  notification and chat renderers DO call. The backend sends naive stamps, so there is no offset to
+  convert from and the local getters return the string's own digits. **Never assert a rendered timestamp
+  against the test machine's clock** — derive the expectation from the API's own `created_at`
+  (`test_agent_version_selector_order.py::_expected_created_label` is the worked mirror). The
+  UTC-vs-local inconsistency between this dropdown and notifications/chat is filed as
+  EliteaAI/elitea-testing-public#1879. **When #1879 is fixed the mirror goes stale — update the mirror,
+  not the product**: drop its naive-verbatim branch (always normalize to UTC, then convert to local).
+- `version-option-set-default-{version_name}` — **NEW in #857.** A hover "Set as default" affordance on
+  every non-default, non-published option (`VersionIconBlock.jsx`). It shares the `version-option-`
+  prefix, so a bare `[data-testid^="version-option-"]` order-read counts it as an option. Use
+  `AgentDetailPage.VERSION_OPTION_ANY`, which already excludes it (and the nested pin icon).
 - `agent-actions-menu-button` → overflow menu; `publish-version-menuitem` / `unpublish-version-menuitem` /
   `set-as-a-default-menuitem` all derive automatically from `DotMenu.jsx`'s `testId: item.key` mechanism
   (`ApplicationControls.jsx`'s menu-item `key` fields) — confirmed live for all three.
 
 ## Sort order (VersionSelect.jsx `versionSelectOptions`, code-confirmed + live-confirmed)
-`[pinned/default version] → [everything else by created_at DESCENDING, Published/Draft interleaved, NO
-status tier] → [base, ONLY if base is not itself pinned]`. A freshly created agent's `meta.default_version_id`
-already equals its own base version's id, so **base is pinned (and sorts FIRST) on a brand-new agent** —
-it only moves to last once a different version is explicitly pinned. Case text that implies "Published
-always sorts above Draft" or "base always sorts last" is stale — see
-EliteaAI/elitea-testing-public#1091 for the full write-up.
+**REWRITTEN post-#857 (during ELITEA-1891 repair, 2026-08-27) — the previous rule here was deleted from
+the product and is no longer true.**
+
+`[EVERY version by created_at DESCENDING] → [base ALWAYS last]`. Two rules, nothing else. No pinned tier,
+no Published/Draft status tier.
+
+EliteaAI/EliteaUI@cf648e9a ("Feat/el 6302/enhancement of version select", PR EliteaAI/EliteaUI#857, merged
+to EliteaUI `main` 2026-08-27) deleted the two `defaultVersionID` early returns from the comparator,
+leaving the source comment *"Default version stays in its chronological position — not pinned to top."*
+`base` is sunk by the `LATEST_VERSION_NAME` early return, unconditionally.
+
+**Position and pin are DECOUPLED.** The pin icon survived and is now the sole indicator of the default
+version, so a version can be pinned and last at the same time — live-confirmed: a brand-new agent's `base`
+is `meta.default_version_id` AND renders LAST. *The previous claim here — "base is pinned (and sorts
+FIRST) on a brand-new agent" — is exactly what #857 removed; do not restore it.*
+
+Two clarifications, both case-text drift (live product correct in both):
+EliteaAI/elitea-testing-public#1091 (no Published-before-Draft tier) and
+EliteaAI/elitea-testing-public#1877 (no pinned-first tier).
+
+⚠️ `VersionSelect` is shared by **agents, skills and pipelines** — this rule governs all three surfaces.
 
 ## Pin ("Set as a default") flow
 - Trigger: `agent-actions-menu-button` → `set-as-a-default-menuitem` (aria-disabled="true" when the
   currently-viewed version IS already default).
-- Opens `SetDefaultVersionDialog` — **NO testid on its confirm button** ("Set as a default", plain text
-  match only) or Cancel button. **Testid gap** — needed by any case that must actively re-pin a version.
-- Pin icon (`PinIcon`) renders inside the option list (`buildVersionOption`'s `IconBlock`, no testid) AND
-  inside the closed trigger's `customRenderValue` (`VersionSelect.jsx`, no testid). **Testid gap** on
-  both; only the option-list one has been needed/flagged so far (ELITEA-1891) — flag the trigger one too
-  if a future case needs to assert the pin icon on the CLOSED selector specifically.
+- Opens `SetDefaultVersionDialog` — confirm button is `agent-set-default-version-confirm-button` (wired via
+  `confirmButtonTestId` in `useSetDefaultVersion.hooks.jsx`). **Gap CLOSED** (added for ELITEA-1891;
+  survived #857; two-ref grep 2026-08-27: on `main` AND on `automation/testids`). Cancel button still has
+  no testid — add one if a case needs it.
+- Pin icon in the OPEN option list: `version-option-pin-icon` (`VersionIconBlock.jsx`, scoped inside the
+  `version-option-{name}` parent). **Gap CLOSED** (added for ELITEA-1891; #857 moved it out of
+  `buildVersionOption` into the extracted `VersionIconBlock.jsx` — same value, same position; two-ref grep
+  2026-08-27: on `main` AND on `automation/testids`).
+  ⚠️ It does **not** render on a PUBLISHED default version — `VersionIconBlock` checks
+  `status === 'published'` FIRST and returns a publish icon in that same slot.
+- Pin icon on the CLOSED trigger (`VersionSelect.jsx`'s `customRenderValue`) — **still NO testid**
+  (re-verified 2026-08-27). Flag it if a future case must assert the pin on the closed selector.
 - `PUT/POST .../default_version/prompt_lib/{project}/{agentId}` fires on confirm.
 
 ## Save As Version / Publish (fully testid'd, see ELITEA-1888/1892 AFS for the complete handle table)
