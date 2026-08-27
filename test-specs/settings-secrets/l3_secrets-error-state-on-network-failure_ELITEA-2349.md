@@ -3,7 +3,7 @@
 ## Metadata
 - **TMS ID**: ELITEA-2349
 - **Source case**: `.agents/automation/settings-w05/cases/ELITEA-2349.md` (intake snapshot)
-- **Priority**: l2 (case frontmatter `priority: medium`) → **pytest marker `@pytest.mark.p2`**
+- **Priority**: l3 (case frontmatter `priority: medium`) → **pytest marker `@pytest.mark.p2`**
 - **Environment Explored**: local (`http://localhost:5173`, project `Private` / 399, 121 secrets)
 - **User set**: `${TEST_USER}`
 - **Analyst**: test-automation-engineer (Axel), combined slot, batch `settings-w05`, 2026-08-28

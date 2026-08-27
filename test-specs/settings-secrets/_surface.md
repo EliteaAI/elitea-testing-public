@@ -736,7 +736,7 @@ where rows were 0). Could be a mid-transition snapshot. Not filed — verify bef
 400: `200`/**4**, 406/25/471: **`403`**. No project this user can list AND that is empty;
 the selector still offers 5 fixed projects with no create affordance. ELITEA-2333 is
 parked `blocked` for the same reason as **ELITEA-2249** — see
-`l2_secrets-empty-state-no-secrets_ELITEA-2333.md` § Why this is blocked.
+`l3_secrets-empty-state-no-secrets_ELITEA-2333.md` § Why this is blocked.
 
 ### Network-failure (transport) error path — the observable, confirmed live
 Failing the transport of the secrets-list GET (`page.route(..., route.abort("failed"))`

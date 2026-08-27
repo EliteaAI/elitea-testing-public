@@ -3,7 +3,7 @@
 ## Metadata
 - **TMS ID**: ELITEA-2333
 - **Source case**: `.agents/automation/settings-w05/cases/ELITEA-2333.md` (intake snapshot)
-- **Priority**: l2 (case frontmatter `priority: medium`)
+- **Priority**: l3 (case frontmatter `priority: medium`)
 - **Environment Explored**: local (`http://localhost:5173`, DEV backend), all 5 selectable projects
 - **User set**: `${TEST_USER}` (auth via `auth_state` / `VITE_DEV_TOKEN` on localhost)
 - **Analyst**: test-automation-engineer (Axel), combined slot, batch `settings-w05`, 2026-08-28
