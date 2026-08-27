@@ -48,11 +48,19 @@ not just assertion failures (which DO still run `finally`).
    `SkillAPI(browser_cookies=[])` which falls back to the bearer token in
    `.env.test` when no browser cookies are passed — no live browser session
    needed) before assuming a clean slate.
-2. **Any "find the Nth pre-existing X, not one of the M I just created"
-   lookup should exclude by both id AND by the test's own naming pattern**
-   (e.g. a `startswith("elitea-<TMS-ID>-skill-")` guard), not id alone —
-   cheap insurance against exactly this class of false positive, and it
-   costs nothing when the environment is actually clean.
+2. **SUPERSEDED 2026-08-27 (ELITEA-1790 repair, #1811) — the id+name filter
+   was treating a symptom.** This entry originally recommended hardening the
+   "find the Nth pre-existing X" lookup with a naming-pattern guard on top of
+   the id guard. That guard shipped, and then failed for a *different* reason:
+   on a CLEAN project the filter selects nothing, so the test failed 4
+   consecutive `dev-stable` `main` runs — it passed on a dirty environment and
+   failed on a clean one, precisely backwards. **The correct fix is two rules,
+   both now applied:** (a) the test CREATES every entity its precondition needs
+   instead of borrowing one — never read pre-existing project data (see
+   `test_owns_its_preconditions.md`); and (b) test-data names are **run-unique**
+   (`f"el1790-{uuid4().hex[:8]}-s{n}"`), which kills the name-collision class at
+   the source so no exclusion filter is needed at all. Do NOT reach for the
+   id+name filter in new code.
 3. **Prefer foreground execution with output redirected to a file** (`cmd >
    /tmp/x.log 2>&1; echo $? > /tmp/x.done`) over relying on the harness's
    auto-backgrounding for anything with real side effects (data creation),
