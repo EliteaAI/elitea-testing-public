@@ -12,10 +12,18 @@ this action).
 No product defect found — the limit is enforced correctly and the
 enforcement exceeds the case's own expectation.
 
+The test OWNS its precondition: it creates all 6 distinct Skills the case
+calls for (5 to attach + a 6th that is never attached), under run-unique
+names, and reads nothing out of whatever data happens to pre-exist in the
+target project. Prior to 2026-08-27 it created 5 and borrowed a 6th from
+the project's existing Skills, which made it pass on a dirty environment
+and fail on a clean one (issue #1811).
+
 Spec: test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md
 """
 
 import logging
+from uuid import uuid4
 
 import allure
 import pytest
@@ -35,14 +43,27 @@ FORM_SAVE_TIMEOUT = 15_000
 
 logger = logging.getLogger("elitea.tests.skills")
 
-SKILL_NAMES = [
-    "elitea-1790-skill-2",
-    "elitea-1790-skill-3",
-    "elitea-1790-skill-4",
-    "elitea-1790-skill-5",
-    "elitea-1790-skill-6",
-]
+SKILL_COUNT = 6  # the case's Test Data: "Number of Skills to create | 6"
+ATTACH_COUNT = 5  # the platform's documented per-Agent maximum
 AGENT_NAME = "elitea-1790-max5skills-agent"
+
+
+def _run_unique_skill_names(count: int = SKILL_COUNT) -> list[str]:
+    """Return ``count`` run-unique skill names, e.g. ``el1790-3f9a2c11-s1``.
+
+    Run-uniqueness is REQUIRED, not cosmetic: both the attach-popper
+    selection and ``AgentDetailPage.is_skill_attached()`` match skills by
+    NAME. With fixed names, a hard-killed run (whose ``finally`` cleanup
+    never ran) leaves same-named orphans behind, the popper then lists two
+    rows with the same name, and a name-based match silently reads a
+    stranger's entity — a false positive that no assertion can catch.
+
+    Shape obeys the skill-name validation the create form enforces:
+    lowercase letters / digits / hyphens only, max 32 characters, no
+    leading or trailing hyphen (18 characters here).
+    """
+    run_id = uuid4().hex[:8]
+    return [f"el1790-{run_id}-s{n}" for n in range(1, count + 1)]
 
 
 def _create_skill(page, name: str, instructions: str) -> int:
@@ -86,16 +107,19 @@ class TestAgentMaxFiveSkillsLimit:
     @pytest.mark.p1
     @pytest.mark.regression
     def test_max_five_skills_attach_limit(self, page, agent_api, skill_api):
-        """Create 5 Skills + an Agent, attach all 5 Skills one at a time,
+        """Create 6 Skills + an Agent, attach 5 of the Skills one at a time,
         verify the add-skill control disables at 5/5 with a tooltip (rather
         than a literal 6th-click rejection), and verify persistence via a
         full page reload.
 
         Steps (AFS test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md):
-        1. Create 5 Skills via UI. A 6th distinct skill is looked up via the
-           project's existing skills (via ``skill_api``) rather than assumed
-           by name — any pre-existing skill satisfies the case's "6 distinct
-           Skills" precondition.
+        1. Create 6 distinct Skills via the UI, under run-unique names — the
+           first 5 are the attach set, the 6th is never attached and backs
+           Step 9's "no 6th attach" assertions. The case's own Test Data
+           table instructs the test to create 6, so the precondition is
+           owned by the test rather than borrowed from pre-existing project
+           data.
+        1b. Confirm all 6 created Skills read back from the project.
         2. Create an Agent.
         3. Skills section starts at 0/5, add-skill control enabled.
         4-8. Attach Skills 1-5 one at a time; counter increments "N/5 skills
@@ -105,56 +129,66 @@ class TestAgentMaxFiveSkillsLimit:
         10. Confirm persistence via a full page reload (attach is
            auto-saved via API; no explicit agent-level Save is available).
         """
-        skill_ids = []
+        skill_names = _run_unique_skill_names()
+        attach_names = skill_names[:ATTACH_COUNT]
+        sixth_skill_name = skill_names[ATTACH_COUNT]
+        created_skill_ids = []  # all 6 — the cleanup set
+        skill_ids = []  # the 5 that get attached
+        sixth_skill_id = None
         agent_id = None
         attach_requests = None  # CapturedRequests, needs stop() in finally
         console_messages = None  # CapturedConsoleMessages, needs stop() in finally
 
         try:
-            with allure.step("Step 1 — Create 5 Skills via UI"):
-                for i, name in enumerate(SKILL_NAMES, start=2):
+            with allure.step(
+                "Step 1 — Create 6 distinct Skills via UI (5 to attach, "
+                "plus a 6th that is never attached)"
+            ):
+                for n, name in enumerate(skill_names, start=1):
                     skill_id = _create_skill(
                         page,
                         name,
-                        f"You are test skill {i} created for ELITEA-1790 "
-                        f"verification. Respond with SKILL{i}.",
+                        f"You are test skill {n} created for ELITEA-1790 "
+                        f"verification. Respond with SKILL{n}.",
                     )
-                    skill_ids.append(skill_id)
+                    created_skill_ids.append(skill_id)
+                skill_ids = created_skill_ids[:ATTACH_COUNT]
+                sixth_skill_id = created_skill_ids[ATTACH_COUNT]
                 assert len(skill_ids) == 5, (
                     f"Expected 5 freshly-created skills, got {len(skill_ids)}"
                 )
 
             with allure.step(
-                "Step 1b — Confirm a 6th distinct skill exists in the "
-                "project (any pre-existing skill; not assumed by name)"
+                "Step 1b — Confirm the 6 created Skills exist in the "
+                "project (read back from the server, not assumed from the "
+                "create-call return values)"
             ):
-                # Exclude by id (this run's own 5 skills) AND by this test's
-                # naming prefix — a same-named orphan left by a previously
-                # interrupted run of this exact test (killed before its own
-                # cleanup could run) would otherwise pass an id-only filter
-                # and produce a false-positive is_skill_attached() match by
-                # name later, since attachment verification is name-based,
-                # not id-based. Confirmed live: an earlier interrupted run
-                # left orphaned "elitea-1790-skill-*" skills in the project,
-                # and an id-only filter picked one of them as the "6th"
-                # skill, which then spuriously matched an attached same-named
-                # skill from *this* run.
-                all_skills = skill_api.list_skills().get("rows", [])
-                sixth_skill = next(
-                    (
-                        s for s in all_skills
-                        if s["id"] not in skill_ids
-                        and not s.get("name", "").startswith("elitea-1790-skill-")
-                    ),
-                    None,
+                # The case's Test Data table says the number of Skills to
+                # create is 6, so this test creates all 6 and owns its own
+                # precondition. It deliberately reads NOTHING out of
+                # pre-existing project data: the previous shape created 5 and
+                # looked a 6th up in the project, which made it pass on a
+                # dirty environment and fail on a clean one (issue #1811).
+                # The false positive that shape's naming-prefix filter guarded
+                # against — an orphan from a hard-killed run matching this
+                # test's then-fixed names and satisfying the name-based
+                # is_skill_attached() check — is now eliminated at the source
+                # by the run-unique names, not defended against by a filter.
+                assert len(set(created_skill_ids)) == SKILL_COUNT, (
+                    f"Expected {SKILL_COUNT} distinct freshly-created skill "
+                    f"ids, got: {created_skill_ids!r}"
                 )
-                assert sixth_skill is not None, (
-                    "A 6th distinct skill (not one of the 5 just created, "
-                    "and not sharing this test's naming pattern) must exist "
-                    "in the project to satisfy the case's precondition of "
-                    "6 distinct Skills"
+                project_skill_ids = {
+                    s["id"] for s in skill_api.list_skills(limit=500).get("rows", [])
+                }
+                missing_skill_ids = [
+                    sid for sid in created_skill_ids if sid not in project_skill_ids
+                ]
+                assert not missing_skill_ids, (
+                    f"All {SKILL_COUNT} created Skills must be present in the "
+                    "project to satisfy the case's precondition of 6 distinct "
+                    f"Skills; missing ids: {missing_skill_ids!r}"
                 )
-                sixth_skill_name = sixth_skill["name"]
 
             with allure.step("Step 2 — Create an Agent"):
                 list_page = AgentsListPage(page)
@@ -203,7 +237,7 @@ class TestAgentMaxFiveSkillsLimit:
                 # Console-error capture across the attach flow, the blocked
                 # 6th-attach attempt, and the reload.
                 console_messages = detail_page.capture_console_errors()
-                for idx, name in enumerate(SKILL_NAMES, start=1):
+                for idx, name in enumerate(attach_names, start=1):
                     detail_page.attach_skill(name, timeout=UI_ELEMENT_TIMEOUT)
                     counter = detail_page.get_skills_counter_text()
                     assert f"{idx}/5" in counter, (
@@ -272,12 +306,12 @@ class TestAgentMaxFiveSkillsLimit:
                     "No additional skill-attach PATCH request should fire "
                     f"once the limit is reached, captured: {attach_requests!r}"
                 )
-                sixth_skill_id_suffix = f"/{sixth_skill['id']}"
+                sixth_skill_id_suffix = f"/{sixth_skill_id}"
                 assert not any(
                     req["url"].endswith(sixth_skill_id_suffix) for req in attach_requests
                 ), (
                     f"No PATCH request should ever target the 6th skill "
-                    f"(id={sixth_skill['id']}), captured: {attach_requests!r}"
+                    f"(id={sixth_skill_id}), captured: {attach_requests!r}"
                 )
                 assert not console_messages, (
                     "Expected no console errors after the blocked 6th-attach "
@@ -298,7 +332,7 @@ class TestAgentMaxFiveSkillsLimit:
                     "Skills counter should still show 5/5 after reload, "
                     f"got: {counter_after_reload!r}"
                 )
-                for name in SKILL_NAMES:
+                for name in attach_names:
                     assert detail_page.is_skill_attached(name), (
                         f"Skill card for '{name}' should still render after reload"
                     )
@@ -319,9 +353,10 @@ class TestAgentMaxFiveSkillsLimit:
 
             # Cleanup per AFS: delete the agent first (teardown hygiene —
             # remove the thing with attached-state dependencies first), then
-            # the 5 created skills, tolerating individual failures (mirrors
-            # ELITEA-1735/1737/1738/1739/1789's cleanup pattern). The
-            # pre-existing 6th skill is read-only reuse and is never deleted.
+            # all 6 created skills, tolerating individual failures (mirrors
+            # ELITEA-1735/1737/1738/1739/1789's cleanup pattern). The test
+            # deletes only data it created; pre-existing project data is
+            # never touched.
             if agent_id is not None:
                 try:
                     agent_api.delete_agent(agent_id)
@@ -330,7 +365,7 @@ class TestAgentMaxFiveSkillsLimit:
                     logger.warning(
                         "Cleanup: failed to delete agent id=%s: %s", agent_id, exc
                     )
-            for skill_id in skill_ids:
+            for skill_id in created_skill_ids:
                 try:
                     skill_api.delete_skill(skill_id)
                     logger.info("Cleanup: deleted skill id=%d", skill_id)
@@ -342,19 +377,19 @@ class TestAgentMaxFiveSkillsLimit:
         # Cleanup verification — only reached if the flow above didn't raise
         # (an exception in the try block propagates past `finally`, so this
         # never runs on top of an already-failed test and can't mask it).
-        # Confirms the 5 created skills and the agent are actually gone, not
+        # Confirms the 6 created skills and the agent are actually gone, not
         # just that the delete calls didn't raise.
         with allure.step(
-            "Cleanup verification — the 5 created skills and the Agent are "
-            "gone; no orphaned elitea-1790-* test data remains"
+            "Cleanup verification — the 6 created skills and the Agent are "
+            "gone; no orphaned el1790-* test data remains"
         ):
             remaining_skill_ids = {
                 s["id"] for s in skill_api.list_skills(limit=500).get("rows", [])
             }
-            leaked_skill_ids = set(skill_ids) & remaining_skill_ids
+            leaked_skill_ids = set(created_skill_ids) & remaining_skill_ids
             assert not leaked_skill_ids, (
-                f"Cleanup should have deleted all 5 created skills; still "
-                f"present: {leaked_skill_ids!r}"
+                f"Cleanup should have deleted all {SKILL_COUNT} created "
+                f"skills; still present: {leaked_skill_ids!r}"
             )
             remaining_agent_ids = {
                 a["id"] for a in agent_api.list_agents().get("rows", [])
