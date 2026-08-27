@@ -44,6 +44,14 @@ A park can be wrong on the day it was written, dressed as a root-cause analysis 
 the most expensive mode, because waiting changes nothing. Worked case and the
 re-test procedure: [[blocker_premise_symptom_vs_cause]].
 
+## Fourth failure mode: the park rests on a NUMBER nobody re-measured
+
+The premise is neither expired nor irrelevant — it is a *statistic*, and the
+statistic pooled two different experiments. ELITEA-2215 sat parked three weeks
+on #1127's "2/5 non-deterministic"; split by trigger it was 14/14 green on the
+case's own observable. Re-measuring cost five minutes.
+Procedure: [[flake_rate_may_be_an_aggregate]].
+
 ## How to act on it
 
 - **Send it to analysis; do not pre-decide either way.** The analyst executes
@@ -61,4 +69,4 @@ Same family as the wave-1 lesson on this card — an analyst's `needs-escalation
 premises were checkable in minutes and both were false. Escalations and parks
 decay the same way.
 
-Related: [[afs_gate_rulings]] · [[tms_backwrite_discipline]] · [[admin_plugin_config_mode_segment]]
+Related: [[flake_rate_may_be_an_aggregate]] · [[afs_gate_rulings]] · [[tms_backwrite_discipline]] · [[admin_plugin_config_mode_segment]]

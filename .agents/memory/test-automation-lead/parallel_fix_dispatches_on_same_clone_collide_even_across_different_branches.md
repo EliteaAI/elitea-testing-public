@@ -85,3 +85,21 @@ diff and commit+push it properly.
   agent in the SAME incident did not detect anything wrong. Don't let one
   agent's lucky self-correction become false confidence that the other
   dispatch is also fine.
+
+## Recurrence 2026-08-27 (#418) — SendMessage-resume counts as a dispatch
+
+Same collision, new disguise: I resumed the implementer with **`SendMessage`**
+(asynchronous — it wakes the agent and returns immediately) and then made a
+foreground `Agent()` analyst call in the same turn, reasoning that "only one
+`Agent()` call is running". Wrong: a resumed agent is a live code-touching
+dispatch. Both agents ran `git checkout` in the one clone; the analyst's commit
+landed on the implementer's branch, and `git push origin automation/base`
+answered **"Everything up-to-date" — truthfully**, because the commit was never
+on that branch. It was recovered with `commit-tree`/`update-ref` plumbing only
+because the analyst verified the **remote ref** instead of trusting the push
+message.
+
+Add to the standing rule: **`SendMessage` to a subagent is a dispatch.** The
+count that matters is *live code-touching agents*, not `Agent()` calls in this
+reply. And **verify a push by comparing refs** (`git rev-parse HEAD origin/<b>`),
+never by reading the push output.
