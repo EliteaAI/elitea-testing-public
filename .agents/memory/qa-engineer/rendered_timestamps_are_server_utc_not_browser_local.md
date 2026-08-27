@@ -49,6 +49,23 @@ Weaker but acceptable fallbacks: a ±1-day plausibility set (covers every real
 offset, still catches `Jan 01, 1970`), or drop the date-VALUE assertion and keep
 the format regex — which is all most TMS "shows creation date/time" steps ask.
 
+## Mirror the product's arithmetic — never compensate for it
+
+When the oracle helper reproduces a buggy renderer, it must reproduce it
+**exactly**, not quietly correct it. A helper that unconditionally did
+`fromisoformat(x).replace(tzinfo=UTC).astimezone()` would pass both before and
+after a product fix — hiding the filed bug from the suite forever. The correct
+mirror branches the way the product does: **naive stamp -> use the digits
+verbatim; tz-aware stamp -> `.astimezone()` to local first** (that is what
+`new Date()` + `getHours()` genuinely do once an offset exists). Consequence,
+and it is the desired one: the test goes RED the day the product starts calling
+`convertTime()` — a signal to update the mirror, not masking. Say so in the
+docstring and name the bug id.
+
+Python note: `datetime.fromisoformat` on 3.11+ parses a trailing `Z` into an
+aware UTC value, so do NOT strip it by hand — stripping would misroute a
+future Z-suffixed stamp into the naive branch.
+
 ## Reviewer cue
 
 `grep -rln 'datetime\.now()\|utcnow\|timezone\.utc' automation/tests automation/pages automation/utils`
