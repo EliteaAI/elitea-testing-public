@@ -533,3 +533,106 @@ by ELITEA-2337/2338/2343 analyst sessions (same day).
   live MCP walk of the identical flows.
 - **`SecretsPage.type_value()`** added (additive sibling of `type_name()`): `fill_new_row()`
   always fills BOTH fields, which a "leave the name empty" case cannot use.
+
+## Hidden-secret CONSUMERS — what a hidden secret does downstream
+## (ELITEA-2345/2346 cluster analyst session, 2026-08-27, confirmed live)
+
+_This section covers the surfaces that CONSUME secrets, not the Secrets page itself.
+Every handle below was read live on `localhost:5173` / project **399**._
+
+### The secret-selection dropdown is ONE shared component, three call sites
+`src/[fsd]/shared/ui/secret-field/SecretField.jsx` renders every secret field in the
+app. Same derived testids everywhere — do not duplicate selectors per surface:
+- `toolkit-field-{key}-input` — the SecretField wrapper `<div>`
+- `toolkit-field-{key}-input-field` — the native `type="password"` `<input>`
+  (Password mode only)
+- `toolkit-field-{key}-input-toggle-secret` / `-toggle-password` — the mode toggle
+  (`ToggleButtonGroup`; read `aria-pressed` to know which mode is active)
+- `toolkit-field-{key}-input-combobox` — the vault select display node (Secret mode only)
+- `toolkit-field-{key}-input-refresh-secrets-button` — SAVED SECRETS group-header refresh
+- `select-group-header-Create` / `select-group-header-Saved Secrets` — the two groups
+- `select-option-{{secret.<name>}}` — a saved-secret option (the option VALUE is the
+  `{{secret.…}}` template, so the testid contains braces)
+
+Confirmed call sites this session:
+1. **Create credential** — `/credentials/create-credential/<type>` (e.g. `jira`, field
+   key `api_key`).
+2. **Edit credential** — `/credentials/all/<id>?viewMode=owner&name=<display name>`.
+3. **New AI Provider** — `/settings/create-ai-provider/<type>` (e.g. `open_ai`, field
+   key `api_key`). **Same testids** as the credential forms — the existing
+   `credential_create_page.py` secret-vault methods work verbatim here despite the name.
+
+**The field always starts in PASSWORD mode.** The vault combobox does not exist in the
+DOM until `…-toggle-secret` is clicked. Any case whose steps say "open the secret
+dropdown" needs that hop first; the TMS case texts omit it.
+
+### Hiding a secret removes it from the dropdown (the ELITEA-2345/2346 observable)
+Measured live, same session, same project: **123** saved-secret options with two
+run-unique secrets visible → **122** after hiding one → **121** after hiding both. The
+hidden option's testid disappears entirely; every other option stays. Verified on all
+three call sites above.
+→ Always pair the absence assertion with a **control** (a known-visible secret IS
+present / `saved_secret_options` count > 0). An empty or failed-to-load dropdown passes
+a bare absence check.
+
+### Hiding a secret does NOT break credentials that reference it — but the UI changes shape
+Verified end-to-end: created secret → created a `jira` credential with
+`api_key = {{secret.<name>}}` → hid the secret → re-read the credential.
+- **Server truth (unchanged):** `GET /api/v2/configurations/configuration/399/<id>` →
+  `"data": {"api_key": "{{secret.<name>}}", …}`. The reference survives; nothing is
+  nulled or rewritten.
+- **UI fallback (intentional):** the field renders in **Password** mode
+  (`…-toggle-password` `aria-pressed="true"`, combobox absent) and the native password
+  input holds the literal secret **NAME**. Source:
+  `SecretField.jsx` — `isHiddenSecret = isError || !data?.some(i => i.secret_name === value)`,
+  and `handleSwitchToSecretTab` only switches to the Secret tab `if (isSecret && !isHiddenSecret)`;
+  `updateRawPassword()` seeds the password input with `value.match(secretRegex)[1]`.
+- **The form is NOT dirtied by the fallback** — `credential-form-save-button` is
+  **disabled** on load. Nothing is silently rewritten client-side.
+- Raised for a product decision (a keystroke in that field would replace the reference
+  with the literal name): `EliteaAI/elitea-testing-public#1907`.
+- **Do NOT use `credential-form-test-connection-button` as the "still works" oracle** on
+  a synthetic credential — it fails for the fake host regardless of the hide.
+
+### Settings → AI Providers create flow (NOT "AI Configuration")
+- Route `/settings/ai-providers`; nav item `settings-nav-item-ai-providers`; title
+  `ai-providers-page-title`. **There is no "AI Configuration" section** — TMS case texts
+  saying so are stale (`EliteaAI/elitea-testing-public#1906`).
+- The page renders `ai-providers-section-*-loading` placeholders first, then the real
+  `ai-providers-section-*` testids. Gate on a real section testid, never a fixed delay.
+- The "+" is the generic `sidebar-create-button` (label is route-contextual: "AI
+  Provider" here). It routes to `/settings/create-ai-provider?viewMode=owner&from=ai-providers`
+  — a **type picker**, not a form. Type cards use the same
+  `toolkit-type-card-{type}` family as the credentials picker (`toolkit-type-card-open_ai`,
+  `…-azure_openai`, `…-ollama`, `…-vertex_ai`, `…-pg_vector`, …).
+- Only after the type click (`/settings/create-ai-provider/open_ai`) does the form with
+  `toolkit-field-label-input` / `toolkit-field-api_base-input` / `toolkit-field-api_key-input`
+  render.
+
+### Two live gotchas that cost real time this session
+1. **`beforeunload` blocks `page.goto()`.** A credential or AI-provider form dirtied by
+   *anything* (including merely flipping the secret toggle) raises a native
+   `beforeunload` dialog on navigation; a bare `page.goto()` hangs until it is handled
+   (two 60 s timeouts here). Register `page.on("dialog", lambda d: d.accept())` or
+   discard the form first.
+2. **`delete-confirm-name-input`'s testid is on the MUI `FormControl` `<div>`, not the
+   `<input>`.** `fill()` on the testid errors with *"Element is not an `<input>`"*;
+   target the native child. `credential_detail_page.fill_delete_confirm_name()` already
+   does this — use it.
+
+### Three-dot menu workaround: reproduced AGAIN (3rd data point)
+A plain Playwright `.click()` on `secret-row-actions-button` failed to mount the menu
+this session (the `secret-actions-menu-hide` item did not exist afterwards); the
+existing React-`onClick` workaround in `secrets_page.open_row_actions_menu()` opened it
+first try, twice. Score across sessions: ELITEA-2344 saw 1 success / 1 failure with a
+plain click, ELITEA-2343 saw 1 success, this session saw 1 failure. **Keep the
+workaround unconditionally** — `EliteaAI/elitea-testing-public#1222`.
+
+### Console noise on the CREDENTIALS routes
+`/credentials/create-credential/<type>` logs a React `Each child in a list should have a
+unique "key" prop` **console.error** from `CategorySection.jsx` (via
+`CredentialTypeSelector.jsx`) — the same defect as
+`EliteaAI/elitea-testing-public#656`, second occurrence commented there. It is
+**dev-build only** (stripped by `vite build`), so it appears on localhost and not on a
+deployed env. `#1203` (Secrets-page "Maximum update depth exceeded") did **not** fire in
+this session — still inconclusive, check your own run.
