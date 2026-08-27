@@ -46,3 +46,4 @@
 - [Prefix testid selector ok](prefix_testid_selector_passes_the_locator_grep.md) — `[data-testid^=` is compliant
 - [Composed testids evade grep](runtime_composed_testids_invisible_to_grep.md) — grep the template, not the value
 - [CodeMirror testid](codemirror_body_contenttestid_and_inner_text.md) — contentTestId exists; not #579
+- [Duplicate page-object class member](page_object_duplicate_class_member_shadows_silently.md) — appended LocatorDescriptor silently shadows an earlier identical one; AST check
