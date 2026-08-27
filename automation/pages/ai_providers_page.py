@@ -181,6 +181,13 @@ class AIProvidersPage(BasePage):
         testid="ai-providers-page-title",
         description='Page header title -- exact text "AI Providers"',
     )
+    # ELITEA-2346: the page's "+" control. Generic, pre-existing sidebar
+    # testid (already used by the agents/pipelines/toolkits list pages); its
+    # LABEL is route-contextual and reads "AI Provider" here.
+    create_button = LocatorDescriptor(
+        testid="sidebar-create-button",
+        description='"+" create control -- routes to the Create AI Provider type picker',
+    )
 
     # -- Section accordion headers (one per configuration section) ------
     llms_section_header = LocatorDescriptor(
@@ -312,9 +319,61 @@ class AIProvidersPage(BasePage):
     # policy's class-level-template-constant pattern for dynamic testids.
     SELECT_OPTION = '[data-testid="select-option-{}"]'
 
+    # --- Create-AI-Provider entry point (ELITEA-2346) ------------------
+    # Dynamic (runtime-parameterized) testid -- the SAME
+    # `toolkit-type-card-{type}` family the credentials type picker uses
+    # (`CredentialCreatePage.TYPE_CARD_SELECTOR`); the AI-provider picker
+    # renders the shared type-card component, so the values differ
+    # (`open_ai`, `azure_openai`, `ollama`, ...) but the testid shape does
+    # not. Class-level template constant per `.agents/testing.md` Locator
+    # policy's dynamic-testid pattern. Pre-existing testid, not added here.
+    TYPE_CARD_SELECTOR = '[data-testid="toolkit-type-card-{}"]'
+    # Prefix form -- the "the type picker rendered at all" gate, so
+    # :meth:`click_create` settles on a real product signal instead of a
+    # URL string or a delay.
+    TYPE_CARD_PREFIX_SELECTOR = '[data-testid^="toolkit-type-card-"]'
+
     def navigate(self) -> None:
         """Navigate to /settings/ai-providers and wait for the page to load."""
         super().navigate(AI_PROVIDERS_PATH)
+
+    def type_card(self, provider_type: str) -> Locator:
+        """Return the Create-AI-Provider type-picker card for *provider_type*
+        (e.g. ``"open_ai"``) -- ELITEA-2346."""
+        return self.page.locator(self.TYPE_CARD_SELECTOR.format(provider_type))
+
+    @property
+    def type_cards(self) -> Locator:
+        """Every type card currently rendered on the AI-provider type picker."""
+        return self.page.locator(self.TYPE_CARD_PREFIX_SELECTOR)
+
+    def click_create(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the page's "+" control and settle on the rendered type picker
+        (ELITEA-2346).
+
+        The "+" routes to ``/settings/create-ai-provider`` -- a type picker,
+        NOT a form. Settling on the first rendered type card is the honest
+        "the picker is up" signal; ``networkidle`` is unusable on these
+        routes (`.agents/testing.md`, ``#1847``).
+        """
+        self.create_button.click()
+        self.type_cards.first.wait_for(state="visible", timeout=timeout)
+
+    def click_type_card(self, provider_type: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the type card for *provider_type* and wait for the
+        type-specific AI-provider configuration form to render (ELITEA-2346).
+
+        The form is schema-driven (``GET /configurations/available/?section=…``)
+        and renders the SAME shared ``ToolBaseProperty`` / ``SecretField``
+        components the credential forms use. Those field testids therefore
+        live in exactly ONE page object already
+        (``CredentialFormFieldsMixin`` -- ``toolkit-field-label-input`` et
+        al.) and are deliberately NOT re-declared here: this method settles
+        on the type picker unmounting, and the caller asserts the rendered
+        form through that shared page object (AFS step 4's own verification).
+        """
+        self.type_card(provider_type).click()
+        self.type_cards.first.wait_for(state="detached", timeout=timeout)
 
     def navigate_and_capture_vectorstorage_response(self) -> Response:
         """Navigate while capturing the vectorstorage-scoped models response.

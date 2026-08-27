@@ -1359,6 +1359,29 @@ class CredentialAPI:
         _raise_for_status(resp)
         return resp.json()
 
+    def get_credential(self, credential_id: int) -> dict:
+        """Read ONE credential straight from the server (ELITEA-2345).
+
+        ``GET /configurations/configuration/{project_id}/{credential_id}`` —
+        the same call the credential detail route issues on mount, so its
+        ``data`` block is the server's own truth about what the credential
+        stores. ELITEA-2345 uses it as the decisive oracle that hiding a
+        secret leaves a referencing credential's ``data.api_key ==
+        "{{secret.<name>}}"`` untouched; :meth:`list_credentials` is a list
+        projection and is not guaranteed to carry the ``data`` block.
+
+        Args:
+            credential_id: The credential's numeric id.
+
+        Returns:
+            The credential dict, including its ``data`` block.
+        """
+        url = self._credentials_url(credential_id)
+        logger.debug("GET credential %s", url)
+        resp = self._session.get(url)
+        _raise_for_status(resp)
+        return resp.json()
+
     def delete_credential(self, credential_id: int) -> None:
         """Delete a credential."""
         url = self._credentials_url(credential_id)
