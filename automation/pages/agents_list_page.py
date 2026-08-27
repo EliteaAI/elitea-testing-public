@@ -241,6 +241,56 @@ class AgentsListPage(BasePage):
     # `card.locator(...)` since it's a collection locator (one per card).
     ENTITY_CARD_ICON_IMG_SELECTOR = '[data-testid="entity-card-icon-img"]'
 
+    # Terminal, non-error renders of the Agents list region (ELITEA-1901
+    # repair, board #1813). Which of the two appears is a property of the
+    # ENVIRONMENT (how many agents the project holds), never of any single
+    # case — so a test that needs "the list finished loading" must accept
+    # either. EliteaUI's src/components/CardList.jsx:40-42 gates BOTH behind
+    # `!isLoading && (isError || isEmptyList)` / `... && !isError`, so the
+    # disjunction cannot be satisfied while the list is still loading or has
+    # errored — a load-completion oracle, not merely a "something is on
+    # screen" check, FOR CARD VIEW IN NON-FOLDER VIEW. Two settled,
+    # non-error renders match NEITHER branch and are outside that scope:
+    #   * empty folder view — PrivateAgentsList.jsx:224-227 passes
+    #     `customEmptyState` as a ternary whose folder branch is a bare
+    #     <Typography>No items in this folder yet</Typography> with no
+    #     testid, and `showCustomEmptyState` is true so EmptyListBox (and
+    #     `empty-state-title` with it) is never reached;
+    #   * table view — `entity-card-name` lives only in Card.jsx:270 and
+    #     DataTable has no equivalent, so a fully-loaded non-empty TABLE
+    #     view matches neither.
+    # Neither is reachable from this test's fresh /agents/all navigation,
+    # and table view is identical exposure to the assertion this replaced.
+    # `empty-state-title` is the generic shared EmptyStatePage.jsx testid
+    # already bound by ToolkitsListPage (toolkits_list_page.py:69) and
+    # McpListPage (mcp_list_page.py:138) — same shape, merged precedent.
+    # The selector is page-level and unscoped: only PrivateAgentsList
+    # renders `empty-state-title` on /agents/all today, so it is
+    # unambiguous — a future shared empty state on this page would satisfy
+    # the oracle spuriously.
+    LIST_SETTLED_SELECTOR = (
+        '[data-testid="entity-card-name"], [data-testid="empty-state-title"]'
+    )
+
+    def wait_for_list_settled(self, timeout: int = 10000):
+        """Wait until the Agents list region reaches a terminal, non-error state.
+
+        Passes on EITHER at least one rendered agent card (``entity-card-name``)
+        OR the "No agents yet" empty state (``empty-state-title``) — a
+        load-completion oracle rather than a weakened check, scoped to card
+        view in non-folder view; see ``LIST_SETTLED_SELECTOR`` for the two
+        settled renders outside that scope. Deliberately makes NO claim about
+        how many agents the project holds; zero is a valid environment.
+
+        Raises:
+            playwright.sync_api.TimeoutError: if neither render appears in
+                ``timeout`` ms (list still loading, or the fetch errored).
+        """
+        self.page.locator(self.LIST_SETTLED_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout,
+        )
+        logger.info("Agents list region settled (cards or empty state rendered)")
+
     def get_agent_card_names(self, timeout: int = 5000) -> list[str]:
         """Return names of all agent cards visible on the dashboard.
 

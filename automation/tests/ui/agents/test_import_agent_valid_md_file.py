@@ -22,6 +22,13 @@ every successful import — filtered out of the zero-console-errors assertion
 rather than asserted against (mirrors ELITEA-1902's
 ``_KNOWN_NONBLOCKING_CONSOLE_SUBSTRING`` pattern).
 
+Environment independence (repair 2026-08-27, board #1813): Step 1 asserts
+that the dashboard LOADED, never that it holds content. It previously
+required at least one pre-existing agent card — an assumption the TMS case
+never makes — which went red on dev.elitea.ai, where the shard user
+genuinely owns zero agents and the product correctly rendered its "No agents
+yet" empty state. See AFS § Environment Independence.
+
 Spec: test-specs/agents/l2_import-valid-agent-md-file-correct-config_ELITEA-1901.md
 """
 
@@ -30,10 +37,10 @@ import uuid
 
 import allure
 import pytest
-
 from config import settings
 from pages.agent_detail_page import AgentDetailPage
 from pages.agents_list_page import AgentsListPage
+from playwright.sync_api import expect
 
 pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new_verified]
 
@@ -80,8 +87,11 @@ class TestImportAgentValidMdFile:
 
         Steps (AFS
         test-specs/agents/l2_import-valid-agent-md-file-correct-config_ELITEA-1901.md):
-        1. Navigate to the Agents dashboard; verify header, Import button,
-           and existing agent cards render.
+        1. Navigate to the Agents dashboard; verify the ``Agents`` header,
+           the Import button, and that the list region settled into a
+           terminal, non-error state (cards OR the "No agents yet" empty
+           state). Makes no claim about pre-existing agents — zero is a
+           valid environment (AFS § Environment Independence).
         2. Click the Import button and select the hand-authored ``.md``
            fixture; verify the "Import parameters" preview dialog opens.
         3. Verify the dialog shows an entity card for the agent (name
@@ -138,17 +148,34 @@ class TestImportAgentValidMdFile:
 
         try:
             with allure.step(
-                "Step 1 — Navigate to the Agents dashboard; verify header, "
-                "Import button, and existing agent cards render"
+                "Step 1 — Navigate to the Agents dashboard; verify the header, "
+                "the Import button, and that the list region settled"
             ):
                 agents_list_page = AgentsListPage(page)
                 agents_list_page.navigate()
-                assert agents_list_page.import_button.is_visible(), (
-                    "Import button should be visible in the Agents dashboard toolbar"
+                # (a) We are on the Agents dashboard — not a redirect, an
+                # error page, or a still-blank shell. Retrying expect(), not
+                # a one-shot is_visible(), so a slow deployed env can't race.
+                expect(agents_list_page.page_header).to_be_visible(
+                    timeout=UI_ELEMENT_TIMEOUT,
                 )
-                assert agents_list_page.get_agent_card_names(), (
-                    "Agents dashboard should render at least one existing agent card"
+                expect(agents_list_page.page_header).to_have_text(
+                    "Agents", timeout=UI_ELEMENT_TIMEOUT,
                 )
+                # (b) The control Step 2 acts on — the real Step 1 -> Step 2
+                # handoff.
+                expect(agents_list_page.import_button).to_be_visible(
+                    timeout=UI_ELEMENT_TIMEOUT,
+                )
+                # (c) The list finished loading WITHOUT error: either agent
+                # cards or the "No agents yet" empty state. Deliberately NOT
+                # "at least one pre-existing card" — that was a test-invented
+                # environment assumption the TMS case never asks for, and it
+                # is what turned this spec red on dev.elitea.ai, whose shard
+                # user genuinely owns zero agents (AFS § Environment
+                # Independence, board #1813). Card rendering is still proven
+                # at Step 5, on an agent this test itself imported.
+                agents_list_page.wait_for_list_settled(timeout=UI_ELEMENT_TIMEOUT)
 
             with allure.step(
                 "Step 2 — Click the Import button and select the "
