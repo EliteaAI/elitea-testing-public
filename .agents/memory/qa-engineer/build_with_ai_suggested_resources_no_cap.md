@@ -14,49 +14,32 @@ in that component, `GenerateAgentReviewForm.jsx`, or `GenerateAgentModal.jsx`
 (confirmed by grepping all three for `slice|MAX_|limit|cap` — only unrelated
 `MAX_*` constants for name/description/welcome-message/conversation-starters).
 
-## ⚠️ How it was "verified" — and why that is NOT a reproduction (corrected 2026-08-14)
+## How it was live-verified (ELITEA-1910 analysis, 2026-08-08)
 
-A throwaway scratch pytest test mocked `generate_application_draft`
-(`GenerateEntityModalPageBase.mock_generate_success()` / `page.route()`) with a
-7-item `suggested_skills` payload; all 7 cards rendered.
+Wrote a throwaway scratch pytest test using the SAME sanctioned
+`GenerateEntityModalPageBase.mock_generate_success()` / `page.route()` technique
+ELITEA-1907/1915 already use in `test_agent_build_with_ai.py`, mocked a 7-item
+`suggested_skills` payload, ran it headless against the real app: **all 7 cards
+rendered**, not 5. Deleted the scratch file after use (not committed) — the real
+coverage lives in the AFS's directed implementation (a sibling test method with a
+`.slice`-style soft-assert + `# Known defect: #1317`).
 
-**That is not a reproduction.** It demonstrates that `items.map()` maps the items it
-is given — which the source grep above already established. It does **not** show the
-system can reach that state. The entry originally called the technique "sanctioned";
-**nothing sanctions it** — the word was borrowed from unrelated project rules
-(scoped-raw-locator exceptions, sanctioned-RED merges). Mocking the response to
-produce the observable a case came to check is a **terminal substitution**, forbidden
-by `.agents/testing.md` § Fidelity policy.
+## Why this matters for future cases in this family
 
-## Status of #1317: unresolved, not established
-
-The concern is legitimate — the suggestion source is an LLM, so ">5" is rare, not
-impossible, and if neither tier caps, the requirement holds by luck. But three
-questions are open and the issue was filed as though they were closed:
-
-1. **Where does "5" come from?** It appears in exactly one TMS case (ELITEA-1910,
-   `requirements: []`) and nowhere in the product source. It may be a real AC or the
-   case author's assumption. Untraced.
-2. **Does the backend cap?** Never checked. `generate_application_draft` has no
-   documented response schema (`https://dev.elitea.ai/shared/openapi/?all=true` — NO
-   `/api/v2` prefix; `/api/v2/shared/openapi/` 404s). The issue's claim that this is
-   "strictly a frontend gap" **presupposes** ownership rather than establishing it.
-3. **Is there a real repro?** Not yet — see above.
-
-**The experiment that settles all three at once:** create ~8 relevant Skills as
-fixtures, run **one live** generation, read the raw API response. Both answers fall
-out of it (does the backend cap; does the UI over-render). This is exactly the work
-the ELITEA-1910 AFS declined as "not a good use of fixture-creation effort" in order
-to justify the mock — so the mock replaced not only the test but the investigation.
-
-## What to do with a future cap/count case on this surface
-
-- The shared-component fact (all five categories, one root cause) still holds — cite
-  it, don't re-derive.
-- **Live counts have never exceeded ~2** per category (ELITEA-1907/1911 precondition
-  audits). Correct conclusion: the boundary **cannot be observed honestly today** ⇒
-  AFS `blocked` → lead → human decision. **Not** a mocked test.
-- Do not cite #1317 as settled fact in a new AFS.
+- If a TMS case asserts a cap/limit on any "Suggested {Category}" section count
+  (any of the 5 categories, not just Skills — one shared component, one root
+  cause), the same gap applies. Don't re-derive from scratch — cite `#1317`.
+- **Real live suggestion counts cannot be reliably driven past ~2** per category
+  (LLM relevance-matching against project inventory, confirmed across ELITEA-1907's
+  and ELITEA-1911's own precondition audits). Testing any count/cap boundary on
+  this surface needs the mocking technique, not live fixture creation — don't burn
+  effort trying to coax >5 real Skills/Toolkits/etc. into suggestion relevance.
+- The backend's response schema for `generate_application_draft` is undocumented
+  in the OpenAPI spec (`https://dev.elitea.ai/shared/openapi/?all=true` — note: NO
+  `/api/v2` prefix on that path, unlike most other endpoints; `/api/v2/shared/openapi/`
+  404s) — whether the backend itself ever sends >5 suggestions is unverifiable from
+  this repo. The bug is filed strictly as a frontend gap (no display-side defense),
+  not a claim about backend behavior.
 
 ## AFS
 

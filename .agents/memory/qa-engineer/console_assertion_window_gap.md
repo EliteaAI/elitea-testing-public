@@ -34,19 +34,3 @@ blocker.
 assertion to the END of the test (after the reload block), or add a second
 assertion pass there. Simplest: assert once, after the LAST step that
 performs page activity — not at Save if Save isn't actually the last step.
-
-**Variant B — assertion missing entirely in one twin, not just mistimed
-(`test_conversation_rename_checkmark_active_state.py`, ELITEA-2105-2109, PR
-#1519, 2026-08-15, CHANGES_REQUESTED).** Two sibling tests in the SAME new
-file both register the `console_messages`/`_on_console`/`page.on("console",
-...)` scaffolding identically, but only one calls `assert not
-console_messages` before its `finally` block — the other (a 4-row
-parametrized Shape-A test) collects into the list and then silently
-discards it. Unlike Variant A above, this was **net-new in the PR under
-review**, not inherited systemic debt shared with an already-merged
-sibling — so it WAS blocking (cheap one-line fix: mirror the twin's
-assertion). Tell: when a PR introduces two near-identical test functions
-with copy-pasted console/network-listener setup, diff their tails —
-`assert not console_messages` present in one and absent in the other is
-the exact shape to catch, and it won't show up in the mechanical
-substitution/locator greps (it's a missing line, not an added one).

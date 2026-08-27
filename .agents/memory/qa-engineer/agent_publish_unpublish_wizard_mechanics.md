@@ -52,18 +52,3 @@ for this flow.
 **Case-text clarification filed:** #612 — ELITEA-1892's steps describe Publish as a single
 version-name dialog; live product is the 3-step wizard above. Product is correct, case text is
 stale (reverse-masking).
-
-**Attached Skills are validated too, not just the agent's own fields (ELITEA-2600,
-confirmed live).** When the agent has Skills attached, `publish_validate`'s
-`critical_issues[]` can include a `field: "skills"` entry — `"skills [skill: <name>]:
-Skill content is too short (min 100 chars)"` — if ANY attached skill's instructions
-are under 100 chars. This blocks the WHOLE agent's publish (not just that skill), and
-names the offending skill so the fix is obvious. Seed all attached skills' instructions
-≥100 chars in automation to avoid a discovery-by-failure round-trip. Also confirmed:
-the Publishing Terms panel states outright that attached Skills/sub-agents are embedded
-in the published snapshot and never listed as separate Catalog entries — and this holds
-functionally too (`/elitea-catalog?tab=skills` search for an attached skill's name
-returns "No skills found" post-publish, even though the agent itself is published and
-visible). Skill invocations show up in the chat "Thought for N secs" accordion via the
-SAME `chat-answer-tool-chip` testid used for toolkit calls, but with a distinct text
-shape: `"Skill: {skill_name}"` (not `"{toolkit_name}: {tool_name}"`).

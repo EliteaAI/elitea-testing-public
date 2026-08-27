@@ -18,20 +18,7 @@ subclasses today: `GenerateAgentModalPage`, `GenerateSkillModalPage`.
 
 - `open_modal()`, `fill_prompt()`, `get_prompt_value()`, `is_generate_enabled()`
 - `mock_generate_failure()` / `mock_generate_success()` / `clear_generate_mock()`
-  — route-mock helpers keyed off `self.GENERATE_DRAFT_ROUTE`.
-  ⚠️ **NARROW SCOPE — availability here is not permission (added 2026-08-14).**
-  These exist for the *failure-simulation* cases whose TMS text explicitly asks for
-  it (ELITEA-1915/1916/2000/2001/2612); `mock_generate_success()` was born as the
-  **recovery half** of the retry scenario, not as a general "skip the LLM" device.
-  Using them so a case's own observable is read off a hand-written payload is a
-  **terminal substitution**, forbidden by `.agents/testing.md` § Fidelity policy —
-  regardless of the fact that they live in a shared base class. Living in the base
-  made them *look* like sanctioned infrastructure and is the mechanism by which ~15
-  tests drifted onto fabricated responses (audit 2026-08-14). Before calling either:
-  quote the case line that asks for simulation, or establish that the mock is transit
-  only and declare it. The live path works — `test-specs/agents/_surface.md` records a
-  real, unmocked `generate_application_draft` producing a usable draft inside existing
-  timeouts.
+  — route-mock helpers keyed off `self.GENERATE_DRAFT_ROUTE`
 - `expect_generate_response()` (context manager) / `click_generate_and_wait_for_response()`
 - `is_error_alert_visible()`, `get_error_message()`
 - `wait_for_loading_visible/hidden()`, `wait_for_review_form()`,

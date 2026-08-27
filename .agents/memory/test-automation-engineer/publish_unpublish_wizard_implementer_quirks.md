@@ -129,16 +129,6 @@ is a property of the app's state-sync timing, not of any one component.
   exception contract must route ALL its exit paths through that
   contract — a single unguarded call anywhere inside is enough to break
   it for callers.**
-  **Another confirmed unguarded call site (ELITEA-2614, 2026-08-12):**
-  `AgentFormPage.update_text_field()`'s `wait_for_form_validation()` →
-  `wait_for_network(timeout=1000)` is ALSO unguarded — a deterministic
-  `playwright.TimeoutError` (reproduced 2/2 runs, not a flake) when the
-  test calls `update_name()`/`update_description()`/`update_text_field()`
-  immediately after its own `page.reload()` (persistent WS connections
-  still settling). Test-local fix (Hard Rule 8 — don't mutate the shared
-  helper for one test's symptom): reorder so the field edit happens
-  BEFORE the reload, and reload only ONCE at the very end to verify
-  persistence of everything edited so far.
 
 ## Register-console-listener-then-reload trap (and: verify it's actually THAT known defect before filtering)
 

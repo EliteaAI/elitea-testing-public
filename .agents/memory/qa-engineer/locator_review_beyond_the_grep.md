@@ -28,46 +28,14 @@ type: feedback
 back.** A round-1 grep that listed a line as "compliant" under the testid
 filter is exactly how a POM violation rides unflagged into round 2.
 
-## Seen 6× (4 construction-site, 2 mechanism)
+## Seen 5× (3 construction-site, 2 mechanism)
 
 - PR #620/ELITEA-1955 — self-check claimed 1 hit; the same grep found 3, two of them `.locator()` calls in `test_pipeline_mcp_node_empty_toolkit_before_attach.py`, both testid-anchored and both blocking.
 - PR #643/ELITEA-1808 — `ARTIFACTS_TREE_ITEM`, a correctly-declared page-object constant, had its only consumer in the spec file (siblings `BUCKET_ROW` / `BUCKET_MENU_BUTTON` were correctly wrapped in methods).
 - PR #670/ELITEA-1866 R2 — three `page.locator(ToolkitTestSettingsPage.X)` calls in a test body, carried over unflagged from round 1's "compliant" list.
 - PR #537/ELITEA-1974 — `credentials_list_page.py` raw `ENTITY_CARD_*_SELECTOR` constants + `page.locator()` instead of `LocatorDescriptor`.
 - PR #545/ELITEA-1869 — `agents_list_page.get_agent_card_names()` same bypass, different file.
-- PR #1613/ELITEA-2081 — `test_close_toolkit_canvas_without_saving.py:213`, `page.locator(toolkit_form.TOOLKIT_TYPE_CARD.format("github"))` in the test body, even though `ToolkitCreationPage.get_type_card(type_key)` already exists as the wrapper for this exact dynamic-testid template (its own docstring says so). The implementer's self-check grep ran the § Reviewer testid-identity grep only (0 hits reported, technically true — the constant resolves to `[data-testid=`) and missed construction-site entirely.
 
 See also: mechanical_grep_passes_non_testid_but_spec_file_locators_still_violate_pom.md ·
 elitea_1808_pom_construction_site_not_selector_source_reviewer_check.md ·
 recurring_locatordescriptor_bypass_for_card_name_lists.md
-
-## Check 4 — a clean grep can be clean for the WRONG reason (PR #1818 / ELITEA-2016, 2026-08-26)
-
-The mandated locator grep matches `get_by_*` / `page.locator` / `.locator(` only. Two blind spots,
-both hit in one PR:
-
-1. **A raw selector relocated into `page.evaluate`.** PR #1818 *removed* a
-   `page.locator('[role="menu"]')` line and replaced it with
-   `page.evaluate("""() => !!document.querySelector('[role="menu"], [role="listbox"]')""")`.
-   Grep 1 returned **0 hits** — and that cleanliness was the violation, not the proof of compliance.
-2. **JS added INSIDE a pre-existing `evaluate(` call.** Its `+` lines are JS body lines, so they can
-   never match `.evaluate(` either. Grep 2 also returned 0 hits while real JS entered the diff.
-
-**Supplementary sweep to run whenever a diff touches a page object's JS:**
-```bash
-git diff <base>...HEAD -- automation/ | grep -nE '^[+].*(querySelector|document\.|\[role=|\.Mui|css=|xpath=)'
-```
-Classify each hit: prose in a docstring/comment is fine; `getBoundingClientRect` / `elementFromPoint`
-are *measurements* (not locators, not substitutions); a `querySelector` with a selector string is the
-violation wearing a disguise.
-
-**Second half — refute the declaration before accepting it.** The PR declared a canon gap
-("transient third-party portal overlays carry no app testid"). False, and refutable from the same
-file in one grep: `POPUP_MENU_TESTIDS` (`pipeline_detail_page.py:1582`) and `SELECT_OPTION_PREFIX`
-(`:1548`), both promoted to `main`. Worse, `is_popup_menu_visible()`'s own docstring at `:3152`
-already *claimed* `connect_nodes` used it. So: **before accepting any "no testid exists for X",
-grep the page object for the component family AND read the docstrings of nearby helpers.** A
-declared improvisation is only honest if the search that failed actually happened.
-
-Shipped fix was one line, using the constants that already existed:
-`if self.is_popup_menu_visible() or self.page.locator(self.SELECT_OPTION_PREFIX).count() > 0:`

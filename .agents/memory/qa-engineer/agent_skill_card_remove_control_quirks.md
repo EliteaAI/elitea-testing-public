@@ -44,23 +44,7 @@ localhost:5173, agent detail page Skills accordion (`ApplicationSkills.jsx` /
    strategies that need to distinguish an attach request from a detach
    request on the same URL pattern.
 
-4. **STALE as of ELITEA-2614 (2026-08-12): the remove button DOES now have a testid.**
-   `skill-card-remove-button` was added at some point after this entry was written (confirmed via
-   `SkillCard.jsx:108` source read) — **not unique per card**, scope it inside the card's own
-   `[data-testid="skill-card-{skill_id}"]` container (also documented in `skills/_surface.md`'s
-   ELITEA-2601 entry). Point #1 above (hover-revealed, accessible-name-only) is otherwise still
-   accurate — the testid doesn't change the hover-reveal behavior, only gives a non-text locator.
-5. **On a published/embedded (locked) agent version, this button is `disabled` but its tooltip stays
-   the generic static "Remove skill" — it does NOT explain the immutability reason**, unlike the
-   Tools-section add buttons and the Skill "+Skill" add button (which correctly swap to an
-   immutability tooltip when locked). Filed as MINOR defect
-   [EliteaAI/elitea-testing-public#1470](https://github.com/EliteaAI/elitea-testing-public/issues/1470).
-   `SkillVersionSelector`'s version-change trigger has the same gap, worse — no `Tooltip` wrapper at
-   all.
-
 ## Where used
 
 `test-specs/skills/l3_remove-attached-skill-from-agent_ELITEA-1792.md` (Test
 Step 4/5, Handles Reference, Coverage Map Axis 2).
-`test-specs/skills/l2_published-agent-version-cannot-be-modified_ELITEA-2614.md` (Part C, immutability
-tooltip gap).

@@ -44,47 +44,6 @@ Nothing in an AFS is true because it is written down. Two mechanical duties:
   normal viewport. Confirming the CLARIFICATION-vs-bug classification is
   internally consistent is NOT confirming its premise is true.
 
-## Seen 12×
-
-- PR #1610/ELITEA-2076 (Chat — pipeline canvas Discard clears data) — Coverage
-  Map row for case step 4 ("Verify canvas header shows 'Create New Pipeline'
-  with X, Discard, Save") reads "Covered by: step 4 · Asserted where: heading
-  text + 3 header controls present, Discard/Save start disabled ·
-  Disposition: asserted." Grepped the shipped test
-  (`test_pipeline_discard_changes_clears_canvas.py`) for the heading/title
-  string across the whole file: zero hits. The Step-4 `allure.step` block
-  only asserts the 3 header controls (`close_button`/`discard_button`/
-  `save_button` visible+disabled) — the "heading text" half of the same
-  Coverage Map cell was never written, even though the AFS's own Step 4 prose
-  states "confirmed live: heading text exactly 'Create New Pipeline'." Same
-  species as PR #698/ELITEA-2132 R2 below (a row asserted N clauses, code
-  asserted N-1) — reviewer caught it only by re-deriving what the cell
-  claimed and grepping the literal string, not by trusting "asserted."
-
-## Seen 11×
-
-- PR #1553/ELITEA-2157+2158 — AFS's own Concrete Handles table states verbatim
-  "**No new testids needed for either case.** All handles already exist and are
-  provisioned" — written before implementation. During implementation the
-  combined analyst+implementer found the "Duplicate" context-menu item had NO
-  `key`/testid at all (the only item in a 7-item array missing one) and added
-  `key: 'chat-conversation-menu-duplicate'` (EliteaAI/EliteaUI@a53b9d4b on
-  `automation/testids`) — because the test's own Step 2 assertion
-  (`get_open_conversation_menu_item_count() == 6`) silently DEPENDS on it: the
-  count locator is a page-level prefix wildcard
-  (`CONVERSATION_MENU_ITEM_PREFIX`), so an item missing a testid would have
-  made the true in-folder count invisible to the check (5, not 6). The
-  finding + fix were narrated faithfully in a same-PR `_surface.md` digest
-  commit *literally titled* `docs(afs): … implementation-time digest notes` —
-  but that commit touches ONLY `_surface.md`; the actual AFS file's Concrete
-  Handles table and its "No new testids needed" sentence were never touched,
-  so the primary artifact still asserts something the shipped diff
-  contradicts. Lesson sharpened: a commit MESSAGE claiming `docs(afs)` is not
-  evidence the AFS file itself was amended — `git show --stat` the commit (or
-  diff the AFS path specifically) before crediting the amendment; the digest
-  and the AFS are two different files under the same "docs" label and only
-  one of them is a reviewer triangulation artifact.
-
 ## Seen 10×
 
 - PR #1294/ELITEA-2464 — Concrete Handles table marked **7 of 9** rows
@@ -117,18 +76,6 @@ Nothing in an AFS is true because it is written down. Two mechanical duties:
   correctly `on-main`, so this wasn't a wholesale skip of the check, just one
   stale/wrong row slipping through — same lesson as #1294: verify EVERY row,
   not a sample.
-- PR #1471/ELITEA-2614 — Concrete Handles table has NO PROVENANCE column at
-  all (only "testid" + "Confirmed live this run?"), a step back from #1323's
-  wrong-value-in-the-column failure — it never asks the on-main-vs-testids-
-  only question in the first place. Same recurring testid: `agent-add-agent-
-  button` (still not on main, still from ce74cd40/ELITEA-1887) plus its new
-  sibling `agent-add-pipeline-button` (same story, same introducing PR),
-  plus 4 brand-new tooltip-wrapper testids, ALL genuinely testids-only
-  awaiting human promotion. Not implementer-blocking (implementer correctly
-  treats "on automation/testids" as sufficient to build against, per the
-  pipeline's actual design) but the closure record's promotability row
-  depends on this table and will have to re-derive it from scratch instead
-  of inheriting it.
 - PR #1328/ELITEA-2047 — Coverage Map step-6 row's "Asserted where" cell listed
   "run-in-progress header" among the pause signals covered, mirroring the AFS's
   own Step 6 "Verify" bullet (chat header shows a "Run is in progress" spinner +

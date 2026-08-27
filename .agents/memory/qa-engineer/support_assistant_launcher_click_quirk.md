@@ -1,57 +1,37 @@
 ---
 name: Support Assistant launcher click quirk
-description: A MUI tooltip wrapper intercepts clicks on the launcher — click the WRAPPER, not the button; JS-evaluate is no longer needed
+description: Native Playwright click on the Support Assistant launcher button times out due to a MUI overlay; must use JS-evaluate click
 type: reference
-aliases: [support assistant launcher, elitea-assistant-button, sidebar-support-assistant]
-tags: [area/support-assistant, type/quirk]
-created: 2026-07-10
-updated: 2026-08-22
 ---
 
-## The quirk
+Confirmed live on `http://localhost:5173/chat` (2026-07-10, ELITEA-1796 analysis).
 
-A native Playwright click on the launcher (`button.elitea-assistant-button`,
-`aria-label="Support Assistant"`) times out: a MUI tooltip clone
-(`div[data-tour="sidebar-support-assistant"][data-mui-internal-clone-element="true"]`)
-intercepts pointer events on the button.
+A native `getByRole('button', { name: 'Support Assistant' }).click()` (or any Playwright-actionability click)
+on the Support Assistant launcher (`button.elitea-assistant-button`, `aria-label="Support Assistant"`)
+reproducibly times out — a MUI overlay div
+(`div[data-tour="sidebar-support-assistant"][data-mui-internal-clone-element="true"]`) intercepts pointer
+events on the button. `SupportAssistantPage.open_widget()` in `automation/pages/support_assistant_page.py`
+already works around this via `page.evaluate(...)` doing a raw `btn.click()` — this is a real, necessary
+workaround, not incidental code. Any new test/AFS touching the launcher must keep using the JS-click
+approach (or `force=True` as a lighter alternative, untested here).
 
-## The fix — click the wrapper, NOT the button (verified 2026-08-22)
+The **Close (X)** button (`button[aria-label="Close chat"]`) does NOT have this problem — a plain native
+click works fine once the widget is open.
 
-**Correction to the pre-2026-08-22 version of this note, which said a JS-evaluate click was
-mandatory.** It is not. A genuine Playwright pointer click on the *intercepting wrapper*
-works first try:
+Also noted: none of the `data-testid` attributes the ELITEA-1796 TMS case's Test Data table cites
+(`support-assistant-launcher`, `support-assistant-title`, `support-assistant-close`) exist in the live DOM.
+Only the case's own documented fallback selectors are real. `support_assistant_page.py` is fallback-only
+(no testids at all), which is a pre-existing violation of `.claude/rules/page-objects.md`'s testid-only
+mandate — flagged as framework debt, not fixed as part of case analysis.
 
-```python
-page.locator('[data-tour="sidebar-support-assistant"]').click()   # opens the widget
-```
-
-Verified live on `http://localhost:5173/chat` (2026-08-22 triage): the native click on the
-button timed out with the interception log, then the wrapper click opened the widget
-("ELITEA Support") immediately. Prefer this — it is a real user-equivalent gesture, so it
-carries no fidelity-declaration burden, unlike `page.evaluate`'s synthetic `btn.click()`
-still used by `SupportAssistantPage.open_widget()`.
-
-The **Close (X)** button (`button[aria-label="Close chat"]`) never had this problem.
-
-## Testids ARE addable here — the "third-party" framing is SUPERSEDED
-
-The pre-2026-07-23 version of this note called the widget third-party and concluded
-`add-data-testid` "cannot remediate any Support Assistant selector". **That is wrong and is
-superseded by canon ruling #705** (`.agents/testing.md` § Locator policy, connected-first-party
--repo bullet): the widget is `@eliteaai/elitea-assistant` — **our** repo, cloned as the sibling
-`../elitea_assistant`, with its own `automation/testids` integration branch, aliased live into
-the dev server by `VITE_ASSISTANT_LOCAL=1` (`EliteaUI/vite.config.js`). Missing testids there
-are *work to do in that repo*, not a #579 scope exception.
-
-**Update 2026-08-27 (ELITEA-1802 re-analysis).** The "zero `data-testid` attributes" state above
-is over. Waves ELITEA-2418/2419/2420/2421/2423 added **17** `support-assistant-*` testids on
-`EliteaAI/elitea_assistant` `origin/automation/testids`; all 17 confirmed rendering in the live
-DOM through the alias on 2026-08-27, and **none is on that repo's `origin/main`** (awaiting human
-promotion, then an EliteaUI `@eliteaai/elitea-assistant` dep bump — the connected repo's extra
-promotion hop). The launcher itself now has `sidebar-support-assistant-button` in **EliteaUI**
-(`SidebarBody.jsx`), and clicking that testid natively opens the widget first try — so
-`open_widget_via_sidebar()` is preferred over the legacy JS-evaluate `open_widget()`.
-The remaining `fallback=` fields in `support_assistant_page.py` are grandfathered tech debt to
-migrate, not precedent.
-
-Related: [[support_assistant_response_latency_and_no_streaming]]
+**Root cause of the missing testids, confirmed 2026-07-16 (ELITEA-1802 analysis):** the Support
+Assistant widget is NOT first-party EliteaUI JSX — it ships as the third-party npm package
+`@eliteaai/elitea-assistant` (`EliteaUI/node_modules/@eliteaai/elitea-assistant`), mounted once at
+`[fsd]/app/root.jsx` via `[fsd]/widgets/support-assistant/ui/SupportAssistant.jsx`.
+`grep -rn 'aria-label="Attach file"' EliteaUI/src` (and equivalents for the launcher/title/attach
+selectors) returns nothing in first-party source. This means `add-data-testid` (which edits
+EliteaUI JSX files) **cannot** remediate any Support Assistant selector — there is no first-party
+JSX to add a `data-testid` to. Treat every raw selector in `support_assistant_page.py` as a
+permanent scope exception, not open tech debt to fix via the normal testid workflow. If testid
+coverage on this widget is ever required, it has to be requested upstream in the
+`@eliteaai/elitea-assistant` package itself, not patched in this repo.

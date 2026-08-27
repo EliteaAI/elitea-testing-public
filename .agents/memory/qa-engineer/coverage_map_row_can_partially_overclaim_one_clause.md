@@ -39,28 +39,6 @@ sail through this test undetected, while the Coverage Map — the
 document whose entire purpose is traceability — insists the case's own
 expected result is covered.
 
-## Recurrence (PR #1600, ELITEA-2208/2470, 2026-08-19)
-
-Same shape, different family. The `lextend_hash-search-select-pipeline-adds-
-participant-and-responds_ELITEA-2208.md` AFS's "Type a message and send" row
-reads `send_message("hello")`; header shows "to <Pipeline Name>" attribution` —
-the second clause is never asserted in
-`test_add_pipeline_via_hash_search_joins_participants_and_responds`, and the
-test's own docstring separately (falsely) claims "the response list item is
-attributed to the selected pipeline's name". Traced the phrase to its origin:
-copy-pasted verbatim from the sibling `ELITEA-2207` AFS (agent family, PR
-#1599, already merged) — whose own covering test *also* never asserts
-message/response attribution. So the overclaim didn't originate here; it was
-inherited from an already-approved precedent and propagated forward
-unchanged, which is exactly how one un-caught partial-overclaim seeds a
-second one — a reviewer who trusts "the sibling PR used this exact row
-wording and passed review" instead of re-checking the clause against *this*
-PR's code would miss it too. Flagged CHANGES_REQUESTED on both PRs' shared
-family pattern this round; watch for this "to <Entity Name>" attribution
-clause specifically in any FUTURE hash-search-family AFS (MCP, skill, or any
-other `#`-mentionable entity type) — it is now a known-recurring, not
-hypothetical, boilerplate trap in this exact row shape.
-
 ## The check to run
 
 When ticking a Coverage Map row against the source case (standing
