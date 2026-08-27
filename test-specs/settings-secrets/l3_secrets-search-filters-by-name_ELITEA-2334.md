@@ -20,10 +20,17 @@
 - The live secret set, read-only.
 - **The search term is derived at runtime, not hardcoded.** Walk the observed names and
   take the first prefix that filters to a **proper, non-empty subset** (so the
-  strict-inequality assertion is achievable against whatever data exists), then use its
-  `.upper()` and `.lower()` forms for the case-insensitivity step. Terms actually
-  exercised live: `pgvector` → `pgvector_project_connstr`, `pgvector_project_password`;
-  `PGVECTOR` → the identical two rows.
+  strict-inequality assertion is achievable against whatever data exists) **and that
+  contains at least one cased character**, then use its `.upper()` and `.lower()` forms
+  for the case-insensitivity step. Terms actually exercised live: `pgvector` →
+  `pgvector_project_connstr`, `pgvector_project_password`; `PGVECTOR` → the identical two
+  rows.
+- **Why the cased-character requirement is load-bearing** (review round 1): a prefix such
+  as `2` or `_` — derivable from a live name like `2fa_token` — has
+  `probe.upper() == probe.lower() == probe`, so step 4 would type the byte-identical term
+  step 3 already asserted on and pass while proving nothing about case handling. The
+  derivation skips caseless prefixes and step 4 asserts the property before typing;
+  `tests/unit/test_secrets_search_probe_and_restore_claims.py` pins both ends.
 
 ## The product's actual filter contract (source + live confirmed)
 
@@ -69,9 +76,12 @@
    - **Verify**: the collected name count equals the pagination total (a mismatch means
      the walk missed rows), and `secrets-search-input` is visible, placeholder exactly
      `Search`, value empty.
+   - **Capture the unfiltered page-1 name slice** — step 5 asserts this exact set is
+     restored (not merely its count).
    - Derive the probe from the full set: the first prefix that filters to a **proper,
-     non-empty subset of at most 10 rows** (so the matches fit one default page), failing
-     loudly with a named reason if the live data cannot satisfy it.
+     non-empty subset of at most 10 rows** (so the matches fit one default page) **and
+     that carries at least one cased character**, failing loudly with a named reason if
+     the live data cannot satisfy either requirement.
 
 2. Type the probe into the search field **one character at a time**
    (`press_sequentially`), **without pressing Enter**.
@@ -86,13 +96,16 @@
    - no Enter was pressed and no submit control was clicked — that IS the filter contract
      this step proves.
 
-4. **Verify the search is case-insensitive** (case step 4): clear the field and type
-   `probe.upper()`, then clear and type `probe.lower()`.
+4. **Verify the search is case-insensitive** (case step 4): assert the probe carries a
+   cased character (so the variants are not byte-identical to step 3's term), then clear
+   the field and type `probe.upper()`, then clear and type `probe.lower()`.
    - **Verify** both produce the **identical** rendered name set as step 3.
 
 5. **Clear the search field — verify all secrets are shown again**:
-   - the input value is `""`, the range-label total is back to `total_all`, and the
-     rendered name set equals the page-1 slice of the unfiltered set.
+   - the input value is `""`, the range-label total is back to `total_all`, the rendered
+     row count is back to `min(10, total_all)`, and the **rendered name set equals the
+     page-1 slice captured in step 1** — a count-only check would accept a filter that
+     restored the wrong ten rows.
 
 6. **(Axis 2)** Type a deliberately non-matching term (probe + a nonsense suffix).
    - **Verify**: `secret_row` count == 0 — the filter can actually exclude everything.
@@ -135,8 +148,8 @@
 | Step 1: navigate with ≥2 differently-named secrets | populated table renders | Step 1 | row count ≥ 2 + total ≥ 2 | asserted |
 | Step 2: type a partial name in the Search field | field accepts + displays the value | Step 2 | input value == probe | asserted |
 | Step 3: table filters to only matching secret names | per-keystroke substring filter on `name` | Step 3 | rendered set == expected set; every name contains the probe; filtered total < total_all | asserted |
-| Step 4: search is case-insensitive | both sides lower-cased ⇒ yes (live `PGVECTOR` → `pgvector_*`) | Step 4 | upper- and lower-case probes give identical sets | asserted |
-| Step 5: clear the field — all secrets shown again | full set restored | Step 5 | value == ""; total == total_all; page-1 set restored | asserted |
+| Step 4: search is case-insensitive | both sides lower-cased ⇒ yes (live `PGVECTOR` → `pgvector_*`) | Step 4 | probe asserted to carry a cased character (else the step is a tautology); upper- and lower-case probes give identical sets | asserted |
+| Step 5: clear the field — all secrets shown again | full set restored | Step 5 | value == ""; total == total_all; row count == min(10, total_all); rendered name set == the page-1 slice captured in step 1 | asserted |
 | Expected Final State: cleared search shows all secrets | as step 5 | Step 5 | same | asserted |
 
 ### Axis 2 — asserted beyond the case
