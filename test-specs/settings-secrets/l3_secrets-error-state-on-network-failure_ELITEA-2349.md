@@ -130,6 +130,10 @@ in play.
 - Read the recovered rows' names with `SecretsPage.get_row_names()` — it already strips
   and preserves rendered order. Re-implementing it inline in the spec was the second
   half of the same review finding.
+- **Grep the page object for the attribute NAME before declaring a handle**, not just
+  for the testid: `SecretsPage` is >1000 lines and a sibling unit had already declared
+  `toast_alert` / `toast_message` / `TOAST_ALERT_SEVERITY` ~120 lines above the point
+  this branch appended its own copies (review finding, fix round 2).
 - `route.abort("failed")` (not `fulfill`) — nothing is authored, only the transport is cut.
 - **`page.unroute` before the reload**, and let `expect_response` capture the real `200`
   so the recovery assertions read the product's own payload.
@@ -189,10 +193,20 @@ Fix round 1 replaced the two spec-built locators with the page object's existing
 `toast_alert_with_severity()` / `get_row_names()` accessors; both are pinned by
 `automation/tests/unit/test_secrets_access_and_error_spec_invariants.py`.
 
-`SecretsPage` gained **three additive members only** — `navigate_expecting_no_rows()`,
-the `toast_alert` / `toast_message` / `settings_content` descriptors and the
-`TOAST_ALERT_SEVERITY` constant. `navigate()` is **byte-identical**
-(`git diff … | grep -E '^-[^-]'` on `pages/secrets_page.py` → no output).
+Fix round 2 removed three page-object members this branch should never have added:
+`toast_alert`, `toast_message` and `TOAST_ALERT_SEVERITY` **already existed on
+`SecretsPage`**, contributed by a sibling settings-w05 unit that merged into the batch
+trunk before this branch was cut. Python keeps the LAST definition, so the branch's
+thinner copies silently shadowed the richer originals (severity auto-hide durations,
+the secrets-flow message catalogue). Ruff, the reviewer's locator grep and a green run
+are all blind to this class — an AST duplicate-member walk is the only cheap detector,
+and it is now pinned by
+`test_secrets_page_defines_every_member_once`.
+
+`SecretsPage`'s net gain from this branch is therefore **two additive members** —
+`navigate_expecting_no_rows()` and the `settings_content` descriptor. `navigate()` and
+every pre-existing member are untouched; the only `-` lines on
+`pages/secrets_page.py` are the three shadowing duplicates this round deleted.
 
 ## Blocked Steps
 - None.

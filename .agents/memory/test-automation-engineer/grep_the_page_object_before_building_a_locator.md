@@ -31,3 +31,46 @@ grep -n "SOME_SELECTOR" automation/pages/<page>.py
 
 `SecretsPage` is ~1000 lines with ~40 accessors — the one you need is usually
 there.
+
+## The same grep also prevents a SHADOWED member (fix round 2, same PR)
+
+Round 2 of #1911 caught the mirror defect: this branch *declared*
+`toast_alert`, `toast_message` and `TOAST_ALERT_SEVERITY` on `SecretsPage`
+when a sibling settings-w05 unit had already merged them into the batch trunk
+~120 lines above. Python keeps the **last** definition, so the richer originals
+(severity auto-hide durations, the secrets-flow message catalogue) became dead
+code — silently.
+
+Nothing on this stack catches it: ruff's `E,F,I,W,UP` has no rule for a
+redefined class attribute (`F811` covers imports/functions, not `ast.Assign`
+targets), both definitions pass the reviewer's locator grep, and the run stays
+green because the shapes are functionally identical.
+
+**Expect it on any long page object touched by more than one unit in a wave** —
+units branch from the trunk and merge back one at a time, and git merges two
+additions in different hunks without a murmur.
+
+Before adding a class member to a shared page object:
+
+```bash
+# by ATTRIBUTE NAME, not by testid — the testid may legitimately appear twice
+grep -n "^    <member_name> = " automation/pages/<page>.py
+# or the whole-class check (catches methods too)
+python3 -c "
+import ast,collections,sys
+t=ast.parse(open(sys.argv[1]).read())
+for n in ast.walk(t):
+    if isinstance(n,ast.ClassDef):
+        d=collections.defaultdict(list)
+        for s in n.body:
+            if isinstance(s,ast.Assign):
+                d.update({x.id:d[x.id]+[s.lineno] for x in s.targets if isinstance(x,ast.Name)})
+            elif isinstance(s,(ast.FunctionDef,ast.AsyncFunctionDef)): d[s.name].append(s.lineno)
+        print(n.name,{k:v for k,v in d.items() if len(v)>1})
+" automation/pages/<page>.py
+```
+
+Pinned for `SecretsPage` by
+`automation/tests/unit/test_secrets_access_and_error_spec_invariants.py::TestPageObjectHasNoShadowedMembers`.
+The same walk over `automation/pages/*.py` shows the debt is not new:
+`ChatPage` (3 shadowed members), `SkillDetailPage` (10), `PipelineDetailPage` (1).

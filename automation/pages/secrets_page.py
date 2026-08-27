@@ -420,34 +420,20 @@ class SecretsPage(BasePage):
     VISIBILITY_ICON_VISIBLE_SELECTOR = '[data-testid="secret-row-visibility-icon-show"]'
     VISIBILITY_ICON_HIDDEN_SELECTOR = '[data-testid="secret-row-visibility-icon-hide"]'
 
-    # --- Toast (ELITEA-2349) -------------------------------------------
-    # The app-wide toast rendered by `src/components/Toast.jsx` (shared
-    # component, testids already on `main`). Used here to observe the error
-    # state the Secrets page surfaces when the secrets-list request fails at
-    # the transport level (`SecretsContent.jsx` -> `toastError(...)`).
-    toast_alert = LocatorDescriptor(
-        testid="toast-alert",
-        description="Toast container -- carries `data-severity`",
-    )
-    toast_message = LocatorDescriptor(
-        testid="toast-message",
-        description="Toast body text",
-    )
+    # --- Settings shell (ELITEA-2349) ----------------------------------
     #: The Settings content pane (`src/[fsd]/pages/settings/index.jsx:268`,
     #: shared with `SettingsDrawerPage.settings_content`). Used by ELITEA-2349
     #: as the SCOPE for the case's "not a raw stack trace" check — a React
     #: error boundary would render inside this pane, and it is a real app
     #: testid rather than a raw `body` handle.
+    #:
+    #: The toast handles this case also needs (`toast_alert`, `toast_message`,
+    #: `TOAST_ALERT_SEVERITY`) are declared ONCE, above — re-declaring them
+    #: here shadowed the richer originals silently (PR #1911 review finding).
     settings_content = LocatorDescriptor(
         testid="settings-content",
         description="Settings content pane hosting the Secrets table",
     )
-
-    #: Severity-filtered toast. `Toast.jsx` renders `data-severity={severity}`
-    #: alongside the testid, so state is asserted by ATTRIBUTE FILTER on a
-    #: stable testid -- the shape `.agents/testing.md` § Locator policy
-    #: requires (never a state-switched testid, never a MUI class handle).
-    TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
 
     def __init__(self, page: Page):
         super().__init__(page)

@@ -19,9 +19,18 @@ violation — so they are pinned here rather than left to the next reviewer.
    methods or spec files — class fields only". The spec re-implemented
    ``SecretsPage.get_row_names()`` inline and built the severity-scoped toast
    locator by hand instead of calling ``toast_alert_with_severity()``.
+
+3. **ELITEA-2349 — no shadowed page-object members.**
+   The branch re-declared ``toast_alert`` / ``toast_message`` /
+   ``TOAST_ALERT_SEVERITY`` on ``SecretsPage``, which a sibling settings-w05
+   unit had already merged into the batch trunk ~120 lines above. Python keeps
+   the LAST definition, so the richer originals became dead code silently —
+   ruff, the locator grep and a green run are all blind to it.
 """
 
+import ast
 import inspect
+from pathlib import Path
 
 import pytest
 
@@ -163,3 +172,83 @@ class TestSpecsBuildNoLocators:
 
         assert callable(SecretsPage.get_row_names)
         assert callable(SecretsPage.toast_alert_with_severity)
+
+
+class TestPageObjectHasNoShadowedMembers:
+    """`SecretsPage` must not define the same class member twice.
+
+    Third review finding on this unit (PR #1911, re-review): the branch
+    appended ``toast_alert`` / ``toast_message`` / ``TOAST_ALERT_SEVERITY``
+    to ``SecretsPage`` although a sibling settings-w05 unit had already
+    merged them into the batch trunk ~120 lines above. Python keeps the LAST
+    definition, so the earlier, far richer ones (severity auto-hide durations,
+    the secrets-flow message catalogue) became dead code — silently.
+
+    Nothing else on this stack catches it: ruff's default `E,F,I,W,UP` set has
+    no rule for a redefined class attribute (`F811` covers imports and
+    functions, not ``ast.Assign`` targets), both definitions pass the
+    reviewer's locator grep, and the run stays green because the two shapes are
+    functionally identical. An AST walk is the only cheap detector, so it is
+    pinned here.
+
+    Scoped to ``SecretsPage`` — the class this unit edits. Other page objects
+    carry the same pre-existing debt (`ChatPage`, `SkillDetailPage`,
+    `PipelineDetailPage`); widening this test would fail on work nobody on this
+    branch touched. Reported to the lead instead.
+    """
+
+    def _duplicate_members(self, class_name: str, module_path: Path) -> dict:
+        tree = ast.parse(module_path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name == class_name:
+                seen: dict[str, list[int]] = {}
+                for statement in node.body:
+                    names = []
+                    if isinstance(statement, ast.Assign):
+                        names = [
+                            target.id
+                            for target in statement.targets
+                            if isinstance(target, ast.Name)
+                        ]
+                    elif isinstance(statement, ast.AnnAssign) and isinstance(
+                        statement.target, ast.Name
+                    ):
+                        names = [statement.target.id]
+                    elif isinstance(
+                        statement, (ast.FunctionDef, ast.AsyncFunctionDef)
+                    ):
+                        names = [statement.name]
+                    for name in names:
+                        seen.setdefault(name, []).append(statement.lineno)
+                return {n: ls for n, ls in seen.items() if len(ls) > 1}
+        raise AssertionError(f"class {class_name} not found in {module_path}")
+
+    def test_secrets_page_defines_every_member_once(self):
+        from pages import secrets_page
+
+        duplicates = self._duplicate_members(
+            "SecretsPage", Path(secrets_page.__file__)
+        )
+
+        assert not duplicates, (
+            "SecretsPage defines these members more than once — Python keeps "
+            "the LAST definition, so the earlier one is dead code and any edit "
+            "to it does nothing:\n"
+            + "\n".join(
+                f"  {name}: lines {lines}" for name, lines in sorted(duplicates.items())
+            )
+        )
+
+    def test_the_toast_handles_the_specs_use_are_the_documented_ones(self):
+        """The surviving definitions are the richer, first-block ones.
+
+        Deleting the duplicates is only correct if what remains is the block
+        that documents the severity durations and the secrets message
+        catalogue — otherwise the fix would have kept the thin copy.
+        """
+        from pages.secrets_page import SecretsPage
+
+        assert "data-severity" in SecretsPage.__dict__["toast_alert"].description
+        message_description = SecretsPage.__dict__["toast_message"].description
+        assert "have been copied" in message_description
+        assert "already exists" in message_description
