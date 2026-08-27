@@ -123,25 +123,42 @@ dispositioned `un-executable` in the Coverage Map below — visible, not dropped
 ## Handles Reference
 | Element | Primary handle (testid-only) | Provenance | Notes |
 |---|---|---|---|
-| Settings drawer menu | `settings-drawer-menu` | **on-main ✓** | `SettingsDrawerPage.settings_drawer_menu` |
-| Secrets nav item | `settings-nav-item-secrets` | **on-main ✓** | via existing `SETTINGS_NAV_ITEM` class template; asserted **present** (399) and **count 0** (471) |
-| General nav item | `settings-nav-item-project-general` | **on-main ✓** | drawer-health control |
-| All nav items in menu | `SETTINGS_NAV_ITEMS_IN_MENU` class constant | **on-main ✓** | `[data-testid="settings-drawer-menu"] [data-testid^="settings-nav-item-"]`; `nav_item_ids_in_order()` |
-| Project selector trigger | `project-selector-trigger-combobox` | **on-main ✓** | `BasePage.project_selector_trigger` |
-| Project option | `select-option-{id}` | **on-main ✓** | `BasePage.SELECT_OPTION` template |
+| Settings drawer menu | `settings-drawer-menu` | **on-`automation/testids` only (awaiting human promotion to `main`)** — `SettingsDrawer.jsx:139`, EliteaAI/EliteaUI@e1e031a1 | `SettingsDrawerPage.settings_drawer_menu` |
+| Secrets nav item | `settings-nav-item-secrets` | **on-`automation/testids` only (awaiting human promotion to `main`)** — runtime-composed ``data-testid={`settings-nav-item-${tab.id}`}`` at `SettingsDrawer.jsx:102`, EliteaAI/EliteaUI@e1e031a1 | via existing `SETTINGS_NAV_ITEM` class template; asserted **present** (399) and **count 0** (471) |
+| General nav item | `settings-nav-item-project-general` | **on-`automation/testids` only (awaiting human promotion to `main`)** — same composing line, `SettingsDrawer.jsx:102`, EliteaAI/EliteaUI@e1e031a1 | drawer-health control |
+| All nav items in menu | `SETTINGS_NAV_ITEMS_IN_MENU` class constant | **on-`automation/testids` only (awaiting human promotion to `main`)** — composed of `settings-drawer-menu` (`:139`) + the `settings-nav-item-` prefix (`:102`), both EliteaAI/EliteaUI@e1e031a1 | `[data-testid="settings-drawer-menu"] [data-testid^="settings-nav-item-"]`; `nav_item_ids_in_order()` |
+| Project selector trigger | `project-selector-trigger-combobox` | **on-main ✓** — runtime-composed: `SidebarProjectSelect.jsx:94` passes `data-testid="project-selector-trigger"`, `SingleSelect.jsx:662` renders ``SelectDisplayProps={{'data-testid': `${dataTestId}-combobox`}}`` | `BasePage.project_selector_trigger` |
+| Project option | `select-option-{id}` | **on-main ✓** — runtime-composed ``data-testid={option.testId ?? `select-option-${option.value}`}`` at `SingleSelectMenuItem.jsx:117` / `SingleSelect.jsx:416` / `PopoverSelect.jsx:109` | `BasePage.SELECT_OPTION` template |
 
-*(Provenance verified with `cd ../EliteaUI && git fetch origin` in the same command block, 2026-08-28.)*
+*(Provenance **re-verified 2026-08-28, fix round 3** — `cd ../EliteaUI && git fetch origin`
+in the same command block, then the two-stage grep of `.agents/workflow.md` § Closure
+record, against `origin/main` = `f27645bc` and `origin/automation/testids` = `249c0186`.
+**The four drawer rows above previously read `on-main ✓`. That was FALSE.**
+`SettingsDrawer.jsx` is present on `origin/main` (248 lines) and carries **zero** testids
+there — `git show origin/main:'src/[fsd]/features/settings/ui/settings-drawer/SettingsDrawer.jsx' | grep -ci testid`
+→ `0`. Both runtime-composed rows were resolved at their **composing call site** rather
+than by literal grep, which is why `project-selector-trigger-combobox` and
+`select-option-{id}` verify as genuinely on-`main` even though neither literal string
+appears anywhere on that ref.)*
 
-**No new testid is needed for this case.** Every handle already exists and is already
-wired into `SettingsDrawerPage` / `BasePage`.
+**No new testid needs to be ADDED** — every handle already exists and is already wired
+into `SettingsDrawerPage` / `BasePage`. **But four of them live on `automation/testids`
+only**, so this case is green on localhost and **RED on any deployed env** until a human
+cherry-picks EliteaAI/EliteaUI@e1e031a1 to `main`. The closure record's promotability row
+must state this — the case is **not** deployed-env-promotable on merge.
 
 ## Implementer notes
 - Reuse `SettingsDrawerPage.nav_item()` / `nav_item_ids_in_order()` and
   `BasePage.switch_project()` — no new page-object primitive is required. Any addition
   must be **additive** (`SettingsDrawerPage` has many merged callers).
-- **Restore project 399 in a `finally`** — the project selection is persisted app state
-  shared with every other spec in the suite. Leaving the session on 471 would break
-  unrelated tests.
+- **Restore project 399 in a `finally`, UNCONDITIONALLY** — the project selection is
+  persisted app state shared with every other spec in the suite. Leaving the session on
+  471 would break unrelated tests. Do **not** guard the restore on
+  `nav_item("secrets").count()`: that reads "am I still on a vantage that hides
+  Secrets?", which is non-zero exactly when the spec fails for the reason it exists, so
+  the restore would be skipped on the one path that pollutes the suite. (Review finding,
+  fix round 1; the shipped spec delegates to a module-level `restore_active_project()`
+  that swallows its own errors so cleanup cannot mask the real failure.)
 - Use `expect(...).to_have_count(0)` for the absence (auto-retrying), not a bare
   `.count() == 0` read, so a slow permission refetch cannot produce a false green.
 
@@ -179,6 +196,20 @@ wired into `SettingsDrawerPage` / `BasePage`.
   superseded by this case's finding (commented there): a viewer vantage exists via
   project scoping. Still blocking: two roles simultaneously, or an admin-vs-viewer
   contrast on the *same* project.
+
+## Implementation outcome (test-automation-engineer, 2026-08-28)
+
+Shipped as
+`automation/tests/ui/admin/test_viewer_role_cannot_access_secrets.py::TestViewerRoleCannotAccessSecrets::test_viewer_role_is_not_offered_the_secrets_section`.
+Green first run, **0 reruns**.
+
+**No page-object change was needed** — `SettingsDrawerPage.nav_item()` /
+`nav_item_ids_in_order()` / `settings_drawer_menu` and `BasePage.switch_project()`
+covered every handle. The spec adds a suite-local `_assert_drawer_healthy()` guard
+(drawer menu visible + `project-general` present + nav list non-empty) that runs before
+every absence assertion, and restores the control project in a `finally` via the
+module-level `restore_active_project()` helper — unconditionally, pinned by
+`automation/tests/unit/test_secrets_access_and_error_spec_invariants.py`.
 
 ## Blocked Steps
 - None for the Viewer half. Steps 4-6 are **un-executable**, not blocked — there is no

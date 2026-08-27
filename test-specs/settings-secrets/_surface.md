@@ -763,7 +763,16 @@ Recovery after `page.unroute` + `reload()`: list `GET` → `200`/121 items, **10
 rendered (default page size), `toast-alert` count back to **0**.
 
 Toast handles are on `main`: `toast-alert` (`src/components/Toast.jsx:60`),
-`toast-message` (`:74`), `toast-dismiss-button` (`:71`).
+`toast-message` (`:74`), `toast-dismiss-button` (`:71`) — **and `data-severity={severity}`
+at `:61`**, which is how toast severity should be asserted here
+(`[data-testid="toast-alert"][data-severity="error"]`, wired as
+`SecretsPage.TOAST_ALERT_SEVERITY`). Do NOT reach for MUI's `MuiAlert-colorError` class:
+a real app attribute exists and the class is library-internal.
+
+`settings-content` (`src/[fsd]/pages/settings/index.jsx:268`) is the Settings content
+pane's testid — the right SCOPE for any "no stack trace / not a blank page" check on a
+settings surface, instead of a raw `body` handle. Note it is on `automation/testids`
+only, **not yet on `main`**.
 
 ### Implementation-time note
 `SecretsPage.navigate()` waits for `secret_row.first` to be visible, so it is **unusable

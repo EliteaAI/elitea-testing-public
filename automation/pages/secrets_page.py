@@ -420,6 +420,21 @@ class SecretsPage(BasePage):
     VISIBILITY_ICON_VISIBLE_SELECTOR = '[data-testid="secret-row-visibility-icon-show"]'
     VISIBILITY_ICON_HIDDEN_SELECTOR = '[data-testid="secret-row-visibility-icon-hide"]'
 
+    # --- Settings shell (ELITEA-2349) ----------------------------------
+    #: The Settings content pane (`src/[fsd]/pages/settings/index.jsx:268`,
+    #: shared with `SettingsDrawerPage.settings_content`). Used by ELITEA-2349
+    #: as the SCOPE for the case's "not a raw stack trace" check — a React
+    #: error boundary would render inside this pane, and it is a real app
+    #: testid rather than a raw `body` handle.
+    #:
+    #: The toast handles this case also needs (`toast_alert`, `toast_message`,
+    #: `TOAST_ALERT_SEVERITY`) are declared ONCE, above — re-declaring them
+    #: here shadowed the richer originals silently (PR #1911 review finding).
+    settings_content = LocatorDescriptor(
+        testid="settings-content",
+        description="Settings content pane hosting the Secrets table",
+    )
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -443,6 +458,24 @@ class SecretsPage(BasePage):
         ):
             super().navigate("/settings/secrets")
         self.secret_row.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    def navigate_expecting_no_rows(self) -> None:
+        """Navigate to /settings/secrets WITHOUT requiring the table to populate.
+
+        Additive sibling of :meth:`navigate` (ELITEA-2349), which waits on
+        ``secret_row.first`` and is therefore unusable for any legitimate
+        zero-row state — a failed list request, a genuinely empty project, or
+        a search filtered to zero matches. ``navigate()`` is left byte-identical
+        because it has many merged callers
+        (`.agents/role-overrides.md` § additive-only).
+
+        Waits on the page **shell** instead: the header title, which
+        ``DrawerPageHeader`` renders independently of the list query's outcome.
+        No response wait either — in the failure case the request may never
+        complete at all.
+        """
+        super().navigate("/settings/secrets")
+        self.page_title.wait_for(state="visible", timeout=NAVIGATION_TIMEOUT)
 
     def click_add_button(self) -> None:
         """Click the "+" (add) button and wait for it to become disabled —
