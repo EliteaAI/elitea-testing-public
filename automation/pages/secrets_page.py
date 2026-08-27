@@ -420,6 +420,25 @@ class SecretsPage(BasePage):
     VISIBILITY_ICON_VISIBLE_SELECTOR = '[data-testid="secret-row-visibility-icon-show"]'
     VISIBILITY_ICON_HIDDEN_SELECTOR = '[data-testid="secret-row-visibility-icon-hide"]'
 
+    # --- Toast (ELITEA-2349) -------------------------------------------
+    # The app-wide toast rendered by `src/components/Toast.jsx` (shared
+    # component, testids already on `main`). Used here to observe the error
+    # state the Secrets page surfaces when the secrets-list request fails at
+    # the transport level (`SecretsContent.jsx` -> `toastError(...)`).
+    toast_alert = LocatorDescriptor(
+        testid="toast-alert",
+        description="Toast container -- carries `data-severity`",
+    )
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="Toast body text",
+    )
+    #: Severity-filtered toast. `Toast.jsx` renders `data-severity={severity}`
+    #: alongside the testid, so state is asserted by ATTRIBUTE FILTER on a
+    #: stable testid -- the shape `.agents/testing.md` § Locator policy
+    #: requires (never a state-switched testid, never a MUI class handle).
+    TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -443,6 +462,24 @@ class SecretsPage(BasePage):
         ):
             super().navigate("/settings/secrets")
         self.secret_row.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    def navigate_expecting_no_rows(self) -> None:
+        """Navigate to /settings/secrets WITHOUT requiring the table to populate.
+
+        Additive sibling of :meth:`navigate` (ELITEA-2349), which waits on
+        ``secret_row.first`` and is therefore unusable for any legitimate
+        zero-row state — a failed list request, a genuinely empty project, or
+        a search filtered to zero matches. ``navigate()`` is left byte-identical
+        because it has many merged callers
+        (`.agents/role-overrides.md` § additive-only).
+
+        Waits on the page **shell** instead: the header title, which
+        ``DrawerPageHeader`` renders independently of the list query's outcome.
+        No response wait either — in the failure case the request may never
+        complete at all.
+        """
+        super().navigate("/settings/secrets")
+        self.page_title.wait_for(state="visible", timeout=NAVIGATION_TIMEOUT)
 
     def click_add_button(self) -> None:
         """Click the "+" (add) button and wait for it to become disabled —
