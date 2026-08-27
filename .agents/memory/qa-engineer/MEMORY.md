@@ -48,3 +48,4 @@
 - [CodeMirror testid](codemirror_body_contenttestid_and_inner_text.md) — contentTestId exists; not #579
 - [Duplicate page-object class member](page_object_duplicate_class_member_shadows_silently.md) — appended LocatorDescriptor silently shadows an earlier identical one; AST check
 - [AFS on-main provenance needs a file-level check](afs_on_main_provenance_needs_a_file_level_check.md) — the two-stage grep gives both false directions
+- [Chat AI-response oracle settles mid-turn](chat_ai_response_oracle_settles_mid_turn.md) — Copy-button flickers ON during agentic turns; false reds
