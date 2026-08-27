@@ -37,3 +37,5 @@
 - [Dead-code guard's "class scoping" still false-passes](dead_code_guard_class_name_substring_scoping_still_false_passes.md) — verify via a live collision, don't trust the scoping code
 - [Recovered-branch PRs can wipe daily logs](pr_branch_recovery_can_silently_wipe_other_units_daily_log.md) — diff line counts vs base, not just content
 - [UI/flow assumption gate](ui_flow_assumption_gate.md) — test fails, assume UI changed? Verify vs case text first, wait if unconfirmed
+- [Tests own their preconditions](test_owns_its_own_preconditions.md) — borrowed pre-existing data = green when dirty, red when clean
+- [CI login failure becomes SKIP](ci_login_failure_becomes_skip.md) — a green dev-stable job can mean the test never ran; grep the log
