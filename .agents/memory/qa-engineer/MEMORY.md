@@ -65,3 +65,4 @@
 - [Shared-worktree branch race on parallel dispatch](shared_worktree_branch_race_on_parallel_dispatch.md) — verify branch AT commit; "up-to-date" push = red flag
 - [Tests own their preconditions](test_owns_its_own_preconditions.md) — borrowed pre-existing data = green when dirty, red when clean
 - [CI login failure becomes SKIP](ci_login_failure_becomes_skip.md) — a green dev-stable job can mean the test never ran; grep the log
+- [Embedded-chat "agent responded" oracle passes on the loading placeholder](embedded_chat_response_oracle_passes_on_loading_placeholder.md) — wait_for_chat_response never raises
