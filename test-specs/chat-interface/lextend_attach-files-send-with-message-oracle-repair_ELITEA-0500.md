@@ -227,15 +227,73 @@ only at connection-open time).
 | 5 | Capture `initial_count` | — | `chat-message-item` |
 | 6 | **Send, wrapped in `page.expect_response(...)`** — upload fires at *send*, not at attach (`ChatBox.jsx:1080-1084`) | **TRANSPORT 1:** response to `POST **/attachments/prompt_lib/**` has `status in (200, 201)` **and** a non-empty `filepath` in the body | `useUploadWithProgress.js:52` |
 | 7 | Wait for the user message to land | Message count > `initial_count`; the message at index `initial_count` contains the **filename** (the system's own render of what it transmitted) | `get_message_text_at(initial_count)` — **not** `.last` |
-| 8 | **Settle on the corrected oracle**, then read the reply | Settle = `chat-stop-generation-button` **not** visible **AND** Copy button visible on index `initial_count + 1`, **both stable across ≥2 consecutive polls spanning ≥1.2 s**. Then **LAST MILE:** `"otter"` (case-insensitive) is in `get_message_text_at(initial_count + 1)` | `chat-stop-generation-button`, `chat-message-item` |
+| 8 | **LAST MILE — auto-retrying assertion at the fixed index.** No settle detection at all | `expect(chat.messages_container.nth(initial_count + 1)).to_contain_text(expected_answer, ignore_case=True, timeout=ATTACHMENT_ANSWER_TIMEOUT)` with `ATTACHMENT_ANSWER_TIMEOUT = 90_000`. Web-first: it keeps polling **that same message** until the answer lands, so a mid-turn narration cannot satisfy it **by construction** | `chat-message-item` (`main:YES`) |
 | 9 | **TRANSPORT 2 — frame assertion** (see § Frame-assertion constraints) | ≥1 received `chat_predict_attachment` frame whose `response_metadata.tool_name == "read_multiple_files"` **and** carries a `tool_output`; **every** such `tool_output` contains the planted fact (`"The project mascot is the otter."`) | `utils/websocket_frames.py` |
 | 10 | Composer cleared | `wait_for_attachment_chip_count(0)` **and** `get_attachment_overflow_count() == 0` | chip helpers |
 | 11 | Side channel | No unexpected console/page errors, via `utils/console_errors.collect_console_errors(page)` (URL-bearing — migrate this spec while touching it) | — |
 
-**No new testids. No new page-object methods.** `attach_file()` (`:2831`), `open_attach_menuitem()`
-(`:2794`), `wait_for_attachment_chip_count()` (`:3025`), `get_attachment_overflow_count()` (`:2976`),
-`get_message_text_at()` (`:2258`), `stop_generation_button` (`:96`), `capture_websocket_frames()`
-(`:6763`) all already exist.
+**No new testids. No new page-object methods.** `open_attach_menuitem()` (`:2794`),
+`wait_for_attachment_chip_count()` (`:3025`), `get_attachment_overflow_count()` (`:2976`),
+`get_message_text_at()` (`:2258`), `messages_container` (`:843`) all already exist.
+`capture_socketio_frames(page)` is called **directly** from `utils/websocket_frames.py` (see
+§ As-shipped deviations).
+
+### Why step 8 has no settle detection — and why `chat-stop-generation-button` was rejected
+
+An earlier draft specced a stability-window settle keyed on `chat-stop-generation-button`
+(*"not visible + Copy visible + stable ≥1.2 s"*). **That handle is NOT on EliteaUI `main`** —
+verified fresh, `git fetch origin` then the two-stage grep:
+
+```
+chat-stop-generation-button        main:NO   testids:YES   (src/ComponentsLib/Chat/UserInput.jsx:531)
+plus-menu-button                   main:YES  testids:YES
+chat-attach-menuitem-button        main:YES  testids:YES
+chat-attachment-chip               main:YES  testids:YES
+chat-attachment-overflow-button    main:YES  testids:YES
+chat-message-input                 main:YES  testids:YES
+chat-send-button                   main:YES  testids:YES
+chat-message-item                  main:YES  testids:YES
+```
+
+**This repair targets `main`, and the spec runs in GHA against dev.elitea.ai, which serves `main`.**
+Localhost serves `automation/testids`, which HAS the testid — so the rejected design would have gone
+**green in every local run and red on DEV**. We would have fixed one DEV red by shipping a different
+one, and no amount of local evidence would have revealed it.
+
+> **The general rule, for the next reader:** *a handle verified against the working tree is verified
+> against `automation/testids`. A spec targeting `main` must be verified against `main`.* Run
+> `git fetch origin` and grep `origin/main` explicitly — the dev server's green is not evidence about
+> `main`. This is `.agents/workflow.md`'s ordering invariant biting from an easy-to-miss angle,
+> because the testid was already live on the dev server the whole time the design was being measured.
+
+**My process failure, recorded so it isn't repeated:** the handle entered via the *step table*
+without a corresponding row in § Concrete Handles, so it bypassed the provenance check that every
+other handle passed. **Any handle named in a step row must also appear in the handles table.**
+
+**The shipped design is strictly stronger, not merely a workaround.** A stability window infers
+"the turn is done" and can be wrong; the auto-retrying indexed assertion never needs to know. If the
+model narrates a tool call first and answers later, `to_contain_text` keeps polling the same message
+until the answer arrives. The mid-turn narration that caused the DEV red **cannot satisfy it by
+construction**, rather than by a better transient-string blocklist. It also needs no testid that
+isn't on `main`. Existing in-repo idiom, not an invention:
+`test_create_agent_via_chat_canvas.py:345`, `test_pipeline_flow_editor_add_llm_node_from_chat_canvas.py:365`.
+
+The `.last` → `get_message_text_at(initial_count + 1)` / `.nth(initial_count + 1)` **indexing
+correction is preserved and still load-bearing** — it is what pins the assertion to the assistant's
+turn instead of whatever message happens to be last.
+
+### As-shipped deviations (implementer-declared, lead-accepted — part of this contract)
+
+1. **Step 3 asserts `10 left` BEFORE the attach and `9 left` after** — the *decrement* is the
+   evidence, not the endpoint value. Source-verified safe: nothing in `PlusChatButton.jsx` calls
+   `setIsOpen(false)` on attach, so the popper stays open and the counter updates in place.
+2. **Step 3's chooser handshake.** Step 2 must leave the popper **open** to assert the attach item is
+   visible/enabled (it is not in the DOM otherwise), so Step 3 clicks the **already-open** item inside
+   `page.expect_file_chooser(...)` rather than calling `ChatPage.attach_file()`, which would re-open
+   the menu and toggle it closed.
+3. **`capture_socketio_frames(page)` is called directly** from `utils/websocket_frames.py`, because
+   the `ChatPage.capture_websocket_frames()` wrapper is base-only. The wrapper merely delegates to
+   this collector; entered **before navigation** per its docstring.
 
 ### Frame-assertion constraints (step 9) — mandatory, from `.agents/testing.md` § ELITEA-1140
 
@@ -313,6 +371,7 @@ Locator policy: **testid-only**. Provenance re-verified with a fresh
 | Message input | `chat-message-input` | **on-main ✓** |
 | Send button | `chat-send-button` | **on-main ✓** |
 | Composer dropzone (not used by repair) | `chat-composer-dropzone` | main: **no** · testids: YES |
+| **Stop-generation (REJECTED — not used)** | `chat-stop-generation-button` | **main: NO** · testids: YES — disqualifying for a `main`-targeted spec; see § Why step 8 has no settle detection |
 
 **Zero new testids needed; zero promotion gap for the repair** — every handle the repaired test uses
 is already on `origin/main`, so the fix is safe to promote with the test. (Class **F** is therefore
@@ -343,22 +402,30 @@ None.
 ## Corrected-oracle hit rate — the experiment that fixed the settle condition
 
 **Question:** under a corrected oracle, is the last-mile assertion reliably satisfiable?
-**Answer: 8/8** — which established the corrected settle condition now specced as step 8, and
-retired the idea of *deleting* the last-mile assertion. It did **not** clear the token *shape*;
-canon card **#1664** governs that (§ #1664 applies here).
+**Answer: 8/8** — which retired the idea of *deleting* the last-mile assertion, and measured the
+answer-latency band. It did **not** clear the token *shape* (canon card **#1664** governs that), and
+the settle design it validated was later rejected on `main`-provenance grounds (below).
 
-⚠️ **These 8 runs used the OLD token file.** The comprehension-fact shape specced above was **not
-live-verified on this flow** — the coordinator asked for a re-spec, not a re-measure. Its evidence
-is #1664's own: the same shape shipped on ELITEA-2421 and passed three gate runs. **The implementer
-verifies it at Phase 2** — if the model answers the mascot question unreliably here, that is a
-finding to route, not to work around.
+⚠️ **The 8 runs measured the *stability-window* design, which is NOT what shipped.** That design
+was rejected because its settle signal (`chat-stop-generation-button`) is not on EliteaUI `main`
+(§ Why step 8 has no settle detection). The shipped auto-retrying indexed assertion **supersedes**
+it and was verified **green on its first live run** (16.02 s on step 8; send→answer ~17.8 s — inside
+the band below). The experiment is kept, not deleted: it is what killed the *deletion* of the
+assertion, and it remains the evidence for the answer-latency band.
 
-Corrected settle condition (every signal system-produced; nothing fabricated, injected or routed):
+⚠️ **These 8 runs used the OLD token file**, so they are not evidence for the comprehension-fact
+shape. That shape has its own, separate evidence: #1664's (shipped on ELITEA-2421, three gate runs)
+**and this spec's own implementation, green on its first live run** — so the analyst-side gap flagged
+in v3 ("not yet live-verified on this flow") is now **closed**.
 
-- `chat-stop-generation-button` **not** visible — the product's own "generating" flag
-- Copy button visible on message index `initial_count + 1`
-- both stable across >=2 consecutive polls spanning >=1.2 s (defeats the ~0.6 s flicker)
-- read via `get_message_text_at(initial_count + 1)` — **never** `.last`
+The settle condition **as measured** — ~~shipped~~ **REJECTED**, retained only to explain the numbers
+below (see § Why step 8 has no settle detection):
+
+- ~~`chat-stop-generation-button` **not** visible~~ — **not on `main`; this is what disqualified it**
+- ~~Copy button visible on message index `initial_count + 1`~~
+- ~~both stable across >=2 consecutive polls spanning >=1.2 s~~
+- read via `get_message_text_at(initial_count + 1)` — **never** `.last` — **this part SHIPPED** and
+  remains load-bearing in step 8's `.nth(initial_count + 1)`
 
 Frames pumped with `page.wait_for_timeout()`, never `time.sleep` (the sync API only dispatches
 `framereceived` inside a Playwright call — `utils/websocket_frames.py`).
@@ -487,7 +554,8 @@ escalated rather than specced here. Sketch of the fix, for whoever picks it up:
 
 1. `_is_transient_message` cannot enumerate agentic narration — the completion signal must not be a
    string blocklist. Prefer a **positive** end-of-turn signal (the streaming-complete state the
-   product itself knows about, e.g. the absence of `chat-stop-generation-button`, or a
+   product itself knows about — but note `chat-stop-generation-button` is **not on `main`**, so a
+   central fix keyed on it would break every `main`-targeted spec; prefer a
    `socket.io` turn-complete frame via `utils/websocket_frames.py`) over "Copy button + text that
    isn't on a list of six placeholders".
 2. Tie the read to the settled element: `wait_for_ai_response` settles index `initial_count + 1`
