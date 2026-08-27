@@ -1,1 +1,0 @@
-ERROR    api.helpers:helpers.py:98 Non-HTTP exception: RuntimeError: mcp_sync_tools failed for 'https://mcp.deepwiki.com/mcp': {'success': False, 'error': 'Failed to sync MCP tools: Service unavailable (503). The MCP server is temporarily down for maintenance.', 'server_url': 'https://mcp.deepwiki.com/mcp'}. Not retrying.

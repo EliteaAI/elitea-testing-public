@@ -1,1 +1,0 @@
-ERROR    api.helpers:helpers.py:98 Non-HTTP exception: RuntimeError: mcp_sync_tools failed for 'https://mcp.deepwiki.com/mcp': {'success': False, 'error': 'Failed to sync MCP tools: Bad gateway (502). The MCP server or proxy is unavailable or misconfigured.', 'server_url': 'https://mcp.deepwiki.com/mcp'}. Not retrying.
