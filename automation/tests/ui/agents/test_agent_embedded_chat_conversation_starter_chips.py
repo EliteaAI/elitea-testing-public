@@ -7,6 +7,34 @@ verifies both starter chips render before any message is sent, clicks one
 chip (pre-fill only — no auto-send, chip row disappears immediately), then
 explicitly sends via `chat-send-button` and verifies the agent responds.
 
+Step 8 — repaired 2026-08-27 for issue #1812 (GHA run 32931571484 on
+dev.elitea.ai, `assert 0 > 0`). Two things were wrong and both are fixed here:
+
+1. **The Send click is deliberately NOT `force=True`.** The starter chip
+   pre-fills the composer programmatically (`ChatBox.jsx`'s
+   `onSendConversationStarter` → `chatInput.current.setValue(...)`), and
+   `UserInput.jsx`'s `sendQuestion()` re-checks its own `disabledSend` closure
+   on top of the DOM `disabled` attribute — so a forced click can land inside
+   that settling window and return early with no exception, no console error
+   and no request. The click is now gated on `to_be_enabled()`, dispatched
+   plainly (Playwright waits for actionability), and wrapped in
+   `page.expect_response(_is_send_response)` asserting the conversation POST
+   returns 201 — a no-op now fails in ~15s naming the missing request instead
+   of vacuously timing out 60s later. DEV-only race: on localhost the button
+   settles in ~2ms, so a local green proves non-regression, not the fix.
+2. **Step 8's observables were inert.** `assert response_text != ""` could not
+   fail: `wait_for_chat_response()` only logs a WARNING on timeout, and
+   `get_last_chat_response_text()` falls back to the raw last-`<li>` text when
+   `skill-test-last-response` is absent — so the answer *placeholder* (its own
+   `chat-message-item`) satisfied it. The test now additionally asserts the
+   user message at index `initial_count` carries the exact starter text, and
+   waits for the `skill-test-last-response` element itself, which
+   `ApplicationAnswer.jsx` renders only on a real answer.
+
+All three observables were already specified in the AFS (§ Test Steps 8) and
+were dropped during the original implementation — this is implementation-vs-AFS
+drift, so neither the AFS nor the TMS case needed amending.
+
 Test-data strategy (per AFS, adjusted during implementation): a dedicated,
 uniquely-named agent is created per-test via the plain `AgentAPI.create_agent()`
 (matches `test_agent_embedded_chat_send_message.py`'s already-proven pattern for
@@ -44,7 +72,7 @@ import uuid
 import allure
 import pytest
 from pages.agent_detail_page import AgentDetailPage
-from playwright.sync_api import Page, Response
+from playwright.sync_api import Page, Response, expect
 
 pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new_verified]
 
@@ -65,6 +93,21 @@ def _is_save_response(response: Response) -> bool:
     return (
         "application/prompt_lib" in response.url
         and response.request.method == "PUT"
+    )
+
+
+def _is_send_response(response: Response) -> bool:
+    """Check if response is the embedded-chat Send POST.
+
+    Sending from the embedded chat creates the conversation via
+    ``POST /api/v2/elitea_core/conversations/prompt_lib/{project_id}``
+    (AFS § Network Behavior; live URL observed as
+    ``.../conversations/prompt_lib/399``). Matched on the path segment only,
+    so the predicate is project-id agnostic and holds on any environment.
+    """
+    return (
+        "/conversations/prompt_lib/" in response.url
+        and response.request.method == "POST"
     )
 
 
@@ -108,7 +151,14 @@ class TestConversationStarterChipsVisibleAndClickable:
         """Both configured starters render as chips in the embedded chat
         before any message, clicking one pre-fills the input (no auto-send,
         chip row disappears immediately), and explicitly sending it produces
-        a real agent response."""
+        a real agent response.
+
+        Step 8's Send is a plain (non-force) click gated on the send POST's own
+        201, and "the agent responded" is proven by the
+        `skill-test-last-response` answer element — not by a non-empty text read
+        that the loading placeholder also satisfies. See the module docstring
+        for the full rationale (issue #1812).
+        """
         with allure.step("Precondition — create a dedicated disposable agent"):
             agent_name = f"elitea-1886-starters-{uuid.uuid4().hex[:8]}"
             agent = agent_api.create_agent(
@@ -226,17 +276,99 @@ class TestConversationStarterChipsVisibleAndClickable:
             with allure.step(
                 "Step 8 — Send the pre-filled message and verify the agent responds"
             ):
-                detail_page.chat_send_button.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-                # force=True — same MUI-overlay-interception workaround the
-                # sibling starter-flow test uses (ELITEA-2369,
-                # test_agent_hub_start_conversation_with_starters.py Step 14).
-                detail_page.chat_send_button.click(force=True)
+                # Deliberately NOT force=True (repair for issue #1812; GHA run
+                # 32931571484 on dev.elitea.ai failed here with `assert 0 > 0`
+                # after burning the full 60s AI timeout — a count of ZERO means
+                # not even the USER's own message landed, so the send was a
+                # silent no-op, not a slow agent).
+                #
+                # The starter chip never TYPES: ChatBox.jsx's
+                # `onSendConversationStarter` populates the composer
+                # PROGRAMMATICALLY through an imperative ref
+                # (`chatInput.current.setValue(starter)` →
+                # ComponentsLib/Chat/UserInput.jsx). Send is then gated twice on
+                # asynchronously-settling state — the DOM
+                # `disabled={disabledSend || !question}` (SendButton.jsx) and
+                # `sendQuestion()`'s own closure guard
+                # `if (question.trim() && !disabledSend)` (UserInput.jsx), where
+                # `disabledSend` ← `isInputDisabled` is an 8-term disjunction
+                # carrying several network-bound terms. `force=True` skips
+                # Playwright's actionability wait and fires into that window; the
+                # handler then returns early with no exception, no console error
+                # and no request. On localhost the button settles within ~2ms, so
+                # the window does not exist — this is a DEV-only race.
+                #
+                # Third recurrence of this exact pattern: the two sibling
+                # starter-flow specs already carry the same deliberate non-force
+                # click (test_agent_hub_create_conversation_via_starter.py,
+                # test_chat_agent_starters_add_remove.py), and the mechanism is
+                # written up in the implementer memory note
+                # `chat_send_button_force_click_race.md` (ELITEA-2093 / 2177).
+                expect(detail_page.chat_send_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
+                # Wrapped in the send's OWN response oracle: a no-op click now
+                # fails in ~15s naming the POST that never fired, instead of
+                # vacuously timing out 60s later on a message count that never
+                # moved.
+                with page.expect_response(_is_send_response, timeout=SAVE_RESPONSE_TIMEOUT) as send_info:
+                    detail_page.chat_send_button.click()
+                send_response = send_info.value
+                assert send_response.status == 201, (
+                    "POST .../conversations/prompt_lib/... should return 201 on Send, "
+                    f"got {send_response.status}"
+                )
+
                 detail_page.wait_for_chat_response(
                     initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT
                 )
                 assert detail_page.get_chat_message_count() > initial_count, (
                     "Message count should increase after sending the pre-filled starter"
                 )
+
+                # The USER's own message carries the clicked starter's exact text.
+                # Read at the FIXED index `initial_count` rather than `.last` — a
+                # transient AI placeholder ("Waking the agent…") can already
+                # occupy the next slot (same reason ChatPage.get_message_text_at()
+                # exists for the sibling /chat/{id} flow). `_embedded_chat_messages()`
+                # is the page object's own testid-scoped collection
+                # (`chat-message-list` > `chat-message-item`); AgentDetailPage has
+                # no indexed body-text reader and this repair is scoped to the spec
+                # file, so the raw <li> text is matched by CONTAINMENT — the item
+                # also renders header metadata (participant name, timestamp)
+                # alongside the body.
+                user_message_text = (
+                    detail_page._embedded_chat_messages().nth(initial_count).text_content() or ""
+                )
+                assert STARTER_1 in user_message_text, (
+                    f"User message at index {initial_count} should carry the clicked "
+                    f"starter text {STARTER_1!r}, got: {user_message_text!r}"
+                )
+
+                # The agent ACTUALLY answered. ApplicationAnswer.jsx sets
+                # `skill-test-last-response` only on a real answer element, so this
+                # cannot be satisfied by the loading placeholder (which is its own
+                # `chat-message-item`). Without it the trailing `response_text != ""`
+                # assertion was INERT: `wait_for_chat_response()` only WARNs on
+                # timeout, and `get_last_chat_response_text()` falls back to the raw
+                # last-<li> text when the testid is absent — so a run where the send
+                # registered but the agent never answered read
+                # "…toMessageless than a minute agoWaking the agent…" and passed.
+                # `.last` (not `.first`) to agree with
+                # `get_last_chat_response_text()`'s own `.last` read. Behaviour is
+                # identical today — ApplicationAnswer.jsx's
+                # `isLastMessage ? 'skill-test-last-response' : 'chat-answer-content'`
+                # ternary means only ONE element ever carries this testid — but
+                # `.last` is the semantically correct form for a "last response"
+                # oracle and stays correct if that ever changes.
+                expect(detail_page.skill_test_last_response.last).to_be_visible(
+                    timeout=UI_ELEMENT_TIMEOUT
+                )
+                # Retained as belt-and-braces, NOT as the oracle: the assertion
+                # above is what actually proves the agent answered. On its own this
+                # line is near-inert (see the module docstring) — it now guards only
+                # the residual case of the answer element rendering visible but
+                # empty, which the `shouldRenderAnswerBlock` gate (`!!answer`) makes
+                # unlikely. Kept rather than deleted because it costs nothing and
+                # narrows the failure description when it does fire.
                 response_text = detail_page.get_last_chat_response_text()
                 assert response_text != "", "Agent response should be non-empty"
 
