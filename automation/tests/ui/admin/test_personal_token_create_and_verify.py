@@ -31,8 +31,27 @@ and re-enables Generate (the invalid->valid recovery transition, never
 exercised by the happy path above). Read-only against the create-token
 FORM: never clicks Generate, creates no token, needs no cleanup.
 AFS: test-specs/settings-personal-tokens/lextend_token-name-validation-invalid-characters-rejected_ELITEA-2286.md
+
+Also covers ELITEA-2285 ("Token value is shown only once in the generation
+dialog") — an `extend-existing` AFS. Its steps 1-6 are already asserted, more
+strongly than the case asks, by Steps 1-11 of
+`test_create_personal_token_and_verify_in_table` below (dialog title/warning,
+the full token value captured, Copy + clipboard, close, masked row value).
+The gap is its step 7 — "no way to retrieve the full token value again" —
+appended as this file's Steps 13-15.
+
+⚠️ CASE-TEXT DRIFT (clarification #1886): ELITEA-2285's step 7 says the full
+token can still be retrieved "except via the eye icon". It cannot. The list
+endpoint `GET /api/v2/auth/token/` returns the token ALREADY MASKED, so the
+eye-icon Settings Preview shows `"...jdGrGvQ"` too — a mask, not the token.
+The product is STRICTER than the case text. Asserting the case as written
+would encode a weaker contract than the product honours, so Steps 13-15
+assert the live contract (the full value is retrievable nowhere, the eye icon
+included) per the reverse-masking guard.
+AFS: test-specs/settings-personal-tokens/lextend_token-value-shown-only-once-in-generation-dialog_ELITEA-2285.md
 """
 
+import json
 import logging
 import uuid
 
@@ -216,7 +235,63 @@ class TestPersonalTokenCreateAndVerify:
                     f"Expected the Expiration cell to read 'in 30 days', got {status_text!r}"
                 )
 
-            with allure.step("Step 13 — Verify no console errors were raised across the flow"):
+            with allure.step(
+                "Step 13 (ELITEA-2285 gap A) — Verify the full token value is gone "
+                "from the page once the generation dialog is closed"
+            ):
+                assert token_value not in page.content(), (
+                    "The full token value is still present somewhere in the rendered "
+                    "document after the generation dialog closed — it must be shown "
+                    "only once (page.content() is used rather than a text read so "
+                    "attribute values are covered too)"
+                )
+                expect(create_page.dialog_token_value).to_have_count(0)
+
+            with allure.step(
+                "Step 14 (ELITEA-2285 gap B) — Verify the eye icon's Settings Preview "
+                "does NOT reveal the full token either, and shows the mask of THIS token"
+            ):
+                preview_icon = tokens_page.get_row_action_icon(
+                    row, "token-action-preview-button"
+                )
+                assert preview_icon.count() == 1, (
+                    "The row's eye (preview) icon is absent — the page is in the "
+                    "showDownload == false branch (no model configuration_uid, or the "
+                    "Public project), so this case's step 7 cannot be exercised here"
+                )
+                tokens_page.open_settings_preview(row)
+                preview_body = tokens_page.get_settings_preview_body()
+                assert token_value not in preview_body, (
+                    "The Settings Preview exposed the FULL token value; the case's "
+                    "premise is that it is shown only once, in the generation dialog"
+                )
+                preview_auth_token = json.loads(preview_body)["eliteacode.authToken"]
+                assert preview_auth_token.startswith("..."), (
+                    f"Expected the preview's eliteacode.authToken to be masked "
+                    f"(leading '...'), got {preview_auth_token!r}"
+                )
+                assert preview_auth_token.endswith(token_value[-4:]), (
+                    f"Expected the preview's masked authToken to end with this "
+                    f"token's own last 4 characters {token_value[-4:]!r}, got "
+                    f"{preview_auth_token!r}"
+                )
+                tokens_page.close_settings_preview()
+
+            with allure.step(
+                "Step 15 (ELITEA-2285 gap C) — Verify the masking survives a page "
+                "reload (the full value is never re-served by the API)"
+            ):
+                tokens_page.reload_and_wait_for_tokens()
+                reloaded_row = tokens_page.get_row_by_name(token_name)
+                expect(tokens_page.get_row_value_cell(reloaded_row)).to_have_text(
+                    "..." + token_value[-4:], timeout=ROW_WAIT_TIMEOUT
+                )
+                assert token_value not in page.content(), (
+                    "The full token value reappeared in the page after a reload — the "
+                    "token-list endpoint must never re-serve the unmasked value"
+                )
+
+            with allure.step("Step 16 — Verify no console errors were raised across the flow"):
                 assert not console_errors, (
                     f"Unexpected console errors: {[m.text for m in console_errors]}"
                 )
