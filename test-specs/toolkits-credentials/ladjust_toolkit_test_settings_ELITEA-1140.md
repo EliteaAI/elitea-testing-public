@@ -290,3 +290,88 @@ by this repair. Recommended additions (a human/TMS decision, not this repair's):
 three executing params, every replacement handle on `main`, four raw handles retired, a latent
 second break (Step 5's silent no-op) found and specified, no assertion weakened, no defect masked,
 no product bug found. `[github]`'s gate is additionally gated on the class-D token refresh above.
+
+---
+
+## § Implementer amendment 2026-08-27 (Phase 2 — exploration/run findings)
+
+Implemented as specified, with **three technique-level deviations** (the *how*; no
+observable added, removed, weakened or re-scoped). Recorded here so the AFS matches
+what shipped.
+
+### 1. Spec relocated (lead ruling, § Questions Q3 answered)
+
+Moved `test-specs/toolkits/` → **`test-specs/toolkits-credentials/`** via `git mv`,
+matching the case's own `module: toolkits-credentials` and every sibling spec plus
+`_surface.md`. The `test-specs/toolkits/` directory was created by this branch and
+held only this file; it is removed. The test's docstring cites the new path.
+
+### 2. Step 2 asserts the entry point instead of opening it
+
+The per-step table kept Step 2's `open_empty_state_tool_select()` *and* made Step 3
+`select_tool_from_empty_state(tool_key)` — but that wrapper **opens the popover
+itself** (`toolkit_test_settings_page.py:180`), so the pair would click the trigger
+twice and toggle the popover shut.
+
+Step 2 now asserts `expect(test_settings.empty_state_tool_select).to_be_visible()`
+and Step 3's page-object call does the opening. The step's observable — *"the
+tool-selection entry point is present on that surface"* — is unchanged and, if
+anything, asserted more explicitly than a click did. Same shape as the sibling
+repair's Steps 25→26 (`test_toolkit_creation_create_bucket_verify_list_files.py`).
+
+### 3. `tool_key` recovery is passed only for parameterless tools
+
+Step 7 passes `tool_key=None if cfg.test_tool_params else cfg.test_tool_result_indicator`.
+`wait_for_tool_result`'s ELITEA-1979 remount recovery re-selects the tool and re-clicks
+Run Test **without refilling parameter fields** (stated in its own docstring), so for
+`[confluence]` — the only param-carrying config — a recovery would re-run an invalid
+form and fail on button actionability instead of surfacing the remount. Parameterless
+`[jira]`/`[github]` keep the recovery.
+
+### 4. Step 1's readiness anchor is a ROUTE check, not a load gate — and a flake it caused
+
+The table proposed `toolkit-detail-title` visible as the replacement for
+`wait_for_timeout(2000)`. It is a valid *route* check but **not** a load-complete gate,
+and taking it as one produced a real flake on the first post-repair invocation:
+
+```
+[jira] RERUN — allure status `broken`
+playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 10000ms exceeded.
+Call log: - waiting for get_by_test_id("toolkit-test-button") to be visible
+  Step 1  — passed
+  Step 1b — broken
+```
+
+**Root cause (source-read, not guessed):** `toolkit-detail-title` is declared in
+`EliteaUI/src/[fsd]/shared/lib/constants/breadcrumb.constants.js:16,48` — it is a
+**breadcrumb** entry rendered from route params, visible the instant the route
+resolves. The action-bar Test button mounts much later, gated behind
+`isDetailsActionBar && handleShowTest` in `ToolkitForm.jsx:541`, i.e. after the
+toolkit's own data load. On a freshly API-created toolkit that exceeded
+`open_test_surface()`'s 10 s default.
+
+**Fix — not a longer timeout on a bad signal.** The button *is* the readiness signal
+for Step 1b, so it is waited on directly with a page-load-scale budget:
+`TOOLKIT_DETAIL_READY_TIMEOUT = 30_000`, passed **at the call site**. The shared
+page object's default is untouched, so the sibling ELITEA-1866 caller is unaffected
+(additive-only). This follows `.agents/testing.md` § #1847 — wait on the element the
+caller actually needs.
+
+**Result:** 2 consecutive clean invocations, `reruns.json == {}` each, and wall clock
+**halved** (79.58 s → 43.25 s / 44.20 s) because the wasted 10 s timeout plus a full
+rerun disappeared.
+
+### Outcome against § Class D finding — confirmed exactly as predicted
+
+| Param | Verdict | Evidence |
+|---|---|---|
+| `[jira]` | **PASS** ×2 clean | Steps 1→8 all pass |
+| `[confluence]` | **PASS** ×2 clean | Steps 1→8 all pass; Step 5 now genuinely fills `label` (the `x > 700` silent no-op is gone) |
+| `[github]` | **FAIL at Step 8**, as specified | Steps 1→7 pass. `AssertionError: Expected '"main"' in tool output for GitHub, got: …✅ list_branches_in_repo (0.215s) Failed to list branches: 401 {"message": "Bad credentials", …}` |
+
+`[github]` reaching **Step 8** rather than dying at Step 2 is itself the evidence the
+route repair works for all three params. Nothing was added to accommodate it — no
+skip, no xfail, no soft-assert, no `# Known defect` comment (it is not a product
+defect). § Questions Q2 (`credential_check` for github/jira/confluence) was
+**explicitly excluded from this repair by the lead**: adding it now would convert this
+visible credential failure into a silent SKIP. It is filed as its own card.

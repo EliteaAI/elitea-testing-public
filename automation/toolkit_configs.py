@@ -58,7 +58,7 @@ class ToolkitConfig:
     chat_response_keywords: list[str]  # keywords expected in AI response
 
     # Optional fields
-    test_tool_params: dict = field(default_factory=dict)  # field_label -> value for tool params
+    test_tool_params: dict = field(default_factory=dict)  # schema key -> value for tool params
     credential_check: dict = field(default_factory=dict)  # {url, auth_env_vars} for pre-validation
     extra_form_fields: dict = field(default_factory=dict)
     skip_reason: str = ""              # if set, pytest.skip() with this reason
@@ -195,7 +195,12 @@ TOOLKIT_CONFIGS = {
         test_tool_name="List pages",
         test_tool_result_indicator="list_pages_with_label",
         test_tool_result_content="page",
-        test_tool_params={"Label": "test"},
+        # Schema key, NOT the display label. The Test Settings param inputs are
+        # located by the `toolkit-test-param-{schema_key}-input` testid family
+        # (ToolkitTestSettings.jsx -> CommonStringField.jsx), so the key here has
+        # to be the tool schema's property name (`label`), not the rendered
+        # label text ("Label *"). Re-keyed for ELITEA-1140 / #1816.
+        test_tool_params={"label": "test"},
         chat_message="Use the list_pages_with_label tool to list pages with label 'test' in Confluence",
         chat_response_keywords=["page", "list", "label"],
     ),

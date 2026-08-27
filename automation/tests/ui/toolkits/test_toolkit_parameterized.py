@@ -17,12 +17,13 @@ import time
 
 import pytest
 import requests
+from playwright.sync_api import expect
 
 from api import CredentialAPI, ToolkitAPI
 from config import settings
-from components.mui import Popper
 from pages.base_page import BasePage
 from pages.chat_page import ChatPage
+from pages.toolkit_detail_page import ToolkitDetailPage
 from pages.toolkit_test_settings_page import ToolkitTestSettingsPage
 from toolkit_configs import TOOLKIT_CONFIGS, ToolkitConfig
 from toolkit_factories import CREDENTIAL_FACTORIES, TOOLKIT_SETTINGS_FACTORIES
@@ -42,6 +43,11 @@ FORM_SAVE_TIMEOUT = 15_000
 AI_RESPONSE_TIMEOUT = 30_000
 # Increased from 60s to 120s to handle external API variability (e.g., Confluence)
 TOOLKIT_EXECUTION_TIMEOUT = 120_000
+# Page-load-scale budget for a freshly-created toolkit's detail view to finish
+# loading far enough to mount its action bar. See Step 1b: the breadcrumb title
+# is NOT a readiness signal for that bar, so the bar's own button is waited on
+# with a navigation-sized budget rather than a UI-interaction-sized one.
+TOOLKIT_DETAIL_READY_TIMEOUT = 30_000
 
 
 def _ts() -> str:
@@ -360,10 +366,23 @@ class TestToolkitTestSettings:
     def test_toolkit_test_settings(
         self, page, toolkit_config: ToolkitConfig, managed_toolkit: dict,
     ):
-        """Run a tool via the Test Settings panel on the toolkit detail page."""
+        """Run a tool via the Test Settings panel on the Test Toolkit surface.
+
+        AFS: test-specs/toolkits-credentials/ladjust_toolkit_test_settings_ELITEA-1140.md
+
+        Repaired for elitea-testing-public#1816 (class A UI drift): the #1616
+        redesign moved the Test Settings surface off /toolkits/all/{id} onto its
+        own /toolkits/{tab}/{id}/test route, reached via the detail view's
+        action-bar Test button (Step 1b).
+
+        No substitution: every observable below is produced by the live system —
+        the tool is chosen, run and read through the product's own UI, and the
+        navigation goes through the product's own control rather than a forced URL.
+        """
         cfg = toolkit_config
         tk_id = managed_toolkit["id"]
         base_url = settings.app_base_url
+        toolkit_detail = ToolkitDetailPage(page)
         test_settings = ToolkitTestSettingsPage(page)
 
         with allure.step("Step 1 — Navigate to toolkit detail page"):
@@ -371,36 +390,88 @@ class TestToolkitTestSettings:
             page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
             # Dismiss NPS survey popup if it appeared on initial load
             BasePage(page).dismiss_popups()
-            page.wait_for_timeout(1000)
 
             page.goto(f"{base_url}/toolkits/all/{tk_id}", wait_until="domcontentloaded")
-            page.wait_for_timeout(2000)
+            # Confirms we landed on the toolkit's own detail route, replacing the
+            # previous `wait_for_timeout(2000)` — a fixed sleep is not a readiness
+            # signal (`.agents/conventions.md` § Hard don'ts).
+            #
+            # This is a route check, NOT a load-complete gate: `toolkit-detail-title`
+            # is a BREADCRUMB entry (breadcrumb.constants.js), rendered from route
+            # params as soon as the route resolves — well before the toolkit's data
+            # has loaded and the form's action bar has mounted. Step 1b therefore
+            # does its own wait on the control it actually needs.
+            expect(toolkit_detail.toolkit_title).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
-        with allure.step("Step 2 — Open the Tool select on the Test-Tools empty state"):
-            # ORDER CHANGE (EliteaUI EL-5947). The toolkit detail page no longer
-            # opens on the Test Settings panel: TestTools.jsx now early-returns
+        with allure.step(
+            "Step 1b — Open the Test Toolkit surface via the detail view's "
+            "action-bar 'Test' button"
+        ):
+            # NEW STEP (elitea-testing-public#1616 redesign, tracked as #1816).
+            # The whole TEST SETTINGS surface has LEFT the toolkit detail view and
+            # now lives on its own route, /toolkits/{tab}/{toolkit_id}/test
+            # (routes.js:36 -> ToolkitTest -> ToolkitTest.jsx renders
+            # <ToolkitTestPanel/>). Without this navigation, Step 2 can never pass:
+            # `toolkit-test-empty-tool-select` is simply not rendered on
+            # /toolkits/all/{id}. That is exactly the timeout this repair fixes.
+            #
+            # Reached through the product's OWN action-bar button rather than a
+            # forced `page.goto()` of the /test URL: the navigation is part of what
+            # the case exercises, and forcing the URL would substitute it
+            # (`.agents/testing.md` § Fidelity policy).
+            #
+            # Reused verbatim from the sibling repair ELITEA-1866 / #1815
+            # (`ToolkitDetailPage.open_test_surface()`, already on main via
+            # c25113893) — it waits for the button to mount before clicking, which
+            # absorbs the "action bar not mounted at domcontentloaded" race without
+            # re-introducing a sleep — it waits for the button before clicking.
+            #
+            # That wait is given a PAGE-LOAD-scale budget here, not the default
+            # UI-interaction one. The action bar renders only once the toolkit form's
+            # own data load resolves (ToolkitForm.jsx: the button is gated behind
+            # `isDetailsActionBar && handleShowTest`), which on a freshly API-created
+            # toolkit has been observed to take longer than 10s — one such timeout was
+            # seen on `[jira]` during this repair. The button IS the readiness signal
+            # for this step, so it is waited on directly with a budget sized for a
+            # page load (`.agents/testing.md` § networkidle/#1847: wait on the element
+            # the caller actually needs). Costs nothing when the bar is already there.
+            toolkit_detail.open_test_surface(timeout=TOOLKIT_DETAIL_READY_TIMEOUT)
+
+        with allure.step("Step 2 — Verify the Test-Tools empty state offers the Tool select"):
+            # ORDER CHANGE (EliteaUI EL-5947). The Test Settings panel is gated
+            # behind tool selection: TestTools.jsx early-returns
             # `<TestToolsEmptyState/>` while `!selectedTool`, and the panel — with
             # its 'Test Settings' heading and Tool dropdown — only mounts AFTER a
-            # tool is chosen. Waiting for the panel first (the old Step 2) is
-            # therefore unsatisfiable: the panel cannot appear until this select
-            # is used. Selecting first, asserting the panel second.
+            # tool is chosen. Waiting for the panel first is therefore
+            # unsatisfiable: the panel cannot appear until this select is used.
             #
-            # This also retires the old raw-handle hunt — a visible-text probe and
-            # a role-based combobox scan, both filtered by horizontal position,
-            # plus a CSS class fallback — in favour of a testid, per
-            # `.agents/testing.md` § Locator policy.
-            test_settings.open_empty_state_tool_select(timeout=UI_ELEMENT_TIMEOUT)
+            # The observable of this step is that the tool-selection entry point is
+            # PRESENT on the (now relocated) Test surface, so it is asserted
+            # explicitly here and the popover is opened by Step 3's page-object
+            # call. Opening it here as well would click the trigger twice and
+            # toggle the popover shut.
+            expect(test_settings.empty_state_tool_select).to_be_visible(
+                timeout=UI_ELEMENT_TIMEOUT,
+            )
 
         with allure.step(f"Step 3 — Select tool: {cfg.test_tool_name}"):
-            visible_search = Popper.find_visible_search_input(page, timeout=UI_ELEMENT_TIMEOUT)
-            visible_search.fill(cfg.test_tool_name)
-            page.wait_for_timeout(500)
-
-            keyword = cfg.test_tool_name.lower().split()[0]
-            selected = Popper.select_menuitem_by_content(
-                page, lambda text: keyword in text.lower(),
+            # HANDLE CHANGE. The old flow typed into a raw
+            # `input[placeholder*="Search"]` and then scanned raw
+            # `[role="menuitem"]` nodes for a display-name keyword. Both are
+            # raw handles (`.agents/testing.md` § Locator policy) and both are
+            # display-name coupled — the labels have already drifted
+            # ("List branches" -> "List branches in repo", "List pages" ->
+            # "List pages with label"), which is precisely the brittleness the
+            # testid policy exists to remove.
+            #
+            # The dropdown options carry `select-option-{tool_schema_key}` (shared
+            # SingleSelectMenuItem.jsx / PopoverSelect.jsx, already on main), and
+            # the tool's schema key is exactly what `test_tool_result_indicator`
+            # already holds — so selection is now testid-driven and immune to
+            # display-name drift. No search typing is needed.
+            test_settings.select_tool_from_empty_state(
+                cfg.test_tool_result_indicator, timeout=UI_ELEMENT_TIMEOUT,
             )
-            assert selected, f"Could not find '{cfg.test_tool_name}' in dropdown"
 
         with allure.step("Step 4 — Verify the Test Settings panel is now shown"):
             # Anchored on the panel's Tool dropdown testid rather than the
@@ -408,75 +479,90 @@ class TestToolkitTestSettings:
             test_settings.wait_for_panel(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step("Step 5 — Fill tool-specific parameters"):
-            if cfg.test_tool_params:
-                for field_label, value in cfg.test_tool_params.items():
-                    _fill_test_settings_param(page, field_label, value)
+            # HANDLE CHANGE + LATENT-BUG FIX. The old `_fill_test_settings_param()`
+            # helper located inputs by a raw `.index-config-field:has(span:text(...))`
+            # CSS chain and then filtered the candidates by bounding box `x > 700`
+            # ("the right panel"). The #1616 redesign puts Test Settings in the LEFT
+            # column (ToolkitTestPanel.jsx — `styles.leftColumn`), so that filter
+            # matches nothing and the helper's `if target is None:` branch logged a
+            # warning and RETURNED WITHOUT FILLING — silently. The run button is
+            # disabled until required params are filled, so this would have surfaced
+            # as an unrelated actionability failure at Step 6, one step after the
+            # symptom. Replaced by the `toolkit-test-param-{schema_key}-input`
+            # testid family (already on main), keyed by schema key.
+            for schema_key, value in cfg.test_tool_params.items():
+                test_settings.fill_param_field(
+                    schema_key, value, timeout=UI_ELEMENT_TIMEOUT,
+                )
 
         with allure.step("Step 6 — Click the Run Test button"):
             # Dismiss any popups (NPS survey, banners) that may block the button
             BasePage(page).dismiss_popups()
 
             # LABEL DRIFT (EliteaUI EL-5947). The button's visible text changed
-            # from "Run Tool" to "Run Test" (TestToolSettings.jsx), which broke
-            # the old role+name handle. It already carries
-            # data-testid="toolkit-test-run-tool-button", so it is located by
-            # testid through the page object and the label no longer matters —
-            # also retiring a raw handle from this spec, per
-            # `.agents/testing.md` § Locator policy.
+            # from "Run Tool" to "Run Test", which broke the old role+name handle.
+            # It carries data-testid="toolkit-test-run-tool-button", so it is
+            # located by testid through the page object and the label no longer
+            # matters.
             #
             # Playwright's click actionability waits out the button's own
-            # `disabledRunTool` guard (!isValidForm || isRunning ||
-            # indexNameError || patInvalid), which replaces the old
-            # wait_for_function poll on button.disabled — and, unlike the
-            # previous force-click, will not fire while the form is invalid.
+            # `disabledRunTool` guard (!isValidForm || isRunning || indexNameError
+            # || patInvalid), which replaces the old wait_for_function poll on
+            # button.disabled — and, unlike the previous force-click, will not fire
+            # while the form is invalid.
             test_settings.run_tool(timeout=UI_ELEMENT_TIMEOUT)
 
         with allure.step("Step 7 — Wait for tool execution result"):
-            success_locator = page.locator(f'text="{cfg.test_tool_result_indicator}"')
-            error_locator = page.locator('text="Error debugging info"')
-
-            try:
-                page.wait_for_function(
-                    """(indicator) => {
-                        const text = document.querySelector('main')?.textContent || '';
-                        return text.includes(indicator) || text.includes('Error debugging info');
-                    }""",
-                    arg=cfg.test_tool_result_indicator,
-                    timeout=TOOLKIT_EXECUTION_TIMEOUT,
-                )
-            except Exception:
-                pass
-
-            page.wait_for_timeout(2000)
+            # The old wait polled `document.querySelector('main').textContent` via
+            # `page.wait_for_function`, wrapped the whole thing in a bare
+            # `except: pass`, and then slept 2s. A swallowed timeout meant Step 8
+            # asserted against whatever happened to be on screen — a stalled run
+            # could pass or fail for the wrong reason. Replaced by the page
+            # object's scoped wait, which polls the result message item for its
+            # ✅/❌ prefix with an auto-retrying assertion and RAISES on timeout.
+            #
+            # `tool_key` enables the page object's ELITEA-1979 mid-wait
+            # panel-remount recovery (re-select the tool, re-click Run Test once).
+            # That recovery deliberately does NOT refill parameter fields, so it is
+            # only passed for parameterless tools; for a tool with required params
+            # a remount must raise rather than re-run an invalid form.
+            result_text = test_settings.wait_for_tool_result(
+                timeout=TOOLKIT_EXECUTION_TIMEOUT,
+                tool_key=None if cfg.test_tool_params else cfg.test_tool_result_indicator,
+            )
 
         with allure.step("Step 8 — Verify tool execution success"):
-            if error_locator.is_visible():
-                error_locator.click()
-                page.wait_for_timeout(500)
-                content = page.locator("main").text_content()
-                error_idx = content.find("Error debugging info")
-                error_detail = content[error_idx:error_idx + 300] if error_idx >= 0 else ""
+            # Every assertion below reads the SAME system-produced result text
+            # returned by Step 7, scoped to the result message item, instead of
+            # the text content of the whole <main> element as before. That element
+            # also contains the Test Settings form, the tool name in the combobox
+            # and the page chrome, any of which could satisfy a substring check
+            # without the tool having produced it. This is a strengthening, not a
+            # change of what is verified.
+            #
+            # The diagnostic error branch is preserved: it used to be a raw
+            # visible-text handle on the error-details row, and is now the same
+            # check expressed against the system-produced result text.
+            if "❌" in result_text or "Error debugging info" in result_text:
                 pytest.fail(
-                    f"Tool execution failed for {cfg.display_name}: {error_detail}"
+                    f"Tool execution failed for {cfg.display_name}: {result_text[:300]}"
                 )
 
-            content = page.locator("main").text_content()
-            assert cfg.test_tool_result_indicator in content, (
-                f"Expected '{cfg.test_tool_result_indicator}' in page after tool run"
+            assert cfg.test_tool_result_indicator in result_text, (
+                f"Expected '{cfg.test_tool_result_indicator}' in the tool result "
+                f"for {cfg.display_name}, got: {result_text[:300]}"
             )
 
             if cfg.test_tool_result_content:
-                result_row = page.locator(f'text="{cfg.test_tool_result_indicator}"').first
-                try:
-                    result_row.click()
-                    page.wait_for_timeout(1000)
-                except Exception:
-                    pass
-
-                content = page.locator("main").text_content()
-                assert cfg.test_tool_result_content in content, (
+                # NOTE: the ✅ marker is NOT a success oracle — it means the tool
+                # RAN, not that the call succeeded. A GitHub run has been observed
+                # returning `✅ list_branches_in_repo (0.213s) Failed to list
+                # branches: 401 {"message": "Bad credentials"}`. This content
+                # assertion is the only real oracle in this test; do not substitute
+                # the marker for it.
+                assert cfg.test_tool_result_content in result_text, (
                     f"Expected '{cfg.test_tool_result_content}' in tool output "
-                    f"for {cfg.display_name}"
+                    f"for {cfg.display_name}, got: {result_text[:300]}"
                 )
 
 
@@ -708,37 +794,3 @@ def _fill_toolkit_form_fields(page, cfg: ToolkitConfig):
                 field.click()
                 field.type(value)
                 page.wait_for_timeout(300)
-
-
-def _fill_test_settings_param(page, field_label: str, value: str):
-    """Fill a parameter field in the Test Settings panel (right side).
-
-    MUI TextField inputs in Test Settings have no accessible name/label
-    association. We find them by locating the label span text (e.g.
-    "Label *") in the right panel and then finding the sibling input
-    inside the same ``index-config-field`` container.
-    """
-    # Find the config field container that has the label text on the right side
-    field_input = page.locator(
-        f'.index-config-field:has(span:text("{field_label}")) input'
-    )
-
-    # Filter to the right panel (x > 700) if there are duplicates
-    target = None
-    for i in range(field_input.count()):
-        inp = field_input.nth(i)
-        if inp.is_visible():
-            bb = inp.bounding_box()
-            if bb and bb["x"] > 700:
-                target = inp
-                break
-
-    if target is None:
-        logger.warning("Could not find param field '%s' in Test Settings panel", field_label)
-        return
-
-    target.scroll_into_view_if_needed()
-    target.click()
-    target.fill(value)
-    page.wait_for_timeout(300)
-    logger.info("Filled Test Settings param '%s' = '%s'", field_label, value)
