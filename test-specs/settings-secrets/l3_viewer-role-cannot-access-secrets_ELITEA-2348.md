@@ -123,17 +123,29 @@ dispositioned `un-executable` in the Coverage Map below — visible, not dropped
 ## Handles Reference
 | Element | Primary handle (testid-only) | Provenance | Notes |
 |---|---|---|---|
-| Settings drawer menu | `settings-drawer-menu` | **on-main ✓** | `SettingsDrawerPage.settings_drawer_menu` |
-| Secrets nav item | `settings-nav-item-secrets` | **on-main ✓** | via existing `SETTINGS_NAV_ITEM` class template; asserted **present** (399) and **count 0** (471) |
-| General nav item | `settings-nav-item-project-general` | **on-main ✓** | drawer-health control |
-| All nav items in menu | `SETTINGS_NAV_ITEMS_IN_MENU` class constant | **on-main ✓** | `[data-testid="settings-drawer-menu"] [data-testid^="settings-nav-item-"]`; `nav_item_ids_in_order()` |
-| Project selector trigger | `project-selector-trigger-combobox` | **on-main ✓** | `BasePage.project_selector_trigger` |
-| Project option | `select-option-{id}` | **on-main ✓** | `BasePage.SELECT_OPTION` template |
+| Settings drawer menu | `settings-drawer-menu` | **on-`automation/testids` only (awaiting human promotion to `main`)** — `SettingsDrawer.jsx:139`, EliteaAI/EliteaUI@e1e031a1 | `SettingsDrawerPage.settings_drawer_menu` |
+| Secrets nav item | `settings-nav-item-secrets` | **on-`automation/testids` only (awaiting human promotion to `main`)** — runtime-composed ``data-testid={`settings-nav-item-${tab.id}`}`` at `SettingsDrawer.jsx:102`, EliteaAI/EliteaUI@e1e031a1 | via existing `SETTINGS_NAV_ITEM` class template; asserted **present** (399) and **count 0** (471) |
+| General nav item | `settings-nav-item-project-general` | **on-`automation/testids` only (awaiting human promotion to `main`)** — same composing line, `SettingsDrawer.jsx:102`, EliteaAI/EliteaUI@e1e031a1 | drawer-health control |
+| All nav items in menu | `SETTINGS_NAV_ITEMS_IN_MENU` class constant | **on-`automation/testids` only (awaiting human promotion to `main`)** — composed of `settings-drawer-menu` (`:139`) + the `settings-nav-item-` prefix (`:102`), both EliteaAI/EliteaUI@e1e031a1 | `[data-testid="settings-drawer-menu"] [data-testid^="settings-nav-item-"]`; `nav_item_ids_in_order()` |
+| Project selector trigger | `project-selector-trigger-combobox` | **on-main ✓** — runtime-composed: `SidebarProjectSelect.jsx:94` passes `data-testid="project-selector-trigger"`, `SingleSelect.jsx:662` renders ``SelectDisplayProps={{'data-testid': `${dataTestId}-combobox`}}`` | `BasePage.project_selector_trigger` |
+| Project option | `select-option-{id}` | **on-main ✓** — runtime-composed ``data-testid={option.testId ?? `select-option-${option.value}`}`` at `SingleSelectMenuItem.jsx:117` / `SingleSelect.jsx:416` / `PopoverSelect.jsx:109` | `BasePage.SELECT_OPTION` template |
 
-*(Provenance verified with `cd ../EliteaUI && git fetch origin` in the same command block, 2026-08-28.)*
+*(Provenance **re-verified 2026-08-28, fix round 3** — `cd ../EliteaUI && git fetch origin`
+in the same command block, then the two-stage grep of `.agents/workflow.md` § Closure
+record, against `origin/main` = `f27645bc` and `origin/automation/testids` = `249c0186`.
+**The four drawer rows above previously read `on-main ✓`. That was FALSE.**
+`SettingsDrawer.jsx` is present on `origin/main` (248 lines) and carries **zero** testids
+there — `git show origin/main:'src/[fsd]/features/settings/ui/settings-drawer/SettingsDrawer.jsx' | grep -ci testid`
+→ `0`. Both runtime-composed rows were resolved at their **composing call site** rather
+than by literal grep, which is why `project-selector-trigger-combobox` and
+`select-option-{id}` verify as genuinely on-`main` even though neither literal string
+appears anywhere on that ref.)*
 
-**No new testid is needed for this case.** Every handle already exists and is already
-wired into `SettingsDrawerPage` / `BasePage`.
+**No new testid needs to be ADDED** — every handle already exists and is already wired
+into `SettingsDrawerPage` / `BasePage`. **But four of them live on `automation/testids`
+only**, so this case is green on localhost and **RED on any deployed env** until a human
+cherry-picks EliteaAI/EliteaUI@e1e031a1 to `main`. The closure record's promotability row
+must state this — the case is **not** deployed-env-promotable on merge.
 
 ## Implementer notes
 - Reuse `SettingsDrawerPage.nav_item()` / `nav_item_ids_in_order()` and

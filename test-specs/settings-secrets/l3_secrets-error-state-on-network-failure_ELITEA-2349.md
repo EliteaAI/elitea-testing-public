@@ -100,17 +100,28 @@ in play.
 ## Handles Reference
 | Element | Primary handle (testid-only) | Provenance | Notes |
 |---|---|---|---|
-| Page title | `secrets-page-title` | **on-main ✓** | `DrawerPageHeader titleTestId` |
-| Add ("+") button | `secrets-add-button` | **on-main ✓** | visible in the failure state |
-| Secret row | `secret-row` | **on-main ✓** | 0 in failure state, `min(api_count, 10)` after recovery |
+| Page title | `secrets-page-title` | **on-main ✓** — prop indirection, `titleTestId="secrets-page-title"` at `SecretsContent.jsx:143` | `DrawerPageHeader titleTestId` |
+| Add ("+") button | `secrets-add-button` | **on-main ✓** — object literal, `testId: 'secrets-add-button'` at `SecretsContent.jsx:158` | visible in the failure state |
+| Secret row | `secret-row` | **on-main ✓** — `SecretsTable.jsx:569` | 0 in failure state, `min(api_count, 10)` after recovery |
 | Toast container | `toast-alert` | **on-main ✓** (`src/components/Toast.jsx:60`) | severity read from its class list |
 | Toast message | `toast-message` | **on-main ✓** (`src/components/Toast.jsx:74`) | the text asserted for shape |
 | Toast severity filter | `TOAST_ALERT_SEVERITY` = `[data-testid="toast-alert"][data-severity="{}"]` | **on-main ✓** (`data-severity` at `src/components/Toast.jsx:61`) | class constant on `SecretsPage`; state via `data-*` filter, never a state-switched testid |
-| Settings content pane | `settings-content` | **on-`automation/testids`** (`src/[fsd]/pages/settings/index.jsx:268`; NOT yet on `main`) | scope for the no-stack-trace check; already used by `SettingsDrawerPage.settings_content` |
+| Settings content pane | `settings-content` | **on-`automation/testids` only (awaiting human promotion to `main`)** — `src/[fsd]/pages/settings/index.jsx:268`, EliteaAI/EliteaUI@e1e031a1 | scope for the no-stack-trace check; already used by `SettingsDrawerPage.settings_content` |
 
-*(Provenance verified with `cd ../EliteaUI && git fetch origin` + `git grep … origin/main -- src/`, 2026-08-28.)*
+*(Provenance **re-verified 2026-08-28, fix round 3** — `cd ../EliteaUI && git fetch origin`
+in the same command block, then the two-stage grep of `.agents/workflow.md` § Closure
+record, against `origin/main` = `f27645bc` and `origin/automation/testids` = `249c0186`.
+**Every row above re-confirmed unchanged**; only source anchors and the introducing commit
+were added. `Toast.jsx` is byte-identical on both refs (`git diff origin/main
+origin/automation/testids -- src/components/Toast.jsx` → empty), so its three rows are
+on-`main` at the exact lines cited. Note `data-severity={severity}` at `:61` carries no
+`data-testid` token on its own line, so a naive two-stage grep keyed on that testid
+reports a **false negative** for it — it was confirmed by reading the file, not by grep.)*
 
 **No new testid is needed.** `toast-alert` / `toast-message` already exist on `main`.
+`settings-content` does **not** — this case is green on localhost and **RED on any
+deployed env** until a human cherry-picks EliteaAI/EliteaUI@e1e031a1 to `main`, and the
+closure record's promotability row must say so.
 
 ## Implementer notes
 - `SecretsPage.navigate()` **cannot be reused for step 1** — it waits for
