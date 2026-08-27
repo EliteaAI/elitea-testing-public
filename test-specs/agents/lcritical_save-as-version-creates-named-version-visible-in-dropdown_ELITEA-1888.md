@@ -196,6 +196,7 @@ no discrepancy.**
 | `GET /api/v2/elitea_core/applications/prompt_lib/399` `total` count before (10) and after (9) agent-delete cleanup | Verifies the disposable-agent-reuse test-data pattern (create nothing, delete the reused debris agent) leaves the project in the same state it started in — load-bearing for making this pattern safe to recommend to the implementer |
 | Confirmed `?viewMode=owner` is a required query param on `/agents/all/{id}` (its absence 404s) | Not documented anywhere in the existing page object's `navigate()` docstring beyond the code itself already using it — worth calling out explicitly since a naive re-implementation without reading the existing `AgentDetailPage.navigate()` could drop it and silently 404 |
 | Instructions field content preserved verbatim in the new version (not reset to base) | Directly grounds the case's implicit expectation that "Save As Version" snapshots the *current, edited* form state, not the version's last-saved state — worth an explicit assertion in the automated test since it's easy to omit |
+| **Version id CHANGES across the save** — the Information panel's `copy-version-id` read before "Save As Version" differs from the one read after (asserted at `test_agent_save_as_version.py`'s Step 5: `assert new_version_id != previous_version_id`) | **Declared retroactively, 2026-08-27 (see § Adjustment below) — this observable was implemented but only appeared as corroborating prose in the Axis-1 Step-7 row, never as a declared Axis-2 addition.** The TMS case never mentions a version id at all; its own checks (dropdown lists both "base" and "v2-test"; "v2-test" is active) would *also* pass if the app merely **relabelled** the existing version in place. Asserting the id actually changed is the invariant that proves a genuinely NEW version was created — which is what "Save As Version" means. Kept and declared, not removed. |
 
 ## Implementer amendment (Phase 2 exploration, same-PR)
 
@@ -214,6 +215,56 @@ no discrepancy.**
   state only (both testids — `agent-save-button`, `agent-save-as-version-button`
   — confirmed live) and omits the Discard-button assertion. Flagging here
   for whoever next touches the Agent form's Discard button.
+
+## Adjustment — 2026-08-27 · version-id stale read (issue #1872, PR against `main`)
+
+**The failure.** After the test was promoted to `main`, it went red in CI and reproduced
+3/3 locally against `http://localhost:5173`:
+
+```
+test_agent_save_as_version.py:173: AssertionError: Version ID should change after
+creating a new named version
+assert '1676' != '1676'
+```
+
+**Root cause — a two-source read race in the page object, NOT a product bug.** The two
+things the test reads after "Save As Version" are fed by *different* sources with
+different timings. The VERSION selector trigger (`agent-version-selector-trigger`) comes
+from `ApplicationVersionSelect.jsx`'s `if (isFromCreation) return version;`, which reads
+the route's version **path param synchronously** — it flips the instant the URL changes,
+before any data loads. The Information panel's version id (`copy-version-id`) is rendered
+from Formik (`ApplicationInformation.jsx` → `version_details?.id`) and is written only
+once the async version-detail GET lands. `AgentDetailPage.confirm_new_version()` waited
+solely on the URL path segment and the trigger text — **both URL-derived** — so it
+returned inside that gap and the test's immediately-following `get_version_id()` read the
+PREVIOUS version's id. Instrumented live: the method returned at t+1.46s while
+`copy-version-id` still showed the base id, converging only 0.83s later; the backend had
+already answered `POST 201` with a genuinely new version id and `GET /agents/{id}`
+returned both ids. Two further defects in the same method were confirmed and removed: the
+first `wait_for_function` compared the previous *version* id against the URL's last
+segment, which pre-save is the *agent* id — always already true, a guaranteed no-op; and
+the `wait_for_network(timeout=5000)` was `networkidle` (the documented issue #1847 hazard)
+resolving in the dead gap between the POST completing and the follow-up GET being issued.
+
+**What changed.** `AgentDetailPage.confirm_new_version()` only. The no-op URL wait and the
+`networkidle` wait are deleted; the trigger-text-only wait is replaced with the three-way
+convergence predicate that already existed and was already proven in
+`select_version_by_name()` — trigger text === name **AND** `copy-version-id` non-empty
+**AND** URL last segment === `copy-version-id`. That predicate is now a single shared
+class-level constant, `AgentDetailPage.VERSION_CONVERGED_JS`, used by both methods instead
+of being duplicated.
+
+**What deliberately did NOT change.** The test file is untouched. Line 173's
+`assert new_version_id != previous_version_id` stays exactly as written — no weakening, no
+`expect.soft()`, no skip, no timeout bump. This repair fixes *how the value is read*, never
+*what is verified*. No product defect was filed because none exists, and no TMS case change
+was made — the ELITEA-1888 case text is not wrong, it simply never mentioned version ids
+(that gap is closed by the Axis-2 declaration added above, not by deleting the assertion).
+
+**Known scope left open.** The same two-source race exists in
+`PipelineDetailPage.confirm_new_version()` and `SkillDetailPage.save_as_version()` (and the
+specs that drive them, including a currently-red `test_pipeline_create_version.py`). Those
+are deliberately a separate card — **issue #1874** — and are untouched by this repair.
 
 ## Known Defects
 
