@@ -393,8 +393,8 @@ class TestToolkitTestSettings:
 
             page.goto(f"{base_url}/toolkits/all/{tk_id}", wait_until="domcontentloaded")
             # Confirms we landed on the toolkit's own detail route, replacing the
-            # previous `wait_for_timeout(2000)` — a fixed sleep is not a readiness
-            # signal (`.agents/conventions.md` § Hard don'ts).
+            # previous fixed two-second sleep — a sleep is not a readiness signal
+            # (`.agents/conventions.md` § Hard don'ts).
             #
             # This is a route check, NOT a load-complete gate: `toolkit-detail-title`
             # is a BREADCRUMB entry (breadcrumb.constants.js), rendered from route
