@@ -35,7 +35,13 @@ placed before a transient state settles it asserts nothing — and silently drop
 defect out of a sanctioned-RED closed set, shrinking the signature with no
 symptom. Order is an assertion-strength property in **both** directions.
 
-Canon card raised: elitea-testing-public#1841. Sibling case ELITEA-2214 (#417) has
-the identical shape — flagged on its card, not fixed there (one card, one mission).
+**Confirmed twice, back to back.** ELITEA-2214 (#417) carried the identical shape
+and was reworked the next session: same stranded backend ground-truth check, same
+never-executed primary observable, same clean review-and-gate history. Two of two
+cases in this family shipped this way — so on a blocked-case rework this is the
+DEFAULT expectation, not a hypothesis worth a hedge. Both reworks also had to move
+absence assertions LATER for the vacuous-pass reason below.
+
+Canon card raised: elitea-testing-public#1841.
 
 Related: [[sanctioned_red_closed_set_variant]] · [[sanctioned_red_tms_backwrite_shape]] · [[merge_gate_extend_existing_sanctioned_red_needs_step_level_check]]

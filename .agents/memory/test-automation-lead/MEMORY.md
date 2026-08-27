@@ -91,3 +91,4 @@
 - [A blocker proves a symptom, not a cause](blocker_premise_symptom_vs_cause.md) — verify the CAUSE before honouring a park
 - [Never accept a partial merge gate](never_accept_a_partial_gate.md) — non-member failure mid-gate ⇒ re-gate from scratch + check shared state
 - [Re-check a blocker before assuming it still blocks](unparking_a_blocked_card_recheck_the_blocker_first.md) — a parked card is often already free
+- [Clean side channels do not mean no error](clean_side_channels_do_not_mean_no_error.md) — a "silent failure" verdict is unverified until every channel (incl. WebSocket) was read
