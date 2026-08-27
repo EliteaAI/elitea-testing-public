@@ -563,8 +563,9 @@ class TestDirectToolkitCallDeleteFileChip:
     **Do NOT read this class's exclusion as covering the module.** The
     sibling ``TestDirectToolkitCallCompleteFlow`` (ELITEA-2215,
     ``create_file``) was unblocked on 2026-08-27 — 14/14 GREEN on that date,
-    backend-verified, gate-eligible on a plain green gate; #1127 has not
-    fired on that trigger (module docstring, "Fix round 3"). Re-evaluate
+    backend-verified, gate-eligible on a plain green gate; #1127 did not fire
+    in any of the 14 runs measured on 2026-08-27 (module docstring, "Fix
+    round 3"). Re-evaluate
     this class (may flip to plain-green-required) once #1127 is fixed or this
     test accumulates a GREEN run.
     """
