@@ -241,6 +241,39 @@ class AgentsListPage(BasePage):
     # `card.locator(...)` since it's a collection locator (one per card).
     ENTITY_CARD_ICON_IMG_SELECTOR = '[data-testid="entity-card-icon-img"]'
 
+    # Terminal, non-error renders of the Agents list region (ELITEA-1901
+    # repair, board #1813). Which of the two appears is a property of the
+    # ENVIRONMENT (how many agents the project holds), never of any single
+    # case — so a test that needs "the list finished loading" must accept
+    # either. EliteaUI's src/components/CardList.jsx:40-42 gates BOTH behind
+    # `!isLoading && (isError || isEmptyList)` / `... && !isError`, so the
+    # disjunction cannot be satisfied while the list is still loading or has
+    # errored — it is a genuine load-completion oracle, not merely a
+    # "something is on screen" check. `empty-state-title` is the generic
+    # shared EmptyStatePage.jsx testid already bound by ToolkitsListPage and
+    # McpListPage (same shape, merged precedent).
+    LIST_SETTLED_SELECTOR = (
+        '[data-testid="entity-card-name"], [data-testid="empty-state-title"]'
+    )
+
+    def wait_for_list_settled(self, timeout: int = 10000):
+        """Wait until the Agents list region reaches a terminal, non-error state.
+
+        Passes on EITHER at least one rendered agent card (``entity-card-name``)
+        OR the "No agents yet" empty state (``empty-state-title``) — see
+        ``LIST_SETTLED_SELECTOR`` for why that disjunction is a load-completion
+        oracle rather than a weakened check. Deliberately makes NO claim about
+        how many agents the project holds; zero is a valid environment.
+
+        Raises:
+            playwright.sync_api.TimeoutError: if neither render appears in
+                ``timeout`` ms (list still loading, or the fetch errored).
+        """
+        self.page.locator(self.LIST_SETTLED_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout,
+        )
+        logger.info("Agents list region settled (cards or empty state rendered)")
+
     def get_agent_card_names(self, timeout: int = 5000) -> list[str]:
         """Return names of all agent cards visible on the dashboard.
 
