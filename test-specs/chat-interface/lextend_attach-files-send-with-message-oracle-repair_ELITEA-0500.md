@@ -192,7 +192,7 @@ assertions live on the **transport** layer.
 `tmp_path` file `test_automation_file.txt`, ordinary prose, no identifier-shaped strings:
 
 ```
-Project Aurora — weekly status.
+Project Aurora - weekly status.
 The project mascot is the otter.
 The team meets on Tuesday.
 ```
@@ -222,7 +222,7 @@ only at connection-open time).
 |---|---|---|---|
 | 1 | Enter frame capture, then navigate to the fresh conversation | — | `conversation_id` fixture |
 | 2 | **ELITEA-0500 Step 1** — open the plus menu | Plus-menu trigger **visible and enabled**; attach item **visible and enabled** in the composer toolbar | `plus-menu-button`, `chat-attach-menuitem-button` |
-| 3 | Write the planted-fact file; attach via `ChatPage.attach_file()` | `wait_for_attachment_chip_count(1)`; chip name == filename; counter reads **"9 left"** (10 → 9 on a fresh conversation) | `chat-attachment-chip-{index}`, `chat-attach-menuitem-button` text |
+| 3 | Write the planted-fact file; attach via `ChatPage.attach_file()` | `wait_for_attachment_chip_count(1)`; chip name == filename; capacity counter **decrements by exactly one** from a runtime-read baseline (never a hardcoded number — see § As-shipped deviations 1) | `chat-attachment-chip-{index}`, `chat-attach-menuitem-button` text |
 | 4 | Type the comprehension question | `message_input.input_value()` == the question | `chat-message-input` |
 | 5 | Capture `initial_count` | — | `chat-message-item` |
 | 6 | **Send, wrapped in `page.expect_response(...)`** — upload fires at *send*, not at attach (`ChatBox.jsx:1080-1084`) | **TRANSPORT 1:** response to `POST **/attachments/prompt_lib/**` has `status in (200, 201)` **and** a non-empty `filepath` in the body | `useUploadWithProgress.js:52` |
@@ -230,7 +230,7 @@ only at connection-open time).
 | 8 | **LAST MILE — auto-retrying assertion at the fixed index.** No settle detection at all | `expect(chat.messages_container.nth(initial_count + 1)).to_contain_text(expected_answer, ignore_case=True, timeout=ATTACHMENT_ANSWER_TIMEOUT)` with `ATTACHMENT_ANSWER_TIMEOUT = 90_000`. Web-first: it keeps polling **that same message** until the answer lands, so a mid-turn narration cannot satisfy it **by construction** | `chat-message-item` (`main:YES`) |
 | 9 | **TRANSPORT 2 — frame assertion** (see § Frame-assertion constraints) | ≥1 received `chat_predict_attachment` frame whose `response_metadata.tool_name == "read_multiple_files"` **and** carries a `tool_output`; **every** such `tool_output` contains the planted fact (`"The project mascot is the otter."`) | `utils/websocket_frames.py` |
 | 10 | Composer cleared | `wait_for_attachment_chip_count(0)` **and** `get_attachment_overflow_count() == 0` | chip helpers |
-| 11 | Side channel | No unexpected console/page errors, via `utils/console_errors.collect_console_errors(page)` (URL-bearing — migrate this spec while touching it) | — |
+| 11 | Side channel | No unexpected console errors, via `utils/console_errors.collect_console_errors(page)` (URL-bearing — migrate this spec while touching it), **and** no uncaught page errors, via a `page.on("pageerror", …)` listener bound before navigation (an uncaught JS exception logs nothing to the console — the two listeners catch disjoint classes) | — |
 
 **No new testids. No new page-object methods.** `open_attach_menuitem()` (`:2794`),
 `wait_for_attachment_chip_count()` (`:3025`), `get_attachment_overflow_count()` (`:2976`),
@@ -284,9 +284,26 @@ turn instead of whatever message happens to be last.
 
 ### As-shipped deviations (implementer-declared, lead-accepted — part of this contract)
 
-1. **Step 3 asserts `10 left` BEFORE the attach and `9 left` after** — the *decrement* is the
-   evidence, not the endpoint value. Source-verified safe: nothing in `PlusChatButton.jsx` calls
-   `setIsOpen(false)` on attach, so the popper stays open and the counter updates in place.
+1. **Step 3 asserts the capacity counter DECREMENTS BY ONE, with the baseline read at runtime** —
+   `remaining_before = chat.get_remaining_attachment_slots()` before the attach, then
+   `to_contain_text(f"{remaining_before - 1} left")` after. **Neither endpoint value is hardcoded**,
+   because `MAX_ATTACHMENTS` is a **per-project backend value**, not a product constant:
+   `useChatConfig.js:27` → `data.chat_max_upload_count ?? ATTACHMENT_LIMITS.MAX_ATTACHMENTS`, fed by
+   `useGetChatConfigQuery({ projectId })`; the literal in `common/constants.js` is only the
+   client-side fallback. A hardcoded `"10 left"` would be green on this backend and red on any env
+   configured otherwise (`test-ui-next.yml`, `test-ui-stage2.yml`, or dev.elitea.ai after a config
+   change) — **a coupling the main-provenance check cannot catch, because the value never comes from
+   `main` at all.** (Review catch, fix round 1; the *decrement* was always the intended evidence —
+   the first implementation drifted from this rationale.)
+   Two supporting mechanics, both source-verified:
+   - **The in-flight fallback race is closed at Step 1**, not tolerated. `useChatConfig.js:22-24`
+     (`if (!data) return ATTACHMENT_LIMITS`) renders the static fallback until the config query
+     lands, so a baseline read too early can latch a value the product is about to replace. Step 1
+     therefore wraps the navigation in
+     `page.expect_response(lambda r: "/elitea_core/chat_config/prompt_lib/" in r.url)`
+     (`src/api/chatConfig.js`) — the baseline is provably the environment's real value.
+   - **The popper stays open across the attach**: nothing in `PlusChatButton.jsx` calls
+     `setIsOpen(false)` on attach, so the counter updates in place with no re-open.
 2. **Step 3's chooser handshake.** Step 2 must leave the popper **open** to assert the attach item is
    visible/enabled (it is not in the DOM otherwise), so Step 3 clicks the **already-open** item inside
    `page.expect_file_chooser(...)` rather than calling `ChatPage.attach_file()`, which would re-open
@@ -294,17 +311,35 @@ turn instead of whatever message happens to be last.
 3. **`capture_socketio_frames(page)` is called directly** from `utils/websocket_frames.py`, because
    the `ChatPage.capture_websocket_frames()` wrapper is base-only. The wrapper merely delegates to
    this collector; entered **before navigation** per its docstring.
+4. **Step 7 ships as a web-first assertion, not a one-shot read.** The step table specifies
+   `get_message_text_at(initial_count)`; the code ships
+   `expect(chat.messages_container.nth(initial_count)).to_contain_text(file_name, …)`. Same message,
+   same index, same observable — but auto-retrying, so it cannot race the user message's render.
+   A **strengthening**, and the same web-first instinct step 8 is built on. (Recorded in fix round 1;
+   the drift was previously undeclared.)
+5. **One new page-object method: `ChatPage.get_remaining_attachment_slots()`** — the step table said
+   "no new page-object methods", but deviation 1's runtime baseline needs one. It parses the `N left`
+   counter off `chat-attach-menuitem-button`, exactly mirroring the existing
+   `get_attachment_overflow_count()` idiom (regex over a control's own text), and raises rather than
+   returning a silent `0`, which would make a decrement assertion pass vacuously. Purely additive.
 
 ### Frame-assertion constraints (step 9) — mandatory, from `.agents/testing.md` § ELITEA-1140
 
-1. **Self-diagnosing message.** The failure message MUST carry the **total captured frame count** and
-   the **distinct event names** seen, so the three outcomes read differently:
+1. **Self-diagnosing message.** The failure message MUST carry the **total captured frame count**,
+   the **distinct event names**, and the **distinct `(event, tool_name)` pairs** seen (the pairs are
+   what `.agents/testing.md` § ELITEA-1140 specifies, and they are what separates a backend tool
+   rename from the model declining to call it — opposite responses), so the outcomes read
+   differently:
    - `0 matching of 0 frames captured` → the Socket.IO capture/transport failed — a **harness**
      problem (every frame behind this oracle was captured on **localhost**; this spec also runs in
      GHA against deployed envs where the transport was never verified — a proxy declining the
      websocket upgrade produces exactly this).
-   - `0 matching of N frames captured (events: …)` → frames flowed but the read tool did not run —
-     the **real** signal.
+   - `0 matching of N frames captured` **with other tool names in the pairs** → the backend renamed
+     or switched the read tool; **fix this spec**.
+   - `0 matching of N frames captured` **with no tool calls at all** → frames flowed but the model
+     declined to call the tool this turn — the trigger-side flake below; **re-run**.
+   The expected tool name is hoisted to a module constant (`EXPECTED_ATTACHMENT_TOOL`) so the
+   predicate and the failure message cannot drift apart.
    - Suggested shape: `f"expected >=1 chat_predict_attachment frame carrying tool_output for read_multiple_files; got {len(matches)} of {len(frames)} captured frames (events: {sorted(events)})"`
 2. **Never conditional, never skipped.** Do **not** guard this assertion on "frames present". If the
    transport differs on DEV we want a legible red, not a silent pass. A `pytest.skip` here is the
@@ -335,7 +370,7 @@ steps belong to the five sibling tests listed in its `automation_test_id`.
 | Case element | Expected result | Covered by | Asserted where | Disposition |
 |---|---|---|---|---|
 | Step 1 — attach files button visible/accessible near chat input | Button visible and accessible | repair steps 2–3 | step 2: visible + enabled; step 3: it actually attaches | **asserted (newly — see below)** |
-| Coverage bullet — "Attach files button opens file picker" | Picker opens | repair step 3 | `attach_file()` drives the real control end-to-end | asserted |
+| Coverage bullet — "Attach files button opens file picker" | Picker opens | repair step 3 | the real `chat-attach-menuitem-button` control drives the chooser end-to-end (§ As-shipped deviations 2) | asserted |
 | Fail criterion — "Attach files button missing" | Test must FAIL | R3 | `skip` removed → natural fail | asserted |
 | *(Steps 2–7: context settings, model menu, sidebar, agents nav, search, oversized message)* | — | **the five sibling tests** | — | out-of-scope for this test |
 | ~~AI echoes an opaque token~~ | — | replaced | steps 6, 8, 9 | **oracle shape swapped per #1664** — the observable (model received + processed the file) is now asserted by a comprehension fact (step 8) + upload response (step 6) + `tool_output` frame (step 9). Not a case element either way. |
@@ -346,13 +381,13 @@ steps belong to the five sibling tests listed in its `automation_test_id`.
 > preserve coverage — it **restores** a case requirement that is currently unverified.
 
 **Axis 2 — analyst additions beyond the case:**
-- Chip render + "9 left" counter decrement (step 3) — *the system's own confirmation that the attach
+- Chip render + capacity-counter decrement (step 3) — *the system's own confirmation that the attach
   the case asks about actually took effect; visibility alone cannot distinguish a live control from a dead one.*
-- Filename present in the sent message (step 6) — *proves the attachment was submitted with the
+- Filename present in the sent message (step 7) — *proves the attachment was submitted with the
   message, which is the honest, deterministic core of what R1 removed.*
-- Composer-clears-after-send (step 7) — *cheap, deterministic, and the established idiom in every
+- Composer-clears-after-send (step 10) — *cheap, deterministic, and the established idiom in every
   sibling attachment test.*
-- Console/page-error side channel (step 8) — *standard project discipline.*
+- Console/page-error side channel (step 11) — *standard project discipline.*
 - Upload-response assertion (step 6) and `tool_output` frame assertion (step 9) — *the transport-layer half of #1664's split: the strong deterministic assertions belong there, and the comprehension fact is the last mile, not the whole proof. Both are model-wording-independent.*
 
 ---

@@ -86,6 +86,16 @@ NAVIGATION_TIMEOUT = 3000     # SPA route changes
 # read tool, then answers. Measured settle band 18.5-21.1s (ELITEA-0500 AFS);
 # this is the auto-retry budget for the final answer to appear, not a sleep.
 ATTACHMENT_ANSWER_TIMEOUT = 90000
+# GET /elitea_core/chat_config/prompt_lib/{projectId} (src/api/chatConfig.js) —
+# the per-project attachment limits. Waiting on it is what makes the attachment
+# capacity counter safe to read: until it lands, useChatConfig.js returns the
+# static ATTACHMENT_LIMITS fallback instead of this environment's real value.
+CHAT_CONFIG_ENDPOINT = "/elitea_core/chat_config/prompt_lib/"
+# The built-in `attachments` internal tool the agent must call to read an
+# attachment — content is never inlined into the prompt. Asserted strictly:
+# if the backend switches to a different tool, this spec should go red and be
+# updated deliberately, not silently accept whatever ran.
+EXPECTED_ATTACHMENT_TOOL = "read_multiple_files"
 
 
 class TestPageLoadAndRendering:
@@ -372,10 +382,24 @@ class TestConversationUIElements:
         # "websocket" page event fires once, at connection-open time.
         with capture_socketio_frames(page) as frames:
             console_errors = collect_console_errors(page)
+            # An uncaught JS exception logs nothing to the console, so the two
+            # listeners catch disjoint failure classes — same dual-listener
+            # idiom as the sibling test_attach_files_10_file_limit_warning.py.
+            page_errors = []
+            page.on("pageerror", lambda exc: page_errors.append(str(exc)))
 
             with allure.step("Step 1 — Navigate to a fresh conversation"):
                 chat = ChatPage(page)
-                chat.navigate_to_chat(conversation_id=conversation_id)
+                # Wait out the chat-config query the navigation triggers. The
+                # attachment capacity counter renders the static fallback until
+                # this lands (useChatConfig.js: `if (!data) return
+                # ATTACHMENT_LIMITS`), so reading the baseline before it
+                # arrives can latch a value the product is about to replace.
+                with page.expect_response(
+                    lambda r: CHAT_CONFIG_ENDPOINT in r.url,
+                    timeout=AI_RESPONSE_TIMEOUT,
+                ):
+                    chat.navigate_to_chat(conversation_id=conversation_id)
 
             with allure.step("Step 2 — ELITEA-0500 Step 1: attach control visible/accessible by the input"):
                 expect(chat.plus_menu_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
@@ -383,9 +407,17 @@ class TestConversationUIElements:
                 chat.open_attach_menuitem(timeout=UI_ELEMENT_TIMEOUT)
                 expect(chat.attach_files_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
                 expect(chat.attach_files_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
-                # The item carries its own remaining-capacity counter; a fresh
-                # conversation starts at the 10-file limit.
-                expect(chat.attach_files_button).to_contain_text("10 left", timeout=UI_ELEMENT_TIMEOUT)
+                # Read the capacity baseline at RUNTIME. MAX_ATTACHMENTS is a
+                # per-project backend value (useChatConfig.js ->
+                # data.chat_max_upload_count), so a hardcoded "10 left" would
+                # be green on this backend and red on any environment
+                # configured differently — a coupling no testid-provenance
+                # check can catch, because the value never comes from main.
+                remaining_before = chat.get_remaining_attachment_slots()
+                assert remaining_before >= 1, (
+                    "Attach control reports no remaining attachment capacity, so the case's "
+                    f"attach step cannot run. Got: {remaining_before} left"
+                )
 
             with allure.step("Step 3 — Attach the planted-fact file via the real menu control"):
                 test_file = tmp_path / file_name
@@ -400,12 +432,18 @@ class TestConversationUIElements:
                     f"The attachment chip should name the attached file. "
                     f"Got: {chat.get_visible_attachment_names()}"
                 )
-                # The counter decrementing 10 -> 9 is the system's own
-                # confirmation that the attach took effect — visibility alone
-                # cannot tell a live control from a dead one.
-                expect(chat.attach_files_button).to_contain_text("9 left", timeout=UI_ELEMENT_TIMEOUT)
+                # The DECREMENT is the evidence, not either endpoint value: a
+                # live control gives a slot back, a dead one does not.
+                expect(chat.attach_files_button).to_contain_text(
+                    f"{remaining_before - 1} left", timeout=UI_ELEMENT_TIMEOUT
+                )
 
                 # Close the plus-menu popper so it cannot overlay the composer.
+                # Clicking the anchor while the popper is open is net-closed by
+                # BOTH paths — handleToggle flips isOpen false, and
+                # handleClickAway fires too because PlusChatButton.jsx excludes
+                # only subMenuRef from click-away, never the anchor. Do not
+                # "fix" this into a plain toggle on that assumption.
                 chat.plus_menu_button.click()
                 expect(chat.attach_files_button).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)
 
@@ -453,19 +491,32 @@ class TestConversationUIElements:
 
             with allure.step("Step 9 — The attachments read tool actually ran and returned the file's content"):
                 events = sorted({str(f.get("event")) for f in frames})
+                # The distinct (event, tool_name) pairs are what separate "the
+                # backend renamed/switched the tool" from "the model declined
+                # to call it" — opposite responses (fix the spec vs re-run),
+                # indistinguishable from the event names alone.
+                tool_pairs = sorted({
+                    (str(f.get("event")), str(f["response_metadata"].get("tool_name")))
+                    for f in frames
+                    if isinstance(f.get("response_metadata"), dict)
+                    and f["response_metadata"].get("tool_name")
+                })
                 matches = [
                     f for f in frames
                     if f.get("event") == "chat_predict_attachment"
                     and f.get("_direction") == "received"
                     and isinstance(f.get("response_metadata"), dict)
-                    and f["response_metadata"].get("tool_name") == "read_multiple_files"
+                    and f["response_metadata"].get("tool_name") == EXPECTED_ATTACHMENT_TOOL
                     and f["response_metadata"].get("tool_output")
                 ]
                 assert len(matches) >= 1, (
                     "Expected >=1 received chat_predict_attachment frame carrying a tool_output "
-                    f"for read_multiple_files; got {len(matches)} of {len(frames)} captured frames "
-                    f"(events: {events}). '0 of 0' means the Socket.IO capture/transport failed "
-                    "(a harness problem); '0 of N' means frames flowed but the read tool did not run."
+                    f"for {EXPECTED_ATTACHMENT_TOOL}; got {len(matches)} of {len(frames)} captured "
+                    f"frames (events: {events}; tool calls seen: {tool_pairs}). Read it as: "
+                    "'0 of 0' -> the Socket.IO capture/transport failed, a HARNESS problem; "
+                    "'0 of N' with other tool names in 'tool calls seen' -> the backend renamed or "
+                    "switched the read tool, so fix this spec; '0 of N' with no tool calls at all "
+                    "-> the model declined to call it this turn, so re-run."
                 )
                 # Assert on EVERY match, never frames[0]: a success-then-failure
                 # pair would otherwise pass on the success.
@@ -484,9 +535,12 @@ class TestConversationUIElements:
                     f"Got: {chat.get_attachment_overflow_count()}"
                 )
 
-            with allure.step("Step 11 — No unexpected console errors"):
+            with allure.step("Step 11 — No unexpected console or page errors"):
                 assert not console_errors, (
                     f"Unexpected console errors during the attachment flow: {console_errors}"
+                )
+                assert not page_errors, (
+                    f"Uncaught page errors during the attachment flow: {page_errors}"
                 )
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0501_chat-ui-elements-model-tools-participants.md", "onetest-ai Test Case link")

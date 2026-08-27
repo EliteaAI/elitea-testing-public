@@ -2040,6 +2040,35 @@ class ChatPage(BasePage):
         ``get_attachment_chip_count() == N`` read)."""
         expect(self.page.locator(self.CHAT_ATTACHMENT_CHIP_PREFIX)).to_have_count(expected_count, timeout=timeout)
 
+    def get_remaining_attachment_slots(self) -> int:
+        """Parse the 'N left' remaining-capacity counter off the Attach Files menu item.
+
+        Requires the plus-menu popper to be OPEN — the labelled
+        ``chat-attach-menuitem-button`` instance only exists in the DOM while
+        it is (``open_attach_menuitem()``).
+
+        The number is ``limits.MAX_ATTACHMENTS - attachments.length``
+        (``attachmentValidationUtils.js`` ``getRemainingAttachmentCapacity``),
+        and ``MAX_ATTACHMENTS`` is a **per-project backend value**
+        (``useChatConfig.js`` -> ``data.chat_max_upload_count``), NOT a product
+        constant — the literal in ``common/constants.js`` is only the
+        client-side fallback used while the config query is in flight. So read
+        this at runtime and assert on the DELTA; never hardcode the baseline.
+
+        Returns:
+            The remaining-slot count.
+
+        Raises:
+            AssertionError: if the label is absent or does not carry a count —
+                a silent 0 would make a decrement assertion pass vacuously.
+        """
+        text = self.attach_files_button.inner_text() or ""
+        match = re.search(r"(\d+)\s+left", text)
+        assert match, (
+            f"Attach Files menu item should carry a 'N left' capacity counter. Got: {text!r}"
+        )
+        return int(match.group(1))
+
     def get_attachment_overflow_count(self) -> int:
         """Parse the '+N' overflow count from the overflow button's text.
 
