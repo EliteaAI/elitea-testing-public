@@ -326,3 +326,34 @@ None.
   vault-dropdown wait is already correct in `open_secret_dropdown()`.
 - Wrap every step in `with allure.step("Step N — …"):`.
 - Register the `beforeunload` dialog handler once at the top of the test (step 9's ⚠️).
+
+## Implementation notes (shipped — amended by the implementer, 2026-08-28)
+
+Spec: `automation/tests/ui/admin/test_hidden_secret_not_breaking_credentials.py`
+(green first run, 54.48 s, 0 reruns). Every assertion above shipped as specified;
+these three are the places where the *how* differs from this file's hints:
+
+1. **Credential id** is captured from the create POST's own response body
+   (`id`), not from the card-click URL — the server tells us directly. A
+   server-side `list_all_credentials()` lookup by `label` remains as an
+   explicit fallback in the spec rather than a guess.
+2. **No `secret_toggle_is_selected()` reader was added.** The Password-mode
+   fallback is asserted with `expect(secret_toggle(key, mode)).to_have_attribute(
+   "aria-pressed", …)` on the EXISTING class-level `FIELD_SECRET_TOGGLE`
+   constant — a compliant testid-only handle, so the extra page-object method
+   would have been dead weight.
+3. **A second, run-unique CONTROL secret is created and deleted** (rather than
+   leaning on a pre-existing project secret), so the "other secrets are still
+   selectable" control is owned by the run and cannot be invalidated by
+   unrelated project data.
+4. **The credential DETAIL route's secret-field handles are driven through
+   `CredentialCreatePage`** — the detail route renders the same shared
+   `SecretField`, and those selectors already live in exactly one page object.
+   Promoting that block to `CredentialFormFieldsMixin` (the pattern the file
+   used for `FIELD_INPUT`/`AUTH_METHOD_RADIO`) is the cleaner end state but is
+   a non-additive edit to a ~20-caller page object — raised to the lead, not
+   done in this PR.
+5. **No console-error assertion** was added: it is outside this case's Coverage
+   Map, and #656 fires deterministically on `/credentials/create-credential/<type>`
+   on dev builds, which would have made this spec a sanctioned-RED the case
+   never asked for.
