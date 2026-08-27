@@ -52,3 +52,4 @@
 - [verify_on_detail_page races SPA route](verify_on_detail_page_races_spa_route_push.md) — call wait_for_page_load() first, always, after any save/nav
 - [UI/flow assumption gate](ui_flow_assumption_gate.md) — test fails, assume UI changed? Verify vs case text first, wait if unconfirmed
 - [Backend API investigation](backend_api_investigation.md) — API fails/wrong data? Isolate, compare CI/local, check retriability
+- [A test owns its preconditions](test_owns_its_preconditions.md) — create every entity the case needs; borrowed data passes dirty, fails clean
