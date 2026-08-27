@@ -54,3 +54,4 @@
 - [Backend API investigation](backend_api_investigation.md) — API fails/wrong data? Isolate, compare CI/local, check retriability
 - [A test owns its preconditions](test_owns_its_preconditions.md) — create every entity the case needs; borrowed data passes dirty, fails clean
 - [Comment quoting a removed raw locator](comment_quoting_removed_raw_locator_trips_reviewer_grep.md) — trips the reviewer's grep; describe it in prose
+- [Early-return null does not mean the observable is gone](early_return_null_does_not_mean_the_observable_is_gone.md) — grep the product for the TEXT before writing "removed"

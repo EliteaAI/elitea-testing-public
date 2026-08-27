@@ -431,7 +431,7 @@ which is the only design that satisfies both "the case demands these exact liter
 | Step 22: Verify header shows toolkit name | Correct name shown | Step 22 | `toolkit-detail-title` text | asserted **(NEW handle)** |
 | Step 23: Verify URL reflects new toolkit | URL contains toolkit ID | Step 23 | dynamic `{id}` in URL | asserted |
 | Step 24: Verify Configuration/Indexes tabs shown | Both tabs present | Step 24 | `toolkit-detail-configuration-tab` + `toolkit-detail-indexes-tab` presence (2-element check) | asserted **(testids added PR #670 review round 1 — see § Implementer Amendments item 6)** |
-| Step 25: Verify TEST SETTINGS panel visible | Panel + model selector + Tool dropdown + welcome msg | Step 25 | 4 element checks, one exact-text welcome-message match | asserted **(NEW handles)** |
+| Step 25: Verify TEST SETTINGS panel visible | Panel + model selector + Tool dropdown + welcome msg | Step 25 | tool-selection entry point asserted via `toolkit-test-empty-tool-select`; model selector moved to Step 28b (renders only after a tool is chosen) | **partially asserted** — the welcome-message sub-observable is NOT asserted: it was relocated to `ToolkitTestEmptyState.jsx` and carries no testid there, so there is no testid-only route to it today. Live coverage gap, owned by **#1857** — see § Adjustment item 9. |
 | Step 26: Click Tool dropdown | Tool list expands | Step 26 | `toolkit-test-tool-select` click opens listbox | asserted **(NEW handle)** |
 | Step 27: Verify tool list incl. List files | All 16 tools incl. List files | Step 27 | `select-option-*` count===16, `select-option-list_files` present | asserted |
 | Step 28: Select List files | Parameters panel appears | Step 28 | `select-option-list_files` click, combobox value updates | asserted |
@@ -823,11 +823,43 @@ Configuration tab) has been superseded by a **further** redesign. Live-confirmed
    variant and is **not rendered on this surface** (source: `LLMModelSelector.jsx`, the
    `if (variant === 'field')` early return — confirmed live, `model-selector-button` absent,
    `model-selector-name` = "Anthropic Claude 4.5 Sonnet").
-9. **The Results column renders nothing before a run** (`ToolkitTestResults.jsx`:
-   `if (!messages.length) return null`), so there is no pre-run welcome message at all —
-   the welcome-message assertion this AFS originally specced is now definitively obsolete
-   (it was already commented out during an earlier repair). `chat-message-list` does not
-   exist until the first run completes.
+9. **The pre-run welcome message was RELOCATED and REWORDED — it was NOT removed from
+   the product.** *(Corrected 2026-08-27, fix round 1 on issue #1815; the earlier
+   reading of this item claimed the observable was gone, and was false.)*
+   It is true that `ToolkitTestResults.jsx:29` early-returns `null` while `messages` is
+   empty, so the message left the **Results** column and `chat-message-list` does not
+   exist until the first run completes. But that proves absence from ONE component, not
+   from the surface. On EliteaUI `origin/main` (verified with a fresh `git fetch origin`)
+   the same guidance renders from the **Test Settings** column's empty state:
+
+   ```
+   src/[fsd]/features/toolkits/ui/toolkit-test/ToolkitTestEmptyState.jsx:29   'Test toolkit'
+   src/[fsd]/features/toolkits/ui/toolkit-test/ToolkitTestEmptyState.jsx:35   'Choose a tool from the list to configure parameters and run the test.'
+   src/[fsd]/features/toolkits/ui/toolkit-test/ToolkitTestPanel.jsx:70        <ToolkitTestEmptyState … />
+   ```
+
+   That is the **same component** carrying `data-testid="toolkit-test-empty-tool-select"`
+   — the handle Step 25 already asserts. The original string ("Welcome! Select a tool from
+   the Test Settings panel and click 'RUN TOOL' to see the results here.") survives on
+   `main` only in the unrelated indexes-chat helper
+   (`src/[fsd]/features/toolkits/indexes/lib/helpers/indexChat.helpers.js:46`).
+
+   **This is a KNOWN COVERAGE GAP CARRIED FORWARD, not a resolved item.** The assertion is
+   not restored in this repair because the text has **no testid and no testid-bearing
+   container** — both `Typography` nodes and both wrapping `Box` elements are bare, and
+   `toolkit-test-empty-tool-select` sits on a **sibling** select control, not a parent — so
+   there is no testid-only route to it today (`.agents/testing.md` § Locator policy: a
+   missing testid is *work to do*, never a deleted observable). Adding the testid inside
+   this repair was ruled against by the lead: a new testid is born on `automation/testids`
+   and reaches EliteaUI `main` only via a human cherry-pick, so asserting it would make
+   this spec **green on localhost and RED on dev.elitea.ai** — the exact deployed-env red
+   card #1815 exists to clear; and adding it *without* a reference is barred by canon
+   ruling #511. **elitea-testing-public#1857 owns the restoration** (testid + assertion
+   together, promotion sequenced).
+
+   **Transferable trap:** *"component X early-returns `null`"* proves an observable is
+   absent from X, not from the surface. Grep the product for the **text** — a redesign
+   usually parks it in the sibling component two lines away in the same panel.
 10. **The result text is unchanged**: `✅ list_files (0.281s)` + `{'total': 0, 'rows': []}`,
     reachable via the existing `RESULT_MESSAGE_ITEM` scoped sub-selector's `text_content()`
     (verified live: the `li` `textContent` is
@@ -911,7 +943,7 @@ The case text should be updated to match the product. Recommended wording:
 |---|---|---|
 | 24 | "Verify 'Configuration' and 'Indexes' tabs are shown at the top" / "Both tabs are present" | "Verify the Configuration form is shown with the Indexes panel beside it on the toolkit detail view" / "The Configuration form and the Indexes panel are both shown" |
 | *(new)* | — | Insert a step between 24 and 25: "Click the 'Test' button in the toolkit's action bar" / "The Test Toolkit view opens at `/toolkits/all/{id}/test`" |
-| 25 | "Verify the 'TEST SETTINGS' panel is visible on the right side with model selector, Tool dropdown, and welcome message" | "Verify the Test Toolkit view shows a 'Test Settings' column with a 'Select Tool' control and a 'Results' column" — the model selector appears only AFTER a tool is chosen, and there is no welcome message any more |
+| 25 | "Verify the 'TEST SETTINGS' panel is visible on the right side with model selector, Tool dropdown, and welcome message" | "Verify the Test Toolkit view shows a 'Test Settings' column with a 'Select Tool' control and the guidance message 'Choose a tool from the list to configure parameters and run the test.', beside a 'Results' column" — the model selector appears only AFTER a tool is chosen; the guidance message was **relocated and reworded**, not removed (it now renders from the Test Settings column's empty state, `ToolkitTestEmptyState.jsx:29,35`, instead of the Results column). **The requirement STAYS in the case — only its wording tracks the product.** |
 | 26 | "In the 'TEST SETTINGS' panel click the 'Tool' dropdown" | "In the Test Settings column click 'Select Tool'" |
 | 27 | "Verify the tool list shows all available tools including 'List files'" | "Verify the tool list shows the toolkit's runnable tools including 'List files'" — index-only tools are excluded by design (11 of 16 for an Artifact toolkit) |
 | 29 | "…and 'RUN TOOL' button" | "…and the 'Run Test' button" |
@@ -938,12 +970,18 @@ changes what the case verifies.
    the assertions byte-identical — `list_files` and `{'total': 0, 'rows': []}` both
    read off the real system's real result. Classification: infrastructure/timing.
    Nothing was weakened; only the wait budget changed.
-2. **The dead `EXPECTED_WELCOME_MESSAGE` constant was removed from the spec.** Per
-   § Adjustment item 9 the welcome message no longer renders in any form
-   (`ToolkitTestResults.jsx` early-returns `null` pre-run), so the constant had no
-   referent and no caller. The shared page object's `get_welcome_message_text()` was
-   left untouched — it lives in a file three sibling specs import, and removing it
-   would be a non-additive change to shared code, out of scope for this repair.
+2. **The dead `EXPECTED_WELCOME_MESSAGE` constant was removed from the spec.** Its
+   literal text no longer renders anywhere on this surface — per § Adjustment item 9 the
+   guidance message was **relocated and reworded** into `ToolkitTestEmptyState.jsx` — so
+   the constant matched nothing and had no caller. *(Corrected 2026-08-27, fix round 1:
+   the earlier wording of this note justified the removal with the false claim that the
+   message "no longer renders in any form". The removal stands; the reason did not.)*
+   The message itself is a **live coverage gap owned by #1857**, not a deleted observable.
+   The shared page object's `get_welcome_message_text()` was deliberately left in place —
+   it lives in a file three sibling specs import, removing it would be a non-additive
+   change to shared code, and #1857 is expected to use it again once the empty state
+   carries a testid. Its own docstring still describes the OLD Results-column message and
+   is stale; correcting it is left to #1857 rather than widened into this repair.
 
 ### Status after adjustment
 

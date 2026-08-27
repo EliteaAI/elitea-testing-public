@@ -591,13 +591,39 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                 expect(test_settings.empty_state_tool_select).to_be_visible(
                     timeout=UI_ELEMENT_TIMEOUT,
                 )
-                # UI CHANGE (#1616): there is no welcome message any more, in any
-                # form. ToolkitTestResults.jsx early-returns `null` while
-                # `messages` is empty, so the Results column renders NOTHING
-                # before the first run and `chat-message-list` does not exist yet.
-                # The obsolete welcome-message assertion is therefore not
-                # replaceable, not merely relocated — the observable is gone from
-                # the product. The TMS case text needs the same update.
+                # UI CHANGE (#1616): the pre-run welcome message was RELOCATED
+                # and REWORDED — it was NOT removed from the product.
+                # ToolkitTestResults.jsx:29 early-returns `null` while `messages`
+                # is empty, so the message left the RESULTS column and
+                # `chat-message-list` does not exist until the first run
+                # completes. That proves absence from ONE component, not from the
+                # surface: on EliteaUI origin/main the same guidance renders from
+                # the Test Settings column's empty state —
+                # src/[fsd]/features/toolkits/ui/toolkit-test/
+                #   ToolkitTestEmptyState.jsx:29  -> 'Test toolkit'
+                #   ToolkitTestEmptyState.jsx:35  -> 'Choose a tool from the list
+                #                                     to configure parameters and
+                #                                     run the test.'
+                # mounted at ToolkitTestPanel.jsx:70 — i.e. the very component
+                # that carries the `toolkit-test-empty-tool-select` testid the
+                # assertion above already uses.
+                #
+                # Why this repair does NOT assert it: that text carries no testid
+                # and has no testid-bearing container — both Typography nodes and
+                # both wrapping Box elements are bare, and
+                # `toolkit-test-empty-tool-select` sits on a SIBLING select
+                # control, not a parent — so there is no testid-only route to it
+                # today (`.agents/testing.md` § Locator policy: a missing testid
+                # is work to do, never a deleted observable). Adding one is
+                # deliberately out of scope here: a new testid is born on
+                # `automation/testids` and reaches EliteaUI `main` only by a human
+                # cherry-pick, so asserting it now would make this spec green on
+                # localhost and RED on dev.elitea.ai — the exact deployed-env red
+                # that issue #1815 exists to clear.
+                #
+                # TODO(#1857): restore this assertion together with the new
+                # testid, with the promotion sequenced. Known coverage gap
+                # carried forward — the observable still exists in the product.
 
             with allure.step("Step 26 — Click the Tool dropdown"):
                 test_settings.empty_state_tool_select.click()
@@ -667,6 +693,15 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                 # (the default model is environment-specific and changes) — if
                 # the platform's default moves to a vendor family not listed
                 # here, add it: that is catalogue drift, not a product defect.
+                #
+                # DECLARED, so the "strengthening" label above does not carry it
+                # silently: this line is a small RELAXATION. The old regex listed
+                # 3 alternatives (anthropic|claude|gpt); this one lists 7
+                # (+openai|gemini|llama|mistral). Family-level is the right
+                # granularity precisely because the default model is
+                # environment-specific, so the wider catalogue costs no real
+                # coverage — but widening it was a choice, not a side effect of
+                # the handle fix, and is named here as such.
                 assert re.search(
                     r"anthropic|claude|gpt|openai|gemini|llama|mistral",
                     model_name,

@@ -358,6 +358,15 @@ class ToolkitTestSettingsPage(BasePage):
         (`✅`/`❌`) appearing in the message list, never a fixed
         sleep (`.agents/testing.md` § no-sleeps rule).
 
+        NOTE (2026-08-27, elitea-testing-public#1815): that ~0.2-3s figure
+        describes the OLD Test Settings surface and no longer sizes the wait.
+        The redesigned Test Toolkit surface runs the tool INSIDE a model turn
+        (the result lands as a chat answer, under a thought accordion), so the
+        realistic budget is a conversation-turn budget, not a REST round-trip
+        — which is why ELITEA-1866's caller passes 60_000 against this
+        signature's 15_000 default. Callers on the redesigned surface should
+        size their own timeout accordingly rather than take the default.
+
         The container REPLACES its content in place rather than appending
         (confirmed live: the pre-run welcome message and the post-run
         result both render as the sole child of
