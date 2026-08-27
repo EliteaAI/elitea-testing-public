@@ -151,19 +151,29 @@ UNBLOCKED. Docs + gate-marker scope only; NO change to any assertion,
 timeout, or the #1127 run-classification logic.**
 
 Rounds 1-2 treated #1127 as one probabilistic defect firing at ~2/5 on
-``create_file``. Two independent live re-measurement rounds on 2026-08-27
-(the merge-gate owner's and the analyst's, every run a separate pytest
-invocation, ``--reruns 0``, against ``http://localhost:5173``, each verdict
-backend-verified via ``ArtifactAPI`` rather than from the DOM alone) show
-that the 2/5 was an aggregate hiding **two deterministic populations, split
-by which tool is called**:
+``create_file``. Three independent live re-measurement sessions on
+2026-08-27 (the merge-gate owner's, the analyst's and this implementer's;
+every run a separate pytest invocation, ``--reruns 0``, against
+``http://localhost:5173``, each verdict backend-verified via ``ArtifactAPI``
+rather than from the DOM alone) show that the 2/5 was an aggregate over two
+populations that behave very differently, split by which tool is called:
 
-===========================================  =======================  ==================
-Trigger                                      2026-08-27                Lifetime
-===========================================  =======================  ==================
-``create_file`` — ELITEA-2215's observable   **11 GREEN / 0 RED**      green
-``delete_file`` — ELITEA-2210's observable   **0 GREEN / 4 RED**       7/7 RED
-===========================================  =======================  ==================
+====================  ====================================  =========================================
+Trigger               2026-08-27                            Lifetime
+====================  ====================================  =========================================
+``create_file``       **14 GREEN / 0 RED**                  no figure claimed — see note below
+(ELITEA-2215)         (lead 6 + analyst 5 + implementer 3)
+``delete_file``       **0 GREEN / 4 RED**                   **9 / 9 RED** (5 on 2026-08-19,
+(ELITEA-2210)         (lead 2 + analyst 2)                  4 on 2026-08-27)
+====================  ====================================  =========================================
+
+**No lifetime figure is claimed for ``create_file``, deliberately.** #1127's
+filed 2026-08-03 evidence records 3 RED occurrences and 2 correct runs, and
+the ticket's own text attributes those correct runs to "real
+``create_file``/``delete_file`` backend execution" — i.e. that 2/5 was an
+aggregate across BOTH triggers, and its per-tool attribution is **not
+recoverable** from the ticket. 14/14 GREEN on 2026-08-27 is the measured
+figure; a tidier per-tool lifetime split would be invented, not observed.
 
 Consequences, each scoped to ONE class:
 
@@ -174,7 +184,7 @@ Consequences, each scoped to ONE class:
   re-classified ``blocked`` → ``ready-for-automation``.
 - ``TestDirectToolkitCallDeleteFileChip`` (ELITEA-2210) is **unchanged and
   still excluded from a green gate** — #1127 reproduces there
-  deterministically (7/7 lifetime) and it merges RED on its own,
+  deterministically (9/9 lifetime) and it merges RED on its own,
   separately-linked sanctioned-RED basis.
 - ``GATE_EXCLUDED_REASON`` below is therefore now **per-node-id, not
   module-wide** — it names the one excluded node id and explicitly names the
@@ -186,7 +196,7 @@ also sends a more forceful message and depends on a seeded file), so tool
 identity is the best-supported discriminator but not an isolated variable —
 this docstring makes no root-cause claim; and the 2026-08-03 2/5 on
 ``create_file`` was real when recorded, so this position rests on *today's*
-11/11, not on a claim that the earlier observation was wrong. The module's
+14/14, not on a claim that the earlier observation was wrong. The module's
 #1127 classification logic (Step 2b's ``soft_failures`` +
 ``ArtifactAPI`` ground-truth tie-breaker) is deliberately left **exactly as
 it was** and is the safety net for that caveat: should #1127 ever fire on
@@ -232,12 +242,13 @@ pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p2, pytest.mark.regr
 GATE_EXCLUDED_REASON = (
     "EXCLUDED (this node id ONLY, not the module): "
     "TestDirectToolkitCallDeleteFileChip::test_direct_toolkit_call_delete_file_chip "
-    "— ELITEA-2210, sanctioned-RED on OPEN known defect #1127 (delete_file: 7/7 RED lifetime, "
-    "deterministic single-cause signature, backend-verified). "
+    "— ELITEA-2210, sanctioned-RED on OPEN known defect #1127 (delete_file: 9/9 RED lifetime — "
+    "5 on 2026-08-19, 4 on 2026-08-27 — deterministic single-cause signature, backend-verified). "
     "NOT EXCLUDED — gate-ELIGIBLE on a plain green gate: "
     "TestDirectToolkitCallCompleteFlow::test_direct_toolkit_call_complete_flow "
-    "— ELITEA-2215, unblocked 2026-08-27 (create_file: 11/11 GREEN, #1127 is tool-dependent and "
-    "does not fire on this trigger). A red on THIS node id is NOT sanctioned — treat it as a blocker. "
+    "— ELITEA-2215, unblocked 2026-08-27 (create_file: 14/14 GREEN on 2026-08-27, backend-verified; "
+    "#1127 has not fired on this trigger). A red on TestDirectToolkitCallCompleteFlow is NOT "
+    "sanctioned — treat it as a blocker. "
     "See AFS test-specs/chat-interface/l2_direct-toolkit-call-complete-flow_ELITEA-2215.md"
 )
 
@@ -466,8 +477,10 @@ class TestDirectToolkitCallCompleteFlow:
 
         if soft_failures:
             pytest.fail(
-                "Non-deterministic known defect observed this run (see module "
-                "docstring 'Fix round 1' note):\n" + "\n".join(soft_failures)
+                "UNEXPECTED recurrence of known defect #1127 on the create_file trigger, which "
+                "measured 14/14 GREEN on 2026-08-27 (module docstring, 'Fix round 3'). This red is "
+                "NOT sanctioned: do not treat it as expected noise. It re-opens the determinism "
+                "question and blocks the gate.\n" + "\n".join(soft_failures)
             )
 
 
@@ -527,13 +540,14 @@ class TestDirectToolkitCallDeleteFileChip:
     executes on this branch (Allure step ``Side-channel check — no
     console/JS errors across the whole flow`` recorded ``passed`` before the
     deferred ``pytest.fail`` fired) — the exact gap this fix round closes.
-    **THIS IS THE STILL-RED CLASS IN THIS MODULE (as of 2026-08-27).** Two
-    further ``delete_file`` runs on 2026-08-27 (analyst re-measurement,
-    ``--reruns 0``, separate invocations, backend-verified) reproduced the
-    byte-identical signature: **7 of 7 RED lifetime, 0 GREEN.** Expect this
-    node id to fail; that failure IS the tracked #1127 signal.
+    **THIS IS THE STILL-RED CLASS IN THIS MODULE (as of 2026-08-27).** Four
+    further ``delete_file`` runs on 2026-08-27 (merge-gate owner 2 + analyst
+    2, ``--reruns 0``, separate invocations, backend-verified) reproduced the
+    byte-identical signature: **9 of 9 RED lifetime, 0 GREEN** (5 on
+    2026-08-19, 4 on 2026-08-27). Expect this node id to fail; that failure
+    IS the tracked #1127 signal.
 
-    Per ``.agents/testing.md`` § Merge gate, 3/3 (now 7/7) IDENTICAL failures
+    Per ``.agents/testing.md`` § Merge gate, 3/3 (now 9/9) IDENTICAL failures
     tied to this single, open, linked defect meets the sanctioned-RED
     exception's own deterministic bar, so this test DOES qualify for
     sanctioned-RED and is excluded from the batch's N-consecutive-green
@@ -544,9 +558,9 @@ class TestDirectToolkitCallDeleteFileChip:
 
     **Do NOT read this class's exclusion as covering the module.** The
     sibling ``TestDirectToolkitCallCompleteFlow`` (ELITEA-2215,
-    ``create_file``) was unblocked on 2026-08-27 — 11/11 GREEN, gate-eligible
-    on a plain green gate — because #1127 turned out to be tool-dependent
-    rather than probabilistic (module docstring, "Fix round 3"). Re-evaluate
+    ``create_file``) was unblocked on 2026-08-27 — 14/14 GREEN on that date,
+    backend-verified, gate-eligible on a plain green gate; #1127 has not
+    fired on that trigger (module docstring, "Fix round 3"). Re-evaluate
     this class (may flip to plain-green-required) once #1127 is fixed or this
     test accumulates a GREEN run.
     """
@@ -679,7 +693,9 @@ class TestDirectToolkitCallDeleteFileChip:
 
         if soft_failures:
             pytest.fail(
-                "Non-deterministic known defect observed this run (see module "
-                "docstring 'Fix round 1' note, TestDirectToolkitCallCompleteFlow):\n"
+                "Known defect #1127 observed this run — the DETERMINISTIC, ticketed delete_file "
+                "signature (9/9 RED lifetime: 5 on 2026-08-19, 4 on 2026-08-27). This node id is "
+                "sanctioned-RED per .agents/testing.md § Merge gate and is the one node id excluded "
+                "from the green gate (see GATE_EXCLUDED_REASON).\n"
                 + "\n".join(soft_failures)
             )
