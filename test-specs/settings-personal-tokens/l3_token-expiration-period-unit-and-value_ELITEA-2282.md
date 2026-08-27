@@ -124,6 +124,12 @@ Console across the whole session: **0 errors**.
    - **Verify (Axis 2)**: the *total* rendered option count is **5** — the case says "at
      least", but a superset would mean an unreviewed unit shipped, and the closed set is
      `EXPIRATION_MEASURES`. Assert exactly 5 and name the constant in a comment.
+     ⚠️ **Amended during implementation (2026-08-27):** a bare
+     `[data-testid^="select-option-"]` prefix counts **6**, not 5 — the same shared
+     component renders a `select-option-selected-icon` check mark inside the
+     currently-selected option (`SingleSelectMenuItem.jsx:141`), and it shares the
+     prefix. The option-count selector must exclude it:
+     `'[data-testid^="select-option-"]:not([data-testid="select-option-selected-icon"])'`.
 
 4. **Step 4 — Select "Days" and enter value "7".**
    - Click `select-option-days`.
@@ -193,6 +199,12 @@ plus a small method, never an inline `get_by_test_id(f"…")`:
 ```python
 # class level — keeps the testid pattern in the greppable inventory
 EXPIRATION_MEASURE_OPTION_SELECTOR = '[data-testid="select-option-{}"]'
+# ⚠️ amended during implementation: the selected option carries a
+# `select-option-selected-icon` child that shares the prefix — exclude it, or the
+# count reads 6 for a 5-option select (measured live 2026-08-27).
+EXPIRATION_MEASURE_OPTION_PREFIX_SELECTOR = (
+    '[data-testid^="select-option-"]:not([data-testid="select-option-selected-icon"])'
+)
 
 def get_expiration_measure_option(self, measure: str):
     """Option in the open expiration-unit dropdown (`EXPIRATION_MEASURES`)."""
