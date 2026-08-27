@@ -374,6 +374,23 @@ later red can abort the run.
   is rejected with `socket_validation_error`, which the UI swallows.
 - Keep the declared **transit** substitution wording; do not extend it.
 
+**Resolved/added during ELITEA-2214 implementation (2026-08-27, implementer slot):**
+the frame collector has a non-obvious failure mode this AFS did not name, and it
+costs a FALSE RED on hard row G if missed. Playwright's **sync** API dispatches
+page events (`websocket` / `framesent` / `framereceived`) only while the calling
+thread is inside a Playwright call. A `time.sleep`-based poll waiting for the
+resume frame therefore **starves the dispatcher**: measured here, the frame list
+stayed frozen at 18 entries for a full 15 s poll, and the `chat_continue_predict`
+frame plus its three `socket_validation_error` replies materialised *instantly*
+the moment any Playwright call was made — so the spec reported "the decision
+never left the browser" while the browser had in fact sent it, 2 runs running.
+The poll step must be a Playwright call (`page.wait_for_timeout(...)`, declared
+as an improvisation since the project otherwise forbids it — it pumps the driver,
+it does not stand in for a condition wait). This is also why the in-repo
+precedent's usage example puts `page.wait_for_timeout(5000)` after its HITL
+click. Row H needs no such poll: row I's 60 s response wait pumps the driver
+continuously, so every frame is dispatched by the time H reads them.
+
 ## Fidelity Declaration
 
 | What is substituted | Transit or terminal | Authority / real observable |
