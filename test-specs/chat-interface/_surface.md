@@ -4523,6 +4523,13 @@ not an illustration.
   class (an implementer dispatch owns correcting the module docstring/marker; the analyst
   does not touch `automation/`). `TestDirectToolkitCallDeleteFileChip` stays sanctioned-RED
   on #1127 and stays gate-excluded.
+  - **Corrected by PR #1844 (2026-08-27) — the "stale" note above is now history.**
+    `GATE_EXCLUDED_REASON` has been rescoped from module-wide to the single node id
+    `TestDirectToolkitCallDeleteFileChip::test_direct_toolkit_call_delete_file_chip`, and
+    it now names `TestDirectToolkitCallCompleteFlow` explicitly as NOT excluded. No
+    implementer dispatch is outstanding for this; don't re-open it. The AFS
+    cross-references were swept the same day (`lcovered_..._ELITEA-2474.md`,
+    `lextend_..._ELITEA-2210.md` — both carry dated supersession notes).
 - **Caveat — don't over-read "tool-dependent":** the two classes also differ in message
   wording (the delete class sends an explicit "execute the tool now" instruction) and in
   precondition (a seeded file). Tool identity is the best-supported discriminator — the
