@@ -31,8 +31,16 @@ Everything on that surface kept its testids (`toolkit-test-empty-tool-select`,
 `model-selector-button` is NOT rendered here — `LLMModelSelector variant="field"`
 early-returns with only `model-selector-name`.
 `chat-message-list` does not exist until the first run completes
-(`ToolkitTestResults.jsx` returns null while `messages` is empty) — so there is no
-pre-run welcome message to assert.
+(`ToolkitTestResults.jsx:29` returns null while `messages` is empty). **That is
+absence from the RESULTS column only — do NOT infer the welcome message is gone**
+(corrected 2026-08-27, fix round 1 on #1815; the original wording of this note made
+exactly that wrong inference). The guidance message was RELOCATED and REWORDED into
+the Test Settings column's empty state — `ToolkitTestEmptyState.jsx:29,35`, mounted
+at `ToolkitTestPanel.jsx:70`, the same component that carries
+`toolkit-test-empty-tool-select`. It carries no testid and has no testid-bearing
+container there, so there is no testid-only route to it today: a **live coverage gap
+owned by #1857**, not a deleted observable. See
+`early_return_null_does_not_mean_the_observable_is_gone.md`.
 
 **Timing:** RUN TOOL is an LLM-mediated conversation turn (posts a conversation +
 participant; the tool runs server-side inside it), NOT a REST call. Budget 60s,

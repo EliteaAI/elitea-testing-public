@@ -40,3 +40,29 @@ EliteaUI `main` only by human cherry-pick → green on localhost, RED on dev): d
 add the testid, do NOT assert it, do NOT claim it is gone. State the relocation with
 file:line, keep a live `TODO(#<issue>)`, and file an issue owning testid + assertion
 together with the promotion sequenced. A visible, tracked gap beats a false closure.
+
+**Retracting a claim is a SWEEP, not a patch (fix round 2 cost).** Round 1 corrected
+the five sites the review named plus two more I found — and still shipped two
+survivors: my own earlier memory entry in the same directory, and a shared page
+object's docstring. Grep for the *idea*, across every artifact class that can carry
+prose, before declaring a retraction done:
+
+```bash
+grep -rnEi "(welcome|no longer renders|no longer exists|is gone|returns? null|not replaceable)" \
+  automation/pages automation/tests test-specs .agents/memory/<your-role>
+```
+
+Artifact classes that carry claims: spec comments · AFS prose · page-object
+docstrings · role memory (committed on the branch, so it merges with the PR — it is
+NOT private scratch) · commit-message bodies.
+
+**A docstring that states a contract the body no longer honours is worse than stale
+UI prose** — `get_welcome_message_text()` said "before any tool has run, this is the
+welcome message" while its body waits on a container that per this very repair does
+not exist pre-run, i.e. it instructed callers to do the one thing that now
+deterministically times out.
+
+**Proving a doc-only fix is runtime-safe:** `ast.parse` both revisions, strip
+docstrings from the AST, `ast.dump`-compare. Comments never enter the AST, so this
+also rules out a silently changed string literal or continuation line — much stronger
+than reading the `+`/`-` lines.

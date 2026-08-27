@@ -329,6 +329,21 @@ class ToolkitTestSettingsPage(BasePage):
         not appended to — confirmed live, message count stays at 1 both
         before and after RUN TOOL).
 
+        NOTE (2026-08-27, elitea-testing-public#1815): the PRE-RUN half of the
+        description above is HISTORICAL and no longer holds. #1616 moved the
+        pre-run message out of this container — `ToolkitTestResults.jsx:29`
+        returns `null` while `messages` is empty, so
+        :attr:`result_message_list` does not exist at all before the first run
+        and calling this method pre-run now times out instead of returning the
+        welcome text. The guidance message itself was NOT removed from the
+        product: it was relocated and reworded into the Test Settings column's
+        empty state (`ToolkitTestEmptyState.jsx:29,35`), where it carries no
+        testid and no testid-bearing container, so it cannot be asserted
+        testid-only today — a live coverage gap owned by
+        elitea-testing-public#1857. This method is retained deliberately for
+        #1857 and remains valid for its POST-run use: the container does exist
+        once a run has completed.
+
         Args:
             timeout: Maximum wait time in milliseconds for the container to
                 become visible.
