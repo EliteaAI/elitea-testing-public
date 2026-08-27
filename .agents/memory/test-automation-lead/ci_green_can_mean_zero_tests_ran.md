@@ -52,3 +52,31 @@ Filed as [#1822](https://github.com/EliteaAI/elitea-testing-public/issues/1822) 
 fix is to hard-fail when `skipped == tests` or when the skip reason is an infra one.
 
 Related: [[gating_a_fix_on_dev_via_workflow_dispatch]]
+
+## 2026-08-27 — this is now a SUSTAINED OUTAGE, and the nightly is affected
+
+Not a one-off any more. Measured by `grep -c` over each run's `agents` job log:
+
+| Run | UTC | SKIPPED | PASSED |
+|---|---|---|---|
+| 32931571484 | 08-26 **04:48** | 0 | **27** |
+| 32999476644 | 08-26 **18:23** | **33** | 1 |
+| 33039314963 | 08-27 04:24 — **scheduled nightly, `main`** | all | 0 |
+| 33043606347 | 08-27 05:47 — my own verification run | all | 0 |
+
+DEV Keycloak rejects **every** automation user (`autotest_user_1`, `autotest_user_5`
+confirmed) with `Login failed: 200 .../realms/dev/login-` — the `200` means the login
+page re-renders, i.e. credentials rejected, not a service outage. Broke between
+08-26 04:48 and 18:23. Filed **#1850**; the masking half is **#1845** (occurrence +
+timeline added there).
+
+**The consequence that actually bites this role:** the `[Fix]` cards this factory works
+are generated from these runs. A silently-skipped test can never be reported as failing,
+so **"no new [Fix] cards" reads as "the suite got healthier" when it means "the suite
+stopped running."** Absence of red is not evidence of green. Before treating a quiet
+period as improvement, check a recent run's SKIPPED-vs-PASSED counts.
+
+**Operational rule, reinforced:** the 04:48 control run is what made the diagnosis
+airtight — same workflow, same realm, same users, 27 tests genuinely executed. When a
+run looks empty, find the last run that wasn't and diff the conditions; don't reason
+from the failing run alone.

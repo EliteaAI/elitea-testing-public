@@ -95,3 +95,5 @@
 - [A flake rate may be an aggregate](flake_rate_may_be_an_aggregate.md) — re-measure a park's defect rate SPLIT BY TRIGGER
 - [PR "Fixes #N" auto-closes the issue](pr_fixes_keyword_auto_closes_issue.md) — use `Refs #N`; Done/close is human-only
 - [A gate that passed WITH reruns is not clean](rerun_tainted_gate_is_not_a_clean_gate.md) — accept on `reruns.json == {}`, re-gate otherwise
+- [Fix branch off main truncates memory](fix_branch_off_main_split_the_memory_commit.md) — keep the PR spec-only; land memory directly on `automation/base`; never `cp` over a tracked file
+- [A local gate can't verify a deployed-only race](local_gate_cannot_verify_a_deployed_only_race.md) — 3× green = non-regression only; get source verification + a red-green check, and say so
