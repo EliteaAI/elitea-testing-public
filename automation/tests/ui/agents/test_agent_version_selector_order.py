@@ -30,6 +30,13 @@ version: position and pin are decoupled, so ``base`` can be simultaneously
 pinned AND last. This test therefore asserts the pin icon's *migration*
 (Step 8) and, separately, that re-pinning does NOT reorder the dropdown.
 
+TIMESTAMP ORACLE — the rendered date/time in Step 4 is asserted against the
+value the API itself reports for that version, never against the test machine's
+clock. ``formatVersionMeta()`` skips the codebase's own ``convertTime()``
+``Z``-normalizer, so the dropdown shows the SERVER's wall clock labelled as
+local; a clock-based expectation would false-fail by the UTC offset on a
+developer machine while passing on UTC CI. See ``_expected_created_label()``.
+
 Both testids this case relies on are pre-existing and present on EliteaUI
 ``main`` (verified by two-ref grep at repair time):
 - ``version-option-pin-icon`` — scoped inside the already-testid'd
@@ -47,7 +54,7 @@ Spec: test-specs/agents/l2_version-selector-lists-all-versions-order-metadata_EL
 
 import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import allure
 import pytest
@@ -99,21 +106,41 @@ _MONTH_ABBR = (
 )
 
 
-def _acceptable_created_dates() -> set[str]:
-    """The ``"Mon DD, YYYY"`` strings a version created by THIS run may
-    legitimately show.
+def _expected_created_label(created_at: str) -> tuple[str, str]:
+    """Expected ``("Mon DD, YYYY", "HH:MM")`` for a raw backend ``created_at``.
 
-    formatVersionMeta() derives the parts from ``new Date(created_at)`` using
-    the browser's LOCAL timezone, and the browser runs on this same machine,
-    so ``datetime.now()`` is the right clock to compare against. The
-    ten-minutes-ago entry exists solely so a run straddling local midnight
-    can't false-fail — the versions under test are seconds old.
+    THE ORACLE IS THE API RESPONSE, NOT THE TEST'S CLOCK. This mirrors exactly
+    what ``formatVersionMeta()`` does to the same raw string, so the assertion
+    is a pure UI-fidelity check with no coupling to the machine's timezone.
+
+    What it mirrors, and why the mirror is shaped this way: this backend
+    serializes NAIVE timestamps (no ``Z``, no offset). The codebase has its own
+    normalizer for that — ``convertTime()`` in
+    ``src/common/convertChatConversationMessages.js:25``, which appends ``Z``
+    when a stamp carries neither — and the notification and chat renderers call
+    it. ``version.helpers.jsx:6-13`` does NOT: it runs ``new Date(created_at)``
+    on the raw string and then reads ``getDate()/getFullYear()/getHours()/
+    getMinutes()``. With no offset in the input there is nothing to convert
+    from, so those local getters hand back the string's own digits — the
+    dropdown renders the SERVER's wall clock, labelled as local.
+
+    Hence: a naive stamp is used VERBATIM. A tz-aware stamp (should the backend
+    ever start sending one) is converted to local first, which is what
+    ``new Date()`` + the local getters would then genuinely do. Either branch
+    reproduces the product's own arithmetic rather than assuming a timezone.
+
+    (The UTC-vs-local inconsistency between this dropdown and the notification/
+    chat renderers is a real product observation, filed separately by the lead.
+    This helper deliberately mirrors the product as it is — it does not
+    compensate for it, which would hide the very thing that was filed.)
     """
-    now = datetime.now()
-    return {
-        f"{_MONTH_ABBR[when.month - 1]} {when.day:02d}, {when.year}"
-        for when in (now, now - timedelta(minutes=10))
-    }
+    stamp = datetime.fromisoformat(created_at)
+    if stamp.tzinfo is not None:
+        stamp = stamp.astimezone().replace(tzinfo=None)
+    return (
+        f"{_MONTH_ABBR[stamp.month - 1]} {stamp.day:02d}, {stamp.year}",
+        f"{stamp.hour:02d}:{stamp.minute:02d}",
+    )
 
 
 def _build_dedicated_agent_payload(name: str) -> dict:
@@ -260,6 +287,12 @@ class TestAgentVersionSelectorOrder:
                 assert detail_page.is_version_option_pinned("base"), (
                     "'base' should still show the pin icon before the re-pin"
                 )
+                assert len(order_before_repin) == 4, (
+                    "VERSION dropdown should list all 4 versions before "
+                    "indexing into the order — a dropped option must fail by "
+                    f"name here, not as an IndexError below, got "
+                    f"{order_before_repin!r}"
+                )
                 assert order_before_repin[-1] == "base", (
                     "'base' should sort LAST even while it IS the "
                     "pinned/default version — the comparator puts base last "
@@ -313,10 +346,12 @@ class TestAgentVersionSelectorOrder:
 
             with allure.step(
                 "Step 4 — Verify each entry shows the version name plus its "
-                "creation date AND time of day AND author (one option "
-                "element, name and metadata as sibling nodes — EliteaUI #857 "
+                "creation date AND time of day AND author, with the rendered "
+                "date/time checked against the value the API itself reports "
+                "for that version (the response is the oracle — no coupling "
+                "to the test machine's clock or timezone). EliteaUI #857 "
                 "added the time and the author to what used to be a bare "
-                "'{name} - {DD.MM.YYYY}')"
+                "'{name} - {DD.MM.YYYY}'"
             ):
                 option_text = detail_page.get_version_option_text(V2_NAME)
                 match = OPTION_TEXT_PATTERN.match(option_text)
@@ -329,12 +364,23 @@ class TestAgentVersionSelectorOrder:
                     f"Version option text's name part should be {V2_NAME!r}, "
                     f"got {match.group('name')!r}"
                 )
-                acceptable_dates = _acceptable_created_dates()
-                assert match.group("created_date") in acceptable_dates, (
-                    "Version option's creation date should be today — the "
-                    "version was created seconds ago by this very test — "
-                    f"expected one of {sorted(acceptable_dates)}, got "
+                v2_created_at = next(
+                    version["created_at"]
+                    for version in agent_api.get_agent(agent_id)["versions"]
+                    if version["name"] == V2_NAME
+                )
+                expected_date, expected_time = _expected_created_label(v2_created_at)
+                assert match.group("created_date") == expected_date, (
+                    f"Version option's rendered creation DATE should be the "
+                    f"one the API reports for {V2_NAME!r} — raw created_at "
+                    f"{v2_created_at!r} renders as {expected_date!r} — got "
                     f"{match.group('created_date')!r} in {option_text!r}"
+                )
+                assert match.group("created_time") == expected_time, (
+                    f"Version option's rendered creation TIME should be the "
+                    f"one the API reports for {V2_NAME!r} — raw created_at "
+                    f"{v2_created_at!r} renders as {expected_time!r} — got "
+                    f"{match.group('created_time')!r} in {option_text!r}"
                 )
                 assert match.group("author") != "Author unavailable", (
                     "Version option should name the real author who created "

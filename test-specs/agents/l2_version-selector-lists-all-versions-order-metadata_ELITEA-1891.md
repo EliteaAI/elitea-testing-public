@@ -90,8 +90,19 @@ in one pass:
      `localhost:5173` at repair time: `"baseAug 13, 2026, 11:15 · by Test Bot"`.
    - Automate against `^{name}{Mon DD, YYYY, HH:MM} · by {author}$`. The author segment always renders
      (`author_name` → `author_email` → the literal `"Author unavailable"`), so requiring it is safe.
-     Assert the rendered date is today's (the versions are seconds old) and that the author is not the
-     `"Author unavailable"` fallback — both are system-produced values, no fabrication.
+     Assert the author is not the `"Author unavailable"` fallback.
+   - **The rendered date AND time are asserted against the API's own `created_at` for that version — the
+     response is the oracle** (`.agents/testing.md` § Fidelity policy). Do NOT compare against the test
+     machine's clock: `formatVersionMeta()` runs `new Date(created_at)` + local getters **without** the
+     codebase's own `convertTime()` `Z`-normalizer (`src/common/convertChatConversationMessages.js:25`,
+     which the notification and chat renderers DO call), and the backend sends NAIVE stamps — so there is
+     no offset to convert from and the getters return the string's own digits. The dropdown therefore
+     shows the **server's** wall clock labelled as local, and any clock-based expectation false-fails by
+     `|server UTC − machine local|` (up to ±14 h) while passing on UTC CI runners. Mirror the product's
+     arithmetic instead: naive stamp → use verbatim; tz-aware stamp → convert to local first.
+     (`test_agent_version_selector_order.py::_expected_created_label` is the worked mirror.) The
+     UTC-vs-local inconsistency itself is a real product observation, filed separately by the lead — the
+     test mirrors it rather than compensating for it, so the filing stays visible.
 5. Verify base version appears last.
    - **AMENDED post-#857 — Verify PASSES UNCONDITIONALLY.** The pre-#857 condition recorded here
      ("only once `base` is not itself the pinned/default version") is **OBSOLETE**: the comparator's
@@ -100,6 +111,15 @@ in one pass:
      option while it is still the pinned/default version, and still last after the pin moves away.
    - This makes the assertion **stronger** than the pre-#857 one: it is now asserted against a PINNED
      base (the case that used to contradict it), not merely against an unpinned one.
+   - ⚠️ **Honest limit of this assertion — it does NOT isolate the `LATEST_VERSION_NAME` early return.**
+     With this Test Data, `base` is also the OLDEST version by construction, so plain `created_at DESC`
+     would sink it anyway. "base last because the comparator special-cases it" and "base last because it
+     happens to be oldest" are **indistinguishable** here. This is not fixable within the case: `base` is
+     created with the agent, so it is always the oldest — isolating the special case would need a version
+     created with a backdated `created_at`, which no UI or API flow in this case's scope can produce. The
+     assertion is still worth making (it is the case's own step 5, and it catches any regression that
+     moves `base` off the bottom), but it must not be described as pinning down the base-last RULE. The
+     rule's other half — that pin state does not affect position — IS isolated, by the Step 8 differential.
 6. Verify Draft named versions appear above base.
    - **Verify — PASSES.** Both `v1-early-draft` and `v3-latest-draft` (Draft) render above
      `version-option-base` in every configuration observed this run.

@@ -879,8 +879,13 @@ class AgentDetailPage(AgentFormPage):
 
     def get_version_option_text(self, version_name: str) -> str:
         """Return a version option's own rendered text, e.g.
-        ``"v2-published - 01.08.2026"`` (name + date baked into one text
-        node — see ``VERSION_OPTION`` above; ELITEA-1891).
+        ``"v2-publishedAug 27, 2026, 14:50 · by Test Bot"`` (ELITEA-1891).
+
+        The name and the metadata line are SIBLING nodes inside the same
+        ``version-option-{name}`` element since EliteaAI/EliteaUI@cf648e9a
+        (PR #857), so this concatenates them with NO separator. Metadata shape
+        is ``"{Mon DD, YYYY, HH:MM} · by {author}"`` — the pre-#857
+        ``"{name} - {DD.MM.YYYY}"`` form is gone. See ``VERSION_OPTION`` above.
 
         LOCATOR: dynamic ``version-option-{version_name}`` testid. Call
         after ``open_version_selector()``.
