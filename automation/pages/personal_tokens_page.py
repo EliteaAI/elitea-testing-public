@@ -119,6 +119,20 @@ class PersonalTokensPage(BasePage):
         description="Delete dialog's confirm button — disabled until the typed "
         "name matches the entity name exactly.",
     )
+    delete_confirm_title = LocatorDescriptor(
+        testid="delete-confirm-title",
+        description='Delete dialog title — exact text "Delete confirmation" '
+        "(shared DeleteEntityModal; testid pre-existing, ELITEA-2281).",
+    )
+    delete_confirm_message = LocatorDescriptor(
+        testid="delete-confirm-message",
+        description="Delete dialog body text — "
+        '"Are you sure to delete the {name}? Enter the name to complete the action."',
+    )
+    delete_confirm_cancel_button = LocatorDescriptor(
+        testid="delete-confirm-cancel-button",
+        description='Delete dialog\'s Cancel button — exact text "Cancel".',
+    )
 
     # Scoped sub-selectors — count/prefix assertions within a parent testid,
     # per .agents/testing.md § Locator policy (UPPER_CASE class constants).
@@ -353,6 +367,59 @@ class PersonalTokensPage(BasePage):
         self.delete_confirm_name_input.press_sequentially(name, delay=20)
         expect(self.delete_confirm_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
 
+    def type_delete_confirm_name(self, text: str, click_first: bool = True) -> None:
+        """Type *text* into the delete dialog's type-to-confirm Name field
+        WITHOUT asserting the Delete button's resulting state.
+
+        The sibling of :meth:`fill_delete_confirm_name` for the negative half
+        of the exact-match gate (ELITEA-2281 step 5): typing a PREFIX must
+        leave Delete disabled, so a helper that waits for "enabled" cannot be
+        used there. Pass ``click_first=False`` to continue typing into the
+        already-focused field without moving the caret (a second click could
+        land mid-string and interleave the characters).
+        """
+        if click_first:
+            self.delete_confirm_name_input.click()
+        self.delete_confirm_name_input.press_sequentially(text, delay=20)
+
     def confirm_delete(self) -> None:
         """Click the delete-confirmation dialog's Delete button."""
         self.delete_confirm_button.click()
+
+    def _is_token_delete_response(self, response) -> bool:
+        """True for a token DELETE (`useTokenDeleteMutation`, by uuid)."""
+        return (
+            TOKEN_LIST_URL_SUBSTRING in response.url
+            and response.request.method == "DELETE"
+        )
+
+    def confirm_delete_and_wait_for_response(self, timeout: int = NAVIGATION_TIMEOUT):
+        """Click Delete and return the Playwright ``Response`` for the
+        ``DELETE /auth/token/{uuid}`` it fires (204, empty body — never call
+        ``.json()`` on it).
+
+        The side-channel proof that the deletion reached the backend, rather
+        than a row vanishing client-side (ELITEA-2281 step 5).
+        """
+        with self.page.expect_response(
+            self._is_token_delete_response, timeout=timeout
+        ) as resp_info:
+            self.confirm_delete()
+        return resp_info.value
+
+    def reload_and_wait_for_tokens(self, timeout: int = NAVIGATION_TIMEOUT):
+        """Reload /settings/tokens and return the ``Response`` for the token
+        list GET the reload triggers.
+
+        Waits for the first row to become visible afterwards — the page shows
+        a ``CircularProgress`` for ~2-2.5 s on every load, so a bare read
+        straight after the reload sees no rows (surface digest § Mount
+        timing). Returning the response lets a caller assert against the API
+        payload itself, independent of the DOM (ELITEA-2281 step 7).
+        """
+        with self.page.expect_response(
+            self._is_token_list_response, timeout=timeout
+        ) as resp_info:
+            self.page.reload()
+        self.token_row.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        return resp_info.value
