@@ -62,3 +62,4 @@
 - [expect.poll is not a Python Playwright API](expect_poll_is_not_a_python_playwright_api.md) — JS-only; raises AttributeError at runtime
 - [Chat turn dies silently? Read the Socket.IO frames](chat_turn_dies_silently_read_the_socketio_frames.md) — clean HTTP+console != no error
 - [wait_for_timeout as a DRIVER PUMP](wait_for_timeout_as_a_driver_pump_is_a_third_shape.md) — time.sleep starves Playwright sync event dispatch; false RED
+- [Shared-worktree branch race on parallel dispatch](shared_worktree_branch_race_on_parallel_dispatch.md) — verify branch AT commit; "up-to-date" push = red flag
