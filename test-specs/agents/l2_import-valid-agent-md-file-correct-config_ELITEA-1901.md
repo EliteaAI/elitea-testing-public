@@ -131,11 +131,19 @@ the test, so removing it removes **nothing the case asked for**.
 
 The removed assertion's only real function was incidental: because
 `get_agent_card_names()` swallows its `wait_for` timeout and returns `[]`
-(`agents_list_page.py:254-257`), a truthiness check on it did fail when the
+(`agents_list_page.py:303-305`), a truthiness check on it did fail when the
 list failed to render. The replacement preserves that **and strengthens it** —
 `empty-state-title` is gated on `!isLoading && !isError`, and `entity-card-name`
 only exists on a rendered card, so the disjunction cannot pass while the list
-is still loading or has errored. What is lost is only the environment
+is still loading or has errored. That claim is scoped to **card view in
+non-folder view**: an empty *folder* view renders a bare, testid-less
+`<Typography>No items in this folder yet</Typography>`
+(`PrivateAgentsList.jsx:224-227`, with `showCustomEmptyState` true so
+`EmptyListBox` is never reached), and *table* view has no `entity-card-name`
+equivalent (`Card.jsx:270` is its only binding) — both are settled, non-error
+renders that match neither branch. Neither is reachable from this test's fresh
+`/agents/all` navigation, and table view is identical exposure to the
+assertion this replaced. What is lost is only the environment
 assumption. Card rendering itself is still verified honestly at Step 6, using
 an agent **this test imported**, which is the correct place for it.
 
@@ -336,8 +344,8 @@ empty-state-title            main:YES  testids:YES
 (`src/[fsd]/entities/empty-state-page/`), which is the compliant shape for
 shared components per `.agents/testing.md` § Locator policy — it is NOT a
 feature-scoped testid hardcoded in a shared component. It is also already
-established precedent in this suite: `automation/pages/mcp_list_page.py:192`
-and `automation/pages/toolkits_list_page.py:68` both bind it as
+established precedent in this suite: `automation/pages/mcp_list_page.py:138`
+and `automation/pages/toolkits_list_page.py:69` both bind it as
 `empty_state_title`, consumed by three merged specs. On the Agents page it
 renders **exactly once** when the list is empty and is **absent** when cards
 render (both states observed live), so the disjunction is unambiguous.

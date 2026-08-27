@@ -28,6 +28,15 @@ errored. A `get_agent_card_names()` truthiness check could silently tolerate
 exactly that, because the method swallows its `wait_for` timeout and returns
 `[]`.
 
+**Scope it when you write the comment: card view, non-folder view.** Two
+settled, non-error renders match NEITHER branch — an empty *folder* view
+(`PrivateAgentsList.jsx:224-227` passes a bare testid-less
+`<Typography>No items in this folder yet</Typography>` as `customEmptyState`,
+so `EmptyListBox` never renders) and *table* view (`entity-card-name` lives
+only in `Card.jsx:270`; `DataTable` has no equivalent). Also note the
+selector is page-level and unscoped: a future shared empty state on the same
+route would satisfy the oracle spuriously.
+
 **`empty-state-title` is generic and shared** (`EmptyStatePage.jsx:49`) —
 already bound by `ToolkitsListPage` and `McpListPage`, so the same pattern
 transfers to Skills / Pipelines / Credentials / MCP list pages verbatim.
