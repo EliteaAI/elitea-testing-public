@@ -102,3 +102,4 @@
 - [Disprove the convenient root cause](disproof_beats_a_plausible_root_cause.md) — ask what symptom each rival cause produces; accept "undetermined"
 - [A new testid inside a CI-red fix is self-defeating](a_new_testid_inside_a_ci_red_fix_is_self_defeating.md) — repair path: promotion ordering beats "missing testid ⇒ add it"; file a card that owns testid+assertion+promotion together
 - [Grep your PR body for closing keywords](check_pr_body_for_closing_keywords_before_opening.md) — an action before `gh pr create`, not a fact to recall; commit bodies too
+- [Removing a false-RED guard can create a silent false-GREEN](removing_a_false_red_guard_can_create_a_false_green.md) — check what still fails before deleting an over-strict assert
