@@ -454,3 +454,71 @@ by ELITEA-2337/2338/2343 analyst sessions (same day).
   `curl -s "http://localhost:5173/src/%5Bfsd%5D/.../File.jsx" | grep -c "<testid>"`
   before concluding "the testid does not render" — that check costs one command and
   distinguishes a stale dev server from a wiring mistake.
+
+## Copy-on-click / delete-cancel / name-required / name-uniqueness
+## (ELITEA-2335/2339/2340/2341, combined analyst+implementer session, 2026-08-27)
+
+- **Toasts on this surface are testid-locatable and were never used here before.** The
+  shared `src/components/Toast.jsx` already carries `toast-alert` (with a
+  `data-severity="{error|success|info|warning}"` attribute) and `toast-message`, both
+  pre-existing on `main`. Durations are severity-dependent
+  (`TOAST_DURATION_DEFAULTS`, `src/common/constants.js:345`): **error 10 s, warning 7 s,
+  success 3 s, info 3 s**. Earlier digest entries said "the success toast has no testid,
+  don't gate automation on it" — that is **superseded**: it does, app-wide. The 3 s
+  info/success window is why a one-shot `text_content()` read misses it (it did, live);
+  use a web-first `expect(...).to_have_text(...)` attached immediately after the action,
+  or a `MutationObserver` when exploring by hand.
+
+- **Clicking the masked value copies the plaintext (ELITEA-2335, confirmed live).**
+  `SecretValueCell.jsx` wraps the `secret-value-cell` label in an MUI `Button` whose
+  `onClick` is `handleDirectCopy`: `showSecret` → `GET /api/v2/secrets/secret/default/
+  {project_id}/{name}` → 200 → `copyToClipboard(data.value)` → `toastInfo`. Live toast
+  text, verbatim: **`The <name> values have been copied.`** (severity `info`). The masked
+  cell text does NOT change — copying is not revealing. On **Safari** the handler is
+  `undefined` (`isSafari()`) and the tooltip switches to "Use copy icon in actions to copy
+  secret" — Chromium is the automated target, so the handler is live there.
+  ⚠️ **The Playwright-MCP browser cannot READ the clipboard**
+  (`NotAllowedError: Read permission denied`) — but the pytest context can:
+  `automation/conftest.py:304` grants `clipboard-read`/`clipboard-write`, and
+  `BasePage.get_clipboard_text()` / `clear_clipboard()` already exist. The clipboard
+  **write** still demonstrably works in an MCP session (the success toast only fires when
+  `copyToClipboard` resolves), so an MCP walk can confirm everything except the readback.
+
+- **Cancelling a delete is purely client-side (ELITEA-2339, confirmed live).**
+  `delete-confirm-cancel-button` closes the shared `DeleteEntityModal` with **zero**
+  network requests; the row, its name cell and its masked value cell are unchanged, and
+  `delete-confirm-button` is `disabled` until the exact name is typed (re-confirmed).
+  ⚠️ `delete-confirm-name-input` is on the **MUI `TextField` root `<div>`**, not on the
+  native `<input>` — `.fill()` on the testid itself errors with *"Element is not an
+  &lt;input&gt;…"*; the page object's `fill_delete_confirm_name()` already handles this,
+  but a hand-driven MCP walk must target `[data-testid="delete-confirm-name-input"] input`.
+
+- **An EMPTY secret name is NOT validated (ELITEA-2340) — filed as bug `#1903`.**
+  `EditSecretInputGridTable.jsx`'s only validation is
+  `field === 'name' && inputValue && !SECRET_NAME_PATTERN.test(inputValue)` — the
+  `inputValue &&` guard short-circuits on `''`, so an empty name yields no error, and the
+  Save (✓) button (`disabled={hasValidationErrors}`) stays **ENABLED** with no
+  `secret-name-error`, even though the component passes `required` to the input. Live:
+  `saveDisabled: false`, `nameErrorText: null`, `helperTexts: []`. Siblings on other
+  surfaces: `#1004`, `#526` (closed), `#633`. **Not probed:** what a Save click with an
+  empty name actually does — `useSecretRowUpdate` drops the row only when name AND value
+  are both empty, so it would POST `name: ""` into shared project data and could leave an
+  unnamed secret with no deletable URL path. Don't probe it casually.
+
+- **Name uniqueness is enforced SERVER-SIDE only (ELITEA-2341, confirmed live).** Typing an
+  existing secret's name leaves Save (✓) **enabled** with no inline error; the create
+  `POST /api/v2/secrets/secrets/default/{project_id}` returns **400 Bad Request**, the
+  browser logs the usual `Failed to load resource … 400`, and `SecretsTable.jsx`'s
+  `isAddingError` effect raises an **error** toast whose live text is exactly
+  **`Secret "<name>" already exists`**. The pending row **stays in edit mode** with the
+  typed name intact (`useSecretRowUpdate` returns the row untouched on
+  `responseResult.error`), and no duplicate row is created.
+  ⚠️ **`SecretsPage.click_save_button()` cannot be used for a rejected save** — after
+  awaiting the POST it waits for `secrets-add-button` to re-enable, which only happens when
+  the row LEAVES edit mode; on a 400 it never does. Use the additive
+  `click_save_button_expect_rejection()` variant instead (added by ELITEA-2341).
+
+- **Menu-open non-determinism (`#1222`), fifth and sixth data points:** both three-dot menu
+  opens in this session succeeded with a plain MCP `.click()`. Evidence across sessions
+  stays mixed — **keep `open_row_actions_menu()`'s React-`onClick` workaround
+  unconditionally**; it is a safe superset.
