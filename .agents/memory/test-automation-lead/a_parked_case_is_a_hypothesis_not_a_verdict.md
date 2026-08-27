@@ -46,11 +46,16 @@ re-test procedure: [[blocker_premise_symptom_vs_cause]].
 
 ## Fourth failure mode: the park rests on a NUMBER nobody re-measured
 
-The premise is neither expired nor irrelevant — it is a *statistic*, and the
-statistic pooled two different experiments. ELITEA-2215 sat parked three weeks
-on #1127's "2/5 non-deterministic"; split by trigger it was 14/14 green on the
-case's own observable. Re-measuring cost five minutes.
+The premise is a *statistic* that pooled two different experiments. ELITEA-2215
+sat parked three weeks on #1127's "2/5 non-deterministic"; split by trigger it
+was 14/14 green on the case's own observable. Re-measuring cost five minutes.
 Procedure: [[flake_rate_may_be_an_aggregate]].
+
+## Fifth failure mode: the premise was true and simply STOPPED being true
+
+No fix, no notification, no commit — an unstable area just goes quiescent, and
+the blocking bug's OPEN state keeps reading as "still blocked". The answer is a
+gate run, not an argument: [[park_on_flakiness_expires_silently]].
 
 ## How to act on it
 
@@ -65,8 +70,4 @@ Procedure: [[flake_rate_may_be_an_aggregate]].
   2233/2234 were a park whose premise was *never load-bearing*. The second kind
   is the more common and the cheaper to check.
 
-Same family as the wave-1 lesson on this card — an analyst's `needs-escalation`
-premises were checkable in minutes and both were false. Escalations and parks
-decay the same way.
-
-Related: [[flake_rate_may_be_an_aggregate]] · [[afs_gate_rulings]] · [[tms_backwrite_discipline]] · [[admin_plugin_config_mode_segment]]
+Related: [[park_on_flakiness_expires_silently]] · [[flake_rate_may_be_an_aggregate]] · [[afs_gate_rulings]] · [[tms_backwrite_discipline]] · [[admin_plugin_config_mode_segment]]
