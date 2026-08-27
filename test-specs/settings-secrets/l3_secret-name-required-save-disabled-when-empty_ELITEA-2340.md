@@ -123,10 +123,15 @@ no `evaluate`.
   `soft_failures` + `pytest.fail()` idiom already used by every spec on this surface —
   **not** `pytest.skip`, `xfail`, or a weakened assertion.
 - Do NOT click Save in this test (see § not probed on purpose).
-- No page-object additions are needed beyond what already exists; `type_name()` /
-  `fill_new_row()` / `click_cancel_button()` cover the flow. Assert enabled/disabled with
-  `expect(...).to_be_enabled()` / `.to_be_disabled()` (web-first, polling), never a
-  one-shot `is_disabled()`.
+- One page-object addition was needed after all: **`type_value()`** — an additive sibling
+  of `type_name()`, because `fill_new_row()` always fills BOTH fields and this case must
+  fill only the value (these MUI inputs need real keyboard events, not `fill()`, per
+  `.claude/rules/mui-patterns.md`). `type_name()` / `click_cancel_button()` cover the rest.
+- Assert enabled/disabled with `expect(...).to_be_enabled()` / `.to_be_disabled()`
+  (web-first, polling) wherever the state is *asserted*. The step-3 check is a *branch*,
+  not an assertion (it decides whether to record the `#1903` soft failure), so it reads the
+  state once — after a web-first `expect(...).to_have_value(...)` on both inputs has
+  already settled the row.
 
 ## Coverage Map
 
@@ -156,6 +161,14 @@ no `evaluate`.
   `automated`.
 - **#1203 (OPEN)** — React "Maximum update depth exceeded" on mount; isolated soft failure
   (a second sanctioned-RED signature, shared by every spec on this surface).
+
+> **Implementation outcome (2026-08-27, `test_secret_name_required_when_empty.py`):**
+> the defect reproduced exactly as analysed — `disabled=False`, `secret-name-error`
+> count `0` — recorded as the isolated soft failure for **#1903**. Every other assertion
+> PASSED, including the Axis-2 guard that **no create POST fires while the name is
+> empty** (so the gap is a UX/validation gap, not a data-integrity one on this path).
+> `#1203` fired **33 times**. Two sanctioned-RED signatures on this spec: `#1903` (the
+> case's own step 3) and `#1203` (surface-wide).
 
 ## Blocked Steps
 None — the defect is isolated at the tail of the flow and does not prevent reaching

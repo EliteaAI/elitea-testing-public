@@ -294,6 +294,28 @@ class SecretsPage(BasePage):
         "AlertDialog component, generic — text is 'Hide' for this flow).",
     )
 
+    # Toast (shared src/components/Toast.jsx) — generic, pre-existing on
+    # EliteaUI `main`, used app-wide. Same shared-component-declared-per-page-
+    # object precedent as the two dialogs below (cf. agent_detail_page.py's
+    # toast_alert / toast_message / TOAST_ALERT_SEVERITY). Durations are
+    # severity-dependent (TOAST_DURATION_DEFAULTS, src/common/constants.js):
+    # error 10s, warning 7s, success 3s, info 3s — always assert with a
+    # web-first expect(...) attached immediately after the triggering action,
+    # never a one-shot text_content() read (the 3s window loses that race).
+    toast_alert = LocatorDescriptor(
+        testid="toast-alert",
+        description="Toast container (shared Toast.jsx MUI Alert) — carries a "
+        'data-severity="{error|warning|success|info}" attribute; scope by '
+        "severity with TOAST_ALERT_SEVERITY.",
+    )
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="Toast message text (shared Toast.jsx). Secrets flows: "
+        '"The <name> values have been copied." (info, copy-on-click), '
+        '\'Secret "<name>" already exists\' (error, duplicate create), '
+        '"The <name> secret has been successfully deleted." (success).',
+    )
+
     # Delete-confirmation modal (shared DeleteEntityModal.jsx) — testids
     # already exist app-wide; repo precedent is each page object that
     # triggers this shared modal declares its own LocatorDescriptor for it
@@ -335,6 +357,11 @@ class SecretsPage(BasePage):
     # `secretValue` and `actions` (NOT the visible labels "Name" / "Value" /
     # "Actions"). Dynamic testid via a class-level template constant, per
     # .agents/testing.md § Locator policy.
+    # Severity-scoped toast selector — testid identity + the component's own
+    # data-severity state attribute (state via data-* per .agents/testing.md
+    # § Locator policy, same shape as agent_detail_page.TOAST_ALERT_SEVERITY).
+    TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
+
     SECRET_COLUMN_HEADER_SELECTOR = '[data-testid="secret-column-header-{}"]'
     # Prefix form, for the "exactly three columns, no fourth" count assertion.
     SECRET_COLUMN_HEADER_PREFIX_SELECTOR = '[data-testid^="secret-column-header-"]'
@@ -442,6 +469,19 @@ class SecretsPage(BasePage):
         self.name_input.click()
         self.name_input.press_sequentially(name, delay=20)
 
+    def type_value(self, value: str) -> None:
+        """Type *value* into the currently-editing row's value input, leaving
+        the name input untouched.
+
+        Additive sibling of :meth:`type_name` — needed by the required-name
+        case (ELITEA-2340), which must fill ONLY the value so the name stays
+        empty; :meth:`fill_new_row` always fills both. Keyboard events, not
+        ``fill()``, because these MUI inputs need real React onChange events
+        (`.claude/rules/mui-patterns.md`).
+        """
+        self.value_input.click()
+        self.value_input.press_sequentially(value, delay=20)
+
     def clear_and_type_name(self, name: str) -> None:
         """Replace the name input's current content with *name*.
 
@@ -477,6 +517,39 @@ class SecretsPage(BasePage):
         response = resp_info.value
         expect(self.add_button).to_be_enabled(timeout=timeout)
         return response
+
+    def click_save_button_expect_rejection(self, timeout: int = UI_ELEMENT_TIMEOUT):
+        """Click the checkmark (✓) when the create is expected to be REJECTED
+        by the server, and return the create POST's ``Response``.
+
+        Additive sibling of :meth:`click_save_button` — deliberately NOT a
+        change to it (that method has merged callers). The difference is the
+        post-condition: ``click_save_button`` waits for ``secrets-add-button``
+        to re-enable, which only happens once the row LEAVES edit mode. On a
+        rejected create (e.g. a duplicate name → 400, ELITEA-2341) the row
+        stays in edit mode by design (``useSecretRowUpdate.processRowUpdate``
+        returns the row untouched when ``responseResult.error`` is set), so
+        that wait would time out on a correctly-behaving product.
+
+        The caller asserts the status — this method never asserts one, so it
+        works for any rejection code.
+        """
+
+        def _is_create_response(response) -> bool:
+            return (
+                SECRETS_LIST_URL_SUBSTRING in response.url
+                and response.request.method == "POST"
+            )
+
+        with self.page.expect_response(_is_create_response, timeout=timeout) as resp_info:
+            self.save_button.click()
+        return resp_info.value
+
+    def toast_alert_with_severity(self, severity: str):
+        """Return the toast-container Locator scoped to *severity*
+        ("error" / "warning" / "success" / "info") — testid identity plus the
+        component's own ``data-severity`` state attribute."""
+        return self.page.locator(self.TOAST_ALERT_SEVERITY.format(severity))
 
     def click_cancel_button(self) -> None:
         """Click the X (✗) icon and wait for the add button to re-enable
@@ -768,6 +841,44 @@ class SecretsPage(BasePage):
         ):
             self.delete_confirm_button.click()
         return delete_info.value
+
+    def cancel_delete(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the delete-confirmation dialog's **Cancel** button and wait
+        for the dialog to detach (ELITEA-2339).
+
+        Purely client-side — confirmed live: zero network requests fire, so
+        there is deliberately no response to wait on or return. The caller
+        asserts the absence of a DELETE on the wire; this method only drives
+        the interaction and waits for the real UI signal (dialog gone) rather
+        than a delay.
+        """
+        self.delete_confirm_cancel_button.click()
+        expect(self.delete_confirm_dialog).to_have_count(0, timeout=timeout)
+
+    def copy_secret_value(self, row, timeout: int = UI_ELEMENT_TIMEOUT):
+        """Click *row*'s masked value cell (which is the label of a Button
+        whose onClick copies the plaintext) and return the reveal ``Response``.
+
+        `SecretValueCell.jsx`'s `handleDirectCopy` fetches the plaintext with
+        `showSecret` → ``GET /secrets/secret/default/{project_id}/{name}``
+        (200) and only then writes it to the clipboard, so waiting on that
+        response is the real signal the copy path ran. The returned response
+        body's ``value`` is the SYSTEM's own oracle for what the clipboard
+        must contain (ELITEA-2335).
+
+        NOTE: the same URL shape serves the row-level eye-icon reveal — a test
+        that both copies and reveals must scope its waits accordingly.
+        """
+
+        def _is_reveal_response(response) -> bool:
+            return (
+                SECRET_DELETE_URL_SUBSTRING in response.url
+                and response.request.method == "GET"
+            )
+
+        with self.page.expect_response(_is_reveal_response, timeout=timeout) as resp_info:
+            self.get_row_value_cell(row).click()
+        return resp_info.value
 
     def get_row_visibility_toggle_button(self, row):
         """Return the Show/Hide (eye icon) toggle button Locator scoped

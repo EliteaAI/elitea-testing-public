@@ -522,3 +522,14 @@ by ELITEA-2337/2338/2343 analyst sessions (same day).
   opens in this session succeeded with a plain MCP `.click()`. Evidence across sessions
   stays mixed — **keep `open_row_actions_menu()`'s React-`onClick` workaround
   unconditionally**; it is a safe superset.
+
+### Implementation-time confirmations (same session, 2026-08-27)
+- **Clipboard READBACK works in the pytest context** — `BasePage.get_clipboard_text()`
+  returned the plaintext and matched both oracles (the value the create POST persisted and
+  the reveal GET's `value`). So the MCP-only `NotAllowedError` above is a limitation of the
+  MCP browser context, never of the suite.
+- **`#1203` counts for this wave's four specs**: 45 / 35 / 33 / 33 occurrences per test —
+  consistent with the 32-41 range recorded for the previous wave, and again **0** in the
+  live MCP walk of the identical flows.
+- **`SecretsPage.type_value()`** added (additive sibling of `type_name()`): `fill_new_row()`
+  always fills BOTH fields, which a "leave the name empty" case cannot use.
