@@ -760,6 +760,21 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   § Merge gate it blocks by construction. Record further occurrences here; if the rate rises,
   the durable fix is a bounded retry of the trigger message inside `_reach_sensitive_action_card`,
   not a longer panel timeout — the panel wait is not what timed out.
+  - **2nd occurrence, and it fires one step EARLIER (2026-08-27, ELITEA-2213, PR pending)**:
+    1 of 4 implementer runs of
+    `test_hitl_sensitive_action_authorization.py::TestSensitiveActionBlock::test_block_prevents_toolkit_tool_from_executing`
+    died in the SAME shared setup at `_reach_sensitive_action_card`'s **Step 2**, not Step 3 —
+    `AssertionError: Locator expected to be visible … waiting for get_by_test_id("chat-answer-thought-accordion")`,
+    60 s wait exhausted, so the assistant never started a turn at all (no accordion ⇒ no tool
+    call ⇒ no card). The other 3 runs were byte-identical clean signatures at ~93/93/96 s.
+    So the flake's symptom is **not fixed at "the card never appears"** — widen the expected
+    shape to *any* raw uncaught assertion inside `_reach_sensitive_action_card`. Same response
+    either way: **re-run it**; it is upstream of every assertion these cases make and is never
+    a member of a closed sanctioned-RED set. Note the wall clock is NOT a reliable tell here —
+    this invocation took **450 s** (slow fixture setup + the full 60 s accordion wait), the
+    opposite of the sibling occurrence's short 52 s.
+    Evidence lives in `reports/allure-results/*-result.json`, not in the pytest tail — grep the
+    result JSON by `fullName` when triaging this class.
 - **Org-wide side-effect leak, ROOT-CAUSED, tracked as #1838 (2026-08-27, same gate)**: the
   same discarded attempt's run 2 raised `AssertionError: Guardrails config was NOT restored —
   this is an org-wide side effect. expected {}, got {'artifact': ['delete_file']}` in teardown.

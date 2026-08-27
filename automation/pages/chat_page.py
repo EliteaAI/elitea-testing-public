@@ -944,9 +944,14 @@ class ChatPage(BasePage):
         description=(
             "Toolkit/tool-call chip inside the Thought accordion's chip row "
             "(ActionView.jsx's model/tool ternary, else-branch — canon ruling "
-            "#277 shape (b): both branches named since ELITEA-2212/2215 assert "
-            "presence + text and ELITEA-2213 asserts absence on its own "
-            "executed path). Text is '{toolkit_name}: {tool_name}'."
+            "#277 shape (b): both branches are referenced POSITIVELY on "
+            "ELITEA-2212's executed path, which asserts the model chip and this "
+            "chip's presence + text). Text is '{toolkit_name}: {tool_name}'. "
+            "It is a tool-CALL-ATTEMPT chip with no execution predicate "
+            "(ActionView.jsx:407) — present while the HITL card is still "
+            "pending and after Block, 0 only after a page reload — so it is "
+            "NEVER evidence that a tool ran (clarification #1839; ELITEA-2213's "
+            "former absence assertion was removed as factually wrong)."
         )
     )
 
