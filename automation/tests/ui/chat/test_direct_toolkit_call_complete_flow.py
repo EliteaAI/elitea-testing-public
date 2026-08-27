@@ -86,7 +86,10 @@ flow (no agent) sometimes leaks the model's tool-call intent as raw VISIBLE
 text (e.g. a literal ``<function_calls><invoke name="create_file">...``
 block) instead of invoking the real backend tool. 2 separate runs of the
 identical setup DID execute correctly (real backend call, correct chip),
-making this non-deterministic rather than a hard 100% failure.
+making this LOOK non-deterministic rather than a hard 100% failure.
+**That characterisation is SUPERSEDED — see "Fix round 3 (2026-08-27)"
+below: re-measurement shows #1127 is TOOL-DEPENDENT, and it no longer
+fires on this class's own ``create_file`` trigger.**
 
 **Fix round 1 (2026-08-03) — resolving the sanctioned-RED gate mismatch.**
 The original version of this test hard-asserted the correct/intended
@@ -120,8 +123,10 @@ below — it correctly tells "hit #1127" apart from "something else broke."
 What round 2 corrects is a separate, gate-*eligibility* claim layered on
 top of it in round 1's original text (removed here, see below).
 
-**Fix round 2 (2026-08-04) — correcting an overstated gate-eligibility
-claim; NO code change.** Round 1's docstring (now removed) cited
+**Fix round 2 (2026-08-04) — HISTORICAL RECORD, its conclusion SUPERSEDED
+by fix round 3 (2026-08-27) below; kept because its reasoning about the
+sanctioned-RED bar remains correct. NO code change.** Round 1's docstring
+(now removed) cited
 ``.agents/testing.md``'s 2026-07-18 "closed-set variant" (ELITEA-1892/#615,
 ``test_agent_publish_unpublish_version.py`` Known defects #611/#614) as
 precedent for this test's RED runs being sanctioned. That citation does not
@@ -136,16 +141,64 @@ GREEN local runs in one session do not establish otherwise — they show the
 the test the times #1127 didn't fire), not that the *defect* is
 deterministic.
 
-Consequently: **ELITEA-2215 is BLOCKED for this wave** (see the AFS's
-Status + Known Defects sections — status downgraded from
-``ready-for-automation`` to ``blocked``) and this module is **excluded from
-the batch's N-consecutive-green hardening gate** — see
-``GATE_EXCLUDED_REASON`` below, the mechanical marker for the orchestrator
-composing the gate's required-spec list. The test is left green-or-red
-UNSKIPPED (never ``pytest.skip``'d) — skipping would hide the very signal
-this test exists to surface; exclusion is a gate-composition decision made
-by whoever runs the gate, not a masking of the test itself. Re-evaluate once
-#1127 is fixed or its determinism is re-established with further evidence.
+Round 2's consequent ruling — that ELITEA-2215 was BLOCKED for that wave and
+that this *module* was excluded from the batch's N-consecutive-green
+hardening gate — held on the evidence available on 2026-08-04. It no longer
+holds; see fix round 3.
+
+**Fix round 3 (2026-08-27) — #1127 is TOOL-DEPENDENT, and ELITEA-2215 is
+UNBLOCKED. Docs + gate-marker scope only; NO change to any assertion,
+timeout, or the #1127 run-classification logic.**
+
+Rounds 1-2 treated #1127 as one probabilistic defect firing at ~2/5 on
+``create_file``. Two independent live re-measurement rounds on 2026-08-27
+(the merge-gate owner's and the analyst's, every run a separate pytest
+invocation, ``--reruns 0``, against ``http://localhost:5173``, each verdict
+backend-verified via ``ArtifactAPI`` rather than from the DOM alone) show
+that the 2/5 was an aggregate hiding **two deterministic populations, split
+by which tool is called**:
+
+===========================================  =======================  ==================
+Trigger                                      2026-08-27                Lifetime
+===========================================  =======================  ==================
+``create_file`` — ELITEA-2215's observable   **11 GREEN / 0 RED**      green
+``delete_file`` — ELITEA-2210's observable   **0 GREEN / 4 RED**       7/7 RED
+===========================================  =======================  ==================
+
+Consequences, each scoped to ONE class:
+
+- ``TestDirectToolkitCallCompleteFlow`` (ELITEA-2215) is **gate-ELIGIBLE on a
+  plain green gate**. No sanctioned-RED argument is invoked or needed — there
+  is no red to except — so round 2's "a probabilistic defect cannot supply
+  deterministic 3/3" objection is moot for this class. The AFS is
+  re-classified ``blocked`` → ``ready-for-automation``.
+- ``TestDirectToolkitCallDeleteFileChip`` (ELITEA-2210) is **unchanged and
+  still excluded from a green gate** — #1127 reproduces there
+  deterministically (7/7 lifetime) and it merges RED on its own,
+  separately-linked sanctioned-RED basis.
+- ``GATE_EXCLUDED_REASON`` below is therefore now **per-node-id, not
+  module-wide** — it names the one excluded node id and explicitly names the
+  eligible one, so a grep cannot mislead a gate owner in either direction.
+
+Honest caveats, stated rather than smoothed over (they mirror the AFS's):
+the two classes differ in more than the tool name (the ``delete_file`` class
+also sends a more forceful message and depends on a seeded file), so tool
+identity is the best-supported discriminator but not an isolated variable —
+this docstring makes no root-cause claim; and the 2026-08-03 2/5 on
+``create_file`` was real when recorded, so this position rests on *today's*
+11/11, not on a claim that the earlier observation was wrong. The module's
+#1127 classification logic (Step 2b's ``soft_failures`` +
+``ArtifactAPI`` ground-truth tie-breaker) is deliberately left **exactly as
+it was** and is the safety net for that caveat: should #1127 ever fire on
+``create_file`` again, this test goes RED with a classified,
+backend-verified message rather than silently passing — and such a red is
+**NOT** sanctioned. It is a signal to re-open this determinism question, and
+the gate owner must treat it as a blocker, not as expected noise.
+
+Both tests remain green-or-red UNSKIPPED (never ``pytest.skip``'d) —
+skipping would hide the very signal they exist to surface; gate exclusion is
+a gate-composition decision made by whoever runs the gate, not a masking of
+the test itself.
 """
 
 import logging
@@ -163,17 +216,29 @@ pytestmark = [pytest.mark.ui, pytest.mark.chat, pytest.mark.p2, pytest.mark.regr
 # ---------------------------------------------------------------------------
 # Gate exclusion — mechanical marker for the orchestrator (grep this file for
 # GATE_EXCLUDED_REASON when composing a hardening gate's required-spec list).
-# See module docstring "Fix round 2" note + the AFS's Status/Known Defects
-# sections. NOT a skip — the test still runs and still reports green/red;
-# it is only excluded from the batch's N-consecutive-green gate requirement
-# because its only RED path (Known defect #1127) is confirmed non-deterministic
-# (2/5 runs) and does not meet .agents/testing.md § Merge gate's sanctioned-RED
-# "deterministic 3/3" bar.
+#
+# SCOPE IS PER-NODE-ID, NOT MODULE-WIDE (rescoped 2026-08-27, fix round 3).
+# The two classes in this module have OPPOSITE gate dispositions, so a
+# module-wide marker would mislead in both directions — it would wrongly
+# exclude a gate-eligible spec, and wrongly imply the whole file is expected
+# to be red. The constant below therefore names BOTH node ids explicitly:
+# the one that is excluded, and the one that is not.
+#
+# NOT a skip in either case — both tests still run and still report
+# green/red. Exclusion is a gate-composition decision made by whoever runs
+# the gate, never a masking of the test. See the module docstring's "Fix
+# round 3" block + the AFS's Status / Known Defects sections.
 # ---------------------------------------------------------------------------
 GATE_EXCLUDED_REASON = (
-    "ELITEA-2215 blocked on non-deterministic known defect #1127 "
-    "(2/5 run rate, does not meet the sanctioned-RED deterministic-3/3 bar) "
-    "— see AFS test-specs/chat-interface/l2_direct-toolkit-call-complete-flow_ELITEA-2215.md"
+    "EXCLUDED (this node id ONLY, not the module): "
+    "TestDirectToolkitCallDeleteFileChip::test_direct_toolkit_call_delete_file_chip "
+    "— ELITEA-2210, sanctioned-RED on OPEN known defect #1127 (delete_file: 7/7 RED lifetime, "
+    "deterministic single-cause signature, backend-verified). "
+    "NOT EXCLUDED — gate-ELIGIBLE on a plain green gate: "
+    "TestDirectToolkitCallCompleteFlow::test_direct_toolkit_call_complete_flow "
+    "— ELITEA-2215, unblocked 2026-08-27 (create_file: 11/11 GREEN, #1127 is tool-dependent and "
+    "does not fire on this trigger). A red on THIS node id is NOT sanctioned — treat it as a blocker. "
+    "See AFS test-specs/chat-interface/l2_direct-toolkit-call-complete-flow_ELITEA-2215.md"
 )
 
 # ---------------------------------------------------------------------------
@@ -462,16 +527,28 @@ class TestDirectToolkitCallDeleteFileChip:
     executes on this branch (Allure step ``Side-channel check — no
     console/JS errors across the whole flow`` recorded ``passed`` before the
     deferred ``pytest.fail`` fired) — the exact gap this fix round closes.
-    Per ``.agents/testing.md`` § Merge gate, 3/3 (now 5/5) IDENTICAL failures
-    tied to this single, open, linked defect is the sanctioned-RED
-    exception's own deterministic bar — unlike the covering spec (2/5, does
-    not meet the bar, separately ``blocked`` for this wave), this test
-    currently DOES qualify for sanctioned-RED. It is left green-or-red
-    UNSKIPPED (never ``pytest.skip``'d) for the same reason
-    ``GATE_EXCLUDED_REASON`` above documents, and is excluded from the
-    batch's N-consecutive-green hardening gate on that same
-    sanctioned-RED basis. Re-evaluate (may flip to plain-green-required) once
-    #1127 is fixed or this test accumulates a GREEN run.
+    **THIS IS THE STILL-RED CLASS IN THIS MODULE (as of 2026-08-27).** Two
+    further ``delete_file`` runs on 2026-08-27 (analyst re-measurement,
+    ``--reruns 0``, separate invocations, backend-verified) reproduced the
+    byte-identical signature: **7 of 7 RED lifetime, 0 GREEN.** Expect this
+    node id to fail; that failure IS the tracked #1127 signal.
+
+    Per ``.agents/testing.md`` § Merge gate, 3/3 (now 7/7) IDENTICAL failures
+    tied to this single, open, linked defect meets the sanctioned-RED
+    exception's own deterministic bar, so this test DOES qualify for
+    sanctioned-RED and is excluded from the batch's N-consecutive-green
+    hardening gate on that basis — it is the ONE node id
+    ``GATE_EXCLUDED_REASON`` above excludes. It is left green-or-red
+    UNSKIPPED (never ``pytest.skip``'d) for the reason that constant
+    documents.
+
+    **Do NOT read this class's exclusion as covering the module.** The
+    sibling ``TestDirectToolkitCallCompleteFlow`` (ELITEA-2215,
+    ``create_file``) was unblocked on 2026-08-27 — 11/11 GREEN, gate-eligible
+    on a plain green gate — because #1127 turned out to be tool-dependent
+    rather than probabilistic (module docstring, "Fix round 3"). Re-evaluate
+    this class (may flip to plain-green-required) once #1127 is fixed or this
+    test accumulates a GREEN run.
     """
 
     @allure.issue(
