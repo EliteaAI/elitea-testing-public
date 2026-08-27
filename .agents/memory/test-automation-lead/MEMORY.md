@@ -105,3 +105,5 @@
 - [Removing a false-RED guard can create a silent false-GREEN](removing_a_false_red_guard_can_create_a_false_green.md) — check what still fails before deleting an over-strict assert
 - [Promoted-test fixes target main](promoted_test_fixes_branch_from_main.md) — then merge main back down to base
 - [Deployed-only red is a hypothesis](deployed_only_failure_claims_are_hypotheses.md) — reproduce on localhost first
+- [Green gate ≠ sound assertion](a_green_gate_does_not_prove_an_assertion_is_sound.md) — check the EXPECTED side too
+- [Product change vs product bug](a_product_change_is_not_a_product_bug.md) — 4 tells; wrong call = false red
