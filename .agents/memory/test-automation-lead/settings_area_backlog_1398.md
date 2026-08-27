@@ -6,9 +6,14 @@ created: 2026-08-26
 updated: 2026-08-26
 ---
 
-## Status after waves w01 + w02 + w03 (2026-08-26)
+## Status after waves w01–w04 (2026-08-27)
 
-**Running total: 22 delivered, 6 blocked on human decisions, ~100 not yet attempted.**
+**Running total: 32 delivered, 7 blocked on human decisions, ~89 not yet attempted.**
+
+### Wave settings-w04 — `settings/personal-tokens` (11 cases)
+
+8 automated + 2 `merged-sanctioned-red` (ELITEA-2289 → #1884, ELITEA-2291 → #1885) + 1 blocked (ELITEA-2278, attached to #1780 — same case as ELITEA-2250). PR #1900.
+**The workflow's gate cascaded `blocked` onto all 11** because its `expected_red[]` was empty; corrected by verifying ground truth then running a node-id-split lead gate (green group 3/3, RED group 3/3 identical). See [[workflow_gate_verdict_is_not_the_merge_gate]].
 
 ### Wave settings-w03 — `settings/project-params` (10 cases)
 
@@ -43,9 +48,9 @@ full provenance table + SHAs.
   Deliberately NOT grouped into w01: they need multiple identities (admin vs
   viewer/monitor role, an unauthenticated session), a different setup shape
   than the rest of the root `settings` cases.
-- **6 more sub-areas, ~96 cases**: `ai-configuration` (24), `user-profile` (17),
-  `analytics` (15), `users-and-roles` (15), `secrets` (14),
-  `personal-tokens` (11). (`notifications` done in w02, `project-params` in w03.)
+- **5 more sub-areas, ~85 cases**: `ai-configuration` (24), `user-profile` (17),
+  `analytics` (15), `users-and-roles` (15), `secrets` (14).
+  (`notifications` w02, `project-params` w03, `personal-tokens` w04.)
 
 ## Pattern for the next wave
 
