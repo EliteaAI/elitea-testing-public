@@ -88,8 +88,10 @@ block) instead of invoking the real backend tool. 2 separate runs of the
 identical setup DID execute correctly (real backend call, correct chip),
 making this LOOK non-deterministic rather than a hard 100% failure.
 **That characterisation is SUPERSEDED — see "Fix round 3 (2026-08-27)"
-below: re-measurement shows #1127 is TOOL-DEPENDENT, and it no longer
-fires on this class's own ``create_file`` trigger.**
+below: re-measurement shows #1127 splits by which tool is called
+(best-supported discriminator, not an isolated variable — no root-cause
+claim), and it did not fire on this class's own ``create_file`` trigger in
+any of the 14 runs measured on 2026-08-27.**
 
 **Fix round 1 (2026-08-03) — resolving the sanctioned-RED gate mismatch.**
 The original version of this test hard-asserted the correct/intended
@@ -247,7 +249,7 @@ GATE_EXCLUDED_REASON = (
     "NOT EXCLUDED — gate-ELIGIBLE on a plain green gate: "
     "TestDirectToolkitCallCompleteFlow::test_direct_toolkit_call_complete_flow "
     "— ELITEA-2215, unblocked 2026-08-27 (create_file: 14/14 GREEN on 2026-08-27, backend-verified; "
-    "#1127 has not fired on this trigger). A red on TestDirectToolkitCallCompleteFlow is NOT "
+    "#1127 did not fire in any of those 14 runs). A red on TestDirectToolkitCallCompleteFlow is NOT "
     "sanctioned — treat it as a blocker. "
     "See AFS test-specs/chat-interface/l2_direct-toolkit-call-complete-flow_ELITEA-2215.md"
 )
@@ -529,7 +531,9 @@ class TestDirectToolkitCallDeleteFileChip:
     runs hit this exact #1127 signature for ``delete_file``** — no tool chip
     rendered, ``ArtifactAPI`` confirms the seeded file was NOT actually deleted,
     yet the LLM's chat response claims success verbatim. Notably higher local
-    rate than the covering spec's own ``create_file`` history (2/5) — recorded
+    rate than the covering spec's own history at the time (#1127's
+    then-recorded 2/5 aggregate — see "Fix round 3": not a per-tool
+    ``create_file`` figure) — recorded
     as a comment on the open issue
     (https://github.com/EliteaAI/elitea-testing-public/issues/1127#issuecomment-5342934194),
     not a new ticket (same tool-agnostic mechanism the issue already describes).
