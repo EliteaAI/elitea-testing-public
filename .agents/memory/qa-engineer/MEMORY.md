@@ -39,3 +39,4 @@
 - [UI/flow assumption gate](ui_flow_assumption_gate.md) — test fails, assume UI changed? Verify vs case text first, wait if unconfirmed
 - [Tests own their preconditions](test_owns_its_own_preconditions.md) — borrowed pre-existing data = green when dirty, red when clean
 - [CI login failure becomes SKIP](ci_login_failure_becomes_skip.md) — a green dev-stable job can mean the test never ran; grep the log
+- [Toolkit Test Settings moved to its own /test route](toolkit_test_surface_moved_to_own_route.md) — reach via toolkit-test-button; layout flipped LEFT, x>700 filters silently no-op
