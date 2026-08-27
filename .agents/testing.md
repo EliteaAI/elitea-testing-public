@@ -820,3 +820,28 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   `GET /admin/plugin_config_values/administration/guardrails`, which the fixture asserts exactly
   once with no retry. **Check `sensitive_tools` is `{}` before and after any gate of this module**
   (the accepted ELITEA-2212 gate did, all 3 runs) until #1838 lands the retry.
+- **#1142 (Mermaid canvas render instability) did NOT reproduce — case ELITEA-2088 unblocked
+  (2026-08-27, issue #437)**: the case was parked 2026-08-04 because `#1142` (intermittent React
+  `Maximum update depth exceeded` + post-edit re-render instability in the Mermaid canvas edit flow)
+  made a 3×-green gate unreachable — 3 of ~5 gate runs then failed on some symptom in that flow.
+  Re-gated today against current `automation/base` + current `EliteaUI@automation/testids` (all three
+  long-lived branches 0 behind their mains, nothing to merge): **4 invocations, and none of `#1142`'s
+  signatures appeared at all**. The spec's own `page.on("console", …)` assertion would have caught
+  `Maximum update depth exceeded` (React logs it via `console.error`, so `msg.type == "error"`, and the
+  spec filters only the `secrets` 403 and the dagre `translate(undefined, NaN)` warning) — it passed
+  every run. Gate accepted on runs 2/3/4: `1 passed in 23.83s / 22.23s / 21.39s`, `reruns.json == {}`
+  each. `#1142` stays OPEN as a product observation (nobody fixed it deliberately; it is quiescent, not
+  proven gone), but it no longer blocks this case.
+  **Run 1 was a DIFFERENT signature and is the entry worth remembering** —
+  `playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 30000ms exceeded … waiting for
+  get_by_test_id("chat-mermaid-diagram-svg-container").locator(".node").first`, allure status `broken`,
+  at **Step 3** (the diagram never rendered a node after the AI answered). It was the session's first
+  invocation after a long idle period, `pytest-rerunfailures` passed it on the immediate rerun, and it
+  did not recur in the 3 runs after. Same family as the HITL trigger-side entries above: an **LLM
+  trigger-side** flake at the *precondition* (the model answered without — or too slowly with — a usable
+  mermaid block), upstream of everything the case asserts, so it is never a member of a sanctioned-RED
+  set and the response is **re-run, never accept 2-of-3**. Note the wall clock is a tell here, unlike
+  HITL: the flaked invocation took 82.73s vs a ~22s clean baseline, because it burned the full 30s
+  `DIAGRAM_RENDER_TIMEOUT`. Evidence lives in `reports/allure-results/*-result.json` (the rerun makes
+  junit record PASS); grep by `fullName`. Record further occurrences here — if the rate rises, the fix
+  is a bounded re-ask of the generate prompt in Step 2, not a longer `DIAGRAM_RENDER_TIMEOUT`.
