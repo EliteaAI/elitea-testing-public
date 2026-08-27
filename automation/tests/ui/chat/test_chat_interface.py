@@ -22,6 +22,7 @@ Usage:
     pytest test_chat_interface.py -v -m "p0 or p1"  # Run P0 + P1
 """
 
+import json
 import logging
 import re
 
@@ -30,6 +31,8 @@ from playwright.sync_api import expect
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from pages.chat_page import ChatPage
 from components.mui import Dialog
+from utils.console_errors import collect_console_errors
+from utils.websocket_frames import capture_socketio_frames
 import allure
 
 logger = logging.getLogger(__name__)
@@ -51,6 +54,26 @@ def _strip_markdown(text: str) -> str:
     text = re.sub(r'\n{2,}', '\n', text)              # collapse blank lines → single newline
     return text.strip()
 
+def _extract_uploaded_filepath(body) -> str:
+    """Return the ``filepath`` the attachment-upload response reports, or "".
+
+    ``POST /elitea_core/attachments/prompt_lib/{projectId}/{conversationId}``
+    answers with the stored artifact reference — the only thing that reaches
+    the model (``messagePayloadUtils.js`` emits ``attachments_info:
+    [{ filepath }]`` and never inlines content). The endpoint answers with a
+    single object for a single file and a list when several are sent, so both
+    shapes are read here; anything else yields "" and the caller fails with the
+    body in the message rather than raising a KeyError.
+    """
+    entries = body if isinstance(body, list) else [body]
+    for entry in entries:
+        if isinstance(entry, dict):
+            filepath = entry.get("filepath") or entry.get("file_path") or ""
+            if isinstance(filepath, str) and filepath.strip():
+                return filepath.strip()
+    return ""
+
+
 pytestmark = [pytest.mark.ui]
 
 # ---------------------------------------------------------------------------
@@ -59,6 +82,10 @@ pytestmark = [pytest.mark.ui]
 AI_RESPONSE_TIMEOUT = 30000   # AI message generation (may take 15s+ on cold starts)
 UI_ELEMENT_TIMEOUT = 5000     # buttons, dialogs, dropdowns
 NAVIGATION_TIMEOUT = 3000     # SPA route changes
+# Attachment turns are agentic: the model narrates, calls the `attachments`
+# read tool, then answers. Measured settle band 18.5-21.1s (ELITEA-0500 AFS);
+# this is the auto-retry budget for the final answer to appear, not a sleep.
+ATTACHMENT_ANSWER_TIMEOUT = 90000
 
 
 class TestPageLoadAndRendering:
@@ -280,90 +307,187 @@ class TestConversationUIElements:
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0500_chat-interface-advanced-features.md", "onetest-ai Test Case link")
     @pytest.mark.p1
     def test_attach_files_button_sends_file_with_message(self, page, conversation_id, tmp_path):
-        """TC-CHAT-011: Attach file and send message with attachment."""
-        with allure.step("Step 1 — Navigate to chat page"):
-            chat = ChatPage(page)
-            chat.navigate_to_chat(conversation_id=conversation_id)
+        """TC-CHAT-011: Attach file and send message with attachment.
 
-        with allure.step("Step 2 — Create test file with unique token"):
-            test_file = tmp_path / "test_automation_file.txt"
-            test_file.write_text("This file contains the unique token AUTOTEST_ATTACH_7X9 and was attached by automated testing.")
+        AFS: test-specs/chat-interface/lextend_attach-files-send-with-message-oracle-repair_ELITEA-0500.md
+        Repairs the CI red from GHA run 33066098636 (board #1888).
 
-        with allure.step("Step 3 — Attach file via available method"):
-            file_attached = False
+        Nothing is substituted: no route interception, no injected state, no
+        fabricated response. Every asserted value is produced by the system —
+        the upload response body, the rendered message text, and the Socket.IO
+        frames the backend itself emits (observation, not substitution, per
+        ``.agents/testing.md`` § Fidelity policy).
 
-            file_input = page.locator('button[aria-label="attach files"] input[type="file"]').first
-            if file_input.count() > 0:
-                try:
-                    file_input.set_input_files(str(test_file))
-                    chat.wait_for_network(timeout=UI_ELEMENT_TIMEOUT)
-                    file_attached = True
-                    logger.info("File attached via direct input method")
-                except Exception as e:
-                    logger.warning(f"Direct input method failed: {e}")
+        Three repairs, all of them oracle-side:
 
-            if not file_attached:
-                attach_btn = page.get_by_role("button", name="attach files").first
-                if attach_btn.is_visible():
-                    try:
-                        with page.expect_file_chooser(timeout=5000) as fc_info:
-                            attach_btn.click(force=True)
-                        file_chooser = fc_info.value
-                        file_chooser.set_files(str(test_file))
-                        chat.wait_for_network(timeout=UI_ELEMENT_TIMEOUT)
-                        file_attached = True
-                        logger.info("File attached via file chooser")
-                    except PlaywrightTimeoutError:
-                        logger.warning("File chooser did not appear")
+        1. **Settle.** The old code read the reply ONCE, at a moment
+           ``ChatPage.wait_for_ai_response()`` judged to be the end of the
+           turn — and that judgement fires mid-turn (its Copy-button signal
+           flickers on while the model is still narrating a tool call, and
+           its transient-message blocklist knows only six placeholder
+           strings). The CI red was the test reading *"Let me read the file
+           directly…"* as the finished answer. This spec does not try to
+           detect "settled" at all: it expresses the last mile as a
+           web-first assertion on the message at ``initial_count + 1``, which
+           auto-retries until the answer actually contains the fact. Immune
+           to the mid-turn flicker by construction. The shared
+           ``wait_for_ai_response`` defect is suite-wide and tracked as #1913.
+        2. **Indexing.** The reply is read at the explicit index
+           ``initial_count + 1``, never ``.last``.
+        3. **Oracle shape.** The planted opaque token (``AUTOTEST_ATTACH_7X9``)
+           is replaced by a planted ordinary fact plus a comprehension
+           question, per canon card #1664 — guardrails intermittently refuse
+           the echo-an-identifier shape and the refusal is indistinguishable
+           from a product failure. The observable is unchanged and is now
+           asserted three independent ways: the upload response (Step 6), the
+           comprehension answer (Step 8), and the tool's own ``tool_output``
+           frame (Step 9).
 
-            if not file_attached:
-                plus_menu = page.get_by_role("button", name="plus menu")
-                if plus_menu.is_visible():
-                    plus_menu.click(force=True)
-                    page.wait_for_timeout(500)
-                    menu_file_input = page.locator('.MuiPopper-root').first.locator('button[aria-label="attach files"] input[type="file"]')
-                    if menu_file_input.count() > 0:
-                        try:
-                            menu_file_input.set_input_files(str(test_file))
-                            chat.wait_for_network(timeout=UI_ELEMENT_TIMEOUT)
-                            file_attached = True
-                            logger.info("File attached via plus menu input")
-                        except Exception as e:
-                            logger.warning(f"Plus menu input method failed: {e}")
-                    if not file_attached:
-                        page.keyboard.press("Escape")
+        Also removed here: a ``pytest.skip`` fallback (masking — ELITEA-0500's
+        Fail criteria include "Attach files button missing", so an unattachable
+        file must fail), and a 3-tier raw-handle fallback ladder whose first
+        tier drove the hidden 0x0 decoy ``AttachmentButton``
+        (``pointerEvents: 'none'``) instead of the user-visible control.
 
-            if not file_attached:
-                pytest.skip(
-                    "File attachment UI not accessible — attach button exists but "
-                    "file could not be attached via input or file chooser methods."
+        Every testid this spec uses is present on EliteaAI/EliteaUI ``main``;
+        the spec deliberately avoids ``chat-stop-generation-button``, which is
+        not, so the repair is safe to promote with the test.
+        """
+        # The file's planted facts, and the question that reads them back.
+        # Ordinary prose, no identifier-shaped strings (canon card #1664).
+        planted_fact = "The project mascot is the otter."
+        file_body = (
+            "Project Aurora - weekly status.\n"
+            f"{planted_fact}\n"
+            "The team meets on Tuesday.\n"
+        )
+        question = (
+            "According to the attached file, what is the project mascot? "
+            "Answer with the single word."
+        )
+        expected_answer = "otter"
+        file_name = "test_automation_file.txt"
+
+        # Both listeners must be bound BEFORE navigation: Playwright's
+        # "websocket" page event fires once, at connection-open time.
+        with capture_socketio_frames(page) as frames:
+            console_errors = collect_console_errors(page)
+
+            with allure.step("Step 1 — Navigate to a fresh conversation"):
+                chat = ChatPage(page)
+                chat.navigate_to_chat(conversation_id=conversation_id)
+
+            with allure.step("Step 2 — ELITEA-0500 Step 1: attach control visible/accessible by the input"):
+                expect(chat.plus_menu_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                expect(chat.plus_menu_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
+                chat.open_attach_menuitem(timeout=UI_ELEMENT_TIMEOUT)
+                expect(chat.attach_files_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                expect(chat.attach_files_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
+                # The item carries its own remaining-capacity counter; a fresh
+                # conversation starts at the 10-file limit.
+                expect(chat.attach_files_button).to_contain_text("10 left", timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step("Step 3 — Attach the planted-fact file via the real menu control"):
+                test_file = tmp_path / file_name
+                test_file.write_text(file_body)
+
+                with page.expect_file_chooser(timeout=UI_ELEMENT_TIMEOUT) as fc_info:
+                    chat.attach_files_button.click()
+                fc_info.value.set_files(str(test_file))
+
+                chat.wait_for_attachment_chip_count(1, timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.get_visible_attachment_names() == [file_name], (
+                    f"The attachment chip should name the attached file. "
+                    f"Got: {chat.get_visible_attachment_names()}"
+                )
+                # The counter decrementing 10 -> 9 is the system's own
+                # confirmation that the attach took effect — visibility alone
+                # cannot tell a live control from a dead one.
+                expect(chat.attach_files_button).to_contain_text("9 left", timeout=UI_ELEMENT_TIMEOUT)
+
+                # Close the plus-menu popper so it cannot overlay the composer.
+                chat.plus_menu_button.click()
+                expect(chat.attach_files_button).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step("Step 4 — Type the comprehension question"):
+                chat.message_input.fill(question)
+                expect(chat.message_input).to_have_value(question, timeout=UI_ELEMENT_TIMEOUT)
+
+            with allure.step("Step 5 — Capture the message count before sending"):
+                initial_count = chat.get_message_count()
+
+            with allure.step("Step 6 — Send, and verify the attachment upload the send triggers"):
+                # The file is NOT uploaded at select time — ChatBox.jsx uploads
+                # at send. Wrapping the send is the only way to observe it.
+                with page.expect_response(
+                    lambda r: "/attachments/prompt_lib/" in r.url and r.request.method == "POST",
+                    timeout=AI_RESPONSE_TIMEOUT,
+                ) as upload_info:
+                    chat.send_message(question)
+                upload_response = upload_info.value
+
+                assert upload_response.status in (200, 201), (
+                    f"Attachment upload should succeed. Got HTTP {upload_response.status} "
+                    f"from {upload_response.url}"
+                )
+                upload_body = upload_response.json()
+                uploaded_filepath = _extract_uploaded_filepath(upload_body)
+                assert uploaded_filepath, (
+                    f"Attachment upload response should carry a non-empty filepath. "
+                    f"Got body: {json.dumps(upload_body)[:400]}"
                 )
 
-        with allure.step("Step 4 — Send message asking about attachment"):
-            initial_count = chat.get_message_count()
-            chat.send_message("What is the content of the attached file?")
+            with allure.step("Step 7 — The sent user message carries the attachment"):
+                expect(chat.messages_container.nth(initial_count)).to_contain_text(
+                    file_name, timeout=AI_RESPONSE_TIMEOUT
+                )
 
-        with allure.step("Step 5 — Wait for AI response"):
-            chat.wait_for_ai_response(initial_count=initial_count, timeout=AI_RESPONSE_TIMEOUT)
-            chat.wait_for_network(timeout=AI_RESPONSE_TIMEOUT)
+            with allure.step("Step 8 — The AI answer demonstrates it read the attached file"):
+                # Web-first auto-retry: if the model narrates a tool call first
+                # and answers later, this keeps polling the SAME message index
+                # until the answer lands. It cannot be satisfied by the
+                # mid-turn narration that produced the CI red.
+                expect(chat.messages_container.nth(initial_count + 1)).to_contain_text(
+                    expected_answer, ignore_case=True, timeout=ATTACHMENT_ANSWER_TIMEOUT
+                )
 
-        with allure.step("Step 6 — Verify message count increased"):
-            final_count = chat.get_message_count()
-            assert final_count > initial_count, (
-                f"Message count should increase after sending. Initial: {initial_count}, Final: {final_count}"
-            )
+            with allure.step("Step 9 — The attachments read tool actually ran and returned the file's content"):
+                events = sorted({str(f.get("event")) for f in frames})
+                matches = [
+                    f for f in frames
+                    if f.get("event") == "chat_predict_attachment"
+                    and f.get("_direction") == "received"
+                    and isinstance(f.get("response_metadata"), dict)
+                    and f["response_metadata"].get("tool_name") == "read_multiple_files"
+                    and f["response_metadata"].get("tool_output")
+                ]
+                assert len(matches) >= 1, (
+                    "Expected >=1 received chat_predict_attachment frame carrying a tool_output "
+                    f"for read_multiple_files; got {len(matches)} of {len(frames)} captured frames "
+                    f"(events: {events}). '0 of 0' means the Socket.IO capture/transport failed "
+                    "(a harness problem); '0 of N' means frames flowed but the read tool did not run."
+                )
+                # Assert on EVERY match, never frames[0]: a success-then-failure
+                # pair would otherwise pass on the success.
+                for frame in matches:
+                    tool_output = frame["response_metadata"]["tool_output"]
+                    rendered = tool_output if isinstance(tool_output, str) else json.dumps(tool_output)
+                    assert planted_fact in rendered, (
+                        f"Every read_multiple_files tool_output should carry the attached file's "
+                        f"planted fact {planted_fact!r}. Got: {rendered[:400]}"
+                    )
 
-        with allure.step("Step 7 — Verify AI acknowledged the file"):
-            ai_response = chat.get_last_message_text()
-            assert "waking" not in ai_response.lower(), (
-                f"AI response still shows loading state. Got: {ai_response[:200]}"
-            )
-            normalized_response = ai_response.lower().replace("_", "")
-            file_acknowledged = "autotestattach7x9" in normalized_response
-            assert file_acknowledged, (
-                f"AI response should mention the unique token from the attached file "
-                f"(AUTOTEST_ATTACH_7X9). Got: {ai_response[:200]}..."
-            )
+            with allure.step("Step 10 — The composer's attachment list is cleared after send"):
+                chat.wait_for_attachment_chip_count(0, timeout=UI_ELEMENT_TIMEOUT)
+                assert chat.get_attachment_overflow_count() == 0, (
+                    "No overflow attachments should remain after send. "
+                    f"Got: {chat.get_attachment_overflow_count()}"
+                )
+
+            with allure.step("Step 11 — No unexpected console errors"):
+                assert not console_errors, (
+                    f"Unexpected console errors during the attachment flow: {console_errors}"
+                )
 
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/chat-interface/ELITEA-0501_chat-ui-elements-model-tools-participants.md", "onetest-ai Test Case link")
     @pytest.mark.p1

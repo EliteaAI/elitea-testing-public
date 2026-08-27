@@ -2034,6 +2034,12 @@ class ChatPage(BasePage):
         """Count of currently visible attachment chips (FileList.jsx, excludes overflow)."""
         return self.page.locator(self.CHAT_ATTACHMENT_CHIP_PREFIX).count()
 
+    def wait_for_attachment_chip_count(self, expected_count: int, timeout: int = 5000):
+        """Web-first assertion: wait until exactly `expected_count` visible
+        attachment chips are rendered (auto-retrying, unlike a bare
+        ``get_attachment_chip_count() == N`` read)."""
+        expect(self.page.locator(self.CHAT_ATTACHMENT_CHIP_PREFIX)).to_have_count(expected_count, timeout=timeout)
+
     def get_attachment_overflow_count(self) -> int:
         """Parse the '+N' overflow count from the overflow button's text.
 
