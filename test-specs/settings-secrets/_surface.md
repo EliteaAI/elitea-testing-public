@@ -679,3 +679,94 @@ verbatim. New, implementation-created facts:
   for. `#1203` was again not observed on `/settings/secrets` in these runs.
 - **The three-dot React-`onClick` workaround (`#1222`) was used unconditionally** in both
   specs and opened the menu first try, three times across the two runs. 4th data point.
+
+## Role-scoped access to Secrets, empty-state re-verification, and the network-failure
+## error path (ELITEA-2333/2348/2349, combined analyst+implementer session, 2026-08-28)
+
+### Roles are PROJECT-SCOPED — a viewer vantage exists with no new credential
+The shared `${TEST_USER}` holds **different roles in different projects**, so
+role-differentiated cases are NOT uniformly blocked on a second identity (this
+partially supersedes question **#1314**, commented there). Verified live 2026-08-28:
+
+```
+GET {ELITEA_API_BASE}/admin/users/prompt_lib/{project_id}   (roles of ${TEST_USER})
+  399 Private              -> ['editor', 'viewer']   <- settings.elitea_project_id
+  400 UI Testing           -> ['admin']              <- settings.users_team_project_id
+  406 Bugs & Features      -> ['viewer']
+  25  Elitea Development   -> ['viewer']
+  471 Elitea Testing Team  -> ['viewer']             <- settings.elitea_team_project_id
+```
+
+`useCheckPermission` reads `state.user.permissions`, refetched **per selected project**
+via `GET /auth/permissions/prompt_lib/{id}`. Live: project 400 → 360 permissions
+(8 × `configuration.secrets.*`), project **471 → 158 permissions, ZERO containing
+`secret`**. Switching the project selector therefore puts the app in a genuine
+role-derived permission state — computed by the product, not fabricated by the test.
+
+**Consequence for Secrets:** `src/[fsd]/pages/settings/index.jsx:89` gates the drawer's
+`secrets` tab on `PERMISSIONS.secrets.list` and filters the item out
+(`index.jsx:174`). Measured live, drawer nav item ids:
+- project 399 → `… project-context, **secrets**, analytics, usage …`
+- project 471 → `… project-context, users, analytics, usage …` (**no `secrets`**),
+  both after an in-session switch AND on a fresh load.
+
+Handle: `settings-nav-item-secrets` (existing `SettingsDrawerPage.SETTINGS_NAV_ITEM`
+template) — absence-assertable per canon #511's extension.
+
+### There is NO `Monitor` role in Elitea
+`GET {ELITEA_API_BASE}/admin/roles/default/{p}` returns `['admin','editor','viewer']` for
+**all five** projects (399/400/406/25/471), and `grep -rni "'monitor'|\"monitor\""
+../EliteaUI/src/` has **0 hits**. Any case naming a Monitor role is case-text drift —
+filed as clarification **#1909**. Don't go looking for it again.
+
+### Deep-linking `/settings/secrets` on a no-permission project (re-confirmed)
+Still exactly **#1773**: `secrets-page-title` + an **enabled** `secrets-add-button` +
+`No secrets`, **no** access-denied state, **no** toast, and **zero** secrets requests
+(the RTK query is skipped client-side). Console errors on that mount: **144**
+`Maximum update depth exceeded` (#1203's unbounded variant) — never dwell there.
+
+⚠️ **Unverified single observation, worth a look if you touch it:** switching projects
+*while already on* `/settings/secrets` left the PREVIOUS project's rows rendered in the
+MCP browser (399's secrets still listed with 471 selected). Seen once via Playwright MCP,
+**not** reproduced in the framework probe (which switched from `/settings/project-general`,
+where rows were 0). Could be a mid-transition snapshot. Not filed — verify before claiming.
+
+### Empty-state precondition: STILL unproducible (ELITEA-2333, re-probed not copied)
+`GET {ELITEA_API_BASE}/secrets/secrets/default/{p}` → 399: `200`/**121**,
+400: `200`/**4**, 406/25/471: **`403`**. No project this user can list AND that is empty;
+the selector still offers 5 fixed projects with no create affordance. ELITEA-2333 is
+parked `blocked` for the same reason as **ELITEA-2249** — see
+`l2_secrets-empty-state-no-secrets_ELITEA-2333.md` § Why this is blocked.
+
+### Network-failure (transport) error path — the observable, confirmed live
+Failing the transport of the secrets-list GET (`page.route(..., route.abort("failed"))`
+— **case-authorised** by ELITEA-2349's own step 1, "on a throttled or offline
+connection") produces, measured live:
+
+| Observable | Value |
+|---|---|
+| `toast-alert` | visible, class contains `MuiAlert-colorError` |
+| `toast-message` | **`Unknown error`** — filed as bug **#1910** |
+| page shell | `secrets-page-title` + `secrets-add-button` present, add button **enabled** |
+| `secret-row` | 0 |
+| stack trace in body | none (`TypeError` / `Uncaught` / `at Object.` / `.jsx:` all absent) |
+| toast auto-hide | still present after 10 s; clears on successful reload |
+| console errors | 59 × `Maximum update depth exceeded` (#1203, bounded variant) |
+
+Root cause of the bare message: `SecretsContent.jsx` calls
+`buildErrorMessage(error)`, and `src/common/utils.jsx:146-184` has **no `FETCH_ERROR` /
+`TIMEOUT_ERROR` / `PARSING_ERROR` branch** — every branch misses and it returns
+`err?.data` → `undefined`, which the toast provider renders as `Unknown error`. It is a
+**shared** helper, so every surface behaves this way on a transport failure.
+
+Recovery after `page.unroute` + `reload()`: list `GET` → `200`/121 items, **10** rows
+rendered (default page size), `toast-alert` count back to **0**.
+
+Toast handles are on `main`: `toast-alert` (`src/components/Toast.jsx:60`),
+`toast-message` (`:74`), `toast-dismiss-button` (`:71`).
+
+### Implementation-time note
+`SecretsPage.navigate()` waits for `secret_row.first` to be visible, so it is **unusable
+for any zero-row state** (error, empty, filtered-to-zero). Use the additive
+`navigate_expecting_no_rows()` added by ELITEA-2349 instead of relaxing `navigate()` —
+it has many merged callers.
