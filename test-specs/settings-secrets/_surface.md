@@ -636,3 +636,46 @@ unique "key" prop` **console.error** from `CategorySection.jsx` (via
 **dev-build only** (stripped by `vite build`), so it appears on localhost and not on a
 deployed env. `#1203` (Secrets-page "Maximum update depth exceeded") did **not** fire in
 this session — still inconclusive, check your own run.
+
+### Implementation-time confirmations — ELITEA-2345/2346 (test-automation-engineer, 2026-08-28)
+
+Both specs went **green on their first run, 0 reruns** (2345: 54.48 s; 2346: 50.24 s),
+against `localhost:5173` / project 399. Everything the analyst recorded above held
+verbatim. New, implementation-created facts:
+
+- **The AI-provider type picker now has page-object support.**
+  `automation/pages/ai_providers_page.py` gained (additively) `create_button`
+  (`sidebar-create-button`), `TYPE_CARD_SELECTOR` /`TYPE_CARD_PREFIX_SELECTOR`
+  class-constant templates, `type_card()`, `type_cards`, `click_create()` and
+  `click_type_card()`. `click_create()` settles on the first rendered type card;
+  `click_type_card()` settles on the picker **unmounting** — it deliberately does not
+  re-declare `toolkit-field-label-input`, which already lives in
+  `CredentialFormFieldsMixin`.
+- **`CredentialAPI.get_credential(id)` now exists** (`automation/api/client.py`) —
+  `GET /configurations/configuration/{project}/{id}`, the honest server-side oracle for
+  "the credential's stored `{{secret.…}}` reference survived the hide". `list_credentials`
+  is a list projection and is not guaranteed to carry the `data` block; don't rely on it
+  for that assertion.
+- **The credential-create POST's response body carries the new credential's `id`** —
+  no card-click round-trip is needed to learn it (ELITEA-2345 captures it straight off
+  `expect_response`, with a `list_all_credentials()` lookup by `label` kept as an
+  explicit fallback).
+- **The shared secret-vault handles were REUSED, not duplicated.** Both specs drive the
+  `api_key` SecretField through `CredentialCreatePage` — on the credential DETAIL route
+  and on the **AI-provider** form alike — because that page object already owns those
+  derived testids. Extracting them into a shared `components/secret_field.py` (or
+  promoting them to `CredentialFormFieldsMixin`, the pattern that file already used for
+  `FIELD_INPUT`/`AUTH_METHOD_RADIO`) is the cleaner end state but is a **non-additive**
+  edit to a ~20-caller page object — raised to the lead rather than done inside a case PR.
+- **The vault dropdown may not self-close after selecting an option** (consistent with
+  `#1047`'s `skipNextCloseRef`). ELITEA-2345 presses `Escape` after the selection so the
+  subsequent Save click is unambiguous; cheap and harmless when the menu did close.
+- **`page.on("dialog", lambda d: d.accept())` registered once at the top of the test is
+  sufficient** for the `beforeunload` gotcha above — no discard-first dance was needed on
+  either the credential or the AI-provider form.
+- **Neither spec asserts console errors.** It is outside both Coverage Maps, and `#656`
+  fires deterministically on `/credentials/create-credential/<type>` on dev builds — an
+  unrequested assertion would have made ELITEA-2345 a sanctioned-RED its case never asked
+  for. `#1203` was again not observed on `/settings/secrets` in these runs.
+- **The three-dot React-`onClick` workaround (`#1222`) was used unconditionally** in both
+  specs and opened the menu first try, three times across the two runs. 4th data point.

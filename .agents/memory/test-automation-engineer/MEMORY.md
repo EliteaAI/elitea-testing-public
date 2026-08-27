@@ -66,3 +66,4 @@
 - [expect.soft() cannot soft-assert a parsed value](expect_soft_does_not_apply_to_plain_python_values.md) — use soft_failures + pytest.fail()
 - [Gate --cmd pipe masks pytest exit code](gate_cmd_pipe_masks_pytest_exit_code.md) — never pipe pytest inside gate-case.mjs --cmd; redirect
 - [Importing a Test* class into a unit test re-runs the whole UI spec](unit_test_importing_test_class_reruns_the_ui_spec.md) — import the spec MODULE, not its class
+- [Shared SecretField handles live in CredentialCreatePage](shared_secretfield_handles_live_in_credential_create_page.md) — reuse on ANY surface; never re-declare

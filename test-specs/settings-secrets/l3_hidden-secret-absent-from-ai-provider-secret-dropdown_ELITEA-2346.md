@@ -252,3 +252,30 @@ None.
 - Wrap every step in `with allure.step("Step N — …"):`.
 - Register the `beforeunload` dialog handler before navigating away from the dirtied
   AI-provider form.
+
+## Implementation notes (shipped — amended by the implementer, 2026-08-28)
+
+Spec: `automation/tests/ui/admin/test_hidden_secret_absent_from_ai_provider_dropdown.py`
+(green first run, 50.24 s, 0 reruns). Every assertion above shipped as
+specified, including the **preferred pre-hide baseline** (the dropdown is
+opened once on a new AI-provider form BEFORE the hide and both secrets are
+asserted present). Deltas in the *how*:
+
+1. **`ai_providers_page.py` gained, additively:** `create_button`
+   (`sidebar-create-button`), the `TYPE_CARD_SELECTOR` /
+   `TYPE_CARD_PREFIX_SELECTOR` class-constant templates, `type_card()`,
+   `type_cards`, `click_create()` and `click_type_card()`. `click_type_card()`
+   settles on the type picker unmounting and deliberately does NOT re-declare
+   `toolkit-field-label-input` — that testid already lives in
+   `CredentialFormFieldsMixin`, and the caller asserts the rendered form
+   through it.
+2. **The shared secret-vault block is reused, not duplicated:** the spec drives
+   the AI-provider form's `api_key` field through `CredentialCreatePage`, whose
+   methods already own those derived testids. The `components/secret_field.py`
+   extraction this file suggests is the cleaner end state but is a non-additive
+   refactor of a ~20-caller page object — raised to the lead, not done here.
+3. **A second, run-unique CONTROL secret is created and deleted**, so the
+   "other secrets are still selectable" control is owned by the run.
+4. **No console-error assertion** was added — outside this case's Coverage Map,
+   and the AFS's own §Known Defects records two environment-dependent
+   signatures around this flow.
