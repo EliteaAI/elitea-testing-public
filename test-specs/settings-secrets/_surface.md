@@ -378,3 +378,73 @@ by ELITEA-2337/2338/2343 analyst sessions (same day).
   `SecretsTable.jsx`. `secrets-pagination-info` is **absent** when the table is empty.
 - ELITEA-2249 is parked **blocked** on the precondition (see
   `l2_secrets-empty-state-no-secrets_ELITEA-2249.md` § Blocked Steps).
+
+## Page layout / search / sort / pagination (ELITEA-2330/2331/2332/2334/2342,
+## combined analyst+implementer session, 2026-08-27)
+
+- **The search input NOW has a testid** — `secrets-search-input`, added this session
+  (`EliteaAI/EliteaUI@249c0186`, on `automation/testids`). This **supersedes** the
+  § Page structure note above ("Search input has NO dedicated testid confirmed yet"):
+  `SecretsContent.jsx`'s `slotProps.searchInput` now passes `testId`, the prop
+  `DrawerPageHeader` already supported. It lands on the **native `<input>`**
+  (`SimpleSearchBar` forwards `data-testid` through `inputProps`), so typing and
+  `.input_value()` work directly.
+- **Pagination controls now have testids too** — same commit: `pageSizeSelectTestId`,
+  `prevButtonTestId`, `nextButtonTestId` wired at `SecretsTable.jsx`'s
+  `GridTablePagination` call site →
+  `secrets-pagination-page-size-select` (+ `…-select-combobox`, derived automatically by
+  `SingleSelect` via `SelectDisplayProps` — the **root is not clickable, the combobox
+  node is**), `secrets-pagination-prev-button`, `secrets-pagination-next-button`. All
+  four are pure additive props on pre-existing shared components: no DOM node, no hook,
+  no state, nothing removed.
+- **Rows-per-page OPTIONS need no new testid** — the shared `SingleSelectMenuItem`
+  already defaults to `data-testid={option.testId ?? select-option-${option.value}}`, so
+  the live options are `select-option-5` / `-10` / `-50` / `-100`. Only one select menu
+  is ever mounted (0 such nodes in the DOM when closed, confirmed live), so no scoping is
+  needed. Contrast the Notification Center, which threads explicit
+  `notifications-page-size-option-{n}` testIds — unnecessary here.
+- **Column headers and the sort control DO exist** — this supersedes the § Page structure
+  note ("no `columnTestIdPrefix` wired"): `SecretsTable.jsx` passes
+  `columnTestIdPrefix="secret"`, so `secret-column-header-{name,secretValue,actions}` and
+  `secret-sort-icon-name` all render. Only `name` is `sortable: true`, so it is the ONLY
+  column with a sort-icon node (the other two are `to_have_count(0)` — which is how this
+  batch references, and therefore justifies, that testid family per canon question #1705).
+- **Sort contract (confirmed live + in source).** `useTableSort({ defaultField: 'name',
+  defaultDirection: 'asc' })` ⇒ the table arrives **already name-ascending with no
+  interaction**; `handleSort` then flips on each click of the same field. Live:
+  load → asc (`auth_token` first); click 1 → **desc** (`webhook_secret_v9348` first);
+  click 2 → asc. **The case text (ELITEA-2331) has this inverted** — filed as
+  clarification **#1901**, sibling of **#1880** (identical drift on Personal Tokens).
+  Comparison is case-insensitive (`sortData` lower-cases both sides), and it re-sorts the
+  WHOLE dataset, not just the visible page.
+  ⚠️ **Sort direction is only expressed as an inline `transform: rotate(180deg)` style on
+  the icon** — never assert it; assert the rendered row ORDER, which is the real observable.
+- **Pagination contract (confirmed live).** `defaultPageSize: 10`,
+  `PAGE_SIZE_OPTIONS: [5, 10, 50, 100]`. Range label is the literal
+  `` `${startRow} - ${endRow} of ${totalRows}` `` — an **ASCII hyphen with spaces**
+  (`1 - 10 of 121`), not the en dash the case texts use. Prev is `disabled` on page 1,
+  next on the last page. `handlePageSizeChange` **resets the page to 0** — confirmed live:
+  from page 2, choosing `5` landed on `1 - 5 of 121` with prev disabled again. Zero
+  network requests fire on a page change or a page-size change (client-side over the
+  already-fetched list).
+- **Search contract (confirmed live).** `SecretsContent.jsx`'s
+  `secretsList.filter(name.toLowerCase().includes(search.toLowerCase()))` ⇒ per-keystroke,
+  substring, case-insensitive, **name-only**, no Enter/submit/debounce, zero network
+  requests. The filtered set feeds pagination, so the range label re-totals
+  (`pgvector` → `1 - 2 of 2`; `PGVECTOR` → the identical 2 rows). `fill("")` clears it
+  correctly — the digest's `Control+a`-unreliable warning is scoped to the create-row Name
+  field (`useAutoBlur`), NOT to this plain `InputBase`.
+- **Data scale, refreshed**: project `Private` (399) now holds **121** secrets
+  (was 120 on 2026-08-24, 103/104 on 2026-08-05). Never assert an absolute total — parse
+  it out of `secrets-pagination-info` and compute expectations from it.
+- **`#1203` did NOT fire during this session's live exploration** (0 console errors across
+  navigation, sorting, paging, page-resizing and searching). Third session in a row where
+  it was absent live while ELITEA-2336's automated run hit it 3/3 — still inconclusive;
+  every new spec keeps the isolated soft-failure handling rather than assuming either way.
+- **⚠️ Vite did NOT pick up the JSX edits on this machine** (OneDrive-backed checkout):
+  after editing + committing, the dev server kept serving the pre-edit transform, and a
+  `touch` did not invalidate it either. The new testids appeared only after **restarting
+  `npm run dev`**. Verify a fresh testid with
+  `curl -s "http://localhost:5173/src/%5Bfsd%5D/.../File.jsx" | grep -c "<testid>"`
+  before concluding "the testid does not render" — that check costs one command and
+  distinguishes a stale dev server from a wiring mistake.
