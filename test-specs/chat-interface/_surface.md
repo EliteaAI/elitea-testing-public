@@ -4001,6 +4001,9 @@ is synchronised immediately.
   confirmed properly configured by the covering test).
 - **2209's target is currently gate-excluded** (2215's test carries a soft-asserted,
   confirmed-non-deterministic known defect, `elitea-testing-public#1127` — see
+  ⚠️ **SUPERSEDED 2026-08-27 — see § #1127 is TOOL-DEPENDENT at the end of this digest:
+  the `create_file` path (2215's own) is now 11/11 green and NO LONGER gate-excluded;
+  only the `delete_file` sibling class still reproduces.** Original note follows —
   `.agents/testing.md` § Merge gate "Unconfirmed" history and the covering AFS's
   fix-round-2 note). The new participants-panel assertion must be placed BEFORE the
   message send / BEFORE the #1127 classification block, as a plain unconditional
@@ -4058,6 +4061,8 @@ is synchronised immediately.
   spec already live-executes the byte-identical flow).
 - Known defect `elitea-testing-public#1127` (non-deterministic, ~2/5) still applies identically —
   not a new finding, doesn't affect the already-covered verdict.
+  ⚠️ **SUPERSEDED 2026-08-27** — the "~2/5" rate is wrong for `create_file`; see
+  § #1127 is TOOL-DEPENDENT at the end of this digest.
 - AFS: `test-specs/chat-interface/lcovered_direct-toolkit-call-complete-flow-duplicate_ELITEA-2474.md`.
 
 ## Context Management DISABLED — Context Budget widget stays at zero (ELITEA-2216)
@@ -4490,3 +4495,34 @@ not an illustration.
   parallel_hitl_ready` warnings — unhandled socket type, issue **#1831**. Don't filter it.
 - `ArtifactAPI.delete_bucket()` 404s on freshly-created buckets (`p--{project_id}.{name}`
   path). Pre-existing; the fixture swallows it.
+
+## #1127 is TOOL-DEPENDENT, not probabilistic — direct-toolkit-call flow (2026-08-27)
+- **What changed:** `elitea-testing-public#1127` ("direct toolkit call narrates the tool
+  call instead of executing it") was on file as *non-deterministic, 2/5 on `create_file`*
+  (2026-08-03). An independent live re-measurement this date shows it splits by **which
+  tool is called**, not by luck.
+- **Measured, all `--reruns 0`, separate pytest invocations, localhost, backend-verified
+  via `ArtifactAPI.list_bucket_files()` (never DOM-only):**
+  - `create_file` — `TestDirectToolkitCallCompleteFlow::test_direct_toolkit_call_complete_flow`
+    — **5/5 GREEN** (36.18 / 35.62 / 36.65 / 36.00 / 35.63 s). With the merge-gate owner's
+    own 6/6 the same day: **11 consecutive greens**.
+  - `delete_file` — `TestDirectToolkitCallDeleteFileChip::test_direct_toolkit_call_delete_file_chip`
+    — **0/2 GREEN**, both the byte-identical ticketed signature (no `chat-answer-tool-chip`,
+    file still present in the bucket, LLM claims success verbatim). With 2026-08-19's 3/3:
+    **7/7 RED lifetime.**
+- **Consequence for anyone composing a gate:** `TestDirectToolkitCallCompleteFlow` is a
+  plain-green-gate spec now — the `GATE_EXCLUDED_REASON` constant in
+  `automation/tests/ui/chat/test_direct_toolkit_call_complete_flow.py` is stale for THAT
+  class (an implementer dispatch owns correcting the module docstring/marker; the analyst
+  does not touch `automation/`). `TestDirectToolkitCallDeleteFileChip` stays sanctioned-RED
+  on #1127 and stays gate-excluded.
+- **Caveat — don't over-read "tool-dependent":** the two classes also differ in message
+  wording (the delete class sends an explicit "execute the tool now" instruction) and in
+  precondition (a seeded file). Tool identity is the best-supported discriminator — the
+  *more* forceful prompt is the one that fails, so wording doesn't explain it — but it is
+  not an isolated variable. No root-cause claim is made here.
+- **If `create_file` ever goes red again:** that is a real signal, NOT expected noise. The
+  module's Step 2b `ArtifactAPI` classifier will name it as #1127 with backend proof; treat
+  it as a blocker and re-open the determinism question rather than excepting it.
+- AFS: `test-specs/chat-interface/l2_direct-toolkit-call-complete-flow_ELITEA-2215.md`
+  (Status: `ready-for-automation`, fix round 3).

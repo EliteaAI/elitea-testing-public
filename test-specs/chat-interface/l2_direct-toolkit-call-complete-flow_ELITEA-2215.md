@@ -9,19 +9,23 @@
   case needs NO Guardrails/HITL configuration — a plain toolkit call).
 - **User set**: `${TEST_USER}`
 - **Analyst**: qa-engineer (cluster run, ELITEA-2211..2215, 2026-08-03)
-- **Status**: blocked — **downgraded fix round 2 (2026-08-04), see § Known
-  Defects Found for why.** The test IS implemented and IS runnable (green when
-  the known defect doesn't fire), but the case is **not** considered
-  automated/complete for THIS wave: its only red-vs-green path relies on a
-  known defect (#1127) that is confirmed **non-deterministic** (2/5 runs) and
-  therefore does not currently satisfy `.agents/testing.md` § Merge gate's
-  sanctioned-RED bar. `test_direct_toolkit_call_complete_flow.py` is excluded
-  from this wave's N-consecutive-green hardening-gate spec list (see the
-  module docstring's "Fix round 2" note and the `GATE_EXCLUDED_REASON`
-  constant at the top of that file — both are the mechanical markers the
-  orchestrator greps for when composing the gate's required-spec list).
-  Un-blocks when either #1127 is fixed, or its determinism is re-established
-  with further evidence (see Known Defects section).
+- **Status**: **ready-for-automation** — **re-classified 2026-08-27 (fix round 3)
+  after an independent live re-measurement of known defect #1127's determinism;
+  see § Known Defects Found During Exploration for the numbers.** The
+  2026-08-04 `blocked` downgrade rested on a single premise: that #1127 fires
+  probabilistically on THIS case's own trigger (`create_file`), so the test's
+  red-vs-green path satisfied neither the plain green gate nor
+  `.agents/testing.md` § Merge gate's sanctioned-RED bar. That premise no
+  longer holds on today's evidence. Re-measured live this pass, all
+  `--reruns 0`, separate pytest invocations against `http://localhost:5173`:
+  **`create_file` (this case's own observable) 5 of 5 GREEN**, backend-verified
+  — #1127 did not fire once. This case therefore needs **no sanctioned-RED
+  argument at all**: it is deliverable on a plain green gate, and the module's
+  `GATE_EXCLUDED_REASON` exclusion no longer applies to
+  `TestDirectToolkitCallCompleteFlow`. #1127 stays OPEN and still deterministically
+  blocks the **sibling** `delete_file` class (ELITEA-2210,
+  `TestDirectToolkitCallDeleteFileChip`), which is a separate case's observable
+  and a separate gate decision — not this one's.
 
 ## Preconditions
 - An Artifact-type toolkit (`ToolkitAPI.create_artifact_toolkit`, includes
@@ -139,54 +143,90 @@
   this pass — no HITL pause frames in this flow (no sensitivity configured).
 
 ## Known Defects Found During Exploration
-**Updated fix round 1 (2026-08-03) — was stale at "None found."** One
-product defect WAS found during implementation, filed as
-[EliteaAI/elitea-testing-public#1127](https://github.com/EliteaAI/elitea-testing-public/issues/1127):
-across 3 separate live local runs, the direct-toolkit-call flow (no agent)
-sometimes leaks the model's tool-call intent as raw visible text instead of
-invoking the real backend tool — confirmed non-deterministic (2/5 runs
-executed correctly). The implementation handles this via a
-`soft_failures`/`pytest.fail()` aggregation gated behind an independent
-`ArtifactAPI` ground-truth tie-breaker (same backend check ELITEA-2212/2213
-use) — never a weakened assertion of the correct contract. See the test's
-module docstring for the full classification logic.
 
-**Corrected fix round 2 (2026-08-04) — the round 1 note above overstated the
-merge-gate fit; corrected here, code unchanged.** Round 1 cited
-`.agents/testing.md`'s 2026-07-18 "closed-set variant" (ELITEA-1892/#615) as
-precedent for treating this as sanctioned-RED-eligible. On review that citation
-does not hold: the closed-set variant covers **multiple distinct defects, each
-independently 100%-reproducing on its own trigger** — it does not cover **one
-defect firing probabilistically (2/5) on the same trigger**. Issue #1127 itself
-documents the non-determinism as filed evidence, and `.agents/testing.md` §
-Merge gate's plain sanctioned-RED bar requires "(a) deterministic — identical
-failure 3/3" for the failure being excepted. #1127 cannot supply that on
-today's evidence (three GREEN local runs this session show the *runner* got
-lucky, or that `ArtifactAPI`'s ground truth correctly cleared the test when the
-defect didn't fire that run — neither establishes the *defect* fires
-deterministically).
+**Current characterisation (fix round 3, 2026-08-27) — #1127 is TOOL-DEPENDENT,
+not merely probabilistic; and it no longer blocks THIS case.**
 
-**Disposition:** the `ArtifactAPI` ground-truth tie-breaker code is good
-engineering and stays as-is — it correctly distinguishes "hit #1127's
-confirmed signature" from "something else broke," which is valuable
-independent of gate eligibility. What changes is the classification: this
-case is **not** treated as sanctioned-RED and is **not** counted as automated
-for this wave. `test_direct_toolkit_call_complete_flow.py` is excluded from
-the wave's N-consecutive-green hardening gate (see module docstring "Fix round
-2" + the `GATE_EXCLUDED_REASON` module constant — both greppable markers for
-the orchestrator). Re-evaluate once #1127 is fixed, or once further evidence
-(more filed runs) either confirms a stable, non-1.0 defect rate that a future
-merge-gate policy addendum could sanction, or shows the defect was actually a
-transient environment issue now gone.
+Product defect
+[EliteaAI/elitea-testing-public#1127](https://github.com/EliteaAI/elitea-testing-public/issues/1127)
+(OPEN) — a direct toolkit call (no agent) sometimes narrates the tool call as
+text instead of invoking the real backend tool, while the LLM claims success and
+no error surfaces anywhere. It was originally recorded as *non-deterministic*
+(2/5 on `create_file`, 2026-08-03). Re-measured independently this pass, the
+shape of the defect is different from what that number suggested: it splits
+cleanly by **which tool** is called.
 
-Both case-text/live-product divergences below (dotted vs colon-separated
-chip format; 3-chips-as-described vs 1-combined-chip+N-model-chips-in-
-practice; and CLARIFICATION 3 above, the accordion auto-expand) are
-classified as **CLARIFICATION** per the reverse-masking guard — the live
-product's behavior is correct and internally consistent; the case text is
-the stale/imprecise element. Recommend filing a lightweight case-text
-clarification note against ELITEA-2215 in the TMS per
-`.agents/role-overrides.md`'s interaction-discovery-ladder precedent (not a
+### Re-measurement, 2026-08-27 (analyst, independent)
+
+Live local stack (`http://localhost:5173`), every run a **separate pytest
+invocation**, `--reruns 0`, `-p no:cacheprovider`, `HEADLESS=true`. Each run's
+verdict is backend-verified via `ArtifactAPI.list_bucket_files()`, never from
+the DOM alone — a GREEN run means the tool chip rendered **and** the real file
+was actually created/deleted in the bucket.
+
+| Trigger | Spec | Result | Wall clock |
+|---|---|---|---|
+| `create_file` — **THIS case's own observable** | `TestDirectToolkitCallCompleteFlow::test_direct_toolkit_call_complete_flow` | **5 GREEN / 0 RED** | 36.18 / 35.62 / 36.65 / 36.00 / 35.63 s |
+| `delete_file` — sibling case ELITEA-2210's observable | `TestDirectToolkitCallDeleteFileChip::test_direct_toolkit_call_delete_file_chip` | **0 GREEN / 2 RED** | 29.58 / 29.80 s |
+
+Every one of the 5 green `create_file` runs executed the module's Steps 3, 4 and
+5 — the *hard*, unconditional correct-contract assertions (tool chip visible,
+chip text `"{toolkit}: create_file"`, `to_have_count(1)`, ≥1 model chip, non-empty
+response text) — plus the side-channel console/JS-error check. Verified in
+`reports/allure-results/*-result.json`, all steps `passed`. There is no path by
+which a #1127 occurrence could have been absorbed into a green: the module's
+Step 2b classifier defers to `soft_failures` → `pytest.fail()` when chip and
+backend file both disagree with the contract.
+
+Both `delete_file` reds carried the *byte-identical ticketed signature*: no
+`chat-answer-tool-chip` rendered, `ArtifactAPI` confirms the seeded file was NOT
+deleted (`bucket contents` still lists it), and the assistant's own text claims
+success verbatim — e.g. *"The file … has been successfully deleted from bucket …"*.
+
+Corroborating history, same signature, independent sessions:
+`delete_file` **5/5 RED** across 2026-08-19 (3/3, recorded as
+[a comment on #1127](https://github.com/EliteaAI/elitea-testing-public/issues/1127#issuecomment-5342934194))
+plus these 2. `create_file` has now produced **11 consecutive GREEN runs on
+2026-08-27** (the merge-gate owner's 6 + this analyst's independent 5) against
+the 2/5 recorded on 2026-08-03.
+
+### What this means for classification
+
+- **This case (`create_file`) is deliverable on a plain green gate.** No
+  sanctioned-RED exception is invoked, so the 2026-08-04 objection — that a
+  probabilistic defect cannot supply "(a) deterministic — identical failure 3/3"
+  — is simply moot here: there is no red to except. `blocked` → `ready-for-automation`.
+- **#1127 still blocks the sibling `delete_file` case (ELITEA-2210).** That
+  class reproduces deterministically (7/7 lifetime) and remains sanctioned-RED
+  under § Merge gate on its own, separately-linked basis. Nothing in this
+  re-classification touches it.
+- **Honest caveats, stated rather than smoothed over:**
+  1. The two classes differ in more than the tool name — the `delete_file` class
+     also sends a more explicit "execute the tool now" message and depends on a
+     seeded file. Tool identity is the best-supported discriminator (the *more*
+     forceful prompt is the one that fails, so wording does not explain it), but
+     it is not an isolated single variable, and this AFS does not claim a root
+     cause. Root-causing #1127 belongs on the issue, not here.
+  2. The 2026-08-03 2/5 on `create_file` was real when recorded. Either the
+     platform/model behaviour moved since, or that window was environmental. This
+     re-classification rests on *today's* 11/11, not on a claim that the earlier
+     observation was wrong.
+  3. The module's #1127 classification logic **stays exactly as-is** and is the
+     safety net for caveat 2: if #1127 ever fires on `create_file` again, the test
+     goes RED with a classified, backend-verified message rather than silently
+     passing. Such a red would **not** be sanctioned — it would be a genuine
+     signal to re-open this determinism question, and the gate owner should treat
+     it as a blocker, not as expected noise.
+
+### Case-text divergences (unchanged, still CLARIFICATION not defect)
+
+Both case-text/live-product divergences (dotted vs colon-separated chip format;
+3-chips-as-described vs 1-combined-chip + N model chips in practice; and
+CLARIFICATION 3, the accordion auto-expand) are classified as **CLARIFICATION**
+per the reverse-masking guard — the live product's behavior is correct and
+internally consistent; the case text is the stale/imprecise element. Recommend
+filing a lightweight case-text clarification note against ELITEA-2215 in the TMS
+per `.agents/role-overrides.md`'s interaction-discovery-ladder precedent (not a
 `bug`-labelled tracker issue — this repo's bug-filing is for THIS repo's
 product-defect findings, not TMS case-text wording).
 
