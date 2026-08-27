@@ -11,7 +11,11 @@ mechanism, reliable field-clearing technique, `beforeunload` nav-blocker
 gotcha). Extended by: qa-engineer analyst, ELITEA-2278/2279/2287 cluster,
 2026-08-27 (table sorting semantics + the sort-direction trap; search-box live
 filtering; the two distinct empty states; the in-page-`fetch` console trap) —
-see the three sections at the end.
+see the three sections at the end. Extended by: qa-engineer analyst,
+ELITEA-2281/2282/2283/2288 cluster, 2026-08-27 (expiration-unit option testids;
+the `> 7` green/amber threshold + issue #1882; the post-mutation refetch window
+and its vacuous-assertion trap; delete-dialog exact texts; duplicate names are
+legal, so a name locator can match >1 row) — see the final section.
 
 ## Create-token flow (`/settings/create-personal-token`, `CreatePersonalToken.jsx`)
 - The add-button (`personal-tokens-add-button`) does NOT open an inline
@@ -361,3 +365,79 @@ hand-rolled `fetch`.
   filesystem does not deliver reliable fs-watch events. **After adding a testid, verify it is
   actually served by that curl before blaming the test** — the failure looks exactly like "the
   testid was never added".
+
+## Create-with-expiration, delete, and duplicates (ELITEA-2281/2282/2283/2288 cluster, 2026-08-27)
+
+**Zero testid work was needed for any of these four cases** — every handle is already on
+`origin/main` (fresh-fetch two-stage grep, 2026-08-27).
+
+### Expiration-unit dropdown — option testids exist, for free
+- `SingleSelectMenuItem.jsx:117` renders ``data-testid={option.testId ?? `select-option-${option.value}`}``,
+  so the create form's unit options are **`select-option-never|days|weeks|hours|minutes`**.
+  Identical line on `origin/main` and `origin/automation/testids`.
+  ⚠️ A bare `git grep 'select-option-days'` finds **nothing** — the value is composed at
+  runtime (the stage-1 grep blind spot in `.agents/workflow.md` § Closure record). Don't
+  conclude "needs adding" from that miss.
+- Options are exactly the 5 of `EXPIRATION_MEASURES` (`src/common/constants.js:492`),
+  rendered in that order: `Never, Days, Weeks, Hours, Minutes`.
+- Compliant page-object shape is the class-level template, not an inline f-string:
+  `EXPIRATION_MEASURE_OPTION_SELECTOR = '[data-testid="select-option-{}"]'`.
+- **Selecting `Never` UNMOUNTS the numeric value input** (`create-personal-token-expiration-value-input`
+  count → **0**, not merely hidden/disabled). `POST /auth/token/` then returns `expires: null`.
+- The value input is `type="number"`, `name="expiration"`, **no `min`/`max`** attributes.
+- `ControlOrMeta+a` IS reliable on the numeric value input (it is not the `useAutoBlur`
+  Name field — that warning is scoped to `create-personal-token-name-input` only).
+
+### ⚠️ The `> 7` expiration threshold — green starts ABOVE 7 days (issue #1882)
+`ExpiryInDays.jsx` uses a strict `if (expiryInDays > 7)` for the green `active` branch, and
+`calculateExpiryInDays` rounds to whole days — so a token created with **`Days`/`7`** lands in
+the **amber `warning`** branch (`AttentionIcon`, fill `#E97912`) with the label `in 7 days`.
+Confirmed live. Any case text expecting "green at 7 days" is **stale** (ELITEA-2282 step 6 —
+clarification filed as **#1882**); assert the live contract. Branch map, for picking test data:
+`>7d → active/green` · `1-7d → warning/amber` · `expires:null → never/green` · `else → expired/gray`.
+State coverage after this cluster: `active` (ELITEA-2280), `expired` (ELITEA-2284),
+`warning` (ELITEA-2282, new), `never` (ELITEA-2283, new) — all four finally exercised.
+
+### ⚠️ The refetch window — a vacuous-assertion trap after EVERY create and delete
+`TokensTable.jsx:150` renders `!isFetchingTokens ? <table> : <spinner>`, so the **whole table
+unmounts** while the post-mutation `refetch()` is in flight. Measured live twice: `token-row`
+count read **0** immediately after a create (landing back on `/settings/tokens`) and **0**
+immediately after a delete's 204, settling at 9 and 8 respectively.
+⇒ `expect(deleted_row).to_have_count(0)` **passes vacuously** during that window — it would
+pass against a delete that never happened. Always assert the **total** count first
+(`expect(token_row).to_have_count(rows_before ± n)`, auto-retrying), then the named row.
+Same rule for reading names/values right after a create.
+
+### Delete flow — exact texts confirmed live
+Trash icon (`token-action-delete-button`) → shared `DeleteEntityModal`:
+`delete-confirm-title` = **`Delete confirmation`**; `delete-confirm-message` =
+**`Are you sure to delete the {name}? Enter the name to complete the action.`**;
+`delete-confirm-cancel-button` = `Cancel`; `delete-confirm-button` = `Delete`, **disabled**
+until the typed text matches the name **exactly** (a prefix keeps it disabled — verified).
+Confirm → `DELETE /api/v2/auth/token/{uuid}` → **204** (empty body — never call `.json()`),
+dialog closes itself. Deletion persists across `page.reload()` (re-verified against the
+reload's own `GET /auth/token/` payload, not just the DOM).
+`PersonalTokensPage` still lacks `LocatorDescriptor`s for `delete-confirm-title` / `-message` /
+`-cancel-button` — the testids exist, only the page-object fields are missing.
+
+### Duplicate token names ARE allowed (ELITEA-2288)
+Two creates with an identical name both return **200** with distinct `id`/`uuid`/token; the
+form raises **no** validation error and Generate stays enabled on the second. Both rows render,
+with distinct masked values (`'...' + token.slice(-4)`).
+⇒ **`get_row_by_name(name)` can resolve MORE THAN ONE row on this surface** — index with
+`.first`/`.nth()` or Playwright strict mode raises. Deletion stays unambiguous: the type-to-confirm
+field matches the *name* (so either row accepts the same typed text) while the `DELETE` targets the
+clicked row's own `uuid` — a `while rows.count() > 0` loop cleans both (verified, 204 each).
+Because duplicates are legal, **never hardcode a literal token name in a test** — a leftover from a
+failed run silently inflates every row-count assertion. `uuid4().hex[:8]`-suffix everything.
+
+### Live data + session hygiene (2026-08-27)
+Baseline unchanged and **restored** after this session: 5 persistent tokens — `for_ui_tests`,
+`Levon`, `uautomate` (never) and `Marian`, `New` (expired, irrecoverable — ELITEA-2284's fixture).
+Four tokens were created and all four deleted. Console across the entire cluster session:
+**0 errors** (68 entries, all INFO/LOG).
+
+> 📏 **Digest size note (2026-08-27):** this file is past the "comfortable single read" mark
+> (~25 KB). The next analyst on this surface should split it into an index + per-subarea files
+> (create-flow / table / search+sort / delete) per `test-case-analysis`
+> § When the digest outgrows one file, rather than appending a further section.

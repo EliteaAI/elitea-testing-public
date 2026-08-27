@@ -44,3 +44,4 @@
 - [Rendered dates = server UTC](rendered_timestamps_are_server_utc_not_browser_local.md) — never assert vs datetime.now
 - [Grid-table sort: first click is DESC](grid_table_sort_first_click_is_descending.md) — useTableSort defaults to asc; case texts get it backwards
 - [Prefix testid selector ok](prefix_testid_selector_passes_the_locator_grep.md) — `[data-testid^=` is compliant
+- [Composed testids evade grep](runtime_composed_testids_invisible_to_grep.md) — grep the template, not the value
