@@ -742,3 +742,33 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   **Run the control BEFORE reasoning about blame** — the reasoning above is only trustworthy because
   the control agreed with it. The durable fix remains the rotating/clean test identity in
   § Suite-health pointer, not a per-spec guard.
+- **Known-noise entry — HITL sensitive-action TRIGGER flake (2026-08-27, ELITEA-2212, PR #1836)**:
+  1 of 6 lead-independent gate invocations of
+  `test_hitl_sensitive_action_authorization.py::TestSensitiveActionAuthorize::test_authorize_executes_toolkit_tool_directly`
+  failed at the SHARED SETUP instead of on its sanctioned-RED signature —
+  `AssertionError: Sensitive Action Authorization card should appear for a sensitive
+  delete_file call`, 52 s (vs the ~125 s a full run takes). The assistant answered fast
+  (`answer_thought_accordion` appeared, so the turn ran) but no HITL interrupt ever fired.
+  **Ruled out at the time, not guessed:** the fixture verifies its guardrails SET by readback
+  (`data_fixtures.py:1926-1930`) and that assertion passed, so the sensitivity flag was
+  provably ON for that run; and the toolkit-attach guard (`is_participants_badge_visible`,
+  Step 1) also passed. What is left is the LLM declining to call the tool on that turn —
+  i.e. trigger-side nondeterminism at the *precondition*, upstream of everything the case
+  asserts. The re-gate immediately after was 3/3 byte-identical.
+  **The right response is to re-gate, never to accept 2-of-3** — this failure is not a member
+  of the case's closed defect set (it is a raw uncaught assertion at Step 3), so per
+  § Merge gate it blocks by construction. Record further occurrences here; if the rate rises,
+  the durable fix is a bounded retry of the trigger message inside `_reach_sensitive_action_card`,
+  not a longer panel timeout — the panel wait is not what timed out.
+- **Org-wide side-effect leak, ROOT-CAUSED, tracked as #1838 (2026-08-27, same gate)**: the
+  same discarded attempt's run 2 raised `AssertionError: Guardrails config was NOT restored —
+  this is an org-wide side effect. expected {}, got {'artifact': ['delete_file']}` in teardown.
+  It does **not** self-heal: `sensitive_delete_file_toolkit` is read-mutate-restore, so the NEXT
+  invocation captures the polluted state as its own "original" and faithfully restores *that* —
+  the leak becomes the new baseline. Verified live afterwards (flag still set) and restored by
+  hand. While set, **every** artifact `delete_file` call by **any** user in the org gets the
+  authorization card instead of executing. The PUT itself reports `{"saved": true}` and a manual
+  readback succeeded first try, so this reads as occasional read-after-write staleness on
+  `GET /admin/plugin_config_values/administration/guardrails`, which the fixture asserts exactly
+  once with no retry. **Check `sensitive_tools` is `{}` before and after any gate of this module**
+  (the accepted ELITEA-2212 gate did, all 3 runs) until #1838 lands the retry.
