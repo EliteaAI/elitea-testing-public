@@ -42,3 +42,40 @@ An `expect.soft()` failure IS a pytest failure. A sanctioned-RED case is
 `blocked-on-#N`, **never** back-written as `automated` — counting it is a hidden green.
 
 Related: [[artifacts_area_backlog_1392]]
+
+## New variant (settings-w04, 2026-08-27): empty `expected_red[]` cascades `blocked` onto the WHOLE batch
+
+This one is not a stalled or crashed gate — the gate **ran correctly, 3×** — and it
+still produced a false verdict, so none of the recoveries above apply.
+
+The batch had **two pre-declared sanctioned-REDs** (ELITEA-2289 → #1884,
+ELITEA-2291 → #1885): filed OPEN bugs, `# Known defect: #N` in-test, `soft_failures`
+aggregation + trailing `pytest.fail()`, and the reviewer's own findings said
+"SANCTIONED-RED, two independent signatures — the closure record must reflect both."
+
+But the report came back with **`expected_red: []`**. With nothing declared, the gate
+scored both as plain reds → `verdict: red` → and the script marked **all 11 cases**
+`blocked`, including 8 that never failed. Its own per-case note said so verbatim:
+
+> "gate red for the batch — this spec did not itself fail"
+
+**The tell is cheap: if `gate.verdict == "red"` but `expected_red` is empty while the
+reviewer's findings mention sanctioned-RED, the two disagree and the report is wrong.**
+
+Recovery that worked, in order:
+
+1. **Verify ground truth before touching the label** — defects OPEN + filed, specs
+   really carry the known-defect markers, unit PRs really merged.
+2. **Run your own gate SPLIT BY NODE-ID**, not by file. Here ELITEA-2289 (vscode) and
+   ELITEA-2290 (jetbrains) are two params of ONE spec file — one red, one green — so a
+   file-scoped gate literally cannot express the split. Green group 3/3 green; RED
+   group 3/3 identical.
+3. Rewrite `report.json`: real verdict, per-case outcomes (`automated` /
+   `merged-sanctioned-red` / `blocked`), and a **populated `expected_red[]`** so the
+   next reader isn't misled the same way.
+
+**Determinism subtlety worth keeping:** #1884's failure message embeds the token
+suffix, which differs every run because each run mints a fresh token. That is the
+observed *value*, not the cause. Judge "identical signature" on the **cause**
+(masked instead of full), never on byte-equality of the message — otherwise a
+legitimate sanctioned-RED reads as flaky and blocks forever.
