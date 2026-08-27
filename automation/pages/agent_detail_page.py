@@ -99,6 +99,37 @@ class AgentDetailPage(AgentFormPage):
         ':not([data-testid^="version-option-set-default-"])'
     )
 
+    # Three-way convergence predicate for "the page now shows version <name>,
+    # fully loaded" — the SINGLE shared source used by both
+    # :meth:`confirm_new_version` (Save As Version) and
+    # :meth:`select_version_by_name` (VERSION dropdown switch).
+    #
+    # Why three signals and not just trigger-text + URL: those two are BOTH
+    # URL-derived. `ApplicationVersionSelect.jsx`'s
+    # `if (isFromCreation) return version;` reads the route's version path
+    # param synchronously, so the trigger flips the instant the route changes,
+    # before any version data has loaded. The Information panel's
+    # `copy-version-id` is rendered from Formik (`ApplicationInformation.jsx`
+    # renders `version_details?.id`) and is written only after the async
+    # version-detail GET lands. Requiring the Formik-backed id to equal the
+    # URL's version-id segment is what proves the version data actually
+    # arrived — see issue #1872.
+    #
+    # LOCATOR NOTE: the `[data-testid="…"]` literals are inlined here because
+    # `wait_for_function` evaluates in the page, not through a Playwright
+    # locator. This is the established in-file shape and is testid-only
+    # (`.agents/testing.md` § Locator policy).
+    VERSION_CONVERGED_JS = """name => {
+        const trigger = document.querySelector('[data-testid="agent-version-selector-trigger"]');
+        const versionIdEl = document.querySelector('[data-testid="copy-version-id"]');
+        if (!trigger || trigger.innerText.trim() !== name) return false;
+        if (!versionIdEl) return false;
+        const currentId = versionIdEl.innerText.trim();
+        if (!currentId) return false;
+        const seg = window.location.pathname.split('/').filter(Boolean).pop();
+        return seg === currentId;
+    }"""
+
     # --- Variables section (ELITEA-1884 testid-only rework — added via
     # add-data-testid to ApplicationVariables.jsx / VariableList.jsx; see
     # EliteaUI draft PR #568). `ApplicationVariables.jsx` renders `null`
@@ -809,19 +840,37 @@ class AgentDetailPage(AgentFormPage):
         Call after :meth:`open_save_as_version_dialog`. Types via
         ``press_sequentially`` (MUI/React onChange requirement —
         `.claude/rules/mui-patterns.md`), clicks the dialog's Save button,
-        and waits for the dialog to close and for the URL to gain a new
-        version-id path segment (mirrors
-        ``SkillDetailPage.save_as_version()``'s wait strategy). The app
-        also appends a transient ``isFromCreation=true`` query param that
-        self-strips once the new version has loaded; this method does not
-        assert on it directly.
+        waits for the dialog to close, then waits on the shared three-way
+        convergence predicate :attr:`VERSION_CONVERGED_JS`: the VERSION
+        selector trigger reads the new name **and** the Information panel's
+        ``copy-version-id`` is non-empty **and** it equals the URL's
+        version-id path segment.
+
+        Why all three (issue #1872 — this method previously waited only on
+        URL-derived signals and returned inside a ~0.8s window during which
+        the Information panel still showed the PREVIOUS version's id, so a
+        caller reading :meth:`get_version_id` straight afterwards read a
+        stale value): the VERSION trigger and the URL are the SAME source.
+        ``ApplicationVersionSelect.jsx``'s ``if (isFromCreation) return
+        version;`` returns the route's version path param synchronously, so
+        the trigger flips the instant the route changes — before any version
+        data has loaded. The Information panel's ``copy-version-id`` is
+        rendered from Formik (``ApplicationInformation.jsx`` renders
+        ``version_details?.id``) and is only written once the async
+        version-detail GET lands. Requiring the Formik-backed id to equal the
+        URL segment is therefore the only signal that proves the new
+        version's data actually arrived. The backend is correct throughout —
+        it does create a genuinely new version; only the read was racy.
+
+        The app also appends a transient ``isFromCreation=true`` query param
+        that self-strips once the new version has loaded. The predicate reads
+        ``location.pathname`` only, so that param never affects it.
 
         Args:
             version_name: Name for the new version (e.g. ``"v2-test"``).
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Confirming new agent version: %r", version_name)
-        previous_version_id = self.get_version_id()
 
         self.create_version_name_input.click()
         self.create_version_name_input.press_sequentially(version_name, delay=50)
@@ -830,23 +879,7 @@ class AgentDetailPage(AgentFormPage):
         Dialog.wait_for_hidden(self.page, timeout=timeout)
 
         self.page.wait_for_function(
-            "prevId => window.location.pathname.split('/').filter(Boolean).pop() !== prevId",
-            arg=previous_version_id,
-            timeout=timeout,
-        )
-        self.wait_for_network(timeout=5000)
-
-        # The URL's version-id segment updates before the VERSION selector's
-        # displayed text re-renders (confirmed live — a race, not a fixed
-        # delay: the new version's data loads via a follow-up API call).
-        # Poll the trigger's own text rather than sleeping.
-        self.page.wait_for_function(
-            """name => {
-                const el = document.querySelector('[data-testid="agent-version-selector-trigger"]');
-                return !!el && el.innerText.trim() === name;
-            }""",
-            arg=version_name,
-            timeout=timeout,
+            self.VERSION_CONVERGED_JS, arg=version_name, timeout=timeout
         )
         logger.info(
             "New agent version %r created — URL: %s", version_name, self.page.url
@@ -4305,16 +4338,8 @@ class AgentDetailPage(AgentFormPage):
         """
         logger.info("Selecting version %r from the VERSION dropdown", version_name)
 
-        version_id_matches_js = """name => {
-            const trigger = document.querySelector('[data-testid="agent-version-selector-trigger"]');
-            const versionIdEl = document.querySelector('[data-testid="copy-version-id"]');
-            if (!trigger || trigger.innerText.trim() !== name) return false;
-            if (!versionIdEl) return false;
-            const currentId = versionIdEl.innerText.trim();
-            if (!currentId) return false;
-            const seg = window.location.pathname.split('/').filter(Boolean).pop();
-            return seg === currentId;
-        }"""
+        # Shared with confirm_new_version() — see VERSION_CONVERGED_JS.
+        version_id_matches_js = self.VERSION_CONVERGED_JS
 
         last_exc: Exception | None = None
         for attempt in range(1, attempts + 1):
