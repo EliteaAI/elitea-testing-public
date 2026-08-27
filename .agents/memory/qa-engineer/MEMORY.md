@@ -42,3 +42,4 @@
 - [Prove cross-branch divergence with merge-tree](prove_cross_branch_divergence_with_merge_tree.md) — identical code at a different anchor still conflicts
 - [Optional oracle field silently disables the gate](optional_oracle_field_silently_disables_the_gate.md) — check EVERY config entry, not the captured two
 - [Rendered dates = server UTC](rendered_timestamps_are_server_utc_not_browser_local.md) — never assert vs datetime.now
+- [Grid-table sort: first click is DESC](grid_table_sort_first_click_is_descending.md) — useTableSort defaults to asc; case texts get it backwards

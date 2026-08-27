@@ -8,7 +8,10 @@ Extended by: qa-engineer analyst, ELITEA-2280, 2026-08-05 (create-token flow
 + delete-confirmation cleanup flow). Extended by: qa-engineer analyst,
 ELITEA-2286, 2026-08-05 (Name-field client-side validation: `useAutoBlur`
 mechanism, reliable field-clearing technique, `beforeunload` nav-blocker
-gotcha).
+gotcha). Extended by: qa-engineer analyst, ELITEA-2278/2279/2287 cluster,
+2026-08-27 (table sorting semantics + the sort-direction trap; search-box live
+filtering; the two distinct empty states; the in-page-`fetch` console trap) —
+see the three sections at the end.
 
 ## Create-token flow (`/settings/create-personal-token`, `CreatePersonalToken.jsx`)
 - The add-button (`personal-tokens-add-button`) does NOT open an inline
@@ -254,3 +257,73 @@ this digest / grep the component before re-requesting the same prop-thread.
 - **Mount timing**: a `CircularProgress` (`role="progressbar"`, no testid) covers the
   page for ~2-2.5 s on every load before either branch renders (measured 2026-08-24,
   500 ms sampling: rows appear at 2.5 s). Wait on the branch, never on a delay.
+
+## Table sorting — `useTableSort`, and the direction trap (ELITEA-2279, 2026-08-27)
+- `TokensTable.jsx` uses the shared `useTableSort({ defaultField: 'name',
+  defaultDirection: 'asc' })`. **The table arrives already sorted name-ascending**, so
+  the FIRST click on the Token-name header flips to **descending** — the toggle is
+  `prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'`
+  (`grid-table/lib/hooks/useTableSort.hooks.js:11-16`). Confirmed live with real clicks.
+  Any case text claiming "first click = ascending" is stale (ELITEA-2279 steps 2-5).
+- Sortable columns are exactly **`name` and `expires`** (`TOKENS_COLUMNS`,
+  `TokensTable.jsx:27-32`); `token` and `actions` are not — their header cells have
+  `cursor: default` and render **no** sort icon.
+- **Sort-icon testids already exist, for free**: `columnTestIdPrefix="personal-token"`
+  makes `GridTableHeader` emit BOTH `personal-token-column-header-{field}` and
+  `personal-token-sort-icon-{field}` (sortable columns only). So
+  `personal-token-sort-icon-name` / `-expires` are live handles — **no testid work for a
+  sorting case**. (This is the orphan-testid situation tracked by issue #1705;
+  ELITEA-2279 is the first case to reference them on an executed path.)
+- **Expiration sort semantics:** `expires` is `null` for "Never" tokens and a date string
+  otherwise. `sortData` puts `null` **last in asc, first in desc**
+  (`useTableSort.hooks.js:45-47`). So the stable, data-independent invariant is
+  *dated rows before Never rows (asc), reversed (desc)* — assert that, not a literal name
+  order. Live asc: `Marian, New, Levon, uautomate, for_ui_tests`; desc: exact reverse
+  grouping.
+- String comparison is **case-insensitive** (`.toLowerCase()`, lines 50-53) — with
+  `Levon`/`Marian`/`New` capitalised and `for_ui_tests`/`uautomate` not, a
+  case-**sensitive** `sorted()` expectation fails against a correct product.
+- ⚠️ **Never assert the sort-arrow rotation.** It is a CSS `transform` behind a
+  `transition: transform 0.2s ease` (`GridTableHeader.jsx:132-137`); captured
+  mid-animation live as `matrix(0.907747, 0.419517, ...)`. Same for the active-column
+  `opacity 1 vs 0.7` cue, which `&:hover` also changes. **Row order is the observable.**
+- Sorting is **client-side** — no request fires on a header click. Wait on the reordered
+  DOM, never on a response.
+
+## Search box — live filtering, and the two empty states (ELITEA-2287, 2026-08-27)
+- `PersonalTokens.jsx:31,248-255` → `DrawerPageHeader` `slotProps.searchInput`
+  (`onChangeSearch: setSearch`) → `SimpleSearchBar`'s native `onChange`. **Per-keystroke,
+  no Enter, no submit button, no debounce.** This is NOT the Enter-activated
+  `SearchBar.jsx` of issue #44 — don't apply that lesson here.
+- Filter (`TokensSection.jsx:19-22`):
+  `token.name.toLowerCase().includes(search.toLowerCase())` — substring, **name only**
+  (never the token value or expiration), **case-insensitive**. Live: `AUTO` → `uautomate`.
+- **Escape clears the field** (`SimpleSearchBar.jsx:28-33` → `DrawerPageHeader.jsx:37`
+  `onChangeSearch('')`). `Control/Meta+A` + `Backspace` also works reliably here — the
+  digest's "`Control+a` is unreliable" warning is scoped to the **create-token Name
+  field** (`useAutoBlur`); `SimpleSearchBar` is a plain MUI `InputBase` with no auto-blur.
+- The input is `autoFocus` (100 ms `setTimeout` after mount, `SimpleSearchBar.jsx:39-46`).
+- **TWO DIFFERENT EMPTY STATES — do not conflate:**
+  1. **Zero tokens exist** → `PersonalTokens.jsx` returns `EmptyStatePage`
+     (`empty-state-title` = "No tokens yet") **before** `DrawerPage`; the page header,
+     search box, table and rows all cease to exist.
+  2. **Search matches nothing** → the page header and search box **stay**;
+     `GridTableContainer.isEmpty` renders the message `"No tokens"` and the four
+     `personal-token-column-header-*` **unmount**. `empty-state-title` is **absent**
+     (confirmed live). ⇒ **Searching cannot be used to fake state 1** (the ELITEA-2278 /
+     2250 shortcut trap).
+  `GridTableContainer` has no testid on that message and takes no testid prop — a
+  `emptyMessageTestId` caller-supplied prop is the compliant add if a case needs it.
+- **Sort state survives a search clear** (observed: expiration-desc order retained after
+  Escape). Compare name **sets** across a clear, not ordered lists, unless the sort is
+  also pinned.
+
+## Gotcha — an ad-hoc in-page `fetch()` to the API poisons the console (2026-08-27)
+`page.evaluate(() => fetch('/api/v2/auth/token/'))` from a Playwright/MCP session does
+**not** carry the app's RTK-Query auth headers on localhost. The dev proxy redirects it to
+`https://dev.elitea.ai/forward-auth/auth_oidc/login?target_to=...`, which is then blocked
+by CORS — emitting **two console errors** (a CORS error + `net::ERR_FAILED`) that look
+exactly like a product defect to a "no console errors" assertion. The page itself was
+clean (0 product console errors) across this entire session. To read the token payload,
+capture the app's own `GET /auth/token/` response via `page.expect_response`, never a
+hand-rolled `fetch`.
