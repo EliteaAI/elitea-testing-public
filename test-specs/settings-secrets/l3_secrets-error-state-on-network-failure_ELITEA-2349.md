@@ -54,14 +54,19 @@ in play.
      chars of full app chrome.
 
 2. **Verify a user-friendly error message is shown (not a blank page or raw stack trace).**
-   - **Verify**: `toast-alert` visible, and its class contains `MuiAlert-colorError`
-     (the product classified this as an **error**, not info — contrast #1121, where a
-     toast used the wrong severity).
+   - **Verify**: the toast is present **with error severity**, located as
+     `[data-testid="toast-alert"][data-severity="error"]` — `Toast.jsx` renders
+     `data-severity={severity}` alongside the testid, so state is asserted by
+     **attribute filter on a stable testid**, the shape `.agents/testing.md`
+     § Locator policy requires (the product classified this as an **error**, not
+     info — contrast #1121, where a toast used the wrong severity).
    - **Verify**: `toast-message` text is **non-empty**.
    - **Verify (the "not a raw stack trace" half, asserted as an invariant on both the
-     toast text and the whole page body)**: contains none of
-     `TypeError`, `Uncaught`, `at Object.`, `.jsx:`, `.js:`, `    at ` — i.e. no
+     toast text and the Settings content pane `settings-content`)**: contains none of
+     `TypeError`, `Uncaught`, `at Object.`, `.jsx:`, `.js:`, `\n    at ` — i.e. no
      stack frame, no exception class, no source-file coordinate leaked to the user.
+     (Scoped to `settings-content`, not a raw `body` handle: a React error boundary
+     renders inside that pane, and it is a real app testid.)
    - *Live:* toast present, `MuiAlert-colorError`, message = `Unknown error`, no stack
      marker anywhere in the body, toast still present after a further 6 s (error toasts
      do not fast-auto-hide).
@@ -95,15 +100,28 @@ in play.
 ## Handles Reference
 | Element | Primary handle (testid-only) | Provenance | Notes |
 |---|---|---|---|
-| Page title | `secrets-page-title` | **on-main ✓** | `DrawerPageHeader titleTestId` |
-| Add ("+") button | `secrets-add-button` | **on-main ✓** | visible in the failure state |
-| Secret row | `secret-row` | **on-main ✓** | 0 in failure state, `min(api_count, 10)` after recovery |
+| Page title | `secrets-page-title` | **on-main ✓** — prop indirection, `titleTestId="secrets-page-title"` at `SecretsContent.jsx:143` | `DrawerPageHeader titleTestId` |
+| Add ("+") button | `secrets-add-button` | **on-main ✓** — object literal, `testId: 'secrets-add-button'` at `SecretsContent.jsx:158` | visible in the failure state |
+| Secret row | `secret-row` | **on-main ✓** — `SecretsTable.jsx:569` | 0 in failure state, `min(api_count, 10)` after recovery |
 | Toast container | `toast-alert` | **on-main ✓** (`src/components/Toast.jsx:60`) | severity read from its class list |
 | Toast message | `toast-message` | **on-main ✓** (`src/components/Toast.jsx:74`) | the text asserted for shape |
+| Toast severity filter | `TOAST_ALERT_SEVERITY` = `[data-testid="toast-alert"][data-severity="{}"]` | **on-main ✓** (`data-severity` at `src/components/Toast.jsx:61`) | class constant on `SecretsPage`; state via `data-*` filter, never a state-switched testid |
+| Settings content pane | `settings-content` | **on-`automation/testids` only (awaiting human promotion to `main`)** — `src/[fsd]/pages/settings/index.jsx:268`, EliteaAI/EliteaUI@e1e031a1 | scope for the no-stack-trace check; already used by `SettingsDrawerPage.settings_content` |
 
-*(Provenance verified with `cd ../EliteaUI && git fetch origin` + `git grep … origin/main -- src/`, 2026-08-28.)*
+*(Provenance **re-verified 2026-08-28, fix round 3** — `cd ../EliteaUI && git fetch origin`
+in the same command block, then the two-stage grep of `.agents/workflow.md` § Closure
+record, against `origin/main` = `f27645bc` and `origin/automation/testids` = `249c0186`.
+**Every row above re-confirmed unchanged**; only source anchors and the introducing commit
+were added. `Toast.jsx` is byte-identical on both refs (`git diff origin/main
+origin/automation/testids -- src/components/Toast.jsx` → empty), so its three rows are
+on-`main` at the exact lines cited. Note `data-severity={severity}` at `:61` carries no
+`data-testid` token on its own line, so a naive two-stage grep keyed on that testid
+reports a **false negative** for it — it was confirmed by reading the file, not by grep.)*
 
 **No new testid is needed.** `toast-alert` / `toast-message` already exist on `main`.
+`settings-content` does **not** — this case is green on localhost and **RED on any
+deployed env** until a human cherry-picks EliteaAI/EliteaUI@e1e031a1 to `main`, and the
+closure record's promotability row must say so.
 
 ## Implementer notes
 - `SecretsPage.navigate()` **cannot be reused for step 1** — it waits for
@@ -111,9 +129,22 @@ in play.
   **additive** page-object method (e.g. `navigate_expecting_no_rows()`) that goes to the
   route and waits on the page shell instead. Do not modify `navigate()` — it has many
   merged callers (`.agents/role-overrides.md` § additive-only).
-- Toast severity: assert with `to_have_class(re.compile(r"MuiAlert-colorError"))` on the
-  **testid-located** `toast-alert` element. That is an attribute assertion on a compliant
-  locator, not a raw CSS handle.
+- Toast severity: **use the `data-severity` attribute filter**, not a MUI class regex.
+  `Toast.jsx:61` renders `data-severity={severity}` next to the testid, so
+  `SecretsPage.TOAST_ALERT_SEVERITY` (`[data-testid="toast-alert"][data-severity="{}"]`)
+  is the compliant class-constant shape. *(Superseded during implementation — the
+  original note here proposed a `MuiAlert-colorError` class assertion before the
+  `data-severity` attribute was found.)*
+  Call it through `SecretsPage.toast_alert_with_severity(severity)`, the accessor that
+  already wraps that constant — a spec must never build the locator itself
+  (`.agents/conventions.md` § Hard don'ts; review finding, fix round 1).
+- Read the recovered rows' names with `SecretsPage.get_row_names()` — it already strips
+  and preserves rendered order. Re-implementing it inline in the spec was the second
+  half of the same review finding.
+- **Grep the page object for the attribute NAME before declaring a handle**, not just
+  for the testid: `SecretsPage` is >1000 lines and a sibling unit had already declared
+  `toast_alert` / `toast_message` / `TOAST_ALERT_SEVERITY` ~120 lines above the point
+  this branch appended its own copies (review finding, fix round 2).
 - `route.abort("failed")` (not `fulfill`) — nothing is authored, only the transport is cut.
 - **`page.unroute` before the reload**, and let `expect_response` capture the real `200`
   so the recovery assertions read the product's own payload.
@@ -147,7 +178,7 @@ in play.
 ### Axis 2 — asserted beyond the case
 | Observable | Why |
 |---|---|
-| The toast's **severity** is `error`, not info/warning | the case says "error message"; a blue info toast for a failed load would satisfy a text-only check while misinforming the user (#1121 is that exact defect on another surface) |
+| The toast's **severity** is `error`, not info/warning (via `data-severity="error"`) | the case says "error message"; a blue info toast for a failed load would satisfy a text-only check while misinforming the user (#1121 is that exact defect on another surface) |
 | The failure-state page still renders its **shell** (title + "+") | this is the case's "not a blank page" made mechanical — a whole-page crash and a graceful error look identical to a toast-only assertion |
 | The recovered rows' names are **a subset of the live API response's names** | proves the UI carried the backend's data through rather than re-rendering stale/leftover state; a bare count check would pass on stale rows |
 | The list response is asserted `200` **with items**, not just "rows appeared" | the #1773 trap — on this surface a table can look settled because the query never ran. Proving the endpoint answered is what makes step 4 real |
@@ -162,6 +193,31 @@ in play.
   measured in the failure state. Deliberately outside this spec's assertions.
 - **#1773 (bug, OPEN)** — unrelated 403 path, but the reason step 3 asserts the response
   status rather than trusting the rendered table.
+
+## Implementation outcome (test-automation-engineer, 2026-08-28)
+
+Shipped as
+`automation/tests/ui/admin/test_secrets_error_state_on_network_failure.py::TestSecretsErrorStateOnNetworkFailure::test_secrets_error_state_on_network_failure_and_recovery`.
+Green first run, **0 reruns** (2 passed in 27.67 s alongside ELITEA-2348).
+
+Fix round 1 replaced the two spec-built locators with the page object's existing
+`toast_alert_with_severity()` / `get_row_names()` accessors; both are pinned by
+`automation/tests/unit/test_secrets_access_and_error_spec_invariants.py`.
+
+Fix round 2 removed three page-object members this branch should never have added:
+`toast_alert`, `toast_message` and `TOAST_ALERT_SEVERITY` **already existed on
+`SecretsPage`**, contributed by a sibling settings-w05 unit that merged into the batch
+trunk before this branch was cut. Python keeps the LAST definition, so the branch's
+thinner copies silently shadowed the richer originals (severity auto-hide durations,
+the secrets-flow message catalogue). Ruff, the reviewer's locator grep and a green run
+are all blind to this class — an AST duplicate-member walk is the only cheap detector,
+and it is now pinned by
+`test_secrets_page_defines_every_member_once`.
+
+`SecretsPage`'s net gain from this branch is therefore **two additive members** —
+`navigate_expecting_no_rows()` and the `settings_content` descriptor. `navigate()` and
+every pre-existing member are untouched; the only `-` lines on
+`pages/secrets_page.py` are the three shadowing duplicates this round deleted.
 
 ## Blocked Steps
 - None.
