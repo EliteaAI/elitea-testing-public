@@ -67,3 +67,4 @@
 - [CI login failure becomes SKIP](ci_login_failure_becomes_skip.md) — a green dev-stable job can mean the test never ran; grep the log
 - [Embedded-chat "agent responded" oracle passes on the loading placeholder](embedded_chat_response_oracle_passes_on_loading_placeholder.md) — wait_for_chat_response never raises
 - [Step 1 must not assert pre-existing rows](list_page_step1_must_not_assert_preexisting_data.md) — green on localhost, red on DEV shard; assert card-OR-empty-state
+- [Plus-menu agent submenu sorts alphabetically](plus_menu_agent_submenu_sorts_alphabetically.md) — `.first` is NOT the newest agent
