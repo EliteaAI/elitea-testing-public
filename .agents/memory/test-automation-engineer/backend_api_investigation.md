@@ -86,4 +86,4 @@ Check the error response:
 
 ## Evidence
 
-MCP investigation (session d884c08c, `MCP_POOL_ANALYSIS.md`, `MCP_ISSUES_ANALYSIS.md`) — pool saturation was misdiagnosed as "endpoint down" until isolated investigation revealed it's a transient, retriable worker-pool issue.
+MCP investigation — pool saturation was misdiagnosed as "endpoint down" until isolated investigation revealed it's a transient, retriable worker-pool issue.
