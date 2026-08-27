@@ -288,6 +288,31 @@ Setup is unchanged: `_reach_sensitive_action_card(page, conversation_id, artifac
 | G | Late-execution guard — the file is *still* present after the response window | `assert artifact_seeded_file in artifact_api.list_bucket_files(bucket_name)` (second read, after E) | **hard** | GREEN — present through 197 s / 93 s |
 | H | Side channel — no console/JS errors across the flow | `assert not console_issues and not page_errors` via `utils.console_errors.collect_console_errors(page)` + a `pageerror` listener (this spec does not use them today; ELITEA-2211/2212 do) | **hard** | GREEN — 0 errors, 2/2 runs |
 
+### Implementation note (implementer, 2026-08-27 — shipped truth)
+
+Rows A-H are all implemented as specified, with **one declared deviation in
+EVALUATION ORDER** (the assertion, its soft channel and its defect link are
+unchanged): **row D is evaluated AFTER row E**, as the test's Step 8. Reason —
+`to_have_count(0)` is satisfied the instant the count is already 0, and row C is
+a single fast REST read, so at the AFS's position row D would run ~1 s after the
+click, inside the 2-6 s window BEFORE the card reappears. It would therefore
+pass without asserting anything, silently dropping #1835 from the closed set.
+Evaluated after the 60 s response window the reappearance is settled (it
+persists until reload), and the assertion fires deterministically — the same
+placement `TestSensitiveActionAuthorize` Step 9 already uses.
+
+Shipped step order: **A(4) B(5) C(6) E(7) D(8) F(9) G(10) H(11)**.
+
+Observed signature, 3 of 4 implementer runs (93.45 s / 92.51 s / 95.76 s):
+`BaseExceptionGroup` with exactly **2** sub-exceptions — the `pytest.fail` drain
+for #1834 (`No assistant response arrived after Block within 60000ms … Last
+message: ''`) and the `expect.soft` for #1835 (panel count 1, 14 polls over
+5000 ms). Steps 6, 9, 10, 11 passed hard in every one of those runs, so the
+primary observable is now genuinely reached and green. The 4th run died upstream
+in the shared setup (`chat-answer-thought-accordion` never appeared — the
+assistant never started a turn), the known TRIGGER flake, re-run per
+`.agents/testing.md` § Unconfirmed.
+
 Structural requirements for the implementer:
 
 - `soft_failures: list[str]` + a `try/finally` that drains it with `pytest.fail`, exactly

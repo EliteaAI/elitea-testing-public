@@ -58,16 +58,27 @@ Testids this cluster added to EliteaUI for its own executed path —
 ``sensitive-action-block-button``, ``sensitive-action-block-with-comment-button``,
 ``sensitive-action-block-comment-input``, ``sensitive-action-block-comment-submit-button``
 (``ChatHitlActions.jsx`` / ``BlockWithCommentControl.jsx``), plus the shared
-``chat-answer-tool-chip`` ask (ELITEA-2212 asserts presence, ELITEA-2213
-asserts absence — canon ruling #277 shape (b)) — are all present on
-``EliteaAI/EliteaUI`` ``main`` (verified 2026-08-27), so nothing here waits on a
-cherry-pick.
+``chat-answer-tool-chip`` ask (asserted PRESENT, with its text, by BOTH
+ELITEA-2212 and ELITEA-2213) — are all present on ``EliteaAI/EliteaUI`` ``main``
+(verified 2026-08-27), so nothing here waits on a cherry-pick.
 
-SANCTIONED-RED (``.agents/testing.md`` § Merge gate, closed-set variant):
-ELITEA-2212 (``TestSensitiveActionAuthorize``) is EXPECTED to end pytest-FAILED.
-Its closed, enumerable set of known defects — all on the one dropped
-authorize-resume, all OPEN, all soft-routed so every one of them is reported on
-every run — is:
+Canon ruling #277 shape (b) — both branches of ``ActionView.jsx``'s
+model/tool testid ternary referenced on a test's executed path — is satisfied
+**entirely by ELITEA-2212's own path**, which references both POSITIVELY:
+``chat-answer-model-chip`` (its Step 7) and ``chat-answer-tool-chip`` (its Step
+8). ELITEA-2213 previously carried an absence assertion on the tool chip and no
+longer does — that assertion was factually wrong, not a #277 obligation (see
+``TestSensitiveActionBlock``'s docstring; clarification issue #1839).
+
+SANCTIONED-RED (``.agents/testing.md`` § Merge gate, closed-set variant): TWO
+specs in this module are EXPECTED to end pytest-FAILED — ELITEA-2212
+(``TestSensitiveActionAuthorize``) and ELITEA-2213
+(``TestSensitiveActionBlock``). Both are the same root-cause family: the HITL
+resume drops the turn, whichever decision was taken.
+
+**ELITEA-2212 — ``TestSensitiveActionAuthorize``.** Its closed, enumerable set
+of known defects — all on the one dropped authorize-resume, all OPEN, all
+soft-routed so every one of them is reported on every run — is:
 
 * **#1834** — the toolkit tool never executes (seeded file still in the bucket
   90 s after Authorize). Fired **7 of 7** runs, 2026-08-27.
@@ -82,6 +93,36 @@ the failure is a ``BaseExceptionGroup`` whose sub-exception count legitimately
 alternates between **2 and 3** — 2 when the model chip happens to render, 3 when
 it does not. **Both are the SAME signature.** A new symptom means a failure
 naming something OUTSIDE the three bullets above; anything else is this set.
+
+**ELITEA-2213 — ``TestSensitiveActionBlock``.** Live re-analysis on 2026-08-27
+(AFS § REWORK, two independent runs) established that the BLOCK resume drops the
+turn exactly like the authorize one. Its own closed, enumerable set — both OPEN,
+both soft-routed, both fired 2/2 runs — is:
+
+* **#1834** — the Block resume drops the turn: no assistant response ever
+  arrives (answer body still empty after 230 s / 90 s), no console error, no
+  failed request, and the decision is never committed as a tool outcome — the
+  NEXT user message re-triggers an identical authorization card.
+* **#1835** — the correctly-closed card is rendered AGAIN ~2-6 s later with
+  live, ``disabled === false`` buttons, and persists until a page reload.
+
+**What a gate operator should expect here:** a ``BaseExceptionGroup`` with
+exactly **2** sub-exceptions — the ``expect.soft`` for #1835 ("the resolved
+sensitive-action card must stay gone") and the ``pytest.fail`` drain carrying
+#1834 ("the Block resume dropped the turn"). Unlike ELITEA-2212 this count does
+not alternate: neither member has been observed to not-fire, and a clean run is
+~95 s. A **new symptom** is any failure naming something outside those two
+bullets.
+
+One shape in particular must NOT be mistaken for either: a raw, uncaught
+assertion inside ``_reach_sensitive_action_card`` — its Step 2
+(``chat-answer-thought-accordion`` never becomes visible, i.e. the assistant
+never starts a turn) or its Step 3 (``Sensitive Action Authorization card should
+appear``). That is the known TRIGGER flake (``.agents/testing.md`` § Unconfirmed;
+seen 1 of 4 invocations here on 2026-08-27, and 1 of 6 on the sibling
+ELITEA-2212 case). It fires UPSTREAM of everything either case asserts, is not a
+member of any closed set, and by construction blocks the gate: **re-run it,
+never accept it as the signature.**
 
 Every affected assertion states the CORRECT behaviour, so the spec flips green
 unchanged when the product is fixed. A green run is a signal that these defects
@@ -128,6 +169,13 @@ EXECUTION_POLL_INTERVAL_S = 3
 
 # The OPEN product defect this module's ELITEA-2212 test is red on.
 KNOWN_DEFECT_AUTHORIZE_NO_EXECUTION = "#1834"
+# The SAME open issue, aliased under the name the ELITEA-2213 Block path shows it
+# by: there the resume does not merely fail to execute the tool, it drops the
+# whole turn — no assistant response ever arrives and the decision is never
+# committed (AFS § REWORK, 2/2 runs 2026-08-27). One issue, two symptom names;
+# an alias rather than a second literal so the two never drift apart, and so the
+# constant three merged ELITEA-2212 assertions already reference is untouched.
+KNOWN_DEFECT_RESUME_DROPS_TURN = KNOWN_DEFECT_AUTHORIZE_NO_EXECUTION
 # Sibling of #1834 (possibly the same root cause): the resolved card comes back.
 KNOWN_DEFECT_CARD_REAPPEARS = "#1835"
 
@@ -519,6 +567,11 @@ class TestSensitiveActionBlock:
         "onetest-ai Test Case link",
     )
     @pytest.mark.p2
+    # reruns=0 for exactly the reason ELITEA-2212 above carries it: this spec is
+    # SANCTIONED-RED (#1834 + #1835), so `pytest.ini`'s global `--reruns=2` could
+    # never rescue it — it could only triple a ~3-minute run and put retry noise
+    # in the record.
+    @pytest.mark.flaky(reruns=0)
     def test_block_prevents_toolkit_tool_from_executing(
         self,
         page,
@@ -528,21 +581,97 @@ class TestSensitiveActionBlock:
         artifact_api: ArtifactAPI,
         sensitive_delete_file_toolkit,
     ):
-        """Block closes the card without executing — file survives, no tool
-        chip renders, and the LLM response acknowledges the block."""
+        """Block closes the card and the delete_file call never runs — proven on
+        the backend listing, not on any UI-only signal.
+
+        TRANSIT SUBSTITUTION (declared, AFS § Fidelity Declaration): only the
+        precondition is substituted — ``sensitive_delete_file_toolkit`` marks
+        ``artifact``/``delete_file`` sensitive over REST
+        (``PUT {api}/admin/plugin_config_values/administration/guardrails``)
+        because the Admin UI is a separate deployed application localhost does
+        not serve (#1140). Every observable asserted below — the card, its
+        closing, the bucket listing, the chips, the response, the console — is
+        produced end to end by the real LLM → real tool call → real backend
+        interrupt → real WebSocket frame. Nothing is mocked, injected or
+        intercepted.
+
+        **HONESTY CAVEAT — read before trusting a green Step 6.** *The file is
+        still there* is NOT proof that Block worked. A turn that silently DIED
+        before the tool ran leaves byte-identical evidence. Step 6 is the case's
+        own primary observable and must be asserted, but the step that actually
+        distinguishes "blocked" from "died" is the response step (Step 7) — and
+        that one is red today. Step 10 re-reads the bucket after the response
+        window so the "did not execute" claim is time-bounded rather than
+        instantaneous.
+
+        SANCTIONED-RED — # Known defect: #1834, # Known defect: #1835. Two of
+        this case's observables do not hold today, both downstream of the one
+        dropped block-resume (module docstring enumerates the closed set and the
+        exact 2-sub-exception signature). Each is asserted here as the CORRECT
+        behaviour and each is SOFT, so every later step still runs, every member
+        of the set is reported on every run, and the spec flips green unchanged
+        when the product is fixed.
+
+        Two soft channels are used, one per observable shape, matching
+        ``TestSensitiveActionAuthorize`` — ``expect.soft`` where a locator exists
+        (the card staying gone: a bounded framework wait applies and Playwright
+        reports the failure whatever else happens), and a ``soft_failures`` entry
+        drained from a ``finally`` by ``pytest.fail`` for the missing assistant
+        response, whose failure mode is a raised ``TimeoutError`` rather than a
+        locator state.
+
+        CORRECTNESS FIX (not a weakening — the removed assertion was factually
+        wrong): this test used to end on
+        ``expect(chat.answer_tool_chip).to_have_count(0)``, "no tool-EXECUTION
+        chip for the blocked tool". Live re-analysis proved the product never
+        enters that state: ``ActionView.jsx:407`` renders the chip from the tool
+        **call attempt** with no execution predicate, so its count is 1 while the
+        card is still pending, 1 after Block, and only drops to 0 on a page
+        reload (chip is a live-stream render, not persisted). The case asks for a
+        distinction between a "call" chip and an "execution" chip that this
+        product does not make — case-text drift, filed as clarification #1839,
+        NOT a product defect. It is replaced by the STRONGER positive assertion
+        (Step 9: the chip is present and names the blocked tool), and
+        non-execution is proven where it actually can be, on the backend
+        (Steps 6 + 10). Canon ruling #277 shape (b) is unaffected: both branches
+        of the ternary are positively referenced on ELITEA-2212's executed path
+        (module docstring).
+
+        DECLARED IMPROVISATION — assertion ORDER differs from AFS § Corrected
+        assertion set for one row, on determinism grounds; the assertion itself,
+        its soft channel and its defect link are exactly as specified. The AFS
+        orders row D ("the resolved card stays gone") immediately after row C,
+        i.e. ~1 s after the click — but the card reappears at ~2-6 s, and
+        ``to_have_count(0)`` is satisfied the instant the count is already 0, so
+        evaluated there it would race and usually pass, asserting nothing. It is
+        therefore evaluated as Step 8, after the response window, where the
+        reappearance is a settled state that persists until reload — the same
+        placement ``TestSensitiveActionAuthorize`` Step 9 already uses, and the
+        only one under which this member of the closed set fires deterministically.
+
+        Step numbering continues from ``_reach_sensitive_action_card`` (its
+        Steps 1-3); Steps 4-11 below are AFS § Corrected assertion set rows
+        A, B, C, E, D, F, G, H in that evaluation order.
+        """
+        toolkit_name = artifact_toolkit["name"]
         bucket_name = artifact_toolkit["bucket_name"]
+
+        # Soft-failure sink for the #1834 symptom that has no locator to assert
+        # on (an assistant response that never arrives at all). Drained once,
+        # loudly, at the end — never swallowed (`.agents/testing.md` § Merge gate).
+        soft_failures: list[str] = []
+
+        console_issues = collect_console_errors(page)
+        page_errors: list[str] = []
+        page.on("pageerror", lambda e: page_errors.append(str(e)))
 
         chat = _reach_sensitive_action_card(
             page, conversation_id, artifact_toolkit, artifact_seeded_file
         )
 
         with allure.step(
-            "Step — Verify all three action buttons are visible on THIS "
-            "case's own card instance (independent verification — fix round "
-            "1: the AFS Coverage Map row 1 previously cited ELITEA-2211, a "
-            "same-batch/not-yet-merged spec, as the sole site of this "
-            "assertion, which is not a valid merged-target citation; this "
-            "case now asserts it independently too)"
+            "Step 4 — Verify all three action buttons are visible on THIS "
+            "case's own card instance"
         ):
             expect(chat.sensitive_action_authorize_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
             expect(chat.sensitive_action_block_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
@@ -550,40 +679,132 @@ class TestSensitiveActionBlock:
                 timeout=UI_ELEMENT_TIMEOUT
             )
 
-        with allure.step("Step — Click Block; verify the card closes"):
+        with allure.step("Step 5 — Click Block; verify the card closes"):
             chat.sensitive_action_block_button.first.click()
             expect(chat.sensitive_action_panel).to_have_count(0, timeout=UI_ELEMENT_TIMEOUT)
 
-        with allure.step(
-            "Step — Verify the toolkit tool does NOT execute: the fixture "
-            "file is STILL present (backend ground truth — a UI-only 'card "
-            "closed' signal can't distinguish Block from a silent failure)"
-        ):
-            chat.wait_for_message_content_stable(stable_duration_ms=3000, timeout=CHAT_RESPONSE_TIMEOUT)
-            remaining_files = artifact_api.list_bucket_files(bucket_name)
-            assert artifact_seeded_file in remaining_files, (
-                f"File '{artifact_seeded_file}' should still be present after Block, "
-                f"found: {remaining_files}"
-            )
+        # `try`/`finally` so the #1834 evidence can NEVER be lost: without it a
+        # hard failure in any later step aborts before the drain and silently
+        # discards a recorded soft failure. The `finally` raise chains onto
+        # whatever else failed, so both surface.
+        try:
+            with allure.step(
+                "Step 6 — PRIMARY OBSERVABLE: the toolkit tool did NOT execute — "
+                "the seeded file is still in the bucket (backend ground truth, "
+                "read BEFORE the response wait so this check is reached even "
+                "while # Known defect: #1834 keeps that wait from ever settling)"
+            ):
+                remaining_files = artifact_api.list_bucket_files(bucket_name)
+                assert artifact_seeded_file in remaining_files, (
+                    f"File '{artifact_seeded_file}' should still be present after Block, "
+                    f"found: {remaining_files}"
+                )
 
-        with allure.step(
-            "Step — Verify the LLM response acknowledges the block (loose "
-            "signal — non-empty, does not claim success; the exact wording is "
-            "LLM-nondeterministic, see AFS note)"
-        ):
-            last_text = chat.get_last_message_text()
-            assert last_text.strip(), "Expected a non-empty LLM response acknowledging the block"
-            lowered = last_text.lower()
-            assert not any(phrase in lowered for phrase in _SUCCESS_CLAIM_PHRASES), (
-                f"Response should not claim the delete succeeded: {last_text!r}"
-            )
+            with allure.step(
+                "Step 7 — Verify the LLM response acknowledges the block (loose "
+                "signal — non-empty and does not claim success; the exact "
+                "wording is LLM-nondeterministic, AFS § Test Steps)"
+            ):
+                # Known defect: #1834 — no assistant response EVER arrives on the
+                # Block path: the answer body stays empty (observed 230 s and 90 s
+                # in the two live runs), so this wait raises rather than settling.
+                # The expectation is correct — a resolved HITL turn must produce a
+                # reply — so it is asserted, soft-routed, and flips green unchanged
+                # when the resume stops dropping the turn. This is also the ONLY
+                # step that separates "blocked" from "silently died": Step 6 reads
+                # identically in both worlds (see the docstring's honesty caveat).
+                try:
+                    chat.wait_for_message_content_stable(
+                        stable_duration_ms=3000, timeout=CHAT_RESPONSE_TIMEOUT
+                    )
+                except TimeoutError as exc:
+                    soft_failures.append(
+                        "No assistant response arrived after Block within "
+                        f"{CHAT_RESPONSE_TIMEOUT}ms — the turn was dropped instead of "
+                        f"being resumed as blocked ({exc})"
+                    )
+                else:
+                    last_text = chat.get_last_message_text()
+                    if not last_text.strip():
+                        soft_failures.append(
+                            "Assistant response after Block is empty — expected a reply "
+                            "acknowledging that the action was blocked"
+                        )
+                    elif any(phrase in last_text.lower() for phrase in _SUCCESS_CLAIM_PHRASES):
+                        soft_failures.append(
+                            "Assistant response after Block claims the delete succeeded: "
+                            f"{last_text!r}"
+                        )
 
-        with allure.step(
-            "Step — Verify NO tool-execution chip renders for the blocked "
-            "tool (absence assertion — canon ruling #511, first-class "
-            "reference to the shared 'chat-answer-tool-chip' testid)"
-        ):
-            expect(chat.answer_tool_chip).to_have_count(0)
+            with allure.step(
+                "Step 8 — Verify the resolved card stays gone (evaluated here, "
+                "after the response window, where the state is settled — see "
+                "the docstring's DECLARED IMPROVISATION)"
+            ):
+                # Known defect: #1835 — the card, correctly closed within a few
+                # hundred ms of the Block click (Step 5 asserts that, hard, and it
+                # passes), is rendered AGAIN ~2-6 s later with live, enabled
+                # buttons and persists until a page reload — so a user can issue a
+                # SECOND decision, including Authorize, on an action they already
+                # blocked. Asserted as the CORRECT behaviour and soft-routed so
+                # Steps 9-11 still run and report.
+                expect.soft(
+                    chat.sensitive_action_panel,
+                    f"Known defect {KNOWN_DEFECT_CARD_REAPPEARS}: the resolved "
+                    "sensitive-action card must stay gone",
+                ).to_have_count(0, timeout=PANEL_STAYS_GONE_TIMEOUT)
+
+            with allure.step(
+                f"Step 9 — Verify the tool-call chip renders '{toolkit_name}: "
+                f"{SENSITIVE_TOOL_NAME}', naming the tool that was blocked"
+            ):
+                # This chip is the tool-CALL-ATTEMPT chip and carries NO execution
+                # meaning: `ActionView.jsx:407` renders it from the call intent with
+                # no execution predicate, so it is already present while the card is
+                # still pending, before Block is clicked (live-verified 2/2 runs).
+                # It is asserted PRESENT — never absent — precisely because the
+                # product has no execution chip to be absent (clarification #1839);
+                # reading execution off it in either direction would be a lie.
+                # `.first` guards the strict-mode violation a second tool call would
+                # cause.
+                expect(chat.answer_tool_chip.first).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                expect(chat.answer_tool_chip.first).to_contain_text(
+                    f"{toolkit_name}: {SENSITIVE_TOOL_NAME}"
+                )
+
+            with allure.step(
+                "Step 10 — Late-execution guard: the file is STILL present after "
+                "the response window, so 'did not execute' is time-bounded rather "
+                "than instantaneous"
+            ):
+                remaining_files_late = artifact_api.list_bucket_files(bucket_name)
+                assert artifact_seeded_file in remaining_files_late, (
+                    f"File '{artifact_seeded_file}' was deleted LATE — the blocked "
+                    f"delete_file executed after all, found: {remaining_files_late}"
+                )
+
+            with allure.step("Step 11 — Side-channel: no console/JS errors across the whole flow"):
+                # Errors only. The backend also emits an unhandled `parallel_hitl_ready`
+                # socket message during this flow, which the frontend logs as a
+                # console.WARNING (# Known defect: #1831) — a warning is not captured
+                # here, and this assertion must not be widened to swallow it. Its
+                # cleanness is itself the finding that makes "the turn dies SILENTLY"
+                # a verified statement rather than an impression.
+                assert not console_issues and not page_errors, (
+                    f"Unexpected console errors: {console_issues!r}; "
+                    f"page errors: {page_errors!r}"
+                )
+
+        finally:
+            if soft_failures:
+                # Sanctioned-RED terminal signal (see the docstring). Raised from
+                # `finally` so it reports even when a later step failed hard —
+                # Python chains the two, so neither finding is lost.
+                pytest.fail(
+                    f"# Known defect: {KNOWN_DEFECT_RESUME_DROPS_TURN} — Block closed the "
+                    "sensitive-action card but the resume dropped the turn:\n  - "
+                    + "\n  - ".join(soft_failures)
+                )
 
 
 # ===========================================================================
