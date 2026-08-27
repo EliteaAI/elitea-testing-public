@@ -409,10 +409,11 @@ class TestConversationUIElements:
                 expect(chat.attach_files_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
                 # Read the capacity baseline at RUNTIME. MAX_ATTACHMENTS is a
                 # per-project backend value (useChatConfig.js ->
-                # data.chat_max_upload_count), so a hardcoded "10 left" would
-                # be green on this backend and red on any environment
-                # configured differently — a coupling no testid-provenance
-                # check can catch, because the value never comes from main.
+                # data.chat_max_upload_count), so hardcoding either endpoint
+                # of this counter would be green on this backend and red on any
+                # environment configured differently — a coupling no
+                # testid-provenance check can catch, because the value never
+                # comes from main at all. Assert the delta instead.
                 remaining_before = chat.get_remaining_attachment_slots()
                 assert remaining_before >= 1, (
                     "Attach control reports no remaining attachment capacity, so the case's "
