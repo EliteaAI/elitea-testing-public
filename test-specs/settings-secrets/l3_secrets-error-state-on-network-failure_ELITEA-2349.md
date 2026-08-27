@@ -124,6 +124,12 @@ in play.
   is the compliant class-constant shape. *(Superseded during implementation — the
   original note here proposed a `MuiAlert-colorError` class assertion before the
   `data-severity` attribute was found.)*
+  Call it through `SecretsPage.toast_alert_with_severity(severity)`, the accessor that
+  already wraps that constant — a spec must never build the locator itself
+  (`.agents/conventions.md` § Hard don'ts; review finding, fix round 1).
+- Read the recovered rows' names with `SecretsPage.get_row_names()` — it already strips
+  and preserves rendered order. Re-implementing it inline in the spec was the second
+  half of the same review finding.
 - `route.abort("failed")` (not `fulfill`) — nothing is authored, only the transport is cut.
 - **`page.unroute` before the reload**, and let `expect_response` capture the real `200`
   so the recovery assertions read the product's own payload.
@@ -178,6 +184,10 @@ in play.
 Shipped as
 `automation/tests/ui/admin/test_secrets_error_state_on_network_failure.py::TestSecretsErrorStateOnNetworkFailure::test_secrets_error_state_on_network_failure_and_recovery`.
 Green first run, **0 reruns** (2 passed in 27.67 s alongside ELITEA-2348).
+
+Fix round 1 replaced the two spec-built locators with the page object's existing
+`toast_alert_with_severity()` / `get_row_names()` accessors; both are pinned by
+`automation/tests/unit/test_secrets_access_and_error_spec_invariants.py`.
 
 `SecretsPage` gained **three additive members only** — `navigate_expecting_no_rows()`,
 the `toast_alert` / `toast_message` / `settings_content` descriptors and the

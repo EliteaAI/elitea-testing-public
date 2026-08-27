@@ -67,6 +67,30 @@ SETTINGS_PATH = "/settings/project-general"
 UI_ELEMENT_TIMEOUT = 10_000
 
 
+def restore_active_project(drawer: SettingsDrawerPage, project_id) -> None:
+    """Return the session to *project_id* — UNCONDITIONALLY.
+
+    Cleanup must never be keyed on the element the test asserts. The first
+    shape of this guard read ``if not drawer.nav_item(SECRETS_TAB_ID).count()``
+    ("am I still on a vantage that hides Secrets?"), which fails OPEN on exactly
+    the regression this spec hunts: if the Secrets entry is wrongly PRESENT on
+    the viewer project, ``count()`` is non-zero, the restore is skipped, and
+    every later spec in the invocation inherits the viewer project as its
+    active one — the ``#1082`` shared-state pollution class, triggered by the
+    one outcome that matters. Re-selecting the already-active project is a
+    harmless no-op, so guarding bought nothing and cost the failure path.
+
+    A failure inside the restore is logged, never raised: an exception here
+    would replace the test's real failure with the cleanup's.
+
+    Pinned by ``tests/unit/test_secrets_access_and_error_spec_invariants.py``.
+    """
+    try:
+        drawer.switch_project(project_id)
+    except Exception:
+        logger.exception("Failed to restore the active project to %s", project_id)
+
+
 class TestViewerRoleCannotAccessSecrets:
     """ELITEA-2348 — the Settings drawer offers no Secrets entry while the user
     acts under the Viewer role, and offers it again the moment they return to a
@@ -158,7 +182,6 @@ class TestViewerRoleCannotAccessSecrets:
             # The active project is app state shared with every other spec in
             # the suite (e.g. test_settings_sidebar_item_navigation.py clicks
             # the `secrets` tab on the default project). Never leave the
-            # session parked on the viewer project.
-            if not drawer.nav_item(SECRETS_TAB_ID).count():
-                logger.warning("Restoring active project to %s after failure", control_project)
-                drawer.switch_project(control_project)
+            # session parked on the viewer project — restore unconditionally,
+            # see :func:`restore_active_project` for why no guard is correct.
+            restore_active_project(drawer, control_project)

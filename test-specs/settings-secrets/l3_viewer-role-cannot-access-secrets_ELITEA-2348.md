@@ -139,9 +139,14 @@ wired into `SettingsDrawerPage` / `BasePage`.
 - Reuse `SettingsDrawerPage.nav_item()` / `nav_item_ids_in_order()` and
   `BasePage.switch_project()` — no new page-object primitive is required. Any addition
   must be **additive** (`SettingsDrawerPage` has many merged callers).
-- **Restore project 399 in a `finally`** — the project selection is persisted app state
-  shared with every other spec in the suite. Leaving the session on 471 would break
-  unrelated tests.
+- **Restore project 399 in a `finally`, UNCONDITIONALLY** — the project selection is
+  persisted app state shared with every other spec in the suite. Leaving the session on
+  471 would break unrelated tests. Do **not** guard the restore on
+  `nav_item("secrets").count()`: that reads "am I still on a vantage that hides
+  Secrets?", which is non-zero exactly when the spec fails for the reason it exists, so
+  the restore would be skipped on the one path that pollutes the suite. (Review finding,
+  fix round 1; the shipped spec delegates to a module-level `restore_active_project()`
+  that swallows its own errors so cleanup cannot mask the real failure.)
 - Use `expect(...).to_have_count(0)` for the absence (auto-retrying), not a bare
   `.count() == 0` read, so a slow permission refetch cannot produce a false green.
 
@@ -190,7 +195,9 @@ Green first run, **0 reruns**.
 `nav_item_ids_in_order()` / `settings_drawer_menu` and `BasePage.switch_project()`
 covered every handle. The spec adds a suite-local `_assert_drawer_healthy()` guard
 (drawer menu visible + `project-general` present + nav list non-empty) that runs before
-every absence assertion, and restores the control project in a `finally`.
+every absence assertion, and restores the control project in a `finally` via the
+module-level `restore_active_project()` helper — unconditionally, pinned by
+`automation/tests/unit/test_secrets_access_and_error_spec_invariants.py`.
 
 ## Blocked Steps
 - None for the Viewer half. Steps 4-6 are **un-executable**, not blocked — there is no

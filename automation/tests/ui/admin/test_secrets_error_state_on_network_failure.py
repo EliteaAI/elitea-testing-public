@@ -110,11 +110,11 @@ class TestSecretsErrorStateOnNetworkFailure:
             "Step 2 — Verify a user-friendly error message is shown "
             "(not a blank page, not a raw stack trace)"
         ):
-            error_toast = page.locator(
-                secrets_page.TOAST_ALERT_SEVERITY.format(ERROR_SEVERITY)
-            )
-            # Severity asserted by ATTRIBUTE FILTER on the stable toast testid:
-            # the product classified this as an error, not info/warning.
+            # Severity asserted by ATTRIBUTE FILTER on the stable toast testid
+            # (the product classified this as an error, not info/warning) —
+            # through the page object's own accessor, never a locator built
+            # here (`.agents/conventions.md` § Hard don'ts).
+            error_toast = secrets_page.toast_alert_with_severity(ERROR_SEVERITY)
             expect(error_toast).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
             expect(secrets_page.toast_message).to_be_visible()
@@ -179,12 +179,9 @@ class TestSecretsErrorStateOnNetworkFailure:
             )
 
             api_names = {s["name"] for s in api_secrets}
-            rendered_names = [
-                name.strip()
-                for name in secrets_page.secret_row.locator(
-                    secrets_page.SECRET_NAME_CELL_SELECTOR
-                ).all_inner_texts()
-            ]
+            # The page object already owns this read (it strips and preserves
+            # rendered order) — no locator is built in the spec.
+            rendered_names = secrets_page.get_row_names()
             assert rendered_names, "Recovered table rendered no name cells"
             unknown = [n for n in rendered_names if n not in api_names]
             assert not unknown, (
