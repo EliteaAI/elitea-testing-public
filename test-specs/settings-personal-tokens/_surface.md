@@ -470,3 +470,116 @@ Four tokens were created and all four deleted. Console across the entire cluster
   between chunks is what would risk a mid-string caret.
 - All four specs ran **4/4 green in one 53.89 s invocation**, `reruns.json == {}`; the five
   persistent tokens were untouched and every created token was cleaned up.
+
+## IDE settings: eye-icon preview panel + the two download icons (ELITEA-2285/2289/2290/2291 cluster, 2026-08-27)
+
+Extended by: qa-engineer analyst, ELITEA-2285/2289/2290/2291 cluster, 2026-08-27.
+Everything below was confirmed live on project 399 with real clicks.
+
+### THE headline fact: `GET /api/v2/auth/token/` returns the token ALREADY MASKED
+
+This is the single most load-bearing thing to know about this surface, and it is
+counter-intuitive because the table applies a *second* mask on top of it.
+
+- The generation dialog shows the real token: a **226-char JWT** starting `eyJhbGciOiJI`.
+  That is the **only** place the full value ever appears.
+- The list endpoint returns `token` as e.g. `"...jdGrGvQ"` — already masked. That is
+  exactly why `TokensTable.jsx:119` can render the display mask as
+  `'...' + row.token.substring(row.token.length - 4)` → `"...rGvQ"`. **A mask of a mask.**
+- Verified end-to-end on a token created in-session: dialog `…7FrjdGrGvQ` → `row.token`
+  `"...jdGrGvQ"` → cell `"...rGvQ"`.
+- After the dialog closes the full JWT is in **neither** `document.body.innerText` nor
+  the full `documentElement.innerHTML`.
+
+Consequences (all filed):
+- **#1884** — `onIdeSettingsDownload` (`PersonalTokens.jsx:192-241`) and
+  `SettingsPreview.getVSCodeSettings` both pass `row.token` straight into
+  `eliteacode.authToken`/`LLMAuthToken`, so the generated `settings.json` **cannot
+  authenticate**. `SettingsPreview`'s `|| 'Your_Personal_Token'` fallback shows the UI
+  intends a real token and never gets one.
+- **#1886** (clarification) — ELITEA-2285's case text claims the eye icon retrieves the
+  full token. **It does not.** The product is stricter than the case; the case is stale.
+  Any future case on this surface asserting "reveal the token" is wrong by construction.
+
+### `SettingsPreview.jsx` — eye-icon panel, and it had ZERO testids
+
+- Eye icon `token-action-preview-button` → `onPreviewSettings(token)`
+  (`PersonalTokens.jsx:133-141`): an **in-page `react-split` pane**, NOT a route change
+  and NOT a modal. URL stays `/settings/tokens`; the table stays mounted beside it.
+  Tell for "panel is open" without a testid: `.gutter` count flips 0 → 1.
+- Header = close IconButton + title Typography + `SingleSelect` (IDE) + copy IconButton +
+  download IconButton. **All 3 buttons had `aria-label: null` AND `data-testid: null`** —
+  there is no honest non-testid handle here at all.
+- Title = `` `${tokenName} • ${ideLabel} Settings` `` — **U+2022 BULLET, space either
+  side**. `ideLabel` ∈ `VSCode` / `JetBrains`
+  (`src/[fsd]/features/settings/lib/constants/tokens.constants.js`). Opens on VSCode.
+- Body = read-only `Field.CodeMirrorEditor`, `json` for VSCode / `xml` for JetBrains.
+- **Close is animated then unmounted** — sizes → `[100, 0]`, then a **50 ms
+  `setTimeout`** before the unmount (`PersonalTokens.jsx:143-149`). Always assert the
+  disappearance with an auto-retrying expectation; an immediate read races it.
+- **#1885** — the panel's VSCode config always shows `"eliteacode.integrationUid": ""`
+  while the row download writes the real value, because `SettingsPreview` dereferences
+  `modelData.integration_uid` but the model object carries `configuration_uid`. `|| ''`
+  swallows the `undefined`, so it never reaches the console. The JetBrains branch of the
+  same file has the identical mismatch on `integration_uid` AND `integration_name`.
+
+### Testids the cluster specs need — all SEVEN are pure call-site additions
+
+No shared component needs a source change. Two already-generic mechanisms cover the
+awkward ones (same "wire an existing prop" family as the entries above):
+
+- `SingleSelect` already accepts `data-testid` and wires
+  `SelectDisplayProps={{'data-testid': \`${dataTestId}-combobox\`}}`
+  (`src/[fsd]/shared/ui/select/SingleSelect.jsx:661-662`) — pass
+  `data-testid="token-settings-preview-ide-select"`, locate the **`-combobox`** suffix.
+- **`Field.CodeMirrorEditor` already accepts `contentTestId`** and applies it directly to
+  the `.cm-content` node via `EditorView.contentAttributes`
+  (`src/[fsd]/shared/ui/field/CodeMirrorEditor.jsx:83,276-283,331`); merged precedent
+  `toolkit-raw-json-editor-content` at `ToolCustom.jsx:218`. **So a CodeMirror body needs
+  NO `#579` raw-handle exception on this stack** — check this prop before ever reaching
+  for a scoped raw handle inside an editor.
+- The remaining five (`-panel`, `-title`, `-close-button`, `-copy-button`,
+  `-download-button`) ride MUI `Box`/`Typography`/`IconButton` prop spread.
+
+### ⚠️ Reading a CodeMirror body: `inner_text()`, never `text_content()`
+
+CodeMirror renders each line as its own `<div>`. `text_content()` concatenates them with
+**no separator**, so the result will not parse as JSON/XML. `inner_text()` preserves the
+newlines (confirmed live). The IDE config is 13 lines — well under the virtualization
+threshold, so the whole document is in the DOM.
+
+### Row download icons — client-side Blob, no network request
+
+`token-action-vscode-button` and `token-action-jetbrains-button` both call the same
+`onIdeSettingsDownload(token, ide)`, wired per-row in `TokensTable.jsx:140-141`. It
+builds a string → `Blob` → synthesized `<a download>` click. **No request fires**, so
+`page.expect_download()` IS the wait — there is no response to await and no reason to
+sleep. Playwright captures it normally (`settings.json` 601 B / `elitea.xml` 631 B live).
+
+- `settings.json` = 12 `eliteacode.*` keys, `JSON.stringify(..., null, 2)`.
+- `elitea.xml` = `<project version="4">` → `<component name="EliteASettings">` with 8
+  `<option>` children; **carries no token field at all**, by design.
+- Both files' `providerServerURL`/`llmServerUrl` = `user.api_url` (observed
+  `https://dev.elitea.ai`) — derive the expectation from
+  `urlparse(settings.elitea_api_base)` → `scheme://netloc`; `projectId` =
+  `settings.elitea_project_id`.
+- The panel's own copy/download buttons produce the same two filenames from
+  `SettingsPreview.handleDownload` — so they inherit **#1884** and **#1885** both.
+
+### `showDownload` — still the precondition for all four of these cases
+
+Unchanged from the entry above, but now it gates *three* icons that actually get clicked:
+`!!model.configuration_uid && selectedProjectId !== PUBLIC_PROJECT_ID`
+(`PersonalTokens.jsx:267`), a **page-level** boolean. Guard on the icon's presence with a
+message that names `showDownload`, or a false value surfaces as an opaque locator
+timeout instead of the real cause.
+
+### Console noise seen this session (none of it produced by these flows)
+
+- A long tail of `ERR_CONNECTION_REFUSED` on `/src/...` + `[vite] Failed to reload` — Vite
+  HMR churn from a dev-server restart earlier in the session, not app errors.
+- `/socket.io/?EIO=4&transport=polling` — the documented background-transport class.
+- **Trap re-confirmed:** an in-page `fetch('/api/v2/auth/token/')` from
+  `browser_evaluate` fails with a CORS error (it is redirected to
+  `dev.elitea.ai/forward-auth/...` without the app's auth) and **adds 2 console errors of
+  your own making**. Do not probe this API in-page; read the derived DOM values instead.
