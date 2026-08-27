@@ -378,3 +378,404 @@ by ELITEA-2337/2338/2343 analyst sessions (same day).
   `SecretsTable.jsx`. `secrets-pagination-info` is **absent** when the table is empty.
 - ELITEA-2249 is parked **blocked** on the precondition (see
   `l2_secrets-empty-state-no-secrets_ELITEA-2249.md` § Blocked Steps).
+
+## Page layout / search / sort / pagination (ELITEA-2330/2331/2332/2334/2342,
+## combined analyst+implementer session, 2026-08-27)
+
+- **The search input NOW has a testid** — `secrets-search-input`, added this session
+  (`EliteaAI/EliteaUI@249c0186`, on `automation/testids`). This **supersedes** the
+  § Page structure note above ("Search input has NO dedicated testid confirmed yet"):
+  `SecretsContent.jsx`'s `slotProps.searchInput` now passes `testId`, the prop
+  `DrawerPageHeader` already supported. It lands on the **native `<input>`**
+  (`SimpleSearchBar` forwards `data-testid` through `inputProps`), so typing and
+  `.input_value()` work directly.
+- **Pagination controls now have testids too** — same commit: `pageSizeSelectTestId`,
+  `prevButtonTestId`, `nextButtonTestId` wired at `SecretsTable.jsx`'s
+  `GridTablePagination` call site →
+  `secrets-pagination-page-size-select` (+ `…-select-combobox`, derived automatically by
+  `SingleSelect` via `SelectDisplayProps` — the **root is not clickable, the combobox
+  node is**), `secrets-pagination-prev-button`, `secrets-pagination-next-button`. All
+  four are pure additive props on pre-existing shared components: no DOM node, no hook,
+  no state, nothing removed.
+- **Rows-per-page OPTIONS need no new testid** — the shared `SingleSelectMenuItem`
+  already defaults to `data-testid={option.testId ?? select-option-${option.value}}`, so
+  the live options are `select-option-5` / `-10` / `-50` / `-100`. Only one select menu
+  is ever mounted (0 such nodes in the DOM when closed, confirmed live), so no scoping is
+  needed. Contrast the Notification Center, which threads explicit
+  `notifications-page-size-option-{n}` testIds — unnecessary here.
+- **Column headers and the sort control DO exist** — this supersedes the § Page structure
+  note ("no `columnTestIdPrefix` wired"): `SecretsTable.jsx` passes
+  `columnTestIdPrefix="secret"`, so `secret-column-header-{name,secretValue,actions}` and
+  `secret-sort-icon-name` all render. Only `name` is `sortable: true`, so it is the ONLY
+  column with a sort-icon node (the other two are `to_have_count(0)` — which is how this
+  batch references, and therefore justifies, that testid family per canon question #1705).
+- **Sort contract (confirmed live + in source).** `useTableSort({ defaultField: 'name',
+  defaultDirection: 'asc' })` ⇒ the table arrives **already name-ascending with no
+  interaction**; `handleSort` then flips on each click of the same field. Live:
+  load → asc (`auth_token` first); click 1 → **desc** (`webhook_secret_v9348` first);
+  click 2 → asc. **The case text (ELITEA-2331) has this inverted** — filed as
+  clarification **#1901**, sibling of **#1880** (identical drift on Personal Tokens).
+  Comparison is case-insensitive (`sortData` lower-cases both sides), and it re-sorts the
+  WHOLE dataset, not just the visible page.
+  ⚠️ **Sort direction is only expressed as an inline `transform: rotate(180deg)` style on
+  the icon** — never assert it; assert the rendered row ORDER, which is the real observable.
+- **Pagination contract (confirmed live).** `defaultPageSize: 10`,
+  `PAGE_SIZE_OPTIONS: [5, 10, 50, 100]`. Range label is the literal
+  `` `${startRow} - ${endRow} of ${totalRows}` `` — an **ASCII hyphen with spaces**
+  (`1 - 10 of 121`), not the en dash the case texts use. Prev is `disabled` on page 1,
+  next on the last page. `handlePageSizeChange` **resets the page to 0** — confirmed live:
+  from page 2, choosing `5` landed on `1 - 5 of 121` with prev disabled again. Zero
+  network requests fire on a page change or a page-size change (client-side over the
+  already-fetched list).
+- **Search contract (confirmed live).** `SecretsContent.jsx`'s
+  `secretsList.filter(name.toLowerCase().includes(search.toLowerCase()))` ⇒ per-keystroke,
+  substring, case-insensitive, **name-only**, no Enter/submit/debounce, zero network
+  requests. The filtered set feeds pagination, so the range label re-totals
+  (`pgvector` → `1 - 2 of 2`; `PGVECTOR` → the identical 2 rows). `fill("")` clears it
+  correctly — the digest's `Control+a`-unreliable warning is scoped to the create-row Name
+  field (`useAutoBlur`), NOT to this plain `InputBase`.
+- **Data scale, refreshed**: project `Private` (399) now holds **121** secrets
+  (was 120 on 2026-08-24, 103/104 on 2026-08-05). Never assert an absolute total — parse
+  it out of `secrets-pagination-info` and compute expectations from it.
+- **`#1203` — the live-walk vs automated-run split is now settled for this surface, and
+  the burst is much bigger than recorded.** The Playwright-MCP walk of the identical flow
+  produced **0** console errors (navigation, sorting, paging, page-resizing, searching),
+  while the five automated specs written from that same walk hit it **5/5**, at
+  **32-41 occurrences per test** (vs the 5 measured on this same project on 2026-08-24).
+  So: never conclude `#1203` is quiescent from a live MCP session — it is not a reliable
+  predictor of what an automated run sees. Every spec on this surface keeps the isolated
+  soft-failure handling (`_is_known_defect_1203` + `soft_failures`/`pytest.fail()`), which
+  makes them **sanctioned-RED on this one signature** until the product fix ships. Counts
+  and reasoning commented on `#1203` (2026-08-27).
+- **⚠️ Vite did NOT pick up the JSX edits on this machine** (OneDrive-backed checkout):
+  after editing + committing, the dev server kept serving the pre-edit transform, and a
+  `touch` did not invalidate it either. The new testids appeared only after **restarting
+  `npm run dev`**. Verify a fresh testid with
+  `curl -s "http://localhost:5173/src/%5Bfsd%5D/.../File.jsx" | grep -c "<testid>"`
+  before concluding "the testid does not render" — that check costs one command and
+  distinguishes a stale dev server from a wiring mistake.
+
+## Copy-on-click / delete-cancel / name-required / name-uniqueness
+## (ELITEA-2335/2339/2340/2341, combined analyst+implementer session, 2026-08-27)
+
+- **Toasts on this surface are testid-locatable and were never used here before.** The
+  shared `src/components/Toast.jsx` already carries `toast-alert` (with a
+  `data-severity="{error|success|info|warning}"` attribute) and `toast-message`, both
+  pre-existing on `main`. Durations are severity-dependent
+  (`TOAST_DURATION_DEFAULTS`, `src/common/constants.js:345`): **error 10 s, warning 7 s,
+  success 3 s, info 3 s**. Earlier digest entries said "the success toast has no testid,
+  don't gate automation on it" — that is **superseded**: it does, app-wide. The 3 s
+  info/success window is why a one-shot `text_content()` read misses it (it did, live);
+  use a web-first `expect(...).to_have_text(...)` attached immediately after the action,
+  or a `MutationObserver` when exploring by hand.
+
+- **Clicking the masked value copies the plaintext (ELITEA-2335, confirmed live).**
+  `SecretValueCell.jsx` wraps the `secret-value-cell` label in an MUI `Button` whose
+  `onClick` is `handleDirectCopy`: `showSecret` → `GET /api/v2/secrets/secret/default/
+  {project_id}/{name}` → 200 → `copyToClipboard(data.value)` → `toastInfo`. Live toast
+  text, verbatim: **`The <name> values have been copied.`** (severity `info`). The masked
+  cell text does NOT change — copying is not revealing. On **Safari** the handler is
+  `undefined` (`isSafari()`) and the tooltip switches to "Use copy icon in actions to copy
+  secret" — Chromium is the automated target, so the handler is live there.
+  ⚠️ **The Playwright-MCP browser cannot READ the clipboard**
+  (`NotAllowedError: Read permission denied`) — but the pytest context can:
+  `automation/conftest.py:304` grants `clipboard-read`/`clipboard-write`, and
+  `BasePage.get_clipboard_text()` / `clear_clipboard()` already exist. The clipboard
+  **write** still demonstrably works in an MCP session (the success toast only fires when
+  `copyToClipboard` resolves), so an MCP walk can confirm everything except the readback.
+
+- **Cancelling a delete is purely client-side (ELITEA-2339, confirmed live).**
+  `delete-confirm-cancel-button` closes the shared `DeleteEntityModal` with **zero**
+  network requests; the row, its name cell and its masked value cell are unchanged, and
+  `delete-confirm-button` is `disabled` until the exact name is typed (re-confirmed).
+  ⚠️ `delete-confirm-name-input` is on the **MUI `TextField` root `<div>`**, not on the
+  native `<input>` — `.fill()` on the testid itself errors with *"Element is not an
+  &lt;input&gt;…"*; the page object's `fill_delete_confirm_name()` already handles this,
+  but a hand-driven MCP walk must target `[data-testid="delete-confirm-name-input"] input`.
+
+- **An EMPTY secret name is NOT validated (ELITEA-2340) — filed as bug `#1903`.**
+  `EditSecretInputGridTable.jsx`'s only validation is
+  `field === 'name' && inputValue && !SECRET_NAME_PATTERN.test(inputValue)` — the
+  `inputValue &&` guard short-circuits on `''`, so an empty name yields no error, and the
+  Save (✓) button (`disabled={hasValidationErrors}`) stays **ENABLED** with no
+  `secret-name-error`, even though the component passes `required` to the input. Live:
+  `saveDisabled: false`, `nameErrorText: null`, `helperTexts: []`. Siblings on other
+  surfaces: `#1004`, `#526` (closed), `#633`. **Not probed:** what a Save click with an
+  empty name actually does — `useSecretRowUpdate` drops the row only when name AND value
+  are both empty, so it would POST `name: ""` into shared project data and could leave an
+  unnamed secret with no deletable URL path. Don't probe it casually.
+
+- **Name uniqueness is enforced SERVER-SIDE only (ELITEA-2341, confirmed live).** Typing an
+  existing secret's name leaves Save (✓) **enabled** with no inline error; the create
+  `POST /api/v2/secrets/secrets/default/{project_id}` returns **400 Bad Request**, the
+  browser logs the usual `Failed to load resource … 400`, and `SecretsTable.jsx`'s
+  `isAddingError` effect raises an **error** toast whose live text is exactly
+  **`Secret "<name>" already exists`**. The pending row **stays in edit mode** with the
+  typed name intact (`useSecretRowUpdate` returns the row untouched on
+  `responseResult.error`), and no duplicate row is created.
+  ⚠️ **`SecretsPage.click_save_button()` cannot be used for a rejected save** — after
+  awaiting the POST it waits for `secrets-add-button` to re-enable, which only happens when
+  the row LEAVES edit mode; on a 400 it never does. Use the additive
+  `click_save_button_expect_rejection()` variant instead (added by ELITEA-2341).
+
+- **Menu-open non-determinism (`#1222`), fifth and sixth data points:** both three-dot menu
+  opens in this session succeeded with a plain MCP `.click()`. Evidence across sessions
+  stays mixed — **keep `open_row_actions_menu()`'s React-`onClick` workaround
+  unconditionally**; it is a safe superset.
+
+### Implementation-time confirmations (same session, 2026-08-27)
+- **Clipboard READBACK works in the pytest context** — `BasePage.get_clipboard_text()`
+  returned the plaintext and matched both oracles (the value the create POST persisted and
+  the reveal GET's `value`). So the MCP-only `NotAllowedError` above is a limitation of the
+  MCP browser context, never of the suite.
+- **`#1203` counts for this wave's four specs**: 45 / 35 / 33 / 33 occurrences per test —
+  consistent with the 32-41 range recorded for the previous wave, and again **0** in the
+  live MCP walk of the identical flows.
+- **`SecretsPage.type_value()`** added (additive sibling of `type_name()`): `fill_new_row()`
+  always fills BOTH fields, which a "leave the name empty" case cannot use.
+
+## Hidden-secret CONSUMERS — what a hidden secret does downstream
+## (ELITEA-2345/2346 cluster analyst session, 2026-08-27, confirmed live)
+
+_This section covers the surfaces that CONSUME secrets, not the Secrets page itself.
+Every handle below was read live on `localhost:5173` / project **399**._
+
+### The secret-selection dropdown is ONE shared component, three call sites
+`src/[fsd]/shared/ui/secret-field/SecretField.jsx` renders every secret field in the
+app. Same derived testids everywhere — do not duplicate selectors per surface:
+- `toolkit-field-{key}-input` — the SecretField wrapper `<div>`
+- `toolkit-field-{key}-input-field` — the native `type="password"` `<input>`
+  (Password mode only)
+- `toolkit-field-{key}-input-toggle-secret` / `-toggle-password` — the mode toggle
+  (`ToggleButtonGroup`; read `aria-pressed` to know which mode is active)
+- `toolkit-field-{key}-input-combobox` — the vault select display node (Secret mode only)
+- `toolkit-field-{key}-input-refresh-secrets-button` — SAVED SECRETS group-header refresh
+- `select-group-header-Create` / `select-group-header-Saved Secrets` — the two groups
+- `select-option-{{secret.<name>}}` — a saved-secret option (the option VALUE is the
+  `{{secret.…}}` template, so the testid contains braces)
+
+Confirmed call sites this session:
+1. **Create credential** — `/credentials/create-credential/<type>` (e.g. `jira`, field
+   key `api_key`).
+2. **Edit credential** — `/credentials/all/<id>?viewMode=owner&name=<display name>`.
+3. **New AI Provider** — `/settings/create-ai-provider/<type>` (e.g. `open_ai`, field
+   key `api_key`). **Same testids** as the credential forms — the existing
+   `credential_create_page.py` secret-vault methods work verbatim here despite the name.
+
+**The field always starts in PASSWORD mode.** The vault combobox does not exist in the
+DOM until `…-toggle-secret` is clicked. Any case whose steps say "open the secret
+dropdown" needs that hop first; the TMS case texts omit it.
+
+### Hiding a secret removes it from the dropdown (the ELITEA-2345/2346 observable)
+Measured live, same session, same project: **123** saved-secret options with two
+run-unique secrets visible → **122** after hiding one → **121** after hiding both. The
+hidden option's testid disappears entirely; every other option stays. Verified on all
+three call sites above.
+→ Always pair the absence assertion with a **control** (a known-visible secret IS
+present / `saved_secret_options` count > 0). An empty or failed-to-load dropdown passes
+a bare absence check.
+
+### Hiding a secret does NOT break credentials that reference it — but the UI changes shape
+Verified end-to-end: created secret → created a `jira` credential with
+`api_key = {{secret.<name>}}` → hid the secret → re-read the credential.
+- **Server truth (unchanged):** `GET /api/v2/configurations/configuration/399/<id>` →
+  `"data": {"api_key": "{{secret.<name>}}", …}`. The reference survives; nothing is
+  nulled or rewritten.
+- **UI fallback (intentional):** the field renders in **Password** mode
+  (`…-toggle-password` `aria-pressed="true"`, combobox absent) and the native password
+  input holds the literal secret **NAME**. Source:
+  `SecretField.jsx` — `isHiddenSecret = isError || !data?.some(i => i.secret_name === value)`,
+  and `handleSwitchToSecretTab` only switches to the Secret tab `if (isSecret && !isHiddenSecret)`;
+  `updateRawPassword()` seeds the password input with `value.match(secretRegex)[1]`.
+- **The form is NOT dirtied by the fallback** — `credential-form-save-button` is
+  **disabled** on load. Nothing is silently rewritten client-side.
+- Raised for a product decision (a keystroke in that field would replace the reference
+  with the literal name): `EliteaAI/elitea-testing-public#1907`.
+- **Do NOT use `credential-form-test-connection-button` as the "still works" oracle** on
+  a synthetic credential — it fails for the fake host regardless of the hide.
+
+### Settings → AI Providers create flow (NOT "AI Configuration")
+- Route `/settings/ai-providers`; nav item `settings-nav-item-ai-providers`; title
+  `ai-providers-page-title`. **There is no "AI Configuration" section** — TMS case texts
+  saying so are stale (`EliteaAI/elitea-testing-public#1906`).
+- The page renders `ai-providers-section-*-loading` placeholders first, then the real
+  `ai-providers-section-*` testids. Gate on a real section testid, never a fixed delay.
+- The "+" is the generic `sidebar-create-button` (label is route-contextual: "AI
+  Provider" here). It routes to `/settings/create-ai-provider?viewMode=owner&from=ai-providers`
+  — a **type picker**, not a form. Type cards use the same
+  `toolkit-type-card-{type}` family as the credentials picker (`toolkit-type-card-open_ai`,
+  `…-azure_openai`, `…-ollama`, `…-vertex_ai`, `…-pg_vector`, …).
+- Only after the type click (`/settings/create-ai-provider/open_ai`) does the form with
+  `toolkit-field-label-input` / `toolkit-field-api_base-input` / `toolkit-field-api_key-input`
+  render.
+
+### Two live gotchas that cost real time this session
+1. **`beforeunload` blocks `page.goto()`.** A credential or AI-provider form dirtied by
+   *anything* (including merely flipping the secret toggle) raises a native
+   `beforeunload` dialog on navigation; a bare `page.goto()` hangs until it is handled
+   (two 60 s timeouts here). Register `page.on("dialog", lambda d: d.accept())` or
+   discard the form first.
+2. **`delete-confirm-name-input`'s testid is on the MUI `FormControl` `<div>`, not the
+   `<input>`.** `fill()` on the testid errors with *"Element is not an `<input>`"*;
+   target the native child. `credential_detail_page.fill_delete_confirm_name()` already
+   does this — use it.
+
+### Three-dot menu workaround: reproduced AGAIN (3rd data point)
+A plain Playwright `.click()` on `secret-row-actions-button` failed to mount the menu
+this session (the `secret-actions-menu-hide` item did not exist afterwards); the
+existing React-`onClick` workaround in `secrets_page.open_row_actions_menu()` opened it
+first try, twice. Score across sessions: ELITEA-2344 saw 1 success / 1 failure with a
+plain click, ELITEA-2343 saw 1 success, this session saw 1 failure. **Keep the
+workaround unconditionally** — `EliteaAI/elitea-testing-public#1222`.
+
+### Console noise on the CREDENTIALS routes
+`/credentials/create-credential/<type>` logs a React `Each child in a list should have a
+unique "key" prop` **console.error** from `CategorySection.jsx` (via
+`CredentialTypeSelector.jsx`) — the same defect as
+`EliteaAI/elitea-testing-public#656`, second occurrence commented there. It is
+**dev-build only** (stripped by `vite build`), so it appears on localhost and not on a
+deployed env. `#1203` (Secrets-page "Maximum update depth exceeded") did **not** fire in
+this session — still inconclusive, check your own run.
+
+### Implementation-time confirmations — ELITEA-2345/2346 (test-automation-engineer, 2026-08-28)
+
+Both specs went **green on their first run, 0 reruns** (2345: 54.48 s; 2346: 50.24 s),
+against `localhost:5173` / project 399. Everything the analyst recorded above held
+verbatim. New, implementation-created facts:
+
+- **The AI-provider type picker now has page-object support.**
+  `automation/pages/ai_providers_page.py` gained (additively) `create_button`
+  (`sidebar-create-button`), `TYPE_CARD_SELECTOR` /`TYPE_CARD_PREFIX_SELECTOR`
+  class-constant templates, `type_card()`, `type_cards`, `click_create()` and
+  `click_type_card()`. `click_create()` settles on the first rendered type card;
+  `click_type_card()` settles on the picker **unmounting** — it deliberately does not
+  re-declare `toolkit-field-label-input`, which already lives in
+  `CredentialFormFieldsMixin`.
+- **`CredentialAPI.get_credential(id)` now exists** (`automation/api/client.py`) —
+  `GET /configurations/configuration/{project}/{id}`, the honest server-side oracle for
+  "the credential's stored `{{secret.…}}` reference survived the hide". `list_credentials`
+  is a list projection and is not guaranteed to carry the `data` block; don't rely on it
+  for that assertion.
+- **The credential-create POST's response body carries the new credential's `id`** —
+  no card-click round-trip is needed to learn it (ELITEA-2345 captures it straight off
+  `expect_response`, with a `list_all_credentials()` lookup by `label` kept as an
+  explicit fallback).
+- **The shared secret-vault handles were REUSED, not duplicated.** Both specs drive the
+  `api_key` SecretField through `CredentialCreatePage` — on the credential DETAIL route
+  and on the **AI-provider** form alike — because that page object already owns those
+  derived testids. Extracting them into a shared `components/secret_field.py` (or
+  promoting them to `CredentialFormFieldsMixin`, the pattern that file already used for
+  `FIELD_INPUT`/`AUTH_METHOD_RADIO`) is the cleaner end state but is a **non-additive**
+  edit to a ~20-caller page object — raised to the lead rather than done inside a case PR.
+- **The vault dropdown may not self-close after selecting an option** (consistent with
+  `#1047`'s `skipNextCloseRef`). ELITEA-2345 presses `Escape` after the selection so the
+  subsequent Save click is unambiguous; cheap and harmless when the menu did close.
+- **`page.on("dialog", lambda d: d.accept())` registered once at the top of the test is
+  sufficient** for the `beforeunload` gotcha above — no discard-first dance was needed on
+  either the credential or the AI-provider form.
+- **Neither spec asserts console errors.** It is outside both Coverage Maps, and `#656`
+  fires deterministically on `/credentials/create-credential/<type>` on dev builds — an
+  unrequested assertion would have made ELITEA-2345 a sanctioned-RED its case never asked
+  for. `#1203` was again not observed on `/settings/secrets` in these runs.
+- **The three-dot React-`onClick` workaround (`#1222`) was used unconditionally** in both
+  specs and opened the menu first try, three times across the two runs. 4th data point.
+
+## Role-scoped access to Secrets, empty-state re-verification, and the network-failure
+## error path (ELITEA-2333/2348/2349, combined analyst+implementer session, 2026-08-28)
+
+### Roles are PROJECT-SCOPED — a viewer vantage exists with no new credential
+The shared `${TEST_USER}` holds **different roles in different projects**, so
+role-differentiated cases are NOT uniformly blocked on a second identity (this
+partially supersedes question **#1314**, commented there). Verified live 2026-08-28:
+
+```
+GET {ELITEA_API_BASE}/admin/users/prompt_lib/{project_id}   (roles of ${TEST_USER})
+  399 Private              -> ['editor', 'viewer']   <- settings.elitea_project_id
+  400 UI Testing           -> ['admin']              <- settings.users_team_project_id
+  406 Bugs & Features      -> ['viewer']
+  25  Elitea Development   -> ['viewer']
+  471 Elitea Testing Team  -> ['viewer']             <- settings.elitea_team_project_id
+```
+
+`useCheckPermission` reads `state.user.permissions`, refetched **per selected project**
+via `GET /auth/permissions/prompt_lib/{id}`. Live: project 400 → 360 permissions
+(8 × `configuration.secrets.*`), project **471 → 158 permissions, ZERO containing
+`secret`**. Switching the project selector therefore puts the app in a genuine
+role-derived permission state — computed by the product, not fabricated by the test.
+
+**Consequence for Secrets:** `src/[fsd]/pages/settings/index.jsx:89` gates the drawer's
+`secrets` tab on `PERMISSIONS.secrets.list` and filters the item out
+(`index.jsx:174`). Measured live, drawer nav item ids:
+- project 399 → `… project-context, **secrets**, analytics, usage …`
+- project 471 → `… project-context, users, analytics, usage …` (**no `secrets`**),
+  both after an in-session switch AND on a fresh load.
+
+Handle: `settings-nav-item-secrets` (existing `SettingsDrawerPage.SETTINGS_NAV_ITEM`
+template) — absence-assertable per canon #511's extension.
+
+### There is NO `Monitor` role in Elitea
+`GET {ELITEA_API_BASE}/admin/roles/default/{p}` returns `['admin','editor','viewer']` for
+**all five** projects (399/400/406/25/471), and `grep -rni "'monitor'|\"monitor\""
+../EliteaUI/src/` has **0 hits**. Any case naming a Monitor role is case-text drift —
+filed as clarification **#1909**. Don't go looking for it again.
+
+### Deep-linking `/settings/secrets` on a no-permission project (re-confirmed)
+Still exactly **#1773**: `secrets-page-title` + an **enabled** `secrets-add-button` +
+`No secrets`, **no** access-denied state, **no** toast, and **zero** secrets requests
+(the RTK query is skipped client-side). Console errors on that mount: **144**
+`Maximum update depth exceeded` (#1203's unbounded variant) — never dwell there.
+
+⚠️ **Unverified single observation, worth a look if you touch it:** switching projects
+*while already on* `/settings/secrets` left the PREVIOUS project's rows rendered in the
+MCP browser (399's secrets still listed with 471 selected). Seen once via Playwright MCP,
+**not** reproduced in the framework probe (which switched from `/settings/project-general`,
+where rows were 0). Could be a mid-transition snapshot. Not filed — verify before claiming.
+
+### Empty-state precondition: STILL unproducible (ELITEA-2333, re-probed not copied)
+`GET {ELITEA_API_BASE}/secrets/secrets/default/{p}` → 399: `200`/**121**,
+400: `200`/**4**, 406/25/471: **`403`**. No project this user can list AND that is empty;
+the selector still offers 5 fixed projects with no create affordance. ELITEA-2333 is
+parked `blocked` for the same reason as **ELITEA-2249** — see
+`l3_secrets-empty-state-no-secrets_ELITEA-2333.md` § Why this is blocked.
+
+### Network-failure (transport) error path — the observable, confirmed live
+Failing the transport of the secrets-list GET (`page.route(..., route.abort("failed"))`
+— **case-authorised** by ELITEA-2349's own step 1, "on a throttled or offline
+connection") produces, measured live:
+
+| Observable | Value |
+|---|---|
+| `toast-alert` | visible, class contains `MuiAlert-colorError` |
+| `toast-message` | **`Unknown error`** — filed as bug **#1910** |
+| page shell | `secrets-page-title` + `secrets-add-button` present, add button **enabled** |
+| `secret-row` | 0 |
+| stack trace in body | none (`TypeError` / `Uncaught` / `at Object.` / `.jsx:` all absent) |
+| toast auto-hide | still present after 10 s; clears on successful reload |
+| console errors | 59 × `Maximum update depth exceeded` (#1203, bounded variant) |
+
+Root cause of the bare message: `SecretsContent.jsx` calls
+`buildErrorMessage(error)`, and `src/common/utils.jsx:146-184` has **no `FETCH_ERROR` /
+`TIMEOUT_ERROR` / `PARSING_ERROR` branch** — every branch misses and it returns
+`err?.data` → `undefined`, which the toast provider renders as `Unknown error`. It is a
+**shared** helper, so every surface behaves this way on a transport failure.
+
+Recovery after `page.unroute` + `reload()`: list `GET` → `200`/121 items, **10** rows
+rendered (default page size), `toast-alert` count back to **0**.
+
+Toast handles are on `main`: `toast-alert` (`src/components/Toast.jsx:60`),
+`toast-message` (`:74`), `toast-dismiss-button` (`:71`) — **and `data-severity={severity}`
+at `:61`**, which is how toast severity should be asserted here
+(`[data-testid="toast-alert"][data-severity="error"]`, wired as
+`SecretsPage.TOAST_ALERT_SEVERITY`). Do NOT reach for MUI's `MuiAlert-colorError` class:
+a real app attribute exists and the class is library-internal.
+
+`settings-content` (`src/[fsd]/pages/settings/index.jsx:268`) is the Settings content
+pane's testid — the right SCOPE for any "no stack trace / not a blank page" check on a
+settings surface, instead of a raw `body` handle. Note it is on `automation/testids`
+only, **not yet on `main`**.
+
+### Implementation-time note
+`SecretsPage.navigate()` waits for `secret_row.first` to be visible, so it is **unusable
+for any zero-row state** (error, empty, filtered-to-zero). Use the additive
+`navigate_expecting_no_rows()` added by ELITEA-2349 instead of relaxing `navigate()` —
+it has many merged callers.

@@ -5,7 +5,7 @@ type: feedback
 aliases: [ruff baseline, is this lint error new, I001 false positive, stdin-filename ruff]
 tags: [area/review, type/gotcha]
 created: 2026-08-22
-updated: 2026-08-22
+updated: 2026-08-28
 ---
 
 ## The trap
@@ -37,5 +37,19 @@ rm -f pages/_tmp_base_x.py
 
 Same directory as the original (so `src` detection matches), `--output-format=concise`
 so rule codes are visible — the default output shows only `-->` locations.
+
+## Same trap, second shape: a /tmp mirror directory
+
+A `/tmp/<mirror>/` tree assembled from `git show <branch>:...` has the same defect
+for the same reason. Ruff infers first-party packages from what exists **next to**
+the file, so a mirror containing `pages/` but not `config.py` / `utils/` classifies
+`pages` first-party and `config`/`utils` third-party — 4 bogus `I001`s across four
+specs whose real-path run is `All checks passed`. Verified 2026-08-28 (settings-w05
+secrets review, PR #1904).
+
+Cheapest correct move when the shared tree is **already on the branch under review**
+(the serial batch pipeline usually leaves it there — check `git rev-parse
+--abbrev-ref HEAD` first): just `cd automation && ../.venv/bin/ruff check <paths>`
+on the real files. No mirror, no stdin, no checkout.
 
 Related: [[reviewer_mechanical_greps_must_run_from_repo_root]]
