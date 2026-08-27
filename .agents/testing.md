@@ -871,3 +871,28 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   network silence) — not a longer timeout, which only widens the window the race has to win in.
   ⚠️ **The reruns make junit record PASS**, so this class is invisible in the junit trail — evidence
   lives only in `reports/allure-results/*-result.json` (allure status `broken`). Grep by `fullName`.
+- **LLM trigger-side flake, now VISIBLE where it used to pass silently — toolkit chat
+  (2026-08-27, ELITEA-1140/#1817, PR #1865)**: `test_chat_with_toolkit` gained a Tier-1
+  assertion that the toolkit's tool actually ran (`exactly one received agent_tool_end
+  frame for this toolkit's tool`). During the implementer's 5-param run, `[jira]` failed it
+  once — `got 0 of 39 captured Socket.IO frames`, i.e. **the model simply did not call the
+  tool that turn**. It then passed 4 consecutive times (1 standalone + 3 re-runs,
+  32.60/31.83/30.03 s), and the lead's own independent gate was 3/3 clean
+  (65.43/63.07/63.66 s, `reruns.json == {}` each).
+  **The entry worth remembering is not the flake — it is what the flake reveals.** Before
+  #1817 that same turn **passed**: the model narrates *"…trying to list the branches…"*, which
+  satisfies `chat_response_keywords` and the message-count assert, so a turn where the tool was
+  never invoked scored green. The nondeterminism is pre-existing; Tier 1 only makes it
+  observable. Same family as the HITL trigger-side entries above — it fires at the
+  *precondition*, upstream of every assertion the case makes, so it is **never** a member of a
+  sanctioned-RED set: the response is **re-run, never accept 2-of-3**. `--reruns=2` absorbs the
+  single-occurrence case.
+  Triage is self-service by design: the assertion message carries the total frame count and the
+  distinct `(type, tool_name)` pairs, so `0 of 0` (the capture/transport failed — a harness
+  problem) reads differently from `0 of 39` (the model didn't call the tool — the real signal)
+  and from `>1` (a double call). ⚠️ Every frame behind this oracle was captured on **localhost**,
+  while the spec also runs in GHA against deployed envs where the Socket.IO transport was never
+  verified — if a proxy there declines the websocket upgrade, expect `0 of 0` on every param.
+  ⚠️ Do **not** "fix" a future double call by relaxing Tier 1 to `>= 1` + `frames[0]`: on a
+  success-then-failure pair that reads the success and passes over a real failure. The correct
+  shape is `>= 1` **plus** asserting every matched frame satisfies the success pattern.
