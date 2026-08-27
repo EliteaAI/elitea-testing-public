@@ -437,10 +437,16 @@ by ELITEA-2337/2338/2343 analyst sessions (same day).
 - **Data scale, refreshed**: project `Private` (399) now holds **121** secrets
   (was 120 on 2026-08-24, 103/104 on 2026-08-05). Never assert an absolute total — parse
   it out of `secrets-pagination-info` and compute expectations from it.
-- **`#1203` did NOT fire during this session's live exploration** (0 console errors across
-  navigation, sorting, paging, page-resizing and searching). Third session in a row where
-  it was absent live while ELITEA-2336's automated run hit it 3/3 — still inconclusive;
-  every new spec keeps the isolated soft-failure handling rather than assuming either way.
+- **`#1203` — the live-walk vs automated-run split is now settled for this surface, and
+  the burst is much bigger than recorded.** The Playwright-MCP walk of the identical flow
+  produced **0** console errors (navigation, sorting, paging, page-resizing, searching),
+  while the five automated specs written from that same walk hit it **5/5**, at
+  **32-41 occurrences per test** (vs the 5 measured on this same project on 2026-08-24).
+  So: never conclude `#1203` is quiescent from a live MCP session — it is not a reliable
+  predictor of what an automated run sees. Every spec on this surface keeps the isolated
+  soft-failure handling (`_is_known_defect_1203` + `soft_failures`/`pytest.fail()`), which
+  makes them **sanctioned-RED on this one signature** until the product fix ships. Counts
+  and reasoning commented on `#1203` (2026-08-27).
 - **⚠️ Vite did NOT pick up the JSX edits on this machine** (OneDrive-backed checkout):
   after editing + committing, the dev server kept serving the pre-edit transform, and a
   `touch` did not invalidate it either. The new testids appeared only after **restarting
