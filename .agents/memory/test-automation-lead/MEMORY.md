@@ -93,3 +93,5 @@
 - [Re-check a blocker before assuming it still blocks](unparking_a_blocked_card_recheck_the_blocker_first.md) — a parked card is often already free
 - [Clean side channels do not mean no error](clean_side_channels_do_not_mean_no_error.md) — a "silent failure" verdict is unverified until every channel (incl. WebSocket) was read
 - [A flake rate may be an aggregate](flake_rate_may_be_an_aggregate.md) — re-measure a park's defect rate SPLIT BY TRIGGER
+- [PR "Fixes #N" auto-closes the issue](pr_fixes_keyword_auto_closes_issue.md) — use `Refs #N`; Done/close is human-only
+- [A gate that passed WITH reruns is not clean](rerun_tainted_gate_is_not_a_clean_gate.md) — accept on `reruns.json == {}`, re-gate otherwise
