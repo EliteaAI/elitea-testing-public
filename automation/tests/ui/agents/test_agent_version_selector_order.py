@@ -7,21 +7,43 @@ sequence — ``base`` (Draft, initially pinned) -> ``v1-early-draft`` (Draft)
 newest) -> re-pin ``v1-early-draft`` as the default — then opens the VERSION
 dropdown and verifies every ordering rule and metadata field in one pass.
 
-Case-text drift (CLARIFICATION, filed as
-https://github.com/EliteaAI/elitea-testing-public/issues/1091): the TMS case
-describes a three-tier ordering (Pinned -> Published -> Draft -> base). The
-live sort algorithm (``VersionSelect.jsx``'s ``versionSelectOptions``
-comparator) has no Published/Draft status tier at all — the real rule is
-``[pinned] -> [everything else by created_at descending, Published/Draft
-interleaved] -> [base, unless base is itself pinned]``. This test asserts the
-real rule (Step 7), not the case's literal wording — reverse-masking guard,
-live product behavior is correct.
+CASE-TEXT DRIFT — two filed CLARIFICATIONS, both reverse-masking guards
+(the live product is correct; the case text is stale):
 
-Two new testids were added for this case (EliteaUI automation/testids commit
-4e5b819d):
+- https://github.com/EliteaAI/elitea-testing-public/issues/1091 — the TMS case
+  describes a three-tier ordering (Pinned -> Published -> Draft -> base). The
+  live comparator has no Published/Draft status tier at all.
+- https://github.com/EliteaAI/elitea-testing-public/issues/1877 — the case (and
+  this test's original assertions) also assumed a *pinned-first* tier. EliteaAI/EliteaUI@cf648e9a
+  ("Feat/el 6302/enhancement of version select", PR EliteaAI/EliteaUI#857,
+  merged to EliteaUI ``main`` 2026-08-27) deliberately DELETED that tier from
+  ``VersionSelect.jsx``'s comparator (the two ``defaultVersionID`` early
+  returns), leaving the comment *"Default version stays in its chronological
+  position — not pinned to top."*
+
+THE CURRENT PRODUCT RULE, which this test asserts:
+``[every version by created_at DESCENDING] -> [base ALWAYS last]`` — no pinned
+tier, no status tier. The pin *icon* was deliberately kept
+(``VersionIconBlock.jsx``, still ``data-testid="version-option-pin-icon"`` +
+``aria-label="Default version"``) and is now the SOLE indicator of the default
+version: position and pin are decoupled, so ``base`` can be simultaneously
+pinned AND last. This test therefore asserts the pin icon's *migration*
+(Step 8) and, separately, that re-pinning does NOT reorder the dropdown.
+
+TIMESTAMP ORACLE — the rendered date/time in Step 4 is asserted against the
+value the API itself reports for that version, never against the test machine's
+clock. ``formatVersionMeta()`` skips the codebase's own ``convertTime()``
+``Z``-normalizer, so the dropdown shows the SERVER's wall clock labelled as
+local; a clock-based expectation would false-fail by the UTC offset on a
+developer machine while passing on UTC CI. See ``_expected_created_label()``.
+
+Both testids this case relies on are pre-existing and present on EliteaUI
+``main`` (verified by two-ref grep at repair time):
 - ``version-option-pin-icon`` — scoped inside the already-testid'd
-  ``version-option-{name}`` parent (``version.helpers.jsx``'s
-  ``buildVersionOption()``).
+  ``version-option-{name}`` parent. #857 MOVED it from
+  ``version.helpers.jsx``'s ``buildVersionOption()`` into the extracted
+  ``VersionIconBlock.jsx``; the testid value and its DOM position inside the
+  option are unchanged.
 - ``agent-set-default-version-confirm-button`` — wired via a
   ``confirmButtonTestId`` prop at THIS page's own call site
   (``useSetDefaultVersion.hooks.jsx``), since ``SetDefaultVersionDialog.jsx``
@@ -32,6 +54,7 @@ Spec: test-specs/agents/l2_version-selector-lists-all-versions-order-metadata_EL
 
 import re
 import uuid
+from datetime import datetime
 
 import allure
 import pytest
@@ -53,7 +76,78 @@ V1_NAME = "v1-early-draft"
 V2_NAME = "v2-published"
 V3_NAME = "v3-latest-draft"
 
-OPTION_TEXT_PATTERN = re.compile(r"^(?P<name>.+) - (?P<date>\d{2}\.\d{2}\.\d{4})$")
+# Version-option text since EliteaAI/EliteaUI@cf648e9a (PR EliteaAI/EliteaUI#857).
+# The option's name and its metadata line are now SIBLING nodes inside the same
+# `version-option-{name}` element (`VersionSelectOption.jsx`), so the element's
+# own text_content() concatenates them with NO separator — verified live on
+# localhost:5173 at repair time:
+#     "baseAug 13, 2026, 11:15 · by Test Bot"
+# The metadata half is built by `version.helpers.jsx`'s formatVersionMeta() as
+# "{Mon DD, YYYY, HH:MM} · by {author}" — i.e. #857 ADDED a time-of-day and an
+# author segment to what used to be a bare "{name} - {DD.MM.YYYY}". The author
+# segment always renders (author_name -> author_email -> the literal
+# "Author unavailable"), so requiring it is safe, not brittle.
+# `name` is non-greedy so it stops at the first real timestamp; the step's own
+# `match.group("name") == V2_NAME` assertion is what pins the split down.
+OPTION_TEXT_PATTERN = re.compile(
+    r"^(?P<name>.+?)"
+    r"(?P<created_date>[A-Z][a-z]{2} \d{2}, \d{4}), "
+    r"(?P<created_time>\d{2}:\d{2})"
+    r" · by (?P<author>\S.*)$"
+)
+
+# formatVersionMeta() renders the month via
+# `toLocaleString('en-US', {month: 'short'})`, i.e. always these abbreviations
+# regardless of the machine locale — so build the expected string from a fixed
+# table rather than from Python's locale-dependent `%b`.
+_MONTH_ABBR = (
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+)
+
+
+def _expected_created_label(created_at: str) -> tuple[str, str]:
+    """Expected ``("Mon DD, YYYY", "HH:MM")`` for a raw backend ``created_at``.
+
+    THE ORACLE IS THE API RESPONSE, NOT THE TEST'S CLOCK. This mirrors exactly
+    what ``formatVersionMeta()`` does to the same raw string, so the assertion
+    is a pure UI-fidelity check with no coupling to the machine's timezone.
+
+    What it mirrors, and why the mirror is shaped this way: this backend
+    serializes NAIVE timestamps (no ``Z``, no offset). The codebase has its own
+    normalizer for that — ``convertTime()`` in
+    ``src/common/convertChatConversationMessages.js``, which appends ``Z`` when
+    a stamp carries neither — and the notification and chat renderers call it.
+    ``version.helpers.jsx``'s ``formatVersionMeta()`` does NOT: it runs
+    ``new Date(created_at)`` on the raw string and then reads
+    ``getDate()/getFullYear()/getHours()/getMinutes()``. With no offset in the
+    input there is nothing to convert from, so those local getters hand back
+    the string's own digits — the dropdown renders the SERVER's wall clock,
+    labelled as local.
+
+    Hence: a naive stamp is used VERBATIM. A tz-aware stamp (should the backend
+    ever start sending one) is converted to local first, which is what
+    ``new Date()`` + the local getters would then genuinely do. Either branch
+    reproduces the product's own arithmetic rather than assuming a timezone.
+
+    ⚠️ WHEN PRODUCT BUG #1879 IS FIXED, THIS MIRROR GOES STALE — UPDATE THE
+    MIRROR, NOT THE PRODUCT. The UTC-vs-local inconsistency between this
+    dropdown and the notification/chat renderers is filed as
+    https://github.com/EliteaAI/elitea-testing-public/issues/1879. The day
+    ``formatVersionMeta()`` starts calling ``convertTime()``, the dropdown will
+    render true local time and this helper's naive-verbatim branch will be
+    wrong — the fix is to drop that branch (always normalize to UTC, then
+    convert to local), NOT to relax the assertion. This helper deliberately
+    mirrors the product as it is rather than compensating for it, so that the
+    filed bug stays visible instead of being silently absorbed by the test.
+    """
+    stamp = datetime.fromisoformat(created_at)
+    if stamp.tzinfo is not None:
+        stamp = stamp.astimezone().replace(tzinfo=None)
+    return (
+        f"{_MONTH_ABBR[stamp.month - 1]} {stamp.day:02d}, {stamp.year}",
+        f"{stamp.hour:02d}:{stamp.minute:02d}",
+    )
 
 
 def _build_dedicated_agent_payload(name: str) -> dict:
@@ -106,15 +200,19 @@ class TestAgentVersionSelectorOrder:
     )
     @allure.issue(
         "https://github.com/EliteaAI/elitea-testing-public/issues/1091",
-        "CLARIFICATION #1091 — ordering rule case-text drift",
+        "CLARIFICATION #1091 — no Published-before-Draft ordering tier",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/elitea-testing-public/issues/1877",
+        "CLARIFICATION #1877 — no pinned-first ordering tier (EliteaUI #857)",
     )
     @pytest.mark.p1
     @pytest.mark.regression
     def test_version_selector_lists_versions_in_correct_order(self, page, agent_api):
-        """The VERSION dropdown lists all versions with name+date metadata,
-        Draft versions above an unpinned base, base last when unpinned, and
-        the pinned/default version at the top with a pin icon — with no
-        independent Published-before-Draft tier (CLARIFICATION #1091)."""
+        """The VERSION dropdown lists all versions with name + creation-time +
+        author metadata, sorted purely by created_at descending with 'base'
+        always last, and marks the default version with a pin icon whose
+        position is independent of the sort (CLARIFICATIONs #1091 and #1877)."""
         with allure.step("Precondition — create a dedicated disposable agent ('base' version)"):
             agent_name = f"elitea-1891-ord-{uuid.uuid4().hex[:8]}"[:32]
             agent = agent_api.create_agent_full(_build_dedicated_agent_payload(agent_name))
@@ -184,19 +282,30 @@ class TestAgentVersionSelectorOrder:
 
             with allure.step(
                 "Precondition — confirm 'base' is STILL the pinned/default "
-                "version at this point (sorts first, with a pin icon) — the "
-                "state the re-pin below is about to change"
+                "version at this point (pin icon) AND that it nonetheless "
+                "sorts LAST — position and pin are decoupled since EliteaUI "
+                "#857 (CLARIFICATION #1877) — then capture the pre-re-pin "
+                "order for the differential assertion in Step 8"
             ):
                 detail_page.open_version_selector()
                 order_before_repin = detail_page.get_version_option_order(
                     timeout=UI_ELEMENT_TIMEOUT
                 )
-                assert order_before_repin[0] == "base", (
-                    "'base' should still sort first (pinned/default) before "
-                    f"the re-pin below, got order {order_before_repin!r}"
-                )
                 assert detail_page.is_version_option_pinned("base"), (
                     "'base' should still show the pin icon before the re-pin"
+                )
+                assert len(order_before_repin) == 4, (
+                    "VERSION dropdown should list all 4 versions before "
+                    "indexing into the order — a dropped option must fail by "
+                    f"name here, not as an IndexError below, got "
+                    f"{order_before_repin!r}"
+                )
+                assert order_before_repin[-1] == "base", (
+                    "'base' should sort LAST even while it IS the "
+                    "pinned/default version — the comparator puts base last "
+                    "unconditionally and no longer hoists the default to the "
+                    f"top (EliteaAI/EliteaUI@cf648e9a), got order "
+                    f"{order_before_repin!r}"
                 )
                 detail_page.close_versions_menu()
 
@@ -243,25 +352,72 @@ class TestAgentVersionSelectorOrder:
                 )
 
             with allure.step(
-                "Step 4 — Verify each entry shows version name and creation "
-                "date (baked into the SAME text node — not a separate 'time' "
-                "component despite the case text saying 'date/time')"
+                "Step 4 — Verify each entry shows the version name plus its "
+                "creation date AND time of day AND author, with the rendered "
+                "date/time checked against the value the API itself reports "
+                "for that version (the response is the oracle — no coupling "
+                "to the test machine's clock or timezone). EliteaUI #857 "
+                "added the time and the author to what used to be a bare "
+                "'{name} - {DD.MM.YYYY}'"
             ):
                 option_text = detail_page.get_version_option_text(V2_NAME)
                 match = OPTION_TEXT_PATTERN.match(option_text)
                 assert match is not None, (
-                    f"Version option text should match '{{name}} - "
-                    f"{{DD.MM.YYYY}}', got {option_text!r}"
+                    "Version option text should be the version name "
+                    "immediately followed by '{Mon DD, YYYY, HH:MM} · by "
+                    f"{{author}}', got {option_text!r}"
                 )
                 assert match.group("name") == V2_NAME, (
                     f"Version option text's name part should be {V2_NAME!r}, "
                     f"got {match.group('name')!r}"
                 )
+                v2_created_at = next(
+                    (
+                        version["created_at"]
+                        for version in agent_api.get_agent(agent_id)["versions"]
+                        if version["name"] == V2_NAME
+                    ),
+                    None,
+                )
+                assert v2_created_at is not None, (
+                    f"The API should report a {V2_NAME!r} version for agent "
+                    f"{agent_id} — it is the oracle this step's date/time "
+                    "assertions compare against, so its absence must fail by "
+                    "name here rather than as a bare StopIteration"
+                )
+                expected_date, expected_time = _expected_created_label(v2_created_at)
+                assert match.group("created_date") == expected_date, (
+                    f"Version option's rendered creation DATE should be the "
+                    f"one the API reports for {V2_NAME!r} — raw created_at "
+                    f"{v2_created_at!r} renders as {expected_date!r} — got "
+                    f"{match.group('created_date')!r} in {option_text!r}. If "
+                    "this fails only by a day boundary, see the TIME assertion "
+                    "below — the same #1879 cause shifts the date at the edges"
+                )
+                assert match.group("created_time") == expected_time, (
+                    f"Version option's rendered creation TIME should be the "
+                    f"one the API reports for {V2_NAME!r} — raw created_at "
+                    f"{v2_created_at!r} renders as {expected_time!r} — got "
+                    f"{match.group('created_time')!r} in {option_text!r}. If "
+                    "the delta equals this machine's UTC offset, product bug "
+                    "#1879 has been FIXED (formatVersionMeta() now calls "
+                    "convertTime()) — update _expected_created_label()'s "
+                    "mirror to always normalize to UTC first; do NOT relax "
+                    "this assertion"
+                )
+                assert match.group("author") != "Author unavailable", (
+                    "Version option should name the real author who created "
+                    f"the version, got {match.group('author')!r}"
+                )
 
-            with allure.step("Step 5 — Verify 'base' version appears last"):
+            with allure.step(
+                "Step 5 — Verify 'base' version appears last (unconditionally "
+                "— the comparator sinks 'base' regardless of pin state; see "
+                "the same assertion made against a PINNED base in the "
+                "precondition above)"
+            ):
                 assert order[-1] == "base", (
-                    "'base' should be last now that it is no longer the "
-                    f"pinned/default version, got order {order!r}"
+                    f"'base' should be the last option, got order {order!r}"
                 )
 
             with allure.step("Step 6 — Verify Draft named versions appear above base"):
@@ -287,14 +443,17 @@ class TestAgentVersionSelectorOrder:
                 )
 
             with allure.step(
-                f"Step 8 — Verify the pinned/default version ({V1_NAME!r}) "
-                "appears at the top with a pin icon, and (same dropdown-open, "
-                "same read) that 'base' simultaneously moved to last — "
-                "proving steps 5 and 8 are the SAME rule, not two independent "
-                "ones"
+                f"Step 8 — Verify the pin icon MIGRATED to the new default "
+                f"version ({V1_NAME!r}) and left 'base', while the dropdown "
+                "order stayed byte-identical to the pre-re-pin read — "
+                "position and pin are decoupled since EliteaUI #857 "
+                "(CLARIFICATION #1877), so re-pinning must NOT reorder"
             ):
-                assert order[0] == V1_NAME, (
-                    f"{V1_NAME!r} should be first (pinned/default), got order {order!r}"
+                assert order == order_before_repin, (
+                    "Re-pinning a version must not reorder the VERSION "
+                    "dropdown — the comparator sorts by created_at only "
+                    f"(EliteaAI/EliteaUI@cf648e9a). Order before the re-pin "
+                    f"was {order_before_repin!r}, after it {order!r}"
                 )
                 assert detail_page.is_version_option_pinned(V1_NAME), (
                     f"{V1_NAME!r} should show the pin icon now that it is "

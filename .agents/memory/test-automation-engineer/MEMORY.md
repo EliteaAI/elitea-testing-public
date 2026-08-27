@@ -59,3 +59,5 @@
 - [WS frame collector not on main](websocket_frame_collector_not_on_main.md) — port the FILE verbatim from automation/base; never the page-object method (merge conflict + duplicate def)
 - [Toolkit tool_output shapes are capture-only](toolkit_tool_output_capture_beats_inference.md) — each toolkit's success/failure shape is unrelated to its siblings'; inferring one ships a wrong oracle
 - [Optional oracle field disarms the gate for rows lacking it](an_optional_config_field_can_disarm_a_gate_for_one_row.md) — pair it with pytest.skip + a static "every row classifiable" invariant
+- [Version sort: no pinned tier](version_dropdown_sort_lost_its_pinned_tier.md) — EliteaUI #857: date desc, base last
+- [Rendered timestamps are server UTC](rendered_timestamps_are_server_utc_not_local.md) — assert vs API created_at
