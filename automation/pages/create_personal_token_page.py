@@ -126,8 +126,15 @@ class CreatePersonalTokenPage(BasePage):
     # template + prefix constant per .agents/testing.md § Locator policy
     # (dynamic testids stay in the greppable inventory; an inline
     # `get_by_test_id(f"...")` is NOT the compliant shape).
+    # ⚠️ The same shared component ALSO renders a `select-option-selected-icon`
+    # check mark inside whichever option is currently selected
+    # (`SingleSelectMenuItem.jsx:141`), so a bare `^="select-option-"` prefix
+    # counts options + 1 (measured live: 6 for a 5-option select). The prefix
+    # constant excludes it, so "how many options are offered?" stays answerable.
     EXPIRATION_MEASURE_OPTION_SELECTOR = '[data-testid="select-option-{}"]'
-    EXPIRATION_MEASURE_OPTION_PREFIX_SELECTOR = '[data-testid^="select-option-"]'
+    EXPIRATION_MEASURE_OPTION_PREFIX_SELECTOR = (
+        '[data-testid^="select-option-"]:not([data-testid="select-option-selected-icon"])'
+    )
 
     def __init__(self, page: Page):
         super().__init__(page)

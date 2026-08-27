@@ -441,3 +441,32 @@ Four tokens were created and all four deleted. Console across the entire cluster
 > (~25 KB). The next analyst on this surface should split it into an index + per-subarea files
 > (create-flow / table / search+sort / delete) per `test-case-analysis`
 > § When the digest outgrows one file, rather than appending a further section.
+
+## Resolved/added during ELITEA-2281/2282/2283/2288 implementation (test-automation-engineer, 2026-08-27)
+- ⚠️ **`[data-testid^="select-option-"]` overcounts by one — the SELECTED option carries a
+  `select-option-selected-icon` child** (`SingleSelectMenuItem.jsx:141`) that shares the prefix.
+  Measured live: 6 hits for the 5-option expiration-unit select, which failed the "exactly 5
+  options" assertion on the first run. The compliant count selector excludes it:
+  `'[data-testid^="select-option-"]:not([data-testid="select-option-selected-icon"])'`
+  (`CreatePersonalTokenPage.EXPIRATION_MEASURE_OPTION_PREFIX_SELECTOR`). This is app-wide —
+  ANY future case counting options of ANY `SingleSelect` hits it.
+- **Page-object handles added** (no EliteaUI change — every testid already on `origin/main`):
+  `PersonalTokensPage.delete_confirm_title` / `delete_confirm_message` /
+  `delete_confirm_cancel_button` (the three `DeleteEntityModal` testids the digest flagged as
+  "testids exist, page-object fields missing" — now wired), plus
+  `type_delete_confirm_name(text, click_first=False)` (types WITHOUT waiting for Delete to
+  enable — needed for the prefix-keeps-it-disabled half of the exact-match gate),
+  `confirm_delete_and_wait_for_response()` (returns the `DELETE …/auth/token/{uuid}` 204) and
+  `reload_and_wait_for_tokens()` (returns the reload's own token-list GET, so persistence can
+  be asserted against the API payload rather than a second DOM read).
+  `CreatePersonalTokenPage`: `EXPIRATION_MEASURE_OPTION_SELECTOR` / `…_PREFIX_SELECTOR`,
+  `get_expiration_measure_option()`, `get_expiration_measure_option_count()`,
+  `open_expiration_measure_dropdown()`, `select_expiration_measure()`, `fill_expiration_value()`.
+- **`GET /auth/token/` returns a bare JSON ARRAY** of token objects (`src/api/auth.js:51-56`,
+  no `transformResponse`) — index it directly, there is no `rows`/`items` envelope.
+- **Typing the delete-dialog name in two chunks works** (`click` once, then a second
+  `press_sequentially` with `click_first=False`): the caret stays at the end, so
+  `prefix` → assert disabled → `remainder` → assert enabled is reliable. Re-clicking the field
+  between chunks is what would risk a mid-string caret.
+- All four specs ran **4/4 green in one 53.89 s invocation**, `reruns.json == {}`; the five
+  persistent tokens were untouched and every created token was cleaned up.
