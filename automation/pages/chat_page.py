@@ -9,12 +9,14 @@ import logging
 import mimetypes
 import re
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
 from components.mui import Dialog
 from config import settings
 from playwright.sync_api import Page, expect
 from utils.actions import action
+from utils.websocket_frames import capture_socketio_frames
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor, OptionalLocatorDescriptor
@@ -6756,6 +6758,42 @@ class ChatPage(BasePage):
                 "Sensitive Action Authorization panel did NOT appear within %dms", timeout
             )
             return False
+
+    @contextmanager
+    def capture_websocket_frames(self):
+        """Capture Socket.IO event frames while the block is open.
+
+        Thin delegator to :func:`utils.websocket_frames.capture_socketio_frames`
+        — see that module for the frame shape, the slicing idiom, and why this
+        is **passive observation, not a substitution** of the system under test
+        (``.agents/testing.md`` § Fidelity policy).
+
+        **Enter it BEFORE navigating** (before :meth:`navigate_to_chat` / any
+        ``page.goto``): Playwright's ``"websocket"`` event fires only at
+        connection-open time.
+
+        Some chat behaviour is observable nowhere else. The HITL resume
+        (``chat_continue_predict``) carries the user's decision — and the
+        typed Block-with-Comment reason — on the wire, and the backend's
+        ``socket_validation_error`` answer is swallowed by the frontend
+        (ELITEA-2214, # Known defect: #1834): from the DOM the turn merely
+        looks silent.
+
+        Example::
+
+            with ChatPage(page).capture_websocket_frames() as frames:
+                chat = ChatPage(page)
+                chat.navigate_to_chat(conversation_id=conversation_id)
+                ...
+                before = len(frames)
+                chat.sensitive_action_block_button.first.click()
+                resume = [
+                    f for f in frames[before:]
+                    if f["_direction"] == "sent" and f["event"] == "chat_continue_predict"
+                ]
+        """
+        with capture_socketio_frames(self.page) as frames:
+            yield frames
 
     # ------------------------------------------------------------------
     # Slash-mention dropdown: '/' -> toolkit/MCP picker -> tool picker
