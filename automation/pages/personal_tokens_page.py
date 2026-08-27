@@ -134,6 +134,62 @@ class PersonalTokensPage(BasePage):
         description='Delete dialog\'s Cancel button — exact text "Cancel".',
     )
 
+    # ---- IDE Settings Preview pane (eye icon, ELITEA-2291 / ELITEA-2285) ----
+    # `SettingsPreview.jsx` had ZERO testids and ZERO accessible names on all
+    # three of its header IconButtons (aria-label null on each, confirmed
+    # live), so there was no honest non-testid handle for any of them. All
+    # seven below were added as pure call-site additions in
+    # EliteaAI/EliteaUI@efda0603 — five ride MUI Box/Typography/IconButton prop
+    # spread, the select reuses `SingleSelect`'s existing `data-testid` prop
+    # (which auto-derives the "-combobox" suffix onto the clickable node,
+    # same shape as CreatePersonalTokenPage.expiration_measure_combobox), and
+    # the body reuses `Field.CodeMirrorEditor`'s existing `contentTestId` prop
+    # (applied straight onto the `.cm-content` node via
+    # EditorView.contentAttributes — the merged `toolkit-raw-json-editor-content`
+    # precedent, which is why NO #579 raw-handle exception is needed here).
+    settings_preview_panel = LocatorDescriptor(
+        testid="token-settings-preview-panel",
+        description="IDE Settings Preview pane root. NOTE: an in-page "
+        "react-split pane, NOT a modal and NOT a route change — the URL stays "
+        "/settings/tokens and the tokens table stays mounted beside it.",
+    )
+    settings_preview_title = LocatorDescriptor(
+        testid="token-settings-preview-title",
+        description="Preview pane header title — exact text "
+        '"{token name} • {IDE} Settings" (U+2022 BULLET, one space either side).',
+    )
+    settings_preview_close_button = LocatorDescriptor(
+        testid="token-settings-preview-close-button",
+        description="Preview pane close (X) IconButton. The close is animated "
+        "THEN unmounted (sizes -> [100, 0], then a 50 ms setTimeout, "
+        "PersonalTokens.jsx:143-149) — always assert the disappearance with an "
+        "auto-retrying expectation, never an immediate read.",
+    )
+    settings_preview_ide_select_combobox = LocatorDescriptor(
+        testid="token-settings-preview-ide-select-combobox",
+        description="Preview pane IDE-type select's clickable combobox — the "
+        "shared SingleSelect auto-derives this '-combobox' suffix from the root "
+        "'token-settings-preview-ide-select' testid. Defaults to 'VSCode'.",
+    )
+    settings_preview_copy_button = LocatorDescriptor(
+        testid="token-settings-preview-copy-button",
+        description="Preview pane copy IconButton (copies the rendered config "
+        "to the clipboard).",
+    )
+    settings_preview_download_button = LocatorDescriptor(
+        testid="token-settings-preview-download-button",
+        description="Preview pane download IconButton (downloads the rendered "
+        "config as settings.json / elitea.xml).",
+    )
+    settings_preview_content = LocatorDescriptor(
+        testid="token-settings-preview-content",
+        description="Preview pane body — the read-only CodeMirror editor's "
+        ".cm-content node. Read it with inner_text(), NEVER text_content(): "
+        "CodeMirror renders each line as its own <div> and text_content() "
+        "concatenates them with no separator, so the result will not parse as "
+        "JSON/XML.",
+    )
+
     # Scoped sub-selectors — count/prefix assertions within a parent testid,
     # per .agents/testing.md § Locator policy (UPPER_CASE class constants).
     COLUMN_HEADER_PREFIX_SELECTOR = '[data-testid^="personal-token-column-header-"]'
@@ -423,3 +479,49 @@ class PersonalTokensPage(BasePage):
             self.page.reload()
         self.token_row.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         return resp_info.value
+
+    def open_settings_preview(self, row, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click *row*'s eye icon and wait for the IDE Settings Preview pane.
+
+        Waits on the pane's own root becoming visible — the eye icon only
+        flips React state and resizes the ``react-split`` panes
+        (``PersonalTokens.jsx:133-141``); no request fires, so there is
+        nothing to await on the network and no reason to sleep.
+        """
+        self.get_row_action_icon(row, "token-action-preview-button").click()
+        self.settings_preview_panel.wait_for(state="visible", timeout=timeout)
+
+    def close_settings_preview(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Close the IDE Settings Preview pane and wait for it to unmount.
+
+        The close is animated THEN unmounted (a 50 ms ``setTimeout`` after the
+        pane resize), so this asserts the disappearance with an auto-retrying
+        expectation rather than reading immediately.
+        """
+        self.settings_preview_close_button.click()
+        expect(self.settings_preview_panel).to_have_count(0, timeout=timeout)
+
+    def get_settings_preview_body(self) -> str:
+        """Return the Settings Preview pane's rendered config text.
+
+        Uses ``inner_text()`` deliberately — see
+        :attr:`settings_preview_content`.
+        """
+        return self.settings_preview_content.inner_text()
+
+    def download_ide_settings(self, row, icon_testid: str, timeout: int):
+        """Click *row*'s named IDE-config download icon and return the
+        Playwright ``Download``.
+
+        *icon_testid* is the caller's parameter (``token-action-vscode-button``
+        / ``token-action-jetbrains-button``), never a hardcoded locator here —
+        both icons call the same ``onIdeSettingsDownload`` handler.
+
+        The handler builds the file content as a string, wraps it in a
+        ``Blob`` and clicks a synthesized ``<a download>`` — a **pure
+        client-side download, no request fires**. ``expect_download`` IS the
+        wait; there is no response to await.
+        """
+        with self.page.expect_download(timeout=timeout) as download_info:
+            self.get_row_action_icon(row, icon_testid).click()
+        return download_info.value
