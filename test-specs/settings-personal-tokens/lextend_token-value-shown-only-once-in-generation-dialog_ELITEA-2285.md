@@ -130,8 +130,8 @@ not test.
 | Row name cell | `token-name-cell` | `TOKEN_NAME_CELL_SELECTOR` / `get_row_name_cell()` | on-main ✓ |
 | Row value cell (masked) | `token-value-cell` | `TOKEN_VALUE_CELL_SELECTOR` / `get_row_value_cell()` | on-main ✓ |
 | Row eye (preview) icon | `token-action-preview-button` | `get_row_action_icon(row, ...)` | on-main ✓ |
-| Preview body (CodeMirror content) | `token-settings-preview-content` | **new** `LocatorDescriptor` | **needs-adding** |
-| Preview close (X) button | `token-settings-preview-close-button` | **new** `LocatorDescriptor` | **needs-adding** |
+| Preview body (CodeMirror content) | `token-settings-preview-content` | **new** `LocatorDescriptor` | **added — EliteaAI/EliteaUI@efda0603** |
+| Preview close (X) button | `token-settings-preview-close-button` | **new** `LocatorDescriptor` | **added — EliteaAI/EliteaUI@efda0603** |
 
 Provenance verified 2026-08-27 with `cd ../EliteaUI && git fetch origin` + the two-stage
 `git grep` from `.agents/workflow.md` § Closure record against **both** `origin/main` and
@@ -152,6 +152,11 @@ mechanisms — `contentTestId` on `Field.CodeMirrorEditor`, plain `data-testid` 
   § Testid work table (identical names, identical mechanism) so ELITEA-2291 inherits them.
 - Either way `add-data-testid` is idempotent — verify presence before adding, never add a
   second variant name.
+
+> **Resolved at implementation time (test-automation-engineer, 2026-08-27).** Both cases
+> were built in ONE dispatch, so all seven `token-settings-preview-*` testids were added
+> once, per the ELITEA-2291 AFS's § Testid work table — EliteaAI/EliteaUI@efda0603. This
+> extension consumes them; it added no EliteaUI change of its own.
 
 ## Automation Hints
 

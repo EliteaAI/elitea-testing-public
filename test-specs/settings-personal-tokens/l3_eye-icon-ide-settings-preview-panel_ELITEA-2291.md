@@ -187,13 +187,13 @@ handle here and none is permitted (`.agents/testing.md` § Locator policy).
 | Row name cell | `token-name-cell` | `TOKEN_NAME_CELL_SELECTOR` / `get_row_name_cell()` | on-main ✓ |
 | Row eye (preview) icon | `token-action-preview-button` | `get_row_action_icon(row, ...)` | on-main ✓ |
 | Page title | `personal-tokens-page-title` | `page_title` | on-main ✓ |
-| Preview panel root | `token-settings-preview-panel` | **new** `LocatorDescriptor` | **needs-adding** |
-| Preview panel title | `token-settings-preview-title` | **new** `LocatorDescriptor` | **needs-adding** |
-| Preview close (X) button | `token-settings-preview-close-button` | **new** `LocatorDescriptor` | **needs-adding** |
-| Preview IDE select | `token-settings-preview-ide-select-combobox` | **new** `LocatorDescriptor` | **needs-adding** |
-| Preview copy button | `token-settings-preview-copy-button` | **new** `LocatorDescriptor` | **needs-adding** |
-| Preview download button | `token-settings-preview-download-button` | **new** `LocatorDescriptor` | **needs-adding** |
-| Preview body (CodeMirror content) | `token-settings-preview-content` | **new** `LocatorDescriptor` | **needs-adding** |
+| Preview panel root | `token-settings-preview-panel` | **new** `LocatorDescriptor` | **added — EliteaAI/EliteaUI@efda0603** |
+| Preview panel title | `token-settings-preview-title` | **new** `LocatorDescriptor` | **added — EliteaAI/EliteaUI@efda0603** |
+| Preview close (X) button | `token-settings-preview-close-button` | **new** `LocatorDescriptor` | **added — EliteaAI/EliteaUI@efda0603** |
+| Preview IDE select | `token-settings-preview-ide-select-combobox` | **new** `LocatorDescriptor` | **added — EliteaAI/EliteaUI@efda0603** |
+| Preview copy button | `token-settings-preview-copy-button` | **new** `LocatorDescriptor` | **added — EliteaAI/EliteaUI@efda0603** |
+| Preview download button | `token-settings-preview-download-button` | **new** `LocatorDescriptor` | **added — EliteaAI/EliteaUI@efda0603** |
+| Preview body (CodeMirror content) | `token-settings-preview-content` | **new** `LocatorDescriptor` | **added — EliteaAI/EliteaUI@efda0603** |
 
 Provenance verified 2026-08-27 with `cd ../EliteaUI && git fetch origin` followed by the
 two-stage `git grep` from `.agents/workflow.md` § Closure record against **both**
@@ -213,6 +213,13 @@ personal-tokens-add-button               main:YES  testids:YES
 token-settings-preview-panel             main:no   testids:no
 token-settings-preview-content           main:no   testids:no
 ```
+
+> **Amended at implementation time (test-automation-engineer, 2026-08-27).** All seven
+> testids were added exactly as specced below and are live on
+> `EliteaAI/EliteaUI` `automation/testids` as EliteaAI/EliteaUI@efda0603 (the dev server
+> serves them; a human cherry-picks to `main`). The PROVENANCE column above now reads
+> `added` rather than `needs-adding`; the `main:no testids:no` block is the
+> analysis-time snapshot and is kept as the record of why the work was needed.
 
 ### Testid work — all SEVEN are pure call-site additions in `SettingsPreview.jsx`
 

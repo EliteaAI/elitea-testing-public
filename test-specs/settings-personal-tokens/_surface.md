@@ -583,3 +583,60 @@ timeout instead of the real cause.
   `browser_evaluate` fails with a CORS error (it is redirected to
   `dev.elitea.ai/forward-auth/...` without the app's auth) and **adds 2 console errors of
   your own making**. Do not probe this API in-page; read the derived DOM values instead.
+
+## Resolved/added during ELITEA-2285/2289/2290/2291 implementation (test-automation-engineer, 2026-08-27)
+
+- **All SEVEN `token-settings-preview-*` testids now EXIST** — EliteaAI/EliteaUI@efda0603 on
+  `automation/testids` (pushed; a human cherry-picks to `main`). The digest's
+  "`SettingsPreview.jsx` had ZERO testids" line above is superseded: `-panel`, `-title`,
+  `-close-button`, `-ide-select` (→ `-ide-select-combobox` on the clickable node),
+  `-copy-button`, `-download-button`, `-content`. Both already-generic prop mechanisms the
+  analyst identified worked **exactly as specced, first try** — `SingleSelect`'s `data-testid`
+  auto-deriving the `-combobox` suffix, and `Field.CodeMirrorEditor`'s `contentTestId` landing
+  on `.cm-content`. **No `#579` raw-handle exception was needed anywhere in this cluster.**
+- ⚠️ **Adding a testid to a SINGLE-LINE JSX element necessarily rewrites that line** —
+  `.prettierrc` sets `singleAttributePerLine: true`, so `<Box sx={styles.root}>` becomes a
+  4-line element the moment a second attribute lands. The reviewer's Step-5.5
+  zero-functional-impact greps therefore report a `-` line and a `+    <Box` hit that are the
+  SAME pre-existing element, not a new DOM node. Declare it in the commit body (this cluster
+  did) rather than letting a reviewer re-derive it — it will recur on every single-line JSX
+  target in this repo.
+- **Page-object handles added** (`automation/pages/personal_tokens_page.py`): the seven
+  `settings_preview_*` `LocatorDescriptor` fields, plus `open_settings_preview(row)` /
+  `close_settings_preview()` (the latter asserts `to_have_count(0)` — the 50 ms `setTimeout`
+  unmount needs an auto-retrying expectation, and it was reliable with no flakes),
+  `get_settings_preview_body()` (`inner_text()`, per the digest warning — confirmed: the body
+  parses as JSON straight out of it), and `download_ide_settings(row, icon_testid, timeout)`
+  wrapping `page.expect_download()` with the icon testid as a **parameter**, not a hardcoded
+  locator, so one helper serves both IDE icons.
+- **`page.expect_download()` captures the client-side Blob download with no extra ceremony** —
+  confirmed for both icons in the pytest suite (not only in MCP exploration). No request fires,
+  so there is nothing to wait on besides the download itself; `download.save_as(tmp_path / name)`
+  is the read path (`tmp_path` keeps runs isolated, no fixed download directory assumption).
+  Observed suggested filenames `settings.json` / `elitea.xml`, both non-empty.
+- **The analyst's live-observed payloads matched byte-for-byte in the suite** — the 12
+  `eliteacode.*` keys, the 8 JetBrains `<option>` names, `provider=ELITEA_EYE`,
+  `displayType=SPLIT`/`split`, `verifySsl`/`debug` false. `projectId` types differ by grammar
+  and it matters: **int `399` in JSON, string `"399"` in XML** (XML attribute values are always
+  strings) — compare against `settings.elitea_project_id` and `str(settings.elitea_project_id)`
+  respectively.
+- **Both defects reproduced deterministically in the suite, exactly as scoped:**
+  - **#1884** — the row-level VSCode download's `eliteacode.authToken` *and*
+    `eliteacode.LLMAuthToken` both carried `'...qzeJ9Dg'` against a **226-char** real token from
+    the generation dialog. The setup guard (`len(token) > 100`) is what makes that assertion
+    non-vacuous, and it earned its keep: it is the only thing standing between "the download is
+    wrong" and "the dialog silently started masking too".
+  - **#1885** — the preview panel's `eliteacode.integrationUid` was `""` while the **row-level**
+    download for the same token/project/model wrote the real value in the same run. That
+    same-run contrast is the cleanest possible evidence the defect is in `SettingsPreview`'s
+    `integration_uid` vs `configuration_uid` dereference, not in the data.
+- **`expect.soft()` does not apply to plain Python values** — it is a Playwright *locator*
+  assertion. Both soft-asserts in this cluster use the project's established
+  `soft_failures: list[str]` + trailing `pytest.fail()` shape instead (precedent:
+  `tests/ui/settings/test_settings_sidebar_item_navigation.py`,
+  `tests/ui/chat/test_team_users_mention_and_remove_participants.py`). Same outcome — the run
+  is a pytest FAILED, i.e. sanctioned-RED — but reached the only way a parsed-JSON comparison
+  can reach it.
+- **Session hygiene:** two tokens created (one per download param) and both deleted; the
+  ELITEA-2285 extension creates and deletes its own as before. Baseline restored. Console across
+  the whole cluster run: **0 errors**, `reruns.json == {}`, 40.74 s for all 4 tests.
