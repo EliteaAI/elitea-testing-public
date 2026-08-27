@@ -143,3 +143,4 @@
 - [Chat Agent+Pipeline coexistence broken (#1279)](chat_agent_pipeline_participant_coexistence_broken.md) — check before automating any case combining them
 - [Deferred soft-failure drain must be unskippable](deferred_soft_failure_drain_must_be_unskippable.md) — drain from `finally`, or a later hard failure eats it
 - [Playwright sync events need a Playwright call](playwright_sync_events_need_a_playwright_call_to_dispatch.md) — a time.sleep poll on page.on() data sees nothing; false RED
+- [Wrapped prose claim hides from a phrase grep](wrapped_prose_claim_hides_from_a_phrase_grep.md) — sweep prose claims with a fragment grep + whitespace-collapsed pass
