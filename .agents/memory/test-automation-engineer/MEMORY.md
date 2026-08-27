@@ -67,3 +67,4 @@
 - [Gate --cmd pipe masks pytest exit code](gate_cmd_pipe_masks_pytest_exit_code.md) — never pipe pytest inside gate-case.mjs --cmd; redirect
 - [Importing a Test* class into a unit test re-runs the whole UI spec](unit_test_importing_test_class_reruns_the_ui_spec.md) — import the spec MODULE, not its class
 - [Shared SecretField handles live in CredentialCreatePage](shared_secretfield_handles_live_in_credential_create_page.md) — reuse on ANY surface; never re-declare
+- [Cleanup in a finally must never be guarded](cleanup_in_a_finally_must_never_be_guarded.md) — a guard on the asserted element skips the restore on the failure path
