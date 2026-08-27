@@ -44,6 +44,17 @@ Shared oracle → suite-wide. Any chat spec asserting AI prose through it can go
 narration (ELITEA-2201's merged test included). Presents as an unreproducible CI red:
 6 localhost runs of the ELITEA-0500 test were green while DEV was red.
 
+## The corrected oracle — measured, works
+
+Settle on the product's own signals, not a string blocklist: `chat-stop-generation-button`
+NOT visible + Copy button visible on idx `initial_count+1`, both **stable >=1.2 s across >=2
+polls**; read `get_message_text_at(initial_count+1)`, never `.last`. Measured on the
+ELITEA-0500 attach flow: **8/8 settled, 8/8 correct final text, 18.5-21.1 s (mean 19.8 s)**.
+
+Better still where a frame carries the fact: chat tool lifecycle rides **`chat_predict_attachment`**
+frames — `response_metadata.tool_name` + `tool_output` (the real tool result). This flow emits
+**no `agent_tool_end` and no `agent_llm_chunk`**, so don't build a wait on those.
+
 ## What to do
 
 Don't add a longer timeout or another transient string — the blocklist is the bug. Prefer a
