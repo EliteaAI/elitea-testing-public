@@ -179,6 +179,27 @@ stray hover also changes (`&:hover { opacity: 1 }`).
   sorted set. If the token count ever exceeds 10, the visible order is the *first page*
   of the sorted set and the assertions still hold for that page.
 
+## Implementation outcome (test-automation-engineer, 2026-08-27)
+
+- Shipped as `automation/tests/ui/admin/test_personal_tokens_column_sorting.py`
+  (`TestPersonalTokensColumnSorting`), steps 1-6 mapping 1:1 to § Test Steps above.
+- **Waits, as specced (no sleeps, no response waits — sorting is client-side):** the two
+  name-sort steps use `expect(row_name_cell).to_have_text(<expected order>)`, whose list
+  form also pins the row count. The expiration steps cannot derive an exact expected order
+  (group-internal order is the untouched API order), so they anchor on the FIRST row's
+  state — `expect(<first row's [data-expiration-state="never"]>).to_have_count(0)` after the
+  asc click, `to_have_count(1)` after the desc click — then read every row's state and
+  assert the partition.
+- **One assertion added beyond § Test Steps:** before the expiration steps, the spec asserts
+  the live set holds **at least one dated AND at least one never** row. Without it, the
+  partition invariant would pass vacuously on an all-`Never` token set — i.e. it would report
+  green while proving nothing. Same class as the specced `count >= 2` precondition assertion.
+- Page-object additions landed exactly as § Implementer notes prescribed
+  (`SORT_ICON_PREFIX_SELECTOR`, `SORT_ICON_SELECTOR`, `TOKEN_EXPIRATION_STATUS_ANY_SELECTOR`,
+  `click_column_header()`, `get_row_names()`, `get_row_expiration_states()`), plus a
+  `row_name_cell` repeatable `LocatorDescriptor` so the rendered order is one auto-retrying
+  assertion instead of a poll loop. **Zero new testids for this case**, as predicted.
+
 ## Coverage Map
 
 ### Axis 1 — every element of the TMS case

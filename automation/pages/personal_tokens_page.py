@@ -83,6 +83,20 @@ class PersonalTokensPage(BasePage):
         testid="personal-token-column-header-actions",
         description='Table column header — "Actions"',
     )
+    row_name_cell = LocatorDescriptor(
+        testid="token-name-cell",
+        description="Token name cell (repeatable, one per visible row) — resolves "
+        "every row's name cell in DOM order, so the rendered sort order can be "
+        "asserted with an auto-retrying to_have_text(list) assertion.",
+    )
+    table_empty_message = LocatorDescriptor(
+        testid="personal-tokens-table-empty-message",
+        description='Grid-table empty message ("No tokens") shown when a search '
+        "matches nothing. NOTE: this is the *no-match* branch of the populated "
+        "page — the page header, search box and rows container stay mounted. It is "
+        "NOT the zero-tokens-exist EmptyStatePage (empty-state-title, "
+        '"No tokens yet"), which replaces the whole page.',
+    )
 
     # Delete-confirmation modal (shared DeleteEntityModal.jsx, ELITEA-2280
     # cleanup flow) — testids already exist app-wide (repo precedent: each
@@ -125,6 +139,16 @@ class PersonalTokensPage(BasePage):
     # The ``{}`` parameter is the exact ``data-expiration-state`` value
     # (active|warning|never|expired), not test-generated data.
     TOKEN_EXPIRATION_STATUS_SELECTOR = '[data-testid="token-expiration-status"][data-expiration-state="{}"]'
+    # State-AGNOSTIC sibling of the above (ELITEA-2279): the state-filtered
+    # selector can only answer "is this row in state X?", never "what state is
+    # this row in?" — which is what an expiration *sort* assertion needs.
+    TOKEN_EXPIRATION_STATUS_ANY_SELECTOR = '[data-testid="token-expiration-status"]'
+    # Sort controls — emitted by GridTableHeader's columnTestIdPrefix for
+    # sortable columns ONLY (ELITEA-2279). The prefix form counts them; the
+    # named form addresses one column (the ``{}`` parameter is the column
+    # field name from TOKENS_COLUMNS, not test-generated data).
+    SORT_ICON_PREFIX_SELECTOR = '[data-testid^="personal-token-sort-icon-"]'
+    SORT_ICON_SELECTOR = '[data-testid="personal-token-sort-icon-{}"]'
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -214,6 +238,106 @@ class PersonalTokensPage(BasePage):
         :meth:`get_first_row_action_icon` for a row located by
         :meth:`get_row_by_name`."""
         return row.locator(self.TOKEN_ACTION_ICON_SELECTOR.format(testid))
+
+    def get_column_header(self, field: str):
+        """Return the column-header Locator for *field* (one of the four
+        ``TOKENS_COLUMNS`` fields: ``name`` / ``token`` / ``expires`` /
+        ``actions``)."""
+        headers = {
+            "name": self.column_header_name,
+            "token": self.column_header_token,
+            "expires": self.column_header_expires,
+            "actions": self.column_header_actions,
+        }
+        try:
+            return headers[field]
+        except KeyError as exc:
+            raise ValueError(
+                f"Unknown column field {field!r}; expected one of {sorted(headers)}"
+            ) from exc
+
+    def click_column_header(self, field: str) -> None:
+        """Click the *field* column header to toggle its sort.
+
+        The whole header cell carries the ``onClick`` (``GridTableHeader.jsx``),
+        so the header itself is the control — there is no separate button.
+        Sorting is CLIENT-SIDE (the list is already in the RTK-Query cache), so
+        no request fires: callers wait on the reordered DOM, never on a
+        response.
+        """
+        self.get_column_header(field).click()
+
+    def get_sort_icon_count(self) -> int:
+        """Return the number of rendered sort controls across all columns
+        (matched by the shared ``personal-token-sort-icon-`` prefix)."""
+        return self.page.locator(self.SORT_ICON_PREFIX_SELECTOR).count()
+
+    def get_sort_icon(self, field: str):
+        """Return the sort-control Locator for *field*'s column header.
+
+        Only sortable columns render one, so this is also the handle for the
+        ABSENCE assertion on the non-sortable columns.
+        """
+        return self.page.locator(self.SORT_ICON_SELECTOR.format(field))
+
+    def get_row_names(self) -> list[str]:
+        """Return every visible row's token name, in rendered DOM order."""
+        return [
+            (cell.text_content() or "").strip()
+            for cell in self.row_name_cell.all()
+        ]
+
+    def get_row_expiration_states(self) -> list[str]:
+        """Return every visible row's ``data-expiration-state`` value
+        (``active``/``warning``/``never``/``expired``), in rendered DOM order.
+
+        Uses the state-agnostic selector — see
+        :attr:`TOKEN_EXPIRATION_STATUS_ANY_SELECTOR`.
+        """
+        return [
+            row.locator(self.TOKEN_EXPIRATION_STATUS_ANY_SELECTOR).get_attribute(
+                "data-expiration-state"
+            )
+            for row in self.token_row.all()
+        ]
+
+    def get_first_row_expiration_status(self, state: str):
+        """Return the FIRST row's expiration-status Locator filtered to
+        *state* — the anchor an expiration-sort assertion waits on
+        (``to_have_count`` auto-retries until the re-render lands)."""
+        return self.get_row_expiration_status(self.token_row.first, state=state)
+
+    def type_search(self, text: str) -> None:
+        """Type *text* into the token search box one character at a time.
+
+        ``SimpleSearchBar`` filters from the native ``onChange`` — per
+        keystroke, no Enter, no submit control, no debounce — so
+        ``press_sequentially`` is what actually exercises the "real time"
+        claim. Never press Enter here.
+        """
+        self.search_input.click()
+        self.search_input.press_sequentially(text, delay=30)
+
+    def clear_search(self) -> None:
+        """Clear the token search box via select-all + Backspace.
+
+        ``SimpleSearchBar`` is a plain MUI ``InputBase`` with no ``useAutoBlur``
+        wrapper, so ``ControlOrMeta+a`` is reliable here — unlike the
+        create-token Name field, whose refocus cycle races the shortcut
+        (surface digest § Name-field client-side validation).
+        """
+        self.search_input.click()
+        self.search_input.press("ControlOrMeta+a")
+        self.search_input.press("Backspace")
+
+    def get_search_value(self) -> str:
+        """Return the current value of the token search box.
+
+        The testid resolves to the native ``<input>`` (wired through
+        ``SimpleSearchBar``'s ``inputProps``), so ``input_value()`` works
+        directly — unlike the delete dialog's MUI-wrapper field on this page.
+        """
+        return self.search_input.input_value()
 
     def fill_delete_confirm_name(self, name: str) -> None:
         """Type *name* into the delete-confirmation dialog's type-to-confirm

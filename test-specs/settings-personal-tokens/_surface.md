@@ -327,3 +327,37 @@ exactly like a product defect to a "no console errors" assertion. The page itsel
 clean (0 product console errors) across this entire session. To read the token payload,
 capture the app's own `GET /auth/token/` response via `page.expect_response`, never a
 hand-rolled `fetch`.
+
+## Resolved/added during ELITEA-2279 + ELITEA-2287 implementation (test-automation-engineer, 2026-08-27)
+- **`personal-tokens-table-empty-message` now EXISTS** — EliteaAI/EliteaUI@531fd77a adds an
+  `emptyMessageTestId` caller-supplied prop to the shared
+  `src/[fsd]/entities/grid-table/ui/GridTableContainer.jsx` and wires the value at the
+  `TokensTable.jsx` call site. The digest's "`GridTableContainer` has no testid on that message
+  and takes no testid prop" line above is superseded: it takes one now, and **every other
+  grid-table consumer app-wide can reuse the same prop** for its own empty message.
+- **Page-object handles added** (`automation/pages/personal_tokens_page.py`): `row_name_cell`
+  (a repeatable `token-name-cell` LocatorDescriptor — resolves every row's name cell in DOM
+  order, so a rendered sort/filter order is asserted with one auto-retrying
+  `expect(...).to_have_text([...])`), `table_empty_message`,
+  `TOKEN_EXPIRATION_STATUS_ANY_SELECTOR` (state-agnostic — the pre-existing state-filtered
+  constant cannot answer "what state is this row in?"), `SORT_ICON_PREFIX_SELECTOR` /
+  `SORT_ICON_SELECTOR`, plus `click_column_header`/`get_row_names`/`get_row_expiration_states`/
+  `type_search`/`clear_search`/`get_search_value`.
+- **How to wait for a client-side re-sort without a sleep and without a response** (both
+  confirmed live): for the NAME sort, `expect(row_name_cell).to_have_text(<expected order>)` —
+  the list form pins the row count too. For the EXPIRATION sort the exact order is not derivable
+  (group-internal order is the untouched API order), so anchor on the FIRST row's state:
+  `expect(<first row>[data-expiration-state="never"]).to_have_count(0)` after the asc click and
+  `to_have_count(1)` after the desc click, then read all states and assert the partition.
+  Both specs also assert the live set holds at least one dated AND one never row, so the
+  partition assertion can never pass vacuously.
+- `ControlOrMeta+a` + `Backspace` confirmed reliable for clearing `SimpleSearchBar` in the
+  pytest suite (not only in MCP exploration) — used by `clear_search()`, no flakes in the run.
+- ⚠️ **Vite dev-server staleness on this OneDrive checkout (cost one rerun).** A fresh testid
+  committed to `../EliteaUI` did **not** reach `localhost:5173` — HMR never fired and the module
+  Vite served was the pre-edit transform (verified with
+  `curl -s 'http://localhost:5173/src/%5Bfsd%5D/entities/grid-table/ui/<File>.jsx' | grep <testid>`
+  → 0 hits). `touch`-ing the files did not help; only **restarting the dev server** did. OneDrive's
+  filesystem does not deliver reliable fs-watch events. **After adding a testid, verify it is
+  actually served by that curl before blaming the test** — the failure looks exactly like "the
+  testid was never added".
