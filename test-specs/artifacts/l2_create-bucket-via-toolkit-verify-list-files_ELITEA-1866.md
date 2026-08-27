@@ -431,7 +431,7 @@ which is the only design that satisfies both "the case demands these exact liter
 | Step 22: Verify header shows toolkit name | Correct name shown | Step 22 | `toolkit-detail-title` text | asserted **(NEW handle)** |
 | Step 23: Verify URL reflects new toolkit | URL contains toolkit ID | Step 23 | dynamic `{id}` in URL | asserted |
 | Step 24: Verify Configuration/Indexes tabs shown | Both tabs present | Step 24 | `toolkit-detail-configuration-tab` + `toolkit-detail-indexes-tab` presence (2-element check) | asserted **(testids added PR #670 review round 1 — see § Implementer Amendments item 6)** |
-| Step 25: Verify TEST SETTINGS panel visible | Panel + model selector + Tool dropdown + welcome msg | Step 25 | 4 element checks, one exact-text welcome-message match | asserted **(NEW handles)** |
+| Step 25: Verify TEST SETTINGS panel visible | Panel + model selector + Tool dropdown + welcome msg | Step 25 | tool-selection entry point asserted via `toolkit-test-empty-tool-select`; model selector moved to Step 28b (renders only after a tool is chosen) | **partially asserted** — the welcome-message sub-observable is NOT asserted: it was relocated to `ToolkitTestEmptyState.jsx` and carries no testid there, so there is no testid-only route to it today. Live coverage gap, owned by **#1857** — see § Adjustment item 9. |
 | Step 26: Click Tool dropdown | Tool list expands | Step 26 | `toolkit-test-tool-select` click opens listbox | asserted **(NEW handle)** |
 | Step 27: Verify tool list incl. List files | All 16 tools incl. List files | Step 27 | `select-option-*` count===16, `select-option-list_files` present | asserted |
 | Step 28: Select List files | Parameters panel appears | Step 28 | `select-option-list_files` click, combobox value updates | asserted |
@@ -742,3 +742,248 @@ implementing, not scope changes. All five confirmed live against `http://localho
      template constant, no longer 12 hardcoded `get_by_role("button", name=...)` calls.
 
    Mechanical grep re-run clean after this fix (see PR #670 for the exact command + output).
+
+---
+
+## Adjustment 2026-08-27 — toolkit-detail redesign (issue #1815, GHA run 32931571484)
+
+**Triage class: A — UI drift.** Not a product bug, not data pollution, not a promotion gap.
+Every replacement handle below is present on **EliteaUI `origin/main`** as well as
+`origin/automation/testids` (fresh `git fetch origin` run immediately before the grep; see
+§ Adjusted Handles Reference). The drift reproduces identically on `http://localhost:5173`
+(EliteaUI `automation/testids`, merged with `origin/main` at `53bbab9a`) as it does on
+`dev.elitea.ai`, because the removal landed on `main` — so nothing here is env-specific.
+
+### Reproduction (local, before any change)
+
+```
+cd automation && HEADLESS=true ../.venv/bin/pytest \
+  tests/ui/toolkits/test_toolkit_creation_create_bucket_verify_list_files.py::TestToolkitCreationCreateBucketVerifyListFiles::test_create_artifact_toolkit_creates_bucket_verify_list_files \
+  -v -p no:cacheprovider
+…
+tests/ui/toolkits/test_toolkit_creation_create_bucket_verify_list_files.py:543
+E   playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 20000ms exceeded.
+E     - waiting for get_by_test_id("toolkit-indexes-accordion") to be visible
+============== 1 failed, 3 warnings, 2 rerun in 228.14s (0:03:48) ==============
+```
+
+Steps 1–23 pass unchanged (the run reached line 543). Steps 32–39 re-verified live and
+also unchanged. **The drift is confined to Steps 24–31.**
+
+### What actually changed in the product
+
+The `EL-5947` redesign this AFS already documented (Indexes tab → accordion inside the
+Configuration tab) has been superseded by a **further** redesign. Live-confirmed
+2026-08-27 against a freshly-created `my-artifact-toolkit` (toolkit id 3481):
+
+1. **`toolkit-indexes-accordion` no longer exists on any EliteaUI ref.** The Indexes
+   surface is now a **right-hand side panel** inside the Configuration tab —
+   `IndexesPanel.jsx`, root `data-testid="toolkit-indexes-panel"`, rendered by
+   `ConfigurationTab.jsx` whenever the toolkit's tool schema exposes index tools
+   (`shouldHideIndexesTab === false`). Its header reads "Indexes".
+   Evidence: ![Step 24 — Configuration form + Indexes side panel, one hidden tab](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/ELITEA-1866-step-24-detail-configuration-indexes-panel.png)
+2. **`toolkit-detail-configuration-tab` is unchanged** — still the single `role="tab"`,
+   `aria-selected="true"`, still not *displayed* (one-tab strip). The existing
+   attached + selected assertion stands verbatim.
+3. **A bare Artifact toolkit shows an indexing blocker, so the Indexes panel's *inner*
+   handles do not render.** With no PgVector connection / Embedding Model configured
+   (this case's exact state — the case never configures them), `indexingBlocker` is set
+   and the panel renders only its banner ("Indexing is not available. Set a PgVector
+   connection and an Embedding Model in the configuration to enable indexing.").
+   `toolkit-indexes-count`, `toolkit-indexes-add-button` and
+   `toolkit-indexes-empty-state` are all **absent** in this state — confirmed live.
+   `toolkit-indexes-panel` is therefore the ONLY handle that honestly proves "the Indexes
+   surface is reachable on the detail view" for this case, and it is the panel's own root.
+4. **The TEST SETTINGS surface has LEFT the toolkit-detail view entirely.** `EditToolkit.jsx`'s
+   `tabs` array now holds exactly ONE entry (`Configuration`) — the former `Test` entry
+   (`display: 'none'`, empty content) is gone. Confirmed live on the detail view:
+   `toolkit-test-empty-tool-select`, `toolkit-test-tool-select`,
+   `toolkit-test-run-tool-button`, `chat-message-list`, `model-selector-*` — **all absent**,
+   and `document.body.innerText` does not contain "Test Settings".
+   **This is the load-bearing finding: repairing only Step 24 would have died again at
+   Step 25.**
+5. **The Test surface now lives at its own route**, `/toolkits/:tab/:toolkitId/test`
+   (`RouteDefinitions.ToolkitTest` → `[fsd]/pages/toolkit/ToolkitTest.jsx`). The product's
+   own route to it is the **`toolkit-test-button` ("Test") in the detail view's action bar**
+   (`ToolkitForm.jsx`, rendered when `isDetailsActionBar && handleShowTest`; disabled while
+   the form is dirty — enabled immediately after Save, confirmed live).
+6. **The Test surface itself is a two-column "Test Settings | Results" panel**
+   (`ToolkitTestPanel.jsx`). Everything the case asserts there survived with the SAME
+   testids: `toolkit-test-empty-tool-select` (empty state), `toolkit-test-tool-select`,
+   `select-option-{tool_key}` (11 options for an Artifact toolkit — index-only tools are
+   excluded, the pre-existing #1075 observation, and the test already asserts
+   `count > 0` + `list_files` presence rather than an absolute count),
+   `toolkit-test-param-{bucket_name,folder,recursive,include,skip}`,
+   `toolkit-test-run-tool-button`, `chat-message-list`.
+   Evidence: ![Step 29-31 — /test route, List files params, Run Test, result](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/ELITEA-1866-step-31-test-route-run-test-result.png)
+7. **The RUN TOOL button's LABEL is now "Run Test"** (testid unchanged). Step-text and
+   docstring wording only — no locator impact.
+8. **The model selector renders `LLMModelSelector` in its `variant="field"` form**, which
+   emits ONLY `model-selector-name`; `model-selector-button` belongs to the `ButtonGroup`
+   variant and is **not rendered on this surface** (source: `LLMModelSelector.jsx`, the
+   `if (variant === 'field')` early return — confirmed live, `model-selector-button` absent,
+   `model-selector-name` = "Anthropic Claude 4.5 Sonnet").
+9. **The pre-run welcome message was RELOCATED and REWORDED — it was NOT removed from
+   the product.** *(Corrected 2026-08-27, fix round 1 on issue #1815; the earlier
+   reading of this item claimed the observable was gone, and was false.)*
+   It is true that `ToolkitTestResults.jsx:29` early-returns `null` while `messages` is
+   empty, so the message left the **Results** column and `chat-message-list` does not
+   exist until the first run completes. But that proves absence from ONE component, not
+   from the surface. On EliteaUI `origin/main` (verified with a fresh `git fetch origin`)
+   the same guidance renders from the **Test Settings** column's empty state:
+
+   ```
+   src/[fsd]/features/toolkits/ui/toolkit-test/ToolkitTestEmptyState.jsx:29   'Test toolkit'
+   src/[fsd]/features/toolkits/ui/toolkit-test/ToolkitTestEmptyState.jsx:35   'Choose a tool from the list to configure parameters and run the test.'
+   src/[fsd]/features/toolkits/ui/toolkit-test/ToolkitTestPanel.jsx:70        <ToolkitTestEmptyState … />
+   ```
+
+   That is the **same component** carrying `data-testid="toolkit-test-empty-tool-select"`
+   — the handle Step 25 already asserts. The original string ("Welcome! Select a tool from
+   the Test Settings panel and click 'RUN TOOL' to see the results here.") survives on
+   `main` only in the unrelated indexes-chat helper
+   (`src/[fsd]/features/toolkits/indexes/lib/helpers/indexChat.helpers.js:46`).
+
+   **This is a KNOWN COVERAGE GAP CARRIED FORWARD, not a resolved item.** The assertion is
+   not restored in this repair because the text has **no testid and no testid-bearing
+   container** — both `Typography` nodes and both wrapping `Box` elements are bare, and
+   `toolkit-test-empty-tool-select` sits on a **sibling** select control, not a parent — so
+   there is no testid-only route to it today (`.agents/testing.md` § Locator policy: a
+   missing testid is *work to do*, never a deleted observable). Adding the testid inside
+   this repair was ruled against by the lead: a new testid is born on `automation/testids`
+   and reaches EliteaUI `main` only via a human cherry-pick, so asserting it would make
+   this spec **green on localhost and RED on dev.elitea.ai** — the exact deployed-env red
+   card #1815 exists to clear; and adding it *without* a reference is barred by canon
+   ruling #511. **elitea-testing-public#1857 owns the restoration** (testid + assertion
+   together, promotion sequenced).
+
+   **Transferable trap:** *"component X early-returns `null`"* proves an observable is
+   absent from X, not from the surface. Grep the product for the **text** — a redesign
+   usually parks it in the sibling component two lines away in the same panel.
+10. **The result text is unchanged**: `✅ list_files (0.281s)` + `{'total': 0, 'rows': []}`,
+    reachable via the existing `RESULT_MESSAGE_ITEM` scoped sub-selector's `text_content()`
+    (verified live: the `li` `textContent` is
+    `"EliteatoMessage…Thought for less than a second✅ list_files (0.281s){'total': 0, 'rows': []}"`).
+    The result now additionally sits inside a collapsed `chat-answer-thought-accordion`, but
+    `textContent` reads through it, so `wait_for_tool_result()` needs no change.
+
+### Steps 32–39 — re-verified live, NO drift
+
+`artifacts-buckets-heading`, `artifacts-search-buckets-button`,
+`artifacts-bucket-search-input`, `artifacts-bucket-row-new-bucket`,
+`artifacts-breadcrumb-bucket-label` (= `"new-bucket"`), `artifacts-empty-state`
+(= `"No files in this bucket"`), `artifacts-upload-files-empty-state-button`
+(= `"Upload files"`), and the `?bucket=new-bucket` URL — all confirmed present and correct.
+The substring-collision caveat this AFS already records still applies: the "new" filter
+returned `new-bucket`, `new-bucketautotest-buck1-800755` **and** a newly-accumulated
+`dup-bucket-1867new-bucket`. The test's presence-based assertions absorb this correctly;
+do NOT reintroduce a row-count assertion.
+
+### Side channels
+
+Only the already-filtered `#656` signature (React "unique key prop" in
+`CategorySection.jsx`) fired across the whole live walk. No new console errors on the
+detail view, the `/test` route, the run, or the Artifacts flow.
+
+### Preserve-the-nature disposition
+
+| Case step | Observable (FROZEN) | How it is reached/identified (CHANGED) |
+|---|---|---|
+| 24 | Configuration surface AND Indexes surface are both present on the detail view | `toolkit-indexes-accordion` → `toolkit-indexes-panel`; Configuration-tab assertion unchanged |
+| — (new 24b) | *(no new observable — pure navigation)* | click `toolkit-test-button`, assert the `/test` URL |
+| 25 | Test surface's tool-selection entry point is visible | unchanged (`toolkit-test-empty-tool-select`), now on the `/test` route |
+| 26–28 | Tool list includes "List files"; selecting it sets the Tool combobox | unchanged |
+| 28b | A non-empty model name is shown after tool selection | `model-selector-button`-or-raw-text-fallback → `model-selector-name` only |
+| 29 | All 5 parameter fields + the run button are present | unchanged (label "RUN TOOL" → "Run Test" in step TEXT only) |
+| 30–31 | Running the tool returns `{'total': 0, 'rows': []}` for the empty bucket | unchanged |
+
+**Expected-result changes: ONE, and it is a strengthening, not a weakening — it needs the
+lead's explicit nod before merge.** Step 28b currently reads
+`if test_settings.model_selector_button.count() > 0: … else: <raw text locator>`. Live
+evidence settles what that conditional was hedging: on this surface the button variant
+never renders, so today the test always takes the `else` branch and asserts through a raw
+`page.locator('text=/Model.*Anthropic|Model.*Claude|Model.*GPT/i')` — a locator-policy
+violation sitting in the spec file. The repair makes the assertion **unconditional** against
+`model-selector-name`. Nothing is dropped or weakened; a conditional check becomes a
+mandatory one and a raw handle disappears. Recorded here because the rail requires any change
+to *what* is verified to be visible and signed off, in either direction.
+
+### Adjusted Handles Reference (PROVENANCE verified 2026-08-27, `cd ../EliteaUI && git fetch origin` first)
+
+`origin/main` @ `cf648e9a` · `origin/automation/testids` @ `53bbab9a` (0 behind main).
+
+| Element | testid | Change | PROVENANCE |
+|---|---|---|---|
+| Indexes side panel (root) | `toolkit-indexes-panel` | **NEW handle** — replaces `toolkit-indexes-accordion` | **on-main ✓** (`IndexesPanel.jsx:58`) |
+| Indexes count `(N)` | `toolkit-indexes-count` | NOT usable for this case | on-main ✓ but **absent at runtime** — suppressed by the indexing blocker |
+| Indexes "Add" button | `toolkit-indexes-add-button` | NOT usable for this case | on-main ✓ but **absent at runtime** — same reason |
+| Indexes empty state | `toolkit-indexes-empty-state` | NOT usable for this case | on-main ✓ but **absent at runtime** — same reason |
+| ~~Indexes accordion~~ | ~~`toolkit-indexes-accordion`~~ | **REMOVED from the product** | **absent on BOTH refs** (deliberate UI-team removal, issue #1616) |
+| ~~Indexes tab~~ | ~~`toolkit-detail-indexes-tab`~~ | already removed by the prior redesign | absent on both refs |
+| Configuration tab | `toolkit-detail-configuration-tab` | unchanged | **on-main ✓** (`EditToolkit.jsx:221`) |
+| Detail action-bar "Test" button | `toolkit-test-button` | **NEW handle** — the route to the Test surface | **on-main ✓** (`ToolkitForm.jsx:554`) |
+| Test surface — empty-state tool select | `toolkit-test-empty-tool-select` | unchanged (moved route) | **on-main ✓** (`ToolkitTestEmptyState.jsx:39`) |
+| Test surface — Tool combobox | `toolkit-test-tool-select` | unchanged (moved route) | **on-main ✓** (`ToolkitTestSettings.jsx:53`) |
+| Test surface — run button | `toolkit-test-run-tool-button` | unchanged testid, label now "Run Test" | **on-main ✓** (`ToolkitTestSettings.jsx:96`) |
+| Test surface — model name | `model-selector-name` | now the ONLY model handle here | **on-main ✓** (`LLMModelSelector.jsx:105`, field variant) |
+| Test surface — model button | `model-selector-button` | **not rendered on this surface** | on-main ✓ but belongs to the ButtonGroup variant only |
+| Tool dropdown options | `select-option-{tool_key}` | unchanged | **on-main ✓** |
+| Tool params | `toolkit-test-param-{bucket_name,folder,recursive,include,skip}` | unchanged; **`recursive` now HAS its testid** (the AFS's old `testid needed` gap is closed by the redesign — `CommonBooleanField.jsx:28`) | **on-main ✓** |
+| Result message list | `chat-message-list` | unchanged; absent until the first run completes | **on-main ✓** |
+
+**No `testid needed:` rows. No `add-data-testid` work. No promotion-gap risk** — every
+handle this repair introduces is already on EliteaUI `main`, so the fixed test is green
+locally AND on the deployed DEV env that filed this card.
+
+### TMS case-text drift (ELITEA-1866 — the case text is now stale in 5 places)
+
+The case text should be updated to match the product. Recommended wording:
+
+| # | Current | Should read |
+|---|---|---|
+| 24 | "Verify 'Configuration' and 'Indexes' tabs are shown at the top" / "Both tabs are present" | "Verify the Configuration form is shown with the Indexes panel beside it on the toolkit detail view" / "The Configuration form and the Indexes panel are both shown" |
+| *(new)* | — | Insert a step between 24 and 25: "Click the 'Test' button in the toolkit's action bar" / "The Test Toolkit view opens at `/toolkits/all/{id}/test`" |
+| 25 | "Verify the 'TEST SETTINGS' panel is visible on the right side with model selector, Tool dropdown, and welcome message" | "Verify the Test Toolkit view shows a 'Test Settings' column with a 'Select Tool' control and the guidance message 'Choose a tool from the list to configure parameters and run the test.', beside a 'Results' column" — the model selector appears only AFTER a tool is chosen; the guidance message was **relocated and reworded**, not removed (it now renders from the Test Settings column's empty state, `ToolkitTestEmptyState.jsx:29,35`, instead of the Results column). **The requirement STAYS in the case — only its wording tracks the product.** |
+| 26 | "In the 'TEST SETTINGS' panel click the 'Tool' dropdown" | "In the Test Settings column click 'Select Tool'" |
+| 27 | "Verify the tool list shows all available tools including 'List files'" | "Verify the tool list shows the toolkit's runnable tools including 'List files'" — index-only tools are excluded by design (11 of 16 for an Artifact toolkit) |
+| 29 | "…and 'RUN TOOL' button" | "…and the 'Run Test' button" |
+| 30 | "Click the 'RUN TOOL' button" | "Click the 'Run Test' button" |
+
+The `automation_test_id` is **unchanged** (same test, same dotted path).
+
+### Implementer note (2026-08-27 repair pass, issue #1815)
+
+Two technique-level facts discovered while building the adjustment above. Neither
+changes what the case verifies.
+
+1. **`TOOL_RUN_TIMEOUT` was raised 15_000 -> 60_000.** The first repair run reached
+   Step 31 (so Steps 24/24b/25-30 were correct) and then timed out waiting for the
+   `[✅❌]` result prefix: the assistant message item was present but EMPTY
+   (`"EliteatoMessageless than a minute ago"`, Copy button disabled) — the signature
+   of a turn still generating, not of a failed or missing result. RUN TOOL is an
+   LLM-mediated conversation turn (this AFS's own § Network Behavior: it posts a
+   conversation + participant and the tool executes server-side inside it), so the
+   budget must cover the model's turn, not the tool's own ~0.3s. 15_000 was an
+   outlier against this suite's 30-120s norms for live LLM waits; the sibling
+   `test_credential_usage_in_toolkit_flows.py` uses 20_000 and its own comment
+   already warns that is tight. At 60_000 the run passed in 91.89s with 0 reruns and
+   the assertions byte-identical — `list_files` and `{'total': 0, 'rows': []}` both
+   read off the real system's real result. Classification: infrastructure/timing.
+   Nothing was weakened; only the wait budget changed.
+2. **The dead `EXPECTED_WELCOME_MESSAGE` constant was removed from the spec.** Its
+   literal text no longer renders anywhere on this surface — per § Adjustment item 9 the
+   guidance message was **relocated and reworded** into `ToolkitTestEmptyState.jsx` — so
+   the constant matched nothing and had no caller. *(Corrected 2026-08-27, fix round 1:
+   the earlier wording of this note justified the removal with the false claim that the
+   message "no longer renders in any form". The removal stands; the reason did not.)*
+   The message itself is a **live coverage gap owned by #1857**, not a deleted observable.
+   The shared page object's `get_welcome_message_text()` was deliberately left in place —
+   it lives in a file three sibling specs import, removing it would be a non-additive
+   change to shared code, and #1857 is expected to use it again once the empty state
+   carries a testid. Its own docstring still describes the OLD Results-column message and
+   is stale; correcting it is left to #1857 rather than widened into this repair.
+
+### Status after adjustment
+
+**ready-for-automation (repair)** — class A drift, fully characterised, all replacement
+handles on `main`, no new testids required, no product defects found, nothing masked.

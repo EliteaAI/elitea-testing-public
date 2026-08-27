@@ -341,7 +341,7 @@ class ToolkitTestSettingsPage(BasePage):
         """
         self.run_tool_button.wait_for(state="visible", timeout=timeout)
         self.run_tool_button.click()
-        logger.info("Clicked RUN TOOL")
+        logger.info("Clicked the run-tool button ('Run Test')")
 
     def get_welcome_message_text(self, timeout: int = 10000) -> str:
         """Return the center panel's current message-list text.
@@ -354,6 +354,21 @@ class ToolkitTestSettingsPage(BasePage):
         reads after a run (the container's content is replaced in place,
         not appended to — confirmed live, message count stays at 1 both
         before and after RUN TOOL).
+
+        NOTE (2026-08-27, elitea-testing-public#1815): the PRE-RUN half of the
+        description above is HISTORICAL and no longer holds. #1616 moved the
+        pre-run message out of this container — `ToolkitTestResults.jsx:29`
+        returns `null` while `messages` is empty, so
+        :attr:`result_message_list` does not exist at all before the first run
+        and calling this method pre-run now times out instead of returning the
+        welcome text. The guidance message itself was NOT removed from the
+        product: it was relocated and reworded into the Test Settings column's
+        empty state (`ToolkitTestEmptyState.jsx:29,35`), where it carries no
+        testid and no testid-bearing container, so it cannot be asserted
+        testid-only today — a live coverage gap owned by
+        elitea-testing-public#1857. This method is retained deliberately for
+        #1857 and remains valid for its POST-run use: the container does exist
+        once a run has completed.
 
         Args:
             timeout: Maximum wait time in milliseconds for the container to
@@ -383,6 +398,15 @@ class ToolkitTestSettingsPage(BasePage):
         live ~0.2-3s) — polls on the result's `success`/`error` prefix
         (`✅`/`❌`) appearing in the message list, never a fixed
         sleep (`.agents/testing.md` § no-sleeps rule).
+
+        NOTE (2026-08-27, elitea-testing-public#1815): that ~0.2-3s figure
+        describes the OLD Test Settings surface and no longer sizes the wait.
+        The redesigned Test Toolkit surface runs the tool INSIDE a model turn
+        (the result lands as a chat answer, under a thought accordion), so the
+        realistic budget is a conversation-turn budget, not a REST round-trip
+        — which is why ELITEA-1866's caller passes 60_000 against this
+        signature's 15_000 default. Callers on the redesigned surface should
+        size their own timeout accordingly rather than take the default.
 
         The container REPLACES its content in place rather than appending
         (confirmed live: the pre-run welcome message and the post-run

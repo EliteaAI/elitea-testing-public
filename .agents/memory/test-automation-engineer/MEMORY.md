@@ -147,3 +147,5 @@
 - [A test owns its preconditions](test_owns_its_preconditions.md) — create every entity the case needs; borrowed data passes dirty, fails clean
 - [Embedded-chat response oracle is inert](embedded_chat_response_oracle_is_inert.md) — `response_text != ""` passes on the loading placeholder; assert `skill-test-last-response`
 - [Memory commits belong on automation/base](memory_commits_belong_on_automation_base.md) — a main-cut repair branch sees TRUNCATED memory; commit memory on base instead
+- [Comment quoting a removed raw locator](comment_quoting_removed_raw_locator_trips_reviewer_grep.md) — trips the reviewer's grep; describe it in prose
+- [Early-return null does not mean the observable is gone](early_return_null_does_not_mean_the_observable_is_gone.md) — grep the product for the TEXT before writing "removed"
