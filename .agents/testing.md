@@ -775,6 +775,39 @@ without step wrapping is `CHANGES_REQUESTED` at review.
     opposite of the sibling occurrence's short 52 s.
     Evidence lives in `reports/allure-results/*-result.json`, not in the pytest tail — grep the
     result JSON by `fullName` when triaging this class.
+- **ROOT CAUSE FOUND for the whole HITL "silent death" class — the turn is REJECTED, not silent
+  (2026-08-27, ELITEA-2214, PR #1843)**: three prior passes (ELITEA-2212, 2213, and 2214's own
+  2026-08-03 pass) recorded the HITL resume as dying *silently* — clean console, no failed HTTP
+  request, no error anywhere — because **nobody had read the WebSocket frames**. They carry the
+  error. `chat_continue_predict` omits `llm_settings` entirely (the initial `chat_predict` carries
+  `llm_settings.model_name`), and ~50 ms later the backend emits three `socket_validation_error`
+  frames: `"llm_settings with model_name is required"` ×2 + `"Continue execution failed: llm_settings
+  with model_name is required"`. **Byte-identical for `action: "reject"` and
+  `action: "block_with_comment"`** — one root cause behind every symptom on #1834 and #1835. The
+  frontend swallows the frames completely, which is why every console/HTTP-level check came back
+  clean and honest.
+  **The transferable lesson: on this stack, "no console error and no failed request" does NOT mean
+  "no error".** Socket.IO carries its own error channel. Before classifying any chat/HITL failure as
+  silent, capture the frames — `automation/utils/websocket_frames.py`
+  (`ChatPage.capture_websocket_frames()`) is the shared collector, and asserting on the
+  `socket_validation_error` **event name** (never the message text) turns the class from a slow
+  60 s absence into a positive, precisely-named statement of what the backend did.
+  ⚠️ **`time.sleep` cannot be used to poll a frame list.** Playwright's sync API dispatches
+  `framesent`/`framereceived` only while the calling thread is inside a Playwright call, so a
+  `time.sleep` poll starves the dispatcher — measured: the list froze at 18 entries for a full 15 s
+  and flushed instantly the moment a stray `locator.count()` ran. It is a **false-RED generator**
+  (cost 3 of 7 implementer runs). The collector pumps with `page.wait_for_timeout()` instead;
+  that deviation from § Hard don'ts is declared and raised as canon card **#1842**.
+- **HITL trigger-side flake rate, 4th+ occurrences (2026-08-27, ELITEA-2214)**: the setup flake
+  (a raw uncaught assertion inside `_reach_sensitive_action_card` — either the accordion wait or
+  the "card should appear" check) hit **3 of 6** setup attempts during the ELITEA-2214 analyst
+  session, well above the 1-in-4 / 1-in-6 the entries above recorded. It then hit **0 of 7**
+  implementer invocations and **0 of 3** lead-gate invocations the same day. So the rate is bursty
+  rather than rising — consistent with the session-level backend-strain profile already documented
+  for `#1082`, not with a per-spec defect. Response is unchanged: **re-run, never accept it as the
+  signature** (it is upstream of every assertion these cases make and is never a member of a closed
+  sanctioned-RED set). Wall clock is not a tell. Evidence is only in
+  `reports/allure-results/*-result.json`.
 - **Org-wide side-effect leak, ROOT-CAUSED, tracked as #1838 (2026-08-27, same gate)**: the
   same discarded attempt's run 2 raised `AssertionError: Guardrails config was NOT restored —
   this is an org-wide side effect. expected {}, got {'artifact': ['delete_file']}` in teardown.
