@@ -59,8 +59,12 @@ def _run_unique_skill_names(count: int = SKILL_COUNT) -> list[str]:
     stranger's entity — a false positive that no assertion can catch.
 
     Shape obeys the skill-name validation the create form enforces:
-    lowercase letters / digits / hyphens only, max 32 characters, no
-    leading or trailing hyphen (18 characters here).
+    lowercase letters / digits / hyphens only, no leading or trailing
+    hyphen, at most 64 characters — ``SKILL_NAME_MAX_LENGTH`` and
+    ``SKILL_NAME_RE`` in EliteaUI
+    ``src/[fsd]/features/skill/lib/validation/skillValidationSchema.validation.js``
+    (verified on ``origin/main``), which mirrors the backend's
+    ``validate_skill_name``. These names are 18 characters.
     """
     run_id = uuid4().hex[:8]
     return [f"el1790-{run_id}-s{n}" for n in range(1, count + 1)]
@@ -380,8 +384,8 @@ class TestAgentMaxFiveSkillsLimit:
         # Confirms the 6 created skills and the agent are actually gone, not
         # just that the delete calls didn't raise.
         with allure.step(
-            "Cleanup verification — the 6 created skills and the Agent are "
-            "gone; no orphaned el1790-* test data remains"
+            "Cleanup verification — this run's 6 created skills and the "
+            "Agent are gone"
         ):
             remaining_skill_ids = {
                 s["id"] for s in skill_api.list_skills(limit=500).get("rows", [])
