@@ -26,6 +26,13 @@ from pages.chat_page import ChatPage
 from pages.toolkit_test_settings_page import ToolkitTestSettingsPage
 from toolkit_configs import TOOLKIT_CONFIGS, ToolkitConfig
 from toolkit_factories import CREDENTIAL_FACTORIES, TOOLKIT_SETTINGS_FACTORIES
+from utils.toolkit_output import (
+    find_tool_end_frames,
+    get_tool_output,
+    observed_frame_kinds,
+    tool_output_matches_success,
+)
+from utils.websocket_frames import capture_socketio_frames
 
 # Import from conftest
 from conftest import ELITEA_URL
@@ -492,49 +499,136 @@ class TestChatWithToolkit:
         self, page, conversation_id: str, toolkit_config: ToolkitConfig,
         managed_toolkit: dict,
     ):
-        """Add toolkit to chat, send a message, verify tool execution."""
+        """Add toolkit to chat, send a message, verify the tool really ran.
+
+        AFS: ``test-specs/toolkits/lfix_toolkit_chat_error_oracle_ELITEA-1140.md``
+        (repair brief for card #1817).
+
+        Step 5's oracle reads the toolkit's own ``tool_output`` off the
+        ``agent_tool_end`` Socket.IO frame, because Elitea publishes no
+        structural marker for a failed tool execution — success and failure
+        share DOM, testids, event sequence and ``finish_reason``, and the
+        chat message is LLM prose wrapped around arbitrary user data. The
+        free-text guards this replaced scanned that prose for ``"error"``,
+        which matched this repository's own branch names (a genuine success,
+        GHA run 32931571484) while missing every real 401 (which the model
+        narrates as *"authentication error"*, and which still satisfies
+        ``chat_response_keywords``). No negative substring scan survives on
+        any channel — the ``"thinking"`` scan went with them, for the same
+        reason and because it proved nothing Step 4 had not already waited
+        for. See ``utils/toolkit_output``.
+
+        A toolkit whose success shape has never been captured SKIPS at Tier 2
+        rather than continuing: without it a failed call is indistinguishable
+        from a successful one at every remaining tier, so continuing would
+        report GREEN on a broken toolkit.
+
+        No substitution: the frames are **passively observed**: nothing is
+        routed, fulfilled, injected or fabricated, and every asserted value is
+        produced end to end by the real system.
+        """
         cfg = toolkit_config
         tk_name = managed_toolkit["name"]
+        chat = ChatPage(page)
 
-        with allure.step("Step 1 — Navigate to chat"):
-            chat = ChatPage(page)
-            chat.navigate_to_chat(conversation_id=conversation_id)
-            chat.wait_for_page_load()
-            page.wait_for_load_state("networkidle", timeout=30000)
-            page.wait_for_timeout(2000)
+        # Entered BEFORE any navigation — Playwright's "websocket" page event
+        # fires only at connection-open time, so a listener attached later
+        # never sees a frame (utils/websocket_frames docstring). Called as the
+        # shared util rather than through a ChatPage delegator: this branch
+        # targets `main`, and an identically-added *method* lands at a
+        # different anchor than base's copy (merge conflict + duplicate
+        # definition), where an identically-added *file* merges clean.
+        with capture_socketio_frames(page) as frames:
+            with allure.step("Step 1 — Navigate to chat"):
+                chat.navigate_to_chat(conversation_id=conversation_id)
+                chat.wait_for_page_load()
+                page.wait_for_load_state("networkidle", timeout=30000)
+                page.wait_for_timeout(2000)
 
-        with allure.step(f"Step 2 — Add toolkit participant: {tk_name}"):
-            chat.add_toolkit_participant(tk_name, timeout=UI_ELEMENT_TIMEOUT)
-            page.wait_for_timeout(1000)
+            with allure.step(f"Step 2 — Add toolkit participant: {tk_name}"):
+                chat.add_toolkit_participant(tk_name, timeout=UI_ELEMENT_TIMEOUT)
+                page.wait_for_timeout(1000)
 
-        with allure.step("Step 3 — Send message to invoke toolkit"):
-            initial_count = chat.get_message_count()
-            chat.send_message(cfg.chat_message, use_enter=True)
-            chat.wait_for_input_ready()
+            with allure.step("Step 3 — Send message to invoke toolkit"):
+                initial_count = chat.get_message_count()
+                chat.send_message(cfg.chat_message, use_enter=True)
+                chat.wait_for_input_ready()
 
-        with allure.step("Step 4 — Wait for AI response"):
-            chat.wait_for_ai_response(
-                initial_count=initial_count,
-                timeout=TOOLKIT_EXECUTION_TIMEOUT,
-            )
+            with allure.step("Step 4 — Wait for AI response"):
+                chat.wait_for_ai_response(
+                    initial_count=initial_count,
+                    timeout=TOOLKIT_EXECUTION_TIMEOUT,
+                )
 
-        with allure.step("Step 5 — Verify response contains expected keywords"):
-            last_msg = chat.get_last_message_text()
+            with allure.step("Step 5 — Verify the toolkit's tool executed successfully"):
+                # Tier 1 — the tool actually ran. Nothing else here proves it:
+                # a model answering from memory satisfies every assertion below.
+                tool_end_frames = find_tool_end_frames(
+                    frames,
+                    tool_name=cfg.test_tool_result_indicator,
+                    toolkit_display_name=tk_name,
+                )
+                assert len(tool_end_frames) == 1, (
+                    f"Expected exactly one agent_tool_end frame for tool "
+                    f"'{cfg.test_tool_result_indicator}' of toolkit '{tk_name}', "
+                    f"got {len(tool_end_frames)} of {len(frames)} captured "
+                    f"Socket.IO frames. 0 of 0 = the CAPTURE failed (harness); "
+                    f"0 of many = the model never called the tool (real signal); "
+                    f">1 = a double call. Distinct received (type, tool_name): "
+                    f"{observed_frame_kinds(frames)}"
+                )
+                tool_output = get_tool_output(tool_end_frames[0])
+                assert tool_output.strip(), (
+                    f"agent_tool_end for '{cfg.test_tool_result_indicator}' carried "
+                    f"an empty tool_output"
+                )
 
-            # Check for tool execution errors first
-            assert "authorization error" not in last_msg.lower(), (
-                f"Tool execution failed with authorization error. "
-                f"Check credentials in .env.test. Response: {last_msg[:500]}"
-            )
-            assert "error" not in last_msg.lower() or "no results" in last_msg.lower(), (
-                f"Tool execution returned an error. Response: {last_msg[:500]}"
-            )
+                # Tier 2 — positive, ANCHORED match against this toolkit's
+                # captured success shape. Never a scan for the word "error":
+                # the success payload legitimately contains it.
+                if cfg.tool_output_success_pattern:
+                    assert tool_output_matches_success(
+                        tool_output, cfg.tool_output_success_pattern
+                    ), (
+                        f"{cfg.display_name} tool '{cfg.test_tool_result_indicator}' did "
+                        f"not return its captured success shape "
+                        f"({cfg.tool_output_success_pattern!r}) — the tool call FAILED. "
+                        f"tool_output: {tool_output[:500]}"
+                    )
+                else:
+                    # Fallback rule: no success shape has ever been captured for
+                    # this toolkit, so classify nothing rather than invent a
+                    # pattern (AFS § Recommended oracle, Tier 2). Structurally
+                    # a SKIP, not a warning: without a captured shape a failed
+                    # tool call is indistinguishable from a successful one at
+                    # every remaining tier, so continuing would report GREEN on
+                    # a broken toolkit — strictly worse than the false-RED this
+                    # card removes. This masks no product defect and hides no
+                    # red; it makes "not verified" visible where a log line in
+                    # a GHA transcript is not a gate.
+                    pytest.skip(
+                        f"{cfg.display_name} has no captured "
+                        f"tool_output_success_pattern, so a failed tool call "
+                        f"cannot be told from a successful one — capture "
+                        f"agent_tool_end.response_metadata.tool_output live for "
+                        f"'{cfg.test_tool_result_indicator}' and populate "
+                        f"TOOLKIT_CONFIGS['{cfg.toolkit_type}']"
+                    )
 
-            assert "thinking" not in last_msg.lower()
-            assert any(kw in last_msg.lower() for kw in cfg.chat_response_keywords), (
-                f"Expected keywords {cfg.chat_response_keywords} in response: {last_msg[:500]}"
-            )
-            assert chat.get_message_count() > initial_count
+                # Tier 3 — the UI carried the result through to a new message.
+                # No negative substring scan here either: `last_msg` is LLM
+                # prose wrapped around the same arbitrary user data, so
+                # `"thinking" not in last_msg` would re-create #1817 on a
+                # branch named e.g. `tests/ELITEA-XXXX-agent-thinking-...`.
+                # It proved nothing anyway — `wait_for_ai_response()` already
+                # waits on the Copy button (generation finished), and a
+                # "Thinking…" placeholder cannot satisfy the keyword assertion
+                # below (AFS § Q3).
+                last_msg = chat.get_last_message_text()
+                assert any(kw in last_msg.lower() for kw in cfg.chat_response_keywords), (
+                    f"Expected keywords {cfg.chat_response_keywords} in response: {last_msg[:500]}"
+                )
+                assert chat.get_message_count() > initial_count
 
 
 # ---------------------------------------------------------------------------

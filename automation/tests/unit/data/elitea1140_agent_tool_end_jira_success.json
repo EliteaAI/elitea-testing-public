@@ -1,0 +1,47 @@
+{
+  "type": "agent_tool_end",
+  "stream_id": "d16cf456-b5d6-4fcc-a69d-df797ccb7d40",
+  "message_id": "4dd1f4ee-b926-4b33-8215-2c245fc941bf",
+  "question_id": "5dc388ef-6462-4296-8cee-2f5d0b44b3da",
+  "content": "Found 6 projects:\n[{'id': '10165', 'key': 'AIPSDLC', 'name': 'AI PDLC/SDLC Demo ', 'type': 'software', 'style': ''}, {'id': '10066', 'key': 'AT', 'name': 'AI tests', 'type': 'business', 'style': ''}, {'id': '10099', 'key': 'DA', 'name': 'Demo AI', 'type': 'software', 'style': ''}, {'id': '10198', 'key': 'EDP', 'name': 'Elitea Demo Playground', 'type': 'software', 'style': ''}, {'id': '10033', 'key': 'EL', 'name': 'EliteaTest', 'type': 'software', 'style': ''}, {'id': '10000', 'key': 'SCRUM', 'name': 'test_project', 'type': 'software', 'style': ''}]",
+  "thinking": null,
+  "response_metadata": {
+    "tool_name": "list_projects",
+    "tool_run_id": "01a042a2-b7a5-7503-a7cb-3721c951ee8a",
+    "tool_meta": {
+      "name": "list_projects",
+      "description": "Jira instance: https://epamelitea.atlassian.net\nToolkit: ProbejiraTK1787824330646\n List all projects in Jira.",
+      "metadata": {
+        "toolkit_name": "ProbejiraTK1787824330646",
+        "toolkit_type": "jira",
+        "display_name": "Probe jira TK 1787824330646"
+      }
+    },
+    "metadata": {
+      "thread_id": "d16cf456-b5d6-4fcc-a69d-df797ccb7d40",
+      "ls_integration": "langgraph",
+      "langgraph_step": 2,
+      "langgraph_node": "agent",
+      "langgraph_triggers": "('branch:to:agent',)",
+      "langgraph_path": "('__pregel_pull', 'agent')",
+      "langgraph_checkpoint_ns": "agent:dd3d1519-4de7-137a-1bf8-9547d3a61010",
+      "checkpoint_ns": "agent:dd3d1519-4de7-137a-1bf8-9547d3a61010",
+      "toolkit_name": "ProbejiraTK1787824330646",
+      "toolkit_type": "jira",
+      "tool_name": "list_projects",
+      "display_name": "Probe jira TK 1787824330646"
+    },
+    "finish_reason": "stop",
+    "tool_output": "Found 6 projects:\n[{'id': '10165', 'key': 'AIPSDLC', 'name': 'AI PDLC/SDLC Demo ', 'type': 'software', 'style': ''}, {'id': '10066', 'key': 'AT', 'name': 'AI tests', 'type': 'business', 'style': ''}, {'id': '10099', 'key': 'DA', 'name': 'Demo AI', 'type': 'software', 'style': ''}, {'id': '10198', 'key': 'EDP', 'name': 'Elitea Demo Playground', 'type': 'software', 'style': ''}, {'id': '10033', 'key': 'EL', 'name': 'EliteaTest', 'type': 'software', 'style': ''}, {'id': '10000', 'key': 'SCRUM', 'name': 'test_project', 'type': 'software', 'style': ''}]",
+    "timestamp_start": "2026-08-27T09:52:35.238122+00:00",
+    "timestamp_finish": "2026-08-27T09:52:35.809375+00:00"
+  },
+  "references": [],
+  "sio_event": "chat_predict",
+  "created_at": "2026-08-27T09:52:35.809875Z",
+  "parent_message_id": null,
+  "agent_name": null,
+  "execution_generation": "b372484f-f781-4c59-a30e-490436b61a35",
+  "event": "chat_predict",
+  "_direction": "received"
+}
