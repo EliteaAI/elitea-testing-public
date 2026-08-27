@@ -12,7 +12,7 @@
 - **Environment Explored**: local (`http://localhost:5173`, EliteaUI `automation/testids`, DEV backend), project 471 "Elitea Testing Team", model **GPT-5.4**
 - **User set**: `${TEST_USER}` — on localhost `auth_state`/`VITE_DEV_TOKEN` skips Keycloak (renders as "Test Bot"/"TB")
 - **Analyst**: qa-engineer (analyst slot), 2026-08-28
-- **Status**: `extend-existing` — modifies an existing merged spec. **No assertion is deleted** (the proposed deletion was withdrawn after the corrected-oracle experiment), so **no human sign-off is required.**
+- **Status**: `extend-existing` — modifies an existing merged spec. **No assertion is deleted**; the opaque-token oracle is *replaced* by a comprehension fact per canon card **#1664** (a change of HOW, not WHAT), so **no human sign-off is required.** Suite-wide oracle fix tracked as **#1913**.
 - **Triage class**: **A (test-code oracle defect) + case over-reach**, with a **D**-flavoured trigger-side nondeterminism amplifier. **NOT B, NOT C, NOT E, NOT F.**
 
 > ⚠️ **The board card names ELITEA-1142 — that is wrong.** ELITEA-1142 maps to four
@@ -183,45 +183,91 @@ plus-menu item `chat-attach-menuitem-button`. The repair routes through the real
 Preserve `TestConversationUIElements`, the test name, `@allure.issue`, `@pytest.mark.p1`, and the
 `allure.step("Step N — …")` structure. **Update in place — no new file, no new class.**
 
+**Oracle shape governed by canon card #1664** (§ #1664 applies here). The last-mile LLM assertion is
+a **comprehension fact in ordinary prose**, never an opaque-token echo. The strong deterministic
+assertions live on the **transport** layer.
+
+### Test data — the planted comprehension fact (replaces the token)
+
+`tmp_path` file `test_automation_file.txt`, ordinary prose, no identifier-shaped strings:
+
+```
+Project Aurora — weekly status.
+The project mascot is the otter.
+The team meets on Tuesday.
+```
+
+Question sent: **`"According to the attached file, what is the project mascot? Answer with the single word."`**
+Expected comprehension answer: **`otter`** (case-insensitive substring of the settled reply).
+
+`AUTOTEST_ATTACH_7X9` is deleted **as an oracle**, not as coverage — the observable ("the model
+received and processed the file's content") is unchanged and is now asserted three independent ways.
+
 ### REMOVE
 
 | # | Remove | Why this is not a weakening |
 |---|---|---|
-| ~~R1~~ | ~~Step 7's `file_acknowledged` token-echo assertion~~ — **WITHDRAWN 2026-08-28 after the corrected-oracle experiment (§ Corrected-oracle hit rate). KEEP the assertion; fix the oracle instead.** | The token proved **8/8 reliably present** under a correct oracle. Deleting it would have removed working coverage to work around a test-side bug. |
-| R2 | Step 7's `"waking" not in ai_response` assertion | Subsumed — the repaired test no longer reads AI prose at all. |
-| R3 | Step 3's `pytest.skip(...)` fallback | **Masking** (above). An unattachable file must fail. |
-| R4 | The 3-tier raw-handle fallback ladder (direct input → `expect_file_chooser` → plus-menu popper) and its `try/except` swallowing | Legacy pre-policy raw handles (#25/#42 tech debt, not precedent); tier 1 drives the hidden decoy. Replaced by one testid'd path. |
-| R5 | Step 5's `wait_for_ai_response` **as currently implemented** | **Replace, don't drop** — the test still needs a settled turn (it keeps the token assertion). Use the corrected settle condition in § Corrected-oracle hit rate, and read via `get_message_text_at(initial_count + 1)`, never `.last`. |
+| R1 | Step 7's `file_acknowledged` **opaque-token echo** (`AUTOTEST_ATTACH_7X9`) | **Not a deletion — a substitution of oracle shape** (#1664). The same observable is asserted by the comprehension fact (step 8) plus two transport assertions (steps 6, 9). Per #1664: *"Both patterns are equally honest about fidelity; only one is stable."* This changes **HOW** the observable is read, not **WHAT** is verified — inside the declared-improvisation ceiling (`.agents/role-overrides.md`), unlike the deletion I proposed in v1 and withdrew. **No human sign-off required.** |
+| R2 | Step 7's `"waking" not in ai_response` assertion | Subsumed by the corrected settle condition, which cannot return on a transient. |
+| R3 | Step 3's `pytest.skip(...)` fallback | **Masking.** ELITEA-0500's Fail criteria include "Attach files button missing" — an unattachable file must fail. |
+| R4 | The 3-tier raw-handle fallback ladder and its `try/except` swallowing | Legacy pre-policy raw handles (#25/#42 tech debt); tier 1 drives the hidden decoy. One testid'd path replaces it. |
+| R5 | `wait_for_ai_response` **as currently implemented** | **Replace, don't drop** — the test still needs a settled turn. Use the corrected settle condition (step 8) locally in this spec; the suite-wide fix is **#1913**. |
 
-### KEEP / ADD — case-faithful assertion set
+### KEEP / ADD — the implementer's step-by-step assertion set
 
-| Step | Action | Assertion | Handle (all testid, all `on-main ✓`) |
+Enter `ChatPage.capture_websocket_frames()` **before** any navigation (the `websocket` event fires
+only at connection-open time).
+
+| Step | Action | Assertion | Handle / source |
 |---|---|---|---|
-| 1 | Navigate to the fresh conversation | — | `conversation_id` fixture |
-| 2 | **ELITEA-0500 Step 1 (currently uncovered — see § Coverage Map)** — open the plus menu | Plus-menu trigger visible **and enabled**; attach item visible **and enabled**, positioned in the composer toolbar | `plus-menu-button`, `chat-attach-menuitem-button` |
-| 3 | Create the `.txt` file (`tmp_path`) and attach it via the real control | `ChatPage.attach_file(path)` succeeds; **chip renders** (`wait_for_attachment_chip_count(1)`); chip name == the filename; the "Attach Files (N left)" counter reads **"9 left"** (decremented by exactly 1 from a fresh conversation's 10) | `chat-attachment-chip-{index}` (`CHAT_ATTACHMENT_CHIP`), `chat-attach-menuitem-button` text |
-| 4 | Capture `initial_count`; type + send | Input holds the typed text before send | `chat-message-input`, `chat-message-item` |
-| 5 | Wait for the **user** message to land | Message count **increases** (web-first wait on `chat-message-item` count > `initial_count`) — **no AI oracle** | `chat-message-item` |
-| 6 | Verify the attachment was **submitted with the message** | The sent user message's text contains the **filename** — the system's own render of what it transmitted | `chat-message-item` at `initial_count` (`get_message_text_at`, not `.last`) |
-| 7 | Verify the composer cleared | `wait_for_attachment_chip_count(0)` **and** `get_attachment_overflow_count() == 0` | chip helpers |
-| 8 | Side channel | No unexpected console errors / page errors, via `utils/console_errors.collect_console_errors(page)` (URL-bearing — migrate this spec while touching it, per `.agents/testing.md`) | — |
+| 1 | Enter frame capture, then navigate to the fresh conversation | — | `conversation_id` fixture |
+| 2 | **ELITEA-0500 Step 1** — open the plus menu | Plus-menu trigger **visible and enabled**; attach item **visible and enabled** in the composer toolbar | `plus-menu-button`, `chat-attach-menuitem-button` |
+| 3 | Write the planted-fact file; attach via `ChatPage.attach_file()` | `wait_for_attachment_chip_count(1)`; chip name == filename; counter reads **"9 left"** (10 → 9 on a fresh conversation) | `chat-attachment-chip-{index}`, `chat-attach-menuitem-button` text |
+| 4 | Type the comprehension question | `message_input.input_value()` == the question | `chat-message-input` |
+| 5 | Capture `initial_count` | — | `chat-message-item` |
+| 6 | **Send, wrapped in `page.expect_response(...)`** — upload fires at *send*, not at attach (`ChatBox.jsx:1080-1084`) | **TRANSPORT 1:** response to `POST **/attachments/prompt_lib/**` has `status in (200, 201)` **and** a non-empty `filepath` in the body | `useUploadWithProgress.js:52` |
+| 7 | Wait for the user message to land | Message count > `initial_count`; the message at index `initial_count` contains the **filename** (the system's own render of what it transmitted) | `get_message_text_at(initial_count)` — **not** `.last` |
+| 8 | **Settle on the corrected oracle**, then read the reply | Settle = `chat-stop-generation-button` **not** visible **AND** Copy button visible on index `initial_count + 1`, **both stable across ≥2 consecutive polls spanning ≥1.2 s**. Then **LAST MILE:** `"otter"` (case-insensitive) is in `get_message_text_at(initial_count + 1)` | `chat-stop-generation-button`, `chat-message-item` |
+| 9 | **TRANSPORT 2 — frame assertion** (see § Frame-assertion constraints) | ≥1 received `chat_predict_attachment` frame whose `response_metadata.tool_name == "read_multiple_files"` **and** carries a `tool_output`; **every** such `tool_output` contains the planted fact (`"The project mascot is the otter."`) | `utils/websocket_frames.py` |
+| 10 | Composer cleared | `wait_for_attachment_chip_count(0)` **and** `get_attachment_overflow_count() == 0` | chip helpers |
+| 11 | Side channel | No unexpected console/page errors, via `utils/console_errors.collect_console_errors(page)` (URL-bearing — migrate this spec while touching it) | — |
 
-**No new testids. No new page-object methods.** `ChatPage.attach_file()` (`:2831`),
-`open_attach_menuitem()` (`:2794`), `wait_for_attachment_chip_count()` (`:3025`),
-`get_attachment_chip_count()` (`:2972`), `get_attachment_overflow_count()` (`:2976`),
-`get_message_text_at()` (`:2258`) all already exist.
+**No new testids. No new page-object methods.** `attach_file()` (`:2831`), `open_attach_menuitem()`
+(`:2794`), `wait_for_attachment_chip_count()` (`:3025`), `get_attachment_overflow_count()` (`:2976`),
+`get_message_text_at()` (`:2258`), `stop_generation_button` (`:96`), `capture_websocket_frames()`
+(`:6763`) all already exist.
 
-### Optional Axis-2 addition (declared improvisation — lead's call)
+### Frame-assertion constraints (step 9) — mandatory, from `.agents/testing.md` § ELITEA-1140
 
-Assert the **upload response** rather than the model's prose: capture
-`POST /elitea_core/attachments/prompt_lib/{projectId}/{conversationId}` via
-`page.expect_response(...)` and assert `status == 200` and that the returned `filepath` is
-non-empty. This is deterministic, is produced **entirely by the system** (the § Fidelity policy
-"capture the real response and assert the UI against it" pattern), and proves transmission without
-touching the LLM. It is **beyond ELITEA-0500's text**, so it is declared, not assumed —
-recommend including it; it is the honest replacement for what R1 removes.
+1. **Self-diagnosing message.** The failure message MUST carry the **total captured frame count** and
+   the **distinct event names** seen, so the three outcomes read differently:
+   - `0 matching of 0 frames captured` → the Socket.IO capture/transport failed — a **harness**
+     problem (every frame behind this oracle was captured on **localhost**; this spec also runs in
+     GHA against deployed envs where the transport was never verified — a proxy declining the
+     websocket upgrade produces exactly this).
+   - `0 matching of N frames captured (events: …)` → frames flowed but the read tool did not run —
+     the **real** signal.
+   - Suggested shape: `f"expected >=1 chat_predict_attachment frame carrying tool_output for read_multiple_files; got {len(matches)} of {len(frames)} captured frames (events: {sorted(events)})"`
+2. **Never conditional, never skipped.** Do **not** guard this assertion on "frames present". If the
+   transport differs on DEV we want a legible red, not a silent pass. A `pytest.skip` here is the
+   same masking as R3.
+3. **`>= 1` plus all-match, never `frames[0]`.** Multiple `chat_predict_attachment` frames carry this
+   tool (observed: 3 in one run — two with `tool_meta`, one with `tool_output`). Assert `>= 1`
+   **and** that every frame carrying a `tool_output` for this tool satisfies the expectation —
+   the ledger's explicit warning against reading `frames[0]` off a success-then-failure pair.
 
----
+### Trigger-side caveat on step 9 — stated, not hidden
+
+Step 9 asserts a **tool call happened**. I have been flagging tool-election nondeterminism all along,
+so I will not quietly spec a dependency on it. Evidence that this one is **pipeline-driven rather
+than model-elected**: the read fired **8/8**, including runs whose prose claimed the content was
+already *"embedded in your message"* — a model that believed that would not elect a read. Combined
+with the source finding that content is never inlined (the backend must read the file to give the
+model anything), the read appears unconditional.
+
+That is an **inference from 8 runs on one model**, not a proof. Constraint 1's self-diagnosing
+message is precisely the protection: if the inference is wrong, the failure says
+`0 matching of N frames` and names the real cause instead of looking like a product regression.
 
 ## Coverage Map
 
@@ -234,7 +280,7 @@ steps belong to the five sibling tests listed in its `automation_test_id`.
 | Coverage bullet — "Attach files button opens file picker" | Picker opens | repair step 3 | `attach_file()` drives the real control end-to-end | asserted |
 | Fail criterion — "Attach files button missing" | Test must FAIL | R3 | `skip` removed → natural fail | asserted |
 | *(Steps 2–7: context settings, model menu, sidebar, agents nav, search, oversized message)* | — | **the five sibling tests** | — | out-of-scope for this test |
-| ~~AI echoes attachment token~~ | — | — | — | **not a case element — removed (R1)** |
+| ~~AI echoes an opaque token~~ | — | replaced | steps 6, 8, 9 | **oracle shape swapped per #1664** — the observable (model received + processed the file) is now asserted by a comprehension fact (step 8) + upload response (step 6) + `tool_output` frame (step 9). Not a case element either way. |
 
 > **ELITEA-0500 Step 1 is presently covered by NOTHING.** The case names
 > `TestConversationUIElements::test_attach_files_button_opens_picker` as its Step-1 test, and that
@@ -249,7 +295,7 @@ steps belong to the five sibling tests listed in its `automation_test_id`.
 - Composer-clears-after-send (step 7) — *cheap, deterministic, and the established idiom in every
   sibling attachment test.*
 - Console/page-error side channel (step 8) — *standard project discipline.*
-- *(Optional)* upload-response assertion — *declared above.*
+- Upload-response assertion (step 6) and `tool_output` frame assertion (step 9) — *the transport-layer half of #1664's split: the strong deterministic assertions belong there, and the comprehension fact is the last mile, not the whole proof. Both are model-wording-independent.*
 
 ---
 
@@ -294,10 +340,18 @@ None.
 
 ---
 
-## Corrected-oracle hit rate — the experiment that withdrew R1
+## Corrected-oracle hit rate — the experiment that fixed the settle condition
 
-**Question:** under a corrected oracle, is the token assertion reliably satisfiable?
-**Answer: 8/8. R1 is withdrawn — no deletion, no coverage loss.**
+**Question:** under a corrected oracle, is the last-mile assertion reliably satisfiable?
+**Answer: 8/8** — which established the corrected settle condition now specced as step 8, and
+retired the idea of *deleting* the last-mile assertion. It did **not** clear the token *shape*;
+canon card **#1664** governs that (§ #1664 applies here).
+
+⚠️ **These 8 runs used the OLD token file.** The comprehension-fact shape specced above was **not
+live-verified on this flow** — the coordinator asked for a re-spec, not a re-measure. Its evidence
+is #1664's own: the same shape shipped on ELITEA-2421 and passed three gate runs. **The implementer
+verifies it at Phase 2** — if the model answers the mascot question unreliably here, that is a
+finding to route, not to work around.
 
 Corrected settle condition (every signal system-produced; nothing fabricated, injected or routed):
 
@@ -347,17 +401,59 @@ but the **tool call does not**: the content reliably reaches the model.
    (*"…Let me read the file directly…."*) is the model **announcing** that tool call. That is an
    intermediate narration, which is exactly the state the broken oracle can read and the corrected
    one cannot.
-3. **Residual risk if DEV differs** (different default model, slower backend): the token assertion
-   could still miss occasionally there. Mitigation is the deterministic frame oracle below — not a
-   deletion.
+3. **Residual risk if DEV differs** (different default model, slower backend). Mitigation is the
+   two transport assertions (steps 6 and 9), which are model-wording-independent — plus #1664's
+   comprehension shape, which removes the guardrail-refusal exposure a token echo carries.
 
-### Stronger option now available (recommended addition)
+### Superseded by #1664
 
-The `chat_predict_attachment` frame carries `response_metadata.tool_output` with the file's **actual
-content**. Asserting the token against *that* is fully deterministic and system-produced — it proves
-the attachment reached the model without depending on the model's prose at all. Recommend keeping
-the prose assertion **and** adding the frame assertion; the frame one is the durable guard if DEV's
-model turns out to narrate differently.
+v2 of this AFS recommended keeping the token echo and adding a frame assertion. **Canon card #1664
+supersedes that**: the token echo goes, the frame assertion stays. See § #1664 applies here.
+
+## #1664 applies here — and this is its second, independent occurrence
+
+**Card:** #1664 — *"[Canon] LLM-backed oracles: comprehension facts, not token echoes (guardrails
+refuse the latter intermittently)"* (OPEN, `question`, raised from ELITEA-2421 in wave-02 of #1400).
+
+Its ruling: asking a model to **echo an opaque identifier out of an uploaded file** is an unstable
+oracle *shape*. Guardrails refuse the shape, not the vocabulary — neutralising the wording
+(`ZEPHYR-4417` → "Build identifier") did not help. Its failure mode: **"it works in analysis and
+refuses later"**, landing as a merged flaky test whose failure looks like a product regression.
+
+`AUTOTEST_ATTACH_7X9` is exactly that shape. **I agree with #1664 and have adopted it.**
+
+### Why my 8/8 does NOT clear the token assertion
+
+The 8-run experiment measured the **oracle race (H1)** and fixed it. It could not have detected
+guardrail exposure: 8 runs, one model (GPT-5.4), one session, minutes apart. #1664's refusals are
+*intermittent and model-dependent* — precisely what a tight local sample cannot see. A green local
+hit rate is not evidence about a failure mode that manifests elsewhere, later.
+
+### One correction to the record — it strengthens #1664 rather than weakening it
+
+The DEV failure text was:
+
+> *"I don't see the file content embedded in this message—only the note about it. Let me read the file directly…."*
+
+That is **not** a guardrail refusal. #1664's refusals look like *"I can't help extract or repeat
+secret codename values from attachments"*. This text is the model **announcing a tool call** — the
+H1 mid-turn narration. So the DEV red on this card is H1, **not** an instance of #1664 firing.
+
+That distinction matters, and it makes the case for adopting #1664 **stronger**, not weaker:
+
+- If the DEV red *were* a refusal, we would have one bug to fix.
+- Because it is **not**, the token assertion carries **two independent instabilities**: the oracle
+  race (H1, now fixed) **and** the un-fired guardrail exposure (#1664, still latent). Fixing H1
+  would have shipped a test that is green today and refuses on some future model — the exact
+  "merged flaky test whose failure looks like a product regression" #1664 was written to prevent.
+
+So this is a **second, independent spec arriving at the same unstable shape**, having never seen the
+card — ELITEA-2421 (support-assistant attachments) and ELITEA-0500 (chat attachments) reached
+"plant a token, ask for it back" by convergent reasoning. That convergence is the argument for the
+sub-rule: it is the obvious first idea, it is not forbidden by any current rule, and two teams found
+it independently. **Recommend adopting #1664's sub-rule as written.**
+
+Cost of adopting here: one file's contents and one prompt string. The observable is unchanged.
 
 ## Stale correlation keys in ELITEA-0500 (separate defect — flagged, not fixed)
 
@@ -404,15 +500,13 @@ Recommend a `question` card, not a silent fix inside this repair.
 
 ## Questions for a human (I did not guess)
 
-1. ~~**Sign off R1?**~~ — **RESOLVED without a human, by experiment.** 8/8 token present under a
-   corrected oracle, so the assertion is kept and nothing is deleted. No sign-off needed. The only
-   open sub-choice is whether to also add the deterministic `tool_output` frame assertion —
-   **recommend yes** (durable guard if DEV's model narrates differently).
-2. **Fix the shared oracle?** — now load-bearing: this repair KEEPS the token assertion, so it
-   needs a correct settle. Options: (a) fix `wait_for_ai_response` centrally (fixes every chat spec,
-   wide blast radius); (b) land the corrected settle **locally in this spec** first, raise a
-   tech-debt card for the central fix. **Recommend (b)** — proven condition, no suite-wide risk on a
-   single-test repair PR.
+1. ~~**Sign off R1?**~~ — **RESOLVED twice over, no human needed.** The corrected-oracle experiment
+   removed the deletion; canon card **#1664** then replaced the token echo with a comprehension fact.
+   Nothing is deleted and the observable is unchanged, so the preserve-the-nature rail is satisfied
+   without sign-off. **Ask instead:** comment this AFS on **#1664** as its second independent
+   occurrence — I recommend adopting its sub-rule as written.
+2. ~~**Fix the shared oracle?**~~ — **RESOLVED:** corrected settle lands **locally in this spec**
+   (step 8); the suite-wide `wait_for_ai_response` fix is tracked as **#1913**. No open question.
 3. **Back-write ELITEA-0500's two stale `automation_test_id` entries?** — options: (a) drop the two
    missing refs; (b) keep `test_attach_files_button_opens_picker` and author it as new `[Automate]`
    work. **Recommend (a) now + (b) as a follow-up card** — noting the repair's step 2 already
