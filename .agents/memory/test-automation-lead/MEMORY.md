@@ -56,6 +56,7 @@
 - [A park is a hypothesis, not a verdict](a_parked_case_is_a_hypothesis_not_a_verdict.md) — re-test "do not schedule" cases; 2 of 2 dissolved
 - [Non-reproducing gate red → stabilize, not re-run](non_reproducing_gate_red_still_goes_to_stabilize.md) — a re-run buys a green, never a cause
 - ["3 sessions" auto-park can be a spend ceiling](auto_park_3_sessions_can_be_a_spend_ceiling_not_a_real_blocker.md) — check the prior failure signature before trusting the label
+- [Sanctioned-RED is NEVER back-written automated](sanctioned_red_is_never_back_written_automated.md) — hidden green; re-check PRIOR waves too (3×)
 - [Settings backlog (#1398)](settings_area_backlog_1398.md) — 5 waves: 33 automated + 12 sanctioned-RED (NOT automated), 8 blocked
 - [Reproduce locally before accepting an environment-specific framing](environment_specific_framing_needs_a_local_reproduction_first.md) — triage dispatch line
 - [A green CI run can mean zero tests ran](ci_green_can_mean_zero_tests_ran.md) — pytest exits 0 on all-skip; check JUnit skipped vs tests
