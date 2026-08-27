@@ -152,11 +152,12 @@ Product defect
 (OPEN) — a direct toolkit call (no agent) sometimes narrates the tool call as
 text instead of invoking the real backend tool, while the LLM claims success and
 no error surfaces anywhere. It was originally recorded as *non-deterministic*
-(2/5 on `create_file`, 2026-08-03). Re-measured independently this pass, the
+(2/5, 2026-08-03 — an aggregate across **both** triggers, not a per-tool
+`create_file` rate; see the § Authoritative tally below). Re-measured this pass, the
 shape of the defect is different from what that number suggested: it splits
 cleanly by **which tool** is called.
 
-### Re-measurement, 2026-08-27 (analyst, independent)
+### Re-measurement, 2026-08-27 (this analyst's own runs — a SUBSET of the day's tally)
 
 Live local stack (`http://localhost:5173`), every run a **separate pytest
 invocation**, `--reruns 0`, `-p no:cacheprovider`, `HEADLESS=true`. Each run's
@@ -166,8 +167,8 @@ was actually created/deleted in the bucket.
 
 | Trigger | Spec | Result | Wall clock |
 |---|---|---|---|
-| `create_file` — **THIS case's own observable** | `TestDirectToolkitCallCompleteFlow::test_direct_toolkit_call_complete_flow` | **5 GREEN / 0 RED** | 36.18 / 35.62 / 36.65 / 36.00 / 35.63 s |
-| `delete_file` — sibling case ELITEA-2210's observable | `TestDirectToolkitCallDeleteFileChip::test_direct_toolkit_call_delete_file_chip` | **0 GREEN / 2 RED** | 29.58 / 29.80 s |
+| `create_file` — **THIS case's own observable** | `TestDirectToolkitCallCompleteFlow::test_direct_toolkit_call_complete_flow` | **5 GREEN / 0 RED** (analyst's own) | 36.18 / 35.62 / 36.65 / 36.00 / 35.63 s |
+| `delete_file` — sibling case ELITEA-2210's observable | `TestDirectToolkitCallDeleteFileChip::test_direct_toolkit_call_delete_file_chip` | **0 GREEN / 2 RED** (analyst's own) | 29.58 / 29.80 s |
 
 Every one of the 5 green `create_file` runs executed the module's Steps 3, 4 and
 5 — the *hard*, unconditional correct-contract assertions (tool chip visible,
@@ -183,12 +184,31 @@ Both `delete_file` reds carried the *byte-identical ticketed signature*: no
 deleted (`bucket contents` still lists it), and the assistant's own text claims
 success verbatim — e.g. *"The file … has been successfully deleted from bucket …"*.
 
-Corroborating history, same signature, independent sessions:
-`delete_file` **5/5 RED** across 2026-08-19 (3/3, recorded as
-[a comment on #1127](https://github.com/EliteaAI/elitea-testing-public/issues/1127#issuecomment-5342934194))
-plus these 2. `create_file` has now produced **11 consecutive GREEN runs on
-2026-08-27** (the merge-gate owner's 6 + this analyst's independent 5) against
-the 2/5 recorded on 2026-08-03.
+### Authoritative 2026-08-27 tally (all three sessions — gate owner's record)
+
+The table above is only this analyst's own slice. The merge-gate owner holds the
+full tally across all three sessions that ran these specs on 2026-08-27 — every
+run a separate pytest invocation, `--reruns 0 -p no:cacheprovider`, live
+`localhost:5173`. **These are the figures of record; any smaller count elsewhere
+in this file's history was a partial tally, not a contradiction.**
+
+| Trigger | Spec | lead | analyst | implementer | **2026-08-27 total** |
+|---|---|---|---|---|---|
+| `create_file` | `TestDirectToolkitCallCompleteFlow::test_direct_toolkit_call_complete_flow` | 6 GREEN | 5 GREEN | 3 GREEN | **14 GREEN / 0 RED** |
+| `delete_file` | `TestDirectToolkitCallDeleteFileChip::test_direct_toolkit_call_delete_file_chip` | 2 RED | 2 RED | — | **4 RED / 0 GREEN** |
+
+**`delete_file` lifetime: 9 / 9 RED** = 5 on 2026-08-19 (a 3/3 batch, recorded as
+[a comment on #1127](https://github.com/EliteaAI/elitea-testing-public/issues/1127#issuecomment-5342934194),
+plus 2 further) + 4 on 2026-08-27 (2 lead + 2 analyst). Same byte-identical
+signature throughout.
+
+**`create_file` lifetime: deliberately NOT stated as a clean figure.** #1127's
+filed 2026-08-03 evidence records 3 RED occurrences and 2 correct runs, and the
+ticket's own text attributes the correct runs to "real `create_file`/`delete_file`
+backend execution" — i.e. that 2/5 was an **aggregate across both triggers whose
+per-tool attribution is not recoverable** from the ticket. So the only honest
+claim is the dated one: **14 GREEN / 0 RED on 2026-08-27**, measured against an
+earlier, un-splittable 2/5 aggregate.
 
 ### What this means for classification
 
@@ -197,9 +217,9 @@ the 2/5 recorded on 2026-08-03.
   probabilistic defect cannot supply "(a) deterministic — identical failure 3/3"
   — is simply moot here: there is no red to except. `blocked` → `ready-for-automation`.
 - **#1127 still blocks the sibling `delete_file` case (ELITEA-2210).** That
-  class reproduces deterministically (7/7 lifetime) and remains sanctioned-RED
-  under § Merge gate on its own, separately-linked basis. Nothing in this
-  re-classification touches it.
+  class reproduces deterministically — **9 / 9 RED lifetime (5 on 2026-08-19 +
+  4 on 2026-08-27)** — and remains sanctioned-RED under § Merge gate on its own,
+  separately-linked basis. Nothing in this re-classification touches it.
 - **Honest caveats, stated rather than smoothed over:**
   1. The two classes differ in more than the tool name — the `delete_file` class
      also sends a more explicit "execute the tool now" message and depends on a
@@ -207,10 +227,14 @@ the 2/5 recorded on 2026-08-03.
      forceful prompt is the one that fails, so wording does not explain it), but
      it is not an isolated single variable, and this AFS does not claim a root
      cause. Root-causing #1127 belongs on the issue, not here.
-  2. The 2026-08-03 2/5 on `create_file` was real when recorded. Either the
-     platform/model behaviour moved since, or that window was environmental. This
-     re-classification rests on *today's* 11/11, not on a claim that the earlier
-     observation was wrong.
+  2. The 2026-08-03 2/5 was real when recorded, but it is **not** a clean
+     per-tool `create_file` figure: #1127's filed evidence records 3 RED and 2
+     correct runs and attributes the correct ones to "real
+     `create_file`/`delete_file` backend execution" — an aggregate across both
+     triggers whose per-tool attribution is not recoverable from the ticket.
+     Either the platform/model behaviour moved since, or that window was
+     environmental. This re-classification rests on *today's* **14 GREEN / 0 RED
+     on `create_file`**, not on a claim that the earlier observation was wrong.
   3. The module's #1127 classification logic **stays exactly as-is** and is the
      safety net for caveat 2: if #1127 ever fires on `create_file` again, the test
      goes RED with a classified, backend-verified message rather than silently

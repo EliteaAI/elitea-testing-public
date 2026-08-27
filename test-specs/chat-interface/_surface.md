@@ -4002,7 +4002,8 @@ is synchronised immediately.
 - **2209's target is currently gate-excluded** (2215's test carries a soft-asserted,
   confirmed-non-deterministic known defect, `elitea-testing-public#1127` — see
   ⚠️ **SUPERSEDED 2026-08-27 — see § #1127 is TOOL-DEPENDENT at the end of this digest:
-  the `create_file` path (2215's own) is now 11/11 green and NO LONGER gate-excluded;
+  the `create_file` path (2215's own) is now 14 GREEN / 0 RED (2026-08-27, three
+  independent sessions) and NO LONGER gate-excluded;
   only the `delete_file` sibling class still reproduces.** Original note follows —
   `.agents/testing.md` § Merge gate "Unconfirmed" history and the covering AFS's
   fix-round-2 note). The new participants-panel assertion must be placed BEFORE the
@@ -4498,18 +4499,24 @@ not an illustration.
 
 ## #1127 is TOOL-DEPENDENT, not probabilistic — direct-toolkit-call flow (2026-08-27)
 - **What changed:** `elitea-testing-public#1127` ("direct toolkit call narrates the tool
-  call instead of executing it") was on file as *non-deterministic, 2/5 on `create_file`*
-  (2026-08-03). An independent live re-measurement this date shows it splits by **which
-  tool is called**, not by luck.
+  call instead of executing it") was on file as *non-deterministic, 2/5* (2026-08-03) —
+  a figure the ticket records as 3 RED + 2 correct runs and attributes to "real
+  `create_file`/`delete_file` backend execution", i.e. an **aggregate across both triggers
+  whose per-tool attribution is not recoverable** from the ticket. Do NOT quote it as a
+  `create_file` lifetime rate. An independent live re-measurement this date shows the
+  behaviour splits by **which tool is called**, not by luck.
 - **Measured, all `--reruns 0`, separate pytest invocations, localhost, backend-verified
   via `ArtifactAPI.list_bucket_files()` (never DOM-only):**
   - `create_file` — `TestDirectToolkitCallCompleteFlow::test_direct_toolkit_call_complete_flow`
-    — **5/5 GREEN** (36.18 / 35.62 / 36.65 / 36.00 / 35.63 s). With the merge-gate owner's
-    own 6/6 the same day: **11 consecutive greens**.
+    — this digest author's own **5/5 GREEN** (36.18 / 35.62 / 36.65 / 36.00 / 35.63 s).
+    **Authoritative 2026-08-27 tally (gate owner, all three sessions): lead 6 + analyst 5
+    + implementer 3 = 14 GREEN / 0 RED.** No clean per-tool *lifetime* figure is stated —
+    see the aggregate caveat above.
   - `delete_file` — `TestDirectToolkitCallDeleteFileChip::test_direct_toolkit_call_delete_file_chip`
-    — **0/2 GREEN**, both the byte-identical ticketed signature (no `chat-answer-tool-chip`,
-    file still present in the bucket, LLM claims success verbatim). With 2026-08-19's 3/3:
-    **7/7 RED lifetime.**
+    — this digest author's own **0/2 GREEN**, both the byte-identical ticketed signature (no
+    `chat-answer-tool-chip`, file still present in the bucket, LLM claims success verbatim).
+    **Authoritative 2026-08-27 tally: lead 2 RED + analyst 2 RED = 4 RED / 0 GREEN. With
+    2026-08-19's 5 RED (a 3/3 batch plus 2 further): 9 / 9 RED lifetime.**
 - **Consequence for anyone composing a gate:** `TestDirectToolkitCallCompleteFlow` is a
   plain-green-gate spec now — the `GATE_EXCLUDED_REASON` constant in
   `automation/tests/ui/chat/test_direct_toolkit_call_complete_flow.py` is stale for THAT
