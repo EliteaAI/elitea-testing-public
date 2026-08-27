@@ -566,22 +566,21 @@ escalated rather than specced here. Sketch of the fix, for whoever picks it up:
 
 Recommend a `question` card, not a silent fix inside this repair.
 
-## Questions for a human (I did not guess)
+## Questions — one open
 
-1. ~~**Sign off R1?**~~ — **RESOLVED twice over, no human needed.** The corrected-oracle experiment
-   removed the deletion; canon card **#1664** then replaced the token echo with a comprehension fact.
-   Nothing is deleted and the observable is unchanged, so the preserve-the-nature rail is satisfied
-   without sign-off. **Ask instead:** comment this AFS on **#1664** as its second independent
-   occurrence — I recommend adopting its sub-rule as written.
-2. ~~**Fix the shared oracle?**~~ — **RESOLVED:** corrected settle lands **locally in this spec**
-   (step 8); the suite-wide `wait_for_ai_response` fix is tracked as **#1913**. No open question.
-3. **Back-write ELITEA-0500's two stale `automation_test_id` entries?** — options: (a) drop the two
-   missing refs; (b) keep `test_attach_files_button_opens_picker` and author it as new `[Automate]`
-   work. **Recommend (a) now + (b) as a follow-up card** — noting the repair's step 2 already
-   restores Step-1 verification, so (b) is no longer urgent.
-4. **AFS directory.** The dispatch said `test-specs/chat/`; the project's actual directory (145 AFS
-   files, matching the case's `module: chat-interface`) is `test-specs/chat-interface/`. I followed
-   the project convention. Flagging in case `chat/` was deliberate.
+1. ~~Sign off R1~~ · ~~Fix the shared oracle~~ · ~~AFS directory~~ — **all closed.** The deletion was
+   retired by the corrected-oracle experiment, then the oracle *shape* was settled by canon **#1664**
+   (lead posted the corroboration **and** a correction retracting the guardrail-refusal misreading —
+   our red is H1 narration, now on the record). Suite-wide oracle fix filed as **#1913**.
+   `test-specs/chat-interface/` accepted.
+
+2. **OPEN — back-write ELITEA-0500's two stale `automation_test_id` entries?**
+   `TestContextAndSettings::test_model_settings_menu` and
+   `TestConversationUIElements::test_attach_files_button_opens_picker` reference tests that do not
+   exist, and both break TMS correlation **silently**. Options: (a) drop the two missing refs;
+   (b) additionally re-author `test_attach_files_button_opens_picker` as new `[Automate]` work.
+   **Recommend (a) now + (b) as a follow-up card** — this repair's step 2 already restores Step-1
+   verification, so (b) is no longer urgent. Orchestrator-owned; analysts never write this field.
 
 ## Evidence (on disk — upload + embed per § screenshot evidence; I did not upload)
 
