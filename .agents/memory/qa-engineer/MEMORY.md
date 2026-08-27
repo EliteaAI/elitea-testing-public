@@ -39,4 +39,4 @@
 - [UI/flow assumption gate](ui_flow_assumption_gate.md) — test fails, assume UI changed? Verify vs case text first, wait if unconfirmed
 - [Tests own their preconditions](test_owns_its_own_preconditions.md) — borrowed pre-existing data = green when dirty, red when clean
 - [CI login failure becomes SKIP](ci_login_failure_becomes_skip.md) — a green dev-stable job can mean the test never ran; grep the log
-- [Rendered timestamps = server UTC](rendered_timestamps_are_server_utc_not_browser_local.md) — never assert vs datetime.now()
+- [Rendered dates = server UTC](rendered_timestamps_are_server_utc_not_browser_local.md) — never assert vs datetime.now
