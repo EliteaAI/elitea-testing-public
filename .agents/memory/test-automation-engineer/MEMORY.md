@@ -61,3 +61,4 @@
 - [Optional oracle field disarms the gate for rows lacking it](an_optional_config_field_can_disarm_a_gate_for_one_row.md) — pair it with pytest.skip + a static "every row classifiable" invariant
 - [Version sort: no pinned tier](version_dropdown_sort_lost_its_pinned_tier.md) — EliteaUI #857: date desc, base last
 - [Rendered timestamps are server UTC](rendered_timestamps_are_server_utc_not_local.md) — assert vs API created_at
+- [Stale vite modules on OneDrive](vite_dev_server_serves_stale_modules_on_onedrive.md) — new testid missing? restart dev server

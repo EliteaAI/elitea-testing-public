@@ -101,8 +101,22 @@
      `SimpleSearchBar` is a plain MUI `InputBase` with no auto-blur and `Control+a`
      worked reliably here.
 
+5b. **(Axis 2, shipped as spec Step 5 — the clear step above becomes spec Step 6.)**
+   Type a deliberately non-matching term (`probe` + a nonsense suffix).
+   - **Verify**: `token_row` count == 0, `personal-tokens-table-empty-message` reads
+     exactly `No tokens`, `personal-token-column-header-name` / `-expires` have
+     `to_have_count(0)` (they unmount), and the search box is **still visible** — this is
+     the no-match branch of the populated page, not the zero-tokens `EmptyStatePage`.
+
 6. **Verify** no unexpected console errors (project standard;
    `automation/utils/console_errors.collect_console_errors()`).
+
+> **Implementation note (2026-08-27):** `probe` is derived by walking the observed names
+> and taking the first 3-char prefix that filters to a **proper, non-empty subset**
+> (`_pick_probe()` in the spec), rather than unconditionally `names_all[0][:3]` — so the
+> Axis-2 strict-inequality assertion (`len(expected) < count_all`) is achievable against
+> whatever data exists, and fails loudly with a named reason if no such prefix exists.
+> Live run picked `for` → `for_ui_tests`.
 
 ## Handles Reference
 
@@ -112,7 +126,7 @@
 | Token row | `token-row` | on-`automation/testids` | existing field |
 | Row name cell | `token-name-cell` | on-`automation/testids` | existing `get_row_name_cell()` |
 | Column headers (for the no-match absence assertion) | `personal-token-column-header-*` | on-`automation/testids` | existing fields |
-| No-match empty message | **testid needed: `personal-tokens-table-empty-message`** | **needs-adding** | only required for the Axis-2 no-match step — see below |
+| No-match empty message | `personal-tokens-table-empty-message` | **ADDED during implementation** — EliteaAI/EliteaUI@531fd77a on `automation/testids` (human cherry-picks to `main`) | `emptyMessageTestId` caller-supplied prop on the shared `GridTableContainer`, passed at the `TokensTable.jsx` call site — the prop-thread option below, taken |
 
 ### The one new testid (Axis-2 only)
 `GridTableContainer` (`src/[fsd]/entities/grid-table/ui/GridTableContainer.jsx:37-45`)
@@ -129,6 +143,14 @@ If the implementer would rather not touch a shared component for a beyond-case
 assertion, the fallback is to drop the *message text* assertion and keep the structural
 half of the no-match step (row count 0 + column headers absent), which needs **no new
 testid**. Escalate to the lead rather than substituting a role/text handle.
+
+> **Implementation outcome (test-automation-engineer, 2026-08-27):** the prop-thread was
+> taken, not the fallback — EliteaAI/EliteaUI@531fd77a adds `emptyMessageTestId` to
+> `GridTableContainer` and wires `personal-tokens-table-empty-message` at the
+> `TokensTable.jsx` call site. Additive prop spread onto the existing `<Typography>`:
+> no DOM node, no hook, no state change (zero-functional-impact rule satisfied). The
+> spec asserts both halves of the no-match step — the message text AND the structural
+> half (0 rows, column headers unmounted, search box still mounted).
 
 ## Implementer notes
 
