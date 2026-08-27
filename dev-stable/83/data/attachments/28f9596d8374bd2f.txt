@@ -1,0 +1,1 @@
+WARNING  elitea.pages.agent_detail:agent_detail_page.py:3960 select_version_by_name: VERSION trigger/id/URL never agreed on 'v1-release' post-reload (attempt 1/2) — retrying the full select+reload cycle (issue #614 escalation)
