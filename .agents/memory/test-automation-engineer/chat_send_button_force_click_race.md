@@ -2,6 +2,7 @@
 name: Chat send-button force-click race after fast composer population
 description: chat-send-button force=True click can silently no-op right after a starter/programmatic setValue() populates the composer — use a plain (non-force) click there
 type: feedback
+updated: 2026-08-27
 ---
 
 ## What happened (ELITEA-2093, 2026-08-14)
@@ -56,3 +57,38 @@ in the failure screenshot). Plain `.click()` fixed it, same as recurrence 1.
 Two independent flows now confirmed — treat "starter tile click then Send"
 as the trigger pattern generally, not just the Agent Hub modal's specific
 `setTimeout` combo.
+
+**Recurrence 3 (ELITEA-1886 / issue #1812, 2026-08-27) — the first one that
+reached CI red, and the first with a DEV-only signature.** Third distinct flow:
+the **agent-detail embedded chat** (`/agents/all/{id}`), where `ChatBox.jsx`'s
+`onSendConversationStarter` populates the composer through an imperative ref
+(`chatInput.current.setValue(starter)` → `UserInput.jsx`). Two things this
+occurrence adds that recurrences 1-2 did not show:
+
+- **A local gate structurally cannot catch this class.** The spec was 5/5 green
+  on localhost — the button settles in ~2 ms there, so the race window does not
+  exist — and failed only on `dev.elitea.ai` (GHA run 32931571484) with
+  `assert 0 > 0` after burning the full 60 s AI timeout. Count ZERO means not
+  even the user's own message landed. **Never report a local green as evidence
+  that a fix in this class works**; it proves non-regression only. The
+  corollary: a `force=True` send that passes locally today is not safe, it is
+  merely untested against the environment where the window is wide.
+- **Wrap the Send click in its own response oracle**, not just a plain click:
+  ```python
+  expect(page_obj.chat_send_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
+  with page.expect_response(_is_send_response, timeout=SAVE_RESPONSE_TIMEOUT):
+      page_obj.chat_send_button.click()
+  ```
+  A silent no-op then fails in ~15 s **naming the POST that never fired**,
+  instead of vacuously burning 60 s and reporting a meaningless message-count
+  assertion. This diagnostic half is worth more than the click change itself
+  when the next recurrence appears — it converts an unreadable timeout into a
+  statement of what the app did not do.
+
+Canon card **#1849** now proposes making the non-force Send the written rule,
+plus a reviewer grep and a sweep — 5 other specs and `pages/chat_page.py:1891`
+still force-click a send button.
+
+Related: [[embedded_chat_response_oracle_is_inert]] — same case, same Step 8. A
+silent no-op send *plus* an inert response oracle is how a fully broken step
+still reported green locally.

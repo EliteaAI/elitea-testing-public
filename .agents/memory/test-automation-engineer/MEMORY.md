@@ -145,3 +145,5 @@
 - [Playwright sync events need a Playwright call](playwright_sync_events_need_a_playwright_call_to_dispatch.md) — a time.sleep poll on page.on() data sees nothing; false RED
 - [Wrapped prose claim hides from a phrase grep](wrapped_prose_claim_hides_from_a_phrase_grep.md) — sweep prose claims with a fragment grep + whitespace-collapsed pass
 - [A test owns its preconditions](test_owns_its_preconditions.md) — create every entity the case needs; borrowed data passes dirty, fails clean
+- [Embedded-chat response oracle is inert](embedded_chat_response_oracle_is_inert.md) — `response_text != ""` passes on the loading placeholder; assert `skill-test-last-response`
+- [Memory commits belong on automation/base](memory_commits_belong_on_automation_base.md) — a main-cut repair branch sees TRUNCATED memory; commit memory on base instead
