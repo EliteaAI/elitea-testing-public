@@ -110,3 +110,4 @@
 - [Product change vs product bug](a_product_change_is_not_a_product_bug.md) — 4 tells; wrong call = false red
 - [Verify vs main, not the tree](verify_handles_and_values_against_main_not_the_working_tree.md) — tree = testids branch
 - [Deployed-env-only failures need a GHA run, not a local gate](deployed_env_only_failures_need_a_gha_run_not_a_local_gate.md) — APP_PREFIX class is green locally by construction
+- [Never bulk-rebuild the TMS index](tms_full_index_rebuild_is_unsafe.md) — `build_index` reported 2789 vs 3073 actual; edit both index files surgically
