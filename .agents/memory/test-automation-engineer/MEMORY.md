@@ -84,3 +84,4 @@
 - [JS toFixed vs Python :.1f tie rounding](js_tofixed_vs_python_format_tie_rounding.md) — porting a JS formatter with an f-string diverges on exact ties
 - [Sweep siblings after every review finding](sweep_siblings_after_every_review_finding.md) — a finding names one instance; the class is usually replicated
 - [best_effort in finally downgrades the success path](best_effort_in_finally_downgrades_the_success_path.md) — split except/else; finally swallows green-path restore failures
+- [Vite serves a stale module on the OneDrive path](vite_watcher_onedrive_stale_module.md) — missing testid? curl the served module, restart the dev server

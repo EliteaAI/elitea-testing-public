@@ -151,18 +151,23 @@ Voice select, either slider, or `voice-preview-button`. Fresh spec.
 | Section wrapper | `voice-personalization-section` | **on-main ✓** (also on `automation/testids`) |
 | Section header | `voice-personalization-section-header` | on `automation/testids` only (awaiting human promotion to main) |
 | Preview Voice button | `voice-preview-button` | **on-main ✓** |
-| Voice select | `voice-personalization-voice-select` | **testid needed** |
+| Voice select | `voice-personalization-voice-select` | **added** EliteaAI/EliteaUI@2d5f38d8 (`automation/testids`; not yet on `main`) |
 | Voice select display | `voice-personalization-voice-select-combobox` | **derived automatically** by `SingleSelect` from the `data-testid` above (`SingleSelect.jsx:82,661-662`) — no separate add |
 | Voice option row | `[data-testid="select-option-{}"]` (class constant, `.format(value)`) | **on-main ✓** — shared generic testid from `SingleSelectMenuItem.jsx:416` |
 | Option-row collection | `[data-testid^="select-option-"][data-selected]` (class constant) | as above |
-| Speed slider root | `voice-personalization-speed-slider` | **testid needed** |
-| Speed slider input | `voice-personalization-speed-slider-input` | **testid needed** |
-| Speed slider thumb | `voice-personalization-speed-slider-thumb` | **testid needed** |
-| Volume slider root | `voice-personalization-volume-slider` | **testid needed** |
-| Volume slider input | `voice-personalization-volume-slider-input` | **testid needed** |
-| Volume slider thumb | `voice-personalization-volume-slider-thumb` | **testid needed** |
+| Speed slider root | `voice-personalization-speed-slider` | **added** EliteaAI/EliteaUI@2d5f38d8 (`automation/testids`; not yet on `main`) |
+| Speed slider input | `voice-personalization-speed-slider-input` | **added** EliteaAI/EliteaUI@2d5f38d8 (`automation/testids`; not yet on `main`) |
+| Speed slider thumb | `voice-personalization-speed-slider-thumb` | **added** EliteaAI/EliteaUI@2d5f38d8 (`automation/testids`; not yet on `main`) |
+| Volume slider root | `voice-personalization-volume-slider` | **added** EliteaAI/EliteaUI@2d5f38d8 (`automation/testids`; not yet on `main`) |
+| Volume slider input | `voice-personalization-volume-slider-input` | **added** EliteaAI/EliteaUI@2d5f38d8 (`automation/testids`; not yet on `main`) |
+| Volume slider thumb | `voice-personalization-volume-slider-thumb` | **added** EliteaAI/EliteaUI@2d5f38d8 (`automation/testids`; not yet on `main`) |
 
 ### How to add the six slider testids + the select testid (zero-functional-impact)
+
+> **Amended during implementation (2026-08-29):** all seven were added exactly as
+> described below — pure prop additions, 19 added lines, 0 removals, no new DOM node
+> and no new hook (EliteaAI/EliteaUI@2d5f38d8). The `slotProps.input` / `slotProps.thumb`
+> forwarding was verified live on MUI v7.
 
 All in `EliteaUI` `src/[fsd]/features/chat/voice-config/ui/VoiceConfigControls.jsx` —
 **pure prop/attribute additions, no new DOM node, no new hook** (`add-data-testid` § Step 5.5):

@@ -413,3 +413,70 @@ reload.
 on it — `browser_navigate` times out at 60 s and every subsequent tool call errors with
 *"does not handle the modal state"* until `browser_handle_dialog` runs. Cost one timeout
 this session; not a product issue and not a spec issue, purely an interactive-debugging trap.
+
+---
+
+## Resolved/added during ELITEA-2385/2386/2388/2389 implementation (2026-08-29, test-automation-engineer)
+
+**The controls now have testids** — the "needs adding" rows above are closed.
+EliteaAI/EliteaUI@2d5f38d8 (`automation/testids`, not yet on `main`) added, as pure prop
+additions (19 added lines, 0 removals, no new DOM node, no new hook):
+`voice-personalization-voice-select` (+ the `-combobox` element `SingleSelect` derives),
+`voice-personalization-{speed,volume}-slider` and each one's `-input` / `-thumb` via
+`slotProps`, `sound-notifications-toggle`,
+`sound-notifications-volume-slider(-input|-thumb)` and
+`sound-notifications-preview-button`. EliteaAI/EliteaUI@e087c0df then added
+`sound-notifications-toggle-input`.
+
+### ⚠️ MUI v7 `Switch`: `inputProps` is DEAD — the hidden checkbox needs `slotProps.input`
+
+Costed one implement-verify cycle. `<Switch.BaseSwitch inputProps={{ 'data-testid': … }} />`
+renders **without** the attribute, silently. `Switch.js` builds its own
+`slotProps={{ input: mergeSlotProps(slotProps.input, { role: 'switch' }) }}` and hands that to
+`SwitchBase`, whose `{ input: inputProps, ...slotProps }` merge lets the constructed object
+win — so an `inputProps` coming through `...other` is always overridden. And because
+`BaseSwitch` consumes its own `slotProps` prop and spreads only `slotProps.switch` onto the
+MUI `Switch`, the compliant call-site shape is one level in:
+
+```jsx
+<Switch.BaseSwitch
+  data-testid="sound-notifications-toggle"
+  slotProps={{ switch: { slotProps: { input: { 'data-testid': 'sound-notifications-toggle-input' } } } }}
+/>
+```
+
+`data-testid` itself still lands on the `SwitchBase` **span** via `restProps` — so the pair
+is: span = click target, input = `to_be_checked()` target. (`Slider`'s `slotProps.input` /
+`slotProps.thumb` work first try; only `Switch` has this trap.)
+
+### ⚠️ Vite's file watcher does NOT fire for edits under the OneDrive path — restart the dev server
+
+Also costed a cycle, and it looks exactly like "my testid didn't work". After editing
+`../EliteaUI/src/**`, the file on disk was correct while `curl`ing the module from
+`localhost:5173` returned the **old** transform, `touch` did not help, and the page showed no
+new testid. `npm run dev` restart fixed it immediately. **When a just-added testid is missing
+from the DOM, verify the served module first** —
+`curl -s -g "http://localhost:5173/src/[fsd]/path/To.jsx" | grep <testid>` — before
+suspecting the JSX. A restart costs ~25 s; re-deriving the JSX costs far more.
+
+### Voice select renders a ZERO-WIDTH SPACE while blank (#1965)
+
+The blank display is not an empty string in the DOM. Playwright's
+`expect(combobox).not_to_have_text("")` still discriminates correctly (verified: it fires on
+the blank state), so that is the assertion shape for #1965 — but a raw
+`inner_text() == ""` comparison would NOT match.
+
+### `open_settings_tab` is a RELOAD, `go_to_settings_tab` is the SPA route change
+
+`SettingsPersonalizationPage.open_settings_tab()` begins with `navigate(APP_ROOT_PATH)`, i.e.
+a full document navigation, then clicks through the sidebar. Any case whose subject is
+*navigate away and back within the SPA* (ELITEA-2388/2389 step 3) must use
+`go_to_settings_tab()`, which clicks the drawer item from the settings route already open.
+
+### Confirmed live behaviour of the two sliders (pytest, headless)
+
+Drag to a computed x on the slider **root**'s bounding box (y from the thumb — the root's box
+also spans the mark-label row) lands exactly on the step grid: speed `1.5` /
+`aria-valuenow="1.5"`, volume `0.5`. The `aria-valuenow` assertion is the only one that can
+catch defect #1966, because `input.value` is DOM-normalised.
+
