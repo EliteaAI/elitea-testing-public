@@ -37,3 +37,4 @@
 - [Montserrat font 404 is known-noisy](known_noisy_resource_montserrat_font_404.md) — app-wide CDN flake; caught 4× only by lead's own gate; filter idiom exists
 - [Cherry-pick clean units off a broken trunk](cherry_pick_clean_units_off_broken_trunk.md) — one bad unit doesn't sink the whole batch; land the rest alone
 - [2 Workflow hard-fails on one batch = switch to direct dispatch](workflow_combined_route_unreliable_switch_to_direct_dispatch.md) — combined-route + retry clusters unreliable
+- [Repair of a transient needs a negative control](repair_of_a_transient_needs_a_negative_control.md) — green gate proves nothing; demand it in the dispatch
