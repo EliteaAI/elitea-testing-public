@@ -148,6 +148,13 @@ ANALYTICS_TOOLS_QUERY_URL_SUBSTRING = "/elitea_core/analytics_tools/prompt_lib/"
 # — `AnalyticsContainer.jsx`'s `datePickerCommonProps`).
 PICKER_DATETIME_FORMAT = "%d/%m/%Y %H:%M"
 
+# Analytics aggregations over a WIDE range are genuinely slow on a busy project
+# — a 30/90-day query regularly needs far longer than NAVIGATION_TIMEOUT
+# (measured 2026-08-28: 15s was not enough for `Last 30d`/`Last 90d` while
+# `Last 24h`/`Last 7d` answered in a few seconds). Waits on a range-changing
+# query therefore use their own, longer budget.
+DATA_QUERY_TIMEOUT = 60_000
+
 
 class AnalyticsPage(BasePage):
     """Settings → Analytics page (header, date filter bar, tab bar, loading state)."""
@@ -957,7 +964,7 @@ class AnalyticsPage(BasePage):
                 pressed.append(label)
         return pressed
 
-    def click_preset(self, preset_locator, surface: str = "overview", timeout: int = NAVIGATION_TIMEOUT):
+    def click_preset(self, preset_locator, surface: str = "overview", timeout: int = DATA_QUERY_TIMEOUT):
         """Click a date preset and return the analytics response it triggers.
 
         *surface* selects which endpoint to wait on ("overview", "users",
@@ -978,8 +985,8 @@ class AnalyticsPage(BasePage):
         that a request completed.
         """
         if self.loading_indicator.count() > 0:
-            self.loading_indicator.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
-        self.overview_kpi_row.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+            self.loading_indicator.wait_for(state="hidden", timeout=DATA_QUERY_TIMEOUT)
+        self.overview_kpi_row.wait_for(state="visible", timeout=DATA_QUERY_TIMEOUT)
 
     # -- picker popper -------------------------------------------------
     def _popper(self, field: str):
@@ -1004,12 +1011,21 @@ class AnalyticsPage(BasePage):
         #579-scoped raw handle: MUI renders day cells as `PickersDay` buttons
         with no testid hook; scoped inside the popper's app testid and matched
         on exact day text.
+
+        Waits for the match to settle to exactly ONE element: MUI slides
+        between month grids and keeps the outgoing grid mounted for the
+        duration of the transition, so right after a month change the same day
+        number legitimately resolves to 2-4 nodes (measured live: 4 during a
+        3-month walk back). This is a condition wait on the transition
+        finishing, not a sleep.
         """
-        return (
+        cell = (
             self._popper(field)
             .locator(self.PICKER_DAY_CELL)
             .filter(has_text=re.compile(rf"^{day}$"))
         )
+        expect(cell).to_have_count(1, timeout=UI_ELEMENT_TIMEOUT)
+        return cell
 
     def picker_month_nav(self, field: str, direction: str):
         """Previous/next-month arrow of the open picker (#579-scoped raw handle)."""
@@ -1051,7 +1067,7 @@ class AnalyticsPage(BasePage):
             f"'Previous month' clicks (last shown: {self.get_picker_month_label(field)!r})"
         )
 
-    def select_picker_day(self, field: str, day: int, surface: str = "overview", timeout: int = NAVIGATION_TIMEOUT):
+    def select_picker_day(self, field: str, day: int, surface: str = "overview", timeout: int = DATA_QUERY_TIMEOUT):
         """Click a day cell and return the analytics response it triggers.
 
         The picker's `onChange` fires on the day click itself — **not** on
@@ -1096,7 +1112,9 @@ class AnalyticsPage(BasePage):
         never a tick-per-day count.
         """
         ticks = self.overview_daily_chart_container.locator(self.CHART_X_AXIS_TICK)
-        return [t.strip() for t in ticks.all_inner_texts()]
+        # `all_inner_texts()` yields None for SVG <text> nodes (no innerText on
+        # SVG elements) — textContent is the correct read here.
+        return [t.strip() for t in ticks.all_text_contents()]
 
     def get_leaderboard_row_count(self) -> int:
         """Rendered "Top 5 AI Adopters" rows (0 when the empty branch shows)."""
@@ -1111,7 +1129,7 @@ class AnalyticsPage(BasePage):
         return self.overview_model_usage_rows.count()
 
     # -- Tools tab -----------------------------------------------------
-    def open_tools_tab(self, timeout: int = NAVIGATION_TIMEOUT):
+    def open_tools_tab(self, timeout: int = DATA_QUERY_TIMEOUT):
         """Click the Tools tab, wait for its data query, return the response."""
         with self.page.expect_response(self._is_analytics_tools_query_response, timeout=timeout) as info:
             self.tab_tools.click()
@@ -1120,7 +1138,7 @@ class AnalyticsPage(BasePage):
             self.tools_loading_indicator.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
         return info.value
 
-    def open_tab_awaiting(self, tab_locator, surface: str, timeout: int = NAVIGATION_TIMEOUT):
+    def open_tab_awaiting(self, tab_locator, surface: str, timeout: int = DATA_QUERY_TIMEOUT):
         """Click *tab_locator* and return the response of *surface*'s query.
 
         Additive sibling of `open_users_tab()`/`open_agents_pipelines_tab()`
