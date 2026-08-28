@@ -160,3 +160,103 @@ no new hook (EliteaAI/EliteaUI@fa505e37, plus EliteaAI/EliteaUI@36733706 for the
   that is a 2-second check that distinguishes a stale watcher from a real locator bug (this
   is the sharper form of the "HMR lag" note in `_surface/profile-and-drawer.md`: the fix is
   a server restart, not a re-run).
+
+## `/settings/ai-personality` — deeper inventory (settings-w08 cluster ELITEA-2381/2382/2383/2384, 2026-08-29)
+
+Confirmed live this session (qa-engineer analyst). Extends the `/settings/ai-personality`
+section above; nothing there is superseded.
+
+### The persona option list — exactly SEVEN, and the count is part of the contract
+
+`Default persona` renders 7 `li[role="option"]` rows, DOM order below. Source of truth
+`PERSONA_OPTIONS`, `src/common/constants.js:1120-1132`. Several TMS cases say "six" —
+that is case-text drift (clarification **#1963**), not a product bug.
+
+| # | testid | value | Label | Description |
+|---|---|---|---|---|
+| 1 | `select-option-generic` | `generic` | Generic | Balanced, professional assistant |
+| 2 | `select-option-qa` | `qa` | QA | Precise, technical, testing-focused |
+| 3 | `select-option-nerdy` | `nerdy` | Nerdy | Technical deep-dives, detailed explanations |
+| 4 | `select-option-quirky` | `quirky` | Quirky | Creative, playful, thinking outside the box |
+| 5 | `select-option-cynical` | `cynical` | Cynical | Skeptical, challenges assumptions |
+| 6 | `select-option-none` | `none` | None | No personality overlay applied |
+| 7 | `select-option-bare` | `bare` | Bare | No Elitea identity — only your instructions plus tool-required guidance |
+
+The currently-selected row carries `aria-selected="true"`. For a count/order assertion use
+an attribute-prefix class constant (`'[data-testid^="select-option-"]'`) — still a literal
+`[data-testid=` selector, so the mechanical grep passes. Never `li[role="option"]`.
+
+### `User instructions` is a PER-PERSONA map, not one global field
+
+`AIPersonalityPersonalization.jsx` writes `personality_instructions.<persona>`; the textarea
+renders only the slot of the currently selected persona, and the whole field is **absent
+from the DOM when the persona is `none`** (`values.persona !== 'none'` guard). Server shape:
+
+```json
+"personality_instructions": {"bare":"","cynical":"","generic":"","nerdy":"…","none":"","qa":"","quirky":""}
+```
+
+⇒ **any spec that types here must pin the persona first and read back under the same
+persona**, and teardown must restore BOTH the persona and the slot's text. Verified live:
+text saved under `Nerdy` read back empty after switching to `Quirky`, and reappeared on
+switching back.
+
+### Two different autosave triggers in ONE accordion
+
+- **Persona select — saves on SELECTION.** `handlePersonaChange` calls `onAutoSaveRequested`
+  directly, so `PUT /api/v2/social/author/` → 200 fires immediately; no outside click needed.
+  A case step saying "click outside to trigger autosave" for this control is a harmless no-op.
+- **User instructions textarea — saves on BLUR.** `handleInstructionsChange` only calls
+  `setFieldValue`; the write comes from `AIPersonalityFormContent`'s
+  `useFormikAutoSaveOnBlur` wrapper. Blur really is the trigger here.
+
+⚠️ **Do not blur onto the accordion header** — clicking `Persona Management` collapses the
+section (`aria-expanded` → `false`, confirmed live). Pick a neutral node inside
+`settings-content`.
+
+### ONE `PUT /api/v2/social/author/` carries BOTH structures
+
+The author payload holds `personalization.{persona,personality_instructions,…}` **and**
+`default_context_management.{enabled,max_context_tokens,preserve_recent_messages}` **and**
+`default_summarization.*`. Verified live: saving a persona while the context-management
+toggle was OFF returned 200 and left `default_context_management.enabled: false` intact.
+That shared payload is the real independence risk ELITEA-2383 points at — and the reason a
+personality spec's teardown can silently clobber a context-management spec's baseline.
+
+### `context-management-toggle`: the testid is on the SwitchBase `<span>`, not the input
+
+`document.querySelector('[data-testid="context-management-toggle"]').tagName === "SPAN"`
+(`MuiSwitch-switchBase`). Read `checked` from the `<input type="checkbox">` **inside** it.
+Playwright's `.check()`/`.is_checked()` on the span will not do what you expect.
+
+### A conversation SNAPSHOTS the persona at creation — `meta.persona`
+
+There is **no per-conversation personality indicator in the UI** (`meta.context_strategy` is
+the only conversation meta the front end consumes). The record carries it though, on both
+endpoints the normal user path already hits:
+
+- `POST /api/v2/elitea_core/conversations/prompt_lib/<project>` → **201**, on sending the
+  first message
+- `GET /api/v2/elitea_core/conversation/prompt_lib/<project>/<id>` → **200**, on opening one
+
+Both return `meta.persona` plus a **top-level `instructions`** string already resolved from
+that persona's slot. Verified live: conv `9871` created under `Quirky` → `"quirky"` / `""`;
+default then moved to `Nerdy` (slot held text); re-opening `9871` still read `"quirky"` /
+`""`; conv `9872` created after → `"nerdy"` / the marker text. **This is the deterministic
+observable for any "settings apply to new conversations only" case involving personality** —
+no LLM-tone judgment required. The 201 lands before the model answers, so such a spec never
+waits on an AI response.
+
+⚠️ **`chat-send-button` is pointer-intercepted on the fresh `/chat` view** — a click times
+out with `<div class="MuiBox-root css-15msj7j"> … intercepts pointer events`. Send with
+**Enter** (`ChatPage.send_message(text, use_enter=True)`).
+
+ℹ️ The project's conversation list still renders **folders only, zero
+`chat-conversation-item-*` rows** (unchanged since ELITEA-2390) — no "existing conversation"
+can be assumed; a spec must create its own.
+
+### Console-error map — unchanged, re-confirmed
+
+`/settings/ai-personality` logs exactly **one** error per load, the known **#1771**
+`disableUnderline` React warning. `/settings/memory` the same. `/settings/profile` none.
+Filter by that exact fragment; anything broader is masking.
