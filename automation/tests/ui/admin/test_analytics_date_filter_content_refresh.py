@@ -338,7 +338,7 @@ class TestAnalyticsTabContentRefresh:
                 f"{len(charted)} charted series"
             )
             expected_names = [row["tool_name"] for row in charted]
-            ticks = analytics_page.get_tools_chart_tick_labels()
+            ticks = analytics_page.get_tools_chart_x_axis_labels()
             logger.info(
                 "%s — Most Popular Tools: %d charted rows, rendered ticks %s",
                 label, len(charted), ticks,
@@ -431,7 +431,9 @@ class TestAnalyticsTabContentRefresh:
                 "Step 6b — Repeat for the Tools tab: it loads under Last 24h and re-fetches "
                 "when the preset switches to Last 30d"
             ):
-                tools_24h = analytics_page.open_tools_tab()
+                tools_24h = analytics_page.open_tab_awaiting(analytics_page.tab_tools, "tools")
+                analytics_page.tools_table_header.wait_for(state="visible")
+                analytics_page.wait_for_tab_settled("tools")
                 assert analytics_page.tools_details_title.inner_text().strip() == "Tool Details"
                 assert_table_matches(
                     tools_24h,

@@ -180,7 +180,7 @@ def test_2318_spec_asserts_the_tools_chart_data():
     same reasoning as guard 4 — so the tick reader is what this pins.
     """
     spec = CONTENT_SPEC.read_text(encoding="utf-8")
-    assert "get_tools_chart_tick_labels" in spec, (
+    assert "get_tools_chart_x_axis_labels" in spec, (
         "The Tools tab's 'Most Popular Tools' chart is not asserted on its data. Case "
         "step 6 repeats steps 2/4/5, which include chart data, so the tab's own chart "
         "must be compared to that tab's own response — not skipped, and not checked by "
@@ -204,5 +204,5 @@ def test_2318_spec_asserts_the_tools_chart_data():
 def test_tools_chart_locators_exist_on_the_page_object():
     """The round-2 fix needed two new testids — pin them like any other member."""
     declared = _declared_members(AnalyticsPage)
-    for name in ("tools_chart_container", "tools_chart_subtitle", "get_tools_chart_tick_labels"):
+    for name in ("tools_chart_container", "tools_chart_subtitle", "get_tools_chart_x_axis_labels"):
         assert name in declared, f"AnalyticsPage is missing {name!r}"
