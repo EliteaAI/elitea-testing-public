@@ -6,9 +6,9 @@ created: 2026-08-26
 updated: 2026-08-26
 ---
 
-## Status after waves w01–w07 (2026-08-28)
+## Status after waves w01–w08 (2026-08-29)
 
-**Running total: 48 `automated`, 12 `merged-sanctioned-red`, 8 blocked (human decisions), ~60 not yet attempted. NO parked units.**
+**Running total: 62 `automated`, 13 `merged-sanctioned-red`, 10 blocked (human decisions), ~43 not yet attempted. NO parked units.**
 
 ⚠️ **A sanctioned-RED case is NOT delivered coverage.** `.agents/testing.md` § Merge gate:
 it stays `blocked-on-#N` and is never back-written `execution_type: automated`.
@@ -16,6 +16,14 @@ On 2026-08-28 I corrected three of my own earlier back-writes that broke this �
 ELITEA-2243 (#1771, w01), ELITEA-2289 (#1884, w04), ELITEA-2291 (#1885, w04) —
 back to draft/manual + `sanctioned_red: <ticket>`, keeping `automation_test_id` for
 CI correlation. Count dropped 36 -> 33. **Re-check prior waves whenever this rule comes up.**
+
+### Wave settings-w08 — `settings/user-profile` (17 cases)
+
+14 automated + 1 `merged-sanctioned-red` (ELITEA-2385 -> #1965, Voice dropdown blank) + 2 blocked (#1960). PR #1969.
+**Harness StructuredOutput false-block recurred** (2nd time): cluster D's 4 cases marked `blocked` while PR #1968 was MERGED.
+ELITEA-2371 (no consolidated Personalization page — 3 real pages + 1 dead section) and ELITEA-2380
+(LONG-TERM MEMORY is dead code, import commented out) both correctly ROUTED, and 2380 deliberately
+NOT filed as a bug — an unshipped feature filed as a defect manufactures false red.
 
 ### Wave settings-w07 — finished the unit w06 parked (6 cases)
 
@@ -84,8 +92,8 @@ full provenance table + SHAs.
   Deliberately NOT grouped into w01: they need multiple identities (admin vs
   viewer/monitor role, an unauthenticated session), a different setup shape
   than the rest of the root `settings` cases.
-- **3 more sub-areas, ~56 cases**: `ai-configuration` (24), `user-profile` (17),
-  `users-and-roles` (15). `ai-configuration` needs splitting across two waves.
+- **2 more sub-areas, ~39 cases**: `ai-configuration` (24 — split across two waves),
+  `users-and-roles` (15).
   (`notifications` w02, `project-params` w03, `personal-tokens` w04, `secrets` w05, `analytics` w06.)
 
 ## Pattern for the next wave
