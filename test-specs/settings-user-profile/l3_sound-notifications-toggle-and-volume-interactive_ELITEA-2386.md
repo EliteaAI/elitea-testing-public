@@ -101,10 +101,15 @@ else. Fresh spec.
 
 8. **Beyond the case — the volume slider really is interactive** (the case *title* claims
    it, the case *steps* only check presence).
-   Drag `sound-notifications-volume-slider-thumb` to `box.x + box.width * 0.5` of
-   `sound-notifications-volume-slider`.
-   - **Verify**: `sound-notifications-volume-slider-input` value `"0.5"` and
-     `aria-valuenow="0.5"`.
+   Drag `sound-notifications-volume-slider-thumb` to **`0%` first and then to `50%`** of
+   `sound-notifications-volume-slider`'s bounding box.
+   - **Verify**: after each drag, `sound-notifications-volume-slider-input` has the exact
+     value (`"0"`, then `"0.5"`) and the matching `aria-valuenow`.
+   - *Amended during implementation (2026-08-29):* the AFS originally specced a single drag
+     to 50%. Step 6 asserts the volume is *preserved* across the OFF/ON cycle, so whatever
+     value the browser context restores is still in place here — and a slider already
+     sitting at 50% would make a single drag-to-50% prove nothing. Two drags make the
+     assertion falsifiable regardless of the starting value, at no extra cost.
 
 9. **Beyond the case — no unexpected console errors.**
    - **Verify**: zero console errors. `/settings/preferences` logs none (verified live).
@@ -121,7 +126,7 @@ else. Fresh spec.
 | 5 | slider + preview after OFF | both count **0**; content still visible |
 | 6 | after ON again | toggle checked; slider count 1, enabled; value preserved |
 | 7 | Preview Sound | visible + enabled |
-| 8 | slider after drag | value `0.5`, `aria-valuenow="0.5"` |
+| 8 | slider after two drags | value `0` then `0.5`, matching `aria-valuenow` each time |
 | 9 | console | 0 errors |
 
 ## Handles Reference (testid-only)
@@ -132,12 +137,12 @@ else. Fresh spec.
 | Section wrapper | `sound-notifications-section` | on `automation/testids` only (awaiting human promotion to main) |
 | Section header | `sound-notifications-section-header` | on `automation/testids` only |
 | Section body | `sound-notifications-content` | on `automation/testids` only |
-| Toggle (clickable `SwitchBase` span) | `sound-notifications-toggle` | **testid needed** |
-| Toggle checkbox input | `sound-notifications-toggle-input` | **testid needed** |
-| Volume slider root | `sound-notifications-volume-slider` | **testid needed** |
-| Volume slider input | `sound-notifications-volume-slider-input` | **testid needed** |
-| Volume slider thumb | `sound-notifications-volume-slider-thumb` | **testid needed** |
-| Preview Sound button | `sound-notifications-preview-button` | **testid needed** |
+| Toggle (clickable `SwitchBase` span) | `sound-notifications-toggle` | **added** EliteaAI/EliteaUI@2d5f38d8 (`automation/testids`; not yet on `main`) |
+| Toggle checkbox input | `sound-notifications-toggle-input` | **added** EliteaAI/EliteaUI@e087c0df — via `slotProps.input`, NOT `inputProps` (see the amended note below) |
+| Volume slider root | `sound-notifications-volume-slider` | **added** EliteaAI/EliteaUI@2d5f38d8 (`automation/testids`; not yet on `main`) |
+| Volume slider input | `sound-notifications-volume-slider-input` | **added** EliteaAI/EliteaUI@2d5f38d8 (`automation/testids`; not yet on `main`) |
+| Volume slider thumb | `sound-notifications-volume-slider-thumb` | **added** EliteaAI/EliteaUI@2d5f38d8 (`automation/testids`; not yet on `main`) |
+| Preview Sound button | `sound-notifications-preview-button` | **added** EliteaAI/EliteaUI@2d5f38d8 (`automation/testids`; not yet on `main`) |
 
 ### How to add them (zero-functional-impact)
 
@@ -145,9 +150,17 @@ All in `EliteaUI` `src/[fsd]/features/settings/ui/sound-notification/SoundNotifi
 — **pure prop/attribute additions, no new DOM node, no new hook**:
 
 - `<Switch.BaseSwitch … data-testid="sound-notifications-toggle"
-  inputProps={{ 'data-testid': 'sound-notifications-toggle-input' }} />`.
+  slotProps={{ switch: { slotProps: { input: { 'data-testid': 'sound-notifications-toggle-input' } } } }} />`.
   `BaseSwitch` spreads `restProps` onto MUI's `Switch`, which puts `data-testid` on the
-  `SwitchBase` **span** and `inputProps` on the hidden `<input type="checkbox">`.
+  `SwitchBase` **span**.
+  ⚠️ **Amended during implementation (2026-08-29) — `inputProps` does NOT work.** This AFS
+  originally specced `inputProps={{ 'data-testid': … }}`; it was implemented, and the input
+  came back **without** the attribute. MUI v7's `Switch` builds its own
+  `slotProps={{ input: mergeSlotProps(slotProps.input, { role: 'switch' }) }}` and hands that
+  to `SwitchBase`, whose `{ input: inputProps, ...slotProps }` merge lets the constructed
+  object win — so `inputProps` is dead on this component. The hidden checkbox must be
+  addressed through `slotProps.input`, and because `BaseSwitch` consumes its own `slotProps`
+  and spreads `slotProps.switch` onto the MUI `Switch`, that is one level in. Verified live.
   ⚠️ Both handles are needed: `to_be_checked()` only works on the input, and clicking the
   input is not what a user does — click the span (same split the existing
   `context-management-toggle` documents in the digest).
@@ -202,5 +215,5 @@ Defects #1965/#1966 belong to the neighbouring Voice Personalization section (EL
 | `sound-notifications-preview-button` also unmounts at step 5 | the same `config.enabled &&` guard controls it; a build that hid the slider but left a live Preview Sound button is a real regression the case's wording would miss |
 | section content still visible at step 5 | separates "the toggle unmounted its children" from "the accordion collapsed" — the two mechanisms are visually similar and only one is under test |
 | volume value preserved across the OFF→ON cycle (step 6) | an unmount/remount that resets the user's setting is a classic conditional-render bug; the case's "re-enabled" wording does not pin it |
-| slider drag to 50% (step 8) | the case *title* asserts the volume slider is **interactive**, but no step ever moves it — presence alone would let a frozen slider pass |
+| slider drag to 0% then 50% (step 8) | the case *title* asserts the volume slider is **interactive**, but no step ever moves it — presence alone would let a frozen slider pass; two drags keep it falsifiable whatever value the context restores |
 | 0 console errors (step 9) | this route is verified clean, so any error is signal |

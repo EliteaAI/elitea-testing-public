@@ -63,18 +63,24 @@ Append to the covering spec, immediately after its existing Step 2 (the block th
 the persona and types the instructions), a new step:
 
 - **New Step 2b — "the values survive a route change"** (`allure.step("Step 2b — …")`):
-  1. `personalization.open_settings_tab("preferences")` — navigate away to a sibling
+  1. `personalization.go_to_settings_tab("preferences")` — navigate away to a sibling
      Settings route (real in-app navigation, not `page.goto`).
+     *Amended during implementation (2026-08-29):* this AFS originally named
+     `open_settings_tab`, which **starts with `self.navigate(APP_ROOT_PATH)` — a full
+     document navigation** and therefore a reload, the very journey this gap assertion is
+     meant NOT to repeat (ELITEA-2381/2382 already cover reload). `go_to_settings_tab`
+     clicks the drawer item from the settings route already open, which is the SPA
+     mount/unmount + refetch path the two cases name.
      - **Verify**: `voice-personalization-section` is visible (the other route really
        mounted — otherwise the "away" half is vacuous).
-  2. `personalization.open_settings_tab("ai-personality")` — navigate back.
+  2. `personalization.go_to_settings_tab("ai-personality")` — navigate back (same reason).
      - Wait on `ai-personality-persona-select-combobox` (documented render race — element
        wait, never a sleep).
      - **Verify (ELITEA-2388)**: `ai-personality-persona-select-combobox` has text `Nerdy`.
      - **Verify (ELITEA-2389)**: `ai-personality-user-instructions-textarea` has value
        equal to the spec's `INSTRUCTIONS_MARKER`.
 
-No new page-object methods are required — `open_settings_tab`, `wait_for_persona_select`,
+No new page-object methods are required — `go_to_settings_tab`, `wait_for_persona_select`,
 `persona_select_combobox` and `user_instructions_textarea` all already exist on
 `SettingsPersonalizationPage`. No new testids are required.
 
@@ -133,7 +139,7 @@ normal user path already triggers (response-as-oracle, `.agents/testing.md` § F
 policy). The new Step 2b adds only real in-app navigation.
 
 ## Automation Hints
-- **Navigate with `open_settings_tab()`, not `page.goto()`** — the gap being closed is the
+- **Navigate with `go_to_settings_tab()`, not `open_settings_tab()`/`page.goto()`** — the gap being closed is the
   SPA route-change path; a full document navigation would test the same thing
   `page.reload()` already tests in ELITEA-2381/2382.
 - **Render race**: right after the route resolves, `ai-personality-persona-select-combobox`
@@ -173,7 +179,7 @@ policy). The new Step 2b adds only real in-app navigation.
 | Precondition: logged in | — | `auth_state` | fixture | covered (setup) |
 | Step 1 navigate to the personality setting | page loads | covering spec Setup + Step 2 (`open_settings_tab("ai-personality")`, `wait_for_persona_select`) | `:249`, `:266` | covered (route corrected — #1967) |
 | Step 2 set Default Personality to "Nerdy" | expected UI state | covering spec `_select_persona(CASE_PERSONA_VALUE="nerdy")` + autosave `PUT` 200 + combobox text | `:264`-`:275`, `:157`-`:170` | covered |
-| Step 3 navigate away and back → value auto-saved | page loads, value held | **GAP → new Step 2b** | new assertion: combobox text `Nerdy` after `preferences` → `ai-personality` | **gap assertion (this AFS)** |
+| Step 3 navigate away and back → value auto-saved | page loads, value held | **GAP → new Step 2b** | `test_personalization_new_conversations_only.py` Step 2b: combobox text `Nerdy` after in-SPA `preferences` → `ai-personality` | **gap assertion (this AFS) — implemented** |
 | Step 4 create a new conversation | completes successfully | covering spec `_create_conversation` (send via Enter → `POST` 201, URL `/chat/<id>`) | `:172`-`:208`, `:311` | covered |
 | Step 5 new conversation uses "Nerdy" | condition holds | `new_persona == CASE_PERSONA_VALUE` | `:321` | covered (**observable relocated to `meta.persona`** — #1967) |
 | Step 6 open a previously existing conversation | page loads | covering spec Step 3 (`open_conversation` → `GET` 200) | `:293`-`:296` | covered (**baseline conversation is created by the spec** — #1967) |
@@ -186,7 +192,7 @@ policy). The new Step 2b adds only real in-app navigation.
 | Precondition: logged in | — | `auth_state` | fixture | covered (setup) |
 | Step 1 navigate to the instructions field | page loads | covering spec Step 2 | `:266` | covered (route corrected — #1967) |
 | Step 2 enter the instructions text | field accepts + displays it | covering spec `fill_user_instructions` + blur autosave `PUT` 200 + `to_have_value` | `:277`-`:291` | covered (data-only difference: the covering spec's marker text, not the case's literal sentence) |
-| Step 3 navigate away and back → value auto-saved | page loads, value held | **GAP → new Step 2b** | new assertion: textarea value == marker after route change | **gap assertion (this AFS)** |
+| Step 3 navigate away and back → value auto-saved | page loads, value held | **GAP → new Step 2b** | `test_personalization_new_conversations_only.py` Step 2b: textarea value == `INSTRUCTIONS_MARKER` after the in-SPA route change | **gap assertion (this AFS) — implemented** |
 | Step 4 create a new conversation | completes successfully | covering spec `_create_conversation` | `:172`-`:208` | covered |
 | Step 5 send a message; response style reflects the instructions | expected UI state | covering spec: the message IS sent (that is what creates the conversation) and the conversation's resolved `instructions` is asserted | `:325` | covered **as far as it is falsifiable** — LLM tone is not asserted (#1967); the resolved-instructions field is the deterministic contract |
 | Step 6 open a previously existing conversation | page loads | covering spec Step 3 | `:293`-`:296` | covered |
