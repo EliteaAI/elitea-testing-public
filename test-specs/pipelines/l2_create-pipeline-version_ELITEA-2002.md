@@ -54,9 +54,8 @@
    - **Verify**: the "Create version" dialog opens — Name input (`agent-version-dialog-name-input`)
      visible, Save button (`agent-version-dialog-save-button`) disabled while Name is empty.
    - Type `v1_test` into the Name input, click the dialog's Save button.
-   - **Verify**: the Information panel's version id (`copy-version-id`, read once the VERSION
-     trigger / `copy-version-id` / URL version-id segment have converged) changes (new version
-     created); VERSION selector
+   - **Verify**: the Information panel's version id (`copy-version-id`) changes (new version
+     created — see Automation Hints for how to wait for it); VERSION selector
      now shows `"v1_test"`; the LLM node added in Step 2 is still present (1 `rf__node-LLM*`
      element) — i.e. the edit is preserved in the new version, not reset; Save (main) returns to
      disabled (persisted, not a dangling local edit).
@@ -185,6 +184,13 @@ None.
   bare `is_visible()` — ReactFlow re-renders the canvas on version switch and a raw single-read
   can catch the node mid-unmount/mid-remount (same class of race as `select_version_by_name`'s
   own documented convergence-polling need).
+- **Reading `copy-version-id` after a version change needs a convergence wait, not a bare read**
+  (issue #1893): the VERSION trigger and the URL are not backed by Formik's `version_details`, so
+  both can already show the new version while the Information panel still renders the PREVIOUS
+  version's id (~660 ms window) — a bare read there returns a stale value and Step 3's
+  "id changes" assertion compares an id with itself. Wait on the three-way convergence predicate
+  (trigger text === name AND `copy-version-id` non-empty AND URL last segment === that id);
+  `PipelineDetailPage.VERSION_CONVERGED_JS` implements it and `confirm_new_version()` applies it.
 - Seed via `PipelineAPI.create_pipeline()` (zero-node) per the Preconditions note — do not reuse
   `create_pipeline_with_nodes()` or a shared/pooled pipeline (parallel test runs would corrupt
   each other's version list).

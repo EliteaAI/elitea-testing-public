@@ -52,10 +52,22 @@ version data actually arrived.
   trigger-text-only poll) + the hoisted `VERSION_CONVERGED_JS`. It also fixed
   ELITEA-2003 (`test_pipeline_delete_version.py`), which failed
   byte-identically from the same call site — one page-object wait, two red
-  specs.
+  specs. **Method-scoped, not file-scoped** — the same file's
+  `wait_for_fallback_to_base()` is still on the old pattern; see § Still open.
 
 ## Still open
 
-`SkillDetailPage.save_as_version()` and its specs — tracked as issue #1874.
+- `SkillDetailPage.save_as_version()` and its specs — tracked as issue #1874.
+- `PipelineDetailPage.wait_for_fallback_to_base()` — a residual site of the same
+  family **inside the very file the section above lists as fixed**. Still
+  trigger-text-only, then a `wait_for_network` whose timeout this class's
+  override SWALLOWS, then one `get_version_id()` read — so it can return the
+  DELETED version's id. NOT fixed alongside #1893 for a real reason:
+  `VERSION_CONVERGED_JS` requires URL-last-segment === `copy-version-id`, and
+  what the route becomes after a version DELETE (rewrite to base's id, or drop
+  the version segment entirely?) has never been verified live — applying the
+  predicate blind could trade the race for a hard hang. Documented in the
+  method's own docstring (ELITEA-2002 fix round, 2026-08-28); needs live
+  verification + a follow-up card before anyone changes its behaviour.
 
 Related: [[matched_control_run_before_blaming_a_diff]]
