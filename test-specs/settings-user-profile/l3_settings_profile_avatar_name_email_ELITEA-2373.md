@@ -144,3 +144,34 @@ the context outside the SPA.
   writes the clipboard. Read text, don't click.
 - **Email is real test-account data**, not a secret, but it comes from `.env.test`: reference
   `settings.test_user_email`, never hardcode it in the spec.
+
+---
+
+## Amendments — implementer exploration (ELITEA-2373 implementation, 2026-08-29)
+
+Attributed to test-automation-engineer; the AFS's *what* is unchanged.
+
+**One handle added beyond the AFS table: `settings-profile-avatar-image`.**
+Step 2 has to read *which branch `UserAvatar` rendered*, and the AFS left the
+mechanism open ("derive it from the DOM (`img` count)"). A raw `.locator("img")`
+hop off the avatar testid would have been the obvious route and is forbidden
+here (locator policy — the `<img>` is a MUI-internal node, but MUI exposes its
+own `imgProps` slot, so this is not a #579 "testid can't be placed" case). The
+compliant shape used instead: `UserAvatar` DERIVES the image testid from the
+caller-supplied `testId` (`${testId}-image`, the same shape `SingleSelect`
+already uses for `-combobox`), so the shared component still hardcodes no
+feature-scoped testid and the Profile call site alone names it. Landed in
+EliteaAI/EliteaUI@36733706.
+
+Its count is the branch discriminator: 1 ⇒ image branch (assert `naturalWidth > 0`
+— the case's "not a broken image icon"), 0 ⇒ initials branch (assert non-empty
+initials equal to the product's own `getInitials(display_name)`). Live branch for
+the shared test user is still initials, as the AFS states.
+
+The remaining handles landed in EliteaAI/EliteaUI@fa505e37
+(`settings-profile-avatar`, `settings-profile-display-name`,
+`settings-profile-fullname-value`, `settings-profile-email-value` — the last two
+via the `testId` prop added to `FieldWithCopy` and named at the Profile call site,
+exactly as this AFS required).
+
+**Spec:** `automation/tests/ui/settings/test_settings_profile_identity.py`
