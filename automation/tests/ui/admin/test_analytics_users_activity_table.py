@@ -20,6 +20,24 @@ literally read, every value including 0 would be red; live observation (all
 clarification elitea-testing-public#1188. This test asserts the live
 contract for both.
 
+Column-set repair (2026-08-28, settings-w06 batch): this spec was RED on
+`automation/base` before this change — the UI team added eight token/cost
+breakdown columns, so the live header is 17 columns, not the 9 recorded when
+ELITEA-2312 was automated. The expected tuple below is updated to the live
+contract (never weakened — the assertion is still an exact ordered tuple); the
+new occurrence is recorded on the existing case-text-drift issue #1188 rather
+than filed as a second one.
+
+**ELITEA-2323 (extension)** — Step 8 appends the two assertions the ELITEA-2312
+smoke check does not make (AFS
+`test-specs/settings-analytics/lextend_users-tab-search-filters-activity-table_ELITEA-2323.md`):
+the filtered set is EXCLUSIVE (every rendered row matches the term, the set
+equals the search response's own rows, and it is a strict subset of the
+unfiltered set — `>= 1` alone passes even if nothing was filtered), and clearing
+the input RESTORES the complete original row list, in order, with its count
+label (the covering test clears in `finally` with no assertion at all). Step 7
+is unchanged apart from two additive captures it now feeds into Step 8.
+
 Positive-branch note (AFS § Blocked Steps originally deferred this — "if a
 future project/environment naturally accumulates a user with errors > 0, the
 implementer should extend the test to assert the positive branch against
@@ -53,7 +71,15 @@ EXPECTED_COLUMN_LABELS = (
     "CHAT MSG",
     "ERRORS",
     "TOTAL TOKENS",
+    "INPUT TOKENS",
+    "OUTPUT TOKENS",
     "TOTAL COST",
+    "INPUT TOKEN COST",
+    "OUTPUT TOKEN COST",
+    "CACHE READ TOKENS",
+    "CACHE WRITE TOKENS",
+    "CACHE READ COST",
+    "CACHE WRITE COST",
 )
 
 USER_COUNT_PATTERN = re.compile(r"^(\d+) users$")
@@ -72,8 +98,13 @@ class TestAnalyticsUsersActivityTable:
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "settings-analytics/ELITEA-2312_users-tab-activity-table.md",
-        "onetest-ai Test Case link",
+        "settings/analytics/ELITEA-2312_users-tab-loads-user-activity-table-with-correct-columns-and.md",
+        "onetest-ai Test Case link (ELITEA-2312)",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "settings/analytics/ELITEA-2323_users-tab-search-by-email-filters-the-user-activity-table.md",
+        "onetest-ai Test Case link (ELITEA-2323)",
     )
     def test_users_tab_activity_table_columns_and_pagination(self, page):
         """Users tab renders its "User Activity" panel with a matching user
@@ -206,6 +237,13 @@ class TestAnalyticsUsersActivityTable:
                 "Step 7 — Search-filter smoke check: typing an existing user's email "
                 "substring narrows the table and updates the count/pagination label"
             ):
+                # Captured for ELITEA-2323's Step 8 (additive — the existing
+                # assertions below are unchanged): the unfiltered row list and
+                # count label, read immediately before the search narrows them.
+                pre_row_identifiers = [
+                    analytics_page.get_user_row_identifier(i) for i in range(row_count)
+                ]
+                pre_count_text = analytics_page.users_count.text_content()
                 # Search matches the email field server-side — a row lacking an email
                 # (rendered as "User {id}") won't match its own display text, so scan
                 # for the first row that actually has one rather than assuming row 0.
@@ -224,7 +262,7 @@ class TestAnalyticsUsersActivityTable:
                     "(AFS precondition: project has usage-analytics data with an emailed user)"
                 )
                 search_term = email_identifier.split("@")[0]
-                analytics_page.search_users(search_term)
+                search_response = analytics_page.search_users(search_term)
                 filtered_row_count = analytics_page.get_users_row_count()
                 assert filtered_row_count >= 1, (
                     f"Expected at least one row to remain after searching {search_term!r}"
@@ -239,6 +277,82 @@ class TestAnalyticsUsersActivityTable:
                 assert filtered_range_text and PAGE_RANGE_PATTERN.match(filtered_range_text), (
                     f"Expected the pagination range label to still match the pattern after "
                     f"filtering, got {filtered_range_text!r}"
+                )
+
+            with allure.step(
+                "Step 8 — ELITEA-2323: the search result is EXCLUSIVE (only matching rows, "
+                "matching the search response, strictly fewer than before) and clearing the "
+                "input restores the complete original table"
+            ):
+                assert analytics_page.users_search_input.input_value() == search_term, (
+                    f"Expected the search input to hold the typed term {search_term!r}, got "
+                    f"{analytics_page.users_search_input.input_value()!r}"
+                )
+                filtered_identifiers = [
+                    analytics_page.get_user_row_identifier(i)
+                    for i in range(analytics_page.get_users_row_count())
+                ]
+                assert filtered_identifiers, (
+                    f"Expected at least one row to match {search_term!r} (it was derived from a "
+                    f"row the table itself rendered)"
+                )
+                non_matching = [
+                    identifier
+                    for identifier in filtered_identifiers
+                    if search_term.lower() not in identifier.lower()
+                ]
+                assert not non_matching, (
+                    f"Expected every remaining row to match {search_term!r}, but these do not: "
+                    f"{non_matching}"
+                )
+                expected_identifiers = [
+                    row.get("user_email") or f"User {row.get('user_id')}"
+                    for row in search_response.get("rows", [])
+                ]
+                assert filtered_identifiers == expected_identifiers, (
+                    f"Expected the rendered rows to be exactly the search response's rows "
+                    f"{expected_identifiers}, got {filtered_identifiers}"
+                )
+                assert len(filtered_identifiers) < len(pre_row_identifiers), (
+                    f"Expected the search to narrow the table (strictly fewer than the "
+                    f"{len(pre_row_identifiers)} unfiltered rows), got "
+                    f"{len(filtered_identifiers)} — a filter that returns everything would "
+                    f"still satisfy a 'at least one row remains' check"
+                )
+                assert set(filtered_identifiers).issubset(set(pre_row_identifiers)), (
+                    f"Expected the filtered rows to be a subset of the unfiltered set, got "
+                    f"{sorted(set(filtered_identifiers) - set(pre_row_identifiers))} not present "
+                    f"before filtering"
+                )
+                assert (
+                    analytics_page.users_count.text_content()
+                    == f"{len(filtered_identifiers)} users"
+                ), (
+                    f"Expected the count label to read "
+                    f"'{len(filtered_identifiers)} users' while filtered, got "
+                    f"{analytics_page.users_count.text_content()!r}"
+                )
+                assert search_response.get("total") == len(filtered_identifiers), (
+                    f"Expected the search response's total "
+                    f"{search_response.get('total')!r} to match the rendered row count "
+                    f"{len(filtered_identifiers)}"
+                )
+
+                analytics_page.clear_users_search()
+                assert analytics_page.users_search_input.input_value() == "", (
+                    "Expected the search input to be empty after clearing it"
+                )
+                restored_identifiers = [
+                    analytics_page.get_user_row_identifier(i)
+                    for i in range(analytics_page.get_users_row_count())
+                ]
+                assert restored_identifiers == pre_row_identifiers, (
+                    f"Expected clearing the search to restore the complete original row list, in "
+                    f"order: expected {pre_row_identifiers}, got {restored_identifiers}"
+                )
+                assert analytics_page.users_count.text_content() == pre_count_text, (
+                    f"Expected the count label to return to {pre_count_text!r} after clearing "
+                    f"the search, got {analytics_page.users_count.text_content()!r}"
                 )
 
             assert not console_errors, (
