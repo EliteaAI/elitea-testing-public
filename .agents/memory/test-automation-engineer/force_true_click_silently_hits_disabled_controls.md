@@ -18,7 +18,9 @@ necessary), so the trap is everywhere, not just on one surface.
 while an RTK-Query GET is in flight, e.g.
 `TriggerTypeSelector.jsx`: `disabled={disabled || isLoading}` with `isLoading`
 from `useGetPipelineTriggerQuery`. On localhost that window is ~3 ms; on
-dev.elitea.ai it was measured at 0.002 s–0.411 s and is unbounded under load.
+dev.elitea.ai it was measured at 0.002 s–1.076 s over a 15-reload sample, and as
+high as **19.99 s** on a degraded environment — far past any interaction-sized
+timeout, directly observed, not inferred.
 A fixed-duration retry ("wait 3 s, click again") is therefore a coin flip, and
 when it loses it wastes its one retry and hangs the full timeout — issue #1895,
 ELITEA-2008 Step 8.

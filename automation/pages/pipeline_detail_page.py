@@ -3650,27 +3650,35 @@ class PipelineDetailPage(PipelineFormPage):
         contradicted that: the element is present and simply DISABLED):
 
         * **Never click a disabled Select.** TriggerTypeSelector.jsx renders
-          ``disabled={disabled || isLoading}`` where ``isLoading`` comes from
-          ``useGetPipelineTriggerQuery`` — so while that GET is in flight after
-          a fresh page load the Select is genuinely disabled and MUI's
+          ``disabled={disabled || isLoading}`` where
+          ``isLoading = isFetching || isUpdating`` — ``isFetching`` being
+          ``useGetPipelineTriggerQuery``'s own ``isLoading`` (aliased at the
+          destructure) and ``isUpdating`` the
+          ``useUpdatePipelineTriggerMutation`` mutation's. So while EITHER
+          round-trip is in flight the Select is genuinely disabled and MUI's
           SelectInput ignores the mousedown. ``force=True`` SKIPS Playwright's
           own enabled-actionability check, so the click IS dispatched, silently
           does nothing, and the caller then waits out the whole timeout on a
           menu nothing ever asked to open. Measured against dev.elitea.ai
           2026-08-28: clicking while ``aria-disabled="true"`` was swallowed
           3/3; waiting for the enabled state first opened the menu in 1-2 ms,
-          5/5. The disabled window was 0.002s-0.411s across one 5-reload
-          sample and is unbounded on a slow environment — which is exactly how
-          the old fixed 3s retry could fire while the Select was STILL
-          disabled, waste its one retry, and hang the full 10s (GHA dev-stable
-          failure, issue #1895).
+          5/5. The disabled window ranged 0.002s-1.076s across a 15-reload
+          sample and has been observed as high as **19.99s** on a degraded
+          dev.elitea.ai (2026-08-28 gate, captured by the ready-leg warning
+          below) — which is exactly how the old fixed 3s retry could fire while
+          the Select was STILL disabled, waste its one retry, and hang the full
+          10s (GHA dev-stable failure, issue #1895).
         * **Never click a Select that is already expanded.** MUI's Menu mounts
           a full-viewport Modal backdrop, so a forced coordinate click while
           the menu is opening lands on that backdrop and toggles the menu shut.
           ``aria-expanded`` is re-read immediately before every click rather
           than inferring "no menu open" from an option count.
-        * **Retry until *timeout*, not exactly once**, so a click swallowed for
-          any other reason (a genuine remount, an overlay) still recovers.
+        * **Retry until *timeout*, not exactly once**, so a click that lands
+          but does nothing still recovers on a later attempt. Scope, precisely:
+          only ``PlaywrightTimeoutError`` is retried. A NON-timeout Playwright
+          error — the element detached by a genuine remount, say — propagates
+          immediately, and deliberately: that is a different failure and should
+          be seen, not silently re-attempted until the budget runs out.
 
         **Two budgets, because two different things are being waited on.**
         Waiting for the control to become ENABLED is a wait on a remote
@@ -3690,13 +3698,23 @@ class PipelineDetailPage(PipelineFormPage):
         the chat-embedded PipelineEditor, a different surface), and
         `isRunningPipeline` comes from `useRunEvent` — true only while a
         pipeline run is in flight, which these cases never trigger. That
-        leaves `isLoading` (the trigger GET / mutation) as the only live
-        contributor, which is why this budget is sized as a network wait.
-        What has NOT been observed directly is a round-trip of that MAGNITUDE:
-        the longest disabled window ever measured here was 0.411s, so the
-        >10s case is explained by class, not by a captured timing. The
-        `logger.warning` on the ready leg exists to capture that magnitude the
-        next time it happens.
+        leaves `isLoading` — i.e. the trigger GET **or** the update mutation,
+        both remote round-trips — as the only live contributor, which is why
+        this budget is sized as a network wait.
+        The MAGNITUDE is no longer an inference either: the `logger.warning`
+        on the ready leg was added for exactly that purpose and fired on its
+        second gate, recording a **19.99s** disabled window on a degraded
+        dev.elitea.ai (a 4.34s one followed on a later run). That is >10s
+        measured directly, so the pre-split budget was provably insufficient
+        and 30s is a sized figure rather than a guess — though 19.99s consumes
+        two thirds of it, so the headroom is real but not lavish.
+
+        What rests on inference is now only the ATTRIBUTION of that specific
+        19.99s occurrence: the warning measures the disabled window, not the
+        round-trip behind it, so no GET timing was captured on that run. It is
+        attributed to the trigger round-trip on the strength of the source
+        elimination above plus the 46ms correlation, not a direct observation
+        of that one event.
 
         Both states are read off the Select's own MUI SelectDisplay node via
         :data:`TRIGGER_SELECT_ENABLED` / :data:`TRIGGER_SELECT_EXPANDED` —
@@ -3705,8 +3723,9 @@ class PipelineDetailPage(PipelineFormPage):
 
         Args:
             timeout: Budget for the click/expand retry loop only (Leg 2) — the
-                whole loop, not one attempt. The wait for the control to
-                become enabled (Leg 1) is budgeted separately by
+                whole loop, not one attempt, and bounded to it (every wait is
+                capped by the time actually remaining). The wait for the
+                control to become enabled (Leg 1) is budgeted separately by
                 :data:`TRIGGER_SELECT_READY_TIMEOUT`.
             entry_point_node_id: Optional data-id of the entry point node to
                 bring to the front before opening the dropdown.
@@ -3756,9 +3775,21 @@ class PipelineDetailPage(PipelineFormPage):
         # ---- Leg 2: INTERACTION — click/expand retry, on the caller's budget.
         deadline = time.monotonic() + timeout / 1000
 
+        def probe_left() -> int:
+            """Budget for ONE wait: never more than a probe, never past the deadline.
+
+            Recomputed per wait rather than once per iteration. An iteration
+            performs up to four sequential waits, so a fixed per-wait probe let
+            the loop overshoot the caller's `timeout` by up to 4x the probe
+            (~12s on the defaults) — the deadline was only tested at the loop
+            head. Capping each wait by what is actually left holds the total to
+            `timeout` plus a few ms, which is what this method documents.
+            """
+            return max(1, min(self.TRIGGER_SELECT_OPEN_PROBE_TIMEOUT,
+                              int((deadline - time.monotonic()) * 1000)))
+
         while True:
-            remaining = int((deadline - time.monotonic()) * 1000)
-            if remaining <= 0:
+            if time.monotonic() >= deadline:
                 # State-naming failure: distinguishes "the Select never
                 # rendered" from "it rendered but stayed disabled" from "it
                 # opened but rendered no option" — three very different causes
@@ -3766,27 +3797,26 @@ class PipelineDetailPage(PipelineFormPage):
                 raise PlaywrightTimeoutError(
                     f"Trigger dropdown did not open within {timeout}ms — {self._trigger_select_state()}"
                 )
-            probe = min(self.TRIGGER_SELECT_OPEN_PROBE_TIMEOUT, remaining)
 
             try:
                 if expanded.count() == 0:
                     # Re-checked defensively: a trigger MUTATION landing mid-loop
                     # can re-disable the Select. Probe-bounded so the retry loop
                     # stays tight — the network-sized budget belongs to Leg 1.
-                    enabled.first.wait_for(state="attached", timeout=probe)
+                    enabled.first.wait_for(state="attached", timeout=probe_left())
                     # Re-read the open state immediately before clicking — the
                     # menu may have opened while we waited for the enabled
                     # state, and a click now would toggle it shut.
                     if expanded.count() == 0:
-                        self.trigger_select.click(timeout=probe, force=True)
+                        self.trigger_select.click(timeout=probe_left(), force=True)
 
                 # `aria-expanded="true"` is the Select's OWN open state, so a
                 # menu still fading out from a previous open (options briefly
                 # still in the DOM, aria-expanded already "false") cannot be
                 # mistaken for a fresh one. Options are then waited on because
                 # aria-expanded flips one commit before they are paintable.
-                expanded.first.wait_for(state="attached", timeout=probe)
-                options.first.wait_for(state="visible", timeout=probe)
+                expanded.first.wait_for(state="attached", timeout=probe_left())
+                options.first.wait_for(state="visible", timeout=probe_left())
                 return
             except PlaywrightTimeoutError:
                 # Deadline-bounded by the loop head, which raises the

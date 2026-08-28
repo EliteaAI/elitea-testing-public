@@ -3626,9 +3626,35 @@ verified pre-existing by a control run against the unmodified page object —
 fails on exactly this, on localhost only, today. **Read per value, not by family**, and the
 spec is immune on both localhost and DEV.
 
-**The FIRST click on the Trigger select after a full page reload is swallowed.** Selecting the
-node remounts its config panel and replaces the Select element the click already resolved, so
-the menu never opens and the wait burns its whole timeout (reproduced 3/3 at 10 s; a second
-click opens it immediately). `open_trigger_select()` now absorbs this: 3 s probe wait, then —
-only if no option element exists at all — one re-click. Anything else driving this select
-after a reload should expect the same and reuse that method rather than clicking directly.
+**The FIRST click on the Trigger select after a full page reload is swallowed — because the
+Select is genuinely DISABLED at that moment, NOT because the element was replaced.**
+`TriggerTypeSelector.jsx` renders `disabled={disabled || isLoading}` with
+`isLoading = isFetching || isUpdating` — the `useGetPipelineTriggerQuery` GET's own
+`isLoading` (aliased at the destructure) or the `useUpdatePipelineTriggerMutation` mutation.
+While either round-trip is in flight the control is disabled and MUI's `SelectInput` ignores
+the mousedown. **`force=True` skips Playwright's *enabled* actionability check**, so the click
+IS dispatched, silently does nothing, and the next wait burns its whole timeout — no
+exception, no log, and the symptom surfaces one step later on whatever the click was meant to
+produce. That is a repo-wide trap, not a pipelines quirk: this suite uses `force=True` widely
+(canvas overlay interception makes it necessary), and every such click can land on a disabled
+control. Measured on dev.elitea.ai 2026-08-28: clicking while `aria-disabled="true"` was
+swallowed 3/3; waiting for the enabled state first opened the menu in 1-2 ms, 5/5. The
+disabled window tracks the round-trip directly — in a 15-reload sample it ended 46 ms after
+the `pipeline_trigger` GET finished — and ranged 0.002 s to 1.076 s there. On a degraded
+dev.elitea.ai it has been measured at **19.99 s** (and 4.34 s on a later run), so a window far
+past any interaction-sized timeout is directly observed, not inferred. `open_trigger_select()`
+logs a warning whenever this leg exceeds its probe, so the duration lands in the run log —
+**if a spec on this surface fails near the Trigger select, read the log for that warning
+before suspecting the code.**
+
+`open_trigger_select()` absorbs this with a state-driven, deadline-bounded loop on TWO
+separate budgets, because two different things are being waited on. First a network-sized wait
+for `[data-testid="pipeline-entry-point-trigger-select-combobox"]:not([aria-disabled="true"])`
+(`TRIGGER_SELECT_READY_TIMEOUT`, 30 s — this leg is gated by a remote round-trip, and every
+caller passes an interaction-sized `UI_ELEMENT_TIMEOUT`). Then a click/expand retry on the
+caller's tighter `timeout`, re-reading `aria-expanded` immediately before every click so a
+retry can never toggle an opening menu shut via MUI's Modal backdrop, and returning only once
+`aria-expanded="true"` AND an option is visible. Failures name the observed state
+(`select present / enabled / expanded / options`) instead of an opaque locator wait. Anything
+else driving this select — after a reload or not — should reuse that method rather than
+clicking directly.
