@@ -242,9 +242,17 @@ resolves 200.
 - `ChatPage.navigate_to_chat()` + `send_message()` does NOT reliably create a
   conversation: the SPA restores the last-viewed one, so the message appends to
   an EXISTING conversation. Click **+Chat** (`click_create_conversation()`) and
-  verify BOTH an id-less `/chat` URL and a zero message count *after a short
-  settle* before sending — the restore can win a race against a check made too
-  early (the same mechanism `_open_genuinely_blank_conversation()` documents).
+  verify BOTH an id-less `/chat` URL and a zero message count before sending —
+  the restore can win a race against a check made too early (the same mechanism
+  `_open_genuinely_blank_conversation()` documents).
+  **Resolved/settled during ELITEA-2390 implementation (PR #1962 review round 1):**
+  the restore is DELAYED, so "check once after a short settle" is NOT enough —
+  the blank state must be shown to *hold* across the settle window. Copy the
+  ancestor's `_poll_blank_state_holds()` (poll message-count + URL every 250 ms
+  across 1500 ms, exit the instant either flips); a fixed
+  `page.wait_for_timeout(1500)` + one recheck samples only the window's end,
+  and is additionally a `.agents/conventions.md` § Hard don'ts violation.
+  Pinned by `automation/tests/unit/test_blank_composer_settle_is_polled.py`.
 - `ChatPage.navigate_to_chat(conversation_id=X)` **cannot switch between
   conversations**: it short-circuits with "already on chat page, skipping
   navigation" whenever the current URL contains `/chat`. Use the additive

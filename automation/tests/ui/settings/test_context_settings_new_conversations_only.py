@@ -47,6 +47,7 @@ Markers:
 
 import logging
 import re
+import time
 
 import allure
 import pytest
@@ -87,6 +88,57 @@ SEED_MESSAGE = "Reply with the single word OK."
 def _is_autosave_put_response(response: Response) -> bool:
     """True for the Settings -> Memory autosave PUT."""
     return response.request.method == "PUT" and AUTOSAVE_PUT_PATH in response.url
+
+
+BLANK_URL_PATTERN = re.compile(r"/chat/?(?:\?.*)?$")
+BLANK_SETTLE_MS = 1500      # The last-viewed-conversation restore's own timing window
+BLANK_POLL_INTERVAL_S = 0.25
+
+
+def _poll_blank_state_holds(
+    chat: ChatPage,
+    settle_ms: int = BLANK_SETTLE_MS,
+    poll_interval_s: float = BLANK_POLL_INTERVAL_S,
+) -> tuple[bool, str]:
+    """Poll message-count + URL at short intervals across *settle_ms*,
+    instead of a fixed-latency sleep-then-recheck-once.
+
+    Duplicated with attribution from ``_poll_blank_state_holds()`` in
+    ``tests/ui/chat/test_team_users_mention_and_remove_participants.py``
+    (wave-11), which in turn copied it from ``test_invite_users_add_cancel_close.py``
+    (ELITEA-2175/2176, wave-10). Per-file duplication is this suite's own
+    established pattern for sharing the ``_open_blank_*`` helper family across
+    chat-driving test files — no shared module or conftest fixture exists for
+    it, and creating one would rewire three merged specs (Hard Rule 3,
+    additive-only on shared-caller files).
+
+    Why a *poll* and not a sleep-then-check-once (the shape this spec shipped
+    in PR #1962 and which review correctly blocked): a single sample taken at
+    the END of the window only ever observes the window's final state. The
+    blank state is required to **hold** for the whole window, so any restore
+    that lands inside it and is then superseded is invisible to one late
+    sample — which is precisely the race
+    ``_open_genuinely_blank_conversation()`` was written to close. Polling also
+    exits the instant either signal flips, turning a definitive failure into an
+    immediate retry instead of a full window burned blind.
+
+    Note ``time.sleep`` is safe as the poll interval here (unlike the
+    WebSocket-frame case in ``.agents/testing.md``): every iteration calls
+    ``chat.get_message_count()``, a Playwright call, so the sync dispatcher is
+    pumped on each pass and no event backlog can build up.
+
+    Returns ``(settled, reason)`` — ``settled`` is False (with a reason) the
+    moment either signal flips during the window, True only if both signals
+    held blank for the entire window.
+    """
+    deadline = time.monotonic() + settle_ms / 1000.0
+    while time.monotonic() < deadline:
+        time.sleep(poll_interval_s)
+        count = chat.get_message_count()
+        url = chat.page.url
+        if count != 0 or not BLANK_URL_PATTERN.search(url):
+            return False, f"blank state reverted mid-settle (url={url!r}, message_count={count})"
+    return True, ""
 
 
 class TestContextSettingsApplyToNewConversationsOnly:
@@ -135,11 +187,17 @@ class TestContextSettingsApplyToNewConversationsOnly:
     def _open_blank_composer(chat: ChatPage, timeout: int = NAVIGATION_TIMEOUT) -> None:
         """Reach a genuinely blank composer (URL ``/chat`` with no id, 0 messages).
 
-        Lighter sibling of ``_open_genuinely_blank_conversation()`` in
-        ``tests/ui/chat/test_team_users_mention_and_remove_participants.py``
-        (wave-10/11), duplicated-with-attribution per the same suite-local
-        convention — this case needs only "am I on a blank composer", not that
-        file's participant-state strictness.
+        Duplicated-with-attribution from ``_open_genuinely_blank_conversation()``
+        in ``tests/ui/chat/test_team_users_mention_and_remove_participants.py``
+        (wave-10/11), per the same suite-local convention. It asserts less than
+        the ancestor about *participant* state — this case needs only "am I on a
+        blank composer" — but it carries the ancestor's settle machinery
+        verbatim (:func:`_poll_blank_state_holds`), because that machinery is
+        what closes the race, not an optional strictness knob. An earlier
+        revision of this helper substituted a fixed
+        ``page.wait_for_timeout(1500)`` + one recheck for the poll; that is both
+        a ``.agents/conventions.md`` § Hard don'ts violation and a silent
+        regression of the ancestor, and review blocked it (PR #1962).
 
         Why it is required rather than defensive: the SPA restores the
         last-viewed conversation (documented on
@@ -150,7 +208,6 @@ class TestContextSettingsApplyToNewConversationsOnly:
         then verifying BOTH the id-less URL and a zero message count is what
         makes "create a new conversation" a fact.
         """
-        blank_url_pattern = re.compile(r"/chat/?(?:\?.*)?$")
         last_reason = "unknown"
         for attempt in range(3):
             chat.click_create_conversation(timeout=timeout)
@@ -160,15 +217,16 @@ class TestContextSettingsApplyToNewConversationsOnly:
                 last_reason = "new-conversation greeting never appeared"
                 logger.warning("Attempt %d: %s — retrying", attempt + 1, last_reason)
                 continue
-            # Settle window for the delayed last-viewed-conversation restore:
-            # the greeting can render before the restore snaps the route back.
-            chat.page.wait_for_timeout(1500)
-            if not blank_url_pattern.search(chat.page.url):
-                last_reason = f"route restored a conversation ({chat.page.url!r})"
-                logger.warning("Attempt %d: %s — retrying", attempt + 1, last_reason)
-                continue
             if chat.get_message_count() != 0:
                 last_reason = "blank greeting shown but the conversation has message history"
+                logger.warning("Attempt %d: %s — retrying", attempt + 1, last_reason)
+                continue
+            # Settle window for the DELAYED last-viewed-conversation restore:
+            # the greeting can render before the restore snaps the route back.
+            # Polled, not slept — see _poll_blank_state_holds().
+            settled, reason = _poll_blank_state_holds(chat)
+            if not settled:
+                last_reason = reason
                 logger.warning("Attempt %d: %s — retrying", attempt + 1, last_reason)
                 continue
             return

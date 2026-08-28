@@ -207,9 +207,18 @@ No new testid work — every handle already exists; two of them are not yet on
      conversation created moments earlier). The spec clicks **+Chat**
      (`click_create_conversation()`) and then verifies BOTH an id-less `/chat`
      URL and a zero message count before sending — a suite-local
-     `_open_blank_composer()`, a lighter sibling of
+     `_open_blank_composer()`, duplicated-with-attribution from
      `_open_genuinely_blank_conversation()` in
      `tests/ui/chat/test_team_users_mention_and_remove_participants.py`.
+     **The restore is DELAYED**, so the blank state must be shown to *hold*
+     across a settle window, not merely to be true at one instant: the helper
+     carries the ancestor's `_poll_blank_state_holds()` verbatim (poll both
+     signals at 250 ms across a 1500 ms window, exit the moment either flips).
+     PR #1962 review round 1 blocked an earlier revision that substituted a
+     fixed `page.wait_for_timeout(1500)` + one recheck for that poll — a
+     `.agents/conventions.md` § Hard don'ts violation, and a shape that samples
+     the window only at its end. Pinned by
+     `automation/tests/unit/test_blank_composer_settle_is_polled.py`.
   2. `ChatPage.navigate_to_chat(conversation_id=X)` **cannot switch
      conversations**: it short-circuits with "already on chat page, skipping
      navigation" whenever the current URL contains `/chat`, so asking for
