@@ -91,6 +91,17 @@ in the SPA store* — Step 6 alone cannot tell them apart.
 ### Teardown — restore `original_persona`
 Set the select back and wait for its autosave `PUT`. Assert the restore landed.
 
+**Route-guarded, and best-effort only on the failure path** (shipped shape, added in
+fix round 1 of PR #1961). The restore first checks `page.url` and re-opens
+`/settings/ai-personality` when the body died elsewhere — Steps 4–5 leave the browser
+on `/settings/notifications`, where the persona select does not exist, so an
+unguarded read auto-waits and raises. Two consequences the guard removes: the restore
+could not run at all (shared `${TEST_USER}` state left on the changed persona), and
+the teardown exception *replaced* the real failure in the report. When the body
+already failed the restore swallows its own exception (logged, `exc_info`); when the
+body passed it stays strict and a failed restore fails the test. Pinned by
+`tests/unit/test_personalization_restore_route_guard.py`.
+
 ---
 
 ## Concrete Handles
@@ -143,3 +154,32 @@ Set the select back and wait for its autosave `PUT`. Assert the restore landed.
   that message (known defect, linked) — nothing broader.
 - **Numeric-field autosave bug #1129** does **not** apply here: this is a select, and the
   toggle/select autosave path is the reliable one (`_surface.md` § Autosave).
+
+---
+
+## Amendments — implementer exploration (ELITEA-2387 implementation, 2026-08-29)
+
+Attributed to test-automation-engineer; the AFS's *what* is unchanged.
+
+**The autosave wait is `page.expect_response`, not
+`UserProfileSettingsPage.wait_for_autosave()`.** That helper is a
+`networkidle` wait with a `wait_for_timeout` fallback — it awaits *some* network
+quiet, and can neither identify the PUT nor read its status. This AFS's own Axis 2
+requires the assertion "the autosave `PUT /api/v2/social/author/` returns **200**",
+so the spec wraps the select interaction in
+`page.expect_response(<PUT to /api/v2/social/author/>)` and asserts `status == 200`
+— strictly stronger, still no sleep, and it is the shape the repo's other autosave
+assertions already use (`set_target_summary_tokens`'s docstring names it as the
+caller's contract). `wait_for_autosave()` is left untouched for its existing callers.
+
+Additional note: `networkidle` is a documented flake source on this app
+(`.agents/testing.md` § Unconfirmed, issue #1847 — the Socket.IO polling transport
+never goes quiet), which is a second reason not to route this case's wait through it.
+
+Handles landed on `automation/testids` in EliteaAI/EliteaUI@fa505e37:
+`ai-personality-persona-section`, `ai-personality-persona-select` (+ the
+`-combobox` element `SingleSelect` derives), `ai-personality-user-instructions-textarea`
+(via the established `inputProps={{ 'data-testid': ... }}` shape — the placeholder
+assertion of Step 3 was kept).
+
+**Spec:** `automation/tests/ui/settings/test_personalization_autosave_no_save_button.py`

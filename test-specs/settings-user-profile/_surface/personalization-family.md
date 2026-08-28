@@ -115,3 +115,48 @@ route; it would be masking.
 
 A "no console errors" step on `/settings/memory` or `/settings/ai-personality` must filter
 exactly that message (linked known defect), nothing broader.
+
+## Resolved/added during ELITEA-2372/2373/2387 implementation (2026-08-29, test-automation-engineer)
+
+**Testids added on `automation/testids`** — all pure attribute/prop adds, no new DOM node,
+no new hook (EliteaAI/EliteaUI@fa505e37, plus EliteaAI/EliteaUI@36733706 for the avatar image):
+
+| Testid | Where | Shape |
+|---|---|---|
+| `preferences-general-section` / `-header` / `preferences-general-content` | `PreferenceGeneral.jsx` | `BasicAccordion` `data-testid` + item `testId` + attribute on the existing content `<Box>` |
+| `sound-notifications-section` / `-header` | `SoundNotificationSection.jsx` | same two `BasicAccordion` props |
+| `sound-notifications-content` | `SoundNotificationControls.jsx` root `<Box>` | feature-local component, single consumer |
+| `voice-personalization-section-header` | `VoicePersonalizationSection.jsx` | item `testId` (the wrapper already had one) |
+| `context-management-section-header` | `MemoryContextManagement.jsx` | item `testId` |
+| `settings-profile-avatar` (+ `-image`) | `Profile.jsx` / `UserAvatar.jsx` | `testId` prop; the `-image` value is DERIVED inside `UserAvatar` via MUI's `imgProps` slot |
+| `settings-profile-display-name` | `Profile.jsx` | attribute |
+| `settings-profile-fullname-value`, `settings-profile-email-value` | `Profile.jsx` call sites | new caller-supplied `testId` prop on `FieldWithCopy` |
+| `ai-personality-persona-section`, `ai-personality-persona-select` (+ auto `-combobox`), `ai-personality-user-instructions-textarea` | `AIPersonalityPersonalization.jsx` | `BasicAccordion`/`SingleSelect` props + the established `inputProps={{ 'data-testid': … }}` |
+
+**Facts worth reusing**
+
+- **`UserAvatar`'s image branch is now addressable without a raw `img` hop.** MUI `Avatar`
+  accepts `imgProps`, so `UserAvatar` emits `${testId}-image` on the `<img>` whenever the
+  caller passes a `testId` — the same derive-from-the-caller shape `SingleSelect` uses for
+  `-combobox`. Count of that testid IS the branch discriminator (1 = image, 0 = initials).
+  This is NOT a #579 case; do not reach for a scoped raw handle here.
+- **A collapse probe on CONTEXT MANAGEMENT must be `context-management-toggle`, not
+  `max-context-tokens-input`.** The numeric fields are conditionally unmounted when the
+  toggle is off (shared mutable account state), so they read 0 elements for a reason that
+  has nothing to do with the accordion. The toggle is the always-mounted child.
+- **`page.expect_response` beats `UserProfileSettingsPage.wait_for_autosave()` for the
+  persona PUT.** That helper is a `networkidle` wait with a `wait_for_timeout` fallback: it
+  cannot identify the request or read its status, and `networkidle` is a documented flake
+  source on this app (#1847 — the Socket.IO polling transport never goes quiet). Wrapping
+  the interaction in `page.expect_response(<PUT /api/v2/social/author/>)` and asserting
+  `status == 200` is strictly stronger and still sleep-free. Restore in a `finally`, waiting
+  for the restore's own PUT.
+- ⚠️ **The Vite dev server does NOT reliably see edits on this OneDrive-backed checkout.**
+  Three specs failed their first run with "element(s) not found" on brand-new testids while
+  the JSX on disk was correct and committed; `curl http://localhost:5173/src/<path>.jsx`
+  showed the server still serving the pre-edit transform, and `touch`-ing the files did not
+  wake the watcher. **Restarting `npm run dev` fixed it, and the same three specs went 3/3
+  green.** Before suspecting a testid, `curl` the module off the dev server and grep it —
+  that is a 2-second check that distinguishes a stale watcher from a real locator bug (this
+  is the sharper form of the "HMR lag" note in `_surface/profile-and-drawer.md`: the fix is
+  a server restart, not a re-run).

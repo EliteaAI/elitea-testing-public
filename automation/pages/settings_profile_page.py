@@ -89,6 +89,43 @@ class SettingsProfilePage(BasePage):
         "docstring).",
     )
 
+    profile_avatar = LocatorDescriptor(
+        testid="settings-profile-avatar",
+        description="Avatar element of the Profile card. `UserAvatar` applies the "
+        "caller-supplied `testId` in BOTH of its branches -- the `<img>` avatar and "
+        "the MUI initials fallback -- so this handle resolves whatever the account "
+        "state is.",
+    )
+
+    profile_avatar_image = LocatorDescriptor(
+        testid="settings-profile-avatar-image",
+        description="The `<img>` inside the avatar, present ONLY when the account "
+        "has an avatar URL. `UserAvatar` derives this testid from its `testId` prop "
+        "via MUI's `imgProps` slot, so its count is the branch discriminator: 1 = a "
+        "real image avatar, 0 = the initials fallback.",
+    )
+
+    profile_display_name = LocatorDescriptor(
+        testid="settings-profile-display-name",
+        description="Display name rendered next to the avatar. The same name is "
+        "ALSO rendered as the `Full name:` field value, so a text-based locator "
+        "would match both -- the testid is required, not a convenience.",
+    )
+
+    profile_fullname_value = LocatorDescriptor(
+        testid="settings-profile-fullname-value",
+        description="Value of the `Full name:` field. Named at the Profile call "
+        "site through `FieldWithCopy`'s caller-supplied `testId` prop (the "
+        "component is reused by AI Providers, so it hardcodes no feature-scoped "
+        "testid). DO NOT CLICK -- the value carries a copy handler + toast.",
+    )
+
+    profile_email_value = LocatorDescriptor(
+        testid="settings-profile-email-value",
+        description="Value of the `Email:` field, named the same way as "
+        "`profile_fullname_value`. DO NOT CLICK -- copy handler + toast.",
+    )
+
     logout_button_icon = LocatorDescriptor(
         testid="settings-profile-logout-icon",
         description="Inline SVG rendered by `LogoutIcon` in the button's MUI "
@@ -173,3 +210,48 @@ class SettingsProfilePage(BasePage):
         native accessor for scroll geometry, so ``evaluate`` is the only route.
         """
         return bool(container.evaluate("el => el.scrollHeight > el.clientHeight"))
+    # ------------------------------------------------------------------
+    # Profile identity
+    # ------------------------------------------------------------------
+
+    def open_profile_tab(self, timeout: int = 30000) -> None:
+        """Open Settings -> Profile from a settings route that is already open."""
+        self.nav_item("profile").click()
+        self.profile_page.wait_for(state="visible", timeout=timeout)
+        logger.info("Opened Settings -> Profile via the drawer")
+
+    def has_avatar_image(self) -> bool:
+        """Whether the avatar rendered its `<img>` branch rather than initials.
+
+        Read of the live DOM, not an assumption about the account: the shared
+        test user has no avatar URL today, but that can change without the
+        product being wrong (see the ELITEA-2373 spec docstring).
+        """
+        return self.profile_avatar_image.count() > 0
+
+    def avatar_image_is_loaded(self) -> bool:
+        """Whether the avatar `<img>` actually decoded (not a broken-image icon).
+
+        Read-only measurement, NOT a substitution (`.agents/testing.md`
+        § Fidelity policy): `naturalWidth` is computed by the browser from the
+        image the product itself requested. Playwright exposes no native
+        accessor for it, so `evaluate` is the only route -- the same rationale
+        as :meth:`is_scrollable`.
+        """
+        return bool(self.profile_avatar_image.evaluate("img => img.naturalWidth > 0"))
+
+    def avatar_initials(self) -> str:
+        """Text rendered by the avatar's initials fallback."""
+        return (self.profile_avatar.inner_text() or "").strip()
+
+    @staticmethod
+    def expected_initials(name: str) -> str:
+        """Initials the product derives from *name* (`getInitials`, `common/utils.jsx`).
+
+        First character of the first word + first character of the last word,
+        upper-cased; a single-word name yields one character.
+        """
+        parts = name.split(" ")
+        first = parts[0]
+        last = parts[-1] if len(parts) > 1 else ""
+        return f"{first[:1]}{last[:1]}".upper()

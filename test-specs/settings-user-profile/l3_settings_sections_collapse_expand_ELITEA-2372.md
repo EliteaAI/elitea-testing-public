@@ -121,7 +121,7 @@ pure prop/attribute add at the call site.
 | CONTEXT MANAGEMENT wrapper | `context-management-section` | on `automation/testids` (also on `main` per `_surface.md`) |
 | CONTEXT MANAGEMENT header | `context-management-section-header` | **testid needed** — `MemoryContextManagement.jsx`, `items[0].testId` |
 | Collapsed/expanded state | `aria-expanded` on the **header** testid | standard ARIA attribute — state on an attribute, never a state-switched testid (PR #581 ruling) |
-| "content is hidden/visible" observable | an already-testid'd child inside each section | `max-context-tokens-input` (Memory); for Preferences use `voice-preview-button` (pre-existing) and, for GENERAL / SOUND NOTIFICATIONS, the section wrapper's own collapse container — see the note below |
+| "content is hidden/visible" observable | an already-testid'd child inside each section | **`context-management-toggle`** (Memory — amended, see below); `voice-preview-button` (Voice, pre-existing); `preferences-general-content` / `sound-notifications-content` (added — option (b)) |
 
 **Note on the "content" observable for GENERAL / SOUND NOTIFICATIONS.** Neither section
 has a testid'd child today. Two compliant options, implementer's call (declare which):
@@ -185,3 +185,31 @@ locator on it.
 - **`/settings/memory` console error #1771** fires on every load.
 - The three Preferences accordions are siblings inside `settings-content`; positional
   `nth=` selectors work today but are forbidden — add the testids.
+
+---
+
+## Amendments — implementer exploration (ELITEA-2372 implementation, 2026-08-29)
+
+Attributed to test-automation-engineer; the AFS's *what* is unchanged, only two
+*how* details:
+
+1. **CONTEXT MANAGEMENT's content observable is `context-management-toggle`, not
+   `max-context-tokens-input`.** The numeric fields are *conditionally unmounted*
+   when the Context Management toggle is off (`{isEnabled && (...)}` —
+   `UserProfileSettingsPage` documents that mechanism), and the toggle's state is
+   shared mutable account data. A collapse probe must be a child that is ALWAYS
+   mounted, or the assertion reads 0 elements for a reason that has nothing to do
+   with the accordion. `context-management-toggle` is that child. The AFS's own
+   §-Step-3 warning still governs: `not_to_be_visible()`, never `to_have_count(0)`.
+2. **Option (b) was taken for GENERAL / SOUND NOTIFICATIONS**, as this AFS
+   specified — `preferences-general-content` and `sound-notifications-content` are
+   pure attribute adds on existing content `<Box>` nodes. No raw CSS hop off a
+   testid parent was needed anywhere in this spec.
+
+All handles this case needed landed on `automation/testids` in
+EliteaAI/EliteaUI@fa505e37: `preferences-general-section(-header)`,
+`preferences-general-content`, `sound-notifications-section(-header)`,
+`sound-notifications-content`, `voice-personalization-section-header`,
+`context-management-section-header`.
+
+**Spec:** `automation/tests/ui/settings/test_settings_sections_collapse_expand.py`
