@@ -5,7 +5,7 @@ type: reference
 aliases: [version id stale read, confirm_new_version race, VERSION_CONVERGED_JS, copy-version-id stale, save as version race]
 tags: [area/agents, type/gotcha]
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-08-28
 ---
 
 ## The race
@@ -44,9 +44,30 @@ version data actually arrived.
   the dead gap between a POST completing and the follow-up GET being issued — it
   buys nothing here and is a race in its own right.
 
+## Where it has been fixed
+
+- `AgentDetailPage` — ELITEA-1888 / issue #1872 (the original).
+- `PipelineDetailPage.confirm_new_version()` — ELITEA-2002 / issue #1893,
+  2026-08-28. Same three removals (dead `prevId` URL wait, `wait_for_network`,
+  trigger-text-only poll) + the hoisted `VERSION_CONVERGED_JS`. It also fixed
+  ELITEA-2003 (`test_pipeline_delete_version.py`), which failed
+  byte-identically from the same call site — one page-object wait, two red
+  specs. **Method-scoped, not file-scoped** — the same file's
+  `wait_for_fallback_to_base()` is still on the old pattern; see § Still open.
+
 ## Still open
 
-The same defect lives in `PipelineDetailPage.confirm_new_version()` and
-`SkillDetailPage.save_as_version()` and their specs — tracked as issue #1874.
+- `SkillDetailPage.save_as_version()` and its specs — tracked as issue #1874.
+- `PipelineDetailPage.wait_for_fallback_to_base()` — a residual site of the same
+  family **inside the very file the section above lists as fixed**. Still
+  trigger-text-only, then a `wait_for_network` whose timeout this class's
+  override SWALLOWS, then one `get_version_id()` read — so it can return the
+  DELETED version's id. NOT fixed alongside #1893 for a real reason:
+  `VERSION_CONVERGED_JS` requires URL-last-segment === `copy-version-id`, and
+  what the route becomes after a version DELETE (rewrite to base's id, or drop
+  the version segment entirely?) has never been verified live — applying the
+  predicate blind could trade the race for a hard hang. Documented in the
+  method's own docstring (ELITEA-2002 fix round, 2026-08-28); needs live
+  verification + a follow-up card before anyone changes its behaviour.
 
 Related: [[matched_control_run_before_blaming_a_diff]]

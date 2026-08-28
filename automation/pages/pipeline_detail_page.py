@@ -228,6 +228,45 @@ class PipelineDetailPage(PipelineFormPage):
     # every version selector consumer; see also AgentDetailPage.VERSION_OPTION.
     VERSION_OPTION = '[data-testid="version-option-{}"]'
 
+    # Three-way convergence predicate for "the page now shows version <name>,
+    # fully loaded" — the SINGLE shared source used by both
+    # :meth:`confirm_new_version` (Save As Version) and
+    # :meth:`select_version_by_name` (VERSION dropdown switch). Mirrors
+    # AgentDetailPage.VERSION_CONVERGED_JS.
+    #
+    # Why three signals and not just trigger-text + URL: neither of those two
+    # is backed by `version_details`, so neither proves the version DATA
+    # arrived. `ApplicationVersionSelect.jsx`'s
+    # `if (isFromCreation) return version;` takes the trigger's selected id
+    # straight from the route's version path param, synchronously — so on
+    # creation the trigger stops tracking `version_details` entirely.
+    # Rendering the trigger's visible NAME then needs only Formik's
+    # `versions` array (the id is mapped to an option label via
+    # `buildVersionOption`), which is a DIFFERENT Formik field from
+    # `version_details` and lands at a different time. Only the Information
+    # panel's `copy-version-id` is rendered from `version_details`
+    # (`ApplicationInformation.jsx` renders `version_details?.id`), written
+    # only after the async version-detail GET lands. So the trigger can
+    # already show the NEW name while the panel still renders the PREVIOUS
+    # version's id — the measured ~660 ms window in issue #1893. Requiring
+    # the Formik-backed id to equal the URL's version-id segment is what
+    # proves the version data actually arrived.
+    #
+    # LOCATOR NOTE: the `[data-testid="…"]` literals are inlined here because
+    # `wait_for_function` evaluates in the page, not through a Playwright
+    # locator. This is the established in-file shape and is testid-only
+    # (`.agents/testing.md` § Locator policy).
+    VERSION_CONVERGED_JS = """name => {
+        const trigger = document.querySelector('[data-testid="agent-version-selector-trigger"]');
+        const versionIdEl = document.querySelector('[data-testid="copy-version-id"]');
+        if (!trigger || trigger.innerText.trim() !== name) return false;
+        if (!versionIdEl) return false;
+        const currentId = versionIdEl.innerText.trim();
+        if (!currentId) return false;
+        const seg = window.location.pathname.split('/').filter(Boolean).pop();
+        return seg === currentId;
+    }"""
+
     # --- Version deletion (ELITEA-2003) — three-dot menu's VERSION-group
     # "Delete" item + its SIMPLE confirm modal. Distinct from
     # `delete_pipeline_via_menu`'s PIPELINE-group "Delete pipeline" item
@@ -1886,19 +1925,33 @@ class PipelineDetailPage(PipelineFormPage):
         Call after :meth:`open_save_as_version_dialog`. Types via
         ``press_sequentially`` (MUI/React onChange requirement —
         `.claude/rules/mui-patterns.md`), clicks the dialog's Save button,
-        and waits for the dialog to close and for the URL to gain a new
-        version-id path segment (mirrors
-        ``AgentDetailPage.confirm_new_version()``'s wait strategy). The app
-        also appends a transient ``isFromCreation=true`` query param that
-        self-strips once the new version has loaded; this method does not
-        assert on it directly.
+        waits for the dialog to close, and then waits for the page to
+        CONVERGE on the new version via :data:`VERSION_CONVERGED_JS`: the
+        VERSION trigger's text equals ``version_name`` AND the Information
+        panel's ``copy-version-id`` is non-empty AND the URL's last path
+        segment equals that id. The app also appends a transient
+        ``isFromCreation=true`` query param that self-strips once the new
+        version has loaded; this method does not assert on it directly.
+
+        Why the Information-panel id has to be in the wait (issue #1893):
+        neither the VERSION trigger nor the URL is backed by
+        ``version_details``. ``ApplicationVersionSelect.jsx``'s
+        ``isFromCreation`` branch takes the trigger's selected id straight
+        from the route's version path param, synchronously; rendering its
+        visible NAME then needs only Formik's ``versions`` array — a
+        DIFFERENT field from ``version_details``, landing at a different
+        time. Only ``copy-version-id`` is rendered from ``version_details``.
+        So the trigger can already show the new name while the Information
+        panel still renders the PREVIOUS version's id — measured ~660 ms.
+        Waiting on the trigger text alone therefore returned inside that
+        window, and the caller's next :meth:`get_version_id` read a stale
+        value, so an ``old != new`` assertion compared an id with itself.
 
         Args:
             version_name: Name for the new version (e.g. ``"v1_test"``).
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Confirming new pipeline version: %r", version_name)
-        previous_version_id = self.get_version_id()
 
         self.create_version_name_input.click()
         self.create_version_name_input.press_sequentially(version_name, delay=50)
@@ -1907,22 +1960,7 @@ class PipelineDetailPage(PipelineFormPage):
         Dialog.wait_for_hidden(self.page, timeout=timeout)
 
         self.page.wait_for_function(
-            "prevId => window.location.pathname.split('/').filter(Boolean).pop() !== prevId",
-            arg=previous_version_id,
-            timeout=timeout,
-        )
-        self.wait_for_network(timeout=5000)
-
-        # The URL's version-id segment updates before the VERSION selector's
-        # displayed text re-renders (same race documented on the Agent
-        # sibling) — poll the trigger's own text rather than sleeping.
-        self.page.wait_for_function(
-            """name => {
-                const el = document.querySelector('[data-testid="agent-version-selector-trigger"]');
-                return !!el && el.innerText.trim() === name;
-            }""",
-            arg=version_name,
-            timeout=timeout,
+            self.VERSION_CONVERGED_JS, arg=version_name, timeout=timeout
         )
         logger.info(
             "New pipeline version %r created — URL: %s", version_name, self.page.url
@@ -2009,16 +2047,8 @@ class PipelineDetailPage(PipelineFormPage):
         """
         logger.info("Selecting pipeline version %r from the VERSION dropdown", version_name)
 
-        version_id_matches_js = """name => {
-            const trigger = document.querySelector('[data-testid="agent-version-selector-trigger"]');
-            const versionIdEl = document.querySelector('[data-testid="copy-version-id"]');
-            if (!trigger || trigger.innerText.trim() !== name) return false;
-            if (!versionIdEl) return false;
-            const currentId = versionIdEl.innerText.trim();
-            if (!currentId) return false;
-            const seg = window.location.pathname.split('/').filter(Boolean).pop();
-            return seg === currentId;
-        }"""
+        # Shared with confirm_new_version() — see VERSION_CONVERGED_JS.
+        version_id_matches_js = self.VERSION_CONVERGED_JS
 
         last_exc: Exception | None = None
         for attempt in range(1, attempts + 1):
@@ -2142,18 +2172,51 @@ class PipelineDetailPage(PipelineFormPage):
         base's version id.
 
         The fallback is asynchronous (see the known-defect note on
-        :meth:`confirm_delete_version`): the VERSION selector's own text
-        is the fastest-updating of the three cross-check signals (mirrors
-        :meth:`confirm_new_version`'s wait strategy), so this polls the
-        trigger text first, then reads the settled version id from the
-        Information panel once network activity quiesces.
+        :meth:`confirm_delete_version`). What this method actually does,
+        in order: waits on an inline predicate for the VERSION selector
+        trigger's text to become ``"base"`` — trigger text ONLY, NOT
+        :data:`VERSION_CONVERGED_JS` — then calls :meth:`wait_for_network`,
+        then performs a single :meth:`get_version_id` read of the
+        Information panel.
+
+        CAVEAT — this retains the PRE-FIX pattern that issue #1893 removed
+        from :meth:`confirm_new_version`; it does NOT mirror that method's
+        wait strategy any more. Both of its waits are structurally weak
+        here:
+
+        * the trigger text is not backed by ``version_details`` (see the
+          :data:`VERSION_CONVERGED_JS` comment), so it can flip before the
+          version data has loaded — precisely the signal #1893 proved
+          insufficient; and
+        * this class's :meth:`wait_for_network` override SWALLOWS its own
+          timeout (best-effort ``networkidle``, logged at debug and
+          ignored), and ``networkidle`` can in any case resolve in the dead
+          gap between the delete request completing and the follow-up
+          version GET being issued.
+
+        So the :meth:`get_version_id` read below is structurally exposed to
+        the same stale-read race #1893 fixed — it may return the DELETED
+        version's id rather than base's.
+
+        Left unfixed DELIBERATELY, not overlooked. Whether
+        :data:`VERSION_CONVERGED_JS` transfers to the post-DELETION flow is
+        not statically knowable: that predicate requires the URL's last
+        path segment to equal the Formik-backed ``copy-version-id``, and
+        nobody has verified live what the route becomes after a version is
+        deleted — does it rewrite to base's version id, or drop the version
+        segment entirely and leave a bare pipeline-id URL? Under the second
+        shape the predicate could never be satisfied, trading a race for a
+        hard hang. This needs live verification and is left for a follow-up
+        card; an unverified behavioural change to a deletion flow would be
+        worse than this note.
 
         Args:
             timeout: Maximum wait time in milliseconds.
 
         Returns:
-            The "base" version's numeric id, read from the Information
-            panel after the fallback settles.
+            The version id read from the Information panel after the
+            trigger flips to "base" — intended to be base's id, subject to
+            the race described above.
         """
         self.page.wait_for_function(
             """() => {
