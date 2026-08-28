@@ -111,3 +111,6 @@
 - [Verify vs main, not the tree](verify_handles_and_values_against_main_not_the_working_tree.md) — tree = testids branch
 - [Deployed-env-only failures need a GHA run, not a local gate](deployed_env_only_failures_need_a_gha_run_not_a_local_gate.md) — APP_PREFIX class is green locally by construction
 - [Never bulk-rebuild the TMS index](tms_full_index_rebuild_is_unsafe.md) — `build_index` reported 2789 vs 3073 actual; edit both index files surgically
+- [Sibling fix cards can differ](sibling_fix_cards_can_have_different_root_causes.md) — "same issue as #N" is a hypothesis
+- [main-only repair dies at promotion](main_and_base_can_carry_different_variants_of_one_spec.md) — base may hold another variant
+- [Harvest allure artifacts first](harvest_gha_allure_artifacts_before_dispatching.md) — the screenshot names the cause in one look
