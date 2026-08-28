@@ -61,3 +61,4 @@
 - [CI red on main — check automation/base for an existing fix FIRST](ci_red_on_main_check_automation_base_first.md) — port, don't re-triage
 - [JS el.click() on a disabled button is a silent no-op](js_click_on_disabled_button_is_a_silent_noop.md) — cannot-fail click + vacuous URL guard = red 2 steps downstream
 - [Run the suite against dev.elitea.ai without editing .env.test](retarget_suite_at_dev_without_editing_env_test.md) — throwaway -p plugin; shell exports cannot win
+- [Testid grep false-negative on helper string args](testid_grep_false_negative_helper_string_args.md) — stage-2 filter drops testids passed as bare string args
