@@ -31,6 +31,7 @@ import allure
 import pytest
 from pages.analytics_page import AnalyticsPage
 from playwright.sync_api import expect
+from utils.console_errors import collect_console_errors
 
 logger = logging.getLogger(__name__)
 
@@ -71,128 +72,125 @@ class TestAnalyticsGuideTab:
         four named Overview metrics with blue Calculation and Data source
         values, and clips no description text."""
         analytics_page = AnalyticsPage(page)
-        console_errors = analytics_page.capture_console_errors()
+        console_errors = collect_console_errors(page)
 
-        try:
-            with allure.step("Step 1 — Navigate to Settings -> Analytics and open the Guide tab"):
-                analytics_page.navigate_capturing_analytics()
-                analytics_page.open_guide_tab()
-                assert analytics_page.is_tab_selected(analytics_page.tab_guide), (
-                    "Expected the 'Guide' tab to be aria-selected=true after clicking it"
+        with allure.step("Step 1 — Navigate to Settings -> Analytics and open the Guide tab"):
+            analytics_page.navigate_capturing_analytics()
+            analytics_page.open_guide_tab()
+            assert analytics_page.is_tab_selected(analytics_page.tab_guide), (
+                "Expected the 'Guide' tab to be aria-selected=true after clicking it"
+            )
+
+        with allure.step(
+            "Step 2 — Verify the tab loads documentation (not blank): sections and metrics "
+            "are rendered, and the section titles match in order"
+        ):
+            section_count = analytics_page.guide_sections.count()
+            metric_count = analytics_page.guide_metrics.count()
+            assert section_count > 0, "Expected the Guide tab to render documentation sections"
+            assert metric_count > 0, "Expected the Guide tab to render metric entries"
+            actual_titles = tuple(analytics_page.get_guide_section_titles())
+            assert actual_titles == EXPECTED_SECTION_TITLES, (
+                f"Expected section titles {EXPECTED_SECTION_TITLES}, got {actual_titles}"
+            )
+            logger.info("Guide rendered %d sections, %d metrics", section_count, metric_count)
+
+        with allure.step(
+            'Step 3 — Verify the "Overview Tab" section documents TEAM, AI ACTIVE, '
+            "Adoption Rate and LLM CALLS, in that order"
+        ):
+            section_index = analytics_page.get_guide_section_index_by_title(CASE_SECTION_TITLE)
+            assert section_index >= 0, (
+                f"Expected a guide section titled {CASE_SECTION_TITLE!r}, got "
+                f"{analytics_page.get_guide_section_titles()}"
+            )
+            metric_names = analytics_page.get_guide_metric_names_in_section(section_index)
+            positions = [
+                metric_names.index(name) for name in CASE_METRIC_NAMES if name in metric_names
+            ]
+            missing = [name for name in CASE_METRIC_NAMES if name not in metric_names]
+            assert not missing, (
+                f"Expected the {CASE_SECTION_TITLE!r} section to document {list(CASE_METRIC_NAMES)}, "
+                f"missing {missing} (section metrics: {metric_names})"
+            )
+            assert positions == sorted(positions), (
+                f"Expected {list(CASE_METRIC_NAMES)} to appear in that order, got the section's "
+                f"order {metric_names}"
+            )
+
+        with allure.step(
+            "Step 4 — Verify each named metric shows a description plus blue Calculation "
+            "and Data source values, and that no metric anywhere orphans a label from its value"
+        ):
+            for metric_name in CASE_METRIC_NAMES:
+                parts = analytics_page.get_guide_metric_parts(section_index, metric_name)
+                assert (parts["description"].text_content() or "").strip(), (
+                    f"Expected metric {metric_name!r} to render a non-empty description"
+                )
+                assert "Calculation:" in parts["text"], (
+                    f"Expected metric {metric_name!r} to show a 'Calculation:' label"
+                )
+                assert "Data source:" in parts["text"], (
+                    f"Expected metric {metric_name!r} to show a 'Data source:' label"
+                )
+                for key, label in (
+                    ("calculation_value", "Calculation"),
+                    ("source_value", "Data source"),
+                ):
+                    value = parts[key]
+                    expect(value).to_be_visible()
+                    assert (value.text_content() or "").strip(), (
+                        f"Expected metric {metric_name!r}'s {label} value to be non-empty"
+                    )
+                    expect(value).to_have_css("color", GUIDE_VALUE_BLUE)
+
+            # The honest generalisation of the case's "each metric section
+            # shows ..." intent (#1950): both conditional branches are
+            # referenced — a value node present exactly when its label is.
+            for index in range(metric_count):
+                name = (
+                    analytics_page.guide_metric_names.nth(index).text_content() or ""
+                ).strip()
+                assert name, f"Expected guide metric #{index} to render a non-empty name"
+                description_text = (
+                    analytics_page.guide_metric_descriptions.nth(index).text_content() or ""
+                ).strip()
+                assert description_text, (
+                    f"Expected guide metric {name!r} to render a non-empty description"
+                )
+                pairing = analytics_page.get_guide_metric_pairing(index)
+                assert pairing["calculation_label"] == bool(pairing["calculation_value"]), (
+                    f"Metric {name!r} orphans its Calculation label/value: {pairing}"
+                )
+                assert pairing["source_label"] == bool(pairing["source_value"]), (
+                    f"Metric {name!r} orphans its Data source label/value: {pairing}"
                 )
 
-            with allure.step(
-                "Step 2 — Verify the tab loads documentation (not blank): sections and metrics "
-                "are rendered, and the section titles match in order"
-            ):
-                section_count = analytics_page.guide_sections.count()
-                metric_count = analytics_page.guide_metrics.count()
-                assert section_count > 0, "Expected the Guide tab to render documentation sections"
-                assert metric_count > 0, "Expected the Guide tab to render metric entries"
-                actual_titles = tuple(analytics_page.get_guide_section_titles())
-                assert actual_titles == EXPECTED_SECTION_TITLES, (
-                    f"Expected section titles {EXPECTED_SECTION_TITLES}, got {actual_titles}"
+        with allure.step(
+            "Step 5 — Verify the guide content is readable and not truncated: no "
+            "description is ellipsised or clipped, and no section card clips its content"
+        ):
+            for index in range(metric_count):
+                description = analytics_page.guide_metric_descriptions.nth(index)
+                text_overflow = description.evaluate(
+                    "el => window.getComputedStyle(el).textOverflow"
                 )
-                logger.info("Guide rendered %d sections, %d metrics", section_count, metric_count)
-
-            with allure.step(
-                'Step 3 — Verify the "Overview Tab" section documents TEAM, AI ACTIVE, '
-                "Adoption Rate and LLM CALLS, in that order"
-            ):
-                section_index = analytics_page.get_guide_section_index_by_title(CASE_SECTION_TITLE)
-                assert section_index >= 0, (
-                    f"Expected a guide section titled {CASE_SECTION_TITLE!r}, got "
-                    f"{analytics_page.get_guide_section_titles()}"
+                assert text_overflow != "ellipsis", (
+                    f"Expected guide description #{index} not to be ellipsised, got "
+                    f"text-overflow: {text_overflow!r}"
                 )
-                metric_names = analytics_page.get_guide_metric_names_in_section(section_index)
-                positions = [
-                    metric_names.index(name) for name in CASE_METRIC_NAMES if name in metric_names
-                ]
-                missing = [name for name in CASE_METRIC_NAMES if name not in metric_names]
-                assert not missing, (
-                    f"Expected the {CASE_SECTION_TITLE!r} section to document {list(CASE_METRIC_NAMES)}, "
-                    f"missing {missing} (section metrics: {metric_names})"
+                assert not analytics_page.is_element_clipped(description), (
+                    f"Expected guide description #{index} not to be clipped by its own box"
                 )
-                assert positions == sorted(positions), (
-                    f"Expected {list(CASE_METRIC_NAMES)} to appear in that order, got the section's "
-                    f"order {metric_names}"
+            for index in range(section_count):
+                section = analytics_page.guide_sections.nth(index)
+                assert not analytics_page.is_element_clipped(section), (
+                    f"Expected guide section #{index} "
+                    f"({analytics_page.get_guide_section_titles()[index]!r}) not to clip its "
+                    f"content"
                 )
 
-            with allure.step(
-                "Step 4 — Verify each named metric shows a description plus blue Calculation "
-                "and Data source values, and that no metric anywhere orphans a label from its value"
-            ):
-                for metric_name in CASE_METRIC_NAMES:
-                    parts = analytics_page.get_guide_metric_parts(section_index, metric_name)
-                    assert (parts["description"].text_content() or "").strip(), (
-                        f"Expected metric {metric_name!r} to render a non-empty description"
-                    )
-                    assert "Calculation:" in parts["text"], (
-                        f"Expected metric {metric_name!r} to show a 'Calculation:' label"
-                    )
-                    assert "Data source:" in parts["text"], (
-                        f"Expected metric {metric_name!r} to show a 'Data source:' label"
-                    )
-                    for key, label in (
-                        ("calculation_value", "Calculation"),
-                        ("source_value", "Data source"),
-                    ):
-                        value = parts[key]
-                        expect(value).to_be_visible()
-                        assert (value.text_content() or "").strip(), (
-                            f"Expected metric {metric_name!r}'s {label} value to be non-empty"
-                        )
-                        expect(value).to_have_css("color", GUIDE_VALUE_BLUE)
-
-                # The honest generalisation of the case's "each metric section
-                # shows ..." intent (#1950): both conditional branches are
-                # referenced — a value node present exactly when its label is.
-                for index in range(metric_count):
-                    name = (
-                        analytics_page.guide_metric_names.nth(index).text_content() or ""
-                    ).strip()
-                    assert name, f"Expected guide metric #{index} to render a non-empty name"
-                    description_text = (
-                        analytics_page.guide_metric_descriptions.nth(index).text_content() or ""
-                    ).strip()
-                    assert description_text, (
-                        f"Expected guide metric {name!r} to render a non-empty description"
-                    )
-                    pairing = analytics_page.get_guide_metric_pairing(index)
-                    assert pairing["calculation_label"] == bool(pairing["calculation_value"]), (
-                        f"Metric {name!r} orphans its Calculation label/value: {pairing}"
-                    )
-                    assert pairing["source_label"] == bool(pairing["source_value"]), (
-                        f"Metric {name!r} orphans its Data source label/value: {pairing}"
-                    )
-
-            with allure.step(
-                "Step 5 — Verify the guide content is readable and not truncated: no "
-                "description is ellipsised or clipped, and no section card clips its content"
-            ):
-                for index in range(metric_count):
-                    description = analytics_page.guide_metric_descriptions.nth(index)
-                    text_overflow = description.evaluate(
-                        "el => window.getComputedStyle(el).textOverflow"
-                    )
-                    assert text_overflow != "ellipsis", (
-                        f"Expected guide description #{index} not to be ellipsised, got "
-                        f"text-overflow: {text_overflow!r}"
-                    )
-                    assert not analytics_page.is_element_clipped(description), (
-                        f"Expected guide description #{index} not to be clipped by its own box"
-                    )
-                for index in range(section_count):
-                    section = analytics_page.guide_sections.nth(index)
-                    assert not analytics_page.is_element_clipped(section), (
-                        f"Expected guide section #{index} "
-                        f"({analytics_page.get_guide_section_titles()[index]!r}) not to clip its "
-                        f"content"
-                    )
-
-            with allure.step("Step 6 — Verify no console errors were logged throughout"):
-                assert not console_errors, (
-                    f"Unexpected console errors: {[m.text for m in console_errors]}"
-                )
-        finally:
-            console_errors.stop()
+        with allure.step("Step 6 — Verify no console errors were logged throughout"):
+            assert not console_errors, (
+                f"Unexpected console errors: {console_errors}"
+            )

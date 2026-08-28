@@ -555,6 +555,15 @@ class AnalyticsPage(BasePage):
     health_table_header = LocatorDescriptor(
         testid="analytics-health-table-header", description="5-column table header row"
     )
+    health_table_header_cell = LocatorDescriptor(
+        testid="analytics-health-table-header-cell",
+        description="Repeated per-column header cell inside the 5-column header row "
+        "(same testid on every cell — select via .nth(i)). The DOM text is title case "
+        "('Event Type'); the uppercase the case describes is CSS "
+        "(`styles.tableCell.textTransform`), read separately by "
+        ":meth:`get_health_table_column_text_transforms`. Testid added for "
+        "ELITEA-2324 (EliteaAI/EliteaUI@1a1fa5f4).",
+    )
     health_rows = LocatorDescriptor(
         testid="analytics-health-row",
         description="Repeated per-event-type data row (same testid on every row — select via .nth(i))",
@@ -628,6 +637,14 @@ class AnalyticsPage(BasePage):
     # inside the real app-testid parent `analytics-tools-pagination-rows-menu`
     # (see `open_tools_rows_per_page_options`), never free-floating.
     MUI_MENU_OPTION = '[role="option"]'
+
+    #: ``getComputedStyle`` read used by :meth:`get_health_table_column_text_transforms`.
+    #: NOT a substitution (`.agents/testing.md` § Fidelity policy): it OBSERVES what the
+    #: product's own stylesheet computed — nothing is injected, forced or fabricated.
+    #: Playwright exposes no computed-style accessor, so this is the only way to read a
+    #: CSS presentation property, and it is the pattern the suite already uses
+    #: (`notification_center_page.COMPUTED_COLOR_JS`, `agent_form_page`).
+    COMPUTED_TEXT_TRANSFORM_JS = "el => window.getComputedStyle(el).textTransform"
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -1251,11 +1268,36 @@ class AnalyticsPage(BasePage):
             self.loading_indicator.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
 
     def get_health_table_column_labels(self) -> list[str]:
-        """The Health-by-Event-Type table's 5 column header labels in
-        rendered order (same aggregate-inner-text technique as the other
-        analytics tables)."""
-        text = self.health_table_header.inner_text()
-        return [line for line in text.split("\n") if line]
+        """The Health-by-Event-Type table's 5 column header labels in rendered
+        order, as the DOM holds them.
+
+        ``text_content()`` per cell, deliberately NOT ``inner_text()``: the
+        header's DOM text is title case ("Event Type"), and the uppercase the
+        case text describes is produced by CSS
+        (``styles.tableCell.textTransform: 'uppercase'``). ``inner_text()``
+        returns the CSS-*rendered* casing, which would conflate the two — a
+        hardcoded "EVENT TYPE" DOM label with the transform dropped would pass.
+        Pair this with :meth:`get_health_table_column_text_transforms` to assert
+        both halves separately (same convention as
+        ``ArtifactsPage.buckets_heading``).
+        """
+        return [
+            (self.health_table_header_cell.nth(i).text_content() or "").strip()
+            for i in range(self.health_table_header_cell.count())
+        ]
+
+    def get_health_table_column_text_transforms(self) -> list[str]:
+        """The computed ``text-transform`` of each Health table header cell, in
+        rendered order.
+
+        This is the CSS half of the column-label assertion: the case writes the
+        columns capitalised because the stylesheet uppercases them, while the
+        DOM text stays title case (:meth:`get_health_table_column_labels`).
+        """
+        return [
+            self.health_table_header_cell.nth(i).evaluate(self.COMPUTED_TEXT_TRANSFORM_JS)
+            for i in range(self.health_table_header_cell.count())
+        ]
 
     def get_health_event_types(self) -> list[str]:
         """The rendered event-type cell texts, in row order."""

@@ -41,6 +41,7 @@ import allure
 import pytest
 from pages.analytics_page import AnalyticsPage
 from playwright.sync_api import expect
+from utils.console_errors import collect_console_errors
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ class TestAnalyticsToolsTab:
         """Tools tab renders the Most Popular Tools bar chart and the Tool
         Details table, both matching the live analytics_tools response."""
         analytics_page = AnalyticsPage(page)
-        console_errors = analytics_page.capture_console_errors()
+        console_errors = collect_console_errors(page)
 
         try:
             with allure.step(
@@ -252,8 +253,7 @@ class TestAnalyticsToolsTab:
 
             with allure.step("Step 8 — Verify no console errors were logged throughout"):
                 assert not console_errors, (
-                    f"Unexpected console errors: {[m.text for m in console_errors]}"
+                    f"Unexpected console errors: {console_errors}"
                 )
         finally:
             analytics_page.clear_tools_search()
-            console_errors.stop()
