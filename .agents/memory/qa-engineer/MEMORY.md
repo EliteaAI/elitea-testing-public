@@ -52,3 +52,5 @@
 - [Verify handles against main, not the tree](verify_handles_against_main_not_working_tree.md) — localhost serves testids; main-targeted specs need origin/main
 - [Verify handles against main, not the tree](verify_handles_against_main_not_working_tree.md) — localhost serves testids; main-targeted specs need origin/main
 - [Constant or config?](ui_counters_may_be_server_configured.md) — trace any asserted UI number; testid greps miss it
+- [UnifiedDropdown popper first-open load race](unifieddropdown_popper_first_open_load_race.md) — popper rows land ~0.5-1.9s after click; .count() sees 0
+- [Latent-race claims need a date check](latent_race_claims_need_git_log_S.md) — git log -S when the mechanism landed, not just that it exists
