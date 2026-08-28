@@ -153,3 +153,27 @@ None.
   input" means emptying it.
 - `User 6250` (no email) never matches any term, and correctly reappears when the search is cleared.
 - Zero console errors throughout.
+
+
+## Implementation notes / AFS amendments (ELITEA-2323, 2026-08-28 — implementer)
+
+- **Shipped as** the new Step 8 block in
+  `automation/tests/ui/admin/test_analytics_users_activity_table.py`
+  (`TestAnalyticsUsersActivityTable::test_users_tab_activity_table_columns_and_pagination`), plus
+  two additive captures inside the covering Step 7 (`pre_row_identifiers`, `pre_count_text`). No
+  existing assertion was changed.
+- **AMENDED — "no page-object change is required" is no longer accurate.** One additive change was
+  needed for the response-oracle assertion: `AnalyticsPage.search_users()` now RETURNS the captured
+  `analytics_users/prompt_lib/` response body (it already wrapped the call in `expect_response`;
+  only the return value is new). Its single caller is this spec, and ignoring the return value is
+  still valid. Re-searching later to capture the body was NOT viable — RTK-Query serves the repeated
+  query from cache with no new request.
+- **PRE-EXISTING RED REPAIRED IN THE SAME PR.** The covering spec was failing on
+  `automation/base` before this work: the UI team added eight token/cost breakdown columns, so the
+  live User Activity header is **17** columns, not the 9 the ELITEA-2312 tuple expected. The tuple
+  was updated to the live contract (still an exact ordered tuple — nothing weakened) so the
+  extension could be verified. Recorded as a new occurrence on the existing case-text-drift issue
+  **elitea-testing-public#1188** rather than filed as a duplicate.
+- **Fixed a dead TMS link** on the covering spec's `@allure.issue` (it pointed at a
+  `settings-analytics/ELITEA-2312_users-tab-activity-table.md` path that does not exist; the real
+  case lives under `settings/analytics/`). A second `@allure.issue` now links ELITEA-2323's own case.

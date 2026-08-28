@@ -29,6 +29,12 @@ import inspect
 import pytest
 from utils.console_errors import NO_URL, collect_console_errors, format_console_message
 
+from tests.ui.admin import (
+    test_analytics_guide_tab,
+    test_analytics_health_tab,
+    test_analytics_overview_kpi_cards,
+    test_analytics_tools_tab,
+)
 from tests.ui.onboarding import test_sidebar_notification_badge
 
 #: The exact text a "Failed to load resource" console error carries — note it holds
@@ -133,4 +139,55 @@ def test_diagnosed_spec_uses_the_shared_url_annotated_collector():
     assert 'page.on(\n            "console"' not in source and 'page.on("console"' not in source, (
         "A hand-rolled page.on('console', ...) listener re-introduces the URL-less "
         "capture shape; use utils.console_errors.collect_console_errors instead."
+    )
+
+
+#: Specs whose AFS explicitly specs `utils/console_errors.collect_console_errors`.
+#: They shipped on `BasePage.capture_console_errors()` instead (review finding B1 on
+#: PR #1953) — that shape appends the raw `ConsoleMessage` and the specs rendered it
+#: as `[m.text for m in console_errors]`, dropping `msg.location` and reproducing the
+#: exact URL-less shape this module exists to eliminate.
+#:
+#: NOTE `tests/ui/admin/test_analytics_users_activity_table.py` is deliberately absent:
+#: ELITEA-2323 extended it additively and its own console capture predates that work
+#: (`test-automation-implementation` § Additive-only on shared-caller files). It is a
+#: migration candidate for whoever next touches that block.
+_SPECS_REQUIRING_THE_SHARED_COLLECTOR = [
+    test_analytics_guide_tab,
+    test_analytics_health_tab,
+    test_analytics_overview_kpi_cards,
+    test_analytics_tools_tab,
+]
+
+
+@pytest.mark.parametrize(
+    "module",
+    _SPECS_REQUIRING_THE_SHARED_COLLECTOR,
+    ids=lambda m: m.__name__.rsplit(".", 1)[-1],
+)
+def test_afs_specced_specs_use_the_shared_url_annotated_collector(module):
+    """A spec whose AFS names the shared collector must actually use it.
+
+    This is the check that would have caught finding B1: every one of these
+    specs captured console errors, asserted on them, and ran green — while
+    reporting them anonymously, because `BasePage.capture_console_errors()`
+    keeps only `msg.type`/`msg.text`.
+    """
+    source = inspect.getsource(module)
+    assert "collect_console_errors(page)" in source, (
+        f"{module.__name__} must capture console errors via "
+        "utils.console_errors.collect_console_errors so every error carries the "
+        "failing resource URL (its AFS specs exactly this helper)."
+    )
+    assert "capture_console_errors()" not in source, (
+        f"{module.__name__} still uses BasePage.capture_console_errors(), which drops "
+        "msg.location — the URL-less shape .agents/testing.md is trying to retire."
+    )
+    assert "m.text for m in console_errors" not in source, (
+        f"{module.__name__} renders console errors as bare message text, discarding the "
+        "URL even if the collector captured it."
+    )
+    assert 'page.on("console"' not in source, (
+        f"{module.__name__} hand-rolls a page.on('console', ...) listener; use "
+        "utils.console_errors.collect_console_errors instead."
     )

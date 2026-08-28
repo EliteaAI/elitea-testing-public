@@ -174,3 +174,36 @@ names and error values (`.agents/testing.md` § Fidelity policy). No `page.route
 - Search input placeholder `Search by tool name`, no testid.
 - Pagination: `Rows per page: 20`, range `1–2 of 2`.
 - Zero console errors.
+
+
+## Implementation notes / AFS amendments (ELITEA-2322, 2026-08-28 — implementer)
+
+- **Shipped as** `automation/tests/ui/admin/test_analytics_tools_tab.py`
+  (`TestAnalyticsToolsTab::test_tools_tab_chart_and_details_table`). Testids added:
+  EliteaAI/EliteaUI@bc50bd9d (chart title, search input, row errors, pagination select + range)
+  and EliteaAI/EliteaUI@aad6227c (`analytics-tools-pagination-rows-menu`, see below).
+- **AMENDED — step 3, "each bar has a distinct colour" is NOT the product's contract.** The fill is
+  `CHART_COLORS[i % 10]` and `CHART_COLORS` has **10** entries, so a project with more than 10 tools
+  legitimately repeats colours. The analyst's exploration project had 2 tools, which hid this. The
+  `auth_state` fixture's project has **34 tools (20 plotted)**, and bars 11-20 repeat bars 1-10
+  exactly. The shipped assertion is the live contract: the first `min(N, 10)` fills are all
+  distinct, and every fill equals `palette[i % 10]`. Case-text drift filed
+  **elitea-testing-public#1952**.
+- **AMENDED — step 5, column labels.** The AFS specced asserting the title-case DOM text plus a
+  separate `text-transform: uppercase` read. `Locator.inner_text()` returns the CSS-RENDERED text,
+  so the shipped assertion is the exact ordered tuple
+  `("TOOL", "CALLS", "USERS", "AVG LATENCY", "ERRORS")` — which already proves the case's
+  upper-cased visual claim, and needs no extra handle on a header cell that has no testid (scope is
+  load-bearing, canon #511). Same shape as the merged Users/Agents tab specs.
+- **AMENDED — step 7, rows-per-page options.** MUI generates the menu items itself, so no app testid
+  can sit on an individual option. A testid was added on the menu LIST instead
+  (`analytics-tools-pagination-rows-menu`, via `slotProps.select.MenuProps.slotProps.list`) and the
+  option handle is a raw `[role="option"]` SCOPED inside it — #579 exception 1, declared in
+  `AnalyticsPage.open_tools_rows_per_page_options`'s docstring.
+- **Implementation fact — Recharts mounts its bar `<path>` nodes one animation tick AFTER the chart
+  container becomes visible.** A container-visible wait is not a sufficient settle signal (measured:
+  0 bars). `get_tools_chart_bar_fills` / `get_tools_chart_x_axis_labels` wait on the first
+  bar/tick node itself (condition wait, never a sleep).
+- **Step 6's positive branch is now live-exercisable in the fixture project** — it has tool rows with
+  `errors > 0`, unlike the analyst's exploration project. The two-directional invariant covers
+  whichever branches the data provides, so nothing had to change.

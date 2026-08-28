@@ -155,3 +155,18 @@ None.
 `Last 30d`: TEAM `18` of `18`; AI ACTIVE `2` + badge `↑11.1%` (`rgb(43, 212, 141)`), subtitle
 `11.1% adoption`; LLM CALLS `218`; TOOL RUNS `4`; CHAT MSG `306`; AGENT & PIPELINE RUNS `0`;
 TOKENS `3.6M`; COST `$0.3182`. Zero console errors in both ranges.
+
+
+## Implementation notes (ELITEA-2311, 2026-08-28 — implementer)
+
+- **Shipped as** `automation/tests/ui/admin/test_analytics_overview_kpi_cards.py`
+  (`TestAnalyticsOverviewKpiCards::test_overview_tab_kpi_cards`). Every handle in
+  § Concrete Handles was added as specced; the four new `KpiCard.jsx` props
+  (`labelTestId`/`subtitleTestId`/`valueSuffixTestId`/`badgeTestId`) are attribute-only and
+  wired at `AnalyticsOverview.jsx`'s 8 call sites only — EliteaAI/EliteaUI@bc50bd9d.
+- **The test runs against the `auth_state` fixture's project, not the analyst's exploration
+  project** ("Elitea Testing Team"), so § Live Observations' numbers do not reproduce — which is
+  exactly why every value assertion is oracle-driven off the captured response instead of
+  hardcoded. Both branches of the adoption badge stay conditional on `kpis.adoption_rate`.
+- `fmtNum` / `fmtCost` are ported into the spec as module-level helpers (suite-local; Hard Rule 7
+  says extract to `utils/` on the third consumer, and this is the first).

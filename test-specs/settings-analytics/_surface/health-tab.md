@@ -23,3 +23,24 @@ _Session context for the 2026-08-28 entries: project "Elitea Testing Team", pres
 - Errors cell red iff `errors > 0` (live: `api` 947 -> `rgb(215, 22, 22)`); there is also an
   `error_rate > 5` red rule (not exercised — live max 2.92%). **This tab is the one place in the
   feature where the errors-red POSITIVE branch has live data.**
+
+
+**Resolved/added during ELITEA-2324 implementation (2026-08-28):** the tab is no longer testid-free
+— all 8 handles exist (EliteaAI/EliteaUI@bc50bd9d). Confirmed live: opening Health on an unchanged
+range fires NO request (cache hit), `Locator.hover()` on `analytics-health-chart-container` raises
+the tooltip naming both series, and the two area series are `<path class="recharts-curve
+recharts-area-area">` which — like the Tools bar chart — mount one animation tick after the
+container appears (wait on the first series node, never a sleep). Fixture-project rows: `api, llm,
+rpc, socketio, tool` (5, still no `agent`).
+
+**Resolved/added during ELITEA-2324 fix round 1 (2026-08-28):** the header row's column labels are
+**title case in the DOM** (`Event Type`, `Total`, …) and only *rendered* uppercase — `styles.tableCell`
+carries `textTransform: 'uppercase'`. So `header.inner_text()` returns `EVENT TYPE …` (Playwright's
+`inner_text` is CSS-aware) while `text_content()` returns the real DOM text. Asserting only the
+uppercase rendered string conflates the two: a hardcoded `EVENT TYPE` DOM label with the transform
+dropped would still pass. Per-cell testid **`analytics-health-table-header-cell`** (repeated ×5,
+EliteaAI/EliteaUI@1a1fa5f4) added so each label's DOM text and each cell's computed `text-transform`
+can be asserted separately — `AnalyticsPage.get_health_table_column_labels()` /
+`get_health_table_column_text_transforms()`. Same DOM-vs-CSS-casing trap as
+`ArtifactsPage.buckets_heading` ('Buckets' vs 'BUCKETS'); expect it anywhere this feature's tables
+render a header.

@@ -55,10 +55,11 @@ case — unlike the Tools/Agents tabs.
      Guide tab documents — so an unexpected/garbage event type still fails the test.
    - **Verify**: at least one row is rendered.
 5. Verify the table columns (case step 5, Expected Final State).
-   - **Verify**: the cells of `analytics-health-table-header`, in order, read
-     `["Event Type", "Total", "Errors", "Error Rate", "Avg Latency"]`, and their computed
-     `text-transform` is `uppercase` (the case writes them capitalised; the DOM text is as above and
-     the visual casing comes from CSS).
+   - **Verify**: the `analytics-health-table-header-cell` cells, in order, have DOM text
+     (`text_content()`, NOT `inner_text()`) `["Event Type", "Total", "Errors", "Error Rate",
+     "Avg Latency"]`, and each cell's computed `text-transform` is `uppercase` (the case writes them
+     capitalised; the DOM text is as above and the visual casing comes from CSS —
+     `styles.tableCell.textTransform`).
 6. No console errors throughout (`utils/console_errors.collect_console_errors`).
 
 ## Expected Results
@@ -115,6 +116,7 @@ and the shared page spinner is new work.
 | Chart hover tooltip | **testid needed: `analytics-health-chart-tooltip`** | needs-adding — **call-site only**: `components/ChartTooltip.jsx` already accepts a `testId` prop (added for ELITEA-2313). Recharts injects `active`/`payload`/`label` at render time, so pass it via the render-prop form already used elsewhere: `content={<ChartTooltip testId="analytics-health-chart-tooltip" />}` |
 | Table title (`Health by Event Type`) | **testid needed: `analytics-health-table-title`** | needs-adding |
 | Table header row | **testid needed: `analytics-health-table-header`** | needs-adding — on the `styles.tableHeader` `<Box>` |
+| Table header CELL (repeated ×5) | **testid needed: `analytics-health-table-header-cell`** | **added during ELITEA-2324 fix round 1** (EliteaAI/EliteaUI@1a1fa5f4) — on each of the five `<Typography sx={[styles.tableCell, …]}>` header cells. Needed because step 5 asserts each column's **DOM text** (title case) separately from the CSS `text-transform` that renders it uppercase; the parent header row only yields the concatenated/CSS-rendered string. |
 | Table row (repeated) | **testid needed: `analytics-health-row`** | needs-adding — on the `health.map()` row `<Box>`, mirroring `analytics-users-row` |
 | Row event-type cell (repeated) | **testid needed: `analytics-health-row-event-type`** | needs-adding — on the `<Typography variant="bodySmall">{h.event_type}</Typography>` inside the first cell (the cell `<Box>` also holds the colour dot, so the testid goes on the text node to keep the assertion clean) |
 
@@ -172,3 +174,22 @@ Table `Health by Event Type` — header `Event Type | Total | Errors | Error Rat
 | rpc | 225 | 0 | 0% | 185ms |
 
 Five rows, no `agent` row (agent runs are 0 in this range). Zero console errors.
+
+
+## Implementation notes (ELITEA-2324, 2026-08-28 — implementer)
+
+- **Shipped as** `automation/tests/ui/admin/test_analytics_health_tab.py`
+  (`TestAnalyticsHealthTab::test_health_tab_chart_and_event_type_table`). All 8 testids added as
+  specced — EliteaAI/EliteaUI@bc50bd9d.
+- **Confirmed:** opening the Health tab on an unchanged range fires NO request (RTK-Query cache
+  hit), exactly as the AFS predicted — `open_health_tab()` therefore waits on rendered content and
+  the oracle body is captured around the preset click.
+- **Implementation fact — the area-series paths are `.recharts-area-area`** (a `<path class="recharts-curve
+  recharts-area-area">` per `<Area>`), and like the Tools bar chart they mount one animation tick
+  after the container appears; `get_health_chart_area_series_count()` waits on the first series
+  node rather than assuming the container implies them.
+- `Locator.hover()` on the chart container reliably raises the tooltip carrying both series names
+  (`Total Requests`, `Errors`) — no synthetic event needed, as specced.
+- **Live in the `auth_state` fixture project (not the analyst's exploration project):** 5 rows —
+  `api, llm, rpc, socketio, tool` — again with no `agent` row, and `api`/`llm`/`rpc`/`tool` all
+  carrying `errors > 0`. The membership + response-oracle assertions hold unchanged.

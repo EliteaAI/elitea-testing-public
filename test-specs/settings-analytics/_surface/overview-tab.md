@@ -21,3 +21,12 @@ _Session context for the 2026-08-28 entries: project "Elitea Testing Team", pres
   `components/KpiCard.jsx` (`labelTestId`/`subtitleTestId`/`valueSuffixTestId`/`badgeTestId`), wired
   at `AnalyticsOverview.jsx`'s 8 call sites ONLY (KpiCard is also consumed by Costs, Tokens,
   UserDetailed, AgentDetailed, UsageSummary).
+
+
+**Resolved/added during ELITEA-2311 implementation (2026-08-28):** the four missing KPI-card
+handles now exist — `analytics-overview-kpi-label`, `-subtitle`, `-value-suffix`, `-badge`, wired as
+new attribute-only props on the shared `components/KpiCard.jsx` at `AnalyticsOverview.jsx`'s 8 call
+sites only (EliteaAI/EliteaUI@bc50bd9d). The `auth_state` fixture's project — NOT the analyst's
+exploration project — is what the suite actually sees, so per-project numbers here are indicative
+only; assert values against the captured `analytics/prompt_lib/` body
+(`AnalyticsPage.select_date_preset_capturing_analytics` / `navigate_capturing_analytics` return it).
