@@ -77,6 +77,19 @@ everything autosaves. Confirmed via network capture:
   screen (React state) but no PUT ever fires, and it reverts on reload.
   Toggle-driven changes are unaffected. Don't be surprised if a
   typed-value test needs this soft-asserted against #1129.
+- **The autosave only fires for a DIRTY form — re-typing an unchanged value
+  sends NOTHING (settings-w08, 2026-08-28).** `useFormikAutoSaveOnBlur`
+  (`src/[fsd]/shared/lib/hooks/useFormikAutoSaveOnBlur.hooks.js`) short-circuits
+  on `if (!dirty) return false;` before it ever validates or submits. A test
+  that wraps a field write in `page.expect_response(<the PUT>)` therefore
+  TIMES OUT — not flakily, deterministically — whenever the shared account
+  already happens to hold the value being typed. Cost one red run. Two ways to
+  live with it: seed a distinct scratch value first (what
+  `test_context_management_values_persist.py` does, so the case's own write is
+  a genuine change), or write the field only when it differs and assert the PUT
+  only then (what `test_context_settings_new_conversations_only.py` does).
+  Never "fix" it by dropping the PUT assertion — that would turn a persistence
+  test into a React-state read.
 - **#1129 did NOT reproduce for ANY field (ELITEA-2376/2379 session,
   2026-08-28) — treat it as fixed-but-open.** All four typed fields —
   Max Context Tokens (`32000`), **Preserve Recent Messages (`10`, the last
@@ -224,6 +237,20 @@ below it: `Participants.jsx` renders the widget only `{conversationId && …}`
 and `ContextBudgetInfo` returns `null` until
 `GET /api/v2/elitea_core/context_analytics/prompt_lib/<projectId>/<conversationId>`
 resolves 200.
+
+**Navigation traps on the chat side (both cost a red run during ELITEA-2390):**
+- `ChatPage.navigate_to_chat()` + `send_message()` does NOT reliably create a
+  conversation: the SPA restores the last-viewed one, so the message appends to
+  an EXISTING conversation. Click **+Chat** (`click_create_conversation()`) and
+  verify BOTH an id-less `/chat` URL and a zero message count *after a short
+  settle* before sending — the restore can win a race against a check made too
+  early (the same mechanism `_open_genuinely_blank_conversation()` documents).
+- `ChatPage.navigate_to_chat(conversation_id=X)` **cannot switch between
+  conversations**: it short-circuits with "already on chat page, skipping
+  navigation" whenever the current URL contains `/chat`. Use the additive
+  `ChatPage.open_conversation(conversation_id)` (added by ELITEA-2390 —
+  navigates unconditionally, then verifies the route actually landed) whenever
+  you move from one conversation to another.
 
 Other facts confirmed this session:
 - **The conversation (and its context snapshot) exists as soon as the message

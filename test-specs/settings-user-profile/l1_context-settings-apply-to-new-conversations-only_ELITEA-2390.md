@@ -199,3 +199,21 @@ No new testid work — every handle already exists; two of them are not yet on
   helper introduced by the ELITEA-2376/2379 family AFS (same batch).
 - Do **not** wait for an AI answer — the conversation exists as soon as the
   message is sent (see § Test Data).
+- **Two navigation realities found during implementation (both cost a red run
+  before they were understood):**
+  1. `ChatPage.navigate_to_chat()` + `send_message()` does **not** reliably
+     create a conversation — the SPA restores the last-viewed one, so the
+     message lands in an EXISTING conversation (observed: step 4 re-used the
+     conversation created moments earlier). The spec clicks **+Chat**
+     (`click_create_conversation()`) and then verifies BOTH an id-less `/chat`
+     URL and a zero message count before sending — a suite-local
+     `_open_blank_composer()`, a lighter sibling of
+     `_open_genuinely_blank_conversation()` in
+     `tests/ui/chat/test_team_users_mention_and_remove_participants.py`.
+  2. `ChatPage.navigate_to_chat(conversation_id=X)` **cannot switch
+     conversations**: it short-circuits with "already on chat page, skipping
+     navigation" whenever the current URL contains `/chat`, so asking for
+     conversation A while sitting on B silently leaves you on B. Added an
+     ADDITIVE `ChatPage.open_conversation(conversation_id)` (navigates
+     unconditionally, then verifies the route landed) rather than changing
+     `navigate_to_chat()`, which has many merged callers relying on the skip.

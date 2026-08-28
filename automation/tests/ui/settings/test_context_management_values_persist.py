@@ -63,9 +63,36 @@ SUMMARIZATION_INSTRUCTIONS_VALUE = "Summarize briefly, focus on key actions."  #
 TARGET_SUMMARY_TOKENS_VALUE = 300     # ELITEA-2379, inside [100, 4096]
 
 
+# Scratch values used ONLY when the account already holds the case value (see
+# _write_and_assert_autosave): the page autosaves on blur through
+# `useFormikAutoSaveOnBlur`, which returns early when Formik is not `dirty` —
+# re-typing the value already stored fires no PUT at all. Writing a distinct
+# scratch value first makes the case's own write a genuine change, so
+# "typed -> autosaved -> survived a reload" stays a real observation on every
+# run rather than an accident of whatever the shared account happened to hold.
+MAX_CONTEXT_TOKENS_SCRATCH = 31000
+PRESERVE_RECENT_MESSAGES_SCRATCH = 7
+SUMMARIZATION_INSTRUCTIONS_SCRATCH = "Scratch instructions (pre-case baseline)."
+TARGET_SUMMARY_TOKENS_SCRATCH = 250
+
+
 def _is_autosave_put_response(response: Response) -> bool:
     """True for the Settings -> Memory autosave PUT."""
     return response.request.method == "PUT" and AUTOSAVE_PUT_PATH in response.url
+
+
+def _write_and_assert_autosave(page, write, description: str) -> None:
+    """Run *write* (a field setter that ends with a blur) and assert the autosave PUT.
+
+    Blur is the page's only save trigger — there is no Save button — so the PUT
+    status is asserted rather than merely awaited.
+    """
+    with page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+        write()
+    assert put_info.value.status == 200, (
+        f"{description} should autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, "
+        f"got {put_info.value.status}"
+    )
 
 
 class TestContextManagementValuesPersist:
@@ -151,6 +178,25 @@ class TestContextManagementValuesPersist:
         try:
             if case_id == "ELITEA-2376":
                 with allure.step(
+                    f"[{case_id}] Setup — If the shared account already holds a "
+                    f"case value, write a scratch value first so step 4's write "
+                    f"is a genuine change (the page only autosaves a dirty form)"
+                ):
+                    if original_max_tokens == MAX_CONTEXT_TOKENS_VALUE:
+                        _write_and_assert_autosave(
+                            page,
+                            lambda: profile.type_max_context_tokens_raw(str(MAX_CONTEXT_TOKENS_SCRATCH)),
+                            f"Seeding Max Context Tokens to the scratch value {MAX_CONTEXT_TOKENS_SCRATCH}",
+                        )
+                    if original_preserve == PRESERVE_RECENT_MESSAGES_VALUE:
+                        _write_and_assert_autosave(
+                            page,
+                            lambda: profile.set_preserve_recent_messages(PRESERVE_RECENT_MESSAGES_SCRATCH),
+                            f"Seeding Preserve Recent Messages to the scratch value "
+                            f"{PRESERVE_RECENT_MESSAGES_SCRATCH}",
+                        )
+
+                with allure.step(
                     f"[{case_id}] Step 4 — Set Max Context Tokens to "
                     f"{MAX_CONTEXT_TOKENS_VALUE} and Preserve Recent Messages "
                     f"to {PRESERVE_RECENT_MESSAGES_VALUE}; each blur must "
@@ -158,43 +204,57 @@ class TestContextManagementValuesPersist:
                     f"somewhere on UI to trigger autosave' — this page has no "
                     f"Save button."
                 ):
-                    with page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
-                        profile.type_max_context_tokens_raw(str(MAX_CONTEXT_TOKENS_VALUE))
-                    assert put_info.value.status == 200, (
-                        f"Setting Max Context Tokens to {MAX_CONTEXT_TOKENS_VALUE} should "
-                        f"autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+                    _write_and_assert_autosave(
+                        page,
+                        lambda: profile.type_max_context_tokens_raw(str(MAX_CONTEXT_TOKENS_VALUE)),
+                        f"Setting Max Context Tokens to {MAX_CONTEXT_TOKENS_VALUE}",
                     )
-
-                    with page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
-                        profile.set_preserve_recent_messages(PRESERVE_RECENT_MESSAGES_VALUE)
-                    assert put_info.value.status == 200, (
-                        f"Setting Preserve Recent Messages to {PRESERVE_RECENT_MESSAGES_VALUE} "
-                        f"should autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got "
-                        f"{put_info.value.status}"
+                    _write_and_assert_autosave(
+                        page,
+                        lambda: profile.set_preserve_recent_messages(PRESERVE_RECENT_MESSAGES_VALUE),
+                        f"Setting Preserve Recent Messages to {PRESERVE_RECENT_MESSAGES_VALUE}",
                     )
             else:
+                with allure.step(
+                    f"[{case_id}] Setup — If the shared account already holds a "
+                    f"case value, write a scratch value first (same dirty-form "
+                    f"reason as the sibling row)"
+                ):
+                    if original_instructions == SUMMARIZATION_INSTRUCTIONS_VALUE:
+                        _write_and_assert_autosave(
+                            page,
+                            lambda: profile.set_summarization_instructions(
+                                SUMMARIZATION_INSTRUCTIONS_SCRATCH
+                            ),
+                            "Seeding Summarization Instructions to the scratch value",
+                        )
+                    if original_target_tokens == TARGET_SUMMARY_TOKENS_VALUE:
+                        _write_and_assert_autosave(
+                            page,
+                            lambda: profile.set_target_summary_tokens(TARGET_SUMMARY_TOKENS_SCRATCH),
+                            f"Seeding Target Summary Tokens to the scratch value "
+                            f"{TARGET_SUMMARY_TOKENS_SCRATCH}",
+                        )
+
                 with allure.step(
                     f"[{case_id}] Step 4 — Enter the summarization "
                     f"instructions and set Target Summary Tokens to "
                     f"{TARGET_SUMMARY_TOKENS_VALUE}; each blur must autosave "
                     f"(PUT -> 200)"
                 ):
-                    with page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
-                        profile.set_summarization_instructions(SUMMARIZATION_INSTRUCTIONS_VALUE)
-                    assert put_info.value.status == 200, (
-                        f"Setting Summarization Instructions should autosave via PUT "
-                        f"{AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+                    _write_and_assert_autosave(
+                        page,
+                        lambda: profile.set_summarization_instructions(SUMMARIZATION_INSTRUCTIONS_VALUE),
+                        "Setting Summarization Instructions",
                     )
                     assert profile.get_summarization_instructions() == SUMMARIZATION_INSTRUCTIONS_VALUE, (
                         "The Summarization Instructions field should display the entered "
                         "value before the reload (case step 3's 'field accepts the input')"
                     )
-
-                    with page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
-                        profile.set_target_summary_tokens(TARGET_SUMMARY_TOKENS_VALUE)
-                    assert put_info.value.status == 200, (
-                        f"Setting Target Summary Tokens to {TARGET_SUMMARY_TOKENS_VALUE} should "
-                        f"autosave via PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+                    _write_and_assert_autosave(
+                        page,
+                        lambda: profile.set_target_summary_tokens(TARGET_SUMMARY_TOKENS_VALUE),
+                        f"Setting Target Summary Tokens to {TARGET_SUMMARY_TOKENS_VALUE}",
                     )
 
             with allure.step(f"[{case_id}] Step 5 — Reload the page"):

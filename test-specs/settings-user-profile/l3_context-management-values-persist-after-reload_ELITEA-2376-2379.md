@@ -55,6 +55,16 @@ each row asserting its **own** expected values.
    waiting for the autosave round-trip only when it is currently OFF.
 3. Read the current value of every field in `FIELDS` and store it
    (`original_values`) for teardown restoration.
+3b. **(Amended during implementation — ELITEA-2376/2379.)** If a field already
+   holds this row's case value, first write a distinct *scratch* value (and
+   assert its autosave PUT). Reason, confirmed in source and live:
+   `useFormikAutoSaveOnBlur` (`src/[fsd]/shared/lib/hooks/useFormikAutoSaveOnBlur.hooks.js`)
+   returns early when Formik is not `dirty`, so **re-typing the value already
+   stored fires no PUT at all**. Without the scratch seed, a run whose account
+   happens to already hold `32000`/`10`/`300` would either hang waiting for a
+   PUT that is correctly never sent, or "prove" persistence of a value nothing
+   wrote this run. Scratch values used:
+   `31000` / `7` / `"Scratch instructions (pre-case baseline)."` / `250`.
 4. For each `(field, value)` in `FIELDS`: type `value` into the field
    (clear + `type()` per keystroke — MUI/React `onChange` does not fire on
    `fill()` alone) and blur it, which is the page's autosave trigger
@@ -109,6 +119,10 @@ each row asserting its **own** expected values.
   say "trigger autosave" but assert nothing about it; asserting the PUT makes
   the reload check a genuine persistence check rather than a React-state
   read, and it is the correct wait signal (no Save button exists).*
+- The scratch-seed pre-step (AFS step 3b) — *added at implementation time:
+  the page only autosaves a dirty form, so the case's own write must be a real
+  change for "typed -> autosaved -> survived reload" to be an observation
+  rather than an accident of the shared account's current state.*
 - Read-before-write + teardown restore — *added: these are per-user account
   values on a SHARED test account; leaving `32000/10/300` behind would poison
   sibling settings and chat tests (surface digest § Test data gotcha).*

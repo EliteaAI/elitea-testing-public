@@ -99,34 +99,93 @@ class TestContextSettingsApplyToNewConversationsOnly:
 
     @staticmethod
     def _apply_settings(page, profile: UserProfileSettingsPage, preserve_recent: int) -> None:
-        """Set Max Context Tokens + Preserve Recent Messages and assert each autosave.
+        """Set Max Context Tokens + Preserve Recent Messages, asserting each autosave.
 
-        Blur is the page's save trigger (no Save button exists here), so the
-        PUT status is asserted rather than merely awaited.
+        Blur is the page's only save trigger (no Save button exists here), so
+        the PUT status is asserted rather than merely awaited — **except when
+        the field already holds the wanted value**. ``useFormikAutoSaveOnBlur``
+        returns early when Formik is not ``dirty``, so re-typing an unchanged
+        value legitimately fires NO request; asserting a PUT there would be a
+        false red. Each field is therefore written only when it needs to
+        change, and every write that does happen is asserted.
         """
-        with page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
-            profile.type_max_context_tokens_raw(str(MAX_CONTEXT_TOKENS))
-        assert put_info.value.status == 200, (
-            f"Setting Max Context Tokens to {MAX_CONTEXT_TOKENS} should autosave via "
-            f"PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+        if profile.get_max_context_tokens() != MAX_CONTEXT_TOKENS:
+            with page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                profile.type_max_context_tokens_raw(str(MAX_CONTEXT_TOKENS))
+            assert put_info.value.status == 200, (
+                f"Setting Max Context Tokens to {MAX_CONTEXT_TOKENS} should autosave via "
+                f"PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+            )
+        expect(profile.max_context_tokens_input).to_have_value(
+            str(MAX_CONTEXT_TOKENS), timeout=UI_ELEMENT_TIMEOUT
         )
 
-        with page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
-            profile.set_preserve_recent_messages(preserve_recent)
-        assert put_info.value.status == 200, (
-            f"Setting Preserve Recent Messages to {preserve_recent} should autosave via "
-            f"PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+        if profile.get_preserve_recent_messages() != preserve_recent:
+            with page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                profile.set_preserve_recent_messages(preserve_recent)
+            assert put_info.value.status == 200, (
+                f"Setting Preserve Recent Messages to {preserve_recent} should autosave via "
+                f"PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+            )
+        expect(profile.preserve_recent_messages_input).to_have_value(
+            str(preserve_recent), timeout=UI_ELEMENT_TIMEOUT
         )
 
     @staticmethod
-    def _create_conversation(page, chat: ChatPage) -> str:
-        """Send the seed message on a fresh /chat and return the new conversation id.
+    def _open_blank_composer(chat: ChatPage, timeout: int = NAVIGATION_TIMEOUT) -> None:
+        """Reach a genuinely blank composer (URL ``/chat`` with no id, 0 messages).
+
+        Lighter sibling of ``_open_genuinely_blank_conversation()`` in
+        ``tests/ui/chat/test_team_users_mention_and_remove_participants.py``
+        (wave-10/11), duplicated-with-attribution per the same suite-local
+        convention — this case needs only "am I on a blank composer", not that
+        file's participant-state strictness.
+
+        Why it is required rather than defensive: the SPA restores the
+        last-viewed conversation (documented on
+        ``ChatPage.navigate_to_chat()``), so a bare ``navigate_to_chat()`` +
+        ``send_message()`` appends to an EXISTING conversation instead of
+        creating one — observed on this spec's first run, where step 4 landed
+        back on the conversation created moments earlier. Clicking +Chat and
+        then verifying BOTH the id-less URL and a zero message count is what
+        makes "create a new conversation" a fact.
+        """
+        blank_url_pattern = re.compile(r"/chat/?(?:\?.*)?$")
+        last_reason = "unknown"
+        for attempt in range(3):
+            chat.click_create_conversation(timeout=timeout)
+            try:
+                chat.new_conversation_greeting.wait_for(state="visible", timeout=5000)
+            except Exception:  # noqa: BLE001 — retried below, reason recorded
+                last_reason = "new-conversation greeting never appeared"
+                logger.warning("Attempt %d: %s — retrying", attempt + 1, last_reason)
+                continue
+            # Settle window for the delayed last-viewed-conversation restore:
+            # the greeting can render before the restore snaps the route back.
+            chat.page.wait_for_timeout(1500)
+            if not blank_url_pattern.search(chat.page.url):
+                last_reason = f"route restored a conversation ({chat.page.url!r})"
+                logger.warning("Attempt %d: %s — retrying", attempt + 1, last_reason)
+                continue
+            if chat.get_message_count() != 0:
+                last_reason = "blank greeting shown but the conversation has message history"
+                logger.warning("Attempt %d: %s — retrying", attempt + 1, last_reason)
+                continue
+            return
+        raise AssertionError(
+            f"Could not reach a blank composer after 3 +Chat attempts — last reason: {last_reason}"
+        )
+
+    @classmethod
+    def _create_conversation(cls, page, chat: ChatPage) -> str:
+        """Create a NEW conversation by sending the seed message; return its id.
 
         The conversation is created by SENDING — no AI answer is awaited (see
         the module docstring).
         """
         chat.navigate_to_chat()
         chat.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
+        cls._open_blank_composer(chat)
         chat.send_message(SEED_MESSAGE, use_enter=True)
         page.wait_for_url(
             lambda url: re.search(r"/chat/\d+", url) is not None,
@@ -275,8 +334,10 @@ class TestContextSettingsApplyToNewConversationsOnly:
                 )
 
             with allure.step("Step 6 — Open the previously existing conversation"):
-                chat.navigate_to_chat(conversation_id=baseline_conversation_id)
-                chat.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
+                # open_conversation(), not navigate_to_chat(): the latter
+                # short-circuits while already on a /chat route and cannot
+                # switch conversations (see its docstring).
+                chat.open_conversation(baseline_conversation_id, timeout=NAVIGATION_TIMEOUT)
                 assert f"/chat/{baseline_conversation_id}" in page.url, (
                     f"Should be on the baseline conversation {baseline_conversation_id}, "
                     f"URL is {page.url!r}"
