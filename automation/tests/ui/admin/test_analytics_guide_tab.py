@@ -123,25 +123,21 @@ class TestAnalyticsGuideTab:
                 "and Data source values, and that no metric anywhere orphans a label from its value"
             ):
                 for metric_name in CASE_METRIC_NAMES:
-                    block = analytics_page.get_guide_metric_block(section_index, metric_name)
-                    block_text = block.inner_text()
-                    description = block.locator(
-                        analytics_page.GUIDE_METRIC_DESCRIPTION_SELECTOR
-                    ).first
-                    assert (description.text_content() or "").strip(), (
+                    parts = analytics_page.get_guide_metric_parts(section_index, metric_name)
+                    assert (parts["description"].text_content() or "").strip(), (
                         f"Expected metric {metric_name!r} to render a non-empty description"
                     )
-                    assert "Calculation:" in block_text, (
+                    assert "Calculation:" in parts["text"], (
                         f"Expected metric {metric_name!r} to show a 'Calculation:' label"
                     )
-                    assert "Data source:" in block_text, (
+                    assert "Data source:" in parts["text"], (
                         f"Expected metric {metric_name!r} to show a 'Data source:' label"
                     )
-                    for selector, label in (
-                        (analytics_page.GUIDE_METRIC_CALCULATION_VALUE, "Calculation"),
-                        (analytics_page.GUIDE_METRIC_SOURCE_VALUE, "Data source"),
+                    for key, label in (
+                        ("calculation_value", "Calculation"),
+                        ("source_value", "Data source"),
                     ):
-                        value = block.locator(selector).first
+                        value = parts[key]
                         expect(value).to_be_visible()
                         assert (value.text_content() or "").strip(), (
                             f"Expected metric {metric_name!r}'s {label} value to be non-empty"

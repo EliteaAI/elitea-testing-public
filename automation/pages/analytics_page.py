@@ -1327,6 +1327,24 @@ class AnalyticsPage(BasePage):
         names = self.guide_sections.nth(section_index).locator(self.GUIDE_METRIC_NAME)
         return [(names.nth(i).text_content() or "").strip() for i in range(names.count())]
 
+    def get_guide_metric_parts(self, section_index: int, metric_name: str) -> dict:
+        """The rendered parts of one guide metric — its aggregate text plus the
+        description / Calculation-value / Data-source-value Locators — resolved
+        inside the section at *section_index* so a metric name that repeats
+        across sections cannot match the wrong block.
+
+        Returning Locators (not values) keeps every locator construction inside
+        the page object while still letting the spec make web-first assertions
+        (`expect(...).to_have_css(...)`) on them.
+        """
+        block = self.get_guide_metric_block(section_index, metric_name)
+        return {
+            "text": block.inner_text(),
+            "description": block.locator(self.GUIDE_METRIC_DESCRIPTION_SELECTOR).first,
+            "calculation_value": block.locator(self.GUIDE_METRIC_CALCULATION_VALUE).first,
+            "source_value": block.locator(self.GUIDE_METRIC_SOURCE_VALUE).first,
+        }
+
     def get_guide_metric_block(self, section_index: int, metric_name: str):
         """The metric block Locator for *metric_name* inside the section at
         *section_index* — scoped inside that section so a metric name that
