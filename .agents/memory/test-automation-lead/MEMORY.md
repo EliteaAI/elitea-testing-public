@@ -115,3 +115,4 @@
 - [main-only repair dies at promotion](main_and_base_can_carry_different_variants_of_one_spec.md) — base may hold another variant
 - [Harvest allure artifacts first](harvest_gha_allure_artifacts_before_dispatching.md) — the screenshot names the cause in one look
 - [Reviewer out-of-scope finding](reviewer_out_of_scope_finding.md) — verify vs the ref before filing a card
+- [A Fix card may already be fixed by a sibling PR](fix_card_may_already_be_fixed_by_a_sibling_pr.md) — timing check + one-file matched control, before any dispatch
