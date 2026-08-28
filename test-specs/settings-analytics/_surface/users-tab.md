@@ -59,3 +59,12 @@ _Session context for the 2026-08-28 entries: project "Elitea Testing Team", pres
 - ELITEA-2312's merged spec already covers the narrowing smoke check; what it does NOT prove is
   exclusivity (`>= 1` passes even if nothing was filtered) and restoration (its clear is in
   `finally`, unasserted) — that is exactly ELITEA-2323's `lextend_` scope.
+
+
+**Resolved/added during ELITEA-2323 implementation (2026-08-28):** the User Activity table now
+renders **17** columns, not 9 — the UI team added INPUT/OUTPUT TOKENS, INPUT/OUTPUT TOKEN COST,
+CACHE READ/WRITE TOKENS and CACHE READ/WRITE COST. The merged ELITEA-2312 spec was RED on
+`automation/base` because of it; its expected tuple is repaired in the ELITEA-2323 PR and the
+occurrence recorded on #1188. Also: `AnalyticsPage.search_users()` now RETURNS the captured
+`analytics_users/prompt_lib/` body (additive) — re-searching the same term later cannot capture it,
+because RTK-Query serves the repeat from cache with no new request.

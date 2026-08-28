@@ -23,3 +23,12 @@ _Session context for the 2026-08-28 entries: project "Elitea Testing Team", pres
 - Errors cell red iff `errors > 0` (live: `api` 947 -> `rgb(215, 22, 22)`); there is also an
   `error_rate > 5` red rule (not exercised — live max 2.92%). **This tab is the one place in the
   feature where the errors-red POSITIVE branch has live data.**
+
+
+**Resolved/added during ELITEA-2324 implementation (2026-08-28):** the tab is no longer testid-free
+— all 8 handles exist (EliteaAI/EliteaUI@bc50bd9d). Confirmed live: opening Health on an unchanged
+range fires NO request (cache hit), `Locator.hover()` on `analytics-health-chart-container` raises
+the tooltip naming both series, and the two area series are `<path class="recharts-curve
+recharts-area-area">` which — like the Tools bar chart — mount one animation tick after the
+container appears (wait on the first series node, never a sleep). Fixture-project rows: `api, llm,
+rpc, socketio, tool` (5, still no `agent`).

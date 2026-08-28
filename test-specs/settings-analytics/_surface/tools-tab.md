@@ -20,3 +20,17 @@ _Session context for the 2026-08-28 entries: project "Elitea Testing Team", pres
   `AnalyticsUsers.jsx:213-220`.
 - No `errors > 0` tool row in this project — the errors-red branch is source-confirmed only. Spec it
   as a two-directional invariant (red iff `errors > 0`), not a one-way "is red".
+
+
+**Resolved/added during ELITEA-2322 implementation (2026-08-28):** all five missing testids exist
+(EliteaAI/EliteaUI@bc50bd9d) plus `analytics-tools-pagination-rows-menu` on the MUI rows-per-page
+menu list (EliteaAI/EliteaUI@aad6227c) so the option set can be read through an app-testid parent.
+Two live facts the digest did not have:
+- **The `CHART_COLORS` palette has 10 entries and the fill is `CHART_COLORS[i % 10]`** — with more
+  than 10 tools the colours REPEAT by design. The fixture project has 34 tools (20 plotted), so
+  "each bar has a distinct colour" is false there; filed as case-text drift #1952 and asserted as
+  distinct-within-10 + exact palette cycling.
+- **Recharts mounts the bar `<path>` nodes one animation tick AFTER the chart container is
+  visible** (measured: 0 bars on a container-visible wait). Wait on the first bar node itself.
+- The fixture project DOES have tool rows with `errors > 0`, so the errors-red positive branch is
+  live-exercisable there (unlike the analyst's exploration project).

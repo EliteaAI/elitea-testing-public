@@ -155,3 +155,22 @@ None found on this tab. #1950 is a case-text clarification, not a product defect
   `text-overflow: clip`, `white-space: pre-line` and `scrollHeight == clientHeight`; the container
   is not clipped either.
 - Zero console errors.
+
+
+## Implementation notes / AFS amendments (ELITEA-2325, 2026-08-28 — implementer)
+
+- **Shipped as** `automation/tests/ui/admin/test_analytics_guide_tab.py`
+  (`TestAnalyticsGuideTab::test_guide_tab_metric_documentation`). All 7 testids added as specced —
+  EliteaAI/EliteaUI@bc50bd9d.
+- **AMENDED — metric count.** The AFS records 43 metric entries; live is **44** (the constant has
+  grown). No assertion depended on the exact number — the spec asserts `>= 1` metric, the exact
+  9-title tuple, and the case's four named metrics — so nothing had to change. Recorded here so the
+  next reader is not surprised by the discrepancy.
+- **AMENDED — step 5's container check.** The AFS asked for a clipping check on "the section list's
+  parent". That `<Box>` carries no testid and the case never touches it, so adding one would be an
+  unreferenced testid (scope is load-bearing, canon #511). The shipped assertion checks each of the
+  9 SECTION CARDS instead (they do carry `analytics-guide-section`) — equivalent evidence that no
+  guide content is internally clipped, with no new handle.
+- Per-metric `text-overflow` and `scrollHeight`/`clientHeight` are read via read-only
+  `Locator.evaluate` (`AnalyticsPage.is_element_clipped`) — the only way to reach those properties;
+  it observes what the product laid out and injects nothing.

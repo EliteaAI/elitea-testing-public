@@ -172,3 +172,22 @@ Table `Health by Event Type` — header `Event Type | Total | Errors | Error Rat
 | rpc | 225 | 0 | 0% | 185ms |
 
 Five rows, no `agent` row (agent runs are 0 in this range). Zero console errors.
+
+
+## Implementation notes (ELITEA-2324, 2026-08-28 — implementer)
+
+- **Shipped as** `automation/tests/ui/admin/test_analytics_health_tab.py`
+  (`TestAnalyticsHealthTab::test_health_tab_chart_and_event_type_table`). All 8 testids added as
+  specced — EliteaAI/EliteaUI@bc50bd9d.
+- **Confirmed:** opening the Health tab on an unchanged range fires NO request (RTK-Query cache
+  hit), exactly as the AFS predicted — `open_health_tab()` therefore waits on rendered content and
+  the oracle body is captured around the preset click.
+- **Implementation fact — the area-series paths are `.recharts-area-area`** (a `<path class="recharts-curve
+  recharts-area-area">` per `<Area>`), and like the Tools bar chart they mount one animation tick
+  after the container appears; `get_health_chart_area_series_count()` waits on the first series
+  node rather than assuming the container implies them.
+- `Locator.hover()` on the chart container reliably raises the tooltip carrying both series names
+  (`Total Requests`, `Errors`) — no synthetic event needed, as specced.
+- **Live in the `auth_state` fixture project (not the analyst's exploration project):** 5 rows —
+  `api, llm, rpc, socketio, tool` — again with no `agent` row, and `api`/`llm`/`rpc`/`tool` all
+  carrying `errors > 0`. The membership + response-oracle assertions hold unchanged.

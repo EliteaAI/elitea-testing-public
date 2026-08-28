@@ -19,3 +19,9 @@ _Session context for the 2026-08-28 entries: project "Elitea Testing Team", pres
   elements = 14 + 7.
 - Descriptions are `white-space: pre-line`, `overflow: visible`, `text-overflow: clip`, never
   clipped -> "not truncated" is assertable as `scrollHeight <= clientHeight` + not-`ellipsis`.
+
+
+**Resolved/added during ELITEA-2325 implementation (2026-08-28):** all 7 handles exist
+(EliteaAI/EliteaUI@bc50bd9d). Live count is now **44** metric entries (was 43) across the same 9
+sections — treat the metric total as data, not a constant. The section list's parent `<Box>`
+deliberately has NO testid: assert non-clipping on the 9 `analytics-guide-section` cards instead.
