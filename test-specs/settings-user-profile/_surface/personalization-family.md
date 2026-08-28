@@ -317,3 +317,99 @@ teardown ELITEA-2390 already uses.
 
 **Observed run cost (localhost, headless, single invocation):** 2381 ~15 s, 2382 ~17 s,
 2383 ~18 s, 2384 ~63 s (the chat half dominates).
+
+---
+
+## `/settings/preferences` — Voice Personalization + Sound Notifications, full control inventory (settings-w08 cluster ELITEA-2385/2386/2388/2389, 2026-08-29)
+
+Confirmed live this session (qa-engineer analyst). Extends the `/settings/preferences`
+inventory above; nothing there is superseded. Console on this route: **0 errors**
+(re-confirmed) — never add the #1771 filter to a spec for this route.
+
+### Both sections' state is `localStorage`, not the account
+
+| Section | Key | Shape |
+|---|---|---|
+| Voice Personalization | `elitea_voice_config` | `{"voiceName":null,"voiceId":"nova","rate":1.5,"volume":0.5}` |
+| Sound Notifications | `elitea_ui.sound_notifications` | `{"enabled":true,"volume":0.5}` |
+
+⇒ a pytest browser context is fresh per run, so these are the **rare settings specs that
+need no teardown and pollute nothing** — the opposite of the persona / context-management
+family, which lives on the shared `${TEST_USER}` record.
+
+### Control inventory (all four "needs adding" groups are pure prop/attribute plumbing)
+
+**`VoiceConfigControls.jsx`** — `SingleSelect` (accepts `data-testid`, emits `-combobox`),
+two `Slider`s, `voice-preview-button` (exists, **on main**).
+Speed `min=0.5 max=2 step=0.1`, marks `0.5x/1x/1.5x/2x`.
+Volume `min=0 max=1 step=0.05`, marks `0%/50%/100%` — **no "Mute" mark anywhere**, despite
+what several case texts say.
+Voice options come from **model TTS** (`useGetTtsVoicesQuery`) when a TTS model + socket
+exist, else from `speechSynthesis.getVoices()` — which is usually **empty in headless
+Chromium**, and `voiceOptions.length > 0 &&` then removes the select entirely. Observed
+live: the model-TTS branch, 9 options (`alloy ash coral echo fable nova onyx sage shimmer`),
+each already carrying the shared `select-option-{id}` testid.
+
+**`SoundNotificationControls.jsx`** — `Switch.BaseSwitch`, one `Slider`
+(`min=0 max=1 step=0.05`, marks `0%/50%/100%`), `Preview Sound` button.
+`sound-notifications-content` exists; the three controls have **no testids**.
+`BaseSwitch` spreads `restProps` onto MUI `Switch`, so `data-testid` lands on the
+**SwitchBase span** and `inputProps={{'data-testid': …}}` on the checkbox — you need
+**both** (click the span, `to_be_checked()` the input; same split as
+`context-management-toggle`).
+
+### ⚠️ Toggling Sound Notifications OFF **unmounts**, it does not disable
+
+`{config.enabled && …}` guards **both** the volume slider and the `Preview Sound` button.
+`to_have_count(0)`, never `to_be_disabled()`. This is the *third* hide mechanism documented
+on this surface — accordion collapse = `visibility: hidden`; context-management toggle =
+conditional unmount; sound toggle = conditional unmount of **two** children. Pick per
+control. The section body (`sound-notifications-content`) stays visible throughout, which is
+how you tell an unmount from a collapse.
+
+### ⚠️ MUI Slider: drag is clean, arrow keys are not (defect #1966)
+
+- **Drag** → lands exactly on the step grid (`1.5`, `aria-valuenow="1.5"`, label `1.5×`) —
+  MUI's pointer path routes through `roundValueToStep()`, which applies `toFixed(precision)`.
+- **ArrowRight ×5 from 1.0** → `1.5000000000000004`, and the value label paints all 17
+  digits; the raw float is what gets persisted. MUI's keyboard handler adds `step` without
+  re-rounding. Filed as **#1966** (minor, keyboard/a11y only).
+- ⚠️ `input.value` **hides** this — the DOM normalises it to `"1.5"`. Only `aria-valuenow`
+  (or localStorage) shows the artifact. Pin `aria-valuenow` when a spec cares.
+
+### ⚠️ Never drag a slider thumb onto a MARK LABEL — the outer ones are transform-shifted
+
+Verified live: dragging the sound-volume thumb onto the `100%` label landed on **0.95**.
+`[data-index="0"]` is `translateX(0)` and the last index is `translateX(-100%)`, so their
+centres are not the track positions they name. Interior labels happen to line up (dragging
+to `50%` gave exactly `0.5`), but the reliable form is a **computed x on the slider root's
+bounding box**: `box.x + box.width * (target-min)/(max-min)`. That also needs no extra
+handle beyond the slider root + thumb testids.
+
+### Defect: the Voice dropdown renders BLANK on a fresh profile (#1965)
+
+`VoiceConfigControls.jsx`'s effect that should default the selection to `alloy` bails on
+`config?.voiceId !== undefined`, but `useVoiceConfig`'s `DEFAULT_CONFIG.voiceId` is
+**`null`** and `loadStored()` returns `parsed.voiceId ?? null` — so `voiceId` is never
+`undefined` and the effect is dead code. Live: combobox text is a zero-width space, all 9
+option rows `data-selected="false"`, and the advertised `emptyPlaceholder={<em>Default</em>}`
+does not render either. Deterministic on any fresh browser profile ⇒ ELITEA-2385 is
+**sanctioned-RED** on one soft-asserted assertion.
+
+## Personalization → conversation snapshot — re-verified, plus one MCP-only trap (2026-08-29)
+
+Re-ran the ELITEA-2384 observable end-to-end independently: conv `9879` born under
+`Generic` → `meta.persona: "generic"` / `instructions: ""`; default moved to `Nerdy` +
+instructions `"Always respond with bullet points."`; conv `9880` → `"nerdy"` / the exact
+text, **plus a `meta.default_instructions` mirror of the same string** (present on the new
+conversation, absent on the pre-change one — a second, independent discriminator if one is
+ever wanted). Re-opening `9879` still returned `"generic"` / `""`. Persona **and**
+instructions both survived a navigate-away-to-`/settings/preferences`-and-back, not just a
+reload.
+
+⚠️ **`beforeunload` dialog when leaving a just-created chat.** Navigating away from
+`/chat/<id>` seconds after sending the first message raises a `beforeunload` dialog.
+**pytest is unaffected** (Playwright auto-dismisses dialogs), but Playwright **MCP** blocks
+on it — `browser_navigate` times out at 60 s and every subsequent tool call errors with
+*"does not handle the modal state"* until `browser_handle_dialog` runs. Cost one timeout
+this session; not a product issue and not a spec issue, purely an interactive-debugging trap.
