@@ -59,3 +59,4 @@
 - [Rendered timestamps are server UTC](rendered_timestamps_are_server_utc_not_local.md) — assert vs API created_at
 - [Playwright .count() never auto-waits](playwright_count_never_auto_waits.md) — get_*_count() on a lazy list races
 - [A transient-condition repro must call the production method FIRST](transient_condition_repro_must_call_production_first.md) — measuring before the call closes the window and fakes a verified fix
+- [force=True click silently hits disabled controls](force_true_click_silently_hits_disabled_controls.md) — gate clicks on aria-disabled, not on elapsed time

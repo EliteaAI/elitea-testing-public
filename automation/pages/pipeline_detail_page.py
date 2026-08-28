@@ -1309,11 +1309,35 @@ class PipelineDetailPage(PipelineFormPage):
     # dev.elitea.ai, i.e. re-creating the promotion gap this repair exists to
     # close. `aria-disabled` is already on `origin/main`. The testid stays the
     # identity; the attribute is only the state filter.
-    # How long open_trigger_select() waits for the menu before deciding the
-    # click was swallowed and re-clicking once (see its own comment). Short:
-    # a successful open renders the menu well inside this window, and a click
-    # that never landed is diagnosed early instead of burning the full timeout.
+    # How long ONE open attempt in open_trigger_select() waits for the menu
+    # before re-evaluating the Select's state and (if still closed) clicking
+    # again. Short on purpose: a click that actually landed renders the menu
+    # in 1-2 ms (measured on dev.elitea.ai), so a longer probe only delays the
+    # next attempt. The OVERALL budget is the caller's `timeout`, not this.
     TRIGGER_SELECT_OPEN_PROBE_TIMEOUT = 3000
+
+    # State filters on the Trigger Select's own MUI SelectDisplay node, which
+    # carries `data-testid="<select testid>-combobox"` — SingleSelect.jsx wires
+    # it via `SelectDisplayProps={{'data-testid': `${dataTestId}-combobox`}}`.
+    # Already on EliteaAI/EliteaUI `main` and confirmed RENDERED on
+    # dev.elitea.ai (2026-08-28 probe, count=1), so this needs no new testid —
+    # which matters: a new one would ship on `automation/testids` only and
+    # re-create the very promotion gap issue #1895 exists to close.
+    # MUI's SelectInput puts both states on that same node —
+    # `aria-disabled="true"` (ABSENT, not "false", when enabled) and
+    # `aria-expanded="true"|"false"` — see
+    # node_modules/@mui/material/Select/SelectInput.js:474-475.
+    #
+    # DECLARED IMPROVISATION (.agents/role-overrides.md § Declared-improvisation
+    # protocol; same canon-gap card #1805 as TRIGGER_OPTION_DISABLED below):
+    # .agents/testing.md § Locator policy (PR #581) names a `data-*` attribute
+    # as the state filter. MUI exposes these two states only as `aria-*`, and
+    # mirroring them as `data-*` would mean editing the SHARED SingleSelect
+    # component for one case and would again land on `automation/testids` only.
+    # The testid stays the identity; the attribute is only the state filter.
+    TRIGGER_SELECT_COMBOBOX = '[data-testid="pipeline-entry-point-trigger-select-combobox"]'
+    TRIGGER_SELECT_ENABLED = '[data-testid="pipeline-entry-point-trigger-select-combobox"]:not([aria-disabled="true"])'
+    TRIGGER_SELECT_EXPANDED = '[data-testid="pipeline-entry-point-trigger-select-combobox"][aria-expanded="true"]'
 
     TRIGGER_OPTION_DISABLED = '[data-testid="select-option-{}"][aria-disabled="true"]'
     TRIGGER_OPTION_ENABLED = '[data-testid="select-option-{}"]:not([aria-disabled="true"])'
@@ -3584,32 +3608,100 @@ class PipelineDetailPage(PipelineFormPage):
         *entry_point_node_id* to re-select the entry point node first,
         raising its z-order above any sibling that landed on top of it.
 
+        Opening is STATE-driven, not duration-driven (issue #1895 repair —
+        this method previously clicked once, waited a fixed 3s, then re-clicked
+        exactly once, and its comment attributed the swallowed click to the
+        Select element being REPLACED by a config-panel remount. Measurement
+        contradicted that: the element is present and simply DISABLED):
+
+        * **Never click a disabled Select.** TriggerTypeSelector.jsx renders
+          ``disabled={disabled || isLoading}`` where ``isLoading`` comes from
+          ``useGetPipelineTriggerQuery`` — so while that GET is in flight after
+          a fresh page load the Select is genuinely disabled and MUI's
+          SelectInput ignores the mousedown. ``force=True`` SKIPS Playwright's
+          own enabled-actionability check, so the click IS dispatched, silently
+          does nothing, and the caller then waits out the whole timeout on a
+          menu nothing ever asked to open. Measured against dev.elitea.ai
+          2026-08-28: clicking while ``aria-disabled="true"`` was swallowed
+          3/3; waiting for the enabled state first opened the menu in 1-2 ms,
+          5/5. The disabled window was 0.002s-0.411s across one 5-reload
+          sample and is unbounded on a slow environment — which is exactly how
+          the old fixed 3s retry could fire while the Select was STILL
+          disabled, waste its one retry, and hang the full 10s (GHA dev-stable
+          failure, issue #1895).
+        * **Never click a Select that is already expanded.** MUI's Menu mounts
+          a full-viewport Modal backdrop, so a forced coordinate click while
+          the menu is opening lands on that backdrop and toggles the menu shut.
+          ``aria-expanded`` is re-read immediately before every click rather
+          than inferring "no menu open" from an option count.
+        * **Retry until *timeout*, not exactly once**, so a click swallowed for
+          any other reason (a genuine remount, an overlay) still recovers.
+
+        Both states are read off the Select's own MUI SelectDisplay node via
+        :data:`TRIGGER_SELECT_ENABLED` / :data:`TRIGGER_SELECT_EXPANDED` —
+        testid-keyed with an attribute state filter, no new testid needed (see
+        those constants for the declared `aria-*`-instead-of-`data-*` note).
+
         Args:
-            timeout: Maximum wait time in milliseconds.
+            timeout: Maximum wait time in milliseconds for the WHOLE open —
+                enabled-wait plus every click attempt — not per attempt.
             entry_point_node_id: Optional data-id of the entry point node to
                 bring to the front before opening the dropdown.
+
+        Raises:
+            PlaywrightTimeoutError: the Select never became enabled, or the
+                menu never opened, within *timeout*.
         """
         if entry_point_node_id:
             self._select_node(entry_point_node_id)
-        self.trigger_select.click(timeout=timeout, force=True)
+
+        enabled = self.page.locator(self.TRIGGER_SELECT_ENABLED)
+        expanded = self.page.locator(self.TRIGGER_SELECT_EXPANDED)
         options = self.page.locator(self.SELECT_OPTION_PREFIX)
-        try:
-            options.first.wait_for(state="visible", timeout=self.TRIGGER_SELECT_OPEN_PROBE_TIMEOUT)
-        except PlaywrightTimeoutError:
-            # Swallowed first click, reproduced deterministically on the first
-            # open after a full page reload (ELITEA-2008 repair): selecting the
-            # node remounts its config panel, so the Select element resolved a
-            # moment earlier is replaced before the click lands and the menu
-            # never opens — a stuck 10s timeout, not slowness (the original
-            # failure waited the full timeout 3/3 and saw nothing).
-            #
-            # Re-clicking re-resolves the locator against the fresh element.
-            # Guarded by `count() == 0` so this can only ever fire when NO menu
-            # is open: a menu that is merely rendering slowly is waited out
-            # below instead of being clicked shut by the retry.
-            if options.count() == 0:
-                self.trigger_select.click(timeout=timeout, force=True)
-            options.first.wait_for(state="visible", timeout=timeout)
+        deadline = time.monotonic() + timeout / 1000
+
+        while True:
+            remaining = int((deadline - time.monotonic()) * 1000)
+            if remaining <= 0:
+                # State-naming failure: distinguishes "the Select never
+                # rendered" from "it rendered but stayed disabled" from "it
+                # opened but rendered no option" — three very different causes
+                # that the pre-#1895 code all reported as one opaque wait.
+                raise PlaywrightTimeoutError(
+                    f"Trigger dropdown did not open within {timeout}ms: "
+                    f"select present={self.page.locator(self.TRIGGER_SELECT_COMBOBOX).count()}, "
+                    f"enabled={enabled.count()}, expanded={expanded.count()}, "
+                    f"options={options.count()}"
+                )
+            probe = min(self.TRIGGER_SELECT_OPEN_PROBE_TIMEOUT, remaining)
+
+            try:
+                if expanded.count() == 0:
+                    # Blocks while the Select is disabled — a click here is
+                    # provably wasted (see the docstring's measurements).
+                    # `attached`, NOT `visible`: `force=True` never required
+                    # visibility, so gating on it would add a precondition this
+                    # method never had and could hang on a Select scrolled out
+                    # of the ReactFlow viewport.
+                    enabled.first.wait_for(state="attached", timeout=probe)
+                    # Re-read the open state immediately before clicking — the
+                    # menu may have opened while we waited for the enabled
+                    # state, and a click now would toggle it shut.
+                    if expanded.count() == 0:
+                        self.trigger_select.click(timeout=probe, force=True)
+
+                # `aria-expanded="true"` is the Select's OWN open state, so a
+                # menu still fading out from a previous open (options briefly
+                # still in the DOM, aria-expanded already "false") cannot be
+                # mistaken for a fresh one. Options are then waited on because
+                # aria-expanded flips one commit before they are paintable.
+                expanded.first.wait_for(state="attached", timeout=probe)
+                options.first.wait_for(state="visible", timeout=probe)
+                return
+            except PlaywrightTimeoutError:
+                # Deadline-bounded by the loop head, which raises the
+                # state-naming error above rather than an opaque locator wait.
+                continue
 
     def get_trigger_options(self, timeout: int = 10000, entry_point_node_id: str | None = None) -> list[str]:
         """Open the Trigger dropdown, read the visible option names, close via Escape.
