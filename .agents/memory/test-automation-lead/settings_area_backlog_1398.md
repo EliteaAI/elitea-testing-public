@@ -6,9 +6,9 @@ created: 2026-08-26
 updated: 2026-08-26
 ---
 
-## Status after waves w01–w06 (2026-08-28)
+## Status after waves w01–w07 (2026-08-28)
 
-**Running total: 42 `automated`, 12 `merged-sanctioned-red`, 14 blocked/parked, ~60 not yet attempted.**
+**Running total: 48 `automated`, 12 `merged-sanctioned-red`, 8 blocked (human decisions), ~60 not yet attempted. NO parked units.**
 
 ⚠️ **A sanctioned-RED case is NOT delivered coverage.** `.agents/testing.md` § Merge gate:
 it stays `blocked-on-#N` and is never back-written `execution_type: automated`.
@@ -16,6 +16,14 @@ On 2026-08-28 I corrected three of my own earlier back-writes that broke this �
 ELITEA-2243 (#1771, w01), ELITEA-2289 (#1884, w04), ELITEA-2291 (#1885, w04) —
 back to draft/manual + `sanctioned_red: <ticket>`, keeping `automation_test_id` for
 CI correlation. Count dropped 36 -> 33. **Re-check prior waves whenever this rule comes up.**
+
+### Wave settings-w07 — finished the unit w06 parked (6 cases)
+
+ELITEA-2314..2319 all `automated` (PR #1958, lead gate 3/3 green).
+**PR #1945 was found CLOSED** — w06's cleanup deleted its BASE trunk; head branch survived intact.
+See [[deleting_a_batch_trunk_auto_closes_open_unit_prs]].
+Fix round 3 verified 2 of 3 named blockers were already fixed in round 1 and found a real residual
+in each. The explicit "sweep siblings" instruction found 4 more weaknesses. Filed #1959.
 
 ### Wave settings-w06 — `settings/analytics` (15 cases)
 
@@ -76,9 +84,8 @@ full provenance table + SHAs.
   Deliberately NOT grouped into w01: they need multiple identities (admin vs
   viewer/monitor role, an unauthenticated session), a different setup shape
   than the rest of the root `settings` cases.
-- **PR #1945 first** — 6 analytics date-filter cases, built + reviewed, 3 named blockers left.
 - **3 more sub-areas, ~56 cases**: `ai-configuration` (24), `user-profile` (17),
-  `users-and-roles` (15).
+  `users-and-roles` (15). `ai-configuration` needs splitting across two waves.
   (`notifications` w02, `project-params` w03, `personal-tokens` w04, `secrets` w05, `analytics` w06.)
 
 ## Pattern for the next wave
