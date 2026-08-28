@@ -1,0 +1,26 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Open the delete-version confirmation dialog via the three-dot menu — Locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("agent-actions-menu-button")
+    - locator resolved to <button tabindex="0" type="button" variant="elitea" aria-haspopup="true" id="agent-actions-action" data-testid="agent-actions-menu-button" class="MuiButtonBase-root MuiIconButton-root MuiIconButton-colorTertiary MuiIconButton-sizeMedium css-zlgr2m">…</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div aria-hidden="true" class="MuiBackdrop-root MuiBackdrop-invisible MuiModal-backdrop css-1lbe2ow"></div> from <div id="menu-" role="presentation" class="MuiPopover-root MuiMenu-root MuiModal-root css-1lpy3wf">…</div> subtree intercepts pointer events
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div aria-hidden="true" class="MuiBackdrop-root MuiBackdrop-invisible MuiModal-backdrop css-1lbe2ow"></div> from <div id="menu-" role="presentation" class="MuiPopover-root MuiMenu-root MuiModal-root css-1lpy3wf">…</div> subtree intercepts pointer events
+    - retrying click action
+      - waiting 100ms
+    19 × waiting for element to be visible, enabled and stable
+       - element is visible, enabled and stable
+       - scrolling into view if needed
+       - done scrolling
+       - <div aria-hidden="true" class="MuiBackdrop-root MuiBackdrop-invisible MuiModal-backdrop css-1lbe2ow"></div> from <div id="menu-" role="presentation" class="MuiPopover-root MuiMenu-root MuiModal-root css-1lpy3wf">…</div> subtree intercepts pointer events
+     - retrying click action
+       - waiting 500ms
