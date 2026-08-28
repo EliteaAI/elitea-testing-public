@@ -294,12 +294,19 @@ class TestAnalyticsTabContentRefresh:
                 '"Agents & Pipelines" tab (case says "Agents tab under Last 24d" — stale)'
             ):
                 analytics_page.navigate()
-                analytics_page.click_preset(analytics_page.preset_last_24h)
-                analytics_page.wait_for_overview_settled()
+                # "Last 24h" is the product's DEFAULT preset, and clicking an
+                # already-active preset is a deliberate no-op (MUI's exclusive
+                # ToggleButtonGroup emits null, `handleDatePresetChange`
+                # returns early) — so assert the state instead of clicking it.
+                assert analytics_page.get_pressed_preset_labels() == ["Last 24h"], (
+                    "Expected the page to open on its default 'Last 24h' preset, got "
+                    f"{analytics_page.get_pressed_preset_labels()!r}"
+                )
                 agents_24h = analytics_page.open_tab_awaiting(
                     analytics_page.tab_agents_pipelines, "agents"
                 )
                 analytics_page.agents_table_header.wait_for(state="visible")
+                analytics_page.wait_for_tab_settled("agents")
                 assert analytics_page.is_tab_selected(analytics_page.tab_agents_pipelines)
 
             with allure.step(
@@ -318,6 +325,7 @@ class TestAnalyticsTabContentRefresh:
             with allure.step('Step 3 — Click "Last 30d": the Agents query re-fires'):
                 agents_30d = analytics_page.click_preset(analytics_page.preset_last_30d, "agents")
                 analytics_page.agents_table_header.wait_for(state="visible")
+                analytics_page.wait_for_tab_settled("agents")
                 assert agents_30d.status == 200
 
             with allure.step("Step 4 — Both Agents charts update their data"):
@@ -338,6 +346,7 @@ class TestAnalyticsTabContentRefresh:
             ):
                 users_30d = analytics_page.open_tab_awaiting(analytics_page.tab_users, "users")
                 analytics_page.users_table_header.wait_for(state="visible")
+                analytics_page.wait_for_tab_settled("users")
                 assert_table_matches(
                     users_30d,
                     analytics_page.users_rows,
@@ -348,6 +357,7 @@ class TestAnalyticsTabContentRefresh:
 
                 users_24h = analytics_page.click_preset(analytics_page.preset_last_24h, "users")
                 analytics_page.users_table_header.wait_for(state="visible")
+                analytics_page.wait_for_tab_settled("users")
                 assert_table_matches(
                     users_24h,
                     analytics_page.users_rows,
@@ -372,6 +382,7 @@ class TestAnalyticsTabContentRefresh:
 
                 tools_30d = analytics_page.click_preset(analytics_page.preset_last_30d, "tools")
                 analytics_page.tools_table_header.wait_for(state="visible")
+                analytics_page.wait_for_tab_settled("tools")
                 assert_table_matches(
                     tools_30d,
                     analytics_page.tools_rows,

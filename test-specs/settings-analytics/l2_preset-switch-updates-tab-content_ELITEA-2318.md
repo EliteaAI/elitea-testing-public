@@ -18,9 +18,14 @@
   per-tab response body as its oracle, so the test is valid for an empty project too.
 
 ## Test Steps
-1. Navigate to Settings → Analytics, click `Last 24h`, then open the **Agents & Pipelines** tab
-   (case step 1 — the case says "Agents tab under Last 24d"; the live tab is
-   "Agents & Pipelines" and the live preset label is "Last 24h").
+1. Navigate to Settings → Analytics, confirm the page is on its **default** `Last 24h` preset,
+   then open the **Agents & Pipelines** tab (case step 1 — the case says "Agents tab under
+   Last 24d"; the live tab is "Agents & Pipelines" and the live preset label is "Last 24h").
+   — **Implementer amendment (2026-08-28):** the original wording said "click `Last 24h`".
+   Clicking the ALREADY-active preset is a deliberate product no-op (MUI's exclusive
+   `ToggleButtonGroup` emits `null` and `handleDatePresetChange` returns early), so no request
+   fires and a response wait around that click times out. Since `Last 24h` IS the default, the
+   step asserts that state instead of clicking it — same precondition, no fabricated interaction.
    - **Verify**: the tab is selected and its own GET (`analytics_agents/prompt_lib/`) resolves.
 2. Capture the Agents tab state under `Last 24h` (case step 2): presence/absence of the
    "Most Active Agents & Pipelines" bar chart and the "Chat Messages" area chart, the

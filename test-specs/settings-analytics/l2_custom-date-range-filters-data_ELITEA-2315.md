@@ -16,9 +16,10 @@
 
 ## Test Data
 ### reuse-existing
-- No seeded data. The custom range is computed **relative to today** at run time (From = the 10th
-  of the currently displayed month or, when today is before the 12th, a day ≥ 10 days back — see
-  § Automation Hints for the exact rule), so the test never hardcodes a calendar date.
+- No seeded data. The custom range is chosen **relative to the month each picker opens on** at run
+  time (From = day 15 of the From picker's displayed month after `Last 90d`; To = day 10 of the
+  current month — § Automation Hints), so the test never hardcodes a calendar date and never needs
+  a month-boundary branch.
 
 ## Test Steps
 1. Navigate to Settings → Analytics.

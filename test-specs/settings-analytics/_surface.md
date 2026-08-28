@@ -322,3 +322,28 @@ from the ELITEA-2314..2319 run. `needsOverview` is still `activeTab === 0 || act
   present on disk. **Restarting the dev server fixed it.** Verify a new testid via
   `curl -s 'http://localhost:5173/src/%5Bfsd%5D/.../File.jsx' | grep <testid>` before concluding the
   testid is wrong.
+
+### Resolved/added during ELITEA-2314..2319 implementation (2026-08-28)
+
+- **Wide-range analytics queries are SLOW.** `Last 30d`/`Last 90d` on the `auth_state` fixture's
+  project (id **399**, the one the pytest session lands on — distinct from the project a
+  Playwright-MCP browser session shows) regularly need **more than 15 s** to answer, while
+  `Last 24h`/`Last 7d` come back in a few seconds. `NAVIGATION_TIMEOUT` (15 s) is NOT enough:
+  `AnalyticsPage` now has `DATA_QUERY_TIMEOUT = 60_000` for every range-changing wait. A
+  `TimeoutError: … waiting for event "response"` on a preset click is this, not a missing request.
+- **Recharts axis ticks need `all_text_contents()`, never `all_inner_texts()`** — SVG `<text>`
+  nodes have no `innerText`, so `all_inner_texts()` yields `None` entries and blows up on `.strip()`.
+- **MUI keeps the outgoing month grid mounted during a picker month transition** — right after a
+  "Previous month" click the same day number resolves to 2-4 nodes (measured: 4 across a 3-month
+  walk), a strict-mode violation. `AnalyticsPage.get_picker_day_cell()` now waits for the match to
+  settle to exactly one (`expect(...).to_have_count(1)`) — a condition wait, not a sleep.
+- **Response ≠ render on every tab**: `expect_response` returning does not mean rows exist yet.
+  `AnalyticsPage.wait_for_tab_settled(surface)` (public, additive sibling of the private
+  `_wait_for_*_settled` helpers) closes the gap for overview/users/agents/tools.
+- **Two MERGED analytics specs are RED on `automation/base` for product drift** (verified with a
+  pristine-page-object control run, identical failures): the Users-tab table now has extra columns
+  (`INPUT TOKENS`, `OUTPUT TOKENS`, `INPUT TOKEN COST`, …) vs ELITEA-2312's 9-column tuple, and the
+  Agents & Pipelines table likewise (`TOTAL COST`, `INPUT TOKEN COST`, `OUTPUT TOKEN COST`,
+  `CACHE READ TOKENS`, `CACHE WRITE TOKENS`, …) vs ELITEA-2320's 8-column tuple.
+  `test_analytics_default_load.py` still passes. This is `adjust-automated-test` work, unrelated to
+  the date-filter cases.
