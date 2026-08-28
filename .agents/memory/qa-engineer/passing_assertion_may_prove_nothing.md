@@ -1,6 +1,6 @@
 ---
 name: Assertion honesty — an assertion can pass without proving its claim
-description: "There is an expect() at this step" is not "this step fails when the product is broken." Ten shapes where a real assertion is present and still vacuous, and the one question that catches all of them.
+description: "There is an expect() at this step" is not "this step fails when the product is broken." Eleven shapes where a real assertion is present and still vacuous, and the one question that catches all of them.
 type: feedback
 ---
 
@@ -11,7 +11,7 @@ different value?** If both branches of the failure mode produce the same
 observable, the assertion is vacuous — an Important finding even though the
 per-step-assertion gate is literally satisfied.
 
-## The ten shapes and their remedies
+## The eleven shapes and their remedies
 
 1. **Wrong comparison target.** A positional/bounding-box check can be
    non-tautological (fails when inverted) and still compare against a
@@ -84,7 +84,26 @@ per-step-assertion gate is literally satisfied.
     observable really share a data source, or merely share a mount/unmount
     boundary.
 
-## Seen 10×
+11. **Containment guard whose failure state CONTAINS the pass state.** A
+    substring / `in` / prefix check on a URL, path, title or id where the
+    broken value is a *superset* of the expected one, so the guard is true in
+    both branches. `assert "/credentials" in page.url` is intended to prove
+    "the save navigated back to the list" and is **also true on
+    `/credentials/create-credential/jira`** — the exact URL a failed save never
+    leaves. The step reports `passed`, the real failure surfaces two steps
+    later as an opaque oracle miss, and every trace of the cause is gone. The
+    tell is any string assertion whose expected value is a *prefix or fragment*
+    of the route it is supposed to have left. Remedy: anchor it —
+    `page.wait_for_url(re.compile(r".*/credentials/all/?(\?.*)?$"))` — and
+    prefer a retrying `wait_for_url` over a one-shot `in page.url` read.
+    Sibling tell in the same class: a control that is *acted on* rather than
+    *asserted on* — `save_btn.evaluate("el => el.click()")` is a silent no-op
+    on a disabled button (no POST, no navigation, no exception), so it never
+    produces the failure the guard downstream is waiting for. A real
+    Playwright `click()` auto-waits for `enabled` and raises at the true
+    failure point.
+
+## Seen 11×
 
 - PR #698/ELITEA-2132 R3 — bbox check proved Folders-vs-Conversations layout separation, never folder insertion order; an append-instead-of-prepend regression would pass.
 - PR #696/ELITEA-2114 — `delete-confirm-title` (built to route around #694, text live-verified in the AFS) asserted visible-only.
@@ -95,6 +114,8 @@ per-step-assertion gate is literally satisfied.
 - PR #1230/ELITEA-2363 — Step 4 filters captured `public_applications` requests down to `query=="story"` before asserting `len()==1`; a broken debounce firing one request per keystroke would still leave exactly one entry with the final query value, so the "single debounced request" claim (the AFS's own Axis-2 addition) goes unverified. Same PR, Step 1: `get_visible_agent_card_names()` read right after `navigate()` (which only waits on `page_heading`, not the bulk applications fetch) — the identical async-render race the implementer had *just* fixed for `clear_search()` (steps 5/6 use `wait_for_agent_card_count[_not]`), left unfixed on the baseline read those two steps compare against.
 - PR #1335/ELITEA-2012 — `test_pipeline_import_via_file.py` step 1 captures `original_yaml`'s LLM-node `transition` purely to diff against the imported copy at step 7 (`imported_llm_node["transition"] == original_llm_node["transition"]`); the AFS Coverage Map names "canvas node wiring" as asserted AT step 1, but no absolute check (`== "END"`) exists — a creation-time wiring regression would round-trip identically and stay invisible.
 - ELITEA-2370 R3 (`tests/2370-catalog-tabs`) — Step 8 ("main content switches to Skills content") proven only via agent-card absence + the RIGHT-PANEL filter-chip prefix flipping to skill-scoped; `CatalogBody.jsx` shows the chip rail is fed by `allCategories`/`categoryNames` while the main-content grid is fed by the separate `groupedItems` — a failed/empty skills fetch would leave the grid on its "No skills found" empty state while chips still count correctly. A pre-existing `skill-card-{id}` testid (`SkillCard.jsx:48`, already on `automation/testids`) — the direct analog of the `AGENT_CARD_PREFIX`/`wait_for_any_agent_card()` pair used to prove the symmetric Step 5 claim — sat unused.
+
+- PR #1937/ELITEA-1140 (#1897) — `assert "/credentials" in page.url` as the "save navigated back to the list" guard: true on `/credentials/create-credential/jira`, so Steps 5 AND 6 both reported `passed` on a save that never happened (GHA 33066098636); paired with `save_btn.evaluate("el => el.click()")`, a silent no-op on the disabled Save. Repaired to `to_be_enabled()` + a real `click()` + anchored `wait_for_url`.
 
 See also: positional_assertion_wrong_comparison_target_survives_invert_sanity_check.md ·
 purpose_built_handle_asserted_visible_not_text_elitea2114.md ·

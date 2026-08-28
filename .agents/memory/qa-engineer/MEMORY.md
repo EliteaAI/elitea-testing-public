@@ -59,3 +59,5 @@
 - [Wait-vs-masking test for a repair PR](wait_vs_masking_test_for_a_repair_pr.md) — 3 source checks: honest in-flight branch, testid only on real data, wait stricter than assert
 - [Porting a case to main: diff docs vs source branch](porting_a_case_to_main_must_diff_docs_against_the_source_branch.md) — greps miss a reverted AFS
 - [CI red on main — check automation/base for an existing fix FIRST](ci_red_on_main_check_automation_base_first.md) — port, don't re-triage
+- [JS el.click() on a disabled button is a silent no-op](js_click_on_disabled_button_is_a_silent_noop.md) — cannot-fail click + vacuous URL guard = red 2 steps downstream
+- [Run the suite against dev.elitea.ai without editing .env.test](retarget_suite_at_dev_without_editing_env_test.md) — throwaway -p plugin; shell exports cannot win

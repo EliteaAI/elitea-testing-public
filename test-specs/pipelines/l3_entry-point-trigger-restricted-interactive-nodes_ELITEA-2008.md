@@ -618,6 +618,34 @@ the retry from clicking shut a menu that is merely rendering slowly. Strictly mo
 the previous behaviour (it can only convert a timeout into a success), and the other caller
 spec (`test_pipeline_entry_point_trigger_types_persist.py`) was re-run against it.
 
+> **⚠️ Item ② is SUPERSEDED on `main` by PR #1929 (issue #1895, 2026-08-28) — it remains
+> accurate for `automation/base`, which still runs the code it describes.**
+>
+> Item ② is kept as the dated record of what #1802 actually shipped. Its *mechanism* was
+> later disproved by direct measurement, so do not go looking for a remount on `main`:
+>
+> - **The Select is NOT replaced.** It is present and genuinely `disabled` —
+>   `TriggerTypeSelector.jsx` renders `disabled={disabled || isLoading}`, where `isLoading`
+>   is `useGetPipelineTriggerQuery`'s `isFetching || isUpdating`. While that round-trip is in
+>   flight after a page load, MUI's `SelectInput` ignores the mousedown.
+> - **`force=True` skips Playwright's *enabled* actionability check**, so the click is
+>   dispatched, silently does nothing, and the caller waits out the whole timeout on a menu
+>   nothing ever asked to open. This is a repo-wide trap, not a quirk of this surface.
+> - Measured on dev.elitea.ai: clicking while `aria-disabled="true"` was swallowed 3/3;
+>   waiting for the enabled state first opened the menu in 1–2 ms, 5/5; the control enabled
+>   46 ms after the `pipeline_trigger` GET finished. Observed disabled windows range from
+>   0.002 s to **19.99 s** — so the 3 s probe *and* the 10 s budget described above were both
+>   provably insufficient on a slow environment.
+> - **The `count() == 0` guard described above could not do what this text claims** — it
+>   samples the option count milliseconds before the click, so it cannot distinguish a
+>   swallowed click from a slow-rendering menu.
+>
+> On `main`, `open_trigger_select()` is instead a state-driven, deadline-bounded loop with two
+> separate budgets — a network-sized ready leg (`TRIGGER_SELECT_READY_TIMEOUT`, 30 s) and the
+> caller's click/expand retry budget — that never clicks a disabled Select, re-reads
+> `aria-expanded` before every click, and fails with a state-naming message. See
+> `PipelineDetailPage.open_trigger_select()` and `test-specs/pipelines/_surface.md`.
+
 **③ Console-error capture migrated** to `utils/console_errors.collect_console_errors()` per
 work-order row ⑧ and `.agents/testing.md` § Known issues, so a future occurrence of the
 recurring background-resource noise class on this spec names the failing resource URL.

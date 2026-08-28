@@ -15,15 +15,17 @@ import logging
 import re
 import time
 
+import allure
 import pytest
 import requests
-
 from api import CredentialAPI, ToolkitAPI
-from config import settings
 from components.mui import Popper
+from config import settings
 from pages.base_page import BasePage
 from pages.chat_page import ChatPage
+from pages.credential_create_page import CredentialCreatePage
 from pages.toolkit_test_settings_page import ToolkitTestSettingsPage
+from playwright.sync_api import expect
 from toolkit_configs import TOOLKIT_CONFIGS, ToolkitConfig
 from toolkit_factories import CREDENTIAL_FACTORIES, TOOLKIT_SETTINGS_FACTORIES
 from utils.toolkit_output import (
@@ -33,10 +35,6 @@ from utils.toolkit_output import (
     tool_output_matches_success,
 )
 from utils.websocket_frames import capture_socketio_frames
-
-# Import from conftest
-from conftest import ELITEA_URL
-import allure
 
 logger = logging.getLogger(__name__)
 
@@ -199,50 +197,62 @@ class TestCreateCredential:
         created_id = None
 
         try:
-            base_url = settings.app_base_url
+            create_page = CredentialCreatePage(page)
 
             with allure.step("Step 1 — Navigate to credential creation page"):
-                page.goto(
-                    f"{base_url}/credentials/create-credential",
-                    wait_until="domcontentloaded",
-                )
-                page.wait_for_load_state("networkidle", timeout=30000)
-                page.wait_for_timeout(1000)
+                # Direct-route to the type-specific create form instead of
+                # clicking the type card on /credentials/create-credential: that
+                # grid is categorised and lazily rendered, so a card (e.g. Jira,
+                # under "Project Management") can be present in the DOM yet never
+                # become visible within the timeout (ELITEA-1963, re-observed on
+                # DEV for #1897). The card click itself is covered for `github`
+                # only, by test_credential_create.py Step 3; the grid is a uniform
+                # component (CategoryItemCard.jsx renders
+                # `toolkit-type-card-{type}` for every type through one code
+                # path), so github's click proves the mechanism.
+                create_page.navigate_to_type(cfg.url_slug)
 
-            with allure.step(f"Step 2 — Click credential type card: {cfg.display_name}"):
-                type_card = page.get_by_text(cfg.display_name, exact=True).first
-                type_card.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-                type_card.click()
-                page.wait_for_load_state("networkidle", timeout=30000)
+            with allure.step(f"Step 2 — Verify the {cfg.display_name} create form rendered"):
+                assert f"/credentials/create-credential/{cfg.url_slug}" in page.url, (
+                    f"Expected the {cfg.display_name} create form URL, got: {page.url}"
+                )
+                expect(create_page.display_name_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                expect(create_page.save_button).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
 
             with allure.step("Step 3 — Fill Display Name"):
-                name_field = page.get_by_role("textbox", name="Display Name")
-                name_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-                page.wait_for_timeout(1000)
-                name_field.click()
-                name_field.type(cred_name)
-                page.wait_for_timeout(300)
+                create_page.set_display_name(cred_name)
+                # Assert the value LANDED. Without this a transient that wipes or
+                # re-initialises the field is invisible here and only surfaces at
+                # Step 7 as an opaque "not found via API" (#1897).
+                expect(create_page.display_name_input).to_have_value(
+                    cred_name, timeout=UI_ELEMENT_TIMEOUT
+                )
 
             with allure.step("Step 4 — Fill auth-specific fields"):
-                _fill_credential_auth_fields(page, cfg, token)
-                pre_save_value = name_field.input_value()
-                logger.info("Pre-save Display Name: %r (expected %r)", pre_save_value, cred_name)
-                page.screenshot(path=f"/tmp/cred_form_presave_{cfg.credential.type}.png")
+                _fill_credential_auth_fields(page, create_page, cfg, token)
 
             with allure.step("Step 5 — Click Save button"):
-                save_btn = page.get_by_role("button", name="Save")
-                save_btn.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-                save_btn.evaluate("el => el.click()")
-                page.wait_for_load_state("networkidle", timeout=FORM_SAVE_TIMEOUT)
-                page.wait_for_timeout(3000)
-                page.screenshot(path=f"/tmp/cred_after_save_{cfg.credential.type}.png")
-                print(f"📸 After save: URL={page.url}")
+                # Case ELITEA-1140 Step 2's expected result: "The Save button
+                # becomes enabled." Asserted here — this is precisely the state
+                # that was wrong in the failing run.
+                expect(create_page.save_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
+                # A REAL Playwright click, never `evaluate("el => el.click()")`:
+                # a JS click on a disabled button is a silent no-op — no POST, no
+                # navigation, no exception — which is what destroyed the evidence
+                # in #1897. `click()` auto-waits for enabled and raises here, at
+                # the true failure point.
+                create_page.save_button.click()
 
             with allure.step("Step 6 — Verify navigation to credentials list"):
-                assert "/credentials" in page.url, \
-                    f"Expected to navigate to /credentials but got: {page.url}"
-                logger.info("Waiting 3s for backend to sync credential...")
-                page.wait_for_timeout(3000)
+                # Case ELITEA-1140 Step 3's expected result: "The page returns to
+                # the Credentials list." The former guard (`"/credentials" in
+                # page.url`) was vacuous — it is True on
+                # /credentials/create-credential/jira, the URL a failed save never
+                # leaves (#1897). /credentials/all is the observed post-save
+                # destination.
+                page.wait_for_url(
+                    re.compile(r".*/credentials/all/?(\?.*)?$"), timeout=NAVIGATION_TIMEOUT
+                )
 
             with allure.step("Step 7 — Verify credential exists via API"):
                 fresh_cookies = page.context.cookies()
@@ -635,59 +645,92 @@ class TestChatWithToolkit:
 # UI form fill helpers
 # ---------------------------------------------------------------------------
 
-def _fill_credential_auth_fields(page, cfg: ToolkitConfig, token: str):
+def _require_env(env_var: str, value: str, cfg: ToolkitConfig) -> str:
+    """Return *value*, or skip the test naming the missing environment variable.
+
+    An empty env var behind a **required** credential field is a CONFIGURATION
+    gap, not a product verdict. The old code guarded these with a silent
+    ``if value:`` and simply left the field empty — which leaves Save disabled
+    and turns a config gap into an opaque "not found via API" failure two steps
+    downstream (#1897). This is a PRECONDITION skip: it masks no defect, it
+    names the variable that is missing.
+    """
+    if not value:
+        pytest.skip(
+            f"{env_var} is not set — it is a required field on the "
+            f"{cfg.display_name} credential form"
+        )
+    return value
+
+
+def _assert_secret_filled(field, value: str, label: str) -> None:
+    """Assert a masked field holds *value*, comparing LENGTH only.
+
+    Never interpolate or compare the secret itself — an assertion message ends
+    up in logs and CI transcripts. Length is enough to prove the keystrokes
+    landed, which is the diagnosis #1897 needed.
+    """
+    typed = len(field.input_value())
+    assert typed == len(value), (
+        f"{label} field should contain the full secret ({len(value)} chars), "
+        f"got {typed} chars — the value did not land"
+    )
+
+
+def _fill_credential_auth_fields(
+    page, create_page: CredentialCreatePage, cfg: ToolkitConfig, token: str
+):
     """Fill auth-specific fields on the credential creation form.
 
     Dispatches based on cfg.credential.type to handle each credential
     type's unique form layout.
 
-    NOTE: Secret/password fields (Access Token, Private Token, Api Key)
-    render as <input type="password"> with name="api_key".  These are NOT
-    matched by get_by_role("textbox") — use get_by_label() or
-    locator('input[name="api_key"]') instead.  Labels may include
-    trailing asterisks for required fields (e.g. "Private Token*").
+    Every value typed into a **required** field is asserted immediately with
+    ``to_have_value`` (secrets by length via :func:`_assert_secret_filled`), so
+    a transient that wipes or never lands a value fails HERE, naming the field —
+    rather than surfacing at Step 7 as "credential not found via API" (#1897).
+
+    Required-field sets differ per type (captured live on DEV 2026-08-28):
+    github needs only ``label``/``elitea_title``/``base_url`` and ships
+    ``base_url`` pre-filled, which is why ``[github]`` could never fail this
+    way; jira and confluence additionally require ``username`` + ``base_url``.
+
+    NOTE: Secret fields (Access Token, Api Key) render as
+    ``<input type="password">`` inside a secret-toggle wrapper and are reached
+    through the page object's ``toolkit-field-*-input-field`` testids.
     """
     cred_type = cfg.credential.type
 
     if cred_type == "github":
-        # Select Token auth radio — reveals "Access Token" password field
-        radio = page.get_by_role("radio", name="Token")
-        radio.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-        radio.click(force=True)
-        page.wait_for_timeout(500)
-        # Access Token is input[type="password"][name="api_key"]
-        # NOTE: get_by_label() doesn't work reliably for password fields;
-        # use direct locator on input[type="password"]
-        token_field = page.locator('input[type="password"][name="api_key"]')
-        token_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-        token_field.click()
-        token_field.type(token)
+        # Token auth radio reveals the "Access Token" secret field. Access Token
+        # is NOT a required field and base_url ships pre-filled, so Save is
+        # already enabled by the Display Name alone — nothing here can disable it.
+        create_page.select_auth_method("token")
+        expect(create_page.access_token_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+        create_page.set_access_token(token)
+        _assert_secret_filled(create_page.access_token_input, token, "Access Token")
 
     elif cred_type == "jira":
-        # Jira uses Basic auth with Api Key (password) + Username + Base Url
-        # NOTE: Api Key is input[type="password"] — use direct locator
-        # NOTE: Jira API tokens can be 120+ characters; use a generous timeout to
-        #       avoid the default 10s expiring before all keystrokes are sent.
-        api_key_field = page.locator('input[type="password"][name="api_key"]')
-        api_key_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-        api_key_field.click()
-        api_key_field.type(token, timeout=60_000)
-        
-        username = settings.jira_username
-        if username:
-            user_field = page.get_by_role("textbox", name=re.compile(r"Username"))
-            user_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-            user_field.click()
-            user_field.type(username)
+        # Jira uses Basic auth: Api Key (secret) + Username + Base Url.
+        # Username and Base Url are REQUIRED — an empty env var here is what
+        # leaves Save disabled, so it skips loudly instead of falling through.
+        username = _require_env("JIRA_USERNAME", settings.jira_username, cfg)
+        base_url = _require_env("JIRA_BASE_URL", settings.jira_base_url, cfg)
 
-        base_url = settings.jira_base_url
-        if base_url:
-            url_field = page.get_by_role("textbox", name=re.compile(r"Base Url"))
-            url_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-            url_field.click()
-            url_field.type(base_url)
+        create_page.set_api_key(token)
+        _assert_secret_filled(create_page.api_key_input, token, "Api Key")
+
+        create_page.set_username(username)
+        expect(create_page.username_input).to_have_value(username, timeout=UI_ELEMENT_TIMEOUT)
+
+        create_page.set_base_url(base_url)
+        expect(create_page.base_url_input).to_have_value(base_url, timeout=UI_ELEMENT_TIMEOUT)
 
     elif cred_type == "gitlab":
+        # KNOWN DEFECT (#1936, out of scope for #1897): the secret field below is
+        # located by name="api_key", but GitLab's is named `private_token`
+        # (`toolkit-field-private_token-input-field`). Never fires today — this
+        # param is unconditionally skipped (no active GitLab account).
         # Url field (textbox, label "Url *")
         url_field = page.get_by_role("textbox", name=re.compile(r"^Url"))
         url_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
@@ -702,6 +745,10 @@ def _fill_credential_auth_fields(page, cfg: ToolkitConfig, token: str):
         token_field.type(token)
 
     elif cred_type == "bitbucket":
+        # KNOWN DEFECT (#1936, out of scope for #1897): the secret field below is
+        # located by name="api_key", but Bitbucket's is named `password`
+        # (`toolkit-field-password-input-field`). Never fires today — this param
+        # is unconditionally skipped (no active Bitbucket account).
         # Password field is input[type="password"][name="api_key"]
         pw_field = page.locator('input[type="password"][name="api_key"]')
         pw_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
@@ -722,28 +769,22 @@ def _fill_credential_auth_fields(page, cfg: ToolkitConfig, token: str):
         url_field.type(url)
 
     elif cred_type == "confluence":
-        # Base Url field (textbox, label "Base Url *")
-        base_url = settings.confluence_base_url
-        if base_url:
-            url_field = page.get_by_role("textbox", name=re.compile(r"Base Url"))
-            url_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-            url_field.click()
-            url_field.type(base_url)
-        # Api Key is input[type="password"][name="api_key"]
-        # NOTE: get_by_label() doesn't work reliably for password fields
-        api_key_field = page.locator('input[type="password"][name="api_key"]')
-        api_key_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-        api_key_field.click()
-        api_key_field.type(token)
-        username = settings.confluence_username
-        if username:
-            user_field = page.get_by_role("textbox", name=re.compile(r"Username"))
-            user_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-            user_field.click()
-            user_field.type(username)
+        # Same required set as Jira: Base Url + Username are REQUIRED, Api Key
+        # is not. Skip loudly on a missing env var rather than leaving the
+        # field empty and the Save button disabled (#1897).
+        base_url = _require_env("CONFLUENCE_BASE_URL", settings.confluence_base_url, cfg)
+        username = _require_env("CONFLUENCE_USERNAME", settings.confluence_username, cfg)
+
+        create_page.set_base_url(base_url)
+        expect(create_page.base_url_input).to_have_value(base_url, timeout=UI_ELEMENT_TIMEOUT)
+
+        create_page.set_api_key(token)
+        _assert_secret_filled(create_page.api_key_input, token, "Api Key")
+
+        create_page.set_username(username)
+        expect(create_page.username_input).to_have_value(username, timeout=UI_ELEMENT_TIMEOUT)
 
     # Add more types as needed...
-    page.wait_for_timeout(300)
 
 
 def _select_credential_dropdown(page, cfg: ToolkitConfig, cred_name: str):

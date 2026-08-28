@@ -119,3 +119,5 @@
 - [Cherry-pick ports a DELTA, not a file state](cherry_pick_ports_a_delta_not_a_file_state.md) — silently drops doc sections
 - [CI-red? check base for an existing fix first](ci_red_check_base_for_an_existing_fix_first.md) — a symptom matching an older OPEN issue = promotion gap
 - [Verify a silent unblock, don't guess](human_status_move_without_comment_verify_dont_guess.md) — re-run each blocker's own check before acting on Approved
+- [Repair of a transient needs a negative control](repair_of_a_transient_needs_a_negative_control.md) — green gate proves nothing; demand it in the dispatch
+- [DEV repro: use localhost, never edit shared .env.test](dev_repro_use_localhost_not_shared_env_test.md) — localhost:5173 already hits the same DEV backend
