@@ -114,3 +114,4 @@
 - [Sibling fix cards can differ](sibling_fix_cards_can_have_different_root_causes.md) — "same issue as #N" is a hypothesis
 - [main-only repair dies at promotion](main_and_base_can_carry_different_variants_of_one_spec.md) — base may hold another variant
 - [Harvest allure artifacts first](harvest_gha_allure_artifacts_before_dispatching.md) — the screenshot names the cause in one look
+- [Reviewer out-of-scope finding](reviewer_out_of_scope_finding.md) — verify vs the ref before filing a card
