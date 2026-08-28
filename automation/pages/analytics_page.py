@@ -1174,6 +1174,7 @@ class AnalyticsPage(BasePage):
         Do NOT extend this exception to any node that COULD carry a testid.
         """
         ticks = self.tools_chart_container.locator(RECHARTS_X_AXIS_TICK)
+        ticks.first.wait_for(state="attached", timeout=UI_ELEMENT_TIMEOUT)
         return [(ticks.nth(i).text_content() or "").strip() for i in range(ticks.count())]
 
     def get_tools_chart_bar_fills(self) -> list[str]:
@@ -1186,6 +1187,11 @@ class AnalyticsPage(BasePage):
         testid parent.
         """
         bars = self.tools_chart_container.locator(RECHARTS_BAR_FILL)
+        # Recharts mounts the bar `<path>` nodes one animation tick after the
+        # chart container appears, so the container being visible is NOT a
+        # sufficient settle signal — wait on the first bar itself (a condition
+        # wait, never a sleep).
+        bars.first.wait_for(state="attached", timeout=UI_ELEMENT_TIMEOUT)
         return [bars.nth(i).get_attribute("fill") for i in range(bars.count())]
 
     def open_tools_rows_per_page_options(self) -> list[str]:
@@ -1262,7 +1268,11 @@ class AnalyticsPage(BasePage):
         app-testid parent (`analytics-health-chart-container`). Do NOT
         extend this exception to any node that COULD carry a testid.
         """
-        return self.health_chart_container.locator(RECHARTS_AREA_SERIES).count()
+        series = self.health_chart_container.locator(RECHARTS_AREA_SERIES)
+        # Same one-tick mount lag as the bar chart's rectangles — wait on the
+        # first series rather than assuming the container implies the paths.
+        series.first.wait_for(state="attached", timeout=UI_ELEMENT_TIMEOUT)
+        return series.count()
 
     def hover_health_chart_and_read_tooltip(self) -> str:
         """Hover the "Requests vs Errors" chart and return the Recharts
