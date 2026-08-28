@@ -5385,6 +5385,54 @@ class PipelineDetailPage(PipelineFormPage):
         """
         return popper.locator(self.TOOLKIT_MENU_ITEM_SELECTOR).count()
 
+    def wait_for_mcp_popper_items(self, popper: Locator, timeout: int = 10000) -> None:
+        """Wait until an open "+ MCP" popper has finished loading its result rows.
+
+        Guards a first-open-only load race that was **introduced by a product
+        change**, not by a flaw in the spec: EliteaAI/EliteaUI@94a61b81
+        ("fix: [EL-6351] Lazy-load optional data on Agent and Pipeline detail
+        pages", 2026-08-26), which landed one day before this spec first went
+        red in CI. Before it, ``useLibraryToolkits`` gated its toolkit-list
+        query on ``skip: !projectId`` alone, so the request fired on **mount**
+        and the rows were already cached by the time Step 7 opened the popper —
+        the spec was sound when written and passed its merge gate honestly.
+        EL-6351 added a ``forceSkip`` parameter (``skip: !projectId ||
+        forceSkip``) and ``ToolMenu.jsx`` now passes
+        ``forceSkip = !mcpOpened.current``, so the toolkit-list request only
+        *starts* when "+ MCP" is first clicked, while the popper still opens
+        synchronously with an empty item list. The product is behaving
+        correctly — deferring the fetch is the intended optimisation; what it
+        left behind is a test sampling too early.
+        ``UnifiedDropdown.jsx`` renders ``toolkit-search-input`` from the very
+        first frame (which is why that assertion never flaked) but emits
+        ``toolkit-menu-item`` rows only once the request resolves; its
+        "Loading…" and "No mcps available" placeholders carry **no testid**, so
+        "wait for the loading row to disappear" is not expressible with handles
+        that exist on ``main``. And :meth:`get_mcp_popper_menu_item_count` is a
+        bare ``.count()`` — Playwright's auto-waiting does **not** apply to
+        ``.count()`` — so it samples zero unless the caller waits first.
+        Measured first-open latency: ~0.56 s on dev.elitea.ai, ~1.9 s on
+        localhost; a second open in the same browser context is instant (RTK
+        Query serves the cached page).
+
+        This is the same wait the *select* path already performs
+        (``components.mui.Popper.select_menuitem_by_testid``), which is exactly
+        why selecting a row never flaked while counting rows did.
+
+        Deliberately kept separate from
+        :meth:`get_mcp_popper_menu_item_count`: a ``get_*_count()`` that blocks
+        for 10 s would silently change the semantics of its merged call sites
+        and would hang on a legitimately empty popper (a project with no MCPs)
+        instead of returning 0.
+
+        Args:
+            popper: The popper Locator returned by :meth:`open_mcp_popper`.
+            timeout: Maximum wait time in milliseconds.
+        """
+        popper.locator(self.TOOLKIT_MENU_ITEM_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
     def select_mcp_in_popper(
         self, popper: Locator, mcp_name: str, project_id: str, timeout: int = 10000
     ) -> dict:

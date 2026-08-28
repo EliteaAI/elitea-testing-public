@@ -40,3 +40,5 @@
 - [Tests own their preconditions](test_owns_its_own_preconditions.md) — borrowed pre-existing data = green when dirty, red when clean
 - [CI login failure becomes SKIP](ci_login_failure_becomes_skip.md) — a green dev-stable job can mean the test never ran; grep the log
 - [Rendered dates = server UTC](rendered_timestamps_are_server_utc_not_browser_local.md) — never assert vs datetime.now
+- [UnifiedDropdown popper first-open load race](unifieddropdown_popper_first_open_load_race.md) — popper rows land ~0.5-1.9s after click; .count() sees 0
+- [Latent-race claims need a date check](latent_race_claims_need_git_log_S.md) — git log -S when the mechanism landed, not just that it exists
