@@ -299,6 +299,11 @@ from the ELITEA-2314..2319 run. `needsOverview` is still `activeTab === 0 || act
   `analytics-overview-model-usage-table(-row)`, `analytics-tools-details-title`,
   `analytics-tools-count`, `analytics-tools-table-header`, `analytics-tools-row`,
   `analytics-tools-loading-indicator`.
+- **Resolved/added during ELITEA-2318 implementation (fix round 2)**: the Tools tab's
+  **"Most Popular Tools" `BarChart` had no handles at all** — `analytics-tools-chart-subtitle`
+  and `analytics-tools-chart-container` added in EliteaAI/EliteaUI@b74c4d90 on
+  `automation/testids` (awaiting human cherry-pick to `main`). Both land on existing nodes;
+  the chart-wrapper `Box` was only reformatted to multi-line to host the attribute.
 - **Inside the popper everything is MUI-internal** — day cells (`button.MuiPickersDay-root`), the
   month header, the month-nav arrows and the Clear/Apply buttons cannot carry an app testid without
   overriding MUI slot components (a functional change). They are reached as **scoped raw handles
@@ -371,6 +376,19 @@ from the ELITEA-2314..2319 run. `needsOverview` is still `activeTab === 0 || act
   `CHART_TICK_EDGE_SLACK_DAYS` is generous, and a chart still drawing the 24h series under 30d
   (span 1 vs a required ≥19) fails loudly. Presence alone cannot catch that: a stale chart is
   still exactly one container.
+- **The Tools tab's "Most Popular Tools" `BarChart` is assertable on DATA too, and more
+  strictly than the area charts** — `AnalyticsTools.jsx` charts `data.rows.slice(0, 20)` with
+  `dataKey="tool_name"` and **`interval={0}`**, so recharts does NOT thin: every charted series
+  renders exactly one tick and the rendered label list **equals** the response's first 20
+  `tool_name`s, in order (no subset/slack reasoning needed, unlike the date-axis charts).
+  `AnalyticsPage.get_tools_chart_tick_labels()` reads them (#579-scoped recharts handle inside
+  `analytics-tools-chart-container`). Measured live 2026-08-28, project 399: `Last 24h` → 1
+  charted row, ticks `['list_branches_in_repo']`; `Last 30d` → 20 charted rows, a wholly
+  different 20-name list. A chart frozen on the 24h series under 30d renders 1 tick against 20
+  expected → fails; presence (`count() == 1`) is invariant across both.
+- **The Users tab renders NO chart** (`AnalyticsUsers.jsx` is table + pagination only) — so
+  "repeat the chart steps on the Users tab" has no counterpart there. Worth stating explicitly
+  in an AFS rather than leaving the absence implicit.
 - **Known noise — a wide-range analytics query can return `502` outright, and the suite's rerun
   filter does NOT catch it.** During fix round 1, one of five invocations of
   `test_presets_update_pickers_and_refresh_content` (ELITEA-2314) failed on

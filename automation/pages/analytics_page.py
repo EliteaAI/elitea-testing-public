@@ -475,6 +475,15 @@ class AnalyticsPage(BasePage):
         testid="analytics-tools-row",
         description="Repeated per-tool data row (same testid on every row — select via .nth(i))",
     )
+    tools_chart_subtitle = LocatorDescriptor(
+        testid="analytics-tools-chart-subtitle",
+        description='"Most Popular Tools" bar-chart subtitle — dynamic "Top {N} by usage"',
+    )
+    tools_chart_container = LocatorDescriptor(
+        testid="analytics-tools-chart-container",
+        description='"Most Popular Tools" bar chart\'s wrapping container — rendered only when '
+        "toolChartData.length > 0 (i.e. the response carried rows)",
+    )
 
     # ------------------------------------------------------------------
     # Scoped raw sub-selectors — `.agents/testing.md` § Locator policy,
@@ -1157,6 +1166,20 @@ class AnalyticsPage(BasePage):
         chart's mere presence.
         """
         ticks = self.agents_chat_chart_container.locator(self.CHART_X_AXIS_TICK)
+        return [t.strip() for t in ticks.all_text_contents()]
+
+    def get_tools_chart_tick_labels(self) -> list[str]:
+        """Rendered X-axis tick labels of the Tools tab's "Most Popular Tools" chart.
+
+        Same #579-scoped recharts handle as `get_daily_chart_tick_labels`,
+        scoped strictly inside `analytics-tools-chart-container`. The chart is
+        a `BarChart` over `data.rows.slice(0, 20)` whose XAxis has
+        `dataKey="tool_name"` and `interval={0}` (`AnalyticsTools.jsx`), so
+        every tick renders and a label is directly comparable to a response
+        row's `tool_name`. Reading these is what makes a preset switch
+        assertable on the Tools chart's DATA rather than on its mere presence.
+        """
+        ticks = self.tools_chart_container.locator(self.CHART_X_AXIS_TICK)
         return [t.strip() for t in ticks.all_text_contents()]
 
     def get_leaderboard_row_count(self) -> int:

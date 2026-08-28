@@ -50,6 +50,11 @@ SPAN_TOLERANCE = timedelta(minutes=2)
 #: same slack the ELITEA-2317 `span_30d >= 20` floor already encodes.
 CHART_TICK_EDGE_SLACK_DAYS = 10
 
+#: Both bar charts (`AnalyticsAgents.jsx`, `AnalyticsTools.jsx`) chart
+#: `rows.slice(0, 20)`, so their subtitle count and X-axis tick list are capped
+#: at 20 series regardless of how many rows the response carried.
+CHART_MAX_SERIES = 20
+
 
 def _assert_overview_matches(analytics_page: AnalyticsPage, response, label: str) -> None:
     """Every Overview surface renders what *response* carried for its range."""
@@ -299,11 +304,50 @@ class TestAnalyticsTabContentRefresh:
                 )
             if has_rows:
                 subtitle = analytics_page.agents_chart_subtitle.inner_text().strip()
-                expected_series = min(len(body["rows"]), 20)
+                expected_series = min(len(body["rows"]), CHART_MAX_SERIES)
                 assert subtitle == f"Top {expected_series} by runs", (
                     f"{label}: bar-chart subtitle {subtitle!r} disagrees with the response's "
                     f"{expected_series} charted series"
                 )
+
+        def assert_tools_chart_matches(response, label):
+            """The Tools tab's "Most Popular Tools" bar chart, on DATA.
+
+            Same shape as `assert_agents_charts_match`: the chart is
+            conditionally rendered (`toolChartData.length > 0`), so presence is
+            asserted iff the response carried rows — and when it renders, its
+            axis is compared to THIS response's own `rows`. `AnalyticsTools.jsx`
+            charts `rows.slice(0, 20)` with `dataKey="tool_name"` and
+            `interval={0}`, so every tick renders and the rendered label list
+            must equal the response's first 20 tool names, in order. A chart
+            frozen on the previous range's series fails that; a presence-only
+            check would not.
+            """
+            body = response.json()
+            rows = body.get("rows") or []
+            charted = rows[:CHART_MAX_SERIES]
+            assert analytics_page.tools_chart_container.count() == (1 if charted else 0), (
+                f"{label}: the Most Popular Tools chart must render iff the response has "
+                f"rows (rows={len(rows)})"
+            )
+            if not charted:
+                return
+            subtitle = analytics_page.tools_chart_subtitle.inner_text().strip()
+            assert subtitle == f"Top {len(charted)} by usage", (
+                f"{label}: bar-chart subtitle {subtitle!r} disagrees with the response's "
+                f"{len(charted)} charted series"
+            )
+            expected_names = [row["tool_name"] for row in charted]
+            ticks = analytics_page.get_tools_chart_tick_labels()
+            logger.info(
+                "%s — Most Popular Tools: %d charted rows, rendered ticks %s",
+                label, len(charted), ticks,
+            )
+            assert ticks == expected_names, (
+                f"{label}: the Most Popular Tools chart's X axis renders {ticks} while this "
+                f"response's charted tools are {expected_names} — the chart is not drawing "
+                "THIS range's series"
+            )
 
         try:
             with allure.step(
@@ -396,6 +440,7 @@ class TestAnalyticsTabContentRefresh:
                     "tools",
                     "Tools / Last 24h",
                 )
+                assert_tools_chart_matches(tools_24h, "Tools / Last 24h")
 
                 tools_30d = analytics_page.click_preset(analytics_page.preset_last_30d, "tools")
                 analytics_page.tools_table_header.wait_for(state="visible")
@@ -407,6 +452,7 @@ class TestAnalyticsTabContentRefresh:
                     "tools",
                     "Tools / Last 30d",
                 )
+                assert_tools_chart_matches(tools_30d, "Tools / Last 30d")
 
             with allure.step("Step 7 — No unexpected console errors"):
                 assert not console_errors, (

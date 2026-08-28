@@ -22,7 +22,16 @@ same class of defect fails in milliseconds instead of surviving to a live gate:
    "verify both charts update their data") were satisfied by a PRESENCE check
    only, which a chart frozen on the previous range's series passes unchanged.
 
-Guards 3 and 4 are the same doc-sync-vs-code shape as
+Round 2 added a fifth, the same class as 4:
+
+5. ELITEA-2318's case step 6 ("repeat the steps for the Users and Tools tabs")
+   repeats steps 2/4/5, which include chart data — and the Tools tab has a
+   "Most Popular Tools" ``BarChart`` of its own. It was neither asserted nor
+   declared out of scope, while the AFS disposed the row as a bare
+   ``asserted``. ``test_2318_spec_asserts_the_tools_chart_data`` pins the
+   assertion and its AFS row together.
+
+Guards 3, 4 and 5 are the same doc-sync-vs-code shape as
 ``test_project_context_2272_afs_route_matches_page_object.py``.
 """
 
@@ -159,3 +168,41 @@ def test_2318_spec_asserts_chat_chart_data_not_only_presence():
         "ELITEA-2318's AFS must describe the chat-chart data assertion the spec now "
         "makes (doc-sync: the paper states the shipped truth)."
     )
+
+
+def test_2318_spec_asserts_the_tools_chart_data():
+    """Case step 6 repeats steps 2/4/5 — and the Tools tab has a chart too.
+
+    The round-2 finding: the "Most Popular Tools" BarChart
+    (``AnalyticsTools.jsx``, rendered on ``toolChartData.length > 0``) was
+    neither asserted nor declared out of scope, while the AFS disposed case
+    step 6 as a bare ``asserted``. Presence alone would not be enough either —
+    same reasoning as guard 4 — so the tick reader is what this pins.
+    """
+    spec = CONTENT_SPEC.read_text(encoding="utf-8")
+    assert "get_tools_chart_tick_labels" in spec, (
+        "The Tools tab's 'Most Popular Tools' chart is not asserted on its data. Case "
+        "step 6 repeats steps 2/4/5, which include chart data, so the tab's own chart "
+        "must be compared to that tab's own response — not skipped, and not checked by "
+        "presence alone (a chart frozen on the previous range renders identically)."
+    )
+    assert "assert_tools_chart_matches" in spec, (
+        "The Tools-chart oracle is gone; step 6b must call it under BOTH presets."
+    )
+
+    afs = AFS_2318.read_text(encoding="utf-8")
+    assert "Most Popular Tools" in afs and "tool_name" in afs, (
+        "ELITEA-2318's AFS must describe the Tools-chart data assertion the spec now "
+        "makes (doc-sync: the paper states the shipped truth)."
+    )
+    assert "no chart" in afs, (
+        "The AFS must say explicitly that the Users tab renders no chart — an "
+        "un-asserted surface has to be DECLARED out of scope, not left implicit."
+    )
+
+
+def test_tools_chart_locators_exist_on_the_page_object():
+    """The round-2 fix needed two new testids — pin them like any other member."""
+    declared = _declared_members(AnalyticsPage)
+    for name in ("tools_chart_container", "tools_chart_subtitle", "get_tools_chart_tick_labels"):
+        assert name in declared, f"AnalyticsPage is missing {name!r}"
