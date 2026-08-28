@@ -68,3 +68,6 @@
 - [Importing a Test* class into a unit test re-runs the whole UI spec](unit_test_importing_test_class_reruns_the_ui_spec.md) — import the spec MODULE, not its class
 - [Shared SecretField handles live in CredentialCreatePage](shared_secretfield_handles_live_in_credential_create_page.md) — reuse on ANY surface; never re-declare
 - [Cleanup in a finally must never be guarded](cleanup_in_a_finally_must_never_be_guarded.md) — a guard on the asserted element skips the restore on the failure path
+- [Chat AI answers: assert the index](chat_ai_answer_assert_the_index_not_the_settle.md) — wait_for_ai_response settles mid-turn; use expect().to_contain_text on nth(n+1)
+- [Chat attachments are never inlined](chat_attachments_content_is_never_inlined.md) — upload fires at SEND; the model must call the attachments tool
+- [UI numbers can be backend config](ui_numeric_literals_can_be_backend_config.md) — trace the source; assert the delta off a runtime baseline

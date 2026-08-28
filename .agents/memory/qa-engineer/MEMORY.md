@@ -50,3 +50,5 @@
 - [AFS on-main provenance needs a file-level check](afs_on_main_provenance_needs_a_file_level_check.md) — the two-stage grep gives both false directions
 - [Chat AI-response oracle settles mid-turn](chat_ai_response_oracle_settles_mid_turn.md) — Copy-button flickers ON during agentic turns; false reds
 - [Verify handles against main, not the tree](verify_handles_against_main_not_working_tree.md) — localhost serves testids; main-targeted specs need origin/main
+- [Verify handles against main, not the tree](verify_handles_against_main_not_working_tree.md) — localhost serves testids; main-targeted specs need origin/main
+- [Constant or config?](ui_counters_may_be_server_configured.md) — trace any asserted UI number; testid greps miss it
