@@ -29,6 +29,7 @@ from urllib.parse import urlparse
 
 import allure
 import pytest
+from config import settings
 from pages.pipeline_detail_page import PipelineDetailPage
 from pages.pipeline_form_page import PipelineFormPage
 from pages.pipelines_list_page import PipelinesListPage
@@ -228,7 +229,9 @@ class TestCreatePipeline:
         with allure.step("Step 2 — Click the sidebar '+' next to 'Pipeline' and verify the create form opens"):
             list_page.click_create_pipeline()
             url_path = urlparse(page.url).path
-            assert url_path == "/pipelines/create", (
+            # APP_PREFIX is "" on localhost and "/app" on deployed envs (config.py) —
+            # the assertion stays exact-equality on both.
+            assert url_path == f"{settings.app_prefix}/pipelines/create", (
                 f"Sidebar '+' should navigate to the create form, got: {page.url}"
             )
             form_page = PipelineFormPage(page)
@@ -261,7 +264,10 @@ class TestCreatePipeline:
             detail_page = PipelineDetailPage(page)
             detail_page.wait_for_detail_page_load()
             url_path = urlparse(page.url).path
-            match = re.match(r"^/pipelines/all/(\d+)$", url_path)
+            # Anchored on both ends, with APP_PREFIX ("" locally, "/app" deployed).
+            match = re.match(
+                rf"^{re.escape(settings.app_prefix)}/pipelines/all/(\d+)$", url_path
+            )
             assert match, f"URL should include a numeric pipeline ID, got: {page.url}"
             url_pipeline_id = match.group(1)
 
