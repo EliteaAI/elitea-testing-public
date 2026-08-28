@@ -14,6 +14,8 @@
 | elitea-testing-public#1199 | ELITEA-2321 | 5 KPI cards incl. non-existent `Error Rate` — live 8 |
 | elitea-testing-public#1948 | ELITEA-2311 | six KPI cards -> eight; `AGENT RUNS` -> `AGENT & PIPELINE RUNS`; adoption badge is conditional |
 | elitea-testing-public#1949 | ELITEA-2324 | Health rows are data-driven, not the fixed six (live 5, no `agent`) |
+| elitea-testing-public#1954 | ELITEA-2326 | Overview Daily Activity tooltip has FOUR series (three on a personal project), none named `Events` |
+| elitea-testing-public#1955 | ELITEA-2327 | chart is `Most Active Agents & Pipelines`; tooltip metric is `Runs`, not an "event count" (sibling of #1195) |
 | elitea-testing-public#1950 | ELITEA-2325 | `Calculation`/`Data source` optional (14 and 7 of 43); blue is on the VALUE |
 
 ## Product defects

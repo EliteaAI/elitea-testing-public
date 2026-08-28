@@ -20,6 +20,7 @@ file for the subarea you are touching; each one is self-contained.
 | [`_surface/health-tab.md`](_surface/health-tab.md) | Requests vs Errors chart (no legend — names live in the tooltip), event-type table |
 | [`_surface/guide-tab.md`](_surface/guide-tab.md) | Static metric documentation — 9 sections, 43 metrics, no network |
 | [`_surface/detail-views.md`](_surface/detail-views.md) | User-detail and agent/pipeline-detail drill-downs (same-page state swaps) |
+| [`_surface/chart-tooltips.md`](_surface/chart-tooltips.md) | The shared `ChartTooltip` on every chart — testid inventory, honest hover technique, per-chart series contracts, traps |
 | [`_surface/known-issues.md`](_surface/known-issues.md) | Every case-text clarification and product defect filed from this surface |
 
 ## Cross-cutting facts (true everywhere on this surface)
