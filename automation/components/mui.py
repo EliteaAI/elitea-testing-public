@@ -217,9 +217,10 @@ class Popper:
         """Wait for a MUI Popper *dropdown* to become visible, ignoring tooltips.
 
         Additive sibling to :meth:`wait_for` — ``wait_for`` itself is NOT
-        modified: it has 9 merged callers relying on its plain ``.first``
-        behavior unchanged (mui-patterns shared-caller rule, same discipline
-        as :meth:`Dialog.wait_for_visible`).
+        modified: 8 merged callers remain on it after this change (9 before
+        ``PipelineDetailPage.open_mcp_popper()`` switched over), and they rely
+        on its plain ``.first`` behavior unchanged (mui-patterns shared-caller
+        rule, same discipline as :meth:`Dialog.wait_for_visible`).
 
         ``wait_for`` resolves ``.MuiPopper-root >> nth=0``, i.e. *the first
         popper in ``<body>`` order* — not "the popper I just opened". A MUI
