@@ -1562,3 +1562,51 @@ succeeded"** — verify persistence by re-opening the modal.
 - Opening the Users dropdown emits a React console warning
   (`Invalid value for prop sx on <svg>`, from `UserSearchSelect`'s checked icon) — expected noise,
   filter it.
+
+---
+
+## Preview-surface affordance inventory — CLOSED LIST (re-confirmed 2026-08-28, ELITEA-1865 re-analysis)
+
+The Artifacts file-preview surface renders **exactly seven** chrome affordances, and this is now a
+*closed* list verified both live and in source (`PreviewHeader.jsx`). Anything a case claims beyond
+these is case-text drift, not a missing testid:
+
+| # | Affordance | Handle | Source |
+|---|---|---|---|
+| 1 | Close (X) | `artifacts-preview-close-button` | `PreviewHeader.jsx:175` |
+| 2 | File path header | `artifacts-preview-file-path` | `:191` |
+| 3 | **Save** | `artifacts-preview-save-button` | `:204` |
+| 4 | **Discard** (there is NO "Cancel" on this surface) | `artifacts-preview-discard-button` | `:213` |
+| 5 | 3-dot overflow → **Copy Content · Download · Delete** | `file-preview-overflow-menu-menu-button` | `:239` |
+| 6 | Render-mode toggle (supported types only) | `artifacts-preview-mode-toggle-rendered` / `-code` | `:260` |
+| 7 | Language select (code branch) | `artifacts-preview-language-select` | `:290` |
+
+There is **no settings/gear icon, no right-hand drawer at any viewport (checked 1280×720 and
+1920×1200), and no feature flag** under `src/[fsd]/features/artifacts/` or `src/pages/Artifacts/`
+that could mount an eighth.
+
+**Bucket-level 3-dot menu** (`bucket-menu-<name>-menu-button`, **hover-gated** — hover
+`artifacts-bucket-row-<name>` first or the click times out with "element is not visible"):
+**Upload files · Rename · Pin to top · Share · Manage permissions**. No context/indexing settings entry.
+
+### Project bucket inventory (project 471, 2026-08-28)
+11 buckets, all rendered without pagination (`artifacts-buckets-footer-count` = "Buckets: 11"):
+`abc-test · alita · all-file-types-attachment-small-size · attachments ·
+autotest-elitea1828-dupmodal · bucket-a1b2c3d4…w3x4 · file-upload · ggr · intesting ·
+scout-probe-shortname · temp`.
+
+- **The `afa` bucket that several TMS cases name does NOT exist** — do not spend time hunting for it;
+  seed a fixture bucket instead (and say so in the AFS).
+- `all-file-types-attachment-small-size` is the best general-purpose preview target: 10 files, 8 with
+  a preview affordance (`sample_data.csv/.html/.json/.md/.xml/.yaml`, `sample.c`, `sample.cpp`).
+  `attachments` is **empty**.
+- Preview icons carry only `aria-label="Preview {filename}"` today — still no testid
+  (`artifacts-file-preview-button-{filename}` remains the ask).
+
+### Technique worth reusing — the positive control
+When a case claims a panel/label the surface doesn't render, don't stop at "0 matches". Run the
+**identical** label probe on the surface where the thing genuinely lives (for Context Management:
+`/settings/memory`, which returns `Context Management 3 · Max Context Tokens 1 ·
+Preserve Recent Messages 1 · Summarization 2 · Target Summary Tokens 1`). Same method, same session,
+one finds it and one doesn't — that converts a negative observation into positive disproof a human
+can act on, and it cost one extra navigation.
