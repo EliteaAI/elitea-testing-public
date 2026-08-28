@@ -57,3 +57,4 @@
 - [Early-return null does not mean the observable is gone](early_return_null_does_not_mean_the_observable_is_gone.md) — grep the product for the TEXT before writing "removed"
 - [Version sort: no pinned tier](version_dropdown_sort_lost_its_pinned_tier.md) — EliteaUI #857: date desc, base last
 - [Rendered timestamps are server UTC](rendered_timestamps_are_server_utc_not_local.md) — assert vs API created_at
+- [Playwright .count() never auto-waits](playwright_count_never_auto_waits.md) — get_*_count() on a lazy list races
