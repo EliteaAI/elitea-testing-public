@@ -58,7 +58,7 @@
 | 2 Note values of all 6 KPI cards and the Daily Activity chart shape | Completes | step 2 | `step 2`: **8** KPI values + chart ticks captured and each verified against the 7-day response | clarification *(live Overview has EIGHT KPI cards — TEAM, AI ACTIVE, LLM CALLS, TOOL RUNS, CHAT MSG, AGENT & PIPELINE RUNS, TOKENS, COST — not six; same stale-case-text family as elitea-testing-public#1185)* |
 | 3 Click "Last 30d" | Control responds | step 3 | `step 3`: preset pressed + refetch with 30-day `date_from` | asserted |
 | 4 KPI card values update | Condition holds | step 4 | `step 4`: all 8 values equal the 30-day response's `kpis.*` | asserted |
-| 5 Daily Activity chart time axis extends to cover 30 days | Condition holds | step 5 | `step 5`: rendered tick span ≥ 20 days, last tick == response's last date, span > the 7-day span | asserted |
+| 5 Daily Activity chart time axis extends to cover 30 days | Condition holds | step 5 | `step 5`: rendered tick span ≥ 20 days, ticks ⊆ the response's `daily_activity` dates, last tick == response's last date, span > the 7-day span. **Fix round 3:** the SAME chart-data check now also runs on the 7-day branch in step 2 — it previously computed that span and asserted nothing about it, so one preset was covered on data and its sibling on presence | asserted |
 | 6 Top 5 AI Adopters and Model Usage Breakdown tables update | Condition holds | step 6 | `step 6`: row counts == response list lengths; first leaderboard row's email + event count == response's first entry | asserted |
 
 **Axis 2 — Analyst additions.**
@@ -104,16 +104,29 @@ None — read-only.
 None.
 
 ## Automation Hints
+- **The tick span is measured against the RESPONSE's own dates, never by month arithmetic on the
+  year-less labels.** Recharts renders `date.slice(5)` ("MM-DD"), so each rendered tick is
+  resolved back to the full `YYYY-MM-DD` entry of `daily_activity` before the two are
+  differenced. Differencing the bare `MM-DD` parts is wrong across a year boundary — a Last-30d
+  window on e.g. 2027-01-10 renders `12-11…01-10`, which month arithmetic scores as -331 days
+  and which would fail the `span >= 20` assertion every January (found in review, fix round 1;
+  pinned by `tests/unit/test_analytics_date_filter_spec_invariants.py`).
 - KPI value ↔ response field mapping (`AnalyticsOverview.jsx`, DOM order):
   `TEAM=kpis.unique_users`, `AI ACTIVE=kpis.ai_active_users`, `LLM CALLS=kpis.llm_calls`,
   `TOOL RUNS=kpis.tool_runs`, `CHAT MSG=kpis.chat_msgs`, `AGENT & PIPELINE RUNS=kpis.agent_runs`,
   `TOKENS=kpis.total_tokens`, `COST=kpis.total_llm_cost`.
 - The first seven are rendered through `AnalyticCommonHelpers.fmtNum` (`>=1e6 → "{x}M"`,
   `>=1e3 → "{x}K"`, `null → "-"`); the test mirrors that 4-line rule to build the expected string
-  from the response value. **COST is deliberately NOT mirrored** — `fmtCost` has seven magnitude
-  branches and mirroring it would duplicate product logic with a real divergence risk; the COST
-  card is asserted as: starts with `$`, and is exactly `$0.00` iff the response's `total_llm_cost` is
-  0, non-zero otherwise. Declared as a deliberate assertion-strength choice, not a weakening of a
-  case requirement (the case asks that the values update, which the seven mirrored cards prove).
+  from the response value.
+- **COST is mirrored too (implementer amendment, fix round 3).** An earlier round declared
+  `fmtCost` deliberately un-mirrored and asserted the COST card only on its currency shape and
+  its zero/non-zero branch — which passes ANY wrong non-zero cost, leaving one of the eight
+  cards effectively unasserted. The stated reason ("mirroring duplicates product logic") applies
+  equally to `fmtNum`, which the other seven cards already mirror, so it did not distinguish the
+  two. `utils/analytics_format.fmt_cost` now ports all six magnitude branches plus the exact-zero
+  branch, and all 8 cards are compared to `formatter(response value)`. One real trap the port had
+  to handle: JS `toFixed` rounds a tie AWAY from zero while Python's `:.1f` rounds half to even,
+  so `$1250` renders `$1.3K` in the product and would have been computed as `$1.2K` — `fmt_cost`
+  quantizes with `ROUND_HALF_UP` and `tests/unit/…_spec_invariants.py` pins that case.
 - Wait on the response (`expect_response`) around the preset click, then on the KPI row being
   visible again — the Overview subtree unmounts while `isFetching`.

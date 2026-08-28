@@ -34,3 +34,18 @@ Two live facts the digest did not have:
   visible** (measured: 0 bars on a container-visible wait). Wait on the first bar node itself.
 - The fixture project DOES have tool rows with `errors > 0`, so the errors-red positive branch is
   live-exercisable there (unlike the analyst's exploration project).
+
+**Resolved/added during ELITEA-2318 implementation (fix round 2, 2026-08-28):** the "Most Popular
+Tools" `BarChart` had **no handles at all** — `analytics-tools-chart-subtitle` and
+`analytics-tools-chart-container` added in EliteaAI/EliteaUI@b74c4d90 on `automation/testids`
+(awaiting human cherry-pick to `main`). Both land on existing nodes; the chart-wrapper `Box` was
+only reformatted to multi-line to host the attribute.
+- **This chart is assertable on DATA, and more strictly than the date-axis charts.**
+  `AnalyticsTools.jsx` charts `data.rows.slice(0, 20)` with `dataKey="tool_name"` and
+  **`interval={0}`**, so recharts does NOT thin: every charted series renders exactly one tick and
+  the rendered label list **equals** the response's first 20 `tool_name`s, in order — no
+  subset/slack reasoning needed. `AnalyticsPage.get_tools_chart_tick_labels()` reads them
+  (#579-scoped recharts handle inside `analytics-tools-chart-container`). Measured live 2026-08-28,
+  project 399: `Last 24h` → 1 charted row, ticks `['list_branches_in_repo']`; `Last 30d` → 20
+  charted rows, a wholly different 20-name list. A chart frozen on the 24h series under 30d renders
+  1 tick against 20 expected → fails; presence (`count() == 1`) is invariant across both.

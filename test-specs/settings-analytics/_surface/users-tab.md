@@ -68,3 +68,8 @@ CACHE READ/WRITE TOKENS and CACHE READ/WRITE COST. The merged ELITEA-2312 spec w
 occurrence recorded on #1188. Also: `AnalyticsPage.search_users()` now RETURNS the captured
 `analytics_users/prompt_lib/` body (additive) — re-searching the same term later cannot capture it,
 because RTK-Query serves the repeat from cache with no new request.
+
+**Resolved/added during ELITEA-2318 implementation (2026-08-28):** the Users tab renders **NO
+chart** (`AnalyticsUsers.jsx` is table + pagination only) — so a case step saying "repeat the chart
+steps on the Users tab" has no counterpart here. Worth stating explicitly in an AFS rather than
+leaving the absence implicit.

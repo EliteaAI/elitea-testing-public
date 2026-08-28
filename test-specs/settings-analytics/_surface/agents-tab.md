@@ -45,3 +45,24 @@
   — distinct from Overview/Users endpoints; fires on tab mount and on search-input change. Row click
   fires `GET /api/v2/elitea_core/analytics_agent_detail/prompt_lib/{project_id}?entity_id={id}&date_from=...&date_to=...`
   once. Both 200 OK, no console errors, confirmed in "Private" (25 rows) and "UI Testing" (0 rows).
+
+**Resolved/added during ELITEA-2314..2319 implementation (2026-08-28):**
+- **The "Chat Messages" `AreaChart` is assertable on DATA, not just presence** — its XAxis renders
+  `date.slice(5)` of the response's `chat_daily`, so
+  `AnalyticsPage.get_agents_chat_chart_tick_labels()` (#579-scoped recharts handle inside
+  `analytics-agents-chat-chart-container`) is directly comparable to that array. Measured live
+  2026-08-28, project 399: `Last 24h` → `chat_daily` 2 entries / 1-day span, ticks
+  `['08-27', '08-28']` / 1-day span; `Last 30d` → 26 entries / 29-day span, 13 ticks `07-31…08-28`
+  / **28-day** span. Recharts thinned only 1 day off the span here, so the specs' 10-day
+  `CHART_TICK_EDGE_SLACK_DAYS` is generous while a chart still drawing the 24h series under 30d
+  (span 1 vs a required ≥19) fails loudly. Presence alone cannot catch that: a stale chart is
+  still exactly one container.
+- **The "Most Active Agents & Pipelines" `BarChart` is a category axis with `interval={0}`**
+  (`dataKey="agent_name"`), the same shape as the Tools chart — so its rendered tick list **equals**
+  the response's charted names in order, and exact list equality is available (strictly stronger
+  than the `Top {N} by runs` subtitle check alone).
+- **The merged ELITEA-2320 spec is RED on `automation/base` for product drift** (verified with a
+  pristine-page-object control run): the Agent & Pipeline Activity table gained cost/cache columns
+  (`TOTAL COST`, `INPUT TOKEN COST`, `OUTPUT TOKEN COST`, `CACHE READ TOKENS`, `CACHE WRITE
+  TOKENS`, …) vs its 8-column tuple. `adjust-automated-test` work, unrelated to the date-filter
+  cases.
