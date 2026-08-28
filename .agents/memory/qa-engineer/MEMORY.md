@@ -44,3 +44,5 @@
 - [Latent-race claims need a date check](latent_race_claims_need_git_log_S.md) — git log -S when the mechanism landed, not just that it exists
 - [MUI Popper .first can be a Tooltip](mui_popper_first_can_be_a_tooltip.md) — .MuiPopper-root nth=0 may be a tooltip; :visible does not help
 - [Redundant assert after a wait](redundant_assert_after_wait_is_not_vacuous.md) — not vacuous (red survives) but downgrades `failed`→`broken`; vs content-scoping which IS vacuous
+- [JS el.click() on a disabled button is a silent no-op](js_click_on_disabled_button_is_a_silent_noop.md) — cannot-fail click + vacuous URL guard = red 2 steps downstream
+- [Run the suite against dev.elitea.ai without editing .env.test](retarget_suite_at_dev_without_editing_env_test.md) — throwaway -p plugin; shell exports cannot win
