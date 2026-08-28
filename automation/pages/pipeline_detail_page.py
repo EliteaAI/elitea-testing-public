@@ -1335,6 +1335,24 @@ class PipelineDetailPage(PipelineFormPage):
     # mirroring them as `data-*` would mean editing the SHARED SingleSelect
     # component for one case and would again land on `automation/testids` only.
     # The testid stays the identity; the attribute is only the state filter.
+    # Budget for the wait-for-ENABLED leg of open_trigger_select() ONLY.
+    # Deliberately NOT the caller's `timeout`: what gates this leg is a remote
+    # ROUND-TRIP completing (`useGetPipelineTriggerQuery`'s GET, or
+    # `useUpdatePipelineTriggerMutation` right after a trigger change), while
+    # every caller passes UI_ELEMENT_TIMEOUT — a 10s default sized for a local
+    # DOM interaction. Letting a network wait inherit an interaction budget is
+    # what let a slow dev.elitea.ai GET eat the whole allowance the click/retry
+    # loop needed afterwards (issue #1895 lead gate: "select present=1,
+    # enabled=0, expanded=0, options=0" after the full 10s). Sized to the order
+    # of this repo's other NETWORK budgets (SAVE_RESPONSE_TIMEOUT 15s,
+    # Page.goto 15-30s), not to a click.
+    #
+    # This is a budget for a PRECONDITION CONTROL BECOMING READY — never a
+    # softening of what the test verifies. The click/expand retry loop below
+    # deliberately keeps the caller's tighter `timeout`, and when this budget
+    # genuinely expires the state-naming error still fires.
+    TRIGGER_SELECT_READY_TIMEOUT = 30000
+
     TRIGGER_SELECT_COMBOBOX = '[data-testid="pipeline-entry-point-trigger-select-combobox"]'
     TRIGGER_SELECT_ENABLED = '[data-testid="pipeline-entry-point-trigger-select-combobox"]:not([aria-disabled="true"])'
     TRIGGER_SELECT_EXPANDED = '[data-testid="pipeline-entry-point-trigger-select-combobox"][aria-expanded="true"]'
@@ -3597,6 +3615,23 @@ class PipelineDetailPage(PipelineFormPage):
             .count()
         )
 
+    def _trigger_select_state(self) -> str:
+        """One-line Trigger-select state summary for open_trigger_select's failures.
+
+        Names WHICH precondition failed instead of leaving an opaque locator
+        wait: whether the Select rendered at all, whether it ever left the
+        disabled state, whether it reports itself open, and how many options
+        exist. This message is load-bearing evidence — it is what identified
+        the `enabled=0` (never-enabled) case as distinct from the original
+        never-opened one (issue #1895).
+        """
+        return (
+            f"select present={self.page.locator(self.TRIGGER_SELECT_COMBOBOX).count()}, "
+            f"enabled={self.page.locator(self.TRIGGER_SELECT_ENABLED).count()}, "
+            f"expanded={self.page.locator(self.TRIGGER_SELECT_EXPANDED).count()}, "
+            f"options={self.page.locator(self.SELECT_OPTION_PREFIX).count()}"
+        )
+
     def open_trigger_select(self, timeout: int = 10000, entry_point_node_id: str | None = None) -> None:
         """Open the entry-point node's Trigger dropdown.
 
@@ -3637,20 +3672,49 @@ class PipelineDetailPage(PipelineFormPage):
         * **Retry until *timeout*, not exactly once**, so a click swallowed for
           any other reason (a genuine remount, an overlay) still recovers.
 
+        **Two budgets, because two different things are being waited on.**
+        Waiting for the control to become ENABLED is a wait on a remote
+        round-trip; clicking it and seeing the menu expand is a local DOM
+        interaction. They are split (`TRIGGER_SELECT_READY_TIMEOUT` vs the
+        caller's `timeout`) because every caller passes UI_ELEMENT_TIMEOUT,
+        so before the split the network wait silently inherited an
+        interaction-sized budget and could consume the whole allowance the
+        retry loop needed afterwards — reproduced on the lead's independent
+        DEV gate as `select present=1, enabled=0, expanded=0, options=0`.
+
+        **What is NOT proven.** On THIS surface the enabled state has exactly
+        one live source, established by reading the product rather than
+        inferred: `NodeCard.jsx:42` passes `disabled={isRunningPipeline ||
+        disabled}`, but `ConfigurationTab.jsx:378` renders `EditorPanel` with
+        NO `disabled` prop (the `viewMode === Public` binding exists only on
+        the chat-embedded PipelineEditor, a different surface), and
+        `isRunningPipeline` comes from `useRunEvent` — true only while a
+        pipeline run is in flight, which these cases never trigger. That
+        leaves `isLoading` (the trigger GET / mutation) as the only live
+        contributor, which is why this budget is sized as a network wait.
+        What has NOT been observed directly is a round-trip of that MAGNITUDE:
+        the longest disabled window ever measured here was 0.411s, so the
+        >10s case is explained by class, not by a captured timing. The
+        `logger.warning` on the ready leg exists to capture that magnitude the
+        next time it happens.
+
         Both states are read off the Select's own MUI SelectDisplay node via
         :data:`TRIGGER_SELECT_ENABLED` / :data:`TRIGGER_SELECT_EXPANDED` —
         testid-keyed with an attribute state filter, no new testid needed (see
         those constants for the declared `aria-*`-instead-of-`data-*` note).
 
         Args:
-            timeout: Maximum wait time in milliseconds for the WHOLE open —
-                enabled-wait plus every click attempt — not per attempt.
+            timeout: Budget for the click/expand retry loop only (Leg 2) — the
+                whole loop, not one attempt. The wait for the control to
+                become enabled (Leg 1) is budgeted separately by
+                :data:`TRIGGER_SELECT_READY_TIMEOUT`.
             entry_point_node_id: Optional data-id of the entry point node to
                 bring to the front before opening the dropdown.
 
         Raises:
-            PlaywrightTimeoutError: the Select never became enabled, or the
-                menu never opened, within *timeout*.
+            PlaywrightTimeoutError: the Select never became enabled within
+                :data:`TRIGGER_SELECT_READY_TIMEOUT`, or the menu never opened
+                within *timeout*. Either message names the observed state.
         """
         if entry_point_node_id:
             self._select_node(entry_point_node_id)
@@ -3658,6 +3722,38 @@ class PipelineDetailPage(PipelineFormPage):
         enabled = self.page.locator(self.TRIGGER_SELECT_ENABLED)
         expanded = self.page.locator(self.TRIGGER_SELECT_EXPANDED)
         options = self.page.locator(self.SELECT_OPTION_PREFIX)
+
+        # ---- Leg 1: PRECONDITION — the control must be ready. Network budget.
+        # Gated by a remote round-trip, so it gets TRIGGER_SELECT_READY_TIMEOUT
+        # rather than the caller's interaction-sized `timeout`. Nothing is
+        # asserted or weakened here; if it expires, we still fail loudly with
+        # the state named.
+        if expanded.count() == 0:
+            ready_started = time.monotonic()
+            try:
+                # `attached`, NOT `visible`: `force=True` never required
+                # visibility, so gating on it would add a precondition this
+                # method never had and could hang on a Select scrolled out of
+                # the ReactFlow viewport.
+                enabled.first.wait_for(state="attached", timeout=self.TRIGGER_SELECT_READY_TIMEOUT)
+            except PlaywrightTimeoutError:
+                raise PlaywrightTimeoutError(
+                    f"Trigger select never became enabled within "
+                    f"{self.TRIGGER_SELECT_READY_TIMEOUT}ms — {self._trigger_select_state()}"
+                ) from None
+            waited = time.monotonic() - ready_started
+            if waited * 1000 > self.TRIGGER_SELECT_OPEN_PROBE_TIMEOUT:
+                # Captures the magnitude for whoever sees this next: the only
+                # live source of the disabled state on this surface is a
+                # network round-trip (see docstring), so an outlier here is
+                # environment evidence, not a code smell.
+                logger.warning(
+                    "Trigger select stayed disabled for %.2fs after the canvas was ready "
+                    "(budget %dms) — slow pipeline_trigger round-trip",
+                    waited, self.TRIGGER_SELECT_READY_TIMEOUT,
+                )
+
+        # ---- Leg 2: INTERACTION — click/expand retry, on the caller's budget.
         deadline = time.monotonic() + timeout / 1000
 
         while True:
@@ -3668,21 +3764,15 @@ class PipelineDetailPage(PipelineFormPage):
                 # opened but rendered no option" — three very different causes
                 # that the pre-#1895 code all reported as one opaque wait.
                 raise PlaywrightTimeoutError(
-                    f"Trigger dropdown did not open within {timeout}ms: "
-                    f"select present={self.page.locator(self.TRIGGER_SELECT_COMBOBOX).count()}, "
-                    f"enabled={enabled.count()}, expanded={expanded.count()}, "
-                    f"options={options.count()}"
+                    f"Trigger dropdown did not open within {timeout}ms — {self._trigger_select_state()}"
                 )
             probe = min(self.TRIGGER_SELECT_OPEN_PROBE_TIMEOUT, remaining)
 
             try:
                 if expanded.count() == 0:
-                    # Blocks while the Select is disabled — a click here is
-                    # provably wasted (see the docstring's measurements).
-                    # `attached`, NOT `visible`: `force=True` never required
-                    # visibility, so gating on it would add a precondition this
-                    # method never had and could hang on a Select scrolled out
-                    # of the ReactFlow viewport.
+                    # Re-checked defensively: a trigger MUTATION landing mid-loop
+                    # can re-disable the Select. Probe-bounded so the retry loop
+                    # stays tight — the network-sized budget belongs to Leg 1.
                     enabled.first.wait_for(state="attached", timeout=probe)
                     # Re-read the open state immediately before clicking — the
                     # menu may have opened while we waited for the enabled
