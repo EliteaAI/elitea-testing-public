@@ -127,3 +127,19 @@ Facts the analyst pass could not have had, all learned by running the specs live
   byte-identical failure).
 - **`fmt_num()` now lives in `automation/utils/analytics_format.py`** (extracted on its third consumer),
   not in `tests/ui/admin/test_analytics_overview_kpi_cards.py`.
+- **Resolved during ELITEA-2326/2327/2328/2329 fix round 1 (PR #1956 review):** the shared settle wait
+  `AnalyticsPage.wait_for_chart_tooltip_change()` MUST pass `use_inner_text=True` to
+  `expect(...).not_to_have_text(...)`. Playwright's text matchers read an element the `textContent` way
+  by default, and `ChartTooltip` renders each line as its own child node, so the browser-side text is
+  `"Aug 12LLM Calls: 3"` — no separator — while the expectation is built by joining the lines
+  `read_chart_tooltip_lines()` parsed out of `inner_text()` with spaces. The two can never be equal, so
+  the NEGATIVE assertion was satisfied on its first poll: a wait that silently did not wait, turning
+  every "move to a second data point" step into a race against Recharts' re-render tick. Nothing goes
+  red when a wait degrades this way — pinned by
+  `automation/tests/unit/test_chart_tooltip_change_wait_compares_inner_text.py`. Applies to ANY future
+  assertion on this surface that compares a multi-line element against a joined string.
+- **TMS case links for this surface live under `tests/automated-full-regression-ui/settings/analytics/`**
+  in EliteaAI/onetest-ai-tm-Elitea — NOT `settings-analytics/` (that is only this repo's AFS directory
+  name, and it leaked into three `@allure.issue` URLs, all of which 404'd). A dead Allure link never
+  fails a run; `automation/tests/unit/test_analytics_chart_tooltip_specs_allure_issue_links.py` resolves
+  them against the sibling clone.

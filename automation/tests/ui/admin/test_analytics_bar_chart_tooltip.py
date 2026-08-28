@@ -108,8 +108,13 @@ class TestAnalyticsBarChartTooltip:
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "settings-analytics/",
-        "onetest-ai Test Case link",
+        "settings/analytics/ELITEA-2327_hovering-over-a-bar-in-most-active-agents-chart-shows-agent.md",
+        "onetest-ai Test Case link (ELITEA-2327)",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "settings/analytics/ELITEA-2328_hovering-over-most-popular-tools-bar-chart-shows-tool-name-a.md",
+        "onetest-ai Test Case link (ELITEA-2328)",
     )
     @pytest.mark.parametrize("case", BAR_CHART_CASES)
     def test_bar_chart_hover_tooltip(self, page, case):

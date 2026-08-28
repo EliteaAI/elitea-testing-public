@@ -64,8 +64,7 @@ class TestAnalyticsOverviewDailyChartTooltip:
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "settings-analytics/ELITEA-2326_hovering-over-daily-activity-chart-on-overview-tab-shows-tooltip"
-        "-with-date-and-series-values.md",
+        "settings/analytics/ELITEA-2326_hovering-over-daily-activity-chart-on-overview-tab-shows-too.md",
         "onetest-ai Test Case link",
     )
     def test_overview_daily_chart_hover_tooltip(self, page):

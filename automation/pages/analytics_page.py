@@ -1484,7 +1484,7 @@ class AnalyticsPage(BasePage):
         """Wait for *tooltip_locator* to be visible and return its non-empty
         text lines: line 0 is the label, lines 1..N are `"{series}: {value}"`."""
         tooltip_locator.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-        return [line for line in tooltip_locator.inner_text().split("\n") if line.strip()]
+        return [line.strip() for line in tooltip_locator.inner_text().split("\n") if line.strip()]
 
     def wait_for_chart_tooltip_change(self, tooltip_locator, previous_lines: list[str]) -> list[str]:
         """Wait until *tooltip_locator*'s rendered text stops matching
@@ -1497,8 +1497,24 @@ class AnalyticsPage(BasePage):
         point. A retrying web-first assertion is used (never a sleep), and it
         deliberately asserts only that the content CHANGED — the caller then
         asserts what it changed TO, against the captured response.
+
+        `use_inner_text=True` is LOAD-BEARING, not a style preference (review
+        round 1, PR #1956). Playwright's text matchers read an element's text
+        the `textContent` way by default, which concatenates the tooltip's
+        child nodes with NO separator (`"Aug 12LLM Calls: 3"`), whereas
+        *previous_lines* came from `inner_text()` and is re-joined here with
+        spaces (`"Aug 12 LLM Calls: 3"`). Those two strings can never be
+        equal, so the NEGATIVE assertion was satisfied on its first poll — a
+        no-op wait that let the caller read a stale tooltip and turned every
+        "move to a second data point" step into a race. With
+        `use_inner_text=True` both sides originate from `innerText`, and
+        Playwright's own whitespace normalisation collapses its newlines to
+        the single spaces this joins with, so the comparison is real. Pinned
+        by `tests/unit/test_chart_tooltip_change_wait_compares_inner_text.py`.
         """
-        expect(tooltip_locator).not_to_have_text(" ".join(previous_lines), timeout=UI_ELEMENT_TIMEOUT)
+        expect(tooltip_locator).not_to_have_text(
+            " ".join(previous_lines), use_inner_text=True, timeout=UI_ELEMENT_TIMEOUT
+        )
         return self.read_chart_tooltip_lines(tooltip_locator)
 
     # ------------------------------------------------------------------

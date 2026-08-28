@@ -21,11 +21,13 @@ weakened or removed; the only edit to the pre-existing flow is Step 1 calling
 a 200 assertion) so the response body is available as the oracle.
 
 Case-text drift (see AFS § Known Defects): the case's step 4 lists 6 KPI
-cards (LLM Calls, Tool Calls, Chat Msg, Agent Runs, Active Days, Errors),
-omitting Total/Input/Output Tokens and Total Cost; live view has 10 cards.
-The case's step 7 says "Agents Used"; live label is "Agents & Pipelines
-Used" — same stale-count family as ELITEA-2310/2311/2312. Filed clarification
-elitea-testing-public#1191. This test asserts the live contract for both.
+cards (LLM Calls, Tool Calls, Chat Msg, Agent Runs, Active Days, Errors); the
+live view renders SIXTEEN — see `EXPECTED_KPI_LABELS_IN_ORDER` and its comment
+for the two EliteaUI commits that grew the row from 10 to 16 after ELITEA-2313
+was first automated. The case's step 7 says "Agents Used"; live label is
+"Agents & Pipelines Used" — same stale-count family as ELITEA-2310/2311/2312.
+Filed clarification elitea-testing-public#1191. This test asserts the live
+contract for both.
 
 Known product defect (NOT worked around here — this test's happy path
 deliberately selects a row with a non-null email, so it is unaffected):
@@ -34,7 +36,7 @@ deliberately selects a row with a non-null email, so it is unaffected):
 elitea-testing-public#1192.
 
 Implementer amendment (Phase 2 exploration — see AFS Concrete Handles table):
-the analyst's original plan read the 9 non-Errors cards' default color off
+the analyst's original plan read the non-Errors cards' default color off
 the outer `analytics-user-detail-kpi-card` locator itself. Live-verified this
 doesn't work — `KpiCard.jsx`'s card `Box` carries no `color` style at all, so
 its computed color is constant (`rgb(169, 183, 193)`) regardless of the
@@ -118,20 +120,27 @@ HOVER_TOOLTIP_TIMEOUT = 10_000
 
 class TestAnalyticsUserDetailView:
     """ELITEA-2313 — clicking a Users-tab row opens the user detail view:
-    email title + back arrow, 10 KPI cards (Errors red only when > 0), a
+    email title + back arrow, the full KPI card set in live order (16 cards —
+    `EXPECTED_KPI_LABELS_IN_ORDER`; Errors red only when > 0), a
     conditional Daily Activity chart with a working hover tooltip, three
     summary panels (Models/Tools/Agents & Pipelines Used), and back
     navigation restoring the Users-tab table with no new network request."""
 
     @allure.issue(
         "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
-        "settings-analytics/ELITEA-2313_clicking-a-user-row-in-users-tab-opens-the-user-detail-view.md",
-        "onetest-ai Test Case link",
+        "settings/analytics/ELITEA-2313_clicking-a-user-row-in-users-tab-opens-the-user-detail-view.md",
+        "onetest-ai Test Case link (ELITEA-2313)",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "settings/analytics/ELITEA-2329_hovering-over-user-detail-daily-activity-chart-shows-per-ser.md",
+        "onetest-ai Test Case link (ELITEA-2329)",
     )
     def test_users_tab_row_click_opens_detail_view(self, page):
         """Clicking a user row (non-null email, errors > 0) swaps the
         Users-tab table for the detail view; verifies title/back-arrow, the
-        10-card KPI set (order + Errors-color contract, both branches), the
+        full KPI card set (count + order + Errors-color contract, both
+        branches — 16 cards live, see `EXPECTED_KPI_LABELS_IN_ORDER`), the
         Daily Activity chart + hover tooltip, the three summary panels, and
         back navigation back to the table with no new network request."""
         analytics_page = AnalyticsPage(page)
