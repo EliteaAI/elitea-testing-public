@@ -52,13 +52,16 @@ whole `/settings/memory` page uses one disable mechanism — it's per-toggle.
 | `context-management-toggle` | yes | yes |
 | `max-context-tokens-input` | yes | yes |
 | `context-editing-toggle` | yes | yes |
-| `preserve-recent-messages-input` | **no** | yes — added ELITEA-2374 session, `EliteaAI/EliteaUI@b8155bda` |
-| `automatic-summarization-toggle` | **no** | yes — added ELITEA-2374 session, `EliteaAI/EliteaUI@b8155bda` |
-| `summarization-instructions-textarea` | **no** | yes — added ELITEA-2377 session, `EliteaAI/EliteaUI@be73caea` |
-| `target-summary-tokens-input` | **no** | yes — added ELITEA-2377 session, `EliteaAI/EliteaUI@be73caea` (verified unique — a differently-scoped `context-modal-target-summary-tokens-input` exists in the unrelated chat-side Context Budget widget, `ContextStrategySummarization.jsx`) |
+| `preserve-recent-messages-input` | **yes** (was no) | yes — added ELITEA-2374 session, `EliteaAI/EliteaUI@b8155bda` |
+| `automatic-summarization-toggle` | **yes** (was no) | yes — added ELITEA-2374 session, `EliteaAI/EliteaUI@b8155bda` |
+| `summarization-instructions-textarea` | **yes** (was no) | yes — added ELITEA-2377 session, `EliteaAI/EliteaUI@be73caea` |
+| `target-summary-tokens-input` | **yes** (was no) | yes — added ELITEA-2377 session, `EliteaAI/EliteaUI@be73caea` (verified unique — a differently-scoped `context-modal-target-summary-tokens-input` exists in the unrelated chat-side Context Budget widget, `ContextStrategySummarization.jsx`) |
 
-All testids referenced by cases through this session are now on
-`automation/testids`; none yet on `main` (awaiting human promotion).
+**Re-verified during ELITEA-2375/2376/2379/2390 (settings-w08, 2026-08-28,
+fresh `git fetch origin`): ALL SIX are now on `main`** — the human promotion
+happened between sessions. The "none yet on `main`" line this table used to
+carry is retired; re-check with the closure-record grep rather than trusting
+either state.
 
 ## Autosave
 
@@ -74,6 +77,17 @@ everything autosaves. Confirmed via network capture:
   screen (React state) but no PUT ever fires, and it reverts on reload.
   Toggle-driven changes are unaffected. Don't be surprised if a
   typed-value test needs this soft-asserted against #1129.
+- **#1129 did NOT reproduce for ANY field (ELITEA-2376/2379 session,
+  2026-08-28) — treat it as fixed-but-open.** All four typed fields —
+  Max Context Tokens (`32000`), **Preserve Recent Messages (`10`, the last
+  field nobody had re-tested)**, Summarization Instructions (a full
+  sentence) and Target Summary Tokens (`300`) — fired
+  `PUT /api/v2/social/author/` → 200 on blur and read back verbatim after a
+  full page reload (live network capture: 4 PUT/GET pairs for 4 writes).
+  This closes the loop the ELITEA-2378 and ELITEA-2391 entries below opened
+  ("don't assume #1129 reproduces without re-checking"): it does not
+  reproduce anywhere on this page today. Write persistence tests as plain
+  hard assertions; do NOT pre-emptively soft-assert them against #1129.
 
 ## Test data gotcha
 
@@ -170,3 +184,58 @@ NOT bake in `wait_for_autosave()` (that method's docstring already flags it
 as best-effort/non-committal about whether a PUT actually fired). Same
 shape as `set_target_summary_tokens()`, added for ELITEA-2378.
 
+
+
+## Chat-side companion — where the SETTINGS values land (settings-w08, ELITEA-2390, 2026-08-28)
+
+`/settings/memory` configures **defaults for NEW conversations**. Each
+conversation snapshots them at creation; changing the defaults later never
+touches an existing conversation. Confirmed live end-to-end: conversation
+`9859`, created while the default Preserve Recent Messages was `10`, still
+read `10` after the default was changed to `3`, while `9860` (created after)
+read `3`.
+
+Per-conversation view (chat right rail, `Participants.jsx` →
+`ContextBudgetUI.ContextBudgetInfo`):
+
+```
+participants panel  [toggle: chat-participants-panel-toggle-button, data-expanded="true|false"]
+  └─ Context Budget [panel: context-budget-panel]   ← ONLY while data-expanded="true"
+       ├─ tokens / percentage / Messages / Summaries
+       └─ Edit      [button: context-budget-edit-button] → "Edit context settings" modal
+            ├─ Context Management  [toggle: context-modal-management-toggle]
+            ├─ Max Context Tokens  [input: context-modal-max-tokens-input]
+            ├─ Preserve Recent     [input: context-modal-preserve-recent-input]
+            ├─ Automatic Summarization [toggle: context-modal-summarization-toggle]
+            ├─ Target Summary Tokens   [input: context-modal-target-summary-tokens-input]
+            └─ Save                [button: context-modal-save-button]  ← explicit save, NOT autosave
+```
+
+**The trap that cost the most time this session: the Context Budget panel is
+UNMOUNTED while the participants panel is collapsed, and the panel starts
+COLLAPSED on every fresh conversation load** (it did not remember an earlier
+expansion across navigations). `ContextBudgetCollapsed` — the collapsed
+variant — carries none of the `context-budget-*` testids, so a probe for
+`context-budget-panel` returns 0 and looks exactly like "the feature is
+broken / the API failed". Always
+`ChatPage.expand_participants_panel_via_toggle()` first. Two further gates
+below it: `Participants.jsx` renders the widget only `{conversationId && …}`
+(so never on the `/chat` landing route or a not-yet-created conversation),
+and `ContextBudgetInfo` returns `null` until
+`GET /api/v2/elitea_core/context_analytics/prompt_lib/<projectId>/<conversationId>`
+resolves 200.
+
+Other facts confirmed this session:
+- **The conversation (and its context snapshot) exists as soon as the message
+  is SENT** — the `/chat/<id>` URL and a 200 `context_analytics` carrying the
+  inherited `max_tokens` both land before the model answers. A test asserting
+  inheritance does **not** need to wait for an AI response, which keeps the
+  documented LLM trigger-side flakiness out of it entirely.
+- **The modal has an explicit Save button** (`context-modal-save-button`) —
+  it is a different code path from the `/settings/memory` autosave. Read
+  values and close *without* saving unless the case is about editing them.
+- The current project (`399`) has **no conversations in the general list** —
+  only folders. A case needing a "previously existing conversation" must
+  create it itself; do not assume one exists.
+- A conversation id from an older session (e.g. `/chat/566`, project `471`)
+  now 400s — conversation ids are project-scoped and the project changed.
