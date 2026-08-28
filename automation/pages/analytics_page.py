@@ -1061,6 +1061,25 @@ class AnalyticsPage(BasePage):
             self.loading_indicator.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
         return response.json()
 
+    def navigate_capturing_analytics(self) -> dict:
+        """Navigate to /settings/analytics and return the page-load analytics
+        response BODY, asserting it resolved 200.
+
+        Same oracle discipline as `select_date_preset_capturing_analytics`:
+        nothing is intercepted or fabricated, the body returned is the very
+        payload the page rendered from.
+        """
+        with self.page.expect_response(
+            self._is_analytics_query_response, timeout=NAVIGATION_TIMEOUT
+        ) as response_info:
+            self.navigate()
+        response = response_info.value
+        assert response.status == 200, (
+            f"Expected the page-load analytics GET to resolve 200, got {response.status} "
+            f"for {response.url}"
+        )
+        return response.json()
+
     def get_overview_kpi_labels(self) -> list[str]:
         """The Overview KPI cards' label texts, in rendered order."""
         return [
