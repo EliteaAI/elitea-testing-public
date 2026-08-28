@@ -3510,3 +3510,125 @@ returned the TOOLTIP (searchInputs=0, the CI signature); the same flow with
 `wait_for_dropdown` returned the DROPDOWN (searchInputs=1). Declared
 improvisation — canon card
 [EliteaAI/elitea-testing-public#1922](https://github.com/EliteaAI/elitea-testing-public/issues/1922).
+## MCP node — Input-mapping Type control + Tools-card composition + live MCP execution (**Resolved/added during ELITEA-1952/1953 implementation, 2026-08-24**)
+
+Implementation-time facts confirmed by the implementer while building
+`test_mcp_node_executes_selected_tool` (ELITEA-1952) and
+`test_mcp_node_input_mapping_type_and_toggles_persist` (ELITEA-1953) in
+`automation/tests/ui/pipelines/test_pipeline_mcp_node_fresh_attach.py`.
+Behaviour/scope claims elsewhere in this digest are unchanged.
+
+**New testids (EliteaAI/EliteaUI, `automation/testids`):**
+
+| Testid | Where | Commit |
+|---|---|---|
+| `pipeline-mcp-node-input-mapping-type-{param}` | `BaseToolNode.jsx` — `typeTestIdPrefix` widened from Toolkit-only to `Toolkit \| Mcp` | EliteaAI/EliteaUI@5c24ed30 |
+| `pipeline-mcp-node-input-mapping-value-{param}` (Variable branch) | `InputMappingItem.jsx` — the enum/variable `Select.SingleSelect` | EliteaAI/EliteaUI@7a5fce32 |
+| `toolkit-card-name` | `ToolCard.jsx` — the card's name Typography | EliteaAI/EliteaUI@5c24ed30 |
+| `toolkit-card-connection-status` (+ `data-connected="true\|false"`) | `ToolCard.jsx` — the MCP Online/Offline status-icon Box | EliteaAI/EliteaUI@5c24ed30 |
+
+**The Variable mapping type does NOT render the "no-enum" select branch.**
+`FlowEditorHelpers.getEnumList('variable', …)` returns the state-variable list
+(`flowEditor.helpers.js:162`), so `enumList` is non-empty and
+`InputMappingItem.jsx` renders its FIRST branch
+(`dataType !== 'array' || type === 'variable'`), not the final `Select.SingleSelect`
+the ELITEA-1953 AFS pointed at. A testid placed on the final select never appears
+in the DOM. Cost one rerun to find.
+
+**One row Value testid, two widget shapes — two different readers.** Since
+EliteaAI/EliteaUI@7a5fce32 the row's Value control keeps the same testid whether
+Type is Fixed/F-String (a text input) or Variable (a state-variable select). Read
+it with `get_mcp_node_input_mapping_value()` (`input_value()`) in the first case
+and `get_mcp_node_input_mapping_variable_value()` (`text_content()`) in the
+second. Handy side effect: a `text_content()` read returning `"input"` PROVES the
+widget swapped, because a text input has no text content — that is how the tests
+assert the swap now that the old absence assertion is void.
+
+**The canvas Control Panel intercepts Input-mapping clicks.** A freshly-added node
+spawns above ReactFlow's bottom-left `rf__controls` panel; once the Input-mapping
+rows render, the node card extends down over it and the panel's "Fit View" button
+intercepts the pointer on the Type select's click (Playwright names `rf__controls`
+as the intercepting subtree). Remedy: `move_node(node_id, dx=450, dy=0)` right
+after adding the node — the same remedy
+`test_pipeline_interrupt_before_after_toggles.py:87` already uses.
+
+**Connection status belongs on the indicator, not the Log-in button.** The AFS
+proposed tagging the card's `Log in` button as the connection-status control, but
+`McpLogInButton` returns `null` once the MCP is authorized — a testid whose
+PRESENCE flips with state, outlawed by the PR #581 ruling. The Online/Offline
+indicator Box is always rendered for an MCP card, so it carries the stable testid
+and expresses state in `data-connected`. A freshly-provisioned, never-authenticated
+Remote MCP reads `"false"` (confirmed live).
+
+**Live MCP execution from the embedded chat is stable and ~40 s.** Sending the
+repo name as the chat message (with `repoName` bound Type=Variable to the `input`
+state variable and `question` left Fixed) drives the DeepWiki fixture MCP end to
+end. Proof the node ran the SELECTED tool is the `chat-answer-tool-chip` inside the
+last `chat-message-item`, text `"{toolkit}: ask_question (MCP1)"` — asserted with
+`to_contain_text("{toolkit}: ask_question")` rather than the full string, since the
+node-id segment renders without its space. Answer body (~1 kB) asserted by shape
+only. Whole test: 39 s, zero console errors, green first try.
+
+**Saving RE-INITIALISES the whole flow graph — post-save canvas reads must be
+polled** (*Resolved during the ELITEA-1952 flake fix, 2026-08-24*). The Save
+PUT's `201` is NOT the point at which the canvas is settled. The response
+updates the RTK Query cache, which re-runs `PipelineEditor.jsx`'s init effect
+("Triggers on initial load and after save when RTK Query cache updates",
+`PipelineEditor.jsx:347`) → `initThePipeline` → `resetFlag` → `FlowEditor.jsx`
+rebuilds the graph wholesale (`setFlowNodes(initialNodes)` /
+`setFlowEdges(initialEdges)`, plus a 150 ms `setTimeout` Redux sync,
+`FlowEditor.jsx:176-195`). During that window the canvas is momentarily EMPTY —
+both merge-gate failure screenshots showed a blank canvas with the TOOLS card
+intact. A one-shot `edge_testid_present()` / `.count()` read fired right after
+`save_and_wait_for_update()` lands inside it on ~40 % of runs (2 of 5 gate runs;
+a diagnostic run measured the edge re-appearing **0.09 s** after the one-shot
+read returned `False`). Use `wait_for_edge()` (polls the same exact edge testid
+via `expect().to_have_count(1)`) — or any auto-retrying assertion — for ANY
+canvas read after a Save; never a one-shot boolean.
+
+**The embedded-chat tool chip marks the START of a tool call, not the end**
+(*same fix*). `wait_for_embedded_chat_response()` stabilises on the whole
+`chat-message-item`'s text, which is already non-empty and unchanging (the chip
++ "Thought" header) while the MCP round trip is still in flight — so it can
+return while the run indicator still spins at 0 % and the answer body is `""`.
+Poll the answer BODY (`skill-test-last-response`, via
+`get_last_embedded_chat_response_locator()`) with
+`expect(...).to_contain_text(re.compile(r"[\s\S]{N,}"))` before reading it with
+`get_last_embedded_chat_message_text()`.
+
+## Entry-point Trigger select — restriction is now a DISABLED state, and the first post-reload click is swallowed (**Resolved/added during ELITEA-2008 repair implementation, 2026-08-26**)
+
+**The trigger restriction no longer hides options — it greys them out in place**
+(EliteaAI/EliteaUI@cb70a64e, EL-6128, on `main` 2026-08-24). Any assertion that reads only
+the option NAME list can no longer distinguish a restricted pipeline from an unrestricted
+one — both render `Chat Message, Schedule, Webhook`. Confirmed live:
+
+```
+select-option-chat_message      aria-disabled = None     <- enabled
+select-option-selected-icon     aria-disabled = None     <- NOT an option, see below
+select-option-schedule          aria-disabled = "true"   <- restricted
+select-option-webhook           aria-disabled = "true"   <- restricted
+```
+
+An **enabled option carries no `aria-disabled` attribute at all** — absent, never `"false"` —
+so the enabled check must be `:not([aria-disabled="true"])`, never
+`to_have_attribute("aria-disabled", "false")`. Use
+`PipelineDetailPage.get_trigger_option_states()` (added by this repair): opens the dropdown
+once, returns `{trigger_value: is_enabled}` read per value, closes via Escape.
+
+**`get_open_listbox_option_names()` / `SELECT_OPTION_PREFIX` are unsafe on localhost
+(issue #1806).** The prefix `[data-testid^="select-option-"]` also matches
+`select-option-selected-icon`, the ✓ icon INSIDE the selected MenuItem
+(EliteaAI/EliteaUI@b0a7d61a, on `automation/testids` only), so enumeration returns a spurious
+empty entry: `['Chat Message', '', 'Schedule', 'Webhook']`. Verified live 2026-08-26, and
+verified pre-existing by a control run against the unmodified page object —
+`test_pipeline_entry_point_trigger_types_persist.py::test_entry_point_trigger_types_persist`
+fails on exactly this, on localhost only, today. **Read per value, not by family**, and the
+spec is immune on both localhost and DEV.
+
+**The FIRST click on the Trigger select after a full page reload is swallowed.** Selecting the
+node remounts its config panel and replaces the Select element the click already resolved, so
+the menu never opens and the wait burns its whole timeout (reproduced 3/3 at 10 s; a second
+click opens it immediately). `open_trigger_select()` now absorbs this: 3 s probe wait, then —
+only if no option element exists at all — one re-click. Anything else driving this select
+after a reload should expect the same and reuse that method rather than clicking directly.

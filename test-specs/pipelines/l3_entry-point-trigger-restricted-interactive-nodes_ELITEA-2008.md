@@ -246,6 +246,87 @@ implementer's own green run" norm) rather than trusting this source-code argumen
 does not claim steps 6–7 are DEFECT-FREE, only that their expected behavior is well-supported by
 source and low-risk relative to step 4's Save-gating finding, which received full live coverage.
 
+## Repair work order — the exact assertions to change (added 2026-08-26)
+
+Target file (edit in place, no new spec):
+`automation/tests/ui/pipelines/test_pipeline_entry_point_trigger_restricted_interactive_nodes.py`
+
+| # | Current assertion (line) | Change to | Handle |
+|---|---|---|---|
+| 1 | Step 1 `baseline_options == ["Chat Message","Schedule","Webhook"]` (~L47) | **keep** the name-list check **and add**: all 3 options ENABLED | `[data-testid="select-option-{v}"]:not([aria-disabled="true"])` for `v ∈ {chat_message, schedule, webhook}` |
+| 2 | Step 3 `pre_save_options == [...all 3...]` (~L73) | **keep** and add: all 3 still ENABLED (proves Save-gating, not just presence) | same as ① |
+| 3 | **Step 5 `post_save_options == ["Chat Message"]` (L91 — the RED one)** | all 3 PRESENT; `chat_message` ENABLED; `schedule` + `webhook` **DISABLED** | `[data-testid="select-option-schedule"][aria-disabled="true"]`, same for `webhook`; `:not(...)` for `chat_message` |
+| 4 | Step 5 `post_reload_options == ["Chat Message"]` (~L101) | same split as ③, after the reload | same as ③ |
+| 5 | Step 6 `hitl_options == ["Chat Message"]` (~L120) | same split as ③ | same as ③ |
+| 6 | Step 7 `interrupt_options == ["Chat Message"]` (~L146) | same split as ③ | same as ③ |
+| 7 | **Step 8 `restored_options == [...all 3...]` (~L170) — currently inert** | all 3 PRESENT **and all 3 ENABLED** — this is the whole discriminating content of Step 8 now | `:not([aria-disabled="true"])` × 3 |
+| 8 | final `assert not console_errors` | keep; consider migrating to `utils/console_errors.collect_console_errors()` while here (`.agents/testing.md` § Known issues — URL capture) | — |
+
+Implementation notes:
+
+- Add a `PipelineDetailPage` helper next to `get_trigger_options()` — e.g.
+  `get_trigger_option_states(...) -> dict[str, bool]` returning `{value: is_enabled}` for the three
+  known trigger values — so each step becomes one assertion on a dict instead of six locator checks, and
+  the option state is read **while the dropdown is open**, in the same pass as the names.
+- The state selectors are **UPPER_CASE class-level constants**, `.format(value)`-ed at the call site
+  (`.agents/testing.md` § Locator policy, dynamic-testid pattern). No inline `get_by_test_id(f"…")`.
+- **Do not** enumerate via `SELECT_OPTION_PREFIX` for the state check — per-value handles keep the test
+  immune to Known Defect ① on both localhost and DEV.
+- Enabled = attribute **absent**. Use `:not([aria-disabled="true"])` (or
+  `expect(...).not_to_have_attribute("aria-disabled", "true")`), never `== "false"`.
+- Docstring must be updated: the module docstring still describes the pre-EL-6128 hidden-option contract.
+  State the new contract and cite EliteaAI/EliteaUI@cb70a64e.
+- Nothing else about the test changes — same fixture, same 8 steps, same Save-gating, same
+  `allure.step` wrapping, no new markers.
+
+### Shipped — implementation record (2026-08-26, PR for issue #1802)
+
+What actually landed, where it differs from the work order above. Amended by the implementer
+per `.agents/role-overrides.md` § Implementer slot (the AFS states the SHIPPED truth).
+
+**① The name-list half of rows ①/② was NOT kept — presence is asserted per value instead.**
+The work-order table says "keep the name-list check and add the enabled check". Keeping
+`get_trigger_options() == [...]` was not possible: that helper enumerates via
+`SELECT_OPTION_PREFIX`, which on localhost also matches `select-option-selected-icon`
+(Known Defect ① / issue #1806), so the name list reads
+`['Chat Message', '', 'Schedule', 'Webhook']` and the assertion is RED on localhost while
+green on DEV — reproduced live this session, and confirmed as pre-existing by a control run
+against the unmodified page object. Widening the expectation to tolerate the `''` was
+explicitly forbidden by the dispatch, and so was fixing the prefix here.
+
+Shipped instead: `PipelineDetailPage.get_trigger_option_states()` returns
+`{trigger_value: is_enabled}` read **per value**, and each step asserts one dict equality.
+Presence is still asserted — a missing option is an absent key and fails the comparison —
+so nothing is lost, and the test is immune to #1806 on **both** localhost and DEV. What
+changes is the identity anchor: options are keyed by their testid value
+(`chat_message`/`schedule`/`webhook`) rather than their display label ("Chat Message"/…).
+That is the same identity the amended § Test Steps and § Concrete Handles already specify,
+and it is the more stable of the two.
+
+**② New implementation-time finding — the first click on the Trigger select after a full
+page reload is SWALLOWED.** Not previously recorded in this AFS. Reproduced deterministically:
+post-reload, `_select_node()` + click leaves the menu closed and the 10 s wait expires with
+zero options; an immediate second click opens it (options then render correctly). Mechanism:
+selecting the node remounts its config panel, replacing the Select element that the click had
+already resolved. This is what made the first repair attempt fail 3/3 at Step 5 — an
+infrastructure failure, NOT the product contract (the contract itself was confirmed live in
+the same session: `{'chat_message': True, 'schedule': False, 'webhook': False}` post-Save).
+
+Fixed in `open_trigger_select()`: wait `TRIGGER_SELECT_OPEN_PROBE_TIMEOUT` (3 s) for the menu,
+and only if **no** option element exists at all (`count() == 0`, i.e. the click never landed)
+re-click once and wait the full timeout. The `count() == 0` guard is load-bearing — it stops
+the retry from clicking shut a menu that is merely rendering slowly. Strictly more robust than
+the previous behaviour (it can only convert a timeout into a success), and the other caller
+spec (`test_pipeline_entry_point_trigger_types_persist.py`) was re-run against it.
+
+**③ Console-error capture migrated** to `utils/console_errors.collect_console_errors()` per
+work-order row ⑧ and `.agents/testing.md` § Known issues, so a future occurrence of the
+recurring background-resource noise class on this spec names the failing resource URL.
+
+**④ `get_trigger_options()` is left in place, untouched** (additive-only on a shared page
+object). It now has no caller in this spec but remains the public helper the rest of the
+trigger cluster uses; it is the method #1806 will fix.
+
 ## Automation Hints
 
 - Framework: Playwright + pytest, testid-only `LocatorDescriptor`. This case needs NO new
