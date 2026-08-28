@@ -74,6 +74,10 @@ def test_tools_section_mcp_add_view_remove(page, pipeline_id, mcp_toolkit_with_t
     with allure.step('Step 2 — Click TOOLS "+ MCP"; verify the MCP-picker popup opens'):
         popper = pipeline_page.open_mcp_popper(timeout=UI_ELEMENT_TIMEOUT)
         assert popper.is_visible(), "'+ MCP' popper should open"
+        # Rows load lazily on the FIRST open (ToolMenu.jsx forceSkip); the
+        # untestid'd "Loading…" placeholder and .count()'s lack of
+        # auto-waiting make this wait the only honest way to reach them.
+        pipeline_page.wait_for_mcp_popper_items(popper, timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_mcp_popper_menu_item_count(popper) > 0, (
             "'+ MCP' popper should list at least one toolkit-menu-item result row "
             "(the project's available MCPs, including the freshly-provisioned fixture MCP)"
