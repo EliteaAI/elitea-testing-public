@@ -25,13 +25,12 @@ Migrate it opportunistically the next time it is edited for its own reasons.
 import logging
 
 import allure
-from playwright.sync_api import Response, expect
-
 from pages.settings_personalization_page import (
     AI_PERSONALITY_PATH,
     AUTHOR_SETTINGS_ENDPOINT,
     SettingsPersonalizationPage,
 )
+from playwright.sync_api import Response, expect
 
 logger = logging.getLogger(__name__)
 

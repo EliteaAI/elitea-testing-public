@@ -86,7 +86,11 @@ missing, a small tail covered), so this is a **fresh spec** that reuses
      `[data-testid="select-option-<value>"]` is visible and its text contains
      the label from § Expected Results.
    - **Verify (current selection)**: the row matching the persona read in
-     step 1 carries `aria-selected="true"`; every other row `"false"`.
+     step 1 carries `data-selected="true"`; every other row `"false"`.
+     *(Amended during implementation: `SingleSelectMenuItem.jsx:118` renders
+     `data-selected`, not `aria-selected` — and `data-*` state on a stable
+     testid is exactly the shape `.agents/testing.md` § Locator policy
+     requires.)*
 4. **Case step 11 — select a different personality.** Click
    `select-option-nerdy` (or `select-option-generic` when the account was
    already on `Nerdy`), wrapped in
@@ -99,8 +103,17 @@ missing, a small tail covered), so this is a **fresh spec** that reuses
    - ⚠️ Do **not** use the accordion header as the "outside" target — clicking
      it collapses `PERSONA MANAGEMENT` (confirmed live: `aria-expanded` flipped
      to `false`).
-   - **Verify**: `ai-personality-persona-section`'s summary still reads
-     `aria-expanded="true"` (the click did not collapse the section).
+   - **Verify**: the section did not collapse — its **content** is still
+     visible (`ai-personality-persona-select-combobox` and
+     `ai-personality-user-instructions-textarea`).
+     *(Amended during implementation: `PERSONA MANAGEMENT` is a one-item
+     `BasicAccordion` whose summary carries **no testid of its own** — the
+     header testids the page object holds exist only for the
+     `/settings/preferences` and `/settings/memory` sections. Collapsing hides
+     the body (`visibility: hidden`) rather than unmounting it, so a visible
+     select is the same observable through a testid-only handle; asserting
+     `aria-expanded` here would have required a raw role handle in a spec
+     file.)*
 6. **Case step 13 — verify the dropdown shows the new personality.**
    - **Verify**: `ai-personality-persona-select-combobox` has text `Nerdy`.
 7. **Beyond the case — verify the selection is server-persisted**, not just
@@ -151,10 +164,17 @@ already declared as a page-object class field.
 
 **Option-row enumeration without a raw handle.** The count/order assertions
 need a collection, not a single row. Use the existing dynamic constant with an
-attribute-prefix form declared as its own class constant, e.g.
-`SELECT_OPTION_ANY = '[data-testid^="select-option-"]'` — still a literal
-`[data-testid=` selector at class level, so it satisfies the mechanical grep.
+attribute-prefix form declared as its own class constant — still a
+testid-keyed selector at class level, so it satisfies the mechanical grep.
 Do **not** reach for `li[role="option"]`.
+
+*Amended during implementation:* the shipped constant is
+`SELECT_OPTION_ANY = '[data-testid^="select-option-"][data-selected]'`. The
+`[data-selected]` part is **load-bearing, not decoration**:
+`SingleSelectMenuItem.jsx:141` renders a nested
+`data-testid="select-option-selected-icon"` **inside the selected row**, so a
+bare `select-option-` prefix counts an eighth element whenever any option is
+selected — which is always. Only the MenuItem rows carry `data-selected`.
 
 ## Automation Hints
 

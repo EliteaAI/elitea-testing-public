@@ -80,9 +80,13 @@ disturbs the other's state*.
    `context-management-toggle` wrapped in
    `page.expect_response(<PUT /api/v2/social/author/>)`.
    - **Verify**: the PUT returns **200**.
-   - **Verify**: the toggle's inner `input` is unchecked. *(The testid sits on
-     the MUI `SwitchBase` `<span>`; the checked state lives on the `<input>`
-     inside it — confirmed live.)*
+   - **Verify**: the toggle reads OFF. *(Amended during implementation: the
+     established reader is
+     `UserProfileSettingsPage.is_context_management_enabled()`, which checks the
+     `Mui-checked` class on the `SwitchBase` `<span>` the testid sits on —
+     Playwright's `is_checked()` raises "Not a checkbox or radio button" on that
+     span, and the suite already standardised on the class read. Same
+     observable, existing mechanism, no new handle.)*
    - **Verify (the toggle really took effect)**: `max-context-tokens-input` has
      **count 0** — the numeric fields are conditionally **unmounted** when the
      toggle is off. `to_have_count(0)`, not `not_to_be_visible()`; this is the
