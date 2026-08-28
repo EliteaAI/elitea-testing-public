@@ -205,8 +205,11 @@ class TestCreateCredential:
                 # grid is categorised and lazily rendered, so a card (e.g. Jira,
                 # under "Project Management") can be present in the DOM yet never
                 # become visible within the timeout (ELITEA-1963, re-observed on
-                # DEV for #1897). The card click itself stays covered by
-                # test_credential_create.py Step 3 via `toolkit-type-card-{type}`.
+                # DEV for #1897). The card click itself is covered for `github`
+                # only, by test_credential_create.py Step 3; the grid is a uniform
+                # component (CategoryItemCard.jsx renders
+                # `toolkit-type-card-{type}` for every type through one code
+                # path), so github's click proves the mechanism.
                 create_page.navigate_to_type(cfg.url_slug)
 
             with allure.step(f"Step 2 — Verify the {cfg.display_name} create form rendered"):
