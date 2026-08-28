@@ -116,3 +116,4 @@
 - [Harvest allure artifacts first](harvest_gha_allure_artifacts_before_dispatching.md) — the screenshot names the cause in one look
 - [Reviewer out-of-scope finding](reviewer_out_of_scope_finding.md) — verify vs the ref before filing a card
 - [A Fix card may already be fixed by a sibling PR](fix_card_may_already_be_fixed_by_a_sibling_pr.md) — timing check + one-file matched control, before any dispatch
+- [Cherry-pick ports a DELTA, not a file state](cherry_pick_ports_a_delta_not_a_file_state.md) — silently drops doc sections
