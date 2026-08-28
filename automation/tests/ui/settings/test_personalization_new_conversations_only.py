@@ -127,6 +127,25 @@ def _personalization_of(body: dict) -> tuple[str | None, str]:
     return meta.get("persona"), body.get("instructions") or ""
 
 
+def _delete_conversations(conversation_api, conversation_ids) -> None:
+    """Delete the conversations this spec created, best-effort on BOTH paths.
+
+    Deliberately best-effort even on the success path: a conversation that
+    outlives the run only adds to the shared-account pollution class (#1082) --
+    it does not corrupt the account state a later spec READS, the way a skipped
+    persona/instructions restore does. Those restores are strict on the success
+    path (see the ``else`` branch of the test body).
+    """
+    for conversation_id in conversation_ids:
+        if not conversation_id:
+            continue
+        try:
+            conversation_api.delete_conversation(int(conversation_id))
+            logger.info("Cleanup: deleted conversation %s", conversation_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Cleanup: failed to delete conversation %s: %s", conversation_id, exc)
+
+
 class TestPersonalizationAppliesToNewConversationsOnly:
     """ELITEA-2384 -- personalization reaches new conversations only."""
 
@@ -316,21 +335,13 @@ class TestPersonalizationAppliesToNewConversationsOnly:
                     f"unexpected console errors: {unexpected_console_errors(console_errors)}"
                 )
 
-        finally:
-            # Cleanup (not case steps -- no allure.step). Conversations first:
-            # they are deleted through the API so this spec does not add to the
-            # shared-account pollution class (#1082). Restores are best-effort
-            # here because this block also runs on the failure path, where a
-            # teardown exception would replace the real failure in the report.
-            for conversation_id in (existing_conversation_id, new_conversation_id):
-                if conversation_id:
-                    try:
-                        conversation_api.delete_conversation(int(conversation_id))
-                        logger.info("Cleanup: deleted conversation %s", conversation_id)
-                    except Exception as exc:  # noqa: BLE001
-                        logger.warning(
-                            "Cleanup: failed to delete conversation %s: %s", conversation_id, exc
-                        )
+        except BaseException:
+            # Cleanup (not case steps -- no allure.step). The body already
+            # failed, so every restore is best-effort here: a teardown exception
+            # raised on this path would REPLACE the real failure in the report.
+            _delete_conversations(
+                conversation_api, (existing_conversation_id, new_conversation_id)
+            )
             if original_instructions is not None:
                 best_effort(
                     lambda: restore_user_instructions(
@@ -343,3 +354,19 @@ class TestPersonalizationAppliesToNewConversationsOnly:
                     lambda: restore_persona(personalization, original_persona_label),
                     f"restore the original persona ({original_persona_label})",
                 )
+            raise
+        else:
+            # Success path: the restores are STRICT. A restore that silently
+            # fails here leaks the changed persona + instructions onto the
+            # shared `${TEST_USER}` record for every other spec that reads them,
+            # and a green run would report nothing. There is no in-flight
+            # failure left to mask, so the restore is allowed to be the failure.
+            _delete_conversations(
+                conversation_api, (existing_conversation_id, new_conversation_id)
+            )
+            if original_instructions is not None:
+                restore_user_instructions(
+                    personalization, CASE_PERSONA_LABEL, original_instructions
+                )
+            if original_persona_label:
+                restore_persona(personalization, original_persona_label)
