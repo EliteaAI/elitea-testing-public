@@ -249,10 +249,20 @@ create_page.navigate_to_type(cfg.url_slug)     # -> /credentials/create-credenti
 (ELITEA-1963). `cfg.url_slug` already carries the right slug for all five types.
 
 > Coverage note: the case's Step 2 says "Click 'Create credential'. Select the
-> toolkit type." The type-card click is **already covered** by
-> `test_credential_required_fields_validation`'s sibling entry point
-> (`CredentialCreatePage.click_type_card`) and by `toolkit-type-card-{type}`. This
+> toolkit type." The type-card click is covered **for `github` only**, by
+> `test_credential_create.py` Step 3 (`expect(create_page.type_card("github"))
+> .to_be_visible()` + `create_page.click_type_card("github")`, lines 173/176 on
+> `origin/main`). No spec clicks the jira / confluence / gitlab / bitbucket type
+> cards. That is acceptable here because the grid is a **uniform component** —
+> `src/[fsd]/shared/ui/category/CategoryItemCard.jsx:14` renders
+> ``data-testid={`toolkit-type-card-${itemKey}`}`` for every type through one code
+> path — so github's click proves the mechanism, not just github's card. This
 > test's subject is the *save*, not the grid. Record the substitution in the PR body.
+>
+> *(Corrected 2026-08-28 after review of PR #1937: this note originally attributed
+> the coverage to `test_credential_required_fields_validation`, which does not
+> exercise the type cards at all. Verified with
+> `git grep -nE 'click_type_card|type_card\(' origin/main -- automation/tests`.)*
 
 ### R2 — Step 5: click Save for real, and assert it is enabled first *(blocker)*
 
