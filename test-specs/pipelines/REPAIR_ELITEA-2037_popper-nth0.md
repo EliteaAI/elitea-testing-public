@@ -457,3 +457,37 @@ the fix can go green on `dev.elitea.ai` the moment it merges and promotes, with 
   hover/focus triggers, instrumented focus/mutation trace at 1× and 6× CPU, and the five-candidate
   fix comparison. Raw output is quoted verbatim in §2 and §3; the scratch drivers were throwaway and
   are not committed.
+
+---
+
+## 11. Implementation outcome (test-automation-engineer, 2026-08-28)
+
+Recorded by the implementer so the brief's forward-looking recommendations are
+not read later as the shipped truth. The analysis in §1–§10 is unchanged and
+was confirmed in full.
+
+- **Shape built: R1**, exactly as recommended. `Popper.DROPDOWN_POPPER_SELECTOR`
+  + additive `Popper.wait_for_dropdown()` in `components/mui.py`;
+  `Popper.wait_for()` untouched (8 remaining merged callers).
+  `PipelineDetailPage.open_mcp_popper()` is the **only** call site switched —
+  the three sibling `open_*_popper()` methods and all five
+  `agent_detail_page.py` sites were left alone per the lead's scope ruling.
+  R2 (content-scoping on `toolkit-search-input`) was rejected by the lead for
+  the expected-result-integrity reason §5 gives.
+- **The #1890 guard was added** to ELITEA-2037's Step 2, between the two
+  existing assertions, matching PR #1921's shape byte-for-byte.
+- **Branch ruling supersedes §5's "branch from `origin/automation/base`".** The
+  lead branched this repair from `origin/main` (`tests/ELITEA-2037-popper-scope`)
+  because the test is already promoted and issue #1891 § Fix Branch Strategy
+  targets `main`. The `automation/base` variant's two extra `open_mcp_popper()`
+  call sites are covered by the lead's separate port after this merges — they
+  are NOT in this diff.
+- **§2.4's third casualty (`test_tools_section_mcp_add_view_remove`) was NOT
+  scoped in.** It is card #1892's. Verified on localhost that it still fails on
+  its own `menu_item_count` lazy-load assertion, byte-identically before and
+  after this repair (matched control pair, §11 evidence in the PR body) — this
+  repair neither fixes nor worsens it.
+- **Reproduction confirmed end-to-end through the production page object**, not
+  only at the locator level: with the tooltip forced up, pristine
+  `open_mcp_popper()` returned the tooltip and reproduced the CI signature
+  `assert 0 > 0`; the fixed method returned the dropdown. §2.2/§2.3 hold.
