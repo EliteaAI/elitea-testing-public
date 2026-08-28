@@ -5385,6 +5385,44 @@ class PipelineDetailPage(PipelineFormPage):
         """
         return popper.locator(self.TOOLKIT_MENU_ITEM_SELECTOR).count()
 
+    def wait_for_mcp_popper_items(self, popper: Locator, timeout: int = 10000) -> None:
+        """Wait until an open "+ MCP" popper has finished loading its result rows.
+
+        Guards a first-open-only load race — the product is behaving correctly,
+        the test was sampling too early. ``ToolMenu.jsx`` passes
+        ``forceSkip = !mcpOpened.current`` into ``useLibraryToolkits``, so the
+        toolkit-list request only *starts* when "+ MCP" is first clicked, while
+        the popper opens synchronously with an empty item list.
+        ``UnifiedDropdown.jsx`` renders ``toolkit-search-input`` from the very
+        first frame (which is why that assertion never flaked) but emits
+        ``toolkit-menu-item`` rows only once the request resolves; its
+        "Loading…" and "No mcps available" placeholders carry **no testid**, so
+        "wait for the loading row to disappear" is not expressible with handles
+        that exist on ``main``. And :meth:`get_mcp_popper_menu_item_count` is a
+        bare ``.count()`` — Playwright's auto-waiting does **not** apply to
+        ``.count()`` — so it samples zero unless the caller waits first.
+        Measured first-open latency: ~0.56 s on dev.elitea.ai, ~1.9 s on
+        localhost; a second open in the same browser context is instant (RTK
+        Query serves the cached page).
+
+        This is the same wait the *select* path already performs
+        (``components.mui.Popper.select_menuitem_by_testid``), which is exactly
+        why selecting a row never flaked while counting rows did.
+
+        Deliberately kept separate from
+        :meth:`get_mcp_popper_menu_item_count`: a ``get_*_count()`` that blocks
+        for 10 s would silently change the semantics of its merged call sites
+        and would hang on a legitimately empty popper (a project with no MCPs)
+        instead of returning 0.
+
+        Args:
+            popper: The popper Locator returned by :meth:`open_mcp_popper`.
+            timeout: Maximum wait time in milliseconds.
+        """
+        popper.locator(self.TOOLKIT_MENU_ITEM_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
     def select_mcp_in_popper(
         self, popper: Locator, mcp_name: str, project_id: str, timeout: int = 10000
     ) -> dict:
