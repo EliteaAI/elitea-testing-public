@@ -10,6 +10,13 @@ updated: 2026-08-28
 
 ## The race
 
+**Introduced by EliteaAI/EliteaUI@94a61b81 — "fix: [EL-6351] Lazy-load optional data on
+Agent and Pipeline detail pages", merged to EliteaUI `main` 2026-08-26.** Before it the
+toolkit query fired on mount, so any spec that reached the popper seconds into a run found
+the cache warm and the rows synchronous. **Specs that had passed their merge gate for weeks
+went red the next day.** When a popper-count assertion suddenly reds, date the mechanism
+before calling the test unsound: `git log -1 -S"<symbol>" origin/main -- <file>`.
+
 `ToolMenu.jsx` passes `forceSkip = !mcpOpened.current` into `useLibraryToolkits`, so
 RTK Query's toolkit-list request is **skipped until the "+ MCP"/"+ Toolkit" button is
 first clicked** — the request starts at click time. The popper opens synchronously
