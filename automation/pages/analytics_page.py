@@ -102,8 +102,10 @@ Tools/Agents panels.
 """
 
 import logging
+import re
+from datetime import datetime
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from .base_page import BasePage
@@ -136,6 +138,15 @@ ANALYTICS_AGENTS_QUERY_URL_SUBSTRING = "/elitea_core/analytics_agents/prompt_lib
 # Agent/pipeline-detail-view query (`useAnalyticsAgentDetailQuery`) — fires
 # once when an Agents & Pipelines-tab row is clicked (ELITEA-2320).
 ANALYTICS_AGENT_DETAIL_QUERY_URL_SUBSTRING = "/elitea_core/analytics_agent_detail/prompt_lib/"
+
+# Tools tab query (`useAnalyticsToolsQuery`) — a distinct endpoint again; fires
+# on tab mount, on a search-input change, and on a date-range change while the
+# Tools tab is open (ELITEA-2318).
+ANALYTICS_TOOLS_QUERY_URL_SUBSTRING = "/elitea_core/analytics_tools/prompt_lib/"
+
+# The DateTimePicker's display format (`format: 'dd/MM/yyyy HH:mm'`, `ampm: false`
+# — `AnalyticsContainer.jsx`'s `datePickerCommonProps`).
+PICKER_DATETIME_FORMAT = "%d/%m/%Y %H:%M"
 
 
 class AnalyticsPage(BasePage):
@@ -385,6 +396,100 @@ class AnalyticsPage(BasePage):
     agent_detail_tools_panel = LocatorDescriptor(
         testid="analytics-agent-detail-tools-panel", description='"Tools" summary panel'
     )
+
+
+    # ------------------------------------------------------------------
+    # Date-filter pickers + Overview/Tools content (ELITEA-2314..2319)
+    # ------------------------------------------------------------------
+    preset_custom = LocatorDescriptor(
+        testid="analytics-date-preset-custom",
+        description='Fifth "Custom" preset chip — rendered ONLY while a picker has been '
+        "edited directly (`selectedDatePreset === 'custom'`); absent otherwise",
+    )
+    date_from_open_button = LocatorDescriptor(
+        testid="analytics-date-from-open-button", description="From picker's calendar icon button"
+    )
+    date_to_open_button = LocatorDescriptor(
+        testid="analytics-date-to-open-button", description="To picker's calendar icon button"
+    )
+    date_from_popper = LocatorDescriptor(
+        testid="analytics-date-from-popper",
+        description="From picker's popper root — the scoping parent for MUI's internal "
+        "calendar cells / action buttons (present only while the picker is open)",
+    )
+    date_to_popper = LocatorDescriptor(
+        testid="analytics-date-to-popper", description="To picker's popper root (same role as above)"
+    )
+
+    overview_kpi_values = LocatorDescriptor(
+        testid="analytics-overview-kpi-value",
+        description="Repeated per-KPI VALUE node on the Overview tab (same testid on all 8 "
+        "cards, DOM order = TEAM, AI ACTIVE, LLM CALLS, TOOL RUNS, CHAT MSG, "
+        "AGENT & PIPELINE RUNS, TOKENS, COST — select via .nth(i))",
+    )
+    overview_daily_chart_container = LocatorDescriptor(
+        testid="analytics-overview-daily-chart-container",
+        description="Daily Activity chart wrapper — scoping parent for the recharts X-axis ticks",
+    )
+    overview_leaderboard = LocatorDescriptor(
+        testid="analytics-overview-leaderboard",
+        description='"Top 5 AI Adopters" row container — rendered ONLY when top_ai_users is '
+        "non-empty (the empty branch renders a \"No AI activity data.\" line instead)",
+    )
+    overview_leaderboard_rows = LocatorDescriptor(
+        testid="analytics-overview-leaderboard-row",
+        description="Repeated per-adopter leaderboard row (select via .nth(i))",
+    )
+    overview_model_usage_table = LocatorDescriptor(
+        testid="analytics-overview-model-usage-table",
+        description='"Model Usage Breakdown" card — the whole component returns null when the '
+        "response's models list is empty, so absence is a real product branch",
+    )
+    overview_model_usage_rows = LocatorDescriptor(
+        testid="analytics-overview-model-usage-row",
+        description="Repeated per-model row (select via .nth(i))",
+    )
+
+    tools_details_title = LocatorDescriptor(
+        testid="analytics-tools-details-title", description='Tools-tab section header — "Tool Details"'
+    )
+    tools_count = LocatorDescriptor(
+        testid="analytics-tools-count", description='Tools-tab count subtitle — "{N} tools"'
+    )
+    tools_table_header = LocatorDescriptor(
+        testid="analytics-tools-table-header",
+        description="Tools-tab table header row (Tool, Calls, Users, Avg Latency, Errors)",
+    )
+    tools_loading_indicator = LocatorDescriptor(
+        testid="analytics-tools-loading-indicator",
+        description="Tools-tab data-fetch spinner — present only while a (re)fetch is in flight",
+    )
+    tools_rows = LocatorDescriptor(
+        testid="analytics-tools-row",
+        description="Repeated per-tool data row (same testid on every row — select via .nth(i))",
+    )
+
+    # ------------------------------------------------------------------
+    # Scoped raw sub-selectors — `.agents/testing.md` § Locator policy,
+    # #579 sanctioned exception 1 (third-party widget subtree).
+    #
+    # Everything inside a DateTimePicker popper (day cells, month header,
+    # month-nav arrows, the Clear/Apply action buttons) and everything inside
+    # a recharts plot (axis tick labels) is rendered by the LIBRARY, not by
+    # EliteaUI JSX — MUI's `PickersDay`/`PickersActionBar`/`PickersCalendarHeader`
+    # and recharts' SVG internals accept no `data-testid` without overriding
+    # their slot components, which would be a functional change (forbidden by
+    # `add-data-testid` § zero-functional-impact). Each constant below is used
+    # ONLY chained off a real app testid parent (`date_*_popper`,
+    # `overview_daily_chart_container`), never as a page-level handle. Do NOT
+    # extend this list to any element that COULD carry a testid.
+    # ------------------------------------------------------------------
+    PICKER_DAY_CELL = "button.MuiPickersDay-root"
+    PICKER_MONTH_LABEL = ".MuiPickersCalendarHeader-label"
+    PICKER_PREV_MONTH_BUTTON = 'button[aria-label="Previous month"]'
+    PICKER_NEXT_MONTH_BUTTON = 'button[aria-label="Next month"]'
+    PICKER_ACTION_BUTTON = ".MuiDialogActions-root button"
+    CHART_X_AXIS_TICK = ".recharts-xAxis .recharts-cartesian-axis-tick-value"
 
     # Sidebar project-selector combobox — pre-existing testid, duplicated
     # here (not cross-imported from ChatPage) per the project's page-object
@@ -800,3 +905,232 @@ class AnalyticsPage(BasePage):
         else:
             self.agent_detail_back_button.click()
         self.agents_table_header.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    # ------------------------------------------------------------------
+    # Date filter — presets, pickers, and range reading (ELITEA-2314..2319)
+    # ------------------------------------------------------------------
+    def _is_analytics_tools_query_response(self, response) -> bool:
+        """True for the Tools-tab data GET (`useAnalyticsToolsQuery`)."""
+        return ANALYTICS_TOOLS_QUERY_URL_SUBSTRING in response.url and response.request.method == "GET"
+
+    # Tab/endpoint predicates keyed by the surface a caller is waiting on, so
+    # one preset-click helper can serve every tab (ELITEA-2318).
+    def _query_predicate(self, surface: str):
+        predicates = {
+            "overview": self._is_analytics_query_response,
+            "users": self._is_analytics_users_query_response,
+            "agents": self._is_analytics_agents_query_response,
+            "tools": self._is_analytics_tools_query_response,
+        }
+        return predicates[surface]
+
+    def get_date_from_text(self) -> str:
+        """Raw From input value, as displayed (`dd/MM/yyyy HH:mm`)."""
+        return self.date_from_input.input_value()
+
+    def get_date_to_text(self) -> str:
+        """Raw To input value, as displayed (`dd/MM/yyyy HH:mm`)."""
+        return self.date_to_input.input_value()
+
+    def get_date_range(self) -> tuple[datetime, datetime]:
+        """Both picker values parsed into naive local `datetime`s."""
+        return (
+            datetime.strptime(self.get_date_from_text(), PICKER_DATETIME_FORMAT),
+            datetime.strptime(self.get_date_to_text(), PICKER_DATETIME_FORMAT),
+        )
+
+    def get_pressed_preset_labels(self) -> list[str]:
+        """Labels of every date preset currently `aria-pressed="true"`.
+
+        Includes the conditional "Custom" chip when it is rendered, so a
+        caller can assert mutual exclusivity across the whole control.
+        """
+        pressed = []
+        for locator, label in (
+            (self.preset_last_24h, "Last 24h"),
+            (self.preset_last_7d, "Last 7d"),
+            (self.preset_last_30d, "Last 30d"),
+            (self.preset_last_90d, "Last 90d"),
+            (self.preset_custom, "Custom"),
+        ):
+            if locator.count() > 0 and locator.get_attribute("aria-pressed") == "true":
+                pressed.append(label)
+        return pressed
+
+    def click_preset(self, preset_locator, surface: str = "overview", timeout: int = NAVIGATION_TIMEOUT):
+        """Click a date preset and return the analytics response it triggers.
+
+        *surface* selects which endpoint to wait on ("overview", "users",
+        "agents", "tools") — the visible tab decides which query re-fires.
+        Returning the `Response` lets the caller use the SYSTEM's own payload
+        as the assertion oracle (`.agents/testing.md` § Fidelity policy)
+        instead of a hand-written expectation.
+        """
+        with self.page.expect_response(self._query_predicate(surface), timeout=timeout) as info:
+            preset_locator.click()
+        return info.value
+
+    def wait_for_overview_settled(self) -> None:
+        """Wait for the Overview subtree to be back on screen after a refetch.
+
+        The Overview body unmounts while `needsOverview && isFetching`, so the
+        KPI row reappearing is the proof the content re-rendered — not merely
+        that a request completed.
+        """
+        if self.loading_indicator.count() > 0:
+            self.loading_indicator.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+        self.overview_kpi_row.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    # -- picker popper -------------------------------------------------
+    def _popper(self, field: str):
+        return self.date_from_popper if field == "from" else self.date_to_popper
+
+    def open_date_picker(self, field: str) -> None:
+        """Open the "from"/"to" DateTimePicker via its calendar icon button."""
+        (self.date_from_open_button if field == "from" else self.date_to_open_button).click()
+        self._popper(field).wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+
+    def get_picker_month_label(self, field: str) -> str:
+        """Month/year the open picker is displaying, e.g. "May 2026".
+
+        #579-scoped raw handle: MUI's `PickersCalendarHeader` label, read
+        strictly inside the popper's own app testid.
+        """
+        return self._popper(field).locator(self.PICKER_MONTH_LABEL).inner_text().strip()
+
+    def get_picker_day_cell(self, field: str, day: int):
+        """Locator for a single day cell in the open picker.
+
+        #579-scoped raw handle: MUI renders day cells as `PickersDay` buttons
+        with no testid hook; scoped inside the popper's app testid and matched
+        on exact day text.
+        """
+        return (
+            self._popper(field)
+            .locator(self.PICKER_DAY_CELL)
+            .filter(has_text=re.compile(rf"^{day}$"))
+        )
+
+    def picker_month_nav(self, field: str, direction: str):
+        """Previous/next-month arrow of the open picker (#579-scoped raw handle)."""
+        selector = self.PICKER_PREV_MONTH_BUTTON if direction == "prev" else self.PICKER_NEXT_MONTH_BUTTON
+        return self._popper(field).locator(selector)
+
+    def picker_apply_button(self, field: str):
+        """The popper's confirm button.
+
+        Labelled **"Apply"** (`localeText.okButtonLabel`), not "Ok" as several
+        TMS case texts say. #579-scoped raw handle: MUI's `PickersActionBar`
+        renders Clear/Apply itself and `slotProps.actionBar` reaches only the
+        container, never the individual buttons.
+        """
+        return (
+            self._popper(field)
+            .locator(self.PICKER_ACTION_BUTTON)
+            .filter(has_text=re.compile(r"^Apply$"))
+        )
+
+    def go_to_picker_month(self, field: str, month_label: str, max_steps: int = 6) -> None:
+        """Click "Previous month" until the open picker displays *month_label*.
+
+        Bounded loop (the callers move at most a few months), so a mismatch
+        fails loudly instead of spinning.
+        """
+        for _ in range(max_steps):
+            current = self.get_picker_month_label(field)
+            if current == month_label:
+                return
+            self.picker_month_nav(field, "prev").click()
+            # Condition wait on the header actually changing (MUI slides the
+            # month grid) — never a fixed sleep.
+            expect(self._popper(field).locator(self.PICKER_MONTH_LABEL)).not_to_have_text(
+                current, timeout=UI_ELEMENT_TIMEOUT
+            )
+        raise AssertionError(
+            f"Picker {field!r} never reached month {month_label!r} within {max_steps} "
+            f"'Previous month' clicks (last shown: {self.get_picker_month_label(field)!r})"
+        )
+
+    def select_picker_day(self, field: str, day: int, surface: str = "overview", timeout: int = NAVIGATION_TIMEOUT):
+        """Click a day cell and return the analytics response it triggers.
+
+        The picker's `onChange` fires on the day click itself — **not** on
+        Apply (live-confirmed: no request follows the Apply click), so the
+        response wait belongs here.
+        """
+        with self.page.expect_response(self._query_predicate(surface), timeout=timeout) as info:
+            self.get_picker_day_cell(field, day).click()
+        return info.value
+
+    def apply_picker(self, field: str) -> None:
+        """Confirm the open picker (the "Apply" action) and wait for it to close."""
+        self.picker_apply_button(field).click()
+        self._popper(field).wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+
+    def assert_no_analytics_request(self, surface: str = "overview", window_ms: int = 1_500) -> None:
+        """Assert no request fires on *surface* within *window_ms*.
+
+        Used by ELITEA-2316: "no data changed to the incorrect timespan" is
+        only really proven if the app never ASKED for the incorrect timespan.
+        """
+        try:
+            with self.page.expect_response(self._query_predicate(surface), timeout=window_ms):
+                pass
+        except PlaywrightTimeoutError:
+            return  # expected: nothing fired
+        raise AssertionError(
+            f"Expected no {surface} analytics request within {window_ms}ms, but one fired"
+        )
+
+    # -- Overview content ---------------------------------------------
+    def get_overview_kpi_values(self) -> list[str]:
+        """The 8 Overview KPI values in DOM order."""
+        return [v.strip() for v in self.overview_kpi_values.all_inner_texts()]
+
+    def get_daily_chart_tick_labels(self) -> list[str]:
+        """Rendered X-axis tick labels ("MM-DD") of the Daily Activity chart.
+
+        #579-scoped raw handle: recharts draws its axis as internal SVG
+        `<text>` nodes; scoped strictly inside the chart container's app
+        testid. Recharts THINS labels, so callers assert the span/endpoints,
+        never a tick-per-day count.
+        """
+        ticks = self.overview_daily_chart_container.locator(self.CHART_X_AXIS_TICK)
+        return [t.strip() for t in ticks.all_inner_texts()]
+
+    def get_leaderboard_row_count(self) -> int:
+        """Rendered "Top 5 AI Adopters" rows (0 when the empty branch shows)."""
+        return self.overview_leaderboard_rows.count()
+
+    def get_leaderboard_row_text(self, index: int) -> str:
+        """Aggregate inner text of one leaderboard row (rank, email, stats, score)."""
+        return self.overview_leaderboard_rows.nth(index).inner_text()
+
+    def get_model_usage_row_count(self) -> int:
+        """Rendered "Model Usage Breakdown" rows (0 when the card is absent)."""
+        return self.overview_model_usage_rows.count()
+
+    # -- Tools tab -----------------------------------------------------
+    def open_tools_tab(self, timeout: int = NAVIGATION_TIMEOUT):
+        """Click the Tools tab, wait for its data query, return the response."""
+        with self.page.expect_response(self._is_analytics_tools_query_response, timeout=timeout) as info:
+            self.tab_tools.click()
+        self.tools_table_header.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        if self.tools_loading_indicator.count() > 0:
+            self.tools_loading_indicator.wait_for(state="hidden", timeout=UI_ELEMENT_TIMEOUT)
+        return info.value
+
+    def open_tab_awaiting(self, tab_locator, surface: str, timeout: int = NAVIGATION_TIMEOUT):
+        """Click *tab_locator* and return the response of *surface*'s query.
+
+        Additive sibling of `open_users_tab()`/`open_agents_pipelines_tab()`
+        (both keep their existing signatures and callers) for cases that need
+        the response BODY as their assertion oracle.
+        """
+        with self.page.expect_response(self._query_predicate(surface), timeout=timeout) as info:
+            tab_locator.click()
+        return info.value
+
+    def get_tools_row_count(self) -> int:
+        """Number of currently-rendered tool rows."""
+        return self.tools_rows.count()
