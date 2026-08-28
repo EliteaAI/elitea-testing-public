@@ -3491,3 +3491,22 @@ never rendered the Code node's `input`/`output` fields. The test verifies
 those fields via `pipeline_api.get_pipeline()` server-truth readback instead
 of `pipeline_page.get_yaml_content()`. No new issue filed — same root cause,
 same established workaround pattern.
+
+**Resolved/added during ELITEA-2037 repair (#1891, 2026-08-28):** on the
+pipeline detail page, `.MuiPopper-root >> nth=0` is **not** "the popper I just
+opened". A MUI `Tooltip` root is also a `.MuiPopper-root` (class list
+`MuiPopper-root MuiTooltip-popper MuiTooltip-popperInteractive`) and portals to
+`<body>`, so the embedded chat panel's model-selector tooltip
+(`<Tooltip title="Select LLM Model">`, `LLMModelSelector.jsx:174-182`) sorts
+ahead of a dropdown that opens while it is up, and `Popper.wait_for()` returns
+the tooltip — `is_visible()` is legitimately `True` and the dropdown's contents
+are legitimately absent, giving `assert 0 > 0`. A `:visible` filter does NOT
+help (measured live: 2 visible poppers, tooltip still first). New additive
+sibling `components.mui.Popper.wait_for_dropdown()` selects
+`.MuiPopper-root:not(.MuiTooltip-popper)`; `PipelineDetailPage.open_mcp_popper()`
+uses it. `Popper.wait_for()` is unchanged (8 remaining merged callers). Matched
+control pair on localhost: pristine `open_mcp_popper()` under a forced tooltip
+returned the TOOLTIP (searchInputs=0, the CI signature); the same flow with
+`wait_for_dropdown` returned the DROPDOWN (searchInputs=1). Declared
+improvisation — canon card
+[EliteaAI/elitea-testing-public#1922](https://github.com/EliteaAI/elitea-testing-public/issues/1922).
