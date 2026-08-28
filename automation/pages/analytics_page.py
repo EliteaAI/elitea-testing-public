@@ -748,9 +748,12 @@ class AnalyticsPage(BasePage):
         lines = [line for line in row_text.split("\n") if line]
         return lines[0] if lines else ""
 
-    def search_users(self, query: str) -> None:
-        """Type *query* into the Users-tab search-by-email input and wait
-        for the resulting query to resolve.
+    def search_users(self, query: str) -> dict:
+        """Type *query* into the Users-tab search-by-email input, wait for
+        the resulting query to resolve, and RETURN that response's body so a
+        caller can use the live response as the oracle for what the filter
+        actually returned (ELITEA-2323; additive — existing callers that
+        ignore the return value are unaffected).
 
         `SearchInput.jsx` wires `onChange` straight off the native `<input>`
         (no MUI TextField/masking layer), and this app's established
@@ -773,9 +776,10 @@ class AnalyticsPage(BasePage):
         """
         with self.page.expect_response(
             self._is_analytics_users_query_response, timeout=UI_ELEMENT_TIMEOUT
-        ):
+        ) as response_info:
             self.users_search_input.fill(query)
         self._wait_for_users_settled()
+        return response_info.value.json()
 
     def clear_users_search(self) -> None:
         """Clear the Users-tab search input so the fixture's page/tab state
