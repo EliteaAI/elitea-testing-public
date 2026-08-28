@@ -215,6 +215,19 @@ class Settings(BaseSettings):
     users_team_project_id: str = "400"
 
     # ------------------------------------------------------------------
+    # Public project id (ELITEA-2051)
+    # ------------------------------------------------------------------
+    # The "Public" project id, used ONLY as the path segment of the
+    # projects-list endpoint's check_public_role probe:
+    #   GET /projects/project/default/{public_project_id}?check_public_role=true
+    # This mirrors EliteaUI's own VITE_PUBLIC_PROJECT_ID (see
+    # ../EliteaUI/src/api/project.js + src/common/constants.js), which is 1 on
+    # the DEV backend — confirmed live 2026-08-26 from the UI's own request.
+    # Config-driven so a deployed env with a different public project id needs
+    # no code change; no .env.test key or CI secret is required today.
+    public_project_id: int = 1
+
+    # ------------------------------------------------------------------
     # Default LLM settings for API-created agents / pipelines
     # Using gpt-5.2 as cheap default model for cost efficiency in tests
     # model_project_id=1 matches UI-created agents (0 may cause issues)

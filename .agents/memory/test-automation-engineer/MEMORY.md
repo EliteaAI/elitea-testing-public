@@ -60,3 +60,6 @@
 - [Playwright .count() never auto-waits](playwright_count_never_auto_waits.md) — get_*_count() on a lazy list races
 - [A transient-condition repro must call the production method FIRST](transient_condition_repro_must_call_production_first.md) — measuring before the call closes the window and fakes a verified fix
 - [force=True click silently hits disabled controls](force_true_click_silently_hits_disabled_controls.md) — gate clicks on aria-disabled, not on elapsed time
+- [git checkout ref -- path overwrites the INDEX](git_checkout_ref_path_overwrites_the_index.md) — destroys staged work silently; commit first, compare via /tmp copies
+- [zsh does not word-split unquoted $VAR](zsh_does_not_word_split_unquoted_variables.md) — multi-path variables collapse to one arg; faked a "zero new lint" result
+- [Running a spec against DEV](dev_env_run_harness_and_goto_flake.md) — ELITEA_URL export does nothing; use the -p plugin harness; expect ~40% raw goto timeouts
