@@ -238,6 +238,23 @@ class SettingsPersonalizationPage(BasePage):
     #: at class level per `.agents/testing.md` § Locator policy.
     SELECT_OPTION = '[data-testid="select-option-{}"]'
 
+    #: Collection handle for **all** option rows of an open `SingleSelect`.
+    #: Needed because the count/order assertions address a set, not one row.
+    #: Two details are load-bearing:
+    #:   * the prefix form is still a testid-keyed selector (`SELECT_OPTION`
+    #:     above is its single-row sibling) -- never `li[role="option"]`;
+    #:   * `[data-selected]` is NOT decoration. `SingleSelectMenuItem` renders a
+    #:     nested `select-option-selected-icon` inside the *selected* row, which
+    #:     a bare `select-option-` prefix would count as an eighth option. Only
+    #:     the MenuItem rows carry `data-selected`, so the attribute is what
+    #:     makes the collection exactly "the option rows".
+    SELECT_OPTION_ANY = '[data-testid^="select-option-"][data-selected]'
+
+    #: MUI's "grayed out" marker class. A class MUI adds at render time cannot
+    #: carry a testid -- see :meth:`persona_section_disabled_elements` for the
+    #: #579 exception discipline this is used under.
+    MUI_DISABLED_MARKER = ".Mui-disabled"
+
     #: Absence handle for the "no Save button" assertion: a control that does
     #: not exist cannot be addressed by a testid. Scoped raw handle under the
     #: `settings-content` testid parent, #579 discipline -- see
@@ -364,6 +381,100 @@ class SettingsPersonalizationPage(BasePage):
         self.open_persona_options(timeout=timeout)
         self.persona_option(value).click()
         logger.info("Selected persona %r", value)
+
+    def close_persona_options(self, timeout: int = 10000) -> None:
+        """Dismiss the 'Default persona' option list without changing the value."""
+        self.page.keyboard.press("Escape")
+        self.persona_option("qa").wait_for(state="hidden", timeout=timeout)
+
+    def persona_options(self) -> Locator:
+        """All option rows of the open 'Default persona' list, in DOM order.
+
+        See :data:`SELECT_OPTION_ANY` for why the selector carries
+        ``[data-selected]``.
+        """
+        return self.page.locator(self.SELECT_OPTION_ANY)
+
+    def get_persona_option_labels(self) -> list[str]:
+        """Labels of the open option list, in DOM order.
+
+        Each row renders ``customRenderOption`` -- the label on the first line
+        and the persona's description below it -- so only the first line is the
+        label.
+        """
+        return [
+            (text.strip().splitlines() or [""])[0].strip()
+            for text in self.persona_options().all_inner_texts()
+        ]
+
+    def persona_option_selected_state(self, value: str) -> str | None:
+        """``data-selected`` of one option row (``"true"`` / ``"false"``).
+
+        Selection state is a ``data-*`` attribute on a stable testid, which is
+        the shape `.agents/testing.md` § Locator policy requires (never a
+        state-switched testid value).
+        """
+        return self.persona_option(value).get_attribute("data-selected")
+
+    # ------------------------------------------------------------------
+    # User instructions (AI Personality)
+    # ------------------------------------------------------------------
+
+    def get_user_instructions(self) -> str:
+        """Current text of the 'User instructions' textarea.
+
+        The field is stored **per persona** -- it renders the slot of the
+        currently selected persona and is absent from the DOM entirely while
+        the persona is ``None`` (``values.persona !== 'none'`` guard in
+        ``AIPersonalityPersonalization.jsx``). Pin the persona before reading.
+        """
+        return self.user_instructions_textarea.input_value()
+
+    def fill_user_instructions(self, text: str) -> None:
+        """Type *text* into the 'User instructions' textarea (no blur).
+
+        Autosave here is blur-driven (``AIPersonalityFormContent`` wraps the
+        form in ``useFormikAutoSaveOnBlur``; ``handleInstructionsChange`` does
+        NOT request a save itself), so the caller blurs -- typically via
+        :meth:`click_neutral_content_area` -- inside its own
+        ``page.expect_response`` block, and asserts the PUT.
+        """
+        self.user_instructions_textarea.fill(text)
+        logger.info("Filled user instructions (%d chars)", len(text))
+
+    def click_neutral_content_area(self) -> None:
+        """Click empty space in the settings content pane -- "click outside".
+
+        Deliberately NOT the accordion header: clicking that collapses the
+        section (confirmed live). The bottom-left corner of ``settings-content``
+        is below the (short) form on every personalization route, so the click
+        lands on the ``<main>`` element itself -- enough to move focus off a
+        field, which is what fires ``focusout`` and therefore the autosave.
+        """
+        box = self.settings_content.bounding_box()
+        assert box, "settings-content has no bounding box -- is the settings route open?"
+        self.settings_content.click(
+            position={"x": 8.0, "y": max(box["height"] - 8.0, 8.0)}
+        )
+        logger.info("Clicked a neutral area of the settings content pane")
+
+    def persona_section_disabled_elements(self) -> Locator:
+        """Elements inside PERSONA MANAGEMENT carrying MUI's disabled marker.
+
+        Scoped raw handle, sanctioned exception (`.agents/testing.md`
+        § Locator policy, #579 discipline): ``.Mui-disabled`` is a class MUI
+        adds at render time to express "grayed out" -- there is no element the
+        app could put a testid on to express *that state*, and the project's own
+        rule says state is read off attributes/classes rather than a
+        state-switched testid. The discipline is honoured: the parent is the
+        real app testid ``ai-personality-persona-section`` and the class
+        selector is chained off it, never free-floating at page level. Do not
+        extend this shape to any handle that COULD carry a testid.
+
+        Expected to have count 0 -- ELITEA-2383 asserts the personality
+        controls are not grayed out while context management is off.
+        """
+        return self.persona_section.locator(self.MUI_DISABLED_MARKER)
 
     # ------------------------------------------------------------------
     # Absence handles
