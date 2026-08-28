@@ -38,3 +38,29 @@ invisible to correlation). It's a factory-wide infra gap, not one case's job to 
 Also: self-check the Form C id against the real junit BEFORE committing —
 `grep 'classname="<pkg.Class>".*name="<method>"' reports/junit.xml` must MATCH (it's the
 exact `classname + "." + name` correlate_results compares against).
+
+## If you already committed the full rebuild
+
+Don't force-push a shared `main` to undo it — land a correcting commit that
+restores the pre-rebuild file and re-applies only your entry:
+
+```bash
+git show <pre-rebuild-sha>:index.json > index.json   # e.g. the commit that edited the .md
+python3 - <<'PY'                                     # then the surgical edit (above)
+...
+PY
+git diff <pre-rebuild-sha> --numstat -- index.json   # MUST be tiny (2/2 for a one-ref change)
+```
+
+Verify the **net effect versus the baseline**, not versus HEAD — the diff versus
+HEAD looks like a big revert and tells you nothing about what actually lands.
+
+Confirmed 2026-08-28 (#1889/ELITEA-2020): a full rebuild committed by reflex was
++701/−53 across ~308 unrelated cases; the correction (`312b5a8`) brought the net
+effect back to exactly one entry plus a trailing-newline normalisation.
+
+**Why this matters beyond tidiness:** the drift card (#991 / #1777) is only
+actionable while the drift is still *visible*. A wholesale rebuild silently
+"fixes" hundreds of entries inside an unrelated delivery commit, so the
+systemic problem disappears from the index without anyone having verified a
+single one of those cases.
