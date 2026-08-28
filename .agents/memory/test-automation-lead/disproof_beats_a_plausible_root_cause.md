@@ -35,4 +35,12 @@ bug. "I reproduced a defect" and "I found the root cause" are different claims.
 - Then **accept "undetermined"** when that is the honest answer. Parking on a named blocker beats
   shipping a fix aimed at a disproved cause.
 
-Related: [[a_parked_case_is_a_hypothesis_not_a_verdict]] · [[dev_only_red_check_the_screenshot_first]]
+## It generalizes past the first blocker
+
+Same case, resumed 2026-08-28: a 4th candidate (per-project model/guardrails/stale-agent state) was
+cleared the same way — live-checked against a real project — only to discover the checks had run
+against the WRONG project (CI uses per-executor masked secrets `.env.test` doesn't have). Clearing a
+hypothesis against the wrong target is not clearing it at all; verify you're even looking at the thing
+that produced the original evidence before trusting a clean result.
+
+Related: [[a_parked_case_is_a_hypothesis_not_a_verdict]] · [[dev_only_red_check_the_screenshot_first]] · [[human_status_move_without_comment_verify_dont_guess]]
