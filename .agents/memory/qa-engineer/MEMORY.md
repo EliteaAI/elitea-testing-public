@@ -56,3 +56,4 @@
 - [Latent-race claims need a date check](latent_race_claims_need_git_log_S.md) — git log -S when the mechanism landed, not just that it exists
 - [MUI Popper .first can be a Tooltip](mui_popper_first_can_be_a_tooltip.md) — .MuiPopper-root nth=0 may be a tooltip; :visible does not help
 - [Redundant assert after a wait](redundant_assert_after_wait_is_not_vacuous.md) — not vacuous (red survives) but downgrades `failed`→`broken`; vs content-scoping which IS vacuous
+- [Wait-vs-masking test for a repair PR](wait_vs_masking_test_for_a_repair_pr.md) — 3 source checks: honest in-flight branch, testid only on real data, wait stricter than assert
