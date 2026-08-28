@@ -621,6 +621,7 @@ class AnalyticsPage(BasePage):
     GUIDE_METRIC_NAME = '[data-testid="analytics-guide-metric-name"]'
     GUIDE_METRIC_CALCULATION_VALUE = '[data-testid="analytics-guide-metric-calculation-value"]'
     GUIDE_METRIC_SOURCE_VALUE = '[data-testid="analytics-guide-metric-source-value"]'
+    GUIDE_METRIC_DESCRIPTION_SELECTOR = '[data-testid="analytics-guide-metric-description"]'
 
     # Rows-per-page menu OPTION items — MUI-generated, library-internal nodes
     # that cannot carry an app testid (#579 exception 1). ALWAYS used scoped
