@@ -4,8 +4,10 @@ and a full page reload.
 
 MUTATES SHARED ACCOUNT STATE. `persona` lives on the shared `${TEST_USER}`
 record and also drives chat behaviour, so this spec reads the current value
-first, never assumes a default, and restores it in a `finally` block -- waiting
-for the restore's own autosave round-trip and asserting it landed.
+first, never assumes a default, and restores it afterwards -- waiting for the
+restore's own autosave round-trip and asserting it landed. The restore is
+route-guarded and, on the failure path, best-effort, so teardown can never
+replace the real failure in the report (`_restore_persona`).
 
 Test case: ELITEA-2387
 AFS: test-specs/settings-user-profile/l3_personalization_settings_autosave_no_save_button_ELITEA-2387.md
@@ -91,6 +93,59 @@ def _unexpected(console_errors: list[str]) -> list[str]:
 def _is_author_autosave(response) -> bool:
     """Whether *response* is the personalization autosave write."""
     return AUTHOR_SETTINGS_ENDPOINT in response.url and response.request.method == "PUT"
+
+
+def _restore_persona(personalization: SettingsPersonalizationPage, original_label: str) -> None:
+    """Put the shared account's Default persona back on *original_label*.
+
+    Route-guarded on purpose. The test can fail at any step, including Steps
+    4-5 while the browser sits on ``/settings/notifications`` where the persona
+    select does not exist at all -- reading it there makes ``inner_text()``
+    auto-wait and then raise ``TimeoutError``. Raised out of a ``finally``
+    block that exception REPLACES the real failure (the original only survives
+    as ``__context__``), so a one-line assertion failure gets reported as a
+    30s teardown timeout on an unrelated locator. The guard costs one
+    ``page.url`` read; without it the restore cannot even run, which is the
+    worse half -- shared account state stays on the changed persona.
+    """
+    if AI_PERSONALITY_PATH not in personalization.page.url:
+        personalization.open_settings_tab("ai-personality")
+    personalization.wait_for_persona_select()
+
+    if personalization.get_persona() == original_label:
+        return
+
+    with allure.step(f"Teardown - Restore the original persona ({original_label})"):
+        with personalization.page.expect_response(
+            _is_author_autosave, timeout=AUTOSAVE_TIMEOUT
+        ) as restore:
+            personalization.select_persona(original_label.strip().lower())
+        assert restore.value.status == 200, (
+            "Failed to restore the original persona -- shared account state is "
+            f"left on a different value (restore PUT returned {restore.value.status})"
+        )
+        expect(personalization.persona_select_combobox).to_have_text(original_label)
+
+
+def _restore_persona_best_effort(
+    personalization: SettingsPersonalizationPage, original_label: str
+) -> None:
+    """:func:`_restore_persona`, but never raising.
+
+    Used only on the path where the test body ALREADY failed: there the real
+    failure is the report, and a teardown exception would mask it. On the
+    success path the strict variant is used, so a genuine restore failure
+    still fails the test rather than silently leaking shared account state.
+    """
+    try:
+        _restore_persona(personalization, original_label)
+    except Exception:
+        logger.warning(
+            "Could not restore the original persona %r after a test failure -- the shared "
+            "account may be left on a different value",
+            original_label,
+            exc_info=True,
+        )
 
 
 class TestPersonalizationAutosaveNoSaveButton:
@@ -197,20 +252,15 @@ class TestPersonalizationAutosaveNoSaveButton:
                     f"unexpected console errors: {_unexpected(console_errors)}"
                 )
 
-        finally:
-            if original_persona_label and personalization.get_persona() != original_persona_label:
-                with allure.step(
-                    f"Teardown - Restore the original persona ({original_persona_label})"
-                ):
-                    original_value = original_persona_label.strip().lower()
-                    with page.expect_response(
-                        _is_author_autosave, timeout=AUTOSAVE_TIMEOUT
-                    ) as restore:
-                        personalization.select_persona(original_value)
-                    assert restore.value.status == 200, (
-                        "Failed to restore the original persona -- shared account state is "
-                        f"left on a different value (restore PUT returned {restore.value.status})"
-                    )
-                    expect(personalization.persona_select_combobox).to_have_text(
-                        original_persona_label
-                    )
+        except BaseException:
+            # The body already failed. Restore best-effort and let the REAL
+            # failure propagate -- an exception raised from teardown would
+            # replace it in the report (see `_restore_persona`).
+            if original_persona_label:
+                _restore_persona_best_effort(personalization, original_persona_label)
+            raise
+        else:
+            # Body passed: a failed restore IS a failure, it leaks shared
+            # account state onto every other spec that reads this persona.
+            if original_persona_label:
+                _restore_persona(personalization, original_persona_label)

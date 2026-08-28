@@ -91,6 +91,17 @@ in the SPA store* — Step 6 alone cannot tell them apart.
 ### Teardown — restore `original_persona`
 Set the select back and wait for its autosave `PUT`. Assert the restore landed.
 
+**Route-guarded, and best-effort only on the failure path** (shipped shape, added in
+fix round 1 of PR #1961). The restore first checks `page.url` and re-opens
+`/settings/ai-personality` when the body died elsewhere — Steps 4–5 leave the browser
+on `/settings/notifications`, where the persona select does not exist, so an
+unguarded read auto-waits and raises. Two consequences the guard removes: the restore
+could not run at all (shared `${TEST_USER}` state left on the changed persona), and
+the teardown exception *replaced* the real failure in the report. When the body
+already failed the restore swallows its own exception (logged, `exc_info`); when the
+body passed it stays strict and a failed restore fails the test. Pinned by
+`tests/unit/test_personalization_restore_route_guard.py`.
+
 ---
 
 ## Concrete Handles
