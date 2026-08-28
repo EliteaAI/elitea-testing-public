@@ -8,6 +8,7 @@
 - **User set**: `${TEST_USER}` (localhost: no login needed — `VITE_DEV_TOKEN` auto-auths; sidebar showed "Elitea is connected")
 - **Analyst**: qa-engineer (agent), session 2026-07-18
 - **Status**: ready-for-automation
+- **Repair (2026-08-28)**: red on DEV at Step 7 (issue #1890) — triaged **class D (timing/race)**, not a product bug. See § Adjustment at the end of this file.
 
 ## Preconditions
 - User is authenticated (localhost: automatic via `VITE_DEV_TOKEN`; deployed envs: standard Keycloak login via `${TEST_USER}`).
@@ -145,3 +146,262 @@ None. All 12 case steps were executed to completion against the live local envir
 - Test-data fixtures: reuse `mcp_toolkit_with_tools` (self-provisioning/self-cleaning, `automation/fixtures/data_fixtures.py:730`) for the attached-MCP; use the plain `pipeline_api.create_pipeline(name, description)` (`automation/api/client.py:606`) for the pipeline shell — deliberately **not** `create_pipeline_with_mcp_node` (that helper pre-configures the node's Toolkit/Tool and pre-attaches 2 MCPs, which is exactly the state this case must NOT start from).
 - Wait strategy: wait for `PATCH .../tool/prompt_lib/{project}/{toolkit_id}` (201) after the MCP-attach step before opening the Toolkit dropdown again; wait for `PUT .../application/prompt_lib/{project}/{pipeline_id}` (201) before reloading to assert persistence — not fixed timeouts.
 - Minor, out-of-scope observation (not blocking, not filed as a defect): `BaseToolNode.jsx:176,182` pass the MCP-node Input/Output select testids via a prop literally named `dataTestId`, which `.agents/testing.md` § Locator policy calls out as the specifically-forbidden prop-naming shape (`testId` / `<part>TestId` only, never a `data` prefix). This predates this AFS (added during ELITEA-1954's implementation) and doesn't affect this case's own handles (Toolkit/Tool/Input-mapping use the correctly-shaped `data-testid={...}` JSX attribute directly, not a `testId`-family prop) — noted for a future cleanup pass, not filed as a fresh defect since it's pre-existing, already-reviewed code with no functional impact.
+
+---
+
+## Adjustment — 2026-08-28 (repair triage, issue #1890)
+
+**Analyst:** qa-engineer (analyst slot, `adjust-automated-test` Steps 2/5/6)
+**Environment re-explored:** `https://dev.elitea.ai` (`/app` prefix) **and** `http://localhost:5173` — both.
+**Triage class: D — timing/race in the test's reach. NOT a product bug. Expected-result changes: none.**
+
+### What went red
+
+`test_mcp_node_empty_toolkit_before_attach.py:113` on DEV, GHA run 33066098636
+("UI Tests DEV Stable [main] [all]", 2026-08-27), **Step 7**:
+
+```
+assert pipeline_page.get_mcp_popper_menu_item_count(popper) > 0
+E   AssertionError: '+ MCP' popper should list at least one toolkit-menu-item result row
+E   assert 0 > 0
+```
+
+The two preceding asserts in the same step (`popper.is_visible()`,
+`get_mcp_popper_search_input_count(popper) > 0`) both passed. The allure failure
+screenshot shows the correct popper open (its "Search mcps…" field and "+ Create new"
+row are rendered) with a partially-occluded **"Loading…"** row where the results belong.
+
+### Root cause — stated as fact from the product source
+
+`src/pages/Applications/Components/Tools/ToolMenu.jsx` (identical on `origin/main` and
+`origin/automation/testids`) wires the "+ MCP" dropdown as:
+
+```js
+const { menuItems: libraryMCPs, isFetching: isFetchingMCPs, ... } =
+  useLibraryToolkits(handleSelectToolkitFromLibrary, applicationId, versionId,
+                     formik, true, debouncedMCPSearch, !mcpOpened.current);
+                                                    // ^^^ forceSkip
+```
+
+`mcpOpened.current` only flips to `true` on the render caused by the click that sets
+`mcpAnchor` — so **RTK Query's toolkit-list request is skipped until the "+ MCP" button
+is first clicked, and only starts firing at that moment.** Meanwhile the popper opens
+synchronously (`open={Boolean(mcpAnchor)}`) with `items = []`.
+
+`src/components/UnifiedDropdown.jsx` (also byte-identical on both refs) then renders,
+in this order:
+
+| Product state | What is in the DOM | Testid |
+|---|---|---|
+| `isLoading === true` | one disabled `MenuItem` reading `Loading...` | **none** |
+| `!isLoading && items.length === 0` | one disabled `MenuItem` reading `No mcps available` / `No mcps found` | **none** |
+| `items.length > 0` | one `MenuItem` per row | `toolkit-menu-item` |
+| always, from the first frame | the search `TextField` | `toolkit-search-input` |
+
+So `toolkit-search-input` is present in the popper's **first rendered frame**, while
+`toolkit-menu-item` rows only exist after the network round-trip resolves *and*
+`useLibraryToolkits`' `menuItems` memo un-gates (it also requires `realToolkitSchemas`,
+a second query — `useLibraryToolkits.js`: `if (!libraryToolkits?.rows || !realToolkitSchemas || isLibraryLoading) return []`).
+
+`PipelineDetailPage.get_mcp_popper_menu_item_count()` is a bare synchronous
+`popper.locator(...).count()` — **Playwright's auto-waiting does not apply to `.count()`**
+— and `open_mcp_popper()` returns the moment `.MuiPopper-root` is visible, adding no
+settle. The assertion therefore samples the popper during the guaranteed-empty window.
+
+**The product is behaving correctly.** A loading placeholder followed by populated rows
+is the intended, designed behaviour. No defect filed.
+
+### Live evidence (this session, both environments)
+
+Instrumented probe driving the **real** `PipelineDetailPage.open_mcp_popper()` /
+`get_mcp_popper_*_count()` methods against a throwaway API-created pipeline:
+
+**DEV (`https://dev.elitea.ai`), 3 fresh browser contexts:**
+
+```
+run 1: immediate menu=0 search=1 | items after 536 ms | final=21 | .MuiPopper-root=1
+run 2: immediate menu=0 search=1 | items after 550 ms | final=21 | .MuiPopper-root=1
+run 3: immediate menu=0 search=1 | items after 560 ms | final=21 | .MuiPopper-root=1
+```
+
+State timeline for the first open (ms from click): `103 → LOADING (0 rows)`,
+`559 → ITEMS (21 rows)`.
+
+**Populating request** (fires *on* the click, at +22 ms; 200 at +325 ms):
+
+```
+GET https://dev.elitea.ai/api/v2/elitea_core/tools/prompt_lib/399
+      ?query=&sort_by=name&sort_order=asc&mcp=true&limit=50&offset=0   → 200
+```
+
+**Second open in the same context is instant** (`immediate menu=21`, 25 ms) — RTK Query
+serves the cached page. The race is therefore **first-open-only**, which is exactly why a
+warm/short reproduction can look green and why #1776's "ran 4/4 standalone, no fix needed"
+conclusion was wrong.
+
+**The exact Step-7 call sequence, current vs. proposed, on DEV:**
+
+```
+current   run1: popper_visible=True search_count=1 menu_count=0  -> step7 FAIL
+current   run2: popper_visible=True search_count=1 menu_count=0  -> step7 FAIL
+proposed  run1: popper_visible=True search_count=1 menu_count=21 -> step7 PASS
+proposed  run2: popper_visible=True search_count=1 menu_count=21 -> step7 PASS
+```
+
+**localhost is NOT immune — it is slower.** Same probe against `http://localhost:5173`
+(`EliteaUI@automation/testids`), 3 fresh contexts: `menu_at_assert=0` every time, rows
+visible only at **1899 / 1917 / 1905 ms**. And the merged spec itself, run unmodified
+against localhost this session, fails **byte-identically**:
+
+```
+tests/ui/pipelines_2/test_pipeline_mcp_node_empty_toolkit_before_attach.py:113
+E   AssertionError: '+ MCP' popper should list at least one toolkit-menu-item result row
+E   assert 0 > 0
+```
+
+⇒ This is an unconditional latent race, not a DEV-shard-load artifact. **The implementer's
+local gate reproduces it and will verify the fix** — do not treat a localhost run as
+out-of-scope for this repair.
+
+Screenshots: `test-results/screenshots/ELITEA-1955-dev-popper-loading.png` (popper open,
+search field rendered, zero rows) and `ELITEA-1955-dev-popper-loaded.png` (21 rows).
+
+### Recommended repair — a wait, not an assertion change
+
+**What to wait on:** the popper's first `[data-testid="toolkit-menu-item"]` row reaching
+`visible`. It is the only testid that distinguishes "loaded" from "loading" — both the
+`Loading...` and the `No mcps available` placeholders are untestid'd disabled `MenuItem`s
+(see the table above), so "wait for Loading to disappear" is not expressible with handles
+that exist on `main`.
+
+**Where it goes:** a **new, additive** page-object method on `PipelineDetailPage`,
+alongside the existing count methods:
+
+```python
+def wait_for_mcp_popper_items(self, popper: Locator, timeout: int = 10000) -> None:
+    """Wait until the "+ MCP" popper's result rows have finished loading. ..."""
+    popper.locator(self.TOOLKIT_MENU_ITEM_SELECTOR).first.wait_for(
+        state="visible", timeout=timeout
+    )
+```
+
+`TOOLKIT_MENU_ITEM_SELECTOR` is the **already-existing** class-level constant
+`'[data-testid="toolkit-menu-item"]'` (`pipeline_detail_page.py:1566`) — no new locator,
+no new testid, no new raw handle.
+
+**Where it is called:** in the spec, inside the existing `allure.step("Step 7 — …")`
+block, **between** the search-input assertion and the menu-item assertion:
+
+```python
+assert pipeline_page.get_mcp_popper_search_input_count(popper) > 0, (...)   # unchanged
+pipeline_page.wait_for_mcp_popper_items(popper, timeout=UI_ELEMENT_TIMEOUT)  # NEW
+assert pipeline_page.get_mcp_popper_menu_item_count(popper) > 0, (...)      # unchanged
+```
+
+That ordering is deliberate: the search-input assertion keeps its current meaning
+(the popper renders its search field synchronously — a real, still-verified property),
+and only the row-count assertion gets the settle it always needed.
+
+**Timeout:** the module's existing `UI_ELEMENT_TIMEOUT = 10_000`. Measured worst case is
+1.92 s (localhost), 0.56 s (DEV) — >5× headroom. Do not invent a new constant, and do not
+raise it; if 10 s is ever exceeded the correct response is investigation, not a longer wait.
+
+**Rejected alternatives, with reasons:**
+
+- *Put the wait inside `get_mcp_popper_menu_item_count()`* — rejected. A method named
+  `get_..._count()` is a query; making it block for 10 s silently changes the semantics of
+  5 merged call sites and becomes a foot-gun for any future case that legitimately asserts
+  an **empty** popper (an MCP-less project), which would then hang instead of returning 0.
+- *Put the wait inside `open_mcp_popper()`* — rejected **for this card's scope**, not on
+  merit. It would fix all three affected specs at once, but `open_mcp_popper()` is shared
+  with the two sibling failures owned by separate cards (#1891, #1892), so changing it here
+  silently repairs work under other ownership. Recommend the lead consider consolidating
+  into `open_mcp_popper(..., wait_for_items: bool = True)` once all three land — see
+  *Notes for the lead*.
+- *A fixed settle (`page.wait_for_timeout`)* — rejected: `.agents/conventions.md` § Hard
+  don'ts. (`AgentDetailPage.add_mcp()`'s `wait_for_timeout(1000)` is the sibling that
+  happens to pass on DEV; it is pre-existing tech debt, **not** the pattern to copy.)
+
+**Precedent for the chosen shape already exists in-repo:** `Popper.select_menuitem_by_testid`
+(`components/mui.py:264-267`) already does `option.wait_for(state="visible", timeout=timeout)`
+on the same `toolkit-menu-item` testid — which is precisely why Step 8 (select) never flaked
+while Step 7 (count) did. The repair makes the count path consistent with the select path.
+
+### Preserve-the-nature check (`adjust-automated-test` Step 3)
+
+| Case element | Before | After |
+|---|---|---|
+| Step 7 — popper opens | `popper.is_visible()` | unchanged |
+| Step 7 — search field renders | `get_mcp_popper_search_input_count(popper) > 0` | unchanged |
+| Step 7 — result rows listed | `get_mcp_popper_menu_item_count(popper) > 0` | **unchanged** (same method, same `> 0`, same message) |
+| Steps 1–6, 8–12 | — | untouched |
+
+**Expected-result changes: none.** No assertion is weakened, dropped, made conditional, or
+lowered; the § Expected Results block above is unchanged. Only *how the test reaches* the
+already-loaded popper changes.
+
+### Handles Reference — provenance re-verified 2026-08-28
+
+`cd ../EliteaUI && git fetch origin`, then the two-stage closure grep from
+`.agents/workflow.md` § Closure record (`-i` + `[:=]` filter):
+
+```
+toolkit-search-input                           main:YES  testids:YES
+toolkit-menu-item                              main:YES  testids:YES
+agent-add-mcp-button                           main:YES  testids:YES
+agent-toolkits-section                         main:YES  testids:YES
+agent-toolkit-card                             main:YES  testids:YES
+agent-save-button                              main:YES  testids:YES
+```
+
+Hits behind the two popper-internal rows:
+
+```
+origin/main:src/components/UnifiedDropdown.jsx:229:  data-testid="toolkit-search-input"
+origin/main:src/components/UnifiedDropdown.jsx:308:  data-testid="toolkit-menu-item"
+origin/main:src/components/UnifiedDropdown.jsx:344:  data-testid="toolkit-menu-item"
+```
+
+**Every handle the repair depends on is on `origin/main`. The repair adds no testid, so it
+opens no promotion gap.**
+
+The `pipeline-mcp-node-*` rows in § Concrete Handles above still read
+"on-automation/testids only" — that row is now **stale, and the correction is recorded
+here rather than rewritten in place** (this Adjustment section is the newer record): those
+testids are **runtime-composed** (`typeTestIdPrefix={...}` → `` typeTestId={`${typeTestIdPrefix}-${key}`} ``
+in `flow-editor/ui/settings/InputMappings/InputMapping.jsx:62`), which the bare-substring
+stage-1 grep cannot see at all — the exact false-negative class `.agents/workflow.md`
+§ Closure record warns about. Verified two other ways instead:
+`git diff origin/main origin/automation/testids -- src/[fsd]/features/pipelines/flow-editor/ui/nodes/BaseToolNode.jsx`
+is **empty** (file identical on both refs), and the DEV GHA run reached Step 7, which is
+only possible if Steps 3–6's node handles resolved on the deployed build.
+
+### Known defect / product-observation note (not filed)
+
+`UnifiedDropdown.jsx`'s loading and empty-state `MenuItem`s carry **no `data-testid`**, so
+automation cannot distinguish *"still loading"* from *"this project has no MCPs"*. That is a
+**testid gap, not a product bug**, and it is deliberately **out of scope for this repair**: a
+new testid would land on `automation/testids` only, which is unusable for a fix shipping to
+`main` and running on DEV. Worth a follow-up `add-data-testid` card (generic names on a
+shared component — e.g. `dropdown-loading-item` / `dropdown-empty-item`, never a
+`toolkit-`/`mcp-`-scoped name, per `.agents/testing.md` § Locator policy's shared-component
+rule). Raised to the lead; not filed as a `bug`.
+
+### Notes for the lead
+
+- **Same root cause, two sibling cards.** `test_pipeline_tools_section_mcp_add_view_remove.py:77`
+  (#1892) fails the *identical* `get_mcp_popper_menu_item_count(popper) > 0` assertion and is
+  fixed by the identical one-line call. `test_pipeline_mcp_node_fresh_attach.py` has **three**
+  `open_mcp_popper()` sites (lines 106, 356, 555), two of which assert the row count.
+- **#1891 is probably NOT the same bug.** It failed one assertion *earlier* —
+  `get_mcp_popper_search_input_count(popper) > 0` returned 0 — and the search field is in the
+  popper's first rendered frame, so a *load* race cannot explain it. The likelier mechanism is
+  `Popper.wait_for()` matching the wrong node: it returns `page.locator(".MuiPopper-root").first`,
+  and the "+ MCP" button is wrapped in a `Tooltip` (`ToolMenu.jsx:603-615`,
+  `data-testid="agent-add-mcp-button-tooltip"`) whose MUI tooltip **also** renders a
+  `.MuiPopper-root`. My probe measured `.MuiPopper-root count == 1` on every open (the tooltip
+  `title` is `''` when the entity is saved and unlocked, so MUI renders nothing), so I could not
+  reproduce it — flagging it as a hypothesis for whoever takes #1891, not a finding.
+- **Consolidation opportunity:** if #1890/#1891/#1892 are worked together, moving the wait into
+  `open_mcp_popper(..., wait_for_items: bool = True)` is the cleaner end state than three call
+  sites. Keeping it additive here is a scope decision, not a technical preference.
