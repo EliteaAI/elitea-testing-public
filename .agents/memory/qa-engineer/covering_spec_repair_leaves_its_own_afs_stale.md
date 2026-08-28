@@ -39,3 +39,20 @@ discharge this — it documents the change where the person reading the *repaire
 look.
 
 Related: [[afs_coverage_map_drifts_after_a_fix_round]] · [[afs_drift_check_the_whole_document_not_just_the_last_fixed_section]]
+
+## Round-2 residual: the fix follows the reviewer's line numbers, not the falsehood
+
+Re-review of the same unit (PR #1956, round 2): every location the round-1 finding *named*
+(`file:line`) was corrected, and an **Amendment banner** was added to the covered case's AFS saying
+"every '10 cards' claim **below** has been corrected". It was not true — the loudest stale claims
+sat in § Test Steps, **above** the banner, still reading "Verify exactly **ten** KPI cards …
+Live product confirms ten cards … this AFS asserts the live ten-card contract".
+
+Two lessons, both cheap:
+
+- **As a reviewer, cite the grep, not the line numbers.** A finding worded "these two lines" gets
+  those two lines fixed. Word it as "`grep -n 'ten\|10' <file>` must come back empty" and the whole
+  document gets swept.
+- **An amendment banner is a claim about the document and has to be true.** "corrected below" /
+  "superseded" is itself an assertion a reviewer must verify — a banner that overstates its own
+  reach is worse than none, because the next reader stops checking.
