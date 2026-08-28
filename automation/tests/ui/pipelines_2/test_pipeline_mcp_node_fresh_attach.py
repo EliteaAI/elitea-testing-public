@@ -108,6 +108,10 @@ def test_mcp_node_fresh_attach(page, pipeline_id, mcp_toolkit_with_tools):
         assert pipeline_page.get_mcp_popper_search_input_count(popper) > 0, (
             "'+ MCP' popper should render a toolkit-search-input search field"
         )
+        # Rows load lazily on the FIRST open (ToolMenu.jsx forceSkip); the
+        # untestid'd "Loading…" placeholder and .count()'s lack of
+        # auto-waiting make this wait the only honest way to reach them.
+        pipeline_page.wait_for_mcp_popper_items(popper, timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_mcp_popper_menu_item_count(popper) > 0, (
             "'+ MCP' popper should list at least one toolkit-menu-item result row "
             "(the project's available MCPs, including the freshly-provisioned fixture MCP)"

@@ -72,3 +72,4 @@
 - [Chat attachments are never inlined](chat_attachments_content_is_never_inlined.md) — upload fires at SEND; the model must call the attachments tool
 - [UI numbers can be backend config](ui_numeric_literals_can_be_backend_config.md) — trace the source; assert the delta off a runtime baseline
 - [Playwright .count() never auto-waits](playwright_count_never_auto_waits.md) — get_*_count() on a lazy list races
+- [A transient-condition repro must call the production method FIRST](transient_condition_repro_must_call_production_first.md) — measuring before the call closes the window and fakes a verified fix

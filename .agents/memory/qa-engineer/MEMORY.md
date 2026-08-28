@@ -54,3 +54,5 @@
 - [Constant or config?](ui_counters_may_be_server_configured.md) — trace any asserted UI number; testid greps miss it
 - [UnifiedDropdown popper first-open load race](unifieddropdown_popper_first_open_load_race.md) — popper rows land ~0.5-1.9s after click; .count() sees 0
 - [Latent-race claims need a date check](latent_race_claims_need_git_log_S.md) — git log -S when the mechanism landed, not just that it exists
+- [MUI Popper .first can be a Tooltip](mui_popper_first_can_be_a_tooltip.md) — .MuiPopper-root nth=0 may be a tooltip; :visible does not help
+- [Redundant assert after a wait](redundant_assert_after_wait_is_not_vacuous.md) — not vacuous (red survives) but downgrades `failed`→`broken`; vs content-scoping which IS vacuous

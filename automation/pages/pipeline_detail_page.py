@@ -5570,7 +5570,13 @@ class PipelineDetailPage(PipelineFormPage):
         self.ensure_toolkits_section_visible(timeout=timeout)
         self.add_mcp_button.wait_for(state="visible", timeout=timeout)
         self.add_mcp_button.click(force=True)
-        return Popper.wait_for(self.page, timeout=timeout)
+        # `Popper.wait_for_dropdown` — NOT `Popper.wait_for` — because this
+        # page renders an embedded chat panel whose model-selector button is
+        # wrapped in a MUI `Tooltip`; a tooltip is a `.MuiPopper-root` too and
+        # portals to <body>, so when it is open as this dropdown mounts, plain
+        # `.first` returns the tooltip and the caller's popper assertions read
+        # an empty node (#1891, ELITEA-2037 — reproduced live).
+        return Popper.wait_for_dropdown(self.page, timeout=timeout)
 
     def get_mcp_popper_search_input_count(self, popper: Locator) -> int:
         """Count of the toolkit-search-input field inside an open "+ MCP" popper.

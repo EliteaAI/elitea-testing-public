@@ -189,6 +189,14 @@ class Popper:
     tool selection dropdowns.
     """
 
+    # A MUI ``Tooltip``'s root is ALSO a ``.MuiPopper-root`` (its class list is
+    # ``MuiPopper-root MuiTooltip-popper MuiTooltip-popperInteractive``) and it
+    # portals to ``<body>``, so a tooltip that is already open when a dropdown
+    # opens sorts *ahead* of the dropdown and ``.first`` returns the tooltip.
+    # Excluding ``.MuiTooltip-popper`` is what discriminates "the dropdown I
+    # just opened" from "some other popper that happens to be mounted".
+    DROPDOWN_POPPER_SELECTOR = ".MuiPopper-root:not(.MuiTooltip-popper)"
+
     @staticmethod
     def wait_for(page: Page, timeout: int = 10000) -> Locator:
         """Wait for a MUI Popper to become visible.
@@ -201,6 +209,66 @@ class Popper:
             Locator pointing to the first visible popper.
         """
         popper = page.locator(".MuiPopper-root").first  # Use .first to avoid strict mode violation
+        popper.wait_for(state="visible", timeout=timeout)
+        return popper
+
+    @staticmethod
+    def wait_for_dropdown(page: Page, timeout: int = 10000) -> Locator:
+        """Wait for a MUI Popper *dropdown* to become visible, ignoring tooltips.
+
+        Additive sibling to :meth:`wait_for` — ``wait_for`` itself is NOT
+        modified: 8 merged callers remain on it after this change (9 before
+        ``PipelineDetailPage.open_mcp_popper()`` switched over), and they rely
+        on its plain ``.first`` behavior unchanged (mui-patterns shared-caller
+        rule, same discipline as :meth:`Dialog.wait_for_visible`).
+
+        ``wait_for`` resolves ``.MuiPopper-root >> nth=0``, i.e. *the first
+        popper in ``<body>`` order* — not "the popper I just opened". A MUI
+        ``Tooltip`` is a ``.MuiPopper-root`` too and portals to ``<body>``, so
+        a tooltip that mounted first sorts at ``nth=0`` and is returned
+        instead of the dropdown. Confirmed live (EliteaAI/elitea-testing-public#1891,
+        ELITEA-2037): the pipeline detail page's embedded chat panel wraps its
+        model-selector button in ``<Tooltip title="Select LLM Model">``
+        (``LLMModelSelector.jsx:174-182``); with that tooltip open when TOOLS
+        "+ MCP" is clicked, ``wait_for`` returns the tooltip, whose
+        ``is_visible()`` is legitimately ``True`` and which legitimately
+        contains zero ``toolkit-search-input`` fields — producing the CI
+        signature ``assert 0 > 0 ... selector='.MuiPopper-root >> nth=0'``
+        while the dropdown itself is open and correct one node later.
+
+        A ``:visible`` filter does **not** help: it preserves DOM order and the
+        tooltip is visible too (measured — 2 visible poppers, tooltip still
+        first). ``.last`` is rejected on principle: it only works while the
+        dropdown happens to be the newest node, and nothing guarantees that.
+
+        **Declared improvisation** (``.agents/role-overrides.md`` §
+        declared-improvisation protocol; canon card
+        EliteaAI/elitea-testing-public#1922). ``.MuiPopper-root:not(.MuiTooltip-popper)``
+        is a structural, non-testid handle. It is used because the node that
+        must be identified is **MUI's own portal root**, emitted by the
+        library's ``Popper`` component rather than by app JSX
+        (``UnifiedDropdown.jsx:188`` renders ``<Popper …>`` with no root-level
+        testid) — the #579 *shape*, declared rather than assumed sanctioned.
+        Content-scoping instead (``:has([data-testid="toolkit-search-input"])``)
+        was measured equally effective and is mechanically cleaner, but it was
+        rejected: the callers' specs *assert* that the popper renders
+        ``toolkit-search-input``, so selecting the popper by that testid would
+        make those assertions vacuous — a change to *what* is verified, which a
+        declaration may never authorise. Giving ``UnifiedDropdown`` a
+        caller-supplied ``popperTestId`` prop is the correct long-term fix and
+        is tracked in #1922; it cannot be used here because a new testid does
+        not reach ``dev.elitea.ai`` until a human promotes it to EliteaUI
+        ``main`` *and* it deploys, which would leave this already-promoted test
+        red on DEV.
+
+        Args:
+            page: Playwright Page instance.
+            timeout: Maximum wait time in milliseconds.
+
+        Returns:
+            Locator pointing to the first visible non-tooltip popper.
+        """
+        popper = page.locator(Popper.DROPDOWN_POPPER_SELECTOR).first
         popper.wait_for(state="visible", timeout=timeout)
         return popper
 
