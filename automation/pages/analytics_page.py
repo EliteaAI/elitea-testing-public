@@ -1553,6 +1553,27 @@ class AnalyticsPage(BasePage):
         lines = [line for line in self.tools_rows.nth(index).inner_text().split("\n") if line]
         return lines[0] if lines else ""
 
+    def get_agents_chart_x_axis_labels(self) -> list[str]:
+        """X-axis tick labels of the "Most Active Agents & Pipelines" bar chart,
+        in rendered order.
+
+        #579 exception 1 (third-party widget subtree): Recharts renders its
+        axis ticks as library-internal SVG `<text>` nodes that live outside
+        `EliteaUI/src` JSX, so no app testid can be placed on them. The raw
+        handle is therefore SCOPED inside the real app-testid parent
+        (`analytics-agents-chart-container`) and never used free-floating.
+        Do NOT extend this exception to any node that COULD carry a testid.
+
+        The chart's XAxis has `interval={0}` (`AnalyticsAgents.jsx`), so
+        recharts renders exactly one tick per charted series and the returned
+        list is directly comparable — element for element, in order — to the
+        response's own `rows[:20]` names. Same shape as
+        :meth:`get_tools_chart_x_axis_labels`.
+        """
+        ticks = self.agents_chart_container.locator(RECHARTS_X_AXIS_TICK)
+        ticks.first.wait_for(state="attached", timeout=UI_ELEMENT_TIMEOUT)
+        return [(ticks.nth(i).text_content() or "").strip() for i in range(ticks.count())]
+
     def get_tools_chart_x_axis_labels(self) -> list[str]:
         """X-axis tick labels of the "Most Popular Tools" bar chart, in
         rendered order.

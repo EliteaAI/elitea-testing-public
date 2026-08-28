@@ -93,3 +93,30 @@ from the ELITEA-2314..2319 run. `needsOverview` is still `activeTab === 0 || act
   month-arithmetic scores as **-331 days**. Resolve each tick back to the full `YYYY-MM-DD` entry
   of the response's own series first (`_response_dates` / `_chart_tick_span_days` in
   `test_analytics_date_filter_content_refresh.py`).
+
+### Resolved/added during ELITEA-2314..2319 fix round 3 (2026-08-28)
+
+- **The two chart shapes need DIFFERENT assertion strength, and picking the weaker one on the
+  stronger chart loses real signal.** A date axis (`AreaChart` over `daily_activity` /
+  `chat_daily`) has no `interval` prop, so recharts THINS it → assert ticks ⊆ the response's own
+  dates + last tick == last date + span within a slack. A category axis with **`interval={0}`**
+  (`AnalyticsAgents.jsx`'s "Most Active Agents & Pipelines" `dataKey="name"`,
+  `AnalyticsTools.jsx`'s "Most Popular Tools" `dataKey="tool_name"`) renders exactly one tick per
+  series → assert **exact ordered list equality**. Check the JSX for `interval={0}` before
+  choosing. Both oracles now live in `automation/utils/analytics_oracles.py` so the three specs
+  cannot drift apart in strength again.
+- **Compare bar-chart ticks as a LIST, never a set.** Measured live 2026-08-28, project 399,
+  `Last 30d`: the Agents chart's 20 charted rows contain `guardrails_test_agent` ×3 and
+  `elitea-1735-skills-agent` ×6 — a set comparison silently collapses those to 2 entries and
+  passes a chart that dropped 7 bars.
+- **Measured staleness contrast (why presence and counts are both blind):** the Agents bar chart
+  charted **1** series under `Last 24h` (`['zzinv01431787912318']`) and **20** wholly different
+  ones under `Last 30d`, while `agents_chart_container.count() == 1` was identical under both.
+- **`fmtCost` IS mirrorable — the earlier "seven magnitude branches" carve-out did not hold.**
+  `utils/analytics_format.fmt_cost` ports all six branches + exact zero. The one real trap:
+  **JS `toFixed` rounds a tie away from zero, Python's `:.1f` rounds half to even**, so `$1250`
+  renders `$1.3K` in the product while a naive f-string computes `$1.2K`. Quantize with
+  `decimal.ROUND_HALF_UP` and format with `:f` (plain `str(Decimal)` goes scientific below 1e-6,
+  which the 8-decimal branch needs). ⚠️ `fmt_num` on `automation/utils/analytics_format.py` still
+  has this divergence unfixed (it uses `:.1f`) — pre-existing, shared by 3+ merged callers, and
+  raised as a finding rather than changed inside a fix round.

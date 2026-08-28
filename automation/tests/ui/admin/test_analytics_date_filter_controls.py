@@ -31,7 +31,11 @@ from datetime import datetime, timedelta
 import allure
 import pytest
 from pages.analytics_page import AnalyticsPage
-from utils.analytics_kpi import assert_overview_kpi_cards_match
+from utils.analytics_oracles import (
+    assert_date_chart_matches,
+    assert_overview_content_matches,
+    response_dates,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +142,22 @@ class TestAnalyticsDatePresets:
                     _assert_span(analytics_page, days, label)
                     _assert_request_matches_pickers(analytics_page, response, label)
 
+                    # "Content re-renders" was claimed by this test's docstring
+                    # and every step title, but only the REQUEST was asserted —
+                    # a refetch whose result never reached the DOM passed. The
+                    # Overview surfaces are now matched against this preset's
+                    # own captured response, so each of the four ranges is
+                    # evidence rather than narration.
+                    body = response.json()
+                    assert_overview_content_matches(analytics_page, body, label)
+                    dates = response_dates(body, "daily_activity")
+                    if dates:
+                        assert_date_chart_matches(
+                            analytics_page.get_daily_chart_tick_labels(),
+                            dates,
+                            f"{label} Daily Activity chart",
+                        )
+
             with allure.step("Step 7 — No unexpected console errors during the preset sequence"):
                 assert not console_errors, (
                     f"Unexpected console errors: {[m.text for m in console_errors]}"
@@ -217,32 +237,23 @@ class TestAnalyticsCustomDateRange:
                 _assert_only_preset_pressed(analytics_page, "Custom")
 
                 body = response.json()
-                assert_overview_kpi_cards_match(
-                    analytics_page.get_overview_kpi_values(),
-                    body.get("kpis") or {},
-                    "custom range",
-                )
-                leaderboard_expected = len(body.get("top_ai_users") or [])
-                assert analytics_page.get_leaderboard_row_count() == leaderboard_expected, (
-                    f"Leaderboard rendered {analytics_page.get_leaderboard_row_count()} rows, "
-                    f"the response for this range carried {leaderboard_expected}"
-                )
-                models_expected = len(body.get("models") or [])
-                assert analytics_page.get_model_usage_row_count() == models_expected, (
-                    f"Model Usage Breakdown rendered "
-                    f"{analytics_page.get_model_usage_row_count()} rows, the response carried "
-                    f"{models_expected}"
-                )
-                assert analytics_page.overview_model_usage_table.count() == (
-                    1 if models_expected else 0
-                ), "Model Usage Breakdown card presence must follow the response's models list"
+                # All 8 KPI cards (COST included), the leaderboard's count,
+                # conditional container and top-row content, and the Model Usage
+                # table — the same oracle the sibling spec uses, so no range is
+                # checked more weakly than another.
+                assert_overview_content_matches(analytics_page, body, "custom range")
 
-                daily_dates = {d["date"][5:] for d in (body.get("daily_activity") or [])}
-                ticks = analytics_page.get_daily_chart_tick_labels()
-                assert set(ticks) <= daily_dates, (
-                    f"Chart X ticks {ticks} are not a subset of the response's daily_activity "
-                    f"dates {sorted(daily_dates)}"
-                )
+                # The chart, on data. An earlier round asserted a bare SUBSET of
+                # the response's dates, which a chart still drawing a narrower
+                # older range can satisfy; the shared oracle also pins the last
+                # tick and the rendered span.
+                dates = response_dates(body, "daily_activity")
+                if dates:
+                    assert_date_chart_matches(
+                        analytics_page.get_daily_chart_tick_labels(),
+                        dates,
+                        "custom range Daily Activity chart",
+                    )
 
             with allure.step("Step 8 — No unexpected console errors"):
                 assert not console_errors, (

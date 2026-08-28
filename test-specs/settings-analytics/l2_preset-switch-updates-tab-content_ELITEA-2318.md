@@ -39,14 +39,21 @@
      date, and the axis span is within `CHART_TICK_EDGE_SLACK_DAYS` (10) of the span
      `chat_daily` itself covers. The `AreaChart` renders `date.slice(5)` of that very array
      (`AnalyticsAgents.jsx`), so tick labels and response dates are directly comparable.
+   - **Verify the "Most Active Agents & Pipelines" bar chart's DATA too** (implementer
+     amendment, fix round 3): presence and the `Top {N} by runs` subtitle are both invariant
+     under a stale render — a frozen chart is still exactly one container, and two ranges
+     routinely chart the same NUMBER of agents while charting different ones. The chart's
+     XAxis has `dataKey="name"` and **`interval={0}`** (`AnalyticsAgents.jsx`), so recharts
+     does NOT thin it: the rendered tick list **equals**, in order, the response's own
+     `rows[:20]` mapped as `entity_name || "Agent #{entity_id}"`. Asserted under BOTH presets,
+     the same exact-equality shape the Tools chart already uses (fix round 2).
 3. Click `Last 30d` (case step 3).
    - **Verify**: the Agents GET re-fires with `date_from` ≈ 30 days back, 200 OK.
 4. Verify both charts update their data (case step 4): each chart is again present iff the 30-day
    response's corresponding array is non-empty, the bar chart's subtitle (`Top {N} by runs`)
-   equals the 30-day response's chart-series length, and the Chat Messages chart's axis is
-   re-asserted against the **30-day** `chat_daily` series exactly as in step 2 — which is what
-   makes "update their data" a real check: a chart still drawing the 24h series (one point,
-   span 0) fails the span comparison against a ~30-day `chat_daily`.
+   equals the 30-day response's chart-series length, and BOTH charts' axes are re-asserted
+   against the **30-day** response exactly as in step 2 — which is what makes "update their
+   data" a real check: a chart still drawing the 24h series fails the comparison.
 5. Verify the Agent Activity table updates (case step 5): rendered row count == the 30-day
    response's `len(rows)`, count label == its `total`.
 6. Repeat for the **Users** and **Tools** tabs (case step 6): for each tab, open it (its own GET
@@ -77,9 +84,9 @@
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
 | 1 Navigate to Analytics → Agents tab under "Last 24d" | Page loads | step 1 | `step 1`: tab selected + agents GET resolved under `Last 24h` | clarification *(no "Last 24d" preset exists — the live presets are Last 24h/7d/30d/90d, and the live tab is "Agents & Pipelines"; same stale-case-text family as elitea-testing-public#1185/#1195)* |
-| 2 Note the Chat Messages chart and Most Active Agents bar chart data | Completes | step 2 | `step 2`: both charts' presence + the Chat Messages chart's rendered X ticks/axis span vs the 24h response's `chat_daily` + table rows/count, all against the 24h response | asserted |
+| 2 Note the Chat Messages chart and Most Active Agents bar chart data | Completes | step 2 | `step 2`: both charts' presence, the Chat Messages chart's X ticks/last tick/axis span vs the 24h `chat_daily`, the bar chart's tick list == its `rows[:20]` names in order, + table rows/count — all against the 24h response | asserted |
 | 3 Click "Last 30d" | Control responds | step 3 | `step 3`: refetch with 30-day `date_from` | asserted |
-| 4 Both charts update their data | Condition holds | step 4 | `step 4`: presence-iff-data for both charts + bar-chart subtitle series count + the Chat Messages chart's X ticks/axis span re-asserted against the 30-day `chat_daily` | asserted |
+| 4 Both charts update their data | Condition holds | step 4 | `step 4`: presence-iff-data for both charts + bar-chart subtitle series count + BOTH charts' axes re-asserted against the 30-day response (area chart on ticks/last tick/span, bar chart on exact ordered tick equality vs `entity_name`) | asserted |
 | 5 Agent Activity table updates | Condition holds | step 5 | `step 5`: row count + count label vs the 30-day response | asserted |
 | 6 Repeat the steps for Users and Tools tabs | Completes | step 6 | `step 6a` (Users): rows + count label vs its own response under 30d and again under 24h — the tab renders no chart, so steps 2/4's chart half has no counterpart here. `step 6b` (Tools): rows + count label **and** the "Most Popular Tools" chart's presence-iff-data, `Top {N} by usage` subtitle and X-axis tick list vs its own response, under 24h and again under 30d | asserted |
 
