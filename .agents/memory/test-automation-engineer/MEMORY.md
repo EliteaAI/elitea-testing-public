@@ -78,4 +78,8 @@
 - [zsh does not word-split unquoted $VAR](zsh_does_not_word_split_unquoted_variables.md) — multi-path variables collapse to one arg; faked a "zero new lint" result
 - [Running a spec against DEV](dev_env_run_harness_and_goto_flake.md) — ELITEA_URL export does nothing; use the -p plugin harness; expect ~40% raw goto timeouts
 - [JS evaluate-click no-ops when disabled](js_click_silently_noops_on_disabled_controls.md) — use expect(enabled)+real click on gated controls (#1897)
+- [Recharts interval={0} makes the X axis exactly equal to the charted series](recharts_interval_zero_means_exact_tick_equality.md) — assert exact tick list, not a subset
+
 - [A negative to_have_text wait built from inner_text() lines needs use_inner_text=True](negative_text_wait_needs_use_inner_text.md) — Playwright compares textContent by default; a space-joined expectation makes the wait a no-op
+- [JS toFixed vs Python :.1f tie rounding](js_tofixed_vs_python_format_tie_rounding.md) — porting a JS formatter with an f-string diverges on exact ties
+- [Sweep siblings after every review finding](sweep_siblings_after_every_review_finding.md) — a finding names one instance; the class is usually replicated

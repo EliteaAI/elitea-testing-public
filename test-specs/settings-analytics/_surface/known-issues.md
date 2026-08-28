@@ -27,3 +27,18 @@
 
 - **elitea-testing-public#1192** — a user with no `user_email` renders a BLANK detail-view title
   (no `User {id}` fallback). Pick a row WITH an email for happy-path assertions in that view.
+
+### Known noise — a wide-range analytics query can return `502`, and the suite's rerun filter does NOT catch it
+
+During ELITEA-2314's fix round 1, one of five invocations of
+`test_presets_update_pickers_and_refresh_content` failed on
+`AssertionError: Last 30d: analytics request returned 502 / assert 502 == 200` after 38 s; it passed
+standalone immediately after (42.77 s) and in the full-set run that followed (14 passed,
+`reruns.json == {}`). Same family as the "wide-range queries are SLOW" entry in
+[`date-filter.md`](date-filter.md) — a gateway giving up on the 30-day query, not a code defect.
+
+⚠️ `pytest.ini`'s `--only-rerun="502 Server Error"` matches the **requests/HTTPError** wording; an
+assertion that formats the status itself (`returned 502`, `assert 502 == 200`) does not contain that
+phrase, so pytest-rerunfailures does **not** retry it. Any spec asserting `response.status == 200`
+on a slow analytics range is exposed to a hard red from this. Raised to the lead as a finding rather
+than fixed in a fix round — widening a shared rerun filter is a suite-wide blast radius.

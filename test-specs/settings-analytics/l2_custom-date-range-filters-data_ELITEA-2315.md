@@ -16,9 +16,10 @@
 
 ## Test Data
 ### reuse-existing
-- No seeded data. The custom range is computed **relative to today** at run time (From = the 10th
-  of the currently displayed month or, when today is before the 12th, a day ≥ 10 days back — see
-  § Automation Hints for the exact rule), so the test never hardcodes a calendar date.
+- No seeded data. The custom range is chosen **relative to the month each picker opens on** at run
+  time (From = day 15 of the From picker's displayed month after `Last 90d`; To = day 10 of the
+  current month — § Automation Hints), so the test never hardcodes a calendar date and never needs
+  a month-boundary branch.
 
 ## Test Steps
 1. Navigate to Settings → Analytics.
@@ -39,10 +40,17 @@
    the exact days chosen in steps 2 and 4, and From < To.
 7. Verify the charts and tables update to reflect the custom range (case step 7):
    - the analytics GET re-fired with `date_from`/`date_to` equal to the two selected values;
-   - the Overview content re-rendered against **that response**: the 8 KPI values, the leaderboard
-     row count and the Model Usage Breakdown row count all match the captured response body
-     (`kpis`, `top_ai_users`, `models`), and the Daily Activity chart's rendered X-axis ticks are a
-     subset of the response's `daily_activity` dates;
+   - the Overview content re-rendered against **that response**: all 8 KPI values (each compared
+     to the response field passed through the product's own `fmtNum` / `fmtCost` — see
+     ELITEA-2317's AFS § Automation Hints for the mapping and the fix-round-3 note retiring the
+     earlier COST carve-out), the leaderboard row count, its conditional container and its top
+     row's email + score, and the Model Usage Breakdown row count plus its null-for-empty branch,
+     all matched against the captured body (`kpis`, `top_ai_users`, `models`);
+   - the Daily Activity chart renders THIS range's series: its X-axis ticks are a subset of the
+     response's `daily_activity` dates, the last tick equals the last date, and the rendered span
+     is within the thinning slack of the span the series covers. **Fix round 3:** the subset check
+     alone was the shipped assertion, and a chart still drawing a NARROWER older range satisfies
+     it — the last-tick and span checks are what make it a staleness check;
    - the `Custom` preset chip (`analytics-date-preset-custom`) is now rendered and pressed, and all
      four predefined presets are `aria-pressed="false"`.
 
@@ -62,7 +70,7 @@
 | 4 Click "To" calendar icon, select a date after From | Control responds | step 4 | `step 4`: popper open + input shows the chosen day | asserted |
 | 5 Click "Ok" to confirm | Control responds | step 5 | `step 5`: popper closes on **Apply** | clarification *(same label drift)* |
 | 6 From and To fields display the selected values | Condition holds | step 6 | `step 6`: both parsed values equal the selections, From < To | asserted |
-| 7 Charts and tables update to reflect the custom range | Condition holds | step 7 | `step 7`: request params == displayed values; KPI values / leaderboard rows / model rows / chart ticks all matched against the CAPTURED response body | asserted |
+| 7 Charts and tables update to reflect the custom range | Condition holds | step 7 | `step 7`: request params == displayed values; all 8 KPI values (COST included), leaderboard rows + container + top-row content, model rows + empty branch, and the chart's ticks/last tick/span — all matched against the CAPTURED response body | asserted |
 
 **Axis 2 — Analyst additions.**
 - Asserting the `Custom` chip appears and is pressed — *added: it is the visible state change the

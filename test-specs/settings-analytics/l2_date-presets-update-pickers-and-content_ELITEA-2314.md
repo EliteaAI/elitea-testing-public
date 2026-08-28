@@ -43,6 +43,17 @@
 7. Across every preset click in steps 3–6, verify exactly one preset is highlighted at a time
    (case step 6): the clicked preset has `aria-pressed="true"` and the other three have
    `aria-pressed="false"`.
+8. **Verify the Overview content actually re-rendered for each preset** (implementer amendment,
+   fix round 3). The case's "data refreshes" was originally dispositioned as the refetch alone,
+   which a response that never reaches the DOM satisfies — while this AFS's own § Expected
+   Results already promised "the Overview KPI row re-renders after the fetch settles". After
+   every preset click in steps 3–6 the Overview content is matched against **that preset's own
+   captured response**: all 8 KPI cards (each formatted through the product's own `fmtNum` /
+   `fmtCost`), the Top 5 AI Adopters leaderboard (row count, conditional container, and the top
+   row's email + score), the Model Usage Breakdown (row count + its null-for-empty branch), and
+   the Daily Activity chart's rendered X axis (ticks ⊆ the response's `daily_activity` dates,
+   last tick == the last date, span within the thinning slack). Strengthening only — no
+   assertion was removed or weakened.
 
 ## Expected Results
 - Each preset click updates BOTH picker inputs so that `to - from` equals the preset's day count
@@ -59,9 +70,9 @@
 |---|---|---|---|---|
 | 1 Navigate to Settings → Analytics | Page loads | step 1 | `step 1`: URL + settled load state | asserted |
 | 2 "Last 7d" active by default, From/To reflect a 7-day range | Condition holds | step 2 + step 3 | `step 2`: live default (Last 24h / 1 day) asserted; `step 3`: the 7-day range asserted after an explicit `Last 7d` click | clarification *(case text stale — live default is Last 24h; family issue elitea-testing-public#1185)* |
-| 3 Click "Last 24h" — highlights, From/To 24h, data refreshes | Control responds | step 4 | `step 4`: aria-pressed + 1-day span + refetch with matching date_from | asserted |
-| 4 Click "Last 30d" — From/To 30 days, data refreshes | Control responds | step 5 | `step 5`: same three assertions, 30-day span | asserted |
-| 5 Click "Last 90d" — From/To 90 days, data refreshes | Control responds | step 6 | `step 6`: same three assertions, 90-day span | asserted |
+| 3 Click "Last 24h" — highlights, From/To 24h, data refreshes | Control responds | step 4 + step 8 | `step 4`: aria-pressed + 1-day span + refetch with matching date_from; `step 8`: Overview content matched against that response | asserted |
+| 4 Click "Last 30d" — From/To 30 days, data refreshes | Control responds | step 5 + step 8 | `step 5`: same three assertions, 30-day span; `step 8`: Overview content matched against that response | asserted |
+| 5 Click "Last 90d" — From/To 90 days, data refreshes | Control responds | step 6 + step 8 | `step 6`: same three assertions, 90-day span; `step 8`: Overview content matched against that response | asserted |
 | 6 Only one preset highlighted at a time | Condition holds | step 7 | asserted after EVERY preset click in steps 3–6 (exactly-one-pressed check) | asserted |
 
 **Axis 2 — Analyst additions.**

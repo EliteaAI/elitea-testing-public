@@ -61,3 +61,62 @@ from the ELITEA-2314..2319 run. `needsOverview` is still `activeTab === 0 || act
   present on disk. **Restarting the dev server fixed it.** Verify a new testid via
   `curl -s 'http://localhost:5173/src/%5Bfsd%5D/.../File.jsx' | grep <testid>` before concluding the
   testid is wrong.
+
+### Resolved/added during ELITEA-2314..2319 implementation (2026-08-28)
+
+- **Wide-range analytics queries are SLOW.** `Last 30d`/`Last 90d` on the `auth_state` fixture's
+  project (id **399**, the one the pytest session lands on — distinct from the project a
+  Playwright-MCP browser session shows) regularly need **more than 15 s** to answer, while
+  `Last 24h`/`Last 7d` come back in a few seconds. `NAVIGATION_TIMEOUT` (15 s) is NOT enough:
+  `AnalyticsPage` now has `DATA_QUERY_TIMEOUT = 60_000` for every range-changing wait. A
+  `TimeoutError: … waiting for event "response"` on a preset click is this, not a missing request.
+- **Recharts axis ticks need `all_text_contents()`, never `all_inner_texts()`** — SVG `<text>`
+  nodes have no `innerText`, so `all_inner_texts()` yields `None` entries and blows up on `.strip()`.
+- **MUI keeps the outgoing month grid mounted during a picker month transition** — right after a
+  "Previous month" click the same day number resolves to 2-4 nodes (measured: 4 across a 3-month
+  walk), a strict-mode violation. `AnalyticsPage.get_picker_day_cell()` now waits for the match to
+  settle to exactly one (`expect(...).to_have_count(1)`) — a condition wait, not a sleep.
+- **Response ≠ render on every tab**: `expect_response` returning does not mean rows exist yet.
+  `AnalyticsPage.wait_for_tab_settled(surface)` (public, additive sibling of the private
+  `_wait_for_*_settled` helpers) closes the gap for overview/users/agents/tools.
+
+### Resolved/added during ELITEA-2314..2319 fix round 1 (2026-08-28)
+
+- **`wait_for_tab_settled(surface)` now genuinely exists** on `AnalyticsPage` (surface-keyed
+  `_loading_indicator()` + a `wait_for(state="hidden")`). The previous round documented it here
+  and called it from five spec sites without ever defining it — a spec in that state raises
+  `AttributeError` on the first call, so it cannot have been run. Pinned by
+  `tests/unit/test_analytics_date_filter_spec_invariants.py`, which AST-walks both specs and
+  checks every `analytics_page.<attr>` against the page object's real MRO members.
+- **Recharts tick labels are YEAR-LESS (`date.slice(5)` → `"MM-DD"`).** Never difference them
+  arithmetically: a Last-30d window straddling New Year renders `12-11…01-10`, which
+  month-arithmetic scores as **-331 days**. Resolve each tick back to the full `YYYY-MM-DD` entry
+  of the response's own series first (`_response_dates` / `_chart_tick_span_days` in
+  `test_analytics_date_filter_content_refresh.py`).
+
+### Resolved/added during ELITEA-2314..2319 fix round 3 (2026-08-28)
+
+- **The two chart shapes need DIFFERENT assertion strength, and picking the weaker one on the
+  stronger chart loses real signal.** A date axis (`AreaChart` over `daily_activity` /
+  `chat_daily`) has no `interval` prop, so recharts THINS it → assert ticks ⊆ the response's own
+  dates + last tick == last date + span within a slack. A category axis with **`interval={0}`**
+  (`AnalyticsAgents.jsx`'s "Most Active Agents & Pipelines" `dataKey="name"`,
+  `AnalyticsTools.jsx`'s "Most Popular Tools" `dataKey="tool_name"`) renders exactly one tick per
+  series → assert **exact ordered list equality**. Check the JSX for `interval={0}` before
+  choosing. Both oracles now live in `automation/utils/analytics_oracles.py` so the three specs
+  cannot drift apart in strength again.
+- **Compare bar-chart ticks as a LIST, never a set.** Measured live 2026-08-28, project 399,
+  `Last 30d`: the Agents chart's 20 charted rows contain `guardrails_test_agent` ×3 and
+  `elitea-1735-skills-agent` ×6 — a set comparison silently collapses those to 2 entries and
+  passes a chart that dropped 7 bars.
+- **Measured staleness contrast (why presence and counts are both blind):** the Agents bar chart
+  charted **1** series under `Last 24h` (`['zzinv01431787912318']`) and **20** wholly different
+  ones under `Last 30d`, while `agents_chart_container.count() == 1` was identical under both.
+- **`fmtCost` IS mirrorable — the earlier "seven magnitude branches" carve-out did not hold.**
+  `utils/analytics_format.fmt_cost` ports all six branches + exact zero. The one real trap:
+  **JS `toFixed` rounds a tie away from zero, Python's `:.1f` rounds half to even**, so `$1250`
+  renders `$1.3K` in the product while a naive f-string computes `$1.2K`. Quantize with
+  `decimal.ROUND_HALF_UP` and format with `:f` (plain `str(Decimal)` goes scientific below 1e-6,
+  which the 8-decimal branch needs). ⚠️ `fmt_num` on `automation/utils/analytics_format.py` still
+  has this divergence unfixed (it uses `:.1f`) — pre-existing, shared by 3+ merged callers, and
+  raised as a finding rather than changed inside a fix round.
