@@ -41,8 +41,8 @@ jobs:
     uses: ./.github/workflows/test-ui-custom.yml
     with:
       environment: dev-stable
-      suite: ${{ inputs.suite || 'all' }}
-      custom_suites: ${{ inputs.custom_suites || '' }}
+      suite: ${{ github.event_name == 'schedule' && 'smoke' || inputs.suite || 'all' }}
+      custom_suites: ${{ github.event_name == 'schedule' && 'smoke,artifacts' || inputs.custom_suites || '' }}
       parallel_jobs: ${{ inputs.parallel_jobs || '9' }}
       markers: ${{ inputs.markers || 'not new and not blocked and not flaky' }}
       ref: ${{ inputs.ref || 'main' }}
