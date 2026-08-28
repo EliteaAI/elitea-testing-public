@@ -27,7 +27,6 @@ element that was never rendered, so the handle is necessarily a role/text one
 - It **is** a canon gap ⇒ § declared-improvisation protocol. Declared (Run
   Report + PR body) with sound reasoning, it cannot solo-FAIL: verify the
   reasoning, approve, and tell the lead it owes a `question` card (limit 2).
-  A **second** use without that card is laundering ⇒ `CHANGES_REQUESTED`.
 
 ## The distinguishing test
 
@@ -38,5 +37,25 @@ Does the control exist in the product at all?
   `automation/tests/ui/admin/test_project_context_save_discard_dirty_state.py:112`
   asserts `context_page.save_button` — a `LocatorDescriptor` — has count 0).
 - **Does not exist anywhere** ⇒ genuine gap; the role handle is the only route.
+
+## Second use: weigh the harm, do not reflex-block (settled PR #1961, 2026-08-29)
+
+Limit 3 of the protocol ("second use is a blocker") reads as categorical, and
+this pattern reached its second use — `SettingsProfilePage.drawer_logout_controls()`
+(ELITEA-2252, merged) then `SettingsPersonalizationPage.save_buttons()` /
+`page_save_buttons()` — with no canon card filed. **Approved anyway**, and the
+reasoning generalises:
+
+- The remedy limit 3 names is *the canon card*, which is the **lead's** action at
+  batch close, not a code change any implementer round can produce. Blocking sends
+  the wrong actor another round.
+- The ceiling test is what actually decides it: a declaration may not change **what
+  is verified**. An absence assertion changes nothing — there is no honest
+  alternative handle, and the coverage metric is untouched because no element is
+  being claimed as covered. The harm is precedent hygiene only.
+- So: approve, correct the false `#579` citation in docstring + Run Report, and
+  name the overdue `question` card as the lead's obligation. Reserve the hard block
+  for a second use whose declaration *does* touch the ceiling (a terminal
+  substitution, a dropped observable, a swapped subject).
 
 Related: [[teardown_that_reads_a_page_it_may_not_be_on]]
