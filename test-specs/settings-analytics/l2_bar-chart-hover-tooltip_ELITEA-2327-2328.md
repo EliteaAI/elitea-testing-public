@@ -89,6 +89,11 @@ Whatever agent/pipeline and tool activity the fixture project already has. Live 
 5. Move the cursor off the chart — **Axis 2**, beyond the case text.
    - **Verify**: the tooltip reaches **count 0** (`ChartTooltip` returns `null` when `!active`, so
      the node unmounts). Live-confirmed on both charts.
+   - **Implementer amendment (2026-08-28): the pointer must TRAVEL, not teleport.** A single-jump
+     `page.mouse.move()` off either bar chart left the tooltip stuck active (verified twice, with
+     screenshots showing the cursor demonstrably landed in the table below / the sibling chart).
+     `AnalyticsPage.move_mouse_off_chart()` moves with `steps=20` to the page header — the stream of
+     intermediate `mousemove`s a real mouse emits, so it is a MORE faithful gesture, not a workaround.
 6. No console errors throughout (`utils/console_errors.collect_console_errors`).
 
 ## Expected Results
@@ -134,8 +139,8 @@ None — read-only.
 | Agents chart container | `analytics-agents-chart-container` | **on `main` ✓** | already in `AnalyticsPage` |
 | Tools chart title | `analytics-tools-chart-title` | on `automation/testids` only | already in `AnalyticsPage` |
 | Tools chart container | `analytics-tools-chart-container` | on `automation/testids` only | already in `AnalyticsPage` |
-| Agents chart tooltip | `analytics-agents-chart-tooltip` | **needs-adding** | below |
-| Tools chart tooltip | `analytics-tools-chart-tooltip` | **needs-adding** | below |
+| Agents chart tooltip | `analytics-agents-chart-tooltip` | **added 2026-08-28 — EliteaAI/EliteaUI@c926ba66, on `automation/testids`** (awaiting human cherry-pick to `main`) | below |
+| Tools chart tooltip | `analytics-tools-chart-tooltip` | **added 2026-08-28 — EliteaAI/EliteaUI@c926ba66, on `automation/testids`** (awaiting human cherry-pick to `main`) | below |
 
 _All PROVENANCE rows verified 2026-08-28 with a fresh `cd ../EliteaUI && git fetch origin` plus the
 two-stage grep from `.agents/workflow.md` § Closure record._
@@ -167,12 +172,20 @@ raw handle under the real testid parent** is used — the already-declared `.age
   `get_tools_chart_bar_fills()`. **No new exception is being introduced.**
 - The bar paths mount **one animation tick after the container becomes visible** (already documented
   for this chart) — wait on `.first` being attached, never a sleep.
+- **Implementer amendment (2026-08-28): capture EVERY bar's box in ONE pass BEFORE the first hover.**
+  Hovering changes Recharts' active index, re-renders the `<Bar>` series and re-runs its grow
+  animation, so a box read *after* a hover can come back `None` — this failed a full run on the Agents
+  chart. `AnalyticsPage.get_chart_bar_boxes()` does the single pass and
+  `hover_chart_bar_box()` moves to a captured box. A zero-valued row also renders a zero-height path
+  with no usable box, so the two bars hovered are the first two WITH a box — the assertions still key
+  on that bar's **index** against `rows[i]`, so the mapping stays exact (live: the Agents chart's
+  hovered pair was not 0/1).
 
 ### Number formatting
 Values render through `AnalyticCommonHelpers.fmtNum` (no `formatter` prop at either call site). The
-Python port `fmt_num()` lives in `tests/ui/admin/test_analytics_overview_kpi_cards.py:62` on this
-batch trunk; with this spec and ELITEA-2326 it passes its third consumer, so per Hard Rule 7 extract
-it to `automation/utils/` rather than copying it again.
+Python port `fmt_num()` lived in `tests/ui/admin/test_analytics_overview_kpi_cards.py:62` on this
+batch trunk; with this spec and ELITEA-2326 it passed its third consumer, so per Hard Rule 7 it was
+**extracted to `automation/utils/analytics_format.py` (2026-08-28)** and every consumer imports it.
 
 ## Fidelity Declaration
 **No substitutions.** The tooltip text is produced by the product in response to a **real
@@ -209,3 +222,11 @@ cross-linked as a sibling of #1195.
   `0 agents & pipelines` and NO bar chart on the Agents tab — the `agentChartData.length > 0` guard
   is live-reachable, which is why the response-derived precondition in step 1 matters.
 - Zero console errors across the whole walk.
+
+## Implementation notes (2026-08-28, test-automation-engineer)
+- One parameterized spec as specced:
+  `automation/tests/ui/admin/test_analytics_bar_chart_tooltip.py`
+  (`TestAnalyticsBarChartTooltip::test_bar_chart_hover_tooltip[ELITEA-2327-agents-pipelines]` and
+  `[ELITEA-2328-tools]`).
+- Step 1 selects `Last 30d` BEFORE opening the tab, so the tab query is issued for that range and the
+  captured body is the oracle for the range under test.

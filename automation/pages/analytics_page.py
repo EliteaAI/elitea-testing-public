@@ -1431,8 +1431,10 @@ class AnalyticsPage(BasePage):
         is needed: the caller reads whichever label it landed on and asserts
         against that entry of the captured response.
         """
+        chart_container.scroll_into_view_if_needed()
         box = chart_container.bounding_box()
         assert box, "Expected the chart container to have a layout box to hover into"
+        logger.debug("hover_chart_at_fraction: fraction=%s box=%s", fraction_x, box)
         self.page.mouse.move(box["x"] + box["width"] * fraction_x, box["y"] + box["height"] / 2)
 
     def hover_chart_bar_box(self, box: dict) -> None:
