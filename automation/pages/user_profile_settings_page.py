@@ -285,6 +285,68 @@ class UserProfileSettingsPage(BasePage):
         logger.info("Preserve recent messages raw value: %r", raw)
         return int(raw)
 
+    def set_preserve_recent_messages(self, value: int) -> None:
+        """Type *value* into the Preserve Recent Messages input and blur (Tab).
+
+        Additive sibling of :meth:`set_target_summary_tokens` (ELITEA-2376),
+        added because no setter existed for this field at all. Same shape and
+        same two deliberate differences from :meth:`set_max_context_tokens`:
+
+        - uses click + ``fill("")`` + per-keystroke ``type()`` so React's
+          ``onChange`` fires on the MUI input (a bare ``fill()`` updates the
+          DOM value but never Formik state, so the autosave would carry the
+          OLD value);
+        - does NOT wait for the autosave itself. ``wait_for_autosave()`` is a
+          best-effort networkidle wait that falls back to a fixed sleep (see
+          its docstring), so it cannot prove a PUT fired. The caller owns a
+          ``page.expect_response(...)`` around this call and asserts the
+          status — the pattern used throughout the settings specs.
+
+        Args:
+            value: New "preserve recent messages" count to type.
+        """
+        logger.info("Setting preserve recent messages to %d", value)
+        field = self.preserve_recent_messages_input
+
+        field.click()
+        field.fill("")
+        field.type(str(value), delay=50)
+
+        # Tab blurs the field — that is what triggers useFormikAutoSaveOnBlur's
+        # validate-then-maybe-submit flow.
+        field.press("Tab")
+
+    def get_summarization_instructions(self) -> str:
+        """Return the current text of the Summarization Instructions textarea.
+
+        Returns:
+            The field's current value (empty string when unset — the field
+            renders placeholder text, which is NOT a value).
+        """
+        raw = self.summarization_instructions_textarea.input_value()
+        logger.info("Summarization instructions raw value: %r", raw)
+        return raw
+
+    def set_summarization_instructions(self, text: str) -> None:
+        """Type *text* into the Summarization Instructions textarea and blur.
+
+        Additive sibling of :meth:`set_preserve_recent_messages` (ELITEA-2379).
+        Same clear-then-type-then-Tab shape and the same no-built-in-wait
+        contract — see that method's docstring for both rationales.
+
+        Args:
+            text: Instruction text to type verbatim (free-form; this field has
+                no numeric filtering, unlike the token inputs).
+        """
+        logger.info("Setting summarization instructions to %r", text)
+        field = self.summarization_instructions_textarea
+
+        field.click()
+        field.fill("")
+        field.type(text, delay=20)
+
+        field.press("Tab")
+
     def are_context_fields_mounted(self) -> bool:
         """Return True if Max Context Tokens and Preserve Recent Messages
         inputs are present in the DOM.

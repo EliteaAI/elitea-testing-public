@@ -1746,6 +1746,47 @@ class ChatPage(BasePage):
         self.wait_for_page_load()
         logger.info(f"Navigated to chat, page loaded (actual URL: {self.page.url})")
 
+    def open_conversation(self, conversation_id: str | int, timeout: int = 30000) -> None:
+        """Open conversation *conversation_id*, even when already on a chat route.
+
+        Additive sibling of :meth:`navigate_to_chat` (ELITEA-2390), NOT a
+        change to it — that method short-circuits with "already on chat page,
+        skipping navigation" whenever the current URL contains ``/chat``, so
+        it cannot SWITCH between two conversations (confirmed live: asking it
+        for ``/chat/<A>`` while sitting on ``/chat/<B>`` silently leaves you on
+        B). ``navigate_to_chat()`` has many merged callers that rely on that
+        skip, so this is a separate entry point rather than a behavioural fix.
+
+        Navigates unconditionally, then verifies the route actually landed on
+        the requested conversation — the SPA can restore the last-viewed one
+        (see :meth:`navigate_to_chat`'s docstring), and a silent restore would
+        otherwise make a test read the WRONG conversation's state.
+
+        Args:
+            conversation_id: Conversation to open.
+            timeout: Maximum wait for the page to become ready, in ms.
+
+        Raises:
+            AssertionError: If the route does not settle on the requested
+                conversation after a retry.
+        """
+        target_path = f"/chat/{conversation_id}"
+        for attempt in range(2):
+            self.navigate(target_path)
+            self.wait_for_page_load(timeout=timeout)
+            if target_path in self.page.url:
+                logger.info("Opened conversation %s", conversation_id)
+                return
+            logger.warning(
+                "SPA landed on %s instead of %s (attempt %d) — retrying",
+                self.page.url,
+                target_path,
+                attempt + 1,
+            )
+        raise AssertionError(
+            f"Could not open conversation {conversation_id}: URL settled on {self.page.url!r}"
+        )
+
     def wait_for_page_load(self, timeout: int = 30000):
         """Wait for chat page to fully load.
 
