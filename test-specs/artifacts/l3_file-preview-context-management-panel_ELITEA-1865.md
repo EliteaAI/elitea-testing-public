@@ -6,9 +6,9 @@
 - **Priority**: l3 (TMS `priority: medium` — same mapping as siblings ELITEA-1856 / ELITEA-1862)
 - **Environment Explored**: local (`http://localhost:5173`, EliteaUI `automation/testids`, DEV backend)
 - **User set**: n/a — localhost `auth_state` skips login (`VITE_DEV_TOKEN`)
-- **Analyst**: qa-engineer (batch `artifacts-w05`, 2026-08-23)
-- **Status**: **blocked** — the case's central observable does not exist on the surface the case names
-- **Clarification filed**: EliteaAI/elitea-testing-public#1695 (`question` + `case-text-drift`)
+- **Analyst**: qa-engineer (batch `artifacts-w05`, 2026-08-23; **re-analysed** batch `artifacts-w07`, 2026-08-28)
+- **Status**: **blocked** — CONFIRMED on re-analysis; the case's central observable does not exist on the surface the case names
+- **Clarification filed**: EliteaAI/elitea-testing-public#1695 (`question` + `case-text-drift`) — human ruled 2026-08-28 "Panel is expected to be in place. Double check UI."; re-analysis disproof posted as [issue comment 5451524815](https://github.com/EliteaAI/elitea-testing-public/issues/1695#issuecomment-5451524815)
 
 ## Why this case is blocked (one paragraph)
 
@@ -27,6 +27,103 @@ This is **case-text drift, not a product defect** — the product is correct and
 the case text names the wrong surface. Because the observable cannot be produced
 honestly against the real system, the case is routed to a human rather than
 engineered around (`.agents/testing.md` § Fidelity policy).
+
+## Re-analysis 2026-08-28 (batch `artifacts-w07`) — human ruling on #1695
+
+A human ruled on #1695: *"Panel is expected to be in place. Double check UI."*
+This section records the re-verification. **The verdict is unchanged**, but it is
+now backed by *positive disproof* rather than a single negative observation —
+the four gaps the first pass left open are closed below.
+
+Environment: `http://localhost:5173`, EliteaUI `automation/testids` @ `471c4652`
+(fetched fresh), DEV backend, localhost `auth_state`.
+
+### Gap 1 — the `afa` bucket the case names does not exist
+
+The first pass drove a *fixture* bucket, so per-bucket state could not be ruled
+out. Checked the real list this time:
+
+```
+GET /artifacts   artifacts-buckets-footer-count = "Buckets: 11"
+                 rows rendered = 11  (all of them; no pagination truncation)
+abc-test · alita · all-file-types-attachment-small-size · attachments ·
+autotest-elitea1828-dupmodal · bucket-a1b2c3d4…w3x4 · file-upload · ggr ·
+intesting · scout-probe-shortname · temp
+```
+
+No `afa` — and alphabetically it would sort between `abc-test` and `alita`, so
+it is genuinely absent, not scrolled out of view. **The case's Preconditions
+cannot be satisfied as written**, independently of the panel question.
+
+### Gap 2 — every affordance on the preview surface exhausted
+
+Executed on `sample_data.md` in `all-file-types-attachment-small-size` — the
+**richest** supported branch (markdown gets the render-mode toggle and language
+select that the case's `1.png` image branch does not, per ELITEA-1862), at
+**1280×720 and 1920×1200**:
+
+| Affordance | Observed contents |
+|---|---|
+| Preview header buttons | `artifacts-preview-close-button`, `artifacts-preview-save-button` (**Save**), `artifacts-preview-discard-button` (**Discard**) |
+| Preview 3-dot overflow (`file-preview-overflow-menu-menu-button`) | **Copy Content · Download · Delete** — nothing else |
+| Render-mode toggle | `artifacts-preview-mode-toggle-rendered` / `artifacts-preview-mode-toggle-code` |
+| **Bucket-level** 3-dot (`bucket-menu-<name>-menu-button`, hover-gated) | **Upload files · Rename · Pin to top · Share · Manage permissions** — no "Manage context"/settings entry (closes the lead's "is it per-bucket?" question) |
+| Wide viewport 1920×1200 | no right-hand drawer appears; all label matches stay 0 |
+
+Label probe over `document.body.innerText` with the preview open:
+
+```
+Context Management 0 · Context Window 0 · Max Tokens 0 · Content Strategy 0
+Context Strategy 0 · Context Tokens 0 · Preserve Recent Messages 0
+Summarized Link Count 0 · Summarization 0 · Summary Model 0
+Summary Trigger Ratio 0 · Attribute: Clause 0 · Target Summary Tokens 0
+External Messages 0 · Always preserve system messages 0 · Custom Instructions 0
+"You are a helpful assistant." 0
+```
+
+### Gap 3 — positive control: the same probe DOES find the panel where it lives
+
+To prove the zeros are a real absence and not a broken probe, the **identical**
+label probe was run on `/settings/memory` in the same browser session:
+
+```
+Context Management 3 · Max Context Tokens 1 · Preserve Recent Messages 1
+Summarization 2 · Target Summary Tokens 1
+```
+
+Same method, same session — finds the panel there, finds nothing on Artifacts.
+This is the disproof the human can act on.
+
+### Gap 4 — source: no Artifacts-side path exists to mount it
+
+```
+$ cd ../EliteaUI && grep -rln "ContextBudget\|ContextStrategy\|context-budget" src/ | grep -i "artifact\|bucket"
+(no output)
+```
+
+`PreviewHeader.jsx` renders exactly **seven** things — close IconButton
+(`:175`), file-path Typography (`:191`), Save (`:204`), Discard (`:213`),
+`DotMenu` (`:239`), `ToggleButtonGroup` (`:260`), language `Select.SingleSelect`
+(`:290`) — and there is **no feature flag** anywhere under
+`src/[fsd]/features/artifacts/` or `src/pages/Artifacts/` that could gate an
+eighth. Consumers of the widget are unchanged from the first pass:
+`Participants.jsx` (Chat), `ChatPanel.jsx` (Pipelines), `ConfigurationTab.jsx`
+(Applications), plus the separate `features/settings/ui/memory/` variant
+(ELITEA-2374).
+
+### Evidence
+
+- `automation/test-results/screenshots/ELITEA-1865-reanalysis-preview-no-context-panel.png`
+  — uploaded to the `evidence` release and embedded in the #1695 comment.
+- Console during the run: 0 errors on the preview render itself.
+
+### What did NOT change
+
+Nothing in the sections below is superseded. The label→component mapping, the
+Coverage Map and the three unblock options all still hold; this section only
+raises the confidence from "observed absent once, on a fixture bucket" to
+"absent on the real bucket list, on the richest branch, at two viewports, with
+every menu opened, with a working positive control, and with no source path".
 
 ## Preconditions (as executed)
 - Localhost `auth_state` (no login step).
