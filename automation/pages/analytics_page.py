@@ -1396,15 +1396,27 @@ class AnalyticsPage(BasePage):
         series.first.wait_for(state="attached", timeout=UI_ELEMENT_TIMEOUT)
         return series.count()
 
-    def get_chart_bar_count(self, chart_container) -> int:
-        """Number of rendered `<Bar>` rectangles inside *chart_container*.
+    def get_chart_bar_boxes(self, chart_container) -> list[dict | None]:
+        """Layout boxes of every rendered `<Bar>` rectangle inside
+        *chart_container*, in render order (bar `i` is the chart's data row
+        `i`), captured in ONE pass BEFORE any hovering.
 
-        Same #579 exception-1 scoping and same one-tick mount lag as
+        Capturing up-front is deliberate: hovering changes Recharts' active
+        index, which re-renders the `<Bar>` series and re-runs its grow
+        animation, so a box read *after* a hover can transiently come back
+        `None` (a zero-height path is not "visible" to Playwright). The
+        geometry does not move between hovers, so one pass is both correct
+        and cheaper. An entry is `None` for a bar with no usable box (a
+        zero-valued row renders a zero-height path) — the caller decides
+        which indices are hoverable.
+
+        Same #579 exception-1 scoping (raw handle under a real app-testid
+        parent) and the same one-tick mount lag as
         `get_chart_area_series_count`.
         """
         bars = chart_container.locator(RECHARTS_BAR_FILL)
         bars.first.wait_for(state="attached", timeout=UI_ELEMENT_TIMEOUT)
-        return bars.count()
+        return [bars.nth(i).bounding_box() for i in range(bars.count())]
 
     def hover_chart_at_fraction(self, chart_container, fraction_x: float) -> None:
         """Move the real mouse to *fraction_x* of *chart_container*'s width,
@@ -1423,28 +1435,48 @@ class AnalyticsPage(BasePage):
         assert box, "Expected the chart container to have a layout box to hover into"
         self.page.mouse.move(box["x"] + box["width"] * fraction_x, box["y"] + box["height"] / 2)
 
-    def hover_chart_bar(self, chart_container, index: int) -> None:
-        """Move the real mouse to the centre of the bar at *index* inside
-        *chart_container*.
+    def hover_chart_bar_box(self, box: dict) -> None:
+        """Move the real mouse to the centre of *box* — one of the entries
+        `get_chart_bar_boxes()` returned.
 
-        Targeting the bar's OWN bounding box (rather than a fraction of the
-        container) is what makes the bar-index <-> response-row mapping exact:
-        both charts plot `rows.slice(0, 20)`, so bar `i` is response `rows[i]`.
-        Same #579 exception-1 scoped raw handle as `get_chart_bar_count`.
+        Targeting the bar's OWN box (rather than a fraction of the container)
+        is what makes the bar-index <-> response-row mapping exact: both bar
+        charts plot `rows.slice(0, 20)`, so bar `i` is response `rows[i]`.
+        A genuine `page.mouse.move()` CDP input event, never a synthetic
+        `page.evaluate` dispatch.
         """
-        bars = chart_container.locator(RECHARTS_BAR_FILL)
-        bars.first.wait_for(state="attached", timeout=UI_ELEMENT_TIMEOUT)
-        box = bars.nth(index).bounding_box()
-        assert box, f"Expected bar {index} to have a layout box to hover into"
         self.page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
 
     def move_mouse_off_chart(self, chart_container) -> None:
-        """Move the real mouse well clear of *chart_container* so Recharts
-        deactivates the tooltip (the shared `ChartTooltip` returns `null` when
-        `!active`, so the node UNMOUNTS — assert `count() == 0`)."""
+        """Move the real mouse OFF *chart_container* — along a real path — so
+        Recharts deactivates the tooltip (the shared `ChartTooltip` returns
+        `null` when `!active`, so the node UNMOUNTS: assert `count() == 0`).
+
+        Two details are load-bearing, both learned live during the
+        ELITEA-2327/2328 implementation:
+
+        * **The pointer travels (`steps=...`), it does not teleport.** A
+          single-jump `mouse.move` out of a *bar* chart left the tooltip stuck
+          active (verified on both bar charts: cursor demonstrably landed in
+          the table below / the sibling chart, tooltip still rendered), while
+          the same jump out of the Overview *area* chart did deactivate it.
+          A human's mouse emits a stream of intermediate `mousemove`s as it
+          crosses the chart boundary — this reproduces that gesture, so it is
+          MORE faithful to the case than the jump, not a workaround.
+        * **The destination is the page header**, which sits above every chart
+          on this surface, so "off the chart" cannot accidentally land inside
+          a neighbouring chart card (the Agents tab stacks a second chart
+          directly below the bar chart).
+        """
         box = chart_container.bounding_box()
         assert box, "Expected the chart container to have a layout box to move away from"
-        self.page.mouse.move(box["x"] + box["width"] / 2, max(box["y"] - 250, 0))
+        header_box = self.page_title.bounding_box()
+        assert header_box, "Expected the Analytics page header to have a layout box to move onto"
+        self.page.mouse.move(
+            header_box["x"] + header_box["width"] / 2,
+            header_box["y"] + header_box["height"] / 2,
+            steps=20,
+        )
 
     def read_chart_tooltip_lines(self, tooltip_locator) -> list[str]:
         """Wait for *tooltip_locator* to be visible and return its non-empty
