@@ -6,9 +6,9 @@ created: 2026-08-26
 updated: 2026-08-26
 ---
 
-## Status after waves w01–w05 (2026-08-28)
+## Status after waves w01–w06 (2026-08-28)
 
-**Running total (CORRECTED): 33 `automated`, 12 `merged-sanctioned-red`, 8 blocked, ~75 not yet attempted.**
+**Running total: 42 `automated`, 12 `merged-sanctioned-red`, 14 blocked/parked, ~60 not yet attempted.**
 
 ⚠️ **A sanctioned-RED case is NOT delivered coverage.** `.agents/testing.md` § Merge gate:
 it stays `blocked-on-#N` and is never back-written `execution_type: automated`.
@@ -16,6 +16,17 @@ On 2026-08-28 I corrected three of my own earlier back-writes that broke this �
 ELITEA-2243 (#1771, w01), ELITEA-2289 (#1884, w04), ELITEA-2291 (#1885, w04) —
 back to draft/manual + `sanctioned_red: <ticket>`, keeping `automation_test_id` for
 CI correlation. Count dropped 36 -> 33. **Re-check prior waves whenever this rule comes up.**
+
+### Wave settings-w06 — `settings/analytics` (15 cases)
+
+9 automated (PR #1957). **6 NOT landed — PR #1945 (ELITEA-2314..2319) stays OPEN**: its loop stopped
+after 2 fix rounds because the reviewer left surviving blockers UNCLASSIFIED twice, so it could not tell
+`unaddressed` from `unfixable`. Blockers are real + specified (Agents-chart data never asserted;
+year-boundary arithmetic false-REDs each January; AFS claims KPI assertions the code omits).
+**Wave 7 resumes from #1945 — nothing needs re-deriving.**
+Cluster A burned rounds on a REPEATING signature (Tools chart, then Agents chart) — a fix round must
+SWEEP siblings, not just the named instance.
+Also repaired ELITEA-2312's spec (red on base under #1946). Filed #1946, #1947.
 
 ### Wave settings-w05 — `settings/secrets` (14 cases)
 
@@ -65,9 +76,10 @@ full provenance table + SHAs.
   Deliberately NOT grouped into w01: they need multiple identities (admin vs
   viewer/monitor role, an unauthenticated session), a different setup shape
   than the rest of the root `settings` cases.
-- **4 more sub-areas, ~71 cases**: `ai-configuration` (24), `user-profile` (17),
-  `analytics` (15), `users-and-roles` (15).
-  (`notifications` w02, `project-params` w03, `personal-tokens` w04, `secrets` w05.)
+- **PR #1945 first** — 6 analytics date-filter cases, built + reviewed, 3 named blockers left.
+- **3 more sub-areas, ~56 cases**: `ai-configuration` (24), `user-profile` (17),
+  `users-and-roles` (15).
+  (`notifications` w02, `project-params` w03, `personal-tokens` w04, `secrets` w05, `analytics` w06.)
 
 ## Pattern for the next wave
 
