@@ -214,6 +214,12 @@ class TestPersonalityIndependentOfContextManagement:
                 "Step 5 - The settings saved without error -- and there is no "
                 "Save button to click (the page autosaves)"
             ):
+                # "Without error" is already asserted, twice, and NOT here:
+                # this surface has no error toast/alert of its own (no such
+                # handle exists anywhere in the suite for it), so the two
+                # observables it really produces carry the case's step 5 --
+                # Step 4's `PUT -> 200` above (the write succeeded) and Step 8's
+                # console-error check below (nothing failed client-side).
                 # Absence assertions are first-class references (canon #511
                 # extension): if a Save button ever appears here, the autosave
                 # premise this whole case family rests on has stopped holding.
