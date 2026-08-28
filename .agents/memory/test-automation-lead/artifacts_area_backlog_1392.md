@@ -5,7 +5,7 @@ type: project
 aliases: [artifacts backlog, ELITEA-18xx, bucket permissions, artifacts coverage]
 tags: [area/artifacts, status/blocked]
 created: 2026-08-23
-updated: 2026-08-26
+updated: 2026-08-28
 ---
 
 ## Outcome
@@ -40,6 +40,19 @@ progressive because leak #636 keeps adding: 555 -> 762 -> 970).
 the correct action depends on #1697's ruling (option (a) makes it right; (c)/(d) needs revert).
 Lesson: a back-write justified by "a merged PR covers it" must also check the test can EXECUTE
 in some environment — `automation_coverage` counts it either way.
+
+## ELITEA-1865 re-analysed 2026-08-28 on a human bounce — still blocked
+
+Human ruled on #1695: "Panel is expected to be in place. Double check UI." Re-ran it;
+verdict unchanged but now **positive disproof**: the `afa` bucket the case names **does
+not exist** in project 471 (so its Preconditions are unsatisfiable regardless), all 17
+labels probe 0 across both viewports on the richest supported branch, and a **positive
+control** on `/settings/memory` finds the same labels with the same probe. No Artifacts-side
+importer of `context-budget`. Merged PR #1944. Still needs a human decision.
+
+**Transferable:** a bounce on an "it isn't there" verdict is usually asking for a positive
+control, not a louder negative. And check the case's OWN named fixtures exist before
+substituting your own — that substitution is what made the first pass refutable.
 
 ## The multi-user wall (reusable fact)
 
