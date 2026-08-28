@@ -57,3 +57,4 @@
 - [MUI Popper .first can be a Tooltip](mui_popper_first_can_be_a_tooltip.md) — .MuiPopper-root nth=0 may be a tooltip; :visible does not help
 - [Redundant assert after a wait](redundant_assert_after_wait_is_not_vacuous.md) — not vacuous (red survives) but downgrades `failed`→`broken`; vs content-scoping which IS vacuous
 - [Wait-vs-masking test for a repair PR](wait_vs_masking_test_for_a_repair_pr.md) — 3 source checks: honest in-flight branch, testid only on real data, wait stricter than assert
+- [Porting a case to main: diff docs vs source branch](porting_a_case_to_main_must_diff_docs_against_the_source_branch.md) — greps miss a reverted AFS
