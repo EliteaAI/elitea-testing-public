@@ -28,18 +28,18 @@ Two properties that make it pleasant to automate — both live-confirmed:
   UserDetailed, AgentDetailed, ToolDetailed).
 
 Values go through `AnalyticCommonHelpers.fmtNum` (no `formatter` prop at any of these call sites),
-so `3800` renders `3.8K`. Python port: `fmt_num()` in
-`tests/ui/admin/test_analytics_overview_kpi_cards.py:62` — **due for extraction to
-`automation/utils/`** once the 2326/2327/2328 specs land (Hard Rule 7, third consumer).
+so `3800` renders `3.8K`. Python port: `fmt_num()` in `automation/utils/analytics_format.py`
+(extracted there from `tests/ui/admin/test_analytics_overview_kpi_cards.py` during the
+ELITEA-2326/2327/2328/2329 implementation, on its third consumer — Hard Rule 7).
 
 ## Tooltip testid inventory
 
 | Chart | Call site | Tooltip testid | State 2026-08-28 |
 |---|---|---|---|
-| Overview `Daily Activity` | `AnalyticsOverview.jsx:174` | `analytics-overview-daily-chart-tooltip` | **needs-adding** (ELITEA-2326) |
-| Agents `Most Active Agents & Pipelines` | `AnalyticsAgents.jsx:153` | `analytics-agents-chart-tooltip` | **needs-adding** (ELITEA-2327) |
+| Overview `Daily Activity` | `AnalyticsOverview.jsx:174` | `analytics-overview-daily-chart-tooltip` | added EliteaAI/EliteaUI@c926ba66, on `automation/testids` (ELITEA-2326) |
+| Agents `Most Active Agents & Pipelines` | `AnalyticsAgents.jsx:153` | `analytics-agents-chart-tooltip` | added EliteaAI/EliteaUI@c926ba66, on `automation/testids` (ELITEA-2327) |
 | Agents `Chat Messages` | `AnalyticsAgents.jsx:218` | — | none; out of scope so far |
-| Tools `Most Popular Tools` | `AnalyticsTools.jsx:123` | `analytics-tools-chart-tooltip` | **needs-adding** (ELITEA-2328) |
+| Tools `Most Popular Tools` | `AnalyticsTools.jsx:123` | `analytics-tools-chart-tooltip` | added EliteaAI/EliteaUI@c926ba66, on `automation/testids` (ELITEA-2328) |
 | Health `Requests vs Errors` | `AnalyticsHealth.jsx` | `analytics-health-chart-tooltip` | on `automation/testids` |
 | User detail `Daily Activity` | `AnalyticsUserDetailed.jsx:246` | `analytics-user-detail-chart-tooltip` | **on `main` ✓** |
 
@@ -92,3 +92,54 @@ cosmetic.
   lines do not disappear. Don't treat a zero day as "the tooltip is broken".
 - After clicking a tab, a row locator's `.count()` can read 0 while `.first` still resolves via
   auto-waiting. Wait on the locator before counting.
+
+## Resolved/added during ELITEA-2326/2327/2328/2329 implementation (2026-08-28, test-automation-engineer)
+
+Facts the analyst pass could not have had, all learned by running the specs live. They live in
+`AnalyticsPage` now, so a later case gets them for free.
+
+- **The three tooltip testids above exist** — EliteaAI/EliteaUI@c926ba66, call-site-only wiring of the
+  shared `ChartTooltip`'s `testId` prop, pushed to `automation/testids` (human cherry-picks to `main`).
+  `AnalyticsAgents.jsx:218` (the Chat Messages tooltip) was deliberately left untouched.
+- **Mouse-out only deactivates a BAR chart's tooltip if the pointer TRAVELS.** A single-jump
+  `page.mouse.move()` off the chart left both bar-chart tooltips stuck active (screenshots confirmed
+  the cursor had landed in the table below / the sibling chart, tooltip still rendered), while the same
+  jump off the Overview *area* chart did deactivate it. `AnalyticsPage.move_mouse_off_chart()` now moves
+  with `steps=20` to the page header — the stream of intermediate `mousemove`s a real mouse emits, so it
+  is a MORE faithful gesture, not a workaround. If a future chart's mouse-out assertion hangs at
+  `count() == 1`, this is why.
+- **Capture bar bounding boxes in ONE pass BEFORE hovering.** Hovering changes Recharts' active index,
+  re-renders the `<Bar>` series and re-runs its grow animation, so a box read *after* a hover can come
+  back `None` (a zero-height path is not "visible" to Playwright) — this cost a full red run on the
+  Agents chart. `AnalyticsPage.get_chart_bar_boxes()` does the single pass; a zero-valued row also has
+  no usable box, so pick the hoverable indices from the captured list and key assertions on that index
+  against `rows[i]`.
+- **Scroll the chart into view before hovering.** `hover_chart_at_fraction()` calls
+  `scroll_into_view_if_needed()` first. EL-6267 added six KPI cards above the user-detail chart
+  (EliteaAI/EliteaUI@f084ea12 + @ce8115c6), pushing its vertical centre below the viewport, which
+  silently broke the raw `page.mouse.move()` the merged ELITEA-2313 spec used (tooltip never appeared).
+- **Product drift on the user-detail view, unrelated to these cases but discovered here:** the KPI row
+  is now **16 cards**, not 10 — `ACTIVE DAYS, LLM CALLS, TOOL CALLS, AGENT & PIPELINE RUNS, CHAT MSG,
+  ERRORS, TOTAL TOKENS, INPUT TOKENS, OUTPUT TOKENS, CACHE READ TOKENS, CACHE WRITE TOKENS,
+  CACHE READ COST, CACHE WRITE COST, TOTAL COST, INPUT TOKEN COST, OUTPUT TOKEN COST`
+  (source-confirmed `AnalyticsUserDetailed.jsx:73-188`, all unconditional). ELITEA-2313's merged spec
+  asserted 10 and was RED on `automation/base` before this branch existed (pristine-HEAD control run:
+  byte-identical failure).
+- **`fmt_num()` now lives in `automation/utils/analytics_format.py`** (extracted on its third consumer),
+  not in `tests/ui/admin/test_analytics_overview_kpi_cards.py`.
+- **Resolved during ELITEA-2326/2327/2328/2329 fix round 1 (PR #1956 review):** the shared settle wait
+  `AnalyticsPage.wait_for_chart_tooltip_change()` MUST pass `use_inner_text=True` to
+  `expect(...).not_to_have_text(...)`. Playwright's text matchers read an element the `textContent` way
+  by default, and `ChartTooltip` renders each line as its own child node, so the browser-side text is
+  `"Aug 12LLM Calls: 3"` — no separator — while the expectation is built by joining the lines
+  `read_chart_tooltip_lines()` parsed out of `inner_text()` with spaces. The two can never be equal, so
+  the NEGATIVE assertion was satisfied on its first poll: a wait that silently did not wait, turning
+  every "move to a second data point" step into a race against Recharts' re-render tick. Nothing goes
+  red when a wait degrades this way — pinned by
+  `automation/tests/unit/test_chart_tooltip_change_wait_compares_inner_text.py`. Applies to ANY future
+  assertion on this surface that compares a multi-line element against a joined string.
+- **TMS case links for this surface live under `tests/automated-full-regression-ui/settings/analytics/`**
+  in EliteaAI/onetest-ai-tm-Elitea — NOT `settings-analytics/` (that is only this repo's AFS directory
+  name, and it leaked into three `@allure.issue` URLs, all of which 404'd). A dead Allure link never
+  fails a run; `automation/tests/unit/test_analytics_chart_tooltip_specs_allure_issue_links.py` resolves
+  them against the sibling clone.

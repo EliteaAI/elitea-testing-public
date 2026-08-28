@@ -66,8 +66,12 @@ Whatever activity the fixture project already has in the last 30 days. Live 2026
      changed" would pass on a tooltip that changed to garbage.)
 5. Move the cursor away from the chart and verify the tooltip disappears — case step 5 /
    Expected Final State.
-   - Drive a real `page.mouse.move()` to a point outside the chart container (live: 250-300 px above
-     it worked; anywhere off the plot is fine).
+   - Drive a real `page.mouse.move()` OFF the chart container.
+     **Implementer amendment (2026-08-28): the pointer must TRAVEL, not teleport.** A single-jump
+     move worked for this area chart but left the sibling BAR charts' tooltips stuck active
+     (ELITEA-2327/2328), so `AnalyticsPage.move_mouse_off_chart()` moves with `steps=20` to the page
+     header — the stream of intermediate `mousemove`s a real mouse emits, i.e. a MORE faithful
+     gesture, and the same helper is now used by all four cases in this cluster.
    - **Verify**: `analytics-overview-daily-chart-tooltip` reaches **count 0** — `ChartTooltip`
      returns `null` when `!active`, so the element unmounts entirely rather than merely hiding.
      Live-confirmed on the already-testid'd sibling tooltip (`analytics-user-detail-chart-tooltip`:
@@ -112,7 +116,7 @@ None — read-only. No entity is created, and the date preset is per-session UI 
 | Overview tab | `analytics-tab-overview` | on `automation/testids` only | default tab; already in `AnalyticsPage` |
 | `Last 30d` preset | `analytics-preset-last-30d` | on `automation/testids` only | already in `AnalyticsPage` |
 | Daily Activity chart container | `analytics-overview-daily-chart-container` | **on `automation/testids` only** (awaiting human cherry-pick to `main`) | verified 2026-08-28 with a fresh `git fetch origin` + the two-stage grep |
-| Daily Activity chart tooltip | `analytics-overview-daily-chart-tooltip` | **needs-adding** | see below |
+| Daily Activity chart tooltip | `analytics-overview-daily-chart-tooltip` | **added 2026-08-28 — EliteaAI/EliteaUI@c926ba66, on `automation/testids`** (awaiting human cherry-pick to `main`) | call-site-only, see below |
 
 ### testid needed: `analytics-overview-daily-chart-tooltip`
 `AnalyticsOverview.jsx:174` currently renders `<RechartsTooltip content={<ChartTooltip />} />`.
@@ -146,7 +150,8 @@ call site, so values go through `AnalyticCommonHelpers.fmtNum`. A Python port al
 `fmt_num()` in `tests/ui/admin/test_analytics_overview_kpi_cards.py:62` (on this batch trunk).
 **This spec plus the ELITEA-2327/2328 family spec take `fmt_num` past its third consumer**, so per
 Hard Rule 7 it should now be extracted to `automation/utils/` and imported by all consumers rather
-than copied a third time.
+than copied a third time. **Done (2026-08-28): `automation/utils/analytics_format.py`; the Overview
+KPI spec now imports it.**
 
 ## Fidelity Declaration
 **No substitutions.** Every asserted value is produced by the system: the tooltip text is rendered by
@@ -186,3 +191,12 @@ None found for this case. One case-text clarification: elitea-testing-public#195
   3 area paths, single `<YAxis>`; hover -> `2026-08-08 / LLM Calls: 62 / Tool Runs: 15 /
   Agent & Pipeline Runs: 65`. Confirms the `!isPersonalProject` branch.
 - Zero console errors across the whole Overview -> Agents -> Tools -> Users -> user-detail walk.
+
+## Implementation notes (2026-08-28, test-automation-engineer)
+- Spec: `automation/tests/ui/admin/test_analytics_overview_daily_chart_tooltip.py`
+  (`TestAnalyticsOverviewDailyChartTooltip::test_overview_daily_chart_hover_tooltip`).
+- Live run on the fixture project ("Private", personal) rendered **3** area series, so the
+  derived-series branch of step 3 is the one actually exercised locally; the 4-series
+  (non-personal) branch stays source- and analysis-confirmed.
+- `AnalyticsPage.hover_chart_at_fraction()` calls `scroll_into_view_if_needed()` before measuring the
+  container — added after the user-detail chart (ELITEA-2329) was found below the fold.

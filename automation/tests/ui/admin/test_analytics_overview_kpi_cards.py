@@ -31,6 +31,7 @@ import allure
 import pytest
 from pages.analytics_page import AnalyticsPage
 from playwright.sync_api import expect
+from utils.analytics_format import fmt_num
 from utils.console_errors import collect_console_errors
 
 logger = logging.getLogger(__name__)
@@ -57,20 +58,6 @@ DEGENERATE_VALUE_PATTERN = re.compile(r"^(undefined|nan|null|-)$", re.IGNORECASE
 # via getComputedStyle against the active theme (same discipline as the Users
 # tab's Errors-cell colors: never hardcode an assumed value).
 ADOPTION_BADGE_COLOR = "rgb(43, 212, 141)"
-
-
-def fmt_num(value) -> str:
-    """Python port of `AnalyticCommonHelpers.fmtNum` (EliteaUI
-    `settings/lib/helpers/analyticsCommon.helpers.js`) — the formatter the KPI
-    cards render their numbers through. Kept suite-local (Hard Rule 7: extract
-    to `utils/` on the third consumer, not the first)."""
-    if value is None:
-        return "-"
-    if value >= 1_000_000:
-        return f"{value / 1_000_000:.1f}M"
-    if value >= 1_000:
-        return f"{value / 1_000:.1f}K"
-    return str(value)
 
 
 def fmt_cost(usd) -> str:

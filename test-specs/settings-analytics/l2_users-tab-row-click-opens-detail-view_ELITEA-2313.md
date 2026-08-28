@@ -58,7 +58,7 @@
    contract, not the case's six.
 4. Verify the Errors KPI card's value renders in the red/rejected color when
    `errors > 0` (live-verified: `testbot@elitea.ai`, `errors: 75`, computed
-   `color: rgb(215, 22, 22)`), and in the default text color for the other nine cards
+   `color: rgb(215, 22, 22)`), and in the default text color for every other card
    (live-verified: `rgb(255, 255, 255)`). Source confirms the same `> 0` threshold as
    the Users-table row (`AnalyticsUserDetailed.jsx:99`:
    `color={kpis.errors > 0 ? palette.status.rejected : undefined}`) — **no case-text
@@ -104,8 +104,19 @@
    query result was already cached by RTK-Query from the original tab-mount fetch).
 
 ## Expected Results
+
+> **Amendment — 2026-08-28 (ELITEA-2329 `extend-existing`, PR #1956 review round 1).**
+> The user-detail KPI row grew from **10 to 16 cards** after this case was automated
+> (EliteaAI/EliteaUI@f084ea12 + EliteaAI/EliteaUI@ce8115c6, both EL-6267). Every
+> "10 cards" / "the other nine cards" claim below dates from the original analysis and
+> has been corrected to the shipped contract (16 cards, 15 non-Errors) — the live set
+> and order are pinned by `EXPECTED_KPI_LABELS_IN_ORDER` in
+> `automation/tests/ui/admin/test_analytics_user_detail_view.py`. The case-text drift
+> filed as elitea-testing-public#1191 is unchanged in kind, only wider in degree
+> (6 listed vs 16 live).
+
 - Clicking a user row (with a non-null email) swaps the Users-tab table for the user
-  detail view: email title + back arrow, 10 KPI cards (Errors red only when > 0),
+  detail view: email title + back arrow, 16 KPI cards (Errors red only when > 0),
   a conditional Daily Activity chart with working hover tooltip, and three summary
   panels (Models/Tools/Agents & Pipelines Used) — all render without console errors.
 - The GET `.../analytics_user_detail/prompt_lib/{project_id}?user_id={id}&date_from=...&date_to=...`
@@ -121,8 +132,8 @@
 | 1 Navigate to Settings → Analytics → Users tab | Target page/section loads successfully | step 1 | reused from ELITEA-2312's `open_users_tab()` | asserted (transit, not this case's own observable) |
 | 2 Click on any user row in the User Activity table | Control responds; expected next state is shown | step 1 | `step 1`: table panel replaced by detail view, network+spinner waits | asserted |
 | 3 View transitions to user detail page showing email as title with back arrow | Condition holds | step 2 | `step 2`: title text = user's email, back-arrow IconButton present | asserted |
-| 4 Six KPI cards shown: LLM Calls, Tool Calls, Chat Msg, Agent Runs, Active Days, Errors | Condition holds | step 3 | `step 3`: live 10-card set + order asserted instead | clarification *(case's 6-card list is stale — omits Total/Input/Output Tokens and Total Cost; live view has 10 cards. Same stale-count family as ELITEA-2310/2311/2312. Filed elitea-testing-public#1191)* |
-| 5 Errors card value shown in red when greater than 0 | Condition holds | step 4 | `step 4`: both branches asserted live — Errors card red (`rgb(215, 22, 22)`) for `errors=75`, all other 9 cards default color (`rgb(255, 255, 255)`) | asserted *(no case-text drift here — case's ">0" wording matches source and live exactly)* |
+| 4 Six KPI cards shown: LLM Calls, Tool Calls, Chat Msg, Agent Runs, Active Days, Errors | Condition holds | step 3 | `step 3`: live 16-card set + order asserted instead | clarification *(case's 6-card list is stale — omits the token/cost cards; live view has 16 cards (10 at analysis time — see the Amendment above). Same stale-count family as ELITEA-2310/2311/2312. Filed elitea-testing-public#1191)* |
+| 5 Errors card value shown in red when greater than 0 | Condition holds | step 4 | `step 4`: both branches asserted live — Errors card red (`rgb(215, 22, 22)`) for `errors=75`, all other 15 cards default color (`rgb(255, 255, 255)`) | asserted *(no case-text drift here — case's ">0" wording matches source and live exactly)* |
 | 6 "Daily Activity" multi-series area chart shown with "Events by type per day" subtitle | Condition holds | step 5 | `step 5`: title + subtitle text, chart conditional on `daily_activity.length > 0` | asserted |
 | 7 Three summary panels shown: Models Used, Tools Used, Agents Used | Condition holds | step 6 | `step 6`: live labels asserted ("Agents & Pipelines Used", not "Agents Used") | clarification *(case's "Agents Used" is stale — live label matches the tab's own "Agents & Pipelines" naming; minor drift, same family as row 4)* |
 | 8 Each panel shows a count label and a list of items with call counts | Action completes without error and produces expected UI state | step 7 | `step 7`: count label + item list (name + count) for N>0, empty-state string for N=0 | asserted |
@@ -133,7 +144,7 @@
 - `step 3` asserts KPI card **order**, not just presence/count — *added: cheap once the
   per-card handle exists, mirrors ELITEA-2310's tab/preset order assertions and
   ELITEA-2312's column-order assertion; catches a silent reorder regression.*
-- `step 4` asserts the **negative** branch (9 non-Errors cards stay default-colored) in
+- `step 4` asserts the **negative** branch (the 15 non-Errors cards stay default-colored) in
   addition to the case's positive branch — *added: a card whose color logic
   accidentally fires for everything (e.g. a copy-paste `color` prop bug) would pass a
   positive-only check while failing this; cheap once the errors-value testid exists.*
@@ -172,8 +183,8 @@ different sub-view).
 | Back-arrow button | `LocatorDescriptor(testid="analytics-user-detail-back-button")` | needs-adding | `AnalyticsUserDetailed.jsx:57-62` — `<IconButton onClick={onBack}><ArrowBackIcon /></IconButton>`. Add directly (not a shared component's generic prop — this `IconButton` usage is local to this view). |
 | Title (user email) | `LocatorDescriptor(testid="analytics-user-detail-title")` | needs-adding | `AnalyticsUserDetailed.jsx:63-68` — `<Typography>{data.user_email}</Typography>`. **Renders BLANK for a user with no email** — see § Known Defects; test data selection (a user WITH an email) works around this for the happy-path assertion, but the blank-title behavior itself is filed as a defect. |
 | Loading spinner (this view) | `LocatorDescriptor(testid="analytics-user-detail-loading-indicator")` | needs-adding | `AnalyticsUserDetailed.jsx:26-31` — the `isFetching` early-return `CircularProgress`. Used for an absence assertion (wait `state="hidden"`) before asserting rendered content, mirroring `analytics-users-loading-indicator`'s pattern (absence assertions count as references per `.agents/testing.md`). |
-| KPI card (repeated, one per rendered card) | `LocatorDescriptor(testid="analytics-user-detail-kpi-card")` | needs-adding | **Shared `KpiCard.jsx` component** (also used by `AnalyticsOverview`, `AnalyticsCosts`, `AnalyticsAgentDetailed`, `AnalyticsToolDetailed`, `UsageSummary` — per `.agents/testing.md` § Locator policy, shared components take a caller-supplied prop, never a hardcoded testid). Add an optional `testId` prop to `KpiCard`, wired as `data-testid={testId}` on its outer `Box` (`kpiCardStyles().kpiCard`); pass the **same** `testId="analytics-user-detail-kpi-card"` on **all 10** `<KPICard>` call sites inside `AnalyticsUserDetailed.jsx` only (list pattern, mirrors `analytics-users-row` — `.nth(i)`, count via `.count()`). Do NOT add the prop at the Overview/Costs/AgentDetailed/ToolDetailed/UsageSummary call sites — those are untouched by this case (scope discipline, `.agents/role-overrides.md`). Read each card's own label via `.nth(i).inner_text().split("\n")[0]` (mirrors ELITEA-2312's `get_user_row_identifier` technique) — no positional child selector needed. |
-| KPI card value (repeated, one per rendered card) | `LocatorDescriptor(testid="analytics-user-detail-kpi-value")` | needs-adding | **Implementer amendment (Phase 2 exploration, supersedes the analyst's original single `analytics-user-detail-kpi-errors-value` spec below this row).** Same `KpiCard.jsx` — add a second optional prop `valueTestId`, wired as `data-testid={valueTestId}` on the value `Typography` specifically (`kpiCardStyles().kpiValue`, the element carrying the `color` prop). The analyst's original plan wired this **only** on the `ERRORS` call site and proposed reading the other 9 cards' default color off the **outer card `analytics-user-detail-kpi-card` locator itself** — verified during exploration that this doesn't work: `kpiCard`'s own `sx` sets no `color` at all (`KpiCard.jsx` styles), so `getComputedStyle` on the card Box reflects only inherited/ambient color, never the value Typography's explicit `color` prop; asserting on the card box for the negative branch would be a trivially-passing, defect-masking-in-reverse check (always green regardless of a real color-prop bug). Fix: pass `valueTestId="analytics-user-detail-kpi-value"` (same value, repeated) on **all 10** `<KPICard>` call sites, mirroring the `analytics-user-detail-kpi-card` list pattern — `.nth(i)` selects the same index as the corresponding card. Read the Errors card's color via `expect(locator.nth(errors_index)).to_have_css("color", "rgb(215, 22, 22)")` and the other 9 via the same check against the resolved default-text color — confirmed live via `getComputedStyle` rather than hardcoded (same caution as ELITEA-2312's Errors-column note). |
+| KPI card (repeated, one per rendered card) | `LocatorDescriptor(testid="analytics-user-detail-kpi-card")` | needs-adding | **Shared `KpiCard.jsx` component** (also used by `AnalyticsOverview`, `AnalyticsCosts`, `AnalyticsAgentDetailed`, `AnalyticsToolDetailed`, `UsageSummary` — per `.agents/testing.md` § Locator policy, shared components take a caller-supplied prop, never a hardcoded testid). Add an optional `testId` prop to `KpiCard`, wired as `data-testid={testId}` on its outer `Box` (`kpiCardStyles().kpiCard`); pass the **same** `testId="analytics-user-detail-kpi-card"` on **every** `<KPICard>` call site (10 at analysis time, 16 live — see the Amendment above) inside `AnalyticsUserDetailed.jsx` only (list pattern, mirrors `analytics-users-row` — `.nth(i)`, count via `.count()`). Do NOT add the prop at the Overview/Costs/AgentDetailed/ToolDetailed/UsageSummary call sites — those are untouched by this case (scope discipline, `.agents/role-overrides.md`). Read each card's own label via `.nth(i).inner_text().split("\n")[0]` (mirrors ELITEA-2312's `get_user_row_identifier` technique) — no positional child selector needed. |
+| KPI card value (repeated, one per rendered card) | `LocatorDescriptor(testid="analytics-user-detail-kpi-value")` | needs-adding | **Implementer amendment (Phase 2 exploration, supersedes the analyst's original single `analytics-user-detail-kpi-errors-value` spec below this row).** Same `KpiCard.jsx` — add a second optional prop `valueTestId`, wired as `data-testid={valueTestId}` on the value `Typography` specifically (`kpiCardStyles().kpiValue`, the element carrying the `color` prop). The analyst's original plan wired this **only** on the `ERRORS` call site and proposed reading the other cards' default color off the **outer card `analytics-user-detail-kpi-card` locator itself** — verified during exploration that this doesn't work: `kpiCard`'s own `sx` sets no `color` at all (`KpiCard.jsx` styles), so `getComputedStyle` on the card Box reflects only inherited/ambient color, never the value Typography's explicit `color` prop; asserting on the card box for the negative branch would be a trivially-passing, defect-masking-in-reverse check (always green regardless of a real color-prop bug). Fix: pass `valueTestId="analytics-user-detail-kpi-value"` (same value, repeated) on **every** `<KPICard>` call site, mirroring the `analytics-user-detail-kpi-card` list pattern — `.nth(i)` selects the same index as the corresponding card. Read the Errors card's color via `expect(locator.nth(errors_index)).to_have_css("color", "rgb(215, 22, 22)")` and every other card via the same check against the resolved default-text color — confirmed live via `getComputedStyle` rather than hardcoded (same caution as ELITEA-2312's Errors-column note). |
 | Chart title | `LocatorDescriptor(testid="analytics-user-detail-chart-title")` | needs-adding | `AnalyticsUserDetailed.jsx:122-127` — `<Typography>Daily Activity</Typography>`. |
 | Chart subtitle | `LocatorDescriptor(testid="analytics-user-detail-chart-subtitle")` | needs-adding | `AnalyticsUserDetailed.jsx:131-136` — `<Typography>Events by type per day</Typography>`. |
 | Chart container | `LocatorDescriptor(testid="analytics-user-detail-chart-container")` | needs-adding | `AnalyticsUserDetailed.jsx:141-145` — the `Box` wrapping `<ResponsiveContainer>` (`styles.chartWrapper`). Used for (a) a presence assertion the chart rendered, and (b) computing hover coordinates for step 8 (`.bounding_box()`, hover at the horizontal midpoint) — the Recharts SVG internals themselves are the #579 third-party-widget exception (no testid can be placed on Recharts' internal `<path>`/`<g>` nodes), scoped to this testid parent. |
@@ -209,7 +220,7 @@ implementer must re-grep `origin/main` fresh before committing).
   is the ELITEA-2312 sibling; filed as its own sibling **elitea-testing-public#1191**
   for this case, per the dedup rule — different object, the detail view's KPI cards,
   not the table's columns): case step 4 lists 6 KPI cards, omitting Total/Input/Output
-  Tokens and Total Cost — live view has 10. Case step 7 says "Agents Used"; live label
+  Tokens and Total Cost — live view has 16 (10 at analysis time). Case step 7 says "Agents Used"; live label
   is "Agents & Pipelines Used". This AFS's steps 3 and 6 assert the live contract.
 - **[POSSIBLE DEFECT — filed separately, not bundled with the #1188 clarification
   family]** `AnalyticsUserDetailed.jsx:66` renders `{data.user_email}` as the detail
@@ -235,7 +246,7 @@ implementer must re-grep `origin/main` fresh before committing).
 - **elitea-testing-public#1192** — "`AnalyticsUserDetailed` user-detail title renders
   blank for a user with no email (list view falls back to `User {id}`, detail view
   does not)" — labelled `bug`, links this case (ELITEA-2313) and the originating task.
-- **elitea-testing-public#1191** — case-text drift clarification (6 vs 10 KPI cards,
+- **elitea-testing-public#1191** — case-text drift clarification (6 vs 16 KPI cards,
   "Agents Used" vs "Agents & Pipelines Used") — labelled `question`, see § Known
   Defects above (first bullet).
 
@@ -263,10 +274,10 @@ for why that row was chosen over the first alphabetical/positional one).
   `AnalyticsPage._wait_for_users_settled()`'s two-step pattern) — add a new URL-substring
   constant `ANALYTICS_USER_DETAIL_QUERY_URL_SUBSTRING = "/elitea_core/analytics_user_detail/prompt_lib/"`.
 - KPI card assertions: use `.count()` on `analytics-user-detail-kpi-card` for the
-  10-card check, `.nth(i).inner_text().split("\n")[0]` for each label in order, and the
+  card-count check, `.nth(i).inner_text().split("\n")[0]` for each label in order, and the
   dedicated `analytics-user-detail-kpi-errors-value` testid + `to_have_css("color", ...)`
   for the Errors-card color branch (both positive `errors > 0` → red and, on the other
-  9 cards, default color — read via `analytics-user-detail-kpi-card`'s non-Errors
+  other cards, default color — read via `analytics-user-detail-kpi-card`'s non-Errors
   `.nth(i)` entries, same `to_have_css` check against the resolved default-text color).
 - Chart hover: compute the `analytics-user-detail-chart-container`'s bounding box
   (`.bounding_box()`), then use a **real** `page.mouse.move(x, y)` at (roughly) the

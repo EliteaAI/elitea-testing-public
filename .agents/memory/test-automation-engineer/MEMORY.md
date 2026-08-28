@@ -78,3 +78,4 @@
 - [zsh does not word-split unquoted $VAR](zsh_does_not_word_split_unquoted_variables.md) — multi-path variables collapse to one arg; faked a "zero new lint" result
 - [Running a spec against DEV](dev_env_run_harness_and_goto_flake.md) — ELITEA_URL export does nothing; use the -p plugin harness; expect ~40% raw goto timeouts
 - [JS evaluate-click no-ops when disabled](js_click_silently_noops_on_disabled_controls.md) — use expect(enabled)+real click on gated controls (#1897)
+- [A negative to_have_text wait built from inner_text() lines needs use_inner_text=True](negative_text_wait_needs_use_inner_text.md) — Playwright compares textContent by default; a space-joined expectation makes the wait a no-op

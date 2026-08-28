@@ -114,10 +114,9 @@ Rendered-series count uses the page object's existing `RECHARTS_AREA_SERIES` con
 `<path>` nodes mount one animation tick after the container appears — wait on `.first` attached,
 never a sleep.
 
-`fmt_num()` (the Python port of `AnalyticCommonHelpers.fmtNum`) currently lives in
-`tests/ui/admin/test_analytics_overview_kpi_cards.py:62`; with ELITEA-2326 and the 2327/2328 family
-spec it passes its third consumer, so per Hard Rule 7 extract it to `automation/utils/` and import it
-here rather than copying it.
+`fmt_num()` (the Python port of `AnalyticCommonHelpers.fmtNum`) was **extracted to
+`automation/utils/analytics_format.py` (2026-08-28)** on its third consumer, per Hard Rule 7; this
+spec imports it from there.
 
 ## Fidelity Declaration
 **No substitutions.** Both hovers are real `page.mouse.move()` CDP input events, and every asserted
@@ -150,3 +149,45 @@ spec already relies on.
 - Zero console errors across the whole walk.
 - Minor harness note: immediately after clicking the Users tab, `analytics-users-row.count()` can
   return 0 while `.first` still resolves via auto-waiting — wait on the row locator before counting.
+
+## Implementation notes (2026-08-28, test-automation-engineer)
+
+Delivered as Steps **8b / 8c / 8d** appended to
+`automation/tests/ui/admin/test_analytics_user_detail_view.py`'s
+`TestAnalyticsUserDetailView::test_users_tab_row_click_opens_detail_view` — no new spec, exactly as
+this AFS specifies. Gap 1 (exact series list + count == rendered `<Area>` paths), gap 2 (label is a
+real `daily_activity` date, every value `== fmt_num(point[key])`), gap 3 (second data point, label
+differs and re-matches) and gap 4 (tooltip unmounts, `count() == 0`) are all in. The response oracle
+comes from a new additive sibling, `AnalyticsPage.open_user_detail_by_row_capturing_analytics()`
+(identical click and waits to `open_user_detail_by_row()`, plus a 200 assertion, and it returns the
+parsed body) — Step 1's one call was switched to it; no existing assertion was weakened or removed.
+
+**Two pre-existing reds in the covering spec had to be repaired before this extension could be
+verified.** Both were caused by the SAME product change and both reproduced byte-identically on a
+pristine-HEAD control run, i.e. the covering spec was already red on `automation/base` before this
+branch existed:
+
+1. **The KPI row grew from 10 cards to 16.** EL-6267 —
+   EliteaAI/EliteaUI@f084ea12 (input/output token cost) + EliteaAI/EliteaUI@ce8115c6 (prompt-cache
+   tokens/cost) — added `CACHE READ TOKENS`, `CACHE WRITE TOKENS`, `CACHE READ COST`,
+   `CACHE WRITE COST`, `INPUT TOKEN COST`, `OUTPUT TOKEN COST`, all unconditional
+   (`AnalyticsUserDetailed.jsx:73-188`). `EXPECTED_KPI_LABELS_IN_ORDER` now names all 16 in the
+   product's declaration order and the colour loop covers all of them — the assertion is
+   *strengthened*, not weakened (it still pins the exact set and order), per the reverse-masking
+   guard: assert the live contract, never the stale hypothesis.
+2. **The chart fell below the fold, so the merged Step 8 hover stopped landing on the plot.** Six more
+   cards = one more card row = the chart's vertical centre below the viewport, and the raw
+   `page.mouse.move()` Step 8 used never raised a tooltip. Step 8 now calls
+   `AnalyticsPage.hover_chart_at_fraction(container, 0.5)` — the same gesture, but the page object
+   scrolls the container into view first. Every Step-8 assertion is byte-identical.
+
+Both repairs are **declared** deviations (they touch ELITEA-2313's spec, not this case's) and are
+reported to the lead in the Run Report `findings[]`: a follow-up `adjust-automated-test` pass may
+want to re-run ELITEA-2313's own case text against the 16-card live view, and its TMS case is already
+carrying an open case-text clarification (elitea-testing-public#1191).
+
+**Range note:** the covering spec runs on the page's DEFAULT date preset (`Last 24h`), not the
+`Last 30d` this AFS was explored on. Live 2026-08-28 that still yielded 2 `daily_activity` entries for
+`testbot@elitea.ai`, so the gap-3 precondition holds and the two fractional hovers (25% / 75%) landed
+on different days. The precondition is asserted against the captured response, so a thinner day would
+fail loudly with a clear message rather than time out.
