@@ -117,3 +117,4 @@
 - [Reviewer out-of-scope finding](reviewer_out_of_scope_finding.md) — verify vs the ref before filing a card
 - [A Fix card may already be fixed by a sibling PR](fix_card_may_already_be_fixed_by_a_sibling_pr.md) — timing check + one-file matched control, before any dispatch
 - [Cherry-pick ports a DELTA, not a file state](cherry_pick_ports_a_delta_not_a_file_state.md) — silently drops doc sections
+- [CI-red? check base for an existing fix first](ci_red_check_base_for_an_existing_fix_first.md) — a symptom matching an older OPEN issue = promotion gap
