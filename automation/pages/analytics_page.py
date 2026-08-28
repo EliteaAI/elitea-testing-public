@@ -146,7 +146,7 @@ the label-iff-value pairing assertion.
 
 import logging
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from .base_page import BasePage
@@ -242,6 +242,18 @@ class AnalyticsPage(BasePage):
         testid="analytics-overview-kpi-row",
         description="Overview tab's KPI card row (AnalyticsOverview.jsx) — proves the "
         "Overview tab actually rendered content, not just that the spinner disappeared",
+    )
+    overview_daily_chart_container = LocatorDescriptor(
+        testid="analytics-overview-daily-chart-container",
+        description='Overview tab\'s "Daily Activity" area-chart container — unconditional on '
+        "this tab; also the testid parent scoping the recharts-internal area-path raw handle "
+        "(#579 exception 1) and the box hover coordinates are computed from (ELITEA-2326)",
+    )
+    overview_daily_chart_tooltip = LocatorDescriptor(
+        testid="analytics-overview-daily-chart-tooltip",
+        description='Recharts hover tooltip on the Overview "Daily Activity" chart — the shared '
+        "ChartTooltip returns null when !active, so it UNMOUNTS on mouse-out (assert count 0, "
+        "never not_to_be_visible) (ELITEA-2326)",
     )
 
     # Users tab (ELITEA-2312)
@@ -347,7 +359,15 @@ class AnalyticsPage(BasePage):
         description='Bar-chart subtitle — dynamic "Top {N} by runs"',
     )
     agents_chart_container = LocatorDescriptor(
-        testid="analytics-agents-chart-container", description="Bar chart's wrapping container — presence only"
+        testid="analytics-agents-chart-container",
+        description="Bar chart's wrapping container — presence, and the testid parent scoping "
+        "the recharts-internal bar-path raw handles (#579 exception 1, ELITEA-2327)",
+    )
+    agents_chart_tooltip = LocatorDescriptor(
+        testid="analytics-agents-chart-tooltip",
+        description='Recharts hover tooltip on the "Most Active Agents & Pipelines" bar chart — '
+        "this chart renders NO legend, so the series name \"Runs\" exists in the DOM only here; "
+        "unmounts on mouse-out (ELITEA-2327)",
     )
     agents_chat_chart_title = LocatorDescriptor(
         testid="analytics-agents-chat-chart-title",
@@ -491,6 +511,12 @@ class AnalyticsPage(BasePage):
         testid="analytics-tools-chart-container",
         description="Bar chart's wrapping container — also the testid parent scoping the "
         "recharts-internal bar/axis raw handles (#579 exception 1)",
+    )
+    tools_chart_tooltip = LocatorDescriptor(
+        testid="analytics-tools-chart-tooltip",
+        description='Recharts hover tooltip on the "Most Popular Tools" bar chart — this chart '
+        "renders NO legend, so the series name \"Calls\" exists in the DOM only here; unmounts "
+        "on mouse-out (ELITEA-2328)",
     )
     tools_details_title = LocatorDescriptor(
         testid="analytics-tools-details-title", description='Table section header — "Tool Details"'
@@ -1335,6 +1361,157 @@ class AnalyticsPage(BasePage):
         self.health_chart_container.hover()
         self.health_chart_tooltip.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         return self.health_chart_tooltip.inner_text()
+
+    # ------------------------------------------------------------------
+    # Shared Recharts hover-tooltip primitives
+    # (ELITEA-2326 Overview area chart, ELITEA-2327/2328 bar charts,
+    #  ELITEA-2329 user-detail area chart)
+    # ------------------------------------------------------------------
+    #
+    # Every chart on this surface renders its hover tooltip through the SAME
+    # shared `ChartTooltip` (`analytics/components/ChartTooltip.jsx`), whose
+    # markup is always: line 1 = the Recharts `label` (a date for area charts,
+    # the category name for bar charts), lines 2..N = "{series name}: {value}"
+    # in `<Area>`/`<Bar>` declaration order. These helpers are therefore
+    # chart-agnostic and take the chart's own container/tooltip locators.
+    #
+    # Hovering fires NO network request — the tooltip is a pure client-side
+    # render over the RTK-Query cache, so never wait on a response after one.
+
+    def get_chart_area_series_count(self, chart_container) -> int:
+        """Number of rendered `<Area>` series inside *chart_container*.
+
+        #579 exception 1 (third-party widget subtree): the `<path>` nodes
+        Recharts renders per `<Area>` are library-internal and cannot carry
+        an app testid, so the raw handle is SCOPED inside a real app-testid
+        parent (the caller passes one of the `*_chart_container`
+        `LocatorDescriptor` fields). Do NOT extend this exception to any node
+        that COULD carry a testid.
+
+        The paths mount one animation tick after the container becomes
+        visible, so this waits on `.first` being attached rather than
+        assuming the container implies the paths (never a sleep).
+        """
+        series = chart_container.locator(RECHARTS_AREA_SERIES)
+        series.first.wait_for(state="attached", timeout=UI_ELEMENT_TIMEOUT)
+        return series.count()
+
+    def get_chart_bar_count(self, chart_container) -> int:
+        """Number of rendered `<Bar>` rectangles inside *chart_container*.
+
+        Same #579 exception-1 scoping and same one-tick mount lag as
+        `get_chart_area_series_count`.
+        """
+        bars = chart_container.locator(RECHARTS_BAR_FILL)
+        bars.first.wait_for(state="attached", timeout=UI_ELEMENT_TIMEOUT)
+        return bars.count()
+
+    def hover_chart_at_fraction(self, chart_container, fraction_x: float) -> None:
+        """Move the real mouse to *fraction_x* of *chart_container*'s width,
+        vertically centred — the honest way to raise an area chart's tooltip.
+
+        A genuine `page.mouse.move()` CDP input event, never a synthetic
+        event dispatched through `page.evaluate` (that would make the TEST the
+        producer of the observable rather than the product —
+        `.agents/testing.md` § Fidelity policy).
+
+        Recharts snaps to the nearest category, so no exact datum-pixel maths
+        is needed: the caller reads whichever label it landed on and asserts
+        against that entry of the captured response.
+        """
+        box = chart_container.bounding_box()
+        assert box, "Expected the chart container to have a layout box to hover into"
+        self.page.mouse.move(box["x"] + box["width"] * fraction_x, box["y"] + box["height"] / 2)
+
+    def hover_chart_bar(self, chart_container, index: int) -> None:
+        """Move the real mouse to the centre of the bar at *index* inside
+        *chart_container*.
+
+        Targeting the bar's OWN bounding box (rather than a fraction of the
+        container) is what makes the bar-index <-> response-row mapping exact:
+        both charts plot `rows.slice(0, 20)`, so bar `i` is response `rows[i]`.
+        Same #579 exception-1 scoped raw handle as `get_chart_bar_count`.
+        """
+        bars = chart_container.locator(RECHARTS_BAR_FILL)
+        bars.first.wait_for(state="attached", timeout=UI_ELEMENT_TIMEOUT)
+        box = bars.nth(index).bounding_box()
+        assert box, f"Expected bar {index} to have a layout box to hover into"
+        self.page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+
+    def move_mouse_off_chart(self, chart_container) -> None:
+        """Move the real mouse well clear of *chart_container* so Recharts
+        deactivates the tooltip (the shared `ChartTooltip` returns `null` when
+        `!active`, so the node UNMOUNTS — assert `count() == 0`)."""
+        box = chart_container.bounding_box()
+        assert box, "Expected the chart container to have a layout box to move away from"
+        self.page.mouse.move(box["x"] + box["width"] / 2, max(box["y"] - 250, 0))
+
+    def read_chart_tooltip_lines(self, tooltip_locator) -> list[str]:
+        """Wait for *tooltip_locator* to be visible and return its non-empty
+        text lines: line 0 is the label, lines 1..N are `"{series}: {value}"`."""
+        tooltip_locator.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        return [line for line in tooltip_locator.inner_text().split("\n") if line.strip()]
+
+    def wait_for_chart_tooltip_change(self, tooltip_locator, previous_lines: list[str]) -> list[str]:
+        """Wait until *tooltip_locator*'s rendered text stops matching
+        *previous_lines* (the result of a prior `read_chart_tooltip_lines`),
+        then return the new lines.
+
+        This is the race-free settle wait after moving the mouse to a second
+        data point: Recharts re-renders the tooltip a tick after the mousemove
+        lands, so reading `inner_text()` straight away can still see the old
+        point. A retrying web-first assertion is used (never a sleep), and it
+        deliberately asserts only that the content CHANGED — the caller then
+        asserts what it changed TO, against the captured response.
+        """
+        expect(tooltip_locator).not_to_have_text(" ".join(previous_lines), timeout=UI_ELEMENT_TIMEOUT)
+        return self.read_chart_tooltip_lines(tooltip_locator)
+
+    # ------------------------------------------------------------------
+    # Response-capturing tab/row openers (oracle capture — `.agents/testing.md`
+    # § Fidelity policy: nothing is intercepted or fabricated, the body
+    # returned is the very payload the UI rendered from)
+    # ------------------------------------------------------------------
+
+    def open_agents_pipelines_tab_capturing_analytics(self) -> dict:
+        """Click the Agents & Pipelines tab and return its data response BODY.
+
+        Additive sibling of `open_agents_pipelines_tab()` (which returns
+        `None` and has merged callers) — same convention as
+        `navigate_capturing_analytics` / `select_date_preset_capturing_analytics`.
+        """
+        with self.page.expect_response(
+            self._is_analytics_agents_query_response, timeout=NAVIGATION_TIMEOUT
+        ) as response_info:
+            self.tab_agents_pipelines.click()
+        response = response_info.value
+        assert response.status == 200, (
+            f"Expected the Agents & Pipelines-tab query to return 200, got {response.status} "
+            f"for {response.url}"
+        )
+        self.agents_table_header.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        self._wait_for_agents_settled()
+        return response.json()
+
+    def open_user_detail_by_row_capturing_analytics(self, index: int) -> dict:
+        """Click the Users-tab row at *index* and return the user-detail
+        response BODY.
+
+        Additive sibling of `open_user_detail_by_row()` (which returns `None`
+        and has merged callers).
+        """
+        with self.page.expect_response(
+            self._is_analytics_user_detail_query_response, timeout=NAVIGATION_TIMEOUT
+        ) as response_info:
+            self.users_rows.nth(index).click()
+        response = response_info.value
+        assert response.status == 200, (
+            f"Expected the user-detail query to return 200, got {response.status} "
+            f"for {response.url}"
+        )
+        self.user_detail_title.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        self._wait_for_user_detail_settled()
+        return response.json()
 
     # ------------------------------------------------------------------
     # Guide tab (ELITEA-2325) — static content, issues NO network request
