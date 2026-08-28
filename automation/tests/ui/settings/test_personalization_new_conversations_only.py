@@ -1,8 +1,20 @@
 """UI test -- personalization settings apply to NEW conversations only
-(ELITEA-2384).
+(ELITEA-2384), and both defaults survive a route change (ELITEA-2388,
+ELITEA-2389).
 
 AFS: test-specs/settings-user-profile/
 l3_personalization-applies-to-new-conversations-only_ELITEA-2384.md
+AFS (extension): test-specs/settings-user-profile/
+lextend_default-personality-and-instructions-apply-to-new-conversations_ELITEA-2388-2389.md
+
+ELITEA-2388 (Default Personality) and ELITEA-2389 (Default User Instructions)
+are the single-field forms of ELITEA-2384's combined flow: 6 of each case's 7
+steps are already asserted below, against the conversation record the app itself
+fetches. Their one uncovered step -- "navigate away and back to confirm the
+value was auto-saved" -- is Step 2b. A reload (asserted by ELITEA-2381/2382) is
+a DIFFERENT journey: it rebuilds the store from the server, whereas an in-SPA
+route change exercises the mount/unmount + refetch path these two cases name and
+the user actually performs.
 
 A conversation snapshots the user's personalization (`meta.persona` and the
 resolved `instructions`) **at creation time**. Changing the defaults afterwards
@@ -32,7 +44,8 @@ snapshot exist as soon as the message is SENT (the 201 lands before any answer),
 which keeps the documented LLM trigger-side flakiness out of this case.
 
 Case-text drift (case-text stale, product correct -- clarifications on
-EliteaAI/elitea-testing-public#1960, none filed as a defect):
+EliteaAI/elitea-testing-public#1960 and EliteaAI/elitea-testing-public#1967,
+none filed as a defect):
 
 * "Navigate to Personalization" -> the Default persona select is on
   ``/settings/ai-personality``;
@@ -207,6 +220,16 @@ class TestPersonalizationAppliesToNewConversationsOnly:
         "settings/user-profile/ELITEA-2384_personalization-settings-only-apply-to-new-conversations-exi.md",
         "onetest-ai Test Case link",
     )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "settings/user-profile/ELITEA-2388_default-personality-change-applies-to-new-conversations.md",
+        "onetest-ai Test Case link (ELITEA-2388)",
+    )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "settings/user-profile/ELITEA-2389_default-user-instructions-apply-to-new-conversations.md",
+        "onetest-ai Test Case link (ELITEA-2389)",
+    )
     def test_personalization_applies_to_new_conversations_only(self, page, conversation_api):
         """A conversation keeps the personalization it was created with; a later
         default change reaches only conversations created after it."""
@@ -276,6 +299,33 @@ class TestPersonalizationAppliesToNewConversationsOnly:
                     f"Saving the user instructions should autosave via PUT -> 200, got "
                     f"{saved.value.status}"
                 )
+                expect(personalization.user_instructions_textarea).to_have_value(
+                    INSTRUCTIONS_MARKER
+                )
+
+            with allure.step(
+                "Step 2b - Both values survive a route change away and back "
+                "(ELITEA-2388 step 3, ELITEA-2389 step 3)"
+            ):
+                # Real in-app navigation, NOT `page.goto`: the gap these two
+                # cases name is the SPA mount/unmount + refetch path.
+                # `go_to_settings_tab` clicks the drawer item from the settings
+                # route already open; `open_settings_tab` would start with a
+                # full document navigation to the app root, i.e. a reload -- the
+                # journey ELITEA-2381/2382 already cover.
+                personalization.go_to_settings_tab("preferences")
+                # Without this the "away" half is vacuous: a navigation that
+                # silently failed would leave us on the same route and the
+                # re-read below would prove nothing.
+                expect(personalization.voice_personalization_section).to_be_visible(
+                    timeout=UI_ELEMENT_TIMEOUT
+                )
+
+                personalization.go_to_settings_tab("ai-personality")
+                # The select is briefly absent from the DOM while the settings
+                # query resolves -- an element wait, never a sleep.
+                personalization.wait_for_persona_select()
+                expect(personalization.persona_select_combobox).to_have_text(CASE_PERSONA_LABEL)
                 expect(personalization.user_instructions_textarea).to_have_value(
                     INSTRUCTIONS_MARKER
                 )

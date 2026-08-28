@@ -48,6 +48,13 @@ not yet on ``main``): ``preferences-general-section(-header)``,
 ``context-management-section-header``, ``ai-personality-persona-section``,
 ``ai-personality-persona-select`` (+ the ``-combobox`` element ``SingleSelect``
 derives from it) and ``ai-personality-user-instructions-textarea``.
+Added for the ELITEA-2385/2386 controls (EliteaAI/EliteaUI@2d5f38d8 and
+EliteaAI/EliteaUI@e087c0df, ``automation/testids``; not yet on ``main``):
+``voice-personalization-voice-select`` (+ its derived ``-combobox``),
+``voice-personalization-{speed,volume}-slider(-input|-thumb)``,
+``sound-notifications-toggle(-input)``,
+``sound-notifications-volume-slider(-input|-thumb)`` and
+``sound-notifications-preview-button``.
 
 .. note::
    ``BasicAccordion`` hardcodes ``aria-controls="panel-content-${index}"`` per
@@ -179,6 +186,97 @@ class SettingsPersonalizationPage(BasePage):
     sound_notifications_content = LocatorDescriptor(
         testid="sound-notifications-content",
         description="SOUND NOTIFICATIONS accordion body (toggle + volume slider)",
+    )
+
+    # ------------------------------------------------------------------
+    # /settings/preferences -- VOICE PERSONALIZATION controls
+    # ------------------------------------------------------------------
+
+    voice_select_combobox = LocatorDescriptor(
+        testid="voice-personalization-voice-select-combobox",
+        description="Display element of the 'Voice' select -- reads the current "
+        "voice and opens the option list on click. `SingleSelect` derives this "
+        "testid from the wrapper's own (`${dataTestId}-combobox`). The wrapper "
+        "itself (`voice-personalization-voice-select`) is never addressed "
+        "directly: everything a test does happens on the display element or the "
+        "option rows.",
+    )
+
+    voice_speed_slider = LocatorDescriptor(
+        testid="voice-personalization-speed-slider",
+        description="'Speed' Slider root. Its own rendered text IS the mark-label "
+        "row (`0.5x 1x 1.5x 2x`), and its bounding box is what a drag target x is "
+        "computed against.",
+    )
+
+    voice_speed_slider_input = LocatorDescriptor(
+        testid="voice-personalization-speed-slider-input",
+        description="Hidden `<input type=range>` of the 'Speed' slider -- carries "
+        "`min`/`max`/`step`, `value` and `aria-valuenow`.",
+    )
+
+    voice_speed_slider_thumb = LocatorDescriptor(
+        testid="voice-personalization-speed-slider-thumb",
+        description="Draggable thumb of the 'Speed' slider (grab point of a drag)",
+    )
+
+    voice_volume_slider = LocatorDescriptor(
+        testid="voice-personalization-volume-slider",
+        description="'Volume' Slider root of VOICE PERSONALIZATION (marks "
+        "`0% 50% 100%`)",
+    )
+
+    voice_volume_slider_input = LocatorDescriptor(
+        testid="voice-personalization-volume-slider-input",
+        description="Hidden `<input type=range>` of the voice 'Volume' slider",
+    )
+
+    voice_volume_slider_thumb = LocatorDescriptor(
+        testid="voice-personalization-volume-slider-thumb",
+        description="Draggable thumb of the voice 'Volume' slider",
+    )
+
+    # ------------------------------------------------------------------
+    # /settings/preferences -- SOUND NOTIFICATIONS controls
+    # ------------------------------------------------------------------
+
+    sound_notifications_toggle = LocatorDescriptor(
+        testid="sound-notifications-toggle",
+        description="'Play sound when tasks complete' switch -- the MUI "
+        "`SwitchBase` **span**. This is the CLICK target (what a user hits); the "
+        "checked state lives on the nested input, hence the separate "
+        "`sound-notifications-toggle-input` handle.",
+    )
+
+    sound_notifications_toggle_input = LocatorDescriptor(
+        testid="sound-notifications-toggle-input",
+        description="Hidden `<input type=checkbox role=switch>` of the sound "
+        "toggle -- the only element `to_be_checked()` accepts. Wired through "
+        "`slotProps.input`: MUI v7's `Switch` ignores `inputProps` (its own "
+        "slotProps merge overrides it).",
+    )
+
+    sound_volume_slider = LocatorDescriptor(
+        testid="sound-notifications-volume-slider",
+        description="'Volume' Slider root of SOUND NOTIFICATIONS. Conditionally "
+        "UNMOUNTED while the toggle is off (`{config.enabled && ...}`) -- assert "
+        "`to_have_count(0)`, never `not_to_be_visible()`.",
+    )
+
+    sound_volume_slider_input = LocatorDescriptor(
+        testid="sound-notifications-volume-slider-input",
+        description="Hidden `<input type=range>` of the sound 'Volume' slider",
+    )
+
+    sound_volume_slider_thumb = LocatorDescriptor(
+        testid="sound-notifications-volume-slider-thumb",
+        description="Draggable thumb of the sound 'Volume' slider",
+    )
+
+    sound_preview_button = LocatorDescriptor(
+        testid="sound-notifications-preview-button",
+        description="'Preview Sound' button. Unmounted by the same "
+        "`config.enabled &&` guard as the volume slider.",
     )
 
     # ------------------------------------------------------------------
@@ -475,6 +573,87 @@ class SettingsPersonalizationPage(BasePage):
         controls are not grayed out while context management is off.
         """
         return self.persona_section.locator(self.MUI_DISABLED_MARKER)
+
+    # ------------------------------------------------------------------
+    # Preferences controls (voice + sound)
+    # ------------------------------------------------------------------
+
+    def select_option(self, value: str) -> Locator:
+        """Option row *value* of any open ``SingleSelect`` on this page.
+
+        Same dynamic class constant :data:`SELECT_OPTION` the persona helpers
+        use -- the option testids are emitted generically by ``SingleSelect``,
+        so one accessor serves every select on the personalization routes.
+        """
+        return self.page.locator(self.SELECT_OPTION.format(value))
+
+    def select_options(self) -> Locator:
+        """All option rows of the currently open ``SingleSelect``.
+
+        See :data:`SELECT_OPTION_ANY` for why the selector carries
+        ``[data-selected]``.
+        """
+        return self.page.locator(self.SELECT_OPTION_ANY)
+
+    def open_voice_options(self, probe_value: str, timeout: int = 10000) -> None:
+        """Open the 'Voice' option list, waiting on *probe_value*'s row.
+
+        The list is backend-supplied (model TTS voices), so the caller names a
+        row it expects rather than the helper hardcoding one.
+        """
+        self.voice_select_combobox.click()
+        self.select_option(probe_value).wait_for(state="visible", timeout=timeout)
+
+    def choose_open_option(self, value: str, timeout: int = 10000) -> None:
+        """Click row *value* of an ALREADY-OPEN select and wait for the list to close.
+
+        Split from :meth:`open_voice_options` deliberately: a case that asserts
+        the open list first (ELITEA-2385 step 3) must not re-click the combobox
+        to make its choice -- that second click closes the popover instead of
+        selecting.
+        """
+        option = self.select_option(value)
+        option.click()
+        option.wait_for(state="hidden", timeout=timeout)
+        logger.info("Chose select option %r", value)
+
+    def drag_slider_to(self, slider_root: Locator, slider_thumb: Locator, fraction: float) -> None:
+        """Drag *slider_thumb* to *fraction* (0..1) of *slider_root*'s width.
+
+        Two facts make this the required shape rather than a convenience:
+
+        * **Drag, not arrow keys.** MUI's keyboard handler adds ``step`` without
+          re-rounding, so five ``ArrowRight`` presses land on
+          ``1.5000000000000004`` (defect #1966); its pointer handler routes
+          through ``roundValueToStep`` and lands exactly on the grid.
+        * **Never drop onto a mark label.** The first and last mark labels are
+          ``translateX(0)`` / ``translateX(-100%)``-shifted, so their centre is
+          NOT the track position they annotate -- dropping on the ``100%`` label
+          lands on ``0.95``. The target x is computed from the slider root's own
+          bounding box; the y comes from the thumb, because the root's box also
+          spans the mark-label row below the track.
+        """
+        root_box = slider_root.bounding_box()
+        assert root_box, "slider root has no bounding box -- is the section expanded?"
+        slider_thumb.hover()
+        thumb_box = slider_thumb.bounding_box()
+        assert thumb_box, "slider thumb has no bounding box"
+
+        target_x = root_box["x"] + root_box["width"] * fraction
+        target_y = thumb_box["y"] + thumb_box["height"] / 2
+
+        self.page.mouse.down()
+        self.page.mouse.move(target_x, target_y, steps=10)
+        self.page.mouse.up()
+        logger.info("Dragged slider thumb to fraction %.2f (x=%.1f)", fraction, target_x)
+
+    def is_sound_notifications_enabled(self) -> bool:
+        """Whether the 'Play sound when tasks complete' toggle is currently ON.
+
+        Read off the hidden input, which is the element that carries the state
+        (``to_be_checked()``/``is_checked()`` reject the SwitchBase span).
+        """
+        return self.sound_notifications_toggle_input.is_checked()
 
     # ------------------------------------------------------------------
     # Absence handles
