@@ -728,3 +728,169 @@ class TestContextManagementToggle:
                     original_max_tokens,
                 )
                 profile.type_max_context_tokens_raw(str(original_max_tokens))
+
+    def test_disabling_context_management_deactivates_summarization(self, page):
+        """Context Management OFF deactivates the whole summarization sub-section (ELITEA-2375).
+
+        Distinct observable from ``test_context_management_toggle_enables_disables_fields``
+        (ELITEA-2374): that test asserts the Automatic Summarization *toggle*
+        disappears with its parent, and never establishes the summarization
+        toggle's own state beforehand. This case's premise is "**regardless of
+        summarization toggle state**", so it (a) explicitly turns BOTH toggles
+        ON first, (b) asserts the sub-section's own two FIELDS
+        (``summarization-instructions-textarea``,
+        ``target-summary-tokens-input``) also leave the DOM, and (c) asserts
+        that on re-enable the summarization state SURVIVES — the toggle reads
+        ON again and its fields are enabled with their prior values
+        ("summarization settings become active again").
+
+        Also distinct from ``test_automatic_summarization_toggle_enables_disables_own_fields``
+        (ELITEA-2377), which drives the summarization toggle itself and sees a
+        real ``disabled`` prop. Here the parent conditionally UNMOUNTS the
+        whole sub-section, so the same two fields are asserted via
+        ``to_have_count(0)`` — the mechanisms differ per toggle
+        (``MemoryContextManagement.jsx`` ``{isEnabled && ...}`` vs
+        ``MemorySummarization.jsx`` ``disabled={isSummarizationDisabled}``).
+
+        AFS: test-specs/settings-user-profile/
+        lextend_disabling-context-management-deactivates-summarization_ELITEA-2375.md
+
+        Known case-text vs live-product divergence (not a product defect, and
+        not weakened — the live contract is asserted instead; see the AFS
+        Coverage Map + EliteaAI/elitea-testing-public#1238):
+        - Case says "Personalization"; the live route is Settings -> Memory.
+        - Case says the summarization toggle/fields appear "grayed out /
+          uneditable"; live they are UNMOUNTED. Absence assertions are the
+          stronger, honest form of "uneditable" (canon ruling #511 — absence
+          assertions count as testid references).
+        """
+        profile = UserProfileSettingsPage(page)
+
+        with allure.step(
+            "Step 1 — Navigate to Settings -> Memory and verify the Context "
+            "Management section is visible"
+        ):
+            profile.navigate_to_profile()
+            expect(profile.context_management_section).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+
+        with allure.step(
+            "Step 2 — Enable BOTH toggles (case step 2): Context Management "
+            "first, then Automatic Summarization; each click's autosave PUT "
+            "must return 200"
+        ):
+            expect(profile.context_management_toggle).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            if profile.is_context_management_enabled():
+                logger.info("Context Management already ON — precondition satisfied")
+            else:
+                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
+                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                    profile.enable_context_management()
+                assert put_info.value.status == 200, (
+                    f"Turning Context Management ON should autosave via PUT "
+                    f"{AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+                )
+                _ = get_info.value
+
+            expect(profile.automatic_summarization_toggle).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+            if profile.is_automatic_summarization_enabled():
+                logger.info("Automatic Summarization already ON — precondition satisfied")
+            else:
+                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
+                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                    profile.enable_automatic_summarization()
+                assert put_info.value.status == 200, (
+                    f"Turning Automatic Summarization ON should autosave via "
+                    f"PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+                )
+                _ = get_info.value
+
+            assert profile.is_context_management_enabled(), "Context Management should read ON"
+            assert profile.is_automatic_summarization_enabled(), (
+                "Automatic Summarization should read ON — this case's premise is that "
+                "the parent toggle deactivates it REGARDLESS of this state"
+            )
+
+        with allure.step(
+            "Step 3 — Read Target Summary Tokens; assert it is a positive "
+            "integer and store it for the step-7 round-trip check (never a "
+            "hard-coded literal — shared ${TEST_USER} account, see AFS)"
+        ):
+            original_target_tokens = profile.get_target_summary_tokens()
+            assert original_target_tokens > 0, (
+                f"Target Summary Tokens should be a positive integer, got {original_target_tokens}"
+            )
+
+        try:
+            with allure.step(
+                "Step 4 — Turn the Context Management toggle OFF; verify the "
+                "autosave PUT returns 200 and the toggle reads OFF"
+            ):
+                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
+                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                    profile.disable_context_management()
+                assert put_info.value.status == 200, (
+                    f"Toggling Context Management OFF should autosave via PUT "
+                    f"{AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+                )
+                # Consumed to settle the post-toggle refetch race before reading
+                # DOM state — see _is_autosave_get_response's docstring.
+                _ = get_info.value
+                assert not profile.is_context_management_enabled(), (
+                    "Toggle should read OFF/unchecked after the click"
+                )
+
+            with allure.step(
+                "Step 5 — Verify the Automatic Summarization toggle is "
+                "absent from the DOM (case: 'grayed out / inactive'; live "
+                "mechanism is a conditional unmount)"
+            ):
+                expect(profile.automatic_summarization_toggle).to_have_count(0)
+
+            with allure.step(
+                "Step 6 — Verify the summarization FIELDS are absent from the "
+                "DOM too: Summarization Instructions and Target Summary "
+                "Tokens (case: 'uneditable')"
+            ):
+                expect(profile.summarization_instructions_textarea).to_have_count(0)
+                expect(profile.target_summary_tokens_input).to_have_count(0)
+
+            with allure.step(
+                "Step 7 — Turn Context Management back ON; verify the "
+                "summarization sub-section becomes active again: toggle "
+                "visible AND still ON, both fields visible + enabled, and "
+                "Target Summary Tokens still equal to its step-3 value"
+            ):
+                with page.expect_response(_is_autosave_get_response, timeout=AUTOSAVE_TIMEOUT) as get_info, \
+                     page.expect_response(_is_autosave_put_response, timeout=AUTOSAVE_TIMEOUT) as put_info:
+                    profile.enable_context_management()
+                assert put_info.value.status == 200, (
+                    f"Toggling Context Management back ON should autosave via "
+                    f"PUT {AUTOSAVE_PUT_PATH} -> 200, got {put_info.value.status}"
+                )
+                _ = get_info.value
+
+                expect(profile.automatic_summarization_toggle).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                assert profile.is_automatic_summarization_enabled(), (
+                    "Automatic Summarization should still read ON after the parent "
+                    "toggle's OFF/ON cycle — its state must survive, not reset"
+                )
+
+                expect(profile.summarization_instructions_textarea).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                expect(profile.summarization_instructions_textarea).to_be_enabled()
+                expect(profile.target_summary_tokens_input).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+                expect(profile.target_summary_tokens_input).to_be_enabled()
+
+                restored_target_tokens = profile.get_target_summary_tokens()
+                assert restored_target_tokens == original_target_tokens, (
+                    f"Target Summary Tokens should be preserved across the parent "
+                    f"toggle's OFF/ON cycle: expected {original_target_tokens}, "
+                    f"got {restored_target_tokens}"
+                )
+        finally:
+            # Safety net (not a case step — no allure.step): a mid-flow failure
+            # after step 4 would leave the shared ${TEST_USER} account with
+            # Context Management OFF, breaking sibling settings/chat tests.
+            # No-op when step 7 succeeded.
+            if not profile.is_context_management_enabled():
+                logger.info("Cleanup: restoring Context Management to ON after test failure")
+                profile.enable_context_management()
