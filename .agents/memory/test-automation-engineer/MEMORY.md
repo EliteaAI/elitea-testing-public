@@ -57,3 +57,6 @@
 - [Early-return null does not mean the observable is gone](early_return_null_does_not_mean_the_observable_is_gone.md) — grep the product for the TEXT before writing "removed"
 - [Version sort: no pinned tier](version_dropdown_sort_lost_its_pinned_tier.md) — EliteaUI #857: date desc, base last
 - [Rendered timestamps are server UTC](rendered_timestamps_are_server_utc_not_local.md) — assert vs API created_at
+- [Chat AI answers: assert the index](chat_ai_answer_assert_the_index_not_the_settle.md) — wait_for_ai_response settles mid-turn; use expect().to_contain_text on nth(n+1)
+- [Chat attachments are never inlined](chat_attachments_content_is_never_inlined.md) — upload fires at SEND; the model must call the attachments tool
+- [UI numbers can be backend config](ui_numeric_literals_can_be_backend_config.md) — trace the source; assert the delta off a runtime baseline
