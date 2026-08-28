@@ -260,3 +260,60 @@ can be assumed; a spec must create its own.
 `/settings/ai-personality` logs exactly **one** error per load, the known **#1771**
 `disableUnderline` React warning. `/settings/memory` the same. `/settings/profile` none.
 Filter by that exact fragment; anything broader is masking.
+
+---
+
+## Resolved/added during ELITEA-2381/2382/2383/2384 implementation (2026-08-29, test-automation-engineer)
+
+Implementation-time facts only — nothing here revises the analyst's behaviour or
+scope claims above.
+
+**Option-row enumeration has a trap.** `SingleSelectMenuItem.jsx:141` renders a nested
+`data-testid="select-option-selected-icon"` **inside the currently selected row**, so a
+bare `[data-testid^="select-option-"]` collection counts an eighth element whenever any
+option is selected — which is always. The shipped class constant is
+`SettingsPersonalizationPage.SELECT_OPTION_ANY =
+'[data-testid^="select-option-"][data-selected]'`; only the MenuItem rows carry
+`data-selected`, so the attribute is what makes the collection exactly "the option rows".
+
+**Option selection state is `data-selected`, not `aria-selected`**
+(`SingleSelectMenuItem.jsx:118`, values `"true"` / `"false"`). That is also the
+attribute-on-a-stable-testid shape the project's locator policy requires.
+
+**`PERSONA MANAGEMENT` has no header testid.** It is a one-item `BasicAccordion` and no
+per-item `testId` is passed, so unlike the `/settings/preferences` and `/settings/memory`
+sections there is no `…-section-header` handle and `aria-expanded` is not reachable
+testid-only. "Did the section collapse?" is observed through its **content** instead —
+collapsing hides the body (`visibility: hidden`) rather than unmounting it, so
+`persona_select_combobox` / `user_instructions_textarea` still being visible is the
+equivalent, testid-only observable.
+
+**The "click outside" target that works.** `SettingsPersonalizationPage.click_neutral_content_area()`
+clicks the bottom-left corner of the `settings-content` `<main>` pane. The
+`AIPersonalityFormContent` wrapper is centred with `maxWidth: 50rem` and the form is short,
+so that point is empty `<main>` on every personalization route. React's `onBlur` is
+`focusout`, which bubbles from the field being left, so this reliably fires the autosave.
+The accordion header must **not** be used — it collapses the section.
+
+**Two shared helper modules were added rather than a fifth copy** (Hard Rule 7; the merged
+specs were left byte-identical per Hard Rule 3, and should migrate opportunistically):
+
+- `automation/utils/personalization_autosave.py` — `is_author_autosave()`, the #1771
+  console filter, and the route-guarded `restore_persona()` /
+  `restore_user_instructions()` / `best_effort()` teardown pair.
+  `test_personalization_autosave_no_save_button.py` (ELITEA-2387) keeps its private copies.
+- `automation/utils/blank_conversation.py` — the `open_blank_composer()` /
+  `poll_blank_state_holds()` pair, carried verbatim from the three merged chat/settings
+  specs that grew it.
+
+**`restore_user_instructions()` must select the persona first.** The slot is per-persona and
+the textarea renders only the current persona's slot, so restoring under the wrong persona
+both leaves the original slot dirty and pollutes a second one.
+
+**Conversation cleanup is available on this surface.** ELITEA-2384's spec deletes both
+conversations it creates via the `conversation_api` fixture
+(`delete_conversation()`), so it leaves no residue on the shared account — the same
+teardown ELITEA-2390 already uses.
+
+**Observed run cost (localhost, headless, single invocation):** 2381 ~15 s, 2382 ~17 s,
+2383 ~18 s, 2384 ~63 s (the chat half dominates).

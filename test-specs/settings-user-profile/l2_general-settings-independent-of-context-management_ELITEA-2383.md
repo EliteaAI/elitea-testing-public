@@ -80,9 +80,13 @@ disturbs the other's state*.
    `context-management-toggle` wrapped in
    `page.expect_response(<PUT /api/v2/social/author/>)`.
    - **Verify**: the PUT returns **200**.
-   - **Verify**: the toggle's inner `input` is unchecked. *(The testid sits on
-     the MUI `SwitchBase` `<span>`; the checked state lives on the `<input>`
-     inside it — confirmed live.)*
+   - **Verify**: the toggle reads OFF. *(Amended during implementation: the
+     established reader is
+     `UserProfileSettingsPage.is_context_management_enabled()`, which checks the
+     `Mui-checked` class on the `SwitchBase` `<span>` the testid sits on —
+     Playwright's `is_checked()` raises "Not a checkbox or radio button" on that
+     span, and the suite already standardised on the class read. Same
+     observable, existing mechanism, no new handle.)*
    - **Verify (the toggle really took effect)**: `max-context-tokens-input` has
      **count 0** — the numeric fields are conditionally **unmounted** when the
      toggle is off. `to_have_count(0)`, not `not_to_be_visible()`; this is the
@@ -116,7 +120,16 @@ disturbs the other's state*.
      content pane. Reuse `SettingsPersonalizationPage.save_buttons()` /
      `page_save_buttons()` → `to_have_count(0)`. This is the honest rendering
      of the case's step 5, and it is a first-class absence assertion.
-   - **Verify (no error surface)**: no error toast/alert appeared.
+   - **Verify (saved without error)** — *amended during implementation:* this
+     surface has **no error toast/alert of its own**; the autosave writes
+     silently and the whole suite has no error-surface handle for
+     `/settings/ai-personality` (grep: every `*-error-alert` testid belongs to a
+     generate/publish modal). So "without error" is asserted through the two
+     observables the surface actually produces, both already in this spec:
+     the **step-5 `PUT /api/v2/social/author/` → 200** (the write itself
+     succeeded — a failed save answers non-200) and the **step-9 console-error
+     check** (a client-side failure would log). No third assertion is added,
+     and none is invented for a control that does not exist.
 7. **Beyond the case — the independence invariant (the point of this case).**
    Navigate back to `${BASE_URL}/settings/memory` and re-read the toggle.
    - **Verify**: the toggle is **still OFF** — the persona write did not
@@ -215,7 +228,7 @@ framework's standard login fast-path and is not this case's subject.
 | 2 Turn OFF the context management toggle | Completes without error | AFS step 3 | PUT → 200; input unchecked; numeric fields count 0 | asserted |
 | 3 Verify the Default Personality dropdown and Default User Instructions textarea remain editable and are NOT grayed out | Condition holds | AFS step 4 | visible + editable + no `aria-disabled` + `.Mui-disabled` count 0 + option list opens | asserted *(on `/settings/ai-personality` — the controls are not co-located with the toggle; #1960)* |
 | 4 Change the Default Personality to "Quirky" | Completes without error | AFS step 5 | PUT → 200; combobox reads `Quirky` | asserted |
-| 5 Click Save — verify the settings save without error | Control responds | AFS step 6 | Save-button count 0 (page autosaves) + no error surface | clarification *(no Save button exists; #1960/#1244 — the autosave PUT's 200 is the live equivalent)* |
+| 5 Click Save — verify the settings save without error | Control responds | AFS step 6 (+ 5, 9) | Save-button count 0 (page autosaves); "without error" = the step-5 autosave `PUT` → **200** plus the step-9 console-error check | clarification *(no Save button exists; #1960/#1244 — the autosave PUT's 200 is the live equivalent. There is no error toast/alert on this surface and the suite has no handle for one, so error-absence is asserted through the write's own status and the console, not through a fabricated control)* |
 | Expected final state: settings save without error | — | AFS steps 5–6 | PUT 200 + no error | asserted |
 
 ### Axis 2 — Assertions beyond the case

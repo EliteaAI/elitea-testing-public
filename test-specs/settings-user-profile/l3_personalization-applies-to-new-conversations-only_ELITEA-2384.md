@@ -81,10 +81,12 @@ target for the conversation-creation machinery only.
 - User is logged in (`auth_state`; localhost bypass).
 - **Shared mutable account state**: `persona` and the `personality_instructions`
   map. Read-before-write, restore both in teardown.
-- **The spec creates 2 conversations per run** in the active project and does
-  not delete them (there is no conversation-delete step in this case). This adds
-  to the known shared-test-user pollution class (`#1082`) — flagged for the
-  lead, not solved here.
+- **The spec creates 2 conversations per run** in the active project.
+  *Amended during implementation:* both are **deleted in cleanup** via
+  `conversation_api.delete_conversation()`, the same API teardown ELITEA-2390's
+  merged spec already uses on this surface — so this spec does **not** add to
+  the `#1082` shared-test-user pollution class after all. Deletion is
+  best-effort and logged, never able to mask a real failure.
 
 ## Test Data
 ### create-per-run
@@ -253,7 +255,9 @@ correct.
 None.
 
 ## Notes for the lead
-This spec leaves **2 conversations per run** behind on the shared
-`${TEST_USER}` account. That is the documented `#1082` pollution class, whose
-durable fix is the rotating/clean test identity in `.agents/testing.md`
-§ Suite-health pointer — not a per-spec guard. Flagging, not solving.
+*Amended during implementation:* the spec now deletes both conversations it
+creates (`conversation_api.delete_conversation()`, best-effort, mirroring
+ELITEA-2390), so it leaves nothing behind on the shared `${TEST_USER}` account.
+The broader `#1082` pollution class is untouched by this — its durable fix
+remains the rotating/clean test identity in `.agents/testing.md`
+§ Suite-health pointer.
