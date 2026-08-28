@@ -347,3 +347,40 @@ from the ELITEA-2314..2319 run. `needsOverview` is still `activeTab === 0 || act
   `CACHE READ TOKENS`, `CACHE WRITE TOKENS`, …) vs ELITEA-2320's 8-column tuple.
   `test_analytics_default_load.py` still passes. This is `adjust-automated-test` work, unrelated to
   the date-filter cases.
+
+### Resolved/added during ELITEA-2314..2319 fix round 1 (2026-08-28)
+
+- **`wait_for_tab_settled(surface)` now genuinely exists** on `AnalyticsPage` (surface-keyed
+  `_loading_indicator()` + a `wait_for(state="hidden")`). The previous round documented it here
+  and called it from five spec sites without ever defining it — a spec in that state raises
+  `AttributeError` on the first call, so it cannot have been run. Pinned by
+  `tests/unit/test_analytics_date_filter_spec_invariants.py`, which AST-walks both specs and
+  checks every `analytics_page.<attr>` against the page object's real MRO members.
+- **Recharts tick labels are YEAR-LESS (`date.slice(5)` → `"MM-DD"`).** Never difference them
+  arithmetically: a Last-30d window straddling New Year renders `12-11…01-10`, which
+  month-arithmetic scores as **-331 days**. Resolve each tick back to the full `YYYY-MM-DD` entry
+  of the response's own series first (`_response_dates` / `_chart_tick_span_days` in
+  `test_analytics_date_filter_content_refresh.py`).
+- **The Agents tab's "Chat Messages" `AreaChart` is assertable on DATA, not just presence** —
+  its XAxis renders `date.slice(5)` of the response's `chat_daily`, so
+  `AnalyticsPage.get_agents_chat_chart_tick_labels()` (#579-scoped recharts handle inside
+  `analytics-agents-chat-chart-container`) is directly comparable to that array. Measured live
+  2026-08-28, project 399: `Last 24h` → `chat_daily` 2 entries / 1-day span, ticks `['08-27',
+  '08-28']` / 1-day span; `Last 30d` → 26 entries / 29-day span, 13 ticks `07-31…08-28` /
+  **28-day** span. So recharts thinned only 1 day off the span here — the specs' 10-day
+  `CHART_TICK_EDGE_SLACK_DAYS` is generous, and a chart still drawing the 24h series under 30d
+  (span 1 vs a required ≥19) fails loudly. Presence alone cannot catch that: a stale chart is
+  still exactly one container.
+- **Known noise — a wide-range analytics query can return `502` outright, and the suite's rerun
+  filter does NOT catch it.** During fix round 1, one of five invocations of
+  `test_presets_update_pickers_and_refresh_content` (ELITEA-2314) failed on
+  `AssertionError: Last 30d: analytics request returned 502 / assert 502 == 200` after 38 s; it
+  passed standalone immediately after (42.77 s) and in the full-set run that followed
+  (14 passed, `reruns.json == {}`). Same family as the "wide-range queries are SLOW" entry above —
+  a gateway giving up on the 30-day query, not a code defect.
+  ⚠️ `pytest.ini`'s `--only-rerun="502 Server Error"` matches the **requests/HTTPError** wording;
+  an assertion that formats the status itself (`returned 502`, `assert 502 == 200`) does not
+  contain that phrase, so pytest-rerunfailures does **not** retry it. Any spec asserting
+  `response.status == 200` on a slow analytics range is exposed to a hard red from this. Raised to
+  the lead as a finding rather than fixed here — widening a shared rerun filter is a
+  suite-wide blast radius, not a fix-round change.

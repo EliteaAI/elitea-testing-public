@@ -31,6 +31,7 @@ from datetime import datetime, timedelta
 import allure
 import pytest
 from pages.analytics_page import AnalyticsPage
+from utils.analytics_kpi import assert_overview_kpi_cards_match
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +217,11 @@ class TestAnalyticsCustomDateRange:
                 _assert_only_preset_pressed(analytics_page, "Custom")
 
                 body = response.json()
+                assert_overview_kpi_cards_match(
+                    analytics_page.get_overview_kpi_values(),
+                    body.get("kpis") or {},
+                    "custom range",
+                )
                 leaderboard_expected = len(body.get("top_ai_users") or [])
                 assert analytics_page.get_leaderboard_row_count() == leaderboard_expected, (
                     f"Leaderboard rendered {analytics_page.get_leaderboard_row_count()} rows, "

@@ -931,6 +931,34 @@ class AnalyticsPage(BasePage):
         }
         return predicates[surface]
 
+    # Per-surface data-fetch spinners, keyed exactly like `_query_predicate`
+    # so one settle helper serves every tab (ELITEA-2318).
+    def _loading_indicator(self, surface: str):
+        indicators = {
+            "overview": self.loading_indicator,
+            "users": self.users_loading_indicator,
+            "agents": self.agents_loading_indicator,
+            "tools": self.tools_loading_indicator,
+        }
+        return indicators[surface]
+
+    def wait_for_tab_settled(self, surface: str) -> None:
+        """Wait for *surface*'s render to catch up with a just-resolved query.
+
+        Public, surface-keyed sibling of `_wait_for_users_settled()` /
+        `_wait_for_agents_settled()` (both keep their existing bodies and
+        callers) for the date-filter cases, which drive three tabs from one
+        spec and must settle whichever one is currently open.
+
+        `expect_response` only proves the request finished — the RTK-Query
+        state update and the React re-render that swaps the spinner for the
+        refreshed rows can lag it by a render tick. Waiting for that tab's own
+        loading indicator to be hidden closes the gap: Playwright treats a
+        DETACHED element as hidden, so a tab whose spinner is already gone (or
+        was never mounted) resolves instantly rather than waiting falsely.
+        """
+        self._loading_indicator(surface).wait_for(state="hidden", timeout=DATA_QUERY_TIMEOUT)
+
     def get_date_from_text(self) -> str:
         """Raw From input value, as displayed (`dd/MM/yyyy HH:mm`)."""
         return self.date_from_input.input_value()
@@ -1114,6 +1142,21 @@ class AnalyticsPage(BasePage):
         ticks = self.overview_daily_chart_container.locator(self.CHART_X_AXIS_TICK)
         # `all_inner_texts()` yields None for SVG <text> nodes (no innerText on
         # SVG elements) — textContent is the correct read here.
+        return [t.strip() for t in ticks.all_text_contents()]
+
+    def get_agents_chat_chart_tick_labels(self) -> list[str]:
+        """Rendered X-axis tick labels ("MM-DD") of the Agents tab's
+        "Chat Messages" area chart.
+
+        Same #579-scoped recharts handle as `get_daily_chart_tick_labels`,
+        scoped strictly inside `analytics-agents-chat-chart-container`. The
+        chart is an `AreaChart` over the response's `chat_daily`, whose XAxis
+        renders `date.slice(5)` (`AnalyticsAgents.jsx`) — so a tick label is
+        directly comparable to a `chat_daily[i].date[5:]`. Reading these is
+        what makes a preset switch assertable on DATA rather than on the
+        chart's mere presence.
+        """
+        ticks = self.agents_chat_chart_container.locator(self.CHART_X_AXIS_TICK)
         return [t.strip() for t in ticks.all_text_contents()]
 
     def get_leaderboard_row_count(self) -> int:

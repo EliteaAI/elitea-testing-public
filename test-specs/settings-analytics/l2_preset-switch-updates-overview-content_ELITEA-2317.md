@@ -104,6 +104,13 @@ None — read-only.
 None.
 
 ## Automation Hints
+- **The tick span is measured against the RESPONSE's own dates, never by month arithmetic on the
+  year-less labels.** Recharts renders `date.slice(5)` ("MM-DD"), so each rendered tick is
+  resolved back to the full `YYYY-MM-DD` entry of `daily_activity` before the two are
+  differenced. Differencing the bare `MM-DD` parts is wrong across a year boundary — a Last-30d
+  window on e.g. 2027-01-10 renders `12-11…01-10`, which month arithmetic scores as -331 days
+  and which would fail the `span >= 20` assertion every January (found in review, fix round 1;
+  pinned by `tests/unit/test_analytics_date_filter_spec_invariants.py`).
 - KPI value ↔ response field mapping (`AnalyticsOverview.jsx`, DOM order):
   `TEAM=kpis.unique_users`, `AI ACTIVE=kpis.ai_active_users`, `LLM CALLS=kpis.llm_calls`,
   `TOOL RUNS=kpis.tool_runs`, `CHAT MSG=kpis.chat_msgs`, `AGENT & PIPELINE RUNS=kpis.agent_runs`,

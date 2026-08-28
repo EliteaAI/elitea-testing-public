@@ -31,11 +31,12 @@ elitea-testing-public#1185/#1195.
 
 import logging
 import re
-from datetime import timedelta
+from datetime import date, timedelta
 
 import allure
 import pytest
 from pages.analytics_page import AnalyticsPage
+from utils.analytics_kpi import assert_overview_kpi_cards_match, fmt_num
 
 logger = logging.getLogger(__name__)
 
@@ -43,34 +44,11 @@ pytestmark = [pytest.mark.ui, pytest.mark.admin, pytest.mark.p2, pytest.mark.reg
 
 SPAN_TOLERANCE = timedelta(minutes=2)
 
-# The Overview KPI cards, in DOM order, with the response field each renders
-# (`AnalyticsOverview.jsx`). COST is formatted by `fmtCost`, whose seven
-# magnitude branches are deliberately NOT mirrored here — see `_fmt_num`.
-KPI_FIELDS = (
-    ("TEAM", "unique_users"),
-    ("AI ACTIVE", "ai_active_users"),
-    ("LLM CALLS", "llm_calls"),
-    ("TOOL RUNS", "tool_runs"),
-    ("CHAT MSG", "chat_msgs"),
-    ("AGENT & PIPELINE RUNS", "agent_runs"),
-    ("TOKENS", "total_tokens"),
-)
-
-
-def _fmt_num(value) -> str:
-    """Mirror of `AnalyticCommonHelpers.fmtNum` (analyticsCommon.helpers.js).
-
-    Four lines of display contract — `>=1e6 -> "{x}M"`, `>=1e3 -> "{x}K"`,
-    `None -> "-"` — applied to the value the SYSTEM returned, so the expected
-    string is derived from the real response rather than hand-written.
-    """
-    if value is None:
-        return "-"
-    if value >= 1_000_000:
-        return f"{value / 1_000_000:.1f}M"
-    if value >= 1_000:
-        return f"{value / 1_000:.1f}K"
-    return str(value)
+#: How many days of X-axis span recharts may swallow at the START of a series
+#: by thinning tick labels (`interval="preserveEnd"` keeps the last label, not
+#: the first). Empirically <=10 on a 30-point series at this chart width — the
+#: same slack the ELITEA-2317 `span_30d >= 20` floor already encodes.
+CHART_TICK_EDGE_SLACK_DAYS = 10
 
 
 def _assert_overview_matches(analytics_page: AnalyticsPage, response, label: str) -> None:
@@ -78,30 +56,7 @@ def _assert_overview_matches(analytics_page: AnalyticsPage, response, label: str
     body = response.json()
     kpis = body.get("kpis") or {}
 
-    rendered = analytics_page.get_overview_kpi_values()
-    assert len(rendered) == 8, (
-        f"{label}: expected 8 Overview KPI cards (case text says 6 — stale), got {len(rendered)}"
-    )
-    for index, (kpi_label, field) in enumerate(KPI_FIELDS):
-        expected = _fmt_num(kpis.get(field))
-        assert rendered[index] == expected, (
-            f"{label}: KPI {kpi_label!r} rendered {rendered[index]!r}, but the response's "
-            f"kpis.{field} = {kpis.get(field)!r} formats to {expected!r}"
-        )
-
-    cost_rendered = rendered[7]
-    assert cost_rendered.startswith("$"), (
-        f"{label}: COST card should render a currency string, got {cost_rendered!r}"
-    )
-    if not kpis.get("total_llm_cost"):
-        assert cost_rendered == "$0.00", (
-            f"{label}: response reported no cost, expected '$0.00', got {cost_rendered!r}"
-        )
-    else:
-        assert cost_rendered != "$0.00", (
-            f"{label}: response reported cost {kpis.get('total_llm_cost')!r}, but the card "
-            f"renders {cost_rendered!r}"
-        )
+    assert_overview_kpi_cards_match(analytics_page.get_overview_kpi_values(), kpis, label)
 
     leaderboard_expected = len(body.get("top_ai_users") or [])
     assert analytics_page.get_leaderboard_row_count() == leaderboard_expected, (
@@ -118,7 +73,7 @@ def _assert_overview_matches(analytics_page: AnalyticsPage, response, label: str
             f"{label}: first leaderboard row {first_row!r} does not carry the response's top "
             f"adopter {top.get('user_email')!r}"
         )
-        assert _fmt_num(top.get("ai_events")) in first_row, (
+        assert fmt_num(top.get("ai_events")) in first_row, (
             f"{label}: first leaderboard row {first_row!r} does not carry the response's top "
             f"score {top.get('ai_events')!r}"
         )
@@ -134,15 +89,39 @@ def _assert_overview_matches(analytics_page: AnalyticsPage, response, label: str
     )
 
 
-def _chart_tick_span_days(ticks: list[str]) -> int:
-    """Days between the first and last rendered "MM-DD" X-axis tick."""
-    assert ticks, "Daily Activity chart rendered no X-axis ticks"
-    first_month, first_day = (int(part) for part in ticks[0].split("-"))
-    last_month, last_day = (int(part) for part in ticks[-1].split("-"))
-    # Month-crossing ranges are handled with a 30-day-per-month approximation —
-    # the assertion is about the ORDER OF MAGNITUDE of the span (7 vs 30 days),
-    # not a calendar-exact difference.
-    return (last_month - first_month) * 30 + (last_day - first_day)
+def _response_dates(body: dict, field: str) -> list[str]:
+    """The full "YYYY-MM-DD" dates a response body carried under *field*."""
+    return [entry["date"][:10] for entry in (body.get(field) or [])]
+
+
+def _chart_tick_span_days(ticks: list[str], response_dates: list[str], what: str) -> int:
+    """Calendar days between the first and last rendered X-axis tick.
+
+    Recharts renders the labels YEAR-LESS ("MM-DD"), so each one is resolved
+    back to the full "YYYY-MM-DD" date the RESPONSE carried before the two are
+    differenced. Differencing the bare "MM-DD" parts is wrong across a year
+    boundary: a Last-30d window run on e.g. 2027-01-10 renders 12-11…01-10,
+    which month-arithmetic scores as (1-12)*30 + (10-11) = -331 days, failing
+    every span assertion deterministically for the ~30 days after New Year.
+    Anchoring on the response also keeps the derivation on the system's own
+    payload rather than on a calendar the test computed for itself.
+    """
+    assert ticks, f"{what} rendered no X-axis ticks"
+    by_label = {full[5:]: full for full in response_dates}
+    unknown = [tick for tick in (ticks[0], ticks[-1]) if tick not in by_label]
+    assert not unknown, (
+        f"{what}: rendered ticks {unknown} have no matching date in the response's own "
+        f"series {response_dates}"
+    )
+    first = date.fromisoformat(by_label[ticks[0]])
+    last = date.fromisoformat(by_label[ticks[-1]])
+    return (last - first).days
+
+
+def _data_span_days(response_dates: list[str]) -> int:
+    """Calendar days the response's own series covers (order-independent)."""
+    parsed = [date.fromisoformat(value) for value in response_dates]
+    return (max(parsed) - min(parsed)).days
 
 
 class TestAnalyticsOverviewContentRefresh:
@@ -175,8 +154,11 @@ class TestAnalyticsOverviewContentRefresh:
                 "cards, the leaderboard and the Model Usage table match the 7-day response"
             ):
                 _assert_overview_matches(analytics_page, response_7d, "Last 7d")
+                dates_7d = _response_dates(response_7d.json(), "daily_activity")
                 ticks_7d = analytics_page.get_daily_chart_tick_labels()
-                span_7d = _chart_tick_span_days(ticks_7d)
+                span_7d = _chart_tick_span_days(
+                    ticks_7d, dates_7d, "Last 7d Daily Activity chart"
+                )
                 kpis_7d = analytics_page.get_overview_kpi_values()
                 logger.info("Last 7d — KPI values %s, chart ticks %s", kpis_7d, ticks_7d)
 
@@ -198,7 +180,8 @@ class TestAnalyticsOverviewContentRefresh:
                 "Step 5 — The Daily Activity chart's time axis extends to cover 30 days"
             ):
                 body_30d = response_30d.json()
-                daily_30d = [d["date"][5:] for d in (body_30d.get("daily_activity") or [])]
+                dates_30d = _response_dates(body_30d, "daily_activity")
+                daily_30d = [value[5:] for value in dates_30d]
                 ticks_30d = analytics_page.get_daily_chart_tick_labels()
                 assert set(ticks_30d) <= set(daily_30d), (
                     f"Chart X ticks {ticks_30d} are not a subset of the response's "
@@ -208,7 +191,9 @@ class TestAnalyticsOverviewContentRefresh:
                     f"Chart's last tick {ticks_30d[-1]!r} should be the response's last "
                     f"daily_activity date {daily_30d[-1]!r}"
                 )
-                span_30d = _chart_tick_span_days(ticks_30d)
+                span_30d = _chart_tick_span_days(
+                    ticks_30d, dates_30d, "Last 30d Daily Activity chart"
+                )
                 assert span_30d >= 20, (
                     f"Expected the 30-day chart axis to span at least 20 days, got {span_30d} "
                     f"(ticks {ticks_30d}) — recharts thins labels, hence the span check"
@@ -280,6 +265,38 @@ class TestAnalyticsTabContentRefresh:
                 f"{label}: the Chat Messages chart must render iff the response has chat_daily "
                 f"data (chat_daily={len(body.get('chat_daily') or [])})"
             )
+            if has_chat:
+                # Presence alone is not "the chart updated its data" (case
+                # steps 2 and 4): a chart frozen on the PREVIOUS range's series
+                # is still exactly one container. So the rendered axis is
+                # compared against this response's own `chat_daily` — the
+                # AreaChart's XAxis renders `date.slice(5)` of that very array
+                # (`AnalyticsAgents.jsx`), which makes tick labels and response
+                # dates directly comparable.
+                chat_dates = _response_dates(body, "chat_daily")
+                chat_labels = [value[5:] for value in chat_dates]
+                chat_ticks = analytics_page.get_agents_chat_chart_tick_labels()
+                what = f"{label}: Chat Messages chart"
+                assert set(chat_ticks) <= set(chat_labels), (
+                    f"{what} rendered X ticks {chat_ticks} that are not a subset of the "
+                    f"response's chat_daily dates {chat_labels}"
+                )
+                assert chat_ticks and chat_ticks[-1] == chat_labels[-1], (
+                    f"{what}: last rendered tick {chat_ticks[-1:]!r} should be the response's "
+                    f"last chat_daily date {chat_labels[-1]!r}"
+                )
+                rendered_span = _chart_tick_span_days(chat_ticks, chat_dates, what)
+                data_span = _data_span_days(chat_dates)
+                logger.info(
+                    "%s — chat_daily=%d entries spanning %d days, rendered ticks %s "
+                    "spanning %d days",
+                    what, len(chat_dates), data_span, chat_ticks, rendered_span,
+                )
+                assert rendered_span >= data_span - CHART_TICK_EDGE_SLACK_DAYS, (
+                    f"{what}: the axis spans {rendered_span} days while the response's "
+                    f"chat_daily covers {data_span} — the chart is not drawing THIS range's "
+                    f"series (ticks {chat_ticks}, response dates {chat_labels})"
+                )
             if has_rows:
                 subtitle = analytics_page.agents_chart_subtitle.inner_text().strip()
                 expected_series = min(len(body["rows"]), 20)
