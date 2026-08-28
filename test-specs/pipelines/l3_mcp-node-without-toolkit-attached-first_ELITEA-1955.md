@@ -173,8 +173,20 @@ row are rendered) with a partially-occluded **"Loading…"** row where the resul
 
 ### Root cause — stated as fact from the product source
 
-`src/pages/Applications/Components/Tools/ToolMenu.jsx` (identical on `origin/main` and
-`origin/automation/testids`) wires the "+ MCP" dropdown as:
+**When this started: EliteaAI/EliteaUI@94a61b81 — "fix: [EL-6351] Lazy-load optional data
+on Agent and Pipeline detail pages", merged to `main` 2026-08-26**, i.e. **one day before**
+the failing GHA run. Its own commit body states the intent: *"Defer API requests for
+Toolkits, MCPs, Agents, Pipelines, Icons, and Tags until the user opens the corresponding
+selector"* — it added the `forceSkip` parameter to `useLibraryToolkits` and the
+`toolkitOpened`/`mcpOpened` refs to `ToolMenu.jsx`. **Before EL-6351 the toolkit query fired
+on mount**, so by the time this spec reached Step 7 (many seconds in) the RTK Query cache was
+already warm and the rows rendered synchronously — which is why this spec passed its 3x merge
+gate and stayed green for weeks. The race did not exist when the spec was written.
+
+`src/pages/Applications/Components/Tools/ToolMenu.jsx` wires the "+ MCP" dropdown as
+(`mcpOpened` present on **both** `origin/main` and `origin/automation/testids` — verified;
+the two refs differ in this file only by four additive `*-tooltip` testid wrappers,
+16 insertions / 4 deletions, none of which touch this logic):
 
 ```js
 const { menuItems: libraryMCPs, isFetching: isFetchingMCPs, ... } =
@@ -259,7 +271,13 @@ E   AssertionError: '+ MCP' popper should list at least one toolkit-menu-item re
 E   assert 0 > 0
 ```
 
-⇒ This is an unconditional latent race, not a DEV-shard-load artifact. **The implementer's
+⇒ This is **not** a DEV-shard-load artifact, and it is **not** a test that was always
+unsound. It is a real, deterministic race that a deliberate product change —
+EliteaAI/EliteaUI@94a61b81 (EL-6351, 2026-08-26) — introduced one day before the red run, by
+converting an on-mount fetch into a fetch-on-first-open. An intentional lazy-load
+optimization is not a defect, so the class-D verdict and the recommended fix are unchanged;
+but the record must not read as though the spec had been sampling too early all along.
+**The implementer's
 local gate reproduces it and will verify the fix** — do not treat a localhost run as
 out-of-scope for this repair.
 
@@ -286,7 +304,8 @@ def wait_for_mcp_popper_items(self, popper: Locator, timeout: int = 10000) -> No
 ```
 
 `TOOLKIT_MENU_ITEM_SELECTOR` is the **already-existing** class-level constant
-`'[data-testid="toolkit-menu-item"]'` (`pipeline_detail_page.py:1566`) — no new locator,
+`'[data-testid="toolkit-menu-item"]'` (`pipeline_detail_page.py:1511` on `origin/main`,
+the ref this fix targets; the same constant is at `:1566` on `automation/base`) — no new locator,
 no new testid, no new raw handle.
 
 **Where it is called:** in the spec, inside the existing `allure.step("Step 7 — …")`
@@ -372,9 +391,20 @@ testids are **runtime-composed** (`typeTestIdPrefix={...}` → `` typeTestId={`$
 in `flow-editor/ui/settings/InputMappings/InputMapping.jsx:62`), which the bare-substring
 stage-1 grep cannot see at all — the exact false-negative class `.agents/workflow.md`
 § Closure record warns about. Verified two other ways instead:
-`git diff origin/main origin/automation/testids -- src/[fsd]/features/pipelines/flow-editor/ui/nodes/BaseToolNode.jsx`
-is **empty** (file identical on both refs), and the DEV GHA run reached Step 7, which is
-only possible if Steps 3–6's node handles resolved on the deployed build.
+the DEV GHA run reached Step 7, which is only possible if Steps 3–6's node handles
+resolved on the deployed build.
+
+**Correction (self-caught while applying the 2026-08-28 reviewer amendments):** an earlier
+draft of this section claimed `BaseToolNode.jsx` was identical on both refs. **It is not** —
+that check accidentally diffed `AgentNode.jsx` (the first `git grep -l typeTestIdPrefix`
+hit) instead of `BaseToolNode.jsx`. The real diff is 8 insertions / 6 deletions in a
+**single hunk**, widening `typeTestIdPrefix` from Toolkit-only to `Toolkit || Mcp`
+(ELITEA-1953's `pipeline-mcp-node-input-mapping-type-*` family) plus its explanatory
+comment. **That testid family is not used by this spec**, and because the whole-file diff is
+that one hunk, every other line — including the `valueTestIdPrefix` wiring behind
+`pipeline-mcp-node-input-mapping-value-*` that this case does rely on — is identical on both
+refs. The conclusion stands; only the supporting claim was wrong. Lesson: never diff a path
+captured from `git grep -l ... | head -1` without checking which file it actually resolved to.
 
 ### Known defect / product-observation note (not filed)
 
