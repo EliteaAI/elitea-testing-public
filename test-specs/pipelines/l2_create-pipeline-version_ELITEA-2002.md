@@ -54,7 +54,9 @@
    - **Verify**: the "Create version" dialog opens — Name input (`agent-version-dialog-name-input`)
      visible, Save button (`agent-version-dialog-save-button`) disabled while Name is empty.
    - Type `v1_test` into the Name input, click the dialog's Save button.
-   - **Verify**: URL's version-id path segment changes (new version created); VERSION selector
+   - **Verify**: the Information panel's version id (`copy-version-id`, read once the VERSION
+     trigger / `copy-version-id` / URL version-id segment have converged) changes (new version
+     created); VERSION selector
      now shows `"v1_test"`; the LLM node added in Step 2 is still present (1 `rf__node-LLM*`
      element) — i.e. the edit is preserved in the new version, not reset; Save (main) returns to
      disabled (persisted, not a dangling local edit).
@@ -88,7 +90,7 @@
 |---|---|---|---|---|
 | 1. Create a pipeline with name and description via UI | pipeline created and saved | step 1 | `step 1`: VERSION selector shows "base", form clean | asserted *(seeded via API, not UI — see note below)* |
 | 2. Modify instructions (add + configure an LLM node) | node added/configured on canvas | step 2 | `step 2`: 1 `rf__node-LLM*` present, Save enabled | asserted |
-| 3. Click "Save as Version", provide version name "v1_test" | version saved | step 3 | `step 3`: dialog fields, URL version-id changes, Save re-disabled | asserted |
+| 3. Click "Save as Version", provide version name "v1_test" | version saved | step 3 | `step 3`: dialog fields, `copy-version-id` changes, Save re-disabled | asserted |
 | 4. Verify "v1_test" appears in the VERSION dropdown | listed | step 4 | `step 4`: `version-option-v1_test` present alongside `version-option-base` | asserted |
 | 5. Switch back to "base" version | canvas shows original topology (no LLM node) | step 5 | `step 5`: 0 `rf__node-LLM*`, URL version-id reverts | asserted |
 | 6. Switch to "v1_test" | canvas shows the LLM node + its configuration | step 6 | `step 6`: 1 `rf__node-LLM*` again, URL version-id matches new version | asserted |

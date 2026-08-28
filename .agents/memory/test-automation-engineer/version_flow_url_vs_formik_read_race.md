@@ -5,7 +5,7 @@ type: reference
 aliases: [version id stale read, confirm_new_version race, VERSION_CONVERGED_JS, copy-version-id stale, save as version race]
 tags: [area/agents, type/gotcha]
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-08-28
 ---
 
 ## The race
@@ -44,9 +44,18 @@ version data actually arrived.
   the dead gap between a POST completing and the follow-up GET being issued — it
   buys nothing here and is a race in its own right.
 
+## Where it has been fixed
+
+- `AgentDetailPage` — ELITEA-1888 / issue #1872 (the original).
+- `PipelineDetailPage.confirm_new_version()` — ELITEA-2002 / issue #1893,
+  2026-08-28. Same three removals (dead `prevId` URL wait, `wait_for_network`,
+  trigger-text-only poll) + the hoisted `VERSION_CONVERGED_JS`. It also fixed
+  ELITEA-2003 (`test_pipeline_delete_version.py`), which failed
+  byte-identically from the same call site — one page-object wait, two red
+  specs.
+
 ## Still open
 
-The same defect lives in `PipelineDetailPage.confirm_new_version()` and
-`SkillDetailPage.save_as_version()` and their specs — tracked as issue #1874.
+`SkillDetailPage.save_as_version()` and its specs — tracked as issue #1874.
 
 Related: [[matched_control_run_before_blaming_a_diff]]
