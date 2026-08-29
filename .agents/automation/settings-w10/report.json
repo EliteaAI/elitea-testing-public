@@ -1,0 +1,471 @@
+{
+  "batch": "settings-w10",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-settings-w10",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      248.02,
+      248.21,
+      247.01
+    ],
+    "spec_set": "9 spec files (all the trunk adds vs base EXCEPT the 3 sanctioned-RED specs), ONE invocation per run (14 tests each)",
+    "note": "LEAD-RUN gate, 3 SEPARATE gate-case.mjs invocations (--n 1 each), base merged before each. CORRECTS the workflow report, which marked cluster B (ELITEA-2395/2396/2408/2409) 'blocked' with note 'build failed: subagent completed without calling StructuredOutput' \u2014 a HARNESS failure. Verified against git: PR #1986 is MERGED and all four LLM specs are on the trunk. FOURTH occurrence of this false-blocked shape (w05, w08, w09, w10).",
+    "workflow_internal_gate": {
+      "verdict": "green",
+      "runs": 5,
+      "seconds": [
+        414.4,
+        449.41,
+        410.01,
+        407.89,
+        434.1
+      ]
+    },
+    "sanctioned_red": {
+      "runs": 3,
+      "seconds": [
+        159.76,
+        168.83,
+        163.36
+      ],
+      "specs": [
+        "tests/ui/settings/test_llm_model_required_field_validation.py",
+        "tests/ui/settings/test_embedding_model_required_field_validation.py",
+        "tests/ui/settings/test_set_vector_storage_default.py"
+      ],
+      "tickets": [
+        "EliteaAI/elitea-testing-public#1984",
+        "EliteaAI/elitea-testing-public#1987"
+      ],
+      "case_ids": [
+        "ELITEA-2408",
+        "ELITEA-2410",
+        "ELITEA-2401"
+      ],
+      "signature": "3 failed / 2 passed, IDENTICAL across 3 runs. #1984: required 'Name' does not gate Save on LLM + Embedding create. #1987: Vector Storage card never gets the 'Default' badge."
+    },
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "ELITEA-2393",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (14 tests per run, 248.02/248.21/247.01s).",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1981 (question, case-text-drift) for ELITEA-2393: the 'AI Configuration' page does not exist (the panel is the 'AI Configurations' accordion on Settings -> General), the return tab is labelled 'Basic', and 'integrations content' means the four environment metadata fields. Product behaviour is correct; the case text is stale. Siblings: #1250, #1772, #1906.",
+          "ref": "#1981"
+        },
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1982 (question, case-text-drift) for ELITEA-2417 \u2014 this is the decision the lead needs to route: the AI Credentials section can no longer be empty (shared 'ELPS' credential visible on every project), and '+ -> AI Credentials' is not an option in the provider type picker. Three re-scope options offered. The case stays blocked until a human decides.",
+          "ref": "#1982"
+        },
+        {
+          "kind": "note",
+          "note": "Commented the ELITEA-2394 occurrence on the existing drift ticket #1772 (row 3, 'AI Configuration is selected and active by default') instead of filing a duplicate, per that ticket's own instruction \u2014 and recorded there where the case's other steps actually land.",
+          "ref": "#1772"
+        },
+        {
+          "kind": "defect",
+          "note": "Re-confirmed the React 'Each child in a list should have a unique key prop' console error on the AI-provider type picker (CategorySection.jsx <- GroupedCategory.jsx <- CredentialTypeSelector.jsx). Already tracked as #656 (OPEN) \u2014 NOT re-filed. Any future spec visiting /settings/create-ai-provider must expect exactly this one error.",
+          "ref": "#656"
+        },
+        {
+          "kind": "note",
+          "note": "Corrected a STALE claim in test-specs/settings-ai-providers/_surface.md: its 2026-08-06 'AI Credentials: 0 configs \u2014 section absent' is no longer true (shared ELPS credential). Vector Storage is still genuinely 0/absent, so ELITEA-2392's merged empty-section coverage is unaffected. Anyone relying on that digest's zero-config claims should re-verify.",
+          "ref": "test-specs/settings-ai-providers/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Environment gotcha worth propagating: the browser's selected project is persisted and was 'UI Testing' (400) this session, not 'Private' (399) as earlier digests assume. Specs on this surface must never hardcode a project id \u2014 read it from the page's own configurations/models/{project_id} request or from settings.elitea_project_id."
+        },
+        {
+          "kind": "note",
+          "note": "Tooling gotcha (cost 6 self-inflicted console errors): fetch() from Playwright MCP browser_evaluate on localhost:5173 302s to dev.elitea.ai/forward-auth and logs 2 CORS console.errors per call, polluting exactly the console-error assertion these cases make. Use page.expect_response / browser_network_requests instead. Recorded in role memory."
+        },
+        {
+          "kind": "note",
+          "note": "Implementer economy: all 7 testids these cases need are zero-plumbing additions \u2014 FieldWithCopy already accepts a testId prop (four call sites in AIConfiguration.jsx), and Tab.TabGroupButton items accept buttonProps: {'data-testid': ...} (precedent project-context-mode-edit-button, ProjectContextEditor.jsx:86). Only ai-configuration-code-preview-editor is a genuinely new attribute on an existing B\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS drift found and amended on the branch: EliteaUI's BasicAccordion puts the data-testid it receives on its OUTER wrapper Box, while aria-expanded lives on the inner MuiAccordionSummary \u2014 reachable only via the separate items[].testId prop. Both AFS files said 'ai-configurations ... its summary carries aria-expanded', which is unreachable from one handle. Added ai-configuration-accordion-summary \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2393, ELITEA-2394"
+        },
+        {
+          "kind": "note",
+          "note": "AFS asked for the code-preview empty branch by its prose ('Select a LLM Model to see Code examples', count 0). Implemented instead as a real testid + to_have_count(0) \u2014 ai-configuration-code-preview-empty (EliteaAI/EliteaUI@7418c06f) \u2014 because an absence assertion is a first-class reference (.agents/testing.md \u00a7 Locator policy, canon ruling #511 extension), which makes naming the untested branch c\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2393"
+        },
+        {
+          "kind": "clarification",
+          "note": "DECLARED IMPROVISATION, needs a canon card before the batch closes. ELITEA-2394 step 9 requires 'no permanent loading spinner', but AIConfiguration.jsx renders NO spinner at all \u2014 there is no JSX node to attach a testid to, so 'add the testid' is not an available action. Implemented as a role-scoped child handle under the real testid parent: PANEL_PROGRESS_INDICATORS = '[data-testid=\"ai-configurat\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "role-overrides.md \u00a7 Declared-improvisation protocol"
+        },
+        {
+          "kind": "note",
+          "note": "Reusable honest oracle for the selected project id on any settings surface: page.expect_response across the sidebar Settings click captures the page's own GET .../configurations/models/{project_id}?...&section=llm, whose last path segment IS the selected project. Shipped as SettingsAIConfigurationPage.open_via_sidebar() (returns the Response) + project_id_from_models_url(). Avoids hardcoding 399/4\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2394"
+        },
+        {
+          "kind": "note",
+          "note": "No networkidle flake on this surface \u2014 BasePage.navigate's tolerant wrapper is the only network wait involved and both specs ran 16.16s clean. The new page object waits on aria-pressed / testids after every tab switch (a tab switch fires no request at all), so it adds no new wait_for_network call sites to the 140-odd #1847 already tracks.",
+          "ref": "#1847"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift is real but already filed by the analyst \u2014 no new tickets from me. Neither 'AI Configuration' page nor an 'AI Configuration' tab exists; both specs assert the live equivalent (Settings \u2192 General \u2192 'AI Configurations' accordion, 'Basic' tab) with the drift explained in each module docstring. Tracked as clarification #1981 (ELITEA-2393) and a new-occurrence comment on #1772 row 3 (EL\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2393, ELITEA-2394"
+        },
+        {
+          "kind": "note",
+          "note": "MECHANICAL LOCATOR GREP (role-overrides \u00a7 Reviewer slot) \u2014 command: `git --no-pager diff tests/batch-settings-w10...tests/ELITEA-2393-2394-ai-configurations -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'`. Output \u2014 exactly 1 hit: `303:+        return self.page.locator(s\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_ai_configuration_page.py:303"
+        },
+        {
+          "kind": "note",
+          "note": "MECHANICAL FIDELITY/PROVENANCE GREP \u2014 command: `git --no-pager diff tests/batch-settings-w10...tests/ELITEA-2393-2394-ai-configurations -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'`. Output: 0 hits (no matches). Every asserted value is produced by the system: Project ID is read off the page's own section=llm request URL via page.expect_respons\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/settings/"
+        },
+        {
+          "kind": "note",
+          "note": "IMPORTANT (non-blocking, precedent hygiene) \u2014 `panel_progress_indicators()` is the THIRD use of the 'scoped raw handle for an absence assertion on a control the product never renders' canon gap (prior: SettingsDrawerPage.drawer_logout_controls, SettingsProfilePage.drawer_logout_controls). Since the second use the overdue question card WAS filed and is OPEN: #1782 '[Canon] #579 needs a third raw-ha\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_ai_configuration_page.py:270"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS-side gap (analyst slot, not implementer): AFS 2394 step 4 specifies the raw handle ('zero [role=\"progressbar\"] / MUI CircularProgress nodes inside ai-configurations') as a plain Verify line, with no row in \u00a7 Concrete Handles and no declaration that it is an improvisation. Per role-overrides \u00a7 Analyst slot the handles table must carry every handle, and a non-testid primary handle must be specce\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-ai-configurations/l2_ai-configuration-environment-metadata-fields_ELITEA-2394.md"
+        },
+        {
+          "kind": "note",
+          "note": "Environment-conditional red risk, documented in the AFS but not in the failure message: `ai-configuration-openai-project-value` is conditionally rendered (`{model.project_id && (\u2026)}` in AIConfiguration.jsx), so on a project with NO default LLM model the whole row is absent and both specs fail at `to_be_visible` with the generic 'OpenAI-Project: value node' message. The AFS \u00a7 Known traps says the c\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_ai_configuration_page.py:96"
+        },
+        {
+          "kind": "note",
+          "note": "`open_via_sidebar()` opens `expect_response(_is_llm_models_response)` around the sidebar click, but the matcher accepts ANY `/configurations/models/\u2026&section=llm` response \u2014 including one the `/agents/all` start route fired that lands after `navigate()` returns. Harmless for the oracle (the project id in the path is the same either way, and the selected project cannot change across the click), but\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_ai_configuration_page.py:170"
+        },
+        {
+          "kind": "note",
+          "note": "Two page objects now cover `/settings/project-general`: the pre-existing `SettingsProjectGeneralPage` (owns `project-general-section` + the project selector, `navigate()` \u2192 `/settings`) and this new `SettingsAIConfigurationPage` (owns the sibling `ai-configurations` accordion, `navigate_to_general()` \u2192 `/settings/project-general`). Verified: no duplicated methods and no duplicated locators \u2014 the A\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_ai_configuration_page.py:36"
+        },
+        {
+          "kind": "note",
+          "note": "The `#1971` console filter (`exclude_known_defect_urls(\u2026, TOOLKIT_TYPES_MISSING_PROJECT_ID_404_URL)`) is carried PRE-EMPTIVELY in both specs \u2014 _surface.md states it did not fire in the green run. It is the sanctioned shape (URL-keyed, opt-in, `# Known defect: #1971` comment, never a status-code filter) and #1971 is open, so this is not masking. Flagged only because a filter carried without an obse\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/settings/test_ai_configuration_metadata_fields.py:145"
+        },
+        {
+          "kind": "note",
+          "note": "PROMOTABILITY (verified, not copied \u2014 `cd ../EliteaUI && git fetch origin` run first, two-stage grep with -i and [:=]): `ai-configurations` main:YES testids:YES (pre-existing). All NINE others \u2014 ai-configuration-accordion-summary / -tab-basic-button / -tab-openai-template-button / -openai-base-url-value / -server-url-value / -openai-project-value / -project-id-value / -code-preview-editor / -code-\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-ai-configurations/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI JSX zero-functional-impact check (role-overrides \u00a7 Reviewer slot, add-data-testid \u00a7 Step 5.5) run on both testid commits \u2014 `git show 2deb9655 7418c06f -- src/`: hooks grep `^\\+.*\\buse(State|Effect|Memo|Callback|Ref)\\(` \u2192 0 hits; new-node grep `^\\+.*<(Box|div|span|Fragment)` \u2192 2 hits, both false positives (an existing `<Box sx={\u2026}>` reformatted to multi-line to host the attribute \u2014 the mat\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/settings/test_ai_configuration_openai_template_tab.py"
+        }
+      ],
+      "afs": "test-specs/settings-ai-configurations/l3_openai-template-tab-loads-code-template_ELITEA-2393.md",
+      "branch": "tests/ELITEA-2393-2394-ai-configurations",
+      "pr": 1983,
+      "gate": {
+        "runs": 5,
+        "seconds": [
+          414.4,
+          449.41,
+          410.01,
+          407.89,
+          434.1
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2394",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (14 tests per run, 248.02/248.21/247.01s).",
+      "findings": [
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1981 (question, case-text-drift) for ELITEA-2393: the 'AI Configuration' page does not exist (the panel is the 'AI Configurations' accordion on Settings -> General), the return tab is labelled 'Basic', and 'integrations content' means the four environment metadata fields. Product behaviour is correct; the case text is stale. Siblings: #1250, #1772, #1906.",
+          "ref": "#1981"
+        },
+        {
+          "kind": "clarification",
+          "note": "Filed EliteaAI/elitea-testing-public#1982 (question, case-text-drift) for ELITEA-2417 \u2014 this is the decision the lead needs to route: the AI Credentials section can no longer be empty (shared 'ELPS' credential visible on every project), and '+ -> AI Credentials' is not an option in the provider type picker. Three re-scope options offered. The case stays blocked until a human decides.",
+          "ref": "#1982"
+        },
+        {
+          "kind": "note",
+          "note": "Commented the ELITEA-2394 occurrence on the existing drift ticket #1772 (row 3, 'AI Configuration is selected and active by default') instead of filing a duplicate, per that ticket's own instruction \u2014 and recorded there where the case's other steps actually land.",
+          "ref": "#1772"
+        },
+        {
+          "kind": "defect",
+          "note": "Re-confirmed the React 'Each child in a list should have a unique key prop' console error on the AI-provider type picker (CategorySection.jsx <- GroupedCategory.jsx <- CredentialTypeSelector.jsx). Already tracked as #656 (OPEN) \u2014 NOT re-filed. Any future spec visiting /settings/create-ai-provider must expect exactly this one error.",
+          "ref": "#656"
+        },
+        {
+          "kind": "note",
+          "note": "Corrected a STALE claim in test-specs/settings-ai-providers/_surface.md: its 2026-08-06 'AI Credentials: 0 configs \u2014 section absent' is no longer true (shared ELPS credential). Vector Storage is still genuinely 0/absent, so ELITEA-2392's merged empty-section coverage is unaffected. Anyone relying on that digest's zero-config claims should re-verify.",
+          "ref": "test-specs/settings-ai-providers/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "Environment gotcha worth propagating: the browser's selected project is persisted and was 'UI Testing' (400) this session, not 'Private' (399) as earlier digests assume. Specs on this surface must never hardcode a project id \u2014 read it from the page's own configurations/models/{project_id} request or from settings.elitea_project_id."
+        },
+        {
+          "kind": "note",
+          "note": "Tooling gotcha (cost 6 self-inflicted console errors): fetch() from Playwright MCP browser_evaluate on localhost:5173 302s to dev.elitea.ai/forward-auth and logs 2 CORS console.errors per call, polluting exactly the console-error assertion these cases make. Use page.expect_response / browser_network_requests instead. Recorded in role memory."
+        },
+        {
+          "kind": "note",
+          "note": "Implementer economy: all 7 testids these cases need are zero-plumbing additions \u2014 FieldWithCopy already accepts a testId prop (four call sites in AIConfiguration.jsx), and Tab.TabGroupButton items accept buttonProps: {'data-testid': ...} (precedent project-context-mode-edit-button, ProjectContextEditor.jsx:86). Only ai-configuration-code-preview-editor is a genuinely new attribute on an existing B\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+        },
+        {
+          "kind": "note",
+          "note": "AFS drift found and amended on the branch: EliteaUI's BasicAccordion puts the data-testid it receives on its OUTER wrapper Box, while aria-expanded lives on the inner MuiAccordionSummary \u2014 reachable only via the separate items[].testId prop. Both AFS files said 'ai-configurations ... its summary carries aria-expanded', which is unreachable from one handle. Added ai-configuration-accordion-summary \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2393, ELITEA-2394"
+        },
+        {
+          "kind": "note",
+          "note": "AFS asked for the code-preview empty branch by its prose ('Select a LLM Model to see Code examples', count 0). Implemented instead as a real testid + to_have_count(0) \u2014 ai-configuration-code-preview-empty (EliteaAI/EliteaUI@7418c06f) \u2014 because an absence assertion is a first-class reference (.agents/testing.md \u00a7 Locator policy, canon ruling #511 extension), which makes naming the untested branch c\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2393"
+        },
+        {
+          "kind": "clarification",
+          "note": "DECLARED IMPROVISATION, needs a canon card before the batch closes. ELITEA-2394 step 9 requires 'no permanent loading spinner', but AIConfiguration.jsx renders NO spinner at all \u2014 there is no JSX node to attach a testid to, so 'add the testid' is not an available action. Implemented as a role-scoped child handle under the real testid parent: PANEL_PROGRESS_INDICATORS = '[data-testid=\"ai-configurat\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "role-overrides.md \u00a7 Declared-improvisation protocol"
+        },
+        {
+          "kind": "note",
+          "note": "Reusable honest oracle for the selected project id on any settings surface: page.expect_response across the sidebar Settings click captures the page's own GET .../configurations/models/{project_id}?...&section=llm, whose last path segment IS the selected project. Shipped as SettingsAIConfigurationPage.open_via_sidebar() (returns the Response) + project_id_from_models_url(). Avoids hardcoding 399/4\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2394"
+        },
+        {
+          "kind": "note",
+          "note": "No networkidle flake on this surface \u2014 BasePage.navigate's tolerant wrapper is the only network wait involved and both specs ran 16.16s clean. The new page object waits on aria-pressed / testids after every tab switch (a tab switch fires no request at all), so it adds no new wait_for_network call sites to the 140-odd #1847 already tracks.",
+          "ref": "#1847"
+        },
+        {
+          "kind": "note",
+          "note": "Case-text drift is real but already filed by the analyst \u2014 no new tickets from me. Neither 'AI Configuration' page nor an 'AI Configuration' tab exists; both specs assert the live equivalent (Settings \u2192 General \u2192 'AI Configurations' accordion, 'Basic' tab) with the drift explained in each module docstring. Tracked as clarification #1981 (ELITEA-2393) and a new-occurrence comment on #1772 row 3 (EL\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "ELITEA-2393, ELITEA-2394"
+        },
+        {
+          "kind": "note",
+          "note": "MECHANICAL LOCATOR GREP (role-overrides \u00a7 Reviewer slot) \u2014 command: `git --no-pager diff tests/batch-settings-w10...tests/ELITEA-2393-2394-ai-configurations -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'`. Output \u2014 exactly 1 hit: `303:+        return self.page.locator(s\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_ai_configuration_page.py:303"
+        },
+        {
+          "kind": "note",
+          "note": "MECHANICAL FIDELITY/PROVENANCE GREP \u2014 command: `git --no-pager diff tests/batch-settings-w10...tests/ELITEA-2393-2394-ai-configurations -- automation/ | grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'`. Output: 0 hits (no matches). Every asserted value is produced by the system: Project ID is read off the page's own section=llm request URL via page.expect_respons\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/settings/"
+        },
+        {
+          "kind": "note",
+          "note": "IMPORTANT (non-blocking, precedent hygiene) \u2014 `panel_progress_indicators()` is the THIRD use of the 'scoped raw handle for an absence assertion on a control the product never renders' canon gap (prior: SettingsDrawerPage.drawer_logout_controls, SettingsProfilePage.drawer_logout_controls). Since the second use the overdue question card WAS filed and is OPEN: #1782 '[Canon] #579 needs a third raw-ha\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_ai_configuration_page.py:270"
+        },
+        {
+          "kind": "clarification",
+          "note": "AFS-side gap (analyst slot, not implementer): AFS 2394 step 4 specifies the raw handle ('zero [role=\"progressbar\"] / MUI CircularProgress nodes inside ai-configurations') as a plain Verify line, with no row in \u00a7 Concrete Handles and no declaration that it is an improvisation. Per role-overrides \u00a7 Analyst slot the handles table must carry every handle, and a non-testid primary handle must be specce\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-ai-configurations/l2_ai-configuration-environment-metadata-fields_ELITEA-2394.md"
+        },
+        {
+          "kind": "note",
+          "note": "Environment-conditional red risk, documented in the AFS but not in the failure message: `ai-configuration-openai-project-value` is conditionally rendered (`{model.project_id && (\u2026)}` in AIConfiguration.jsx), so on a project with NO default LLM model the whole row is absent and both specs fail at `to_be_visible` with the generic 'OpenAI-Project: value node' message. The AFS \u00a7 Known traps says the c\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_ai_configuration_page.py:96"
+        },
+        {
+          "kind": "note",
+          "note": "`open_via_sidebar()` opens `expect_response(_is_llm_models_response)` around the sidebar click, but the matcher accepts ANY `/configurations/models/\u2026&section=llm` response \u2014 including one the `/agents/all` start route fired that lands after `navigate()` returns. Harmless for the oracle (the project id in the path is the same either way, and the selected project cannot change across the click), but\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_ai_configuration_page.py:170"
+        },
+        {
+          "kind": "note",
+          "note": "Two page objects now cover `/settings/project-general`: the pre-existing `SettingsProjectGeneralPage` (owns `project-general-section` + the project selector, `navigate()` \u2192 `/settings`) and this new `SettingsAIConfigurationPage` (owns the sibling `ai-configurations` accordion, `navigate_to_general()` \u2192 `/settings/project-general`). Verified: no duplicated methods and no duplicated locators \u2014 the A\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/pages/settings_ai_configuration_page.py:36"
+        },
+        {
+          "kind": "note",
+          "note": "The `#1971` console filter (`exclude_known_defect_urls(\u2026, TOOLKIT_TYPES_MISSING_PROJECT_ID_404_URL)`) is carried PRE-EMPTIVELY in both specs \u2014 _surface.md states it did not fire in the green run. It is the sanctioned shape (URL-keyed, opt-in, `# Known defect: #1971` comment, never a status-code filter) and #1971 is open, so this is not masking. Flagged only because a filter carried without an obse\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/settings/test_ai_configuration_metadata_fields.py:145"
+        },
+        {
+          "kind": "note",
+          "note": "PROMOTABILITY (verified, not copied \u2014 `cd ../EliteaUI && git fetch origin` run first, two-stage grep with -i and [:=]): `ai-configurations` main:YES testids:YES (pre-existing). All NINE others \u2014 ai-configuration-accordion-summary / -tab-basic-button / -tab-openai-template-button / -openai-base-url-value / -server-url-value / -openai-project-value / -project-id-value / -code-preview-editor / -code-\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "test-specs/settings-ai-configurations/_surface.md"
+        },
+        {
+          "kind": "note",
+          "note": "EliteaUI JSX zero-functional-impact check (role-overrides \u00a7 Reviewer slot, add-data-testid \u00a7 Step 5.5) run on both testid commits \u2014 `git show 2deb9655 7418c06f -- src/`: hooks grep `^\\+.*\\buse(State|Effect|Memo|Callback|Ref)\\(` \u2192 0 hits; new-node grep `^\\+.*<(Box|div|span|Fragment)` \u2192 2 hits, both false positives (an existing `<Box sx={\u2026}>` reformatted to multi-line to host the attribute \u2014 the mat\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+          "ref": "automation/tests/ui/settings/test_ai_configuration_openai_template_tab.py"
+        }
+      ],
+      "afs": "test-specs/settings-ai-configurations/l2_ai-configuration-environment-metadata-fields_ELITEA-2394.md",
+      "branch": "tests/ELITEA-2393-2394-ai-configurations",
+      "pr": 1983,
+      "gate": {
+        "runs": 5,
+        "seconds": [
+          414.4,
+          449.41,
+          410.01,
+          407.89,
+          434.1
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2417",
+      "outcome": "blocked",
+      "note": "Diverged from the family (AI Providers page, not the General accordion) and is blocked on an unreachable precondition, not a product defect. A SHARED AI credential ('ELPS', OK \u2022 Shared) is visible in every non-public project (include_shared=true), so ai-providers-section-ai-credentials renders with badge 1 on both 400 and 399 \u2014 the case's step-2 observable ('section NOT shown') cannot be produced,\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": []
+    },
+    {
+      "id": "ELITEA-2395",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (14 tests per run, 248.02/248.21/247.01s).",
+      "findings": [],
+      "pr": 1986
+    },
+    {
+      "id": "ELITEA-2396",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (14 tests per run, 248.02/248.21/247.01s).",
+      "findings": [],
+      "pr": 1986
+    },
+    {
+      "id": "ELITEA-2408",
+      "outcome": "merged-sanctioned-red",
+      "note": "Lead gate 3/3 IDENTICAL red against OPEN bug #1984. Known-defect markers in-spec. NOT back-written execution_type: automated.",
+      "findings": [],
+      "pr": 1986
+    },
+    {
+      "id": "ELITEA-2409",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (14 tests per run, 248.02/248.21/247.01s).",
+      "findings": [],
+      "pr": 1986
+    },
+    {
+      "id": "ELITEA-2398",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (14 tests per run, 248.02/248.21/247.01s).",
+      "findings": [],
+      "afs": "test-specs/settings-ai-providers/l3_create-embedding-model-configuration_ELITEA-2398.md",
+      "branch": "tests/2398-2401-embedding-and-vector-storage",
+      "pr": 1989,
+      "gate": {
+        "runs": 5,
+        "seconds": [
+          414.4,
+          449.41,
+          410.01,
+          407.89,
+          434.1
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2410",
+      "outcome": "merged-sanctioned-red",
+      "note": "Lead gate 3/3 IDENTICAL red against OPEN bug #1984. Known-defect markers in-spec. NOT back-written execution_type: automated.",
+      "findings": [],
+      "pr": 1989
+    },
+    {
+      "id": "ELITEA-2399",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (14 tests per run, 248.02/248.21/247.01s).",
+      "findings": [],
+      "afs": "test-specs/settings-ai-providers/l3_create-vector-storage-pgvector-configuration_ELITEA-2399.md",
+      "branch": "tests/2398-2401-embedding-and-vector-storage",
+      "pr": 1989,
+      "gate": {
+        "runs": 5,
+        "seconds": [
+          414.4,
+          449.41,
+          410.01,
+          407.89,
+          434.1
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2400",
+      "outcome": "automated",
+      "note": "Lead gate 3/3 green (14 tests per run, 248.02/248.21/247.01s).",
+      "findings": [],
+      "afs": "test-specs/settings-ai-providers/l3_edit-vector-storage-configuration_ELITEA-2400.md",
+      "branch": "tests/2398-2401-embedding-and-vector-storage",
+      "pr": 1989,
+      "gate": {
+        "runs": 5,
+        "seconds": [
+          414.4,
+          449.41,
+          410.01,
+          407.89,
+          434.1
+        ]
+      }
+    },
+    {
+      "id": "ELITEA-2401",
+      "outcome": "merged-sanctioned-red",
+      "note": "Lead gate 3/3 IDENTICAL red against OPEN bug #1987. Known-defect markers in-spec. NOT back-written execution_type: automated.",
+      "findings": [],
+      "pr": 1989
+    },
+    {
+      "id": "ELITEA-2411",
+      "outcome": "blocked",
+      "note": "BLOCKED on #1988 s1 - needs a human ruling, not access/data/env. The case's single observable is false and the product is internally consistent in making it false: GET /configurations/available/?section=vectorstorage shows connection_string with \"default\": null and NO required array inside data at all (top-level required is [elitea_title,label,type,data]); the UI correctly renders no required aste\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+      "findings": []
+    }
+  ],
+  "totals": {
+    "automated": 8,
+    "merged-sanctioned-red": 3,
+    "blocked": 2
+  },
+  "quality_flags": [],
+  "quota_halted": false,
+  "expected_red": [
+    {
+      "runs": 3,
+      "seconds": [
+        159.76,
+        168.83,
+        163.36
+      ],
+      "specs": [
+        "tests/ui/settings/test_llm_model_required_field_validation.py",
+        "tests/ui/settings/test_embedding_model_required_field_validation.py",
+        "tests/ui/settings/test_set_vector_storage_default.py"
+      ],
+      "tickets": [
+        "EliteaAI/elitea-testing-public#1984",
+        "EliteaAI/elitea-testing-public#1987"
+      ],
+      "case_ids": [
+        "ELITEA-2408",
+        "ELITEA-2410",
+        "ELITEA-2401"
+      ],
+      "signature": "3 failed / 2 passed, IDENTICAL across 3 runs. #1984: required 'Name' does not gate Save on LLM + Embedding create. #1987: Vector Storage card never gets the 'Default' badge."
+    }
+  ],
+  "parked": []
+}
