@@ -40,6 +40,14 @@ the persisted default, the badge) are all produced by the product. Nothing is
 mocked, injected or fabricated. The API is READ as an oracle for the current
 default and the option set, never fabricated.
 
+The transit has a second half, and it is not optional. Creating a Vector
+Storage configuration ASSIGNS it as the section default (live contract,
+measured during ELITEA-2399's implementation — unlike the LLMs section), so
+straight after creating it the transit configuration IS the default and the
+case's "select a different one" would be a no-op. Setup therefore puts the
+PRE-EXISTING default back first, so the selection the case asks for is a
+genuine change the product has to perform.
+
 **Precondition guard.** `CredentialsControls.jsx`'s `isLastInSection` makes the
 ONLY vector storage in a project permanently undeletable, and Vector Storage
 has no shared configurations to pad the count — so this test refuses to run
@@ -66,7 +74,7 @@ from config import settings
 from pages.ai_provider_form_page import AiProviderFormPage
 from pages.ai_providers_page import AIProvidersPage
 from playwright.sync_api import expect
-from utils.ai_provider_teardown import delete_configurations_if_present
+from utils.ai_provider_teardown import delete_configurations_if_present, restore_section_default
 from utils.console_errors import (
     TOOLKIT_TYPES_MISSING_PROJECT_ID_404_URL,
     collect_console_errors,
@@ -138,11 +146,21 @@ class TestSetVectorStorageAsDefault:
                 providers_page.ensure_project_selected(SEEDED_PROJECT_ID)
                 response = providers_page.navigate_and_capture_vectorstorage_response()
                 assert response.status == 200, f"Vector Storage models request failed: {response.status}"
-                assert response.json()["total"] >= 1, (
+                seed_body = response.json()
+                assert seed_body["total"] >= 1, (
                     "The Vector Storage section is EMPTY. The configuration this test creates would then be "
                     "the only one and permanently undeletable through the UI (isLastInSection) — refusing "
                     "to leave permanent residue in a shared project (AFS ELITEA-2401 § Preconditions, "
                     "#1988 § 4)."
+                )
+                pre_transit_default_name = seed_body.get("default_model_name")
+                assert pre_transit_default_name, (
+                    "The project's Default vector storage is UNSET. The selector offers no blank option, so "
+                    "this test cannot restore that state after assigning one — refusing to mutate shared "
+                    "project configuration (AFS ELITEA-2401 § Cleanup)."
+                )
+                original_default_value = (
+                    f"{pre_transit_default_name}<<>>{seed_body['default_model_project_id']}"
                 )
                 expect(providers_page.vector_storage_section_header).to_be_visible()
 
@@ -153,6 +171,18 @@ class TestSetVectorStorageAsDefault:
                 form.set_display_name(transit_display_name)
                 form.replace_secret_value("connection_string", CONNECTION_STRING)
                 form.save_and_return_to_list()
+                default_changed = True
+
+                # Creating it made it the default (live contract), which would
+                # turn the case's step 3 into a no-op — put the pre-existing
+                # default back so the selection is a genuine change.
+                providers_page.isolate_section(providers_page.vector_storage_section_header)
+                providers_page.select_default_configuration(
+                    providers_page.vector_storage_default_selector_combobox, original_default_value
+                )
+                expect(providers_page.vector_storage_default_selector_combobox).to_have_text(
+                    pre_transit_default_name
+                )
 
             with allure.step("Step 1 — Expand Vector Storage and capture the current default"):
                 response = providers_page.navigate_and_capture_vectorstorage_response()
@@ -164,13 +194,11 @@ class TestSetVectorStorageAsDefault:
                     f"The case needs a DIFFERENT configuration to select; the section holds {total}"
                 )
 
-                original_default_name = body.get("default_model_name")
-                assert original_default_name, (
-                    "The project's Default vector storage is UNSET. The selector offers no blank option, so "
-                    "this test cannot restore that state after assigning one — refusing to mutate shared "
-                    "project configuration (AFS ELITEA-2401 § Cleanup)."
+                original_default_name = body["default_model_name"]
+                assert original_default_name == pre_transit_default_name, (
+                    f"Setup did not restore the pre-existing default: {original_default_name!r} != "
+                    f"{pre_transit_default_name!r}"
                 )
-                original_default_value = _option_value(original_default_name, body["default_model_project_id"])
                 target_item = next((i for i in items if i["name"] == transit_title), None)
                 assert target_item, (
                     f"The transit configuration {transit_title!r} is not offered by the Default selector"
@@ -261,17 +289,12 @@ class TestSetVectorStorageAsDefault:
             # configuration remains, and the pre-existing one must be the
             # survivor AND the default.
             if default_changed and original_default_value:
-                try:
-                    providers_page.navigate()
-                    providers_page.isolate_section(providers_page.vector_storage_section_header)
-                    providers_page.select_default_configuration(
-                        providers_page.vector_storage_default_selector_combobox, original_default_value
-                    )
-                    logger.info("Teardown: restored the default vector storage to %r", original_default_value)
-                except Exception:
-                    logger.exception(
-                        "Teardown FAILED to restore the default vector storage to %r", original_default_value
-                    )
+                restore_section_default(
+                    providers_page,
+                    providers_page.vector_storage_section_header,
+                    providers_page.vector_storage_default_selector_combobox,
+                    original_default_value,
+                )
 
             final_count = delete_configurations_if_present(
                 providers_page, form, providers_page.vector_storage_section_header, [transit_display_name]

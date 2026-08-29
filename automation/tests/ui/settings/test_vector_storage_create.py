@@ -39,9 +39,18 @@ already holds >=1 configuration, failing loudly instead of leaving permanent
 residue (`_surface.md`; routed to a human on #1988 § 4).
 
 **This test MUTATES shared, live project configuration** — the created
-configuration is deleted in a `finally`. The project's Default vector storage
-is deliberately NOT changed: step 9 asserts option INCLUSION only, as the case
-asks, and the dropdown is dismissed with Escape (selecting is ELITEA-2401).
+configuration is deleted in a `finally`.
+
+**AFS amendment (this PR), from the live run.** The AFS's Axis-2 row claimed
+"creation does not silently reassign the project default". It does: the newly
+created Vector Storage configuration BECOMES the section's default
+(measured — the combobox went `autotest_pgvector_seed` ->
+`autotest_pgvector_<run>` with no selection made), unlike the LLMs section
+where ELITEA-2395 has to assign it explicitly. Per the reverse-masking guard
+(`.agents/testing.md`) this test asserts the LIVE contract rather than the
+assumed one, and the `finally` restores the original default BEFORE deleting.
+The case itself asks only that the dropdown OFFER the new configuration, which
+is unaffected either way.
 
 Markers:
     - ui, settings, p2 (this suite's l3 -> p2, matching the sibling
@@ -58,7 +67,7 @@ from config import settings
 from pages.ai_provider_form_page import AiProviderFormPage
 from pages.ai_providers_page import AIProvidersPage, project_id_from_models_response
 from playwright.sync_api import expect
-from utils.ai_provider_teardown import delete_configurations_if_present
+from utils.ai_provider_teardown import delete_configurations_if_present, restore_section_default
 from utils.console_errors import (
     TOOLKIT_TYPES_MISSING_PROJECT_ID_404_URL,
     collect_console_errors,
@@ -116,6 +125,8 @@ class TestCreateVectorStorageConfiguration:
         suffix = str(int(time.time()))[-5:]
         display_name = f"Autotest PGVector {suffix}"
         initial_card_count = None
+        original_default_value = None
+        default_changed = False
         body_completed = False
 
         try:
@@ -125,23 +136,37 @@ class TestCreateVectorStorageConfiguration:
                 response = providers_page.navigate_and_capture_vectorstorage_response()
                 assert response.status == 200, f"Vector Storage models request failed: {response.status}"
                 project_id = project_id_from_models_response(response)
-                existing_total = response.json()["total"]
+                body = response.json()
+                existing_total = body["total"]
                 assert existing_total >= 1, (
                     "The Vector Storage section is EMPTY. Creating the first configuration in a project "
                     "makes it permanently undeletable through the UI (isLastInSection, and Vector Storage "
                     "has no shared configurations) — refusing to leave permanent residue in a shared "
                     "project (AFS ELITEA-2399 § Known constraints, #1988 § 4)."
                 )
-                logger.info("Active project id %s, %s existing vector storage(s)", project_id, existing_total)
+                original_default_name = body.get("default_model_name")
+                assert original_default_name, (
+                    "The project's Default vector storage is UNSET. The selector offers no blank option, so "
+                    "this test could not restore that state after creating a configuration (which the product "
+                    "makes the default) — refusing to mutate shared project configuration."
+                )
+                original_default_value = f"{original_default_name}<<>>{body['default_model_project_id']}"
+                logger.info(
+                    "Active project id %s, %s existing vector storage(s), default=%r",
+                    project_id,
+                    existing_total,
+                    original_default_value,
+                )
 
                 expect(providers_page.page_title).to_have_text("AI Providers")
                 expect(providers_page.vector_storage_section_header).to_be_visible()
                 providers_page.isolate_section(providers_page.vector_storage_section_header)
                 initial_card_count = providers_page.get_configuration_card_count()
-                # The section's current Default, as the product renders it —
-                # captured so step 9 can prove creation did not reassign it.
-                initial_default_label = providers_page.vector_storage_default_selector_combobox.text_content()
-                logger.info("Baseline: %s cards, Default=%r", initial_card_count, initial_default_label)
+                # The section labels its Default with the `elitea_title`, not a
+                # display name (#1988 § 3) — asserted as the live contract, and
+                # cross-checked against the product's own response body.
+                expect(providers_page.vector_storage_default_selector_combobox).to_have_text(original_default_name)
+                logger.info("Baseline: %s cards, Default=%r", initial_card_count, original_default_name)
 
             with allure.step("Step 2 — Click '+' in the AI Providers header"):
                 providers_page.click_create()
@@ -194,9 +219,10 @@ class TestCreateVectorStorageConfiguration:
                 expect(card).to_contain_text("OK •")
 
             with allure.step("Step 9 — The Default vector storage dropdown offers the new configuration"):
-                # Axis 2 — creation must not silently reassign the project's
-                # Default vector storage.
-                expect(providers_page.vector_storage_default_selector_combobox).to_have_text(initial_default_label)
+                default_changed = True
+                # LIVE CONTRACT (AFS amended in this PR): the product ASSIGNS
+                # the newly created configuration as the section default.
+                expect(providers_page.vector_storage_default_selector_combobox).to_have_text(_slug(display_name))
 
                 providers_page.vector_storage_default_selector_combobox.click()
                 # Keyed by `elitea_title`, NOT by a model name — this section's
@@ -205,7 +231,12 @@ class TestCreateVectorStorageConfiguration:
                 expect(option).to_be_visible()
                 # Labelled with the ID as well, unlike every other section.
                 expect(option).to_have_text(_slug(display_name))
-                expect(option).to_have_attribute("aria-selected", "false")
+                expect(option).to_have_attribute("aria-selected", "true")
+                # Axis 2 — the default is exclusive: the previous one is still
+                # OFFERED (the create did not drop it) and is no longer selected.
+                previous = providers_page.select_option(original_default_value)
+                expect(previous).to_be_visible()
+                expect(previous).to_have_attribute("aria-selected", "false")
                 providers_page.close_open_dropdown()
 
             with allure.step("Axis 2 — No console errors before teardown"):
@@ -217,6 +248,16 @@ class TestCreateVectorStorageConfiguration:
 
             body_completed = True
         finally:
+            # Restore the default FIRST: while the created configuration is the
+            # section default it is what the rest of the suite reads, and
+            # deletion is additionally blocked while only one remains.
+            if default_changed and original_default_value:
+                restore_section_default(
+                    providers_page,
+                    providers_page.vector_storage_section_header,
+                    providers_page.vector_storage_default_selector_combobox,
+                    original_default_value,
+                )
             final_count = delete_configurations_if_present(
                 providers_page, form, providers_page.vector_storage_section_header, [display_name]
             )

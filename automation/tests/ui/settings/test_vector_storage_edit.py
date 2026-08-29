@@ -27,7 +27,12 @@ a human on #1988 § 4).
 **This test MUTATES shared, live project configuration** — one configuration is
 created and, at the end, deleted in a `finally` under whichever name is
 currently live, so a failure between the rename and the verification still
-tears down.
+tears down. Creating a Vector Storage configuration additionally ASSIGNS it as
+the section's default (live contract, measured during ELITEA-2399's
+implementation — unlike the LLMs section), so the pre-existing default is
+captured up front and restored before the delete. The edit itself does not
+touch the default, but it does re-derive the configuration's `elitea_title`,
+which is the key the default is stored under.
 
 Markers:
     - ui, settings, p2 (this suite's l3 -> p2, matching the sibling
@@ -44,7 +49,7 @@ from config import settings
 from pages.ai_provider_form_page import AiProviderFormPage
 from pages.ai_providers_page import AIProvidersPage
 from playwright.sync_api import expect
-from utils.ai_provider_teardown import delete_configurations_if_present
+from utils.ai_provider_teardown import delete_configurations_if_present, restore_section_default
 from utils.console_errors import (
     TOOLKIT_TYPES_MISSING_PROJECT_ID_404_URL,
     collect_console_errors,
@@ -102,6 +107,8 @@ class TestEditVectorStorageConfiguration:
         edited_display_name = f"Autotest PGVector Edited {suffix}"
         live_display_name = seed_display_name
         seeded_card_count = None
+        original_default_value = None
+        default_changed = False
         body_completed = False
 
         try:
@@ -110,13 +117,22 @@ class TestEditVectorStorageConfiguration:
                 providers_page.ensure_project_selected(SEEDED_PROJECT_ID)
                 response = providers_page.navigate_and_capture_vectorstorage_response()
                 assert response.status == 200, f"Vector Storage models request failed: {response.status}"
-                existing_total = response.json()["total"]
+                body = response.json()
+                existing_total = body["total"]
                 assert existing_total >= 1, (
                     "The Vector Storage section is EMPTY. The configuration this test creates would then be "
                     "the only one and permanently undeletable through the UI (isLastInSection) — refusing "
                     "to leave permanent residue in a shared project (AFS ELITEA-2400 § Preconditions, "
                     "#1988 § 4)."
                 )
+                original_default_name = body.get("default_model_name")
+                assert original_default_name, (
+                    "The project's Default vector storage is UNSET. The selector offers no blank option, so "
+                    "this test could not restore that state after creating a configuration (which the product "
+                    "makes the default) — refusing to mutate shared project configuration."
+                )
+                original_default_value = f"{original_default_name}<<>>{body['default_model_project_id']}"
+
                 expect(providers_page.vector_storage_section_header).to_be_visible()
                 providers_page.isolate_section(providers_page.vector_storage_section_header)
                 initial_card_count = providers_page.get_configuration_card_count()
@@ -134,6 +150,9 @@ class TestEditVectorStorageConfiguration:
                 assert seeded_card_count == initial_card_count + 1, (
                     f"Transit did not add exactly one card: {seeded_card_count} vs {initial_card_count}"
                 )
+                # Creating it made it the section default (live contract) — the
+                # `finally` puts the original back.
+                default_changed = True
 
             with allure.step("Step 1 — The Vector Storage section is rendered and holds the card"):
                 expect(providers_page.vector_storage_section_header).to_have_attribute("aria-expanded", "true")
@@ -203,6 +222,16 @@ class TestEditVectorStorageConfiguration:
 
             body_completed = True
         finally:
+            # Restore the default FIRST: while the transit configuration is the
+            # section default it is what the rest of the suite reads, and
+            # deletion is additionally blocked while only one remains.
+            if default_changed and original_default_value:
+                restore_section_default(
+                    providers_page,
+                    providers_page.vector_storage_section_header,
+                    providers_page.vector_storage_default_selector_combobox,
+                    original_default_value,
+                )
             # Look the name up rather than assume which of the two is live, so
             # a failure between steps 4 and 6 still tears down.
             final_count = delete_configurations_if_present(

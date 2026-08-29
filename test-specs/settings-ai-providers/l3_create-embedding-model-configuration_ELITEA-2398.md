@@ -89,6 +89,17 @@ respect to every other suite that reads it.
 | The new option's `aria-selected` is `"false"` and the combobox label is unchanged | proves creation does **not** silently reassign the project default — a real regression risk this case would otherwise miss |
 | No console errors on `/settings/ai-providers` and on the create form | verified live: a clean `goto` of each logs **0** errors. See § Automation Hints for the two expected exceptions |
 
+## Implementation amendment (2026-08-29, test-automation-engineer)
+
+**Card counts must be SECTION-SCOPED, and `get_configuration_card_count()` is not.**
+It counts every rendered card on the page, and the whole-page total is not comparable
+across the app's own navigation back from a Save: the LLMs accordion auto-expands only
+on a fresh page load, so the first implementation run measured 15 cards before the
+create and 4 after. `AIProvidersPage.isolate_section()` (added by this
+implementation — collapse every section, expand one) makes the count scoped to the
+section under test, so the "3 → 4" claim in § Test Steps step 8 and § Axis 2 is
+literally what is asserted.
+
 ## Cleanup (MANDATORY — this test mutates a shared project)
 
 Delete the created configuration in a `finally`:

@@ -33,6 +33,13 @@
 - **The project must already have ≥1 Vector Storage configuration** before this test
   runs — see § Known constraints. On project 400 this session established the seed
   **`Autotest PGVector Seed`** (`autotest_pgvector_seed`) for exactly this purpose.
+  ⚠️ **Amended (implementation):** the automation does NOT land on project 400 — the
+  acting user's default project is 399 (`Private`), whose Vector Storage section is
+  EMPTY (confirmed live from the product's own `section=vectorstorage` response: 399 →
+  `total: 0`, 400 → `total: 1`). The spec therefore switches to the seeded project
+  through the sidebar project selector — a real user action, and the same
+  `settings.ai_providers_seeded_project_id` mechanism several merged specs already use
+  for project-specific preconditions.
 - **This test MUTATES shared, live project configuration.** § Cleanup is mandatory.
 
 ## Known constraints — the first Vector Storage in a project is UNDELETABLE
@@ -76,7 +83,7 @@ unremovable artifact. (Routed to a human on #1988 § 4.)
 | 6 | Fill **Connection String** into `toolkit-field-connection_string-input-field` | value length matches what was typed; the native input's `type` is **`password`** (a secret field, `writeOnly` in the schema) |
 | 7 | Click `credential-form-save-button` | POST succeeds; the app navigates itself back to `/settings/ai-providers` |
 | 8 | Find the new card in the Vector Storage section | count N → **N+1**; a card whose `ai-provider-configuration-card-name` equals `Autotest PGVector`; concatenated text `Autotest PGVectorOK • Local` |
-| 9 | Open `ai-providers-section-vector-storage-default-selector-combobox` and read the options | an option `select-option-autotest_pgvector<<>>400` exists, **labelled `autotest_pgvector`** (the ID, not the Display Name) |
+| 9 | Open `ai-providers-section-vector-storage-default-selector-combobox` and read the options | an option `select-option-autotest_pgvector<<>>400` exists, **labelled `autotest_pgvector`** (the ID, not the Display Name), and it is **`aria-selected="true"`** — the product ASSIGNS a newly created vector storage as the section default (amended, see § Implementation amendment) |
 
 **Step 9 asserts inclusion only** — the case does not ask to select it. Selecting is
 ELITEA-2401's subject.
@@ -111,13 +118,34 @@ ELITEA-2401's subject.
 | Vector Storage card count N → N+1 | proves a **create**, not an in-place update of an existing configuration — ELITEA-2400 exercises the update path and the two must stay distinguishable |
 | Save `disabled` on the pristine form, enabled after Display Name is typed | the honest gate proof. Note it becomes enabled on Display Name **alone** — Connection String does not gate it (schema-optional, ELITEA-2411/#1988 § 1) |
 | The native Connection String input's `type == "password"` | pins the secret handling; a regression that renders it as plain text would leak a DB URI into screenshots and DOM dumps |
-| The new option's `aria-selected` is `"false"` and the combobox label is unchanged | proves creation does not silently reassign the project default |
+| The new option's `aria-selected` is `"true"`, the combobox label is the new `elitea_title`, and the PREVIOUS default is still offered with `aria-selected="false"` | **amended — see § Implementation amendment.** Creation DOES reassign the section default here. Asserting it (plus the previous default's continued presence and de-selection) pins the exclusivity contract and makes the mutation visible instead of silent |
 | Precondition guard: the Vector Storage section is non-empty at test start | not decorative — without it the spec can create a permanently unremovable configuration (§ Known constraints) |
 | No console errors on the list page | verified live: clean `goto` logs **0** errors |
 
+## Implementation amendment (2026-08-29, test-automation-engineer)
+
+**Creating a Vector Storage configuration ASSIGNS it as the section's default.**
+Measured live during implementation: with `autotest_pgvector_seed` the default before
+the create, the combobox read `autotest_pgvector_<run>` immediately after, with no
+selection made. This contradicts the Axis-2 row this AFS originally carried
+("creation does not silently reassign the project default"), which was written from
+the analyst's `aria-selected` reading of a different moment.
+
+Consequences, all applied to the spec:
+1. Step 9 asserts the LIVE contract (`aria-selected="true"` on the new option, the
+   combobox showing its `elitea_title`) per the reverse-masking guard.
+2. **§ Cleanup gains a restore step:** the pre-existing default is captured from the
+   product's own `section=vectorstorage` response at step 1 and re-selected BEFORE the
+   delete. Without it the spec silently mutates state the rest of the suite reads.
+3. The spec **refuses to run when the section has no default at start** — the selector
+   offers no blank option, so that state could not be restored.
+4. This differs from the LLMs section, where ELITEA-2395 must assign the new model
+   explicitly. Recorded as an observation, not filed: no case asserts it either way.
+
 ## Cleanup (MANDATORY — this test mutates a shared project)
 
-Delete the created configuration in a `finally`: card → `controls-menu-button` →
+**Restore the section's original default FIRST** (captured at step 1), then delete the
+created configuration in a `finally`: card → `controls-menu-button` →
 `delete-credentials-menuitem` → type the Display Name into the **inner `input`** of
 `delete-confirm-name-input` → `delete-confirm-button`. Verified live; the count
 returns to N.

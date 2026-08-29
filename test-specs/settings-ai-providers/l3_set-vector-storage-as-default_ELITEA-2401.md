@@ -116,6 +116,21 @@ content unmounts on collapse).
 | The option set matches the section's card set one-for-one | proves the dropdown is fed by the same configurations the cards render, which is the invariant #1987 breaks on the *card* side |
 | No console errors on the list page across the selection | verified live: 0 errors |
 
+## Implementation amendment (2026-08-29, test-automation-engineer)
+
+1. **The automation does not land on project 400.** The acting user's default project
+   is 399 (`Private`), whose Vector Storage section is EMPTY (confirmed live: 399 →
+   `total: 0`, 400 → `total: 1`). The spec switches to the seeded project through the
+   sidebar project selector, via `settings.ai_providers_seeded_project_id`.
+2. **Step 0's transit create must be followed by a default RESTORE — otherwise the
+   case's step 3 is a no-op.** Creating a Vector Storage configuration ASSIGNS it as
+   the section default (measured: the first implementation run failed on
+   `The transit configuration is ALREADY the default`). Setup therefore re-selects the
+   PRE-EXISTING default after creating the transit configuration, so the selection the
+   case asks for is a genuine change the product has to perform. Step 1's assertion
+   that the default equals the pre-transit one is what proves setup did so.
+3. Step 5's `Default` badge assertion is unchanged and remains sanctioned-RED on #1987.
+
 ## Cleanup (MANDATORY — this test mutates shared project state)
 
 1. **Restore the default vector storage** captured in step 1 by re-selecting its

@@ -96,6 +96,23 @@ the **Vector Storage** accordion. Page-identity drift already filed as #1250.
 - The edit form for pgvector has **no Ai Credentials picker** (unlike llm_model /
   embedding_model) — its schema declares only `connection_string`.
 
+## Implementation amendment (2026-08-29, test-automation-engineer)
+
+1. **The automation does not land on project 400.** The acting user's default project
+   is 399 (`Private`), whose Vector Storage section is EMPTY (confirmed live from the
+   product's own `section=vectorstorage` response: 399 → `total: 0`, 400 → `total: 1`).
+   The spec switches to the seeded project through the sidebar project selector — a
+   real user action, via `settings.ai_providers_seeded_project_id`.
+2. **The transit create also assigns the section default.** Creating a Vector Storage
+   configuration makes it the section's default (measured during ELITEA-2399's
+   implementation). So this spec's step 0 mutates the default even though the case
+   never mentions it; the pre-existing default is captured before the create and
+   restored in the `finally`, before the delete.
+3. **Card counts are section-scoped.** A whole-page `ai-provider-configuration-card`
+   count is not comparable across the app's own navigation back from a Save (the LLMs
+   accordion auto-expands only on a fresh page load — measured 15 before / 4 after).
+   `AIProvidersPage.isolate_section()` collapses every section and expands one.
+
 ## Cleanup (MANDATORY — this test mutates a shared project)
 
 Delete the (renamed) configuration in a `finally`, **using the name it has at teardown

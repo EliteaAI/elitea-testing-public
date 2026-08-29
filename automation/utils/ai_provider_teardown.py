@@ -86,3 +86,33 @@ def delete_configurations_if_present(
     except Exception:  # noqa: BLE001 - teardown must never mask the test's own failure
         logger.exception("Teardown failed to delete the configuration(s) %r", list(candidate_names))
         return None
+
+
+def restore_section_default(
+    providers_page,
+    section_header: Locator,
+    combobox: Locator,
+    option_value: str,
+    timeout: int = UI_ELEMENT_TIMEOUT,
+) -> None:
+    """Re-select *option_value* as a section's Default configuration.
+
+    Needed because creating a Vector Storage configuration ASSIGNS it as the
+    section default (live contract, confirmed 2026-08-29 — unlike the LLMs
+    section, where ELITEA-2395 has to select it explicitly). So every spec that
+    creates one has mutated the project's default whether it meant to or not,
+    and owes a restore BEFORE the delete: while a configuration is the section
+    default it is still the record the rest of the suite reads, and deletion is
+    additionally blocked while only one configuration remains
+    (``isLastInSection``).
+
+    Best-effort by design, like the rest of this module: a failure is logged,
+    never raised, so teardown cannot mask the test's own failure.
+    """
+    try:
+        providers_page.navigate()
+        providers_page.isolate_section(section_header)
+        providers_page.select_default_configuration(combobox, option_value, timeout=timeout)
+        logger.info("Teardown: restored the section default to %r", option_value)
+    except Exception:  # noqa: BLE001 - teardown must never mask the test's own failure
+        logger.exception("Teardown FAILED to restore the section default to %r", option_value)
