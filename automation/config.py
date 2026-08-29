@@ -215,6 +215,26 @@ class Settings(BaseSettings):
     users_team_project_id: str = "400"
 
     # ------------------------------------------------------------------
+    # Settings -> AI Providers, Vector Storage section (ELITEA-2399/2400/2401)
+    # ------------------------------------------------------------------
+    # A project that already carries >=1 Vector Storage (pgvector)
+    # configuration. This is a HARD precondition, not a convenience:
+    # `CredentialsControls.jsx`'s `isLastInSection` disables the delete
+    # control while a protected section holds one item, and Vector Storage --
+    # unlike Embedding -- has no SHARED configurations to pad the count. So a
+    # project going 0 -> 1 can never go back through the UI, and a spec that
+    # created the first one would leave permanent residue in a shared project.
+    # The acting user's default project (399, "Private") has ZERO vector
+    # storages; 400 ("UI Testing") carries the deliberate permanent seed
+    # `Autotest PGVector Seed` the analyst established for these cases
+    # (test-specs/settings-ai-providers/_surface.md). Confirmed live
+    # 2026-08-29 from the product's own
+    # `GET /configurations/models/{id}?section=vectorstorage`: 399 -> total 0,
+    # 400 -> total 1. Distinct key from `users_team_project_id` (same default,
+    # different precondition) for the reason stated above it.
+    ai_providers_seeded_project_id: str = "400"
+
+    # ------------------------------------------------------------------
     # Public project id (ELITEA-2051)
     # ------------------------------------------------------------------
     # The "Public" project id, used ONLY as the path segment of the
