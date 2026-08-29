@@ -113,7 +113,7 @@ class TestCreateEmbeddingModelRequiredFieldValidation:
             expect(form.save_button).to_be_disabled()
 
         with allure.step("Step 2A — Fill Name; Display Name and the credential stay empty"):
-            form.type_into_field("name", MODEL_NAME)
+            form.set_schema_field("name", MODEL_NAME)
             expect(form.field("name")).to_have_value(MODEL_NAME)
             expect(form.display_name_input).to_have_value("")
             expect(form.save_button).to_be_disabled()

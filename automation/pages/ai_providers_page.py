@@ -385,7 +385,16 @@ class AIProvidersPage(BasePage):
     # option of whichever single dropdown is currently open (MUI renders a
     # listbox in a portal and only one can be open at a time). Used to assert
     # the option SET, not just one member (ELITEA-2401 Axis 2).
-    SELECT_OPTION_PREFIX_SELECTOR = '[data-testid^="select-option-"]'
+    #
+    # The `:not(...)` half is load-bearing, not defensive: the checkmark the
+    # shared `SingleSelect` renders inside the SELECTED option carries
+    # `data-testid="select-option-selected-icon"`, which the bare prefix also
+    # matches -- so a 2-option dropdown with one selected resolved to THREE
+    # elements (live-measured, ELITEA-2401). Both halves are `data-testid`
+    # matches, so this stays testid-only per `.agents/testing.md`.
+    SELECT_OPTION_PREFIX_SELECTOR = (
+        '[data-testid^="select-option-"]:not([data-testid="select-option-selected-icon"])'
+    )
 
     # --- Create-AI-Provider entry point (ELITEA-2346) ------------------
     # Dynamic (runtime-parameterized) testid -- the SAME

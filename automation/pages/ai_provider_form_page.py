@@ -44,7 +44,7 @@ unit's Run Report instead of smuggled in here.
 import logging
 import re
 
-from playwright.sync_api import Locator, Page
+from playwright.sync_api import Locator, Page, expect
 
 from .base_page import BasePage
 from .credential_form_fields import CredentialFormFieldsMixin
@@ -162,6 +162,28 @@ class AiProviderFormPage(CredentialFormFieldsMixin, BasePage):
         :meth:`navigate_to_create` keep their merged callers unchanged.
         """
         self.field(field_key).wait_for(state="visible", timeout=timeout)
+
+    def set_schema_field(self, field_key: str, value: str) -> None:
+        """Type *value* into PLAIN schema field *field_key*, confirming focus first.
+
+        Same shape as :meth:`CredentialFormFieldsMixin.type_into_field` (real
+        key events, then a blur -- MUI/React only commits on those), with one
+        addition: it waits for the field to actually BE focused before typing.
+        Without that wait ``press_sequentially`` can start while the click's
+        focus is still settling and the first keystroke is dropped -- live
+        measured on ELITEA-2410, where ``text-embedding-3-small`` arrived as
+        ``ext-embedding-3-small``. Nothing is retried and nothing is
+        normalised: the caller's ``to_have_value`` assertion is unchanged and
+        still the judge of what the field accepted.
+
+        Additive: ``type_into_field`` is left byte-identical for its merged
+        callers.
+        """
+        field = self.field(field_key)
+        field.click()
+        expect(field).to_be_focused()
+        field.press_sequentially(value, delay=20)
+        field.blur()
 
     def fill_secret_field(self, field_key: str, value: str) -> None:
         """Type *value* into secret field *field_key* and BLUR it.

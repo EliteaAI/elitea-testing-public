@@ -143,7 +143,7 @@ class TestCreateEmbeddingModelConfiguration:
                 expect(form.id_input).to_be_disabled()
 
             with allure.step(f"Step 6a — Fill Name (model identifier) {MODEL_NAME!r}"):
-                form.type_into_field("name", MODEL_NAME)
+                form.set_schema_field("name", MODEL_NAME)
                 expect(form.field("name")).to_have_value(MODEL_NAME)
                 # Axis 2 — the credential is the last required gate. Without
                 # this before-state, "Save is enabled" proves nothing about the
