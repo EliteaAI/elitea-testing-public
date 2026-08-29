@@ -1,0 +1,153 @@
+{
+  "batch": "settings-w09",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-settings-w09",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      233.33,
+      233.26,
+      233.49
+    ],
+    "spec_set": "12 spec files (all the trunk adds vs base EXCEPT the sanctioned-RED batch-delete spec), ONE invocation per run (24 tests each)",
+    "note": "LEAD-RUN gate, 3 SEPARATE gate-case.mjs invocations (--n 1 each), origin/automation/base merged before each. CORRECTS the workflow report: it marked cluster B (ELITEA-2296/2297/2309) 'blocked' with note 'build failed: subagent completed without calling StructuredOutput' \u2014 a HARNESS failure. Verified against git: PR #1973 is MERGED and both invite specs are on the trunk. THIRD occurrence of this false-blocked shape (w05, w08, w09). The workflow-written report also arrived with NO cases[] array at all; this file was rebuilt by the lead from the run result + the lead gate.",
+    "workflow_internal_gate": {
+      "verdict": "green",
+      "runs": 3,
+      "seconds": [
+        261.6,
+        258.3,
+        258.4
+      ]
+    },
+    "sanctioned_red": {
+      "spec": "tests/ui/admin/test_users_batch_delete.py",
+      "runs": 3,
+      "seconds": [
+        26.62,
+        25.76,
+        25.96
+      ],
+      "ticket": "EliteaAI/elitea-testing-public#1974",
+      "case_ids": [
+        "ELITEA-2299"
+      ],
+      "signature": "AssertionError: Locator expected to have count '4' \u2014 after a batch delete the table renders 0 rows and never recovers. IDENTICAL 3/3."
+    },
+    "failures": []
+  },
+  "totals": {
+    "automated": 13,
+    "merged-sanctioned-red": 1,
+    "blocked": 1
+  },
+  "expected_red": [
+    {
+      "spec": "tests/ui/admin/test_users_batch_delete.py",
+      "runs": 3,
+      "seconds": [
+        26.62,
+        25.76,
+        25.96
+      ],
+      "ticket": "EliteaAI/elitea-testing-public#1974",
+      "case_ids": [
+        "ELITEA-2299"
+      ],
+      "signature": "AssertionError: Locator expected to have count '4' \u2014 after a batch delete the table renders 0 rows and never recovers. IDENTICAL 3/3."
+    }
+  ],
+  "cases": [
+    {
+      "id": "ELITEA-2293",
+      "outcome": "automated",
+      "pr": 1972,
+      "note": "Lead gate 3/3 green (24 tests per run, 233.33/233.26/233.49s)."
+    },
+    {
+      "id": "ELITEA-2294",
+      "outcome": "automated",
+      "pr": 1972,
+      "note": "Lead gate 3/3 green (24 tests per run, 233.33/233.26/233.49s)."
+    },
+    {
+      "id": "ELITEA-2295",
+      "outcome": "automated",
+      "pr": 1972,
+      "note": "Lead gate 3/3 green (24 tests per run, 233.33/233.26/233.49s)."
+    },
+    {
+      "id": "ELITEA-2296",
+      "outcome": "automated",
+      "pr": 1973,
+      "note": "Lead gate 3/3 green (24 tests per run, 233.33/233.26/233.49s)."
+    },
+    {
+      "id": "ELITEA-2297",
+      "outcome": "automated",
+      "pr": 1973,
+      "note": "Lead gate 3/3 green (24 tests per run, 233.33/233.26/233.49s)."
+    },
+    {
+      "id": "ELITEA-2298",
+      "outcome": "automated",
+      "pr": 1976,
+      "note": "Lead gate 3/3 green (24 tests per run, 233.33/233.26/233.49s)."
+    },
+    {
+      "id": "ELITEA-2299",
+      "outcome": "merged-sanctioned-red",
+      "pr": 1976,
+      "note": "Lead gate 3/3 IDENTICAL red against OPEN bug #1974 (batch delete leaves the page in an infinite React re-render loop). expect.soft + '# Known defect: #1974'. NOT back-written execution_type: automated."
+    },
+    {
+      "id": "ELITEA-2300",
+      "outcome": "automated",
+      "pr": 1976,
+      "note": "Lead gate 3/3 green (24 tests per run, 233.33/233.26/233.49s)."
+    },
+    {
+      "id": "ELITEA-2301",
+      "outcome": "automated",
+      "pr": 1978,
+      "note": "Lead gate 3/3 green (24 tests per run, 233.33/233.26/233.49s)."
+    },
+    {
+      "id": "ELITEA-2302",
+      "outcome": "automated",
+      "pr": 1978,
+      "note": "Lead gate 3/3 green (24 tests per run, 233.33/233.26/233.49s)."
+    },
+    {
+      "id": "ELITEA-2303",
+      "outcome": "automated",
+      "pr": 1978,
+      "note": "Lead gate 3/3 green (24 tests per run, 233.33/233.26/233.49s)."
+    },
+    {
+      "id": "ELITEA-2305",
+      "outcome": "automated",
+      "pr": 1972,
+      "note": "Lead gate 3/3 green (24 tests per run, 233.33/233.26/233.49s)."
+    },
+    {
+      "id": "ELITEA-2306",
+      "outcome": "blocked",
+      "pr": null,
+      "note": "Step 4 cannot be produced honestly. Branch 1 ('Delete icon disabled on own row') DISPROVEN live \u2014 the acting admin's row renders an enabled Delete icon and UsersTable.jsx has no self-row condition (source-wide grep for a self-deletion guard = 0 hits). Branch 2 requires CONFIRMING a self-delete, which if unguarded destroys testbot@elitea.ai's admin membership of project 400 \u2014 the only project this account can mutate \u2014 with no agent-side recovery. No safe proxy exists. Needs a human ruling: missing guard = product bug, or stale case text? Routed to a question card."
+    },
+    {
+      "id": "ELITEA-2308",
+      "outcome": "automated",
+      "pr": 1972,
+      "note": "Lead gate 3/3 green (24 tests per run, 233.33/233.26/233.49s)."
+    },
+    {
+      "id": "ELITEA-2309",
+      "outcome": "automated",
+      "pr": 1973,
+      "note": "Lead gate 3/3 green (24 tests per run, 233.33/233.26/233.49s)."
+    }
+  ]
+}
