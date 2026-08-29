@@ -116,3 +116,65 @@ def restore_section_default(
         logger.info("Teardown: restored the section default to %r", option_value)
     except Exception:  # noqa: BLE001 - teardown must never mask the test's own failure
         logger.exception("Teardown FAILED to restore the section default to %r", option_value)
+
+
+def restore_section_default_if_moved(
+    providers_page,
+    section: str,
+    section_header: Locator,
+    combobox: Locator,
+    option_value: str,
+    timeout: int = UI_ELEMENT_TIMEOUT,
+) -> str | None:
+    """Restore a section's Default to *option_value* only if it actually moved,
+    and return the default the server reports afterwards.
+
+    Additive sibling of :func:`restore_section_default` (left byte-identical for
+    its merged callers), which re-selects unconditionally. Two reasons that is
+    not enough for the ELITEA-2403/2405/2407 specs:
+
+    * **Re-selecting an ALREADY-selected option fires no request at all**
+      (live-confirmed, `_surface.md`), so an unconditional restore hangs its
+      full timeout whenever the test failed BEFORE it changed anything -- which
+      is exactly when the pessimistic teardown guard flag is set (a flag is set
+      immediately BEFORE the mutation it guards, `.agents/testing.md`
+      § Teardown-guard ordering, so it is deliberately allowed to be wrong in
+      the safe direction).
+    * **The restore is an assertion, not a hope.** Returning the persisted
+      default lets the caller PROVE the project was left as found, which is the
+      one thing an N x green gate structurally cannot catch: a spec that goes
+      green while leaving shared state altered.
+
+    Args:
+        section: the ``section=`` API param of the section under test
+            (``"image_generation"`` / ``"asr"`` / ``"tts"`` / ...).
+        option_value: the original ``"{name}<<>>{project_id}"`` option value.
+
+    Returns:
+        The ``default_model_name`` the server reports after the restore, or
+        ``None`` if the check/restore could not run at all (logged, never
+        raised -- teardown must not mask the test's own failure).
+    """
+    original_name = option_value.split("<<>>")[0]
+    try:
+        response, body = providers_page.navigate_and_capture_section_models_json(section)
+        if response.status != 200:
+            logger.error("Teardown: %s models request failed: %s", section, response.status)
+            return None
+        persisted = body.get("default_model_name")
+        if persisted == original_name:
+            logger.info("Teardown: the %s default never moved (still %r) - nothing to restore", section, persisted)
+            return persisted
+
+        logger.info("Teardown: the %s default is %r; restoring %r", section, persisted, original_name)
+        providers_page.isolate_section(section_header)
+        providers_page.select_default_configuration(combobox, option_value, timeout=timeout)
+
+        verification, verification_body = providers_page.navigate_and_capture_section_models_json(section)
+        if verification.status != 200:
+            logger.error("Teardown: %s verification request failed: %s", section, verification.status)
+            return None
+        return verification_body.get("default_model_name")
+    except Exception:  # noqa: BLE001 - teardown must never mask the test's own failure
+        logger.exception("Teardown FAILED to restore the %s default to %r", section, option_value)
+        return None

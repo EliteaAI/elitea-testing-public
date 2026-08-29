@@ -776,3 +776,67 @@ three `LocatorDescriptor` fields mirroring `embedding_models_default_selector_co
 - `l3_section-model-cards-and-default-selector_ELITEA-2402.md` — **family**: ELITEA-2402 / 2404 / 2406 (differ only in data)
 - `l3_change-section-default-model_ELITEA-2403.md` — **family**: ELITEA-2403 / 2405 (differ only in data)
 - `l3_change-the-default-tts-model_ELITEA-2407.md` — **solo**: same case text as the above family, but the transit create+delete is a difference in steps
+
+---
+
+## Resolved/added during ELITEA-2402/2403/2404/2405/2406/2407 implementation (test-automation-engineer, 2026-08-30)
+
+*Appended, not rewritten — the analyst's behaviour and scope claims above are unchanged.*
+
+### Testid added
+
+- **`ai-provider-configuration-card-status`** — EliteaAI/EliteaUI@db8f4b28 on
+  `automation/testids` (not yet on `main`; a human cherry-picks). Attribute-only addition
+  on the existing status `Typography` at `ConfigurationCard.jsx:82`, exactly as the digest
+  specced. Handle: `AIProvidersPage.CARD_STATUS_SELECTOR` + `card_status(display_name)`.
+
+### Page-object gap closed
+
+- `image_generation_default_selector_combobox`, `asr_default_selector_combobox`,
+  `tts_default_selector_combobox` `LocatorDescriptor` fields now exist. No EliteaUI change
+  was needed — the testids were already in JSX, as the digest said.
+- New helpers: `card_status(name)`, `card_badges(name)` (unfiltered — for the
+  "this card carries NO badge" assertion, which `card_tier_badge` cannot express), and
+  `all_default_badges` (the "exactly ONE card is the default" exclusivity invariant).
+- `utils/ai_provider_teardown.restore_section_default_if_moved(providers_page, section,
+  header, combobox, option_value)` — additive sibling of `restore_section_default`; it
+  reads the persisted default FIRST and only re-selects when it actually moved (an
+  unconditional re-select of an already-selected option fires no request and hangs its
+  full timeout), then returns the server's default so the caller can ASSERT the restore.
+
+### Failure mode nobody had hit yet: the models response body can be PRUNED
+
+`response.json()` on a captured `…&section={param}` GET can raise
+`playwright._impl._errors.Error: Response.json: Protocol error
+(Network.getResponseBody): No resource with given identifier found`.
+
+Mechanism: a spec typically lands on the page once (to switch project) and then navigates
+again to capture. `expect_response` starts listening BEFORE that second navigation, so a
+response belonging to the **outgoing** document can be the first match — and once the
+navigation commits, Chromium discards that document's network entries. It bites the LAST
+sections in render order hardest (`tts`): the earlier sections' responses have already
+arrived, so the listener never sees them, while the tail ones are still in flight.
+Reproduced **2/2** on the ELITEA-2406 row; also hit the teardown helper's verification
+read, where the restore had SUCCEEDED and only the read-back raised (so the caller was
+told `None` and asserted a state loss that had not happened).
+
+**Use `AIProvidersPage.navigate_and_capture_section_models_json(section)`** — bounded
+re-capture (3 attempts), returns `(response, body)`. Nothing about the assertions changes:
+the body is still the product's own response to the product's own request. Any future
+spec in this cluster that navigates twice should use it rather than the raw
+`..._response()` variant.
+
+### Accordion state after a create is NOT "collapsed"
+
+The digest's "only the LLMs accordion auto-expands" holds on a **fresh visit**. After the
+transit create + return-to-list flow (ELITEA-2407), the **TTS accordion is already
+expanded** on arrival — deterministic, observed every run. A spec that creates a
+configuration must not assert `aria-expanded == "false"` before expanding; assert the
+post-condition (`"true"` after `isolate_section`) instead. The read-only siblings and
+ELITEA-2403/2405, which do not create, DO start collapsed.
+
+### Transit naming
+
+Make the create form's model **`Name`** unique per run (`tts-1-probe-<suffix>`), not just
+the Display Name. The dropdown option testid is keyed on `Name`, so residue from a failed
+run plus a fresh configuration would make the option locator ambiguous.

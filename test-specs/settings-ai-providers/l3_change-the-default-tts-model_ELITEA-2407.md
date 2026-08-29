@@ -282,3 +282,29 @@ create, the default restore and the delete.
   TTS configuration is created through the real UI create form because the project has
   only one TTS model — transit only; every asserted observable is produced by the
   product."*
+
+
+## Implementation amendments (test-automation-engineer, 2026-08-30)
+
+*Appended with the spec that motivated them, per the Phase-2 amend-in-PR rule.
+The analyst's behaviour and scope claims are unchanged.*
+
+1. **After the transit create, the TTS accordion is ALREADY EXPANDED when the app
+   returns to the list** (live-observed, deterministic). The AFS's "step 1 lands on a
+   collapsed accordion" note describes a *fresh visit*; it does not hold after the
+   create + return flow. The spec therefore asserts only the post-condition
+   (`aria-expanded == "true"` after `isolate_section`) and logs the arrival state,
+   instead of asserting the incidental collapsed start — which is an AFS observation,
+   not a case assertion. The two read-only siblings (ELITEA-2402/2404/2406) and
+   ELITEA-2403/2405 DO start collapsed and keep the `false` -> `true` assertion.
+2. **The transit model `Name` carries the run suffix** (`tts-1-probe-<suffix>`, not the
+   bare `tts-1-probe` in § Test Data). The option testid is keyed on that `Name`, so two
+   configurations sharing it — residue from a failed run plus a fresh one — would make
+   the option locator ambiguous. Everything asserted is still derived from the API
+   response, never from the literal.
+3. **Capture the section models response through
+   `AIProvidersPage.navigate_and_capture_section_models_json()`**, not the raw
+   `..._response()` variant — see the ELITEA-2402 AFS § Implementation amendments for
+   the pruned-body failure mode this closes. The teardown helper
+   `restore_section_default_if_moved()` hit the same thing: the restore had SUCCEEDED
+   and only its verification read raised, so the caller was told `None`.

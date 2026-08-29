@@ -78,6 +78,7 @@ canon ruling #511 extension) but their selector/card testids never mount.
 import logging
 import re
 
+from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Locator, Response, expect
 
 from .base_page import BasePage
@@ -324,6 +325,28 @@ class AIProvidersPage(BasePage):
         "`data.name`, so the option key and label both fall back to `elitea_title` "
         "(`_surface.md` -- the same mismatch that causes #1987).",
     )
+    # ELITEA-2402/2404/2406 + ELITEA-2403/2405/2407. Same shared
+    # `Select.SingleSelect` `-combobox` auto-derived suffix; the three outer
+    # `*_default_selector` FormControl wrappers above already existed, these
+    # are the actual clickable/readable role=combobox nodes. Pre-existing
+    # testids (derived in JSX from the already-threaded `sectionTestId`) --
+    # nothing added to EliteaUI here; this was a page-object gap only.
+    image_generation_default_selector_combobox = LocatorDescriptor(
+        testid="ai-providers-section-image-generation-default-selector-combobox",
+        description='Image Generation section "Default" model selector -- clickable '
+        "combobox node; its text_content() is the currently-default model's DISPLAY NAME.",
+    )
+    asr_default_selector_combobox = LocatorDescriptor(
+        testid="ai-providers-section-asr-default-selector-combobox",
+        description='Speech Recognition (ASR) section "Default" model selector -- '
+        "clickable combobox node; its text_content() is the currently-default model's "
+        "DISPLAY NAME.",
+    )
+    tts_default_selector_combobox = LocatorDescriptor(
+        testid="ai-providers-section-tts-default-selector-combobox",
+        description='Text to Speech (TTS) section "Default" model selector -- clickable '
+        "combobox node; its text_content() is the currently-default model's DISPLAY NAME.",
+    )
 
     # -- Per-section loading placeholder (ELITEA-2251) -------------------
     # `ConfigurationSection.jsx`'s `isLoading` branch renders the section
@@ -364,6 +387,20 @@ class AIProvidersPage(BasePage):
     # ``^name$`` filter on it alone cannot disambiguate (e.g. "GPT-5.4" vs
     # "GPT-5.4-mini"), confirmed live.
     CARD_NAME_SELECTOR = '[data-testid="ai-provider-configuration-card-name"]'
+
+    # Generic, repeated-per-card testid for the card's STATUS line
+    # ("OK • Shared" / "OK • Local") -- ELITEA-2402/2404/2406 step 3 asserts
+    # "model name AND status badge", and only the name half had a handle.
+    # Added by this implementation as an attribute on the EXISTING status
+    # `Typography` -- EliteaAI/EliteaUI@db8f4b28.
+    #
+    # WARNING: that Typography also CONTAINS the tier/Default badges
+    # (`{statusText}{isHighTier && ...}{isDefault && ...}`), so on the default
+    # card its inner text reads "OK • Shared\nDefault" while a non-default card
+    # reads exactly "OK • Shared". Assert with `to_contain_text(...)` -- an
+    # exact `to_have_text("OK • Shared")` passes on every card EXCEPT the one
+    # that matters.
+    CARD_STATUS_SELECTOR = '[data-testid="ai-provider-configuration-card-status"]'
 
     # Provider-group container + its label, inside a section that groups its
     # models by provider (LLMs). Generic, repeated-per-group testids -- same
@@ -529,6 +566,47 @@ class AIProvidersPage(BasePage):
             self.navigate()
         return response_info.value
 
+    def navigate_and_capture_section_models_json(self, section: str, attempts: int = 3) -> tuple[Response, dict]:
+        """Same capture as :meth:`navigate_and_capture_section_models_response`,
+        but returns the response TOGETHER with its parsed JSON body -- retrying
+        the whole navigate-and-capture when the browser cannot hand the body
+        over.
+
+        Why this exists (measured on ELITEA-2406, 2026-08-30, reproduced 2/2):
+        the page fires one models GET **per section**, and a spec typically
+        lands on the page once (to switch project) before navigating again to
+        capture. ``expect_response`` starts listening BEFORE that second
+        navigation, so a response belonging to the OUTGOING document can still
+        be the first match -- and once the navigation commits, Chromium prunes
+        that document's network entries, so reading the body raises
+        ``Protocol error (Network.getResponseBody): No resource with given
+        identifier found``. It hits the LAST sections in render order hardest
+        (``tts``): the earlier sections' responses have already arrived, so the
+        listener never sees them, while the tail ones are still in flight.
+
+        The retry is bounded and changes nothing about what is asserted -- the
+        body it returns is still the product's own response to the product's own
+        request. On the retry the preceding navigation has fully settled, so
+        there is no in-flight leftover to mis-match.
+        """
+        last_error: Exception | None = None
+        for attempt in range(1, attempts + 1):
+            response = self.navigate_and_capture_section_models_response(section)
+            try:
+                return response, response.json()
+            except PlaywrightError as error:  # body pruned with the superseded document
+                last_error = error
+                logger.warning(
+                    "Attempt %s/%s: the %s models response body was pruned (%s) - re-capturing",
+                    attempt,
+                    attempts,
+                    section,
+                    error,
+                )
+        raise AssertionError(
+            f"Could not read the {section} models response body in {attempts} attempts: {last_error}"
+        )
+
     def select_option(self, option_value: str) -> Locator:
         """Return the dropdown option whose value is *option_value*
         (``"{key}<<>>{project_id}"``) -- for asserting an option's presence,
@@ -573,6 +651,37 @@ class AIProvidersPage(BasePage):
         ``expect(...).to_have_count(0)`` assertions (the badge Typography
         unmounts entirely when its tier flag goes false -- not merely hidden)."""
         return self.card_for_model(model_display_name).locator(self.TIER_BADGE_SELECTOR).filter(has_text=badge_text)
+
+    def card_status(self, model_display_name: str) -> Locator:
+        """Return the status line ("OK • Shared" / "OK • Local") scoped inside
+        the card for *model_display_name* (ELITEA-2402/2404/2406 step 3).
+
+        See :data:`CARD_STATUS_SELECTOR`: this element also contains the tier /
+        Default badges, so assert on it with ``to_contain_text(...)``, never an
+        exact match.
+        """
+        return self.card_for_model(model_display_name).locator(self.CARD_STATUS_SELECTOR)
+
+    def card_badges(self, model_display_name: str) -> Locator:
+        """Return EVERY tier/Default badge inside the card for
+        *model_display_name* -- for the "this card carries no badge at all"
+        assertion (``to_have_count(0)``) that ELITEA-2403/2405/2407 step 6 needs.
+
+        :meth:`card_tier_badge` filters by badge text and therefore cannot
+        express "no badge of any kind"; this is its unfiltered sibling.
+        """
+        return self.card_for_model(model_display_name).locator(self.TIER_BADGE_SELECTOR)
+
+    @property
+    def all_default_badges(self) -> Locator:
+        """Every ``Default`` badge currently rendered across the expanded
+        section(s) -- for the exclusivity invariant "exactly ONE card is the
+        default" (ELITEA-2403/2405/2407 Axis 2).
+
+        Combine with :meth:`isolate_section` so the count is scoped to the
+        section under test.
+        """
+        return self.page.locator(self.TIER_BADGE_SELECTOR).filter(has_text=re.compile(r"^Default$"))
 
     def section_loading_placeholders(self) -> Locator:
         """Return the locator matching EVERY section's "Loading..." placeholder.
