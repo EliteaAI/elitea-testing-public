@@ -109,8 +109,19 @@ missing on the chat surface.
      numeric `id`; set the model's teardown flag immediately before this click.
    - **Do NOT tick `Low Tier` / `High Tier`, and never make it the project default** —
      that would move a project-level default and damage every later spec.
-4. **Open `/chat`, open the model selector, select the new model.**
+4. **Open `/chat`, reach a GENUINELY blank composer, open the model selector,
+   select the new model.**
    - Verify: `model-selector-name` reads the model's display label after selection.
+   - **Amended during implementation (fix round 1, 2026-08-30):** `navigate_to_chat()`
+     alone is not enough — the SPA restores the last-viewed conversation, so
+     `utils/blank_conversation.open_blank_composer()` is required. Two consequences,
+     both observed live: without it the send appends to a PRE-EXISTING conversation
+     that teardown would then delete, and when the restore target was deleted by an
+     earlier run of this very spec the restore never resolves — its loading overlay
+     covers the composer and the model-selector click is intercepted (4/4 runs,
+     including a pristine-HEAD control). The message is then sent with **Enter**, not
+     the send button, which an overlay intercepts in the fresh-chat view (same reason
+     the personalization / context-settings specs send with Enter).
 5. **Send the message.**
    - Verify: the turn is accepted (the user bubble renders the sent text).
 6. **Verify the chat does not hang or go blank (case step 7).**
@@ -151,7 +162,12 @@ which asserts nothing.
   on this shared user is already heavily polluted (`#1082` class); do not add to it.
 - **Teardown-guard ordering is non-negotiable here** (`.agents/testing.md`): each
   `created_*_id` is recorded from the create response and its guard flag set
-  *before* the mutating click, so a mid-flow failure still cleans up. A green spec
+  *before* the mutating click, so a mid-flow failure still cleans up. The rule
+  binds the CONVERSATION id the same way: the send in step 6 is what creates the
+  conversation, so its id is read back on the very next statement (non-raising),
+  never after the step 7-9 assertions — otherwise the 90 s frame wait and the
+  message-count wait are failure paths that each orphan a conversation. The
+  `finally` re-derives it from the URL as a last chance. A green spec
   that leaves an orphan LLM model behind is exactly the failure the merge gate
   cannot see — an orphan model shows up in every model selector in the project.
 

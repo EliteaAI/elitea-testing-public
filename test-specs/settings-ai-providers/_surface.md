@@ -1083,3 +1083,23 @@ test-automation-engineer):**
   `@pytest.mark.flaky(reruns=0)` for the same reason the sanctioned-RED HITL specs
   do: measured 52.97 s single-attempt vs 161.38 s with `pytest.ini`'s global
   `--reruns=2`, which can never rescue an expected failure.
+
+---
+
+**Resolved/added during ELITEA-2416 implementation (fix round 1, 2026-08-30):**
+reaching the chat step of this surface needs the blank-composer guard, not just
+`ChatPage.navigate_to_chat()`:
+
+- The SPA restores the **last-viewed conversation**. A spec that creates a
+  conversation and deletes it in teardown leaves the restore pointing at a dead id;
+  the next `/chat` visit then spins forever and its loading overlay **intercepts the
+  `model-selector-name` click** (`<div class="MuiBox-root css-15msj7j">… intercepts
+  pointer events`). Observed 4/4 runs, including a pristine-HEAD control — so it is
+  environment state, not a code regression, and it clears as soon as a genuinely
+  blank composer is opened (`utils/blank_conversation.open_blank_composer()`).
+- In the fresh-chat view the **send button is overlay-intercepted**: send with
+  `send_message(..., use_enter=True)`, as the personalization / context-settings
+  specs already do.
+- Teardown evidence (post-fix run): `Teardown: deleted conversation id=9912` +
+  both configurations deleted by name — the conversation id is now read back on the
+  statement immediately after the send, so a failure in steps 7-9 no longer orphans it.

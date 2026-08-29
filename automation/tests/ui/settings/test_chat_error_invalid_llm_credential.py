@@ -43,7 +43,15 @@ the project until deleted. Teardown is name-based, so an object created before a
 mid-flow failure is still removed even if its id was never read back. The model is
 deleted before the credential (the model references it), and the conversation the
 chat step creates is deleted too — the shared user's chat list is already heavily
-polluted (`#1082`).
+polluted (`#1082`). The chat step opens a genuinely blank composer
+(`utils/blank_conversation.py`) before sending, so the conversation teardown
+deletes is one this test created and never a restored pre-existing one.
+The conversation's id is read back on the statement
+IMMEDIATELY after the send that creates it — never after the assertions —
+because every statement in between (Step 7's 90 s frame wait, Step 8's
+message-count wait) is a failure path that would otherwise orphan it
+(`.agents/testing.md` § Teardown-guard ordering); the `finally` re-derives it
+from the URL as a last chance, and both reads are non-raising.
 
 Markers:
     - ui, settings, chat, p2, regression, new
@@ -60,6 +68,7 @@ from pages.ai_provider_form_page import AiProviderFormPage
 from pages.ai_providers_page import AIProvidersPage
 from pages.chat_page import ChatPage
 from playwright.sync_api import expect
+from utils.blank_conversation import open_blank_composer
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +151,32 @@ def _wait_for_error_frame(page, frames, start_index: int) -> dict | None:
         if time.monotonic() >= deadline:
             return None
         page.wait_for_timeout(FRAME_POLL_MS)
+
+
+def _read_conversation_id(page, timeout: int = 0) -> int | None:
+    """Return the id of the conversation currently open, or ``None``.
+
+    Read-back is deliberately NON-RAISING: it runs immediately after the send
+    that CREATES the conversation, and a read-back that could raise would
+    reintroduce the very leak it exists to close (`.agents/testing.md`
+    § Teardown-guard ordering — the rule binds the value teardown needs, not
+    just a boolean flag). With ``timeout`` it waits for the app to navigate to
+    ``/chat/{id}``; with ``timeout=0`` it just reads the current URL, which is
+    what the ``finally`` last-chance re-derive needs.
+    """
+    try:
+        if timeout:
+            page.wait_for_url(
+                lambda url: CONVERSATION_URL_PATTERN.search(url) is not None, timeout=timeout
+            )
+        match = CONVERSATION_URL_PATTERN.search(page.url)
+    except Exception:  # noqa: BLE001 — a missed read-back must never fail the test
+        logger.warning("Could not read the conversation id back from the URL", exc_info=True)
+        return None
+    if match is None:
+        logger.warning("No conversation id in the current URL — none to clean up (url=%r)", page.url)
+        return None
+    return int(match.group(1))
 
 
 def _delete_configuration_by_name(credential_api, display_name: str, known_id=None) -> None:
@@ -295,6 +330,16 @@ def test_chat_error_when_llm_model_uses_invalid_credential(page, credential_api,
             with allure.step("Steps 4-5 (case steps 4-5) — Open a chat session on the new model"):
                 chat.navigate_to_chat()
                 chat.wait_for_input_ready(timeout=30_000)
+                # A GENUINELY blank composer, not merely "/chat is open": the SPA
+                # restores the last-viewed conversation, so without this the send
+                # in step 6 appends to an EXISTING conversation — and teardown
+                # would then delete a conversation this test never created.
+                # It is also what un-wedges the pane when the restore target was
+                # deleted by an earlier run of this very spec: the restore never
+                # resolves, its loading overlay covers the composer, and the
+                # model-selector click is intercepted (observed 4/4, including on
+                # a pristine-HEAD control run).
+                open_blank_composer(chat, timeout=30_000)
                 # Selected by rendered display label, not by the `name`-keyed
                 # testid suffix (`_surface.md` § Chat-side handles).
                 chat.select_llm_model_by_label(model_display_name, timeout=UI_ELEMENT_TIMEOUT)
@@ -303,7 +348,17 @@ def test_chat_error_when_llm_model_uses_invalid_credential(page, credential_api,
             with allure.step(f"Step 6 (case step 6) — Send {CHAT_MESSAGE!r}"):
                 initial_count = chat.get_message_count()
                 frames_before = len(frames)
-                chat.send_message(CHAT_MESSAGE)
+                # Enter, not the send button: an overlay intercepts pointer
+                # events on `chat-send-button` in the fresh-chat view (the same
+                # reason the personalization/context specs send with Enter).
+                chat.send_message(CHAT_MESSAGE, use_enter=True)
+                # Teardown-guard ordering (`.agents/testing.md`): THIS send is the
+                # mutation that creates the conversation, so its id is read back on
+                # the very next statement — before Step 7's 90 s frame wait and
+                # Step 8's message-count wait, either of which can raise. Capturing
+                # it after the assertions would leave every one of those failure
+                # paths orphaning a conversation in the shared user's list (#1082).
+                conversation_id = _read_conversation_id(page, timeout=UI_ELEMENT_TIMEOUT)
                 # The turn was accepted: the user's own bubble renders the text.
                 chat.wait_for_message_count(initial_count + 1, timeout=UI_ELEMENT_TIMEOUT)
                 assert CHAT_MESSAGE in chat.get_message_text_at(initial_count), (
@@ -352,10 +407,12 @@ def test_chat_error_when_llm_model_uses_invalid_credential(page, credential_api,
                 # trace behind this chip.
                 expect.soft(chat.answer_tool_chip.filter(has_text=STACKTRACE_CHIP_TEXT)).to_have_count(0)
 
-            match = CONVERSATION_URL_PATTERN.search(page.url)
-            if match:
-                conversation_id = int(match.group(1))
         finally:
+            if conversation_id is None:
+                # Last chance: the send may have failed before the app navigated,
+                # or navigated late. Reading the URL here costs nothing and cannot
+                # raise, so a conversation that DID get created is still removed.
+                conversation_id = _read_conversation_id(page)
             if conversation_id:
                 try:
                     conversation_api.delete_conversation(conversation_id)
