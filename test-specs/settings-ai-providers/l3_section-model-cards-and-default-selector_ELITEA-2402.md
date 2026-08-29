@@ -139,7 +139,7 @@ the TTS row red for a product state the case never asked about. (ELITEA-2407 is 
 | Default selector combobox | `ai-providers-section-{slug}-default-selector-combobox` | on-main ✓ | **page-object gap, not a testid gap** — the testid exists in JSX (derived from the threaded `sectionTestId`) and resolved live for all three sections, but `AIProvidersPage` has `*_default_selector` (FormControl wrapper) only for these three. Add the three `*_default_selector_combobox` `LocatorDescriptor` fields, exactly like the existing `embedding_models_default_selector_combobox`. |
 | Configuration card | `ai-provider-configuration-card` | on-main ✓ | `CONFIGURATION_CARD_SELECTOR` — generic, repeated per card |
 | Card display name | `ai-provider-configuration-card-name` | on-main ✓ | `CARD_NAME_SELECTOR` |
-| **Card status text** | **`ai-provider-configuration-card-status`** | **needs-adding** | see below |
+| **Card status text** | **`ai-provider-configuration-card-status`** | **ADDED during implementation** — EliteaAI/EliteaUI@db8f4b28 on `automation/testids` (not yet on `main`; human cherry-picks) | see below |
 | Tier/Default badge | `ai-provider-configuration-badge` | on-main ✓ | `TIER_BADGE_SELECTOR` — not asserted by these three cases (it is 2403/2405/2407's subject), listed because it shares the card |
 | Dropdown option | `select-option-{name}<<>>{project_id}` | pre-existing shared `SingleSelect` convention | `SELECT_OPTION` template constant; use `SELECT_OPTION_PREFIX_SELECTOR` for the option SET — the bare prefix also matches `select-option-selected-icon` |
 
@@ -223,3 +223,29 @@ None. All 5 steps of all 3 cases executed end-to-end against the live system.
   do not let that happen silently.
 - Markers: `ui, settings, p2, regression, new` (matching the merged siblings' l3 → p2).
 - Wrap each step in `with allure.step("Step N — …"):`.
+
+
+## Implementation amendments (test-automation-engineer, 2026-08-30)
+
+*Appended with the spec that motivated them, per the Phase-2 amend-in-PR rule.
+The analyst's behaviour and scope claims are unchanged.*
+
+1. **`ai-provider-configuration-card-status` is now on `automation/testids`** —
+   EliteaAI/EliteaUI@db8f4b28, an attribute-only addition on the existing status
+   `Typography` (line 82 of `ConfigurationCard.jsx`), exactly as specced. No new DOM
+   node, no new hook. Page-object handle: `AIProvidersPage.CARD_STATUS_SELECTOR` +
+   `card_status(display_name)`.
+2. **The three `*_default_selector_combobox` `LocatorDescriptor` fields were added**
+   (`image_generation_`, `asr_`, `tts_`) — a page-object gap only, as the AFS said; the
+   testids already existed in JSX and resolved live.
+3. **New failure mode found and handled: the models response body can be PRUNED.**
+   Reproduced 2/2 on the TTS row. `expect_response` starts listening before the
+   capture navigation, so a response belonging to the OUTGOING document can be the
+   first match, and Chromium then discards that document's network entries —
+   `response.json()` raises `Protocol error (Network.getResponseBody): No resource with
+   given identifier found`. It bites the LAST sections in render order (`tts`) hardest,
+   because the earlier sections' responses have already arrived and are never matched.
+   Handled by the additive `AIProvidersPage.navigate_and_capture_section_models_json()`,
+   which re-captures (bounded, 3 attempts). Nothing about the assertions changed — the
+   body is still the product's own response to the product's own request.
+   **Any future spec in this cluster that navigates twice should use the `_json` variant.**

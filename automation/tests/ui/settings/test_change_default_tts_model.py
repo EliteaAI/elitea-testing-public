@@ -227,7 +227,19 @@ class TestChangeDefaultTtsModel:
                 target_value = _option_value(target_item)
 
                 expect(section_header).to_be_visible()
-                expect(section_header).to_have_attribute("aria-expanded", "false")
+                # No "starts collapsed" pre-assertion here, unlike the two
+                # read-only siblings: after the transit create the app returns
+                # to the list with the TTS accordion ALREADY expanded
+                # (live-observed 2026-08-30 — the AFS's collapsed-on-load
+                # observation describes a fresh visit, not a post-create
+                # return). The case asserts that the section can be reached and
+                # read, which is what the post-condition below proves; asserting
+                # the incidental start state would be asserting the AFS's note
+                # rather than the case.
+                logger.info(
+                    "TTS accordion aria-expanded on arrival: %r",
+                    section_header.get_attribute("aria-expanded"),
+                )
                 # Isolate, not merely expand: the section testid sits on the
                 # accordion SUMMARY BUTTON, so cards are not its DOM descendants
                 # and a whole-page card query mixes in every other expanded
