@@ -142,4 +142,11 @@ None — the defect is isolable to step 4 and does not prevent reaching any late
 - Console: `utils/console_errors.collect_console_errors()` + the `#1971` URL
   filter. Assert the console axis **before** teardown (the delete refetch logs a
   404 — ELITEA-2395 § Known Defects).
-- `with allure.step("Step N — …")`; markers `p3`, `regression`, settings.
+- `with allure.step("Step N — …")`. **Markers as shipped:** `ui`, `settings`,
+  `p2`, `regression`, `new` — this folder maps l3 to `p2` (sibling ELITEA-2392 /
+  ELITEA-2397 specs), amended at implementation.
+- **Amended at implementation — #1984 is narrower than the root-cause note
+  implies.** The `Ai Credentials` select (also in `data.required`) DOES gate
+  Save: verified live in ELITEA-2395's run, Display Name + Name filled with no
+  credential leaves Save `disabled`. Only `name` fails to gate. Param A's
+  positive control is written accordingly.

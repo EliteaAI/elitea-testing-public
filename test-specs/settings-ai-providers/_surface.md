@@ -372,3 +372,48 @@ This session left project 400 at its starting state: 12 LLM cards, Default
 
 Not a family AFS: the four differ in **steps** (full create + tier assignment /
 update-in-place / required-field gating / client-side derivation), not only in data.
+
+## Resolved/added during ELITEA-2395/2396/2408/2409 implementation (2026-08-29)
+
+- **The two group testids now EXIST** — `ai-providers-configuration-group` +
+  `ai-providers-configuration-group-name` on `ConfigurationSection.jsx`'s group
+  `Box` / label `Typography` (attribute-only additions, no new DOM nodes):
+  EliteaAI/EliteaUI@a64d3308, on `automation/testids`, **not yet cherry-picked to
+  `main`**. Resolves the "needs-adding" note in § LLMs section grouping above. Use
+  `AIProvidersPage.configuration_group(label)` / `.card_in_group(label, model_name)`
+  rather than re-deriving the `.filter(has=…)` shape.
+- **`toolkit-field-label-input` carries `maxlength="32"`** (`ToolBase.jsx`'s
+  `MAX_NAME_LENGTH`) and truncates **silently** — no helper text, no error. A
+  per-run-suffixed Display Name longer than 32 characters is stored truncated and a
+  `to_have_value()` assertion fails with a confusing near-miss (cost one rerun on
+  ELITEA-2396: `"Autotest LLM Model Edited 1788026764"` landed as
+  `"…Edited 178802"`). Keep the LONGEST name a case uses inside 32 characters.
+- **The Ai Credentials select DOES gate Save; `name` is the only required field
+  that does not.** Verified live in ELITEA-2395's run: with Display Name **and**
+  Name filled and no credential chosen, `credential-form-save-button` is
+  `disabled`, and it flips to enabled the moment the saved credential is picked.
+  So #1984 is narrower than "nested `data.required` is never walked" — it is
+  specific to `name`. (Recorded here because the obvious inference from #1984's
+  root-cause write-up is the opposite, and acting on it would have produced a
+  false assertion.)
+- **New page object `automation/pages/ai_provider_form_page.py`
+  (`AiProviderFormPage`)** owns the create/edit form's AI-provider-specific
+  handles: the Ai Credentials combobox + its JSON-shaped saved-credential option
+  template, the tab-bar Discard button, and the three-dot menu +
+  `DeleteEntityModal` handles that are the only teardown path for a
+  configuration. Every plain field (`toolkit-field-*`) is INHERITED from
+  `CredentialFormFieldsMixin` — do not redeclare them.
+- **`AIProvidersPage` gained** `configuration_cards` (locator form of the count),
+  `configuration_group()`, `card_in_group()` and `open_model_card()` — all
+  additive, no existing method changed.
+- **Delete is reachable only from the EDIT form**, not from the card: click the
+  card → `controls-menu-button` → `delete-credentials-menuitem` → retype the
+  display name → `delete-confirm-button`. The confirm dialog detaches on success;
+  the app then re-fetches the deleted record and logs a 404 (assert any console
+  axis BEFORE teardown — confirmed again this session).
+- **A `page.on("dialog", …)` handler is the cheap answer to the `beforeunload`
+  trap.** All four specs register `page.on("dialog", lambda d: d.accept())` before
+  touching the form; no reload/goto away from a dirty form blocked afterwards.
+- Specs landed: `automation/tests/ui/settings/test_llm_model_create.py` (2395),
+  `test_llm_model_edit.py` (2396), `test_llm_model_required_field_validation.py`
+  (2408, sanctioned-RED on #1984), `test_llm_model_id_autopopulated.py` (2409).
