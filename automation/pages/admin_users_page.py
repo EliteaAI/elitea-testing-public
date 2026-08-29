@@ -725,6 +725,12 @@ class AdminUsersPage(BasePage):
         """Return the selected-role chip Locator for *role*."""
         return self.page.locator(self.SELECT_VALUE_CHIP.format(role))
 
+    def get_role_chip_remove_icon(self, role: str):
+        """Return the remove (x) icon Locator on *role*'s chip — the element
+        ELITEA-2302's step 3 clicks, and ELITEA-2301's step 5 asserts is
+        present."""
+        return self.page.locator(self.SELECT_VALUE_CHIP_REMOVE.format(role))
+
     def remove_role_chip(self, role: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
         """Click the x on *role*'s chip, deselecting it (ELITEA-2302 step 3).
 
@@ -777,6 +783,11 @@ class AdminUsersPage(BasePage):
     def get_role_option(self, role: str):
         """Return the role-option Locator for *role* in an open roles menu."""
         return self.page.locator(self.SELECT_OPTION.format(role))
+
+    def get_role_option_selected_icon(self, role: str):
+        """Return the selected-checkmark Locator scoped INSIDE *role*'s option
+        — count 1 when that role is selected, 0 when it is not."""
+        return self.get_role_option(role).locator(self.SELECT_OPTION_SELECTED_ICON_SELECTOR)
 
     def get_option_selected_icon_locator(self):
         """Return the Locator matching every selected-option checkmark

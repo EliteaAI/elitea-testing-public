@@ -100,9 +100,7 @@ class TestUsersRowEditRolesDialogLayout:
                 f"{users_page.get_selected_role_chip_values()!r}"
             )
             expect(users_page.get_role_chip(current_role)).to_have_text(current_role)
-            expect(
-                page.locator(users_page.SELECT_VALUE_CHIP_REMOVE.format(current_role))
-            ).to_be_visible()
+            expect(users_page.get_role_chip_remove_icon(current_role)).to_be_visible()
 
         with allure.step(
             "Step 6 — Open the Roles dropdown: the currently assigned role — and "
@@ -110,18 +108,11 @@ class TestUsersRowEditRolesDialogLayout:
         ):
             users_page.open_roles_menu(users_page.row_edit_roles_select_combobox)
             expect(users_page.get_option_selected_icon_locator()).to_have_count(1)
-            selected_option = users_page.get_role_option(current_role)
-            expect(
-                selected_option.locator(users_page.SELECT_OPTION_SELECTED_ICON_SELECTOR)
-            ).to_have_count(1)
+            expect(users_page.get_role_option_selected_icon(current_role)).to_have_count(1)
             for other_role in users_page.get_role_option_texts():
                 if other_role == current_role:
                     continue
-                expect(
-                    users_page.get_role_option(other_role).locator(
-                        users_page.SELECT_OPTION_SELECTED_ICON_SELECTOR
-                    )
-                ).to_have_count(0)
+                expect(users_page.get_role_option_selected_icon(other_role)).to_have_count(0)
 
         with allure.step(
             "Step 7 — Close the menu, then dismiss the dialog with the Close (x) "
