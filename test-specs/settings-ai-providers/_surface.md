@@ -655,3 +655,124 @@ cases; every handle below already existed.
   Storage `total: 1` / default `autotest_pgvector_seed`, Embedding `total: 3` / default
   `text-embedding-3-small`.
 
+
+---
+
+## The Image Generation / ASR / TTS sections (ELITEA-2402/2403/2404/2405/2406/2407, 2026-08-30)
+
+Analyst pass, batch `settings-w11`, project `UI Testing` (400), against
+`EliteaAI/EliteaUI` on `automation/testids`. **Zero new testids were needed for five of
+the six cases**; every handle these sections use already exists on `main`.
+
+### The collapsed-summary trap — the single biggest gotcha on this page
+
+Only the **LLMs** accordion auto-expands. Every other section starts collapsed, and:
+
+- **Collapsed**, the accordion *summary* renders the default as **plain text**
+  (`"Image Generation | Default | GPT Image 2 | 3"`) with **no testid and no combobox**.
+  `querySelectorAll('[data-testid]')` inside the summary returns **zero** elements.
+- **Expanded**, that text **leaves the summary** (which becomes `"Image Generation | 3"`)
+  and the real `role="combobox"` mounts in the accordion *details* as
+  `ai-providers-section-{slug}-default-selector-combobox`.
+
+So a case that says "locate the section" and then reads the Default selector needs the
+expand made explicit — otherwise there is literally nothing to read. Every one of the six
+cases in this family carries that one-word omission (folded into #1250, not re-filed).
+
+### `ai-providers-section-{slug}` is on the SUMMARY BUTTON, not the accordion root
+
+Confirmed by DOM inspection: the testid sits on the `MuiAccordionSummary-root` **button**.
+Cards are therefore **not** DOM descendants of it, so `section_header.locator(card)` finds
+nothing and a whole-page card query returns **every expanded section's** cards. Measured
+live: Image Generation queries kept returning the Vector Storage seed card because Vector
+Storage happened to be open. **`isolate_section()` before any card count** — this is the
+easiest way to get a green-but-meaningless run on this page.
+
+### Live data (project 400, 2026-08-30) — all shared from project 1
+
+| Section | Cards | Default | Option project id |
+|---|---|---|---|
+| Image Generation | 3 — `GPT Image 2`, `gpt-image-1`, `gpt-image-1.5` | `GPT Image 2` | all `<<>>1` |
+| Speech Recognition (ASR) | 2 — `gpt-4o-mini-transcribe`, `whisper` | `gpt-4o-mini-transcribe` | all `<<>>1` |
+| Text to Speech (TTS) | **1** — `gpt-4o-mini-tts` | `gpt-4o-mini-tts` | `<<>>1` |
+
+Because these are shared (`include_shared=true`), the same sets appear on every non-public
+project — unlike Vector Storage, which is project-local. **TTS having exactly one model is
+what splits ELITEA-2407 out of the 2403/2405 family**: "select a different model" is
+unsatisfiable without a transit create.
+
+### Badges work correctly here (unlike Vector Storage)
+
+Image Generation and ASR both supply `data.name`, so the option key and
+`defaultSettingValue` agree and the `Default` badge renders and moves correctly — verified
+live on both. **#1987 is Vector-Storage-specific**; do not copy ELITEA-2401's soft-assert
+treatment into these specs. Selecting an option fires
+`POST /configurations/models/{project_id}` → 200, then refetches every section; the new
+card gains `Default` and the old loses it **in the same render pass**, no reload.
+
+### Creating a TTS configuration ASSIGNS it as the section default
+
+Measured directly: TTS at 1 config / default `gpt-4o-mini-tts` → created
+`Autotest TTS Probe` → the combobox read `Autotest TTS Probe` and that card carried the
+`Default` badge, **with no selection made**. Same as **Vector Storage**, opposite of
+**LLMs**. Consequences for any spec that creates in this section: setup owes a
+restore-before-the-case (or the case's "select a different one" fires **no request** and
+passes vacuously), and teardown owes a restore-**before**-the-delete.
+
+### The TTS create form is fully testid-covered, and TTS is NOT a protected section
+
+`/settings/create-ai-provider/tts_model?viewMode=owner&from=ai-providers` renders
+`toolkit-field-label-input`, `toolkit-field-elitea_title-input`, `toolkit-field-name-input`,
+`toolkit-credential-select--combobox` (**double dash** — the dynamic suffix is empty on
+this form), `credential-form-save-button`, `credential-form-test-connection-button`.
+Required: Display Name, ID, Name, Ai Credentials. The shared **`ELPS`** credential is
+selectable via `select-option-{"kind":"saved","elitea_title":"elps","private":false}`.
+
+`isLastInSection` guards only `vectorstorage` and `embedding`, so a transit TTS
+configuration is **freely deletable** — verified end to end (created id 77, deleted it,
+count returned to 1). A transit-create is safe here in a way it is not in Vector Storage.
+
+Option key confirmation: the transit's option was `select-option-tts-1-probe<<>>400`
+**labelled `Autotest TTS Probe`** — i.e. key = `data.name`, label = Display Name, matching
+this digest's per-section key table.
+
+### `delete-confirm-name-input` is the WRAPPER, not the `<input>`
+
+Typing into `[data-testid="delete-confirm-name-input"]` does nothing at all (the element
+has no `.value`) and the Delete button stays **disabled** with no error. The scoped inner
+input node is required. `AiProviderFormPage.delete_current_configuration()` already
+handles it — cost one retry during this analysis for anyone driving it by hand.
+
+### Deleting a configuration logs a stale 404 (pre-existing, #1666)
+
+`DELETE /configurations/configuration/400/77` succeeds, then the app re-fetches the
+deleted id → `404`, visible in console. Same endpoint/trigger/symptom as the OPEN
+**#1666** (credentials) — recorded as a new occurrence there, **not re-filed**. Only
+affects specs whose *teardown* deletes; the six cases' own steps produce **0** console
+errors. Do not add a filter for it.
+
+### The one testid still missing — `ai-provider-configuration-card-status`
+
+The card's status text (`OK • Shared` / `OK • Local`) has **no testid**;
+`ai-provider-configuration-card-name` covers only the name. Needed by ELITEA-2402/2404/2406
+step 3 ("model name **and status badge**"). Add `data-testid="ai-provider-configuration-card-status"`
+to the **existing** `<Typography component={Box} … sx={styles.statusText}>` at
+`ConfigurationCard.jsx:82` — attribute only, no new node, no plumbing.
+
+⚠️ That Typography **also contains the badges** (`{statusText}{isHighTier && …}{isLowTier
+&& …}{isDefault && …}`), so on the default card its text reads `"OK • Shared\nDefault"`
+and on the others exactly `"OK • Shared"`. Assert with `to_contain_text` / a regex, never
+exact equality — which would pass on every card except the one that matters.
+
+### Page-object gap (no testid work)
+
+`AIProvidersPage` has `image_generation_default_selector` / `asr_default_selector` /
+`tts_default_selector` (the **FormControl wrapper**) but **no `*_combobox` fields** for
+these three. The `-combobox` testids exist in JSX and resolved live for all three — add
+three `LocatorDescriptor` fields mirroring `embedding_models_default_selector_combobox`.
+
+### AFS files from this run (all `ready-for-automation`)
+
+- `l3_section-model-cards-and-default-selector_ELITEA-2402.md` — **family**: ELITEA-2402 / 2404 / 2406 (differ only in data)
+- `l3_change-section-default-model_ELITEA-2403.md` — **family**: ELITEA-2403 / 2405 (differ only in data)
+- `l3_change-the-default-tts-model_ELITEA-2407.md` — **solo**: same case text as the above family, but the transit create+delete is a difference in steps
