@@ -929,3 +929,123 @@ already does.
   the post-reload page-wide card count matched the pre-reload baseline exactly — i.e.
   a reload restores the same "only LLMs expanded" state a fresh `goto` gives, so a
   baseline captured on arrival stays comparable across a reload.
+
+---
+
+## The "+" create flow: AI credentials and AI models (ELITEA-2415 / ELITEA-2416, 2026-08-30, qa-engineer analyst, batch settings-w11)
+
+ELITEA-2417's pass stopped at "no such option" for the `+` flow. It exists and works —
+here is the whole thing, executed live.
+
+### Route + type picker
+`sidebar-create-button` -> `/settings/create-ai-provider?viewMode=owner&from=ai-providers`
+-> 12 cards `toolkit-type-card-{ai_dial,amazon_bedrock,azure_open_ai,embedding_model,
+image_generation_model,llm_model,ollama,open_ai,pgvector,asr_model,tts_model,vertex_ai}`.
+
+⚠️ **The query string is load-bearing.** `/settings/create-ai-provider` WITHOUT
+`?viewMode=owner&from=ai-providers` renders the **toolkit** type set (29 cards:
+github, jira, confluence, …), not the AI set. Deep-link with the params, or go
+through `sidebar-create-button`.
+
+⚠️ The picker takes **several seconds** to render its cards — poll for
+`[data-testid^="toolkit-type-card-"]`, never assert on the first paint.
+
+### The form is `CredentialForm.jsx` — the SAME component as toolkit credentials
+`ProtectedRoutes.jsx:409/423` renders `CreateCredentialFromMain title="New AI Provider"`.
+So every handle the merged toolkit-credential specs use applies verbatim here:
+`toolkit-field-{key}-input`, `toolkit-field-{key}-input-field` (secret),
+`toolkit-field-{key}-input-helper-text`, `credential-form-{save,discard,test-connection}-button`,
+`credential-form-api-error-message`. **Test connection is present** whenever the type's
+schema declares `has_test_connection` (`CredentialForm.jsx:70,245,325`) — true for
+`open_ai` and `llm_model`; false for `pgvector` (already noted in
+`test_vector_storage_create.py:84`).
+
+Fields observed:
+- **`open_ai`**: Display Name, ID (`elitea_title`, **auto-derived from Display Name**),
+  Api Base, Api Key (secret).
+- **`llm_model`**: Display Name, ID, **Name** (the model identifier), Context Window,
+  Max Output Tokens, checkboxes `supports_reasoning` / `supports_vision` / `low_tier` /
+  `high_tier` / `openai_compatible`, and **Ai Credentials** (required select).
+
+### A VALID OpenAI-compatible credential exists in the suite's own test data
+`.env.test` has no OpenAI key — but Elitea exposes an OpenAI-compatible gateway and
+`ELITEA_API_TOKEN` authenticates against it. Verified out-of-band 2026-08-30:
+
+```
+GET https://dev.elitea.ai/llm/v1/models   Bearer $ELITEA_API_TOKEN -> 200
+GET https://dev.elitea.ai/llm/v1/models   Bearer sk-bogus-xyz      -> 401
+```
+
+So `api_base=https://dev.elitea.ai/llm/v1` + `api_key=$ELITEA_API_TOKEN` is a
+**genuinely working `open_ai` credential** — `check_connection` returns
+`200 {"success": true}` and the `The connection is OK!` toast. This is what unblocked
+ELITEA-2415's success half without any substitution. Reuse it; do not go hunting for
+an external OpenAI key.
+
+### Test connection results (live)
+`POST {api}/configurations/check_connection/{project}/{type}`
+- invalid key -> **400** `{"success": false, "message": "Authentication failed: Invalid or expired api_key - …"}`
+  The message renders inline on **both** `toolkit-field-api_key-input-helper-text`
+  **and** `toolkit-field-api_base-input-helper-text` (`aria-invalid="true"` on both) —
+  the secret-key branch AND the `*url*` fallback branch of
+  `extractInformationFromCredentialError` both fire. `credential-form-api-error-message`
+  stays absent; no toast.
+- valid key -> **200** `{"success": true}`, `toast-alert[data-severity="success"]`
+  with `toast-message` == `The connection is OK!`, and **both helper texts disappear**
+  and `aria-invalid` clears. The recovery is clean.
+- The typed key is **masked** in the error (`sk-inval***********2415`).
+- The form stays on its route after a failure — no redirect, values retained.
+
+### CRUD + teardown (verified)
+- create: `POST {api}/configurations/configurations/{project}` -> **200**, body has
+  `id`, `label`, `elitea_title`.
+- delete: `DELETE {api}/configurations/configuration/{project}/{id}` -> **204**
+  (ELITEA-2417's "no teardown path verified" is now resolved — there is one).
+- list: `GET {api}/configurations/configurations/{project}?include_shared=true&section=…`.
+
+⚠️ **A fresh Playwright context defaults to project 399 (`Private`)**, while the
+persistent MCP browser profile was on 400 (`UI Testing`). A config created from a
+scratch script lands in 399. Always read the project id from the request path, never
+assume.
+
+### Typing into these forms — two real cost sinks
+1. **`fill()` does NOT register.** A `fill()`ed Display Name/Api Base reached the
+   backend EMPTY (`400 {"message": "api_base is required"}`) while the DOM value
+   looked right. Use click -> `ControlOrMeta+a` -> `Backspace` -> `press_sequentially`
+   and **read the value back**.
+2. **The first keystroke can be lost to a re-render** if you type immediately after
+   `wait_for_selector`. Settle ~2 s, then type, then verify — a retry loop around
+   (type, read back) is the robust shape. Symptom: Save stays disabled and the ID
+   field never auto-fills.
+
+### Chat-side handles (ELITEA-2416)
+- `model-selector-button` is a `role="group"` **wrapper — clicking it does nothing**.
+  The clickable control is `model-selector-name` (a real `<button>`).
+- Options are `model-selector-option-{model name}` — the suffix is the model's `name`
+  field, so two configurations sharing a `name` collide. Select by rendered **display
+  label** (`filter(has_text=…)`), and give autotest models a unique `name`.
+- `chat-input` is a `MuiFormControl` wrapper; type into its inner `textarea`.
+- A chat turn against a mis-credentialed model fails with **no failed HTTP request and
+  no console error** — the error arrives only over Socket.IO `chat_message_sync`
+  (`meta.error` non-empty), in ~8 s. Use `utils/websocket_frames.py`.
+
+### Testid wart worth knowing
+The `llm_model` form's credential select renders `data-testid="toolkit-credential-select-"`
+and `toolkit-credential-select--combobox` — a composed testid with an **empty key
+segment** (double dash). Stable and usable; not `{section}-{element}-{type}` grammar.
+Options carry a JSON payload as their suffix:
+`select-option-{"kind":"saved","elitea_title":"<id>","private":true}`.
+
+### Product defect found here
+**EliteaAI/elitea-testing-public#1993** — chat renders a raw Python traceback +
+internal LiteLLM details (incl. a credential key hash) when the assigned LLM model's
+credential is invalid, while the credential form's own Test connection sanitises and
+masks correctly. Deterministic; ELITEA-2416 asserts the correct behaviour with
+`expect.soft()` + `# Known defect: #1993` (sanctioned-RED).
+
+### AFS files from this run
+- `l1_test-connection-error-then-success-for-ai-credential_ELITEA-2415.md` — ready-for-automation
+- `l2_chat-error-when-llm-model-uses-invalid-credential_ELITEA-2416.md` — ready-for-automation (sanctioned-RED step)
+
+Not a family AFS: they differ in **steps** (a no-save test-connection round trip vs a
+create -> create -> chat chain with teardown), not only in data.
