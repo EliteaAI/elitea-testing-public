@@ -311,6 +311,15 @@ class AIProvidersPage(BasePage):
     # "GPT-5.4-mini"), confirmed live.
     CARD_NAME_SELECTOR = '[data-testid="ai-provider-configuration-card-name"]'
 
+    # Provider-group container + its label, inside a section that groups its
+    # models by provider (LLMs). Generic, repeated-per-group testids -- same
+    # pattern (and same reason) as CONFIGURATION_CARD_SELECTOR /
+    # CARD_NAME_SELECTOR: the group Box's concatenated text content includes
+    # every card's text, so `has_text` on the group alone cannot identify it.
+    # Added by the ELITEA-2395 implementation -- EliteaAI/EliteaUI@a64d3308.
+    CONFIGURATION_GROUP_SELECTOR = '[data-testid="ai-providers-configuration-group"]'
+    CONFIGURATION_GROUP_NAME_SELECTOR = '[data-testid="ai-providers-configuration-group-name"]'
+
     # Dynamic (runtime-parameterized) testid -- pre-existing shared
     # `SingleSelectMenuItem` convention (`select-option-{value}`), NOT added
     # by this implementation. Format with a model's own
@@ -490,3 +499,46 @@ class AIProvidersPage(BasePage):
         if section_header.get_attribute("aria-expanded") != "true":
             section_header.click()
             expect(section_header).to_have_attribute("aria-expanded", "true", timeout=timeout)
+
+    def configuration_group(self, group_label: str) -> Locator:
+        """Return the provider-group container whose label EXACTLY matches
+        *group_label* (``"OpenAI"`` / ``"Anthropic"`` / ``"Other Providers"``
+        ... -- ``GROUP_ORDER`` in ``ConfigurationSection.jsx``).
+
+        Filters the group container on its dedicated
+        :data:`CONFIGURATION_GROUP_NAME_SELECTOR` child rather than on its own
+        text content, which concatenates the label with every card inside it
+        (ELITEA-2395) -- the same shape as :meth:`card_for_model`.
+        """
+        pattern = re.compile(rf"^{re.escape(group_label)}$")
+        name_locator = self.page.locator(self.CONFIGURATION_GROUP_NAME_SELECTOR).filter(has_text=pattern)
+        return self.page.locator(self.CONFIGURATION_GROUP_SELECTOR).filter(has=name_locator)
+
+    def card_in_group(self, group_label: str, model_display_name: str) -> Locator:
+        """Return the ``ConfigurationCard`` for *model_display_name* scoped
+        INSIDE the *group_label* provider group (ELITEA-2395 step 11).
+
+        Scoping is the point: :meth:`card_for_model` proves the card exists,
+        this proves it exists *in the right group*.
+        """
+        pattern = re.compile(rf"^{re.escape(model_display_name)}$")
+        name_locator = self.page.locator(self.CARD_NAME_SELECTOR).filter(has_text=pattern)
+        return (
+            self.configuration_group(group_label)
+            .locator(self.CONFIGURATION_CARD_SELECTOR)
+            .filter(has=name_locator)
+        )
+
+    def open_model_card(self, model_display_name: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the configuration card for *model_display_name*, opening its
+        edit form (ELITEA-2396).
+
+        Settling on the form itself is the caller's step -- the edit form is
+        schema-driven and mounts seconds after the route change, so
+        :meth:`~pages.ai_provider_form_page.AiProviderFormPage.wait_for_form`
+        (a rendered field, not the URL and not ``networkidle`` -- see
+        `.agents/testing.md` #1847) is the honest "the form is up" signal.
+        """
+        card = self.card_for_model(model_display_name)
+        card.wait_for(state="visible", timeout=timeout)
+        card.click()
