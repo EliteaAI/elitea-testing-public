@@ -64,3 +64,4 @@
 - [Testid grep false-negative on helper string args](testid_grep_false_negative_helper_string_args.md) — stage-2 filter drops testids passed as bare string args
 - [MUI Slider — drag vs arrow keys](mui_slider_drag_vs_keyboard.md) — drag lands on the step grid; arrow keys give float noise; never drag onto a mark label
 - [Absence assertion can pass before the thing could appear](absence_assertion_can_pass_before_the_thing_could_appear.md) — "no duplicate row" needs a refetch anchor
+- [Elitea AI-provider form traps](elitea_ai_provider_form_secret_and_delete_traps.md) — secret/delete DIV-wrapper testids, goto wipes fills, VS undeletable
