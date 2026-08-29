@@ -43,9 +43,8 @@ existing, unrelated ``ELITEA_TEAM_PROJECT_ID``) so the guard never fires.
 
 import logging
 
-from playwright.sync_api import Page, Response
-
 from config import settings
+from playwright.sync_api import Page, Response
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -262,6 +261,30 @@ class AdminUsersPage(BasePage):
         testid="users-edit-roles-save-button",
         description="Batch-edit dialog — Save button (disabled until a role changes)",
     )
+
+    # --- Product-wide toast (ELITEA-2296/2297/2309) ---
+    # Pre-existing shared testids on `src/components/Toast.jsx` — NOT added by
+    # this surface's work; the same pair `credential_form_fields.py` and
+    # `agent_detail_page.py` already declare. The invite flow's success/error
+    # confirmation rides this one shared Snackbar (one toast mounted at a time).
+    #
+    # ⚠️ A SUCCESS toast auto-hides after 3 000 ms
+    # (`TOAST_DURATION_DEFAULTS.success`; error toasts get 10 000 ms). Assert it
+    # in the step immediately after the driving response resolves, BEFORE any
+    # table read — it renders in the same tick the response lands, so this is
+    # deterministic, but a couple of intervening reads will outlive it.
+    toast_alert = LocatorDescriptor(
+        testid="toast-alert",
+        description="Product-wide toast container. Carries data-severity="
+        '"success"/"error"/"info"/"warning". Auto-hides (3 s success, 10 s error).',
+    )
+    toast_message = LocatorDescriptor(
+        testid="toast-message",
+        description="Product-wide toast message text node.",
+    )
+    # Severity-scoped toast — testid identity + a data-* state attribute, the
+    # sanctioned shape for asserting state (`.agents/testing.md` § Locator policy).
+    TOAST_ALERT_SEVERITY = '[data-testid="toast-alert"][data-severity="{}"]'
 
     # --- Delete-confirmation dialog (generic Modal.DeleteEntityModal) ---
     # Pre-existing shared component testid (also used by
@@ -695,6 +718,28 @@ class AdminUsersPage(BasePage):
         """Return the Role-cell Locator scoped within *row*."""
         return row.locator(self.USER_COLUMN_VALUE_ROLES_SELECTOR)
 
+    def get_name_cell_for_row(self, row):
+        """Return the Name-cell Locator scoped within *row*.
+
+        An invited-but-never-logged-in user renders this cell as an EMPTY
+        string (the name only lands after first login) — see
+        :attr:`row_name_cell`."""
+        return row.locator(self.USER_ROW_NAME_SELECTOR)
+
+    def get_last_login_cell_for_row(self, row):
+        """Return the Last-login-cell Locator scoped within *row*.
+
+        A never-logged-in user renders the literal ``"-"`` here (a DIFFERENT
+        null rendering from the Name cell's empty string) — see
+        :attr:`row_last_login_cell`."""
+        return row.locator(self.USER_COLUMN_VALUE_LAST_LOGIN_SELECTOR)
+
+    def get_toast_by_severity(self, severity: str):
+        """Return the toast Locator filtered by *severity*
+        (``"success"``/``"error"``/…) — see :attr:`toast_alert` for the
+        auto-hide caveat."""
+        return self.page.locator(self.TOAST_ALERT_SEVERITY.format(severity))
+
     # --- Invite-users dialog flow (ELITEA-2304 seed step) ---
     def open_invite_dialog(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
         """Click the '+' Invite-users button and wait for the dialog's
@@ -705,6 +750,11 @@ class AdminUsersPage(BasePage):
     def type_email_in_invite_dialog(self, email: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
         """Type *email* into the Invite dialog's Emails field WITHOUT
         blurring it (ELITEA-2307).
+
+        *email* is the RAW field text, so a comma-separated multi-address
+        string (``"a@x.com, b@x.com"``) is equally valid here — that is what
+        ELITEA-2297 types, and what lets a caller assert the field's displayed
+        value before a role is picked.
 
         Deliberately does NOT reuse :meth:`invite_users` — that method
         fills, selects a role, and clicks Invite, awaiting the resulting
@@ -755,6 +805,24 @@ class AdminUsersPage(BasePage):
         """
         self.invite_emails_input.fill(",".join(emails))
         self.select_role_in_invite_dialog(role, timeout=timeout)
+        with self.page.expect_response(self._is_users_post_response, timeout=timeout) as post_info:
+            self.invite_confirm_button.click()
+        return post_info.value
+
+    def submit_invite(self, timeout: int = NAVIGATION_TIMEOUT) -> Response:
+        """Click the Invite (confirm) button and return the driving POST
+        response — WHATEVER its status (ELITEA-2296/2297/2309).
+
+        Split out from :meth:`invite_users` (which fills, selects a role and
+        submits in one call, and stays byte-identical for its existing
+        callers) because these cases must assert the dialog's intermediate
+        states — the typed Emails value, then the selected role — between
+        those actions.
+
+        Deliberately status-agnostic: ELITEA-2309's duplicate invite resolves
+        **400 Bad Request** on the same endpoint, and that response IS its
+        observable.
+        """
         with self.page.expect_response(self._is_users_post_response, timeout=timeout) as post_info:
             self.invite_confirm_button.click()
         return post_info.value
