@@ -164,6 +164,12 @@ def _delete_configuration_by_name(credential_api, display_name: str, known_id=No
     logger.info("Teardown: deleted configuration %r (id=%s)", display_name, target_id)
 
 
+# reruns=0 because this spec is SANCTIONED-RED (#1993): it is EXPECTED to fail, so
+# `pytest.ini`'s global `--reruns=2` could never rescue it — it could only multiply
+# wall clock (measured: 52.97 s unmarked-single-attempt vs 161.38 s with 2 reruns)
+# and put retry noise in the record. Same treatment, same reason, as the
+# sanctioned-RED HITL specs in `tests/ui/chat/test_hitl_sensitive_action_authorization.py`.
+@pytest.mark.flaky(reruns=0)
 @allure.title("ELITEA-2416 — Chat error for a model whose credential is invalid (sanctioned RED: #1993)")
 @allure.issue(
     "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"

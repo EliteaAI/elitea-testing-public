@@ -250,6 +250,13 @@ down to text matching for the positive "an error card is visible" assertion.)
   `ControlOrMeta+a` -> `Backspace` -> `press_sequentially`, then read the value back.
   Also let the form settle ~2 s after render before the first keystroke (a lost
   first write cost this analysis two runs).
+  *(Amended at implementation, 2026-08-30: on the `llm_model` form this is not a
+  settle-time problem and `wait_for_schema_field()` does not close it either — the
+  Display Name arrived as `043574` with the schema-only `name` field already
+  visible. Shipped shape: `AiProviderFormPage.set_display_name_verified()` /
+  `.set_schema_field_verified()` — type, read back, re-type what the form's own
+  re-render discarded, final attempt still asserted — plus a settle assertion on
+  the schema default `context_window == "128000"`.)*
 - `model-selector-button` is a `role="group"` wrapper — clicking it does nothing.
   Click `model-selector-name` (the actual `<button>`), and wait for
   `[data-testid^="model-selector-option-"]` to be visible rather than a fixed pause.
