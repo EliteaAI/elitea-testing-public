@@ -268,3 +268,107 @@ key prop"* `console.error` (`CategorySection.jsx` ← `GroupedCategory.jsx` ←
 ⚠️ **Do not `fetch()` the API from `browser_evaluate` on localhost** — the dev
 proxy 302s to `dev.elitea.ai/forward-auth/...` and each call logs 2 CORS
 `console.error`s, polluting any console-error assertion. Use `page.expect_response`.
+
+## The LLM-model CRUD flow — full form inventory (ELITEA-2395/2396/2408/2409, 2026-08-29)
+
+Confirmed live by the qa-engineer analyst, batch `settings-w10`, cluster of four
+cases. Every handle below was exercised in that session.
+
+### Create form — `/settings/create-ai-provider/llm_model?viewMode=owner&from=ai-providers`
+
+Reached by `sidebar-create-button` → `toolkit-type-card-llm_model`, or by a direct
+`goto` of the route (which **skips** the type-picker page and therefore its `#656`
+React `key` console error). It is the shared **credential form**
+(`CredentialFormFieldsMixin` already owns most of these):
+
+| Field / control | Testid | Notes |
+|---|---|---|
+| Display Name * | `toolkit-field-label-input` | the only field that gates Save today |
+| ID * | `toolkit-field-elitea_title-input` | **always `disabled`** on this flow (`ToolBase.jsx:245`; `enableEditEliteaTitle` is set only from a `prefillId` URL param). Auto-derives from Display Name, lowercase + underscores, and **clears when the label clears** |
+| Name * (model identifier) | `toolkit-field-name-input` | schema-required, **does NOT gate Save** — defect #1984 |
+| Context Window | `toolkit-field-context_window-input` | pre-filled `128000` |
+| Max Output Tokens | `toolkit-field-max_output_tokens-input` | pre-filled `16000` |
+| Supports Reasoning / Vision / Low Tier / High Tier / Openai Compatible | `toolkit-field-{supports_reasoning,supports_vision,low_tier,high_tier,openai_compatible}-checkbox` (+ `-checkbox-field` for the native input) | all default off |
+| Ai Credentials * | `toolkit-credential-select-` · clickable `toolkit-credential-select--combobox` | **the trailing dash is real** — the JSX is `toolkit-credential-select-${type}` (`CredentialsSelect.jsx:519`) and `type` is empty here |
+| Save / Cancel / Test connection | `credential-form-save-button` / `credential-form-discard-button` / `credential-form-test-connection-button` | Save + Cancel disabled while pristine |
+
+Credential dropdown options carry **JSON-shaped** testids:
+`select-option-{"kind":"create_action","private":true|false}` (the two "New …
+credentials" actions) and
+`select-option-{"kind":"saved","elitea_title":"<title>","private":false}`.
+As a page-object class constant (braces doubled for `.format`):
+`'[data-testid=\'select-option-{{"kind":"saved","elitea_title":"{}","private":false}}\']'`.
+
+Schema source of truth: `GET /api/v2/configurations/available/?section=…`; the
+`llm_model` entry's `config_schema.properties.data.required` is
+`["name","ai_credentials"]` and the top-level `config_schema.required` is
+`["elitea_title","label","type","data"]`. `validateRequiredFields`
+(`toolBase.helpers.js:146`) walks **only the top level** — that is the root cause
+of #1984.
+
+### Edit form — `/settings/edit-ai-provider/{configuration_id}?from=ai-providers`
+
+Reached by clicking an `ai-provider-configuration-card`. Same field inventory,
+pre-populated, Save/Discard disabled while pristine. Editing the Display Name
+**also re-derives the disabled ID field** (`autotest_llm_model` →
+`autotest_llm_model_edited`) — recorded as an observation in ELITEA-2396's AFS,
+not filed.
+
+### Delete — the only teardown path (verified end to end)
+
+Card → `controls-menu-button` → `delete-credentials-menuitem` (composed at
+runtime by `DotMenu.jsx:58` from `key: 'delete-credentials'` — a bare-substring
+grep on `main` finds the key, not the testid) → confirm dialog
+`delete-confirm-dialog` with `delete-confirm-entity-name`,
+`delete-confirm-name-input` (**type the exact display name**),
+`delete-confirm-cancel-button`, `delete-confirm-button`.
+⚠️ Immediately after a delete the app GETs the deleted record
+(`/api/v2/configurations/configuration/{project}/{id}`) and logs a **404** console
+error. Assert any "no console errors" axis **before** teardown.
+
+### LLMs section grouping
+
+Cards are grouped under `GROUP_ORDER` headings (`ConfigurationSection.jsx:17-23`):
+**`OpenAI` / `Anthropic` / `Other Providers`**. A newly created custom model lands
+in **`Other Providers`**. The group container `Box` and its label `Typography`
+carry **no testid** — needed for ELITEA-2395 step 11:
+`ai-providers-configuration-group` + `ai-providers-configuration-group-name`
+(static, repeated per group — same pattern as `ai-provider-configuration-card`
+/ `-card-name`, and needed for the same reason: the group's concatenated text
+includes every card's text, so `has_text` cannot identify it).
+
+### Newly created models and the Default selector
+
+A model created here appears immediately in
+`ai-providers-section-llms-default-selector-combobox` as
+`select-option-{data.name}<<>>{project_id}` (observed `select-option-gpt-4o<<>>400`)
+labelled with its **Display Name**. Selecting it flips the combobox label and adds
+a `Default` `ai-provider-configuration-badge` to its card; re-selecting the previous
+model restores both, losslessly (verified `GPT-5.6 Luna` → new → `GPT-5.6 Luna`).
+This session left project 400 at its starting state: 12 LLM cards, Default
+`GPT-5.6 Luna`, High-tier `Bedrock-GPT-5.6-Terra`, Low-tier `GPT-5.6 Luna`.
+
+### Gotchas confirmed this session
+
+- **A direct `goto` to the create route mounts the form seconds later** (schema
+  fetch first). `fill()` immediately after `goto` fails with "does not match any
+  elements". Wait on `toolkit-field-label-input`.
+- **A dirty create/edit form arms a native `beforeunload` dialog.** A reload or
+  `goto` mid-edit raises it and blocks every subsequent Playwright call until
+  handled — cost one recovery turn this session.
+- Clean `goto` of `/settings/ai-providers` and of the typed create route each
+  logged **0 console errors**. The `#656` React `key` error is the **type-picker**
+  page's alone. A handful of CORS errors on
+  `configurations/configurations/{400,399,1}?…&shared_limit=200&section=ai_credentials`
+  appeared once mid-session and did not reproduce on clean loads — same profile as
+  the recurring unrelated-resource noise class in `.agents/testing.md`.
+
+### AFS files from this run (all `ready-for-automation`)
+
+- `l3_create-llm-model-configuration_ELITEA-2395.md` — needs the 2 group testids
+- `l3_edit-llm-model-configuration_ELITEA-2396.md`
+- `l3_create-llm-model-required-field-validation_ELITEA-2408.md` — **sanctioned-RED** on #1984
+- `l3_create-llm-model-id-autopopulated_ELITEA-2409.md` — asserts the live read-only ID contract (clarification #1985)
+
+Not a family AFS: the four differ in **steps** (full create + tier assignment /
+update-in-place / required-field gating / client-side derivation), not only in data.
