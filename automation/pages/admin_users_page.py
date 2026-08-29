@@ -61,6 +61,12 @@ NAVIGATION_TIMEOUT = 15_000
 USERS_LIST_URL_SUBSTRING = "/admin/users/default/"
 ROLES_LIST_URL_SUBSTRING = "/admin/roles/default/"
 
+# The two project-scoped GETs a project SWITCH triggers, keyed by the NEW
+# project id (live-captured 2026-08-29). Waiting on them is what makes
+# `ensure_team_project_selected` deterministic — see that method.
+PROJECT_INFO_URL_TEMPLATE = "/project_info/prompt_lib/{}/project-info"
+PROJECT_PERMISSIONS_URL_TEMPLATE = "/auth/permissions/prompt_lib/{}"
+
 
 class AdminUsersPage(BasePage):
     """Settings → Users page (page layout + users table)."""
@@ -282,6 +288,10 @@ class AdminUsersPage(BasePage):
     # family (SingleSelectMenuItem.jsx) as ChatPage.SELECT_OPTION /
     # ToolkitDetailPage.SELECT_OPTION — reuse the pattern, don't invent a new one.
     SELECT_OPTION = '[data-testid="select-option-{}"]'
+    # Checkmark SingleSelect renders inside the currently-selected option — the
+    # testid-only way to ask "is this project already active?" without knowing
+    # the project's display name. Scoped inside an option, never page-level.
+    SELECT_OPTION_SELECTED_ICON_SELECTOR = '[data-testid="select-option-selected-icon"]'
     # Sort-indicator icon on a sortable column header — dynamic testid,
     # component-level addition to GridTableHeader.jsx mirroring its existing
     # `columnTestIdPrefix` mechanism (EliteaAI/EliteaUI@52582fe3, ELITEA-2292
@@ -354,18 +364,51 @@ class AdminUsersPage(BasePage):
     def ensure_team_project_selected(
         self, project_id: str = settings.users_team_project_id, timeout: int = NAVIGATION_TIMEOUT
     ) -> None:
-        """Switch the sidebar's active project to *project_id*.
+        """Switch the sidebar's active project to *project_id* and wait until
+        the switch has actually landed.
 
         Precondition for reaching Settings -> Users at all — see the module
-        docstring's "Live-discovered precondition" note. Every fresh test
-        browser context starts on this user's default (private) project, so
-        this always performs the switch rather than checking first —
-        re-selecting an already-active project is a safe no-op click.
+        docstring's "Live-discovered precondition" note.
+
+        The wait is NOT optional. `wait_for_network()` alone (Playwright's
+        `networkidle`) returns while the project switch is still settling —
+        this app holds a persistent Socket.IO polling transport open, so
+        "network idle" is a poor proxy for "the app finished switching"
+        (the shared `#1847` mechanism). The following
+        `navigate("/settings/users")` then loses the race against
+        `Settings.jsx`'s `isPrivateProject` guard, which redirects straight
+        back to `/settings/project-general` — a zero-row page and a
+        mystifying "user-row never became visible" timeout 10 s later.
+        Live-diagnosed 2026-08-29 from a failure screenshot still showing
+        "Project: Private" / "Project ID: 399"; it cost 3 of 10 invocations
+        across one session before this fix.
+
+        So the switch is confirmed against the product's own signals: the two
+        project-scoped GETs keyed by the NEW project id (`project-info`, which
+        is what the guard reads, and `auth/permissions`, which is what gates
+        the Users page's controls).
+
+        Re-selecting an ALREADY-active project fires no request, so waiting
+        for one would hang. That case is detected first, via the checkmark
+        `SingleSelect` renders inside the selected option.
         """
         self.project_selector_trigger.click()
         option = self.page.locator(self.SELECT_OPTION.format(project_id))
         option.wait_for(state="visible", timeout=timeout)
-        option.click()
+
+        if option.locator(self.SELECT_OPTION_SELECTED_ICON_SELECTOR).count():
+            logger.info("Project %s is already active — closing the selector", project_id)
+            self.page.keyboard.press("Escape")
+            return
+
+        project_info_url = PROJECT_INFO_URL_TEMPLATE.format(project_id)
+        permissions_url = PROJECT_PERMISSIONS_URL_TEMPLATE.format(project_id)
+        with self.page.expect_response(
+            lambda response: project_info_url in response.url, timeout=timeout
+        ), self.page.expect_response(
+            lambda response: permissions_url in response.url, timeout=timeout
+        ):
+            option.click()
         self.wait_for_network(timeout=timeout)
 
     def navigate(self) -> tuple[Response, Response]:

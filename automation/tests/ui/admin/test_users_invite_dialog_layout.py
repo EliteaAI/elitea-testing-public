@@ -15,9 +15,11 @@ parenthesis ("emails(separated") — that is the product's own wording and the
 case's, reproduced verbatim.
 
 The Emails field's required marker is asserted through its <label> text
-("Emails *"): MUI writes the asterisk into the label when the field carries
-`required`, so the label text IS the observable the case's "marked as required
-with *" describes.
+("Emails *"): the asterisk is rendered because the field carries `required`, so
+the label text IS the observable the case's "marked as required with *"
+describes. The assertion reads innerText rather than textContent — the label
+node carries two asterisks, the visible one and MUI's own display:none
+`MuiFormLabel-asterisk` span, and only the visible one is what the case means.
 
 Test case: ELITEA-2295
 AFS: test-specs/settings-users-and-roles/l3_invite-users-dialog-opens-with-correct-layout_ELITEA-2295.md
@@ -89,7 +91,14 @@ class TestUsersInviteDialogLayout:
             "field's `required` flag"
         ):
             expect(users_page.invite_emails_input).to_be_visible()
-            expect(users_page.invite_emails_label).to_have_text(EXPECTED_EMAILS_LABEL)
+            # use_inner_text: the label node holds TWO asterisks — the visible one
+            # StyledInputEnhancer renders inside the label Box ("Emails *"), and MUI's
+            # own display:none `MuiFormLabel-asterisk` span. textContent (Playwright's
+            # default) concatenates both into "Emails * *"; innerText is what the user
+            # actually reads, which is the observable the case describes.
+            expect(users_page.invite_emails_label).to_have_text(
+                EXPECTED_EMAILS_LABEL, use_inner_text=True
+            )
 
         with allure.step(
             "Step 6 — Verify the Roles dropdown offers exactly three options: admin, "
