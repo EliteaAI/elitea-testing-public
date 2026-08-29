@@ -144,11 +144,20 @@ the card/status assertions, **before** the Default-selector work, so the reload
 observes a pure create and not a create+tier-change), and extend the docstring
 + `@allure.issue` set to name ELITEA-2412 as a second covered case.
 
+**As SHIPPED** (implementer, ELITEA-2412 — labelled `Step 12b`, the AFS's own
+"implementer's call" on numbering; the reload response is bound and its status
+asserted, which is Gap assertion A — "the reload completes without error" — made
+explicit rather than implied):
+
 ```python
-with allure.step("Step 13 (ELITEA-2412) — The new card survives a full page reload"):
-    # ELITEA-2412: the case's own subject — persistence, not re-render.
-    providers_page.reload_and_capture_llm_response()
-    expect(providers_page.llms_section_header).to_have_attribute("aria-expanded", "true")
+with allure.step("Step 12b (ELITEA-2412) — The new card survives a full page reload"):
+    reload_response = providers_page.reload_and_capture_llm_response()
+    assert reload_response.status == 200, (
+        f"LLM models request after reload failed: {reload_response.status}"
+    )
+    expect(providers_page.llms_section_header).to_have_attribute(
+        "aria-expanded", "true", timeout=UI_ELEMENT_TIMEOUT
+    )
     expect(providers_page.card_in_group(OTHER_PROVIDERS_GROUP, display_name)).to_have_count(1)
     expect(providers_page.card_for_model(display_name)).to_contain_text("OK •")
     expect(providers_page.configuration_cards).to_have_count(initial_card_count + 1)

@@ -902,3 +902,30 @@ Providers` once a project-local model exists). One saved AI credential:
 filling it directly errors with *"Element is not an `<input>`…"*. Target the
 inner field (`… delete-confirm-name-input input`); the merged page object
 already does.
+
+**Resolved/added during ELITEA-2412/2413/2414 implementation (test-automation-engineer, 2026-08-30):**
+
+- **`reload_and_capture_llm_response()` now EXISTS** on `AIProvidersPage`
+  (`automation/pages/ai_providers_page.py`), exactly in the shape prescribed above —
+  a real `page.reload()` inside `expect_response(_is_llm_models_response)`, never
+  `BasePage.reload_and_wait()` (#1847). It is the shared reload primitive for this
+  surface; reuse it rather than re-deriving one.
+- **`all_default_badges` is a `@property`, not a method, and it is PAGE-WIDE.**
+  It counts every `Default` badge across *all* currently-expanded sections, so
+  `all_default_badges` + `to_have_count(1)` is only true while LLMs is the sole
+  expanded accordion — which the § Quirk above says is exactly what stale
+  `expandSection` route state breaks. For a per-section exclusivity check, assert the
+  *previous* Default's card no longer carries the `Default` badge
+  (`card_tier_badge(old_label, "Default")` → `to_have_count(0)`); it catches the same
+  failure mode, is scoped by card identity rather than accordion state, and does not
+  need `isolate_section` (which would mutate accordion state a covering spec's later
+  steps run against).
+- **`Locator.text_content()` returns `str | None`** — the captured High-tier /
+  Low-tier selector text must be guarded before `.strip()`, since an unset tier
+  renders blank.
+- **Reload behaviour confirmed under automation**, not just by hand: all three
+  extended specs (create / edit / Default tier) ran green in one 132 s invocation with
+  `reruns.json == {}`. The LLMs accordion auto-expanded on every `page.reload()`, and
+  the post-reload page-wide card count matched the pre-reload baseline exactly — i.e.
+  a reload restores the same "only LLMs expanded" state a fresh `goto` gives, so a
+  baseline captured on arrival stays comparable across a reload.
