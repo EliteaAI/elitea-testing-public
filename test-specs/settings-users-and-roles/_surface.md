@@ -563,3 +563,26 @@ this surface**:
 - `l2_batch-delete-multiple-users-using-checkboxes_ELITEA-2299.md` (sanctioned-RED, #1974)
 - `l2_cancel-deletion-keeps-the-user-intact_ELITEA-2300.md`
 - `l2_admin-cannot-delete-themselves-from-the-project_ELITEA-2306.md` (**blocked**)
+
+### Resolved/added during ELITEA-2298/2299/2300 implementation (2026-08-29)
+
+- **`AdminUsersPage` gained five additive members.** `delete_user_row()` (the
+  one-shot cleanup helper, four merged callers) is untouched; the same flow is
+  now also available split into its three moments, which is what lets a spec
+  assert "the dialog opened and nothing was deleted yet":
+  `open_delete_dialog_for_row(row)`, `open_batch_delete_dialog()`,
+  `confirm_delete()` (returns the DELETE response, one call covers any
+  selection size), `cancel_delete()` (waits for the dialog to DETACH), and
+  `reload_and_wait()` (reload + wait on the users-list GET, never on
+  `networkidle` — `#1847`). Plus `delete_confirm_dialog` / `-title` /
+  `-message` / `-cancel_button` descriptors, all pre-existing shared testids.
+- **`invite_users()` requires the dialog to be open already** — call
+  `open_invite_dialog()` first. Easy to miss: the method name suggests it does
+  the whole flow, and it silently fills nothing otherwise.
+- **A `page.on("request", …)` DELETE counter is the honest way to prove
+  "nothing was deleted"** (ELITEA-2300). A table read cannot distinguish
+  "nothing happened" from "a delete is in flight". Passive observer only — no
+  routing, no interception, so it is not a substitution.
+- Run: 2 of 3 specs green on the first invocation (67.71 s for all three,
+  `reruns.json == {}`); the batch-delete spec is RED by design on #1974, with a
+  byte-identical signature across two invocations.

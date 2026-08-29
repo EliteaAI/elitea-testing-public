@@ -160,3 +160,14 @@ None.
 - Do NOT assert an absolute row count — capture the baseline and compare.
 - Reload via `page.reload()` and wait on the users-list GET, never on
   `networkidle` (`#1847`).
+
+### Implementation notes (2026-08-29)
+
+- Shipped as `automation/tests/ui/admin/test_user_delete_via_row_icon.py`;
+  **green on the first invocation** (`reruns.json == {}`).
+- Page object (all additive; `delete_user_row()` left byte-identical for its
+  four merged teardown callers): `open_delete_dialog_for_row()`,
+  `confirm_delete()`, `reload_and_wait()`, plus the four
+  `delete_confirm_*` descriptors.
+- Step 6's reload waits on the users-list GET via `reload_and_wait()` — not on
+  `networkidle`, which is `#1847`.

@@ -180,10 +180,29 @@ rather than skipped.
 
 ## Automation Hints
 - `select_user_row(row)` and `is_row_checkbox_checked(row)` already exist
-  (ELITEA-2304). Add `batch_delete_selected()` additively: click the header
-  Delete, wait for the dialog, confirm, return the DELETE response.
+  (ELITEA-2304). The header flow ships as TWO additive methods rather than one
+  (`open_batch_delete_dialog()` + the shared `confirm_delete()`), because step 5
+  must assert "dialog open, nothing deleted yet" between them — the same reason
+  the per-row flow is split.
 - The stuck page after step 7 means **no locator assertion on the table can be
   trusted until the reload** — do the soft assertion with a short timeout so the
   known red costs seconds, not the full default wait.
 - Build the control set `O` from the rendered email cells at runtime; never
   hardcode `Levon Dadayan` / `Test Bot` / the orphaned seed rows.
+
+### Implementation notes (2026-08-29)
+
+- Shipped as `automation/tests/ui/admin/test_users_batch_delete.py`.
+- Page object (all additive; `delete_user_row()` untouched):
+  `open_batch_delete_dialog()`, `confirm_delete()`, `reload_and_wait()`, plus
+  `delete_confirm_dialog` / `-title` / `-message` / `-cancel_button` descriptors.
+- **RED as designed, verified twice with a byte-identical signature**
+  (`AssertionError: Locator expected to have count '4' / Actual value: 0`,
+  `reruns.json == {}` both runs, 67.71 s and 25.68 s). Exactly ONE soft
+  assertion fires — the row-count one; the two "seeded row is gone" soft
+  assertions PASS, because an empty table does satisfy them. Single-cause,
+  deterministic, linked to open #1974 ⇒ sanctioned-RED per
+  `.agents/testing.md` § Merge gate.
+- Everything after the soft block runs and passes: the reload, the two
+  "seeded address is gone" hard assertions, the row-count restore, and the
+  control-set equality that proves no other user was touched.

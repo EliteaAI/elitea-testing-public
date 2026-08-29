@@ -141,3 +141,17 @@ None.
   first click — a passive observer, no interception, no substitution.
 - Capture the before-image with `.inner_text()` reads, then compare with
   `expect(...).to_have_text(...)` so the after-read still auto-retries.
+
+### Implementation notes (2026-08-29)
+
+- Shipped as `automation/tests/ui/admin/test_user_delete_cancel_keeps_user.py`;
+  **green on the first invocation** (`reruns.json == {}`).
+- Page object (additive): `open_delete_dialog_for_row()`, `cancel_delete()`
+  (waits for the dialog to detach), plus the `delete_confirm_*` descriptors.
+- The "no DELETE was issued" assertion is a `page.on("request", …)` listener
+  registered before the first click — a passive observer, no interception, no
+  substitution.
+- The before-image is asserted against the documented invitee null shapes
+  (Name `""`, Last login `"-"`) at capture time, so a change in how the product
+  renders a never-logged-in user surfaces here rather than silently rebasing
+  the comparison.
