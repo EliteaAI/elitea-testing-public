@@ -28,6 +28,7 @@ from utils.console_errors import (
     collect_console_errors,
     exclude_known_defect_urls,
 )
+from utils.request_capture import collect_requests
 
 logger = logging.getLogger(__name__)
 
@@ -63,14 +64,9 @@ class TestUserDeleteCancelKeepsUser:
 
         # Passive observer over the whole test: every DELETE the page issues,
         # for any resource. Registered BEFORE the first click so nothing can
-        # slip past it.
-        delete_requests: list[str] = []
-        page.on(
-            "request",
-            lambda request: delete_requests.append(request.url)
-            if request.method == "DELETE"
-            else None,
-        )
+        # slip past it. Step 5 reads it for ABSENCE; the cleanup below reads it
+        # again as the positive control that proves it was really wired.
+        delete_requests = collect_requests(page)
 
         try:
             with allure.step(
@@ -182,6 +178,16 @@ class TestUserDeleteCancelKeepsUser:
                 )
                 expect(users_page.get_row_by_text(email)).to_have_count(
                     0, timeout=ROW_WAIT_TIMEOUT
+                )
+                # Positive control for step 5's absence assertion. A listener
+                # that was never wired records nothing, which would satisfy
+                # "no DELETE was issued" vacuously; the cleanup delete is the
+                # one DELETE this case does issue, so seeing it here proves the
+                # earlier assertion was checked rather than unfalsifiable.
+                assert delete_requests, (
+                    "The DELETE observer recorded nothing even though cleanup "
+                    "deleted the seeded user — step 5's 'no DELETE was issued' "
+                    "assertion could not have been meaningful."
                 )
             except Exception as exc:  # noqa: BLE001 - never swallow a leak
                 logger.error(

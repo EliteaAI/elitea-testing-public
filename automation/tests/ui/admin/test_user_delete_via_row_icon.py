@@ -5,9 +5,16 @@ are the acting automation account itself, a human admin, and two orphaned seed
 rows — none of them safe to delete. The seeded subject makes the case
 self-contained; the flow under test is unchanged.
 
+The decisive assertion for "the icon deletes nothing on its own" is not the
+table read but the REQUEST log: a row survives a DELETE that is still in
+flight, so only "no DELETE was issued" can prove the icon is non-destructive.
+Step 4 then asserts the confirm issued exactly one — the positive control that
+keeps step 2's absence assertion from passing vacuously.
+
 Every asserted value is produced by the live product — the DELETE's own status,
 the rendered toast, the rendered table, and the table again after a full page
-reload. Nothing is substituted.
+reload. The request listener is a passive observer: nothing is intercepted,
+stubbed or substituted.
 
 Test case: ELITEA-2298
 AFS: test-specs/settings-users-and-roles/l3_delete-a-user-via-per-row-delete-icon_ELITEA-2298.md
@@ -25,6 +32,7 @@ from utils.console_errors import (
     collect_console_errors,
     exclude_known_defect_urls,
 )
+from utils.request_capture import collect_requests
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +65,12 @@ class TestUserDeleteViaRowIcon:
         email = f"elitea-del-row-{uuid.uuid4().hex[:8]}@example.com"
         deleted = False
 
+        # Passive observer over the whole test: every DELETE the page issues,
+        # for any resource. Registered BEFORE the first click so nothing can
+        # slip past it. Step 2 reads it for ABSENCE, step 4 for the count that
+        # proves the observer was really wired.
+        delete_requests = collect_requests(page)
+
         try:
             with allure.step(
                 "Step 1 — Navigate to Settings -> Users: the populated table renders; "
@@ -85,10 +99,19 @@ class TestUserDeleteViaRowIcon:
 
             with allure.step(
                 "Step 2 — Click the trash icon in the Actions column of that row: it "
-                "opens a dialog and deletes nothing on its own"
+                "opens a dialog and issues no DELETE at all"
             ):
+                # open_delete_dialog_for_row waits for the confirmation dialog to
+                # render — that is the anchor. The product has demonstrably
+                # finished reacting to the click, so "no DELETE has been issued"
+                # is a statement about a settled UI, not a race against an
+                # in-flight request. The table read below cannot make that
+                # statement on its own: a row outlives a DELETE in flight.
                 users_page.open_delete_dialog_for_row(seeded_row)
-                # The icon is not the delete — the dialog is the gate.
+                assert not delete_requests, (
+                    "Opening the confirmation must issue no DELETE at all, but the "
+                    f"page sent: {delete_requests}"
+                )
                 expect(users_page.get_row_by_text(email)).to_have_count(1)
 
             with allure.step("Step 3 — Verify a confirmation dialog appears"):
@@ -113,6 +136,14 @@ class TestUserDeleteViaRowIcon:
                 # FIRST — before any table read — while it is still mounted.
                 expect(users_page.get_toast_by_severity("success")).to_be_visible()
                 expect(users_page.delete_confirm_dialog).to_have_count(0)
+                # Positive control for step 2's absence assertion: confirming is
+                # what issues the DELETE, and exactly one of them. An observer
+                # that recorded this proves the earlier "none yet" was checked,
+                # not vacuous.
+                assert len(delete_requests) == 1, (
+                    f"Expected confirming to issue exactly one DELETE, got "
+                    f"{delete_requests}"
+                )
 
             with allure.step(
                 "Step 5 — Verify the user is removed from the table, and only that user"
