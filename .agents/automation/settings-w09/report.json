@@ -1,0 +1,38 @@
+{
+  "batch": "settings-w09",
+  "base": "origin/automation/base",
+  "integration_branch": "tests/batch-settings-w09",
+  "gate": {
+    "verdict": "green",
+    "runs": 3,
+    "seconds": [
+      261.6,
+      258.3,
+      258.4
+    ],
+    "failures": [
+      {
+        "spec": "automation/tests/ui/admin/test_users_batch_delete.py",
+        "signature": "FAILED tests/ui/admin/test_users_batch_delete.py::TestUsersBatchDelete::test_batch_delete_multiple_users - AssertionError: Locator expected to have count '4'",
+        "case_ids": [
+          "ELITEA-2299"
+        ]
+      }
+    ]
+  },
+  "totals": {
+    "automated": 10,
+    "blocked": 4,
+    "merged-sanctioned-red": 1
+  },
+  "expected_red": [
+    {
+      "spec": "automation/tests/ui/admin/test_users_batch_delete.py",
+      "test_id": "tests/ui/admin/test_users_batch_delete.py::TestUsersBatchDelete::test_batch_delete_multiple_users",
+      "ticket": "#1974",
+      "why": "Batch delete leaves page in React re-render loop; deterministic, soft-asserted against correct expected behaviour, marked `# Known defect: #1974` in code. Merges RED pending product fix.",
+      "case_ids": ["ELITEA-2299"],
+      "unit": "ELITEA-2298+ELITEA-2299+ELITEA-2300"
+    }
+  ]
+}

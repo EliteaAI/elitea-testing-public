@@ -172,3 +172,502 @@ live-confirmed:
   !selectedRoles.length || error}`) — no request ever fires for an
   invalid-email attempt; don't reuse `AdminUsersPage.invite_users()` (it
   awaits a POST response) for this path.
+
+---
+
+## Update — settings-w09 (ELITEA-2293/2294/2295/2305/2308), 2026-08-29
+
+Confirmed live against `http://localhost:5173` (EliteaUI `automation/testids`,
+DEV backend, project 400 "UI Testing").
+
+### Live data drift since 2026-08-05
+Project 400 now holds **4** user rows, not 2:
+
+| Name | Email | Last login | Role |
+|---|---|---|---|
+| Levon Dadayan | levon_dadayan@epam.com | `2026-08-29T10:29:17` | admin |
+| Test Bot | testbot@elitea.ai | `2026-08-29T14:02:40` | admin |
+| *(blank)* | elitea-batch-edit-test2-70fda701@example.com | `-` | viewer |
+| *(blank)* | elitea-batch-edit-test2-45c8fb8d@example.com | `-` | editor |
+
+The last two are **orphaned seed users from an earlier ELITEA-2304 run whose
+cleanup did not complete** (reported as a finding). Consequences for anyone
+writing tests here:
+- **Never hardcode a row count, a name, an email or a datetime.** Derive every
+  expectation from the rendered table at runtime.
+- The set exercises BOTH null branches usefully — a blank Name renders as an
+  **empty string** in `user-row-name`, while a null last login renders as the
+  literal **`-`** in `user-column-value-last_login`. Two different null
+  renderings on the same table.
+
+### Sorting (ELITEA-2293) — confirmed live
+- Engine is the shared `useTableSort` (`entities/grid-table/lib`), same as
+  Personal Tokens / Secrets. `defaultField: 'name'`, `defaultDirection: 'asc'`.
+- **The table arrives ALREADY name-ascending**, so the FIRST click on Name
+  flips to **descending** and the second returns to ascending. The case text
+  (ELITEA-2293 steps 2-4) claims the opposite — stale case text, product is
+  correct. Filed as a **sibling of #1880** (byte-identical pattern on the
+  Personal Tokens table).
+- Switching to a DIFFERENT field always starts at `asc`
+  (`prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'`), so the
+  first Email click and the first Last-login click are both ascending.
+- **Null placement is part of the contract**: nulls sort LAST ascending, FIRST
+  descending. Live-verified on both the blank-Name and blank-last-login rows.
+- Sorting is **client-side** — no request fires on a header click, and the row
+  count is invariant across every click.
+
+### Search (ELITEA-2294) — confirmed live
+- Client-side, per keystroke, no debounce, no Enter, no submit control
+  (`SimpleSearchBar` -> `Users.jsx`'s `filteredUsers` memo over the cached array).
+- **The matching rule has THREE arms** (`Users.jsx:82-92`): a row matches when
+  the lower-cased term is a substring of its **email OR name OR joined roles**.
+  A runtime-derived probe must compute expected matches with the same three-arm
+  rule — an email-only derivation will over- or under-predict whenever the probe
+  is also a substring of `admin`/`editor`/`viewer`.
+- Placeholder is exactly `"Search "` (trailing space).
+- `ControlOrMeta+a` + `Backspace` clears the field reliably (plain MUI
+  `InputBase`, no auto-blur wrapper) — same technique as `PersonalTokensPage`.
+- Clearing restores the full set; sort order is orthogonal and survives a clear,
+  so compare **sets**, not ordered lists, on the restore assertion.
+
+### ⚠️ `select-option-` prefix is NOT a safe option count (new, important)
+`SingleSelect` renders a checkmark carrying **`select-option-selected-icon`**
+next to the currently-selected option — and a naive
+`[data-testid^="select-option-"]` count matches it. Live evidence from the
+**row-Edit** dialog with `admin` preselected:
+
+```
+['select-option-admin', 'select-option-selected-icon', 'select-option-editor', 'select-option-viewer']   # 4, not 3
+```
+
+The Invite dialog opens with nothing selected, so the naive count *happens* to
+be right there — which is exactly how this trap stays hidden until a case
+touches a preselected select. Use the exclusion form:
+
+```python
+ROLE_OPTION_ANY_SELECTOR = '[data-testid^="select-option-"]:not([data-testid="select-option-selected-icon"])'
+```
+
+Also note the prefix is **globally shared** (project selector, page-size
+select, …). It is only unambiguous because MUI mounts one menu at a time and
+unmounts options on close (live-verified: 0 mounted options with every menu
+closed).
+
+### Invite-users dialog (ELITEA-2295 / 2308) — confirmed live
+- Exact texts: title `"Invite users"`; description
+  `"Enter user emails(separated by comma) and select roles to define permissions for this project."`
+  (verbatim, note the missing space before the parenthesis); Emails label
+  `"Emails *"` — **the trailing `*` IS the required marker** (MUI writes the
+  asterisk into the `<label>` when `required` is set).
+- The Invite button's gate is `disabled={!emails.length || !selectedRoles.length || error}`
+  — **three independent OR'd conditions**. Asserting only "disabled" proves
+  nothing about which one fired. Any case about one gate must isolate it: enter
+  a VALID email (so `error` is false), then show the button ENABLES once a role
+  is selected. Live-verified: valid email + no role -> disabled; select `viewer`
+  -> enabled.
+- The Roles combobox renders a **zero-width space** (`​`) when nothing is
+  selected — not an empty string.
+- Close (×) dismisses the dialog with no request and no side effect.
+- Opening/closing the dialog fires **no** request at all.
+
+### New testids added (EliteaAI/EliteaUI@8f559586, 2026-08-29)
+All purely additive prop threading onto existing nodes/props — 17 insertions,
+0 deletions, no new DOM node, no new hook.
+
+| Testid | Where | How |
+|---|---|---|
+| `users-invite-dialog` | `InviteUserDialog.jsx` -> `Users.jsx` | new `dialogTestId` prop -> `BaseModal`'s already-supported `data-testid` |
+| `users-invite-title` | same | new `titleTestId` prop -> `BaseModal.titleTestId` |
+| `users-invite-close-button` | same | new `closeButtonTestId` prop -> `BaseModal.closeButtonTestId` |
+| `users-invite-description` | same | new `descriptionTestId` prop on the existing description `Typography` |
+| `users-invite-emails-label` | same | new `emailsLabelTestId` prop -> `StyledInputEnhancer`'s already-supported `InputLabelProps` |
+| `users-row-edit-roles-dialog` | `UsersTable.jsx` `renderActions` | **call-site only** — `EditUsersButton` already accepted `dialogTestId`; only the HEADER batch-edit instance had been wired (ELITEA-2304) |
+| `users-row-edit-roles-select` | same | **call-site only** — `roleSelectTestId`; `SingleSelect` auto-appends `-combobox` |
+
+`BaseModal` already supports `data-testid` / `titleTestId` / `closeButtonTestId`
+/ `confirmButtonTestId` / `cancelButtonTestId` — **any dialog built on it needs
+only a pass-through prop, never a shared-component edit.** Check that first
+before proposing new plumbing for a modal on this codebase.
+
+### Row-level Edit-roles dialog (ELITEA-2305)
+- Now addressable: `users-row-edit-roles-dialog` +
+  `users-row-edit-roles-select-combobox`. Title / Save / Cancel are still
+  **unwired at the row call site** (canon #511 — no case exercises them yet).
+- **`Escape` dismisses the dialog** (`BaseModal`'s own `handleKeyDown` calls
+  `onClose`). Inside an OPEN roles menu the first `Escape` is consumed by the
+  MUI Menu and the dialog stays open — so it is two `Escape` presses from
+  "menu open" to "dialog closed". Live-verified, role left unchanged.
+- Save stays disabled until a role actually changes, so a read-only visit is
+  inherently non-destructive.
+
+### AFS added by this wave
+- `l2_users-table-columns-are-sortable_ELITEA-2293.md`
+- `l3_users-page-search-filters-the-table-in-real-time_ELITEA-2294.md`
+- `l3_invite-users-dialog-opens-with-correct-layout_ELITEA-2295.md`
+- `l3_available-roles-in-invite-and-edit-dialogs_ELITEA-2305.md`
+- `l3_invite-user-without-selecting-a-role_ELITEA-2308.md`
+
+### Resolved/added during settings-w09 implementation (2026-08-29)
+
+**1. `AdminUsersPage.navigate()`'s project switch was RACY — fixed.**
+`ensure_team_project_selected()` waited only on `wait_for_network()`
+(`networkidle`), which this app's always-open Socket.IO polling transport makes
+a poor proxy for "the switch landed" (the shared `#1847` mechanism). The
+following `navigate("/settings/users")` then lost the race against
+`Settings.jsx`'s `isPrivateProject` guard and was redirected straight back to
+`/settings/project-general` — producing a zero-row page and a mystifying
+"`user-row` never became visible" timeout 10 s later. Diagnosed from a failure
+screenshot still showing **"Project: Private" / "Project ID: 399"**; it cost
+**3 of 10 invocations** in one session before the fix.
+
+The method now waits on the product's own switch signals — the two
+project-scoped GETs keyed by the **new** project id, live-captured:
+- `GET /api/v2/elitea_core/project_info/prompt_lib/{id}/project-info` (what the
+  guard reads)
+- `GET /api/v2/auth/permissions/prompt_lib/{id}` (what gates the Users page's
+  controls)
+
+and the trailing `wait_for_network()` was **removed** — it was `#1847` itself
+(observed timing out raw at 15 s once in an 8-spec run). After the fix: 8 specs,
+**8/8 passed, `reruns.json == {}`**, and the run got ~56 s faster.
+
+**2. The selected-option checkmark is a testid-only "is this already active?"
+probe.** `SingleSelect` renders `select-option-selected-icon` INSIDE the
+currently-selected option, so
+`option.locator('[data-testid="select-option-selected-icon"]').count()` answers
+"is project N already selected?" without needing the project's display name.
+`ensure_team_project_selected` uses it to short-circuit — re-selecting an
+already-active project fires no request, so the response wait above would
+otherwise hang. Same fact, opposite use, as the option-count trap noted above.
+
+**3. MUI required-field labels carry TWO asterisks — assert innerText.**
+`users-invite-emails-label`'s node is:
+
+```html
+<label ...><div><span>Emails *</span></div>
+  <span aria-hidden="true" class="MuiFormLabel-asterisk" style="display:none"> *</span></label>
+```
+
+`StyledInputEnhancer` renders the visible `Emails *` itself AND MUI adds its own
+hidden asterisk span. Playwright's `to_have_text` compares **textContent** by
+default, which concatenates both into `"Emails * *"`. Use
+`to_have_text("Emails *", use_inner_text=True)` — the visible text is the
+observable a layout case means. Expect the same trap on any other `required`
+field wired through `StyledInputEnhancer`.
+
+**4. Console-noise ledger: the 404 flavor's URL is finally captured.**
+`test_users_search_filter` failed one attempt on the recurring unrelated-resource
+console error — and because these specs use `utils/console_errors`, the message
+carried the resource:
+
+```
+error: Failed to load resource: the server responded with a status of 404 (Not Found)
+       @ http://localhost:5173/api/v2/elitea_core/toolkits/prompt_lib/
+```
+
+Note the **trailing slash with no project id** — the app requests
+`toolkits/prompt_lib/` (project id missing) during a project transition, which
+404s. That contradicts the long-standing "suspected static font/icon asset"
+theory in `.agents/testing.md`: it is an API call with a malformed path. Not
+reproduced on the immediate rerun. Recorded in `.agents/testing.md`'s ledger too.
+
+**5. Orphaned seed users.** Project 400 carries two leftover
+`elitea-batch-edit-test2-*@example.com` rows from an ELITEA-2304 run whose
+cleanup did not complete. Harmless for read-only cases (and useful — they supply
+the null-name / null-last-login branches), but they mean **no test on this
+surface may hardcode a row count or a user identity.**
+
+**6. Console-error assertions on this surface must exclude #1971.** The project
+switch `AdminUsersPage.navigate()` performs reopens EliteaUI's `toolkitTypes`
+project-id race, so a project-id-less `GET .../elitea_core/toolkits/prompt_lib/`
+404 lands in the console on roughly half of full-suite runs. Filed as **#1971**
+(regression of the closed #554). All five settings-w09 specs exclude that ONE
+exact URL via `utils.console_errors.exclude_known_defect_urls` with a
+`# Known defect: #1971` comment — URL-keyed, never status-code-keyed. Any new
+spec on this surface will hit it too.
+
+---
+
+## Update — settings-w09 invite write-flows (ELITEA-2296/2297/2309), 2026-08-29
+
+Confirmed live against `http://localhost:5173` (EliteaUI `automation/testids`,
+DEV backend, project 400 "UI Testing"). Six disposable users were invited and
+deleted during this exploration; the table was left exactly as found (the same
+4 rows the wave-1 update lists).
+
+### The invite SUBMIT path — three outcomes, all live-observed
+
+| Flow | POST `…/admin/users/default/400` | Toast severity | `toast-message` text | Table delta |
+|---|---|---|---|---|
+| 1 email | **200 OK** | `success` | `The user has been invited` | +1 row |
+| 2 comma-separated emails | **200 OK** (ONE call, not one per address) | `success` | `The users have been invited` | +2 rows |
+| email already a member | **400 Bad Request** | `error` | `user <email> already exists in project 400` | **+0 rows** |
+
+- Singular/plural is `Users.jsx:181` — `emailCount > 1 ? 'The users have been
+  invited' : 'The user has been invited'`. Both observed, not inferred.
+- The duplicate-invite error text embeds the **project id**, so a test must
+  build it from `settings.users_team_project_id`, never a literal `400`.
+- **The dialog closes on the 400 too** — a failed invite discards the typed
+  input. Not a filed defect (no case asserts it); recorded so nobody re-derives
+  it.
+- An invited row appears immediately with Name = **empty string**, Last login =
+  literal `-`, and the selected role — reconfirming the wave-1 note, now on the
+  invite path specifically.
+
+### ⚠️ The success toast auto-hides after 3 s — assert it FIRST
+
+`TOAST_DURATION_DEFAULTS` (`src/common/constants.js:345`): `success`/`info`
+**3000 ms**, `warning` 7000, `error` **10000**. This is short enough that
+**three consecutive Playwright-MCP round-trips all missed the success toast
+entirely** during this exploration (each click→evaluate pair costs >3 s), which
+reads exactly like "the product shows no confirmation". It does. Capturing it
+needed a DOM `MutationObserver` recording `toast-alert` appearances:
+
+```js
+window.__toastLog = [];
+new MutationObserver(() => document.querySelectorAll('[data-testid="toast-alert"]')
+  .forEach(a => window.__toastLog.push({severity: a.getAttribute('data-severity'),
+    msg: a.querySelector('[data-testid="toast-message"]')?.innerText})))
+  .observe(document.body, {childList: true, subtree: true, characterData: true});
+```
+
+**Reusable technique for ANY short-lived toast on this product when driving the
+UI through MCP.** In a pytest spec the same fact means: assert the toast in the
+step right after the driving response resolves, before any table read.
+
+Toast handles are all pre-existing and shared (`src/components/Toast.jsx`):
+`toast-alert` (+ `data-severity`), `toast-message`, `toast-dismiss-button`.
+**No testid work is needed for any invite-confirmation case.**
+
+### Batch delete works for multi-row cleanup, with a caveat
+Selecting N row checkboxes → header `users-header-delete-button` →
+`delete-confirm-button` deletes all N in one confirm (toast:
+`The user user has been successfully deleted.` — sic, doubled word). During the
+post-delete refetch the table transiently renders **0 rows** and the console
+fills with errors from the cancelled in-flight queries; a plain reload settles
+it. Specs should prefer the per-row `delete_user_row()` teardown ELITEA-2304
+established — this is a note about manual exploration, not a recommended
+teardown shape.
+
+### AFS added by this wave
+- `l3_invite-users-single-and-multiple_ELITEA-2296.md` — **family AFS**
+  (ELITEA-2296 + ELITEA-2297), one parameterized spec, a row per case.
+- `l3_invite-existing-project-member-shows-error_ELITEA-2309.md`.
+
+### Resolved/added during ELITEA-2296/2297/2309 implementation (2026-08-29)
+
+- **`AdminUsersPage` gained four additive members** for the invite write-flows:
+  `toast_alert` / `toast_message` + `TOAST_ALERT_SEVERITY` +
+  `get_toast_by_severity()` (all pre-existing product-wide `Toast.jsx` testids,
+  no UI change), `get_name_cell_for_row()` / `get_last_login_cell_for_row()`
+  (row-scoped siblings of `get_role_cell_for_row()`), and **`submit_invite()`**
+  — clicks Invite and returns the driving POST *whatever its status*, which is
+  what lets ELITEA-2309 assert the 400. `invite_users()` is unchanged and still
+  the one-shot seeding helper.
+- `type_email_in_invite_dialog()` accepts the **raw** Emails-field text, so a
+  comma-separated multi-address string goes straight in — no new method needed
+  for ELITEA-2297.
+- `pages/admin_users_page.py` carried a **pre-existing** ruff `I001` import-sort
+  error on the wave trunk (masked from `ruff check --stdin-filename`, which does
+  not report I001 — see the qa-engineer note from the previous unit). Fixed here
+  with `ruff check --fix`. **If you need to lint a file's imports, check the
+  file on disk, never via stdin.**
+- Unit ran **green 3/3 on the first invocation** (57.31 s, `reruns.json == {}`)
+  — no flake surfaced on this surface's write path today.
+
+---
+
+## Update — settings-w09 delete flows (ELITEA-2298/2299/2300/2306), 2026-08-29
+
+Confirmed live against `http://localhost:5173` (EliteaUI `automation/testids`,
+DEV backend, project 400 "UI Testing"). Three disposable users were invited and
+all three deleted during this exploration; the table was left exactly as found
+(the same 4 rows the wave-1 update lists, orphans included).
+
+### The delete-confirmation dialog is the SHARED `Modal.DeleteEntityModal`
+`DeleteUserButton.jsx` renders it for BOTH the per-row and the header-batch
+instances, so every testid below is pre-existing and shared with other delete
+flows across the product — **no testid work is needed for any delete case on
+this surface**:
+
+| Testid | Node |
+|---|---|
+| `delete-confirm-dialog` | dialog root (`BaseModal`'s `data-testid`) |
+| `delete-confirm-title` | title — exactly `Delete confirmation` |
+| `delete-confirm-message` | body text (see the singular/plural note below) |
+| `delete-confirm-entity-name` | inline `<span>` holding the entity name |
+| `delete-confirm-button` | the red `Delete` button |
+| `delete-confirm-cancel-button` | the `Cancel` button |
+| `delete-confirm-close-button` | the × |
+
+**Message text is selection-size dependent** (`DeleteUserButton.jsx`):
+- 1 user → `Are you sure to delete the selected user <name>?` — and for an
+  invited-but-never-logged-in user the name is the **empty string**, so it
+  renders as `Are you sure to delete the selected user ?` (note the space
+  before `?`). Match on the stem, not the whole string, unless the subject's
+  name is known.
+- 2+ users → `Are you sure to delete the selected users?` — verbatim.
+
+### Per-row delete (ELITEA-2298 / 2300) — clean
+- The trash icon **only opens the dialog**: live request log shows no `DELETE`
+  until Confirm. Cancel likewise fires **nothing** — verified against the full
+  request log, not just a table read.
+- Confirm → `DELETE /api/v2/admin/users/default/400?id[]=<id>` → **204 No
+  Content** (observed `?id[]=1019`), then a users-list refetch; the row
+  disappears and stays gone across a full page reload.
+- The page keeps working afterwards — the per-row instance escapes #1974's
+  render loop only because its own row unmounts when the refetch removes it,
+  which breaks the effect's dependency cycle.
+
+### Header BATCH delete (ELITEA-2299) — TWO DEFECTS, spec is sanctioned-RED
+- `users-header-delete-button` is `disabled` with nothing selected and enabled
+  from the FIRST checked row (the digest's earlier `disabled={!selectedUsers.length}`
+  note — "two or more" is the case's framing, not the product's).
+- Confirm → ONE `DELETE …?id[]=<id1>&id[]=<id2>` → **204**; the data change is
+  correct and surgical (verified after a reload: exactly the two selected rows
+  gone, every other row intact).
+- **#1974 — the page then enters an unbounded React re-render loop.** Console
+  fills with `Warning: Maximum update depth exceeded … at DeleteUserButton.jsx:30`
+  (191 occurrences within a minute, 38 000+ console lines observed), and the
+  table renders **0 rows and never recovers**. Only a page reload settles it.
+  Root cause is structural: the success `useEffect` calls `setSelectedUsers([])`
+  while `users` sits in its own dependency array, so a fresh array identity
+  re-triggers it forever.
+- **#1975 — the success toast uses the SINGULAR branch for a multi-user
+  delete**: `The user user has been successfully deleted.` (the doubled word the
+  earlier wave recorded). Same cause — by the time the message is built `users`
+  is already `[]`, so `users.length > 1` is false and `users[0]?.name` falls back
+  to `'user'`. The plural string in the code is unreachable today.
+- ⚠️ Consequence for any spec touching the header batch delete: **no locator
+  assertion after the confirm can be trusted until a reload**, and a
+  console-error assertion is pure noise (thousands of errors from one defect).
+
+### ELITEA-2306 (admin self-deletion) — BLOCKED, do not re-derive
+- The acting account's OWN row offers an **enabled** Delete icon, identical to
+  every other row (live DOM + `UsersTable.jsx` — there is no self-row condition,
+  and `DeleteUserButton`'s `disabled` prop is never passed at the row call site).
+  A source-wide grep for any self-deletion guard string returns zero hits.
+- So the case's "the Delete icon is disabled" branch is **false**, and its other
+  branch ("an error appears when attempting self-deletion") can only be tested by
+  actually confirming a self-delete — which, if the backend does NOT guard it,
+  destroys the automation account's `admin` membership of project 400, the only
+  project it can mutate, with no agent-side recovery.
+- Parked for a human decision (product bug vs wrong case text). Full reasoning:
+  `l2_admin-cannot-delete-themselves-from-the-project_ELITEA-2306.md`.
+- Useful by-product: **Settings → Profile renders the acting identity**
+  (`Test Bot` / `testbot@elitea.ai` / User ID 659) — the way to resolve "my own
+  row" at runtime without hardcoding an identity.
+
+### AFS added by this wave
+- `l3_delete-a-user-via-per-row-delete-icon_ELITEA-2298.md`
+- `l2_batch-delete-multiple-users-using-checkboxes_ELITEA-2299.md` (sanctioned-RED, #1974)
+- `l2_cancel-deletion-keeps-the-user-intact_ELITEA-2300.md`
+- `l2_admin-cannot-delete-themselves-from-the-project_ELITEA-2306.md` (**blocked**)
+
+### Resolved/added during ELITEA-2298/2299/2300 implementation (2026-08-29)
+
+- **`AdminUsersPage` gained five additive members.** `delete_user_row()` (the
+  one-shot cleanup helper, four merged callers) is untouched; the same flow is
+  now also available split into its three moments, which is what lets a spec
+  assert "the dialog opened and nothing was deleted yet":
+  `open_delete_dialog_for_row(row)`, `open_batch_delete_dialog()`,
+  `confirm_delete()` (returns the DELETE response, one call covers any
+  selection size), `cancel_delete()` (waits for the dialog to DETACH), and
+  `reload_and_wait()` (reload + wait on the users-list GET, never on
+  `networkidle` — `#1847`). Plus `delete_confirm_dialog` / `-title` /
+  `-message` / `-cancel_button` descriptors, all pre-existing shared testids.
+- **`invite_users()` requires the dialog to be open already** — call
+  `open_invite_dialog()` first. Easy to miss: the method name suggests it does
+  the whole flow, and it silently fills nothing otherwise.
+- **The request log is the honest way to prove "nothing was deleted", and it
+  needs a positive control.** A table read cannot distinguish "nothing
+  happened" from "a delete is in flight" — a row outlives an in-flight
+  `DELETE`. All three delete-flow specs now use the shared passive collector
+  `utils.request_capture.collect_requests(page)` (registered before the first
+  click; no routing, no interception, so it is not a substitution), and each
+  pairs its `assert not delete_requests` with an assertion that the log IS
+  non-empty at the moment its flow genuinely deletes (2298/2299: confirming;
+  2300: cleanup) — otherwise an observer that was never wired makes the
+  absence claim pass vacuously. Pinned mechanically by
+  `tests/unit/test_request_capture_backs_absence_claims.py`, whose module list
+  is the contract: **a delete-flow spec that claims an absence belongs in it**
+  (the batch spec was written with a hand-rolled listener and omitted from the
+  list, and that is exactly how the shape drifted for a second review round).
+- Run: 2 of 3 specs green on the first invocation (67.71 s for all three,
+  `reruns.json == {}`); the batch-delete spec is RED by design on #1974, with a
+  byte-identical signature across two invocations.
+
+---
+
+## Update — settings-w09 row Edit-roles dialog (ELITEA-2301/2302/2303), 2026-08-29
+
+Confirmed live against `http://localhost:5173` (EliteaUI `automation/testids`,
+DEV backend, project 400 "UI Testing"). One disposable user was invited,
+role-edited twice, and deleted; the table was left exactly as found (the same 4
+rows the wave-1 update lists, orphans included).
+
+### The row Edit-roles dialog is now FULLY addressable
+`UsersTable.jsx`'s `renderActions` call site had only `dialogTestId` +
+`roleSelectTestId` wired. Added in EliteaAI/EliteaUI@65194eb1:
+
+| Testid | How |
+|---|---|
+| `users-row-edit-roles-title` | call-site only — `EditUsersButton.dialogTitleTestId` was already supported |
+| `users-row-edit-roles-save-button` | call-site only — `saveButtonTestId` already supported |
+| `users-row-edit-roles-description` | **new** `descriptionTestId` pass-through prop on `EditUserRolesDialog`, onto its existing description `Typography` |
+| `users-row-edit-roles-close-button` | **new** `closeButtonTestId` pass-through -> `BaseModal.closeButtonTestId` (already supported) |
+
+### ⭐ Multi-select value chips are now addressable PRODUCT-WIDE
+`SingleSelect`'s `renderMultipleValue` had no testid of any kind, so no test
+could read or remove a selected chip in ANY `multiple` select on this product.
+Added as a **generic** shared-component mechanism, deliberately mirroring the
+existing `select-option-${option.value}` shape in `SingleSelectMenuItem.jsx`:
+
+```
+select-value-chip-<value>          on the MUI Chip
+select-value-chip-<value>-remove   on its deleteIcon (the x)
+```
+
+This is the compliant shared-component shape (`.agents/testing.md` § Locator
+policy — generic testid, not feature-scoped), and it unlocks every other
+`multiple` select on the product (Invite-users Roles, pipeline/agent
+multi-selects) for free. **Check for it before proposing new chip plumbing.**
+
+### Dialog behaviour — live-observed, all three cases
+- Title `Edit roles`; description **`Select the roles to define user
+  permissions for this project.`** — note **"user"**. ELITEA-2301's case text
+  omits it; the product string is `EditUserRolesDialog.jsx`'s literal. Case-text
+  drift, clarification filed.
+- The dialog opens with the subject's roles already loaded as chips
+  (`originalRoles` -> `useState`), and the matching menu option carries exactly
+  one `select-option-selected-icon`. With `admin` preselected, live:
+  `select-option-admin[aria-selected=true]` (1 checkmark),
+  `editor`/`viewer` `aria-selected=false` (0).
+- **Save is disabled in TWO independent ways**: `!selectedRoles.length` (empty
+  set) **and** `!hasChangedRoles` (a sorted-JSON compare against
+  `originalRoles`). So removing the only chip leaves Save **still disabled** —
+  an empty role set can never be saved, and a dialog opened read-only is
+  non-destructive by construction.
+- The Close (×) at `users-row-edit-roles-close-button` dismisses with no request
+  and no side effect (row role re-read unchanged afterwards).
+- Roles is a `multiple` select: clicking an option does NOT close the menu;
+  Escape closes the menu only (the dialog survives — two Escapes to leave).
+
+### The row Save fires the SINGLE-user PUT, not the batch shape
+`EditUsersButton` picks `useEditUser` for the row instance and `useBatchEditUsers`
+for the header one. Live: `PUT /api/v2/admin/users/default/400` with body
+`{id, roles}` (**`id`**, not `ids`) -> **200**, then a users-list refetch, then
+toast `The user has been edited successfully` (severity `success`, 3 s
+auto-hide). The batch flow's `{"msg": "roles updated"}` body assertion is
+**not** reusable here — this response body was not asserted; only the status and
+the refetch were.
+
+### Role column renders multiple roles comma-joined
+Live: `user-column-value-roles` read `"editor, admin"` after a two-role save.
+Compare as a **set** after splitting on `,` — the backend's order is not part of
+any case's contract.
+
+### AFS added by this wave
+- `l3_edit-roles-dialog-layout-and-current-role_ELITEA-2301.md`
+- `l3_change-and-multi-assign-roles-via-row-edit-dialog_ELITEA-2302.md` —
+  **family AFS** (ELITEA-2302 + ELITEA-2303), one parameterized spec.
