@@ -124,4 +124,10 @@ None.
   UI-created record. It is transit only — the case's own observable (the renamed
   card) still comes from the product.
 - Same `beforeunload` and slow-form-mount cautions as ELITEA-2395 § Automation Hints.
-- `with allure.step("Step N — …")` per step; markers `p3`, `regression`, settings.
+- `with allure.step("Step N — …")` per step. **Markers as shipped:** `ui`,
+  `settings`, `p2`, `regression`, `new` — this folder maps l3 to `p2` (sibling
+  ELITEA-2392 / ELITEA-2397 specs), amended at implementation.
+- **Amended at implementation:** `toolkit-field-label-input` carries
+  `maxlength="32"` and truncates SILENTLY. `Autotest LLM Model Edited <suffix>`
+  needs a suffix of ≤6 characters; the shipped spec uses the last 5 digits of the
+  epoch (cost one rerun before the limit was found).

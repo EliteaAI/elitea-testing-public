@@ -136,4 +136,6 @@ None.
 - A dirty form arms a native `beforeunload` dialog on reload/`goto` — it blocks
   every subsequent call until handled. Clear the fields or register a handler.
 - Console via `utils/console_errors.collect_console_errors()` + `#1971` filter.
-- `with allure.step("Step N — …")`; markers `p3`, `regression`, settings.
+- `with allure.step("Step N — …")`. **Markers as shipped:** `ui`, `settings`,
+  `p2`, `regression`, `new` — this folder maps l3 to `p2` (sibling ELITEA-2392 /
+  ELITEA-2397 specs), amended at implementation.

@@ -199,5 +199,10 @@ None.
   bearing). Carry the `#1971` URL-keyed filter — this flow switches project scope.
   Expect the `#656` React `key` warning **only if** the test walks through the
   type-picker page; a direct `goto` to the typed create route avoids it.
-- Steps wrapped in `with allure.step("Step N — …")`. Markers: `p2`/`p3` per
-  `pytest.ini`, plus `regression` and the settings feature marker.
+- Steps wrapped in `with allure.step("Step N — …")`. **Markers as shipped:**
+  `ui`, `settings`, `p2`, `regression`, `new` — this folder maps l3 to `p2`
+  (sibling ELITEA-2392 / ELITEA-2397 specs), amended at implementation.
+- **Amended at implementation:** the two group testids in § testid needed were
+  ADDED — EliteaAI/EliteaUI@a64d3308 on `automation/testids` (not yet on `main`).
+- **Amended at implementation:** `toolkit-field-label-input` has `maxlength="32"`
+  and truncates silently — a per-run-suffixed Display Name must fit inside it.
