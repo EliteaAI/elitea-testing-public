@@ -477,6 +477,14 @@ class AIProvidersPage(BasePage):
             ("Text to Speech (TTS)", self.tts_section_header),
         ]
 
+    @property
+    def configuration_cards(self) -> Locator:
+        """Every ``ConfigurationCard`` currently rendered (all expanded
+        sections together) -- the locator form of
+        :meth:`get_configuration_card_count`, for web-first
+        ``expect(...).to_have_count(n)`` assertions."""
+        return self.page.locator(self.CONFIGURATION_CARD_SELECTOR)
+
     def get_configuration_card_count(self) -> int:
         """Return the number of ``ConfigurationCard`` elements currently in the DOM.
 
