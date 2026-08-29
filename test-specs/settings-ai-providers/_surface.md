@@ -603,3 +603,55 @@ Everything else (`card_for_model`, `card_tier_badge`, `select_tier_model`,
 `expand_section`, `configuration_cards`, `AiProviderFormPage.navigate_to_create(type)`,
 `select_saved_credential`, `save_and_return_to_list`, `delete_current_configuration`)
 already covers these flows unchanged.
+
+### Resolved/added during ELITEA-2398/2410/2399/2400/2401 implementation (2026-08-29, test-automation-engineer)
+
+Facts the implementation itself settled. No new testid was needed for any of the five
+cases; every handle below already existed.
+
+- **The automation does NOT land on project 400.** The acting user's default project is
+  **399 (`Private`)**, whose Vector Storage section is EMPTY. Confirmed from the
+  product's own `GET /configurations/models/{id}?include_shared=true&section=vectorstorage`:
+  399 → `total: 0`, 400 → `total: 1` (the seed). Both projects carry the same 12 LLMs and
+  3 shared embedding models, so a card count cannot tell them apart — only the Vector
+  Storage total can. The three vector-storage specs therefore switch to the seeded
+  project through the sidebar selector (`settings.ai_providers_seeded_project_id`,
+  default `"400"`). **The permanent seed `Autotest PGVector Seed` is intact and was
+  verified present before and after every run.**
+- **Creating a Vector Storage configuration ASSIGNS it as the section default.**
+  Measured: with `autotest_pgvector_seed` the default before the create, the combobox
+  read `autotest_pgvector_<run>` straight after, with no selection made. This is the
+  OPPOSITE of the LLMs section, where ELITEA-2395 must assign the new model explicitly,
+  and it contradicts the Axis-2 row ELITEA-2399's AFS originally carried. Consequences:
+  every spec that creates one has mutated the project default and owes a restore; and
+  ELITEA-2401's setup must put the pre-existing default back before the case's "select a
+  different one" step, or that step is a no-op. Not filed — no case asserts it either
+  way, and it is plausibly intended for a section that requires a default.
+- **`wait_for_form()` is not enough on these create routes.** It settles on
+  `toolkit-field-label-input`, which the form renders in its PRE-schema pass too, so the
+  schema-driven re-render that follows `GET /configurations/available/?section=…` can
+  wipe a value that was already typed **and asserted**. Measured on ELITEA-2399: Display
+  Name typed, read back correctly, Save observed ENABLED — and Save was still disabled
+  10 s later at the click. Wait for a field that exists only in the schema render
+  (`connection_string` for pgvector, `name` for llm/embedding):
+  `AiProviderFormPage.wait_for_schema_field()`.
+- **`[data-testid^="select-option-"]` also matches `select-option-selected-icon`** — the
+  checkmark the shared `SingleSelect` renders inside the SELECTED option. A 2-option
+  dropdown with one selected resolves to THREE elements. Any option-set count must
+  exclude it (`AIProvidersPage.SELECT_OPTION_PREFIX_SELECTOR` does).
+- **Re-selecting an already-selected option fires NO request.** A helper that waits for
+  the `POST /configurations/models/{project_id}` will hang its full timeout. Read the
+  persisted default back first and only re-select when it actually moved.
+- **`get_configuration_card_count()` is whole-page, and the page's expansion state is not
+  stable across a Save.** The LLMs accordion auto-expands only on a fresh page load, so a
+  baseline taken before a Save and a count taken after the app's own navigation back are
+  not comparable (measured 15 → 4). `AIProvidersPage.isolate_section()` (collapse every
+  section, expand one) gives a genuinely section-scoped count.
+- **`press_sequentially` can drop the first keystroke** on a freshly-mounted MUI input if
+  the click's focus is still settling: `text-embedding-3-small` arrived as
+  `ext-embedding-3-small`. `AiProviderFormPage.set_schema_field()` confirms focus first.
+  `replace_secret_value()` additionally needs a **blur** to commit — `fill_secret_field()`.
+- Teardown is proven: after every run the project read back exactly as found — Vector
+  Storage `total: 1` / default `autotest_pgvector_seed`, Embedding `total: 3` / default
+  `text-embedding-3-small`.
+

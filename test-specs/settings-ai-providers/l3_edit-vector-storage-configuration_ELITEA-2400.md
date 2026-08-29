@@ -177,3 +177,18 @@ None.
   create route (step 0) avoids the type picker's `#656` error entirely.
 - `with allure.step("Step N — …")`. **Markers:** `ui`, `settings`, `p2`, `regression`,
   `new`.
+
+### Page-object work shipped by this implementation (2026-08-29)
+
+Additive only; every existing method kept its merged callers unchanged.
+
+| Where | What | Why |
+|---|---|---|
+| `AIProvidersPage` | `embedding_models_default_selector_combobox`, `vector_storage_default_selector_combobox` | the clickable/readable `-combobox` node; the pre-existing `*_default_selector` fields target the FormControl wrapper |
+| `AIProvidersPage` | `isolate_section()` / `collapse_section()` / `all_section_headers()` | a section-scoped card count. `get_configuration_card_count()` counts the WHOLE page, and the whole-page total is NOT comparable across the app's own navigation back from a Save (LLMs auto-expands only on a fresh load — measured 15 before / 4 after) |
+| `AIProvidersPage` | `select_option()`, `open_select_options`, `close_open_dropdown()`, `SELECT_OPTION_PREFIX_SELECTOR` | inspect a dropdown's option set without selecting. ⚠️ the bare `select-option-` prefix ALSO matches the shared `SingleSelect`'s `select-option-selected-icon` checkmark — the constant excludes it |
+| `AIProvidersPage` | `navigate_and_capture_section_models_response(section)`, `project_id_from_models_response()`, `select_default_configuration()` | section-agnostic siblings of the ELITEA-2397 LLM-specific helpers; the project id is read from the product's own request URL, never hardcoded |
+| `AiProviderFormPage` | `wait_for_schema_field(field_key)` | `wait_for_form()` settles on the PRE-schema shell, so the schema-driven re-render wipes anything typed in the gap — measured: Display Name typed AND asserted, Save observed enabled, still disabled 10 s later at the click |
+| `AiProviderFormPage` | `set_schema_field()`, `fill_secret_field()` | focus-confirmed typing (`press_sequentially` could start before the click's focus settled and drop the first keystroke — `text-embedding-3-small` arrived as `ext-embedding-3-small`) and a blur after a secret field (MUI commits some schema-typed fields only on blur) |
+| `BasePage` | `ensure_project_selected()` | `switch_project()` settles on `networkidle` + a fixed 1 s pause, which is the `#1847` mechanism. This waits on the two project-scoped GETs a switch actually fires — the shape `AdminUsersPage.ensure_team_project_selected` proved live in settings-w09 |
+| `utils/ai_provider_teardown.py` | `delete_configurations_if_present()`, `restore_section_default()` | the same `finally` was about to be copied a 4th time (Hard Rule 7) |
