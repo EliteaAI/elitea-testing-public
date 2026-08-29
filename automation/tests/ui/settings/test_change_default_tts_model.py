@@ -133,9 +133,8 @@ class TestChangeDefaultTtsModel:
                 providers_page.navigate()
                 providers_page.ensure_project_selected(SEEDED_PROJECT_ID)
 
-                seed_response = providers_page.navigate_and_capture_section_models_response(SECTION_PARAM)
+                seed_response, seed_body = providers_page.navigate_and_capture_section_models_json(SECTION_PARAM)
                 assert seed_response.status == 200, f"TTS models request failed: {seed_response.status}"
-                seed_body = seed_response.json()
                 original_total = seed_body["total"]
                 assert original_total >= 1, (
                     "The TTS section holds NO configurations, so it is hidden by design and there is no "
@@ -191,9 +190,8 @@ class TestChangeDefaultTtsModel:
                 form.save_and_return_to_list()
 
             with allure.step("Step 0c (transit) — Put the pre-existing default back so step 3 is a real change"):
-                after_create = providers_page.navigate_and_capture_section_models_response(SECTION_PARAM)
+                after_create, after_body = providers_page.navigate_and_capture_section_models_json(SECTION_PARAM)
                 assert after_create.status == 200, f"TTS models request failed: {after_create.status}"
-                after_body = after_create.json()
                 assert after_body["total"] == original_total + 1, (
                     f"The transit configuration was not created: TTS total is {after_body['total']}, "
                     f"expected {original_total + 1}"
@@ -210,9 +208,8 @@ class TestChangeDefaultTtsModel:
 
             with allure.step("Step 1 — Open Settings -> AI Providers and expand the TTS section"):
                 console_errors = collect_console_errors(page)
-                response = providers_page.navigate_and_capture_section_models_response(SECTION_PARAM)
+                response, body = providers_page.navigate_and_capture_section_models_json(SECTION_PARAM)
                 assert response.status == 200, f"TTS models request failed: {response.status}"
-                body = response.json()
                 items = body["items"]
                 total = body["total"]
                 assert total >= 2, (

@@ -78,6 +78,7 @@ canon ruling #511 extension) but their selector/card testids never mount.
 import logging
 import re
 
+from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Locator, Response, expect
 
 from .base_page import BasePage
@@ -564,6 +565,47 @@ class AIProvidersPage(BasePage):
         ) as response_info:
             self.navigate()
         return response_info.value
+
+    def navigate_and_capture_section_models_json(self, section: str, attempts: int = 3) -> tuple[Response, dict]:
+        """Same capture as :meth:`navigate_and_capture_section_models_response`,
+        but returns the response TOGETHER with its parsed JSON body -- retrying
+        the whole navigate-and-capture when the browser cannot hand the body
+        over.
+
+        Why this exists (measured on ELITEA-2406, 2026-08-30, reproduced 2/2):
+        the page fires one models GET **per section**, and a spec typically
+        lands on the page once (to switch project) before navigating again to
+        capture. ``expect_response`` starts listening BEFORE that second
+        navigation, so a response belonging to the OUTGOING document can still
+        be the first match -- and once the navigation commits, Chromium prunes
+        that document's network entries, so reading the body raises
+        ``Protocol error (Network.getResponseBody): No resource with given
+        identifier found``. It hits the LAST sections in render order hardest
+        (``tts``): the earlier sections' responses have already arrived, so the
+        listener never sees them, while the tail ones are still in flight.
+
+        The retry is bounded and changes nothing about what is asserted -- the
+        body it returns is still the product's own response to the product's own
+        request. On the retry the preceding navigation has fully settled, so
+        there is no in-flight leftover to mis-match.
+        """
+        last_error: Exception | None = None
+        for attempt in range(1, attempts + 1):
+            response = self.navigate_and_capture_section_models_response(section)
+            try:
+                return response, response.json()
+            except PlaywrightError as error:  # body pruned with the superseded document
+                last_error = error
+                logger.warning(
+                    "Attempt %s/%s: the %s models response body was pruned (%s) - re-capturing",
+                    attempt,
+                    attempts,
+                    section,
+                    error,
+                )
+        raise AssertionError(
+            f"Could not read the {section} models response body in {attempts} attempts: {last_error}"
+        )
 
     def select_option(self, option_value: str) -> Locator:
         """Return the dropdown option whose value is *option_value*

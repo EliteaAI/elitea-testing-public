@@ -132,9 +132,8 @@ class TestChangeSectionDefaultModel:
                 providers_page.ensure_project_selected(SEEDED_PROJECT_ID)
                 console_errors = collect_console_errors(page)
 
-                response = providers_page.navigate_and_capture_section_models_response(section_param)
+                response, body = providers_page.navigate_and_capture_section_models_json(section_param)
                 assert response.status == 200, f"{section_label} models request failed: {response.status}"
-                body = response.json()
                 items = body["items"]
                 total = body["total"]
                 # The case's real precondition: without a SECOND configuration
