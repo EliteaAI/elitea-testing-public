@@ -85,3 +85,4 @@
 - [Sweep siblings after every review finding](sweep_siblings_after_every_review_finding.md) — a finding names one instance; the class is usually replicated
 - [best_effort in finally downgrades the success path](best_effort_in_finally_downgrades_the_success_path.md) — split except/else; finally swallows green-path restore failures
 - [Vite serves a stale module on the OneDrive path](vite_watcher_onedrive_stale_module.md) — missing testid? curl the served module, restart the dev server
+- [Absence-of-destructive-request needs log + positive control](absence_of_destructive_request_needs_log_plus_positive_control.md) — table read ≠ proof; wire a control
