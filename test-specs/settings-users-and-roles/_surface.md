@@ -579,10 +579,20 @@ this surface**:
 - **`invite_users()` requires the dialog to be open already** — call
   `open_invite_dialog()` first. Easy to miss: the method name suggests it does
   the whole flow, and it silently fills nothing otherwise.
-- **A `page.on("request", …)` DELETE counter is the honest way to prove
-  "nothing was deleted"** (ELITEA-2300). A table read cannot distinguish
-  "nothing happened" from "a delete is in flight". Passive observer only — no
-  routing, no interception, so it is not a substitution.
+- **The request log is the honest way to prove "nothing was deleted", and it
+  needs a positive control.** A table read cannot distinguish "nothing
+  happened" from "a delete is in flight" — a row outlives an in-flight
+  `DELETE`. All three delete-flow specs now use the shared passive collector
+  `utils.request_capture.collect_requests(page)` (registered before the first
+  click; no routing, no interception, so it is not a substitution), and each
+  pairs its `assert not delete_requests` with an assertion that the log IS
+  non-empty at the moment its flow genuinely deletes (2298/2299: confirming;
+  2300: cleanup) — otherwise an observer that was never wired makes the
+  absence claim pass vacuously. Pinned mechanically by
+  `tests/unit/test_request_capture_backs_absence_claims.py`, whose module list
+  is the contract: **a delete-flow spec that claims an absence belongs in it**
+  (the batch spec was written with a hand-rolled listener and omitted from the
+  list, and that is exactly how the shape drifted for a second review round).
 - Run: 2 of 3 specs green on the first invocation (67.71 s for all three,
   `reruns.json == {}`); the batch-delete spec is RED by design on #1974, with a
   byte-identical signature across two invocations.

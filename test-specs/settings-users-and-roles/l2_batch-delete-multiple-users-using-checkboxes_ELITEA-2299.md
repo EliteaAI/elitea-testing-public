@@ -54,7 +54,10 @@
      unchecked.
 4. **Verify** the header Delete icon has become **enabled**.
 5. Click the header Delete icon.
-   - **Verify**: no `DELETE` has fired yet.
+   - **Verify**: no `DELETE` has fired yet — read off the **request log**
+     (`utils.request_capture.collect_requests(page)`, registered before the
+     first click), never off the table: a row outlives an in-flight `DELETE`,
+     so a row read is satisfied by a destructive icon too.
 6. **Verify** a confirmation dialog appears:
    - `delete-confirm-dialog` visible;
    - `delete-confirm-title` reads exactly `Delete confirmation`;
@@ -64,7 +67,11 @@
 7. Confirm deletion — click `delete-confirm-button`.
    - **Verify**: the driving `DELETE …?id[]=<id1>&id[]=<id2>` resolves
      **204 No Content**;
-   - **Verify**: a success toast (`data-severity="success"`) is shown.
+   - **Verify**: a success toast (`data-severity="success"`) is shown;
+   - **Verify**: the request log holds **exactly one** `DELETE` — the positive
+     control for step 5's absence claim (an observer that was never wired
+     records nothing, so `assert not …` alone passes vacuously) and the case's
+     own "one call carries both ids" contract.
 8. **Verify only the selected users are removed, in place** —
    `expect.soft`, **Known defect: #1974**. Expected (asserted as the CORRECT
    behaviour): the table re-renders with `N` rows and neither seeded address
@@ -110,7 +117,8 @@
   would pass on a button that was always enabled.
 - **Step 5's "no DELETE yet"** — *added*: proves the header icon is
   non-destructive on its own, the same contract the per-row icon has
-  (ELITEA-2298 step 3).
+  (ELITEA-2298 step 3). Asserted against the shared request-log collector, and
+  paired with step 7's exactly-one control so the absence claim is falsifiable.
 - **Step 7's HTTP-204 assertion** — *added*: anchors "operation completes
   successfully" to the driving request, and gives the toast a deterministic
   moment to be asserted at (success toasts live 3 000 ms).
