@@ -138,5 +138,4 @@ already in the RTK-Query cache). Live-verified 2026-08-29.
   description as `Select the roles to define permissions for this project.`
   while the product renders `Select the roles to define user permissions for
   this project.` (`EditUserRolesDialog.jsx`). Product is correct; the TMS case
-  text needs updating. Filed as a `question`-labelled clarification issue (the
-  #40 pattern) — see the Run Report / findings for the issue number.
+  text needs updating. Filed as **#1977** (`question`-labelled clarification, the #40 pattern).

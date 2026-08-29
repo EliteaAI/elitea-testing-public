@@ -199,6 +199,38 @@ class AdminUsersPage(BasePage):
         "(SingleSelect auto-appends the `-combobox` suffix to `roleSelectTestId`)",
     )
 
+    # ELITEA-2301/2302/2303 — the row call site's remaining dialog testids
+    # (EliteaAI/EliteaUI@65194eb1). `dialogTitleTestId` and `saveButtonTestId`
+    # were already SUPPORTED by EditUsersButton/EditUserRolesDialog — only the
+    # HEADER batch-edit instance had them wired (ELITEA-2304), so these two are
+    # call-site-only. `descriptionTestId` and `closeButtonTestId` are new
+    # pass-through props on EditUserRolesDialog: the close one lands on
+    # BaseModal's already-supported `closeButtonTestId`, the description one on
+    # the dialog's pre-existing description `Typography`. No new DOM node, no
+    # new hook, nothing removed.
+    row_edit_roles_title = LocatorDescriptor(
+        testid="users-row-edit-roles-title",
+        description='Per-row "Edit roles" dialog title — exact text "Edit roles"',
+    )
+    row_edit_roles_description = LocatorDescriptor(
+        testid="users-row-edit-roles-description",
+        description='Per-row "Edit roles" dialog description — exact text "Select the '
+        'roles to define user permissions for this project." (note "user"; ELITEA-2301\'s '
+        "case text omits it — the product string is ground truth)",
+    )
+    row_edit_roles_close_button = LocatorDescriptor(
+        testid="users-row-edit-roles-close-button",
+        description='Per-row "Edit roles" dialog Close (x) button in the title bar — '
+        "dismisses with no request and no side effect",
+    )
+    row_edit_roles_save_button = LocatorDescriptor(
+        testid="users-row-edit-roles-save-button",
+        description='Per-row "Edit roles" dialog Save button. Disabled in TWO independent '
+        "ways: `!selectedRoles.length` (empty set) AND `!hasChangedRoles` (sorted-JSON "
+        "compare against the user's original roles) — so removing the only chip leaves it "
+        "disabled, and a read-only visit is non-destructive by construction.",
+    )
+
     # Sidebar project-selector combobox — pre-existing testid, duplicated
     # here (not cross-imported from ChatPage) per the project's page-object
     # convention (same shape as ToolkitDetailPage.SELECT_OPTION). Needed as
@@ -330,6 +362,19 @@ class AdminUsersPage(BasePage):
     # family (SingleSelectMenuItem.jsx) as ChatPage.SELECT_OPTION /
     # ToolkitDetailPage.SELECT_OPTION — reuse the pattern, don't invent a new one.
     SELECT_OPTION = '[data-testid="select-option-{}"]'
+    # Selected-value chips of a `multiple` SingleSelect — GENERIC shared-component
+    # testids added for ELITEA-2301/2302/2303 (EliteaAI/EliteaUI@65194eb1),
+    # deliberately mirroring the `select-option-{value}` family above. They work in
+    # ANY multi-select on this product, not just this dialog.
+    SELECT_VALUE_CHIP = '[data-testid="select-value-chip-{}"]'
+    SELECT_VALUE_CHIP_REMOVE = '[data-testid="select-value-chip-{}-remove"]'
+    # Every chip, excluding each chip's own remove (x) icon — the same
+    # over-counting trap `ROLE_OPTION_ANY_SELECTOR` documents for options: the
+    # remove icon's testid also matches the bare `select-value-chip-` prefix, so a
+    # naive prefix count doubles.
+    SELECT_VALUE_CHIP_ANY_SELECTOR = (
+        '[data-testid^="select-value-chip-"]:not([data-testid$="-remove"])'
+    )
     # Checkmark SingleSelect renders inside the currently-selected option — the
     # testid-only way to ask "is this project already active?" without knowing
     # the project's display name. Scoped inside an option, never page-level.
@@ -645,6 +690,121 @@ class AdminUsersPage(BasePage):
         """
         self.page.keyboard.press("Escape")
         self.row_edit_roles_dialog.wait_for(state="detached", timeout=timeout)
+
+    # --- Row Edit-roles dialog: role manipulation + save (ELITEA-2301/2302/2303) ---
+    #
+    # Additive only. `open_row_edit_roles_dialog` / `close_row_edit_roles_dialog`
+    # (ELITEA-2305) stay byte-identical — the Escape dismissal has a merged caller
+    # and remains the right shape for a read-only visit that never touches the x.
+
+    def get_selected_role_chips_locator(self):
+        """Return the Locator matching every selected-role CHIP in the
+        currently-open Roles multi-select (excluding each chip's remove icon —
+        see :attr:`SELECT_VALUE_CHIP_ANY_SELECTOR`).
+
+        The handle for an auto-retrying ``to_have_count`` / ``to_have_text``
+        assertion."""
+        return self.page.locator(self.SELECT_VALUE_CHIP_ANY_SELECTOR)
+
+    def get_selected_role_chip_values(self) -> list[str]:
+        """Return the ROLE VALUES of the rendered chips, read from their
+        testids (``select-value-chip-editor`` -> ``editor``), in DOM order.
+
+        Read from the testid rather than the chip's text because the value is
+        what the product stores and what the Role column is compared against;
+        the label happens to equal it today (``rolesOptions`` maps
+        ``{label: name, value: name}``) but the testid is the identity."""
+        prefix = "select-value-chip-"
+        values = []
+        for chip in self.get_selected_role_chips_locator().all():
+            testid = chip.get_attribute("data-testid") or ""
+            values.append(testid[len(prefix):])
+        return values
+
+    def get_role_chip(self, role: str):
+        """Return the selected-role chip Locator for *role*."""
+        return self.page.locator(self.SELECT_VALUE_CHIP.format(role))
+
+    def get_role_chip_remove_icon(self, role: str):
+        """Return the remove (x) icon Locator on *role*'s chip — the element
+        ELITEA-2302's step 3 clicks, and ELITEA-2301's step 5 asserts is
+        present."""
+        return self.page.locator(self.SELECT_VALUE_CHIP_REMOVE.format(role))
+
+    def remove_role_chip(self, role: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the x on *role*'s chip, deselecting it (ELITEA-2302 step 3).
+
+        Live-verified 2026-08-29: this only mutates the dialog's local state —
+        no request fires, the dialog stays open, and the roles menu is NOT
+        opened by the click (``onMouseDown`` is stopped on the chip)."""
+        remove_icon = self.page.locator(self.SELECT_VALUE_CHIP_REMOVE.format(role))
+        remove_icon.wait_for(state="visible", timeout=timeout)
+        remove_icon.click(timeout=timeout)
+
+    def select_role_in_row_edit_dialog(self, role: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Open the ROW Edit-roles dialog's Roles select and choose *role*.
+
+        Same shared `multiple`-select mechanics as the Invite and header
+        batch-edit dialogs — see :meth:`_select_multi_select_role_and_close`."""
+        self._select_multi_select_role_and_close(
+            self.row_edit_roles_select_combobox, role, timeout=timeout
+        )
+
+    def save_row_edit_roles(self, timeout: int = NAVIGATION_TIMEOUT) -> tuple[Response, Response]:
+        """Click Save in the ROW Edit-roles dialog and return the (PUT,
+        refetch GET) driving responses.
+
+        Distinct from :meth:`save_edit_roles` (the HEADER batch-edit dialog):
+        `EditUsersButton` picks `useEditUser` for the row instance and
+        `useBatchEditUsers` for the header one, so the row PUT carries a
+        single-user ``{id, roles}`` body where the batch one carries
+        ``{ids, roles}``. Both resolve on the same endpoint, hence the same
+        response predicate; live-captured 200 OK + a users-list refetch."""
+        with self.page.expect_response(
+            self._is_users_put_response, timeout=timeout
+        ) as put_info, self.page.expect_response(
+            self._is_users_list_response, timeout=timeout
+        ) as refetch_info:
+            self.row_edit_roles_save_button.click()
+        return put_info.value, refetch_info.value
+
+    def close_row_edit_roles_dialog_via_close_button(
+        self, timeout: int = UI_ELEMENT_TIMEOUT
+    ) -> None:
+        """Dismiss the per-row Edit-roles dialog with its Close (x) button and
+        wait for it to unmount (ELITEA-2301 step 8).
+
+        The Escape variant (:meth:`close_row_edit_roles_dialog`) is kept for
+        its merged caller; this one exercises the x itself, which is the
+        element ELITEA-2301 came to verify."""
+        self.row_edit_roles_close_button.click(timeout=timeout)
+        self.row_edit_roles_dialog.wait_for(state="detached", timeout=timeout)
+
+    def get_role_option(self, role: str):
+        """Return the role-option Locator for *role* in an open roles menu."""
+        return self.page.locator(self.SELECT_OPTION.format(role))
+
+    def get_role_option_selected_icon(self, role: str):
+        """Return the selected-checkmark Locator scoped INSIDE *role*'s option
+        — count 1 when that role is selected, 0 when it is not."""
+        return self.get_role_option(role).locator(self.SELECT_OPTION_SELECTED_ICON_SELECTOR)
+
+    def get_option_selected_icon_locator(self):
+        """Return the Locator matching every selected-option checkmark
+        currently mounted — page-level on purpose: MUI mounts one menu at a
+        time, so "how many roles are checkmarked" is answerable globally, and
+        that is exactly ELITEA-2301's "the CURRENT role is pre-selected"
+        claim (one, not several)."""
+        return self.page.locator(self.SELECT_OPTION_SELECTED_ICON_SELECTOR)
+
+    def get_row_role_set(self, row) -> set[str]:
+        """Return *row*'s assigned roles as a SET.
+
+        The Role column renders multiple roles comma-joined
+        (live: ``"editor, admin"``); the backend's ordering is not part of any
+        case's contract, so callers compare sets."""
+        raw = (self.get_role_cell_for_row(row).text_content() or "").strip()
+        return {part.strip() for part in raw.split(",") if part.strip()}
 
     def get_column_header_count(self) -> int:
         """Return the number of rendered table column-header elements
