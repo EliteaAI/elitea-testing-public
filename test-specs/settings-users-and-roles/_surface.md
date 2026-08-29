@@ -474,3 +474,92 @@ teardown shape.
   file on disk, never via stdin.**
 - Unit ran **green 3/3 on the first invocation** (57.31 s, `reruns.json == {}`)
   — no flake surfaced on this surface's write path today.
+
+---
+
+## Update — settings-w09 delete flows (ELITEA-2298/2299/2300/2306), 2026-08-29
+
+Confirmed live against `http://localhost:5173` (EliteaUI `automation/testids`,
+DEV backend, project 400 "UI Testing"). Three disposable users were invited and
+all three deleted during this exploration; the table was left exactly as found
+(the same 4 rows the wave-1 update lists, orphans included).
+
+### The delete-confirmation dialog is the SHARED `Modal.DeleteEntityModal`
+`DeleteUserButton.jsx` renders it for BOTH the per-row and the header-batch
+instances, so every testid below is pre-existing and shared with other delete
+flows across the product — **no testid work is needed for any delete case on
+this surface**:
+
+| Testid | Node |
+|---|---|
+| `delete-confirm-dialog` | dialog root (`BaseModal`'s `data-testid`) |
+| `delete-confirm-title` | title — exactly `Delete confirmation` |
+| `delete-confirm-message` | body text (see the singular/plural note below) |
+| `delete-confirm-entity-name` | inline `<span>` holding the entity name |
+| `delete-confirm-button` | the red `Delete` button |
+| `delete-confirm-cancel-button` | the `Cancel` button |
+| `delete-confirm-close-button` | the × |
+
+**Message text is selection-size dependent** (`DeleteUserButton.jsx`):
+- 1 user → `Are you sure to delete the selected user <name>?` — and for an
+  invited-but-never-logged-in user the name is the **empty string**, so it
+  renders as `Are you sure to delete the selected user ?` (note the space
+  before `?`). Match on the stem, not the whole string, unless the subject's
+  name is known.
+- 2+ users → `Are you sure to delete the selected users?` — verbatim.
+
+### Per-row delete (ELITEA-2298 / 2300) — clean
+- The trash icon **only opens the dialog**: live request log shows no `DELETE`
+  until Confirm. Cancel likewise fires **nothing** — verified against the full
+  request log, not just a table read.
+- Confirm → `DELETE /api/v2/admin/users/default/400?id[]=<id>` → **204 No
+  Content** (observed `?id[]=1019`), then a users-list refetch; the row
+  disappears and stays gone across a full page reload.
+- The page keeps working afterwards — the per-row instance escapes #1974's
+  render loop only because its own row unmounts when the refetch removes it,
+  which breaks the effect's dependency cycle.
+
+### Header BATCH delete (ELITEA-2299) — TWO DEFECTS, spec is sanctioned-RED
+- `users-header-delete-button` is `disabled` with nothing selected and enabled
+  from the FIRST checked row (the digest's earlier `disabled={!selectedUsers.length}`
+  note — "two or more" is the case's framing, not the product's).
+- Confirm → ONE `DELETE …?id[]=<id1>&id[]=<id2>` → **204**; the data change is
+  correct and surgical (verified after a reload: exactly the two selected rows
+  gone, every other row intact).
+- **#1974 — the page then enters an unbounded React re-render loop.** Console
+  fills with `Warning: Maximum update depth exceeded … at DeleteUserButton.jsx:30`
+  (191 occurrences within a minute, 38 000+ console lines observed), and the
+  table renders **0 rows and never recovers**. Only a page reload settles it.
+  Root cause is structural: the success `useEffect` calls `setSelectedUsers([])`
+  while `users` sits in its own dependency array, so a fresh array identity
+  re-triggers it forever.
+- **#1975 — the success toast uses the SINGULAR branch for a multi-user
+  delete**: `The user user has been successfully deleted.` (the doubled word the
+  earlier wave recorded). Same cause — by the time the message is built `users`
+  is already `[]`, so `users.length > 1` is false and `users[0]?.name` falls back
+  to `'user'`. The plural string in the code is unreachable today.
+- ⚠️ Consequence for any spec touching the header batch delete: **no locator
+  assertion after the confirm can be trusted until a reload**, and a
+  console-error assertion is pure noise (thousands of errors from one defect).
+
+### ELITEA-2306 (admin self-deletion) — BLOCKED, do not re-derive
+- The acting account's OWN row offers an **enabled** Delete icon, identical to
+  every other row (live DOM + `UsersTable.jsx` — there is no self-row condition,
+  and `DeleteUserButton`'s `disabled` prop is never passed at the row call site).
+  A source-wide grep for any self-deletion guard string returns zero hits.
+- So the case's "the Delete icon is disabled" branch is **false**, and its other
+  branch ("an error appears when attempting self-deletion") can only be tested by
+  actually confirming a self-delete — which, if the backend does NOT guard it,
+  destroys the automation account's `admin` membership of project 400, the only
+  project it can mutate, with no agent-side recovery.
+- Parked for a human decision (product bug vs wrong case text). Full reasoning:
+  `l2_admin-cannot-delete-themselves-from-the-project_ELITEA-2306.md`.
+- Useful by-product: **Settings → Profile renders the acting identity**
+  (`Test Bot` / `testbot@elitea.ai` / User ID 659) — the way to resolve "my own
+  row" at runtime without hardcoding an identity.
+
+### AFS added by this wave
+- `l3_delete-a-user-via-per-row-delete-icon_ELITEA-2298.md`
+- `l2_batch-delete-multiple-users-using-checkboxes_ELITEA-2299.md` (sanctioned-RED, #1974)
+- `l2_cancel-deletion-keeps-the-user-intact_ELITEA-2300.md`
+- `l2_admin-cannot-delete-themselves-from-the-project_ELITEA-2306.md` (**blocked**)
