@@ -54,6 +54,7 @@ import time
 
 import allure
 import pytest
+from config import settings
 from pages.ai_provider_form_page import AiProviderFormPage
 from pages.ai_providers_page import AIProvidersPage, project_id_from_models_response
 from playwright.sync_api import expect
@@ -74,6 +75,16 @@ UI_ELEMENT_TIMEOUT = 10_000
 #: pgvector's schema declares `has_test_connection: false`, so the Test
 #: connection button stays disabled and no connection is attempted.
 CONNECTION_STRING = "postgresql://autotest:autotest@localhost:5432/autotest"
+
+#: The project the Vector Storage cases run against. NOT a convenience: the
+#: acting user's default project ("Private", 399) has ZERO vector storages, and
+#: `isLastInSection` makes the FIRST one in a project permanently undeletable
+#: through the UI — so a spec landing there would either be unable to run or
+#: would leave permanent residue in shared state. This project carries the
+#: deliberate permanent seed the analyst established for these cases
+#: (`_surface.md`). Switching to it is a real user action through the sidebar
+#: project selector, the same one several merged chat/artifacts specs use.
+SEEDED_PROJECT_ID = settings.ai_providers_seeded_project_id
 
 CREATE_PICKER_URL_PATTERN = re.compile(r"/settings/create-ai-provider(\?|$)")
 CREATE_PGVECTOR_FORM_URL_PATTERN = re.compile(r"/settings/create-ai-provider/pgvector")
@@ -109,6 +120,8 @@ class TestCreateVectorStorageConfiguration:
 
         try:
             with allure.step("Step 1 — Open Settings -> AI Providers and guard the Vector Storage precondition"):
+                providers_page.navigate()
+                providers_page.ensure_project_selected(SEEDED_PROJECT_ID)
                 response = providers_page.navigate_and_capture_vectorstorage_response()
                 assert response.status == 200, f"Vector Storage models request failed: {response.status}"
                 project_id = project_id_from_models_response(response)
@@ -123,7 +136,7 @@ class TestCreateVectorStorageConfiguration:
 
                 expect(providers_page.page_title).to_have_text("AI Providers")
                 expect(providers_page.vector_storage_section_header).to_be_visible()
-                providers_page.expand_section(providers_page.vector_storage_section_header)
+                providers_page.isolate_section(providers_page.vector_storage_section_header)
                 initial_card_count = providers_page.get_configuration_card_count()
                 # The section's current Default, as the product renders it —
                 # captured so step 9 can prove creation did not reassign it.
@@ -169,7 +182,7 @@ class TestCreateVectorStorageConfiguration:
             with allure.step("Step 7 — Save; the app returns to the AI Providers list"):
                 form.save_and_return_to_list()
                 expect(providers_page.vector_storage_section_header).to_be_visible()
-                providers_page.expand_section(providers_page.vector_storage_section_header)
+                providers_page.isolate_section(providers_page.vector_storage_section_header)
 
             with allure.step("Step 8 — The new card is in the Vector Storage section"):
                 # Axis 2 — a CREATE, not an in-place update of an existing

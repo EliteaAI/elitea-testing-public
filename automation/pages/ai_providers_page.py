@@ -623,6 +623,58 @@ class AIProvidersPage(BasePage):
             section_header.click()
             expect(section_header).to_have_attribute("aria-expanded", "true", timeout=timeout)
 
+    def all_section_headers(self) -> list[tuple[str, Locator]]:
+        """Return the (label, header locator) pairs for ALL seven configuration
+        sections, whether or not they currently render.
+
+        Superset of :meth:`populated_section_headers` (which lists only the
+        five that are populated for the shared ``${TEST_USER}`` project and is
+        left untouched for its merged callers). Used by
+        :meth:`isolate_section`, which must not leave a section expanded just
+        because it happens to be empty on one project and populated on another.
+        """
+        return [
+            ("LLMs", self.llms_section_header),
+            ("Embedding Models", self.embedding_models_section_header),
+            ("Vector Storage", self.vector_storage_section_header),
+            ("Image Generation", self.image_generation_section_header),
+            ("Speech Recognition (ASR)", self.asr_section_header),
+            ("Text to Speech (TTS)", self.tts_section_header),
+            ("AI Credentials", self.ai_credentials_section_header),
+        ]
+
+    def collapse_section(self, section_header: Locator, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Collapse an accordion section, if it renders at all and is expanded.
+
+        Tolerant of an absent section by design: a section with zero configured
+        items renders NOTHING (``ConfigurationSection.jsx`` returns ``null``),
+        and which sections those are differs per project.
+        """
+        if section_header.count() == 0:
+            return
+        if section_header.get_attribute("aria-expanded") == "true":
+            section_header.click()
+            expect(section_header).to_have_attribute("aria-expanded", "false", timeout=timeout)
+
+    def isolate_section(self, section_header: Locator, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Collapse every section, then expand *section_header* -- so that
+        :attr:`configuration_cards` counts THIS section's cards and no others.
+
+        The card testid (``ai-provider-configuration-card``) is generic and
+        repeated per card, and cards are NOT descendants of their section's
+        header element, so there is no locator that scopes a count to one
+        section. Isolating the accordion state is the honest way to get a
+        section-scoped count -- and it is not merely tidier than a
+        whole-page count, it is *correct*: the LLMs section auto-expands only
+        on a fresh page load, so a whole-page baseline taken before a Save and
+        a whole-page count taken after the app's own navigation back are NOT
+        comparable (measured: 15 before, 4 after, ELITEA-2398 first run).
+        """
+        section_header.wait_for(state="visible", timeout=timeout)
+        for _label, header in self.all_section_headers():
+            self.collapse_section(header, timeout=timeout)
+        self.expand_section(section_header, timeout=timeout)
+
     def configuration_group(self, group_label: str) -> Locator:
         """Return the provider-group container whose label EXACTLY matches
         *group_label* (``"OpenAI"`` / ``"Anthropic"`` / ``"Other Providers"``

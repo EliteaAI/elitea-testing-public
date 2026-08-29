@@ -108,7 +108,7 @@ class TestCreateEmbeddingModelConfiguration:
 
                 expect(providers_page.page_title).to_have_text("AI Providers")
                 expect(providers_page.embedding_models_section_header).to_be_visible()
-                providers_page.expand_section(providers_page.embedding_models_section_header)
+                providers_page.isolate_section(providers_page.embedding_models_section_header)
                 initial_card_count = providers_page.get_configuration_card_count()
                 # The section's current Default, as the product renders it —
                 # captured so step 9 can prove creation did not reassign it.
@@ -154,7 +154,7 @@ class TestCreateEmbeddingModelConfiguration:
             with allure.step("Step 7 — Save; the app returns to the AI Providers list"):
                 form.save_and_return_to_list()
                 expect(providers_page.embedding_models_section_header).to_be_visible()
-                providers_page.expand_section(providers_page.embedding_models_section_header)
+                providers_page.isolate_section(providers_page.embedding_models_section_header)
 
             with allure.step("Step 8 — The new card is in the Embedding Models section"):
                 # Axis 2 — a CREATE, not a silent overwrite of the same-named

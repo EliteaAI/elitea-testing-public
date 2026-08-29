@@ -40,6 +40,7 @@ import time
 
 import allure
 import pytest
+from config import settings
 from pages.ai_provider_form_page import AiProviderFormPage
 from pages.ai_providers_page import AIProvidersPage
 from playwright.sync_api import expect
@@ -57,6 +58,16 @@ pytestmark = [pytest.mark.ui, pytest.mark.settings, pytest.mark.p2, pytest.mark.
 UI_ELEMENT_TIMEOUT = 10_000
 
 CONNECTION_STRING = "postgresql://autotest:autotest@localhost:5432/autotest"
+
+#: The project the Vector Storage cases run against. NOT a convenience: the
+#: acting user's default project ("Private", 399) has ZERO vector storages, and
+#: `isLastInSection` makes the FIRST one in a project permanently undeletable
+#: through the UI — so a spec landing there would either be unable to run or
+#: would leave permanent residue in shared state. This project carries the
+#: deliberate permanent seed the analyst established for these cases
+#: (`_surface.md`). Switching to it is a real user action through the sidebar
+#: project selector, the same one several merged chat/artifacts specs use.
+SEEDED_PROJECT_ID = settings.ai_providers_seeded_project_id
 
 EDIT_URL_PATTERN = re.compile(r"/settings/edit-ai-provider/\d+")
 
@@ -95,6 +106,8 @@ class TestEditVectorStorageConfiguration:
 
         try:
             with allure.step(f"Step 0 (transit) — Create the configuration {seed_display_name!r} through the UI"):
+                providers_page.navigate()
+                providers_page.ensure_project_selected(SEEDED_PROJECT_ID)
                 response = providers_page.navigate_and_capture_vectorstorage_response()
                 assert response.status == 200, f"Vector Storage models request failed: {response.status}"
                 existing_total = response.json()["total"]
@@ -105,7 +118,7 @@ class TestEditVectorStorageConfiguration:
                     "#1988 § 4)."
                 )
                 expect(providers_page.vector_storage_section_header).to_be_visible()
-                providers_page.expand_section(providers_page.vector_storage_section_header)
+                providers_page.isolate_section(providers_page.vector_storage_section_header)
                 initial_card_count = providers_page.get_configuration_card_count()
 
                 # A direct route to the create form (transit): it skips the type
@@ -115,7 +128,7 @@ class TestEditVectorStorageConfiguration:
                 form.set_display_name(seed_display_name)
                 form.replace_secret_value("connection_string", CONNECTION_STRING)
                 form.save_and_return_to_list()
-                providers_page.expand_section(providers_page.vector_storage_section_header)
+                providers_page.isolate_section(providers_page.vector_storage_section_header)
                 expect(providers_page.card_for_model(seed_display_name)).to_have_count(1)
                 seeded_card_count = providers_page.get_configuration_card_count()
                 assert seeded_card_count == initial_card_count + 1, (
@@ -172,7 +185,7 @@ class TestEditVectorStorageConfiguration:
             with allure.step("Step 5 — Click Save; the app returns to the AI Providers list"):
                 form.save_and_return_to_list()
                 expect(providers_page.vector_storage_section_header).to_be_visible()
-                providers_page.expand_section(providers_page.vector_storage_section_header)
+                providers_page.isolate_section(providers_page.vector_storage_section_header)
 
             with allure.step("Step 6 — The Vector Storage section reflects the updated Display Name in place"):
                 expect(providers_page.card_for_model(edited_display_name)).to_have_count(1)

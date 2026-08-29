@@ -62,6 +62,7 @@ import time
 
 import allure
 import pytest
+from config import settings
 from pages.ai_provider_form_page import AiProviderFormPage
 from pages.ai_providers_page import AIProvidersPage
 from playwright.sync_api import expect
@@ -79,6 +80,16 @@ pytestmark = [pytest.mark.ui, pytest.mark.settings, pytest.mark.p2, pytest.mark.
 UI_ELEMENT_TIMEOUT = 10_000
 
 CONNECTION_STRING = "postgresql://autotest:autotest@localhost:5432/autotest"
+
+#: The project the Vector Storage cases run against. NOT a convenience: the
+#: acting user's default project ("Private", 399) has ZERO vector storages, and
+#: `isLastInSection` makes the FIRST one in a project permanently undeletable
+#: through the UI — so a spec landing there would either be unable to run or
+#: would leave permanent residue in shared state. This project carries the
+#: deliberate permanent seed the analyst established for these cases
+#: (`_surface.md`). Switching to it is a real user action through the sidebar
+#: project selector, the same one several merged chat/artifacts specs use.
+SEEDED_PROJECT_ID = settings.ai_providers_seeded_project_id
 
 
 def _slug(display_name: str) -> str:
@@ -123,6 +134,8 @@ class TestSetVectorStorageAsDefault:
 
         try:
             with allure.step(f"Step 0 (transit) — Ensure a second configuration {transit_display_name!r} exists"):
+                providers_page.navigate()
+                providers_page.ensure_project_selected(SEEDED_PROJECT_ID)
                 response = providers_page.navigate_and_capture_vectorstorage_response()
                 assert response.status == 200, f"Vector Storage models request failed: {response.status}"
                 assert response.json()["total"] >= 1, (
@@ -168,7 +181,7 @@ class TestSetVectorStorageAsDefault:
                     "to select a different one"
                 )
 
-                providers_page.expand_section(providers_page.vector_storage_section_header)
+                providers_page.isolate_section(providers_page.vector_storage_section_header)
                 console_errors = collect_console_errors(page)
                 # The label is the elitea_title in this section, not a display
                 # name (#1988 § 3) — asserted as the live contract.
@@ -221,7 +234,7 @@ class TestSetVectorStorageAsDefault:
                 )
 
             with allure.step("Step 5 — The selected configuration's card gains a 'Default' badge"):
-                providers_page.expand_section(providers_page.vector_storage_section_header)
+                providers_page.isolate_section(providers_page.vector_storage_section_header)
                 # Known defect: #1987 — no Vector Storage card ever renders the
                 # badge (configKey falls back to the label while the selector
                 # keys by elitea_title). Asserted as the CORRECT expected
@@ -250,7 +263,7 @@ class TestSetVectorStorageAsDefault:
             if default_changed and original_default_value:
                 try:
                     providers_page.navigate()
-                    providers_page.expand_section(providers_page.vector_storage_section_header)
+                    providers_page.isolate_section(providers_page.vector_storage_section_header)
                     providers_page.select_default_configuration(
                         providers_page.vector_storage_default_selector_combobox, original_default_value
                     )

@@ -172,7 +172,7 @@ class TestCreateEmbeddingModelRequiredFieldValidation:
             with allure.step("Step 1 — Settings -> AI Providers -> '+' -> Embedding model (fresh form)"):
                 providers_page.navigate()
                 expect(providers_page.embedding_models_section_header).to_be_visible()
-                providers_page.expand_section(providers_page.embedding_models_section_header)
+                providers_page.isolate_section(providers_page.embedding_models_section_header)
                 initial_card_count = providers_page.get_configuration_card_count()
                 logger.info("Card count before the attempted create: %s", initial_card_count)
 
@@ -212,7 +212,7 @@ class TestCreateEmbeddingModelRequiredFieldValidation:
                 providers_page.embedding_models_section_header.wait_for(
                     state="visible", timeout=UI_ELEMENT_TIMEOUT
                 )
-                providers_page.expand_section(providers_page.embedding_models_section_header)
+                providers_page.isolate_section(providers_page.embedding_models_section_header)
                 # Known defect: #1984 — the count currently grows by one.
                 expect.soft(providers_page.configuration_cards).to_have_count(initial_card_count)
 

@@ -17,10 +17,11 @@ Report).
 
 Two behaviours are load-bearing and easy to get wrong:
 
-* **The section must be EXPANDED before the card exists.** Accordion content
-  unmounts on collapse (``AIProviderAccordion.jsx``), and only the LLMs section
-  auto-expands -- so an Embedding Models / Vector Storage card is simply not in
-  the DOM until its section is opened.
+* **The section must be ISOLATED before the card is counted.** Accordion content
+  unmounts on collapse (``AIProviderAccordion.jsx``), so a card is not in the DOM
+  until its section is opened -- and the card testid is generic, so a whole-page
+  count depends on which OTHER sections happen to be open.
+  ``AIProvidersPage.isolate_section`` settles both.
 * **Teardown must never mask the test's own failure.** Every exception is
   logged and swallowed, and the function returns ``None`` so the caller can
   tell "cleanup could not run" apart from "cleanup ran and the count is N".
@@ -55,9 +56,10 @@ def delete_configurations_if_present(
             left either name live.
 
     Returns:
-        The number of configuration cards rendered afterwards (with
-        *section_header* expanded, so it is comparable with a baseline captured
-        the same way), or ``None`` if teardown could not run at all.
+        The number of configuration cards in *section_header*'s own section
+        afterwards (the section is ISOLATED first, so the count is scoped to it
+        and comparable with a baseline captured the same way), or ``None`` if
+        teardown could not run at all.
 
     Tolerant of every candidate being absent -- which is exactly what a fixed
     #1984 produces for ``test_embedding_model_required_field_validation.py``.
@@ -65,7 +67,7 @@ def delete_configurations_if_present(
     try:
         providers_page.navigate()
         section_header.wait_for(state="visible", timeout=timeout)
-        providers_page.expand_section(section_header)
+        providers_page.isolate_section(section_header)
 
         for name in dict.fromkeys(candidate_names):
             if providers_page.card_for_model(name).count() == 0:
@@ -76,7 +78,7 @@ def delete_configurations_if_present(
             form.delete_current_configuration(name)
             providers_page.navigate()
             section_header.wait_for(state="visible", timeout=timeout)
-            providers_page.expand_section(section_header)
+            providers_page.isolate_section(section_header)
             expect(providers_page.card_for_model(name)).to_have_count(0)
             logger.info("Teardown: deleted the configuration %r", name)
 
