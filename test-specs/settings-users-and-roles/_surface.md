@@ -385,3 +385,71 @@ project-id race, so a project-id-less `GET .../elitea_core/toolkits/prompt_lib/`
 exact URL via `utils.console_errors.exclude_known_defect_urls` with a
 `# Known defect: #1971` comment — URL-keyed, never status-code-keyed. Any new
 spec on this surface will hit it too.
+
+---
+
+## Update — settings-w09 invite write-flows (ELITEA-2296/2297/2309), 2026-08-29
+
+Confirmed live against `http://localhost:5173` (EliteaUI `automation/testids`,
+DEV backend, project 400 "UI Testing"). Six disposable users were invited and
+deleted during this exploration; the table was left exactly as found (the same
+4 rows the wave-1 update lists).
+
+### The invite SUBMIT path — three outcomes, all live-observed
+
+| Flow | POST `…/admin/users/default/400` | Toast severity | `toast-message` text | Table delta |
+|---|---|---|---|---|
+| 1 email | **200 OK** | `success` | `The user has been invited` | +1 row |
+| 2 comma-separated emails | **200 OK** (ONE call, not one per address) | `success` | `The users have been invited` | +2 rows |
+| email already a member | **400 Bad Request** | `error` | `user <email> already exists in project 400` | **+0 rows** |
+
+- Singular/plural is `Users.jsx:181` — `emailCount > 1 ? 'The users have been
+  invited' : 'The user has been invited'`. Both observed, not inferred.
+- The duplicate-invite error text embeds the **project id**, so a test must
+  build it from `settings.users_team_project_id`, never a literal `400`.
+- **The dialog closes on the 400 too** — a failed invite discards the typed
+  input. Not a filed defect (no case asserts it); recorded so nobody re-derives
+  it.
+- An invited row appears immediately with Name = **empty string**, Last login =
+  literal `-`, and the selected role — reconfirming the wave-1 note, now on the
+  invite path specifically.
+
+### ⚠️ The success toast auto-hides after 3 s — assert it FIRST
+
+`TOAST_DURATION_DEFAULTS` (`src/common/constants.js:345`): `success`/`info`
+**3000 ms**, `warning` 7000, `error` **10000**. This is short enough that
+**three consecutive Playwright-MCP round-trips all missed the success toast
+entirely** during this exploration (each click→evaluate pair costs >3 s), which
+reads exactly like "the product shows no confirmation". It does. Capturing it
+needed a DOM `MutationObserver` recording `toast-alert` appearances:
+
+```js
+window.__toastLog = [];
+new MutationObserver(() => document.querySelectorAll('[data-testid="toast-alert"]')
+  .forEach(a => window.__toastLog.push({severity: a.getAttribute('data-severity'),
+    msg: a.querySelector('[data-testid="toast-message"]')?.innerText})))
+  .observe(document.body, {childList: true, subtree: true, characterData: true});
+```
+
+**Reusable technique for ANY short-lived toast on this product when driving the
+UI through MCP.** In a pytest spec the same fact means: assert the toast in the
+step right after the driving response resolves, before any table read.
+
+Toast handles are all pre-existing and shared (`src/components/Toast.jsx`):
+`toast-alert` (+ `data-severity`), `toast-message`, `toast-dismiss-button`.
+**No testid work is needed for any invite-confirmation case.**
+
+### Batch delete works for multi-row cleanup, with a caveat
+Selecting N row checkboxes → header `users-header-delete-button` →
+`delete-confirm-button` deletes all N in one confirm (toast:
+`The user user has been successfully deleted.` — sic, doubled word). During the
+post-delete refetch the table transiently renders **0 rows** and the console
+fills with errors from the cancelled in-flight queries; a plain reload settles
+it. Specs should prefer the per-row `delete_user_row()` teardown ELITEA-2304
+established — this is a note about manual exploration, not a recommended
+teardown shape.
+
+### AFS added by this wave
+- `l3_invite-users-single-and-multiple_ELITEA-2296.md` — **family AFS**
+  (ELITEA-2296 + ELITEA-2297), one parameterized spec, a row per case.
+- `l3_invite-existing-project-member-shows-error_ELITEA-2309.md`.
