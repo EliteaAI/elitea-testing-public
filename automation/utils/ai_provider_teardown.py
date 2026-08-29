@@ -157,11 +157,11 @@ def restore_section_default_if_moved(
     """
     original_name = option_value.split("<<>>")[0]
     try:
-        response = providers_page.navigate_and_capture_section_models_response(section)
+        response, body = providers_page.navigate_and_capture_section_models_json(section)
         if response.status != 200:
             logger.error("Teardown: %s models request failed: %s", section, response.status)
             return None
-        persisted = response.json().get("default_model_name")
+        persisted = body.get("default_model_name")
         if persisted == original_name:
             logger.info("Teardown: the %s default never moved (still %r) - nothing to restore", section, persisted)
             return persisted
@@ -170,11 +170,11 @@ def restore_section_default_if_moved(
         providers_page.isolate_section(section_header)
         providers_page.select_default_configuration(combobox, option_value, timeout=timeout)
 
-        verification = providers_page.navigate_and_capture_section_models_response(section)
+        verification, verification_body = providers_page.navigate_and_capture_section_models_json(section)
         if verification.status != 200:
             logger.error("Teardown: %s verification request failed: %s", section, verification.status)
             return None
-        return verification.json().get("default_model_name")
+        return verification_body.get("default_model_name")
     except Exception:  # noqa: BLE001 - teardown must never mask the test's own failure
         logger.exception("Teardown FAILED to restore the %s default to %r", section, option_value)
         return None
