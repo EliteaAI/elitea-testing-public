@@ -515,6 +515,27 @@ class AIProvidersPage(BasePage):
             self.navigate()
         return response_info.value
 
+    def reload_and_capture_llm_response(self) -> Response:
+        """Reload the CURRENT document while capturing the ``section=llm``
+        models GET (ELITEA-2412/2413/2414).
+
+        Mirror of :meth:`navigate_and_capture_llm_response`, but a real
+        ``page.reload()`` rather than a fresh ``goto`` -- the reload-persistence
+        cases ask for a cold re-boot of the app, and only a reload re-runs the
+        boot path that re-derives every section from the server.
+
+        Deliberately NOT :meth:`~pages.base_page.BasePage.reload_and_wait`:
+        that reloads with ``wait_until="networkidle"`` and then waits on
+        ``networkidle`` a second time, against an app that holds a persistent
+        ``/socket.io/`` polling transport open -- the structural race tracked as
+        #1847 (`.agents/testing.md`). Waiting on the product's own ``section=llm``
+        response is #1847's own prescribed fix, and that response is already this
+        surface's oracle.
+        """
+        with self.page.expect_response(_is_llm_models_response, timeout=NAVIGATION_TIMEOUT) as response_info:
+            self.page.reload()
+        return response_info.value
+
     def select_tier_model(self, combobox: Locator, option_value: str, timeout: int = UI_ELEMENT_TIMEOUT) -> Response:
         """Open a tier's combobox, select the option matching *option_value*
         (``"{name}<<>>{project_id}"``), and return the raw ``Response`` for the
