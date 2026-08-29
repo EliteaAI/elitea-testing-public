@@ -840,3 +840,65 @@ ELITEA-2403/2405, which do not create, DO start collapsed.
 Make the create form's model **`Name`** unique per run (`tts-1-probe-<suffix>`), not just
 the Display Name. The dropdown option testid is keyed on `Name`, so residue from a failed
 run plus a fresh configuration would make the option locator ambiguous.
+
+## Reload persistence — confirmed for create / edit / Default tier (ELITEA-2412/2413/2414, 2026-08-30)
+Live on project **400 "UI Testing"** (`settings.ai_providers_seeded_project_id`),
+one cluster session. All three survived a real `page.reload()`:
+- **Create** — a new LLM model's card is still present, still in the
+  `Other Providers` group, still `OK • Local`, section count unchanged.
+- **Edit** — the renamed card is present under the NEW name only; the old name
+  is genuinely gone (count 0) and the total count is unchanged (rename in
+  place, no orphan/duplicate).
+- **Default tier** — the Default selector still reads the model chosen before
+  the reload, its card keeps the `Default` badge, and High-tier/Low-tier are
+  untouched. Worth knowing: this control has **no Save button**, so a cold
+  re-read is the ONLY evidence the POST persisted — an in-session assertion
+  cannot tell "persisted" from "optimistically rendered".
+
+### How to reload on this surface (do NOT use `BasePage.reload_and_wait()`)
+`reload_and_wait()` reloads with `wait_until="networkidle"` and then calls
+`wait_for_network()` — TWO networkidle waits against an app holding a
+persistent `/socket.io/` poll open. That is exactly the **#1847** structural
+race. The prescribed shape is a mirror of the existing
+`navigate_and_capture_llm_response()`:
+
+```python
+def reload_and_capture_llm_response(self) -> Response:
+    with self.page.expect_response(_is_llm_models_response, timeout=NAVIGATION_TIMEOUT) as info:
+        self.page.reload()
+    return info.value
+```
+
+### Quirk — the LLMs accordion is NOT reliably expanded on arrival
+The session's first load of `/settings/ai-providers` arrived with **LLMs
+collapsed and TTS expanded** (leftover `expandSection` route state from an
+earlier session); every subsequent clean `page.reload()` auto-expanded LLMs as
+documented. Since accordion content **unmounts on collapse**, a collapsed LLMs
+section reads as "the card is missing". Always assert
+`aria-expanded="true"` on `ai-providers-section-llms` before counting cards or
+reading the tier selectors.
+
+### A model can hold TWO tiers at once
+Live: `GPT-5.6 Luna` was simultaneously **Default** and **Low-tier**. So after
+moving the Default away, that model's card still carries a `Low-Tier` badge —
+"the previous Default's card has no badges" is a WRONG assertion. Assert the
+absence of the **`Default`** badge specifically (`card_tier_badge(label, "Default")`).
+
+### Card status text distinguishes local from shared
+A model configured IN the active project reads **`OK • Local`**; models shared
+from project `1` read `OK • Shared`. Assert the `OK •` prefix, not the full
+string. Option values follow suit: `gpt-4o<<>>400` (project-local) vs
+`gpt-5.4<<>>1` (shared).
+
+### Live data observed 2026-08-30 (project 400)
+12 LLM cards. Default `GPT-5.6 Luna`, High-tier `Bedrock-GPT-5.6-Terra`,
+Low-tier `GPT-5.6 Luna`. Groups rendered: `OpenAI`, `Anthropic` (+ `Other
+Providers` once a project-local model exists). One saved AI credential:
+`elps` / **ELPS**. The Default dropdown still offers **no blank/"None" option**
+— re-confirmed; a tier that starts unset still cannot be restored via the UI.
+
+### Delete-confirm testid sits on the wrapper, not the input
+`[data-testid="delete-confirm-name-input"]` is the MUI `FormControl` **div** —
+filling it directly errors with *"Element is not an `<input>`…"*. Target the
+inner field (`… delete-confirm-name-input input`); the merged page object
+already does.
