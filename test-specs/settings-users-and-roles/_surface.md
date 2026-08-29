@@ -453,3 +453,24 @@ teardown shape.
 - `l3_invite-users-single-and-multiple_ELITEA-2296.md` — **family AFS**
   (ELITEA-2296 + ELITEA-2297), one parameterized spec, a row per case.
 - `l3_invite-existing-project-member-shows-error_ELITEA-2309.md`.
+
+### Resolved/added during ELITEA-2296/2297/2309 implementation (2026-08-29)
+
+- **`AdminUsersPage` gained four additive members** for the invite write-flows:
+  `toast_alert` / `toast_message` + `TOAST_ALERT_SEVERITY` +
+  `get_toast_by_severity()` (all pre-existing product-wide `Toast.jsx` testids,
+  no UI change), `get_name_cell_for_row()` / `get_last_login_cell_for_row()`
+  (row-scoped siblings of `get_role_cell_for_row()`), and **`submit_invite()`**
+  — clicks Invite and returns the driving POST *whatever its status*, which is
+  what lets ELITEA-2309 assert the 400. `invite_users()` is unchanged and still
+  the one-shot seeding helper.
+- `type_email_in_invite_dialog()` accepts the **raw** Emails-field text, so a
+  comma-separated multi-address string goes straight in — no new method needed
+  for ELITEA-2297.
+- `pages/admin_users_page.py` carried a **pre-existing** ruff `I001` import-sort
+  error on the wave trunk (masked from `ruff check --stdin-filename`, which does
+  not report I001 — see the qa-engineer note from the previous unit). Fixed here
+  with `ruff check --fix`. **If you need to lint a file's imports, check the
+  file on disk, never via stdin.**
+- Unit ran **green 3/3 on the first invocation** (57.31 s, `reruns.json == {}`)
+  — no flake surfaced on this surface's write path today.

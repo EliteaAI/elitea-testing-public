@@ -156,3 +156,11 @@ None.
 - Build the expected message from `settings.users_team_project_id`; a hardcoded
   `400` would silently rot if the env key changes.
 - Do NOT assert an absolute row count — capture and compare.
+
+### Implementation notes (2026-08-29)
+
+- Ran green first invocation alongside the ELITEA-2296/2297 family spec
+  (3 passed in 57.31 s, `reruns.json == {}`).
+- Page object: the seed step reuses `invite_users([email], "viewer")`
+  unchanged; the duplicate submit uses the new additive `submit_invite()`,
+  which returns the POST regardless of status (400 here).
