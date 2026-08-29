@@ -381,6 +381,43 @@ merge it back-writes `execution_type: automated` to the TMS, so the coverage num
 claims a scenario nobody verified. Both failure modes are silent; neither shows up
 as a red test.
 
+## Teardown-guard ordering on write-heavy specs (AUTHORITATIVE — added 2026-08-30)
+
+_Origin: settings-w10 review, `test_vector_storage_edit.py`. The bug PASSED every run — this
+section exists because the merge gate structurally cannot catch it._
+
+On a spec that mutates shared state (create / edit / delete / set-default), the failure mode
+that costs you is **not** a red. It is a spec that goes GREEN and leaves the environment
+altered for everything after it. `N`x-green (§ Merge gate) proves nothing here: a
+green-but-damaging spec is exactly what it produces.
+
+**The rule — a teardown guard flag is set IMMEDIATELY BEFORE the mutation it guards, never
+after.** The window between "the mutation happened" and "the flag says it happened" is a
+window in which any failure skips the restore while the damage is already done.
+
+```python
+# WRONG — a flake between the save and the flag skips the default-restore,
+# while the configuration the default pointed at is already gone
+page.save_configuration()
+...                              # anything at all can fail here
+self.default_changed = True
+
+# RIGHT — the flag can only be wrong in the safe direction (restore runs needlessly)
+self.default_changed = True
+page.save_configuration()
+```
+
+Set the flag on the pessimistic side: an unnecessary restore is cheap, a skipped one is not.
+
+**Teardown restores org/project-level defaults — it does not merely delete what the test
+created.** Deleting a configuration that a default still points at leaves the project in a
+state no later spec expects, and the deleting spec still reports green.
+
+**Analyst + implementer + reviewer all owe this check on any write-heavy case.** The reviewer's
+question is mechanical: *for each statement in this spec, if it raised right here, what is left
+behind?* A spec whose answer is "a moved default" or "a deleted object something else points
+at" is `CHANGES_REQUESTED` regardless of its result.
+
 ## Test data strategy
 
 - Config/env via `automation/config.py` (pydantic-settings): `.env.test` file BEATS
