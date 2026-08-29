@@ -148,16 +148,16 @@ def test_ai_credential_test_connection_error_then_success(page):
     with allure.step(f"Step 3 — Fill Display Name, Api Base and the INVALID Api Key {INVALID_API_KEY!r}"):
         expect(form.save_button).to_be_disabled()
 
-        form.set_display_name(display_name)
-        # Read-back guard: `fill()`-style writes into these MUI controlled
-        # inputs can reach the backend EMPTY while the DOM looks right
-        # (`_surface.md` § Typing into these forms).
-        expect(form.display_name_input).to_have_value(display_name)
+        # Verified writes (type + read back, re-typing what the form's own
+        # schema re-render discards): a `fill()`-style write into these MUI
+        # controlled inputs can reach the backend EMPTY while the DOM looks
+        # right (`_surface.md` § Typing into these forms). The final read-back
+        # is asserted, so a field that genuinely refuses the value still fails.
+        form.set_display_name_verified(display_name)
         # The ID mirrors the Display Name (ELITEA-2409's subject).
         expect(form.id_input).to_have_value(display_name)
 
-        form.set_schema_field(BASE_FIELD_KEY, API_BASE)
-        expect(form.field(BASE_FIELD_KEY)).to_have_value(API_BASE)
+        form.set_schema_field_verified(BASE_FIELD_KEY, API_BASE)
 
         form.fill_secret_field(SECRET_FIELD_KEY, INVALID_API_KEY)
         expect(form.secret_native_input(SECRET_FIELD_KEY)).to_have_value(INVALID_API_KEY)
