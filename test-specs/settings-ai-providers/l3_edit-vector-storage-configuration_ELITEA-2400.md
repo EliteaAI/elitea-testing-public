@@ -126,6 +126,13 @@ in a variable that step 4 updates, and make the teardown tolerant of either.
 
 ⚠️ Deletion only succeeds while another vector storage exists (§ Preconditions).
 
+⚠️ **The `default_changed` guard is raised on the line immediately after the transit
+create**, before any assertion about it. Anything in between is a path on which a flake
+skips `restore_section_default(...)` while the `finally` still deletes the configuration
+that is now the default — leaving the shared seeded project with NO default, which makes
+the sibling specs (ELITEA-2399/2401) refuse to run. Pinned by
+`tests/unit/test_default_changed_guard_is_set_at_the_mutation.py` (PR #1989 review).
+
 ⚠️ Assert the console-error axis **before** teardown (post-delete 404 refetch).
 
 ## Concrete Handles (discovered live; **testid-only**)

@@ -146,15 +146,19 @@ class TestEditVectorStorageConfiguration:
                 form.set_display_name(seed_display_name)
                 form.fill_secret_field("connection_string", CONNECTION_STRING)
                 form.save_and_return_to_list()
+                # Set on the line IMMEDIATELY after the mutating call, before any
+                # assertion: creating it made it the section default (live
+                # contract), so from this point on the `finally` owes the restore.
+                # Anything between the two would be a window in which a flake
+                # skips the restore while the `finally` still deletes the
+                # configuration — leaving the shared project with no default.
+                default_changed = True
                 providers_page.isolate_section(providers_page.vector_storage_section_header)
                 expect(providers_page.card_for_model(seed_display_name)).to_have_count(1)
                 seeded_card_count = providers_page.get_configuration_card_count()
                 assert seeded_card_count == initial_card_count + 1, (
                     f"Transit did not add exactly one card: {seeded_card_count} vs {initial_card_count}"
                 )
-                # Creating it made it the section default (live contract) — the
-                # `finally` puts the original back.
-                default_changed = True
 
             with allure.step("Step 1 — The Vector Storage section is rendered and holds the card"):
                 expect(providers_page.vector_storage_section_header).to_have_attribute("aria-expanded", "true")
