@@ -417,3 +417,189 @@ update-in-place / required-field gating / client-side derivation), not only in d
 - Specs landed: `automation/tests/ui/settings/test_llm_model_create.py` (2395),
   `test_llm_model_edit.py` (2396), `test_llm_model_required_field_validation.py`
   (2408, sanctioned-RED on #1984), `test_llm_model_id_autopopulated.py` (2409).
+
+## The Embedding-Model and Vector-Storage (PgVector) CRUD flows (ELITEA-2398/2399/2400/2401/2410/2411, 2026-08-29)
+
+Confirmed live by the qa-engineer analyst, batch `settings-w10`, cluster of six cases,
+project `UI Testing` (400), `EliteaAI/EliteaUI` @ `automation/testids` `a64d3308`.
+Every handle below was exercised in that session. Complements the LLM-model section
+above — the three provider types share ONE schema-driven form and differ only in fields.
+
+### Create forms — the per-type field inventory
+
+Route: `/settings/create-ai-provider/{type}?viewMode=owner&from=ai-providers`, reached
+by `sidebar-create-button` → `toolkit-type-card-{type}`, or by a direct `goto` (which
+skips the type-picker page and therefore its `#656` React `key` console error).
+
+| Field | `llm_model` | `embedding_model` | `pgvector` |
+|---|---|---|---|
+| `toolkit-field-label-input` (Display Name *) | ✓ | ✓ | ✓ |
+| `toolkit-field-elitea_title-input` (ID *, always `disabled`) | ✓ | ✓ | ✓ |
+| `toolkit-field-name-input` (Name *) | ✓ | ✓ | — |
+| `toolkit-field-context_window-input` / `-max_output_tokens-input` | ✓ | — | — |
+| `toolkit-field-connection_string-input` (secret) | — | — | ✓ |
+| `toolkit-credential-select--combobox` (Ai Credentials *) | ✓ | ✓ | **—** |
+| `credential-form-{save,discard,test-connection}-button` | ✓ | ✓ | ✓ (test-connection permanently `disabled`: `has_test_connection: false`) |
+
+**Which fields actually gate Save** (live-verified, not inferred):
+
+| Type | Save is enabled when… |
+|---|---|
+| `llm_model` / `embedding_model` | Display Name **and** an Ai Credential are set. **`name` does NOT gate Save** — #1984, and it is *not* LLM-specific (reproduced identically on `embedding_model` this session; recorded as a comment on #1984, not a duplicate ticket) |
+| `pgvector` | **Display Name alone.** `connection_string` does not gate Save — and correctly so: the schema declares it optional (below) |
+
+### The secret field — `toolkit-field-connection_string-input` is a DIV
+
+`SecretField.jsx` puts the caller's testid on the MUI **TextField root**, and derives
+the handles automation actually needs (`SecretField.jsx:77,88,342`):
+
+| Handle | Element | Provenance |
+|---|---|---|
+| `toolkit-field-connection_string-input` | outer **DIV** wrapper — *do not type into it* | on-main ✓ |
+| `toolkit-field-connection_string-input-field` | the native `<input type="password">` — **type here** | on-main ✓ (`\`${inputProps['data-testid']}-field\``) |
+| `toolkit-field-connection_string-input-helper-text` | inline validation/error text | on-main ✓ |
+| `toolkit-field-connection_string-input-toggle-{secret,password}` | the Secret/Password toggle | **`automation/testids` only** (`testIdPrefix`) |
+
+**The stored value never comes back.** Re-opening a saved pgvector record shows a
+masked 32-hex placeholder (observed `62ac1990453041258fcbeea7a0bafe8a`), not the typed
+URI (`writeOnly: true`). Never write a round-trip assertion on it.
+
+### Schemas — `GET /api/v2/configurations/available/?section={llm|embedding|vectorstorage}`
+
+The product's own declaration of the required set; read it instead of inferring from
+the asterisk. For `pgvector`:
+
+```json
+{"type": "pgvector", "section": "vectorstorage", "has_test_connection": false,
+ "config_schema": {"required": ["elitea_title","label","type","data"],
+   "properties": {"data": {"title": "PgVectorConfiguration", "properties": {
+     "connection_string": {"default": null, "format": "password",
+                           "title": "Connection String", "type": "string",
+                           "writeOnly": true}}}}}}
+```
+**No `required` array inside `data` at all** — `connection_string` is optional, and the
+UI correctly renders it without an asterisk. This is why ELITEA-2411 is **blocked**
+(decision ticket #1988 § 1), not a bug.
+
+### The "+" type picker has NO "Vector Storage" card
+
+12 flat cards, no grouping step: `toolkit-type-card-{ai_dial, amazon_bedrock,
+azure_open_ai, embedding_model, image_generation_model, llm_model, ollama, open_ai,
+pgvector, asr_model, tts_model, vertex_ai}`. The card is labelled **"PgVector"**;
+"Vector Storage" is the *accordion section* on the list page. Cases saying
+*"select 'Vector Storage' → PGVector"* describe two steps that are one click
+(#1988 § 2). Same for **"Embedding model"** (lowercase `m`).
+
+### Default-selector option keys differ by section — this is the trap
+
+The option testid is `select-option-{key}<<>>{project_id}`, but `{key}` is **not** the
+same field everywhere:
+
+| Section | `{key}` | Option **label** | Live example |
+|---|---|---|---|
+| LLMs / Embedding / Image / ASR / TTS | `data.name` (the model identifier) | the **Display Name** | `select-option-text-embedding-3-small<<>>400` labelled `Autotest Embedding Model` |
+| **Vector Storage** | **`elitea_title`** | the **`elitea_title`** | `select-option-autotest_pgvector_seed<<>>400` labelled `autotest_pgvector_seed` |
+
+Because a pgvector configuration has no `data.name` (the API literally returns
+`"name": null`). Two consequences:
+
+1. **#1987 (filed) — a Vector Storage card NEVER gets the `Default` badge.**
+   `ConfigurationSection.jsx:212` builds `configKey` as
+   `` `${configuration.data?.name || configuration.label}<<>>${configuration.project_id}` `` —
+   for pgvector that falls back to the **label** (`Autotest PGVector Seed<<>>400`)
+   while `defaultSettingValue` is the **elitea_title** (`autotest_pgvector_seed<<>>400`),
+   so `isDefault` can never be true. Every other section supplies `data.name` and works.
+   The assignment itself persists correctly (POST 200, GET reports `"default": true`) —
+   it is display-only. ELITEA-2401 is sanctioned-RED on this.
+2. **Renaming a vector storage changes its option testid**, because the edit form
+   re-derives `elitea_title` from the Display Name and the server persists it
+   (`autotest_pgvector` → `autotest_pgvector_edited`, verified). Don't cache an option
+   testid across an edit.
+
+**A model `name` that duplicates an existing one is safe** — the `<<>>{project_id}`
+half disambiguates. Live, `select-option-text-embedding-3-small<<>>1` (shared) and
+`…<<>>400` (newly created) coexisted as distinct options. Always assert the
+project-scoped one; a bare substring match hits the wrong node and passes vacuously.
+
+### ⚠️ The first Vector Storage in a project is PERMANENTLY UNDELETABLE
+
+`CredentialsControls.jsx:51,63`:
+```js
+const isProtectedSection = section === 'vectorstorage' || section === 'embedding';
+const isLastInSection = isProtectedSection && totalAvailable <= 1;   // own total + SHARED total
+// delete menu item: disabled: isDeleting || !credentialDetails?.id || isLastInSection
+```
+tooltip: *"Cannot delete the only pgVector configuration. At least one is required for
+the project."*
+
+- **Embedding** is protected too, but harmless: 3 **shared** configurations mean the
+  count never reaches 1, so an embedding artifact is always deletable.
+- **Vector Storage has no shared configurations**, so 1 → 0 is impossible via the UI.
+  Verified live: with one left, `delete-credentials-menuitem` had `aria-disabled="true"`;
+  after creating a second it became clickable immediately.
+
+**Therefore project 400 now carries a deliberate permanent seed:**
+**`Autotest PGVector Seed`** / `autotest_pgvector_seed` /
+`postgresql://autotest:autotest@localhost:5432/autotest`, and it is the section's
+default. It is the documented precondition for ELITEA-2399/2400/2401. Any spec that
+creates a vector storage **must guard that the section is already non-empty** and fail
+loudly otherwise — an unguarded red run leaves permanent residue. Raised for a human
+ruling on #1988 § 4.
+
+### Live data observed (project 400, 2026-08-29)
+- LLMs: 12 cards; Default `GPT-5.6 Luna`, High-tier `Bedrock-GPT-5.6-Terra`, Low-tier
+  `GPT-5.6 Luna` — unchanged by this session.
+- Embedding Models: **3 cards, ALL shared from project 1**
+  (`amazon.titan-embed-text-v2:0`, `text-embedding-3-small`, `text-embedding-ada-002`),
+  default `text-embedding-3-small` @ project **1** — unchanged by this session.
+- Vector Storage: **1** (the seed above) — was 0 before this session.
+- Image Generation 3 / ASR 2 / TTS 1 / AI Credentials 1 (`ELPS`) — untouched.
+- Embedding Models renders **no `ai-providers-configuration-group` headings** (grouping
+  is LLM-only, `groupTheModelsByProvider`); its cards sit in a flat container.
+
+### Gotchas confirmed this session (new, or newly sharper)
+
+- **`delete-confirm-name-input`'s testid is on a DIV wrapper, not the native input.**
+  `AiProviderFormPage.delete_current_configuration()` is correct because it **clicks
+  the wrapper first** (MUI focuses the inner input) and then `press_sequentially`. A
+  bare `fill()`/`press_sequentially` without that click types nowhere and leaves the
+  Delete button disabled — cost a turn this session.
+- **A direct `goto` of a create route can silently WIPE an early `fill()`.** The
+  schema-driven form remounts after `GET /configurations/available/?section=…`
+  resolves; a Display Name typed in the gap read back **empty** and Save stayed
+  disabled. This is sharper than the existing "wait on `toolkit-field-label-input`"
+  note: the field can already be present and still lose the value. If a value reads
+  back empty, re-fill rather than hunt for a typo.
+- Clearing a required field must go through real key events (focus + select +
+  `Backspace`); MUI does not commit React `onChange` on a bare `fill("")`.
+- Console on a clean `goto` of `/settings/ai-providers` and of a typed create route:
+  **0 errors**. The two expected exceptions are unchanged — `#656` (React `key`, the
+  **type-picker** page only) and the post-delete
+  `GET /api/v2/configurations/configuration/{project}/{id}` **404**. Assert any console
+  axis **before** teardown.
+
+### AFS files from this run
+
+- `l3_create-embedding-model-configuration_ELITEA-2398.md` — ready-for-automation
+- `l3_create-embedding-model-required-field-validation_ELITEA-2410.md` — **sanctioned-RED** on #1984
+- `l3_create-vector-storage-pgvector-configuration_ELITEA-2399.md` — ready-for-automation
+- `l3_edit-vector-storage-configuration_ELITEA-2400.md` — ready-for-automation
+- `l3_set-vector-storage-as-default_ELITEA-2401.md` — **sanctioned-RED** on #1987
+- `l3_create-vector-storage-connection-string-required_ELITEA-2411.md` — **blocked** on #1988 § 1
+
+Not a family AFS: the six differ in **steps**, not only in data — the embedding create
+has a credential-picker interaction pgvector has none of, pgvector has a secret field
+embedding has none of, and edit / set-default / required-field-gating are three
+different flows. They share page objects, not assertions.
+
+### Page-object gaps for the implementer
+
+`AIProvidersPage` has `vector_storage_section_header` but **no** vector-storage
+selector descriptors, and `embedding_models_default_selector` targets the FormControl
+wrapper rather than the clickable node. Add:
+`ai-providers-section-vector-storage-default-selector-combobox` and
+`ai-providers-section-embedding-models-default-selector-combobox`.
+Everything else (`card_for_model`, `card_tier_badge`, `select_tier_model`,
+`expand_section`, `configuration_cards`, `AiProviderFormPage.navigate_to_create(type)`,
+`select_saved_credential`, `save_and_return_to_list`, `delete_current_configuration`)
+already covers these flows unchanged.
