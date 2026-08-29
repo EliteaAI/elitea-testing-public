@@ -62,9 +62,12 @@ None. Read-only.
 
 2. **Verify the AI-configuration panel is showing and active by default
    (case step 3, asserted against the live names).**
-   - **Verify**: `ai-configurations` (the accordion) is visible and its summary
-     button carries `aria-expanded="true"` — i.e. the panel is open without any
-     user action.
+   - **Verify**: `ai-configurations` (the accordion) is visible and
+     `ai-configuration-accordion-summary` carries `aria-expanded="true"` — i.e.
+     the panel is open without any user action. (Amended at implementation: the
+     summary needed its own testid — `BasicAccordion` puts the passed
+     `data-testid` on its outer `Box` and the `aria-expanded` on the inner
+     `MuiAccordionSummary`.)
    - **Verify**: `ai-configuration-tab-basic-button` carries
      `aria-pressed="true"` and `ai-configuration-tab-openai-template-button`
      carries `aria-pressed="false"` — "Basic" is the default active tab.
@@ -147,13 +150,14 @@ None — read-only.
 |---|---|---|---|
 | Sidebar "Settings" entry | `sidebar-settings-button` | on `automation/testids` only | `BasePage.sidebar_settings_button` |
 | Settings drawer nav item | `settings-nav-item-project-general` + `data-active` | on `automation/testids` only | `SettingsDrawerPage.SETTINGS_NAV_ITEM` |
-| AI Configurations accordion | `ai-configurations` | **on `main` ✓** and `automation/testids` | `ProjectGeneralContent.jsx`; expand state on its `MuiAccordionSummary` `aria-expanded` |
-| "Basic" tab | `ai-configuration-tab-basic-button` | **needs-adding** | `AIConfigurationToggle.jsx`, via `arrayBtn[].buttonProps: { 'data-testid': … }` — same mechanism as `project-context-mode-edit-button` (`ProjectContextEditor.jsx:86`). State via `aria-pressed`. |
-| "OpenAI Template" tab | `ai-configuration-tab-openai-template-button` | **needs-adding** | same |
-| `OpenAI-BaseURL` value | `ai-configuration-openai-base-url-value` | **needs-adding** | `FieldWithCopy` already accepts `testId` — pass at the `AIConfiguration.jsx` call site, no component change |
-| `Server URL` value | `ai-configuration-server-url-value` | **needs-adding** | same |
-| `OpenAI-Project` value | `ai-configuration-openai-project-value` | **needs-adding** | same |
-| `Project ID` value | `ai-configuration-project-id-value` | **needs-adding** | same |
+| AI Configurations accordion | `ai-configurations` | **on `main` ✓** and `automation/testids` | `ProjectGeneralContent.jsx` (root `Box`) |
+| AI Configurations accordion **summary** | `ai-configuration-accordion-summary` | added by implementation — EliteaAI/EliteaUI@2deb9655 on `automation/testids` | **added during implementation** — expand state (`aria-expanded`) lives here, not on the root `Box`. Wired via `BasicAccordion`'s existing `items[].testId` prop. |
+| "Basic" tab | `ai-configuration-tab-basic-button` | added by implementation — EliteaAI/EliteaUI@2deb9655 on `automation/testids` | `AIConfigurationToggle.jsx`, via `arrayBtn[].buttonProps: { 'data-testid': … }` — same mechanism as `project-context-mode-edit-button` (`ProjectContextEditor.jsx:86`). State via `aria-pressed`. |
+| "OpenAI Template" tab | `ai-configuration-tab-openai-template-button` | added by implementation — EliteaAI/EliteaUI@2deb9655 on `automation/testids` | same |
+| `OpenAI-BaseURL` value | `ai-configuration-openai-base-url-value` | added by implementation — EliteaAI/EliteaUI@2deb9655 on `automation/testids` | `FieldWithCopy` already accepts `testId` — pass at the `AIConfiguration.jsx` call site, no component change |
+| `Server URL` value | `ai-configuration-server-url-value` | added by implementation — EliteaAI/EliteaUI@2deb9655 on `automation/testids` | same |
+| `OpenAI-Project` value | `ai-configuration-openai-project-value` | added by implementation — EliteaAI/EliteaUI@2deb9655 on `automation/testids` | same |
+| `Project ID` value | `ai-configuration-project-id-value` | added by implementation — EliteaAI/EliteaUI@2deb9655 on `automation/testids` | same |
 
 New page object suggested: `pages/settings_ai_configuration_page.py`
 (`SettingsAIConfigurationPage`) — or extend `SettingsProjectGeneralPage`, which

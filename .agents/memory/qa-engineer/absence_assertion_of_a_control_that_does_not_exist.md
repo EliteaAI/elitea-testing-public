@@ -58,4 +58,34 @@ reasoning generalises:
   for a second use whose declaration *does* touch the ceiling (a terminal
   substitution, a dropped observable, a swapped subject).
 
+## Third use, and the canon card now EXISTS — #1782 (PR #1983, 2026-08-29)
+
+`SettingsAIConfigurationPage.panel_progress_indicators()` (ELITEA-2394) is the
+third instance: `'[data-testid="ai-configurations"] [role="progressbar"]'` →
+`to_have_count(0)`, because `AIConfiguration.jsx` renders **no spinner at all**
+and the case step demands "no permanent loading spinner".
+
+Two things changed since the second use, and both should shape the next review:
+
+1. **The overdue `question` card was filed** — `#1782` *"[Canon] #579 needs a
+   third raw-handle category: app-native absence assertion for a control that
+   never renders"*, still OPEN. So limit 2's obligation is discharged; what a
+   4th use owes is a **citation of #1782**, not a fresh from-scratch declaration.
+   Check for that citation and ask for it — it is what keeps the occurrence
+   count visible to the lead instead of scattered across docstrings.
+2. **The `#579` mis-citation is fixed at the source.** This docstring opens with
+   "NOT the #579 exception" and explains why, so the borrowed-authority defect
+   the earlier entries flagged no longer needs correcting — approve the wording.
+
+Verdict stayed APPROVED, same reasoning as the second use (ceiling untouched:
+nothing about *what* is verified changes, and no honest alternative handle
+exists). Escalating detail for the lead: three occurrences now, one open card —
+#1782 needs a ruling before a 4th accrues.
+
+Note the shape here is one step MORE compliant than the earlier two: the raw
+part is a descendant of a real app testid inside an UPPER_CASE class constant
+(`[data-testid="ai-configurations"] [role="progressbar"]`), so it PASSES the
+mechanical locator grep's one-hop check outright — unlike
+`settings_drawer.get_by_text(...)`, which passes only via its parent descriptor.
+
 Related: [[teardown_that_reads_a_page_it_may_not_be_on]]
