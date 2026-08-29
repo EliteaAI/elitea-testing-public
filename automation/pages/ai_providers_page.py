@@ -324,6 +324,28 @@ class AIProvidersPage(BasePage):
         "`data.name`, so the option key and label both fall back to `elitea_title` "
         "(`_surface.md` -- the same mismatch that causes #1987).",
     )
+    # ELITEA-2402/2404/2406 + ELITEA-2403/2405/2407. Same shared
+    # `Select.SingleSelect` `-combobox` auto-derived suffix; the three outer
+    # `*_default_selector` FormControl wrappers above already existed, these
+    # are the actual clickable/readable role=combobox nodes. Pre-existing
+    # testids (derived in JSX from the already-threaded `sectionTestId`) --
+    # nothing added to EliteaUI here; this was a page-object gap only.
+    image_generation_default_selector_combobox = LocatorDescriptor(
+        testid="ai-providers-section-image-generation-default-selector-combobox",
+        description='Image Generation section "Default" model selector -- clickable '
+        "combobox node; its text_content() is the currently-default model's DISPLAY NAME.",
+    )
+    asr_default_selector_combobox = LocatorDescriptor(
+        testid="ai-providers-section-asr-default-selector-combobox",
+        description='Speech Recognition (ASR) section "Default" model selector -- '
+        "clickable combobox node; its text_content() is the currently-default model's "
+        "DISPLAY NAME.",
+    )
+    tts_default_selector_combobox = LocatorDescriptor(
+        testid="ai-providers-section-tts-default-selector-combobox",
+        description='Text to Speech (TTS) section "Default" model selector -- clickable '
+        "combobox node; its text_content() is the currently-default model's DISPLAY NAME.",
+    )
 
     # -- Per-section loading placeholder (ELITEA-2251) -------------------
     # `ConfigurationSection.jsx`'s `isLoading` branch renders the section
@@ -364,6 +386,20 @@ class AIProvidersPage(BasePage):
     # ``^name$`` filter on it alone cannot disambiguate (e.g. "GPT-5.4" vs
     # "GPT-5.4-mini"), confirmed live.
     CARD_NAME_SELECTOR = '[data-testid="ai-provider-configuration-card-name"]'
+
+    # Generic, repeated-per-card testid for the card's STATUS line
+    # ("OK • Shared" / "OK • Local") -- ELITEA-2402/2404/2406 step 3 asserts
+    # "model name AND status badge", and only the name half had a handle.
+    # Added by this implementation as an attribute on the EXISTING status
+    # `Typography` -- EliteaAI/EliteaUI@db8f4b28.
+    #
+    # WARNING: that Typography also CONTAINS the tier/Default badges
+    # (`{statusText}{isHighTier && ...}{isDefault && ...}`), so on the default
+    # card its inner text reads "OK • Shared\nDefault" while a non-default card
+    # reads exactly "OK • Shared". Assert with `to_contain_text(...)` -- an
+    # exact `to_have_text("OK • Shared")` passes on every card EXCEPT the one
+    # that matters.
+    CARD_STATUS_SELECTOR = '[data-testid="ai-provider-configuration-card-status"]'
 
     # Provider-group container + its label, inside a section that groups its
     # models by provider (LLMs). Generic, repeated-per-group testids -- same
@@ -573,6 +609,37 @@ class AIProvidersPage(BasePage):
         ``expect(...).to_have_count(0)`` assertions (the badge Typography
         unmounts entirely when its tier flag goes false -- not merely hidden)."""
         return self.card_for_model(model_display_name).locator(self.TIER_BADGE_SELECTOR).filter(has_text=badge_text)
+
+    def card_status(self, model_display_name: str) -> Locator:
+        """Return the status line ("OK • Shared" / "OK • Local") scoped inside
+        the card for *model_display_name* (ELITEA-2402/2404/2406 step 3).
+
+        See :data:`CARD_STATUS_SELECTOR`: this element also contains the tier /
+        Default badges, so assert on it with ``to_contain_text(...)``, never an
+        exact match.
+        """
+        return self.card_for_model(model_display_name).locator(self.CARD_STATUS_SELECTOR)
+
+    def card_badges(self, model_display_name: str) -> Locator:
+        """Return EVERY tier/Default badge inside the card for
+        *model_display_name* -- for the "this card carries no badge at all"
+        assertion (``to_have_count(0)``) that ELITEA-2403/2405/2407 step 6 needs.
+
+        :meth:`card_tier_badge` filters by badge text and therefore cannot
+        express "no badge of any kind"; this is its unfiltered sibling.
+        """
+        return self.card_for_model(model_display_name).locator(self.TIER_BADGE_SELECTOR)
+
+    @property
+    def all_default_badges(self) -> Locator:
+        """Every ``Default`` badge currently rendered across the expanded
+        section(s) -- for the exclusivity invariant "exactly ONE card is the
+        default" (ELITEA-2403/2405/2407 Axis 2).
+
+        Combine with :meth:`isolate_section` so the count is scoped to the
+        section under test.
+        """
+        return self.page.locator(self.TIER_BADGE_SELECTOR).filter(has_text=re.compile(r"^Default$"))
 
     def section_loading_placeholders(self) -> Locator:
         """Return the locator matching EVERY section's "Loading..." placeholder.
