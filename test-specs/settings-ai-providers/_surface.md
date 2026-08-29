@@ -1049,3 +1049,57 @@ masks correctly. Deterministic; ELITEA-2416 asserts the correct behaviour with
 
 Not a family AFS: they differ in **steps** (a no-save test-connection round trip vs a
 create -> create -> chat chain with teardown), not only in data.
+
+**Resolved/added during ELITEA-2415 / ELITEA-2416 implementation (2026-08-30,
+test-automation-engineer):**
+
+- **`wait_for_schema_field()` is NOT sufficient on the `llm_model` form.** With the
+  schema-only `name` field already visible, a Display Name write still lost its
+  leading characters to a later re-render: `autotest_2416_model_1788043574` arrived
+  as `043574`. The `open_ai` form did not reproduce it. Two additive helpers now
+  carry the AFS-prescribed "(type, read back) retry" shape —
+  `AiProviderFormPage.set_display_name_verified()` /
+  `.set_schema_field_verified()`; the final attempt still asserts, so a field that
+  genuinely refuses a value fails loudly. Use them on any create form here.
+- **The `llm_model` schema DEFAULTS landing is the settle signal.**
+  `expect(form.field("context_window")).to_have_value("128000")` is the last thing
+  that form does before it stops re-rendering — a real product signal, cheaper and
+  more honest than a settle sleep.
+- **The saved-credential option testid's `private` flag is confirmed `true`** for a
+  credential the test itself creates through the `+` flow (`CredentialsSelect.jsx:249`
+  stamps `isConfigurationPersonal`), vs `false` for the shared project credential
+  `elps`. `AiProviderFormPage.SAVED_CREDENTIAL_OPTION_PRIVATE` /
+  `select_saved_private_credential()` cover the `true` branch; the merged
+  ELITEA-2395/2396 callers of the `false` branch are untouched.
+- **Chat teardown path verified end to end.** `credential_api.delete_credential(id)`
+  is exactly `DELETE /configurations/configuration/{project}/{id}` — it deletes an
+  LLM-model configuration as happily as a credential. Deleting the model FIRST then
+  the credential worked 3/3. A name-based fallback lookup
+  (`list_all_credentials()` matched on `label`/`elitea_title`) closes the window
+  between the create POST and the id read-back, which no flag ordering can.
+- **`#1993` confirmed reproducible 4/4** on the implementer's runs — both soft
+  assertions fire together (card text carries the traceback AND a
+  `chat-answer-tool-chip` reading `Agent Exception Stacktrace`). The spec carries
+  `@pytest.mark.flaky(reruns=0)` for the same reason the sanctioned-RED HITL specs
+  do: measured 52.97 s single-attempt vs 161.38 s with `pytest.ini`'s global
+  `--reruns=2`, which can never rescue an expected failure.
+
+---
+
+**Resolved/added during ELITEA-2416 implementation (fix round 1, 2026-08-30):**
+reaching the chat step of this surface needs the blank-composer guard, not just
+`ChatPage.navigate_to_chat()`:
+
+- The SPA restores the **last-viewed conversation**. A spec that creates a
+  conversation and deletes it in teardown leaves the restore pointing at a dead id;
+  the next `/chat` visit then spins forever and its loading overlay **intercepts the
+  `model-selector-name` click** (`<div class="MuiBox-root css-15msj7j">… intercepts
+  pointer events`). Observed 4/4 runs, including a pristine-HEAD control — so it is
+  environment state, not a code regression, and it clears as soon as a genuinely
+  blank composer is opened (`utils/blank_conversation.open_blank_composer()`).
+- In the fresh-chat view the **send button is overlay-intercepted**: send with
+  `send_message(..., use_enter=True)`, as the personalization / context-settings
+  specs already do.
+- Teardown evidence (post-fix run): `Teardown: deleted conversation id=9912` +
+  both configurations deleted by name — the conversation id is now read back on the
+  statement immediately after the send, so a failure in steps 7-9 no longer orphans it.

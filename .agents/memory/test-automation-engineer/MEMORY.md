@@ -87,3 +87,4 @@
 - [Vite serves a stale module on the OneDrive path](vite_watcher_onedrive_stale_module.md) — missing testid? curl the served module, restart the dev server
 - [Absence-of-destructive-request needs log + positive control](absence_of_destructive_request_needs_log_plus_positive_control.md) — table read ≠ proof; wire a control
 - [Restore guard set at the mutation](finally_restore_guard_is_raised_at_the_mutation.md) — never after asserts
+- [Sanctioned-RED specs should carry @pytest.mark.flaky(reruns=0)](sanctioned_red_specs_should_carry_flaky_reruns_zero.md) — global --reruns=2 triples an expected failure's cost
