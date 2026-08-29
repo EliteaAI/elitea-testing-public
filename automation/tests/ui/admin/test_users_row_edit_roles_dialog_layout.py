@@ -17,7 +17,7 @@ is mocked, injected or stubbed.
 renders "Select the roles to define user permissions for this project."
 (``EditUserRolesDialog.jsx``). The product is ground truth and is what this
 test asserts — weakening the assertion toward the stale case text would be
-reverse-masking. Case-text clarification filed; see the AFS § Known Defects.
+reverse-masking. Case-text clarification filed as #1977; see the AFS § Known Defects.
 
 Test case: ELITEA-2301
 AFS: test-specs/settings-users-and-roles/l3_edit-roles-dialog-layout-and-current-role_ELITEA-2301.md
