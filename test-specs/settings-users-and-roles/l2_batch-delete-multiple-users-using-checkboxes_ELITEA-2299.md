@@ -54,7 +54,10 @@
      unchecked.
 4. **Verify** the header Delete icon has become **enabled**.
 5. Click the header Delete icon.
-   - **Verify**: no `DELETE` has fired yet.
+   - **Verify**: no `DELETE` has fired yet — read off the **request log**
+     (`utils.request_capture.collect_requests(page)`, registered before the
+     first click), never off the table: a row outlives an in-flight `DELETE`,
+     so a row read is satisfied by a destructive icon too.
 6. **Verify** a confirmation dialog appears:
    - `delete-confirm-dialog` visible;
    - `delete-confirm-title` reads exactly `Delete confirmation`;
@@ -64,7 +67,11 @@
 7. Confirm deletion — click `delete-confirm-button`.
    - **Verify**: the driving `DELETE …?id[]=<id1>&id[]=<id2>` resolves
      **204 No Content**;
-   - **Verify**: a success toast (`data-severity="success"`) is shown.
+   - **Verify**: a success toast (`data-severity="success"`) is shown;
+   - **Verify**: the request log holds **exactly one** `DELETE` — the positive
+     control for step 5's absence claim (an observer that was never wired
+     records nothing, so `assert not …` alone passes vacuously) and the case's
+     own "one call carries both ids" contract.
 8. **Verify only the selected users are removed, in place** —
    `expect.soft`, **Known defect: #1974**. Expected (asserted as the CORRECT
    behaviour): the table re-renders with `N` rows and neither seeded address
@@ -110,7 +117,8 @@
   would pass on a button that was always enabled.
 - **Step 5's "no DELETE yet"** — *added*: proves the header icon is
   non-destructive on its own, the same contract the per-row icon has
-  (ELITEA-2298 step 3).
+  (ELITEA-2298 step 3). Asserted against the shared request-log collector, and
+  paired with step 7's exactly-one control so the absence claim is falsifiable.
 - **Step 7's HTTP-204 assertion** — *added*: anchors "operation completes
   successfully" to the driving request, and gives the toast a deterministic
   moment to be asserted at (success toasts live 3 000 ms).
@@ -180,10 +188,29 @@ rather than skipped.
 
 ## Automation Hints
 - `select_user_row(row)` and `is_row_checkbox_checked(row)` already exist
-  (ELITEA-2304). Add `batch_delete_selected()` additively: click the header
-  Delete, wait for the dialog, confirm, return the DELETE response.
+  (ELITEA-2304). The header flow ships as TWO additive methods rather than one
+  (`open_batch_delete_dialog()` + the shared `confirm_delete()`), because step 5
+  must assert "dialog open, nothing deleted yet" between them — the same reason
+  the per-row flow is split.
 - The stuck page after step 7 means **no locator assertion on the table can be
   trusted until the reload** — do the soft assertion with a short timeout so the
   known red costs seconds, not the full default wait.
 - Build the control set `O` from the rendered email cells at runtime; never
   hardcode `Levon Dadayan` / `Test Bot` / the orphaned seed rows.
+
+### Implementation notes (2026-08-29)
+
+- Shipped as `automation/tests/ui/admin/test_users_batch_delete.py`.
+- Page object (all additive; `delete_user_row()` untouched):
+  `open_batch_delete_dialog()`, `confirm_delete()`, `reload_and_wait()`, plus
+  `delete_confirm_dialog` / `-title` / `-message` / `-cancel_button` descriptors.
+- **RED as designed, verified twice with a byte-identical signature**
+  (`AssertionError: Locator expected to have count '4' / Actual value: 0`,
+  `reruns.json == {}` both runs, 67.71 s and 25.68 s). Exactly ONE soft
+  assertion fires — the row-count one; the two "seeded row is gone" soft
+  assertions PASS, because an empty table does satisfy them. Single-cause,
+  deterministic, linked to open #1974 ⇒ sanctioned-RED per
+  `.agents/testing.md` § Merge gate.
+- Everything after the soft block runs and passes: the reload, the two
+  "seeded address is gone" hard assertions, the row-count restore, and the
+  control-set equality that proves no other user was touched.

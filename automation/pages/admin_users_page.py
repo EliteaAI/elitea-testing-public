@@ -293,6 +293,25 @@ class AdminUsersPage(BasePage):
         testid="delete-confirm-button",
         description="Delete-confirmation dialog — Delete button",
     )
+    delete_confirm_dialog = LocatorDescriptor(
+        testid="delete-confirm-dialog",
+        description="Delete-confirmation dialog root (BaseModal's data-testid)",
+    )
+    delete_confirm_title = LocatorDescriptor(
+        testid="delete-confirm-title",
+        description='Delete-confirmation dialog title — exactly "Delete confirmation"',
+    )
+    delete_confirm_message = LocatorDescriptor(
+        testid="delete-confirm-message",
+        description="Delete-confirmation dialog body text. Selection-size dependent: "
+        '"Are you sure to delete the selected user <name>?" for one user (the name is '
+        'EMPTY for a never-logged-in invitee) vs "Are you sure to delete the selected '
+        'users?" for two or more.',
+    )
+    delete_confirm_cancel_button = LocatorDescriptor(
+        testid="delete-confirm-cancel-button",
+        description="Delete-confirmation dialog — Cancel button",
+    )
 
     # Scoped sub-selectors — count/prefix assertions and per-row cell lookups,
     # per .agents/testing.md § Locator policy (UPPER_CASE class constants).
@@ -859,3 +878,65 @@ class AdminUsersPage(BasePage):
         with self.page.expect_response(self._is_users_delete_response, timeout=timeout) as delete_info:
             self.delete_confirm_button.click()
         return delete_info.value
+
+    # --- Delete flows, split into their three moments (ELITEA-2298/2299/2300) ---
+    #
+    # `delete_user_row()` above stays byte-identical — it has merged callers
+    # (ELITEA-2296/2297/2304/2309 teardowns) and its one-shot shape is right for
+    # cleanup. The cases below need the SAME flow broken apart, because "the
+    # icon opened a dialog and deleted nothing yet" and "Cancel deletes nothing"
+    # are exactly the assertions a one-shot helper cannot express. Additive only.
+
+    def open_delete_dialog_for_row(self, row, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click *row*'s Delete (trash) icon and wait for the confirmation
+        dialog to render.
+
+        The icon is non-destructive on its own: live-verified 2026-08-29 that
+        NO request of any kind fires here — the DELETE is issued only by
+        :meth:`confirm_delete`."""
+        row.locator(self.USER_ROW_DELETE_BUTTON_SELECTOR).click()
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
+
+    def open_batch_delete_dialog(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click the HEADER batch-Delete icon and wait for the confirmation
+        dialog to render.
+
+        Enabled from the FIRST selected row (``disabled={!selectedUsers.length}``
+        — not "two or more", whatever a case's wording suggests)."""
+        self.header_delete_button.click()
+        self.delete_confirm_dialog.wait_for(state="visible", timeout=timeout)
+
+    def confirm_delete(self, timeout: int = NAVIGATION_TIMEOUT) -> Response:
+        """Click Delete in the open confirmation dialog and return the driving
+        DELETE response (204 No Content).
+
+        One call covers however many users are selected — ``DeleteUserButton``
+        maps the whole selection into a single
+        ``?id[]=<id1>&id[]=<id2>…`` request."""
+        with self.page.expect_response(
+            self._is_users_delete_response, timeout=timeout
+        ) as delete_info:
+            self.delete_confirm_button.click()
+        return delete_info.value
+
+    def cancel_delete(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click Cancel in the open confirmation dialog and wait for it to go.
+
+        Live-verified 2026-08-29: this issues NO request at all."""
+        self.delete_confirm_cancel_button.click()
+        self.delete_confirm_dialog.wait_for(state="detached", timeout=timeout)
+
+    def reload_and_wait(self, timeout: int = NAVIGATION_TIMEOUT) -> Response:
+        """Reload the Users page and return the users-list GET that repopulates
+        the table.
+
+        Waits on the product's own repopulate signal rather than
+        `networkidle` — this app holds a persistent Socket.IO polling transport
+        open, which makes `networkidle` a race (the shared ``#1847``
+        mechanism)."""
+        with self.page.expect_response(
+            self._is_users_list_response, timeout=timeout
+        ) as users_resp_info:
+            self.page.reload()
+        self.user_row.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
+        return users_resp_info.value
