@@ -58,7 +58,7 @@
 - ["3 sessions" auto-park can be a spend ceiling](auto_park_3_sessions_can_be_a_spend_ceiling_not_a_real_blocker.md) — check the prior failure signature before trusting the label
 - [Sanctioned-RED is NEVER back-written automated](sanctioned_red_is_never_back_written_automated.md) — hidden green; re-check PRIOR waves too (3×)
 - [Deleting a batch trunk auto-closes open unit PRs](deleting_a_batch_trunk_auto_closes_open_unit_prs.md) — check before cleanup; head branch survives, PR doesn't
-- [Settings backlog (#1398)](settings_area_backlog_1398.md) — 8 waves: 62 automated + 13 sanctioned-RED, 10 blocked, no parked units
+- [Settings backlog (#1398)](settings_area_backlog_1398.md) — 9 waves: 75 automated + 14 sanctioned-RED, 11 blocked; only ai-configuration (24) left
 - [Reproduce locally before accepting an environment-specific framing](environment_specific_framing_needs_a_local_reproduction_first.md) — triage dispatch line
 - [A green CI run can mean zero tests ran](ci_green_can_mean_zero_tests_ran.md) — pytest exits 0 on all-skip; check JUnit skipped vs tests
 - [No-edit guardrail is repo-agnostic](no_edit_guardrail_repo_agnostic.md) — 3× violated; conflicts are dispatched

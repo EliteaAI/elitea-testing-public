@@ -6,9 +6,9 @@ created: 2026-08-26
 updated: 2026-08-26
 ---
 
-## Status after waves w01–w08 (2026-08-29)
+## Status after waves w01–w09 (2026-08-29)
 
-**Running total: 62 `automated`, 13 `merged-sanctioned-red`, 10 blocked (human decisions), ~43 not yet attempted. NO parked units.**
+**Running total: 75 `automated`, 14 `merged-sanctioned-red`, 11 blocked (human decisions), ~28 not yet attempted. NO parked units.**
 
 ⚠️ **A sanctioned-RED case is NOT delivered coverage.** `.agents/testing.md` § Merge gate:
 it stays `blocked-on-#N` and is never back-written `execution_type: automated`.
@@ -16,6 +16,16 @@ On 2026-08-28 I corrected three of my own earlier back-writes that broke this �
 ELITEA-2243 (#1771, w01), ELITEA-2289 (#1884, w04), ELITEA-2291 (#1885, w04) —
 back to draft/manual + `sanctioned_red: <ticket>`, keeping `automation_test_id` for
 CI correlation. Count dropped 36 -> 33. **Re-check prior waves whenever this rule comes up.**
+
+### Wave settings-w09 — `settings/users-and-roles` (15 cases)
+
+13 automated + 1 `merged-sanctioned-red` (ELITEA-2299 -> #1974) + 1 blocked (ELITEA-2306 -> #1980). PR #1979.
+**The most destructive sub-area so far — flagged as such before launch.** ELITEA-2306 REFUSED: testing
+"admin cannot delete themselves" requires confirming a self-delete that would destroy the acting
+account's only mutable admin membership, with no recovery and no safe proxy. Analyst asked instead of
+running it, and did NOT reshape the case into asserting the observed behaviour.
+Harness StructuredOutput false-block 3rd occurrence; report.json arrived with NO cases[] at all.
+Filed #1970, #1971, #1974, #1975, #1980.
 
 ### Wave settings-w08 — `settings/user-profile` (17 cases)
 
@@ -92,8 +102,7 @@ full provenance table + SHAs.
   Deliberately NOT grouped into w01: they need multiple identities (admin vs
   viewer/monitor role, an unauthenticated session), a different setup shape
   than the rest of the root `settings` cases.
-- **2 more sub-areas, ~39 cases**: `ai-configuration` (24 — split across two waves),
-  `users-and-roles` (15).
+- **1 sub-area left, ~24 cases**: `ai-configuration` (24 — split across two waves).
   (`notifications` w02, `project-params` w03, `personal-tokens` w04, `secrets` w05, `analytics` w06.)
 
 ## Pattern for the next wave
