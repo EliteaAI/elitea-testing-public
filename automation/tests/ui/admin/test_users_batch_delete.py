@@ -33,6 +33,7 @@ import allure
 import pytest
 from pages.admin_users_page import AdminUsersPage
 from playwright.sync_api import expect
+from utils.request_capture import collect_requests
 
 logger = logging.getLogger(__name__)
 
@@ -72,15 +73,13 @@ class TestUsersBatchDelete:
         emails = [f"elitea-del-batch-{suffix}-{index}@example.com" for index in range(1, SEED_COUNT + 1)]
         deleted = False
 
-        # Passive observer: proves the header icon issues nothing before the
-        # confirmation is accepted. Nothing is intercepted or fabricated.
-        delete_requests: list[str] = []
-        page.on(
-            "request",
-            lambda request: delete_requests.append(request.url)
-            if request.method == "DELETE"
-            else None,
-        )
+        # Passive observer, registered BEFORE the first click. It proves two
+        # things that a table read cannot: that the header icon issues nothing
+        # before the confirmation is accepted (Step 4), and that confirming
+        # issues exactly ONE DELETE (Step 6) — which is also what makes the
+        # Step 4 absence claim falsifiable. Shared collector, one shape across
+        # the delete-flow specs; nothing is intercepted or fabricated.
+        delete_requests = collect_requests(page)
 
         try:
             with allure.step(
@@ -174,6 +173,18 @@ class TestUsersBatchDelete:
                 # wording is wrong today (#1975), and asserting the wrong text
                 # would freeze a defect into the contract.
                 expect(users_page.get_toast_by_severity("success")).to_be_visible()
+                # POSITIVE CONTROL for Step 4's `assert not delete_requests`:
+                # an observer that was never wired records nothing, so an
+                # absence assertion alone passes vacuously. Asserting the log
+                # NON-empty here — at the one moment the flow genuinely deletes
+                # — turns Step 4's "none yet" into a checked claim. Exactly one
+                # is also the case's own contract: DeleteUserButton maps the
+                # whole selection into a single ?id[]=<id1>&id[]=<id2> call.
+                assert len(delete_requests) == 1, (
+                    "Expected confirming to issue exactly ONE DELETE for the whole "
+                    f"selection (and Step 4's observer to have been wired), got: "
+                    f"{delete_requests}"
+                )
 
             with allure.step(
                 "Step 7 — Verify only the selected users are removed, IN PLACE "

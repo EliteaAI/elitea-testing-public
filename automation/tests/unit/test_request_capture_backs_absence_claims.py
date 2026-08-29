@@ -12,7 +12,11 @@ by a destructive icon just as happily as by a non-destructive one — the test w
 green, the AFS claimed a request assertion, and nothing in the suite objected.
 The sibling spec (ELITEA-2300) already did it right with a hand-rolled listener,
 which is exactly how a shape drifts: correct in one file, silently absent in the
-next.
+next. Fix round 2 closed the other half of that drift: the batch spec
+(ELITEA-2299) made the same "this control issued no DELETE" claim off a
+hand-rolled listener with no positive control, and was missing from the list
+below — a guard that does not enumerate every claimant is a guard with a hole.
+The list is the contract: a delete-flow spec asserting an absence belongs in it.
 
 These tests pin both ends of the fix:
 
@@ -24,11 +28,16 @@ These tests pin both ends of the fix:
 """
 
 import inspect
+import re
 
 import pytest
 from utils.request_capture import collect_requests
 
-from tests.ui.admin import test_user_delete_cancel_keeps_user, test_user_delete_via_row_icon
+from tests.ui.admin import (
+    test_user_delete_cancel_keeps_user,
+    test_user_delete_via_row_icon,
+    test_users_batch_delete,
+)
 
 
 class _FakeRequest:
@@ -108,6 +117,7 @@ def test_collector_returns_a_live_list():
 _SPECS_CLAIMING_NO_DELETE_WAS_ISSUED = [
     test_user_delete_via_row_icon,
     test_user_delete_cancel_keeps_user,
+    test_users_batch_delete,
 ]
 
 
@@ -132,7 +142,9 @@ def test_no_delete_claims_are_asserted_against_the_request_log(module):
         f"{module.__name__} captures the request log but never asserts its emptiness "
         "— the 'no DELETE was issued' claim is unbacked."
     )
-    assert 'page.on(\n            "request"' not in source and 'page.on("request"' not in source, (
+    # Whitespace-insensitive on purpose: the batch spec's hand-rolled listener
+    # was wrapped across lines, which a literal-substring check misses.
+    assert not re.search(r"""page\.on\(\s*["']request["']""", source), (
         f"{module.__name__} hand-rolls a page.on('request', ...) listener; use "
         "utils.request_capture.collect_requests so the shape stays one shape."
     )
@@ -146,7 +158,8 @@ def test_no_delete_claims_are_asserted_against_the_request_log(module):
 def test_absence_assertions_carry_a_positive_control(module):
     """``assert not delete_requests`` passes vacuously if the listener was never
     wired, so each spec must also assert the log NON-empty at the point its flow
-    genuinely issues a DELETE (ELITEA-2298: confirming; ELITEA-2300: cleanup)."""
+    genuinely issues a DELETE (ELITEA-2298 and ELITEA-2299: confirming;
+    ELITEA-2300: cleanup)."""
     source = inspect.getsource(module)
     assert "len(delete_requests) == 1" in source or "assert delete_requests" in source, (
         f"{module.__name__} asserts a DELETE was NOT issued but never asserts one WAS "
