@@ -27,7 +27,9 @@ from that one). Full write-up + filed clarification in
 project renders NOTHING — no header, no empty-state placeholder. Confirmed
 live on the shared `${TEST_USER}` project (`Private`, id 399): Vector Storage
 and AI Credentials both return `200` with `items: []` and are simply absent
-from the DOM. Do not treat this as a defect or a load failure — verify via
+from the DOM. **(2026-08-29: only Vector Storage still does — AI Credentials now
+shows a shared `ELPS` credential on every project; see the ELITEA-2417 section
+at the end.)** Do not treat this as a defect or a load failure — verify via
 the underlying API response (200 + zero-count) to distinguish "correctly
 hidden" from "silently broke".
 
@@ -82,7 +84,10 @@ for any future case touching these selectors).
 - Image Generation: 3 configs, default `gpt-image-1`.
 - Speech Recognition (ASR): 2 configs, default `gpt-4o-mini-transcribe`.
 - Text to Speech (TTS): 1 config, default `gpt-4o-mini-tts`.
-- AI Credentials: 0 configs — section absent.
+- AI Credentials: 0 configs — section absent. **STALE as of 2026-08-29 (ELITEA-2417):**
+  a SHARED credential (`ELPS`, `OK • Shared`) is now visible on every non-public
+  project (`include_shared=true`), so the section renders with count `1` on BOTH
+  400 (`UI Testing`) and 399 (`Private`). Vector Storage is still genuinely 0/absent.
 - LLMs section auto-expands by default (`defaultExpanded={!expandSection ||
   expandSection === 'llm'}`); all other sections start collapsed
   (`defaultExpanded={expandSection === '<section>'}`, false without a
@@ -230,3 +235,36 @@ Three call shapes on page load, all independently 200 for this project:
   serving the updated transform (`curl` confirmed). The identical re-run passed. If a
   brand-new testid is "not found" on the first run after adding it, re-run once before
   debugging the JSX.
+
+## AI Credentials section can no longer be empty (ELITEA-2417, 2026-08-29)
+
+The hide-when-empty rule (`ConfigurationSection.jsx` returns `null` for zero
+items) is unchanged and still demonstrable — via **Vector Storage**, which is
+absent on every project tried. It is **no longer demonstrable via AI
+Credentials**: a shared credential `ELPS` is visible in every non-public project
+(the page fetches `include_shared=true`), so
+`ai-providers-section-ai-credentials` always renders, badge `1`, one
+`ai-provider-configuration-card` named `ELPS` / `OK • Shared`. Verified on
+projects 400 and 399 in one session. ELITEA-2417 is `blocked` on this; decision
+ticket **#1982**.
+
+## The "+" flow on this page (re-confirmed 2026-08-29)
+
+`sidebar-create-button` → `/settings/create-ai-provider?viewMode=owner&from=ai-providers`
+→ a type picker with exactly 12 cards: `toolkit-type-card-{ai_dial, amazon_bedrock,
+azure_open_ai, embedding_model, image_generation_model, llm_model, ollama, open_ai,
+pgvector, asr_model, tts_model, vertex_ai}`. **There is no generic "AI Credentials"
+card** — a credential is created by picking a provider type. `open_ai` →
+`/settings/create-ai-provider/open_ai`, fields `toolkit-field-{label,elitea_title,
+api_base,api_key}-input` + `credential-form-{save,discard,test-connection}-button`
+(all pre-existing, owned by `CredentialFormFieldsMixin`). The **Cancel/discard
+button is `disabled` while the form is pristine** — navigate away instead of
+clicking it to abandon.
+
+⚠️ The type-picker page logs one React *"Each child in a list should have a unique
+key prop"* `console.error` (`CategorySection.jsx` ← `GroupedCategory.jsx` ←
+`CredentialTypeSelector.jsx`) — tracked as **#656**, expect exactly this one.
+
+⚠️ **Do not `fetch()` the API from `browser_evaluate` on localhost** — the dev
+proxy 302s to `dev.elitea.ai/forward-auth/...` and each call logs 2 CORS
+`console.error`s, polluting any console-error assertion. Use `page.expect_response`.
