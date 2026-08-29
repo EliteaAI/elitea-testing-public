@@ -149,10 +149,75 @@ observe the Default change alone, before the High/Low tier work in Steps 9a/9b
 touches anything else. Extend the docstring + `@allure.issue` set to name
 ELITEA-2414 as a second covered case.
 
+**As SHIPPED** (implementer, ELITEA-2414). Three deltas from the draft block,
+each recorded below with its reason:
+
 ```python
 with allure.step("Step 6b (ELITEA-2414) — The Default selection survives a full page reload"):
-    # ELITEA-2414: there is no Save button on this control — the only proof the
-    # POST actually persisted is a cold re-read.
+    reload_response = ai_providers_page.reload_and_capture_llm_response()
+    assert reload_response.status == 200, (
+        f"Expected the LLM-scoped models request after reload to return 200, "
+        f"got {reload_response.status}"
+    )
+    reloaded = reload_response.json()
+    assert reloaded.get("default_model_name") == new_default["name"], (
+        f"After reload the persisted Default is {reloaded.get('default_model_name')!r}, "
+        f"expected the model selected before the reload, {new_default['name']!r}"
+    )
+    expect(ai_providers_page.llms_section_header).to_have_attribute(
+        "aria-expanded", "true", timeout=UI_ELEMENT_TIMEOUT
+    )
+    expect(ai_providers_page.llms_default_selector_combobox).to_have_text(
+        new_default_label, timeout=UI_ELEMENT_TIMEOUT
+    )
+    expect(ai_providers_page.card_tier_badge(new_default_label, "Default")).to_be_visible(
+        timeout=UI_ELEMENT_TIMEOUT
+    )
+    expect(ai_providers_page.card_tier_badge(original_default_label, "Default")).to_have_count(
+        0, timeout=UI_ELEMENT_TIMEOUT
+    )
+    if original_high_label and captured_high_text:
+        expect(ai_providers_page.llms_high_tier_selector_combobox).to_have_text(
+            captured_high_text.strip(), timeout=UI_ELEMENT_TIMEOUT
+        )
+    if original_low_label and captured_low_text:
+        expect(ai_providers_page.llms_low_tier_selector_combobox).to_have_text(
+            captured_low_text.strip(), timeout=UI_ELEMENT_TIMEOUT
+        )
+```
+
+1. **The reload response's status is asserted, and its body is used as the
+   oracle** — `default_model_name` read from the product's own cold response.
+   § Network Behavior already called this "the oracle for what actually
+   persisted, independent of the DOM… asserting the API value **and** the
+   selector text is the strongest form here"; the draft code block simply did
+   not carry it. Same observable, stronger evidence — and it is the one
+   assertion that survives any DOM-level regression.
+2. **`all_default_badges` count(1) → per-card absence of the OLD Default's
+   badge.** Two reasons, and the AFS's own § Gap assertions authorises the
+   substitution ("confirm its scope is the LLMs section… or drop that one line
+   to the per-card badge assertion, which is sufficient on its own"):
+   `all_default_badges` is a **`@property`**, not a method — the draft's `()`
+   call would have raised — and it is **page-wide**, counting the Image
+   Generation / ASR / TTS sections' own `Default` badges too. On a clean reload
+   only LLMs auto-expands so the count is 1, but the digest's own § Quirk
+   records stale `expandSection` route state leaving *another* accordion open —
+   which would make that line a false red. Asserting the previous Default's card
+   no longer carries the `Default` badge catches the same failure mode
+   ("persist adds rather than replaces"), is scoped by card identity rather than
+   by accordion state, and honours § Automation Hints' warning that a model may
+   hold two tiers at once (so it targets the `Default` badge specifically, never
+   "no badges at all"). `isolate_section` was rejected as the alternative: it
+   mutates accordion state the covering spec's later steps run against.
+3. **The sibling-tier assertions are guarded** on both `original_*_label` (as
+   the AFS instructs) **and** the captured selector text being non-`None` —
+   `Locator.text_content()` is `str | None`, so `.strip()` on an unset tier
+   would raise.
+
+Original draft block, for reference:
+
+```python
+with allure.step("Step 6b (ELITEA-2414) — The Default selection survives a full page reload"):
     ai_providers_page.reload_and_capture_llm_response()
     expect(ai_providers_page.llms_section_header).to_have_attribute("aria-expanded", "true")
     expect(ai_providers_page.llms_default_selector_combobox).to_have_text(new_default_label)

@@ -1,7 +1,17 @@
 """UI test — Edit an existing LLM model configuration (Settings -> AI Providers).
 
-Test case: ELITEA-2396
+Test cases: ELITEA-2396, ELITEA-2413 (extension — the edit survives a reload)
 AFS: test-specs/settings-ai-providers/l3_edit-llm-model-configuration_ELITEA-2396.md
+AFS: test-specs/settings-ai-providers/lextend_edited-llm-model-name-persists-after-reload_ELITEA-2413.md
+
+ELITEA-2413 (`extend-existing`) adds Step 7. Its steps 1-2 (open an existing
+card, change the Display Name, Save) are this spec's Steps 2-5 exactly, and its
+step-4 in-section verification is this spec's Step 6 — but read inside the SPA
+session that made the edit, so persistence was never proven. The extension is
+one real `page.reload()` plus a cold re-read. Its case-text literal "Reload Test
+Model" is deliberately NOT used: this spec's per-run generated names are kept
+(`toolkit-field-label-input` carries `maxlength="32"` and a fixed literal
+collides with leftovers from a failed run) — declared deviation, AFS § Test Data.
 
 Case-identity note (reused from ELITEA-2392, filed as
 EliteaAI/elitea-testing-public#1250): "Settings -> AI Configuration -> LLM
@@ -56,6 +66,10 @@ CREDENTIAL_LABEL = "ELPS"
 DEFAULT_CONTEXT_WINDOW = "128000"
 DEFAULT_MAX_OUTPUT_TOKENS = "16000"
 
+#: The LLMs group a custom (non-OpenAI/Anthropic) model lands in — the rename
+#: must not move it (ELITEA-2413 Axis 2).
+OTHER_PROVIDERS_GROUP = "Other Providers"
+
 EDIT_URL_PATTERN = re.compile(r"/settings/edit-ai-provider/\d+")
 
 
@@ -73,10 +87,16 @@ class TestEditLlmModelConfiguration:
         "settings/ELITEA-2396.md",
         "onetest-ai Test Case link",
     )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "settings/ai-configuration/ELITEA-2413_editing-an-existing-configuration-persists-after-page-reload.md",
+        "onetest-ai Test Case link (ELITEA-2413)",
+    )
     def test_edit_llm_model_display_name(self, page):
         """Open an existing LLM model card, verify the edit form is
-        pre-populated and inert while pristine, rename it, and verify the LLMs
-        section reflects the new name in place (no duplicate, no orphan)."""
+        pre-populated and inert while pristine, rename it, verify the LLMs
+        section reflects the new name in place (no duplicate, no orphan), and
+        verify the rename survives a full page reload (ELITEA-2413)."""
         providers_page = AIProvidersPage(page)
         form = AiProviderFormPage(page)
         page.on("dialog", lambda dialog: dialog.accept())
@@ -156,6 +176,36 @@ class TestEditLlmModelConfiguration:
                 # gone and the section did not grow.
                 expect(providers_page.card_for_model(seed_display_name)).to_have_count(0)
                 expect(providers_page.configuration_cards).to_have_count(initial_card_count + 1)
+
+            with allure.step("Step 7 (ELITEA-2413) — The rename survives a full page reload"):
+                # ELITEA-2413's own subject: proof the write reached the SERVER,
+                # not just the client's re-render of its own mutation response.
+                # Every assertion above runs inside the SPA session that made the
+                # edit, so a write the server accepted and silently dropped would
+                # still go green.
+                reload_response = providers_page.reload_and_capture_llm_response()
+                assert reload_response.status == 200, (
+                    f"LLM models request after reload failed: {reload_response.status}"
+                )
+                # Accordion content UNMOUNTS on collapse — a collapsed LLMs
+                # section reads as "the card is missing" (AFS § Automation Hints).
+                expect(providers_page.llms_section_header).to_have_attribute(
+                    "aria-expanded", "true", timeout=UI_ELEMENT_TIMEOUT
+                )
+                expect(providers_page.card_for_model(edited_display_name)).to_have_count(1)
+                # Axis 2 — the case's own parenthetical, "(not the previous
+                # name)": a server that persisted a COPY under the new name
+                # while leaving the original row intact would pass a bare
+                # presence check. The unchanged total catches the same failure
+                # from the other side (rename implemented as create).
+                expect(providers_page.card_for_model(seed_display_name)).to_have_count(0)
+                expect(providers_page.configuration_cards).to_have_count(initial_card_count + 1)
+                # Axis 2 — a rename must not disturb the server-derived provider
+                # grouping or the credential link; both are re-derived from the
+                # server on reload, so this is exactly what a cold read can check
+                # and an in-session re-render cannot.
+                expect(providers_page.card_in_group(OTHER_PROVIDERS_GROUP, edited_display_name)).to_have_count(1)
+                expect(providers_page.card_for_model(edited_display_name)).to_contain_text("OK •")
 
             with allure.step("Axis 2 — No console errors before teardown"):
                 # Asserted BEFORE the delete: the app re-fetches the deleted

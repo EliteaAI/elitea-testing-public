@@ -127,15 +127,27 @@ console errors before teardown" step (that step must stay last, since teardown's
 delete provokes an expected 404). Extend the docstring + `@allure.issue` set to
 name ELITEA-2413 as a second covered case.
 
+**As SHIPPED** (implementer, ELITEA-2413). Two deltas from the draft block
+below, both closing gaps in the draft rather than narrowing it: the reload
+response's status is asserted (Gap assertion A made explicit), and the
+**`Other Providers` group assertion** — required by § Axis 2 row 3 but missing
+from the draft code — is present. `OTHER_PROVIDERS_GROUP` is added as a module
+constant in the covering spec (the create spec already had one; the edit spec
+did not).
+
 ```python
 with allure.step("Step 7 (ELITEA-2413) — The rename survives a full page reload"):
-    # ELITEA-2413: the case's own subject — the write reached the server,
-    # not just the client's re-render of its own mutation response.
-    providers_page.reload_and_capture_llm_response()
-    expect(providers_page.llms_section_header).to_have_attribute("aria-expanded", "true")
+    reload_response = providers_page.reload_and_capture_llm_response()
+    assert reload_response.status == 200, (
+        f"LLM models request after reload failed: {reload_response.status}"
+    )
+    expect(providers_page.llms_section_header).to_have_attribute(
+        "aria-expanded", "true", timeout=UI_ELEMENT_TIMEOUT
+    )
     expect(providers_page.card_for_model(edited_display_name)).to_have_count(1)
     expect(providers_page.card_for_model(seed_display_name)).to_have_count(0)
     expect(providers_page.configuration_cards).to_have_count(initial_card_count + 1)
+    expect(providers_page.card_in_group(OTHER_PROVIDERS_GROUP, edited_display_name)).to_have_count(1)
     expect(providers_page.card_for_model(edited_display_name)).to_contain_text("OK •")
 ```
 

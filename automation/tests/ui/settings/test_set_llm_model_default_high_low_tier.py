@@ -1,7 +1,20 @@
 """UI test — Set a LLM model as Default / High-tier / Low-tier (Settings -> AI Providers).
 
-Test case: ELITEA-2397
+Test cases: ELITEA-2397, ELITEA-2414 (extension — the Default survives a reload)
 AFS: test-specs/settings-ai-providers/l3_set-llm-model-default-high-low-tier_ELITEA-2397.md
+AFS: test-specs/settings-ai-providers/lextend_default-llm-selection-persists-after-reload_ELITEA-2414.md
+
+ELITEA-2414 (`extend-existing`) adds Step 6b. Its steps 1-2 (navigate to the
+AI-configuration surface, change the Default LLM selector to a different model)
+are this spec's Steps 1-6 exactly; its own subject — the Default still reading
+the chosen model after a real `page.reload()` — was untested here. That matters
+more on this control than on its siblings: there is NO Save button (selecting an
+option fires the POST immediately), so an in-session assertion cannot tell
+"persisted" from "optimistically rendered". ELITEA-2414's title says "Default
+tier" while its step 2 says "Default LLM model selector"; the step text is the
+concrete instruction and the Expected Final State refers back to it, so the
+extension covers the Default selector only — High-tier/Low-tier appear in it
+solely as an unchanged-siblings check.
 
 Case-identity note (full write-up in the AFS, reused from ELITEA-2392 — same
 root cause): the TMS case directs the tester to "Settings -> AI Configuration"
@@ -88,11 +101,17 @@ class TestSetLLMModelTiers:
         "settings/ai-configuration/ELITEA-2397_set-a-llm-model-as-default-high-tier-low-tier.md",
         "onetest-ai Test Case link",
     )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "settings/ai-configuration/ELITEA-2414_default-tier-selection-persists-after-page-reload.md",
+        "onetest-ai Test Case link (ELITEA-2414)",
+    )
     def test_set_llm_model_default_high_low_tier(self, page):
         """Selecting a different model for the LLMs section's Default tier
         updates the selector text immediately (no Save action), swaps the
         "Default" badge from the old model's card to the new model's card,
-        and changes the model a brand-new /chat composer starts with.
+        survives a full page reload (ELITEA-2414), and changes the model a
+        brand-new /chat composer starts with.
         High-tier and Low-tier show the same selector+badge mechanics but do
         NOT change the new-chat composer's model (case-text drift, see module
         docstring). Original values are restored in a finally block."""
@@ -165,6 +184,64 @@ class TestSetLLMModelTiers:
                 expect(ai_providers_page.card_tier_badge(original_default_label, "Default")).to_have_count(
                     0, timeout=UI_ELEMENT_TIMEOUT
                 )
+
+            with allure.step("Step 6b (ELITEA-2414) — The Default selection survives a full page reload"):
+                # ELITEA-2414's own subject. This control has NO Save button —
+                # selecting an option fires the POST immediately — so every
+                # in-session assertion above cannot tell "persisted" from
+                # "optimistically rendered". A cold re-read is the only proof.
+                # Placed before Step 7's chat navigation and the Step 9a/9b tier
+                # work, so the reload observes the Default change alone.
+                reload_response = ai_providers_page.reload_and_capture_llm_response()
+                assert reload_response.status == 200, (
+                    f"Expected the LLM-scoped models request after reload to return 200, "
+                    f"got {reload_response.status}"
+                )
+                reloaded = reload_response.json()
+                # The product's own cold response is the oracle for what actually
+                # persisted, independent of the DOM (AFS § Network Behavior).
+                assert reloaded.get("default_model_name") == new_default["name"], (
+                    f"After reload the persisted Default is {reloaded.get('default_model_name')!r}, "
+                    f"expected the model selected before the reload, {new_default['name']!r}"
+                )
+                # Accordion content UNMOUNTS on collapse, so the tier selectors
+                # would simply be absent (AFS § Automation Hints).
+                expect(ai_providers_page.llms_section_header).to_have_attribute(
+                    "aria-expanded", "true", timeout=UI_ELEMENT_TIMEOUT
+                )
+                expect(ai_providers_page.llms_default_selector_combobox).to_have_text(
+                    new_default_label, timeout=UI_ELEMENT_TIMEOUT
+                )
+                # Axis 2 — selector text and card badge render from the same
+                # response but through different components: a persisted value
+                # that fails to re-derive the badge is a real regression the
+                # selector alone would hide.
+                expect(ai_providers_page.card_tier_badge(new_default_label, "Default")).to_be_visible(
+                    timeout=UI_ELEMENT_TIMEOUT
+                )
+                # Axis 2 — a persist that ADDS rather than REPLACES: the previous
+                # Default must not come back carrying the badge too. Asserted per
+                # card rather than via the page-wide `all_default_badges` count,
+                # which also counts other sections' Default badges and so goes
+                # false-red whenever stale `expandSection` route state leaves
+                # another accordion open (AFS ELITEA-2414 § Gap assertions
+                # sanctions this substitution; digest § Quirk records the hazard).
+                # NB a model may hold two tiers at once, so the assertion targets
+                # the "Default" badge specifically, never "no badges at all".
+                expect(ai_providers_page.card_tier_badge(original_default_label, "Default")).to_have_count(
+                    0, timeout=UI_ELEMENT_TIMEOUT
+                )
+                # Axis 2 — the three tiers share one POST endpoint discriminated
+                # only by a `section` field, so a regression writing the wrong
+                # section would move a tier this case never touched.
+                if original_high_label and captured_high_text:
+                    expect(ai_providers_page.llms_high_tier_selector_combobox).to_have_text(
+                        captured_high_text.strip(), timeout=UI_ELEMENT_TIMEOUT
+                    )
+                if original_low_label and captured_low_text:
+                    expect(ai_providers_page.llms_low_tier_selector_combobox).to_have_text(
+                        captured_low_text.strip(), timeout=UI_ELEMENT_TIMEOUT
+                    )
 
             with allure.step("Step 7 — Navigate to a brand-new (not-yet-sent) chat conversation"):
                 chat_page.navigate_to_chat()
