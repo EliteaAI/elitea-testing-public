@@ -31,8 +31,8 @@ values.
 
 | Case | Emails typed into the Emails field | Role selected | Expected success toast | Rows added |
 |---|---|---|---|---|
-| **ELITEA-2296** | ONE address: `elitea-invite-single-<uuid4-hex-8>@example.com` | `viewer` | `The user has been invited` | 1 |
-| **ELITEA-2297** | TWO addresses joined by `", "`: `elitea-invite-multi1-<uuid>@example.com, elitea-invite-multi2-<uuid>@example.com` | `editor` | `The users have been invited` | 2 |
+| **ELITEA-2296** | ONE address: `elitea-invite-elitea-2296-1-<uuid4-hex-8>@example.com` | `viewer` | `The user has been invited` | 1 |
+| **ELITEA-2297** | TWO addresses joined by `", "`: `elitea-invite-elitea-2297-1-<uuid>@example.com, elitea-invite-elitea-2297-2-<uuid>@example.com` | `editor` | `The users have been invited` | 2 |
 
 Both strings are the product's own (`Users.jsx`:181 —
 `emailCount > 1 ? 'The users have been invited' : 'The user has been invited'`)
@@ -185,13 +185,22 @@ None on this path. Both flows behave exactly as their case text describes.
 None.
 
 ## Automation Hints
-- Page object: everything already exists on `AdminUsersPage` —
-  `navigate()`, `open_invite_dialog()`, `invite_users(emails, role)` (fills,
-  selects the role, clicks Invite, returns the POST response),
+- Page object — **as shipped** (`AdminUsersPage`): reuses `navigate()`,
+  `open_invite_dialog()`, `type_email_in_invite_dialog()` (its argument is the
+  RAW Emails-field text, so the comma-separated string goes straight in),
+  `select_role_in_invite_dialog()`, `get_invite_selected_role_text()`,
   `get_row_by_text()`, `get_role_cell_for_row()`, `delete_user_row()`.
-  The only additions needed are the shared **toast** locators
-  (`toast-alert` / `toast-message` + a `data-severity`-scoped constant, the same
-  shape `credential_form_fields.py` and `agent_detail_page.py` already declare).
+  Four **additive** members were added for these cases:
+  - `toast_alert` / `toast_message` `LocatorDescriptor`s + the
+    `TOAST_ALERT_SEVERITY` constant and `get_toast_by_severity()` — pre-existing
+    product-wide testids (`Toast.jsx`), the same shape
+    `credential_form_fields.py` and `agent_detail_page.py` already declare;
+  - `get_name_cell_for_row()` / `get_last_login_cell_for_row()` — row-scoped
+    siblings of the existing `get_role_cell_for_row()`;
+  - `submit_invite()` — clicks Invite and returns the driving POST **whatever
+    its status**. Split out from `invite_users()` (which stays byte-identical
+    for its existing caller) because these cases assert the dialog's
+    intermediate states between fill, role-select and submit.
 - **The success toast auto-hides after 3 000 ms** (`TOAST_DURATION_DEFAULTS.success`).
   Assert it IMMEDIATELY after `invite_users()` returns — before the table
   assertions — or it will have unmounted. This is not a flake risk if ordered
@@ -208,3 +217,14 @@ The final step excludes ONE exact URL:
 `utils.console_errors.exclude_known_defect_urls` with a `# Known defect: #1971`
 comment — the same OPEN defect every settings-w09 spec on this surface excludes.
 Keyed to the exact URL, never the status code.
+
+### Implementation notes (2026-08-29)
+
+- Ran **green 3/3 first invocation**, 57.31 s for the whole unit
+  (2 parameter rows + the ELITEA-2309 sibling), `reruns.json == {}`.
+- The success-toast assertion ordering advice above was applied literally
+  (toast asserted before the table reads) and did not flake.
+- Drive-by: `pages/admin_users_page.py` carried a **pre-existing** ruff `I001`
+  import-sort error on the batch trunk (`from config import settings` placed
+  after the third-party import). Fixed with `ruff check --fix` — it is the only
+  removed line in this branch's page-object diff, and it cannot reach runtime.

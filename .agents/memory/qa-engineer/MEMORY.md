@@ -63,3 +63,4 @@
 - [Run the suite against dev.elitea.ai without editing .env.test](retarget_suite_at_dev_without_editing_env_test.md) — throwaway -p plugin; shell exports cannot win
 - [Testid grep false-negative on helper string args](testid_grep_false_negative_helper_string_args.md) — stage-2 filter drops testids passed as bare string args
 - [MUI Slider — drag vs arrow keys](mui_slider_drag_vs_keyboard.md) — drag lands on the step grid; arrow keys give float noise; never drag onto a mark label
+- [Absence assertion can pass before the thing could appear](absence_assertion_can_pass_before_the_thing_could_appear.md) — "no duplicate row" needs a refetch anchor
