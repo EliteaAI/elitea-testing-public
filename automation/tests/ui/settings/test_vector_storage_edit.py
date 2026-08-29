@@ -141,8 +141,10 @@ class TestEditVectorStorageConfiguration:
                 # picker, whose own React "unique key" console error (#656) is
                 # unrelated to this case.
                 form.navigate_to_create("pgvector")
+                # Settle on the SCHEMA render before typing (`_surface.md`).
+                form.wait_for_schema_field("connection_string")
                 form.set_display_name(seed_display_name)
-                form.replace_secret_value("connection_string", CONNECTION_STRING)
+                form.fill_secret_field("connection_string", CONNECTION_STRING)
                 form.save_and_return_to_list()
                 providers_page.isolate_section(providers_page.vector_storage_section_header)
                 expect(providers_page.card_for_model(seed_display_name)).to_have_count(1)

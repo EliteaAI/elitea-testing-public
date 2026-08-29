@@ -103,6 +103,9 @@ class TestCreateEmbeddingModelRequiredFieldValidation:
             providers_page.click_create()
             providers_page.click_type_card("embedding_model")
             form.wait_for_form()
+            # Settle on the SCHEMA render (`_surface.md`) — the re-render
+            # that follows the schema GET wipes anything typed in the gap.
+            form.wait_for_schema_field("name")
             # Scoped to the create form on purpose — the type-picker page logs
             # its own already-filed React "unique key" error (#656) which is
             # not this case's subject.
@@ -179,6 +182,7 @@ class TestCreateEmbeddingModelRequiredFieldValidation:
                 providers_page.click_create()
                 providers_page.click_type_card("embedding_model")
                 form.wait_for_form()
+                form.wait_for_schema_field("name")
                 console_errors = collect_console_errors(page)
 
             with allure.step("Step 2B — Fill Display Name and the credential; leave Name EMPTY"):

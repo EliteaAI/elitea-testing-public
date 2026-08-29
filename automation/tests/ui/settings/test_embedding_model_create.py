@@ -122,6 +122,10 @@ class TestCreateEmbeddingModelConfiguration:
             with allure.step("Step 3 — Select the 'Embedding model' provider type"):
                 providers_page.click_type_card("embedding_model")
                 form.wait_for_form()
+                # Settle on the SCHEMA render, not merely the shell — the
+                # re-render that follows the schema GET wipes anything typed
+                # in the gap (`_surface.md`).
+                form.wait_for_schema_field("name")
                 expect(page).to_have_url(CREATE_EMBEDDING_FORM_URL_PATTERN)
                 # Console axis scoped to the create form and everything after
                 # it; the type-picker page's own React "unique key" error

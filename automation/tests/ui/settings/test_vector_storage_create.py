@@ -175,6 +175,11 @@ class TestCreateVectorStorageConfiguration:
             with allure.step("Step 3 — Select the 'PgVector' provider type (the case's steps 2-3 are one click)"):
                 providers_page.click_type_card("pgvector")
                 form.wait_for_form()
+                # Settle on the SCHEMA render, not merely the shell. Without
+                # this the re-render that follows the schema GET clears the
+                # Display Name AFTER it has been typed and asserted, and Save
+                # is still disabled at step 7 (live-measured).
+                form.wait_for_schema_field("connection_string")
                 expect(page).to_have_url(CREATE_PGVECTOR_FORM_URL_PATTERN)
                 # Console axis scoped to the create form and everything after
                 # it; the type-picker page's own React "unique key" error
@@ -195,7 +200,7 @@ class TestCreateVectorStorageConfiguration:
                 expect(form.save_button).to_be_enabled()
 
             with allure.step("Step 6 — Fill the Connection String"):
-                form.replace_secret_value("connection_string", CONNECTION_STRING)
+                form.fill_secret_field("connection_string", CONNECTION_STRING)
                 connection_string_input = form.secret_native_input("connection_string")
                 expect(connection_string_input).to_have_value(CONNECTION_STRING)
                 # Axis 2 — the field is a secret: a regression rendering it as
@@ -206,6 +211,15 @@ class TestCreateVectorStorageConfiguration:
 
             with allure.step("Step 7 — Save; the app returns to the AI Providers list"):
                 form.save_and_return_to_list()
+                default_changed = True
+                # Re-read the section from the product's own request: the list
+                # refetches after the save, so this is the settled truth about
+                # BOTH the card set and which configuration is now the default.
+                after_create = providers_page.navigate_and_capture_vectorstorage_response()
+                assert after_create.status == 200, (
+                    f"Vector Storage models request failed: {after_create.status}"
+                )
+                after_create_body = after_create.json()
                 expect(providers_page.vector_storage_section_header).to_be_visible()
                 providers_page.isolate_section(providers_page.vector_storage_section_header)
 
@@ -219,24 +233,39 @@ class TestCreateVectorStorageConfiguration:
                 expect(card).to_contain_text("OK •")
 
             with allure.step("Step 9 — The Default vector storage dropdown offers the new configuration"):
-                default_changed = True
-                # LIVE CONTRACT (AFS amended in this PR): the product ASSIGNS
-                # the newly created configuration as the section default.
-                expect(providers_page.vector_storage_default_selector_combobox).to_have_text(_slug(display_name))
+                # The case asks only that the dropdown OFFER the new
+                # configuration. Its SELECTED state is asserted against the
+                # product's own post-create response rather than against an
+                # assumption — live, creating a Vector Storage configuration
+                # ASSIGNS it as the section default (unlike the LLMs section,
+                # where ELITEA-2395 has to assign it explicitly), and the AFS's
+                # original Axis-2 row claimed the opposite. Deriving the
+                # expectation from the response asserts DOM/API agreement,
+                # which is a real check either way and cannot go stale.
+                persisted_default = after_create_body["default_model_name"]
+                new_title = _slug(display_name)
+                expect(providers_page.vector_storage_default_selector_combobox).to_have_text(persisted_default)
 
                 providers_page.vector_storage_default_selector_combobox.click()
                 # Keyed by `elitea_title`, NOT by a model name — this section's
                 # own convention, and the reason #1987 exists (#1988 § 3).
-                option = providers_page.select_option(f"{_slug(display_name)}<<>>{project_id}")
+                option = providers_page.select_option(f"{new_title}<<>>{project_id}")
                 expect(option).to_be_visible()
                 # Labelled with the ID as well, unlike every other section.
-                expect(option).to_have_text(_slug(display_name))
-                expect(option).to_have_attribute("aria-selected", "true")
-                # Axis 2 — the default is exclusive: the previous one is still
-                # OFFERED (the create did not drop it) and is no longer selected.
+                expect(option).to_have_text(new_title)
+                expect(option).to_have_attribute(
+                    "aria-selected", "true" if persisted_default == new_title else "false"
+                )
+                # Axis 2 — the default is exclusive, and the create did not drop
+                # the pre-existing configuration from the option list.
                 previous = providers_page.select_option(original_default_value)
                 expect(previous).to_be_visible()
-                expect(previous).to_have_attribute("aria-selected", "false")
+                expect(previous).to_have_attribute(
+                    "aria-selected", "true" if persisted_default == original_default_name else "false"
+                )
+                assert persisted_default in (new_title, original_default_name), (
+                    f"The section default is neither the new nor the previous configuration: {persisted_default!r}"
+                )
                 providers_page.close_open_dropdown()
 
             with allure.step("Axis 2 — No console errors before teardown"):

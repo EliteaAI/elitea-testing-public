@@ -168,21 +168,33 @@ class TestSetVectorStorageAsDefault:
                 # picker, whose own React "unique key" console error (#656) is
                 # unrelated to this case.
                 form.navigate_to_create("pgvector")
+                # Settle on the SCHEMA render before typing (`_surface.md`).
+                form.wait_for_schema_field("connection_string")
                 form.set_display_name(transit_display_name)
-                form.replace_secret_value("connection_string", CONNECTION_STRING)
+                form.fill_secret_field("connection_string", CONNECTION_STRING)
                 form.save_and_return_to_list()
                 default_changed = True
 
-                # Creating it made it the default (live contract), which would
-                # turn the case's step 3 into a no-op — put the pre-existing
-                # default back so the selection is a genuine change.
-                providers_page.isolate_section(providers_page.vector_storage_section_header)
-                providers_page.select_default_configuration(
-                    providers_page.vector_storage_default_selector_combobox, original_default_value
+                # Creating a Vector Storage configuration ASSIGNS it as the
+                # section default, which would turn the case's step 3 into a
+                # no-op. Read the PERSISTED state back rather than assuming it:
+                # the list page refetches after the save, so the combobox lags
+                # the truth for a moment, and re-selecting an ALREADY-selected
+                # option fires no request at all — the first implementation of
+                # this step hung 10 s waiting for one.
+                after_create = providers_page.navigate_and_capture_vectorstorage_response()
+                assert after_create.status == 200, (
+                    f"Vector Storage models request failed: {after_create.status}"
                 )
-                expect(providers_page.vector_storage_default_selector_combobox).to_have_text(
-                    pre_transit_default_name
-                )
+                if after_create.json()["default_model_name"] != pre_transit_default_name:
+                    providers_page.isolate_section(providers_page.vector_storage_section_header)
+                    providers_page.select_default_configuration(
+                        providers_page.vector_storage_default_selector_combobox, original_default_value
+                    )
+                    expect(providers_page.vector_storage_default_selector_combobox).to_have_text(
+                        pre_transit_default_name
+                    )
+                default_changed = False
 
             with allure.step("Step 1 — Expand Vector Storage and capture the current default"):
                 response = providers_page.navigate_and_capture_vectorstorage_response()
