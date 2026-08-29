@@ -140,6 +140,12 @@ class AdminUsersPage(BasePage):
         "from the Name cell's.",
     )
 
+    row_roles_cell = LocatorDescriptor(
+        testid="user-column-value-roles",
+        description="Every visible row's Role cell, in rendered DOM order. Multiple "
+        "roles render joined by ', ' (UsersTable's renderCell).",
+    )
+
     # --- Invite-users dialog chrome (ELITEA-2295 / 2305 / 2308) ---
     # Five new testid props threaded through InviteUserDialog -> Users.jsx's
     # call site (EliteaAI/EliteaUI@8f559586). `dialogTestId`/`titleTestId`/
@@ -437,6 +443,10 @@ class AdminUsersPage(BasePage):
         order. A never-logged-in user yields the literal ``"-"`` — see
         :attr:`row_last_login_cell`."""
         return [(cell.text_content() or "").strip() for cell in self.row_last_login_cell.all()]
+
+    def get_row_roles(self) -> list[str]:
+        """Return every visible row's Role cell text, in rendered DOM order."""
+        return [(cell.text_content() or "").strip() for cell in self.row_roles_cell.all()]
 
     # --- Search (ELITEA-2294) ---
     def type_search(self, text: str) -> None:
