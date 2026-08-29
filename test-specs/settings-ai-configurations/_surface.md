@@ -127,3 +127,50 @@ The `{project_id}` path segment of those GETs is the honest oracle for the
 
 Not a family AFS: they differ in **steps** (static field inventory on the default
 tab vs a tab round-trip asserting two different panels), not only in data.
+
+---
+
+## Resolved/added during ELITEA-2393 / ELITEA-2394 implementation (2026-08-29, test-automation-engineer)
+
+**Every "Needed" testid above now exists on `automation/testids`**, plus two the
+analyst pass could not have known were required:
+
+| Testid | Commit | Note |
+|---|---|---|
+| `ai-configuration-tab-basic-button` | EliteaAI/EliteaUI@2deb9655 | `arrayBtn[].buttonProps`, as predicted |
+| `ai-configuration-tab-openai-template-button` | EliteaAI/EliteaUI@2deb9655 | same |
+| `ai-configuration-openai-base-url-value` | EliteaAI/EliteaUI@2deb9655 | `FieldWithCopy` `testId` prop, as predicted |
+| `ai-configuration-server-url-value` | EliteaAI/EliteaUI@2deb9655 | same |
+| `ai-configuration-openai-project-value` | EliteaAI/EliteaUI@2deb9655 | same |
+| `ai-configuration-project-id-value` | EliteaAI/EliteaUI@2deb9655 | same |
+| `ai-configuration-code-preview-editor` | EliteaAI/EliteaUI@2deb9655 | `CodePreviewContent.jsx` wrapper `Box`, as predicted |
+| **`ai-configuration-accordion-summary`** | EliteaAI/EliteaUI@2deb9655 | **NEW — the digest's "expand state on its `MuiAccordionSummary` `aria-expanded`" is not reachable from `ai-configurations`.** `BasicAccordion` puts the `data-testid` it receives on its OUTER `Box` and exposes the summary through a *separate* `items[].testId` prop. Any future case asserting an accordion's expand state on this app needs the `items[].testId`, not the accordion's own `data-testid`. |
+| **`ai-configuration-code-preview-empty`** | EliteaAI/EliteaUI@7418c06f | **NEW — `CodePreviewEmpty.jsx`'s container `Box`.** ELITEA-2393 asserts the empty branch's ABSENCE; a testid + `to_have_count(0)` is the sanctioned shape (`.agents/testing.md` § Locator policy, #511 extension), and it beats matching the empty state's prose. |
+
+Other implementation-time facts:
+
+- **No spinner exists anywhere in `AIConfiguration.jsx`**, so ELITEA-2394's
+  "no permanent loading spinner" is asserted through a role-scoped child handle
+  (`[data-testid="ai-configurations"] [role="progressbar"]`, count 0) — a
+  declared improvisation, documented on
+  `SettingsAIConfigurationPage.panel_progress_indicators()`. There is no JSX node
+  to add a testid to, so "add the testid" is not an available action here.
+- **`page.expect_response` across the sidebar Settings click is a reliable oracle
+  for the selected project id** — the `configurations/models/{project_id}?…
+  &section=llm` request fires on every settings load and its last path segment is
+  the project id the `Project ID` field must equal. Implemented as
+  `SettingsAIConfigurationPage.open_via_sidebar()` (returns the `Response`) +
+  `project_id_from_models_url()`.
+- **Both specs went green first try, 2/2 in 16.16 s, `reruns.json == {}`.** No
+  flake observed on this surface; `BasePage.navigate`'s tolerant `networkidle`
+  wrapper is the only network wait involved and it did not fire (#1847 did not
+  bite here).
+- Both specs carry the URL-keyed `#1971` console filter
+  (`TOOLKIT_TYPES_MISSING_PROJECT_ID_404_URL`), because both drive
+  project-scoped navigation — #1971's documented trigger. It did not fire in the
+  green run; it is pre-emptive and narrow (never a status-code filter).
+
+Page object: `automation/pages/settings_ai_configuration_page.py`
+(`SettingsAIConfigurationPage`). Specs:
+`automation/tests/ui/settings/test_ai_configuration_metadata_fields.py` (2394),
+`automation/tests/ui/settings/test_ai_configuration_openai_template_tab.py` (2393).

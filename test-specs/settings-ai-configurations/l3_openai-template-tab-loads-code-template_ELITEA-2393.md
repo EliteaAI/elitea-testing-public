@@ -53,8 +53,12 @@ own configuration, and `api_key` is the literal placeholder
    (case step 1).**
    - `page.goto` `${BASE_URL}/settings/project-general` (or click
      `sidebar-settings-button`).
-   - **Verify**: `ai-configurations` is visible and its summary carries
-     `aria-expanded="true"`.
+   - **Verify**: `ai-configurations` is visible and
+     `ai-configuration-accordion-summary` carries `aria-expanded="true"`.
+     (Amended at implementation: `BasicAccordion` puts the `data-testid` it is
+     passed on its outer `Box` and the `aria-expanded` on the inner
+     `MuiAccordionSummary`, so the summary needed its own testid — the
+     component's `items[].testId` prop, no plumbing.)
    - **Verify**: `ai-configuration-tab-basic-button` carries
      `aria-pressed="true"` (starting state — needed so step 5's "returns" is a
      real round-trip and not a no-op).
@@ -87,8 +91,12 @@ own configuration, and `api_key` is the literal placeholder
      Basic tab showed for `OpenAI-BaseURL` (captured in step 1) — the template is
      generated from this project's real configuration, not a static blob. This is
      the honest, environment-independent form of "loads code template content".
-   - **Verify**: the empty-state text `Select a LLM Model to see Code examples`
-     has count 0 (`CodePreviewEmpty`'s branch is NOT what rendered).
+   - **Verify**: `ai-configuration-code-preview-empty` has count 0
+     (`CodePreviewEmpty`'s branch is NOT what rendered). (Amended at
+     implementation: asserted by testid rather than by the empty state's text —
+     an absence assertion is a first-class reference per `.agents/testing.md`
+     § Locator policy (#511 extension), so the branch got a real testid instead
+     of a raw text handle.)
 
 5. **Click back to the "Basic" tab and verify the metadata content returns
    (case step 5 / Expected Final State).**
@@ -147,10 +155,12 @@ on the next mount, so nothing leaks to the next test.
 | Element | Primary handle (testid-only) | Provenance (verified `git fetch origin`, EliteaUI, 2026-08-29) | Notes |
 |---|---|---|---|
 | AI Configurations accordion | `ai-configurations` | **on `main` ✓** and `automation/testids` | `ProjectGeneralContent.jsx` |
-| "Basic" tab | `ai-configuration-tab-basic-button` | **needs-adding** | `AIConfigurationToggle.jsx` `arrayBtn[].buttonProps` — precedent `project-context-mode-edit-button` (`ProjectContextEditor.jsx:86`). State via `aria-pressed`, never a state-named testid. |
-| "OpenAI Template" tab | `ai-configuration-tab-openai-template-button` | **needs-adding** | same |
-| Code template editor container | `ai-configuration-code-preview-editor` | **needs-adding** | one `data-testid` on `CodePreviewContent.jsx`'s wrapping `Box`. Read the code with `inner_text()` on this container — do **not** address CodeMirror's internal `.cm-line` nodes (library-internal; the #579 exception exists but is unnecessary here). |
-| Four Basic values | `ai-configuration-{openai-base-url,server-url,openai-project,project-id}-value` | **needs-adding** | `FieldWithCopy` already accepts `testId`; pass at the `AIConfiguration.jsx` call sites (shared with ELITEA-2394 — add once) |
+| AI Configurations accordion **summary** | `ai-configuration-accordion-summary` | added by implementation — EliteaAI/EliteaUI@2deb9655 on `automation/testids` | **added during implementation** — `aria-expanded` lives on the summary, not on the root `Box` that carries `ai-configurations`. Wired via `BasicAccordion`'s existing `items[].testId` prop. |
+| "Basic" tab | `ai-configuration-tab-basic-button` | added by implementation — EliteaAI/EliteaUI@2deb9655 on `automation/testids` | `AIConfigurationToggle.jsx` `arrayBtn[].buttonProps` — precedent `project-context-mode-edit-button` (`ProjectContextEditor.jsx:86`). State via `aria-pressed`, never a state-named testid. |
+| "OpenAI Template" tab | `ai-configuration-tab-openai-template-button` | added by implementation — EliteaAI/EliteaUI@2deb9655 on `automation/testids` | same |
+| Code template editor container | `ai-configuration-code-preview-editor` | added by implementation — EliteaAI/EliteaUI@2deb9655 on `automation/testids` | one `data-testid` on `CodePreviewContent.jsx`'s wrapping `Box`. Read the code with `inner_text()` on this container — do **not** address CodeMirror's internal `.cm-line` nodes (library-internal; the #579 exception exists but is unnecessary here). |
+| Four Basic values | `ai-configuration-{openai-base-url,server-url,openai-project,project-id}-value` | added by implementation — EliteaAI/EliteaUI@2deb9655 on `automation/testids` | `FieldWithCopy` already accepts `testId`; passed at the `AIConfiguration.jsx` call sites (shared with ELITEA-2394 — added once) |
+| Code-template EMPTY state | `ai-configuration-code-preview-empty` | added by implementation — EliteaAI/EliteaUI@7418c06f on `automation/testids` | **added during implementation** — `CodePreviewEmpty.jsx`'s container `Box`. Referenced ONLY by step 4's absence assertion on the executed path (`.agents/testing.md` § Locator policy, #511 extension), which is what makes naming this branch compliant. |
 
 ## Network Behavior
 - Page load: the seven `configurations/models/{project_id}` GETs + the combined
