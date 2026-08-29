@@ -170,6 +170,39 @@ def pick_alternative_llm_model(items: list[dict], current_value: str, tier_field
     )
 
 
+def _section_models_response_matcher(section: str):
+    """Return a predicate matching the per-section models GET for *section*.
+
+    Generic sibling of :func:`_is_vectorstorage_models_response` /
+    :func:`_is_llm_models_response` (both left byte-identical for their merged
+    callers) -- added for ELITEA-2398/2399/2400/2401, which need the same
+    capture for ``section=embedding`` and ``section=vectorstorage``.
+    """
+
+    def _matcher(response: Response) -> bool:
+        return (
+            response.request.method == "GET"
+            and MODELS_URL_SUBSTRING in response.url
+            and f"section={section}" in response.url
+        )
+
+    return _matcher
+
+
+def project_id_from_models_response(response: Response) -> int:
+    """Return the ACTIVE project id from a models response's own URL.
+
+    The URL shape is ``.../configurations/models/{project_id}?...``. Reading the
+    id from the product's own request is the honest alternative to hardcoding a
+    project number, which every AFS in this cluster explicitly forbids -- the
+    Default-selector option testids are keyed ``{key}<<>>{project_id}``, so the
+    id is needed to build them.
+    """
+    match = re.search(r"/configurations/models/(\d+)", response.url)
+    assert match, f"Not a per-section models response URL: {response.url}"
+    return int(match.group(1))
+
+
 class AIProvidersPage(BasePage):
     """Settings -> AI Providers page (page layout + 7 configuration sections).
 
@@ -271,6 +304,27 @@ class AIProvidersPage(BasePage):
         description='LLMs section "Low-tier" model selector -- clickable combobox node.',
     )
 
+    # -- Default-selector COMBOBOX triggers for the non-LLM sections
+    #    (ELITEA-2398 / ELITEA-2399 / ELITEA-2401). Same shared
+    #    `Select.SingleSelect` `-combobox` auto-derived suffix as the LLM tier
+    #    triggers above: the outer `*_default_selector` fields locate the
+    #    FormControl wrapper, these locate the actual clickable/readable
+    #    role=combobox node. Pre-existing testids (derived in JSX from the
+    #    already-threaded `sectionTestId`) -- nothing added here.
+    embedding_models_default_selector_combobox = LocatorDescriptor(
+        testid="ai-providers-section-embedding-models-default-selector-combobox",
+        description='Embedding Models section "Default" model selector -- clickable '
+        "combobox node; its text_content() is the currently-default model's DISPLAY NAME.",
+    )
+    vector_storage_default_selector_combobox = LocatorDescriptor(
+        testid="ai-providers-section-vector-storage-default-selector-combobox",
+        description='Vector Storage section "Default" selector -- clickable combobox '
+        "node. Unlike every other section its text_content() is the configuration's "
+        "`elitea_title`, NOT a display name: a pgvector configuration carries no "
+        "`data.name`, so the option key and label both fall back to `elitea_title` "
+        "(`_surface.md` -- the same mismatch that causes #1987).",
+    )
+
     # -- Per-section loading placeholder (ELITEA-2251) -------------------
     # `ConfigurationSection.jsx`'s `isLoading` branch renders the section
     # title plus a `Typography` reading exactly "Loading..." and nothing
@@ -327,6 +381,20 @@ class AIProvidersPage(BasePage):
     # body (`pick_alternative_llm_model`), per `.agents/testing.md` Locator
     # policy's class-level-template-constant pattern for dynamic testids.
     SELECT_OPTION = '[data-testid="select-option-{}"]'
+    # Prefix form of the same pre-existing shared-`Select` convention -- every
+    # option of whichever single dropdown is currently open (MUI renders a
+    # listbox in a portal and only one can be open at a time). Used to assert
+    # the option SET, not just one member (ELITEA-2401 Axis 2).
+    #
+    # The `:not(...)` half is load-bearing, not defensive: the checkmark the
+    # shared `SingleSelect` renders inside the SELECTED option carries
+    # `data-testid="select-option-selected-icon"`, which the bare prefix also
+    # matches -- so a 2-option dropdown with one selected resolved to THREE
+    # elements (live-measured, ELITEA-2401). Both halves are `data-testid`
+    # matches, so this stays testid-only per `.agents/testing.md`.
+    SELECT_OPTION_PREFIX_SELECTOR = (
+        '[data-testid^="select-option-"]:not([data-testid="select-option-selected-icon"])'
+    )
 
     # --- Create-AI-Provider entry point (ELITEA-2346) ------------------
     # Dynamic (runtime-parameterized) testid -- the SAME
@@ -429,6 +497,62 @@ class AIProvidersPage(BasePage):
             option.click()
         return response_info.value
 
+    def select_default_configuration(self, combobox: Locator, option_value: str, timeout: int = UI_ELEMENT_TIMEOUT):
+        """Section-agnostic name for :meth:`select_tier_model`.
+
+        The mechanism is identical for every section's **Default** selector --
+        open the combobox, click ``select-option-{option_value}``, and return
+        the ``POST /configurations/models/{project_id}`` response that fires as
+        a result (there is no separate Save). :meth:`select_tier_model` was
+        written for the LLM tier selectors (ELITEA-2397) and its name says so;
+        this delegating alias exists so the Vector Storage / Embedding call
+        sites read honestly (ELITEA-2401). Purely additive -- the original is
+        untouched and keeps its merged callers.
+        """
+        return self.select_tier_model(combobox, option_value, timeout=timeout)
+
+    def navigate_and_capture_section_models_response(self, section: str) -> Response:
+        """Navigate to the list page while capturing the models GET for *section*
+        (``"embedding"`` / ``"vectorstorage"`` / ``"llm"`` / ...).
+
+        The response body is the product's own oracle for that section: its
+        ``items`` (each carrying the ``name`` half of the Default-selector
+        option key), ``total``, ``default_model_name`` and
+        ``default_model_project_id``. Generic sibling of
+        :meth:`navigate_and_capture_llm_response` /
+        :meth:`navigate_and_capture_vectorstorage_response`, which stay as they
+        were for their merged callers.
+        """
+        with self.page.expect_response(
+            _section_models_response_matcher(section), timeout=NAVIGATION_TIMEOUT
+        ) as response_info:
+            self.navigate()
+        return response_info.value
+
+    def select_option(self, option_value: str) -> Locator:
+        """Return the dropdown option whose value is *option_value*
+        (``"{key}<<>>{project_id}"``) -- for asserting an option's presence,
+        label and ``aria-selected`` state without selecting it.
+
+        ``{key}`` is the model identifier (``data.name``) in every section
+        EXCEPT Vector Storage, where it is the ``elitea_title``
+        (``_surface.md``).
+        """
+        return self.page.locator(self.SELECT_OPTION.format(option_value))
+
+    @property
+    def open_select_options(self) -> Locator:
+        """Every option of the currently-open dropdown (see
+        :data:`SELECT_OPTION_PREFIX_SELECTOR`)."""
+        return self.page.locator(self.SELECT_OPTION_PREFIX_SELECTOR)
+
+    def close_open_dropdown(self) -> None:
+        """Dismiss an open MUI dropdown without selecting anything (Escape) --
+        so a spec that merely INSPECTS the option list leaves the project's
+        default untouched."""
+        self.page.keyboard.press("Escape")
+        self.open_select_options.first.wait_for(state="detached", timeout=UI_ELEMENT_TIMEOUT)
+
     def card_for_model(self, model_display_name: str) -> Locator:
         """Return the ``ConfigurationCard`` whose display name EXACTLY matches
         *model_display_name* (exact match required -- some display names are
@@ -507,6 +631,58 @@ class AIProvidersPage(BasePage):
         if section_header.get_attribute("aria-expanded") != "true":
             section_header.click()
             expect(section_header).to_have_attribute("aria-expanded", "true", timeout=timeout)
+
+    def all_section_headers(self) -> list[tuple[str, Locator]]:
+        """Return the (label, header locator) pairs for ALL seven configuration
+        sections, whether or not they currently render.
+
+        Superset of :meth:`populated_section_headers` (which lists only the
+        five that are populated for the shared ``${TEST_USER}`` project and is
+        left untouched for its merged callers). Used by
+        :meth:`isolate_section`, which must not leave a section expanded just
+        because it happens to be empty on one project and populated on another.
+        """
+        return [
+            ("LLMs", self.llms_section_header),
+            ("Embedding Models", self.embedding_models_section_header),
+            ("Vector Storage", self.vector_storage_section_header),
+            ("Image Generation", self.image_generation_section_header),
+            ("Speech Recognition (ASR)", self.asr_section_header),
+            ("Text to Speech (TTS)", self.tts_section_header),
+            ("AI Credentials", self.ai_credentials_section_header),
+        ]
+
+    def collapse_section(self, section_header: Locator, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Collapse an accordion section, if it renders at all and is expanded.
+
+        Tolerant of an absent section by design: a section with zero configured
+        items renders NOTHING (``ConfigurationSection.jsx`` returns ``null``),
+        and which sections those are differs per project.
+        """
+        if section_header.count() == 0:
+            return
+        if section_header.get_attribute("aria-expanded") == "true":
+            section_header.click()
+            expect(section_header).to_have_attribute("aria-expanded", "false", timeout=timeout)
+
+    def isolate_section(self, section_header: Locator, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Collapse every section, then expand *section_header* -- so that
+        :attr:`configuration_cards` counts THIS section's cards and no others.
+
+        The card testid (``ai-provider-configuration-card``) is generic and
+        repeated per card, and cards are NOT descendants of their section's
+        header element, so there is no locator that scopes a count to one
+        section. Isolating the accordion state is the honest way to get a
+        section-scoped count -- and it is not merely tidier than a
+        whole-page count, it is *correct*: the LLMs section auto-expands only
+        on a fresh page load, so a whole-page baseline taken before a Save and
+        a whole-page count taken after the app's own navigation back are NOT
+        comparable (measured: 15 before, 4 after, ELITEA-2398 first run).
+        """
+        section_header.wait_for(state="visible", timeout=timeout)
+        for _label, header in self.all_section_headers():
+            self.collapse_section(header, timeout=timeout)
+        self.expand_section(section_header, timeout=timeout)
 
     def configuration_group(self, group_label: str) -> Locator:
         """Return the provider-group container whose label EXACTLY matches

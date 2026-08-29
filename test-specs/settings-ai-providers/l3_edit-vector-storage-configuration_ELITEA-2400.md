@@ -96,6 +96,23 @@ the **Vector Storage** accordion. Page-identity drift already filed as #1250.
 - The edit form for pgvector has **no Ai Credentials picker** (unlike llm_model /
   embedding_model) — its schema declares only `connection_string`.
 
+## Implementation amendment (2026-08-29, test-automation-engineer)
+
+1. **The automation does not land on project 400.** The acting user's default project
+   is 399 (`Private`), whose Vector Storage section is EMPTY (confirmed live from the
+   product's own `section=vectorstorage` response: 399 → `total: 0`, 400 → `total: 1`).
+   The spec switches to the seeded project through the sidebar project selector — a
+   real user action, via `settings.ai_providers_seeded_project_id`.
+2. **The transit create also assigns the section default.** Creating a Vector Storage
+   configuration makes it the section's default (measured during ELITEA-2399's
+   implementation). So this spec's step 0 mutates the default even though the case
+   never mentions it; the pre-existing default is captured before the create and
+   restored in the `finally`, before the delete.
+3. **Card counts are section-scoped.** A whole-page `ai-provider-configuration-card`
+   count is not comparable across the app's own navigation back from a Save (the LLMs
+   accordion auto-expands only on a fresh page load — measured 15 before / 4 after).
+   `AIProvidersPage.isolate_section()` collapses every section and expands one.
+
 ## Cleanup (MANDATORY — this test mutates a shared project)
 
 Delete the (renamed) configuration in a `finally`, **using the name it has at teardown
@@ -108,6 +125,13 @@ types the pre-edit name will fail whenever the test got past step 5 — track th
 in a variable that step 4 updates, and make the teardown tolerant of either.
 
 ⚠️ Deletion only succeeds while another vector storage exists (§ Preconditions).
+
+⚠️ **The `default_changed` guard is raised on the line immediately after the transit
+create**, before any assertion about it. Anything in between is a path on which a flake
+skips `restore_section_default(...)` while the `finally` still deletes the configuration
+that is now the default — leaving the shared seeded project with NO default, which makes
+the sibling specs (ELITEA-2399/2401) refuse to run. Pinned by
+`tests/unit/test_default_changed_guard_is_set_at_the_mutation.py` (PR #1989 review).
 
 ⚠️ Assert the console-error axis **before** teardown (post-delete 404 refetch).
 
@@ -160,3 +184,18 @@ None.
   create route (step 0) avoids the type picker's `#656` error entirely.
 - `with allure.step("Step N — …")`. **Markers:** `ui`, `settings`, `p2`, `regression`,
   `new`.
+
+### Page-object work shipped by this implementation (2026-08-29)
+
+Additive only; every existing method kept its merged callers unchanged.
+
+| Where | What | Why |
+|---|---|---|
+| `AIProvidersPage` | `embedding_models_default_selector_combobox`, `vector_storage_default_selector_combobox` | the clickable/readable `-combobox` node; the pre-existing `*_default_selector` fields target the FormControl wrapper |
+| `AIProvidersPage` | `isolate_section()` / `collapse_section()` / `all_section_headers()` | a section-scoped card count. `get_configuration_card_count()` counts the WHOLE page, and the whole-page total is NOT comparable across the app's own navigation back from a Save (LLMs auto-expands only on a fresh load — measured 15 before / 4 after) |
+| `AIProvidersPage` | `select_option()`, `open_select_options`, `close_open_dropdown()`, `SELECT_OPTION_PREFIX_SELECTOR` | inspect a dropdown's option set without selecting. ⚠️ the bare `select-option-` prefix ALSO matches the shared `SingleSelect`'s `select-option-selected-icon` checkmark — the constant excludes it |
+| `AIProvidersPage` | `navigate_and_capture_section_models_response(section)`, `project_id_from_models_response()`, `select_default_configuration()` | section-agnostic siblings of the ELITEA-2397 LLM-specific helpers; the project id is read from the product's own request URL, never hardcoded |
+| `AiProviderFormPage` | `wait_for_schema_field(field_key)` | `wait_for_form()` settles on the PRE-schema shell, so the schema-driven re-render wipes anything typed in the gap — measured: Display Name typed AND asserted, Save observed enabled, still disabled 10 s later at the click |
+| `AiProviderFormPage` | `set_schema_field()`, `fill_secret_field()` | focus-confirmed typing (`press_sequentially` could start before the click's focus settled and drop the first keystroke — `text-embedding-3-small` arrived as `ext-embedding-3-small`) and a blur after a secret field (MUI commits some schema-typed fields only on blur) |
+| `BasePage` | `ensure_project_selected()` | `switch_project()` settles on `networkidle` + a fixed 1 s pause, which is the `#1847` mechanism. This waits on the two project-scoped GETs a switch actually fires — the shape `AdminUsersPage.ensure_team_project_selected` proved live in settings-w09 |
+| `utils/ai_provider_teardown.py` | `delete_configurations_if_present()`, `restore_section_default()` | the same `finally` was about to be copied a 4th time (Hard Rule 7) |

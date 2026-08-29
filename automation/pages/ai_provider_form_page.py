@@ -44,7 +44,7 @@ unit's Run Report instead of smuggled in here.
 import logging
 import re
 
-from playwright.sync_api import Locator, Page
+from playwright.sync_api import Locator, Page, expect
 
 from .base_page import BasePage
 from .credential_form_fields import CredentialFormFieldsMixin
@@ -141,6 +141,63 @@ class AiProviderFormPage(CredentialFormFieldsMixin, BasePage):
     def wait_for_form(self, timeout: int = NAVIGATION_TIMEOUT) -> None:
         """Wait for the (create or edit) form's Display Name field to mount."""
         self.display_name_input.wait_for(state="visible", timeout=timeout)
+
+    def wait_for_schema_field(self, field_key: str, timeout: int = NAVIGATION_TIMEOUT) -> None:
+        """Wait for the TYPE-SPECIFIC schema field *field_key* to mount.
+
+        :meth:`wait_for_form` settles on ``toolkit-field-label-input``, which
+        the form renders in its PRE-schema pass too -- so it can return while
+        ``GET /configurations/available/?section=...`` is still in flight, and
+        the schema-driven re-render that follows WIPES anything typed in the
+        gap (`_surface.md`: "a direct goto of a create route can silently wipe
+        an early fill()"). Live-measured on ELITEA-2399: Display Name typed and
+        read back correctly, Save observed ENABLED, then Save was still
+        disabled 10 s later at the click -- the label had been cleared by the
+        re-render after the assertions passed.
+
+        Waiting for a field that exists ONLY in the schema render
+        (``connection_string`` for pgvector, ``name`` for llm_model /
+        embedding_model) proves that render has landed, so nothing typed after
+        this call can be wiped. Additive: :meth:`wait_for_form` and
+        :meth:`navigate_to_create` keep their merged callers unchanged.
+        """
+        self.field(field_key).wait_for(state="visible", timeout=timeout)
+
+    def set_schema_field(self, field_key: str, value: str) -> None:
+        """Type *value* into PLAIN schema field *field_key*, confirming focus first.
+
+        Same shape as :meth:`CredentialFormFieldsMixin.type_into_field` (real
+        key events, then a blur -- MUI/React only commits on those), with one
+        addition: it waits for the field to actually BE focused before typing.
+        Without that wait ``press_sequentially`` can start while the click's
+        focus is still settling and the first keystroke is dropped -- live
+        measured on ELITEA-2410, where ``text-embedding-3-small`` arrived as
+        ``ext-embedding-3-small``. Nothing is retried and nothing is
+        normalised: the caller's ``to_have_value`` assertion is unchanged and
+        still the judge of what the field accepted.
+
+        Additive: ``type_into_field`` is left byte-identical for its merged
+        callers.
+        """
+        field = self.field(field_key)
+        field.click()
+        expect(field).to_be_focused()
+        field.press_sequentially(value, delay=20)
+        field.blur()
+
+    def fill_secret_field(self, field_key: str, value: str) -> None:
+        """Type *value* into secret field *field_key* and BLUR it.
+
+        The blur is load-bearing, not tidiness: the shared ``Input``/
+        ``InputBase`` renderer runs with ``enableAutoBlur`` and some
+        schema-typed fields only commit their value into the form state on
+        blur (the same reason :meth:`CredentialFormFieldsMixin.type_into_field`
+        blurs) -- which is exactly what a human does by moving to the next
+        control. :meth:`CredentialFormFieldsMixin.replace_secret_value` does
+        not blur and is left byte-identical for its merged callers.
+        """
+        self.replace_secret_value(field_key, value)
+        self.secret_native_input(field_key).blur()
 
     def configuration_id_from_url(self) -> str:
         """Return the ``{configuration_id}`` segment of the edit route.

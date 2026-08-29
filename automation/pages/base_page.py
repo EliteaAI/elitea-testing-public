@@ -172,6 +172,67 @@ class BasePage:
         self.page.wait_for_timeout(1000)
         logger.info("Switched to project id=%s", project_id)
 
+    # ------------------------------------------------------------------
+    # Project switch, confirmed against the product's own signals
+    # ------------------------------------------------------------------
+    # Checkmark the shared `SingleSelect` renders inside the currently
+    # selected option -- pre-existing testid, also declared on
+    # `AdminUsersPage`. Used to detect "already active", where re-selecting
+    # fires NO request and waiting for one would hang.
+    SELECT_OPTION_SELECTED_ICON_SELECTOR = '[data-testid="select-option-selected-icon"]'
+    #: The two project-scoped GETs a switch fires, keyed by the NEW project id.
+    PROJECT_INFO_URL_TEMPLATE = "/project_info/prompt_lib/{}/project-info"
+    PROJECT_PERMISSIONS_URL_TEMPLATE = "/auth/permissions/prompt_lib/{}"
+
+    def ensure_project_selected(self, project_id: str | int, timeout: int = 20_000) -> None:
+        """Switch the sidebar's active project to *project_id*, and wait until
+        the switch has actually LANDED.
+
+        Additive sibling of :meth:`switch_project`, which settles on
+        ``wait_for_network()`` + a fixed 1 s pause. That combination is the
+        `#1847` mechanism: this app holds a persistent Socket.IO polling
+        transport open, so "network idle" is a poor proxy for "the app
+        finished switching", and the following navigation can lose the race
+        against the new project's data. This method waits on the two
+        project-scoped GETs the switch actually fires instead -- `#1847`'s own
+        prescribed fix -- and skips the wait entirely when the project is
+        already active (re-selecting fires no request, so waiting would hang).
+
+        The shape is lifted verbatim from
+        :meth:`~pages.admin_users_page.AdminUsersPage.ensure_team_project_selected`
+        (ELITEA-2292, settings-w09), which proved it live on a ``/settings/*``
+        route. Declared duplication (`.agents/role-overrides.md`
+        § declared-improvisation): it is promoted HERE, to the shared base, so
+        the next caller reuses it rather than copying it a third time;
+        ``AdminUsersPage``'s own copy is deliberately left byte-identical
+        because rewriting a merged page object is a refactor, not part of a
+        test-case PR. Collapsing the two is named as tech debt in the
+        ELITEA-2398/2410/2399/2400/2401 Run Report.
+
+        Args:
+            project_id: numeric id of the target project (string or int).
+            timeout: maximum wait, in milliseconds, for each signal.
+        """
+        logger.info("Ensuring active project is id=%s", project_id)
+        self.project_selector_trigger.click()
+        option = self.page.locator(self.SELECT_OPTION.format(project_id))
+        option.wait_for(state="visible", timeout=timeout)
+
+        if option.locator(self.SELECT_OPTION_SELECTED_ICON_SELECTOR).count():
+            logger.info("Project %s is already active -- closing the selector", project_id)
+            self.page.keyboard.press("Escape")
+            return
+
+        project_info_url = self.PROJECT_INFO_URL_TEMPLATE.format(project_id)
+        permissions_url = self.PROJECT_PERMISSIONS_URL_TEMPLATE.format(project_id)
+        with self.page.expect_response(
+            lambda response: project_info_url in response.url, timeout=timeout
+        ), self.page.expect_response(
+            lambda response: permissions_url in response.url, timeout=timeout
+        ):
+            option.click()
+        logger.info("Active project is now id=%s", project_id)
+
     def sidebar_menu_item(self, value: str) -> Locator:
         """Return the navigation-sidebar menu entry for *value*.
 
