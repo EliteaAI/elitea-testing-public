@@ -3,12 +3,12 @@ name: Settings area backlog (#1398)
 description: 128-case settings backlog, wave-by-wave — what's delivered, what's blocked and why, which future waves are queued
 type: project
 created: 2026-08-26
-updated: 2026-08-26
+updated: 2026-08-30
 ---
 
-## Status after waves w01–w09 (2026-08-29)
+## Status after waves w01–w10 (2026-08-30)
 
-**Running total: 75 `automated`, 14 `merged-sanctioned-red`, 11 blocked (human decisions), ~28 not yet attempted. NO parked units.**
+**Running total: 83 `automated`, 17 `merged-sanctioned-red`, 13 blocked (human decisions), 15 not yet attempted. NO parked units.**
 
 ⚠️ **A sanctioned-RED case is NOT delivered coverage.** `.agents/testing.md` § Merge gate:
 it stays `blocked-on-#N` and is never back-written `execution_type: automated`.
@@ -16,6 +16,30 @@ On 2026-08-28 I corrected three of my own earlier back-writes that broke this �
 ELITEA-2243 (#1771, w01), ELITEA-2289 (#1884, w04), ELITEA-2291 (#1885, w04) —
 back to draft/manual + `sanctioned_red: <ticket>`, keeping `automation_test_id` for
 CI correlation. Count dropped 36 -> 33. **Re-check prior waves whenever this rule comes up.**
+
+### Wave settings-w10 — `settings/ai-configuration` first half (13 cases)
+
+8 automated (2393/2394/2395/2396/2398/2399/2400/2409) + 3 `merged-sanctioned-red`
+(ELITEA-2408 + 2410 -> #1984 required-Name-does-not-gate-Save; ELITEA-2401 -> #1987
+Vector Storage card never gets the `Default` badge) + 2 blocked (2417 -> #1982, 2411 -> #1988).
+PR #1990. Lead gate: green group 3/3 (248.02/248.21/247.01s, 14 tests); RED group identical 3/3.
+
+**Review caught the write-heavy failure mode I flagged before launch.** In
+`test_vector_storage_edit.py`, `default_changed = True` was set *after* the save it guards —
+a flake in between would skip the teardown's default-restore while still deleting the
+configuration that default pointed at. A spec that passes and leaves damage. Fixed pre-merge.
+When a sub-area is write-heavy, say so in the dispatch and the reviewers look for exactly this.
+
+**Harness StructuredOutput false-block, 4th occurrence** (w05, w08, w09, w10) — cluster B
+marked `blocked` while PR #1986 was MERGED with all four specs on the trunk. This wave I
+corrected `report.json` **before** opening the trunk PR (w09's lesson) and got no add/add
+conflict on the way into base. Keep doing it in that order.
+
+**2417 and 2411 are genuine human decisions, not automation gaps.** 2417: a *shared* AI
+credential ("ELPS") is visible on every non-public project, so "section hidden when no
+credentials" cannot be produced at all. 2411: the case's only observable is false and the
+product is internally consistent about it — schema says `"default": null` with no `required`
+entry, no asterisk, Save enabled when empty. A contract question, not a defect to assert around.
 
 ### Wave settings-w09 — `settings/users-and-roles` (15 cases)
 
@@ -102,7 +126,9 @@ full provenance table + SHAs.
   Deliberately NOT grouped into w01: they need multiple identities (admin vs
   viewer/monitor role, an unauthenticated session), a different setup shape
   than the rest of the root `settings` cases.
-- **1 sub-area left, ~24 cases**: `ai-configuration` (24 — split across two waves).
+- **Final wave, 15 cases**: `ai-configuration` second half — ELITEA-2402..2407
+  (image/ASR/TTS display + change default), 2412/2413/2414 (persistence after reload),
+  2415/2416 (error cases) — plus root cases 2245-2248.
   (`notifications` w02, `project-params` w03, `personal-tokens` w04, `secrets` w05, `analytics` w06.)
 
 ## Pattern for the next wave
