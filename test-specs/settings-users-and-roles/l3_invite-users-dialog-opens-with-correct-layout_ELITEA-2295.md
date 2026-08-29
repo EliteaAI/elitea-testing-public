@@ -39,8 +39,13 @@
      before the parenthesis — matches the case text and the source).
    - **Emails field** (`users-invite-emails-input`) is visible, and its label
      (`users-invite-emails-label`) has exact text `"Emails *"` — the trailing
-     `*` IS the required marker the case asks for (MUI renders the asterisk
-     into the `<label>` when `required` is set).
+     `*` IS the required marker the case asks for. **Assert innerText, not
+     textContent** (implementer amendment, live-diagnosed): the label node
+     carries TWO asterisks — the visible one `StyledInputEnhancer` renders
+     inside the label's Box (`Emails *`) plus MUI's own `display:none`
+     `MuiFormLabel-asterisk` span — so Playwright's default `to_have_text`
+     (textContent) reads `"Emails * *"` and fails. Only the visible text is
+     the observable the case describes.
    - **Roles dropdown** (`users-invite-role-select-combobox`) is visible;
      opening it shows **exactly three** options — `admin`, `editor`,
      `viewer` — via `select-option-{role}`.
@@ -140,6 +145,9 @@ None.
   testids plus `close_invite_dialog()` and `get_role_option_texts()`.
 - The dialog root testid lands on the MUI `Dialog` root, which **unmounts**
   when closed — so `to_have_count(0)` is the correct closed-state assertion.
+- Emails-label assertion: `expect(...).to_have_text("Emails *", use_inner_text=True)`.
+  See the Test Steps note on the double asterisk — the default textContent
+  comparison reads `"Emails * *"`.
 - Opening the roles menu: click the combobox, then read the options; close
   with `Escape` (consumed by the MUI Menu before it reaches the dialog's own
   Escape handler — the dialog stays open, confirmed live and already

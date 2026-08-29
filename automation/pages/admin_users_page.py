@@ -317,6 +317,10 @@ class AdminUsersPage(BasePage):
     # The Invite dialog opens with nothing selected, so the bare prefix
     # happens to be right there — which is exactly how this trap hides.
     # Both dialogs use the exclusion form so the two counts are comparable.
+    # Not a new shape: `create_personal_token_page.py` already declares the
+    # byte-identical constant. Duplicated here rather than cross-imported, per
+    # the project's page-object convention (same as `SELECT_OPTION`, which
+    # ChatPage / ToolkitDetailPage / this class each declare for themselves).
     ROLE_OPTION_ANY_SELECTOR = (
         '[data-testid^="select-option-"]:not([data-testid="select-option-selected-icon"])'
     )
@@ -391,6 +395,13 @@ class AdminUsersPage(BasePage):
         Re-selecting an ALREADY-active project fires no request, so waiting
         for one would hang. That case is detected first, via the checkmark
         `SingleSelect` renders inside the selected option.
+
+        There is deliberately no trailing `wait_for_network()`: the two
+        responses above ARE the completion signal, and the `networkidle` wait
+        is the very thing tracked as `#1847` — it times out at random against
+        the always-open Socket.IO poll (observed here once in 8 specs, as a
+        raw 15 s `TimeoutError` inside this method). Waiting on the responses
+        the caller actually needs is `#1847`'s own prescribed fix.
         """
         self.project_selector_trigger.click()
         option = self.page.locator(self.SELECT_OPTION.format(project_id))
@@ -409,7 +420,6 @@ class AdminUsersPage(BasePage):
             lambda response: permissions_url in response.url, timeout=timeout
         ):
             option.click()
-        self.wait_for_network(timeout=timeout)
 
     def navigate(self) -> tuple[Response, Response]:
         """Ensure the team project is selected, navigate to /settings/users,
