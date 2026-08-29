@@ -896,3 +896,41 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   ⚠️ Do **not** "fix" a future double call by relaxing Tier 1 to `>= 1` + `frames[0]`: on a
   success-then-failure pair that reads the success and passes over a real failure. The correct
   shape is `>= 1` **plus** asserting every matched frame satisfies the success pattern.
+
+- **404 flavor — the URL is captured, and it is NOT a static asset (2026-08-29, settings-w09,
+  ELITEA-2294)**: the "404 variant, now confirmed" entry above asks for a URL-bearing
+  occurrence to convert the suspected-font-asset theory into a confirmed one. One arrived.
+  `test_users_search_filter.py` (ELITEA-2294) failed one attempt on the recurring
+  unrelated-resource console error, and because that spec uses
+  `utils/console_errors.collect_console_errors()` the message named the resource:
+  `error: Failed to load resource: the server responded with a status of 404 (Not Found) @
+  http://localhost:5173/api/v2/elitea_core/toolkits/prompt_lib/`.
+  **It is an API call with a MALFORMED path** — `toolkits/prompt_lib/` with a trailing slash
+  and **no project id** — fired while the app is mid project-transition (the same request
+  succeeds as `.../toolkits/prompt_lib/400` once a project is selected; live-verified 200 OK).
+  So the 404 flavor is a transient app-side request-with-no-project-id, not a missing font or
+  icon. Not reproduced on the immediate rerun; the rest of that 5-spec run and two later 8-spec
+  runs were clean (the final one 8/8 with `reruns.json == {}`).
+  **A SECOND, byte-identical occurrence arrived in the same session** — different spec
+  (`test_users_roles_in_invite_and_edit_dialogs.py`, ELITEA-2305), different full-suite
+  invocation, same project-id-less URL. That meets this ledger's own two-matching-URLs
+  threshold, so the path is now filtered — but **only that exact URL, and only where a spec
+  opts in**: `utils/console_errors.exclude_known_defect_urls()` (opt-in, URL-keyed, offers no
+  status-code filter by construction) plus a `# Known defect: #1971` comment in each spec.
+  The defect itself is FILED and OPEN: **#1971**, a regression of the closed **#554** — the
+  same `toolkits.js` `toolkitTypes` project-id race, but with a NEW trigger worth knowing,
+  an explicit **project switch** rather than first list-page mount (which is why an
+  automation flow that switches projects hits it far more often than a human does).
+  The migration ask stands: only specs on `collect_console_errors()` can produce this
+  evidence — the ~230 URL-less specs would have logged both occurrences as anonymous noise.
+- **`networkidle` flake (#1847) — second confirmed site, and the prescribed fix worked
+  (2026-08-29, settings-w09)**: `AdminUsersPage.ensure_team_project_selected()`'s trailing
+  `wait_for_network()` timed out raw at 15 s in 1 of 8 specs, exactly the #1847 mechanism
+  (persistent `/socket.io/` polling vs a 500 ms-silence wait). It was **replaced** with waits on
+  the two project-scoped GETs the switch actually fires
+  (`project_info/prompt_lib/{id}/project-info`, `auth/permissions/prompt_lib/{id}`), i.e.
+  #1847's own prescribed fix — wait on what the caller needs, not on network silence.
+  Result: the flake disappeared (8/8, `reruns.json == {}`) **and the 8-spec run got ~56 s
+  faster** (183.55 s -> 127.71 s), because each of the 8 navigations had been paying a
+  networkidle wait it did not need. Worth remembering when triaging the other 140-odd
+  `wait_for_network` call sites: the fix is usually cheaper AND faster than the wait it removes.

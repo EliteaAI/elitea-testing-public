@@ -61,6 +61,12 @@ NAVIGATION_TIMEOUT = 15_000
 USERS_LIST_URL_SUBSTRING = "/admin/users/default/"
 ROLES_LIST_URL_SUBSTRING = "/admin/roles/default/"
 
+# The two project-scoped GETs a project SWITCH triggers, keyed by the NEW
+# project id (live-captured 2026-08-29). Waiting on them is what makes
+# `ensure_team_project_selected` deterministic — see that method.
+PROJECT_INFO_URL_TEMPLATE = "/project_info/prompt_lib/{}/project-info"
+PROJECT_PERMISSIONS_URL_TEMPLATE = "/auth/permissions/prompt_lib/{}"
+
 
 class AdminUsersPage(BasePage):
     """Settings → Users page (page layout + users table)."""
@@ -112,6 +118,86 @@ class AdminUsersPage(BasePage):
     column_header_actions = LocatorDescriptor(
         testid="user-column-header-actions",
         description='Table column header — "Actions" (non-sortable)',
+    )
+
+    # --- Repeatable per-row cells, page-scoped (ELITEA-2293/2294) ---
+    # These resolve EVERY visible row's cell in DOM order, so the rendered
+    # sort/filter order can be asserted with an auto-retrying
+    # `to_have_text(list)` assertion. Same shape as
+    # `PersonalTokensPage.row_name_cell`. The row-SCOPED getters further down
+    # (`get_first_row_*`) stay as they are — they answer a different question
+    # ("this row's cell"), not ("every row's cell, in order").
+    row_name_cell = LocatorDescriptor(
+        testid="user-row-name",
+        description="Every visible row's Name cell, in rendered DOM order. NOTE: an "
+        "invited-but-never-logged-in user renders this cell EMPTY (the name is only "
+        "populated after first login) — an empty string here is real data, not a "
+        "missing element.",
+    )
+    row_email_cell = LocatorDescriptor(
+        testid="user-column-value-email",
+        description="Every visible row's Email cell, in rendered DOM order.",
+    )
+    row_last_login_cell = LocatorDescriptor(
+        testid="user-column-value-last_login",
+        description="Every visible row's Last-login cell, in rendered DOM order. A "
+        "user who has never logged in renders the literal '-' here (GridTableRowDataCell's "
+        "`value || '-'` fallback), NOT an empty string — a different null rendering "
+        "from the Name cell's.",
+    )
+
+    row_roles_cell = LocatorDescriptor(
+        testid="user-column-value-roles",
+        description="Every visible row's Role cell, in rendered DOM order. Multiple "
+        "roles render joined by ', ' (UsersTable's renderCell).",
+    )
+
+    # --- Invite-users dialog chrome (ELITEA-2295 / 2305 / 2308) ---
+    # Five new testid props threaded through InviteUserDialog -> Users.jsx's
+    # call site (EliteaAI/EliteaUI@8f559586). `dialogTestId`/`titleTestId`/
+    # `closeButtonTestId` land on BaseModal props that ALREADY existed —
+    # InviteUserDialog simply never passed them; `descriptionTestId` and
+    # `emailsLabelTestId` are new props on the dialog's own existing JSX
+    # nodes. No new DOM node, no new hook.
+    invite_dialog = LocatorDescriptor(
+        testid="users-invite-dialog",
+        description="Invite-users dialog root (MUI Dialog). UNMOUNTS when closed, so "
+        "`to_have_count(0)` is the correct closed-state assertion.",
+    )
+    invite_dialog_title = LocatorDescriptor(
+        testid="users-invite-title",
+        description='Invite-users dialog title — exact text "Invite users"',
+    )
+    invite_dialog_description = LocatorDescriptor(
+        testid="users-invite-description",
+        description="Invite-users dialog helper text under the title",
+    )
+    invite_emails_label = LocatorDescriptor(
+        testid="users-invite-emails-label",
+        description='Invite-users dialog Emails <label> — exact text "Emails *". The '
+        "trailing asterisk IS the required marker (MUI writes it into the label when "
+        "the field is `required`), so asserting this text is how the case's "
+        '"marked as required with *" is verified.',
+    )
+    invite_close_button = LocatorDescriptor(
+        testid="users-invite-close-button",
+        description="Invite-users dialog Close (x) button in the title bar",
+    )
+
+    # --- Per-ROW Edit-roles dialog (ELITEA-2305) ---
+    # Call-site-only wiring at UsersTable.jsx's `renderActions` of
+    # EditUsersButton's already-supported dialogTestId/roleSelectTestId
+    # (EliteaAI/EliteaUI@8f559586) — ELITEA-2304 had wired only the HEADER
+    # (isBatchEdit) instance. Title/Save/Cancel are deliberately NOT wired at
+    # the row call site: no case's executed path calls them (canon #511).
+    row_edit_roles_dialog = LocatorDescriptor(
+        testid="users-row-edit-roles-dialog",
+        description="Per-row 'Edit roles' dialog root. Unmounts when closed.",
+    )
+    row_edit_roles_select_combobox = LocatorDescriptor(
+        testid="users-row-edit-roles-select-combobox",
+        description="Per-row 'Edit roles' dialog — Roles multi-select combobox trigger "
+        "(SingleSelect auto-appends the `-combobox` suffix to `roleSelectTestId`)",
     )
 
     # Sidebar project-selector combobox — pre-existing testid, duplicated
@@ -202,6 +288,10 @@ class AdminUsersPage(BasePage):
     # family (SingleSelectMenuItem.jsx) as ChatPage.SELECT_OPTION /
     # ToolkitDetailPage.SELECT_OPTION — reuse the pattern, don't invent a new one.
     SELECT_OPTION = '[data-testid="select-option-{}"]'
+    # Checkmark SingleSelect renders inside the currently-selected option — the
+    # testid-only way to ask "is this project already active?" without knowing
+    # the project's display name. Scoped inside an option, never page-level.
+    SELECT_OPTION_SELECTED_ICON_SELECTOR = '[data-testid="select-option-selected-icon"]'
     # Sort-indicator icon on a sortable column header — dynamic testid,
     # component-level addition to GridTableHeader.jsx mirroring its existing
     # `columnTestIdPrefix` mechanism (EliteaAI/EliteaUI@52582fe3, ELITEA-2292
@@ -213,6 +303,27 @@ class AdminUsersPage(BasePage):
     # would double-count in get_column_header_count() for every sortable
     # column (caught live: 8 vs expected 5 on first run).
     COLUMN_SORT_ICON_SELECTOR = '[data-testid="user-sort-icon-{}"]'
+    # Column header cell — the whole cell carries GridTableHeader's onClick, so
+    # this IS the sort control's click target (there is no separate button).
+    COLUMN_HEADER_SELECTOR = '[data-testid="user-column-header-{}"]'
+    # Role options in an OPEN roles menu.
+    #
+    # ⚠️ `[data-testid^="select-option-"]` alone is NOT an option count:
+    # SingleSelect renders a checkmark carrying `select-option-selected-icon`
+    # next to the currently-selected option, and the bare prefix matches it.
+    # Live evidence, per-row Edit-roles dialog with `admin` preselected:
+    #   ['select-option-admin', 'select-option-selected-icon',
+    #    'select-option-editor', 'select-option-viewer']   -> 4, not 3
+    # The Invite dialog opens with nothing selected, so the bare prefix
+    # happens to be right there — which is exactly how this trap hides.
+    # Both dialogs use the exclusion form so the two counts are comparable.
+    # Not a new shape: `create_personal_token_page.py` already declares the
+    # byte-identical constant. Duplicated here rather than cross-imported, per
+    # the project's page-object convention (same as `SELECT_OPTION`, which
+    # ChatPage / ToolkitDetailPage / this class each declare for themselves).
+    ROLE_OPTION_ANY_SELECTOR = (
+        '[data-testid^="select-option-"]:not([data-testid="select-option-selected-icon"])'
+    )
 
     def __init__(self, page: Page):
         super().__init__(page)
@@ -257,19 +368,58 @@ class AdminUsersPage(BasePage):
     def ensure_team_project_selected(
         self, project_id: str = settings.users_team_project_id, timeout: int = NAVIGATION_TIMEOUT
     ) -> None:
-        """Switch the sidebar's active project to *project_id*.
+        """Switch the sidebar's active project to *project_id* and wait until
+        the switch has actually landed.
 
         Precondition for reaching Settings -> Users at all — see the module
-        docstring's "Live-discovered precondition" note. Every fresh test
-        browser context starts on this user's default (private) project, so
-        this always performs the switch rather than checking first —
-        re-selecting an already-active project is a safe no-op click.
+        docstring's "Live-discovered precondition" note.
+
+        The wait is NOT optional. `wait_for_network()` alone (Playwright's
+        `networkidle`) returns while the project switch is still settling —
+        this app holds a persistent Socket.IO polling transport open, so
+        "network idle" is a poor proxy for "the app finished switching"
+        (the shared `#1847` mechanism). The following
+        `navigate("/settings/users")` then loses the race against
+        `Settings.jsx`'s `isPrivateProject` guard, which redirects straight
+        back to `/settings/project-general` — a zero-row page and a
+        mystifying "user-row never became visible" timeout 10 s later.
+        Live-diagnosed 2026-08-29 from a failure screenshot still showing
+        "Project: Private" / "Project ID: 399"; it cost 3 of 10 invocations
+        across one session before this fix.
+
+        So the switch is confirmed against the product's own signals: the two
+        project-scoped GETs keyed by the NEW project id (`project-info`, which
+        is what the guard reads, and `auth/permissions`, which is what gates
+        the Users page's controls).
+
+        Re-selecting an ALREADY-active project fires no request, so waiting
+        for one would hang. That case is detected first, via the checkmark
+        `SingleSelect` renders inside the selected option.
+
+        There is deliberately no trailing `wait_for_network()`: the two
+        responses above ARE the completion signal, and the `networkidle` wait
+        is the very thing tracked as `#1847` — it times out at random against
+        the always-open Socket.IO poll (observed here once in 8 specs, as a
+        raw 15 s `TimeoutError` inside this method). Waiting on the responses
+        the caller actually needs is `#1847`'s own prescribed fix.
         """
         self.project_selector_trigger.click()
         option = self.page.locator(self.SELECT_OPTION.format(project_id))
         option.wait_for(state="visible", timeout=timeout)
-        option.click()
-        self.wait_for_network(timeout=timeout)
+
+        if option.locator(self.SELECT_OPTION_SELECTED_ICON_SELECTOR).count():
+            logger.info("Project %s is already active — closing the selector", project_id)
+            self.page.keyboard.press("Escape")
+            return
+
+        project_info_url = PROJECT_INFO_URL_TEMPLATE.format(project_id)
+        permissions_url = PROJECT_PERMISSIONS_URL_TEMPLATE.format(project_id)
+        with self.page.expect_response(
+            lambda response: project_info_url in response.url, timeout=timeout
+        ), self.page.expect_response(
+            lambda response: permissions_url in response.url, timeout=timeout
+        ):
+            option.click()
 
     def navigate(self) -> tuple[Response, Response]:
         """Ensure the team project is selected, navigate to /settings/users,
@@ -301,6 +451,158 @@ class AdminUsersPage(BasePage):
             super().navigate("/settings/users")
         self.user_row.first.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
         return users_resp_info.value, roles_resp_info.value
+
+    # --- Column sorting (ELITEA-2293) ---
+    def get_column_header(self, field: str):
+        """Return the column-header Locator for *field* (the raw column key,
+        e.g. ``"name"``/``"last_login"``).
+
+        The whole header cell carries ``GridTableHeader``'s ``onClick``, so
+        the header IS the sort control — there is no separate button.
+        """
+        return self.page.locator(self.COLUMN_HEADER_SELECTOR.format(field))
+
+    def click_column_header(self, field: str) -> None:
+        """Click *field*'s column header to toggle its sort.
+
+        Sorting is CLIENT-SIDE (``useTableSort`` reorders the already-cached
+        RTK-Query array), so no request fires: callers wait on the reordered
+        DOM, never on a response and never on a sleep.
+        """
+        self.get_column_header(field).click()
+
+    def get_sort_icon(self, field: str):
+        """Return the sort-control Locator for *field*'s column header.
+
+        Only sortable columns render one, so this is equally the handle for
+        the ABSENCE assertion on the non-sortable columns.
+        """
+        return self.page.locator(self.COLUMN_SORT_ICON_SELECTOR.format(field))
+
+    def get_row_names(self) -> list[str]:
+        """Return every visible row's Name cell text, in rendered DOM order.
+
+        An invited-but-never-logged-in user yields ``""`` — see
+        :attr:`row_name_cell`.
+        """
+        return [(cell.text_content() or "").strip() for cell in self.row_name_cell.all()]
+
+    def get_row_emails(self) -> list[str]:
+        """Return every visible row's Email cell text, in rendered DOM order."""
+        return [(cell.text_content() or "").strip() for cell in self.row_email_cell.all()]
+
+    def get_row_last_logins(self) -> list[str]:
+        """Return every visible row's Last-login cell text, in rendered DOM
+        order. A never-logged-in user yields the literal ``"-"`` — see
+        :attr:`row_last_login_cell`."""
+        return [(cell.text_content() or "").strip() for cell in self.row_last_login_cell.all()]
+
+    def get_row_roles(self) -> list[str]:
+        """Return every visible row's Role cell text, in rendered DOM order."""
+        return [(cell.text_content() or "").strip() for cell in self.row_roles_cell.all()]
+
+    # --- Search (ELITEA-2294) ---
+    def type_search(self, text: str) -> None:
+        """Type *text* into the users search box one character at a time.
+
+        ``SimpleSearchBar`` filters from the native ``onChange`` — per
+        keystroke, no Enter, no submit control, no debounce — so
+        ``press_sequentially`` is what actually exercises the "real time"
+        claim. Never press Enter here: it would defeat the case's subject.
+        """
+        self.search_input.click()
+        self.search_input.press_sequentially(text, delay=30)
+
+    def clear_search(self) -> None:
+        """Clear the users search box via select-all + Backspace.
+
+        ``SimpleSearchBar`` is a plain MUI ``InputBase`` with no auto-blur
+        wrapper, so ``ControlOrMeta+a`` is reliable here (live-confirmed on
+        this field) — same technique as ``PersonalTokensPage.clear_search``.
+        """
+        self.search_input.click()
+        self.search_input.press("ControlOrMeta+a")
+        self.search_input.press("Backspace")
+
+    def get_search_value(self) -> str:
+        """Return the current value of the users search box.
+
+        The ``users-search-input`` testid resolves to the native ``<input>``
+        (wired through ``SimpleSearchBar``'s ``inputProps``), so
+        ``input_value()`` works directly.
+        """
+        return self.search_input.input_value()
+
+    # --- Roles menu, shared by both dialogs (ELITEA-2295 / 2305 / 2308) ---
+    def open_roles_menu(self, combobox, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Open *combobox*'s roles menu and wait for its options to mount."""
+        combobox.click(timeout=timeout)
+        self.page.locator(self.ROLE_OPTION_ANY_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
+
+    def close_roles_menu(self) -> None:
+        """Close an open roles menu with Escape.
+
+        The MUI Menu consumes the first Escape before it can bubble to the
+        dialog's own Escape-closes-dialog handler, so the dialog stays open
+        (live-confirmed; also documented in the surface digest).
+        """
+        self.page.keyboard.press("Escape")
+
+    def get_role_option_texts(self) -> list[str]:
+        """Return the visible role options of the CURRENTLY OPEN roles menu,
+        in rendered order.
+
+        Uses :attr:`ROLE_OPTION_ANY_SELECTOR`, which excludes the
+        ``select-option-selected-icon`` checkmark — see that constant's note
+        for why the bare prefix over-counts whenever a role is preselected.
+        """
+        return [
+            (option.text_content() or "").strip()
+            for option in self.page.locator(self.ROLE_OPTION_ANY_SELECTOR).all()
+        ]
+
+    def get_role_options_locator(self):
+        """Return the Locator matching every role option in an open roles
+        menu — the handle for an auto-retrying ``to_have_count`` assertion."""
+        return self.page.locator(self.ROLE_OPTION_ANY_SELECTOR)
+
+    def get_invite_selected_role_text(self) -> str:
+        """Return the Invite dialog's Roles combobox display text.
+
+        The combobox renders a zero-width space (U+200B) when nothing is
+        selected, so that character is stripped here — a caller comparing
+        against ``""`` gets the answer it expects.
+        """
+        raw = self.invite_role_select_combobox.text_content() or ""
+        return raw.replace("\u200b", "").strip()
+
+    def close_invite_dialog(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Dismiss the Invite-users dialog via its Close (x) button and wait
+        for the dialog to unmount."""
+        self.invite_close_button.click(timeout=timeout)
+        self.invite_dialog.wait_for(state="detached", timeout=timeout)
+
+    # --- Per-row Edit-roles dialog (ELITEA-2305) ---
+    def open_row_edit_roles_dialog(self, row, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Click *row*'s Edit (pencil) icon and wait for the per-row
+        "Edit roles" dialog to open."""
+        row.locator(self.USER_ROW_EDIT_BUTTON_SELECTOR).click()
+        self.row_edit_roles_dialog.wait_for(state="visible", timeout=timeout)
+
+    def close_row_edit_roles_dialog(self, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Dismiss the per-row Edit-roles dialog with Escape and wait for it
+        to unmount.
+
+        Escape is the handle because Cancel/Close carry no testid at the ROW
+        call site — no case's executed path clicks them, so none was added
+        (canon ruling #511 scope discipline). ``BaseModal``'s own
+        ``handleKeyDown`` calls ``onClose`` on Escape; live-confirmed, and the
+        subject row's role is left unchanged.
+        """
+        self.page.keyboard.press("Escape")
+        self.row_edit_roles_dialog.wait_for(state="detached", timeout=timeout)
 
     def get_column_header_count(self) -> int:
         """Return the number of rendered table column-header elements

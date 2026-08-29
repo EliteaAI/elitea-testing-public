@@ -306,3 +306,82 @@ before proposing new plumbing for a modal on this codebase.
 - `l3_invite-users-dialog-opens-with-correct-layout_ELITEA-2295.md`
 - `l3_available-roles-in-invite-and-edit-dialogs_ELITEA-2305.md`
 - `l3_invite-user-without-selecting-a-role_ELITEA-2308.md`
+
+### Resolved/added during settings-w09 implementation (2026-08-29)
+
+**1. `AdminUsersPage.navigate()`'s project switch was RACY — fixed.**
+`ensure_team_project_selected()` waited only on `wait_for_network()`
+(`networkidle`), which this app's always-open Socket.IO polling transport makes
+a poor proxy for "the switch landed" (the shared `#1847` mechanism). The
+following `navigate("/settings/users")` then lost the race against
+`Settings.jsx`'s `isPrivateProject` guard and was redirected straight back to
+`/settings/project-general` — producing a zero-row page and a mystifying
+"`user-row` never became visible" timeout 10 s later. Diagnosed from a failure
+screenshot still showing **"Project: Private" / "Project ID: 399"**; it cost
+**3 of 10 invocations** in one session before the fix.
+
+The method now waits on the product's own switch signals — the two
+project-scoped GETs keyed by the **new** project id, live-captured:
+- `GET /api/v2/elitea_core/project_info/prompt_lib/{id}/project-info` (what the
+  guard reads)
+- `GET /api/v2/auth/permissions/prompt_lib/{id}` (what gates the Users page's
+  controls)
+
+and the trailing `wait_for_network()` was **removed** — it was `#1847` itself
+(observed timing out raw at 15 s once in an 8-spec run). After the fix: 8 specs,
+**8/8 passed, `reruns.json == {}`**, and the run got ~56 s faster.
+
+**2. The selected-option checkmark is a testid-only "is this already active?"
+probe.** `SingleSelect` renders `select-option-selected-icon` INSIDE the
+currently-selected option, so
+`option.locator('[data-testid="select-option-selected-icon"]').count()` answers
+"is project N already selected?" without needing the project's display name.
+`ensure_team_project_selected` uses it to short-circuit — re-selecting an
+already-active project fires no request, so the response wait above would
+otherwise hang. Same fact, opposite use, as the option-count trap noted above.
+
+**3. MUI required-field labels carry TWO asterisks — assert innerText.**
+`users-invite-emails-label`'s node is:
+
+```html
+<label ...><div><span>Emails *</span></div>
+  <span aria-hidden="true" class="MuiFormLabel-asterisk" style="display:none"> *</span></label>
+```
+
+`StyledInputEnhancer` renders the visible `Emails *` itself AND MUI adds its own
+hidden asterisk span. Playwright's `to_have_text` compares **textContent** by
+default, which concatenates both into `"Emails * *"`. Use
+`to_have_text("Emails *", use_inner_text=True)` — the visible text is the
+observable a layout case means. Expect the same trap on any other `required`
+field wired through `StyledInputEnhancer`.
+
+**4. Console-noise ledger: the 404 flavor's URL is finally captured.**
+`test_users_search_filter` failed one attempt on the recurring unrelated-resource
+console error — and because these specs use `utils/console_errors`, the message
+carried the resource:
+
+```
+error: Failed to load resource: the server responded with a status of 404 (Not Found)
+       @ http://localhost:5173/api/v2/elitea_core/toolkits/prompt_lib/
+```
+
+Note the **trailing slash with no project id** — the app requests
+`toolkits/prompt_lib/` (project id missing) during a project transition, which
+404s. That contradicts the long-standing "suspected static font/icon asset"
+theory in `.agents/testing.md`: it is an API call with a malformed path. Not
+reproduced on the immediate rerun. Recorded in `.agents/testing.md`'s ledger too.
+
+**5. Orphaned seed users.** Project 400 carries two leftover
+`elitea-batch-edit-test2-*@example.com` rows from an ELITEA-2304 run whose
+cleanup did not complete. Harmless for read-only cases (and useful — they supply
+the null-name / null-last-login branches), but they mean **no test on this
+surface may hardcode a row count or a user identity.**
+
+**6. Console-error assertions on this surface must exclude #1971.** The project
+switch `AdminUsersPage.navigate()` performs reopens EliteaUI's `toolkitTypes`
+project-id race, so a project-id-less `GET .../elitea_core/toolkits/prompt_lib/`
+404 lands in the console on roughly half of full-suite runs. Filed as **#1971**
+(regression of the closed #554). All five settings-w09 specs exclude that ONE
+exact URL via `utils.console_errors.exclude_known_defect_urls` with a
+`# Known defect: #1971` comment — URL-keyed, never status-code-keyed. Any new
+spec on this surface will hit it too.
