@@ -172,3 +172,137 @@ live-confirmed:
   !selectedRoles.length || error}`) — no request ever fires for an
   invalid-email attempt; don't reuse `AdminUsersPage.invite_users()` (it
   awaits a POST response) for this path.
+
+---
+
+## Update — settings-w09 (ELITEA-2293/2294/2295/2305/2308), 2026-08-29
+
+Confirmed live against `http://localhost:5173` (EliteaUI `automation/testids`,
+DEV backend, project 400 "UI Testing").
+
+### Live data drift since 2026-08-05
+Project 400 now holds **4** user rows, not 2:
+
+| Name | Email | Last login | Role |
+|---|---|---|---|
+| Levon Dadayan | levon_dadayan@epam.com | `2026-08-29T10:29:17` | admin |
+| Test Bot | testbot@elitea.ai | `2026-08-29T14:02:40` | admin |
+| *(blank)* | elitea-batch-edit-test2-70fda701@example.com | `-` | viewer |
+| *(blank)* | elitea-batch-edit-test2-45c8fb8d@example.com | `-` | editor |
+
+The last two are **orphaned seed users from an earlier ELITEA-2304 run whose
+cleanup did not complete** (reported as a finding). Consequences for anyone
+writing tests here:
+- **Never hardcode a row count, a name, an email or a datetime.** Derive every
+  expectation from the rendered table at runtime.
+- The set exercises BOTH null branches usefully — a blank Name renders as an
+  **empty string** in `user-row-name`, while a null last login renders as the
+  literal **`-`** in `user-column-value-last_login`. Two different null
+  renderings on the same table.
+
+### Sorting (ELITEA-2293) — confirmed live
+- Engine is the shared `useTableSort` (`entities/grid-table/lib`), same as
+  Personal Tokens / Secrets. `defaultField: 'name'`, `defaultDirection: 'asc'`.
+- **The table arrives ALREADY name-ascending**, so the FIRST click on Name
+  flips to **descending** and the second returns to ascending. The case text
+  (ELITEA-2293 steps 2-4) claims the opposite — stale case text, product is
+  correct. Filed as a **sibling of #1880** (byte-identical pattern on the
+  Personal Tokens table).
+- Switching to a DIFFERENT field always starts at `asc`
+  (`prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'`), so the
+  first Email click and the first Last-login click are both ascending.
+- **Null placement is part of the contract**: nulls sort LAST ascending, FIRST
+  descending. Live-verified on both the blank-Name and blank-last-login rows.
+- Sorting is **client-side** — no request fires on a header click, and the row
+  count is invariant across every click.
+
+### Search (ELITEA-2294) — confirmed live
+- Client-side, per keystroke, no debounce, no Enter, no submit control
+  (`SimpleSearchBar` -> `Users.jsx`'s `filteredUsers` memo over the cached array).
+- **The matching rule has THREE arms** (`Users.jsx:82-92`): a row matches when
+  the lower-cased term is a substring of its **email OR name OR joined roles**.
+  A runtime-derived probe must compute expected matches with the same three-arm
+  rule — an email-only derivation will over- or under-predict whenever the probe
+  is also a substring of `admin`/`editor`/`viewer`.
+- Placeholder is exactly `"Search "` (trailing space).
+- `ControlOrMeta+a` + `Backspace` clears the field reliably (plain MUI
+  `InputBase`, no auto-blur wrapper) — same technique as `PersonalTokensPage`.
+- Clearing restores the full set; sort order is orthogonal and survives a clear,
+  so compare **sets**, not ordered lists, on the restore assertion.
+
+### ⚠️ `select-option-` prefix is NOT a safe option count (new, important)
+`SingleSelect` renders a checkmark carrying **`select-option-selected-icon`**
+next to the currently-selected option — and a naive
+`[data-testid^="select-option-"]` count matches it. Live evidence from the
+**row-Edit** dialog with `admin` preselected:
+
+```
+['select-option-admin', 'select-option-selected-icon', 'select-option-editor', 'select-option-viewer']   # 4, not 3
+```
+
+The Invite dialog opens with nothing selected, so the naive count *happens* to
+be right there — which is exactly how this trap stays hidden until a case
+touches a preselected select. Use the exclusion form:
+
+```python
+ROLE_OPTION_ANY_SELECTOR = '[data-testid^="select-option-"]:not([data-testid="select-option-selected-icon"])'
+```
+
+Also note the prefix is **globally shared** (project selector, page-size
+select, …). It is only unambiguous because MUI mounts one menu at a time and
+unmounts options on close (live-verified: 0 mounted options with every menu
+closed).
+
+### Invite-users dialog (ELITEA-2295 / 2308) — confirmed live
+- Exact texts: title `"Invite users"`; description
+  `"Enter user emails(separated by comma) and select roles to define permissions for this project."`
+  (verbatim, note the missing space before the parenthesis); Emails label
+  `"Emails *"` — **the trailing `*` IS the required marker** (MUI writes the
+  asterisk into the `<label>` when `required` is set).
+- The Invite button's gate is `disabled={!emails.length || !selectedRoles.length || error}`
+  — **three independent OR'd conditions**. Asserting only "disabled" proves
+  nothing about which one fired. Any case about one gate must isolate it: enter
+  a VALID email (so `error` is false), then show the button ENABLES once a role
+  is selected. Live-verified: valid email + no role -> disabled; select `viewer`
+  -> enabled.
+- The Roles combobox renders a **zero-width space** (`​`) when nothing is
+  selected — not an empty string.
+- Close (×) dismisses the dialog with no request and no side effect.
+- Opening/closing the dialog fires **no** request at all.
+
+### New testids added (EliteaAI/EliteaUI@8f559586, 2026-08-29)
+All purely additive prop threading onto existing nodes/props — 17 insertions,
+0 deletions, no new DOM node, no new hook.
+
+| Testid | Where | How |
+|---|---|---|
+| `users-invite-dialog` | `InviteUserDialog.jsx` -> `Users.jsx` | new `dialogTestId` prop -> `BaseModal`'s already-supported `data-testid` |
+| `users-invite-title` | same | new `titleTestId` prop -> `BaseModal.titleTestId` |
+| `users-invite-close-button` | same | new `closeButtonTestId` prop -> `BaseModal.closeButtonTestId` |
+| `users-invite-description` | same | new `descriptionTestId` prop on the existing description `Typography` |
+| `users-invite-emails-label` | same | new `emailsLabelTestId` prop -> `StyledInputEnhancer`'s already-supported `InputLabelProps` |
+| `users-row-edit-roles-dialog` | `UsersTable.jsx` `renderActions` | **call-site only** — `EditUsersButton` already accepted `dialogTestId`; only the HEADER batch-edit instance had been wired (ELITEA-2304) |
+| `users-row-edit-roles-select` | same | **call-site only** — `roleSelectTestId`; `SingleSelect` auto-appends `-combobox` |
+
+`BaseModal` already supports `data-testid` / `titleTestId` / `closeButtonTestId`
+/ `confirmButtonTestId` / `cancelButtonTestId` — **any dialog built on it needs
+only a pass-through prop, never a shared-component edit.** Check that first
+before proposing new plumbing for a modal on this codebase.
+
+### Row-level Edit-roles dialog (ELITEA-2305)
+- Now addressable: `users-row-edit-roles-dialog` +
+  `users-row-edit-roles-select-combobox`. Title / Save / Cancel are still
+  **unwired at the row call site** (canon #511 — no case exercises them yet).
+- **`Escape` dismisses the dialog** (`BaseModal`'s own `handleKeyDown` calls
+  `onClose`). Inside an OPEN roles menu the first `Escape` is consumed by the
+  MUI Menu and the dialog stays open — so it is two `Escape` presses from
+  "menu open" to "dialog closed". Live-verified, role left unchanged.
+- Save stays disabled until a role actually changes, so a read-only visit is
+  inherently non-destructive.
+
+### AFS added by this wave
+- `l2_users-table-columns-are-sortable_ELITEA-2293.md`
+- `l3_users-page-search-filters-the-table-in-real-time_ELITEA-2294.md`
+- `l3_invite-users-dialog-opens-with-correct-layout_ELITEA-2295.md`
+- `l3_available-roles-in-invite-and-edit-dialogs_ELITEA-2305.md`
+- `l3_invite-user-without-selecting-a-role_ELITEA-2308.md`
