@@ -596,3 +596,78 @@ this surface**:
 - Run: 2 of 3 specs green on the first invocation (67.71 s for all three,
   `reruns.json == {}`); the batch-delete spec is RED by design on #1974, with a
   byte-identical signature across two invocations.
+
+---
+
+## Update — settings-w09 row Edit-roles dialog (ELITEA-2301/2302/2303), 2026-08-29
+
+Confirmed live against `http://localhost:5173` (EliteaUI `automation/testids`,
+DEV backend, project 400 "UI Testing"). One disposable user was invited,
+role-edited twice, and deleted; the table was left exactly as found (the same 4
+rows the wave-1 update lists, orphans included).
+
+### The row Edit-roles dialog is now FULLY addressable
+`UsersTable.jsx`'s `renderActions` call site had only `dialogTestId` +
+`roleSelectTestId` wired. Added in EliteaAI/EliteaUI@65194eb1:
+
+| Testid | How |
+|---|---|
+| `users-row-edit-roles-title` | call-site only — `EditUsersButton.dialogTitleTestId` was already supported |
+| `users-row-edit-roles-save-button` | call-site only — `saveButtonTestId` already supported |
+| `users-row-edit-roles-description` | **new** `descriptionTestId` pass-through prop on `EditUserRolesDialog`, onto its existing description `Typography` |
+| `users-row-edit-roles-close-button` | **new** `closeButtonTestId` pass-through -> `BaseModal.closeButtonTestId` (already supported) |
+
+### ⭐ Multi-select value chips are now addressable PRODUCT-WIDE
+`SingleSelect`'s `renderMultipleValue` had no testid of any kind, so no test
+could read or remove a selected chip in ANY `multiple` select on this product.
+Added as a **generic** shared-component mechanism, deliberately mirroring the
+existing `select-option-${option.value}` shape in `SingleSelectMenuItem.jsx`:
+
+```
+select-value-chip-<value>          on the MUI Chip
+select-value-chip-<value>-remove   on its deleteIcon (the x)
+```
+
+This is the compliant shared-component shape (`.agents/testing.md` § Locator
+policy — generic testid, not feature-scoped), and it unlocks every other
+`multiple` select on the product (Invite-users Roles, pipeline/agent
+multi-selects) for free. **Check for it before proposing new chip plumbing.**
+
+### Dialog behaviour — live-observed, all three cases
+- Title `Edit roles`; description **`Select the roles to define user
+  permissions for this project.`** — note **"user"**. ELITEA-2301's case text
+  omits it; the product string is `EditUserRolesDialog.jsx`'s literal. Case-text
+  drift, clarification filed.
+- The dialog opens with the subject's roles already loaded as chips
+  (`originalRoles` -> `useState`), and the matching menu option carries exactly
+  one `select-option-selected-icon`. With `admin` preselected, live:
+  `select-option-admin[aria-selected=true]` (1 checkmark),
+  `editor`/`viewer` `aria-selected=false` (0).
+- **Save is disabled in TWO independent ways**: `!selectedRoles.length` (empty
+  set) **and** `!hasChangedRoles` (a sorted-JSON compare against
+  `originalRoles`). So removing the only chip leaves Save **still disabled** —
+  an empty role set can never be saved, and a dialog opened read-only is
+  non-destructive by construction.
+- The Close (×) at `users-row-edit-roles-close-button` dismisses with no request
+  and no side effect (row role re-read unchanged afterwards).
+- Roles is a `multiple` select: clicking an option does NOT close the menu;
+  Escape closes the menu only (the dialog survives — two Escapes to leave).
+
+### The row Save fires the SINGLE-user PUT, not the batch shape
+`EditUsersButton` picks `useEditUser` for the row instance and `useBatchEditUsers`
+for the header one. Live: `PUT /api/v2/admin/users/default/400` with body
+`{id, roles}` (**`id`**, not `ids`) -> **200**, then a users-list refetch, then
+toast `The user has been edited successfully` (severity `success`, 3 s
+auto-hide). The batch flow's `{"msg": "roles updated"}` body assertion is
+**not** reusable here — this response body was not asserted; only the status and
+the refetch were.
+
+### Role column renders multiple roles comma-joined
+Live: `user-column-value-roles` read `"editor, admin"` after a two-role save.
+Compare as a **set** after splitting on `,` — the backend's order is not part of
+any case's contract.
+
+### AFS added by this wave
+- `l3_edit-roles-dialog-layout-and-current-role_ELITEA-2301.md`
+- `l3_change-and-multi-assign-roles-via-row-edit-dialog_ELITEA-2302.md` —
+  **family AFS** (ELITEA-2302 + ELITEA-2303), one parameterized spec.
