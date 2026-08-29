@@ -911,11 +911,18 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   So the 404 flavor is a transient app-side request-with-no-project-id, not a missing font or
   icon. Not reproduced on the immediate rerun; the rest of that 5-spec run and two later 8-spec
   runs were clean (the final one 8/8 with `reruns.json == {}`).
-  This is ONE URL-bearing occurrence of the 404 flavor, so it does not yet license a filter —
-  but it names a concrete candidate and retires the static-asset theory. **Next 404 occurrence:
-  check whether its URL is also `elitea_core/toolkits/prompt_lib/` (project-id-less).** Two
-  matching URLs is enough to filter that ONE malformed path (never the status code). The
-  migration ask stands: only specs on `collect_console_errors()` can produce this evidence.
+  **A SECOND, byte-identical occurrence arrived in the same session** — different spec
+  (`test_users_roles_in_invite_and_edit_dialogs.py`, ELITEA-2305), different full-suite
+  invocation, same project-id-less URL. That meets this ledger's own two-matching-URLs
+  threshold, so the path is now filtered — but **only that exact URL, and only where a spec
+  opts in**: `utils/console_errors.exclude_known_defect_urls()` (opt-in, URL-keyed, offers no
+  status-code filter by construction) plus a `# Known defect: #1971` comment in each spec.
+  The defect itself is FILED and OPEN: **#1971**, a regression of the closed **#554** — the
+  same `toolkits.js` `toolkitTypes` project-id race, but with a NEW trigger worth knowing,
+  an explicit **project switch** rather than first list-page mount (which is why an
+  automation flow that switches projects hits it far more often than a human does).
+  The migration ask stands: only specs on `collect_console_errors()` can produce this
+  evidence — the ~230 URL-less specs would have logged both occurrences as anonymous noise.
 - **`networkidle` flake (#1847) — second confirmed site, and the prescribed fix worked
   (2026-08-29, settings-w09)**: `AdminUsersPage.ensure_team_project_selected()`'s trailing
   `wait_for_network()` timed out raw at 15 s in 1 of 8 specs, exactly the #1847 mechanism

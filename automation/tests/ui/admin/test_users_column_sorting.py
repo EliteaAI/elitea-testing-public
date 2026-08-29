@@ -39,7 +39,11 @@ import allure
 import pytest
 from pages.admin_users_page import AdminUsersPage
 from playwright.sync_api import expect
-from utils.console_errors import collect_console_errors
+from utils.console_errors import (
+    TOOLKIT_TYPES_MISSING_PROJECT_ID_404_URL,
+    collect_console_errors,
+    exclude_known_defect_urls,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -175,4 +179,14 @@ class TestUsersColumnSorting:
             expect(users_page.user_row).to_have_count(row_count)
 
         with allure.step("Step 7 — Verify no unexpected console errors across the flow"):
-            assert not console_errors, f"Unexpected console errors: {console_errors}"
+            # Known defect: #1971 (regression of the closed #554) — during the
+            # project switch this page object performs, EliteaUI's `toolkitTypes`
+            # query can fire before `useSelectedProjectId()` resolves and request
+            # a project-id-less `.../toolkits/prompt_lib/`, which 404s. Cosmetic
+            # in the product, unrelated to anything this case drives. Excluded by
+            # that EXACT URL only — never by status code, which would swallow the
+            # next genuine 404. Delete this argument when #1971 is fixed.
+            unexpected = exclude_known_defect_urls(
+                console_errors, TOOLKIT_TYPES_MISSING_PROJECT_ID_404_URL
+            )
+            assert not unexpected, f"Unexpected console errors: {unexpected}"

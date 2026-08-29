@@ -376,3 +376,12 @@ reproduced on the immediate rerun. Recorded in `.agents/testing.md`'s ledger too
 cleanup did not complete. Harmless for read-only cases (and useful — they supply
 the null-name / null-last-login branches), but they mean **no test on this
 surface may hardcode a row count or a user identity.**
+
+**6. Console-error assertions on this surface must exclude #1971.** The project
+switch `AdminUsersPage.navigate()` performs reopens EliteaUI's `toolkitTypes`
+project-id race, so a project-id-less `GET .../elitea_core/toolkits/prompt_lib/`
+404 lands in the console on roughly half of full-suite runs. Filed as **#1971**
+(regression of the closed #554). All five settings-w09 specs exclude that ONE
+exact URL via `utils.console_errors.exclude_known_defect_urls` with a
+`# Known defect: #1971` comment — URL-keyed, never status-code-keyed. Any new
+spec on this surface will hit it too.

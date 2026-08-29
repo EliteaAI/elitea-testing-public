@@ -152,3 +152,19 @@ None.
   with `Escape` (consumed by the MUI Menu before it reaches the dialog's own
   Escape handler — the dialog stays open, confirmed live and already
   documented in `_surface.md`).
+
+### Console-error assertion — known-defect exclusion (implementer, 2026-08-29)
+
+The final "no unexpected console errors" step excludes ONE exact URL:
+`/api/v2/elitea_core/toolkits/prompt_lib/` (project-id-less), via
+`utils.console_errors.exclude_known_defect_urls` with a `# Known defect: #1971`
+comment. **#1971 is a filed, OPEN product defect** (regression of the closed
+#554): during the project switch `AdminUsersPage.navigate()` performs, EliteaUI's
+`toolkitTypes` RTK-Query fires before `useSelectedProjectId()` resolves and
+requests a project-id-less path, which 404s. Cosmetic in the product, unrelated
+to anything this case drives — but it intermittently failed the console step on
+2 of 4 full-suite runs of this wave.
+
+The exclusion is keyed to the **exact URL, never the status code** (a "404"
+filter would swallow the next genuine one — masking, explicitly ruled out in
+`.agents/testing.md` § Unconfirmed). One argument to delete when #1971 ships.

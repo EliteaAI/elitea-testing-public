@@ -19,10 +19,15 @@ messages the browser reports it in ``ConsoleMessage.location['url']``, not in th
 message text. Capturing it costs nothing and makes the next occurrence diagnosable
 instead of anonymous.
 
-This module is deliberately **capture-only**: it never drops a message. Filtering a
-known defect stays each spec's explicit, reviewable decision (with a
-``# Known defect: #N`` comment), exactly as before — see
+This module is deliberately **capture-only**: :func:`collect_console_errors` never
+drops a message. Filtering a known defect stays each spec's explicit, reviewable
+decision (with a ``# Known defect: #N`` comment), exactly as before — see
 ``.agents/testing.md`` § *Merge gate* and the no-masking rule.
+
+:func:`exclude_known_defect_urls` exists to make that decision cheap to express
+without duplicating it across specs — but it is **opt-in and URL-keyed**: it drops
+nothing unless a spec passes the exact URL it is excluding, and it deliberately
+offers no way to filter by status code.
 
 Usage::
 
@@ -38,6 +43,21 @@ from typing import Any
 #: Rendered in place of the URL when the browser reported none (most
 #: JS-thrown errors carry a location; some synthetic messages do not).
 NO_URL = "<no-url>"
+
+#: The one URL a spec may currently choose to exclude, and only by naming it.
+#:
+#: `EliteaUI/src/api/toolkits.js`'s `toolkitTypes` RTK-Query endpoint builds
+#: ``.../toolkits/prompt_lib/${projectId}``; when it fires before
+#: `useSelectedProjectId()` resolves, the URL collapses to a project-id-less
+#: ``.../toolkits/prompt_lib/`` and 404s. Cosmetic in the product, but it lands
+#: in any spec's console assertion. Filed as **#1971** (regression of the
+#: closed #554).
+#:
+#: Declared here so the string is written once and stays greppable — but it is
+#: NEVER applied automatically. A spec that wants it out must pass it to
+#: :func:`exclude_known_defect_urls` itself, with a ``# Known defect: #1971``
+#: comment. Delete both when #1971 is fixed.
+TOOLKIT_TYPES_MISSING_PROJECT_ID_404_URL = "/api/v2/elitea_core/toolkits/prompt_lib/"
 
 
 def format_console_message(msg: Any) -> str:
@@ -71,3 +91,26 @@ def collect_console_errors(page: Any) -> list[str]:
 
     page.on("console", _on_console)
     return errors
+
+
+def exclude_known_defect_urls(errors: list[str], *url_fragments: str) -> list[str]:
+    """Return *errors* minus the entries whose captured URL ends with one of
+    *url_fragments*.
+
+    Opt-in and explicit by design — this module stays capture-only (see the
+    module docstring), so nothing is dropped unless a spec names the exact URL
+    it is excluding, alongside a ``# Known defect: #N`` comment. That keeps the
+    decision reviewable in the spec that made it, and keeps it narrow:
+
+    * matching is on the **URL**, never on the status code — a filter keyed to
+      "404" would swallow the next genuine one, which is masking
+      (``.agents/testing.md`` § Unconfirmed states this explicitly);
+    * ``str.endswith`` rather than ``in``, so a fragment cannot accidentally
+      match a longer, well-formed URL that merely starts the same way — the
+      whole point of #1971's signature is the *missing* trailing segment.
+    """
+    return [
+        error
+        for error in errors
+        if not any(error.endswith(fragment) for fragment in url_fragments)
+    ]
