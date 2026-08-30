@@ -46,6 +46,23 @@ class SettingsProjectGeneralPage(BasePage):
         description="Settings -> General project section (name + teammates)",
     )
 
+    default_modules_section = LocatorDescriptor(
+        testid="default-modules-section",
+        description="Settings -> General 'Default Modules' accordion "
+        "(``ProjectGeneralContent.jsx``); renders expanded by default "
+        "(``BasicAccordion`` defaults ``defaultExpanded`` to true)",
+    )
+
+    project_general_edit_icon_button = LocatorDescriptor(
+        testid="project-general-edit-icon-button",
+        description="Project-icon edit control in the General accordion — the "
+        "section's only editable control, and it is PERMISSION-GATED: "
+        "``ProjectParamsHeader.jsx`` renders it only when "
+        "``checkPermission(PERMISSIONS.projectContext.edit)`` holds, so its "
+        "presence is a role-driven observable, not chrome. Testid added by "
+        "ELITEA-2245 (``EliteaAI/EliteaUI@e1f40532``).",
+    )
+
     # Project-selector dropdown options — same shared ``select-option-{value}``
     # family (``SingleSelectMenuItem.jsx``) as ``AnalyticsPage.SELECT_OPTION``
     # and ``AdminUsersPage.SELECT_OPTION``: reuse the pattern, never invent a
