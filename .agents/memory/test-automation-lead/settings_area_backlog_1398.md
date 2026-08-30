@@ -6,9 +6,10 @@ created: 2026-08-26
 updated: 2026-08-30
 ---
 
-## Status after waves w01–w10 (2026-08-30)
+## Status after waves w01–w11 (2026-08-30)
 
-**Running total: 83 `automated`, 17 `merged-sanctioned-red`, 13 blocked (human decisions), 15 not yet attempted. NO parked units.**
+**Running total: 93 `automated`, 18 `merged-sanctioned-red`, 13 blocked (human decisions), 4 not yet attempted. NO parked units.**
+**Every sub-area is now COMPLETE. Only root cases ELITEA-2245/2246/2247/2248 remain.**
 
 ⚠️ **A sanctioned-RED case is NOT delivered coverage.** `.agents/testing.md` § Merge gate:
 it stays `blocked-on-#N` and is never back-written `execution_type: automated`.
@@ -16,6 +17,34 @@ On 2026-08-28 I corrected three of my own earlier back-writes that broke this �
 ELITEA-2243 (#1771, w01), ELITEA-2289 (#1884, w04), ELITEA-2291 (#1885, w04) —
 back to draft/manual + `sanctioned_red: <ticket>`, keeping `automation_test_id` for
 CI correlation. Count dropped 36 -> 33. **Re-check prior waves whenever this rule comes up.**
+
+### Wave settings-w11 — `settings/ai-configuration` second half (11 cases) — BEST WAVE OF THE BACKLOG
+
+**10 automated + 1 `merged-sanctioned-red` (ELITEA-2416 -> #1993) + ZERO blocked.** PR #1995.
+Lead gate: green group of 8 specs 3/3 (347.79/335.56/335.59s); RED spec 3/3 identical.
+Filed #1993 (bug), #1996 (question — the declared-improvisation canon card).
+
+**The canon-vs-dispatch-note lesson, proven in one day.** Wave 10's teardown catch was written
+into `.agents/testing.md` § Teardown-guard ordering BEFORE this wave launched. The reviewer then
+applied it unprompted and blocked ELITEA-2416: the conversation id was captured AFTER Step 9, so
+every hard assertion between creation and capture was an un-cleaned window. A per-wave dispatch
+note would not have done this — put a rule where the slot reads by default, not in the prompt.
+The fix is pinned by a unit test (`test_conversation_id_is_read_back_at_the_send.py`).
+
+**Fidelity held where cheating was easiest.** 2415/2416 both hinge on an invalid-credential error
+and neither case asks for simulation; a fabricated 401 would have passed cleanly. Nothing was
+fabricated. Reusable find, now in `.agents/testing.md` § Test data strategy: Elitea's own
+OpenAI-compatible gateway (`api_base https://dev.elitea.ai/llm/v1`) authenticates with the
+existing `ELITEA_API_TOKEN` — a VALID open_ai credential with no new secret.
+
+**Reporter returned empty again (w09 class)** — no `report.json` written. Rebuilt from the
+workflow's returned result + journal, lead gate recorded, committed BEFORE the trunk PR.
+
+**Closure-record grep trap, worth remembering.** 14 testids read `no/no` on both refs and were
+in fact ON MAIN — they are runtime-composed (`data-testid={`${sectionTestId}-default-selector`}`),
+which bare-substring stage 1 cannot see AT ALL. Resolved per workflow.md by diffing the component
+(`ConfigurationSection.jsx`, `SingleSelect.jsx` — identical on both refs). Counting the grep would
+have written a false "not promotable" row into the closure record.
 
 ### Wave settings-w10 — `settings/ai-configuration` first half (13 cases)
 
@@ -126,9 +155,11 @@ full provenance table + SHAs.
   Deliberately NOT grouped into w01: they need multiple identities (admin vs
   viewer/monitor role, an unauthenticated session), a different setup shape
   than the rest of the root `settings` cases.
-- **Final wave, 15 cases**: `ai-configuration` second half — ELITEA-2402..2407
-  (image/ASR/TTS display + change default), 2412/2413/2414 (persistence after reload),
-  2415/2416 (error cases) — plus root cases 2245-2248.
+- **ALL SUB-AREAS COMPLETE.** Only **ELITEA-2245/2246/2247/2248** remain — role-matrix +
+  unauthenticated-access, held back from w01 deliberately. They need a viewer/monitor identity
+  and an unauthenticated session: a different setup shape from anything the suite has built,
+  and closer to #1780's standing test-identity question than to feature automation.
+  Expect this last unit to be an identity/infrastructure decision first, automation second.
   (`notifications` w02, `project-params` w03, `personal-tokens` w04, `secrets` w05, `analytics` w06.)
 
 ## Pattern for the next wave

@@ -58,7 +58,7 @@
 - ["3 sessions" auto-park can be a spend ceiling](auto_park_3_sessions_can_be_a_spend_ceiling_not_a_real_blocker.md) — check the prior failure signature before trusting the label
 - [Sanctioned-RED is NEVER back-written automated](sanctioned_red_is_never_back_written_automated.md) — hidden green; re-check PRIOR waves too (3×)
 - [Deleting a batch trunk auto-closes open unit PRs](deleting_a_batch_trunk_auto_closes_open_unit_prs.md) — check before cleanup; head branch survives, PR doesn't
-- [Settings backlog (#1398)](settings_area_backlog_1398.md) — 10 waves: 83 automated + 17 sanctioned-RED, 13 blocked; 15 left (ai-configuration 2nd half + roots 2245-2248) = one final wave
+- [Settings backlog (#1398)](settings_area_backlog_1398.md) — 11 waves: 93 automated + 18 sanctioned-RED, 13 blocked; ALL sub-areas done, only roots 2245-2248 left (needs multi-identity)
 - [Reproduce locally before accepting an environment-specific framing](environment_specific_framing_needs_a_local_reproduction_first.md) — triage dispatch line
 - [A green CI run can mean zero tests ran](ci_green_can_mean_zero_tests_ran.md) — pytest exits 0 on all-skip; check JUnit skipped vs tests
 - [No-edit guardrail is repo-agnostic](no_edit_guardrail_repo_agnostic.md) — 3× violated; conflicts are dispatched
@@ -123,3 +123,4 @@
 - [Repair of a transient needs a negative control](repair_of_a_transient_needs_a_negative_control.md) — green gate proves nothing; demand it in the dispatch
 - [DEV repro: use localhost, never edit shared .env.test](dev_repro_use_localhost_not_shared_env_test.md) — localhost:5173 already hits the same DEV backend
 - [Name the failure mode for write-heavy areas](name_the_failure_mode_in_the_dispatch_for_write_heavy_areas.md) — the risk is a spec that PASSES while leaving damage; say it in the dispatch
+- [Durable rules go in canon, not the dispatch prompt](put_durable_rules_in_canon_not_in_the_dispatch_prompt.md) — the workflow has no notes arg; .agents/*.md reaches every slot of every wave
