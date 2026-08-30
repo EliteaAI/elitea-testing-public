@@ -6,10 +6,10 @@ created: 2026-08-26
 updated: 2026-08-30
 ---
 
-## Status after waves w01–w11 (2026-08-30)
+## Status after waves w01–w12 (2026-08-30) — BACKLOG COMPLETE
 
-**Running total: 93 `automated`, 18 `merged-sanctioned-red`, 13 blocked (human decisions), 4 not yet attempted. NO parked units.**
-**Every sub-area is now COMPLETE. Only root cases ELITEA-2245/2246/2247/2248 remain.**
+**FINAL: 95 `automated` + 1 `already-covered`, 18 `merged-sanctioned-red`, 14 blocked (human decisions), 0 remaining.**
+**Every case of the 128 is dispositioned. Card moved to `Ready` 2026-08-30.**
 
 ⚠️ **A sanctioned-RED case is NOT delivered coverage.** `.agents/testing.md` § Merge gate:
 it stays `blocked-on-#N` and is never back-written `execution_type: automated`.
@@ -17,6 +17,38 @@ On 2026-08-28 I corrected three of my own earlier back-writes that broke this �
 ELITEA-2243 (#1771, w01), ELITEA-2289 (#1884, w04), ELITEA-2291 (#1885, w04) —
 back to draft/manual + `sanctioned_red: <ticket>`, keeping `automation_test_id` for
 CI correlation. Count dropped 36 -> 33. **Re-check prior waves whenever this rule comes up.**
+
+### Wave settings-w12 — the last 4 root cases — THE PARKED BLOCKER DID NOT EXIST
+
+2 automated (2245, 2247) + 1 `already-covered` (2246) + 1 blocked (2248 -> #1781). PR #1998.
+Lead gate 3/3 green (104.59/103.03/104.03s). Filed #1999, #2000.
+
+**The lesson that cost eleven waves.** These four were held out of w01 because a role matrix
+"needs multiple identities", and I repeated that inference in my own handover every time.
+Nobody had tested it. One live check disproved it: **roles are PROJECT-SCOPED** and the shared
+account already spans admin@400, editor+viewer@399, viewer@471/406/25. ELITEA-2247 became a real
+3-param spec across three distinct roles on the identity we already had — no second identity, no
+deployed env, `auth_state_user_b` not needed. The dispatch line that settled it was just
+*"verify that live before assuming a second identity is needed"*.
+**Generalise: a case parked on an inferred blocker should be re-tested, not re-deferred. Put the
+assumption in the dispatch as a question, not as a constraint.**
+
+**Reviewer caught a VACUOUS assertion** — both AFS specced accordion CONTAINER testids as the
+"editable fields are interactive" handle; `to_be_enabled()` is vacuously true on any non-form
+element with no `aria-disabled`, so those rows would pass while observing nothing. In an
+ACCESS-CONTROL test that is worse than no test, because it reports coverage. Third wave running
+where review's catch was a GREEN defect, never a red (w10 teardown ordering, w11 orphaned
+conversation, w12 vacuous assertion).
+
+**ELITEA-2246 was a TMS duplicate** of ELITEA-2348 (same body, two folders) — intake dedups by
+case ID and structurally cannot see it. Back-written `ready` pointing at 2348's merged spec (the
+TMS supports one test covering several ids); leaving it draft would be a permanent phantom gap.
+Process question filed as #1999.
+
+**ELITEA-2248 blocked and CONSOLIDATED onto #1781** rather than filed as its own card — same
+single decision as ELITEA-2253/2254 (no unauthenticated state on localhost; the Vite proxy sets
+the bearer server-side, proven by clearing all storage and getting no redirect). Splitting one
+decision across two cards mostly risks one being answered and the other rotting.
 
 ### Wave settings-w11 — `settings/ai-configuration` second half (11 cases) — BEST WAVE OF THE BACKLOG
 
