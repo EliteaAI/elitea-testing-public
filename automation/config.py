@@ -47,6 +47,29 @@ class Settings(BaseSettings):
     # Team projects have "Manage permissions" feature, unlike private projects
     elitea_team_project_id: Optional[int] = 0
 
+    # A project in which the acting test user genuinely holds the `admin`
+    # role (ELITEA-2245/2247). Elitea roles are PROJECT-scoped, so switching
+    # the sidebar selector to this project puts the app in a real,
+    # product-computed admin state -- no injected permissions, no stub.
+    # Verified live 2026-08-30 from the product's own
+    # `GET /admin/users/prompt_lib/{id}` + `GET /auth/permissions/prompt_lib/{id}`:
+    # 400 ("UI Testing") -> role `admin`, 360 permissions (8 `*secret*`);
+    # 399 ("Private") -> `editor`+`viewer`, 299; 471 -> `viewer`, 158.
+    # Deliberately a DISTINCT key from `users_team_project_id` /
+    # `ai_providers_seeded_project_id` (same default, different precondition)
+    # for the reason those two already state about each other: conflating
+    # preconditions that merely share a value today silently breaks whichever
+    # one moves first.
+    elitea_admin_project_id: int = 400
+
+    @field_validator('elitea_admin_project_id', mode='before')
+    @classmethod
+    def parse_admin_project_id(cls, v):
+        """Handle empty string from CI environment variables."""
+        if v is None or v == "":
+            return 400
+        return int(v)
+
     @field_validator('elitea_project_id', mode='before')
     @classmethod
     def parse_project_id(cls, v):

@@ -45,8 +45,9 @@ state, no fabricated permission payload appears anywhere in this spec.**
 
 `elitea_project_id` = 399 and `elitea_team_project_id` = 471 are already in
 `config.py`; **the admin project 400 is NOT** — the implementer adds a settings key
-(e.g. `elitea_admin_project_id`, default `400`) plus the `.env.test` entry, the same
-shape as the two existing ids. See § Automation Hints.
+(e.g. `elitea_admin_project_id`, default `400`), the same shape as the two existing
+ids. See § Automation Hints — *amended 2026-08-30: the `config.py` default is
+sufficient and no `.env.test` entry was added.*
 
 ---
 
@@ -88,7 +89,12 @@ spec must NOT type into, toggle, or submit anything on these pages.
 ## Test Steps
 
 1. **Enter Settings as admin.**
-   - `SettingsDrawerPage.switch_project(settings.elitea_admin_project_id)` → 400.
+   - `SettingsDrawerPage.ensure_project_selected(settings.elitea_admin_project_id)`
+     → 400. *(Amended 2026-08-30, implementer: `ensure_project_selected`, not
+     `switch_project` — the latter settles on `wait_for_network()` + a fixed
+     1 s pause, which is the `#1847` mechanism this AFS's own Automation Hints
+     forbid. `ensure_project_selected` waits on the two project-scoped GETs the
+     switch actually fires, and no-ops when the project is already active.)*
    - `navigate("/settings/project-general")` (or `open_via_sidebar()`).
    - **Verify**: `settings-drawer` and `settings-drawer-menu` are visible
      (drawer-health guard — without it every later absence/-content read is vacuous).
@@ -126,13 +132,42 @@ spec must NOT type into, toggle, or submit anything on these pages.
    `expect(...).to_be_enabled()` / `to_be_editable()`, never by typing:
    | Section | Assert |
    |---|---|
-   | `project-general` | `project-general-section` accordion summary **enabled**; `default-modules-section` accordion summary **enabled** |
-   | `ai-providers` | `ai-providers-section-llms` accordion summary **enabled** |
-   | `project-context` | the section renders its editor/CTA and the CTA is **enabled** (2 controls live; see § Known traps) |
+   | `project-general` | `project-general-edit-icon-button` **visible and enabled**; `default-modules-section` **visible** |
+   | `ai-providers` | `ai-providers-section-llms-default-selector-combobox` **visible and enabled** |
+   | `project-context` | both empty-state CTAs — `project-context-create-button` and `project-context-build-with-ai-button` — **enabled** (see § Known traps) |
    | `secrets` | `secrets-add-button` **enabled** AND `secrets-search-input` **editable** |
    | `users` | `users-invite-button` **enabled** AND `users-search-input` **editable** AND `user-row-edit-button` + `user-row-delete-button` are **present and enabled** (these render for `admin` only — on the viewer projects the Users page renders no row action icons at all, digest § Gotchas) |
    | `analytics` | read-only dashboard — assert content loaded only (no editable-field claim) |
    | `usage` | read-only dashboard — assert content loaded only (no editable-field claim) |
+   > **Amended during ELITEA-2245 implementation (2026-08-30, implementer).**
+   > The first three rows above originally named the sections' *accordion*
+   > testids. Those testids sit on `BasicAccordion` **containers** (`<div>`),
+   > and Playwright's `to_be_enabled()` is **vacuously true** on any non-form
+   > element with no `aria-disabled` — so the original rows would have passed
+   > without observing anything. Each was replaced by a real interactive
+   > control inside the same section, which is a strictly stronger form of the
+   > same observable ("this section's controls are interactive"):
+   >
+   > * `project-general` — the section's ONLY editable control is the
+   >   project-icon edit `IconButton`, and it is genuinely permission-gated
+   >   (`ProjectParamsHeader.jsx` renders it only when
+   >   `checkPermission('models.project_context.edit')` holds; the acting user
+   >   holds that permission on 400 and 399 but NOT on 471 — live-verified).
+   >   It had no testid, so one was **added**: `project-general-edit-icon-button`
+   >   (EliteaAI/EliteaUI@e1f40532, attribute-only). This corrects the
+   >   "No new testid is required by this AFS" line below.
+   >   `default-modules-section` keeps a *visible* assertion — its module
+   >   switches carry no individual testids, and this AFS deliberately asserts
+   >   none (unchanged).
+   > * `ai-providers` — MUI renders a select trigger as a `role=combobox` node
+   >   and marks it `aria-disabled` when disabled, which IS what
+   >   `to_be_enabled()` reads, so the already-declared
+   >   `AIProvidersPage.llms_default_selector_combobox` is a real check.
+   > * `project-context` — on project 400 this section renders its **empty
+   >   state**, whose entire testid inventory is the two CTAs named above.
+   >   There is **no `project-context-page-title` testid in that state**
+   >   (live-verified 2026-08-30), so the two CTAs are both the content anchor
+   >   and the interactivity assertion.
    - Do **not** assert a global "every input is enabled" count. Live on project 400
      the Secrets page has 1 legitimately-disabled control (`secrets-pagination-prev-button`,
      first page) and Users has 2 (`users-header-edit-button` /
@@ -182,8 +217,14 @@ the two-stage grep from `.agents/workflow.md` § Closure record.
 | Users invite | `users-invite-button` | YES | YES |
 | Users search | `users-search-input` | YES | YES |
 | Users row edit / delete | `user-row-edit-button` / `user-row-delete-button` | YES | YES |
+| General project-icon edit (permission-gated) | `project-general-edit-icon-button` | no | **YES** — added by this case, EliteaAI/EliteaUI@e1f40532 |
 
-**No new testid is required by this AFS.** Two notes for the implementer:
+**One new testid was required after all** — see the amendment note in step 4:
+`project-general-edit-icon-button`, an attribute-only addition to the
+already-permission-gated `IconButton` in `ProjectParamsHeader.jsx`. The
+original "no new testid" claim rested on asserting the General accordion
+container instead, which would have been a vacuous assertion. Two further
+notes for the implementer:
 - The AI-Providers per-section *selector* inputs carry runtime-**composed** testids
   (`${sectionTestId}-default-selector`, e.g.
   `ai-providers-section-llms-default-selector`) built inside the shared section
@@ -208,8 +249,15 @@ page objects (`admin_users_page.py`, `secrets_page.py`,
 
 ## Automation Hints
 - **New config key.** `settings.elitea_admin_project_id` (default `400`) in
-  `automation/config.py` + `.env.test`, mirroring `elitea_project_id` /
-  `elitea_team_project_id`. Do not hardcode `400` in the spec.
+  `automation/config.py`. Do not hardcode `400` in the spec.
+  *Amended 2026-08-30 (implementer):* **no `.env.test` entry is needed or was
+  added.** The default in `config.py` is sufficient, which is exactly how the
+  two existing project-id preconditions with the same default work
+  (`users_team_project_id`, `ai_providers_seeded_project_id`) — and `.env.test`
+  is a symlink to the master secrets file outside this repo, so a key that
+  needs no secret does not belong there. The key is deliberately DISTINCT from
+  those two despite sharing a value today, for the reason their own comments
+  already state about each other.
 - Markers: `ui`, `admin`, `p3`, `regression`.
 - Every step wrapped in `with allure.step("Step N — …")`.
 - Waits: `click_nav_item()` already waits on the product's own `data-active="true"`
