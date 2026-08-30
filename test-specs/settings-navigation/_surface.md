@@ -359,3 +359,42 @@ particular the `#1971` project-id-less toolkit 404 — whose documented trigger 
 project switch — did **not** fire on any of these runs, so neither spec opts into
 `exclude_known_defect_urls`. If it starts appearing, that opt-in (URL-keyed, with a
 `# Known defect: #1971` comment) is the sanctioned response.
+
+## Auth topology — there is NO unauthenticated state on localhost (verified live 2026-08-30, ELITEA-2248)
+
+Any case whose subject is "unauthenticated / logged-out user" is **unproducible on
+`http://localhost:5173`**. Confirmed by execution, not by reading:
+
+- `EliteaUI/vite.config.js:106,123,…` — the dev proxy sets
+  `Authorization: Bearer ${VITE_DEV_TOKEN}` **on the proxy side** for every API path, so the
+  browser's own credentials are irrelevant. `src/api/eliteaApi.js:80` and
+  `src/common/utils.jsx:331,389,462` attach the same token client-side in `DEV`.
+- `document.cookie` is **`""`** on localhost — there is no `centry_main_session` to expire.
+- Executed: cleared `localStorage` + `sessionStorage` + every cookie, then navigated to
+  `/settings/secrets` → **no redirect**, title `Settings: secrets - Private`,
+  `settings-content` present, 12 `settings-nav-item-*` rendered, `input[name="username"]`
+  absent. The Settings UI is served to a browser holding zero state.
+- The SPA has **no `/login` route** (`src/routes.js`). Its only auth code is the
+  session-expiry handler in `src/api/eliteaApi.js:24-67`, which reacts to an
+  *infrastructure* redirect by opening a re-auth popup.
+
+**Where the behaviour actually lives** (probed unauthenticated against DEV, same date):
+
+```
+curl -s -o /dev/null -D - "https://dev.elitea.ai/app/settings/secrets"
+→ HTTP/2 302
+  location: https://dev.elitea.ai/forward-auth/auth_oidc/login?target_to=<JWT of the original URL>
+  set-cookie: centry_main_session=; Expires=Thu, 01 Jan 1970 …
+```
+
+Identical 302 for API paths. The redirect is issued by forward-auth **before the SPA is served**,
+which is also why "no Settings content is visible" is trivially true there.
+
+⇒ Do not try to simulate the logged-out state (stubbed 302, cleared storage, injected store) —
+that is a terminal substitution (`.agents/testing.md` § Fidelity policy). Route such cases to
+question card **#1781** (OPEN, covers ELITEA-2253/2254 and now 2248).
+
+⚠️ Side effect worth knowing: clearing `sessionStorage` (which holds
+`elitea_ui.project_permission` / `elitea_ui.project.id`) under a **mounted** Settings page throws
+React `Maximum update depth exceeded` at `SecretsContent.jsx:35`. A clean navigation to the same
+URL produces **0 console errors** — the errors are self-inflicted by the storage wipe, not a defect.
