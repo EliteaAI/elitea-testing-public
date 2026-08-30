@@ -84,6 +84,16 @@ class AiProviderFormPage(CredentialFormFieldsMixin, BasePage):
         '[data-testid=\'select-option-{{"kind":"saved","elitea_title":"{}","private":false}}\']'
     )
 
+    # Same grammar, `private: true` branch. `CredentialsSelect.jsx:249` stamps
+    # the option's value with `isConfigurationPersonal`, so a credential the
+    # test itself creates through the AI-provider "+" flow is PERSONAL and its
+    # option testid carries `"private":true` -- the shared project credential
+    # (`elps`) above carries `false`. Additive: SAVED_CREDENTIAL_OPTION and its
+    # merged ELITEA-2395/2396 callers are untouched. Added for ELITEA-2416.
+    SAVED_CREDENTIAL_OPTION_PRIVATE = (
+        '[data-testid=\'select-option-{{"kind":"saved","elitea_title":"{}","private":true}}\']'
+    )
+
     # -- Tab-bar controls ------------------------------------------------
     discard_button = LocatorDescriptor(
         testid="credential-form-discard-button",
@@ -199,6 +209,71 @@ class AiProviderFormPage(CredentialFormFieldsMixin, BasePage):
         self.replace_secret_value(field_key, value)
         self.secret_native_input(field_key).blur()
 
+    def set_display_name_verified(self, value: str, attempts: int = 3, timeout: int = 5_000) -> None:
+        """Type *value* into Display Name and RE-TYPE it until it reads back.
+
+        These schema-driven forms re-render after their
+        ``GET /configurations/available/?section=...`` resolves, and a write
+        that lands in the gap is silently WIPED --
+        :meth:`wait_for_schema_field` narrows that window but does not close
+        it: live on ELITEA-2416's ``llm_model`` form, with the schema-only
+        ``name`` field already visible, ``autotest_2416_model_1788043574``
+        arrived as ``043574`` (the re-render cleared the field mid-typing and
+        the remaining keystrokes landed on the empty input).
+
+        Nothing is masked or normalised: the final attempt's
+        ``to_have_value`` is asserted and RAISES on mismatch, so a field that
+        genuinely refuses the value still fails loudly -- this only re-tries a
+        write the product itself discarded. The AFS-prescribed shape
+        (`_surface.md` § Typing into these forms: "a retry loop around (type,
+        read back) is the robust shape"). Additive:
+        :meth:`CredentialFormFieldsMixin.set_display_name` is untouched.
+        """
+        for attempt in range(1, attempts + 1):
+            self.set_display_name(value)
+            try:
+                expect(self.display_name_input).to_have_value(value, timeout=timeout)
+                return
+            except AssertionError:
+                if attempt == attempts:
+                    raise
+                logger.warning(
+                    "Display Name did not read back as %r on attempt %d/%d (form re-render); retrying",
+                    value,
+                    attempt,
+                    attempts,
+                )
+
+    def set_schema_field_verified(
+        self, field_key: str, value: str, attempts: int = 3, timeout: int = 5_000
+    ) -> None:
+        """Type *value* into PLAIN schema field *field_key* until it reads back.
+
+        Same rationale, same honesty guarantee as
+        :meth:`set_display_name_verified` -- see that docstring. Clears the
+        field before each retry, since :meth:`set_schema_field` appends.
+        """
+        for attempt in range(1, attempts + 1):
+            field = self.field(field_key)
+            if attempt > 1:
+                field.click()
+                field.press("ControlOrMeta+a")
+                field.press("Backspace")
+            self.set_schema_field(field_key, value)
+            try:
+                expect(field).to_have_value(value, timeout=timeout)
+                return
+            except AssertionError:
+                if attempt == attempts:
+                    raise
+                logger.warning(
+                    "Field %r did not read back as %r on attempt %d/%d (form re-render); retrying",
+                    field_key,
+                    value,
+                    attempt,
+                    attempts,
+                )
+
     def configuration_id_from_url(self) -> str:
         """Return the ``{configuration_id}`` segment of the edit route.
 
@@ -236,6 +311,26 @@ class AiProviderFormPage(CredentialFormFieldsMixin, BasePage):
         NOT its displayed label)."""
         self.credential_select_combobox.click()
         option = self.saved_credential_option(elitea_title)
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+
+    def saved_private_credential_option(self, elitea_title: str) -> Locator:
+        """Return the dropdown option for the PERSONAL saved credential
+        *elitea_title* (see :data:`SAVED_CREDENTIAL_OPTION_PRIVATE`)."""
+        return self.page.locator(self.SAVED_CREDENTIAL_OPTION_PRIVATE.format(elitea_title))
+
+    def select_saved_private_credential(self, elitea_title: str, timeout: int = UI_ELEMENT_TIMEOUT) -> None:
+        """Open the Ai Credentials picker and select the PERSONAL saved
+        credential *elitea_title*.
+
+        Additive sibling of :meth:`select_saved_credential` (left byte-identical
+        for its merged callers): a credential created by the test itself through
+        the AI-provider "+" flow is personal, so its option testid carries
+        ``"private":true`` rather than the shared credential's ``false``.
+        Added for ELITEA-2416.
+        """
+        self.credential_select_combobox.click()
+        option = self.saved_private_credential_option(elitea_title)
         option.wait_for(state="visible", timeout=timeout)
         option.click()
 

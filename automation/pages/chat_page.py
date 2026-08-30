@@ -2781,6 +2781,34 @@ class ChatPage(BasePage):
         """
         expect(self.model_selector_name).not_to_have_text(previous_name, timeout=timeout)
 
+    def model_option_by_label(self, label: str):
+        """Return the model-selector option whose RENDERED text contains *label*.
+
+        The option testid is ``model-selector-option-{name}`` where ``name`` is
+        the model's API identifier -- two configurations sharing a ``name``
+        therefore collide on one testid (`_surface.md` § Chat-side handles). A
+        spec that created its own model configuration knows its DISPLAY label,
+        not necessarily a unique ``name``, so it filters the testid-keyed option
+        set by rendered text. Still testid-only locating: the option set is
+        addressed by :data:`MODEL_SELECTOR_OPTION_ANY_SELECTOR`, and
+        ``filter(has_text=...)`` only narrows it -- the same shape
+        ``AgentDetailPage.select_llm_model`` already uses. Added for ELITEA-2416.
+        """
+        return self.page.locator(self.MODEL_SELECTOR_OPTION_ANY_SELECTOR).filter(has_text=label)
+
+    def select_llm_model_by_label(self, label: str, timeout: int = 10000):
+        """Open the model selector and pick the option rendering *label*.
+
+        Additive sibling of :meth:`select_llm_model_by_suffix` (left
+        byte-identical for its merged callers), for models addressed by their
+        display label rather than their API ``name`` -- see
+        :meth:`model_option_by_label`. Added for ELITEA-2416.
+        """
+        self.open_model_selector(timeout=timeout)
+        option = self.model_option_by_label(label)
+        option.wait_for(state="visible", timeout=timeout)
+        option.click()
+
     def close_model_selector(self, timeout: int = 5000):
         """Close the open model-selector dropdown via Escape, without
         selecting anything.

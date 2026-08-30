@@ -655,3 +655,451 @@ cases; every handle below already existed.
   Storage `total: 1` / default `autotest_pgvector_seed`, Embedding `total: 3` / default
   `text-embedding-3-small`.
 
+
+---
+
+## The Image Generation / ASR / TTS sections (ELITEA-2402/2403/2404/2405/2406/2407, 2026-08-30)
+
+Analyst pass, batch `settings-w11`, project `UI Testing` (400), against
+`EliteaAI/EliteaUI` on `automation/testids`. **Zero new testids were needed for five of
+the six cases**; every handle these sections use already exists on `main`.
+
+### The collapsed-summary trap — the single biggest gotcha on this page
+
+Only the **LLMs** accordion auto-expands. Every other section starts collapsed, and:
+
+- **Collapsed**, the accordion *summary* renders the default as **plain text**
+  (`"Image Generation | Default | GPT Image 2 | 3"`) with **no testid and no combobox**.
+  `querySelectorAll('[data-testid]')` inside the summary returns **zero** elements.
+- **Expanded**, that text **leaves the summary** (which becomes `"Image Generation | 3"`)
+  and the real `role="combobox"` mounts in the accordion *details* as
+  `ai-providers-section-{slug}-default-selector-combobox`.
+
+So a case that says "locate the section" and then reads the Default selector needs the
+expand made explicit — otherwise there is literally nothing to read. Every one of the six
+cases in this family carries that one-word omission (folded into #1250, not re-filed).
+
+### `ai-providers-section-{slug}` is on the SUMMARY BUTTON, not the accordion root
+
+Confirmed by DOM inspection: the testid sits on the `MuiAccordionSummary-root` **button**.
+Cards are therefore **not** DOM descendants of it, so `section_header.locator(card)` finds
+nothing and a whole-page card query returns **every expanded section's** cards. Measured
+live: Image Generation queries kept returning the Vector Storage seed card because Vector
+Storage happened to be open. **`isolate_section()` before any card count** — this is the
+easiest way to get a green-but-meaningless run on this page.
+
+### Live data (project 400, 2026-08-30) — all shared from project 1
+
+| Section | Cards | Default | Option project id |
+|---|---|---|---|
+| Image Generation | 3 — `GPT Image 2`, `gpt-image-1`, `gpt-image-1.5` | `GPT Image 2` | all `<<>>1` |
+| Speech Recognition (ASR) | 2 — `gpt-4o-mini-transcribe`, `whisper` | `gpt-4o-mini-transcribe` | all `<<>>1` |
+| Text to Speech (TTS) | **1** — `gpt-4o-mini-tts` | `gpt-4o-mini-tts` | `<<>>1` |
+
+Because these are shared (`include_shared=true`), the same sets appear on every non-public
+project — unlike Vector Storage, which is project-local. **TTS having exactly one model is
+what splits ELITEA-2407 out of the 2403/2405 family**: "select a different model" is
+unsatisfiable without a transit create.
+
+### Badges work correctly here (unlike Vector Storage)
+
+Image Generation and ASR both supply `data.name`, so the option key and
+`defaultSettingValue` agree and the `Default` badge renders and moves correctly — verified
+live on both. **#1987 is Vector-Storage-specific**; do not copy ELITEA-2401's soft-assert
+treatment into these specs. Selecting an option fires
+`POST /configurations/models/{project_id}` → 200, then refetches every section; the new
+card gains `Default` and the old loses it **in the same render pass**, no reload.
+
+### Creating a TTS configuration ASSIGNS it as the section default
+
+Measured directly: TTS at 1 config / default `gpt-4o-mini-tts` → created
+`Autotest TTS Probe` → the combobox read `Autotest TTS Probe` and that card carried the
+`Default` badge, **with no selection made**. Same as **Vector Storage**, opposite of
+**LLMs**. Consequences for any spec that creates in this section: setup owes a
+restore-before-the-case (or the case's "select a different one" fires **no request** and
+passes vacuously), and teardown owes a restore-**before**-the-delete.
+
+### The TTS create form is fully testid-covered, and TTS is NOT a protected section
+
+`/settings/create-ai-provider/tts_model?viewMode=owner&from=ai-providers` renders
+`toolkit-field-label-input`, `toolkit-field-elitea_title-input`, `toolkit-field-name-input`,
+`toolkit-credential-select--combobox` (**double dash** — the dynamic suffix is empty on
+this form), `credential-form-save-button`, `credential-form-test-connection-button`.
+Required: Display Name, ID, Name, Ai Credentials. The shared **`ELPS`** credential is
+selectable via `select-option-{"kind":"saved","elitea_title":"elps","private":false}`.
+
+`isLastInSection` guards only `vectorstorage` and `embedding`, so a transit TTS
+configuration is **freely deletable** — verified end to end (created id 77, deleted it,
+count returned to 1). A transit-create is safe here in a way it is not in Vector Storage.
+
+Option key confirmation: the transit's option was `select-option-tts-1-probe<<>>400`
+**labelled `Autotest TTS Probe`** — i.e. key = `data.name`, label = Display Name, matching
+this digest's per-section key table.
+
+### `delete-confirm-name-input` is the WRAPPER, not the `<input>`
+
+Typing into `[data-testid="delete-confirm-name-input"]` does nothing at all (the element
+has no `.value`) and the Delete button stays **disabled** with no error. The scoped inner
+input node is required. `AiProviderFormPage.delete_current_configuration()` already
+handles it — cost one retry during this analysis for anyone driving it by hand.
+
+### Deleting a configuration logs a stale 404 (pre-existing, #1666)
+
+`DELETE /configurations/configuration/400/77` succeeds, then the app re-fetches the
+deleted id → `404`, visible in console. Same endpoint/trigger/symptom as the OPEN
+**#1666** (credentials) — recorded as a new occurrence there, **not re-filed**. Only
+affects specs whose *teardown* deletes; the six cases' own steps produce **0** console
+errors. Do not add a filter for it.
+
+### The one testid still missing — `ai-provider-configuration-card-status`
+
+The card's status text (`OK • Shared` / `OK • Local`) has **no testid**;
+`ai-provider-configuration-card-name` covers only the name. Needed by ELITEA-2402/2404/2406
+step 3 ("model name **and status badge**"). Add `data-testid="ai-provider-configuration-card-status"`
+to the **existing** `<Typography component={Box} … sx={styles.statusText}>` at
+`ConfigurationCard.jsx:82` — attribute only, no new node, no plumbing.
+
+⚠️ That Typography **also contains the badges** (`{statusText}{isHighTier && …}{isLowTier
+&& …}{isDefault && …}`), so on the default card its text reads `"OK • Shared\nDefault"`
+and on the others exactly `"OK • Shared"`. Assert with `to_contain_text` / a regex, never
+exact equality — which would pass on every card except the one that matters.
+
+### Page-object gap (no testid work)
+
+`AIProvidersPage` has `image_generation_default_selector` / `asr_default_selector` /
+`tts_default_selector` (the **FormControl wrapper**) but **no `*_combobox` fields** for
+these three. The `-combobox` testids exist in JSX and resolved live for all three — add
+three `LocatorDescriptor` fields mirroring `embedding_models_default_selector_combobox`.
+
+### AFS files from this run (all `ready-for-automation`)
+
+- `l3_section-model-cards-and-default-selector_ELITEA-2402.md` — **family**: ELITEA-2402 / 2404 / 2406 (differ only in data)
+- `l3_change-section-default-model_ELITEA-2403.md` — **family**: ELITEA-2403 / 2405 (differ only in data)
+- `l3_change-the-default-tts-model_ELITEA-2407.md` — **solo**: same case text as the above family, but the transit create+delete is a difference in steps
+
+---
+
+## Resolved/added during ELITEA-2402/2403/2404/2405/2406/2407 implementation (test-automation-engineer, 2026-08-30)
+
+*Appended, not rewritten — the analyst's behaviour and scope claims above are unchanged.*
+
+### Testid added
+
+- **`ai-provider-configuration-card-status`** — EliteaAI/EliteaUI@db8f4b28 on
+  `automation/testids` (not yet on `main`; a human cherry-picks). Attribute-only addition
+  on the existing status `Typography` at `ConfigurationCard.jsx:82`, exactly as the digest
+  specced. Handle: `AIProvidersPage.CARD_STATUS_SELECTOR` + `card_status(display_name)`.
+
+### Page-object gap closed
+
+- `image_generation_default_selector_combobox`, `asr_default_selector_combobox`,
+  `tts_default_selector_combobox` `LocatorDescriptor` fields now exist. No EliteaUI change
+  was needed — the testids were already in JSX, as the digest said.
+- New helpers: `card_status(name)`, `card_badges(name)` (unfiltered — for the
+  "this card carries NO badge" assertion, which `card_tier_badge` cannot express), and
+  `all_default_badges` (the "exactly ONE card is the default" exclusivity invariant).
+- `utils/ai_provider_teardown.restore_section_default_if_moved(providers_page, section,
+  header, combobox, option_value)` — additive sibling of `restore_section_default`; it
+  reads the persisted default FIRST and only re-selects when it actually moved (an
+  unconditional re-select of an already-selected option fires no request and hangs its
+  full timeout), then returns the server's default so the caller can ASSERT the restore.
+
+### Failure mode nobody had hit yet: the models response body can be PRUNED
+
+`response.json()` on a captured `…&section={param}` GET can raise
+`playwright._impl._errors.Error: Response.json: Protocol error
+(Network.getResponseBody): No resource with given identifier found`.
+
+Mechanism: a spec typically lands on the page once (to switch project) and then navigates
+again to capture. `expect_response` starts listening BEFORE that second navigation, so a
+response belonging to the **outgoing** document can be the first match — and once the
+navigation commits, Chromium discards that document's network entries. It bites the LAST
+sections in render order hardest (`tts`): the earlier sections' responses have already
+arrived, so the listener never sees them, while the tail ones are still in flight.
+Reproduced **2/2** on the ELITEA-2406 row; also hit the teardown helper's verification
+read, where the restore had SUCCEEDED and only the read-back raised (so the caller was
+told `None` and asserted a state loss that had not happened).
+
+**Use `AIProvidersPage.navigate_and_capture_section_models_json(section)`** — bounded
+re-capture (3 attempts), returns `(response, body)`. Nothing about the assertions changes:
+the body is still the product's own response to the product's own request. Any future
+spec in this cluster that navigates twice should use it rather than the raw
+`..._response()` variant.
+
+### Accordion state after a create is NOT "collapsed"
+
+The digest's "only the LLMs accordion auto-expands" holds on a **fresh visit**. After the
+transit create + return-to-list flow (ELITEA-2407), the **TTS accordion is already
+expanded** on arrival — deterministic, observed every run. A spec that creates a
+configuration must not assert `aria-expanded == "false"` before expanding; assert the
+post-condition (`"true"` after `isolate_section`) instead. The read-only siblings and
+ELITEA-2403/2405, which do not create, DO start collapsed.
+
+### Transit naming
+
+Make the create form's model **`Name`** unique per run (`tts-1-probe-<suffix>`), not just
+the Display Name. The dropdown option testid is keyed on `Name`, so residue from a failed
+run plus a fresh configuration would make the option locator ambiguous.
+
+## Reload persistence — confirmed for create / edit / Default tier (ELITEA-2412/2413/2414, 2026-08-30)
+Live on project **400 "UI Testing"** (`settings.ai_providers_seeded_project_id`),
+one cluster session. All three survived a real `page.reload()`:
+- **Create** — a new LLM model's card is still present, still in the
+  `Other Providers` group, still `OK • Local`, section count unchanged.
+- **Edit** — the renamed card is present under the NEW name only; the old name
+  is genuinely gone (count 0) and the total count is unchanged (rename in
+  place, no orphan/duplicate).
+- **Default tier** — the Default selector still reads the model chosen before
+  the reload, its card keeps the `Default` badge, and High-tier/Low-tier are
+  untouched. Worth knowing: this control has **no Save button**, so a cold
+  re-read is the ONLY evidence the POST persisted — an in-session assertion
+  cannot tell "persisted" from "optimistically rendered".
+
+### How to reload on this surface (do NOT use `BasePage.reload_and_wait()`)
+`reload_and_wait()` reloads with `wait_until="networkidle"` and then calls
+`wait_for_network()` — TWO networkidle waits against an app holding a
+persistent `/socket.io/` poll open. That is exactly the **#1847** structural
+race. The prescribed shape is a mirror of the existing
+`navigate_and_capture_llm_response()`:
+
+```python
+def reload_and_capture_llm_response(self) -> Response:
+    with self.page.expect_response(_is_llm_models_response, timeout=NAVIGATION_TIMEOUT) as info:
+        self.page.reload()
+    return info.value
+```
+
+### Quirk — the LLMs accordion is NOT reliably expanded on arrival
+The session's first load of `/settings/ai-providers` arrived with **LLMs
+collapsed and TTS expanded** (leftover `expandSection` route state from an
+earlier session); every subsequent clean `page.reload()` auto-expanded LLMs as
+documented. Since accordion content **unmounts on collapse**, a collapsed LLMs
+section reads as "the card is missing". Always assert
+`aria-expanded="true"` on `ai-providers-section-llms` before counting cards or
+reading the tier selectors.
+
+### A model can hold TWO tiers at once
+Live: `GPT-5.6 Luna` was simultaneously **Default** and **Low-tier**. So after
+moving the Default away, that model's card still carries a `Low-Tier` badge —
+"the previous Default's card has no badges" is a WRONG assertion. Assert the
+absence of the **`Default`** badge specifically (`card_tier_badge(label, "Default")`).
+
+### Card status text distinguishes local from shared
+A model configured IN the active project reads **`OK • Local`**; models shared
+from project `1` read `OK • Shared`. Assert the `OK •` prefix, not the full
+string. Option values follow suit: `gpt-4o<<>>400` (project-local) vs
+`gpt-5.4<<>>1` (shared).
+
+### Live data observed 2026-08-30 (project 400)
+12 LLM cards. Default `GPT-5.6 Luna`, High-tier `Bedrock-GPT-5.6-Terra`,
+Low-tier `GPT-5.6 Luna`. Groups rendered: `OpenAI`, `Anthropic` (+ `Other
+Providers` once a project-local model exists). One saved AI credential:
+`elps` / **ELPS**. The Default dropdown still offers **no blank/"None" option**
+— re-confirmed; a tier that starts unset still cannot be restored via the UI.
+
+### Delete-confirm testid sits on the wrapper, not the input
+`[data-testid="delete-confirm-name-input"]` is the MUI `FormControl` **div** —
+filling it directly errors with *"Element is not an `<input>`…"*. Target the
+inner field (`… delete-confirm-name-input input`); the merged page object
+already does.
+
+**Resolved/added during ELITEA-2412/2413/2414 implementation (test-automation-engineer, 2026-08-30):**
+
+- **`reload_and_capture_llm_response()` now EXISTS** on `AIProvidersPage`
+  (`automation/pages/ai_providers_page.py`), exactly in the shape prescribed above —
+  a real `page.reload()` inside `expect_response(_is_llm_models_response)`, never
+  `BasePage.reload_and_wait()` (#1847). It is the shared reload primitive for this
+  surface; reuse it rather than re-deriving one.
+- **`all_default_badges` is a `@property`, not a method, and it is PAGE-WIDE.**
+  It counts every `Default` badge across *all* currently-expanded sections, so
+  `all_default_badges` + `to_have_count(1)` is only true while LLMs is the sole
+  expanded accordion — which the § Quirk above says is exactly what stale
+  `expandSection` route state breaks. For a per-section exclusivity check, assert the
+  *previous* Default's card no longer carries the `Default` badge
+  (`card_tier_badge(old_label, "Default")` → `to_have_count(0)`); it catches the same
+  failure mode, is scoped by card identity rather than accordion state, and does not
+  need `isolate_section` (which would mutate accordion state a covering spec's later
+  steps run against).
+- **`Locator.text_content()` returns `str | None`** — the captured High-tier /
+  Low-tier selector text must be guarded before `.strip()`, since an unset tier
+  renders blank.
+- **Reload behaviour confirmed under automation**, not just by hand: all three
+  extended specs (create / edit / Default tier) ran green in one 132 s invocation with
+  `reruns.json == {}`. The LLMs accordion auto-expanded on every `page.reload()`, and
+  the post-reload page-wide card count matched the pre-reload baseline exactly — i.e.
+  a reload restores the same "only LLMs expanded" state a fresh `goto` gives, so a
+  baseline captured on arrival stays comparable across a reload.
+
+---
+
+## The "+" create flow: AI credentials and AI models (ELITEA-2415 / ELITEA-2416, 2026-08-30, qa-engineer analyst, batch settings-w11)
+
+ELITEA-2417's pass stopped at "no such option" for the `+` flow. It exists and works —
+here is the whole thing, executed live.
+
+### Route + type picker
+`sidebar-create-button` -> `/settings/create-ai-provider?viewMode=owner&from=ai-providers`
+-> 12 cards `toolkit-type-card-{ai_dial,amazon_bedrock,azure_open_ai,embedding_model,
+image_generation_model,llm_model,ollama,open_ai,pgvector,asr_model,tts_model,vertex_ai}`.
+
+⚠️ **The query string is load-bearing.** `/settings/create-ai-provider` WITHOUT
+`?viewMode=owner&from=ai-providers` renders the **toolkit** type set (29 cards:
+github, jira, confluence, …), not the AI set. Deep-link with the params, or go
+through `sidebar-create-button`.
+
+⚠️ The picker takes **several seconds** to render its cards — poll for
+`[data-testid^="toolkit-type-card-"]`, never assert on the first paint.
+
+### The form is `CredentialForm.jsx` — the SAME component as toolkit credentials
+`ProtectedRoutes.jsx:409/423` renders `CreateCredentialFromMain title="New AI Provider"`.
+So every handle the merged toolkit-credential specs use applies verbatim here:
+`toolkit-field-{key}-input`, `toolkit-field-{key}-input-field` (secret),
+`toolkit-field-{key}-input-helper-text`, `credential-form-{save,discard,test-connection}-button`,
+`credential-form-api-error-message`. **Test connection is present** whenever the type's
+schema declares `has_test_connection` (`CredentialForm.jsx:70,245,325`) — true for
+`open_ai` and `llm_model`; false for `pgvector` (already noted in
+`test_vector_storage_create.py:84`).
+
+Fields observed:
+- **`open_ai`**: Display Name, ID (`elitea_title`, **auto-derived from Display Name**),
+  Api Base, Api Key (secret).
+- **`llm_model`**: Display Name, ID, **Name** (the model identifier), Context Window,
+  Max Output Tokens, checkboxes `supports_reasoning` / `supports_vision` / `low_tier` /
+  `high_tier` / `openai_compatible`, and **Ai Credentials** (required select).
+
+### A VALID OpenAI-compatible credential exists in the suite's own test data
+`.env.test` has no OpenAI key — but Elitea exposes an OpenAI-compatible gateway and
+`ELITEA_API_TOKEN` authenticates against it. Verified out-of-band 2026-08-30:
+
+```
+GET https://dev.elitea.ai/llm/v1/models   Bearer $ELITEA_API_TOKEN -> 200
+GET https://dev.elitea.ai/llm/v1/models   Bearer sk-bogus-xyz      -> 401
+```
+
+So `api_base=https://dev.elitea.ai/llm/v1` + `api_key=$ELITEA_API_TOKEN` is a
+**genuinely working `open_ai` credential** — `check_connection` returns
+`200 {"success": true}` and the `The connection is OK!` toast. This is what unblocked
+ELITEA-2415's success half without any substitution. Reuse it; do not go hunting for
+an external OpenAI key.
+
+### Test connection results (live)
+`POST {api}/configurations/check_connection/{project}/{type}`
+- invalid key -> **400** `{"success": false, "message": "Authentication failed: Invalid or expired api_key - …"}`
+  The message renders inline on **both** `toolkit-field-api_key-input-helper-text`
+  **and** `toolkit-field-api_base-input-helper-text` (`aria-invalid="true"` on both) —
+  the secret-key branch AND the `*url*` fallback branch of
+  `extractInformationFromCredentialError` both fire. `credential-form-api-error-message`
+  stays absent; no toast.
+- valid key -> **200** `{"success": true}`, `toast-alert[data-severity="success"]`
+  with `toast-message` == `The connection is OK!`, and **both helper texts disappear**
+  and `aria-invalid` clears. The recovery is clean.
+- The typed key is **masked** in the error (`sk-inval***********2415`).
+- The form stays on its route after a failure — no redirect, values retained.
+
+### CRUD + teardown (verified)
+- create: `POST {api}/configurations/configurations/{project}` -> **200**, body has
+  `id`, `label`, `elitea_title`.
+- delete: `DELETE {api}/configurations/configuration/{project}/{id}` -> **204**
+  (ELITEA-2417's "no teardown path verified" is now resolved — there is one).
+- list: `GET {api}/configurations/configurations/{project}?include_shared=true&section=…`.
+
+⚠️ **A fresh Playwright context defaults to project 399 (`Private`)**, while the
+persistent MCP browser profile was on 400 (`UI Testing`). A config created from a
+scratch script lands in 399. Always read the project id from the request path, never
+assume.
+
+### Typing into these forms — two real cost sinks
+1. **`fill()` does NOT register.** A `fill()`ed Display Name/Api Base reached the
+   backend EMPTY (`400 {"message": "api_base is required"}`) while the DOM value
+   looked right. Use click -> `ControlOrMeta+a` -> `Backspace` -> `press_sequentially`
+   and **read the value back**.
+2. **The first keystroke can be lost to a re-render** if you type immediately after
+   `wait_for_selector`. Settle ~2 s, then type, then verify — a retry loop around
+   (type, read back) is the robust shape. Symptom: Save stays disabled and the ID
+   field never auto-fills.
+
+### Chat-side handles (ELITEA-2416)
+- `model-selector-button` is a `role="group"` **wrapper — clicking it does nothing**.
+  The clickable control is `model-selector-name` (a real `<button>`).
+- Options are `model-selector-option-{model name}` — the suffix is the model's `name`
+  field, so two configurations sharing a `name` collide. Select by rendered **display
+  label** (`filter(has_text=…)`), and give autotest models a unique `name`.
+- `chat-input` is a `MuiFormControl` wrapper; type into its inner `textarea`.
+- A chat turn against a mis-credentialed model fails with **no failed HTTP request and
+  no console error** — the error arrives only over Socket.IO `chat_message_sync`
+  (`meta.error` non-empty), in ~8 s. Use `utils/websocket_frames.py`.
+
+### Testid wart worth knowing
+The `llm_model` form's credential select renders `data-testid="toolkit-credential-select-"`
+and `toolkit-credential-select--combobox` — a composed testid with an **empty key
+segment** (double dash). Stable and usable; not `{section}-{element}-{type}` grammar.
+Options carry a JSON payload as their suffix:
+`select-option-{"kind":"saved","elitea_title":"<id>","private":true}`.
+
+### Product defect found here
+**EliteaAI/elitea-testing-public#1993** — chat renders a raw Python traceback +
+internal LiteLLM details (incl. a credential key hash) when the assigned LLM model's
+credential is invalid, while the credential form's own Test connection sanitises and
+masks correctly. Deterministic; ELITEA-2416 asserts the correct behaviour with
+`expect.soft()` + `# Known defect: #1993` (sanctioned-RED).
+
+### AFS files from this run
+- `l1_test-connection-error-then-success-for-ai-credential_ELITEA-2415.md` — ready-for-automation
+- `l2_chat-error-when-llm-model-uses-invalid-credential_ELITEA-2416.md` — ready-for-automation (sanctioned-RED step)
+
+Not a family AFS: they differ in **steps** (a no-save test-connection round trip vs a
+create -> create -> chat chain with teardown), not only in data.
+
+**Resolved/added during ELITEA-2415 / ELITEA-2416 implementation (2026-08-30,
+test-automation-engineer):**
+
+- **`wait_for_schema_field()` is NOT sufficient on the `llm_model` form.** With the
+  schema-only `name` field already visible, a Display Name write still lost its
+  leading characters to a later re-render: `autotest_2416_model_1788043574` arrived
+  as `043574`. The `open_ai` form did not reproduce it. Two additive helpers now
+  carry the AFS-prescribed "(type, read back) retry" shape —
+  `AiProviderFormPage.set_display_name_verified()` /
+  `.set_schema_field_verified()`; the final attempt still asserts, so a field that
+  genuinely refuses a value fails loudly. Use them on any create form here.
+- **The `llm_model` schema DEFAULTS landing is the settle signal.**
+  `expect(form.field("context_window")).to_have_value("128000")` is the last thing
+  that form does before it stops re-rendering — a real product signal, cheaper and
+  more honest than a settle sleep.
+- **The saved-credential option testid's `private` flag is confirmed `true`** for a
+  credential the test itself creates through the `+` flow (`CredentialsSelect.jsx:249`
+  stamps `isConfigurationPersonal`), vs `false` for the shared project credential
+  `elps`. `AiProviderFormPage.SAVED_CREDENTIAL_OPTION_PRIVATE` /
+  `select_saved_private_credential()` cover the `true` branch; the merged
+  ELITEA-2395/2396 callers of the `false` branch are untouched.
+- **Chat teardown path verified end to end.** `credential_api.delete_credential(id)`
+  is exactly `DELETE /configurations/configuration/{project}/{id}` — it deletes an
+  LLM-model configuration as happily as a credential. Deleting the model FIRST then
+  the credential worked 3/3. A name-based fallback lookup
+  (`list_all_credentials()` matched on `label`/`elitea_title`) closes the window
+  between the create POST and the id read-back, which no flag ordering can.
+- **`#1993` confirmed reproducible 4/4** on the implementer's runs — both soft
+  assertions fire together (card text carries the traceback AND a
+  `chat-answer-tool-chip` reading `Agent Exception Stacktrace`). The spec carries
+  `@pytest.mark.flaky(reruns=0)` for the same reason the sanctioned-RED HITL specs
+  do: measured 52.97 s single-attempt vs 161.38 s with `pytest.ini`'s global
+  `--reruns=2`, which can never rescue an expected failure.
+
+---
+
+**Resolved/added during ELITEA-2416 implementation (fix round 1, 2026-08-30):**
+reaching the chat step of this surface needs the blank-composer guard, not just
+`ChatPage.navigate_to_chat()`:
+
+- The SPA restores the **last-viewed conversation**. A spec that creates a
+  conversation and deletes it in teardown leaves the restore pointing at a dead id;
+  the next `/chat` visit then spins forever and its loading overlay **intercepts the
+  `model-selector-name` click** (`<div class="MuiBox-root css-15msj7j">… intercepts
+  pointer events`). Observed 4/4 runs, including a pristine-HEAD control — so it is
+  environment state, not a code regression, and it clears as soon as a genuinely
+  blank composer is opened (`utils/blank_conversation.open_blank_composer()`).
+- In the fresh-chat view the **send button is overlay-intercepted**: send with
+  `send_message(..., use_enter=True)`, as the personalization / context-settings
+  specs already do.
+- Teardown evidence (post-fix run): `Teardown: deleted conversation id=9912` +
+  both configurations deleted by name — the conversation id is now read back on the
+  statement immediately after the send, so a failure in steps 7-9 no longer orphans it.

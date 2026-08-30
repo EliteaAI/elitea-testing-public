@@ -1,7 +1,17 @@
 """UI test — Create a new LLM model configuration (Settings -> AI Providers).
 
-Test case: ELITEA-2395
+Test cases: ELITEA-2395, ELITEA-2412 (extension — the create survives a reload)
 AFS: test-specs/settings-ai-providers/l3_create-llm-model-configuration_ELITEA-2395.md
+AFS: test-specs/settings-ai-providers/lextend_new-llm-model-persists-after-reload_ELITEA-2412.md
+
+ELITEA-2412 (`extend-existing`) adds Step 12b: its steps 1-2 (create the model,
+verify the card appears in the LLM Models section) are this spec's Steps 2-12
+verbatim in substance, and its own subject — the card surviving a full
+`page.reload()` — was untested here (this spec never reloaded). The extension is
+one reload plus a re-assert of the card, placed before the Default work so the
+reload observes a pure create. Its case-text literal Display Name "Persist Test
+Model" is deliberately NOT used: this spec's per-run generated name is kept, so
+a leftover from a failed run cannot collide (declared deviation, AFS § Test Data).
 
 Case-identity note (reused from ELITEA-2392, filed as
 EliteaAI/elitea-testing-public#1250): "Settings -> AI Configuration" does not
@@ -92,11 +102,17 @@ class TestCreateLlmModelConfiguration:
         "settings/ELITEA-2395.md",
         "onetest-ai Test Case link",
     )
+    @allure.issue(
+        "https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/"
+        "settings/ai-configuration/ELITEA-2412_saving-a-new-llm-model-configuration-persists-after-page-rel.md",
+        "onetest-ai Test Case link (ELITEA-2412)",
+    )
     @allure.issue("https://github.com/EliteaAI/elitea-testing-public/issues/1985", "Case-text clarification #1985")
     def test_create_llm_model_and_set_as_default(self, page):
         """Create an LLM model through the UI, verify its card lands in the
-        LLMs "Other Providers" group with an OK status badge, and verify it can
-        be assigned as the project's Default LLM."""
+        LLMs "Other Providers" group with an OK status badge, verify the card
+        survives a full page reload (ELITEA-2412), and verify it can be
+        assigned as the project's Default LLM."""
         providers_page = AIProvidersPage(page)
         form = AiProviderFormPage(page)
         page.on("dialog", lambda dialog: dialog.accept())
@@ -194,6 +210,28 @@ class TestCreateLlmModelConfiguration:
                 card = providers_page.card_for_model(display_name)
                 expect(card).to_be_visible()
                 expect(card).to_contain_text("OK •")
+
+            with allure.step("Step 12b (ELITEA-2412) — The new card survives a full page reload"):
+                # ELITEA-2412's own subject: persistence, not re-render. Every
+                # assertion above ran inside the SPA session that created the
+                # record, so they prove the client re-rendered its own mutation
+                # response — not that the server persisted anything. Placed
+                # BEFORE the Default work so the reload observes a pure create.
+                reload_response = providers_page.reload_and_capture_llm_response()
+                assert reload_response.status == 200, (
+                    f"LLM models request after reload failed: {reload_response.status}"
+                )
+                # Accordion content UNMOUNTS on collapse, so a collapsed LLMs
+                # section reads as "the card is missing" (AFS ELITEA-2412 § Automation Hints).
+                expect(providers_page.llms_section_header).to_have_attribute(
+                    "aria-expanded", "true", timeout=UI_ELEMENT_TIMEOUT
+                )
+                # Axis 2 — the card came back, in the right group, healthy, and
+                # exactly once: presence alone would pass for a record that lost
+                # its server-derived grouping, its credential link, or got duplicated.
+                expect(providers_page.card_in_group(OTHER_PROVIDERS_GROUP, display_name)).to_have_count(1)
+                expect(providers_page.card_for_model(display_name)).to_contain_text("OK •")
+                expect(providers_page.configuration_cards).to_have_count(initial_card_count + 1)
 
             with allure.step("Step 13 — The new model can be assigned as the LLMs Default"):
                 refreshed = providers_page.navigate_and_capture_llm_response()

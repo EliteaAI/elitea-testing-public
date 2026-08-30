@@ -65,3 +65,4 @@
 - [MUI Slider — drag vs arrow keys](mui_slider_drag_vs_keyboard.md) — drag lands on the step grid; arrow keys give float noise; never drag onto a mark label
 - [Absence assertion can pass before the thing could appear](absence_assertion_can_pass_before_the_thing_could_appear.md) — "no duplicate row" needs a refetch anchor
 - [Elitea AI-provider form traps](elitea_ai_provider_form_secret_and_delete_traps.md) — secret/delete DIV-wrapper testids, goto wipes fills, VS undeletable
+- [A teardown id captured after the assertions is not a guard](a_teardown_id_read_after_the_assertions_is_not_a_guard.md) — guard ordering binds the ID READ, not just a flag
