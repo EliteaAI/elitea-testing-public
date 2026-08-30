@@ -53,6 +53,26 @@ class ToolkitTestSettingsPage(BasePage):
         "Sonnet'); assert non-empty only, never the exact model name",
     )
 
+    # ROUTE CHANGE (undated EliteaUI drift, caught via ELITEA-1140/#1898 live
+    # DEV reproduction 2026-08-28). The Test Settings panel — and everything
+    # EL-5947 gated behind tool selection below — is NO LONGER inline on the
+    # toolkit detail page (``/toolkits/all/{id}``). ``ToolkitForm.jsx`` now
+    # renders a "Test" button (this testid) that navigates to a DEDICATED
+    # route, ``/toolkits/all/{id}/test`` ("Test Toolkit" breadcrumb); the
+    # empty state / panel only exist on that route. Confirmed live for
+    # github, jira AND confluence (jira/confluence credentials verified
+    # valid via direct API calls — this is a route change, not a
+    # credential problem): navigating straight to ``/toolkits/all/{id}``
+    # and waiting for :attr:`empty_state_tool_select` there times out
+    # every time, because the element is simply never on that page anymore.
+    test_toolkit_button = LocatorDescriptor(
+        testid="toolkit-test-button",
+        description="'Test' button on the toolkit detail page "
+        "(ToolkitForm.jsx) — navigates to the dedicated "
+        "/toolkits/all/{id}/test route that now hosts the Test Settings "
+        "panel and its empty state (previously inline on the detail page)",
+    )
+
     # EL-5947 gated the Test Settings panel behind tool selection:
     #   TestTools.jsx →  if (!selectedTool) return <TestToolsEmptyState/>
     #                    return <TestToolSettings/>          # 'Test Settings' here
@@ -142,6 +162,25 @@ class ToolkitTestSettingsPage(BasePage):
     # ------------------------------------------------------------------
     # Tool selection
     # ------------------------------------------------------------------
+
+    @action("Open the dedicated Test Toolkit route")
+    def open_test_tab(self, timeout: int = 10000) -> None:
+        """Click the detail page's 'Test' button to reach the Test route.
+
+        The toolkit detail page (``/toolkits/all/{id}``) no longer hosts the
+        Test Settings panel / empty state inline — this button is the only
+        route to ``/toolkits/all/{id}/test``, which does. Callers must reach
+        that route before :meth:`open_empty_state_tool_select` can find
+        anything (see :attr:`test_toolkit_button`'s docstring for the
+        confirmed-live evidence).
+
+        Args:
+            timeout: Maximum wait time in milliseconds.
+        """
+        self.test_toolkit_button.wait_for(state="visible", timeout=timeout)
+        self.test_toolkit_button.click()
+        self.page.wait_for_url(re.compile(r".*/toolkits/all/\d+/test/?$"), timeout=timeout)
+        logger.info("Opened the dedicated Test Toolkit route")
 
     @action("Select a tool in the Test Settings panel")
     def open_empty_state_tool_select(self, timeout: int = 10000) -> None:
