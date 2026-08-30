@@ -315,11 +315,19 @@ class TestAdminRoleProjectSectionsAccess:
                 )
 
                 drawer.click_nav_item("project-context")
-                expect(project_context.page_title).to_be_visible(
-                    timeout=CONTENT_TIMEOUT
-                )
+                # Project 400 carries NO project context, so this section
+                # renders its empty state, whose entire testid inventory is the
+                # two CTAs below — the "Project Context" heading carries no
+                # testid in this state (live-verified 2026-08-30). If someone
+                # authors a project context on this project the empty state is
+                # replaced and this assertion goes red by design: the AFS's
+                # observable is "the section offers an enabled CTA", and the
+                # non-empty state offers a different one (`edit_button`).
                 expect(project_context.create_button).to_be_enabled(
                     timeout=CONTENT_TIMEOUT
+                )
+                expect(project_context.build_with_ai_button).to_be_enabled(
+                    timeout=UI_ELEMENT_TIMEOUT
                 )
 
                 drawer.click_nav_item("secrets")
