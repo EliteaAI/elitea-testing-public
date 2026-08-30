@@ -1,0 +1,351 @@
+{
+ "batch": "settings-w12",
+ "base": "automation/base",
+ "work_item_ref": "#1398",
+ "integration_branch": "tests/batch-settings-w12",
+ "gate": {
+  "verdict": "green",
+  "runs": 3,
+  "seconds": [
+   105.16,
+   103.39,
+   103.84
+  ],
+  "failures": []
+ },
+ "cases": [
+  {
+   "id": "ELITEA-2245",
+   "outcome": "automated",
+   "note": "",
+   "findings": [
+    {
+     "kind": "defect",
+     "note": "TMS DUPLICATE (not a product defect, but it costs automation cycles): ELITEA-2246 (settings/) and ELITEA-2348 (settings/secrets/) are the same case body \u2014 identical title, priority, type, tags, Objective and Expected Final State, differing only in step granularity. ELITEA-2348 is already automated and merged (PR #1912, status: ready). Intake dedups by case ID, which structurally cannot catch a re-\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "ELITEA-2246 / ELITEA-2348"
+    },
+    {
+     "kind": "clarification",
+     "note": "Case-text drift, both already tracked and COMMENTED (not re-filed) per .agents/profile.md \u00a7 Bug filing: #1909 (OPEN) \u2014 Elitea has no 'Monitor' role; GET /api/v2/admin/roles/default/{pid} returns exactly ['admin','editor','viewer'] on all five reachable projects (399, 400, 471, 406, 25), so ELITEA-2246 steps 5-7 and ELITEA-2247 step 4 are un-executable, not skipped. #1772 (OPEN) \u2014 ELITEA-2245's PRO\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "#1909, #1772"
+    },
+    {
+     "kind": "note",
+     "note": "New durable project fact, now in the digest and role memory: roles are PROJECT-scoped and the shared test account already spans three vantages \u2014 admin @ project 400 'UI Testing' (360 perms, 8 secrets perms), editor+viewer @ 399 (299/6), viewer @ 471/406/25 (158/0). This means role-permission cases on this product need NO second identity and NO deployed env (auth_state_user_b skips on localhost by \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "test-specs/settings-navigation/_surface.md"
+    },
+    {
+     "kind": "note",
+     "note": "Handle-capture gotcha worth propagating: the AI-Providers per-section default/tier selector inputs carry testids composed at runtime inside the shared section component (`${sectionTestId}-default-selector`, live in the DOM as e.g. ai-providers-section-llms-default-selector). A literal `git grep` finds them on NEITHER origin/main NOR origin/automation/testids while the attribute is demonstrably pre\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "src/[fsd]/features/settings/ui/ai-providers/ConfigurationsPanel.jsx"
+    },
+    {
+     "kind": "note",
+     "note": "Environment observations during the run, none blocking: (a) the viewer deep-link to /settings/secrets on project 471 still reproduces OPEN bug #1773 (ordinary 'No secrets' empty state while GET /api/v2/secrets/secrets/default/471 returns 403, no access-denied UI) plus OPEN #1203 (React 'Maximum update depth exceeded') \u2014 no new filing, both already tracked, and both ready AFS files stay off that ro\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "#1773, #1203"
+    },
+    {
+     "kind": "note",
+     "note": "Environment gotcha that cost one full rerun and a live browser investigation: Vite served a STALE transform of a just-edited JSX file, so a newly added data-testid was absent from the browser while present on disk, in the commit, and on the pushed branch. `touch`ing the file did NOT invalidate it; restarting `npm run dev` did. Likely causes both present: the tree is on OneDrive (unreliable fs even\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "EliteaAI/EliteaUI@e1f40532"
+    },
+    {
+     "kind": "clarification",
+     "note": "Both AFS files specced the sections' accordion CONTAINER testids (project-general-section, default-modules-section, ai-providers-section-llms) as the 'editable fields are interactive' handles for ELITEA-2245 step 5. Playwright's to_be_enabled() is vacuously true on any non-form element carrying no aria-disabled, so those rows would have passed without observing anything \u2014 a silent no-op that reads\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "test-specs/settings-navigation/l3_admin-role-access-to-all-project-settings-sections_ELITEA-2245.md"
+    },
+    {
+     "kind": "note",
+     "note": "New role-discriminating observable, live-verified and now in the surface digest: `models.project_context.edit` is held on projects 400 and 399 but NOT on 471. It gates the General section's project-icon edit button, so `project-general-edit-icon-button` is present on 400/399 and absent on 471 \u2014 a second permission-driven signal on this surface alongside the Secrets nav entry the analyst already do\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "test-specs/settings-navigation/_surface.md"
+    },
+    {
+     "kind": "note",
+     "note": "ELITEA-2245's Project Context assertion is state-dependent on a shared project: project 400 currently carries NO project context, so that section renders its empty state, whose entire testid inventory is project-context-create-button + project-context-build-with-ai-button (there is no project-context-page-title testid in that state). If anyone authors a project context on project 400 this assertio\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "automation/tests/ui/settings/test_admin_role_project_sections_access.py"
+    },
+    {
+     "kind": "question",
+     "note": "Doc discrepancy worth a ruling: my dispatch preamble and CLAUDE.md both describe `.agents/memory/<role>/` as LOCAL and gitignored ('never `git add` it'), but in this repo those files are NOT ignored \u2014 `git check-ignore` returns nothing, MEMORY.md and daily/ show as tracked-and-modified, and the trunk's own recent commit 8b65a2da6 is a `docs(memory)` commit. Leaving them dirty would have handed a d\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+    },
+    {
+     "kind": "note",
+     "note": "Case-text drift for both cases is already tracked by OPEN clarifications and was NOT re-filed, per .agents/profile.md \u00a7 Bug filing: #1772 (the PROJECT/PERSONAL section names \u2014 'AI Configuration'/'Project Params' do not exist; 'Personalization' is now 'Preferences') and #1909 (Elitea has exactly three roles, so ELITEA-2247's Monitor step is un-executable, not skipped). Both specs assert the live co\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+    },
+    {
+     "kind": "note",
+     "note": "Locator grep: `git diff 8b65a2da6...tests/2245-2247-role-access-settings-sections -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` -> **0 hits**. Fidelity/provenance grep: same diff `| grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` ->\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "mechanical greps"
+    },
+    {
+     "kind": "note",
+     "note": "Case <-> AFS <-> diff all agree. Every case element has an Axis-1 row and a real assertion at that step: step 1 (admin vantage) = ensure_project_selected(400) + drawer health; step 2 = drawer opens + both group headers; step 3 = per-tab click, URL regex, data-active=true, non-blank settings-content for all 7 live tabs; step 4 = denial regex AND per-section /api/v2/ 4xx/5xx slice; step 5 = named en\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "triangulation ELITEA-2245"
+    },
+    {
+     "kind": "note",
+     "note": "Per-ROW triangulation of the parameterized spec: 3 params (admin/400, editor/399, viewer/471), each with a DISTINCT expected value that is actually asserted \u2014 the `expects_secrets` vantage guard (visible on 400/399, `to_have_count(0)` on 471). Case steps 1-3 map to the three params; step 5 maps to the per-section denial + no-403 + zero-console assertions. Step 4 (Monitor) is disposed `un-executabl\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "triangulation ELITEA-2247"
+    },
+    {
+     "kind": "note",
+     "note": "Both AFSs lean on ELITEA-2348's merged spec as the proof that `secrets` is absent on the viewer project 471. Verified against its ACTUAL assertions, not its existence: automation/tests/ui/admin/test_viewer_role_cannot_access_secrets.py exists at base 8b65a2da6 and asserts `expect(drawer.nav_item(SECRETS_TAB_ID)).to_have_count(0)` plus `assert SECRETS_TAB_ID not in nav_ids` on `settings.elitea_team\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "cited-coverage verification"
+    },
+    {
+     "kind": "defect",
+     "note": "FLAKE VECTOR, not a blocker \u2014 strict-zero console AND API assertions on specs whose whole subject is switching projects. `.agents/testing.md` records OPEN defect #1971 (regression of closed #554): a project-id-less `GET /api/v2/elitea_core/toolkits/prompt_lib/` 404 whose NEW confirmed trigger is 'an explicit project switch rather than first list-page mount (which is why an automation flow that swi\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "automation/tests/ui/settings/test_all_roles_access_personal_sections.py:~250 and test_admin_role_project_sections_access.py:~200"
+    },
+    {
+     "kind": "clarification",
+     "note": "Undeclared broadening, AFS vs implementation. The AFS says the transport check is 'no `/api/v2/` response with status 403 was observed', and Axis 2 titles it 'Transport-level \"no 403\"'. The implementation asserts the whole `collect_api_failures` slice is empty, i.e. ANY >=400. Strictly stronger than the case asks (so not masking) but it is what makes the #1971 exposure above real, and it is not re\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "test-specs/settings-navigation/l2_all-roles-access-personal-settings-sections_ELITEA-2247.md (step 3, Axis 2)"
+    },
+    {
+     "kind": "clarification",
+     "note": "AFS docs drift, nit. Both AFSs were amended to record that step 1 uses `ensure_project_selected` rather than `switch_project` (correctly citing the #1847 networkidle mechanism), but the TEARDOWN steps still literally read `finally: switch_project(settings.elitea_project_id)` while both specs call `restore_active_project()` -> `ensure_project_selected()`. Same amendment, one paragraph lower, not ap\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "test-specs/settings-navigation/l3_..._ELITEA-2245.md step 5 and l2_..._ELITEA-2247.md step 4"
+    },
+    {
+     "kind": "note",
+     "note": "Design observation, no action. The failure listener is bound at test start but every assertion reads a slice taken AFTER the project switch, so a 403 produced BY the switch itself is captured into the list and then never asserted on (it falls before the first mark and no whole-list assertion exists). Given #1971 that is arguably the right default, but it is undocumented \u2014 the module docstring impl\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "automation/utils/api_failures.py:56"
+    },
+    {
+     "kind": "note",
+     "note": "Verified the fix that the implementer's own memory entry (accordion_container_testid_to_be_enabled_is_vacuous) records, because a vacuous `to_be_enabled` is exactly what this review is meant to catch. All five step-5 assertions read real state: `project-general-edit-icon-button` is a MUI IconButton (<button>) AND is permission-gated in ProjectParamsHeader.jsx; `llms_default_selector_combobox` is t\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "automation/tests/ui/settings/test_admin_role_project_sections_access.py:~215"
+    },
+    {
+     "kind": "note",
+     "note": "Ruff reports 2 errors in config.py on this branch (I001 un-sorted import block at :21, UP045 `Optional[int]` at :48). Both are PRE-EXISTING on base \u2014 proved by copying the base file in place and re-running with --no-cache (the branch touches neither the import block nor that annotation). Not attributable to this PR, and not worth fixing here. Recorded the control-run technique as reviewer memory, \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "automation/config.py"
+    },
+    {
+     "kind": "note",
+     "note": "Out of my dispatched unit scope but present in this branch's diff, so sanity-checked for the merged-target rule: `already-covered` is terminal and may only target a spec merged to BASE. Its covering spec (test_viewer_role_cannot_access_secrets.py, ELITEA-2348) is confirmed present at 8b65a2da6, i.e. merged to automation/base \u2014 not a same-batch AFS. Rule satisfied. Its behavioural-equivalence argum\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "test-specs/settings-secrets/lcovered_viewer-and-monitor-roles-cannot-access-secrets_ELITEA-2246.md"
+    }
+   ],
+   "afs": "test-specs/settings-navigation/l3_admin-role-access-to-all-project-settings-sections_ELITEA-2245.md",
+   "branch": "tests/2245-2247-role-access-settings-sections",
+   "pr": 1997,
+   "gate": {
+    "runs": 3,
+    "seconds": [
+     105.16,
+     103.39,
+     103.84
+    ]
+   }
+  },
+  {
+   "id": "ELITEA-2246",
+   "outcome": "already-covered",
+   "note": "ELITEA-2246 and ELITEA-2348 are the SAME case body authored into two TMS folders (settings/ and settings/secrets/): identical title, priority, type, tags, Objective and Expected Final State; the only difference is step granularity (2246 splits 'Navigate to Settings' and 'Click Secrets' into two rows where 2348 has one). ELITEA-2348's spec is MERGED to automation/base \u2014 automation/tests/ui/admin/te\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+   "findings": [
+    {
+     "kind": "defect",
+     "note": "TMS DUPLICATE (not a product defect, but it costs automation cycles): ELITEA-2246 (settings/) and ELITEA-2348 (settings/secrets/) are the same case body \u2014 identical title, priority, type, tags, Objective and Expected Final State, differing only in step granularity. ELITEA-2348 is already automated and merged (PR #1912, status: ready). Intake dedups by case ID, which structurally cannot catch a re-\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "ELITEA-2246 / ELITEA-2348"
+    },
+    {
+     "kind": "clarification",
+     "note": "Case-text drift, both already tracked and COMMENTED (not re-filed) per .agents/profile.md \u00a7 Bug filing: #1909 (OPEN) \u2014 Elitea has no 'Monitor' role; GET /api/v2/admin/roles/default/{pid} returns exactly ['admin','editor','viewer'] on all five reachable projects (399, 400, 471, 406, 25), so ELITEA-2246 steps 5-7 and ELITEA-2247 step 4 are un-executable, not skipped. #1772 (OPEN) \u2014 ELITEA-2245's PRO\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "#1909, #1772"
+    },
+    {
+     "kind": "note",
+     "note": "New durable project fact, now in the digest and role memory: roles are PROJECT-scoped and the shared test account already spans three vantages \u2014 admin @ project 400 'UI Testing' (360 perms, 8 secrets perms), editor+viewer @ 399 (299/6), viewer @ 471/406/25 (158/0). This means role-permission cases on this product need NO second identity and NO deployed env (auth_state_user_b skips on localhost by \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "test-specs/settings-navigation/_surface.md"
+    },
+    {
+     "kind": "note",
+     "note": "Handle-capture gotcha worth propagating: the AI-Providers per-section default/tier selector inputs carry testids composed at runtime inside the shared section component (`${sectionTestId}-default-selector`, live in the DOM as e.g. ai-providers-section-llms-default-selector). A literal `git grep` finds them on NEITHER origin/main NOR origin/automation/testids while the attribute is demonstrably pre\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "src/[fsd]/features/settings/ui/ai-providers/ConfigurationsPanel.jsx"
+    },
+    {
+     "kind": "note",
+     "note": "Environment observations during the run, none blocking: (a) the viewer deep-link to /settings/secrets on project 471 still reproduces OPEN bug #1773 (ordinary 'No secrets' empty state while GET /api/v2/secrets/secrets/default/471 returns 403, no access-denied UI) plus OPEN #1203 (React 'Maximum update depth exceeded') \u2014 no new filing, both already tracked, and both ready AFS files stay off that ro\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "#1773, #1203"
+    }
+   ],
+   "afs": "test-specs/settings-secrets/lcovered_viewer-and-monitor-roles-cannot-access-secrets_ELITEA-2246.md"
+  },
+  {
+   "id": "ELITEA-2247",
+   "outcome": "automated",
+   "note": "",
+   "findings": [
+    {
+     "kind": "defect",
+     "note": "TMS DUPLICATE (not a product defect, but it costs automation cycles): ELITEA-2246 (settings/) and ELITEA-2348 (settings/secrets/) are the same case body \u2014 identical title, priority, type, tags, Objective and Expected Final State, differing only in step granularity. ELITEA-2348 is already automated and merged (PR #1912, status: ready). Intake dedups by case ID, which structurally cannot catch a re-\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "ELITEA-2246 / ELITEA-2348"
+    },
+    {
+     "kind": "clarification",
+     "note": "Case-text drift, both already tracked and COMMENTED (not re-filed) per .agents/profile.md \u00a7 Bug filing: #1909 (OPEN) \u2014 Elitea has no 'Monitor' role; GET /api/v2/admin/roles/default/{pid} returns exactly ['admin','editor','viewer'] on all five reachable projects (399, 400, 471, 406, 25), so ELITEA-2246 steps 5-7 and ELITEA-2247 step 4 are un-executable, not skipped. #1772 (OPEN) \u2014 ELITEA-2245's PRO\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "#1909, #1772"
+    },
+    {
+     "kind": "note",
+     "note": "New durable project fact, now in the digest and role memory: roles are PROJECT-scoped and the shared test account already spans three vantages \u2014 admin @ project 400 'UI Testing' (360 perms, 8 secrets perms), editor+viewer @ 399 (299/6), viewer @ 471/406/25 (158/0). This means role-permission cases on this product need NO second identity and NO deployed env (auth_state_user_b skips on localhost by \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "test-specs/settings-navigation/_surface.md"
+    },
+    {
+     "kind": "note",
+     "note": "Handle-capture gotcha worth propagating: the AI-Providers per-section default/tier selector inputs carry testids composed at runtime inside the shared section component (`${sectionTestId}-default-selector`, live in the DOM as e.g. ai-providers-section-llms-default-selector). A literal `git grep` finds them on NEITHER origin/main NOR origin/automation/testids while the attribute is demonstrably pre\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "src/[fsd]/features/settings/ui/ai-providers/ConfigurationsPanel.jsx"
+    },
+    {
+     "kind": "note",
+     "note": "Environment observations during the run, none blocking: (a) the viewer deep-link to /settings/secrets on project 471 still reproduces OPEN bug #1773 (ordinary 'No secrets' empty state while GET /api/v2/secrets/secrets/default/471 returns 403, no access-denied UI) plus OPEN #1203 (React 'Maximum update depth exceeded') \u2014 no new filing, both already tracked, and both ready AFS files stay off that ro\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "#1773, #1203"
+    },
+    {
+     "kind": "note",
+     "note": "Environment gotcha that cost one full rerun and a live browser investigation: Vite served a STALE transform of a just-edited JSX file, so a newly added data-testid was absent from the browser while present on disk, in the commit, and on the pushed branch. `touch`ing the file did NOT invalidate it; restarting `npm run dev` did. Likely causes both present: the tree is on OneDrive (unreliable fs even\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "EliteaAI/EliteaUI@e1f40532"
+    },
+    {
+     "kind": "clarification",
+     "note": "Both AFS files specced the sections' accordion CONTAINER testids (project-general-section, default-modules-section, ai-providers-section-llms) as the 'editable fields are interactive' handles for ELITEA-2245 step 5. Playwright's to_be_enabled() is vacuously true on any non-form element carrying no aria-disabled, so those rows would have passed without observing anything \u2014 a silent no-op that reads\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "test-specs/settings-navigation/l3_admin-role-access-to-all-project-settings-sections_ELITEA-2245.md"
+    },
+    {
+     "kind": "note",
+     "note": "New role-discriminating observable, live-verified and now in the surface digest: `models.project_context.edit` is held on projects 400 and 399 but NOT on 471. It gates the General section's project-icon edit button, so `project-general-edit-icon-button` is present on 400/399 and absent on 471 \u2014 a second permission-driven signal on this surface alongside the Secrets nav entry the analyst already do\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "test-specs/settings-navigation/_surface.md"
+    },
+    {
+     "kind": "note",
+     "note": "ELITEA-2245's Project Context assertion is state-dependent on a shared project: project 400 currently carries NO project context, so that section renders its empty state, whose entire testid inventory is project-context-create-button + project-context-build-with-ai-button (there is no project-context-page-title testid in that state). If anyone authors a project context on project 400 this assertio\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "automation/tests/ui/settings/test_admin_role_project_sections_access.py"
+    },
+    {
+     "kind": "question",
+     "note": "Doc discrepancy worth a ruling: my dispatch preamble and CLAUDE.md both describe `.agents/memory/<role>/` as LOCAL and gitignored ('never `git add` it'), but in this repo those files are NOT ignored \u2014 `git check-ignore` returns nothing, MEMORY.md and daily/ show as tracked-and-modified, and the trunk's own recent commit 8b65a2da6 is a `docs(memory)` commit. Leaving them dirty would have handed a d\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+    },
+    {
+     "kind": "note",
+     "note": "Case-text drift for both cases is already tracked by OPEN clarifications and was NOT re-filed, per .agents/profile.md \u00a7 Bug filing: #1772 (the PROJECT/PERSONAL section names \u2014 'AI Configuration'/'Project Params' do not exist; 'Personalization' is now 'Preferences') and #1909 (Elitea has exactly three roles, so ELITEA-2247's Monitor step is un-executable, not skipped). Both specs assert the live co\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]"
+    },
+    {
+     "kind": "note",
+     "note": "Locator grep: `git diff 8b65a2da6...tests/2245-2247-role-access-settings-sections -- automation/ | grep -nE '^[+].*(get_by_role|get_by_label|get_by_text|get_by_placeholder|get_by_title|get_by_alt_text|get_by_test_id|query_selector|page\\.locator|\\.locator\\()'` -> **0 hits**. Fidelity/provenance grep: same diff `| grep -nE '^[+].*(\\.mock_|page\\.route\\(|route\\.fulfill\\(|monkeypatch|\\.evaluate\\()'` ->\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "mechanical greps"
+    },
+    {
+     "kind": "note",
+     "note": "Case <-> AFS <-> diff all agree. Every case element has an Axis-1 row and a real assertion at that step: step 1 (admin vantage) = ensure_project_selected(400) + drawer health; step 2 = drawer opens + both group headers; step 3 = per-tab click, URL regex, data-active=true, non-blank settings-content for all 7 live tabs; step 4 = denial regex AND per-section /api/v2/ 4xx/5xx slice; step 5 = named en\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "triangulation ELITEA-2245"
+    },
+    {
+     "kind": "note",
+     "note": "Per-ROW triangulation of the parameterized spec: 3 params (admin/400, editor/399, viewer/471), each with a DISTINCT expected value that is actually asserted \u2014 the `expects_secrets` vantage guard (visible on 400/399, `to_have_count(0)` on 471). Case steps 1-3 map to the three params; step 5 maps to the per-section denial + no-403 + zero-console assertions. Step 4 (Monitor) is disposed `un-executabl\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "triangulation ELITEA-2247"
+    },
+    {
+     "kind": "note",
+     "note": "Both AFSs lean on ELITEA-2348's merged spec as the proof that `secrets` is absent on the viewer project 471. Verified against its ACTUAL assertions, not its existence: automation/tests/ui/admin/test_viewer_role_cannot_access_secrets.py exists at base 8b65a2da6 and asserts `expect(drawer.nav_item(SECRETS_TAB_ID)).to_have_count(0)` plus `assert SECRETS_TAB_ID not in nav_ids` on `settings.elitea_team\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "cited-coverage verification"
+    },
+    {
+     "kind": "defect",
+     "note": "FLAKE VECTOR, not a blocker \u2014 strict-zero console AND API assertions on specs whose whole subject is switching projects. `.agents/testing.md` records OPEN defect #1971 (regression of closed #554): a project-id-less `GET /api/v2/elitea_core/toolkits/prompt_lib/` 404 whose NEW confirmed trigger is 'an explicit project switch rather than first list-page mount (which is why an automation flow that swi\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "automation/tests/ui/settings/test_all_roles_access_personal_sections.py:~250 and test_admin_role_project_sections_access.py:~200"
+    },
+    {
+     "kind": "clarification",
+     "note": "Undeclared broadening, AFS vs implementation. The AFS says the transport check is 'no `/api/v2/` response with status 403 was observed', and Axis 2 titles it 'Transport-level \"no 403\"'. The implementation asserts the whole `collect_api_failures` slice is empty, i.e. ANY >=400. Strictly stronger than the case asks (so not masking) but it is what makes the #1971 exposure above real, and it is not re\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "test-specs/settings-navigation/l2_all-roles-access-personal-settings-sections_ELITEA-2247.md (step 3, Axis 2)"
+    },
+    {
+     "kind": "clarification",
+     "note": "AFS docs drift, nit. Both AFSs were amended to record that step 1 uses `ensure_project_selected` rather than `switch_project` (correctly citing the #1847 networkidle mechanism), but the TEARDOWN steps still literally read `finally: switch_project(settings.elitea_project_id)` while both specs call `restore_active_project()` -> `ensure_project_selected()`. Same amendment, one paragraph lower, not ap\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "test-specs/settings-navigation/l3_..._ELITEA-2245.md step 5 and l2_..._ELITEA-2247.md step 4"
+    },
+    {
+     "kind": "note",
+     "note": "Design observation, no action. The failure listener is bound at test start but every assertion reads a slice taken AFTER the project switch, so a 403 produced BY the switch itself is captured into the list and then never asserted on (it falls before the first mark and no whole-list assertion exists). Given #1971 that is arguably the right default, but it is undocumented \u2014 the module docstring impl\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "automation/utils/api_failures.py:56"
+    },
+    {
+     "kind": "note",
+     "note": "Verified the fix that the implementer's own memory entry (accordion_container_testid_to_be_enabled_is_vacuous) records, because a vacuous `to_be_enabled` is exactly what this review is meant to catch. All five step-5 assertions read real state: `project-general-edit-icon-button` is a MUI IconButton (<button>) AND is permission-gated in ProjectParamsHeader.jsx; `llms_default_selector_combobox` is t\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "automation/tests/ui/settings/test_admin_role_project_sections_access.py:~215"
+    },
+    {
+     "kind": "note",
+     "note": "Ruff reports 2 errors in config.py on this branch (I001 un-sorted import block at :21, UP045 `Optional[int]` at :48). Both are PRE-EXISTING on base \u2014 proved by copying the base file in place and re-running with --no-cache (the branch touches neither the import block nor that annotation). Not attributable to this PR, and not worth fixing here. Recorded the control-run technique as reviewer memory, \u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "automation/config.py"
+    },
+    {
+     "kind": "note",
+     "note": "Out of my dispatched unit scope but present in this branch's diff, so sanity-checked for the merged-target rule: `already-covered` is terminal and may only target a spec merged to BASE. Its covering spec (test_viewer_role_cannot_access_secrets.py, ELITEA-2348) is confirmed present at 8b65a2da6, i.e. merged to automation/base \u2014 not a same-batch AFS. Rule satisfied. Its behavioural-equivalence argum\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "test-specs/settings-secrets/lcovered_viewer-and-monitor-roles-cannot-access-secrets_ELITEA-2246.md"
+    }
+   ],
+   "afs": "test-specs/settings-navigation/l2_all-roles-access-personal-settings-sections_ELITEA-2247.md",
+   "branch": "tests/2245-2247-role-access-settings-sections",
+   "pr": 1997,
+   "gate": {
+    "runs": 3,
+    "seconds": [
+     105.16,
+     103.39,
+     103.84
+    ]
+   }
+  },
+  {
+   "id": "ELITEA-2248",
+   "outcome": "blocked",
+   "note": "Executed live 2026-08-30 against http://localhost:5173 plus an out-of-band unauthenticated HTTP probe of dev.elitea.ai. The case's observable (an unauthenticated session) cannot exist on the project's primary target: EliteaUI/vite.config.js:106,123 sets Authorization: Bearer ${VITE_DEV_TOKEN} on the PROXY side, document.cookie is empty locally, and the SPA has no /login route (src/routes.js). Proo\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+   "findings": [
+    {
+     "kind": "question",
+     "note": "ELITEA-2248 needs a human scope ruling, same one as question card #1781 (OPEN, covers ELITEA-2253/2254 \u2014 now also 2248; evidence commented, not duplicated). Options recorded in the AFS with costs: (a) CI-only browser spec on a deployed env with an unauthenticated context \u2014 cannot go green in the local loop, which .agents/testing.md makes the implementer's gate; (b) transport-level spec in tests/ap\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "https://github.com/EliteaAI/elitea-testing-public/issues/1781#issuecomment-5465973187"
+    },
+    {
+     "kind": "note",
+     "note": "Durable environment fact now recorded in the settings-navigation surface digest and in qa-engineer memory: localhost:5173 has NO unauthenticated state at all \u2014 the Vite dev proxy injects the bearer token server-side, so clearing browser storage/cookies changes nothing, and there is no login page to redirect to. Any future case whose subject is 'logged out' / 'unauthenticated' / 'session expired' i\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "test-specs/settings-navigation/_surface.md"
+    },
+    {
+     "kind": "note",
+     "note": "Exploration side effect worth knowing before someone tries to fake a logout: clearing sessionStorage (which holds elitea_ui.project_permission / elitea_ui.project.id) UNDER a mounted Settings page throws React 'Maximum update depth exceeded' at SecretsContent.jsx:35 \u2014 31 console errors. A clean navigation to the same URL immediately afterwards produced 0 console errors, so this is self-inflicted b\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "test-specs/settings-navigation/l1_unauthenticated-redirected-to-login-settings_ELITEA-2248.md"
+    },
+    {
+     "kind": "clarification",
+     "note": "Case-text/metadata mismatch, minor and not filed separately: ELITEA-2248's stated Precondition is 'User is logged in to the Elitea platform', which contradicts its own subject (an unauthenticated user). Step 1 resolves it by logging out, so the case is internally recoverable \u2014 noted as an Axis-1 row in the AFS rather than raised as its own clarification, since the whole case is already parked on #\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": "ELITEA-2248"
+    },
+    {
+     "kind": "note",
+     "note": "Role memory is TRACKED in this repo (1418 files under .agents/memory/ are in git), despite CLAUDE.md describing that layer as gitignored/local-only. I therefore committed the memory entry and daily log by exact path along with the AFS. Worth a scout pass to reconcile the doc with reality \u2014 an agent following CLAUDE.md literally would leave its memory uncommitted and lose it to a tree sweep. No .ag\u2026 [clipped; full text in the unit's receipt under .agents/telemetry/automation/returns/ (legacy _returns/)]",
+     "ref": ".agents/memory/qa-engineer/localhost_has_no_unauthenticated_state.md"
+    }
+   ],
+   "afs": "test-specs/settings-navigation/l1_unauthenticated-redirected-to-login-settings_ELITEA-2248.md"
+  }
+ ],
+ "totals": {
+  "automated": 2,
+  "already-covered": 1,
+  "blocked": 1
+ },
+ "quality_flags": [],
+ "quota_halted": false,
+ "expected_red": [],
+ "parked": [],
+ "report_written": true,
+ "report_path": "../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/.agents/automation/settings-w12/report.json",
+ "analyzed": [],
+ "extend_cases": [],
+ "next": "Gate green on tests/batch-settings-w12. LAND IT: one PR from tests/batch-settings-w12 to automation/base per .agents/profile.md \u00a7 Automation PR policy (auto-merge / human-approved / manual decides who presses it), then mirror to the TMS and run the close sweep. Replan anything not 'automated'. Where the tokenomics scope contract is active (a session-start line named your session id): record outcomes as they land (work-scope.mjs outcome <ID>=automated \u2026), then work-scope.mjs close \u2014 it renders ../onetest-ai-tm-Elitea/tests/automated-full-regression-ui/.agents/automation/settings-w12/batch-report.md+.html and flags receipt DRIFT \u2014 and publish per .agents/profile.md \u00a7 Reporting policy (dispatch the cheap publisher; no policy \u2192 the files ARE the report, flag the gap).",
+ "note": "report.json REBUILT BY THE LEAD from the workflow's returned result \u2014 the reporter wrote only gate-runs.jsonl. Third occurrence (w09, w11, w12)."
+}
