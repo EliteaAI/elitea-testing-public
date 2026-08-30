@@ -269,3 +269,93 @@ A spec that merely *navigates* to Secrets on a permitted project sees neither.
 - `test-specs/settings-secrets/lcovered_viewer-and-monitor-roles-cannot-access-secrets_ELITEA-2246.md` — **already-covered** by ELITEA-2348's merged spec (`automation/tests/ui/admin/test_viewer_role_cannot_access_secrets.py`); ELITEA-2246 and ELITEA-2348 are the same case body authored into two TMS folders
 
 Not a family AFS — the three differ in **steps**, not only data.
+
+---
+
+## Resolved/added during ELITEA-2245 / ELITEA-2247 implementation (2026-08-30, implementer)
+
+Attributed implementation-time facts only — none of the analyst's behavior or
+scope claims above are changed.
+
+### Testid added
+
+| Testid | Where | Note |
+|---|---|---|
+| `project-general-edit-icon-button` | `ProjectParamsHeader.jsx`, EliteaAI/EliteaUI@e1f40532 on `automation/testids` (NOT on `main`) | The project-icon edit `IconButton` in Settings → General. **Permission-gated**: rendered only when `checkPermission('models.project_context.edit')` holds. Attribute-only addition — no DOM node, hook or structural change. |
+
+### The section-container testids are NOT interactivity handles
+
+`project-general-section`, `default-modules-section` and `ai-providers-section-llms`
+sit on **`BasicAccordion` containers** (`<div>`), not on form controls. Playwright's
+`to_be_enabled()` is **vacuously true** on any non-form element that carries no
+`aria-disabled`, so an "accordion is enabled" assertion observes nothing. Use a real
+control inside the section instead:
+
+| Section | Non-vacuous interactivity handle |
+|---|---|
+| `project-general` | `project-general-edit-icon-button` (added above) |
+| `ai-providers` | `ai-providers-section-llms-default-selector-combobox` — MUI marks a select trigger `aria-disabled` when disabled, which IS what `to_be_enabled()` reads |
+| `default-modules-section` | none — its module switches carry no individual testids; assert *visible* only |
+
+`BasicAccordion` defaults `defaultExpanded = true`, so every accordion's contents
+ARE mounted on load — no expand click is needed to reach a control inside one.
+
+### Project Context empty state (project 400, 2026-08-30)
+
+Project 400 carries no project context, so `/settings/project-context` renders its
+empty state, whose **entire** testid inventory is two CTAs:
+`project-context-create-button` and `project-context-build-with-ai-button`.
+There is **no `project-context-page-title` testid in this state** — a spec that
+anchors on the page title there will fail. The non-empty state offers a different
+control (`project-context-edit-button`) instead.
+
+### `models.project_context.*` permissions, live (Bearer `ELITEA_API_TOKEN`)
+
+| Project | `project_context` permissions |
+|---|---|
+| 400 (admin) | `view`, `generate`, `edit` |
+| 399 (editor+viewer) | `view`, `generate`, `edit` |
+| 471 (viewer) | `view` only |
+
+So `project-general-edit-icon-button` is present on 400/399 and absent on 471 —
+a usable role-discriminating observable on the General section, alongside the
+Secrets nav entry the analyst already documented.
+
+### Project switching on a `/settings/*` route
+
+Use `BasePage.ensure_project_selected(project_id)`, **not** `switch_project()`:
+the latter settles on `wait_for_network()` + a fixed 1 s pause, which is the
+`#1847` mechanism (the persistent `/socket.io/` poll makes `networkidle` a race).
+`ensure_project_selected` waits on the two project-scoped GETs the switch actually
+fires and no-ops when the project is already active — which also makes it the right
+call for an unconditional teardown restore. Navigate to the settings route FIRST:
+the `page` fixture starts on a blank page, so the sidebar selector must exist
+before it can be clicked.
+
+### Environment gotcha — Vite can serve a STALE transform of a just-edited file
+
+A newly added testid did not reach the browser even though it was on disk and the
+dev server was running: `curl`ing the module straight from Vite returned the OLD
+transform, and `touch`ing the file did not invalidate it. The watcher had missed the
+change (this repo lives on OneDrive, and the source tree uses bracketed `[fsd]`
+directory names — both are known watcher hazards). **Restarting `npm run dev` fixed
+it**, and the served module then contained the testid.
+
+Cheap check before blaming a test for "testid not found" on a *just-added* testid:
+
+```bash
+curl -s "http://localhost:5173/src/%5Bfsd%5D/<path-to>.jsx" | grep -c "<your-testid>"
+```
+
+`0` means the dev server is stale, not that the component fails to render it. This
+cost one full rerun of ELITEA-2245's spec.
+
+### Zero console errors / zero API failures — confirmed at implementation time
+
+The analyst's "zero across all sections" measurements held: the 7-section admin
+PROJECT walk and all 9 (3 roles × 3 sections) PERSONAL loads ran with **strict zero**
+console errors and **zero** `/api/v2/` 4xx/5xx, over 4 clean invocations. In
+particular the `#1971` project-id-less toolkit 404 — whose documented trigger IS a
+project switch — did **not** fire on any of these runs, so neither spec opts into
+`exclude_known_defect_urls`. If it starts appearing, that opt-in (URL-keyed, with a
+`# Known defect: #1971` comment) is the sanctioned response.

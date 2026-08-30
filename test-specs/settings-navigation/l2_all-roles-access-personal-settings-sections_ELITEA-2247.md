@@ -85,7 +85,15 @@ the role):
 For each vantage:
 
 1. **Switch to the vantage's project and open Settings.**
-   - `switch_project(project_id)`, then `navigate("/settings/project-general")`.
+   - `navigate("/settings/project-general")`, then
+     `ensure_project_selected(project_id)`. *(Amended 2026-08-30, implementer:
+     `ensure_project_selected`, not `switch_project` — the latter settles on
+     `wait_for_network()` + a fixed 1 s pause, i.e. the `#1847` mechanism this
+     AFS's own Automation Hints forbid; `ensure_project_selected` waits on the
+     two project-scoped GETs the switch actually fires and no-ops when the
+     project is already active. Navigation comes FIRST because the `page`
+     fixture starts on a blank page, so the sidebar selector has to exist
+     before it can be clicked.)*
    - **Verify**: `settings-drawer-menu` is visible and `nav_item_ids_in_order()`
      returns more than one id (drawer-health guard — otherwise every later read is
      vacuous).
@@ -150,9 +158,19 @@ PROVENANCE verified with `cd ../EliteaUI && git fetch origin` on 2026-08-30.
 | Personal Tokens add | `personal-tokens-add-button` | YES | YES |
 | Notifications search | `notifications-search-input` | no | **YES** |
 
-**No new testid is required.** The last three rows are optional content-anchors if
-the implementer prefers a testid over the heading text for step 3's "the right page
-rendered" check — all three are already live on `automation/testids`.
+**No new testid is required.** *Confirmed at implementation time (2026-08-30):
+none was added for this case; the sole testid this batch added
+(`project-general-edit-icon-button`, EliteaAI/EliteaUI@e1f40532) belongs to
+ELITEA-2245's PROJECT walk and is not referenced by this spec.*
+
+The last three rows above are optional content-anchors. **The implementation kept
+the HEADING-text check instead** (`Preferences` / `Personal Tokens` /
+`Notifications Center`, asserted with an auto-retrying `to_contain_text` on
+`settings-content`): the observable this case cares about is "the right personal
+page rendered for this role", and the heading is that page's own product-rendered
+identity, whereas a section-internal testid would also pass on a partially
+rendered pane. No raw locator is involved — the assertion is made through the
+`settings-content` `LocatorDescriptor`.
 
 Page objects to reuse: `SettingsDrawerPage` (`automation/pages/settings_drawer_page.py`)
 for the drawer + `switch_project`; `personal_tokens_page.py` /
@@ -163,8 +181,13 @@ the three destinations — do not re-declare their locators on the drawer.
 
 ## Automation Hints
 - **New config key** (shared with ELITEA-2245): `settings.elitea_admin_project_id`
-  (default `400`) in `automation/config.py` + `.env.test`. If ELITEA-2245 lands
-  first, reuse it.
+  (default `400`) in `automation/config.py`. Landed with ELITEA-2245 on the same
+  branch and reused here. *Amended 2026-08-30 (implementer): **no `.env.test`
+  entry is needed or was added** — the `config.py` default is sufficient, which
+  is how the two existing project-id preconditions with the same default already
+  work (`users_team_project_id`, `ai_providers_seeded_project_id`), and
+  `.env.test` is a symlink to the master secrets file, so a key that carries no
+  secret does not belong there.*
 - `@pytest.mark.parametrize` over the three vantages with readable ids
   (`admin` / `editor` / `viewer`) so a failure names the role.
 - Markers: `ui`, `settings`, `p2`, `regression`.
