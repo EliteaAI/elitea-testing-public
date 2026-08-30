@@ -432,6 +432,20 @@ at" is `CHANGES_REQUESTED` regardless of its result.
   loudly only when the observable requires fresh state (workflow skill Hard Rule 10).
 - Data-dependent tests: serial mode (pytest-xdist is installed — shared state must
   not run parallel).
+- **A VALID `open_ai` credential needs no new secret (verified live 2026-08-30, ELITEA-2415).**
+  Elitea exposes an OpenAI-compatible gateway and the existing `ELITEA_API_TOKEN`
+  authenticates against it:
+
+  | Field | Value |
+  |---|---|
+  | `api_base` | `https://dev.elitea.ai/llm/v1` |
+  | `api_key` | `settings.elitea_api_token` |
+
+  Verified out-of-band before being specced: `GET /llm/v1/models` → **200** with the token,
+  **401** with a bogus one. Use this whenever a case needs a *working* AI credential — the
+  alternative is provisioning a real third-party key, which nobody should be doing for a test.
+  For the *invalid* half of such a case, any bogus key produces a real backend 400/401; never
+  fabricate the error response (§ Fidelity policy).
 
 ## Hooks & fixtures
 
