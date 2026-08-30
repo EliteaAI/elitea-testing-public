@@ -88,3 +88,4 @@
 - [Absence-of-destructive-request needs log + positive control](absence_of_destructive_request_needs_log_plus_positive_control.md) — table read ≠ proof; wire a control
 - [Restore guard set at the mutation](finally_restore_guard_is_raised_at_the_mutation.md) — never after asserts
 - [Sanctioned-RED specs should carry @pytest.mark.flaky(reruns=0)](sanctioned_red_specs_should_carry_flaky_reruns_zero.md) — global --reruns=2 triples an expected failure's cost
+- [Vite can serve a STALE transform of a just-edited testid file](vite_can_serve_stale_transform_after_testid_add.md) — curl the module before debugging
