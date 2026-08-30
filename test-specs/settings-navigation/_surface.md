@@ -174,3 +174,98 @@ fits without scrolling at 1366x768 (`settings-drawer-menu` `scrollHeight ==
 clientHeight == 617`, `scrollTop == 0`), so "last PERSONAL item visible without
 scrolling" is a stable assertion at the framework viewport. ELITEA-2260's "unread count
 badge" step is another occurrence of the #1772 drift — commented there, not re-filed.
+
+---
+
+## Role vantages on this surface (added 2026-08-30, batch `settings-w12`, ELITEA-2245/2246/2247)
+
+**Roles are PROJECT-scoped**, and the shared `${TEST_USER}` (`testbot@elitea.ai`,
+user id 659, `personal_project_id` **399**) genuinely holds different roles in
+different projects — so a real admin/editor/viewer vantage is one project switch
+away, no second identity and no substitution needed. Verified live 2026-08-30 via
+`GET /api/v2/admin/users/prompt_lib/{pid}` + `GET /api/v2/auth/permissions/prompt_lib/{pid}`
+(Bearer `ELITEA_API_TOKEN`, base `https://dev.elitea.ai/api/v2`):
+
+| Project | id | role held | permissions | `*secret*` perms | Secrets in drawer? | Users in drawer? |
+|---|---|---|---|---|---|---|
+| UI Testing | **400** | **`admin`** | 360 | 8 | yes | **yes** |
+| Private (personal project) | 399 (`settings.elitea_project_id`) | `editor`+`viewer` | 299 | 6 | yes | no (personal project) |
+| Elitea Testing Team | 471 (`settings.elitea_team_project_id`) | `viewer` | 158 | 0 | **no** | yes |
+| Bugs & Features | 406 | `viewer` | 158 | 0 | (not walked) | — |
+| Elitea Development | 25 | `viewer` | 158 | 0 | (not walked) | — |
+
+- **Project 400 is not yet in `config.py`.** ELITEA-2245/2247 ask for a new
+  `elitea_admin_project_id` key (default `400`) + `.env.test` entry, mirroring the
+  two existing project-id keys. Don't hardcode `400` in a spec.
+- **There is no `Monitor` role.** `GET /api/v2/admin/roles/default/{pid}` returns
+  exactly `['admin','editor','viewer']` for all five projects above. Any case step
+  naming Monitor is **un-executable**, not skipped — clarification
+  EliteaAI/elitea-testing-public#1909 (OPEN). Don't re-file.
+- **Secrets presence in the drawer is the cheapest role-vantage guard**: present on
+  400/399, `count 0` on 471. Use it to prove a project switch actually took effect
+  before asserting anything role-dependent.
+- **Users row action icons are the sharpest admin-only observable**:
+  `user-row-edit-button` / `user-row-delete-button` render and are enabled on 400,
+  and are permission-gated **out entirely** on the viewer projects
+  (`test-specs/settings-users-and-roles/_surface.md` § Gotchas). Note the Users *nav
+  item itself* IS offered to a viewer on 471 — only the actions disappear.
+
+### Admin PROJECT walk on project 400 (ELITEA-2245, live 2026-08-30)
+
+Drawer PROJECT order: `project-general`, `ai-providers`, `project-context`,
+`secrets`, **`users`**, `analytics`, `usage` (7 — one more than the 6 seen on 399,
+because Users renders when `projectId != personal_project_id`).
+
+All 7 clicked one at a time: each reached `/settings/{tab}`, rendered a non-empty
+`settings-content`, showed **no** access-denied text, and produced **zero** console
+errors and **zero** 4xx/5xx `/api/v2/` responses.
+
+Named interactive controls observed **enabled** per section (useful "editable fields
+are interactive" anchors — all read-only assertions, no typing needed):
+
+| Section | Handles |
+|---|---|
+| `project-general` | `project-general-section`, `ai-configurations`, `ai-configuration-accordion-summary`, `ai-configuration-tab-basic-button`, `default-modules-section`, `midturn-injection-section` (accordion summaries; the module **checkboxes inside have NO individual testids**) |
+| `ai-providers` | `ai-providers-section-{llms,embedding-models,vector-storage,image-generation,asr,tts,ai-credentials}` accordion summaries |
+| `secrets` | `secrets-search-input`, `secrets-add-button`, `secret-row`, `secret-row-visibility-toggle-button`, `secret-row-actions-button`, `secrets-pagination-*` |
+| `users` | `users-search-input`, `users-invite-button`, `user-select-all-checkbox`, `user-row-checkbox`, `user-row-edit-button`, `user-row-delete-button`; header `users-header-edit-button`/`users-header-delete-button` are **correctly disabled** until a row is selected |
+| `preferences` | `preferences-general-section-header`, `voice-personalization-voice-select`, `voice-personalization-{speed,volume}-slider-input`, `voice-preview-button`, `sound-notifications-*` |
+| `tokens` | `personal-tokens-search-input`, `personal-tokens-add-button`, `token-action-preview-button`, `token-action-delete-button` |
+| `notifications` | `notifications-search-input`, `notifications-select-all-checkbox`, `notification-checkbox-{id}` (dynamic), `notification-mark-toggle-button` / `notifications-delete-selected-button` (**disabled until a selection**) |
+
+⇒ Never assert "zero disabled controls" on these pages — several are legitimately
+disabled by design (pagination on page 1, batch actions before a selection).
+
+### Runtime-composed testids — grep-invisible, not missing
+
+The AI-Providers per-section default/tier **selector inputs** carry testids built
+inside the shared section component as `` `${sectionTestId}-default-selector` ``
+(live in the DOM as e.g. `ai-providers-section-llms-default-selector`), so
+`git grep` of the literal string finds **nothing on either branch** while the
+attribute is demonstrably present. Spec them as a class-level template constant
+(`'[data-testid="ai-providers-section-{}-default-selector"]'`) — this is **not** a
+missing testid and must not trigger `add-data-testid`.
+
+### PERSONAL sections across vantages (ELITEA-2247, live 2026-08-30)
+
+`preferences` ("Preferences" — the case text's "Personalization"), `tokens`
+("Personal Tokens") and `notifications` ("Notifications Center") loaded cleanly in
+**all three** vantages (admin@400, editor@399, viewer@471): correct route, non-empty
+content, no denial text, no 403, **zero** console errors on all nine loads. Personal
+settings are user-scoped, so no project role gates them.
+
+### Viewer deep-link to Secrets — unchanged, still #1773 + #1203
+
+`/settings/secrets` on project 471 renders the ordinary "No secrets" empty state
+while `GET /api/v2/secrets/secrets/default/471` returns **403**, with no
+access-denied UI (bug EliteaAI/elitea-testing-public#1773, OPEN) and the route also
+fires `Maximum update depth exceeded` (#1203, OPEN — observed again this session).
+A spec that merely *navigates* to Secrets on a permitted project sees neither.
+
+### AFS files from this run
+
+- `l3_admin-role-access-to-all-project-settings-sections_ELITEA-2245.md` — ready-for-automation
+- `l2_all-roles-access-personal-settings-sections_ELITEA-2247.md` — ready-for-automation
+- `test-specs/settings-secrets/lcovered_viewer-and-monitor-roles-cannot-access-secrets_ELITEA-2246.md` — **already-covered** by ELITEA-2348's merged spec (`automation/tests/ui/admin/test_viewer_role_cannot_access_secrets.py`); ELITEA-2246 and ELITEA-2348 are the same case body authored into two TMS folders
+
+Not a family AFS — the three differ in **steps**, not only data.
