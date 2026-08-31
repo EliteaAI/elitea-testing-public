@@ -1,2 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to Agent Hub and capture the initial applications snapshot — Timeout 15000ms exceeded while waiting for event "response"
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to Agent Hub and capture the initial applications snapshot — Timeout 15000ms exceeded while waiting for event "response"

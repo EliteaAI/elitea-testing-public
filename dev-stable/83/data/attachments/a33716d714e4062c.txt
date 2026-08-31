@@ -1,6 +1,0 @@
-📸 After save: URL=https://dev.elitea.ai/app/credentials/create-credential/jira
-
-🍪 Using fresh cookies from browser context: 6 cookies
-🔗 CredentialAPI: base_url=https://dev.elitea.ai/api/v2 project_id=572
-📊 Raw API response: {'total': 1, 'items': [{'id': 211, 'uuid': 'd0091681-d7f0-44d8-a4a6-837c765070c2', 'project_id': 572, 'elitea_title': 'elitea000572b4mm9a81', 'label': 'Bearer - autotest_user_6@centry.user', 'type': 's3_api_credentials', 'section': 'credentials', 'data': {'user_id': 934, 'is_active': True, 'expires_at': None, 'permissions': ['read', 'write'], 'access_key_id': 'ELITEA000572B4MM9A81', 'secret_access_key': '{{secret.fb09692b26c0473fb7bd5866f2202f37}}', 'bucket_permissions': {}}, 'meta': {}, 'shared': False, 'status_ok': False, 'status_logs': None, 'source': 'user', 'author_id': 934, 'created_at': '2026-08-27T11:10:20.756898', 'updated_at': None, 'is_pinned': False, 'folder_id': None, 'folder_name': None, 'options': {}}], 'offset': 0, 'limit': 20}
-✅ API returned 1 credentials total
