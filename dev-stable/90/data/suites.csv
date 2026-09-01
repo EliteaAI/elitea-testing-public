@@ -1,0 +1,44 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Tue Sep 01 08:35:47 UTC 2026","Tue Sep 01 08:35:56 UTC 2026","9138","tests.ui.agent_hub","test_agent_hub_start_conversation_creates_new_chat","TestAgentHubStartConversationCreatesNewChat","","","test_agent_hub_start_conversation_creates_new_chat","Starting a conversation from a Catalog agent's detail modal creates a
+        new chat and redirects the user to the Chat interface with the
+        blank-conversation welcome message displayed."
+"passed","Tue Sep 01 08:35:19 UTC 2026","Tue Sep 01 08:35:26 UTC 2026","7421","tests.ui.agent_hub","test_agent_hub_open_agent_detail_modal","TestAgentHubOpenAgentDetailModal","","","test_agent_hub_open_agent_detail_modal","Clicking a Catalog agent card opens the preview modal as an overlay,
+        displaying icon, name, owner, liked status, overflow menu, close
+        button, description, CHAT STARTERS section, Welcome Message section,
+        and the Start Chat button — read-only, zero console errors, zero
+        4xx/5xx."
+"passed","Tue Sep 01 08:35:34 UTC 2026","Tue Sep 01 08:35:46 UTC 2026","12146","tests.ui.agent_hub","test_agent_hub_search_bar_filters_in_real_time","TestAgentHubSearchBarFiltersInRealTime","","","test_agent_hub_search_bar_filters_in_real_time","Typing a partial term into the Catalog search bar filters the
+        agent list in real time via a single debounced request; clearing
+        the typed text restores the exact original unfiltered set."
+"passed","Tue Sep 01 08:36:06 UTC 2026","Tue Sep 01 08:36:14 UTC 2026","7961","tests.ui.agent_hub","test_empty_state","TestCatalogEmptyState","","","Empty state displays when search matches no agents","Verify that when a search term matches zero agents, the 'No agents found' and 'Try adjusting your search terms' messages display. Page heading, search input, tabs, and filter rail remain visible and functional. No agent cards present."
+"passed","Tue Sep 01 08:34:49 UTC 2026","Tue Sep 01 08:34:57 UTC 2026","8031","tests.ui.agent_hub","test_agent_hub_filter_single_category","TestAgentHubFilterSingleCategory","","","test_agent_hub_filter_by_single_category","Clicking a single category filter-rail chip selects that chip and
+        filters the Agent Hub content to that category's agents only."
+"passed","Tue Sep 01 08:34:25 UTC 2026","Tue Sep 01 08:34:40 UTC 2026","15573","tests.ui.agent_hub","test_agent_hub_copy_link_from_modal","TestAgentHubCopyLinkFromModal","","","test_copy_link_from_modal_navigates_to_agent","Copy a link from the agent detail modal's Share action, navigate to it
+        in a new page context, and verify the modal auto-opens showing the same
+        agent's details (name, description, starters, welcome message)."
+"passed","Tue Sep 01 08:34:14 UTC 2026","Tue Sep 01 08:34:24 UTC 2026","10707","tests.ui.agent_hub","test_agent_hub_close_agent_detail_modal","TestAgentHubCloseAgentDetailModal","","","test_agent_hub_close_agent_detail_modal","Clicking the X button in the agent detail modal closes the modal,
+        and the user remains on the Catalog list view — read-only, zero
+        console errors, zero 4xx/5xx."
+"passed","Tue Sep 01 08:34:57 UTC 2026","Tue Sep 01 08:35:07 UTC 2026","9264","tests.ui.agent_hub","test_agent_hub_like_agent_from_modal","TestAgentHubLikeAgentFromModal","","","test_agent_hub_like_agent_from_modal","Like an agent from the expanded detail modal: toggle state, increment
+        count, and verify persistence across modal close/reopen and in the
+        card list."
+"passed","Tue Sep 01 08:35:07 UTC 2026","Tue Sep 01 08:35:19 UTC 2026","11499","tests.ui.agent_hub","test_agent_hub_like_agent_list_view","TestAgentHubLikeAgentListView","","","test_agent_hub_like_agent_from_list_view","Liking an unliked agent card increments its count, fills the heart
+        icon, and persists across a full page refresh; unliking (cleanup)
+        restores the original baseline."
+"passed","Tue Sep 01 08:34:41 UTC 2026","Tue Sep 01 08:34:48 UTC 2026","7635","tests.ui.agent_hub","test_agent_hub_filter_multiple_categories","TestAgentHubFilterMultipleCategories","","","test_agent_hub_filter_by_multiple_categories","Clicking multiple category filter-rail chips accumulates filters:
+        both chips remain selected and agents from both categories display
+        simultaneously in separate labeled sections."
+"passed","Tue Sep 01 08:34:19 UTC 2026","Tue Sep 01 08:34:27 UTC 2026","7144","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_page_loads","The home page should load without errors."
+"passed","Tue Sep 01 08:35:56 UTC 2026","Tue Sep 01 08:36:05 UTC 2026","8983","tests.ui.agent_hub","test_agent_hub_trending_category","TestAgentHubTrendingCategory","","","test_agent_hub_trending_category_displays_agents","Verify Trending category filter shows agents when selected.
+
+        Steps:
+        1. Navigate to Agent Hub (Catalog)
+        2. Click the Trending category filter chip
+        3. Verify the filter is highlighted/active
+        4. Verify agents are displayed under Trending section
+        5. Verify the section header ""Trending"" is visible
+        "
+"passed","Tue Sep 01 08:34:27 UTC 2026","Tue Sep 01 08:34:33 UTC 2026","6678","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_main_content_visible","The main content area should render after navigation."
+"passed","Tue Sep 01 08:35:27 UTC 2026","Tue Sep 01 08:35:34 UTC 2026","7149","tests.ui.agent_hub","test_agent_hub_page_loads_private_project","TestAgentHubPageLoadsPrivateProject","","","test_agent_hub_page_loads_private_project","Agent Hub (Catalog) page loads without error for a Private-project
+        user: heading, search bar, full category filter rail, and agent
+        cards are all visible, with zero console errors."
