@@ -35,13 +35,6 @@ on:
         description: 'Suffix for TMS report name'
         type: string
         default: ''
-      elitea_intake:
-        description: 'Send to ELITEA intake pipeline on failure'
-        type: choice
-        options:
-          - 'false'
-          - 'true'
-        default: 'false'
 
 jobs:
   test:
