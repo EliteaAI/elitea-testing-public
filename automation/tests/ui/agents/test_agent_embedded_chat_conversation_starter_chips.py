@@ -7,33 +7,82 @@ verifies both starter chips render before any message is sent, clicks one
 chip (pre-fill only — no auto-send, chip row disappears immediately), then
 explicitly sends via `chat-send-button` and verifies the agent responds.
 
-Step 8 — repaired 2026-08-27 for issue #1812 (GHA run 32931571484 on
-dev.elitea.ai, `assert 0 > 0`). Two things were wrong and both are fixed here:
+Step 8 — repair history (issue #1812). Two rounds.
 
-1. **The Send click is deliberately NOT `force=True`.** The starter chip
-   pre-fills the composer programmatically (`ChatBox.jsx`'s
-   `onSendConversationStarter` → `chatInput.current.setValue(...)`), and
-   `UserInput.jsx`'s `sendQuestion()` re-checks its own `disabledSend` closure
-   on top of the DOM `disabled` attribute — so a forced click can land inside
-   that settling window and return early with no exception, no console error
-   and no request. The click is now gated on `to_be_enabled()`, dispatched
-   plainly (Playwright waits for actionability), and wrapped in
-   `page.expect_response(_is_send_response)` asserting the conversation POST
-   returns 201 — a no-op now fails in ~15s naming the missing request instead
-   of vacuously timing out 60s later. DEV-only race: on localhost the button
-   settles in ~2ms, so a local green proves non-regression, not the fix.
-2. **Step 8's observables were inert.** `assert response_text != ""` could not
-   fail: `wait_for_chat_response()` only logs a WARNING on timeout, and
-   `get_last_chat_response_text()` falls back to the raw last-`<li>` text when
-   `skill-test-last-response` is absent — so the answer *placeholder* (its own
-   `chat-message-item`) satisfied it. The test now additionally asserts the
-   user message at index `initial_count` carries the exact starter text, and
-   waits for the `skill-test-last-response` element itself, which
-   `ApplicationAnswer.jsx` renders only on a real answer.
-
-All three observables were already specified in the AFS (§ Test Steps 8) and
-were dropped during the original implementation — this is implementation-vs-AFS
+**Round 1 (2026-08-27, PR #1851, merged `ac6b4dbdc`)**, after GHA run
+32931571484 on dev.elitea.ai failed `assert 0 > 0`. It stopped forcing the
+Send click (Playwright now waits for actionability), gated it on
+`to_be_enabled()`, wrapped it in
+`page.expect_response(_is_send_response)` asserting the conversation POST's
+201, and replaced Step 8's inert observables — `assert response_text != ""`
+could not fail (`wait_for_chat_response()` only WARNs on timeout, and
+`get_last_chat_response_text()` falls back to the raw last-`<li>` text when
+`skill-test-last-response` is absent, so the answer *placeholder* satisfied
+it), so the test now also asserts the user message at index `initial_count`
+carries the exact starter text and waits for the `skill-test-last-response`
+element itself, which `ApplicationAnswer.jsx` renders only on a real answer.
+Those three observables were already specified in the AFS (§ Test Steps 8) and
+had been dropped during the original implementation — implementation-vs-AFS
 drift, so neither the AFS nor the TMS case needed amending.
+
+**Round 2 (this change).** A week of DEV runs showed round 1's *diagnostic*
+half working and its *robustness* half not: run 33066098636 (08-27) PASSED,
+run 33149201954 (08-28) FAILED on all three attempts at the `expect_response`
+wait, run 33488691004 (09-01) PASSED. The 08-28 failure screenshots (all three
+attempts byte-identical) show the composer still holding the starter text, a
+completely empty chat list, and Send rendered enabled — the send genuinely
+never fired, and round 1's oracle correctly said so in ~15s by naming the
+missing POST instead of vacuously burning the 60s AI timeout.
+
+**The mechanism — and it is NOT the stale closure round 1's docstring claimed;
+that was a guess and it was wrong.** Send is gated twice: by the DOM
+(`disabled={disabledSend || !question}`, `SendButton.jsx:79`) and by the
+handler itself (`if (question.trim() && !disabledSend)`, `UserInput.jsx:238`).
+React delivers a synthetic handler from the CURRENT fiber props, not from the
+render the browser gated on — so a commit landing between the browser
+dispatching the click and React delivering it hands `sendQuestion()` a
+`disabledSend` that is now `true`, and it early-returns silently: no exception,
+no console error, no request. `disabledSend` is `ChatBox.jsx:2747`'s nine-term
+`isInputDisabled` disjunction, several of whose terms are network-bound and
+settle late on a deployed env. `to_be_enabled()` therefore NARROWS that window
+but cannot close it — the deciding gate is on the handler side, after
+Playwright has stopped looking. The click here was dispatched, not blocked:
+`conftest.py`'s 10s context default would have raised an actionability error
+naming the button, and this raised at 15s on the *response*. Filed as product
+bug #2011.
+
+So Step 8 now **bounded-retries the CLICK** (`SEND_ATTEMPTS`) — the shape canon
+already prescribes for the analogous HITL trigger-side flake
+(`.agents/testing.md` § Known issues: "a bounded retry of the trigger
+message... not a longer panel timeout"). What keeps that a retry-of-an-action
+rather than masking is its discriminator: it retries ONLY when it can prove
+nothing was sent, and re-raises immediately otherwise.
+
+**Why the discriminator is the REQUEST and not the composer-clearing
+invariant.** The obvious reading of the source does not hold for this
+component. `UserInput.jsx`'s `sendQuestion()` does clear the composer
+synchronously before calling `onSend` — but only `if (clearInputAfterSend)`,
+and `ChatBox.jsx` passes **`clearInputAfterSubmit={false}`** to the composer's
+`<NewChatInput>` (`ChatBox.jsx:2950`, the same JSX element as
+`onSend={onSendMessage}` at 2898). Here the composer is reset by the CALLER
+instead, at `ChatBox.jsx:1174` — *after* `await onSend(...)` (1059) and
+`await uploadAttachments(...)` (1085), and only on the success path. A
+populated composer is therefore a LAGGING signal, equally consistent with
+"nothing was sent" and with "a send is in flight whose POST has not returned
+yet"; retrying on it alone could fire a second send.
+
+`sendQuestion()`'s early return, by contrast, happens *before* any network
+call. So if the conversation POST was ever ISSUED, the send registered —
+whether or not its response arrived. A `page.on("request", ...)` listener
+records exactly that. The retry fires only when the request was never issued
+AND the composer is still populated: strictly narrower than either signal
+alone, and if either one says the send registered, the failure re-raises
+unchanged. A send that actually happened is never retried.
+
+The response-side 4xx/5xx catcher also now records `"<status> <url>"` rather
+than a bare status, so a future failure there names a resource instead of
+reading `[404]` — the same URL-capture gap `.agents/testing.md` § Unconfirmed
+spent three entries closing on the console side.
 
 Test-data strategy (per AFS, adjusted during implementation): a dedicated,
 uniquely-named agent is created per-test via the plain `AgentAPI.create_agent()`
@@ -72,7 +121,8 @@ import uuid
 import allure
 import pytest
 from pages.agent_detail_page import AgentDetailPage
-from playwright.sync_api import Page, Response, expect
+from playwright.sync_api import Page, Request, Response, expect
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new_verified]
 
@@ -83,6 +133,12 @@ UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
 SAVE_RESPONSE_TIMEOUT = 15_000
 AI_RESPONSE_TIMEOUT = 60_000
+
+#: Bounded retries of the Step 8 Send CLICK (product bug #2011 — the handler
+#: reads fresher props than the DOM the browser gated on, so a click the DOM
+#: permitted can still early-return with nothing sent). Retried only when
+#: nothing was provably sent; see the module docstring.
+SEND_ATTEMPTS = 3
 
 STARTER_1 = "How do I create a new agent?"
 STARTER_2 = "What toolkits are available?"
@@ -111,6 +167,18 @@ def _is_send_response(response: Response) -> bool:
     )
 
 
+def _is_send_request(request: Request) -> bool:
+    """The same match as :func:`_is_send_response`, on the REQUEST side.
+
+    ``UserInput.jsx``'s ``sendQuestion()`` early-returns *before* any network
+    call, so the mere ISSUING of this POST proves the Send click registered —
+    independently of whether its response ever arrived. That is what makes it a
+    sound discriminator for Step 8's bounded click retry, where the composer's
+    contents are only a lagging signal (module docstring).
+    """
+    return "/conversations/prompt_lib/" in request.url and request.method == "POST"
+
+
 # Known defect #554 (already filed, unrelated) — an RTK-Query timing race in
 # EliteaUI/src/api/toolkits.js's `toolkitTypes` endpoint fires before
 # `useSelectedProjectId()` resolves, building the URL with an empty
@@ -134,6 +202,21 @@ def _is_send_response(response: Response) -> bool:
 def _is_known_554_toolkits_404(msg) -> bool:
     location_url = (msg.location or {}).get("url", "")
     return "404" in msg.text and "elitea_core/toolkits/prompt_lib/" in location_url
+
+
+# The response-side counterpart of the console filter above, for the same known
+# defect (#1971 / #554). Deliberately keyed on the URL and matched with
+# ``str.endswith``, mirroring ``utils.console_errors.exclude_known_defect_urls``
+# — that helper itself is not reachable from here: it lives on `automation/base`
+# and is not yet on `main`, which this branch targets.
+#
+# NEVER keyed on the status code: an "any 4xx" filter would swallow the next
+# genuine one, which is masking (`.agents/testing.md` § Unconfirmed says so
+# explicitly). And ``endswith`` rather than ``in``, because #1971's entire
+# signature is the MISSING trailing project-id segment — a well-formed
+# ".../toolkits/prompt_lib/399" still surfaces as a real, unexpected failure.
+def _is_known_1971_toolkits_request(entry: str) -> bool:
+    return entry.endswith("/elitea_core/toolkits/prompt_lib/")
 
 
 class TestConversationStarterChipsVisibleAndClickable:
@@ -170,10 +253,16 @@ class TestConversationStarterChipsVisibleAndClickable:
 
         detail_page = AgentDetailPage(page)
         console_errors = detail_page.capture_console_errors()
-        failed_responses: list[int] = []
+        # Capture the URL alongside the status. A bare ``[404]`` names no
+        # resource, so a failure here is untriageable — exactly the URL-capture
+        # gap `.agents/testing.md` § Unconfirmed spent three entries closing on
+        # the console side (`utils/console_errors.format_console_message`).
+        failed_responses: list[str] = []
         page.on(
             "response",
-            lambda resp: failed_responses.append(resp.status) if resp.status >= 400 else None,
+            lambda resp: failed_responses.append(f"{resp.status} {resp.url}")
+            if resp.status >= 400
+            else None,
         )
 
         try:
@@ -276,42 +365,118 @@ class TestConversationStarterChipsVisibleAndClickable:
             with allure.step(
                 "Step 8 — Send the pre-filled message and verify the agent responds"
             ):
-                # Deliberately NOT force=True (repair for issue #1812; GHA run
-                # 32931571484 on dev.elitea.ai failed here with `assert 0 > 0`
-                # after burning the full 60s AI timeout — a count of ZERO means
-                # not even the USER's own message landed, so the send was a
-                # silent no-op, not a slow agent).
-                #
-                # The starter chip never TYPES: ChatBox.jsx's
+                # Deliberately a plain, unforced click — and, since round 2,
+                # a retried one.
+                # The starter chip never TYPES: `ChatBox.jsx`'s
                 # `onSendConversationStarter` populates the composer
-                # PROGRAMMATICALLY through an imperative ref
-                # (`chatInput.current.setValue(starter)` →
-                # ComponentsLib/Chat/UserInput.jsx). Send is then gated twice on
-                # asynchronously-settling state — the DOM
-                # `disabled={disabledSend || !question}` (SendButton.jsx) and
-                # `sendQuestion()`'s own closure guard
-                # `if (question.trim() && !disabledSend)` (UserInput.jsx), where
-                # `disabledSend` ← `isInputDisabled` is an 8-term disjunction
-                # carrying several network-bound terms. `force=True` skips
-                # Playwright's actionability wait and fires into that window; the
-                # handler then returns early with no exception, no console error
-                # and no request. On localhost the button settles within ~2ms, so
-                # the window does not exist — this is a DEV-only race.
+                # programmatically through an imperative ref
+                # (`chatInput.current.setValue(starter)` → `UserInput.jsx`). Send
+                # is then gated twice: the DOM
+                # `disabled={disabledSend || !question}` (`SendButton.jsx:79`) and
+                # the handler's own `if (question.trim() && !disabledSend)`
+                # (`UserInput.jsx:238`), where `disabledSend` ← `isInputDisabled`
+                # is `ChatBox.jsx:2747`'s NINE-term disjunction carrying several
+                # network-bound terms.
                 #
-                # Third recurrence of this exact pattern: the two sibling
-                # starter-flow specs already carry the same deliberate non-force
-                # click (test_agent_hub_create_conversation_via_starter.py,
-                # test_chat_agent_starters_add_remove.py), and the mechanism is
-                # written up in the implementer memory note
-                # `chat_send_button_force_click_race.md` (ELITEA-2093 / 2177).
-                expect(detail_page.chat_send_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
-                # Wrapped in the send's OWN response oracle: a no-op click now
-                # fails in ~15s naming the POST that never fired, instead of
-                # vacuously timing out 60s later on a message count that never
-                # moved.
-                with page.expect_response(_is_send_response, timeout=SAVE_RESPONSE_TIMEOUT) as send_info:
-                    detail_page.chat_send_button.click()
-                send_response = send_info.value
+                # Correction to round 1's comment here, which blamed a stale
+                # closure: React delivers the synthetic handler from the CURRENT
+                # fiber props, so it is a FRESHER `disabledSend` — not a staler one
+                # — that early-returns on a click the DOM had already permitted.
+                # `to_be_enabled()` narrows that window; it cannot close it,
+                # because the deciding gate runs after Playwright stops looking.
+                # Product bug #2011; module docstring has the full account.
+                #
+                # Same trigger pattern as the two sibling starter-flow specs
+                # (test_agent_hub_create_conversation_via_starter.py,
+                # test_chat_agent_starters_add_remove.py), which are exposed to
+                # this race too — canon card #1849 owns that sweep, not this file.
+                # Round 2 (issue #1812, product bug #2011): bounded retry of the
+                # CLICK. Each attempt re-arms the send's OWN response oracle, so a
+                # no-op still fails in ~15s naming the POST that never fired rather
+                # than vacuously burning 60s on a message count that never moved.
+                #
+                # This listener is what makes the retry honest. It records the
+                # conversation POST at ISSUE time; `sendQuestion()` early-returns
+                # before any network call, so a recorded request proves the send
+                # registered even if its response never arrived.
+                send_requests: list[str] = []
+                page.on(
+                    "request",
+                    lambda req: send_requests.append(req.url) if _is_send_request(req) else None,
+                )
+
+                send_response = None
+                for attempt in range(SEND_ATTEMPTS):
+                    expect(detail_page.chat_send_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
+                    try:
+                        with page.expect_response(
+                            _is_send_response, timeout=SAVE_RESPONSE_TIMEOUT
+                        ) as send_info:
+                            detail_page.chat_send_button.click()
+                        send_response = send_info.value
+                        break
+                    except PlaywrightTimeoutError as err:
+                        # Retry ONLY when nothing was provably sent. Two independent
+                        # proofs that it WAS sent, either of which re-raises at once:
+                        #
+                        #  1. the conversation POST was issued (authoritative — it is
+                        #     downstream of `sendQuestion()`'s guard);
+                        #  2. the composer is empty (`ChatBox.jsx:1174` resets it only
+                        #     on the send path).
+                        #
+                        # Signal 2 alone is NOT sufficient here: this component passes
+                        # `clearInputAfterSubmit={false}` (`ChatBox.jsx:2950`), so the
+                        # reset happens after `await onSend(...)` — a populated
+                        # composer is equally consistent with an in-flight send, and
+                        # retrying on it alone could fire a second one. See the module
+                        # docstring.
+                        #
+                        # ⚠️ REUSING THIS PATTERN ELSEWHERE: signal 1 is only valid
+                        # while the send is expected to CREATE the conversation.
+                        # `needsConversationCreation` (`ChatBox.jsx:1052`) is
+                        # `!activeConversation?.uuid && isAgentsPage`, so a send into
+                        # an ALREADY-EXISTING conversation issues no POST at all and
+                        # the request signal would be silent — a false "nothing was
+                        # sent". Unreachable here (Steps 5/6/7 assert a message count
+                        # of 0 three times, and any earlier attempt that had created
+                        # a conversation would itself have recorded the request and
+                        # re-raised), but a continuing-conversation flow inherits a
+                        # false oracle if it copies this shape unchanged.
+                        #
+                        # Each branch raises its OWN message: three semantically
+                        # different outcomes must be distinguishable from the pytest
+                        # tail alone, without allure or screenshots. Chained with
+                        # `from err` so the originating timeout stays in the
+                        # traceback — nothing is swallowed and nothing goes green.
+                        # (Round 1's failure cost a week of forensics precisely
+                        # because the tail said nothing; a retry that collapses the
+                        # three outcomes into one byte-identical traceback would
+                        # re-create that cost.)
+                        if send_requests:
+                            raise AssertionError(
+                                f"Send REGISTERED (conversation POST issued: {send_requests}) "
+                                f"but no matching response arrived within "
+                                f"{SAVE_RESPONSE_TIMEOUT}ms on attempt {attempt}. "
+                                "NOT product bug #2011 — the click landed; investigate "
+                                "the backend/response."
+                            ) from err
+                        composer = detail_page.chat_message_input.input_value()
+                        if composer == "":
+                            raise AssertionError(
+                                f"No conversation POST was issued on attempt {attempt}, "
+                                "yet the composer is EMPTY — neither 'sent' nor "
+                                "'not sent'. Unexpected state, not #2011."
+                            ) from err
+                        if attempt == SEND_ATTEMPTS - 1:
+                            raise AssertionError(
+                                f"Send click no-opped on all {SEND_ATTEMPTS} attempts: "
+                                "no conversation POST ever issued, composer still holds "
+                                f"{composer!r}. Product bug #2011."
+                            ) from err
+
+                # Unreachable by construction (the loop breaks or re-raises) — kept
+                # as an explicit type guard rather than an implicit AttributeError.
+                assert send_response is not None, "Send loop exited without a response"
                 assert send_response.status == 201, (
                     "POST .../conversations/prompt_lib/... should return 201 on Send, "
                     f"got {send_response.status}"
@@ -379,7 +544,29 @@ class TestConversationStarterChipsVisibleAndClickable:
                 "Unexpected console errors during the run: "
                 f"{[m.text for m in unexpected_console_errors]}"
             )
-            assert not failed_responses, f"Unexpected 4xx/5xx responses: {failed_responses}"
+            # Known defect: #1971 (a regression of the closed #554) — EliteaUI's
+            # `toolkits.js` `toolkitTypes` endpoint races `useSelectedProjectId()`
+            # and builds the URL with the project-id segment MISSING
+            # (".../elitea_core/toolkits/prompt_lib/"), which the backend answers
+            # 4xx. The console-side listener in this same spec already excludes it
+            # (`_is_known_554_toolkits_404`) and the response-side listener sees the
+            # identical request, so filtering one axis and not the other is
+            # incoherent.
+            #
+            # The two filters are deliberately NOT identical, and this is not an
+            # oversight: `_is_known_554_toolkits_404` requires `"404" in msg.text`
+            # AND the URL, because a ConsoleMessage carries no status field to key
+            # on. This one is URL-only, mirroring `exclude_known_defect_urls()` —
+            # the canon helper keys on the URL and never on the status code, so a
+            # 500 from that same malformed request is excluded here but would still
+            # surface on the console axis. Narrower is the console filter; the
+            # canon shape is this one.
+            unexpected_failed_responses = [
+                r for r in failed_responses if not _is_known_1971_toolkits_request(r)
+            ]
+            assert not unexpected_failed_responses, (
+                f"Unexpected 4xx/5xx responses: {unexpected_failed_responses}"
+            )
         finally:
             console_errors.stop()
             with allure.step("Cleanup — delete the dedicated agent"):
