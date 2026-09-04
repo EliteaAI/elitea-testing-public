@@ -35,6 +35,9 @@ class TestHomePage:
         with allure.step("Step 2 — Verify page title is not empty"):
             assert page.title(), "Page title should not be empty"
 
+        with allure.step("Step 3 — INTENTIONAL FAILURE for webhook testing"):
+            assert False, "INTENTIONAL FAILURE: Testing webhook pipeline integration"
+
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/toolkits-credentials/ELITEA-1143_platform-availability-basic-navigation.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/smoke-suite/ELITEA-1049_ui-smoke-test-platform-loads.md", "onetest-ai Test Case link")
     def test_main_content_visible(self, page):
