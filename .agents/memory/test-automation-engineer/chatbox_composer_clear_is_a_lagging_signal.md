@@ -40,18 +40,30 @@ its response arrived, and independently of every prop-defaulting question above.
 send_requests: list[str] = []
 page.on("request", lambda req: send_requests.append(req.url) if _is_send_request(req) else None)
 ...
-except PlaywrightTimeoutError:
-    if send_requests:                                    # authoritative
-        raise
-    if page_obj.chat_message_input.input_value() == "":  # second, independent proof
-        raise
+except PlaywrightTimeoutError as err:
+    if send_requests:                       # authoritative
+        raise AssertionError(f"Send REGISTERED (POST issued: {send_requests}) but no "
+                             f"response in {T}ms on attempt {attempt}. NOT #2011.") from err
+    composer = page_obj.chat_message_input.input_value()
+    if composer == "":                      # second, independent proof
+        raise AssertionError(f"No POST issued on attempt {attempt}, yet composer is "
+                             "EMPTY — neither sent nor not-sent. Not #2011.") from err
     if attempt == ATTEMPTS - 1:
-        raise
+        raise AssertionError(f"No-opped on all {ATTEMPTS} attempts, composer still "
+                             f"holds {composer!r}. Product bug #2011.") from err
 ```
 
 Keep the composer read as a *second* proof — both must say "nothing was sent"
 before a retry fires. Two independent signals can only narrow a retry, never
 widen it. That is what keeps a retry-of-an-action distinguishable from masking.
+
+**Caveat before you reuse this.** The request signal is only valid while the send
+is expected to CREATE the conversation: `needsConversationCreation` is
+`!activeConversation?.uuid && isAgentsPage` (`ChatBox.jsx:1052`), so a send into an
+ALREADY-EXISTING conversation issues no POST at all and the signal is silently
+false — it would report "nothing was sent" for every send. Safe only where the
+spec has proven the conversation is fresh (e.g. asserting a message count of 0
+first). A continuing-conversation flow needs a different oracle.
 
 ## The general lesson
 

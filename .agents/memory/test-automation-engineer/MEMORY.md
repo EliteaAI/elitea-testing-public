@@ -91,3 +91,4 @@
 - [Vite can serve a STALE transform of a just-edited testid file](vite_can_serve_stale_transform_after_testid_add.md) — curl the module before debugging
 - [Composer clearing is a LAGGING signal](chatbox_composer_clear_is_a_lagging_signal.md) — ChatBox passes clearInputAfterSubmit={false}; key a send retry on the REQUEST
 - [to_be_enabled() can't close a handler-side gate](react_fresh_props_defeat_to_be_enabled.md) — React delivers FRESHER props; retry the action, local green proves non-regression only
+- [A retry must not collapse its outcomes](a_retry_must_not_collapse_its_outcomes.md) — bare `raise` per branch destroys the diagnosis; message each, name the ticket, `from err`
