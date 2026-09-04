@@ -125,3 +125,6 @@
 - [Name the failure mode for write-heavy areas](name_the_failure_mode_in_the_dispatch_for_write_heavy_areas.md) — the risk is a spec that PASSES while leaving damage; say it in the dispatch
 - [Durable rules go in canon, not the dispatch prompt](put_durable_rules_in_canon_not_in_the_dispatch_prompt.md) — the workflow has no notes arg; .agents/*.md reaches every slot of every wave
 - [A parked blocker is an inference until tested](a_parked_blocker_is_an_inference_until_someone_tests_it.md) — 4 cases deferred 11 waves on an untested assumption; 2 were automatable all along
+- [Ready with an owed verification is a DEBT](a_delivered_card_is_not_verified_until_the_env_ran_it.md) — re-check next session; the env may have recovered and disagreed
+- [My dispatch premise can be FALSE](my_dispatch_premise_can_be_false_let_ics_refuse_it.md) — attribute claims, license refusal, verify load-bearing source facts myself
+
