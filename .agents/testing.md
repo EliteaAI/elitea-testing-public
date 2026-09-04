@@ -985,3 +985,39 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   faster** (183.55 s -> 127.71 s), because each of the 8 navigations had been paying a
   networkidle wait it did not need. Worth remembering when triaging the other 140-odd
   `wait_for_network` call sites: the fix is usually cheaper AND faster than the wait it removes.
+- **LLM non-response is now VISIBLE on the starter-chip embedded-chat flow — and a whole
+  class of runs that used to score green no longer does (2026-09-04, ELITEA-1886/#1812,
+  PR #2012)**: `test_agent_embedded_chat_conversation_starter_chips.py` Step 8 previously
+  ended at `assert response_text != ""`, which **could not fail** —
+  `wait_for_chat_response()` only logs a WARNING on timeout, and
+  `get_last_chat_response_text()` falls back to the last message-item's RAW text when
+  `skill-test-last-response` is absent. The answer *placeholder* is its own
+  `chat-message-item`, so the rotating "Waking the agent…" phrase satisfied the assertion.
+  **Any run where the send registered and the agent never answered scored GREEN.**
+  Step 8 now waits on `skill-test-last-response` itself, which `ApplicationAnswer.jsx:708`
+  renders only when `shouldRenderAnswerBlock` (gated on `!!answer`, line 523) is true — the
+  placeholder cannot satisfy it.
+  **Consequence to expect, and it is not a regression:** 1 of 5 lead-gate invocations on
+  2026-09-04 failed with Step 8 at **72.95 s** — the full 60 s `wait_for_chat_response` plus
+  the 10 s element wait — with the send provably successful (no retry timeouts; those would
+  have added 15 s each). The model simply produced no answer. Same family as the HITL and
+  toolkit-chat trigger-side entries above: it fires at the model, upstream of any product
+  defect, so it is **never** a member of a sanctioned-RED set — **re-run, never accept
+  2-of-3**. A re-gate from scratch was 3/3 clean, `reruns.json == {}` each.
+  Raising the 10 s element timeout would NOT have helped and must not be attempted as a
+  "fix": 70 s had already elapsed with nothing rendered. `--reruns=2` absorbs the
+  single-occurrence case.
+  ⚠️ **Cleanup timing is a red herring when triaging this spec** — the same failing
+  invocation spent **93.4 s** in `Cleanup — delete the dedicated agent` (vs ~1 s normally),
+  which is what pushed the wall clock to 183 s. Read the allure per-step durations, not the
+  total; the total will send you after the wrong step.
+- **⚠️ Allure status for this spec's Step-8 failures flipped `broken` → `failed`
+  (2026-09-04, PR #2012)**: the retry's three exits now raise `AssertionError ... from err`
+  instead of letting the raw `PlaywrightTimeoutError` propagate. Nothing functional depends
+  on it — `conftest.py` keys on `report.outcome`, never on exception type, so
+  screenshot-on-failure, trace/video capture and `reruns.json` are unaffected. **But several
+  entries in this ledger tell you to grep `reports/allure-results/*-result.json` for
+  `"status": "broken"` to find raw-uncaught-error-at-a-precondition failures. That grep will
+  now MISS this spec.** Grep by `fullName` and read `statusDetails.message` instead — the
+  message is far more informative than the status label ever was, and names explicitly
+  whether the outcome is product bug #2011 or explicitly not it.
