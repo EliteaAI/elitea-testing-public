@@ -89,3 +89,5 @@
 - [Restore guard set at the mutation](finally_restore_guard_is_raised_at_the_mutation.md) — never after asserts
 - [Sanctioned-RED specs should carry @pytest.mark.flaky(reruns=0)](sanctioned_red_specs_should_carry_flaky_reruns_zero.md) — global --reruns=2 triples an expected failure's cost
 - [Vite can serve a STALE transform of a just-edited testid file](vite_can_serve_stale_transform_after_testid_add.md) — curl the module before debugging
+- [Composer clearing is a LAGGING signal](chatbox_composer_clear_is_a_lagging_signal.md) — ChatBox passes clearInputAfterSubmit={false}; key a send retry on the REQUEST
+- [to_be_enabled() can't close a handler-side gate](react_fresh_props_defeat_to_be_enabled.md) — React delivers FRESHER props; retry the action, local green proves non-regression only
