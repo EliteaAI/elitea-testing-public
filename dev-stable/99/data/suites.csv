@@ -1,0 +1,134 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Sun Sep 06 00:48:14 UTC 2026","Sun Sep 06 00:48:24 UTC 2026","9723","tests.ui.artifacts","test_artifacts_file_preview_edit_save","TestArtifactFilePreviewEditSave","","","Editing file content and saving persists the change","Editing content and clicking Save persists the change to the backend."
+"passed","Sun Sep 06 00:46:15 UTC 2026","Sun Sep 06 00:46:28 UTC 2026","13214","tests.ui.artifacts","test_artifacts_create_bucket_upload_file","TestArtifactCreateBucketAndUploadFile","","","Create a bucket via the '+ Artifact Bucket' form and upload a file via the bucket-row dot-menu","Create a bucket via the form, upload a file via the bucket-menu.
+
+        The bucket is the test's own mutation (created via the UI, deleted
+        in teardown) — the minimal state this observable inherently
+        requires (workflow skill Hard Rule 10): the case's own subject IS
+        bucket creation, so there is no pre-existing stable bucket to
+        assert against read-only.
+        "
+"passed","Sun Sep 06 00:44:18 UTC 2026","Sun Sep 06 00:44:52 UTC 2026","34339","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: '1bucket'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Sun Sep 06 00:47:36 UTC 2026","Sun Sep 06 00:48:03 UTC 2026","27039","tests.ui.artifacts","test_artifacts_duplicate_bucket_name","TestArtifactDuplicateBucketName","","","Duplicate bucket name is rejected; no duplicate is created","Attempting to create a bucket with a colliding name is rejected.
+
+        The precondition bucket is a genuine mutation the observable
+        requires (workflow skill Hard Rule 10: the case's own subject is
+        ""does the system reject a name that collides with something real"",
+        so a real collision target must exist) — created via the SAME ""New
+        Bucket"" UI form the duplicate-attempt itself uses, keeping both
+        creations on the identical code path the case exercises (not the
+        ``artifact_bucket`` API fixture).
+        "
+"passed","Sun Sep 06 00:49:11 UTC 2026","Sun Sep 06 00:50:06 UTC 2026","54371","tests.ui.artifacts","test_artifacts_multi_file","TestArtifactMultiFileDownload","","","Agent creates files at root and in subfolder — all visible and accessible","Agent creates files at root and under a sub-path — all visible and accessible.
+
+        ELITEA-1327 regression: when an agent creates N files in a single tool call,
+        all N files must be downloadable via the UI.  Before the fix, only the last
+        file written would be persisted; all earlier files were silently lost.
+        "
+"passed","Sun Sep 06 00:50:29 UTC 2026","Sun Sep 06 00:50:44 UTC 2026","15225","tests.ui.artifacts","test_artifacts_upload_duplicate_detected_modal","TestArtifactUploadDuplicateDetectedModal","","","Uploading a same-named file opens the 'Resolve duplicates' modal with the correct message, filename, and all four action buttons","Uploading a same-named file opens 'Resolve duplicates' with full content.
+
+        Read-only from the bucket's perspective: the bucket is seeded once
+        with the duplicate-detection target, then the test never mutates
+        state further — it only inspects the modal that opens (workflow
+        skill Hard Rule 10 — minimal mutation for the observable).
+        "
+"failed","Sun Sep 06 00:44:18 UTC 2026","Sun Sep 06 00:44:30 UTC 2026","11745","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_page_loads","The home page should load without errors."
+"passed","Sun Sep 06 00:49:02 UTC 2026","Sun Sep 06 00:49:10 UTC 2026","8194","tests.ui.artifacts","test_artifacts_file_preview_open_editor_ui","TestArtifactFilePreviewOpenEditorUI","","","Opening a supported text file via the View/Edit icon shows the full editor UI","Opening a file via the View/Edit icon renders the full editor UI contract."
+"passed","Sun Sep 06 00:51:23 UTC 2026","Sun Sep 06 00:51:38 UTC 2026","15039","tests.ui.artifacts","test_artifacts_upload_multiple_files","TestArtifactsUploadMultipleFiles","","","Upload multiple files at once via the toolbar upload button","Select 3 files in one native-picker call, upload, verify metadata.
+
+        Read-only from the fresh bucket's perspective going in — the bucket
+        itself is the test's own mutation (via ``artifact_bucket``, deleted
+        in its own teardown), the minimal state this observable inherently
+        requires (workflow skill Hard Rule 10): the case's own subject IS
+        the multi-file upload, so there is no pre-existing empty bucket to
+        assert against read-only.
+        "
+"passed","Sun Sep 06 00:46:45 UTC 2026","Sun Sep 06 00:47:14 UTC 2026","29182","tests.ui.artifacts","test_artifacts_delete_subfolder_checkbox","TestArtifactDeleteSubfolderCheckbox","","","Selecting 2 individual files via checkbox (partial selection) drives the header checkbox indeterminate and deletes only those files","Checking 2 file checkboxes (partial selection) drives the header
+        'select all' checkbox into the INDETERMINATE state, leaves sibling
+        folder checkboxes unchecked, and deleting via the toolbar removes
+        only the 2 selected files — subfolders completely unaffected.
+
+        Own fresh `artifact_bucket` instance (function-scoped fixture) —
+        deliberately NOT sharing state with `test_delete_subfolder_via_checkbox`
+        above, since that test's own core assertion (a1 gets deleted) directly
+        conflicts with this test's own precondition (a1 must survive).
+        "
+"passed","Sun Sep 06 00:44:53 UTC 2026","Sun Sep 06 00:45:20 UTC 2026","27326","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'new-bucket$'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Sun Sep 06 00:48:03 UTC 2026","Sun Sep 06 00:48:13 UTC 2026","10063","tests.ui.artifacts","test_artifacts_file_preview_actions_dropdown","TestArtifactFilePreviewActionsDropdown","","","Editor panel's actions dropdown contains Copy Content, Download, Delete and each works correctly","The editor panel's dropdown shows the right items and each action works."
+"passed","Sun Sep 06 00:45:48 UTC 2026","Sun Sep 06 00:46:14 UTC 2026","25563","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'bucket one'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Sun Sep 06 00:50:45 UTC 2026","Sun Sep 06 00:51:02 UTC 2026","16982","tests.ui.artifacts","test_artifacts_upload_duplicate_keep_both","TestArtifactUploadDuplicateKeepBoth","","","'Keep both' in 'Resolve duplicates' saves both the original and a renamed copy with distinct timestamps","Keep both uploads a renamed copy; the original duplicate is never re-touched."
+"passed","Sun Sep 06 00:48:34 UTC 2026","Sun Sep 06 00:48:43 UTC 2026","8388","tests.ui.artifacts","test_artifacts_file_preview_markdown_default_mode","TestArtifactFilePreviewMarkdownDefaultMode","","","Markdown file opens in Preview mode by default with Save/Discard inactive","A Markdown file opens with Preview active, rendered, editing blocked."
+"passed","Sun Sep 06 00:48:24 UTC 2026","Sun Sep 06 00:48:34 UTC 2026","9666","tests.ui.artifacts","test_artifacts_file_preview_image_restricted_controls","TestArtifactFilePreviewImageRestrictedControls","","","Image file opens directly as image preview with inactive/absent edit controls","An image file renders directly, with edit controls absent or disabled."
+"passed","Sun Sep 06 00:50:07 UTC 2026","Sun Sep 06 00:50:28 UTC 2026","21655","tests.ui.artifacts","test_artifacts_upload_duplicate_cancel","TestArtifactUploadDuplicateCancel","","","Cancel in 'Resolve duplicates' modal aborts entire upload, including the non-duplicate file","Cancel in the duplicate-resolution modal stops the WHOLE upload.
+
+        Read-only from the fresh bucket's perspective at the end: the bucket
+        is deliberately mutated once (seeded with sample.txt) so the
+        duplicate can be triggered at all — this is the minimal state the
+        observable inherently requires (workflow skill Hard Rule 10) — then
+        the test proves that mutation is the ONLY one that ever lands.
+        "
+"skipped","Sun Sep 06 00:51:38 UTC 2026","Sun Sep 06 00:51:38 UTC 2026","0","tests.ui.artifacts","test_bucket_permissions_api","TestBucketPermissionsAPI","","","No Access: All API operations return 403 Forbidden","Verify that 'No access' permission blocks GET, POST, and DELETE API calls.
+
+        ELITEA-2493: User B with 'No access' exception cannot access the bucket
+        via direct API calls — all operations must return 403 Forbidden.
+
+        Steps:
+        1. Admin sets User B to 'No access' for the test bucket (UI)
+        2. Verify GET request returns 403 Forbidden (API as User B)
+        3. Verify POST (upload) request returns 403 Forbidden (API as User B)
+        4. Verify DELETE request returns 403 Forbidden (API as User B)
+        5. Cleanup: Restore User B to default permissions (UI)
+        "
+"passed","Sun Sep 06 00:46:28 UTC 2026","Sun Sep 06 00:46:44 UTC 2026","15981","tests.ui.artifacts","test_artifacts_delete_subfolder_checkbox","TestArtifactDeleteSubfolderCheckbox","","","Selecting a subfolder via checkbox and confirming toolbar delete removes the folder and its contents; other items unaffected","Deleting a subfolder via checkbox removes it and its contents only.
+
+        Bucket is mutated exactly once at setup (seeded with 5 keys — the
+        minimal fresh state this observable inherently requires, since the
+        case's own purpose is destructive: deleting part of the bucket's
+        contents; workflow skill Hard Rule 10) — every assertion afterward
+        reads that state (plus the one delete mutation the case itself
+        drives) without further seeding.
+        "
+"skipped","Sun Sep 06 00:51:44 UTC 2026","Sun Sep 06 00:51:44 UTC 2026","0","tests.ui.artifacts","test_bucket_permissions_api","TestBucketPermissionsAPI","","","Read-only: GET allowed, POST/DELETE return 403 Forbidden","Verify that 'Read-only' permission allows GET but blocks POST and DELETE.
+
+        ELITEA-2494: User B with 'Read-only' exception can read files (GET returns 200)
+        but cannot write or delete (POST/DELETE return 403 Forbidden).
+
+        Steps:
+        1. Admin sets User B to 'Read-only' for the test bucket (UI)
+        2. Verify GET request returns 200 OK with file content (API as User B)
+        3. Verify POST (upload) request returns 403 Forbidden (API as User B)
+        4. Verify DELETE request returns 403 Forbidden (API as User B)
+        5. Cleanup: Restore User B to default permissions (UI)
+        "
+"passed","Sun Sep 06 00:44:31 UTC 2026","Sun Sep 06 00:44:43 UTC 2026","12758","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_main_content_visible","The main content area should render after navigation."
+"passed","Sun Sep 06 00:47:28 UTC 2026","Sun Sep 06 00:47:35 UTC 2026","7347","tests.ui.artifacts","test_artifacts_download_single_file_dropdown","TestArtifactDownloadSingleFileDropdown","","","Single file downloads immediately via the actions dropdown, with no ZIP packaging","Downloading via the dropdown's 'Download' item is immediate, no ZIP.
+
+        Read-only from the bucket's perspective at the end: the bucket is
+        mutated exactly once (seeded with ``a1/sample.txt``) — the minimal
+        state this observable inherently requires (workflow skill Hard
+        Rule 10) — then every assertion reads that state without further
+        mutation (Delete is verified visible, never clicked).
+        "
+"passed","Sun Sep 06 00:48:44 UTC 2026","Sun Sep 06 00:49:01 UTC 2026","17253","tests.ui.artifacts","test_artifacts_file_preview_markdown_raw_edit_save","TestArtifactFilePreviewMarkdownRawEditSave","","","Markdown file Raw tab enables editing; Save persists and Preview auto-shows the change","Raw tab enables editing; Save persists the change and re-shows it in Preview."
+"passed","Sun Sep 06 00:45:21 UTC 2026","Sun Sep 06 00:45:47 UTC 2026","26676","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'bucket_one'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"passed","Sun Sep 06 00:51:03 UTC 2026","Sun Sep 06 00:51:22 UTC 2026","19506","tests.ui.artifacts","test_artifacts_upload_duplicate_skip","TestArtifactUploadDuplicateSkip","","","'Skip' in 'Resolve duplicates' uploads only the non-duplicate file, leaves the duplicate untouched","Skip uploads ONLY the non-duplicate file; the duplicate is never touched."
+"passed","Sun Sep 06 00:47:16 UTC 2026","Sun Sep 06 00:47:27 UTC 2026","10862","tests.ui.artifacts","test_artifacts_download_multiple_files_zip","TestArtifactDownloadMultipleFilesZip","","","Selecting 2 files via checkbox and clicking 'Download files' downloads them as a ZIP with a live progress dialog","Selecting 2 files and clicking 'Download files' produces a ZIP.
+
+        Read-only from the bucket's perspective at the end: the bucket is
+        mutated exactly once (seeded with 4 files under ``a1/``) — the
+        minimal state this observable inherently requires (workflow skill
+        Hard Rule 10) — then every assertion reads that state without
+        further mutation.
+        "
