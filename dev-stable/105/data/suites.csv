@@ -1,0 +1,547 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Mon Sep 07 10:23:22 UTC 2026","Mon Sep 07 10:23:29 UTC 2026","6784","tests.ui.agents","test_agent_build_with_ai_role_visibility","TestAgentBuildWithAIButtonRoleVisibility","","","test_build_with_ai_button_visible_for_admin_role","Magic Wand (""Build with AI"") button is visible, correctly
+        labelled, and functional (opens the generation modal) for the
+        admin-equivalent TEST_USER on the New Agent creation page."
+"passed","Mon Sep 07 10:32:02 UTC 2026","Mon Sep 07 10:32:10 UTC 2026","8442","tests.ui.skills","test_skill_export_import","TestSkillImportMissingFrontmatter","","","test_import_skill_missing_frontmatter_shows_validation_error","Upload a .md file missing the required `name` frontmatter key.
+
+        Steps (see AFS for full detail):
+        1. Navigate to Skills list; capture baseline skill count/IDs.
+        2. Click Import, select the fixture file; native file chooser opens.
+        3. Complete the upload; verify NO ""Import parameters"" dialog appears,
+           and an error toast shows a message naming the missing fields.
+        4. Verify no Skill was created (API IDs unchanged) and no
+           `skill_import` network request fired at all.
+        "
+"passed","Mon Sep 07 10:23:46 UTC 2026","Mon Sep 07 10:24:10 UTC 2026","23607","tests.ui.pipelines","test_pipeline_agent_node_integration","","","","test_agent_node_fresh_attach","Fresh-attach an Agent, add + configure an Agent node, save, verify reload persistence."
+"passed","Mon Sep 07 10:37:57 UTC 2026","Mon Sep 07 10:38:31 UTC 2026","34199","tests.ui.pipelines","test_pipeline_execution","TestPipelineChatMessages","","","test_multiple_executions_accumulate","PIPE-014, PIPE-018: Multiple sequential executions accumulate messages."
+"passed","Mon Sep 07 10:35:45 UTC 2026","Mon Sep 07 10:36:01 UTC 2026","15846","tests.ui.pipelines","test_pipeline_entry_point_trigger_types_persist","","","","test_entry_point_trigger_shown_only_on_entry_point_node","Trigger control renders ONLY on the entry-point node; Information section mirrors it.
+
+    TMS: ELITEA-2041
+    (test-specs/pipelines/lextend_pipeline-entry-point-trigger-shown-only-on-entry-node_ELITEA-2041.md)
+    "
+"passed","Mon Sep 07 10:34:54 UTC 2026","Mon Sep 07 10:35:29 UTC 2026","34894","tests.ui.skills","test_skill_test_panel_version_instructions","TestSkillTestPanelVersionInstructions","","","test_test_panel_uses_selected_skill_version_instructions","Switching the VERSION selector changes which version's instructions
+        the test panel's AI response reflects — v1 (""Always say V1"") vs
+        base (""Always say BASE"") for the identical prompt."
+"passed","Mon Sep 07 10:30:52 UTC 2026","Mon Sep 07 10:31:23 UTC 2026","30692","tests.ui.skills","test_skill_export_import","TestSkillExportImport","","","test_export_and_import_skill_base_version","Export a skill's base version, import the file, verify the round trip.
+
+        Steps (see AFS for full detail):
+        1. Navigate to create-skill form; Save starts disabled.
+        2. Fill name/description/tags/instructions; Save enables.
+        3. Save; note the source skill ID.
+        4. Export the base version via the overflow menu; verify .md download.
+        5. Read the exported file; verify frontmatter + instructions body.
+        6. Navigate to Skills list; click Import; verify file chooser.
+        7. Upload the exported file; verify the Import parameters dialog.
+        8. Confirm import; verify navigation + success toast + new unique ID.
+        9. Verify imported skill's version/name/description/tags/instructions.
+        10. Edit + save the imported skill; verify a clean save.
+        "
+"passed","Mon Sep 07 10:27:51 UTC 2026","Mon Sep 07 10:28:18 UTC 2026","27647","tests.ui.agents","test_agent_publish_unpublish_version","TestAgentPublishUnpublishVersion","","","test_publish_draft_version_then_unpublish_reverts_to_draft","Publishing a Draft version clones it into a Published version and
+        makes Unpublish available; clicking Unpublish reverts that version's
+        status back to Draft."
+"passed","Mon Sep 07 10:26:07 UTC 2026","Mon Sep 07 10:26:44 UTC 2026","37290","tests.ui.agents","test_agent_embedded_chat_conversation_starter_chips","TestConversationStarterChipsVisibleAndClickable","","","test_conversation_starter_chips_visible_and_clickable","Both configured starters render as chips in the embedded chat
+        before any message, clicking one pre-fills the input (no auto-send,
+        chip row disappears immediately), and explicitly sending it produces
+        a real agent response.
+
+        Step 8's Send is a plain (non-force) click gated on the send POST's own
+        201, and ""the agent responded"" is proven by the
+        `skill-test-last-response` answer element — not by a non-empty text read
+        that the loading placeholder also satisfies. See the module docstring
+        for the full rationale (issue #1812).
+        "
+"passed","Mon Sep 07 10:24:52 UTC 2026","Mon Sep 07 10:25:00 UTC 2026","7644","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
+
+        Acceptance Criteria #2.
+        "
+"passed","Mon Sep 07 10:36:01 UTC 2026","Mon Sep 07 10:36:16 UTC 2026","14929","tests.ui.pipelines","test_pipeline_execution","TestExecutePipeline","","","test_pipeline_response_is_meaningful","PIPE-011, PIPE-012: Execute a simple pipeline and verify meaningful response."
+"passed","Mon Sep 07 10:24:31 UTC 2026","Mon Sep 07 10:24:46 UTC 2026","15350","tests.ui.pipelines","test_pipeline_attach_files_in_chat","","","","test_attachments_toggle_persists_across_save_and_reload","Attachments MODULES toggle + attach-button state survive Save + reload, both directions.
+
+    ELITEA-2059's own test proves the ON-direction, live/unsaved causal link
+    (toggle -> attach button, instant, no Save needed). This test proves the
+    stronger, Save-gated claim ELITEA-2066's case asks for: after Save and a
+    hard page reload, the toggle AND the attach button still reflect the
+    persisted state — in both the enable and disable direction.
+    "
+"passed","Mon Sep 07 10:25:50 UTC 2026","Mon Sep 07 10:26:05 UTC 2026","14537","tests.ui.pipelines","test_pipeline_code_node_configuration","","","","test_code_node_configuration_and_persistence","Configure a Code node's CODE/Input/Output fields; verify they persist through Save + reload."
+"passed","Mon Sep 07 10:24:16 UTC 2026","Mon Sep 07 10:24:41 UTC 2026","25400","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_text_truncated_with_warning","Verify text over limit is truncated to 768 chars with warning message.
+        TC-1686
+
+        Tests both collapsed mode and fullscreen mode.
+        "
+"passed","Mon Sep 07 10:28:18 UTC 2026","Mon Sep 07 10:28:45 UTC 2026","26344","tests.ui.agents","test_agent_remove_variable","TestAgentRemoveVariable","","","test_remove_variable_and_verify_removal_persists","Removing a {{variable}} reference from Instructions removes its
+        Variables row immediately (client-side, before Save), and the
+        removal persists after Save + a full-navigation reload, while other
+        variables remain intact."
+"passed","Mon Sep 07 10:29:14 UTC 2026","Mon Sep 07 10:29:20 UTC 2026","6421","tests.ui.pipelines","test_pipeline_collapse_left_panel","","","","test_collapse_and_expand_left_configuration_panel","Collapsing the left configuration panel shrinks it and unmounts its
+    sections while the canvas grows; expanding it again restores the exact
+    original width and remounts every section."
+"passed","Mon Sep 07 10:25:00 UTC 2026","Mon Sep 07 10:25:28 UTC 2026","27536","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+        "
+"broken","Mon Sep 07 10:30:36 UTC 2026","Mon Sep 07 10:30:58 UTC 2026","21902","tests.ui.pipelines","test_pipeline_create_version","","","","test_create_pipeline_version_save_list_switch_preserves_canvas_state","Save As Version creates 'v1_test' with the LLM node preserved;
+    switching to 'base' shows the original (node-less) topology; switching
+    back to 'v1_test' restores the LLM node — each version's canvas state is
+    independently preserved with no cross-version leakage."
+"passed","Mon Sep 07 10:34:10 UTC 2026","Mon Sep 07 10:34:32 UTC 2026","21327","tests.ui.agents","test_build_with_ai_skill_from_agent","TestBuildWithAISkillFromAgent","","","test_build_with_ai_skill_auto_attaches_and_redirects_to_agent","Creating a Skill via Build with AI from an Agent's SKILLS section
+        redirects back to the Agent editor (never the Skill details page),
+        auto-attaches the new Skill once the async attach chain completes,
+        and the attachment persists after Save + reload.
+
+        Steps (AFS
+        test-specs/agents/l2_build-with-ai-skill-from-agent-auto-attaches-and-redirects_ELITEA-1999.md):
+        1. Open the fixture Agent for editing; in the SKILLS section click
+           ""+ Skill"" -> ""Create new""; verify navigation to
+           /skills/create?source_application_id=...&return_url=....
+        2. Click ""Build with AI""; fill the prompt; click Generate; verify
+           the generate-draft POST resolves 200 and the review form shows
+           the generated Name/Description/Instructions.
+        3. Click ""Create Skill""; verify the creation POST resolves 201 and
+           the URL transitions to /agents/all/{agent_id}?..., NOT to a
+           Skill-details URL.
+        4. Verify the user lands on the Agent editor, not the Skill details
+           page.
+        5. Verify the new Skill is automatically attached (async — poll,
+           do not assert immediately, see SKILL_ATTACH_TIMEOUT).
+        6. Save the Agent and reload it; verify the attached Skill is still
+           present and correctly linked.
+        "
+"passed","Mon Sep 07 10:25:28 UTC 2026","Mon Sep 07 10:25:37 UTC 2026","8919","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_multiple_conversation_starters_have_counters","Each conversation starter field has its own counter.
+        TC-1684
+        "
+"passed","Mon Sep 07 10:25:31 UTC 2026","Mon Sep 07 10:25:50 UTC 2026","18663","tests.ui.pipelines","test_pipeline_chat_starters_visible_and_clickable","","","","test_pipeline_chat_starters_visible_and_clickable","Saved chat starter renders as a clickable chip that pre-fills the chat input."
+"passed","Mon Sep 07 10:23:47 UTC 2026","Mon Sep 07 10:24:16 UTC 2026","28931","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+
+        Acceptance Criteria #1 & #3: Counter visible in Full Screen mode,
+        warning displays at limit.
+        "
+"passed","Mon Sep 07 10:31:23 UTC 2026","Mon Sep 07 10:32:01 UTC 2026","38014","tests.ui.skills","test_skill_export_import","TestSkillExportImportNonBaseVersion","","","test_import_skill_non_base_version","Export a skill's ver_1 version, import the file, verify the round trip.
+
+        Steps (see AFS for full detail):
+        1. Create a Skill with base version; note the source skill ID.
+        2. Edit instructions, click ""Save As Version"" → create `ver_1`.
+        3. With `ver_1` selected, export via the overflow menu; verify
+           the downloaded filename embeds the version name.
+        4. Read the exported file; verify frontmatter (incl. `elitea_version`)
+           and instructions body.
+        5. Navigate to Skills list; import the exported file; verify the
+           Import parameters dialog previews the ver_1 content.
+        6. Confirm import; verify navigation + unique new skill ID.
+        7. Verify imported skill's version is `base` and fields match the
+           exported ver_1 content.
+        8. Edit + save the imported skill; verify a clean save.
+        "
+"passed","Mon Sep 07 10:21:29 UTC 2026","Mon Sep 07 10:22:34 UTC 2026","65316","tests.ui.skills","test_agent_instructions_tilde_mention","TestTildeMentionListsOnlyAttachedSkills","","","test_tilde_mention_in_instructions_lists_only_attached_skills","Attach 2 of 3 distinct Skills to an Agent, then verify the ""~""
+        mention panel in the Instructions field is scoped to only the
+        attached 2 — the 3rd (unattached) Skill never appears, including
+        on a second, independent ""~"" trigger after clearing the field.
+
+        Steps (AFS test-specs/skills/l3_tilde-mention-lists-only-attached-skills_ELITEA-1791.md):
+        1. Confirm/create 3 distinct Skills (reuse a pre-existing one as
+           Skill A, looked up via API rather than assumed by name — same
+           environment-robustness rule as ELITEA-1790's cleanup note —
+           falling back to creating it fresh if none exists), create an
+           Agent, attach Skill A + Skill B, leave Skill C unattached.
+        2. Click the Instructions field — becomes focused/editable.
+        3-4. Type ""~"" — ""Mention skill"" panel appears, listing exactly
+           Skill A and Skill B; Skill C is asserted absent by exact-name
+           locator (not merely a row count).
+        5. Select Skill A — inserts ""~<skill-name>"" as plain text.
+        6. Select-all + delete, retype ""~"" — same 2-item scoped list
+           reappears; Skill C still absent (re-evaluated live).
+        "
+"passed","Mon Sep 07 10:29:21 UTC 2026","Mon Sep 07 10:29:44 UTC 2026","22309","tests.ui.pipelines","test_pipeline_create_full_details_persist","","","","test_create_pipeline_full_details_persist_after_reload","Create a pipeline with all fields populated; verify persistence after reload."
+"passed","Mon Sep 07 10:32:43 UTC 2026","Mon Sep 07 10:33:18 UTC 2026","34873","tests.ui.agents","test_agent_with_github_toolkit","TestAddToolkitToAgent","","","test_add_toolkit_to_agent","Add a GitHub toolkit to an existing agent via the UI, then chat."
+"passed","Mon Sep 07 10:21:29 UTC 2026","Mon Sep 07 10:21:40 UTC 2026","10974","tests.ui.pipelines","test_pipeline_add_node_menu","","","","test_add_node_menu_lists_types_adds_node_and_dismisses","Add Node menu lists exactly 11 types in order; LLM selection adds a
+    node with config visible; Escape dismisses without adding a node."
+"passed","Mon Sep 07 10:23:08 UTC 2026","Mon Sep 07 10:23:16 UTC 2026","8314","tests.ui.pipelines","test_pipeline_advanced","TestActionsMenu","","","test_export_pipeline_if_available","PIPE-029: Export pipeline via menu (skips if not available)."
+"passed","Mon Sep 07 10:23:00 UTC 2026","Mon Sep 07 10:23:07 UTC 2026","6449","tests.ui.pipelines","test_pipeline_advanced","TestActionsMenu","","","test_three_dot_menu_lists_items","PIPE-028: The three-dot menu should contain expected items."
+"passed","Mon Sep 07 10:27:36 UTC 2026","Mon Sep 07 10:28:25 UTC 2026","49023","tests.ui.pipelines","test_pipeline_code_node_multi_var_dict_return","","","","test_code_node_return_dict_multiple_state_vars","A Code node whose script's final statement is a 3-key dict literal writes all 3 state vars in one execution."
+"passed","Mon Sep 07 10:35:55 UTC 2026","Mon Sep 07 10:36:28 UTC 2026","32521","tests.ui.agents","test_mcp_attach_via_tools_section","TestMcpAttachViaToolsSection","","","test_mcp_attach_via_tools_section","Attach a Remote MCP to an agent, verify persistence across reload,
+        then remove it and verify removal persists too.
+
+        Steps (AFS test-specs/agents/l3_mcp-attach-via-tools-section_ELITEA-1950.md):
+        1. Navigate to the agent detail page.
+        2. Verify the Tools section is expanded.
+        3. Verify the Toolkit/MCP add buttons are visible (live-accurate
+           equivalent of the case's ""tool type tabs"" — see module docstring).
+        4. Click ""+ MCP""; the shared popper opens with search + menu items.
+        5. Select the target MCP by name.
+        6. Verify the MCP appears as a card in the Tools section.
+        7. Verify the attach auto-saves (PATCH .../tool/prompt_lib/... -> 201;
+           no separate agent-level Save step exists for this flow).
+        8. Reload; verify the MCP is still attached.
+        9. Remove the MCP; confirm the ""Remove MCP?"" dialog; verify it's gone,
+           including after a fresh reload.
+
+        Args:
+            page: Playwright page fixture.
+            agent_id: Fresh agent created by fixture (auto-cleanup).
+            mcp_toolkit_with_tools: Fresh MCP toolkit created by fixture (auto-cleanup).
+        "
+"passed","Mon Sep 07 10:35:13 UTC 2026","Mon Sep 07 10:35:44 UTC 2026","30766","tests.ui.pipelines","test_pipeline_entry_point_trigger_types_persist","","","","test_entry_point_trigger_types_persist","All 3 trigger types are listed, selectable, persist, and travel with the entry point."
+"passed","Mon Sep 07 10:36:42 UTC 2026","Mon Sep 07 10:36:58 UTC 2026","15629","tests.ui.pipelines","test_pipeline_execution","TestPipelineExecutionEdgeCases","","","test_empty_pipeline_execution","PIPE-015: Executing a pipeline with no nodes (only END)."
+"passed","Mon Sep 07 10:33:20 UTC 2026","Mon Sep 07 10:33:35 UTC 2026","15238","tests.ui.agents","test_agent_with_github_toolkit","TestRemoveToolkitFromAgent","","","test_remove_toolkit_from_agent","Add a toolkit, then remove it, and verify it's gone."
+"passed","Mon Sep 07 10:24:42 UTC 2026","Mon Sep 07 10:24:51 UTC 2026","9006","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_visible_and_updates","Character counter appears when typing and updates in real-time.
+        TC-1685
+        Acceptance Criteria #1 (extended to Conversation Starters).
+
+        Note: Counter only appears after typing, not initially.
+        "
+"passed","Mon Sep 07 10:39:59 UTC 2026","Mon Sep 07 10:40:50 UTC 2026","51092","tests.ui.pipelines","test_pipeline_import_via_file","","","","test_pipeline_import_via_file","Export a pipeline, delete the original, import the file back, verify the round trip."
+"passed","Mon Sep 07 10:34:37 UTC 2026","Mon Sep 07 10:34:48 UTC 2026","10670","tests.ui.pipelines","test_pipeline_edge_deletion","","","","test_delete_edge_resets_source_transition_and_persists","Deleting the LLM 1 -> Printer 1 edge removes it, resets LLM 1's
+    transition to END, and the removal persists after Save + reload."
+"passed","Mon Sep 07 10:23:32 UTC 2026","Mon Sep 07 10:23:45 UTC 2026","13365","tests.ui.pipelines","test_pipeline_advanced","TestMultiNodeTopology","","","test_save_multi_node_pipeline","PIPE-030b: Build a multi-node pipeline, save, and verify persistence."
+"passed","Mon Sep 07 10:22:45 UTC 2026","Mon Sep 07 10:23:00 UTC 2026","14517","tests.ui.pipelines","test_pipeline_advanced","TestMakeEntrypoint","","","test_make_node_entrypoint","PIPE-024: Set a node as entrypoint via the three-dot menu."
+"passed","Mon Sep 07 10:27:36 UTC 2026","Mon Sep 07 10:27:50 UTC 2026","14537","tests.ui.agents","test_agent_name_character_limit","","","","test_agent_name_truncated_at_32_characters","Name field truncates input to 32 chars, no error at the limit, Save
+    enables once Description is also filled (ELITEA-1900).
+
+    Read-only: no agent is created, edited, or deleted.
+    "
+"passed","Mon Sep 07 10:22:34 UTC 2026","Mon Sep 07 10:24:35 UTC 2026","120974","tests.ui.skills","test_agent_max_five_skills_limit","TestAgentMaxFiveSkillsLimit","","","test_max_five_skills_attach_limit","Create 6 Skills + an Agent, attach 5 of the Skills one at a time,
+        verify the add-skill control disables at 5/5 with a tooltip (rather
+        than a literal 6th-click rejection), and verify persistence via a
+        full page reload.
+
+        Steps (AFS test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md):
+        1. Create 6 distinct Skills via the UI, under run-unique names — the
+           first 5 are the attach set, the 6th is never attached and backs
+           Step 9's ""no 6th attach"" assertions. The case's own Test Data
+           table instructs the test to create 6, so the precondition is
+           owned by the test rather than borrowed from pre-existing project
+           data.
+        1b. Confirm all 6 created Skills read back from the project.
+        2. Create an Agent.
+        3. Skills section starts at 0/5, add-skill control enabled.
+        4-8. Attach Skills 1-5 one at a time; counter increments ""N/5 skills
+           added."" and a card renders after each attach.
+        9. Add-skill control becomes disabled the instant 5/5 is reached,
+           with an accessible tooltip — a 6th skill cannot be attached.
+        10. Confirm persistence via a full page reload (attach is
+           auto-saved via API; no explicit agent-level Save is available).
+        "
+"passed","Mon Sep 07 10:25:16 UTC 2026","Mon Sep 07 10:25:30 UTC 2026","14318","tests.ui.pipelines","test_pipeline_canvas_zoom_and_pan","","","","test_canvas_control_panel_zoom_out_interactivity_cards_size_and_auto_arrange","Extends the ELITEA-2019 coverage above with the case's remaining
+    control-panel buttons: visibility of all 6 buttons, Zoom Out (the
+    pre-existing `zoom_out_canvas()` method was never exercised by any
+    test before this), Toggle Interactivity (lock/unlock node dragging),
+    Toggle cards size (compact/expanded node height, exact round trip), and
+    Auto-arrange (deterministic layout — a dragged-away node returns to its
+    exact original position)."
+"passed","Mon Sep 07 10:24:35 UTC 2026","Mon Sep 07 10:25:06 UTC 2026","30720","tests.ui.skills","test_export_agent_with_attached_skills","TestExportAgentWithAttachedSkills","","","test_export_agent_with_attached_skills","Create a Skill + an Agent, attach the Skill, export the Agent via
+        the actions overflow menu, and verify the downloaded file's raw
+        content embeds the Skill's full content verbatim.
+
+        Steps (AFS test-specs/skills/l3_export-agent-with-attached-skills_ELITEA-1794.md):
+        1. Create a Skill via UI, with a planted unique marker string in its
+           instructions.
+        2. Create an Agent via UI.
+        3. Attach the Skill to the Agent (case precondition).
+        4. Confirm the Agent detail view is open with the Skill attached
+           (already satisfied by step 3).
+        5. Open the agent-actions overflow menu; click ""Export"" (VERSION
+           group); verify a file download is initiated.
+        6. Verify the downloaded file has a `.md`-suffixed name.
+        7. Read the downloaded file's raw content; verify it's a YAML
+           frontmatter + markdown body, with the Skill's name, `base`
+           version, and full instructions (including the marker) embedded
+           verbatim in the `skills:` list.
+        "
+"passed","Mon Sep 07 10:23:40 UTC 2026","Mon Sep 07 10:23:46 UTC 2026","6425","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
+
+        Acceptance Criteria #2: Counter turns red when 0 characters remain.
+        "
+"passed","Mon Sep 07 10:38:32 UTC 2026","Mon Sep 07 10:39:27 UTC 2026","55282","tests.ui.pipelines","test_pipeline_execution","TestExecutePipelineStreaming","","","test_long_response_streams_progressively","Pipeline with an LLM entry node (TASK F-String ``{input}``)
+        streams a long response progressively, with no console/network
+        errors, and the settled response exceeds 200 characters. Also
+        covers ELITEA-2058 (Model Selector Menu is visible with a
+        non-empty default model before any switch, and the settled
+        response's model-attribution chip proves execution used the
+        model the user selected, not the pipeline's prior default).
+
+        Steps (AFS):
+        1. Pipeline created with LLM entry node, TASK F-String ""{input}""
+           (fixture — API-created, ready for execution).
+        2. [ELITEA-2058] Verify the Model Selector Menu button is visible
+           and shows a non-empty default model name before any switch.
+        3. Select ""GPT-5 mini"" via the Model Selector Menu.
+        4. Send ""Write a 500-word essay on AI"".
+        5. Verify the response streams progressively (tokens appear
+           incrementally, not all at once).
+        6. Verify the final response is complete and exceeds 200 characters.
+        7. [ELITEA-2058] Verify the settled response's model-attribution
+           chip names the selected model (""GPT-5 mini""), proving execution
+           used the selected model, not the pipeline's prior default.
+        8. Verify no timeout or error occurs during streaming.
+        "
+"passed","Mon Sep 07 10:22:32 UTC 2026","Mon Sep 07 10:22:45 UTC 2026","12653","tests.ui.pipelines","test_pipeline_advanced","TestDiscardChanges","","","test_save_discard_button_states_toggle_on_edit_and_discard","ELITEA-2048: Save/Discard are disabled on a clean pipeline, become
+        enabled once the name is edited, and return to disabled after Discard
+        reverts the edit."
+"passed","Mon Sep 07 10:24:47 UTC 2026","Mon Sep 07 10:24:57 UTC 2026","10051","tests.ui.pipelines","test_pipeline_attach_pipeline_as_tool","","","","test_attach_pipeline_as_tool","Attach a second pipeline as a tool via TOOLS ""+ Pipeline""; verify save/reload persistence."
+"passed","Mon Sep 07 10:26:51 UTC 2026","Mon Sep 07 10:27:34 UTC 2026","43497","tests.ui.pipelines","test_pipeline_code_node_input_filtering","","","","test_code_node_input_filtering_selective_state_access","A Code node's elitea_state only exposes vars listed in its own input:, excluding others set earlier."
+"passed","Mon Sep 07 10:33:03 UTC 2026","Mon Sep 07 10:33:11 UTC 2026","8670","tests.ui.skills","test_skill_search","TestSkillSearch","","","test_search_skills_by_name","Search the Skills grid by partial name, exact name, a
+        non-existent name, then clear — verifying the grid's exact visible
+        set at each step (not just presence/absence of one name), so a
+        regression that only breaks the grid while leaving the separate
+        suggestions popover working would be caught.
+        "
+"passed","Mon Sep 07 10:30:37 UTC 2026","Mon Sep 07 10:30:52 UTC 2026","14557","tests.ui.skills","test_skill_copy_link","TestSkillCopyLink","","","test_copy_link_copies_valid_url_to_correct_skill_and_version","The VERSION-group ""Share"" action copies a URL containing the
+        version id as a distinct path segment (contrasted against the
+        SKILL-group ""Share"" action, which omits it); navigating to that URL
+        — even via a fresh tab — opens the correct Skill at the correct
+        named version, with no ""not found"" error."
+"passed","Mon Sep 07 10:28:00 UTC 2026","Mon Sep 07 10:29:04 UTC 2026","63832","tests.ui.skills","test_import_agent_recreates_skills_with_new_ids","TestImportAgentRecreatesSkillsWithNewIds","","","test_import_agent_recreates_skills_with_new_ids","Export an Agent with an attached Skill, import it, verify a new
+        Skill entity (new unique ID) is created and correctly linked.
+
+        Steps (AFS test-specs/skills/l3_import-agent-recreates-skills-with-new-ids_ELITEA-1795.md):
+        1. (Precondition setup, mirrors ELITEA-1794) Create a Skill + an
+           Agent, attach the Skill, export the Agent via the actions
+           overflow menu.
+        2. Navigate to the Agents list; click ""Import""; verify a native
+           file chooser opens.
+        3. Select the exported file; verify the ""Import parameters""
+           preview dialog previews the embedded Agent + Skill content.
+        4. Confirm the dialog's Import button; verify the ""Import
+           Complete"" success dialog lists 1 agent + 1 skill.
+        5. Click ""Got it""; verify auto-navigation to the new Agent's
+           detail page with a new, distinct Agent ID.
+        6. Verify the imported Agent's Skills section shows the Skill
+           attached (waiting on the async application_skills fetch, not
+           asserting on first paint) and the API response's skill_id is
+           new/unique.
+        7. Navigate to the Skills list; verify two cards share the Skill's
+           name (source + imported); verify the imported Skill's own
+           detail page shows a new ID and verbatim content; verify the
+           source Skill AND the source Agent are both unaffected by the
+           import (Axis 2 additions — import must be purely additive).
+        8. Edit + save the imported Agent; verify a clean save.
+        "
+"passed","Mon Sep 07 10:32:02 UTC 2026","Mon Sep 07 10:33:15 UTC 2026","72904","tests.ui.pipelines","test_pipeline_decision_node_execution","","","","test_decision_node_routes_execution_to_correct_branch","Decision node classifies chat input and routes execution to the matching branch; config persists."
+"broken","Mon Sep 07 10:29:38 UTC 2026","Mon Sep 07 10:29:58 UTC 2026","20065","tests.ui.agents","test_agent_save_as_version","TestAgentSaveAsVersion","","","test_save_as_version_creates_named_version_visible_in_dropdown","Editing Instructions and clicking Save As Version creates a named
+        version that appears (and is active) in the VERSION dropdown; switching
+        back to 'base' reverts the Instructions field to its original content
+        (ELITEA-1890, Step 8)."
+"passed","Mon Sep 07 10:25:07 UTC 2026","Mon Sep 07 10:25:15 UTC 2026","8562","tests.ui.pipelines","test_pipeline_canvas_zoom_and_pan","","","","test_canvas_zoom_pan_and_fit_view","Fit View shows all nodes; Zoom In enlarges the canvas; dragging pans
+    the viewport by the exact delta; Fit View again restores the exact
+    original all-nodes-visible transform."
+"passed","Mon Sep 07 10:33:12 UTC 2026","Mon Sep 07 10:34:03 UTC 2026","51281","tests.ui.skills","test_skill_tag_filter","TestSkillTagFilter","","","test_filter_skills_by_tag","Create 3 skills with shared/unique tags; verify tag-filter narrowing.
+
+        Steps (see AFS for full detail):
+        1. Capture baseline grid state; create Skill A (formatting, output),
+           Skill B (formatting, english), Skill C (translation); verify all
+           3 plus any pre-existing skills are visible with their own tags.
+        2. Filter by `formatting` (shared tag) — verify exactly Skill A and
+           Skill B are shown, Skill C is excluded.
+        3. Clear the filter, then filter by `translation` (unique tag) —
+           verify exactly Skill C is shown.
+        4. Clear the filter, then filter by `output` (unique tag) — verify
+           exactly Skill A is shown.
+        5. Clear the filter — verify the grid is restored to the baseline
+           plus the 3 new skills.
+        "
+"broken","Mon Sep 07 10:32:02 UTC 2026","Mon Sep 07 10:32:41 UTC 2026","38884","tests.ui.agents","test_agent_version_selector_order","TestAgentVersionSelectorOrder","","","test_version_selector_lists_versions_in_correct_order","The VERSION dropdown lists all versions with name + creation-time +
+        author metadata, sorted purely by created_at descending with 'base'
+        always last, and marks the default version with a pin icon whose
+        position is independent of the sort (CLARIFICATIONs #1091 and #1877)."
+"passed","Mon Sep 07 10:37:39 UTC 2026","Mon Sep 07 10:37:56 UTC 2026","17191","tests.ui.pipelines","test_pipeline_execution","TestPipelineChatMessages","","","test_user_message_visible","PIPE-017: User message appears in chat alongside AI response."
+"failed","Mon Sep 07 10:27:16 UTC 2026","Mon Sep 07 10:27:35 UTC 2026","19181","tests.ui.agents","test_agent_icon_management","TestAgentIconManagement","","","test_agent_icon_change_persists_on_list_card","Selecting a new icon in the picker updates the header immediately
+        and the identical icon persists on the agent's dashboard card."
+"passed","Mon Sep 07 10:23:17 UTC 2026","Mon Sep 07 10:23:31 UTC 2026","14663","tests.ui.pipelines","test_pipeline_advanced","TestMultiNodeTopology","","","test_three_node_chain","PIPE-030: Build a three-node chain: LLM → Code → END."
+"broken","Mon Sep 07 10:27:06 UTC 2026","Mon Sep 07 10:27:59 UTC 2026","52767","tests.ui.skills","test_ghost_skill_after_agent_removed","TestGhostSkillAfterAgentRemoved","","","test_ghost_skill_not_shown_after_agent_participant_removed","Create a skill, attach it to an agent, add the agent as a chat
+        participant, confirm '~mention' shows the skill, dismiss, remove the
+        participant, and confirm the skill no longer appears in '~mention'
+        afterward.
+
+        Steps (AFS test-specs/skills/l3_ghost-skill-not-shown-after-agent-participant-removed_ELITEA-1793.md):
+        1. Create Skill, create Agent, attach the skill to the agent.
+        2. Open Chat, add the agent as a participant.
+        3. Type '~' — the ""Mention skill"" popper lists the attached skill.
+        4. Dismiss the popper with Escape without selecting anything.
+        5. Remove the agent from the chat's participants.
+        6. Type '~' again — the removed agent's skill should NOT be listed.
+        7. Control check: a fresh conversation that never had a participant
+           shows the correct ""No skills attached to this agent"" empty state.
+        "
+"passed","Mon Sep 07 10:34:32 UTC 2026","Mon Sep 07 10:34:53 UTC 2026","21707","tests.ui.skills","test_skill_test_panel_response_actions","TestSkillTestPanelResponseActions","","","test_test_panel_response_actions_enabled","Read aloud and Copy to clipboard are enabled and clickable on a
+        completed test-panel response."
+"passed","Mon Sep 07 10:24:57 UTC 2026","Mon Sep 07 10:25:06 UTC 2026","8986","tests.ui.pipelines","test_pipeline_canvas_delete_node","","","","test_delete_middle_node_removes_its_edges_and_persists","Deleting the middle node (Code 1) removes it + both its edges; LLM 1
+    and END remain; the deletion persists after Save + reload."
+"passed","Mon Sep 07 10:22:20 UTC 2026","Mon Sep 07 10:22:32 UTC 2026","11078","tests.ui.pipelines","test_pipeline_advanced","TestDiscardChanges","","","test_discard_reverts_name_change","PIPE-022: Edit name, click Discard, and verify original name restored."
+"passed","Mon Sep 07 10:26:45 UTC 2026","Mon Sep 07 10:27:00 UTC 2026","15398","tests.ui.agents","test_agent_embedded_chat_send_message","TestAgentEmbeddedChatSendMessage","","","test_send_message_via_enter_and_verify_non_empty_response","Typing ""PING"" and pressing Enter yields a non-empty response
+        containing ""PONG"", and clears the chat input."
+"passed","Mon Sep 07 10:32:11 UTC 2026","Mon Sep 07 10:32:24 UTC 2026","13503","tests.ui.skills","test_skill_pin_unpin","TestSkillPinUnpin","","","test_skill_pin_moves_to_top_and_unpin_reverts","Pinning a skill (via the detail-page menu) moves it to the top of
+        the list; unpinning (same menu) reverts it."
+"passed","Mon Sep 07 10:31:30 UTC 2026","Mon Sep 07 10:32:02 UTC 2026","31339","tests.ui.pipelines","test_pipeline_decision_node_configuration","","","","test_decision_node_configuration_and_edge_wiring","Configure a Decision node's fields; verify they + their edges persist through Save + reload."
+"passed","Mon Sep 07 10:29:58 UTC 2026","Mon Sep 07 10:30:27 UTC 2026","28397","tests.ui.agents","test_agent_save_as_version_preserves_skills","TestAgentSaveAsVersionPreservesSkills","","","test_agent_save_as_version_preserves_skills","Create a Skill + Agent (both via UI), attach the Skill, Save As
+        Version, and verify the Skill is still attached under the new
+        version — confirmed both via the UI and a fresh API response."
+"passed","Mon Sep 07 10:40:50 UTC 2026","Mon Sep 07 10:40:57 UTC 2026","6861","tests.ui.pipelines","test_pipeline_information_section","","","","test_pipeline_information_section","Information section — Pipeline ID/Version ID/Trigger/Show link + copy buttons."
+"passed","Mon Sep 07 10:25:38 UTC 2026","Mon Sep 07 10:26:00 UTC 2026","21445","tests.ui.agents","test_agent_copy_version_link","TestAgentCopyVersionLink","","","test_copy_version_link_produces_version_specific_url","The VERSION-group ""Share"" action copies a URL containing the
+        version id as a distinct path segment (contrasted against the
+        AGENT-group ""Share"" action, which omits it); navigating to that URL
+        — even via a fresh tab, through the project-switch redirect hop —
+        opens the correct agent at the correct named version."
+"passed","Mon Sep 07 10:34:32 UTC 2026","Mon Sep 07 10:34:47 UTC 2026","14806","tests.ui.agents","test_import_agent_valid_md_file","TestImportAgentValidMdFile","","","test_import_agent_valid_md_file","Import a hand-authored (not app-exported) ``.md`` file and verify
+        the resulting Agent's Name/Description/Instructions/Model all match
+        the source file verbatim.
+
+        Steps (AFS
+        test-specs/agents/l2_import-valid-agent-md-file-correct-config_ELITEA-1901.md):
+        1. Navigate to the Agents dashboard; verify the ``Agents`` header,
+           the Import button, and that the list region settled into a
+           terminal, non-error state (cards OR the ""No agents yet"" empty
+           state). Makes no claim about pre-existing agents — zero is a
+           valid environment (AFS § Environment Independence).
+        2. Click the Import button and select the hand-authored ``.md``
+           fixture; verify the ""Import parameters"" preview dialog opens.
+        3. Verify the dialog shows an entity card for the agent (name
+           matches the fixture verbatim).
+        4. Confirm the dialog's Import button; verify the ""Import Complete""
+           success dialog lists the new agent, backed by a
+           ``201 Created`` on the import_wizard endpoint.
+        5. Click ""Got it""; verify auto-navigation to the new Agent's detail
+           page, then re-open the Agents dashboard and verify a card with
+           the correct name.
+        6. Open the imported agent; verify Name, Description, Instructions,
+           and Model all match the source file verbatim.
+        "
+"passed","Mon Sep 07 10:36:17 UTC 2026","Mon Sep 07 10:36:42 UTC 2026","24602","tests.ui.pipelines","test_pipeline_execution","TestExecutePipeline","","","test_message_count_starts_at_zero_and_grows","PIPE-013: Fresh pipeline starts at zero messages and count grows with each send."
+"passed","Mon Sep 07 10:21:41 UTC 2026","Mon Sep 07 10:21:53 UTC 2026","12041","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_yaml_view_toggle","PIPE-019: Switch to YAML view and verify the editor is visible."
+"passed","Mon Sep 07 10:36:59 UTC 2026","Mon Sep 07 10:37:38 UTC 2026","39716","tests.ui.pipelines","test_pipeline_execution","TestPipelineExecutionEdgeCases","","","test_navigate_away_and_reexecute","PIPE-016: Navigate away from the pipeline and return to re-execute."
+"passed","Mon Sep 07 10:28:25 UTC 2026","Mon Sep 07 10:29:12 UTC 2026","46977","tests.ui.pipelines","test_pipeline_code_node_reads_state_variable","","","","test_code_node_reads_elitea_state_variable","Code node reads a custom state variable via elitea_state.get(...) and writes a processed value into another."
+"passed","Mon Sep 07 10:26:05 UTC 2026","Mon Sep 07 10:26:50 UTC 2026","44602","tests.ui.pipelines","test_pipeline_code_node_elitea_client_user_info","","","","test_code_node_elitea_client_user_info","A Code node calling elitea_client.get_user_data() writes the authenticated user's data into a state variable."
+"passed","Mon Sep 07 10:30:07 UTC 2026","Mon Sep 07 10:30:37 UTC 2026","29659","tests.ui.skills","test_skill_agent_version_selector","TestAttachSkillToAgentWithVersionSelector","","","test_attach_skill_to_agent_with_version_selector","Create a skill + agent, attach the skill, and verify the version
+        selector shows the default version, opens a real Versions menu, and
+        persists across a full page reload.
+
+        Steps (AFS test-specs/skills/l3_attach-skill-to-agent-with-version-selector_ELITEA-1789.md):
+        1. Create a Skill with a saved `base` version.
+        2. Create an Agent.
+        3. Locate the Skills attachment section (expanded by default).
+        4-5. Attach the Skill; verify the counter updates and the card renders.
+        6. Verify the attached Skill card shows a version selector, and that
+           clicking it (via a correctly-scoped `.version-text` locator, NOT a
+           role-based one) opens a real ""Versions"" menu — hard-asserted
+           functional flow per the AFS (known defect #46 is a handle-quality/
+           accessibility gap, not a flaky functional failure).
+        7. Confirm the default version (`base`) is shown pre-selected, both
+           on the card and as the sole entry in the opened Versions menu.
+        8. Confirm persistence via a full page reload (no explicit
+           agent-level Save is available — attach is auto-saved via API).
+        "
+"passed","Mon Sep 07 10:29:04 UTC 2026","Mon Sep 07 10:30:07 UTC 2026","62842","tests.ui.skills","test_remove_attached_skill_from_agent","TestRemoveAttachedSkillFromAgent","","","test_remove_attached_skill_from_agent","Create two Skills + an Agent, attach both, remove Skill B via the
+        hover-revealed remove control + confirmation dialog, and verify Skill
+        A remains attached while Skill B survives standalone.
+
+        Steps (AFS test-specs/skills/l3_remove-attached-skill-from-agent_ELITEA-1792.md):
+        1. Create Skill A and Skill B via UI.
+        2. Create an Agent.
+        3. Attach both Skills to the Agent (precondition for this case).
+        4. Locate the hover-revealed ""remove skill"" control for Skill B.
+        5. Click it; confirm the ""Remove skill?"" dialog; Skill B is removed
+           from the UI list while Skill A remains.
+        6. Confirm persistence via a full page reload (detach auto-saves via
+           API; no explicit agent-level Save is available for this action).
+        7. Reopen the Agent (same reload satisfies this — no separate
+           close/reopen gesture exists in the live flow); only Skill A is
+           attached.
+        8. Navigate directly to Skill B's detail page and to the Skills list;
+           Skill B still exists standalone (detached, not deleted).
+        "
+"passed","Mon Sep 07 10:26:00 UTC 2026","Mon Sep 07 10:26:07 UTC 2026","6878","tests.ui.agents","test_agent_create_button_navigation","","","","test_create_button_navigates_to_create_agent_page","Sidebar create-agent button navigates to an empty Create Agent form
+    with Save disabled by default (ELITEA-1870).
+
+    Read-only: no agent is created, edited, or deleted.
+    "
+"passed","Mon Sep 07 10:22:06 UTC 2026","Mon Sep 07 10:22:19 UTC 2026","13507","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_flow_yaml_round_trip","PIPE-021: Toggle Flow → YAML → Flow preserves the canvas."
+"passed","Mon Sep 07 10:39:39 UTC 2026","Mon Sep 07 10:39:58 UTC 2026","19631","tests.ui.pipelines","test_pipeline_hitl_node_configuration","","","","test_hitl_node_configuration_and_router_mapping","Configure a HITL node's fields; verify they persist through Save + reload."
+"passed","Mon Sep 07 10:31:21 UTC 2026","Mon Sep 07 10:31:30 UTC 2026","9153","tests.ui.pipelines","test_pipeline_dashboard_pin_to_top","","","","test_pipeline_dashboard_pin_to_top","Pinning a pipeline moves it to the top of the dashboard list; unpinning reverts it."
+"passed","Mon Sep 07 10:23:29 UTC 2026","Mon Sep 07 10:23:39 UTC 2026","10038","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_visible_and_updates_realtime","Character counter appears when typing and updates in real-time.
+        TC-1688, TC-1685
+        Acceptance Criteria #1: Real-time character counter visible.
+        "
+"passed","Mon Sep 07 10:24:11 UTC 2026","Mon Sep 07 10:24:30 UTC 2026","18830","tests.ui.pipelines","test_pipeline_attach_files_in_chat","","","","test_attach_files_in_chat","Attach a file in the pipeline's embedded chat; pipeline processes it without error."
+"passed","Mon Sep 07 10:34:04 UTC 2026","Mon Sep 07 10:34:31 UTC 2026","27509","tests.ui.skills","test_skill_test_panel_no_new_conversation","TestSkillTestPanelNoNewConversation","","","test_test_panel_does_not_create_new_chat_conversation","Running a test prompt via the SkillTestPanel must not create a
+        new Chat conversation — verified via network capture, Chat sidebar
+        DOM count, and the Conversations API ground truth."
+"passed","Mon Sep 07 10:21:55 UTC 2026","Mon Sep 07 10:22:04 UTC 2026","8882","tests.ui.pipelines","test_pipeline_advanced","TestYamlEditor","","","test_yaml_content_reflects_pipeline","PIPE-020: YAML content should reflect the pipeline structure."
+"passed","Mon Sep 07 10:27:00 UTC 2026","Mon Sep 07 10:27:15 UTC 2026","15141","tests.ui.agents","test_agent_embedded_chat_shift_enter","TestAgentEmbeddedChatShiftEnter","","","test_shift_enter_new_line_enter_sends","Shift+Enter inserts a newline without sending; Enter submits the
+        accumulated multi-line message and triggers a response."
+"passed","Mon Sep 07 10:34:25 UTC 2026","Mon Sep 07 10:34:36 UTC 2026","11582","tests.ui.pipelines","test_pipeline_edge_creation","","","","test_drag_connect_creates_edge_replacing_prior_transition","Dragging LLM 1 -> Printer 1 creates the edge, replacing LLM 1's prior
+    -> END edge; the new edge survives Save + reload."
+"passed","Mon Sep 07 10:34:47 UTC 2026","Mon Sep 07 10:35:52 UTC 2026","65041","tests.ui.agents","test_import_agent_zip_nested_agent_dependencies","TestImportAgentZipNestedAgentDependencies","","","test_import_agent_zip_nested_agent_dependencies","Export a main Agent with a nested Agent dependency attached
+        (produces a .zip), import it back, and verify both entities are
+        recreated with new IDs and correctly linked.
+
+        Steps (AFS test-specs/agents/l3_import-agent-zip-nested-dependencies_ELITEA-1902.md):
+        1. (Precondition setup) Create a nested Agent, then a main Agent
+           with the nested Agent attached via the ""+ Agent"" picker.
+        2. Export the main Agent via the actions overflow menu; verify a
+           `.zip` file is downloaded.
+        3. Unzip and inspect the archive's contents; verify it contains one
+           `.agent.md` per entity (main + nested), and the main entity's
+           frontmatter references the nested Agent.
+        4. Navigate to Agents list; import the `.zip`; verify the ""Import
+           parameters"" preview dialog opens.
+        5. Verify the import wizard lists entity cards for the main agent
+           AND the nested dependency.
+        6. Confirm the dialog's Import button; verify the ""Import
+           Complete"" success dialog.
+        7. Verify the success dialog lists both new entities (""2 agents"").
+        8. Click ""Got it""; verify the main agent and nested agent are both
+           created with new, distinct IDs and correctly linked (Tools
+           section shows the nested agent attached).
+        "
+"passed","Mon Sep 07 10:30:59 UTC 2026","Mon Sep 07 10:31:20 UTC 2026","20931","tests.ui.pipelines","test_pipeline_custom_node_configuration","","","","test_custom_node_configuration","Add a Custom node, configure Toolkit/Tool/Input-mapping/Input/Output; verify persistence."
+"passed","Mon Sep 07 10:33:37 UTC 2026","Mon Sep 07 10:34:09 UTC 2026","32337","tests.ui.agents","test_agent_with_github_toolkit","TestChatWithAgentToolkit","","","test_agent_chat_with_github_toolkit","Add toolkit to agent, chat via /chat, verify toolkit execution."
+"passed","Mon Sep 07 10:21:49 UTC 2026","Mon Sep 07 10:22:13 UTC 2026","24386","tests.ui.agents","test_agent_add_variables_persist_after_reload","TestAgentAddVariablesPersistAfterReload","","","test_add_two_variables_and_verify_they_persist_after_reload","Adding two {{variable}} references to Instructions, entering their
+        values, and saving persists both name+value pairs after a
+        full-navigation reload — asserted via both the DOM and the Save PUT
+        response body."
+"broken","Mon Sep 07 10:34:06 UTC 2026","Mon Sep 07 10:34:24 UTC 2026","18304","tests.ui.pipelines","test_pipeline_delete_version","","","","test_delete_pipeline_version_falls_back_to_base","Deleting a non-base version via the three-dot menu removes it from
+    the VERSION dropdown and the pipeline automatically falls back to
+    ""base"" — VERSION selector, URL, and Information panel all agree."
+"broken","Mon Sep 07 10:23:04 UTC 2026","Mon Sep 07 10:23:21 UTC 2026","16821","tests.ui.agents","test_agent_back_navigation","","","","test_back_button_from_agent_detail_returns_to_intact_agents_list","Back button on agent detail page returns to Agents dashboard with
+    the list intact (ELITEA-1869).
+
+    Uses agent_id fixture to ensure at least one agent exists.
+    "
+"passed","Mon Sep 07 10:35:29 UTC 2026","Mon Sep 07 10:35:50 UTC 2026","20529","tests.ui.skills","test_skill_version_set_default","TestSkillVersionSetDefault","","","test_version_dropdown_set_default_shows_control_and_confirmation","Version dropdown shows a pin/set-as-default control per row;
+        confirming sets the named version as default and shows a
+        confirmation toast plus a persistent pin-icon/reorder indicator."
+"passed","Mon Sep 07 10:34:48 UTC 2026","Mon Sep 07 10:35:12 UTC 2026","24214","tests.ui.pipelines","test_pipeline_entry_point_trigger_restricted_interactive_nodes","","","","test_entry_point_trigger_restricted_interactive_nodes","Chat-Message-only restriction gates on the SAVED version, for Printer/HITL/interrupts alike."
+"failed","Mon Sep 07 10:39:38 UTC 2026","Mon Sep 07 10:39:38 UTC 2026","178","tests.ui.pipelines","test_pipeline_fork_to_different_project","TestPipelineForkToDifferentProject","","","test_pipeline_fork_to_different_project","Fork a Pipeline into a different project and verify the forked
+        pipeline's configuration + attribution, then clean up.
+
+        Steps (AFS
+        test-specs/pipelines/l2_pipeline-fork-to-different-project_ELITEA-2051.md):
+        1. Create the source Pipeline via API in the resolved SOURCE
+           project (a project the acting user belongs to, other than the
+           fork target); navigate to it via the sidebar project switcher
+           + Pipelines dashboard card (precondition — a pipeline from
+           another project, accessible to the user).
+        2. Open the pipeline-actions overflow menu; verify the VERSION
+           group shows ""Fork"" enabled.
+        3. Click ""Fork""; verify the Fork wizard dialog opens showing the
+           Project selector and Main-entity preview card.
+        4. Select the TARGET project — the acting user's own (""Private"")
+           project, necessarily DIFFERENT from the source; verify the Fork
+           button becomes enabled.
+        5. Verify the entity-preview card shows the Main entity only (no
+           ""Nested entities"" section, since the source has no attached
+           toolkits/skills/nested agents).
+        6. Click ""Fork""; verify the fork POST returns 201 Created and the
+           dialog re-renders as ""Fork Complete"".
+        7. Click ""Got it""; verify navigation into the target project, onto
+           the new forked Pipeline.
+        8. Verify the forked pipeline's ID/Version ID are new and unique,
+           and its Name/Description/Step Limit match the source exactly.
+        9. Verify the forked pipeline's dashboard card (Card list view,
+           target project) shows a ""Forked from"" attribution icon-link.
+        10. Clean up: delete the forked pipeline via the UI; verify the
+            DELETE call returns 204 No Content.
+        "
+"passed","Mon Sep 07 10:39:28 UTC 2026","Mon Sep 07 10:39:38 UTC 2026","9831","tests.ui.pipelines","test_pipeline_flow_to_yaml_sync","","","","test_add_node_in_flow_view_syncs_to_yaml","A node added in Flow view is immediately reflected in the YAML view
+    and remains on canvas after switching back to Flow view."
