@@ -128,3 +128,4 @@
 - [Ready with an owed verification is a DEBT](a_delivered_card_is_not_verified_until_the_env_ran_it.md) — re-check next session; the env may have recovered and disagreed
 - [My dispatch premise can be FALSE](my_dispatch_premise_can_be_false_let_ics_refuse_it.md) — attribute claims, license refusal, verify load-bearing source facts myself
 
+- [Read the assertion, not the triage label](read_the_assertion_before_trusting_a_triage_label.md) — "flaky" is a guess
