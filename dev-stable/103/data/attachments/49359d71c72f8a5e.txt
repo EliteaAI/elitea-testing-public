@@ -1,0 +1,1 @@
+WARNING  elitea.api_auth:api_auth.py:123 Missing elitea-staging_auth_session cookie
