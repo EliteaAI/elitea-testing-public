@@ -92,3 +92,4 @@
 - [Composer clearing is a LAGGING signal](chatbox_composer_clear_is_a_lagging_signal.md) — ChatBox passes clearInputAfterSubmit={false}; key a send retry on the REQUEST
 - [to_be_enabled() can't close a handler-side gate](react_fresh_props_defeat_to_be_enabled.md) — React delivers FRESHER props; retry the action, local green proves non-regression only
 - [A retry must not collapse its outcomes](a_retry_must_not_collapse_its_outcomes.md) — bare `raise` per branch destroys the diagnosis; message each, name the ticket, `from err`
+- [A CI-failure card is not closed by an automation/base merge](a_ci_failure_card_is_not_closed_by_a_base_merge.md) — GHA runs main; base has no CI
