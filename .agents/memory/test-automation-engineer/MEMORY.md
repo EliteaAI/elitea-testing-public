@@ -64,3 +64,5 @@
 - [zsh does not word-split unquoted $VAR](zsh_does_not_word_split_unquoted_variables.md) — multi-path variables collapse to one arg; faked a "zero new lint" result
 - [Running a spec against DEV](dev_env_run_harness_and_goto_flake.md) — ELITEA_URL export does nothing; use the -p plugin harness; expect ~40% raw goto timeouts
 - [JS evaluate-click no-ops when disabled](js_click_silently_noops_on_disabled_controls.md) — use expect(enabled)+real click on gated controls (#1897)
+- [Autouse banner-dismiss races the SPA redirect](autouse_banner_dismiss_races_spa_redirect.md) — unguarded evaluate after a domcontentloaded goto: green local, 10/10 red on DEV
+- [main is NOT a superset of automation/base](main_and_automation_base_have_diverged_badly.md) — planted assert False + tests/unit won't collect; control-run anything red
