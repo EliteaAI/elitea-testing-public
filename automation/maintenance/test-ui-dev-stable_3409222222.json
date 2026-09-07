@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "id": "ELITEA-2311",
+      "automation_test_id": "tests.ui.admin.test_analytics_agent_detail_view.TestAnalyticsAgentDetailView.test_agent_row_click_opens_detail_view",
+      "resolution": "to_fix",
+      "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2016"
+    },
+    {
+      "id": "ELITEA-2312",
+      "automation_test_id": "tests.ui.admin.test_analytics_agent_detail_view.TestAnalyticsAgentDetailView.test_agent_row_click_opens_detail_popup",
+      "resolution": "to_rerun",
+      "tracking_issue": null
+    },
+    {
+      "id": "ELITEA-2313",
+      "automation_test_id": "tests.ui.admin.test_analytics_agent_detail_view.TestAnalyticsAgentDetailView.test_agent_row_click_opens_detail_button",
+      "resolution": "already_in_progress",
+      "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/1856"
+    },
+    {
+      "id": null,
+      "automation_test_id": "tests.ui.admin.test_analytics_agent_detail_view.TestAnalyticsAgentDetailView.test_agent_row_click_opens_detail_button",
+      "resolution": "id_mapping_error",
+      "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/1856"
+    }
+  ]
+}
