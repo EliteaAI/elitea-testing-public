@@ -129,6 +129,8 @@
 - [My dispatch premise can be FALSE](my_dispatch_premise_can_be_false_let_ics_refuse_it.md) — attribute claims, license refusal, verify load-bearing source facts myself
 
 - [Read the assertion, not the triage label](read_the_assertion_before_trusting_a_triage_label.md) — "flaky" is a guess
+- [MuiBackdrop "intercepts pointer events" = a menu the TEST left open](mui_backdrop_intercept_means_a_menu_the_test_left_open.md) — read the allure CALL LOG, not the message; a page-level Escape is swallowed by an autofocused search box inside the popper
+- [Run the matched negative control yourself](lead_run_matched_negative_control_on_dev.md) — a 3x-green gate on a REPAIR is not causation; revert only the changed files (spell the paths, zsh won't split) and expect the card's byte-identical signature
 - [A [FIX] card body can instruct a policy violation](fix_card_body_can_carry_a_policy_violating_instruction.md) — check its "Instructions" block against canon before dispatching
 - [`gh run view --log` stub = false zero](gh_run_log_stub_is_a_false_zero.md) — in-progress run = 81B stub; counts lie
 - [Whole-matrix CI red = shared machinery](ci_blast_radius_points_at_shared_machinery.md) — triage the shared frame
