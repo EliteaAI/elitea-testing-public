@@ -43,12 +43,22 @@ Verified live 2026-09-08 (localhost, agent VERSION dropdown):
 1. **Press Escape on an element inside the list, not on the page.** `Locator.press()`
    focuses the element first, so the keydown originates on the `MenuItem` and bubbles to
    the `Modal`. `page.keyboard.press("Escape")` goes wherever focus happens to be.
-2. **A close helper must CONFIRM.** `aria-expanded` on the `{testId}-combobox` node
-   (`SingleSelect.jsx`'s `SelectDisplayProps`, present on `main`) is always rendered and
-   flips `"true"`/`"false"` — a real two-state oracle, and a testid + state-attribute
-   filter, so it is policy-compliant. A fire-and-forget close moves the failure to an
-   unrelated later step, which is exactly how #2052 reached the nightly instead of the
-   author.
+2. **A close helper must CONFIRM — with TWO terms, not one.** `aria-expanded` on the
+   `{testId}-combobox` node (`SingleSelect.jsx`'s `SelectDisplayProps`, present on `main`)
+   is always rendered and flips `"true"`/`"false"` — a real two-state oracle, and a testid
+   + state-attribute filter, so it is policy-compliant. But MUI binds it to React `open`
+   state, which flips at the **start** of the `Grow` exit transition, while
+   `MuiBackdrop-root` survives it (~200-300 ms) and keeps eating clicks. So
+   `aria-expanded="false"` alone is a **leading indicator** — it narrows the failure window
+   from unbounded to one transition, it does not close it. AND it with
+   `expect(options).to_have_count(0)`: the option nodes unmount with the Menu subtree
+   (verified: options / backdrops / `.MuiMenu-root` all read 0 after a close — not
+   `keepMounted`), so their absence is what proves the backdrop is gone. Two gotchas:
+   `expect(...).to_have_count()` raises `AssertionError`, **not** `PlaywrightTimeoutError`,
+   so a retry loop must catch both; and a search box filtered to zero makes the count term
+   trivially true — harmless, because the conjunction still needs the `aria-expanded` flip.
+   A fire-and-forget close moves the failure to an unrelated later step, which is exactly
+   how #2052 reached the nightly instead of the author.
 
 Worked example: `AgentDetailPage.close_version_selector()` (issue #2052, PR #2058).
 Note `close_versions_menu()` is a DIFFERENT menu (the skill card's Versions menu, no
