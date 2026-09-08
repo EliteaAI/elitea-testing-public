@@ -39,6 +39,16 @@ or a genuinely temporary `.env.test` edit) when the failure is specific to the
 DEEPLOYED env itself — e.g. verifying a testid's promotion state, or a
 Keycloak-login-path issue localhost's `auth_state` bypass can't surface.
 
+**Prefer the out-of-repo `-p devenv` pytest-plugin harness over any
+`.env.test` edit, even a "temporary, restored" one** — it points a real
+pytest run at `dev.elitea.ai` with ZERO edits to the shared file (see
+test-automation-engineer's `dev_env_run_harness_and_goto_flake.md` for the
+harness itself). This case's own class is deployed-frontend-load-latency —
+localhost would NOT reproduce it (its Vite server serves the bundle locally,
+fast, even though it hits the same DEV backend), so this is exactly the
+"specific to the deployed env" exception above. Worked case: #2049/ELITEA-1898,
+2026-09-09 (see `class_d_verdict_has_no_pr_route_straight_to_ready.md`).
+
 ## Worked case
 
 #1898 (ELITEA-1140, `test_toolkit_test_settings` DEV timeout, 2026-08-28):

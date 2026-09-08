@@ -129,3 +129,4 @@
 - [My dispatch premise can be FALSE](my_dispatch_premise_can_be_false_let_ics_refuse_it.md) — attribute claims, license refusal, verify load-bearing source facts myself
 
 - [Read the assertion, not the triage label](read_the_assertion_before_trusting_a_triage_label.md) — "flaky" is a guess
+- [A [FIX] card body can instruct a policy violation](fix_card_body_can_carry_a_policy_violating_instruction.md) — check its "Instructions" block against canon before dispatching
