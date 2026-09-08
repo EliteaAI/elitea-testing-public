@@ -60,4 +60,32 @@ The suite cannot distinguish "environment unavailable" from "locator drift",
 so a 2-minute outage costs two triage sessions and files two bogus cards.
 Filed as #2054. Blocked on the maintenance/5xx pages having no testid.
 
+## Cross-shard confirmation — the strongest form of this proof (added 2026-09-09, #2053)
+
+One shard's contiguous block is good. **Two shards agreeing on the same window is
+decisive**, and it costs one extra run of the same timeline script. Run 34244735426
+produced three `[FIX]` cards from one outage:
+
+| Shard | Block | Specs x attempts | Card |
+|---|---|---|---|
+| `user3` | 15:31:02 -> 15:33:21 | 2 x 3 | #2050 (ELITEA-1870) |
+| `user1` | 15:30:46 -> 15:33:18 | 2 x 3 | #2044 (ELITEA-1793) + #2053 (ELITEA-1795) |
+
+Same window, different shards, different surfaces, same maintenance/5xx render.
+A per-shard cause (a wedged browser, a polluted shard user, a slow runner) cannot
+produce that; only the environment can.
+
+**Check for a sibling's already-downloaded artifacts before re-harvesting** — #2053
+needed zero downloads and zero dispatches because the #2050 session had pulled all
+three shards to `/tmp/ar2050`.
+
+## The card's prose is a paraphrase, not the signature
+
+#2053's body: *"Timeout waiting for navigation after saving skill."* The actual
+allure `statusDetails.message`: `waiting for get_by_test_id("skill-name-input")`,
+in **Step 1 precondition setup** — a different step. The intake generator writes
+plausible prose from a log tail. Read `statusDetails.message` and the per-step
+statuses before forming any hypothesis from the card's own description; a wrong
+step name sends triage at the wrong page object.
+
 Related: [[dev_only_red_check_the_screenshot_first]] · [[sibling_fix_cards_can_have_different_root_causes]] · [[harvest_gha_allure_artifacts_before_dispatching]] · [[fix_card_body_can_carry_a_policy_violating_instruction]]
