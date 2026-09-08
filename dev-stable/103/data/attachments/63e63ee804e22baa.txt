@@ -1,3 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Navigate to Artifacts — Locator.wait_for: Timeout 15000ms exceeded.
-Call log:
-  - waiting for get_by_test_id("artifacts-buckets-heading") to be visible
