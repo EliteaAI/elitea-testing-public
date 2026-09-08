@@ -99,3 +99,4 @@
 - [Mass testid loss may be a deliberate deletion](testid_loss_may_be_deliberate.md) — check where they lived first
 - [Search-field Selects swallow Escape](version_dropdown_search_swallows_escape.md) — never fire-and-forget a menu close; confirm via aria-expanded
 - [Localhost can't run publish flows](localhost_cannot_run_publish_flows_user_token_400.md) — publish_validate 400 'create user_token'; gate on DEV
+- [ruff stdin false clean](ruff_stdin_filename_gives_a_false_clean.md) — drops I/UP/E501; baseline on real files

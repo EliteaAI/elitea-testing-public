@@ -35,4 +35,19 @@ findings"**. A completely fabricated pass, from a check that never ran.
   have stopped me immediately; instead the diff-of-two-broken-runs looked like
   success. When a verification comes back clean, confirm it actually *ran*.
 
+## Sibling trap: `$ref:a` is a zsh MODIFIER, not `$ref` + `":a"` (2026-09-09)
+
+```bash
+for ref in HEAD some-branch; do git show $ref:automation/pages/x.py; done
+# zsh -> fatal: ambiguous argument '/abs/path/to/HEADutomation/pages/x.py'
+```
+
+zsh applies **parameter expansion modifiers** after `:` — `:a` means "absolute path", so
+`$ref:a` expands `HEAD` to an absolute path and eats the `a` of `automation/`. Bash would
+have passed `HEAD:automation/...` unchanged.
+
+**Always brace it: `git show "${ref}:${path}"`.** This one fails loudly (`fatal: ambiguous
+argument`), unlike the word-splitting trap above — but in a loop that prints counts, three
+`fatal:` lines on stderr next to a plausible-looking `0` can still be misread as data.
+
 Related: [[git_checkout_ref_path_overwrites_the_index]]
