@@ -310,15 +310,17 @@ class TestAgentIconManagement:
             # status across runs when confirming the signature is identical.
             with allure.step(
                 "Sanctioned RED — raise the aggregated known-defect #2055 "
-                "soft failures (every other assertion above passed)"
+                "soft failures (every other assertion above passed; the "
+                "immediate-vs-persisted link was skipped by its guard)"
             ):
                 if soft_failures:
                     pytest.fail(
                         "Soft assertion(s) failed — known isolated product defect "
                         f"{KNOWN_DEFECT_2055}, not test/infrastructure. The icon "
                         "mutation (PUT 200), its persistence after reload, the "
-                        "immediate-vs-persisted and Save-stays-disabled checks and "
-                        "the exact-URL match on the dashboard card all passed:\n"
+                        "Save-stays-disabled check and the exact-URL match on the "
+                        "dashboard card all passed; the immediate-vs-persisted link "
+                        "was NOT evaluated — its guard is false while #2055 is open:\n"
                         + "\n".join(soft_failures)
                     )
         finally:
