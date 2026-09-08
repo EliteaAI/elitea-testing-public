@@ -337,8 +337,14 @@ very failure this repair addresses).
 That method is **shared, with five `AgentDetailPage` callers**:
 `select_version_by_name()` (`pages/agent_detail_page.py:4146`),
 `test_agent_publish_unpublish_version.py:538`, `test_agent_save_as_version.py:189`,
-and `test_agent_version_selector_order.py:290` + `:336`. (The two
-`tests/ui/skills/` call sites are `SkillDetailPage`, a different class — untouched.)
+and `test_agent_version_selector_order.py:290` + `:336`. (Counted with
+`grep -rn "open_version_selector()"`: the **three** `tests/ui/skills/` call sites in
+two files — `test_skill_fork_non_base_version.py:167`, `test_skill_version_set_default.py:80`
+and `:129` — are `SkillDetailPage`, which has its own `open_version_selector` at
+`pages/skill_detail_page.py:1167`; and the **three** `tests/ui/pipelines/` call sites in
+two files — `test_pipeline_create_version.py:133`, `test_pipeline_delete_version.py:86`
+and `:149` — are `PipelineDetailPage`, own definition at `pages/pipeline_detail_page.py:2060`.
+Both classes are genuinely untouched by this diff.)
 
 The one worth naming: the `select_version_by_name()` call site sits **inside its
 retry loop but outside the loop's `try:`**, so the new raise is *not* retried by
@@ -350,7 +356,14 @@ a reader tracing a `select_version_by_name` failure should know the loop cannot
 absorb it.
 
 The close post-condition is likewise two-part, not one: `aria-expanded="false"`
-**and** zero `version-option-*` nodes remaining. `aria-expanded` tracks React
+**and** zero `version-option-*` nodes remaining — and the method has **no early
+return**, so that conjunction gates every exit whatever state the dropdown was in
+on entry. (Review round 2: an earlier `if collapsed.count() > 0: return` entry guard
+turned a `to_have_count` timeout on one attempt into a silent success on the next,
+making the raise unreachable on precisely the state the count term exists to detect.
+The loop now presses Escape only while `aria-expanded` is still `"true"`, and simply
+waits out the closing window otherwise — pressing into a detaching subtree is its own
+hazard.) `aria-expanded` tracks React
 `open` state and flips before `MuiBackdrop-root` unmounts at the end of the `Grow`
 exit transition, so on its own it is a leading indicator; the options unmount with
 the Menu subtree, so their absence is what proves the backdrop is gone.

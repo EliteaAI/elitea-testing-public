@@ -2614,12 +2614,15 @@ class AgentDetailPage(AgentFormPage):
         also what a real user does: keyboard focus is in the option list,
         not in a search box they never clicked.
 
-        Failing to close is reported, never absorbed: after *attempts*
-        cycles this raises with the trigger's live ``aria-expanded`` value
-        and the number of options still rendered, so a genuine "this menu
-        can no longer be dismissed" product defect fails loudly here
-        instead of resurfacing as an intercepted-click timeout in whatever
-        the next step happens to be — which is exactly how it reached the
+        Failing to close is reported, never absorbed — and that holds on
+        every path, because there is no early return: a successful exit
+        always requires BOTH terms of the conjunction, whatever state the
+        dropdown was in on entry. After *attempts* cycles this raises with
+        the trigger's live ``aria-expanded`` value and the number of options
+        still rendered (both of which genuinely participate in the verdict),
+        so a genuine "this menu can no longer be dismissed" product defect
+        fails loudly here instead of resurfacing as an intercepted-click
+        timeout in whatever the next step happens to be — which is exactly how it reached the
         nightly (GHA run 34244735426, issue #2052).
 
         Args:
@@ -2635,17 +2638,30 @@ class AgentDetailPage(AgentFormPage):
         options = self.page.locator(self.VERSION_OPTION_ANY)
 
         for attempt in range(1, attempts + 1):
-            if collapsed.count() > 0:
-                return
-
-            if options.count() > 0:
-                options.first.press("Escape")
-            else:
-                # No option rendered to aim at (an empty or fully filtered
-                # list). Fall back to the page-level press rather than skip
-                # the close: it is the weaker signal, but the wait below is
-                # what decides whether it actually worked.
-                self.page.keyboard.press("Escape")
+            # Press ONLY while the dropdown still reports itself expanded.
+            # There is deliberately no early `return` here: every path out of
+            # this method goes through BOTH waits below, so the exit condition
+            # is always the full conjunction and can never be satisfied by
+            # `aria-expanded` alone (issue #2052 review round 2 — an earlier
+            # `if collapsed.count() > 0: return` guard turned a `to_have_count`
+            # timeout on attempt N into a silent success on attempt N+1, which
+            # made the raise below unreachable on exactly the state the count
+            # term exists to detect).
+            if collapsed.count() == 0:
+                if options.count() > 0:
+                    options.first.press("Escape")
+                else:
+                    # No option rendered to aim at (an empty or fully filtered
+                    # list). Fall back to the page-level press rather than skip
+                    # the close: it is the weaker signal, but the waits below
+                    # are what decide whether it actually worked.
+                    self.page.keyboard.press("Escape")
+            # `aria-expanded` already "false" => the menu is closing or closed.
+            # Do NOT press again: the option we would aim at is in a detaching
+            # subtree, and `Locator.press()` on it either races the unmount or
+            # blocks re-resolving a node that is on its way out. The correct
+            # action in that window is to WAIT it out, which is what the
+            # `to_have_count(0)` term below does.
 
             try:
                 collapsed.wait_for(state="attached", timeout=timeout)
@@ -3936,8 +3952,13 @@ class AgentDetailPage(AgentFormPage):
     def close_actions_menu(self, timeout: int = 5000):
         """Close the open actions (three-dot) menu by pressing Escape.
 
-        Mirrors :meth:`close_versions_menu`'s Escape-press pattern for the
-        VERSION-options menu. Needed between two separate
+        Mirrors the bare Escape-press pattern of
+        :meth:`close_versions_menu` (the SKILL CARD's Versions menu). It is
+        NOT the VERSION dropdown's close — that is
+        :meth:`close_version_selector`, which must confirm the close
+        (issue #2052); this actions menu has no search field and does
+        confirm its own close via the ``wait_for`` below. Needed between two
+        separate
         :meth:`open_actions_menu` calls in the same test (e.g. checking the
         VERSION group's menuitem before *and* after Publish/Unpublish).
         """
