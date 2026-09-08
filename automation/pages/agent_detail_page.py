@@ -975,12 +975,22 @@ class AgentDetailPage(AgentFormPage):
         .../upload_icon/prompt_lib/{project}/{versionId}`` call — decoupled
         from the agent form's Save/Discard state (ELITEA-1899 AFS).
 
+        ⚠️ KNOWN DEFECT #2055 (open, 2026-09-08 onward): the header ``<img>``
+        is not rendered in place after a selection — it appears only after a
+        page reload — so the returned src is ``""`` for the whole defect
+        window. **Do not use this return value as the expected icon URL**;
+        reload and re-read :meth:`get_header_icon_src` instead. The return
+        value is kept as-is (not removed) so it flips back to the real URL,
+        with no caller change, once the product is fixed.
+        https://github.com/EliteaAI/elitea-testing-public/issues/2055
+
         Args:
             index: 0-based index of the default icon option to select.
             timeout: Maximum wait time in milliseconds.
 
         Returns:
-            The header icon's ``img.src`` value after the dialog closes.
+            The header icon's ``img.src`` value after the dialog closes
+            (``""`` while #2055 is open — see above).
         """
         logger.info("Selecting icon picker option index=%d", index)
         option = self.page.locator(self.ICON_PICKER_OPTION.format(index))
@@ -1001,6 +1011,14 @@ class AgentDetailPage(AgentFormPage):
         an inline SVG placeholder (no ``<img>`` at all) instead — confirmed
         live against a fresh agent — so this returns ``""`` in that case
         rather than timing out.
+
+        The same ``""`` result is currently also returned right after an icon
+        picker selection, because of open defect #2055 (the ``<img>`` is not
+        rendered in place until a reload) — that is the product's behaviour,
+        not this method's: the ``except -> ""`` branch below is doing exactly
+        what it documents. Callers needing the persisted URL during the defect
+        window must reload first.
+        https://github.com/EliteaAI/elitea-testing-public/issues/2055
 
         Args:
             timeout: Maximum wait time in milliseconds.
