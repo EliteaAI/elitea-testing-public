@@ -36,8 +36,13 @@ TRANSIT SUBSTITUTION (declared, `.agents/testing.md` § Fidelity policy):
 Step 4b performs a `page.reload()` purely to *reach* Steps 5-7 while #2055
 is open. It fabricates nothing — every value asserted downstream (the
 post-reload header src, the card src) is still produced by the system; the
-reload only makes the already-persisted value renderable. It is removed once
-#2055 is fixed and Step 4's soft assertions go green.
+reload only makes the already-persisted value renderable.
+
+Removing it once #2055 is fixed is NOT a standalone deletion — `persisted_src`
+anchors both Step 7's card comparison and Step 4b's immediate-vs-persisted
+assertion, so a naive removal is a `NameError`. The paired edit is: re-anchor
+Step 7 to `immediate_src`, drop the now-redundant immediate-vs-persisted
+assertion, and promote Step 3's/Step 4's soft entries back to hard asserts.
 
 Case's step 5 ("Click Save") is NOT performed literally — the icon change
 persists immediately and independently via its own `PUT
@@ -140,11 +145,10 @@ class TestAgentIconManagement:
         rendered until a reload. Those two assertions are soft-aggregated and
         still assert the correct behaviour; everything else is hard and green.
         """
-        with allure.step("Precondition — create a dedicated disposable agent"):
-            agent_name = f"elitea-1899-icon-{uuid.uuid4().hex[:8]}"[:32]
-            agent = agent_api.create_agent_full(_build_dedicated_agent_payload(agent_name))
-            agent_id = agent["id"]
-
+        # Every non-mutating setup statement runs BEFORE the create, so nothing
+        # can raise between "the agent exists" and "the try/finally that deletes
+        # it is armed" (`.agents/testing.md` § Teardown-guard ordering — the flag
+        # goes up before the mutation, never after).
         detail_page = AgentDetailPage(page)
         # URL-annotated capture (utils/console_errors) rather than the
         # hand-rolled `page.on("console", ...)` this spec used to carry — the
@@ -158,6 +162,11 @@ class TestAgentIconManagement:
         # (`.agents/testing.md` § Merge gate, closed-set variant).
         soft_failures: list[str] = []
         icon_requests = detail_page.capture_requests_matching("upload_icon", method="PUT")
+
+        with allure.step("Precondition — create a dedicated disposable agent"):
+            agent_name = f"elitea-1899-icon-{uuid.uuid4().hex[:8]}"[:32]
+            agent = agent_api.create_agent_full(_build_dedicated_agent_payload(agent_name))
+            agent_id = agent["id"]
 
         try:
             with allure.step("Step 1 — Navigate to the agent detail page"):
@@ -244,6 +253,20 @@ class TestAgentIconManagement:
                     f"by Step 3's PUT — expected a new non-empty src, got "
                     f"{persisted_src!r} (before the change: {previous_src!r})"
                 )
+                # Restores the pre-repair immediate-header <-> card link. Guarded on
+                # immediate_src being readable, so it never evaluates while #2055 is
+                # open and cannot pollute the sanctioned-RED single-cause signature.
+                # HARD by design: post-fix, an immediate header icon that differs
+                # from the persisted one is a NEW defect (exactly #2055's own
+                # broken-optimistic-patch class, rendering the wrong icon rather
+                # than none) and must surface as a raw red, never as a member of
+                # #2055's closed set.
+                if immediate_src:
+                    assert immediate_src == persisted_src, (
+                        "The icon rendered in the header immediately after selection "
+                        f"must be the one that persisted — immediate: {immediate_src!r}, "
+                        f"persisted: {persisted_src!r}"
+                    )
 
             with allure.step(
                 "Step 5 — CLARIFICATION (issue #566, not a defect): the icon "
@@ -282,14 +305,22 @@ class TestAgentIconManagement:
                     f"{console_errors}"
                 )
 
-            if soft_failures:
-                pytest.fail(
-                    "Soft assertion(s) failed — known isolated product defect "
-                    f"{KNOWN_DEFECT_2055}, not test/infrastructure. The icon "
-                    "mutation (PUT 200), its persistence after reload, the "
-                    "Save-stays-disabled check and the exact-URL match on the "
-                    "dashboard card all passed:\n" + "\n".join(soft_failures)
-                )
+            # Wrapped so the sanctioned-RED signature attaches to a STEP in the
+            # allure report, not merely to the test — the gate reads per-step
+            # status across runs when confirming the signature is identical.
+            with allure.step(
+                "Sanctioned RED — raise the aggregated known-defect #2055 "
+                "soft failures (every other assertion above passed)"
+            ):
+                if soft_failures:
+                    pytest.fail(
+                        "Soft assertion(s) failed — known isolated product defect "
+                        f"{KNOWN_DEFECT_2055}, not test/infrastructure. The icon "
+                        "mutation (PUT 200), its persistence after reload, the "
+                        "immediate-vs-persisted and Save-stays-disabled checks and "
+                        "the exact-URL match on the dashboard card all passed:\n"
+                        + "\n".join(soft_failures)
+                    )
         finally:
             with allure.step("Cleanup — delete the dedicated agent"):
                 try:

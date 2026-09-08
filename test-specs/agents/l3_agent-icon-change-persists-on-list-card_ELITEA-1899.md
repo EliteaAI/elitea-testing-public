@@ -131,11 +131,12 @@
 | Step 1: Navigate to agent detail page | detail page loads | AFS step 1 | step 1 | covered |
 | Step 2: Click agent icon → icon picker opens | dialog opens | AFS step 2 | step 2 | covered — dialog confirmed via `agent-icon-picker-dialog` testid; automation quirk (double-click/hover-first) documented, not a defect |
 | Step 3: Select a different icon | new icon selected | AFS step 3 | step 3 | covered — `PUT .../upload_icon/.../{versionId}` → 200, `{"updated": true}` |
-| Step 4: New icon shown in header immediately | header updates | AFS step 4 | step 4 | covered — DOM `img.src` verified immediately post-selection, no reload |
+| Step 4: New icon shown in header immediately | header updates | AFS step 4 | step 4 (soft) + step 3 (soft) | **asserted-soft — SANCTIONED RED on open defect [#2055](https://github.com/EliteaAI/elitea-testing-public/issues/2055)** (amended 2026-09-09). The `<img>` is absent from the DOM until a reload, so BOTH reads of this observable (step 3's `new_src != previous_src` and step 4's re-read) assert the *correct* behaviour — a changed, non-empty `img.src` with no reload — via the spec's `soft_failures` list + terminal `pytest.fail()`, each marked `# Known defect: #2055`. Nothing deleted or weakened; both flip green when the product is fixed. *Historical (2026-07-16): covered — DOM `img.src` verified immediately post-selection, no reload.* |
+| Step 4b (implementation step, not a case step): reload to reach steps 5–7 | header renders the persisted icon | AFS step 4b | step 4b | **covered — declared TRANSIT substitution** (`.agents/testing.md` § Fidelity policy; added 2026-09-09). `page.reload()` + `wait_for_page_load()`, then a HARD assert that the post-reload header src is non-empty and changed — the value is still produced by the system, the reload only makes the already-persisted value renderable. Also carries the HARD `immediate_src == persisted_src` link (guarded on `immediate_src` being readable, so it cannot fire while #2055 is open), which preserves the pre-repair immediate-header ⇄ card chain: without it a post-fix header rendering the WRONG icon would pass every remaining assertion. |
 | Step 5: Verify Save button remains disabled (icon persists independently) | Save button disabled | AFS step 5 | step 5 | covered — Save button confirmed disabled via `[data-testid="agent-form-save-button"]` `disabled` attribute check; icon already persisted via step 3's PUT call. TMS case updated (#566, 2026-07-22) to remove "Click Save" and verify disabled state instead. |
 | Step 6: Navigate to Agents dashboard | dashboard loads | AFS step 6 | step 6 | covered |
-| Step 7: Agent card shows newly selected icon | icon persists on card | AFS step 7 | step 7 | covered — DOM `img.src` on `entity-card-icon` matched header value exactly |
-| Objective: icon change persists after save, shown immediately + on list card | as above | AFS steps 3–4, 7 | steps 3,4,7 | covered (via auto-persist mechanism, not literal Save click) |
+| Step 7: Agent card shows newly selected icon | icon persists on card | AFS step 7 | step 7 | covered (HARD) — DOM `img.src` on `entity-card-icon-img` matches the header value exactly. *Amended 2026-09-09: the expected value is now the post-reload header src captured in step 4b, not `select_icon_option()`'s return value (`""` for the whole #2055 window). The link back to the IMMEDIATE header render is preserved by step 4b's `immediate_src == persisted_src` assertion.* |
+| Objective: icon change persists after save, shown immediately + on list card | as above | AFS steps 3–4, 4b, 7 | steps 3,4,4b,7 | covered (via auto-persist mechanism, not literal Save click). *2026-09-09: the "persists" half is fully HARD and green; the "shown immediately" half is asserted-soft as sanctioned RED on #2055.* |
 
 ### Axis 2 — Analyst additions
 
@@ -361,7 +362,7 @@ Steps 1, 2, 3 (network), 5, 6, 7 are unchanged and still pass. Only the step-4 o
 |---|---|
 | 3 — select a different icon | unchanged: `agent-icon-picker-option-{index}` click, dialog closes, `PUT .../upload_icon/...` → 200 asserted as today |
 | 4 — new icon in header **immediately** | **Keep the assertion, make it soft + linked**: `# Known defect: #2055` with the project's `soft_failures`/`pytest.fail()` aggregation (worked example: `tests/ui/chat/test_team_users_mention_and_remove_participants.py:268,587,633`). It must keep asserting the *correct* behaviour so it flips green when the product is fixed. Do NOT delete it, do not soften it to a presence check. |
-| 4b — **new transit step** | `page.reload()` + `detail_page.wait_for_page_load()`, then `get_header_icon_src()` — this now returns the real URL. This is the reference value for steps 5–7. Declared transit: the reload only *reaches* the later steps; the value asserted is still produced by the system. |
+| 4b — **new transit step** | `page.reload()` + `detail_page.wait_for_page_load()`, then `get_header_icon_src()` — this now returns the real URL. This is the reference value for steps 5–7. Declared transit: the reload only *reaches* the later steps; the value asserted is still produced by the system. **Amended 2026-09-09 (review fix round 1):** also carries a HARD `immediate_src == persisted_src` assertion, guarded on `immediate_src` being readable so it never evaluates while #2055 is open. Without it the repair would permanently drop the pre-repair immediate-header ⇄ card link, and a post-fix optimistic patch rendering the WRONG icon would pass every remaining assertion. |
 | 5 — Save stays disabled | unchanged (`agent-save-button`, still `disabled` after an icon-only change) |
 | 6–7 — card icon matches | unchanged in intent, but compare the card src against the **post-reload header src** captured in 4b rather than against `select_icon_option()`'s return value (which is now always `""`). |
 
@@ -414,7 +415,9 @@ agent-save-button                  main:YES  testids:YES
 **None.** Nothing this case verifies is deleted, weakened, or made conditional. Step 4 keeps
 asserting the *correct* behaviour (header updates without a reload) and stays visible as a
 sanctioned RED linked to open #2055; the added reload is transit that lets steps 5–7 keep proving
-persistence on the list card.
+persistence on the list card. **The one coverage risk the repair DID introduce — re-anchoring step 7
+to the post-reload src, which silently drops the immediate-header ⇄ card link — is closed by step 4b's
+guarded HARD `immediate_src == persisted_src` assertion (review fix round 1, 2026-09-09).**
 
 ### Environment note (not part of the case)
 
