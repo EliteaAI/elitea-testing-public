@@ -96,3 +96,4 @@
 - [Autouse banner-dismiss races the SPA redirect](autouse_banner_dismiss_races_spa_redirect.md) — unguarded evaluate after a domcontentloaded goto: green local, 10/10 red on DEV
 - [main is NOT a superset of automation/base](main_and_automation_base_have_diverged_badly.md) — planted assert False + tests/unit won't collect; control-run anything red
 - [Same-run correlation = class D shortcut](same_run_correlation_is_a_class_d_triage_shortcut.md) — check sibling [FIX] cards from the same CI run before diffing code
+- [Mass testid loss may be a deliberate deletion](testid_loss_may_be_deliberate.md) — check where they lived first
