@@ -13,7 +13,7 @@ import logging
 import re
 import time
 from urllib.parse import urlparse
-from playwright.sync_api import Page, Locator, Download
+from playwright.sync_api import Page, Locator, Download, expect
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from .base_page import BasePage
@@ -886,8 +886,10 @@ class AgentDetailPage(AgentFormPage):
           correct behaviour for a method whose contract is "the dropdown is
           open when I return", and it hides nothing: the only way the menu
           can still be open is a caller that never asked for it to be
-          closed, because :meth:`close_versions_menu` now raises when it
-          cannot close it.
+          closed, because :meth:`close_version_selector` — the method that
+          closes THIS dropdown — now raises when it cannot close it.
+          (:meth:`close_versions_menu` is a different menu and still raises
+          nothing; see its docstring.)
 
         Args:
             timeout: Maximum wait time in milliseconds for the dropdown to
@@ -2558,9 +2560,19 @@ class AgentDetailPage(AgentFormPage):
         dropdown in the toolbar — that one is
         :meth:`close_version_selector`, which has to confirm the close
         (issue #2052). Left as a bare Escape deliberately: the skill menu
-        is a different component with no search field, so it has neither
-        the swallowed-Escape failure mode nor a shared oracle with the
-        VERSION dropdown.
+        is a different component with no search field (``SkillVersionSelector``
+        is a raw MUI ``<Menu>``/``<MenuItem>`` — no ``SingleSelect``, no
+        ``withSearch``), so it has neither the swallowed-Escape failure mode
+        nor a shared oracle with the VERSION dropdown.
+
+        **That claim is scoped to THIS class.** It is not a statement about
+        every ``close_versions_menu`` in the suite:
+        ``PipelineDetailPage.close_versions_menu()`` drives the *same*
+        ``withSearch`` VERSION dropdown under the *same*
+        ``agent-version-selector-trigger`` testid with the *same* bare
+        Escape, across 3 call sites, and therefore *does* carry the #2052
+        failure mode. It is deliberately out of scope for this repair and
+        tracked separately (the pipelines half of #2039).
         """
         self.page.keyboard.press("Escape")
 
@@ -2568,8 +2580,15 @@ class AgentDetailPage(AgentFormPage):
         """Close the agent's VERSION dropdown and CONFIRM that it closed.
 
         LOCATOR: presses Escape on the first :attr:`VERSION_OPTION_ANY`
-        option, then waits on :attr:`VERSION_SELECTOR_COMBOBOX_COLLAPSED`
-        (the trigger's own ``aria-expanded="false"``).
+        option, then waits on BOTH :attr:`VERSION_SELECTOR_COMBOBOX_COLLAPSED`
+        (the trigger's own ``aria-expanded="false"``) **and** zero
+        :attr:`VERSION_OPTION_ANY` options remaining. The second term is not
+        redundant: ``aria-expanded`` tracks React `open` state and flips
+        BEFORE the ``MuiBackdrop-root`` unmounts at the end of the ``Grow``
+        exit transition, so on its own it is a leading indicator that leaves
+        a ~200-300 ms window in which the backdrop still intercepts clicks.
+        The options unmount with the Menu subtree, so their absence is what
+        proves the backdrop is actually gone.
 
         Callers used to close this dropdown with :meth:`close_versions_menu`
         — a bare ``page.keyboard.press("Escape")`` with nothing checked
@@ -2630,8 +2649,25 @@ class AgentDetailPage(AgentFormPage):
 
             try:
                 collapsed.wait_for(state="attached", timeout=timeout)
+                # `aria-expanded` is a LEADING indicator: MUI 7.3.11's
+                # `Select/SelectInput.js` binds it to React `open` state, which
+                # flips at the START of the Menu's `Grow` exit transition —
+                # `MuiBackdrop-root` survives that transition (~200-300ms) and
+                # keeps intercepting pointer events after the attribute already
+                # reads "false". The option nodes unmount WITH the Menu
+                # subtree (verified live: after a close, options / backdrops /
+                # `.MuiMenu-root` all read 0 — the menu is not `keepMounted`),
+                # so requiring zero options is what actually proves the
+                # backdrop is gone. Conjunction, never a replacement: if a
+                # search filter has already emptied the list this term is
+                # trivially true, and the `aria-expanded` wait above is still
+                # what holds the line.
+                expect(options).to_have_count(0, timeout=timeout)
                 return
-            except PlaywrightTimeoutError:
+            except (PlaywrightTimeoutError, AssertionError):
+                # `expect(...).to_have_count()` raises AssertionError on
+                # timeout, `wait_for` raises PlaywrightTimeoutError; nothing
+                # else in this block raises either.
                 logger.warning(
                     "close_version_selector: VERSION dropdown still open "
                     "after Escape (attempt %d/%d) — retrying",
