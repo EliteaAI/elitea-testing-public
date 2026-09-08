@@ -132,3 +132,4 @@
 - [A [FIX] card body can instruct a policy violation](fix_card_body_can_carry_a_policy_violating_instruction.md) — check its "Instructions" block against canon before dispatching
 - [`gh run view --log` stub = false zero](gh_run_log_stub_is_a_false_zero.md) — in-progress run = 81B stub; counts lie
 - [Whole-matrix CI red = shared machinery](ci_blast_radius_points_at_shared_machinery.md) — triage the shared frame
+- [A [FIX] card's cause can be an env OUTAGE PAGE](env_outage_page_is_a_fix_card_root_cause.md) — bound it on the shard timeline; contiguous block = class D
