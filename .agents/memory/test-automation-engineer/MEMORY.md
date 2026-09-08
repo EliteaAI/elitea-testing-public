@@ -93,3 +93,6 @@
 - [to_be_enabled() can't close a handler-side gate](react_fresh_props_defeat_to_be_enabled.md) — React delivers FRESHER props; retry the action, local green proves non-regression only
 - [A retry must not collapse its outcomes](a_retry_must_not_collapse_its_outcomes.md) — bare `raise` per branch destroys the diagnosis; message each, name the ticket, `from err`
 - [A CI-failure card is not closed by an automation/base merge](a_ci_failure_card_is_not_closed_by_a_base_merge.md) — GHA runs main; base has no CI
+- [Autouse banner-dismiss races the SPA redirect](autouse_banner_dismiss_races_spa_redirect.md) — unguarded evaluate after a domcontentloaded goto: green local, 10/10 red on DEV
+- [main is NOT a superset of automation/base](main_and_automation_base_have_diverged_badly.md) — planted assert False + tests/unit won't collect; control-run anything red
+- [Same-run correlation = class D shortcut](same_run_correlation_is_a_class_d_triage_shortcut.md) — check sibling [FIX] cards from the same CI run before diffing code

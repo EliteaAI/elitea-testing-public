@@ -5,13 +5,64 @@ wait patterns, screenshot helpers, and navigation methods.
 """
 
 import logging
+from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Locator, Page, expect
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from config import settings
 from .locator_descriptor import LocatorDescriptor
 from utils.actions import action
 
 logger = logging.getLogger("elitea.pages")
+
+#: Lower-cased message fragments Playwright raises when a navigation tears the
+#: JS execution context down while an ``evaluate`` is still in flight.
+#:
+#: Verified against the driver bundle of the **installed** Playwright 1.61.0
+#: (``playwright/driver/package/lib/coreBundle.js``) rather than copied from
+#: folklore — every fragment below is emitted there:
+#:
+#: * ``"Execution context was destroyed, most likely because of a navigation"``
+#:   — ``contextDestroyed(...)`` on frame navigation (lines 23618, 23626) and
+#:   ``rewriteError`` in the CDP/WebKit execution contexts (35107, 43680,
+#:   45271, 47929); also ``"Execution context was destroyed"`` for workers.
+#: * ``"Frame was detached"`` / ``"Navigating frame was detached!"`` — the same
+#:   race when the frame itself goes away mid-call (23573, 23576, _frame.py:176).
+#:
+#: Two variants often cited for this race — ``"Cannot find context with
+#: specified id"`` and ``"Execution context is not available"`` — do **not**
+#: appear anywhere in 1.61.0's bundle (grep: 0 hits), so they are deliberately
+#: NOT tolerated here. Anything not listed propagates unchanged.
+NAVIGATION_RACE_ERROR_FRAGMENTS = (
+    "execution context was destroyed",
+    "frame was detached",
+)
+
+
+def is_navigation_race_error(error: BaseException) -> bool:
+    """Return ``True`` only for Playwright's navigation-race error class.
+
+    A *navigation race* is the specific, benign situation where the page
+    navigated (or the frame detached) while a Playwright call was in flight —
+    the call never ran to completion, but nothing is actually wrong.
+
+    Deliberately narrow: a non-Playwright exception, and any Playwright
+    ``Error`` whose message does not carry one of
+    :data:`NAVIGATION_RACE_ERROR_FRAGMENTS`, returns ``False`` so the caller
+    re-raises it. This is what keeps race tolerance from degenerating into a
+    blanket ``except Exception``.
+
+    Args:
+        error: The exception to classify.
+
+    Returns:
+        ``True`` when *error* is a Playwright error describing a destroyed
+        execution context or a detached frame; ``False`` otherwise.
+    """
+    if not isinstance(error, PlaywrightError):
+        return False
+    message = str(error).lower()
+    return any(fragment in message for fragment in NAVIGATION_RACE_ERROR_FRAGMENTS)
 
 
 class CapturedRequests(list):
@@ -351,17 +402,25 @@ class BasePage:
         from conftest import attach_screenshot
         attach_screenshot(self.page, name, description)
 
-    def dismiss_banner_if_present(self) -> None:
-        """Dismiss the top banner/notification overlay if it exists.
+    #: How long (ms) to let a navigation settle before retrying a banner
+    #: dismissal that lost the race to it. Bounded on purpose: exceeding it is
+    #: not an error, it just means the retry runs without the settle.
+    BANNER_RACE_SETTLE_TIMEOUT = 5000
 
-        The MUI banner overlay (z-index 1200) covers the conversation
-        header area and intercepts pointer events on buttons like
-        "Search conversations".  Clicking its close button removes
-        the overlay from the DOM entirely.
+    def _click_banner_close_button(self) -> bool:
+        """Run the banner-dismissal script once, unguarded.
+
+        Split out of :meth:`dismiss_banner_if_present` purely so the race
+        handler there can invoke the exact same script twice without
+        duplicating it. Raises whatever Playwright raises — all error handling
+        lives in the caller.
+
+        Returns:
+            ``True`` if a banner close button was found and clicked.
         """
         # Use JS to find and click close buttons in high-z-index overlays
         # that sit above the conversation header area.
-        dismissed = self.page.evaluate("""() => {
+        return bool(self.page.evaluate("""() => {
             const btns = document.querySelectorAll('button[aria-label="close"]');
             for (const btn of btns) {
                 // Walk up to check if this button is inside a high-z-index overlay
@@ -376,7 +435,65 @@ class BasePage:
                 }
             }
             return false;
-        }""")
+        }"""))
+
+    def dismiss_banner_if_present(self) -> None:
+        """Dismiss the top banner/notification overlay if it exists.
+
+        The MUI banner overlay (z-index 1200) covers the conversation
+        header area and intercepts pointer events on buttons like
+        "Search conversations".  Clicking its close button removes
+        the overlay from the DOM entirely.
+
+        **This helper is best-effort transit machinery, not an observable.**
+        Nothing asserts on whether a banner was dismissed; it exists so that
+        later clicks are not intercepted. It therefore tolerates ONE class of
+        failure by design — the navigation race
+        (:func:`is_navigation_race_error`): the autouse
+        ``dismiss_banner_after_navigation`` fixture calls this immediately
+        after every ``page.goto``/``page.reload``, and ``BasePage.navigate``
+        returns at ``domcontentloaded``, so on deployed envs the SPA's
+        client-side redirect can destroy the JS execution context while the
+        ``evaluate`` above is still in flight. When that happens this method
+        lets the navigation settle and retries once; if it races again, the
+        dismissal is skipped quietly. A navigation race NEVER fails the caller.
+
+        **Every other error still raises**, unchanged and unswallowed — a
+        broken script, a closed target, a timeout. Race tolerance here is a
+        narrow, message-matched exception, never a blanket ``except``.
+
+        (Root cause of GHA ``UI Tests DEV Stable [main] [all]`` run
+        ``34092431538``, which failed 10/10 jobs across unrelated feature areas
+        on this one unguarded ``evaluate``. Issue #2023.)
+        """
+        try:
+            dismissed = self._click_banner_close_button()
+        except PlaywrightError as error:
+            if not is_navigation_race_error(error):
+                raise
+            logger.debug(
+                "Banner dismissal raced a navigation (%s) — letting it settle and retrying once", error
+            )
+            try:
+                self.page.wait_for_load_state(
+                    "domcontentloaded", timeout=self.BANNER_RACE_SETTLE_TIMEOUT
+                )
+            except PlaywrightTimeoutError:
+                logger.debug(
+                    "Page did not reach domcontentloaded within %dms — retrying the banner "
+                    "dismissal anyway", self.BANNER_RACE_SETTLE_TIMEOUT
+                )
+            try:
+                dismissed = self._click_banner_close_button()
+            except PlaywrightError as retry_error:
+                if not is_navigation_race_error(retry_error):
+                    raise
+                logger.info(
+                    "Skipping banner dismissal — the page navigated again during the retry (%s)",
+                    retry_error,
+                )
+                return
+
         if dismissed:
             self.page.wait_for_timeout(500)
             logger.info("Dismissed banner overlay")
