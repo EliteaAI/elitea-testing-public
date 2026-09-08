@@ -44,3 +44,16 @@ never as a member of the known defect's closed set.
   it reduces to "non-empty". Assert both explicitly.
 - Removing the transit step later is not a standalone deletion: the transit value anchors several
   assertions, so a naive removal is a `NameError`. Name the paired edit in the docstring.
+
+**Totality is what makes a guarded assert safe (reviewer's rule, 2026-09-09).** `if X: assert ...`
+is only acceptable when the guard's FALSE branch is provably covered by the soft assertion it pairs
+with — i.e. the two are *total* over the guard's domain. Here `immediate_src == ""` is exactly the
+state Step 4's soft assertion already flags, so no state escapes unobserved. Without that pairing
+the same code is a bypass wearing a guard's clothes: a silent skip that no one is watching. State
+the totality argument explicitly when you add one, so the reviewer can check it rather than infer it.
+
+**And say so in the failure text.** A guard that skips an assertion makes it very easy for an
+aggregated `pytest.fail()` summary to claim that check "passed". It did not run. The failure message
+is the artifact a human triages from and carries the same honesty bar as an assertion — name the
+skipped check as *not evaluated*, and why.
+
