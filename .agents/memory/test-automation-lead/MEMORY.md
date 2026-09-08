@@ -133,3 +133,5 @@
 - [`gh run view --log` stub = false zero](gh_run_log_stub_is_a_false_zero.md) — in-progress run = 81B stub; counts lie
 - [Whole-matrix CI red = shared machinery](ci_blast_radius_points_at_shared_machinery.md) — triage the shared frame
 - [A [FIX] card's cause can be an env OUTAGE PAGE](env_outage_page_is_a_fix_card_root_cause.md) — bound it on the shard timeline; contiguous block = class D
+- [`assert '' != ''` = ABSENCE](an_empty_string_on_both_sides_of_an_assert_means_absence.md) — read the reader, not the subject
+- [A repair's re-anchoring drops a cross-check](sanctioned_red_repair_must_name_the_link_it_reanchors.md) — the defect fix won't restore it

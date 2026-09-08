@@ -5,7 +5,7 @@ type: feedback
 aliases: [sanctioned red back-write, blocked-on-#N, automation_known_defect, TMS status for a red test]
 tags: [area/tms, type/convention]
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-09-09
 ---
 
 ## The apparent contradiction
@@ -49,4 +49,27 @@ bullet cites and read its file.** A merged precedent settles it faster and more
 honestly than a `question` card, and parking a delivery on paperwork is the
 expensive error.
 
-Related: [[../../../.agents/testing.md]]
+## ⚠️ CONTESTED — this entry describes only ONE of two live shapes (2026-09-09)
+
+Surveyed the whole TMS on 2026-09-09 (ELITEA-1899 / #2051): **the factory has been
+recording sanctioned-RED two contradictory ways.**
+
+| Shape | Cases |
+|---|---|
+| `ready`/`automated` + `automation_known_defect` (this entry) | 5 — ELITEA-2212, 2213, 2214, 2421, 2427 |
+| `draft`/`manual` + `sanctioned_red` ([[sanctioned_red_is_never_back_written_automated]]) | 3 — ELITEA-2243, 2289, 2291 |
+
+**On ELITEA-1899 I used the `draft`/`manual` shape**, because `.agents/testing.md`
+§ Merge gate says "never `automated`" without a carve-out, and
+`.agents/role-overrides.md` § Precedent is not authority means 5 merged examples are
+precedent, not a ruling — *including* ELITEA-2421, which this entry cites as decisive.
+That citation is the weak point of the reasoning above: it treats a merged case as
+settling canon, which is exactly what the override rule forbids.
+
+Unresolved hazard worth knowing either way: the `draft` shape **re-arms the intake
+selector** (`tags: automated:UI:regression` + `status: draft`) and is saved only by
+the `[Automate][ELITEA-<id>]` dedup rule. Full survey + recommendation posted on the
+existing open `question` card **#613**. Do not pick a shape from this entry alone
+until #613 is answered — read both entries and #613.
+
+Related: [[sanctioned_red_is_never_back_written_automated]] · [[../../../.agents/testing.md]]
