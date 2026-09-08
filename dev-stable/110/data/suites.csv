@@ -1,0 +1,490 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Tue Sep 08 15:41:01 UTC 2026","Tue Sep 08 15:41:28 UTC 2026","27223","tests.ui.agents","test_agent_with_github_toolkit","TestChatWithAgentToolkit","","","test_agent_chat_with_github_toolkit","Add toolkit to agent, chat via /chat, verify toolkit execution."
+"passed","Tue Sep 08 15:39:17 UTC 2026","Tue Sep 08 15:39:52 UTC 2026","35043","tests.ui.skills","test_skill_test_panel_version_instructions","TestSkillTestPanelVersionInstructions","","","test_test_panel_uses_selected_skill_version_instructions","Switching the VERSION selector changes which version's instructions
+        the test panel's AI response reflects — v1 (""Always say V1"") vs
+        base (""Always say BASE"") for the identical prompt."
+"passed","Tue Sep 08 15:35:04 UTC 2026","Tue Sep 08 15:35:17 UTC 2026","12931","tests.ui.skills","test_skill_copy_link","TestSkillCopyLink","","","test_copy_link_copies_valid_url_to_correct_skill_and_version","The VERSION-group ""Share"" action copies a URL containing the
+        version id as a distinct path segment (contrasted against the
+        SKILL-group ""Share"" action, which omits it); navigating to that URL
+        — even via a fresh tab — opens the correct Skill at the correct
+        named version, with no ""not found"" error."
+"passed","Tue Sep 08 15:35:39 UTC 2026","Tue Sep 08 15:36:05 UTC 2026","26845","tests.ui.agents","test_agent_remove_variable","TestAgentRemoveVariable","","","test_remove_variable_and_verify_removal_persists","Removing a {{variable}} reference from Instructions removes its
+        Variables row immediately (client-side, before Save), and the
+        removal persists after Save + a full-navigation reload, while other
+        variables remain intact."
+"passed","Tue Sep 08 15:30:11 UTC 2026","Tue Sep 08 15:30:46 UTC 2026","35180","tests.ui.skills","test_export_agent_with_attached_skills","TestExportAgentWithAttachedSkills","","","test_export_agent_with_attached_skills","Create a Skill + an Agent, attach the Skill, export the Agent via
+        the actions overflow menu, and verify the downloaded file's raw
+        content embeds the Skill's full content verbatim.
+
+        Steps (AFS test-specs/skills/l3_export-agent-with-attached-skills_ELITEA-1794.md):
+        1. Create a Skill via UI, with a planted unique marker string in its
+           instructions.
+        2. Create an Agent via UI.
+        3. Attach the Skill to the Agent (case precondition).
+        4. Confirm the Agent detail view is open with the Skill attached
+           (already satisfied by step 3).
+        5. Open the agent-actions overflow menu; click ""Export"" (VERSION
+           group); verify a file download is initiated.
+        6. Verify the downloaded file has a `.md`-suffixed name.
+        7. Read the downloaded file's raw content; verify it's a YAML
+           frontmatter + markdown body, with the Skill's name, `base`
+           version, and full instructions (including the marker) embedded
+           verbatim in the `skills:` list.
+        "
+"passed","Tue Sep 08 15:38:26 UTC 2026","Tue Sep 08 15:38:53 UTC 2026","26485","tests.ui.skills","test_skill_test_panel_no_new_conversation","TestSkillTestPanelNoNewConversation","","","test_test_panel_does_not_create_new_chat_conversation","Running a test prompt via the SkillTestPanel must not create a
+        new Chat conversation — verified via network capture, Chat sidebar
+        DOM count, and the Conversations API ground truth."
+"passed","Tue Sep 08 15:30:12 UTC 2026","Tue Sep 08 15:30:19 UTC 2026","6793","tests.ui.chat","test_chat_interface","TestSearchAndErrorHandling","","","test_handle_message_send_failure","TC-CHAT-024: Handle message send failure gracefully."
+"passed","Tue Sep 08 15:42:18 UTC 2026","Tue Sep 08 15:42:33 UTC 2026","14428","tests.ui.agents","test_import_agent_valid_md_file","TestImportAgentValidMdFile","","","test_import_agent_valid_md_file","Import a hand-authored (not app-exported) ``.md`` file and verify
+        the resulting Agent's Name/Description/Instructions/Model all match
+        the source file verbatim.
+
+        Steps (AFS
+        test-specs/agents/l2_import-valid-agent-md-file-correct-config_ELITEA-1901.md):
+        1. Navigate to the Agents dashboard; verify the ``Agents`` header,
+           the Import button, and that the list region settled into a
+           terminal, non-error state (cards OR the ""No agents yet"" empty
+           state). Makes no claim about pre-existing agents — zero is a
+           valid environment (AFS § Environment Independence).
+        2. Click the Import button and select the hand-authored ``.md``
+           fixture; verify the ""Import parameters"" preview dialog opens.
+        3. Verify the dialog shows an entity card for the agent (name
+           matches the fixture verbatim).
+        4. Confirm the dialog's Import button; verify the ""Import Complete""
+           success dialog lists the new agent, backed by a
+           ``201 Created`` on the import_wizard endpoint.
+        5. Click ""Got it""; verify auto-navigation to the new Agent's detail
+           page, then re-open the Agents dashboard and verify a card with
+           the correct name.
+        6. Open the imported agent; verify Name, Description, Instructions,
+           and Model all match the source file verbatim.
+        "
+"passed","Tue Sep 08 15:34:11 UTC 2026","Tue Sep 08 15:34:24 UTC 2026","13687","tests.ui.agents","test_agent_embedded_chat_shift_enter","TestAgentEmbeddedChatShiftEnter","","","test_shift_enter_new_line_enter_sends","Shift+Enter inserts a newline without sending; Enter submits the
+        accumulated multi-line message and triggers a response."
+"passed","Tue Sep 08 15:39:09 UTC 2026","Tue Sep 08 15:39:26 UTC 2026","16179","tests.ui.chat","test_pin_conversation","TestPinConversationViaPinOnTop","","","test_pin_conversation_via_pin_on_top","Pin a conversation via the context menu's ""Pin on top"" item.
+
+        Steps (AFS
+        test-specs/chat-interface/l3_pin-conversation-via-pin-on-top_ELITEA-2149.md):
+        1. Hover conv_target, click its 3-dot menu; verify the item label
+           reads ""Pin on top"" before clicking it.
+        2. Verify the conversation moved to the pinned section: still
+           resolves to exactly 1 element, ``data-pinned=""true""``,
+           bounding-box Y above the ""Today"" heading.
+        3. Verify a pin icon renders inside the pinned conversation (0->1
+           transition — captured before/after the click).
+        4. Verify conv_target is no longer in its original (""Today"") date
+           group.
+        5. Verify panel order: pinned conversation renders above the
+           unpinned conversation list (2-tier live check per AFS
+           Automation Hints option (a); the full 4-tier order — pinned
+           folders, pinned conversations, unpinned folders, unpinned
+           conversations — is source-confirmed via Conversations.jsx's
+           literal render order, not independently re-derived live here
+           since this case's own steps produce zero pinned folders to
+           compare against).
+        "
+"passed","Tue Sep 08 15:40:45 UTC 2026","Tue Sep 08 15:40:59 UTC 2026","14351","tests.ui.agents","test_agent_with_github_toolkit","TestRemoveToolkitFromAgent","","","test_remove_toolkit_from_agent","Add a toolkit, then remove it, and verify it's gone."
+"passed","Tue Sep 08 15:29:54 UTC 2026","Tue Sep 08 15:30:01 UTC 2026","7559","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_visible_and_updates","Character counter appears when typing and updates in real-time.
+        TC-1685
+        Acceptance Criteria #1 (extended to Conversation Starters).
+
+        Note: Counter only appears after typing, not initially.
+        "
+"passed","Tue Sep 08 15:28:22 UTC 2026","Tue Sep 08 15:28:33 UTC 2026","11237","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_send_text_message","TC-CHAT-003, TC-CHAT-004: Send message and verify history."
+"passed","Tue Sep 08 15:43:41 UTC 2026","Tue Sep 08 15:44:12 UTC 2026","31254","tests.ui.agents","test_mcp_attach_via_tools_section","TestMcpAttachViaToolsSection","","","test_mcp_attach_via_tools_section","Attach a Remote MCP to an agent, verify persistence across reload,
+        then remove it and verify removal persists too.
+
+        Steps (AFS test-specs/agents/l3_mcp-attach-via-tools-section_ELITEA-1950.md):
+        1. Navigate to the agent detail page.
+        2. Verify the Tools section is expanded.
+        3. Verify the Toolkit/MCP add buttons are visible (live-accurate
+           equivalent of the case's ""tool type tabs"" — see module docstring).
+        4. Click ""+ MCP""; the shared popper opens with search + menu items.
+        5. Select the target MCP by name.
+        6. Verify the MCP appears as a card in the Tools section.
+        7. Verify the attach auto-saves (PATCH .../tool/prompt_lib/... -> 201;
+           no separate agent-level Save step exists for this flow).
+        8. Reload; verify the MCP is still attached.
+        9. Remove the MCP; confirm the ""Remove MCP?"" dialog; verify it's gone,
+           including after a fresh reload.
+
+        Args:
+            page: Playwright page fixture.
+            agent_id: Fresh agent created by fixture (auto-cleanup).
+            mcp_toolkit_with_tools: Fresh MCP toolkit created by fixture (auto-cleanup).
+        "
+"passed","Tue Sep 08 15:29:50 UTC 2026","Tue Sep 08 15:29:57 UTC 2026","6677","tests.ui.chat","test_chat_interface","TestSidebarNavigation","","","test_open_close_sidebar","TC-CHAT-021: Open/close sidebar drawer."
+"passed","Tue Sep 08 15:28:01 UTC 2026","Tue Sep 08 15:30:10 UTC 2026","129537","tests.ui.skills","test_agent_max_five_skills_limit","TestAgentMaxFiveSkillsLimit","","","test_max_five_skills_attach_limit","Create 6 Skills + an Agent, attach 5 of the Skills one at a time,
+        verify the add-skill control disables at 5/5 with a tooltip (rather
+        than a literal 6th-click rejection), and verify persistence via a
+        full page reload.
+
+        Steps (AFS test-specs/skills/lp1_max-5-skills-per-agent_ELITEA-1790.md):
+        1. Create 6 distinct Skills via the UI, under run-unique names — the
+           first 5 are the attach set, the 6th is never attached and backs
+           Step 9's ""no 6th attach"" assertions. The case's own Test Data
+           table instructs the test to create 6, so the precondition is
+           owned by the test rather than borrowed from pre-existing project
+           data.
+        1b. Confirm all 6 created Skills read back from the project.
+        2. Create an Agent.
+        3. Skills section starts at 0/5, add-skill control enabled.
+        4-8. Attach Skills 1-5 one at a time; counter increments ""N/5 skills
+           added."" and a card renders after each attach.
+        9. Add-skill control becomes disabled the instant 5/5 is reached,
+           with an accessible tooltip — a 6th skill cannot be attached.
+        10. Confirm persistence via a full page reload (attach is
+           auto-saved via API; no explicit agent-level Save is available).
+        "
+"passed","Tue Sep 08 15:35:48 UTC 2026","Tue Sep 08 15:36:28 UTC 2026","39923","tests.ui.skills","test_skill_export_import","TestSkillExportImportNonBaseVersion","","","test_import_skill_non_base_version","Export a skill's ver_1 version, import the file, verify the round trip.
+
+        Steps (see AFS for full detail):
+        1. Create a Skill with base version; note the source skill ID.
+        2. Edit instructions, click ""Save As Version"" → create `ver_1`.
+        3. With `ver_1` selected, export via the overflow menu; verify
+           the downloaded filename embeds the version name.
+        4. Read the exported file; verify frontmatter (incl. `elitea_version`)
+           and instructions body.
+        5. Navigate to Skills list; import the exported file; verify the
+           Import parameters dialog previews the ver_1 content.
+        6. Confirm import; verify navigation + unique new skill ID.
+        7. Verify imported skill's version is `base` and fields match the
+           exported ver_1 content.
+        8. Edit + save the imported skill; verify a clean save.
+        "
+"broken","Tue Sep 08 15:28:02 UTC 2026","Tue Sep 08 15:28:19 UTC 2026","16607","tests.ui.agents","test_agent_back_navigation","","","","test_back_button_from_agent_detail_returns_to_intact_agents_list","Back button on agent detail page returns to Agents dashboard with
+    the list intact (ELITEA-1869).
+
+    Uses agent_id fixture to ensure at least one agent exists.
+    "
+"broken","Tue Sep 08 15:33:04 UTC 2026","Tue Sep 08 15:33:21 UTC 2026","16999","tests.ui.agents","test_agent_create_button_navigation","","","","test_create_button_navigates_to_create_agent_page","Sidebar create-agent button navigates to an empty Create Agent form
+    with Save disabled by default (ELITEA-1870).
+
+    Read-only: no agent is created, edited, or deleted.
+    "
+"passed","Tue Sep 08 15:35:17 UTC 2026","Tue Sep 08 15:35:48 UTC 2026","30340","tests.ui.skills","test_skill_export_import","TestSkillExportImport","","","test_export_and_import_skill_base_version","Export a skill's base version, import the file, verify the round trip.
+
+        Steps (see AFS for full detail):
+        1. Navigate to create-skill form; Save starts disabled.
+        2. Fill name/description/tags/instructions; Save enables.
+        3. Save; note the source skill ID.
+        4. Export the base version via the overflow menu; verify .md download.
+        5. Read the exported file; verify frontmatter + instructions body.
+        6. Navigate to Skills list; click Import; verify file chooser.
+        7. Upload the exported file; verify the Import parameters dialog.
+        8. Confirm import; verify navigation + success toast + new unique ID.
+        9. Verify imported skill's version/name/description/tags/instructions.
+        10. Edit + save the imported skill; verify a clean save.
+        "
+"passed","Tue Sep 08 15:36:23 UTC 2026","Tue Sep 08 15:38:46 UTC 2026","142475","tests.ui.chat","test_image_creation","TestImageCreation","","","test_create_image[minimal_prompt]","Create image from text prompt and verify image appears in response."
+"passed","Tue Sep 08 15:28:54 UTC 2026","Tue Sep 08 15:28:59 UTC 2026","5386","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_model_selector_opens_menu","TC-CHAT-010, TC-CHAT-020: Model selector shows current model and opens menu."
+"passed","Tue Sep 08 15:28:40 UTC 2026","Tue Sep 08 15:28:53 UTC 2026","12810","tests.ui.chat","test_chat_interface","TestMessageActions","","","test_copy_message_to_clipboard","TC-CHAT-008: Copy message to clipboard."
+"passed","Tue Sep 08 15:33:34 UTC 2026","Tue Sep 08 15:36:22 UTC 2026","168386","tests.ui.chat","test_image_creation","TestImageCreation","","","test_create_image[detailed_description]","Create image from text prompt and verify image appears in response."
+"passed","Tue Sep 08 15:28:37 UTC 2026","Tue Sep 08 15:28:42 UTC 2026","5350","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
+
+        Acceptance Criteria #2: Counter turns red when 0 characters remain.
+        "
+"passed","Tue Sep 08 15:30:11 UTC 2026","Tue Sep 08 15:30:48 UTC 2026","36506","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+        "
+"passed","Tue Sep 08 15:29:30 UTC 2026","Tue Sep 08 15:29:36 UTC 2026","5942","tests.ui.chat","test_chat_interface","TestHashSearch","","","test_add_participant_via_hash_search","TC-CHAT-018: Add participant via # search and select option.
+
+        The hash search feature detects '#' via keydown events, so we must
+        use press_sequentially() instead of fill() to trigger it.
+        "
+"passed","Tue Sep 08 15:30:49 UTC 2026","Tue Sep 08 15:30:56 UTC 2026","7492","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_multiple_conversation_starters_have_counters","Each conversation starter field has its own counter.
+        TC-1684
+        "
+"broken","Tue Sep 08 15:39:25 UTC 2026","Tue Sep 08 15:40:06 UTC 2026","40162","tests.ui.agents","test_agent_version_selector_order","TestAgentVersionSelectorOrder","","","test_version_selector_lists_versions_in_correct_order","The VERSION dropdown lists all versions with name + creation-time +
+        author metadata, sorted purely by created_at descending with 'base'
+        always last, and marks the default version with a pin icon whose
+        position is independent of the sort (CLARIFICATIONs #1091 and #1877)."
+"passed","Tue Sep 08 15:29:00 UTC 2026","Tue Sep 08 15:29:15 UTC 2026","14543","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_attach_files_button_sends_file_with_message","TC-CHAT-011: Attach file and send message with attachment."
+"passed","Tue Sep 08 15:37:39 UTC 2026","Tue Sep 08 15:38:26 UTC 2026","46858","tests.ui.skills","test_skill_tag_filter","TestSkillTagFilter","","","test_filter_skills_by_tag","Create 3 skills with shared/unique tags; verify tag-filter narrowing.
+
+        Steps (see AFS for full detail):
+        1. Capture baseline grid state; create Skill A (formatting, output),
+           Skill B (formatting, english), Skill C (translation); verify all
+           3 plus any pre-existing skills are visible with their own tags.
+        2. Filter by `formatting` (shared tag) — verify exactly Skill A and
+           Skill B are shown, Skill C is excluded.
+        3. Clear the filter, then filter by `translation` (unique tag) —
+           verify exactly Skill C is shown.
+        4. Clear the filter, then filter by `output` (unique tag) — verify
+           exactly Skill A is shown.
+        5. Clear the filter — verify the grid is restored to the baseline
+           plus the 3 new skills.
+        "
+"broken","Tue Sep 08 15:31:50 UTC 2026","Tue Sep 08 15:32:07 UTC 2026","16872","tests.ui.skills","test_ghost_skill_after_agent_removed","TestGhostSkillAfterAgentRemoved","","","test_ghost_skill_not_shown_after_agent_participant_removed","Create a skill, attach it to an agent, add the agent as a chat
+        participant, confirm '~mention' shows the skill, dismiss, remove the
+        participant, and confirm the skill no longer appears in '~mention'
+        afterward.
+
+        Steps (AFS test-specs/skills/l3_ghost-skill-not-shown-after-agent-participant-removed_ELITEA-1793.md):
+        1. Create Skill, create Agent, attach the skill to the agent.
+        2. Open Chat, add the agent as a participant.
+        3. Type '~' — the ""Mention skill"" popper lists the attached skill.
+        4. Dismiss the popper with Escape without selecting anything.
+        5. Remove the agent from the chat's participants.
+        6. Type '~' again — the removed agent's skill should NOT be listed.
+        7. Control check: a fresh conversation that never had a participant
+           shows the correct ""No skills attached to this agent"" empty state.
+        "
+"passed","Tue Sep 08 15:27:05 UTC 2026","Tue Sep 08 15:28:00 UTC 2026","55535","tests.ui.skills","test_agent_instructions_tilde_mention","TestTildeMentionListsOnlyAttachedSkills","","","test_tilde_mention_in_instructions_lists_only_attached_skills","Attach 2 of 3 distinct Skills to an Agent, then verify the ""~""
+        mention panel in the Instructions field is scoped to only the
+        attached 2 — the 3rd (unattached) Skill never appears, including
+        on a second, independent ""~"" trigger after clearing the field.
+
+        Steps (AFS test-specs/skills/l3_tilde-mention-lists-only-attached-skills_ELITEA-1791.md):
+        1. Confirm/create 3 distinct Skills (reuse a pre-existing one as
+           Skill A, looked up via API rather than assumed by name — same
+           environment-robustness rule as ELITEA-1790's cleanup note —
+           falling back to creating it fresh if none exists), create an
+           Agent, attach Skill A + Skill B, leave Skill C unattached.
+        2. Click the Instructions field — becomes focused/editable.
+        3-4. Type ""~"" — ""Mention skill"" panel appears, listing exactly
+           Skill A and Skill B; Skill C is asserted absent by exact-name
+           locator (not merely a row count).
+        5. Select Skill A — inserts ""~<skill-name>"" as plain text.
+        6. Select-all + delete, retype ""~"" — same 2-item scoped list
+           reappears; Skill C still absent (re-evaluated live).
+        "
+"passed","Tue Sep 08 15:34:54 UTC 2026","Tue Sep 08 15:35:38 UTC 2026","44154","tests.ui.agents","test_agent_publish_unpublish_version","TestAgentPublishUnpublishVersion","","","test_publish_draft_version_then_unpublish_reverts_to_draft","Publishing a Draft version clones it into a Published version and
+        makes Unpublish available; clicking Unpublish reverts that version's
+        status back to Draft."
+"passed","Tue Sep 08 15:27:00 UTC 2026","Tue Sep 08 15:28:14 UTC 2026","73250","tests.ui.chat","test_agent_with_toolkit_chat","TestAgentWithToolkitInChat","","","test_agent_with_toolkit_executes_in_chat","Create agent with toolkit, add agent as participant in chat, verify toolkit executes.
+
+        The toolkit is attached to the agent (not the conversation directly).
+        This tests the agent-owns-toolkit execution path in real chat (/chat).
+        "
+"passed","Tue Sep 08 15:29:36 UTC 2026","Tue Sep 08 15:29:49 UTC 2026","12936","tests.ui.chat","test_chat_interface","TestContextAndSettings","","","test_edit_context_settings","TC-CHAT-019: Edit context settings."
+"passed","Tue Sep 08 15:34:45 UTC 2026","Tue Sep 08 15:34:54 UTC 2026","8932","tests.ui.agents","test_agent_name_character_limit","","","","test_agent_name_truncated_at_32_characters","Name field truncates input to 32 chars, no error at the limit, Save
+    enables once Description is also filled (ELITEA-1900).
+
+    Read-only: no agent is created, edited, or deleted.
+    "
+"broken","Tue Sep 08 15:36:56 UTC 2026","Tue Sep 08 15:37:16 UTC 2026","19909","tests.ui.agents","test_agent_save_as_version","TestAgentSaveAsVersion","","","test_save_as_version_creates_named_version_visible_in_dropdown","Editing Instructions and clicking Save As Version creates a named
+        version that appears (and is active) in the VERSION dropdown; switching
+        back to 'base' reverts the Instructions field to its original content
+        (ELITEA-1890, Step 8)."
+"passed","Tue Sep 08 15:33:58 UTC 2026","Tue Sep 08 15:34:10 UTC 2026","12098","tests.ui.agents","test_agent_embedded_chat_send_message","TestAgentEmbeddedChatSendMessage","","","test_send_message_via_enter_and_verify_non_empty_response","Typing ""PING"" and pressing Enter yields a non-empty response
+        containing ""PONG"", and clears the chat input."
+"passed","Tue Sep 08 15:30:05 UTC 2026","Tue Sep 08 15:30:11 UTC 2026","5885","tests.ui.chat","test_chat_interface","TestSearchAndErrorHandling","","","test_search_conversations_dialog","TC-CHAT-023: Search conversations."
+"passed","Tue Sep 08 15:26:58 UTC 2026","Tue Sep 08 15:27:18 UTC 2026","20312","tests.ui.agents","test_agent_add_variables_persist_after_reload","TestAgentAddVariablesPersistAfterReload","","","test_add_two_variables_and_verify_they_persist_after_reload","Adding two {{variable}} references to Instructions, entering their
+        values, and saving persists both name+value pairs after a
+        full-navigation reload — asserted via both the DOM and the Save PUT
+        response body."
+"failed","Tue Sep 08 15:29:15 UTC 2026","Tue Sep 08 15:29:22 UTC 2026","6823","tests.ui.chat","test_chat_interface","TestConversationUIElements","","","test_internal_tools_panel_shows_all_tools","TC-CHAT-012: Internal tools panel displays all available tools."
+"passed","Tue Sep 08 15:33:22 UTC 2026","Tue Sep 08 15:34:31 UTC 2026","69672","tests.ui.skills","test_remove_attached_skill_from_agent","TestRemoveAttachedSkillFromAgent","","","test_remove_attached_skill_from_agent","Create two Skills + an Agent, attach both, remove Skill B via the
+        hover-revealed remove control + confirmation dialog, and verify Skill
+        A remains attached while Skill B survives standalone.
+
+        Steps (AFS test-specs/skills/l3_remove-attached-skill-from-agent_ELITEA-1792.md):
+        1. Create Skill A and Skill B via UI.
+        2. Create an Agent.
+        3. Attach both Skills to the Agent (precondition for this case).
+        4. Locate the hover-revealed ""remove skill"" control for Skill B.
+        5. Click it; confirm the ""Remove skill?"" dialog; Skill B is removed
+           from the UI list while Skill A remains.
+        6. Confirm persistence via a full page reload (detach auto-saves via
+           API; no explicit agent-level Save is available for this action).
+        7. Reopen the Agent (same reload satisfies this — no separate
+           close/reopen gesture exists in the live flow); only Skill A is
+           attached.
+        8. Navigate directly to Skill B's detail page and to the Skills list;
+           Skill B still exists standalone (detached, not deleted).
+        "
+"passed","Tue Sep 08 15:37:29 UTC 2026","Tue Sep 08 15:37:38 UTC 2026","9383","tests.ui.skills","test_skill_search","TestSkillSearch","","","test_search_skills_by_name","Search the Skills grid by partial name, exact name, a
+        non-existent name, then clear — verifying the grid's exact visible
+        set at each step (not just presence/absence of one name), so a
+        regression that only breaks the grid while leaving the separate
+        suggestions popover working would be caught.
+        "
+"passed","Tue Sep 08 15:41:29 UTC 2026","Tue Sep 08 15:41:48 UTC 2026","18828","tests.ui.agents","test_build_with_ai_skill_from_agent","TestBuildWithAISkillFromAgent","","","test_build_with_ai_skill_auto_attaches_and_redirects_to_agent","Creating a Skill via Build with AI from an Agent's SKILLS section
+        redirects back to the Agent editor (never the Skill details page),
+        auto-attaches the new Skill once the async attach chain completes,
+        and the attachment persists after Save + reload.
+
+        Steps (AFS
+        test-specs/agents/l2_build-with-ai-skill-from-agent-auto-attaches-and-redirects_ELITEA-1999.md):
+        1. Open the fixture Agent for editing; in the SKILLS section click
+           ""+ Skill"" -> ""Create new""; verify navigation to
+           /skills/create?source_application_id=...&return_url=....
+        2. Click ""Build with AI""; fill the prompt; click Generate; verify
+           the generate-draft POST resolves 200 and the review form shows
+           the generated Name/Description/Instructions.
+        3. Click ""Create Skill""; verify the creation POST resolves 201 and
+           the URL transitions to /agents/all/{agent_id}?..., NOT to a
+           Skill-details URL.
+        4. Verify the user lands on the Agent editor, not the Skill details
+           page.
+        5. Verify the new Skill is automatically attached (async — poll,
+           do not assert immediately, see SKILL_ATTACH_TIMEOUT).
+        6. Save the Agent and reload it; verify the attached Skill is still
+           present and correctly linked.
+        "
+"passed","Tue Sep 08 15:37:17 UTC 2026","Tue Sep 08 15:37:46 UTC 2026","29262","tests.ui.agents","test_agent_save_as_version_preserves_skills","TestAgentSaveAsVersionPreservesSkills","","","test_agent_save_as_version_preserves_skills","Create a Skill + Agent (both via UI), attach the Skill, Save As
+        Version, and verify the Skill is still attached under the new
+        version — confirmed both via the UI and a fresh API response."
+"passed","Tue Sep 08 15:39:53 UTC 2026","Tue Sep 08 15:40:03 UTC 2026","10398","tests.ui.skills","test_skill_version_set_default","TestSkillVersionSetDefault","","","test_version_dropdown_set_default_shows_control_and_confirmation","Version dropdown shows a pin/set-as-default control per row;
+        confirming sets the named version as default and shows a
+        confirmation toast plus a persistent pin-icon/reorder indicator."
+"passed","Tue Sep 08 15:36:29 UTC 2026","Tue Sep 08 15:36:35 UTC 2026","6502","tests.ui.skills","test_skill_export_import","TestSkillImportMissingFrontmatter","","","test_import_skill_missing_frontmatter_shows_validation_error","Upload a .md file missing the required `name` frontmatter key.
+
+        Steps (see AFS for full detail):
+        1. Navigate to Skills list; capture baseline skill count/IDs.
+        2. Click Import, select the fixture file; native file chooser opens.
+        3. Complete the upload; verify NO ""Import parameters"" dialog appears,
+           and an error toast shows a message naming the missing fields.
+        4. Verify no Skill was created (API IDs unchanged) and no
+           `skill_import` network request fired at all.
+        "
+"passed","Tue Sep 08 15:30:02 UTC 2026","Tue Sep 08 15:30:10 UTC 2026","8347","tests.ui.agents","test_agent_character_limits","TestConversationStarterCharacterCounter","","","test_conversation_starter_counter_turns_red_at_limit","Counter turns red with warning message when character limit is reached.
+        TC-1687
+
+        Acceptance Criteria #2.
+        "
+"skipped","Tue Sep 08 15:30:19 UTC 2026","Tue Sep 08 15:30:19 UTC 2026","0","tests.ui.chat","test_context_management","TestContextManagementSettings","","","test_context_budget_reflects_profile_max_tokens[10k_tokens]","Context Budget panel in chat shows the max tokens set in profile.
+
+        Parameterized to verify:
+        - P1 (10,000 tokens): Standard value propagates correctly
+        - P2 (32,000 tokens): Updated value propagates (not cached)
+
+        Cleanup: deletes the created conversation via API.
+        "
+"broken","Tue Sep 08 15:33:01 UTC 2026","Tue Sep 08 15:33:18 UTC 2026","17044","tests.ui.skills","test_import_agent_recreates_skills_with_new_ids","TestImportAgentRecreatesSkillsWithNewIds","","","test_import_agent_recreates_skills_with_new_ids","Export an Agent with an attached Skill, import it, verify a new
+        Skill entity (new unique ID) is created and correctly linked.
+
+        Steps (AFS test-specs/skills/l3_import-agent-recreates-skills-with-new-ids_ELITEA-1795.md):
+        1. (Precondition setup, mirrors ELITEA-1794) Create a Skill + an
+           Agent, attach the Skill, export the Agent via the actions
+           overflow menu.
+        2. Navigate to the Agents list; click ""Import""; verify a native
+           file chooser opens.
+        3. Select the exported file; verify the ""Import parameters""
+           preview dialog previews the embedded Agent + Skill content.
+        4. Confirm the dialog's Import button; verify the ""Import
+           Complete"" success dialog lists 1 agent + 1 skill.
+        5. Click ""Got it""; verify auto-navigation to the new Agent's
+           detail page with a new, distinct Agent ID.
+        6. Verify the imported Agent's Skills section shows the Skill
+           attached (waiting on the async application_skills fetch, not
+           asserting on first paint) and the API response's skill_id is
+           new/unique.
+        7. Navigate to the Skills list; verify two cards share the Skill's
+           name (source + imported); verify the imported Skill's own
+           detail page shows a new ID and verbatim content; verify the
+           source Skill AND the source Agent are both unaffected by the
+           import (Axis 2 additions — import must be purely additive).
+        8. Edit + save the imported Agent; verify a clean save.
+        "
+"passed","Tue Sep 08 15:38:53 UTC 2026","Tue Sep 08 15:39:17 UTC 2026","23545","tests.ui.skills","test_skill_test_panel_response_actions","TestSkillTestPanelResponseActions","","","test_test_panel_response_actions_enabled","Read aloud and Copy to clipboard are enabled and clickable on a
+        completed test-panel response."
+"passed","Tue Sep 08 15:40:07 UTC 2026","Tue Sep 08 15:40:43 UTC 2026","35400","tests.ui.agents","test_agent_with_github_toolkit","TestAddToolkitToAgent","","","test_add_toolkit_to_agent","Add a GitHub toolkit to an existing agent via the UI, then chat."
+"passed","Tue Sep 08 15:38:46 UTC 2026","Tue Sep 08 15:39:09 UTC 2026","23038","tests.ui.chat","test_open_existing_conversation_from_this_week_section","TestOpenExistingConversationFromThisWeekSection","","","test_open_existing_conversation_from_this_week_section","Verify This Week section is collapsed by default and expanding it
+        allows clicking a conversation which displays full history and active input.
+
+        Steps (from AFS):
+        1. Navigate to the Chats page
+        2. Locate the This Week section and verify it is collapsed by default
+        3. Click the This Week section header to expand it
+        4. Click on a conversation from the This Week list
+        5. Verify the message input field is active and ready for input
+        6. Verify the correct model or agent name is displayed in the input bar
+        7. Verify the PARTICIPANTS panel reflects the correct participant
+
+        Setup: Ensure at least one conversation exists in ""This Week"" section.
+        "
+"passed","Tue Sep 08 15:33:25 UTC 2026","Tue Sep 08 15:33:58 UTC 2026","33141","tests.ui.agents","test_agent_embedded_chat_conversation_starter_chips","TestConversationStarterChipsVisibleAndClickable","","","test_conversation_starter_chips_visible_and_clickable","Both configured starters render as chips in the embedded chat
+        before any message, clicking one pre-fills the input (no auto-send,
+        chip row disappears immediately), and explicitly sending it produces
+        a real agent response.
+
+        Step 8's Send is a plain (non-force) click gated on the send POST's own
+        201, and ""the agent responded"" is proven by the
+        `skill-test-last-response` answer element — not by a non-empty text read
+        that the loading placeholder also satisfies. See the module docstring
+        for the full rationale (issue #1812).
+        "
+"passed","Tue Sep 08 15:28:26 UTC 2026","Tue Sep 08 15:28:36 UTC 2026","9112","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_counter_visible_and_updates_realtime","Character counter appears when typing and updates in real-time.
+        TC-1688, TC-1685
+        Acceptance Criteria #1: Real-time character counter visible.
+        "
+"passed","Tue Sep 08 15:29:23 UTC 2026","Tue Sep 08 15:29:29 UTC 2026","5922","tests.ui.chat","test_chat_interface","TestHashSearch","","","test_hash_search_participants","TC-CHAT-017: Use # to search participants."
+"failed","Tue Sep 08 15:34:25 UTC 2026","Tue Sep 08 15:34:43 UTC 2026","18219","tests.ui.agents","test_agent_icon_management","TestAgentIconManagement","","","test_agent_icon_change_persists_on_list_card","Selecting a new icon in the picker updates the header immediately
+        and the identical icon persists on the agent's dashboard card."
+"passed","Tue Sep 08 15:28:20 UTC 2026","Tue Sep 08 15:28:25 UTC 2026","5954","tests.ui.agents","test_agent_build_with_ai_role_visibility","TestAgentBuildWithAIButtonRoleVisibility","","","test_build_with_ai_button_visible_for_admin_role","Magic Wand (""Build with AI"") button is visible, correctly
+        labelled, and functional (opens the generation modal) for the
+        admin-equivalent TEST_USER on the New Agent creation page."
+"passed","Tue Sep 08 15:36:36 UTC 2026","Tue Sep 08 15:36:50 UTC 2026","13798","tests.ui.skills","test_skill_pin_unpin","TestSkillPinUnpin","","","test_skill_pin_moves_to_top_and_unpin_reverts","Pinning a skill (via the detail-page menu) moves it to the top of
+        the list; unpinning (same menu) reverts it."
+"passed","Tue Sep 08 15:34:32 UTC 2026","Tue Sep 08 15:35:04 UTC 2026","32289","tests.ui.skills","test_skill_agent_version_selector","TestAttachSkillToAgentWithVersionSelector","","","test_attach_skill_to_agent_with_version_selector","Create a skill + agent, attach the skill, and verify the version
+        selector shows the default version, opens a real Versions menu, and
+        persists across a full page reload.
+
+        Steps (AFS test-specs/skills/l3_attach-skill-to-agent-with-version-selector_ELITEA-1789.md):
+        1. Create a Skill with a saved `base` version.
+        2. Create an Agent.
+        3. Locate the Skills attachment section (expanded by default).
+        4-5. Attach the Skill; verify the counter updates and the card renders.
+        6. Verify the attached Skill card shows a version selector, and that
+           clicking it (via a correctly-scoped `.version-text` locator, NOT a
+           role-based one) opens a real ""Versions"" menu — hard-asserted
+           functional flow per the AFS (known defect #46 is a handle-quality/
+           accessibility gap, not a flaky functional failure).
+        7. Confirm the default version (`base`) is shown pre-selected, both
+           on the card and as the sole entry in the opened Versions menu.
+        8. Confirm persistence via a full page reload (no explicit
+           agent-level Save is available — attach is auto-saved via API).
+        "
+"skipped","Tue Sep 08 15:30:19 UTC 2026","Tue Sep 08 15:30:19 UTC 2026","0","tests.ui.chat","test_context_management","TestContextManagementSettings","","","test_context_budget_reflects_profile_max_tokens[32k_tokens]","Context Budget panel in chat shows the max tokens set in profile.
+
+        Parameterized to verify:
+        - P1 (10,000 tokens): Standard value propagates correctly
+        - P2 (32,000 tokens): Updated value propagates (not cached)
+
+        Cleanup: deletes the created conversation via API.
+        "
+"passed","Tue Sep 08 15:29:57 UTC 2026","Tue Sep 08 15:30:03 UTC 2026","5577","tests.ui.chat","test_chat_interface","TestSidebarNavigation","","","test_navigate_to_agents_from_sidebar","TC-CHAT-022: Navigate to Agents from sidebar."
+"broken","Tue Sep 08 15:31:53 UTC 2026","Tue Sep 08 15:32:10 UTC 2026","17066","tests.ui.agents","test_agent_copy_version_link","TestAgentCopyVersionLink","","","test_copy_version_link_produces_version_specific_url","The VERSION-group ""Share"" action copies a URL containing the
+        version id as a distinct path segment (contrasted against the
+        AGENT-group ""Share"" action, which omits it); navigating to that URL
+        — even via a fresh tab, through the project-switch redirect hop —
+        opens the correct agent at the correct named version."
+"passed","Tue Sep 08 15:28:34 UTC 2026","Tue Sep 08 15:28:40 UTC 2026","5444","tests.ui.chat","test_chat_interface","TestSendingMessages","","","test_cannot_send_empty_message","TC-CHAT-007: Cannot send empty message."
+"passed","Tue Sep 08 15:29:20 UTC 2026","Tue Sep 08 15:29:52 UTC 2026","32093","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_text_truncated_with_warning","Verify text over limit is truncated to 768 chars with warning message.
+        TC-1686
+
+        Tests both collapsed mode and fullscreen mode.
+        "
+"passed","Tue Sep 08 15:28:44 UTC 2026","Tue Sep 08 15:29:18 UTC 2026","34562","tests.ui.agents","test_agent_character_limits","TestWelcomeMessageCharacterCounter","","","test_welcome_message_fullscreen_counter_and_warning","Fullscreen dialog shows counter that updates and warning at limit.
+        TC-1689, TC-1685
+
+        Acceptance Criteria #1 & #3: Counter visible in Full Screen mode,
+        warning displays at limit.
+        "
+"passed","Tue Sep 08 15:42:33 UTC 2026","Tue Sep 08 15:43:38 UTC 2026","65497","tests.ui.agents","test_import_agent_zip_nested_agent_dependencies","TestImportAgentZipNestedAgentDependencies","","","test_import_agent_zip_nested_agent_dependencies","Export a main Agent with a nested Agent dependency attached
+        (produces a .zip), import it back, and verify both entities are
+        recreated with new IDs and correctly linked.
+
+        Steps (AFS test-specs/agents/l3_import-agent-zip-nested-dependencies_ELITEA-1902.md):
+        1. (Precondition setup) Create a nested Agent, then a main Agent
+           with the nested Agent attached via the ""+ Agent"" picker.
+        2. Export the main Agent via the actions overflow menu; verify a
+           `.zip` file is downloaded.
+        3. Unzip and inspect the archive's contents; verify it contains one
+           `.agent.md` per entity (main + nested), and the main entity's
+           frontmatter references the nested Agent.
+        4. Navigate to Agents list; import the `.zip`; verify the ""Import
+           parameters"" preview dialog opens.
+        5. Verify the import wizard lists entity cards for the main agent
+           AND the nested dependency.
+        6. Confirm the dialog's Import button; verify the ""Import
+           Complete"" success dialog.
+        7. Verify the success dialog lists both new entities (""2 agents"").
+        8. Click ""Got it""; verify the main agent and nested agent are both
+           created with new, distinct IDs and correctly linked (Tools
+           section shows the nested agent attached).
+        "
+"passed","Tue Sep 08 15:28:15 UTC 2026","Tue Sep 08 15:28:21 UTC 2026","6084","tests.ui.chat","test_chat_interface","TestPageLoadAndRendering","","","test_chat_page_loads_with_functional_input","TC-CHAT-001, TC-CHAT-002: Chat page loads with functional message input."
