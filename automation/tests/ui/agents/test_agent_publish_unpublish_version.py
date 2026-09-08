@@ -549,7 +549,7 @@ class TestAgentPublishUnpublishVersion:
                         "'base' should NOT be the active option anymore — it "
                         "was never touched by Publish"
                     )
-                    detail_page.close_versions_menu()
+                    detail_page.close_version_selector()
 
             with allure.step(
                 'Step 7 — Verify "Unpublish" (not "Publish") is now offered '

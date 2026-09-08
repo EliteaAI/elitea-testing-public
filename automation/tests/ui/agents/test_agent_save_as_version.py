@@ -202,7 +202,7 @@ class TestAgentSaveAsVersion:
                 assert not detail_page.is_version_option_active("base"), (
                     "'base' should NOT be the active/selected option anymore"
                 )
-                detail_page.close_versions_menu()
+                detail_page.close_version_selector()
 
             with allure.step(
                 "Step 8 — Switch back to the original 'base' version and "

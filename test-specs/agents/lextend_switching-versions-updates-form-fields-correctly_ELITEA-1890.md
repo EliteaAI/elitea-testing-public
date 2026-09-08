@@ -41,7 +41,7 @@
 - No new test data. The extension reuses the SAME dedicated disposable agent the covering spec already
   creates and tears down (`agent_api.create_agent_full()` at setup, `delete_agent_via_menu()` /
   `agent_api.delete_agent()` at teardown) — appending assertions after the covering spec's existing Step
-  7 (`close_versions_menu()`), before its `finally` cleanup block. No separate agent, no separate
+  7 (`close_version_selector()`), before its `finally` cleanup block. No separate agent, no separate
   fixture.
 - Literal values already established by the covering spec, reused as-is:
   - `BASE_INSTRUCTIONS = "You are a helpful assistant."`
@@ -69,7 +69,7 @@ traceability, not re-implemented). Steps 5-6 are the GAP this extension adds._
    (i.e. the new version's Instructions, confirmed distinct from the base version's).
    - **Verify — PASSES (re-confirmed live this run).**
 5. Switch back to the original version. — **GAP. New step, appended after the covering spec's existing
-   Step 7** (`close_versions_menu()`), before cleanup:
+   Step 7** (`close_version_selector()`), before cleanup:
    ```python
    with allure.step("Step 8 — Switch back to the original 'base' version"):
        detail_page.open_version_selector()
@@ -124,7 +124,7 @@ All handles below are **pre-existing and already declared** on `AgentFormPage`/`
 - `AgentFormPage.get_instructions()` / `instructions_input`
 - `AgentDetailPage.open_save_as_version_dialog()` / `confirm_new_version()` / `save_as_version()`
 - `AgentDetailPage.open_version_selector()`, `VERSION_OPTION` template, `get_version_selector_value()`,
-  `is_version_option_active()`, `close_versions_menu()`
+  `is_version_option_active()`, `close_version_selector()`
 
 **Why the extension doesn't call `select_version_by_name()`.** `AgentDetailPage.select_version_by_name()`
 (added for ELITEA-1892) is the hardened, retry-with-reload version-switch method built to work around
@@ -176,7 +176,7 @@ assertions, 2 via this run's new live verification of the switch-back gap).
   matching the case's own step numbering if the implementer prefers to renumber to match ELITEA-1890's
   6 steps exactly) directly after
   `test_agent_save_as_version.py::TestAgentSaveAsVersion::test_save_as_version_creates_named_version_visible_in_dropdown`'s
-  existing Step 7 (`close_versions_menu()`), inside the same `try` block, before the `finally`. Do **not**
+  existing Step 7 (`close_version_selector()`), inside the same `try` block, before the `finally`. Do **not**
   create a second test method or a second disposable agent for this case — the gap is two assertions on
   data the covering spec already has in scope (`original_instructions`, the same `detail_page`).
 - Consider renaming/re-annotating the test's module docstring and `@allure.issue` reference to note it
@@ -184,3 +184,36 @@ assertions, 2 via this run's new live verification of the switch-back gap).
   are documented (e.g. cite both case links) — implementer's call on exact form, not load-bearing for the
   assertions themselves.
 - No new testid, no new page-object method required (see Handles Reference above).
+
+---
+
+## Adjustment — 2026-09-09 (issue #2052, triage class A: UI drift)
+
+**Trigger.** The covering spec went red on the nightly `UI Tests DEV Stable`
+(GHA run 34244735426, shard `dev-stable-user3-110`) at Step 8, with
+`Locator.click: Timeout 10000ms exceeded` on `agent-version-selector-trigger`:
+the VERSION dropdown from Step 6/7 was still open, and MUI's invisible
+`MuiBackdrop-root` (`id="menu-"`) intercepted every click for the full 10 s.
+
+**What drifted.** EliteaAI/EliteaUI@cf648e9a (PR #857) gave the VERSION dropdown
+a search field. `SingleSelectDropdown.jsx` mounts it as
+`<SimpleSearchBar onKeyDown={e => e.stopPropagation()} />`, and `SimpleSearchBar`
+autofocuses itself and maps Escape to "clear the search box" before calling that
+external handler. So whenever focus sits in that search field, the page-level
+Escape the spec used to close the dropdown is **consumed and stopped** — the MUI
+`Modal` never sees it and the menu stays open. Confirmed live 2026-09-08: from
+that state two consecutive page-level Escapes left `aria-expanded="true"` with
+every option still rendered; one Escape pressed **on an option** closed it, URL
+unchanged.
+
+**Expected-result changes: NONE.** Every assertion, step, count and comparison in
+this AFS is unchanged. Only the mechanism the spec uses to dismiss the dropdown
+changed: `close_versions_menu()` (bare, unconfirmed Escape — still correct for the
+skill card's Versions menu, which has no search field) →
+`AgentDetailPage.close_version_selector()`, which presses Escape on an option and
+then **confirms** closure via the trigger's own `aria-expanded="false"`
+(`agent-version-selector-trigger-combobox`, a pre-existing testid present on
+EliteaUI `main`), raising with the live `aria-expanded` value if it cannot.
+
+**Handles.** No new testid. `agent-version-selector-trigger-combobox` is
+`SingleSelect.jsx:663`'s `SelectDisplayProps` testid — PROVENANCE: `on-main ✓`.

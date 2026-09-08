@@ -307,7 +307,7 @@ class TestAgentVersionSelectorOrder:
                     f"top (EliteaAI/EliteaUI@cf648e9a), got order "
                     f"{order_before_repin!r}"
                 )
-                detail_page.close_versions_menu()
+                detail_page.close_version_selector()
 
             with allure.step(
                 f"Precondition — re-pin {V1_NAME!r} as the agent's default "
@@ -463,7 +463,7 @@ class TestAgentVersionSelectorOrder:
                     "'base' should NOT show the pin icon anymore — the pin "
                     f"moved to {V1_NAME!r}"
                 )
-                detail_page.close_versions_menu()
+                detail_page.close_version_selector()
         finally:
             with allure.step(
                 "Cleanup — delete the dedicated agent (unpublish the "

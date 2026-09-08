@@ -293,3 +293,37 @@ did not block execution — the live behavior was fully observed and is asserted
   `AgentDetailPage.VERSION_OPTION_ANY` constant already excludes it (alongside the nested
   `version-option-pin-icon`); any new consumer must reuse that constant rather than re-deriving the
   prefix selector.
+
+---
+
+## Adjustment — 2026-09-09 (issue #2052, triage class A: UI drift)
+
+**Trigger.** The covering spec went red on the nightly `UI Tests DEV Stable`
+(GHA run 34244735426, shard `dev-stable-user3-110`) at the `re-pin v1-early-draft` precondition, with
+`Locator.click: Timeout 10000ms exceeded` on `agent-version-selector-trigger`:
+the VERSION dropdown left open by the preceding precondition was still open, and MUI's invisible
+`MuiBackdrop-root` (`id="menu-"`) intercepted every click for the full 10 s.
+
+**What drifted.** EliteaAI/EliteaUI@cf648e9a (PR #857) gave the VERSION dropdown
+a search field. `SingleSelectDropdown.jsx` mounts it as
+`<SimpleSearchBar onKeyDown={e => e.stopPropagation()} />`, and `SimpleSearchBar`
+autofocuses itself and maps Escape to "clear the search box" before calling that
+external handler. So whenever focus sits in that search field, the page-level
+Escape the spec used to close the dropdown is **consumed and stopped** — the MUI
+`Modal` never sees it and the menu stays open. Confirmed live 2026-09-08: from
+that state two consecutive page-level Escapes left `aria-expanded="true"` with
+every option still rendered; one Escape pressed **on an option** closed it, URL
+unchanged.
+
+**Expected-result changes: NONE.** Every assertion, step, count and comparison in
+this AFS is unchanged (the version sort order, the pin decoupling, the metadata
+shape). Only the mechanism the spec uses to dismiss the dropdown
+changed: `close_versions_menu()` (bare, unconfirmed Escape — still correct for the
+skill card's Versions menu, which has no search field) →
+`AgentDetailPage.close_version_selector()`, which presses Escape on an option and
+then **confirms** closure via the trigger's own `aria-expanded="false"`
+(`agent-version-selector-trigger-combobox`, a pre-existing testid present on
+EliteaUI `main`), raising with the live `aria-expanded` value if it cannot.
+
+**Handles.** No new testid. `agent-version-selector-trigger-combobox` is
+`SingleSelect.jsx:663`'s `SelectDisplayProps` testid — PROVENANCE: `on-main ✓`.
