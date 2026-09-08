@@ -7,8 +7,17 @@
 - **Environment Explored**: local (`http://localhost:5173`, EliteaAI/EliteaUI `automation/testids`
   → DEV backend), project `Private` / `${ELITEA_PROJECT_ID}`=399
 - **User set**: `${TEST_USER}` (on localhost, `auth_state` fixture skips login via `VITE_DEV_TOKEN`)
-- **Analyst**: qa-engineer (agent), 2026-07-16
-- **Status**: **ready-for-automation** — case executed end-to-end live against a freshly-created
+- **Analyst**: qa-engineer (agent), 2026-07-16 · **repair triage** qa-engineer, 2026-09-09
+- **Status (2026-09-09, CURRENT)**: **ready-for-automation (repair) — sanctioned RED on open bug
+  [#2055](https://github.com/EliteaAI/elitea-testing-public/issues/2055)**. The merged test went red
+  on DEV (GHA run 34244735426, 2026-09-08). Re-executed live on **both** `https://dev.elitea.ai` and
+  `http://localhost:5173`: the failure is a **product regression**, not automation drift and not a
+  promotion gap — the agent header icon no longer updates in place after a picker selection (it only
+  appears after a reload). Steps 1–3 and 5–7 still hold; **step 4's "immediately (no reload)"
+  observable is the defect.** See § 2026-09-09 Repair below for the corrected mechanics, the
+  provenance-verified handles, and the exact changes the implementer owes. The 2026-07-16 body below
+  is preserved as the original analysis record.
+- **Status (2026-07-16, historical)**: **ready-for-automation** — case executed end-to-end live against a freshly-created
   disposable agent. All 7 case steps completed with no blockers, no product defects. Six missing
   testids were discovered absent live and added this run (see EliteaUI Changes below). One
   automation-relevant interaction quirk was discovered and documented (double-click-to-open the
@@ -68,14 +77,21 @@
      response body `{"updated": true}`.
 4. Verify the new icon is shown in the agent header immediately
    - **Verify**: agent header displays the newly selected icon
-   - **OBSERVED**: confirmed via DOM inspection immediately after dialog close —
+   - ⚠️ **RE-OBSERVED 2026-09-09 — NO LONGER TRUE. Open product bug
+     [#2055](https://github.com/EliteaAI/elitea-testing-public/issues/2055).** The `<img>` is never
+     rendered at all after selection (sampled at +0.3/+1.3/+3.3/+7.3/+15.3 s: `hasImg: false` every
+     time; the container still holds the placeholder `<svg>`). It appears only after a page reload.
+     Reproduced on DEV and on localhost. Details + code pointers in § 2026-09-09 Repair.
+   - **OBSERVED 2026-07-16 (historical)**: confirmed via DOM inspection immediately after dialog close —
      `[data-testid="agent-form-icon-button"] img` src updated to the newly selected icon's URL
      (e.g. `https://dev.elitea.ai/app/default_entity_icons/image_1.png`) with no page reload, no
      delay beyond the `PUT` round-trip (~1.2s observed).
 5. Verify the Save button remains disabled (icon change persists independently)
    - **Verify**: the main form's "Save" button remains **disabled** after the icon-only change
-   - **OBSERVED**: confirmed via DOM inspection — `[data-testid="agent-form-save-button"]` has
-     `disabled` attribute = true. The icon change is **already persisted server-side** by the
+   - **OBSERVED**: confirmed via DOM inspection — the Save button has
+     `disabled` attribute = true. *(Handle correction, 2026-09-09: the testid is `agent-save-button`,
+     not `agent-form-save-button` as originally written here — verified absent from EliteaUI `main`
+     and `automation/testids`; `AgentFormPage.save_button` has always used `agent-save-button`.)* The icon change is **already persisted server-side** by the
      `PUT .../upload_icon/...` call triggered on selection (step 3) — the main form's "Save"
      button remains **disabled** after an icon-only change (no other field was modified), because
      the icon field is not part of the formik-tracked draft; it is its own independent,
@@ -278,3 +294,133 @@ project's suspended-draft-PR policy (2026-07-16), this is the terminal step for 
 Verified live: all 6 new testids resolve correctly in the DOM (icon button, dialog, close button,
 default-icon option, indexed default options, and the dashboard card icon) after HMR reload and
 after a full navigation reload.
+
+---
+
+## 2026-09-09 Repair — triage of the DEV red (issue #2051)
+
+**Trigger:** GHA `UI Tests DEV Stable [main]` run 34244735426 (2026-09-08, DEV = dev.elitea.ai):
+
+```
+tests/ui/agents/test_agent_icon_management.py:135: in test_agent_icon_change_persists_on_list_card
+    assert new_src != previous_src, (
+E   AssertionError: Selecting a different icon option should change the header icon src
+E   assert '' != ''
+```
+
+### Verdict — **class B, product regression** (adjust-automated-test § Step 2)
+
+Not automation drift, not data pollution, not a promotion gap. The test reads the observable
+correctly; the product stopped producing it.
+
+| Check | Result |
+|---|---|
+| **DEV reproduction** (throwaway `devenv` plugin; log proves target `Authenticating via API against https://dev.elitea.ai` + `Navigating to https://dev.elitea.ai/app/agents/all/10263?viewMode=owner`) | **RED** — `assert '' != ''`, 39.81 s |
+| **localhost control** (`http://localhost:5173`, log proves `Localhost detected (http://localhost:5173)` + `Navigating to http://localhost:5173/agents/all/10269?viewMode=owner`) | **RED — identical failure**, 23.06 s |
+| Promotion gap (class F) | **No** — every handle the test uses is on EliteaUI `main` (table below, fresh `git fetch origin`) |
+| Data pollution / flake (class D) | **No** — deterministic, fresh disposable agent per run, 4/4 reproductions |
+| Hover / `display:none` hypothesis | **REFUTED** — the `<img>` is *absent from the DOM* (`hasImg: false`), not hidden. `EntityIcon.jsx` renders `EliteAImage` only when `icon?.url` is truthy, so `version_details.meta.icon_meta.url` is still empty in form state. `imageStyle.display: isHovering ? 'none' : undefined` is not involved. |
+
+### Root cause (observed, with code pointers)
+
+Selecting a default icon fires `PUT /api/v2/elitea_core/upload_icon/prompt_lib/399/{versionId}` →
+**200 `{"updated": true}`** — persistence is fine, and the value is present on both the detail header
+and the list card **after a reload**:
+
+```
+AFTER RELOAD: <div data-testid="agent-form-icon-button"><img src="https://dev.elitea.ai/app/default_entity_icons/image_0.png" data-testid="agent-form-icon-img" ...></div>
+LIST CARD:    {"hasImg":true,"src":"https://dev.elitea.ai/app/default_entity_icons/image_0.png"}
+```
+
+What is broken is the **in-place** update path:
+
+- `src/components/SelectIconDialog.jsx` `onClickIcon` — for an **existing** entity (`entityId` set)
+  it calls the `replaceApplicationIcon` mutation and **deliberately does not call `onSelectIcon`**,
+  so nothing writes the new icon into formik from the dialog side.
+- `src/api/applications.js:661-705` `replaceApplicationIcon` — `invalidatesTags: () => []` (no
+  refetch by design) and an **optimistic patch** in `onQueryStarted` that writes
+  `draft.version_details.meta.icon_meta` into the `applicationDetails` RTK cache entry. That patch is
+  the *only* mechanism that can update the header without a reload, and its effect never reaches the
+  form.
+- Consumers that should have carried it: `useApplicationInitialValues.jsx:125` (reads
+  `applicationDetails`), `EditApplication.jsx:121` (`enableReinitialize` Formik),
+  `ApplicationEditForm.jsx:104` (`icon={formik.values?.version_details?.meta?.icon_meta}`).
+
+**Zero console errors** throughout — the failure is silent. Filed as
+**[#2055](https://github.com/EliteaAI/elitea-testing-public/issues/2055)** (sibling of #989, not a
+duplicate). The dialog handler and the optimistic patch are themselves unchanged since before this
+case was automated; the regression window on `main` is EliteaAI/EliteaUI@94a61b81 (EL-6351
+lazy-load on the Agent detail page) and EliteaAI/EliteaUI@cf648e9a (EL-6302 version select) — named
+in the issue as leads, not as a confirmed cause.
+
+### Corrected step mechanics (what the repaired test must do)
+
+Steps 1, 2, 3 (network), 5, 6, 7 are unchanged and still pass. Only the step-4 observable moved.
+
+| AFS step | Corrected mechanics |
+|---|---|
+| 3 — select a different icon | unchanged: `agent-icon-picker-option-{index}` click, dialog closes, `PUT .../upload_icon/...` → 200 asserted as today |
+| 4 — new icon in header **immediately** | **Keep the assertion, make it soft + linked**: `# Known defect: #2055` with the project's `soft_failures`/`pytest.fail()` aggregation (worked example: `tests/ui/chat/test_team_users_mention_and_remove_participants.py:268,587,633`). It must keep asserting the *correct* behaviour so it flips green when the product is fixed. Do NOT delete it, do not soften it to a presence check. |
+| 4b — **new transit step** | `page.reload()` + `detail_page.wait_for_page_load()`, then `get_header_icon_src()` — this now returns the real URL. This is the reference value for steps 5–7. Declared transit: the reload only *reaches* the later steps; the value asserted is still produced by the system. |
+| 5 — Save stays disabled | unchanged (`agent-save-button`, still `disabled` after an icon-only change) |
+| 6–7 — card icon matches | unchanged in intent, but compare the card src against the **post-reload header src** captured in 4b rather than against `select_icon_option()`'s return value (which is now always `""`). |
+
+**No new testid is required for this repair** — every handle already exists on `main`. That is
+deliberate: this test runs against DEV, where a *new* testid would only arrive via a human
+cherry-pick, so a repair that depended on one would trade this red for a different one.
+
+**Page-object note:** `AgentDetailPage.select_icon_option()` currently returns
+`get_header_icon_src()`, which is `""` for the whole defect window. Its return value should stop
+being the source of truth for the expected URL (a docstring update naming #2055 is owed either way).
+`get_header_icon_src()` itself is correct and needs no change — its `except → ""` branch is doing
+exactly what it documents.
+
+### Handles Reference — PROVENANCE verified 2026-09-09 (`cd ../EliteaUI && git fetch origin`)
+
+```
+agent-form-icon-button             main:YES  testids:YES
+agent-form-icon-img                main:YES  testids:YES
+agent-icon-picker-dialog           main:YES  testids:YES
+agent-icon-picker-close-button     main:YES  testids:YES
+agent-icon-picker-default-icon     main:YES  testids:YES
+agent-icon-picker-option-          main:YES  testids:YES
+agent-icon-picker-uploaded-        main:YES  testids:YES
+entity-card                        main:YES  testids:YES
+entity-card-icon                   main:YES  testids:YES
+entity-card-icon-img               main:YES  testids:YES
+agent-information-section          main:YES  testids:YES
+agent-name-input                   main:YES  testids:YES
+agent-save-button                  main:YES  testids:YES
+```
+
+| Element | Testid | PROVENANCE |
+|---|---|---|
+| Agent icon avatar/button (opens picker) | `agent-form-icon-button` | on-main ✓ |
+| Agent header icon `<img>` | `agent-form-icon-img` | on-main ✓ (absent from the DOM while #2055 is open — that IS the defect) |
+| Icon picker dialog | `agent-icon-picker-dialog` | on-main ✓ |
+| Icon picker close (X) | `agent-icon-picker-close-button` | on-main ✓ |
+| "Reset to default" option | `agent-icon-picker-default-icon` | on-main ✓ |
+| Default icon option (dynamic) | `agent-icon-picker-option-{index}` | on-main ✓ |
+| Uploaded icon option (dynamic) | `agent-icon-picker-uploaded-{index}` | on-main ✓ |
+| Agent card (scope) | `entity-card` | on-main ✓ |
+| Agent card icon container | `entity-card-icon` | on-main ✓ |
+| Agent card icon `<img>` | `entity-card-icon-img` | on-main ✓ |
+| Detail-page readiness | `agent-information-section` | on-main ✓ |
+| Name field | `agent-name-input` | on-main ✓ |
+| Save button | `agent-save-button` | on-main ✓ |
+
+### Expected-result changes
+
+**None.** Nothing this case verifies is deleted, weakened, or made conditional. Step 4 keeps
+asserting the *correct* behaviour (header updates without a reload) and stays visible as a
+sanctioned RED linked to open #2055; the added reload is transit that lets steps 5–7 keep proving
+persistence on the list card.
+
+### Environment note (not part of the case)
+
+The first two localhost control attempts failed at step 1 with a blank page — the local Vite dev
+server was 500-ing on `src/[fsd]/shared/lib/utils/jsonBlock.utils.js`
+(`Failed to resolve import "jsonc-parser"`). That dependency arrived with this session's
+`main` → `automation/testids` merge and `npm install` had not been re-run
+(`.agents/workflow.md` § Sync trap). `npm install` in `../EliteaUI` fixed it; the control then ran
+and reproduced the DEV failure. Unrelated to ELITEA-1899.
