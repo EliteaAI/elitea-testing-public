@@ -59,6 +59,15 @@ Verified live 2026-09-08 (localhost, agent VERSION dropdown):
    trivially true — harmless, because the conjunction still needs the `aria-expanded` flip.
    A fire-and-forget close moves the failure to an unrelated later step, which is exactly
    how #2052 reached the nightly instead of the author.
+3. **An early-return guard must test the SAME conjunction as the post-condition — or, better,
+   don't have one.** The trap (caught in review, #2058 round 2): a loop that returns early on
+   `aria-expanded == "false"` alone turns attempt N's `to_have_count(0)` timeout into attempt
+   N+1's **silent success**, so the raise is reachable only on the weaker term and the strong
+   term becomes decorative. Widening the guard to `collapsed and options == 0` fixes the
+   verdict but falls through to `options.first.press("Escape")` in the closing window —
+   pressing into a *detaching* subtree, outside the try. The shape that works: **press only
+   while the state says still-open, otherwise wait; never return except through both waits.**
+   Then the conjunction gates every exit, not just the guarded path.
 
 Worked example: `AgentDetailPage.close_version_selector()` (issue #2052, PR #2058).
 Note `close_versions_menu()` is a DIFFERENT menu (the skill card's Versions menu, no
