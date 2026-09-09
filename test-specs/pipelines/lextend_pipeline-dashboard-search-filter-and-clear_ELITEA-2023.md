@@ -4,115 +4,303 @@
 - **TMS ID**: ELITEA-2023
 - **Linked Story**: none
 - **Priority**: l2
-- **Environment Explored**: local (`http://localhost:5173`, EliteaUI `automation/testids`, DEV backend, project `Private` id 399)
+- **Environment Explored**: local (`http://localhost:5173`, EliteaUI `automation/testids`,
+  DEV backend — the SAME data plane, auth and product build `dev.elitea.ai` serves;
+  project `Private` id 399)
 - **User set**: `${TEST_USER}` (localhost `auth_state` bypass via `VITE_DEV_TOKEN`)
-- **Analyst**: qa-engineer (Sage), batch `elitea-2023-pipeline-dashboard-search`
-- **Status**: extend-existing
+- **Analyst**: qa-engineer (Sage) — original batch
+  `elitea-2023-pipeline-dashboard-search` (2026-08-07); **repair pass 2026-09-10**
+- **Status**: extend-existing (repair amendment — the test is already merged)
+
+---
+
+## ⚠️ REPAIR AMENDMENT — 2026-09-10, board `#2119`, CI run 34331579791 (DEV Stable #114)
+
+**This AFS previously specified an ambient-data precondition. That was the defect.**
+The rest of the document below is the amended spec; this section is the record of
+what changed and why, so nobody re-derives it.
+
+### What failed
+
+`tests/ui/pipelines_2/test_pipeline_management.py::TestSearchPipeline::
+test_search_placeholder_and_dashboard_grid_filters_and_clears`, red in CI with
+`StopIteration` at `test_pipeline_management.py:614`:
+
+```python
+existing_rows = pipeline_api.list_pipelines().get("rows", [])
+non_matching_name = next(
+    row["name"] for row in existing_rows
+    if "yaml" not in row.get("name", "").lower()
+)
+```
+
+The generator was empty. The CI matrix project (`prompt_lib/573`, "Private") holds
+**no pipeline other than the one this test had just created**.
+
+### Root cause — an ambient-data precondition
+
+The test **established** its matching ("YAML") pipeline via `pipeline_api`, but
+**harvested** the non-matching one from whatever the project happened to contain.
+The case's Preconditions section only names the matching pipeline, and the original
+analysis (project 399, 14 ambient pipelines) read the second one as "obviously
+present" rather than as a precondition to establish.
+
+A test that reads shared state it never established passes exactly where that state
+happens to exist. Localhost has 16 pipelines; the CI project has 0 of its own. Same
+product, same build, opposite result — and the failure named the wrong subsystem
+(`StopIteration` in a `next()`, three steps before anything about search is
+asserted).
+
+This is the **identical class** as sibling card `#2118` / ELITEA-2024, repaired in
+`6855dc3f4` (PR #2148) in the same file. `#2118`'s digest entry states the general
+rule this amendment now obeys:
+
+> **Any dashboard-content case MUST establish its own ≥1-entity precondition, never
+> inherit whatever the ambient project holds.**
+
+Both halves of this case's precondition are now established by the test itself.
+
+### What changed in this AFS
+
+| # | Change | Why |
+|---|---|---|
+| 1 | § Test Data: **two** API-created pipelines (matching + non-matching), controlled names, both torn down | the defect — no ambient harvest survives |
+| 2 | § Test Data: **neither description may contain "yaml"** | live-proven: the search matches DESCRIPTION as well as name (§ Live Findings F3) — an ambient-safe name is not enough on its own |
+| 3 | Step 2 → waiting **positive** assertion on `get_card_names(timeout=10000)` containing **both** names | this class of failure now reports **at the precondition**, naming the precondition, instead of at an unrelated assertion later |
+| 4 | Step 5 → `empty_state_title.count() == 0` guard inserted between the positive and the absence assertion | discriminates "a populated grid that excludes the non-match" from "nothing mounted at all" |
+| 5 | Step 7 → migrated from page-wide `pipeline_exists_in_list()` to grid-scoped `get_card_names()` + empty-state guard + `len(restored) > len(filtered)` | the old restore assertion was **not grid-scoped** and did not state that the list actually grew back (§ Vacuity Audit V2) |
+| 6 | Step 3 → visibility assertion added alongside the placeholder read | the case's Step-2 expected result is *"Search textbox is visible"*; the test only read an attribute (§ Vacuity Audit V3) |
+| 7 | Axis-2 console check → `utils.console_errors.collect_console_errors()` | the hand-rolled `page.on("console", …)` shape discards `msg.location`, so this suite's recurring background-noise class arrives anonymous (`.agents/testing.md` § Unconfirmed — standing migration ask, this spec is being touched) |
+| 8 | § Network Behavior **corrected** — filtering is **server-side**, not client-side | the original claim was wrong; see § Live Findings F4 |
+| 9 | § Fidelity Declaration added | the API-created preconditions are transit substitution and must be declared |
+
+**No expected result was dropped or weakened.** Every Coverage-Map row the case
+carries is still asserted, and four of them are asserted more strongly than before.
+
+### Repair-pass live verification (2026-09-10, `http://localhost:5173`)
+
+Executed end-to-end against the live app with two purpose-created probe pipelines
+(`autotest_YAML_search_542cc7` id 10498, `autotest_nomatch_srch_542cc7` id 10499,
+both deleted afterwards — re-query for `542cc7` returned `total: 0`).
+
+| Probe | Observed |
+|---|---|
+| Unfiltered dashboard | `entity-card-name: 16`, `empty-state-title: 0`, both probes at the top (grid sorts `created_at desc`, same as `list_pipelines()`) |
+| Placeholder | exactly `Let's find something amazing!` |
+| Type "YAML", wait 2.5 s (past the 500 ms suggestion debounce), **no Enter** | grid **unchanged at 16** — typing alone does not filter (re-confirms the 2026-08-07 finding) |
+| Press **Enter** | grid narrows to **1** (`autotest_YAML_search_542cc7`), `empty-state-title: 0`; card name split into 3 `<span>`s by the highlighter (confirms the `get_card_names()` rationale) |
+| Click Clear (X) | input empty, grid back to **16**, `empty-state-title: 0`, URL stays `/pipelines/all` |
+| Search `ELITEA-2023` (a token present ONLY in both probes' **descriptions**) | grid = **2** — both probes. **The search matches description.** |
+| Search `zzzz_nonexistent_pipeline_12345` (zero matches) | `entity-card-name: 0`, `empty-state-title: 1` ("No pipelines yet") — the discriminator fires |
+| Clear from that zero-match state | grid restored to 16, stays on `/pipelines/all` — the `#585`/`#551` sibling redirect defect still does **not** reproduce on Pipelines |
+| Console (whole session, `level=error`) | **0 errors** |
+
+---
 
 ## Extension target
 
-**Covering spec**: `automation/tests/ui/pipelines/test_pipeline_management.py`,
-class `TestSearchPipeline` (lines 333–370), merged to `origin/automation/base`
-(commit `7c2d2e5b`, "feat: add allure.step() to all UI tests for better Allure
-reporting").
+**Covering spec**: `automation/tests/ui/pipelines_2/test_pipeline_management.py`,
+class `TestSearchPipeline` — merged; this case's own test
+(`test_search_placeholder_and_dashboard_grid_filters_and_clears`) is merged too and
+is what this amendment repairs.
 
-**Behavioural overlap (what's already proven).** `TestSearchPipeline` already
-covers:
-- `test_search_pipeline_by_name` (lines 338–354) — a fresh pipeline created via
-  `pipeline_api` is discoverable via `PipelinesListPage.search_and_wait_for_results(name)`.
-- `test_search_pipeline_no_results` (lines 356–370) — a nonsense term produces
-  no visible match.
+**Behavioural overlap (what the two older tests already prove).**
+- `test_search_pipeline_by_name` — a fresh `pipeline_api` pipeline is discoverable
+  via `search_and_wait_for_results(name)`.
+- `test_search_pipeline_no_results` — a nonsense term produces no visible match.
 
-**Important caveat the implementer must know** (this is the crux of the gap,
-not a nitpick): `PipelinesListPage.search()` (`automation/pages/
-pipelines_list_page.py:122-131`) only does `search_input.fill(query)` — it
-never presses Enter or clicks the send icon. Per live source read of
-`EliteaUI/src/components/SearchBar.jsx` (shared by Pipelines/Agents/MCP/
-Credentials/Toolkits/Skills dashboards), `onChange` (typing) only updates
-local input state and opens a **suggestions popover** (a real, API-backed
-autocomplete — `SuggestionList.jsx` → `useSearch().getSuggestion()`, debounced
-500ms); the actual filter dispatch that narrows the **dashboard grid**
-(`onSearch()` → redux `actions.setQuery` + `navigateWithTags`) fires **only**
-from `onKeyDown === 'Enter'` or a click on `data-testid="search-send-button"`.
+**The mechanism gap those two do not cover** (still true, re-confirmed 2026-09-10):
+`SearchBar.jsx` (shared by Pipelines/Agents/MCP/Credentials/Toolkits/Skills)
+handles `onChange` (typing) by updating local input state and opening an API-backed
+**suggestions popover** (`SuggestionList.jsx`, 500 ms debounce). The dispatch that
+narrows the **dashboard grid** (`onSearch()` → redux `setQuery` → the applications
+query's `query` param) fires **only** on `onKeyDown === 'Enter'` or a click on
+`data-testid="search-send-button"`. `PipelinesListPage.search()` has since been
+fixed to press Enter (merged), so the two older tests now exercise the real filter
+as well.
 
-So the two existing tests are real and pass, but they exercise the
-**suggestions popover**, not the dashboard-grid filter ELITEA-2023 actually
-asks about (case Step 4: "filtered results show only pipelines containing
-'YAML'" — read in context of the dashboard's card/table grid, confirmed via
-live execution below). This is not a defect (see filed clarification,
-`EliteaAI/elitea-testing-public#1302`) — it is a page-object gap: sibling
-list pages already fixed this correctly (`automation/pages/mcp_list_page.py`
-lines 203–224, `automation/pages/credentials_list_page.py`) — their
-`search()` types, then `press("Enter")`, then waits for network + a settle.
-`PipelinesListPage.search()` predates that fix and needs the same change.
+Case-text drift on this point is already filed as a clarification —
+`EliteaAI/elitea-testing-public#1302`. Not a defect.
+
+---
 
 ## Preconditions
+
 - User is logged in (`auth_state` on localhost).
-- Project `Private` (id `${ELITEA_PROJECT_ID}`) has ≥1 pre-existing pipeline
-  NOT matching "YAML" (satisfied — 10 pre-existing pipelines observed live,
-  none named "YAML*").
-- A pipeline whose name contains "YAML" must exist — **not present in current
-  live data**, so this AFS's own test creates one via `pipeline_api` directly
-  (NOT the generic `pipeline_id` fixture — see Test Data below, name-length
-  reasoning).
+- **Both of the following are established BY THE TEST, via `pipeline_api`. Neither
+  is inherited from the project.**
+  1. A pipeline whose **name contains "YAML"** (the case's own declared
+     precondition).
+  2. A pipeline that provably matches **neither by name nor by description**, used
+     for the "only matching pipelines are shown" / "full list restored" assertions.
+- No assumption whatsoever about how many other pipelines the project holds. The
+  spec is correct on a project holding exactly these two and on one holding
+  hundreds.
+
+---
 
 ## Test Data
 
-### generate-per-test (in test setup, cleaned up in its own teardown)
-- A pipeline named `autotest_YAML_search_<short-suffix>` created via
-  `pipeline_api.create_pipeline(name=..., description=...)` directly (NOT the
-  `pipeline_id` fixture — that fixture derives the name from
-  `f"autotest_{request.node.name}"[:32]`, and a sufficiently descriptive test
-  function name truncates to 32 chars *before* reaching "yaml", losing the
-  match term entirely. Confirmed live: probe pipeline
-  `autotest_YAML_search_probe` (26 chars) created directly, id `8043`,
-  cleaned up via `pipeline_api.delete_pipeline(8043)` after the probe —
-  confirmed 400/"No application found" on re-fetch).
-- Cleanup: `pipeline_api.delete_pipeline(pipeline_id)` in `finally`, same
-  pattern as `TestPipelineIsolation::test_fixture_cleanup_cycle` (lines
-  392–398 of the covering file).
+### generate-per-test (created in the test, deleted in its own `finally`)
+
+Both created with `pipeline_api.create_pipeline(name=..., description=...)`
+directly (**not** the `pipeline_id` fixture: that fixture derives the name from
+`f"autotest_{request.node.name}"[:32]`, and this test's function name truncates to
+32 chars long before reaching anything usable — the match term would be lost).
+
+| Role | Name shape | Constraint |
+|---|---|---|
+| Matching | `autotest_YAML_search_<hex6>` (26 chars) | must contain `YAML`; ≤32 chars (API max) |
+| Non-matching | `autotest_nomatch_srch_<hex6>` (28 chars) | must contain **no** case-insensitive `yaml`, in **name or description**; ≤32 chars |
+
+- **Use ONE `uuid4().hex[:6]` suffix for both**, so a leaked pair from a crashed run
+  is greppable as a unit.
+- **Descriptions must not contain "yaml" either.** Live-proven (§ Live Findings F3):
+  the backend `query` matches description as well as name, so a pipeline with a
+  clean name and a "YAML" description would appear in the filtered grid and break
+  the Step-5 absence assertion. `"ELITEA-2023 dashboard search filter and clear"`
+  is a safe description for both.
+- **Cleanup**: delete BOTH ids in a single `finally`, each guarded so the second
+  delete still runs if the first raises. Same pattern as
+  `TestPipelineIsolation::test_fixture_cleanup_cycle`.
+- **Page-1 visibility is guaranteed, not assumed**: the grid requests
+  `sort_by=created_at&sort_order=desc&limit=20&offset=0`, so the two
+  just-created pipelines are the two newest and are always on the first page.
+
+---
 
 ## Test Steps
 
-1. Navigate to `/pipelines/all` (`PipelinesListPage.navigate()`).
-   - **Verify**: dashboard grid shows the pre-created pipeline(s), including
-     the one whose name contains "YAML".
-2. Verify the search input's placeholder reads exactly `Let's find something
-   amazing!` (case Step 2 — not currently asserted anywhere; only visibility
-   is asserted in `test_pipeline_dashboard_loads`, `test_pipeline_management.py:61-62`).
-3. Type "YAML" into the search input, then press **Enter** (real activation —
-   see Extension target above; NOT the current `search()` method as-is).
-   - **Verify**: search input value is "YAML" (case Step 3).
-4. Verify the dashboard grid, once settled, shows **only** pipeline(s) whose
-   name contains "YAML" — both directions:
-   - the "YAML" pipeline IS visible in the grid
-   - a pipeline that does NOT match (e.g. one of the pre-existing
-     `test-pipeline` / `probe-pipeline` names) is NOT visible in the grid
-   (case Step 4 — the existing covering spec only asserts the first
-   direction, via the suggestions popover, never the second).
-5. Click the search input's Clear (X) icon (`data-testid="search-clear-button"`).
-   - **Verify**: search input is empty (case Step 5).
-6. Verify the dashboard grid is restored to the full, unfiltered list —
-   both the "YAML" pipeline and the previously-hidden non-matching
-   pipeline(s) are visible again, and the URL stays on `/pipelines/all`
-   (case Step 6 — entirely uncovered by the existing spec; no existing test
-   calls `clear_search()` on `PipelinesListPage` at all).
+> Assertion ordering is load-bearing throughout: **a waiting positive assertion
+> first, absence/count guards after.** During the dashboard's loading window (~4 s
+> locally, ~10 s in CI) *both* `entity-card-name` and `empty-state-title` read `0`,
+> so a bare count taken first is as vacuous as the bug this repair closes
+> (`#2118` digest entry, § Dashboard view toggle).
+
+1. **Create both preconditions via the API.**
+   Create the matching and the non-matching pipeline per § Test Data; keep both ids
+   for teardown. Everything from here to the end runs inside the `try` whose
+   `finally` deletes them.
+
+2. **Navigate to `/pipelines/all` and assert the precondition landed.**
+   `PipelinesListPage.navigate()`, then
+   `baseline_names = list_page.get_card_names(timeout=UI_ELEMENT_TIMEOUT)`.
+   - **Verify** (waiting, positive): **both** created names are in `baseline_names`.
+     One assertion per name so the message says which one is missing.
+   - This is the step that must fail if the precondition is not real. `10000 ms`,
+     not `get_card_names()`'s 5 s default — 5 s is exactly what expired in CI.
+   - Keep `baseline_names` for Step 7's diagnostics.
+
+3. **Assert the search textbox is present, visible, and correctly labelled** (case
+   Step 2).
+   - **Verify**: `list_page.search_input.is_visible()` is true.
+   - **Verify**: its `placeholder` attribute equals exactly
+     `Let's find something amazing!`.
+
+4. **Type `YAML` into the search box and press Enter** (`PipelinesListPage.search()`
+   — it presses Enter; typing alone does not filter, § Extension target).
+   - **Verify**: `search_input.input_value() == "YAML"` (case Step 3).
+
+5. **Assert the grid narrowed to matching pipelines only** (case Step 4). In this
+   order:
+   1. `filtered_names = list_page.get_card_names(timeout=UI_ELEMENT_TIMEOUT)`
+      — **Verify** (waiting, positive): the matching name IS in `filtered_names`.
+        This is also what makes 5.2 and 5.3 non-vacuous: it cannot pass on an empty
+        grid.
+   2. **Verify**: `list_page.empty_state_title.count() == 0` — the dashboard is not
+      showing "No pipelines yet". Redundant with 5.1 by construction, kept because
+      it names the actual failure mode when the grid does not render, instead of
+      reporting a missing pipeline (`#2118` precedent).
+   3. **Verify**: the non-matching name is **NOT** in `filtered_names`.
+   - Use `get_card_names()`, never `pipeline_exists_in_list()`, in the filtered
+     state: the active search highlights the matched substring by splitting the card
+     name across nested `<span>` fragments, and Playwright's exact `text="…"` engine
+     does not match the parent's concatenated text in that case (re-confirmed live
+     2026-09-10 — see the `innerHTML` capture in § Live Findings F2).
+   - ⚠️ **Do NOT assert "every visible card name contains yaml".** It looks like the
+     case's wording and it is wrong: the backend matches description too, so a
+     pipeline with a "YAML"-free name and a "YAML" description legitimately appears.
+     Ambient data would make that assertion a false red (§ Live Findings F3).
+
+6. **Click the search Clear (X) icon** (`PipelinesListPage.clear_search()`).
+   - **Verify**: `search_input.input_value() == ""` (case Step 5).
+
+7. **Assert the full list is restored** (case Step 6). In this order:
+   1. `restored_names = list_page.get_card_names(timeout=UI_ELEMENT_TIMEOUT)`
+      — **Verify** (waiting, positive): the matching name IS in `restored_names`.
+   2. **Verify**: the previously-hidden non-matching name IS in `restored_names`.
+      This is the assertion that proves the *filter released* — it was absent from
+      the grid one step ago, by Step 5.3.
+   3. **Verify**: `list_page.empty_state_title.count() == 0`.
+   4. **Verify**: `len(restored_names) > len(filtered_names)` — the grid genuinely
+      grew back rather than merely still containing the match. Include
+      `len(baseline_names)` in the failure message for diagnosis.
+      *Not* `restored_names == baseline_names`: this runs against a shared DEV
+      project, and strict equality would flake on any concurrent create/delete
+      (`#1082` class). `>` is ambient-proof — `restored ⊋ filtered` holds by
+      construction on any project, because the non-match is in one and not the
+      other.
+   5. **Verify**: `urlparse(page.url).path` ends with `/pipelines/all` — no redirect
+      (regression guard for the `#585`/`#551` sibling defect, Axis 2).
+
+8. **Side-channel — no console errors across the whole flow** (Axis 2).
+   Collect with `utils.console_errors.collect_console_errors(page)` registered
+   before Step 2, asserted here. **No URL filter is applied** — this flow performs
+   no project switch, so `#1971` is not expected; if a background-noise message does
+   appear, the helper now records its URL, which is the entire point.
+
+---
 
 ## Expected Results
-- Search input placeholder is exactly `Let's find something amazing!`.
-- Typing alone (no Enter/click) does NOT narrow the dashboard grid — only
-  opens the suggestions popover (informational; not itself asserted by this
-  AFS, already implicitly exercised by the covering spec).
-- After Enter, the grid narrows to exactly the pipeline(s) matching "YAML" —
-  confirmed live: with 1 pipeline named `autotest_YAML_search_probe` among 11
-  total, searching "YAML" + Enter left exactly 1 card in the grid.
-- After Clear, the grid is restored to all pipelines (confirmed live: all 11
-  reappeared, including the ones hidden during the filtered state), and the
-  page stays on `/pipelines/all` — **no redirect to `/pipelines/create`**
-  (see Known Defects — this is a clean negative finding, not a gap).
-- No console errors during type/search/clear (confirmed:
-  `browser_console_messages(level="error")` → 0 errors across the whole
-  live session).
+
+- Search input is visible and its placeholder is exactly
+  `Let's find something amazing!`.
+- Typing alone (no Enter / send-icon click) does **not** narrow the dashboard grid —
+  it only opens the suggestions popover. Informational; not asserted by this AFS.
+- After Enter, the grid narrows: the matching pipeline is present, the non-matching
+  pipeline is gone, and the dashboard is **not** in its empty state.
+- After Clear, the grid is restored: both pipelines are visible again, the card count
+  strictly exceeds the filtered count, and the page stays on `/pipelines/all`.
+- Zero console errors across the flow.
+
+---
+
+## Fidelity Declaration
+
+`.agents/testing.md` § Fidelity policy · `.agents/role-overrides.md` § Analyst slot.
+
+| Substituted | Transit or terminal | Authority / real observable |
+|---|---|---|
+| Both precondition pipelines are created through `pipeline_api.create_pipeline()` instead of the UI create form | **Transit** | The case's Preconditions section states only that the dashboard *contains* a "YAML" pipeline — it does not specify how it got there, and pipeline creation is not this case's subject (ELITEA-2020/2022 own it). Every value this test asserts on — which cards the grid renders after Enter, after Clear, whether the empty state mounts, the input's value and placeholder, the URL — is produced by the live application in response to real typing, a real `Enter` keypress and a real click. Nothing is fabricated, injected, or intercepted. |
+
+No terminal substitution. No `route.fulfill`, no `page.evaluate` state injection, no
+replaced client anywhere in this spec.
+
+---
+
+## Vacuity Audit — could this assertion pass because nothing rendered?
+
+Run against **every** absence/negative assertion in the spec, per the dispatch's
+standing question. `CardList.jsx:40-44` is the reason it must be asked at all:
+
+```js
+const showEmptyOrError = !rest.isLoading && (isError || isEmptyList);
+const showTable = !showEmptyOrError && shouldRenderTable;
+const showCards = !showEmptyOrError && !shouldRenderTable;
+```
+
+An empty list short-circuits **both** render branches, so "no card matched" and "no
+card mounted" are the same DOM.
+
+| # | Assertion | Verdict | Disposition |
+|---|---|---|---|
+| **V1** | Step 5.3 — `non_matching_name not in filtered_names` | **Guarded, but only by ordering.** `get_card_names()` returns `[]` on timeout, so on an empty grid this absence passes trivially — *except* that Step 5.1 reads the SAME `filtered_names` snapshot and requires the match to be in it, so it raises first. The guard is real but implicit and one refactor away from being lost. | Made explicit: `empty_state_title.count() == 0` inserted as 5.2, and the ordering requirement written into the step. |
+| **V2** | Step 7 — the restore assertions | **Was genuinely weak.** The merged code used `pipeline_exists_in_list()`, a **page-wide** `text="{name}"` locator: it is not scoped to the grid, so any occurrence of the name elsewhere in the DOM (a still-open suggestions popover, a toast) satisfies it, and it says nothing about the grid having mounted. It also never stated that the list *grew back*. | Migrated to grid-scoped `get_card_names()` + `empty_state_title.count() == 0` + `len(restored) > len(filtered)`. Both steps now read the same testid-scoped source. |
+| **V3** | Step 3 — the placeholder read | **Not vacuous, but incomplete.** `get_attribute()` auto-waits and raises if the element never resolves, so it cannot pass on nothing. But the case's Step-2 expected result is *"Search textbox is **visible**"*, and an attribute read is satisfied by an element that exists while hidden. | `is_visible()` added; placeholder equality kept. |
+| **V4** | Step 5 — the (rejected) "all visible names contain yaml" universal | **Would have been a false red**, not vacuous. Rejected on evidence — the backend matches description (F3). | Not specced; the trap is documented inline at Step 5 so a future strengthening pass does not re-introduce it. |
+| **V5** | Step 2 — the precondition itself | Previously **absent**: the test navigated and immediately asserted two page-wide text matches, and its real dependency (a second, non-matching pipeline existing) was never asserted at all — it surfaced as `StopIteration` in a `next()` before the browser was even involved. | Waiting positive assertion on both names, at Step 2, naming the precondition in its message. |
+
+---
 
 ## Coverage Map
 
@@ -120,104 +308,177 @@ lines 203–224, `automation/pages/credentials_list_page.py`) — their
 
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
-| 1 Navigate to Pipelines dashboard | Full list loads | step 1 | step 1: grid populated | asserted |
-| 2 Locate search textbox, placeholder "Let's find something amazing!" | Textbox visible | step 2 | step 2: placeholder text equality | asserted |
-| 3 Type "YAML" in the search box | Input populated with "YAML" | step 3 | step 3: input value | asserted |
-| 4 Verify filtered results show only pipelines containing "YAML" | Only matching pipelines shown | step 4 | step 4: match visible AND non-match hidden | asserted |
-| 5 Clear search text | Search field empty | step 5 | step 5: input value empty | asserted |
-| 6 Verify full pipeline list is restored | All pipelines visible again | step 6 | step 6: matching + previously-hidden pipeline both visible, URL unchanged | asserted |
+| Precondition: dashboard contains a pipeline whose name contains "YAML" | present before the search | step 1 + step 2 | step 2: waiting `get_card_names()` membership | asserted (**established, not inherited**) |
+| 1 Navigate to Pipelines dashboard | Full list loads | step 2 | step 2: both created names in the card grid | asserted |
+| 2 Locate search textbox, placeholder "Let's find something amazing!" | Textbox is visible | step 3 | step 3: `is_visible()` **and** placeholder equality | asserted |
+| 3 Type "YAML" in the search box | Input populated with "YAML" | step 4 | step 4: `input_value()` | asserted |
+| 4 Verify filtered results show only pipelines containing "YAML" | Only matching pipelines shown | step 5 | step 5.1 match present · 5.2 not the empty state · 5.3 non-match absent | asserted |
+| 5 Clear search text | Search field is empty | step 6 | step 6: `input_value() == ""` | asserted |
+| 6 Verify full pipeline list is restored | All pipelines visible again | step 7 | step 7.1–7.4: both names back, not the empty state, card count strictly grown | asserted |
 
 **Axis 2 — Analyst additions**
 
-- Console-error check across the whole search/filter/clear flow — *added:
-  silent failures are the worst bugs per skill discipline; zero-cost given
-  the live session was already open.*
-- URL-stays-on-`/pipelines/all`-after-clear assertion — *added: the sibling
-  MCP (`#585`) and Credentials (`#551`) list pages have a confirmed defect
-  where clearing a zero-match search redirects to their `/…/create` page;
-  Pipelines does NOT reproduce this (confirmed live, see Known Defects), but
-  the implementer should assert the URL explicitly so a future regression to
-  the same pattern is caught, not just "some pipelines are visible".*
+- **Console-error check across the whole flow** — *silent failures are the worst
+  bugs; the live session is already open, so it is free. Now URL-annotated via
+  `collect_console_errors()`.*
+- **URL stays on `/pipelines/all` after Clear** — *the sibling MCP (`#585`) and
+  Credentials (`#551`) list pages have a confirmed defect where clearing a
+  zero-match search redirects to their `/…/create` page. Pipelines does not
+  reproduce it (re-verified 2026-09-10 from the zero-match state), so this is a
+  regression guard on a shared component, not a bug reproduction.*
+- **`empty-state-title` absence guards (steps 5.2, 7.3)** — *`CardList.jsx`'s
+  `showEmptyOrError` makes "filtered to nothing" and "rendered nothing"
+  indistinguishable by card count alone; this is the handle that separates them.
+  Same guard the `#2118` repair added to the sibling test.*
+- **`len(restored) > len(filtered)` (step 7.4)** — *"all pipelines are visible
+  again" needs a statement about the list as a whole, not just about two known
+  names; this is the strongest such statement that stays correct on a shared
+  project.*
+
+---
 
 ## Cleanup
-1. `pipeline_api.delete_pipeline(pipeline_id)` for the "YAML"-named pipeline
-   created in Test Data, in a `finally` block (matches
-   `TestPipelineIsolation::test_fixture_cleanup_cycle` pattern already in the
-   covering file).
+
+1. `pipeline_api.delete_pipeline(match_id)` and
+   `pipeline_api.delete_pipeline(nomatch_id)` in a single `finally`, each guarded so
+   the second runs even if the first raises.
+2. Nothing else is mutated — no project settings, no defaults, no shared
+   configuration. Per `.agents/testing.md` § Teardown-guard ordering, there is no
+   flag to set: teardown is unconditional and both ids exist from Step 1, before any
+   assertion can fail.
+
+---
 
 ## Concrete Handles (discovered during exploration)
 
-Locator policy for this project is **testid-only** — see
-`.agents/role-overrides.md` / `.agents/testing.md` § Locator policy. No
-role/label/text ladder; every handle below is a `data-testid`, all
-**already exist and are already wired** in `PipelinesListPage`
-(`automation/pages/pipelines_list_page.py`) — no new testid work needed.
+Locator policy is **testid-only** (`.agents/role-overrides.md` /
+`.agents/testing.md` § Locator policy). Every handle below is a `data-testid` and
+**every one already exists as a `LocatorDescriptor` class field on
+`PipelinesListPage`** — provenance re-verified 2026-09-10 after
+`cd ../EliteaUI && git fetch origin`:
 
-| Element | Testid | LocatorDescriptor (existing) | Provenance |
-|---|---|---|---|
-| Search input | `pipeline-search-input` | `PipelinesListPage.search_input` (line 29) | on-main ✓ (confirmed live: `page.getByTestId('pipeline-search-input')` resolved) |
-| Search clear (X) icon | `search-clear-button` | **not yet a class field** — implementer needs to add `search_clear_button = LocatorDescriptor(testid="search-clear-button")` to `PipelinesListPage` (mirrors `mcp_list_page.py`'s existing `search_clear_button` field) | on-main ✓ (confirmed live via `SearchBar.jsx`: `data-testid="search-clear-button"`, and via click resolving to `page.getByTestId('search-clear-button')`) |
-| Search send icon (alternate activation) | `search-send-button` | not currently used by any Pipelines page-object method; not required for this AFS (Enter is sufficient and is what step 3 uses) | on-main ✓ (`SearchBar.jsx`: `data-testid="search-send-button"`) |
-| Pipelines page header (load proxy) | `pipelines-page-header` | `PipelinesListPage.page_header` (line 36) | on-main ✓ (already used by `wait_for_page_load`) |
-| Pipeline card/row name (grid item) | no testid — the existing `pipeline_exists_in_list(name)` method (`pipelines_list_page.py:104-120`) locates by `page.locator(f'text="{name}"')`, a **legacy raw-text handle inside a page-object method**, tracked tech debt per `.agents/testing.md` § "Existing raw handles in `automation/pages/` are tracked tech debt" — not to be treated as precedent for new code, but also not a step-4/6 blocker (case only needs presence/absence-by-name, and this method already exists and works, confirmed live). Implementer may keep using it as-is; adding a `pipeline-card-name`/`pipeline-row-name` testid is a nice-to-have, not required by this AFS's Coverage Map — flag as a `question`/optional-scope item only if it becomes ambiguous with duplicate pipeline names (this env has 5 identically-named `test-pipeline` items, so absence-checking on a UNIQUE name like the generated "YAML" pipeline avoids the ambiguity entirely). **Implementer amendment (Phase 2, live-verified):** `pipeline_exists_in_list()`'s exact `text="..."` locator does NOT match a card name while the active search is highlighting the matched substring — Card.jsx splits the name into nested `<span>` fragments, and Playwright's exact-text engine does not match the parent's concatenated text in that split-node case (confirmed live: `count()` → `0` against a page state where `el.textContent` was correct). Added `entity_card_name` (`testid="entity-card-name"`, the pre-existing shared Card.jsx testid already used by `AgentsListPage`/`CredentialsListPage`/`McpListPage`) + `get_card_names()` for the **positive step-4 assertion during the filtered/highlighted state**; `pipeline_exists_in_list()` remains correct and is still used for the baseline/absence/restored-list checks (no highlighting present there). See `test-specs/pipelines/_surface.md` § "Pipelines dashboard — Search grid filter/clear" for the full writeup. | pre-existing method + new `entity_card_name`/`get_card_names()` (ELITEA-2023) |
-
-**`PipelinesListPage.search()` needs updating** (not a new locator, a
-behavior fix) to mirror `mcp_list_page.py::search()` (lines 203-224):
-```python
-def search(self, query: str):
-    self.search_input.click()
-    self.search_input.press_sequentially(query, delay=20)
-    self.search_input.press("Enter")
-    self.wait_for_network()
-    self.page.wait_for_timeout(1000)  # confirmed live: ~1-2s settle after Enter
 ```
-This is additive/corrective to an **already-merged** page object — the two
-existing tests (`test_search_pipeline_by_name`, `test_search_pipeline_no_results`)
-keep passing with this change (their assertions don't depend on the grid
-staying unfiltered), and become MORE correct (they now exercise the real
-filter, not just the suggestions popover).
+pipeline-search-input        main:YES  testids:YES
+search-clear-button          main:YES  testids:YES
+entity-card-name             main:YES  testids:YES
+empty-state-title            main:YES  testids:YES
+pipelines-page-header        main:YES  testids:YES
+search-send-button           main:YES  testids:YES
+```
+
+| Element | Testid | `PipelinesListPage` field | PROVENANCE |
+|---|---|---|---|
+| Search input | `pipeline-search-input` | `search_input` | **on-main ✓** (`SearchBar.jsx`; resolved live 2026-09-10) |
+| Search Clear (X) icon | `search-clear-button` | `search_clear_button` | **on-main ✓** (`src/components/SearchBar.jsx:274`; clicked live 2026-09-10) |
+| Card name (collection locator) | `entity-card-name` | `entity_card_name` + `get_card_names()` | **on-main ✓** (shared `Card.jsx`; 16/1/16 counts read live) |
+| Empty-state title | `empty-state-title` | `empty_state_title` | **on-main ✓** (`EmptyStatePage.jsx:49`; read `1` / "No pipelines yet" on a zero-match grid live) |
+| Page header (load proxy) | `pipelines-page-header` | `page_header` | **on-main ✓** (used by `wait_for_page_load()`) |
+| Search send icon | `search-send-button` | — (not used) | **on-main ✓** — alternate activation; Enter is what this spec uses |
+
+**No new testid is required by this repair.** `empty_state_title` — the one handle
+this amendment newly depends on — landed on `automation/base` in `6855dc3f4` (the
+`#2118` repair) and its testid has been on EliteaUI `main` all along, so nothing
+here is gated on a human cherry-pick.
+
+**Pre-existing, out of scope, do not fix here:** `search_input`, `page_header`,
+`table_view_button` and `card_view_button` still carry dead `fallback=` lambdas
+(forbidden in new code per `.claude/rules/page-objects.md`; tracked tech debt
+`#25`/`#42`). Removing them is a safe but unrelated change and must not ride a
+CI-red repair.
+
+---
 
 ## Network Behavior
-- No new XHR observed firing on Enter — filtering appears client-side
-  against an already-fetched pipeline list (same as documented for MCP,
-  `mcp_list_page.py:212-213`). Wait strategy is network-idle + a short
-  settle, not a response predicate.
-- The suggestions popover DOES fire its own XHR while typing (before Enter)
-  — irrelevant to this AFS's assertions, noted for completeness only.
+
+**⚠️ Corrected 2026-09-10 — the previous claim in this AFS ("no new XHR observed
+firing on Enter — filtering appears client-side") was wrong.**
+
+Filtering is **server-side**. `useLoadApplications` passes redux `search.query`
+straight into the applications query. Captured live on Enter:
+
+```
+GET /api/v2/elitea_core/applications/prompt_lib/399?tags=&query=YAML&agents_type=pipeline&limit=1&offset=0                                   200
+GET /api/v2/elitea_core/applications/prompt_lib/399?tags=&sort_by=created_at&sort_order=desc&query=YAML&agents_type=pipeline&limit=20&offset=0  200
+```
+
+and on Clear the same pair with `query=`. The `limit=20` request is the grid; the
+`limit=1` one is the total-count query. Page size is **20**.
+
+The suggestions popover fires its own debounced XHR while typing (before Enter) —
+irrelevant to these assertions, noted so nobody mistakes it for the filter.
+
+### Optional hardening — NOT required by this repair
+
+`PipelinesListPage.search()` and `clear_search()` currently wait with
+`wait_for_network()` (`page.wait_for_load_state("networkidle")`) plus a 1 s settle.
+That is the **`#1847`** mechanism: this app holds a persistent
+`/socket.io/?EIO=4&transport=polling` transport open, which is in direct tension
+with a "500 ms of network silence" wait. Now that the filter is known to be a real
+request, `#1847`'s own prescribed fix is available — wait on the response the caller
+actually needs:
+
+```python
+with self.page.expect_response(
+    lambda r: "/elitea_core/applications/" in r.url
+    and f"query={query}" in r.url
+    and "limit=20" in r.url
+):
+    self.search_input.press("Enter")
+```
+
+Strictly better and faster for the two sibling tests as well. **It is deliberately
+not part of this repair's scope** — the CI red was the data precondition, and
+`search()` has three callers. Raise it separately if it starts costing gate time.
+
+---
 
 ## Known Defects Found During Exploration
-- **None found for Pipelines.** Checked explicitly against the confirmed
-  sibling pattern (`EliteaAI/elitea-testing-public#585` — MCP list, and
-  `#551` — Credentials list: clearing a **zero-match** search redirects to
-  the entity's `/create` page instead of restoring the list). Reproduced the
-  same trigger conditions here (searched "YAML" with zero pre-existing
-  matches → "No pipelines yet" empty state → clicked Clear) and the
-  Pipelines dashboard correctly restored the full list and stayed on
-  `/pipelines/all` — **not reproduced**. No sibling ticket filed; this AFS's
-  step 6 asserts the URL explicitly as a regression guard (Axis 2).
-- **Case-text drift (not a defect)**: filed as clarification
-  `EliteaAI/elitea-testing-public#1302` — the case's Steps 3–4 imply typing
-  alone filters the grid; live product requires Enter or the send-icon click
-  (see Extension target above for the full mechanism).
+
+- **None.** Re-verified 2026-09-10, including the specific sibling pattern:
+  `EliteaAI/elitea-testing-public#585` (MCP list) and `#551` (Credentials list) —
+  clearing a **zero-match** search redirects to the entity's `/create` page. The
+  identical trigger was reproduced here (searched
+  `zzzz_nonexistent_pipeline_12345` → "No pipelines yet" empty state → clicked
+  Clear) and the Pipelines dashboard restored the full 16-card grid and stayed on
+  `/pipelines/all`. **Not reproduced.** Step 7.5 keeps asserting the URL as a
+  regression guard.
+- **Case-text drift (not a defect)** — already filed as clarification
+  `EliteaAI/elitea-testing-public#1302`: the case's Steps 3–4 imply typing alone
+  filters; the product requires Enter or the send-icon click. Same `SearchBar.jsx`
+  mechanism as `#1114` on the Chats surface. Unchanged by this repair.
+- **The CI failure itself is a TEST defect, not a product defect.** Nothing about
+  ELITEA-2023's behaviour has changed; the product behaves identically on the
+  localhost dev server and on the CI project. Only the test's assumption about
+  ambient data differed.
 
 ## Blocked Steps
+
 None.
 
+---
+
 ## Automation Hints
-- Framework: Playwright + pytest (confirmed, matches covering spec).
-- Extend `TestSearchPipeline` in
-  `automation/tests/ui/pipelines/test_pipeline_management.py` with new test
-  method(s) covering steps 2–6 above (e.g.
-  `test_search_placeholder_and_dashboard_grid_filters_and_clears`); don't
-  duplicate the existing two tests' popover-based assertions.
-- Update `PipelinesListPage.search()` per § Concrete Handles above; add
-  `search_clear_button` LocatorDescriptor.
-- Use `pipeline_api.create_pipeline()` directly (not the `pipeline_id`
-  fixture) for the "YAML"-named pipeline, per Test Data reasoning.
-- For absence assertions (non-matching pipeline hidden after filter, and
-  reappearing after clear), pick a pre-existing pipeline name that is
-  reasonably unique in this env's data if possible; if only duplicate
-  names (`test-pipeline` ×5) are available, asserting the VISIBLE COUNT of
-  matches (1, for the unique "YAML" pipeline) plus the total grid count
-  returning to its pre-search value after Clear is an equally valid
-  (and duplicate-name-proof) way to satisfy the same Coverage Map row.
+
+- Framework: Playwright + pytest. The test to repair is
+  `automation/tests/ui/pipelines_2/test_pipeline_management.py::TestSearchPipeline::
+  test_search_placeholder_and_dashboard_grid_filters_and_clears` — **repair in
+  place**, do not add a new test.
+- **Delete the `pipeline_api.list_pipelines()` / `next(...)` harvest entirely.** It
+  is the defect; nothing about it is salvageable.
+- Reuse `PipelinesListPage.empty_state_title` and `get_card_names()` — both already
+  exist (`get_card_names()` from this case's own first pass, `empty_state_title`
+  from `#2118`). Add no page-object fields; add no testids.
+- Pass `timeout=UI_ELEMENT_TIMEOUT` (10 s) to every `get_card_names()` call. The
+  helper's 5 s default is exactly what expired in CI.
+- Update the test docstring: name the repair (board `#2119`, CI run 34331579791),
+  state the transit substitution per § Fidelity Declaration and
+  `.agents/role-overrides.md` § Implementer slot, and keep the existing note
+  explaining why `get_card_names()` is used instead of `pipeline_exists_in_list()`
+  in the filtered state.
+- Every step stays wrapped in `with allure.step("Step N — …"):`.
+- **Gate on localhost** (`http://localhost:5173`) — it is the same DEV data plane,
+  auth and product build that `dev.elitea.ai` serves, and the repair's mechanism is
+  a self-established data precondition plus app-DOM assertions, both environment
+  independent. Do **not** edit `automation/.env.test` (symlink to the shared master
+  file). The repaired spec is by construction correct on a project holding only its
+  own two pipelines, which is precisely the CI condition that broke it.

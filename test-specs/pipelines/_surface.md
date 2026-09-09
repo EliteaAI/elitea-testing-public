@@ -1676,7 +1676,64 @@ source, no such import/usage in `StateModifierNode.jsx`.
   button also exists in the same section (not needed by ELITEA-2020, noted
   for any future case that touches Version ID specifically).
 
-## Dashboard search — typing alone does NOT filter the grid; Enter/send-icon required (confirmed live, 2026-08-07, ELITEA-2023)
+## Dashboard search — typing alone does NOT filter the grid; Enter/send-icon required; the filter is SERVER-SIDE and matches DESCRIPTION too (confirmed live, 2026-08-07, ELITEA-2023; corrected + extended 2026-09-10, `#2119`)
+
+- ⚠️ **The search matches the DESCRIPTION as well as the name** (confirmed live
+  2026-09-10). Probe: two pipelines named `autotest_YAML_search_542cc7` /
+  `autotest_nomatch_srch_542cc7`, both described `"ELITEA-2023 probe ..."`;
+  searching `ELITEA-2023` — a token present in NO pipeline name — returned **both**.
+  Consequences for any dashboard-search case:
+  - a "non-matching" precondition entity must avoid the term in **name AND
+    description**, not just the name;
+  - **never** assert "every visible card name contains `<term>`" — a card can
+    legitimately match on description alone, so that universal is a false-red
+    generator on any project with ambient data. Assert the specific
+    established names instead.
+- ⚠️ **Filtering is SERVER-SIDE, not client-side** — the earlier
+  "no new XHR fires on Enter" note in the ELITEA-2023 AFS was **wrong**
+  (corrected 2026-09-10). `useLoadApplications` feeds redux `search.query`
+  into the applications query. Enter fires TWO requests:
+  ```
+  .../applications/prompt_lib/399?tags=&query=YAML&agents_type=pipeline&limit=1&offset=0        (total count)
+  .../applications/prompt_lib/399?tags=&sort_by=created_at&sort_order=desc&query=YAML&...&limit=20&offset=0   (the grid)
+  ```
+  Clear fires the same pair with `query=`. **Page size is 20**, sorted
+  `created_at desc` — so API-created precondition entities are always on page 1.
+  This means `search()`/`clear_search()`'s `wait_for_network()` (networkidle, the
+  `#1847` socket.io-polling flake mechanism) can be replaced with a response
+  predicate on the `limit=20` request — noted as optional hardening in the AFS,
+  not done (3 callers).
+- **Grid-state discriminators, live-measured 2026-09-10 on project 399 (16 pipelines):**
+
+  | State | `entity-card-name` | `empty-state-title` |
+  |---|---|---|
+  | unfiltered | 16 | 0 |
+  | typed "YAML", 2.5 s, NO Enter | 16 | 0 |
+  | after Enter (1 match) | 1 | 0 |
+  | after Enter on a zero-match term | 0 | **1** ("No pipelines yet") |
+  | after Clear | 16 | 0 |
+
+  So `empty_state_title.count() == 0` is the guard that separates "the grid
+  excluded the non-match" from "nothing mounted" — same `CardList.jsx`
+  `showEmptyOrError` short-circuit documented under § Dashboard view toggle.
+- **Highlight splits the card name into 3 `<span>`s while a search is active**
+  (re-confirmed 2026-09-10:
+  `<span>autotest_</span><span>YAML</span><span>_search_542cc7</span>`), which is
+  why `pipeline_exists_in_list()`'s exact `text="…"` locator fails in the filtered
+  state and `get_card_names()` exists. `pipeline_exists_in_list()` is ALSO
+  page-wide (not grid-scoped), so prefer `get_card_names()` for every grid
+  assertion, filtered or not.
+- ⚠️ **`test_search_placeholder_and_dashboard_grid_filters_and_clears` harvested its
+  non-matching pipeline from ambient project data** and died `StopIteration` in CI
+  run 34331579791 on a project holding only the pipeline it had just created
+  (board `#2119`). Same class as `#2118`. **Establish BOTH sides of a
+  filter/no-filter precondition via `pipeline_api`.** Full repair spec:
+  `test-specs/pipelines/lextend_pipeline-dashboard-search-filter-and-clear_ELITEA-2023.md`.
+- **Clear-from-zero-match is still clean on Pipelines** (re-verified 2026-09-10):
+  the `#585` (MCP) / `#551` (Credentials) redirect-to-`/create` defect does **not**
+  reproduce here — grid restored, URL stayed `/pipelines/all`.
+- Console across the whole type/Enter/clear/zero-match/clear flow: **0 errors**
+  (2026-09-10).
 
 - **`PipelinesListPage.search()` (as merged) never actually filters the
   dashboard grid.** It only does `search_input.fill(query)` — no Enter, no
