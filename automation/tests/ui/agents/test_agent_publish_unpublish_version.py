@@ -102,7 +102,17 @@ pytestmark = [pytest.mark.ui, pytest.mark.agents, pytest.mark.new_verified]
 # ---------------------------------------------------------------------------
 UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
-VALIDATE_TIMEOUT = 30_000  # publish_validate is AI-backed — variable latency
+# publish_validate is AI-backed — the wait budget must cover the LLM's own
+# variable latency, not a typical HTTP round trip. Measured live against
+# https://dev.elitea.ai on 2026-09-09 (n=24, disposable agent seeded exactly
+# as this spec seeds it): min 15.46 s · median 26.82 s · p95 33.76 s ·
+# max 36.88 s, with 6/24 (25%) of samples exceeding 30 s. The previous
+# 30_000 budget therefore sat BELOW the observed p95 and failed ~1 run in 4
+# by construction (issue #2082 — CI run 34331579791 lost all 3 retries to
+# `Timeout 30000ms exceeded while waiting for event "response"`). 90_000 is
+# ~2.4x the observed max: real headroom, while still failing fast enough to
+# be a usable signal if the endpoint genuinely hangs.
+VALIDATE_TIMEOUT = 90_000
 PUBLISH_TIMEOUT = 15_000
 
 VERSION_NAME = "v1-release"
