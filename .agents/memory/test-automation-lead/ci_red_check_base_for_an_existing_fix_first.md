@@ -5,7 +5,7 @@ type: feedback
 aliases: [promotion gap, fix already exists, CI red triage, base ahead of main, unpromoted fix]
 tags: [area/branching, area/ci, type/trap]
 created: 2026-08-28
-updated: 2026-08-28
+updated: 2026-09-09
 ---
 
 ## The check — one command, run it FIRST
@@ -36,6 +36,32 @@ CI never saw it. The whole card was a 4-file port.
 **Tell:** a `[Fix]` card whose symptom exactly matches an older OPEN issue on the
 same test is a promotion gap until proven otherwise. Search the tracker for the
 test name before anything else.
+
+## Check for a staged promotion BEFORE assuming you must port
+
+The port is the *expensive* outcome. Check for the cheap one first — the
+promotion may already be open and merely unmerged:
+
+```bash
+env -u GITHUB_TOKEN gh pr list --repo <repo> --state all --search "<CASE-ID>" \
+  --json number,title,state,baseRefName,mergeCommit
+```
+
+An **OPEN PR with `base=main`** means the repair is already staged and is waiting
+on a *human merge* — there is nothing to build, port, or review. Verify the PR
+head's copy of the test is byte-identical to `automation/base`
+(`diff <(git show origin/<head>:<path>) <(git show origin/automation/base:<path>)`),
+then report the gap and stop. Do not open a second PR.
+
+Worked case 2026-09-09: #2081 (`[FIX][ELITEA-1899]`, agent icon) — the repair was
+merged to `base` **and** PR #2056 to `main` was already open from the previous
+card, #2051. The nightly kept re-filing because #2056 had not merged. Zero code
+changed; the whole card was verification + a closure record.
+
+**Corollary — the duplicate chain is the tell.** A `[FIX]` card that is the
+*second* one for the same test (same assertion, different run id) is almost never
+new work. Find the first card, read its closure record, and check whether what it
+promised has actually landed.
 
 ## Porting discipline
 
