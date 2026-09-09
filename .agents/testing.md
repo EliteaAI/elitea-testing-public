@@ -1021,3 +1021,31 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   now MISS this spec.** Grep by `fullName` and read `statusDetails.message` instead — the
   message is far more informative than the status label ever was, and names explicitly
   whether the outcome is product bug #2011 or explicitly not it.
+- **Full-page gateway 500 — a DEV-outage signature that masquerades as a feature failure, and how
+  to recognise it in 30 seconds (2026-09-09, ELITEA-1740/#2074, fix PR #2088)**: CI run
+  34331579791 (DEV Stable #114) failed `test_skill_tag_filter.py` at
+  `assert list_page.skill_exists_in_list(skill_a_name)` with
+  `'skill-a-ecbe5471' should be visible in the grid after creation` — a message that reads as a
+  Skills-feature defect. The allure failure screenshot said otherwise: Elitea's **branded
+  full-page "500 Internal Server Error / Something went wrong on our end"** page, with
+  "Go to Elitea" / "Go Back" buttons. **That markup exists nowhere in EliteaUI's source** —
+  `git grep "Something went wrong on our end" origin/main -- src/` returns 0 hits, and there is
+  no `public/500.html`. So it is served by a layer IN FRONT of the app (gateway/proxy/CDN) when
+  the origin is erroring: a platform-wide outage signature, never an app-level ErrorBoundary
+  reacting to one failed XHR. Corroboration: 8 of 10 suite jobs failed in that run (sibling
+  `[FIX]` cards #2076–#2084 across chat, toolkits, pipelines, agents, artifacts, agent_hub), and
+  the spec reproduced GREEN 3/3 locally against the same DEV backend minutes later.
+  **The triage shortcut: open the allure screenshot FIRST.** This class costs a full session if
+  you start from the assertion message, because the message names the wrong subsystem — the
+  three skills had all been created successfully seconds earlier, so the backend was provably
+  healthy right up to the navigation.
+  **Why it stayed invisible so long:** `BasePage.navigate()` discarded `page.goto()`'s `Response`
+  and `SkillsListPage.wait_for_page_load()` waited only on a URL regex + networkidle, so a
+  top-level 500 sailed straight through and only surfaced ~64 s later at an unrelated assertion.
+  PR #2088 makes `BasePage.navigate()` return the `Response` and has `SkillsListPage.navigate()`
+  fail fast on a non-`None`, non-OK status with the real HTTP code in the message. **That guard
+  is currently Skills-only — promoting it to every page object is #2089**, and until that lands,
+  every other surface still fails this class slowly and with the wrong subsystem named.
+  ⚠️ Note `--only-rerun` in `pytest.ini` does NOT include `AssertionError`, so this class gets
+  **zero automatic reruns** — a single CI occurrence tells you nothing about determinism, and the
+  correct response is to re-run locally before believing any red of this shape.
