@@ -41,3 +41,23 @@ which is correct on both refs and survives future edits above it.
   (`created_at.rstrip("Z")`) would also have reintroduced the very bug they were blocking on.
 
 Related: [[a_product_change_is_not_a_product_bug]]
+
+## Recurrence 2026-09-09 (#2112 / #2117) — I made this error MYSELF, in a cross-post
+
+Commenting on #2117, I wrote: *"`default_model_name` is at `automation/config.py:278` on `main`
+(your body cites 235 and the AFS cites 278 — worth pinning before anyone edits)."*
+
+Both cited numbers were right; I invented the discrepancy by not naming the ref:
+
+```
+origin/main            → 235:    default_model_name: str = "gpt-5.2"
+origin/automation/base → 278:    default_model_name: str = "gpt-5.2"
+```
+
+`automation/config.py` has drifted **43 lines** between the two long-lived branches. I had read
+`:278` off my working tree (then on `automation/base`) and asserted it of `main`.
+
+**Rule, sharpened: a line number is only a fact when the ref is named in the same sentence.**
+Never cite one read from the working tree while talking about another branch — `git show
+<ref>:<path> | grep -n` costs one command and is the only honest form. Posted a correction on
+#2117 the same session; conflicting numbers in a thread are usually two branches, not an error.

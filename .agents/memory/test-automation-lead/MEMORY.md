@@ -150,3 +150,5 @@
 - [Some specs cannot be gated on localhost](some_specs_cannot_be_gated_on_localhost.md) — publish wizard 400s locally; gate on DEV
 - [Merging is judged by the counterfactual](merging_is_judged_by_the_counterfactual_not_by_gate_color.md) — a pre-existing flake never justifies holding an unrelated verified fix
 - [Display-string rename blast radius](display_string_rename_blast_radius.md) — grep the OLD string suite-wide first
+- [A sibling's "read #N first" can invent a dependency](a_sibling_note_can_invent_a_dependency_the_case_text_dissolves.md) — read the TMS case before accepting a parked-question blocker; a transit value needs no literal at all
+- [A mid-flight lead ruling is an AFS amendment](a_mid_flight_lead_ruling_is_an_afs_amendment.md) — order both in one dispatch; check the shipped diff against the AFS's DEFERRAL sections, greps can't see doc drift
