@@ -11,8 +11,28 @@
 | **Analyst** | qa-engineer, 2026-09-09, live against `http://localhost:5173` (EliteaUI `automation/testids` @ `ebb70618`), backend `dev.elitea.ai`, project **399** |
 | **New testids needed** | **none** — the repair only *removes* a step; every surviving handle is unchanged |
 | **Branch** | `fix/2112-image-creation-default-model` (cut from `origin/main`) |
+| **Amended** | 2026-09-09 by the implementer, fix-round 1, **after** the code shipped — to record a mid-flight lead ruling and two reviewer findings. See § Amendment log. |
 
 ---
+
+## Amendment log
+
+**2026-09-09 — fix-round 1 (docs only; the shipped spec was APPROVED as-is and is unchanged).**
+
+The brief was written before the lead ruled mid-flight that the Step-2 assertion should ship,
+so several sections described a diff that is not the one that landed. Corrected:
+
+| # | Section | Was | Now |
+|---|---|---|---|
+| 1 | Coverage Map Axis 1, row 2 | `partial` — "state not asserted" | `covered`, citing `test_image_creation.py:74` |
+| 2 | § Coverage improvement | "NOT included in the proposed diff" | accepted by lead ruling and **shipped**; records why the cheap branch did not apply |
+| 3 | § Adjustment | no row for the assertion | row added, classified **strengthening** |
+| 4 | § Proposed diff item 2 | snippet lacked the `assert` | matches what shipped |
+| 5 | § Handles Reference | `get_by_role("switch"…)` "not extended" | footprint **is** extended by the new call site; still tech debt, never precedent |
+| 6 | Coverage Map Axis 1, row 3 | `covered` | `partial` — no console-error axis / 400-absence / "Invalid model name" absence check (**pre-existing**, not introduced or widened here) |
+| 7 | § Follow-ups | — | new: `select_model`'s docstring still carries the dead `GPT-5.2` literal → belongs to #2117 |
+
+Nothing in this amendment weakens any assertion or changes what the shipped test verifies.
 
 ## TL;DR
 
@@ -172,7 +192,8 @@ nothing.
 | Delete `chat.select_model("GPT-5.2")` and its `allure.step` block | *how* it reaches — **free to change** | The case has no model-selection step; the deleted step is a test artifact. Removing it makes the test use the default, which is what the case's Step 3 specifies. |
 | Renumber the remaining `allure.step` blocks 1-5 | *how* — free | Structure preserved, one step fewer. |
 | Update module docstring (User Flow, GPT-5.2 references) | doc only | It describes a step that no longer exists. |
-| **Remove the `pytest.skip(FeatureNotAvailableError)`** | see § below — **flagged for lead sign-off** | Defect masking under `.agents/profile.md` § Bug filing. |
+| **Remove the `pytest.skip(FeatureNotAvailableError)`** | see § below — **approved by lead ruling, shipped** | Defect masking under `.agents/profile.md` § Bug filing. |
+| **Add `assert chat.is_image_creation_enabled()` to Step 2** | *what* is verified — **STRENGTHENING** (approved by lead ruling mid-flight, shipped) | The only change in this repair that alters what is verified, and it moves in the permitted direction: it closes an Axis-1 gap against the case's OWN Step-2 expected result *"Image Creation tool is toggled ON"*, which was previously exercised but never asserted. Nothing is weakened, relaxed, or made conditional. Necessary because `ChatPage.enable_image_creation` clicks the switch and immediately presses Escape with no post-click re-read, so calling it proves only that the switch was found and clicked. |
 
 ### Expected-result changes
 
@@ -212,14 +233,35 @@ in this repair that is not strictly required to turn the test green.
 **Recommendation: remove it** (the diff below does). If the lead prefers minimal scope, it
 may be deferred to its own card — but then it should be carded, not left silent.
 
-### Optional coverage improvement — NOT included in the proposed diff
+### Coverage improvement — RAISED AS OPTIONAL, ACCEPTED BY LEAD RULING, SHIPPED
 
-The test currently enables Image Creation but never asserts the toggle's state, so the
-case's Step 2 expected result (*"Image Creation tool is toggled ON"*) is exercised but
-unasserted. `ChatPage.is_image_creation_enabled()` exists. Adding
-`assert chat.is_image_creation_enabled()` would close that Axis-1 gap at the cost of one
-extra menu open/close. Left out of the minimal repair deliberately; raised here so the lead
-can decide.
+_Status at analysis time: proposed and left out of the minimal repair. **Decided mid-flight
+by the lead: implement it. It is in the shipped diff.** This section is amended to record the
+decision rather than the open question._
+
+The test enabled Image Creation but never asserted the toggle's state, so the case's Step 2
+expected result (*"Image Creation tool is toggled ON"*) was exercised but unasserted.
+
+The lead's ruling was conditional — *do the cheapest honest thing*: if
+`ChatPage.enable_image_creation` already verified the switch reached the checked state, add
+nothing. **It does not.** Verified by the implementer at `automation/pages/chat_page.py:3439`:
+it reads `is_checked()` **before** clicking, clicks if needed, then presses Escape — no
+post-click re-read, no wait, no raise. Its only exception, `FeatureNotAvailableError`, comes
+from `open_internal_tools_menu` when the plus-menu button is absent, which is a
+feature-absence signal, not a state check.
+
+So the conditional resolved against the cheap branch and one line was added inside Step 2's
+`allure.step`, using the existing page-object method and **no new handle**:
+
+```python
+assert chat.is_image_creation_enabled(timeout=UI_ELEMENT_TIMEOUT), (
+    "Image Creation tool should be toggled ON after enabling it"
+)
+```
+
+Cost, as predicted: one extra Modules-menu open/close (`is_image_creation_enabled` reopens the
+menu because the preceding Escape removed the switch from the DOM). Measured negligible against
+the ~110-140 s image-generation step — both params passed at 128.67 s total, 0 reruns.
 
 ---
 
@@ -232,10 +274,20 @@ can decide.
 | Pre | At least one shared image model is available as the default | — | Catalog has 8 models, `Anthropic Claude 4.5 Sonnet` is `default: true` | not asserted (environment precondition) | covered-implicitly |
 | Pre | User has access to Chat and ≥1 Agent | — | `conversation_id` fixture creates a conversation via API | fixture | covered |
 | 1 | Open Chat and create a new conversation | Chat input is ready | `navigate_to_chat(conversation_id=…)` | Step 1 | covered |
-| 2 | Enable the Image Creation tool | Tool is toggled ON | `enable_image_creation()` | Step 2 (post-repair) — exercised, **state not asserted** | **partial** — see § Optional coverage improvement |
-| 3 | Send image prompt **using the default image model** | Image displayed; no error, no 400, no "Invalid model name" | default model used (no selection); `send_message` → `wait_for_image_in_response` | Steps 3-5 | covered |
+| 2 | Enable the Image Creation tool | Tool is toggled ON | `enable_image_creation()` | Step 2 — `assert chat.is_image_creation_enabled(...)` at `automation/tests/ui/chat/test_image_creation.py:74` | **covered** |
+| 3 | Send image prompt **using the default image model** | Image displayed; no error, no 400, no "Invalid model name" | default model used (no selection); `send_message` → `wait_for_image_in_response` | Steps 3-5 — image asserted; **no console-error axis, no 400-absence check, no absence assertion on "Invalid model name"** | **partial** — see note below |
 | 4 | Navigate to an Agent, enable Image Creation in its chat panel | Tool ON in Agent context | — | — | **out-of-scope (pre-existing)** |
 | 5 | Send same prompt in Agent chat | Image displayed in Agent chat, no errors | — | — | **out-of-scope (pre-existing)** |
+
+**On row 3's `partial` (added at fix-round 1, reviewer finding).** The spec asserts the
+image, and it transitively covers *"no error that PREVENTS an image"* — `wait_for_image_in_response`
+fails fast if generation never completes. It does **not** cover an error that occurs *alongside* a
+successful image: there is no console-error axis (the spec does not use
+`utils/console_errors.collect_console_errors()`), no assertion that no request returned 400, and no
+absence assertion on the string "Invalid model name". Those are three of the case's own Step-3
+expected results. **This gap is pre-existing** — the repair neither introduced it nor widened it
+(the deleted step asserted none of them either), so it is recorded here rather than fixed under a
+timeout-repair card.
 
 **Pre-existing coverage gap, reported not repaired:** the case has 5 steps covering **both**
 Chat and Agent chat; the automated spec covers Steps 1-3 (Chat) only. The TMS case's
@@ -261,7 +313,7 @@ surviving handle.
 | `[role="menuitem"]:has-text("GPT-5.2")` | `ChatPage.select_model` (line 3685) | raw handle | **DELETED from the executed path** by this repair — the call site goes, the method stays |
 | `plus-menu-button` | `ChatPage.open_internal_tools_menu` | testid | pre-existing, unchanged |
 | `internal-tools-menuitem` | `ChatPage.open_internal_tools_menu` | testid | pre-existing, unchanged |
-| `get_by_role("switch", name="Image creation")` | `ChatPage.enable_image_creation` | raw handle | pre-existing tech debt (#25/#42) — **not touched, not extended** |
+| `get_by_role("switch", name="Image creation")` | `ChatPage.enable_image_creation` **and `ChatPage.is_image_creation_enabled`** | raw handle | pre-existing tech debt (#25/#42) — **not touched** (no edit to `chat_page.py`), but its executed-path footprint **is extended**: the shipped Step-2 assertion adds a second call site through `is_image_creation_enabled`. Recorded as tech debt, **never as precedent** for a new raw handle. See Finding 5 — do **not** "fix" the `Image creation` / `Image Creation` casing into an `exact=True` form; the current case-insensitive substring match is what makes it work. |
 | `img:not([alt="EliteaStage"]):not([class*="avatar"])` | `get_images_in_last_message`, `get_generated_image_src` | raw handle | pre-existing tech debt — not touched |
 
 **Locator policy compliance:** this repair adds **zero** new handles of any kind, so the
@@ -392,6 +444,9 @@ required.** `automation/pages/chat_page.py` is untouched.
 -                )
 +        with allure.step("Step 2 — Enable Image Creation internal tool"):
 +            chat.enable_image_creation(timeout=UI_ELEMENT_TIMEOUT)
++            assert chat.is_image_creation_enabled(timeout=UI_ELEMENT_TIMEOUT), (
++                "Image Creation tool should be toggled ON after enabling it"
++            )
  
 -        with allure.step(f"Step 4 — Send image generation prompt: {prompt[:50]}..."):
 +        with allure.step(f"Step 3 — Send image generation prompt: {prompt[:50]}..."):
@@ -453,3 +508,17 @@ Removing the `except FeatureNotAvailableError` leaves the import unused →
 - Verify with `../.venv/bin/ruff check .` — the repair should be clean.
 - Gate: 3 separate consecutive invocations of **both** node ids on `localhost:5173`
   (see § Environment verdict). Budget ~2-2.5 min per param, so ~5 min per gate run.
+
+---
+
+## Follow-ups — NOT this card's work
+
+Recorded here so they are not lost; each belongs to a different owner.
+
+| # | Finding | Owner | Why not here |
+|---|---|---|---|
+| 1 | **`ChatPage.select_model`'s docstring still carries the dead literal.** `automation/pages/chat_page.py:3672` reads `model_name: Name of the model to select (e.g., "GPT-5.2", "Claude 4.6 Sonnet")` — the exact literal this card is about, sitting in the copy-paste example the next caller reads, so it can seed the same rot again. (Verified 2026-09-09; note the line is **3672**, not 3670 — 3670 is blank.) | **#2117**, which already owns the dead-literal cleanup (it also owns `automation/config.py:235`, `default_model_name = "gpt-5.2"`). Lead to cross-post. | Editing `chat_page.py` is outside this repair's scope and off the preserve-the-nature rail; the reviewer approved the code with `chat_page.py` untouched. |
+| 2 | **Case Steps 4-5 (the Agent-chat half) are unautomated** while the TMS case's `automation_test_id` lists these two params as the case's automation — overstating coverage. | `[Automate]` work, needs its own card. | Pre-existing; a timeout repair does not add coverage. |
+| 3 | **Step 3's error-absence expectations are unasserted** (console-error axis, 400-absence, "Invalid model name" absence) — see Coverage Map Axis 1, row 3. Migrating the spec to `utils/console_errors.collect_console_errors()` would be the natural vehicle. | `[Automate]` / suite-health. | Pre-existing; neither introduced nor widened by this repair. |
+| 4 | **`ChatPage.select_model` is now unreferenced repo-wide** (only a docstring mention remains in the spec). Left in place deliberately — deleting a page-object method has its own blast radius. | suite-health / tech-debt. | Out of scope for a repair card. |
+| 5 | **`enable_image_creation` / `is_image_creation_enabled` still use the raw handle** `get_by_role("switch", name="Image creation")` although the switch carries testid `modules-toggle-image_generation`. | tech-debt (#25/#42). | Real available work, but it is a page-object migration with its own blast radius, not part of a timeout repair. |
