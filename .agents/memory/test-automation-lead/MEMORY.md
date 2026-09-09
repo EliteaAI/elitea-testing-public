@@ -145,3 +145,4 @@
 - [Sibling [FIX] cards from one CI run](sibling_fix_cards_do_not_share_a_root_cause.md) — check the job's own pass/fail spread before inheriting a verdict
 - [Nightly FIX-card traceback is not the failure](nightly_fix_card_traceback_is_not_the_failure.md) — reruns fuse 3 attempts; read per-attempt allure
 - [Local gate can't prove a latency fix](local_gate_cannot_prove_a_latency_fix.md) — localhost proxies the same DEV backend; 3x green proves no regression, not the fix
+- [Count-drift is rarely fixed by bumping the number](hardcoded_count_drift_is_rarely_fixed_by_bumping_the_number.md)
