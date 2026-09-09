@@ -34,6 +34,7 @@ from pages.pipeline_detail_page import PipelineDetailPage
 from pages.pipeline_form_page import PipelineFormPage
 from pages.pipelines_list_page import PipelinesListPage
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from utils.console_errors import collect_console_errors
 
 pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.new_verified]
 
@@ -583,44 +584,92 @@ class TestSearchPipeline:
         above (which exercise the suggestions popover via the old fill-only
         ``search()``), this asserts the actual grid-narrowing filter, which
         activates only on Enter — see ``PipelinesListPage.search()`` docstring.
-        """
-        console_errors = []
-        page.on("console", lambda msg: console_errors.append(msg) if msg.type == "error" else None)
 
-        with allure.step("Step 1 — Create a pipeline whose name contains 'YAML' via API"):
-            yaml_pipeline_name = f"autotest_YAML_search_{uuid.uuid4().hex[:6]}"
-            pipeline = pipeline_api.create_pipeline(
-                name=yaml_pipeline_name,
-                description="ELITEA-2023 dashboard search filter/clear test",
-            )
-            pipeline_id = pipeline["id"]
+        REPAIR 2026-09-10 (board #2119, CI run 34331579791 / DEV Stable #114):
+        the test used to ESTABLISH its matching ("YAML") pipeline via the API
+        but HARVEST the non-matching one out of ambient project state with
+        ``next(row for row in pipeline_api.list_pipelines() ...)``. The CI
+        matrix project holds no pipeline of its own, so the generator was
+        empty and the test died ``StopIteration`` three steps before anything
+        about search was asserted. Both halves of the precondition are now
+        created by the test itself, and Step 2 asserts them on the rendered
+        grid — so this class of failure now reports AT the precondition,
+        naming it. Nothing in the product changed; the spec is correct on a
+        project holding only these two pipelines and on one holding hundreds.
+        (Same class as the sibling ELITEA-2024 repair, board #2118.)
+
+        Fidelity — transit substitution (AFS § Fidelity Declaration): both
+        precondition pipelines are created through ``pipeline_api`` instead of
+        the UI create form, purely so the dashboard has known content to
+        filter. The case's Preconditions section states only that the
+        dashboard *contains* a "YAML" pipeline, not how it got there, and
+        pipeline creation is not this case's subject. Every value asserted on
+        — which cards the grid renders after Enter and after Clear, whether
+        the empty state mounts, the input's value and placeholder, the URL —
+        is produced by the live application in response to real typing, a real
+        Enter keypress and a real click. Nothing is fabricated or injected.
+        """
+        console_errors = collect_console_errors(page)
+
+        # ONE suffix for both, so a pair leaked by a crashed run is greppable
+        # as a unit. Neither NAME nor DESCRIPTION of the non-matching pipeline
+        # may contain "yaml": the backend `query` matches description as well
+        # as name (live-proven 2026-09-10, AFS § Live Findings F3), so a
+        # "YAML" description would put it back in the filtered grid and break
+        # the Step 5 absence assertion.
+        suffix = uuid.uuid4().hex[:6]
+        yaml_pipeline_name = f"autotest_YAML_search_{suffix}"
+        non_matching_name = f"autotest_nomatch_srch_{suffix}"
+        precondition_description = "ELITEA-2023 dashboard search filter and clear"
+        yaml_pipeline_id = None
+        non_matching_id = None
 
         try:
             with allure.step(
-                "Step 2 — Navigate to Pipelines dashboard; verify full list loads "
-                "including the 'YAML' pipeline and a non-matching pipeline"
+                "Step 1 — Create both search preconditions via the API: one "
+                "pipeline whose name contains 'YAML' and one that matches "
+                "neither by name nor by description"
             ):
-                existing_rows = pipeline_api.list_pipelines().get("rows", [])
-                non_matching_name = next(
-                    row["name"]
-                    for row in existing_rows
-                    if "yaml" not in row.get("name", "").lower()
-                )
+                yaml_pipeline_id = pipeline_api.create_pipeline(
+                    name=yaml_pipeline_name,
+                    description=precondition_description,
+                )["id"]
+                non_matching_id = pipeline_api.create_pipeline(
+                    name=non_matching_name,
+                    description=precondition_description,
+                )["id"]
 
+            with allure.step(
+                "Step 2 — Navigate to Pipelines dashboard; verify the full list "
+                "loads with BOTH created pipelines present"
+            ):
                 list_page = PipelinesListPage(page)
                 list_page.navigate()
 
-                assert list_page.pipeline_exists_in_list(yaml_pipeline_name, timeout=UI_ELEMENT_TIMEOUT), (
-                    f"Newly created pipeline '{yaml_pipeline_name}' should be visible on the dashboard"
+                # Waiting, POSITIVE assertion, and the first thing the browser
+                # is asked — during the dashboard's loading window both
+                # entity-card-name and empty-state-title read 0, so a bare
+                # count here would be vacuous. 10 s, not get_card_names()'s
+                # 5 s default: 5 s is exactly what expired in CI. The grid
+                # sorts created_at desc and pages at 20, so the two
+                # just-created pipelines are always on page 1.
+                baseline_names = list_page.get_card_names(timeout=UI_ELEMENT_TIMEOUT)
+                assert yaml_pipeline_name in baseline_names, (
+                    f"Precondition: matching pipeline '{yaml_pipeline_name}' should be "
+                    f"on the dashboard before the search is exercised, got {baseline_names}"
                 )
-                assert list_page.pipeline_exists_in_list(non_matching_name, timeout=UI_ELEMENT_TIMEOUT), (
-                    f"Pre-existing pipeline '{non_matching_name}' should be visible on the dashboard"
+                assert non_matching_name in baseline_names, (
+                    f"Precondition: non-matching pipeline '{non_matching_name}' should be "
+                    f"on the dashboard before the search is exercised, got {baseline_names}"
                 )
 
             with allure.step(
-                "Step 3 — Verify the search textbox placeholder reads "
-                "\"Let's find something amazing!\""
+                "Step 3 — Verify the search textbox is visible and its placeholder "
+                "reads \"Let's find something amazing!\""
             ):
+                assert list_page.search_input.is_visible(), (
+                    "Search textbox should be visible on the Pipelines dashboard"
+                )
                 placeholder = list_page.search_input.get_attribute("placeholder")
                 assert placeholder == "Let's find something amazing!", (
                     f"Search placeholder should read \"Let's find something amazing!\", got {placeholder!r}"
@@ -643,15 +692,34 @@ class TestSearchPipeline:
                 # the parent's concatenated text in that split-node case
                 # (confirmed live, ELITEA-2023 implementer Phase 2 — see
                 # PipelinesListPage.get_card_names() docstring).
+                #
+                # Ordering is load-bearing: the waiting POSITIVE assertion
+                # first, so the absence assertion below cannot pass on a grid
+                # that simply never rendered.
                 filtered_names = list_page.get_card_names(timeout=UI_ELEMENT_TIMEOUT)
                 assert yaml_pipeline_name in filtered_names, (
                     f"Filtered grid should still show matching pipeline '{yaml_pipeline_name}', "
                     f"got {filtered_names}"
                 )
+                # Explicit empty-state guard: CardList.jsx's showEmptyOrError
+                # short-circuits BOTH the table and the card branch, so "no
+                # card matched" and "nothing mounted" are the same DOM. This
+                # names the real failure mode instead of reporting a missing
+                # pipeline (#2118 precedent).
+                assert list_page.empty_state_title.count() == 0, (
+                    "Dashboard must not be showing the empty state while a match is expected"
+                )
                 assert non_matching_name not in filtered_names, (
                     f"Filtered grid should hide non-matching pipeline '{non_matching_name}', "
                     f"got {filtered_names}"
                 )
+                # ⚠️ Do NOT strengthen this into "every visible card name
+                # contains 'yaml'". It looks like the case's wording and it is
+                # wrong: the backend matches DESCRIPTION too, so a pipeline
+                # with a "YAML"-free name and a "YAML" description
+                # legitimately appears — that universal is a false-red
+                # generator on any project with ambient data (AFS § Vacuity
+                # Audit V4).
 
             with allure.step("Step 6 — Click the search Clear (X) icon"):
                 list_page.clear_search()
@@ -663,23 +731,50 @@ class TestSearchPipeline:
                 "Step 7 — Verify the full pipeline list is restored and the "
                 "URL stays on /pipelines/all"
             ):
-                assert list_page.pipeline_exists_in_list(yaml_pipeline_name, timeout=UI_ELEMENT_TIMEOUT), (
-                    f"Cleared grid should show '{yaml_pipeline_name}' again"
+                restored_names = list_page.get_card_names(timeout=UI_ELEMENT_TIMEOUT)
+                assert yaml_pipeline_name in restored_names, (
+                    f"Cleared grid should show '{yaml_pipeline_name}' again, got {restored_names}"
                 )
-                assert list_page.pipeline_exists_in_list(non_matching_name, timeout=UI_ELEMENT_TIMEOUT), (
-                    f"Cleared grid should show previously-hidden '{non_matching_name}' again"
+                # The assertion that proves the filter was actually RELEASED:
+                # this name was provably absent from the grid one step ago.
+                assert non_matching_name in restored_names, (
+                    f"Cleared grid should show previously-hidden '{non_matching_name}' again, "
+                    f"got {restored_names}"
+                )
+                assert list_page.empty_state_title.count() == 0, (
+                    "Dashboard must not be showing the empty state after clearing the search"
+                )
+                # Strictly ">" rather than "== baseline": this runs against a
+                # shared DEV project, where strict equality would flake on any
+                # concurrent create/delete (#1082 class). "restored ⊋ filtered"
+                # holds by construction on ANY project, because the
+                # non-matching pipeline is in one and not the other.
+                assert len(restored_names) > len(filtered_names), (
+                    f"Cleared grid should hold more cards than the filtered grid: "
+                    f"restored={len(restored_names)} filtered={len(filtered_names)} "
+                    f"baseline={len(baseline_names)}"
                 )
                 parsed_url = urlparse(page.url)
                 assert parsed_url.path.endswith("/pipelines/all"), (
                     f"Page should stay on /pipelines/all after Clear, got {page.url!r}"
                 )
 
-            with allure.step("Side-channel check (Axis 2) — no console errors across the flow"):
-                assert not console_errors, (
-                    f"Unexpected console errors: {[m.text for m in console_errors]}"
-                )
+            with allure.step("Step 8 — Side-channel check (Axis 2): no console errors across the flow"):
+                # No URL filter is applied: this flow performs no project
+                # switch, so #1971 is not expected. collect_console_errors()
+                # annotates each message with the failing resource's URL, so a
+                # background-noise occurrence arrives diagnosable rather than
+                # anonymous (.agents/testing.md § Unconfirmed).
+                assert not console_errors, f"Unexpected console errors: {console_errors}"
         finally:
-            pipeline_api.delete_pipeline(pipeline_id)
+            with allure.step("Cleanup — delete both precondition pipelines"):
+                # Guarded so the second delete still runs if the first raises.
+                try:
+                    if yaml_pipeline_id is not None:
+                        pipeline_api.delete_pipeline(yaml_pipeline_id)
+                finally:
+                    if non_matching_id is not None:
+                        pipeline_api.delete_pipeline(non_matching_id)
 
 
 class TestPipelineIsolation:

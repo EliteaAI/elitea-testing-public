@@ -1729,6 +1729,14 @@ source, no such import/usage in `StateModifierNode.jsx`.
   (board `#2119`). Same class as `#2118`. **Establish BOTH sides of a
   filter/no-filter precondition via `pipeline_api`.** Full repair spec:
   `test-specs/pipelines/lextend_pipeline-dashboard-search-filter-and-clear_ELITEA-2023.md`.
+  **Resolved during ELITEA-2023 repair implementation (2026-09-10, `#2119`):** the
+  harvest is gone; the spec now creates both pipelines with one shared
+  `uuid4().hex[:6]` suffix (`autotest_YAML_search_<hex>` /
+  `autotest_nomatch_srch_<hex>`, both described
+  `"ELITEA-2023 dashboard search filter and clear"` so neither carries `yaml` in a
+  description either), asserts both on the grid at Step 2 with
+  `get_card_names(timeout=10000)`, and deletes both in one `finally` with the second
+  delete guarded. Green first try locally, 11.98 s, `reruns.json == {}`.
 - **Clear-from-zero-match is still clean on Pipelines** (re-verified 2026-09-10):
   the `#585` (MCP) / `#551` (Credentials) redirect-to-`/create` defect does **not**
   reproduce here — grid restored, URL stayed `/pipelines/all`.
@@ -1751,6 +1759,12 @@ source, no such import/usage in `StateModifierNode.jsx`.
   Sibling pages already fixed this correctly — reuse their pattern:
   `automation/pages/mcp_list_page.py::search()` (types, `press("Enter")`,
   waits network + ~1.5s settle) / `credentials_list_page.py`.
+  ✅ **Both bullets above are HISTORICAL (state as of 2026-08-07) — done since:**
+  `PipelinesListPage.search()` types + `press("Enter")` and `search_clear_button`
+  exists as a `LocatorDescriptor` field; both landed with the original ELITEA-2023
+  implementation. Its docstring's "filtering is client-side / no XHR on Enter" claim
+  was WRONG and was corrected in place during the `#2119` repair (2026-09-10) — the
+  filter is server-side, see the corrected § Network Behavior bullets above.
 - **`search-clear-button` testid exists but has no `PipelinesListPage` field
   yet** — confirmed live (`page.getByTestId('search-clear-button')`
   resolves). Add `search_clear_button = LocatorDescriptor(testid="search-clear-button")`.
