@@ -43,6 +43,7 @@ import allure
 import pytest
 from pages.pipeline_detail_page import PipelineDetailPage
 from playwright.sync_api import Page
+from utils.console_errors import collect_console_errors
 
 pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.new_verified]
 
@@ -254,14 +255,18 @@ class TestPipelineRunHistoryPanelClose:
         message = f"close-run-history-{uuid.uuid4().hex[:6]}"
 
         # AFS Axis 2: "Zero console errors during the whole flow."
-        console_errors = []
-        page.on(
-            "console",
-            lambda msg: console_errors.append(msg) if msg.type == "error" else None,
-        )
+        # URL-annotated capture (`utils/console_errors`) rather than the
+        # hand-rolled URL-less listener — `.agents/testing.md` § Unconfirmed
+        # asks for this migration whenever a spec is touched, because only a
+        # migrated spec can name the failing resource behind the recurring
+        # background 500/404/400 noise class. Capture-only: no filter added.
+        console_errors = collect_console_errors(page)
 
-        # AFS step 4 / § Network Behavior: closing the panel must fire zero
-        # network requests (purely client-side onClose state flip).
+        # AFS step 4 / § Network Behavior: the return to the pipeline detail
+        # view must not re-fetch Run History's OWN data (the conversations
+        # list) — see the scoped assertion in Step 4 for why a blanket
+        # zero-requests claim would be wrong (the Configuration form
+        # legitimately re-fires its own view-population requests on mount).
         api_requests = []
         page.on(
             "request",
@@ -356,6 +361,5 @@ class TestPipelineRunHistoryPanelClose:
 
         with allure.step("Verify no console errors across the full flow"):
             assert not console_errors, (
-                f"Expected no console errors across the flow, got: "
-                f"{[(m.type, m.text) for m in console_errors]}"
+                f"Expected no console errors across the flow, got: {console_errors}"
             )

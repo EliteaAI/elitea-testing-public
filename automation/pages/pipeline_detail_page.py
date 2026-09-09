@@ -7757,7 +7757,7 @@ class PipelineDetailPage(PipelineFormPage):
     # at least one `run-history-list-item` row to render (the list fetch is
     # a real network round trip; poll rather than a fixed timeout).
 
-    @action("Open Run History panel")
+    @action("Open Run History view")
     def open_run_history(self, timeout: int = 10000):
         """Click the Run History button and wait for the Run History view
         to render its list of past executions.
@@ -7810,16 +7810,31 @@ class PipelineDetailPage(PipelineFormPage):
         sort is Date descending) and wait for its conversation detail to
         render.
 
-        Completion is confirmed by the product's own rendered state — the
-        row carrying ``data-selected="true"`` plus at least one
-        ``chat-message-item`` in the detail pane — rather than by awaiting
-        the conversation-detail GET. Since EliteaAI/EliteaUI@84025881
-        (*fix: [EL-6391] select the latest run when Run History opens*) the
-        container auto-selects row 0 on open and fires that GET itself, so
-        clicking row 0 fires NO request at all (verified live 2026-09-09):
-        an ``expect_response`` wrapper then only passes when the
-        auto-select's own response happens to land inside its window. Both
-        observables here are still produced by the system; nothing is
+        **The wait depends on whether the row is already selected**, because
+        since EliteaAI/EliteaUI@84025881 (*fix: [EL-6391] select the latest
+        run when Run History opens*) the container auto-selects row 0 on
+        open and fires the conversation-detail GET itself:
+
+        - **Not yet selected** (any row the user actually switches to) — the
+          click DOES cause a conversation-detail GET, and awaiting that
+          response is the only reliable signal that *this* row's
+          conversation has arrived. The rendered-state checks below are not
+          sufficient on their own: ``data-selected`` flips synchronously in
+          ``handleHistoryItemSelect`` (``RunHistoryContainer.jsx:156``)
+          before the GET is even issued, and ``chat-message-item`` nodes
+          from the PREVIOUSLY selected conversation persist across the
+          switch (``RunHistoryChat.jsx:51-65`` derives ``chatHistory`` from
+          the RTK-Query lazy hook's retained ``data``, and
+          ``ChatMessageList.jsx:240`` maps it unconditionally — its
+          ``Skeleton`` is gated on ``isLoadingMore``, not ``isLoading``).
+          So both would be satisfiable by pre-click state.
+        - **Already selected** (row 0 right after open) — the click fires NO
+          request at all (verified live 2026-09-09), so an
+          ``expect_response`` wrapper would be a race: it could only pass if
+          the auto-select's own response happened to land inside its window.
+
+        Either way the rendered-state checks then confirm the detail pane is
+        populated. Every observable is produced by the system; nothing is
         stubbed, injected or fabricated.
 
         Args:
@@ -7831,12 +7846,25 @@ class PipelineDetailPage(PipelineFormPage):
         logger.info("Selecting Run History item at index %d", index)
         row = self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).nth(index)
         row.wait_for(state="visible", timeout=timeout)
-        row.click()
+        already_selected = row.get_attribute("data-selected") == "true"
+        if already_selected:
+            row.click()
+        else:
+            with self.page.expect_response(
+                lambda r: "/elitea_core/conversation/prompt_lib/" in r.url
+                and r.request.method == "GET",
+                timeout=timeout,
+            ):
+                row.click()
         expect(row).to_have_attribute("data-selected", "true", timeout=timeout)
         self.page.locator(self.CHAT_MESSAGE_ITEM_SELECTOR).first.wait_for(
             state="visible", timeout=timeout
         )
-        logger.info("Run History item %d selected", index)
+        logger.info(
+            "Run History item %d selected (was already selected: %s)",
+            index,
+            already_selected,
+        )
 
     def is_run_history_item_selected(self, index: int, timeout: int = 5000) -> bool:
         """Return whether the Run History row at *index* carries
@@ -7865,9 +7893,10 @@ class PipelineDetailPage(PipelineFormPage):
 
         Waits (bounded by *timeout*) for at least one message item to render
         before reading. ``select_run_history_item()`` already waits on the
-        same signal, so this is a defensive re-wait for callers that reach
-        the detail pane by another route (e.g. the auto-selected newest run
-        on open, EliteaAI/EliteaUI@84025881).
+        conversation-detail response (or, for an already-selected row, on
+        the rendered state), so this is a defensive re-wait for callers that
+        reach the detail pane by another route (e.g. the auto-selected
+        newest run on open, EliteaAI/EliteaUI@84025881).
 
         Args:
             timeout: Maximum wait time in milliseconds for the first message
@@ -7884,7 +7913,7 @@ class PipelineDetailPage(PipelineFormPage):
             return ""
         return "\n".join(items.all_text_contents())
 
-    @action("Close Run History panel")
+    @action("Leave Run History view via breadcrumb")
     def close_run_history(self, timeout: int = 10000):
         """Leave the Run History view via the breadcrumb trail and wait for
         the pipeline detail view (Configuration form + embedded chat) to be
@@ -7903,13 +7932,29 @@ class PipelineDetailPage(PipelineFormPage):
         only the last crumb is ``breadcrumb-current``. Clicking the LAST
         ``breadcrumb-item`` — the pipeline-name crumb — navigates back.
 
+        **The trail depth is guarded before ``.last`` is taken.**
+        ``applyBreadcrumbLabels`` (``breadcrumb.helpers.js:65-68``) DROPS any
+        non-current ancestor whose label is empty, and the pipeline-name
+        crumb's label comes from ``useApplicationDetailsQuery`` or a
+        ``?name=`` query param (``useBreadcrumbTrail.hooks.js:42-47``) —
+        which :meth:`navigate` does not send. On a cold/refetching cache the
+        trail can therefore render only ``Pipelines``, and ``.last`` would
+        then navigate to the pipelines LIST. Asserting the expected depth of
+        2 link crumbs (``Pipelines`` + ``<pipeline name>``, the third being
+        ``breadcrumb-current``) fails loudly at the real cause instead.
+
         Completion is a route change, so it is confirmed by polling for both
         ``chat_input`` and ``history_tab`` to be visible again.
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
+        from playwright.sync_api import expect
+
         logger.info("Leaving Run History view via the pipeline-name breadcrumb")
+        expect(self.page.locator(self.BREADCRUMB_ITEM_SELECTOR)).to_have_count(
+            2, timeout=timeout
+        )
         crumb = self.page.locator(self.BREADCRUMB_ITEM_SELECTOR).last
         crumb.wait_for(state="visible", timeout=timeout)
         crumb.click()

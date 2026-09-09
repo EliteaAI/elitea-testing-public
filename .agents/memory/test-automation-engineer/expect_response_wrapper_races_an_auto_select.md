@@ -34,3 +34,20 @@ on* changed. The corollary for the test: asserting `data-selected="true"` on an 
 after clicking it is **tautological** and must be dropped, not kept "for safety".
 
 Related: [[run_history_is_a_route_not_a_panel_el6537]]
+
+## Correction (review of PR #2068, fix round 1) — the rule is CONDITIONAL
+
+Removing the response wait outright was wrong for rows the user actually switches to.
+`data-selected` flips **synchronously** in `handleHistoryItemSelect`
+(`RunHistoryContainer.jsx:156`) before the detail GET is issued, and the previous
+conversation's `chat-message-item` nodes persist across the switch (`RunHistoryChat.jsx:51-65`
+reads RTK-Query's retained `data`, not `currentData`; `ChatMessageList.jsx:240` maps it
+unconditionally and its `Skeleton` is gated on `isLoadingMore`, not `isLoading`) — so BOTH
+halves of a rendered-state wait are satisfiable by pre-click state. Live probe 2026-09-09:
+immediately after clicking a non-selected row, `data-selected="true"` with **0** message items
+rendered — the attribute is definitively not a load signal.
+
+**Branch on whether the click actually causes the request:**
+already-selected row (auto-selected row 0) → no request, use the state wait; not-yet-selected
+row → keep `expect_response`, then the state wait. Reading the attribute before clicking is the
+cheap discriminator.

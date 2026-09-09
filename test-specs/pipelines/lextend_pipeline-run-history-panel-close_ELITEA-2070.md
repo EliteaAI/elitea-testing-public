@@ -16,8 +16,8 @@
 > **Everything below this section that describes a Run History *panel* with an `X`
 > close button is SUPERSEDED by this amendment.** The product changed; the case's
 > observable did not. Sections § Test Steps step 4, § Concrete Handles (close-button
-> row), § Network Behavior and § Coverage Map row 7 are re-stated here and this
-> version wins.
+> row), § Network Behavior, § Coverage Map row 7 and § Automation Hints are re-stated
+> here and this version wins.
 
 **Environment explored for the repair:** BOTH `https://dev.elitea.ai/app` (the card's
 declared environment, harness-driven) and `http://localhost:5173` — behaviour is
@@ -116,6 +116,13 @@ drift on step 7.
   the amended § Network Behavior above. Both values are still produced by the system.
 - `PipelineDetailPage.run_history_close_button` (`LocatorDescriptor`) was **deleted** —
   the testid is unreachable at runtime and it had exactly one caller.
+- Fix round 1 (review of PR #2068): `select_run_history_item()` keeps the `expect_response`
+  wait for a row that is NOT already selected (that click DOES cause the conversation-detail
+  GET, and `data-selected` + `chat-message-item` are both satisfiable by pre-click state — the
+  attribute flips synchronously and the previous conversation's message nodes persist), and
+  skips it only for an already-selected row (where the click fires nothing).
+  `close_run_history()` guards the breadcrumb trail depth before taking `.last`, because
+  `applyBreadcrumbLabels` drops a label-less ancestor crumb on a cold cache.
 - Verified green on BOTH environments, whole file (both this test and ELITEA-2011's):
   localhost 2/2, DEV (`https://dev.elitea.ai/app`) 2/2, zero reruns each. Step 2's wording (*"Run history panel opens"*) is now a page rather
 than a panel — cosmetic drift, observable preserved; optional TMS clarification, not
@@ -132,7 +139,7 @@ route change; the case asserts nothing about it, so no assertion is added.
 
 ## Covering Spec (dedup / extension proof)
 
-- **Covering spec**: `automation/tests/ui/pipelines/test_pipeline_run_history_view_executions.py`
+- **Covering spec**: `automation/tests/ui/pipelines_2/test_pipeline_run_history_view_executions.py`
   (`TestPipelineRunHistoryViewExecutions.test_run_history_panel_lists_and_shows_execution_details`,
   TMS ELITEA-2011), AFS `test-specs/pipelines/l2_pipeline-run-history-panel-view-executions_ELITEA-2011.md`
   — **merged onto this batch's trunk `tests/batch-pipelines-remaining-w7`** (commit `30041066`),
@@ -315,17 +322,12 @@ the ELITEA-2011 covering spec against `pipeline_with_llm_id`-fixture pipelines).
 
 ## Automation Hints
 - Framework: Playwright + pytest, testid-only `LocatorDescriptor`.
-- **One new testid required**: `run-history-close-button` on the `RunHistoryContainer.jsx` close
-  `IconButton` (`../EliteaUI/src/[fsd]/entities/run-history/ui/RunHistoryContainer.jsx:77-84`).
-  Since this is a shared component consumed by both the Agent and Pipeline surfaces, adding it
-  here automatically also gives `AgentDetailPage` a close handle for free — but do NOT add a
-  method there unless a dispatched Agent-surface case actually calls it (locator-policy scope
-  discipline: testids go only where a dispatched case's steps touch them; the Agent-surface
-  `run_history_open_button`'s own comment already documents "no close locator/method exists on
-  purpose" for exactly this reason — this AFS does not change that for the Agent page object).
-- **Add to `PipelineDetailPage`**: `close_run_history()` — click the new
-  `run-history-close-button`, then wait for `chat_input` (or `history_tab`) to be visible again as
-  the completion signal (poll, not a fixed sleep, per `.claude/rules/ui-tests.md`).
+- **SUPERSEDED 2026-09-09 — no new testid is required and no `X` button exists.** The two
+  bullets this replaced ("One new testid required: `run-history-close-button`" and
+  "`close_run_history()` — click the new `run-history-close-button`") described the pre-EL-6537
+  product. Current shape: `close_run_history()` clicks the LAST `[data-testid="breadcrumb-item"]`
+  (the pipeline-name crumb) after guarding the trail depth (`to_have_count(2)`), then waits for
+  `chat_input` AND `history_tab`. `run_history_close_button`'s `LocatorDescriptor` was deleted.
 - **Extend, don't duplicate**: add the new test function to
   `test_pipeline_run_history_view_executions.py`, reusing `pipeline_with_llm_id` +
   `open_run_history()` + `select_run_history_item()` — no need to replicate ELITEA-2011's 2-entry
