@@ -5,7 +5,7 @@ type: reference
 aliases: [dev.elitea.ai run, devenv harness, deployed env locally, goto timeout dev]
 tags: [area/test-execution, area/environment]
 created: 2026-08-28
-updated: 2026-08-28
+updated: 2026-09-10
 ---
 
 ## Targeting DEV from a local run
@@ -54,3 +54,11 @@ never be a member of a sanctioned-RED set and 2-of-3 is never acceptable. Budget
 roughly double the invocations you would need on localhost when gating against DEV
 from a laptop. One more tell: the failure *screenshot* also times out
 (`Page.screenshot: Timeout 10000ms exceeded`) when the browser is this wedged.
+
+**Fastest discriminator (added 2026-09-10, ELITEA-2453): the allure STEP COUNT.**
+`reports/allure-results/*-result.json` → this class is `"status": "broken"` with
+**zero** `steps`, because it dies in the auth fixture before the test body starts;
+a real run of that spec recorded 9. Check the step count before reading the
+message — it separates "the environment never let the test begin" from "the test
+ran and something in it failed" in one look. Rate held on 2026-09-10: reruns of
+this class appeared in most of ~20 DEV invocations, and every one recovered.
