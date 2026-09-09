@@ -437,7 +437,7 @@ which is the only design that satisfies both "the case demands these exact liter
 | Step 28: Select List files | Parameters panel appears | Step 28 | `select-option-list_files` click, combobox value updates | asserted |
 | Step 29: Verify List files parameters panel | Bucket Name/Folder/Recursive/Include/Skip/RUN TOOL all present | Step 29 | 4 `toolkit-test-param-*` handles + RUN TOOL button-text match | asserted **(NEW handles; 2 gaps found — Recursive checkbox, RUN TOOL button)** |
 | Step 30: Click RUN TOOL | Tool runs, returns result | Step 30 | button click (interim text-locator until testid added) | asserted |
-| Step 31: Verify result in center panel | Result displayed | Step 31 | exact-text `✅ list_files (0.176s)` + `{'total': 0, 'rows': []}` | asserted |
+| Step 31: Verify result in center panel | Result displayed | Step 31 | substring `list_files` in the result text + the payload parsed out after the last `✅`/`❌` marker and compared structurally to `{"total": 0, "rows": []}` — **→ see § Adjustment 2026-09-09 § 7** | asserted |
 | Step 32: Navigate to Artifacts | Artifacts page loads | Step 32 | direct nav to `/artifacts`, `artifacts-buckets-heading` visible | asserted *(same sidebar gap as step 1)* |
 | Step 33: Click BUCKETS search icon | Search field opens | Step 33 | `artifacts-search-buckets-button` → `artifacts-bucket-search-input` visible | asserted |
 | Step 34: Type "new" | Bucket list filters | Step 34 | search input value | asserted |
@@ -1051,8 +1051,18 @@ Evidence: ![Step 31 — List files returns an empty result, rendered as pretty-p
 
 **Parse the payload out of the result text and assert on the parsed structure.** This is
 the only option that survives a serialization change in *either* direction, and it is
-**strictly stronger** than the assertion it replaces (structural equality vs. a substring
-match), so it needs no expected-result sign-off.
+**stronger than the assertion it replaces on every axis that matters** — *position* (the
+old pin matched anywhere in `result_text`, chat-wrapper prose included; this is anchored
+to the payload after the LAST ✅/❌ marker), *extra or renamed keys* (whole-payload
+equality rather than a fragment), and *a payload that stops rendering at all* (a loud
+failure rather than a silent miss) — so it needs no expected-result sign-off.
+
+**Where it is NOT stronger, stated rather than glossed** (raised at review of PR #2080):
+Python dict equality compares values, not types, so `{"total": False, "rows": []}` and
+`{"total": 0.0, "rows": []}` both compare equal to `{"total": 0, "rows": []}`, where the
+byte-for-byte substring pin discriminated them. A row count will not be emitted as a bool
+or a float, so no coverage that matters is lost — but the claim is "stronger where it
+counts", not "strictly stronger".
 
 Shape (page-object method — the regexes are module/class constants, the spec calls the
 method; no locator changes, no new testid):
@@ -1093,6 +1103,19 @@ assert payload == {"total": 0, "rows": []}, (      # was: "{'total': 0, 'rows': 
 missing key, a payload that stops being a mapping, a result that never renders. **What it
 does not catch:** a change in *where* the payload renders — but that surfaces loudly as
 "No result payload found", which is the correct failure, not a silent pass.
+
+**SHIPPED AS (implementer, 2026-09-09 — amends the "page-object method" line
+above):** the parser lives in **`automation/utils/toolkit_result_payload.py`**
+(`parse_tool_result_payload`), not on `ToolkitTestSettingsPage`. Same logic,
+same regexes, same JSON-then-`literal_eval` order; only the *home* differs.
+Reason: the function is pure and browser-free, so a `utils/` module is directly
+importable by a unit test with no `page`, and the four shapes the analyst
+verified by hand are now **pinned in CI** by
+`automation/tests/unit/test_toolkit_result_payload.py` (plus a fifth: a result
+with no payload at all raises loudly and echoes the raw text). Repo precedent
+for the shape: `utils/toolkit_output.py` + `tests/unit/test_toolkit_chat_error_oracle.py`.
+The spec's expected value is the module constant `EMPTY_LIST_FILES_RESULT`.
+No locator changed; no page object changed.
 
 **Rejected alternatives, recorded so they are not re-proposed:**
 - *Whitespace/quote-normalizing string compare* — survives this drift but not the next
@@ -1181,6 +1204,23 @@ Why the response and not a bucket row: it is correct for a genuinely-empty proje
 where no row will ever appear — and it is immune to defect #2073's false empty state
 (below), which makes the empty-state element useless as a settle signal.
 
+**SHIPPED AS (implementer, 2026-09-09):** exactly this, scoped to
+`ArtifactsPage.navigate_to_artifacts()` only — `expect_response` **wraps** the
+`super().navigate("/artifacts")` call (it cannot be applied after the fact),
+then `expect(self.buckets_heading).to_be_visible(...)` (the class-level
+`LocatorDescriptor`, not the inline `get_by_test_id` `wait_for_page_load` uses).
+The two budgets are class constants: `BUCKET_LIST_RESPONSE_TIMEOUT = 60_000`
+and `BUCKETS_HEADING_TIMEOUT = 15_000`. `ArtifactsPage.wait_for_page_load()` and
+`BasePage.wait_for_network()` are **untouched** — `wait_for_page_load` has ~14
+direct spec callers passing their own budgets (`COLD_PAGE_LOAD_TIMEOUT`,
+`NAVIGATION_TIMEOUT`), and the wider sweep was out of scope for this card.
+
+Measured after the change (2026-09-09, same machine, same dev server): Step 32
+took **18.3 s** — it now completes where the old 15 s budget could not — and the
+pre-test bucket cleanup, which had timed out on both of the red run's calls, ran
+to completion in 35.4 s and actually deleted the stale `new-bucket`. Whole spec:
+**115.71 s green, 0 reruns** (vs 194.97 s red).
+
 **Blast radius — a lead/implementer call, flagged not decided here.**
 `ArtifactsPage.wait_for_page_load()` is shared; the precedent (settings-w09,
 `AdminUsersPage.ensure_team_project_selected`) is that removing a `networkidle` wait made
@@ -1230,7 +1270,10 @@ why the empty state must not be used as the navigation settle signal in § 5.
 **Expected-result changes: NONE.** Step 31 verifies exactly what it verified before —
 `list_files` is referenced and the result is empty. The comparison moves from a substring
 match on one serialization to structural equality on the parsed payload, which is
-**strictly stronger**; nothing is dropped, relaxed, made conditional, or lowered. No
+**stronger on every axis that matters** — position, extra/renamed keys, and a payload
+that stops rendering (see § 3 for the one axis it does not discriminate, int-vs-bool/
+float, which the product will not emit for a row count); nothing is dropped, relaxed,
+made conditional, or lowered. No
 `expect.soft()`, no skip, no weakened assertion. Step 32's change is a wait, not an
 assertion.
 
