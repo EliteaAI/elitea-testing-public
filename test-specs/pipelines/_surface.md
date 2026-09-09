@@ -3020,6 +3020,53 @@ is a legitimate empty state, not an error state).
   needs to assert exact timeline-entry counts for a structured-output node.
   Full handle table + fixture recipe: `l3_run-details-multiple-state-variables-different-types_ELITEA-2453.md`.
 
+## Structured-output LLM node — the state write SILENTLY no-ops ~25% of runs (confirmed live on DEV, 2026-09-10, ELITEA-2453 repair / #2120)
+
+**Read this before writing ANY spec whose precondition is "a `structured_output: true`
+LLM node populated state."** It is the cause of ELITEA-2453's CI red in run
+34331579791, and it is filed as `EliteaAI/elitea-testing-public#2153`.
+
+- **The fault.** The state write depends on the node's LAST LLM call answering with a
+  parseable JSON object. When the model answers in prose/markdown instead, **nothing is
+  written and nothing is reported**: run status `Completed`, chat says *"All state
+  variables have been populated!"*, no console error, no `socket_validation_error`
+  frame. The variables keep their declared defaults (`str` -> `""`, `list` -> `[]`,
+  `dict` -> `{}`, `number` -> the key is absent from `state` entirely).
+- **Rate: 8 of 32 independent DEV runs (25%)**, bursty (1/12 in one sweep, 3/4 in
+  another). Correlation over the instrumented batch is **16/16**: last `agent_llm_end`
+  carries a JSON object -> written (12/12); prose -> not written (4/4).
+- **Mitigation that works: tell the model the FORM, not just the values.** A system
+  prompt of `'Answer with a single JSON object and nothing else - no prose, no bullet
+  lists, no markdown headings. The object must contain exactly these keys: ...'` gave
+  **9/9 populated** (vs 24/32 with the softer `'Always return values for ...'` wording).
+  n=9, so treat it as a strong mitigation, not a guarantee — still guard the
+  precondition.
+- **The oracle for "did this run actually populate state?" is on the wire, not in the
+  panel.** The run's own `agent_on_transitional_edge` frame with
+  `response_metadata.next_step == "END"` carries `response_metadata.state` — which is
+  EXACTLY what `parseRunsByEvent.helpers.js:263-278` assigns to the last timeline entry
+  and what `StateItemView.jsx` renders. Capture with
+  `PipelineDetailPage.capture_websocket_frames()` (entered BEFORE the first navigation).
+  Reading it off the wire also lets you decide retry-vs-proceed WITHOUT opening the Run
+  Details panel, which matters because the panel may only be opened once.
+- **A bounded re-ask works and is confirmed live (2/2):** re-`navigate()` + re-send in
+  the same page. A fresh page load resets the embedded chat to 0 messages (so
+  `wait_for_embedded_chat_response(initial_count=...)` still works), each attempt gets
+  its own `LLM1 -> END` edge (slice `frames[before:]`), and
+  `pipeline-run-node-label` resolves to the NEWEST run, so the panel opened after the
+  loop shows the retried run. Attempt cost on DEV: 19.5-50 s.
+- **The Run Details panel itself is CORRECT — do not chase it.** UI == wire state in
+  **30/30** comparisons, including 5 empty-state runs where both sides were empty.
+- **Resolves the old "2 timeline entries for a single-node structured-output pipeline,
+  informational, not investigated" note below**: entry 1 is the answer call, entry 2 is
+  the structured-output extraction call (its payload carries an `elitea_response` key);
+  a THIRD appears when the platform re-asks after a prose answer. Not a defect, not a
+  topology surprise.
+- Full repair work order: `test-specs/pipelines/l3_run-details-multiple-state-variables-different-types_ELITEA-2453.md`
+  § REPAIR AMENDMENT. **Sibling exposure, not yet repaired:**
+  `tests/ui/pipelines_2/test_pipeline_llm_structured_output_state_variables.py`
+  (ELITEA-2045) carries the identical `!= '""'` / `len(...) > 0` assertion family.
+
 ## Run Details panel — multi-run history toggle (RunStateNodeGroup) — the clock icon is EASY TO MISS (confirmed live, 2026-08-09, ELITEA-2454)
 
 **Read this before concluding "only one run ever exists" from a quick DOM

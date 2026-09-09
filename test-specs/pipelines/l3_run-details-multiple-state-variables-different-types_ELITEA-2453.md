@@ -9,7 +9,8 @@
   `automation/testids`, DEV backend)
 - **User set**: `${TEST_USER}` (localhost: no login needed — `VITE_DEV_TOKEN` auto-auths)
 - **Analyst**: qa-engineer (agent), session 2026-08-06
-- **Status**: ready-for-automation
+- **Status**: ready-for-automation · **REPAIRED 2026-09-10** — see the
+  § REPAIR AMENDMENT at the end of this file (card #2120, CI run 34331579791)
 
 ## Preconditions
 - User is authenticated (localhost: automatic via `VITE_DEV_TOKEN`; deployed envs:
@@ -180,6 +181,10 @@
    from ELITEA-2452) reads `"state initialized"` — a JSON-quoted string
    (`JSON.stringify` renders `str` values wrapped in `"..."`), confirmed via
    `browser_snapshot` DOM read.
+
+   **AMENDED 2026-09-10 (repair, card #2120)** — the exact content is LLM-chosen and is
+   NOT part of this case's contract. Assert parsed equality against the run's own backend
+   state plus the per-type rendering shape; see § REPAIR AMENDMENT R2/R3.
 10. CUSTOM_NUM: shows numeric values.
     **Expected — confirmed live, exact match**: `custom_num` row's After value reads
     `42` — **no surrounding quotes** (`JSON.stringify(42)` → `"42"` as a bare numeral,
@@ -187,17 +192,29 @@
     SAME panel) — confirms the panel renders `number`-typed values distinctly from
     `str`-typed ones via `JSON.stringify`'s own type-preserving behavior, not a
     custom per-type renderer.
+
+    **AMENDED 2026-09-10 (repair, card #2120)** — the exact content is LLM-chosen and is
+    NOT part of this case's contract. Assert parsed equality against the run's own backend
+    state plus the per-type rendering shape; see § REPAIR AMENDMENT R2/R3.
 11. CUSTOM_LIST: shows list/array representation.
     **Expected — confirmed live, exact match**: `custom_list` row's After value reads
     `["alpha","beta","gamma"]` — valid JSON array syntax, confirming `list`-typed
     values render via `JSON.stringify` array formatting (brackets, comma-separated,
     quoted string elements).
+
+    **AMENDED 2026-09-10 (repair, card #2120)** — the exact content is LLM-chosen and is
+    NOT part of this case's contract. Assert parsed equality against the run's own backend
+    state plus the per-type rendering shape; see § REPAIR AMENDMENT R2/R3.
 12. CUSTOM_JSON: shows JSON object representation.
     **Expected — confirmed live, exact match**: `custom_json` row's After value reads
     `{"status":"ok","version":1}` — valid JSON object syntax (curly braces,
     `"key":value` pairs, mixed string/number field types within the SAME object),
     confirming `dict`-typed (`Json` display label) values render as a genuine JSON
     object, not a string-escaped blob.
+
+    **AMENDED 2026-09-10 (repair, card #2120)** — the exact content is LLM-chosen and is
+    NOT part of this case's contract. Assert parsed equality against the run's own backend
+    state plus the per-type rendering shape; see § REPAIR AMENDMENT R2/R3.
 13. Verify each variable is individually expandable.
     **Expected — confirmed live**: same observation as step 6 — clicking each of the
     4 rows' own accordion header toggled that row independently; no row's expand/
@@ -340,3 +357,324 @@ deliberately avoiding the one combination that's a confirmed product defect
   typed custom state variables" section covering the `messages`+structured-output
   defect, the uppercase-via-CSS mechanism, and the duplicate-timeline-entry
   observation.
+
+---
+
+# REPAIR AMENDMENT — 2026-09-10 (board card #2120, CI run 34331579791 / DEV Stable #114)
+
+_Analyst: qa-engineer, live on `https://dev.elitea.ai` (`APP_PREFIX=/app`). This section
+OVERRIDES the 2026-08-06 analysis above where they conflict; everything not named here
+stands unchanged. **Status: `ready-for-automation`** (repair work order)._
+
+## 1. The failure
+
+```
+test_pipeline_run_details_multiple_state_variables.py:151:
+    assert custom_text_after != '""', "'custom_text' After value should be non-empty"
+E   AssertionError: 'custom_text' After value should be non-empty
+E   assert '""' != '""'
+```
+
+Single attempt, no reruns (`pytest.ini`'s `--only-rerun` list does not include
+`AssertionError`). Steps 1-3, 4, 5 and 6/13 all passed; Step 9's FIRST assertion
+(JSON-quoting) passed, so the After box rendered and held a genuine JSON-quoted
+**empty string**.
+
+The card's auto-generated headline — *"a product regression in run details state
+variable display"* — is **REFUTED** (§ 2). The card's boilerplate instruction to
+*"use standard Playwright locators (role, text, label) instead of data-testid"* is
+**refused**: locator policy here is testid-only (`.agents/testing.md` § Locator
+policy, `.agents/role-overrides.md`). No locator changes are needed anyway.
+
+## 2. Triage verdict — **(A) the Run Details panel is CORRECT**
+
+The panel renders `JSON.stringify(data.timeline[selectedStep].state[variable])` and
+nothing else (`StateItemView.jsx:32,45`; `RunStateDialog.jsx:346-350`). The question is
+whether the *state it was given* held the value.
+
+**Method.** 32 independent live runs of the case's own fixture on DEV, each capturing
+the run's Socket.IO frames (`utils/websocket_frames.capture_socketio_frames`) alongside
+the panel's rendered values. The backend reports the run's state on its
+`agent_on_transitional_edge` frames; the `LLM1 → END` one is exactly what
+`parseRunsByEvent.helpers.js:263-278` assigns to the last timeline entry, i.e. what the
+panel shows.
+
+**Side by side — a FAILING run (`run_1788992468_5`), reproducing the CI signature:**
+
+| | `custom_text` | `custom_num` | `custom_list` | `custom_json` |
+|---|---|---|---|---|
+| **Backend** (`LLM1 → END` edge `response_metadata.state`) | `""` | *(key absent)* | `[]` | `{}` |
+| **UI** (Run Details After) | `""` | *(blank)* | `[]` | `{}` |
+
+**Side by side — a PASSING run (`run_1788992232_0`), same fixture, minutes apart:**
+
+| | `custom_text` | `custom_num` | `custom_list` | `custom_json` |
+|---|---|---|---|---|
+| **Backend** | `Hello, state initialized!` | `42` | `["alpha","beta","gamma"]` | `{"status":"active","timestamp":"2024-01-01"}` |
+| **UI** | `"Hello, state initialized!"` | `42` | `["alpha","beta","gamma"]` | `{"status":"active","timestamp":"2024-01-01"}` |
+
+**UI == backend in 30 of 30 comparisons** (16/16 computed programmatically in the
+instrumented batch, 12/12 consistent in the first batch, 2/2 in the retry-shape batch).
+The panel never dropped, blanked or mangled a value. **Not class A (UI drift), not class
+E (testid), not class F (promotion gap), and NOT a display defect.**
+
+The CI failure screenshot corroborates it exactly (chat pane shows the LLM's prose
+answer with values; STATES shows `""` / blank / `[]`):
+![CI run 34331579791 — Run Details showing default state after a Completed run](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/ELITEA-2453-ci-run114-state-defaults-after-completed-run.png)
+
+## 3. Frequency of the empty-state run
+
+| Batch | Runs | Empty | Note |
+|---|---|---|---|
+| A (2026-09-10 02:0x) | 12 | 1 | first instrumented sweep |
+| B (2026-09-10 02:1x-02:3x) | 16 | 4 | 5 further runs died on `Page.goto` DEV nav timeouts and are excluded, not counted either way |
+| C (retry-shape check) | 4 | 3 | 2 tests × 2 forced attempts |
+| **Total** | **32** | **8 (25%)** | bursty — 1/12 early, 3/4 late; consistent with model-side variance, not a trend |
+
+So this is **not a rare tail**: roughly one run in four to one in six. It will keep
+recurring in CI, and it hits Steps 9-12 together (they all fail on the same runs).
+
+## 4. Root cause — filed as `EliteaAI/elitea-testing-public#2153`
+
+The state write depends on the LLM's **last** call answering with a parseable JSON
+object. When it answers in prose/markdown instead, **nothing is written and nothing is
+reported**: run status `Completed`, chat says *"All state variables have been
+populated!"*, no console error, no `socket_validation_error` frame.
+
+Correlation over the instrumented batch, **16/16**:
+
+| Last `agent_llm_end` payload | Runs | State written |
+|---|---|---|
+| JSON object containing `"custom_text"` | 12 | 12/12 yes |
+| Prose / markdown (`**custom_text:** "…"`) | 4 | 0/4 — defaults kept |
+
+One run (`run_..._15`) shows the platform re-asking a **third** time after a prose
+answer and then succeeding (that payload also carried an `elitea_response` key, i.e. the
+structured-output schema) — a retry path exists but does not reliably cover this.
+
+**This also explains the AFS's own open question** ("2 timeline entries for a
+single-node pipeline, informational, not investigated"): entry 1 is the answer call,
+entry 2 is the structured-output extraction call; a third appears when the platform
+re-asks. Not a defect and not a topology surprise. **Resolved — remove it from the
+open-questions list.**
+
+## 5. What the case contracts — and why this repair is a CORRECTION, not masking
+
+ELITEA-2453 Step 9 reads, in full: **"CUSTOM_TEXT: shows string values"**, expected
+result **"Action completes without error and produces the expected UI state."** Steps 11
+and 12 are the analogous *"CUSTOM_LIST: shows list/array representation"* and
+*"CUSTOM_JSON: shows JSON object representation"*. **Nothing in the case text asks the
+model to produce non-empty content.** `!= '""'`, `len(parsed_list) > 0` and
+`len(parsed_json) > 0` assert an LLM's choice of content — a premise the case never had.
+
+> **The distinguishing test: masking removes evidence of a real fault; correcting
+> removes a premise the case never had.**
+
+Both halves are live here, so the repair must do both jobs at once:
+
+- **Correcting.** The LLM-content premises (`!= '""'`, `len(...) > 0`) go, replaced by
+  something *stronger*: the UI value must equal the value the backend actually produced
+  for that run (§ 6 R3). That is the `.agents/testing.md` § Fidelity policy's own
+  prescribed treatment of a nondeterministic producer — *"capture the real response and
+  assert the UI against it; the response is the oracle."*
+- **NOT masking.** The real fault (#2153) is **filed**, and the repair keeps a hard,
+  loud failure for it: if the run's own state comes back unpopulated after the retry
+  budget, the test **fails** naming #2153 (§ 6 R2). A systemic regression — structured
+  output breaking outright — still turns this spec red. What disappears is only the
+  ~25% coin flip on an intermittent, already-tracked producer failure.
+
+A repair that merely deleted the three content assertions **would** be masking, because
+`""` / `[]` / `{}` trivially satisfy the surviving shape checks — an entirely
+unpopulated run would then go green. That shape is rejected.
+
+## 6. The repair — work order
+
+### R1 — Fixture: make the producer's own contract explicit (setup, not observable)
+
+`automation/fixtures/data_fixtures.py::_TYPED_STATE_VARS_INSTRUCTIONS` — replace the
+`system` prompt with one that names the required answer FORM, not just the values:
+
+```yaml
+        value: 'You populate structured state variables. Answer with a single JSON
+          object and nothing else - no prose, no bullet lists, no markdown headings.
+          The object must contain exactly these keys: custom_text (a short non-empty
+          string), custom_num (a number), custom_list (a list of 3 short strings),
+          custom_json (an object with 2 keys).'
+```
+
+Still the real LLM producing every asserted value — this steers the producer, it does
+not substitute it. Measured effect: see § 7.
+
+### R2 — Precondition guard: read the run's own state off the wire, bounded re-ask
+
+Case steps 2-3 require a run that *populated* the variables; steps 9-12 cannot observe
+four distinct type renderings if nothing was written. So the population becomes an
+explicit, checked precondition instead of an accident:
+
+```python
+def _run_final_state(frames) -> dict:
+    """State the backend reported on this run's own `LLM1 -> END` transitional edge.
+
+    Exactly the object the panel renders for the selected (last) timeline step:
+    parseRunsByEvent.helpers.js:263-278 assigns `response_metadata.state` to the
+    last timeline entry, and StateItemView.jsx renders
+    `JSON.stringify(timeline[selectedStep].state[name])`.
+
+    OBSERVATION, not substitution: nothing is routed, fulfilled, delayed or
+    fabricated (`.agents/testing.md` § Fidelity policy).
+    """
+    edges = [
+        f for f in frames
+        if f.get("type") == "agent_on_transitional_edge"
+        and (f.get("response_metadata") or {}).get("next_step") == "END"
+    ]
+    assert edges, "Run never reported an 'LLM1 -> END' transitional edge"
+    return (edges[-1].get("response_metadata") or {}).get("state") or {}
+
+
+def _is_populated(state: dict) -> bool:
+    return (
+        isinstance(state.get("custom_text"), str) and state["custom_text"] != ""
+        and isinstance(state.get("custom_num"), (int, float))
+        and isinstance(state.get("custom_list"), list) and state["custom_list"]
+        and isinstance(state.get("custom_json"), dict) and state["custom_json"]
+    )
+```
+
+Loop shape (**confirmed live**, § 7): `capture_websocket_frames()` is entered ONCE,
+before the first navigation; each attempt slices `frames[before:]`; each attempt
+re-navigates (a fresh page load resets the embedded chat to 0 messages, so
+`wait_for_embedded_chat_response(initial_count=...)` still works) and re-sends.
+
+```python
+with pipeline_page.capture_websocket_frames() as frames:
+    for attempt in range(POPULATE_ATTEMPTS):        # 3
+        before = len(frames)
+        pipeline_page = _navigate_to_canvas(page, pipeline_with_typed_state_vars_id)
+        ...send + wait + run_node_label visible...
+        backend_state = _run_final_state(frames[before:])
+        if _is_populated(backend_state):
+            break
+    else:
+        pytest.fail(
+            "Structured output wrote no state in "
+            f"{POPULATE_ATTEMPTS} consecutive runs (last state: {backend_state!r}) — "
+            "Known defect: EliteaAI/elitea-testing-public#2153"
+        )
+    ...open the Run Details panel ONCE, then Steps 4-13 against `backend_state`...
+```
+
+**Open the panel exactly once, AFTER the loop** (`_surface.md` — while the MUI Dialog is
+open it intercepts pointer events and a second `pipeline-run-node-label` click retries to
+timeout). Reading the oracle off the wire rather than out of the panel is what makes that
+possible. `pipeline-run-node-label` always resolves to the NEWEST run
+(`RunStateNodeGroup.jsx` renders only the latest directly), so after a retry the panel
+shows the retried run — **confirmed live 2/2** (`ui_matches_last_attempt: True`).
+
+Budget: `POPULATE_ATTEMPTS = 3`, each attempt ~20-50 s on DEV (measured 19.5 / 35.8 /
+48.3 / 50.0 s).
+
+### R3 — Steps 9-12: assert the UI against the run's own state, not against LLM content
+
+For each variable, two assertions — value fidelity, then the case's own per-type
+rendering shape:
+
+```python
+with allure.step("Step 9 — CUSTOM_TEXT (str): After value renders as a JSON-quoted string"):
+    custom_text_after = pipeline_page.get_run_details_state_after_value("custom_text")
+    assert json.loads(custom_text_after) == backend_state["custom_text"], (
+        f"Panel should render the value the run produced "
+        f"({backend_state['custom_text']!r}), got {custom_text_after!r}"
+    )
+    assert custom_text_after.startswith('"') and custom_text_after.endswith('"'), (
+        f"'custom_text' (str) After value should be JSON-string-quoted, got {custom_text_after!r}"
+    )
+```
+
+| Step | Value fidelity (NEW — replaces the LLM-content premise) | Type-rendering shape (KEEP) |
+|---|---|---|
+| 9 `custom_text` | `json.loads(after) == backend_state["custom_text"]` | quoted: `startswith('"') and endswith('"')` |
+| 10 `custom_num` | `json.loads(after) == backend_state["custom_num"]` | `isinstance(parsed, (int, float))` **and** NOT quoted |
+| 11 `custom_list` | `json.loads(after) == backend_state["custom_list"]` | `isinstance(parsed, list)` |
+| 12 `custom_json` | `json.loads(after) == backend_state["custom_json"]` | `isinstance(parsed, dict)` |
+
+**Removed:** `custom_text_after != '""'`, `len(parsed_list) > 0`, `len(parsed_json) > 0`.
+**Compare PARSED values, never raw strings** — `JSON.stringify` emits no separator
+spaces (`["apple","banana","cherry"]`) while Python's default `json.dumps` does; parsed
+equality sidesteps that coupling entirely. (If a raw comparison is ever wanted:
+`json.dumps(v, separators=(",", ":"))`.)
+
+### R4 — Unchanged
+
+Steps 1-3 (beyond R1/R2), 4, 5, 6/13, the `#1267` console filter, every locator, every
+`allure.step` label, the markers and the docstring's TMS link. **No new testid; no
+locator change; no page-object change.** No timeline-step selection change either: the
+default-selected step was the LAST entry in **30/30** runs, and it carries the values.
+
+### R5 — Sibling exposure (report to the lead; NOT in this card's scope)
+
+`automation/tests/ui/pipelines_2/test_pipeline_llm_structured_output_state_variables.py`
+(ELITEA-2045) carries the identical assertion family on the identical mechanism —
+`name_after != '""'` (line 228), `len(parsed_hobbies) > 0` (244),
+`len(parsed_metadata) > 0` (251) — and will fire on the same ~25% of runs. It needs the
+same repair; it is a separate merged spec and a separate case.
+
+## 7. Live verification of the prescriptions
+
+- **Retry-shape loop (R2): CONFIRMED live**, 2/2 — a second `navigate → send` in the
+  same page produced its own `LLM1 → END` edge, the chat message count reset to 0 on
+  reload, and the panel opened once at the end showed the LAST attempt's state
+  (`ui_matches_last_attempt: True` both times, 2 timeline steps).
+- **Sharpened prompt (R1):** see § 7a.
+
+### 7a. Sharpened-prompt measurement
+
+Measured live on DEV, a disposable pipeline identical to the fixture except for the
+`system` prompt above, 9 consecutive runs, state read off the wire:
+
+| Prompt | Runs | Populated |
+|---|---|---|
+| **Current** (`Always return values for custom_text (a short string), ...`) | 32 | 24 (75%) |
+| **Sharpened** (R1, `Answer with a single JSON object and nothing else ...`) | **9** | **9 (100%)** |
+
+Every sharpened run's last `agent_llm_end` was a bare JSON object, and the values
+became stable across runs (`"Hello World"`, `42`, `["apple","banana","cherry"]`).
+
+⚠️ **9/9 does not prove elimination** — with n=9 the upper confidence bound on the
+failure rate is still ~25-30%, so R1 is a strong mitigation, NOT a guarantee. **R2 stays
+mandatory**; do not ship R1 alone and assume the flake is gone. Equally, do not assert
+the now-stable literal values (`"Hello World"`, `42`, …) — they are still LLM-chosen and
+still outside this case's contract (§ 5); R3's oracle comparison is what makes them
+irrelevant to the verdict.
+
+## 8. Fidelity Declaration
+
+| What | Transit or terminal | Authority |
+|---|---|---|
+| Pipeline created via `PipelineAPI.create_pipeline` (fixture) | **Transit** — reaches the case's step-4 observable; the case's own steps 1-2 (state-var creation UI, node config UI) are covered by ELITEA-2042/2045 | pre-existing, unchanged by this repair |
+| Socket.IO frame capture (`capture_socketio_frames`) | **Neither — observation** | Nothing routed, fulfilled, delayed or rewritten; same class of evidence as reading a response body (`utils/websocket_frames.py` module docstring; `.agents/testing.md` § Fidelity policy) |
+| The asserted values | **Produced by the system** | `custom_*` values come from the live LLM via the backend's own state frame; the UI value is read from the live DOM. The oracle IS the product's own output — the pattern `.agents/testing.md` § "How to test a NONDETERMINISTIC producer without substituting it" prescribes |
+
+**Zero mocks, stubs, fabricated responses or injected state.** `grep -nE
+'\.mock_|page\.route\(|route\.fulfill\(|monkeypatch|\.evaluate\('` over the prescribed
+diff must return nothing.
+
+## 9. Vacuity audit of the repaired steps
+
+| # | Could this step pass while the product is broken? |
+|---|---|
+| V1 | Step 9 with `custom_text == ""`? **No** — R2's precondition guard fails the run before Step 9 is reached. |
+| V2 | Steps 9-12 if the panel showed a *different* run's state? **No** — parsed equality against that run's own wire state. |
+| V3 | Steps 9-12 if the panel rendered nothing (`undefined`)? **No** — `json.loads("")` raises, and the shape assertions fail. |
+| V4 | Step 10 if `number` rendered like a `str`? **No** — the NOT-quoted assertion is retained. |
+| V5 | The whole spec if structured output stopped working entirely? **No** — R2 fails with `#2153` named, after 3 attempts. |
+
+## 10. Handles
+
+Unchanged from the original Concrete Handles table — every testid this case touches was
+re-exercised live on DEV this session, so all of them are **`on-main ✓`** by
+construction (DEV serves EliteaUI `main`). **Zero new testids.**
+
+## 11. Blocked steps
+
+None.
