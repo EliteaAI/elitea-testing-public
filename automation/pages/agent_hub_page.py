@@ -41,23 +41,32 @@ _CATEGORY_SLUG_RE = re.compile(r"[^a-z0-9]+")
 #: Budget (ms) for awaiting one of the Catalog's own bulk
 #: ``/public_applications/prompt_lib/...`` responses.
 #:
-#: **The invariant this constant exists to encode (FIX card #2078): a
-#: network-response wait NESTED INSIDE** :meth:`BasePage.navigate`
-#: **must never be tighter than that method's own ceiling.**
-#: ``BasePage.navigate()`` does ``goto(wait_until="domcontentloaded")`` and
-#: then allows the navigation up to **30s** of ``networkidle`` wait, whose
-#: timeout it SWALLOWS (``base_page.py``) — so a response awaited *around*
-#: that call while capped at the callers' 15s navigation timeout could
-#: expire while the navigation it wraps was still legitimately in flight.
+#: **Why it is SEPARATE from the callers' navigation/UI timeout (FIX card
+#: #2078):** a response awaited AROUND :meth:`BasePage.navigate` is the OUTER
+#: wait — its clock is armed at ``with`` entry and runs for the whole body —
+#: yet it used to inherit the callers' 15s ``NAVIGATION_TIMEOUT``, far
+#: tighter than what ``navigate()`` itself tolerates. So the response wait
+#: could expire while the navigation it wraps was still legitimately in
+#: flight.
+#:
+#: **45_000 is an EMPIRICAL MARGIN, not an invariant — do not cite it as
+#: one.** ``navigate()`` has four sequential legs: ``goto()`` at the 30s
+#: default (``conftest.py``'s ``set_default_navigation_timeout(30000)``) +
+#: ``wait_for_load_state("networkidle", timeout=30000)`` swallowed
+#: (``base_page.py``) + the spinner ``wait_for(state="hidden",
+#: timeout=10000)`` swallowed + ``dismiss_popups()``. Its legitimate worst
+#: case is therefore ~70s, so **no single number clears the enclosing ceiling
+#: "by construction"**. 45s is chosen as ~4.5x the measured 9.0-10.6s
+#: end-to-end for this fetch, and comfortably above the single
+#: ``networkidle`` leg.
 #:
 #: The awaited bulk fetch is the heaviest request this page makes
 #: (``...&limit=1000&offset=0``, ~2.5-3.0s of raw backend time vs ~0.35s for
 #: the ``limit=20`` variants) and is gated behind ``agent_categories``
-#: resolving first: 9.0-10.6s end-to-end on a healthy backend, and
-#: deterministically past 15s on the degraded backend of CI run
-#: 34331579791. Endpoint, params, method and payload are unchanged — only
-#: our budget was wrong. 45s > 30s keeps it above the enclosing ceiling by
-#: construction rather than by a margin that happens to hold today.
+#: resolving first — so its 9.0-10.6s against the old 15s cap was only a
+#: ~1.4x margin on a HEALTHY backend, tight enough to expire under load.
+#: Endpoint, params, method and payload are unchanged; only our budget was
+#: wrong.
 CATALOG_RESPONSE_TIMEOUT = 45_000
 
 
@@ -716,13 +725,13 @@ class AgentHubPage(BasePage):
         Args:
             timeout: Budget for :meth:`wait_for_page_load`'s element wait --
                 the UI-readiness half.
-            response_timeout: SEPARATE budget for the bulk fetch itself, kept
-                deliberately above ``BasePage.navigate()``'s own 30s
-                ``networkidle`` ceiling. These two must not share one number:
-                a response awaited AROUND ``navigate()`` while capped at the
-                callers' 15s navigation timeout expires while the navigation
-                it wraps is still legitimately in flight (FIX card #2078) --
-                see :data:`CATALOG_RESPONSE_TIMEOUT`.
+            response_timeout: SEPARATE budget for the bulk fetch itself. The
+                two must not share one number: this response is awaited AROUND
+                ``navigate()``, so its clock covers the whole navigation, while
+                ``navigate()`` itself tolerates far more than the callers' 15s
+                (~70s worst case across its four legs). See
+                :data:`CATALOG_RESPONSE_TIMEOUT`, which also states why 45s is
+                an empirical margin and NOT a guaranteed ceiling (FIX #2078).
         """
 
         def _is_all_applications_response(response):
@@ -931,8 +940,9 @@ class AgentHubPage(BasePage):
                 ``BasePage.navigate()`` it does not swallow its own
                 ``networkidle`` timeout, so capping it at the callers' 15s
                 would simply move the same premature failure one line up).
-                Same invariant as :meth:`navigate_and_capture_applications`
-                (FIX card #2078) -- see :data:`CATALOG_RESPONSE_TIMEOUT`.
+                Budget rationale, and why 45s is an empirical margin rather
+                than a guaranteed ceiling: :data:`CATALOG_RESPONSE_TIMEOUT`
+                (FIX card #2078).
 
         Returns the parsed JSON response body (contains ``rows``).
         """
@@ -969,10 +979,13 @@ class AgentHubPage(BasePage):
                 trailing settle — the UI half, driven by the caller's
                 ``UI_ELEMENT_TIMEOUT``.
             response_timeout: SEPARATE budget for the debounced search
-                response. Split out from *timeout* per the same invariant as
-                :meth:`navigate_and_capture_applications` (FIX card #2078) —
-                a UI-element budget must never cap a backend fetch; see
-                :data:`CATALOG_RESPONSE_TIMEOUT`.
+                response, so a UI-element budget never caps a backend fetch
+                (FIX card #2078). This method wraps NO navigation, so the
+                enclosing-ceiling argument in
+                :data:`CATALOG_RESPONSE_TIMEOUT` does not apply here — only
+                its budget-decoupling half does. Trade-off, stated plainly: a
+                search request that genuinely never fires now costs 45s before
+                failing instead of 10s.
         """
         self.search_input.wait_for(state="visible", timeout=timeout)
         with self._expect_applications_response(
@@ -1014,12 +1027,15 @@ class AgentHubPage(BasePage):
             timeout: Budget for the search field's own element wait and the
                 trailing settle — the UI half, driven by the caller's
                 ``UI_ELEMENT_TIMEOUT``.
-            response_timeout: SEPARATE budget for the re-fired BULK response.
-                Split out from *timeout* per the same invariant as
-                :meth:`navigate_and_capture_applications` (FIX card #2078) —
-                clearing re-fires the SAME heavy ``limit=1000`` fetch the
-                initial mount does, so a UI-element budget must never cap it;
-                see :data:`CATALOG_RESPONSE_TIMEOUT`.
+            response_timeout: SEPARATE budget for the re-fired BULK response
+                — clearing re-fires the SAME heavy ``limit=1000`` fetch the
+                initial mount does, so a UI-element budget must never cap it
+                (FIX card #2078). This method wraps NO navigation, so the
+                enclosing-ceiling argument in
+                :data:`CATALOG_RESPONSE_TIMEOUT` does not apply here — only
+                its budget-decoupling half does. Trade-off, stated plainly: a
+                bulk request that genuinely never fires now costs 45s before
+                failing instead of 10s.
         """
 
         def _is_bulk_applications_response(response):
