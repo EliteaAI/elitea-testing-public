@@ -212,9 +212,16 @@ class TestArtifactCreateBucketAndUploadFile:
                 "testid, never an immediate assertion right after Save (a "
                 "snapshot taken too early can catch the bucket list mid-refetch)"
             ):
-                artifacts_page.wait_for_bucket_in_list(
-                    bucket_name, timeout=NAVIGATION_TIMEOUT,
-                )
+                # No timeout= here (#2084): the page object owns this budget.
+                # This wait is not an SPA route transition — it waits on the
+                # unpaginated GET /artifacts/s3/ refetch that Save invalidates
+                # PLUS the full-list render (1221 buckets, no windowing). The
+                # 15 s NAVIGATION_TIMEOUT this used to pass sat just above the
+                # idle floor (10.75-11.29 s measured on DEV) and far below the
+                # loaded worst case, so CI run 34331579791 failed here
+                # deterministically. See
+                # ArtifactsPage.BUCKET_ROW_AFTER_REFETCH_TIMEOUT.
+                artifacts_page.wait_for_bucket_in_list(bucket_name)
 
             with allure.step(
                 "Step 8 — Hover the bucket row and click its 3-dot ellipsis "

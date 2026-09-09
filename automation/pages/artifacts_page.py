@@ -1233,6 +1233,28 @@ class ArtifactsPage(BasePage):
     #: landed. Static chrome — it renders immediately after.
     BUCKETS_HEADING_TIMEOUT = 15_000
 
+    #: Budget for a bucket ROW to become visible in the left panel after a
+    #: mutation invalidated the bucket-list cache (``createBucket`` carries
+    #: ``invalidatesTags: [TAG_BUCKETS]``, so Save triggers an RTK-Query
+    #: refetch). Default of :meth:`wait_for_bucket_in_list`.
+    #:
+    #: It covers the SAME unpaginated ``GET /artifacts/s3/`` request that
+    #: :attr:`BUCKET_LIST_RESPONSE_TIMEOUT` covers — **12.4-43.8 s** under load
+    #: (ELITEA-1866 / #2066) — **plus** the full-list render that follows it:
+    #: ``SimpleBucketList.jsx`` maps every bucket with no windowing, measured
+    #: live on DEV 2026-09-09 at ~1.2 s for project 399's **1221** buckets
+    #: (96% of them leaked ``autotest-*`` fixtures — #636). End to end, POST
+    #: 200 -> row visible took **10.75 / 11.29 / 10.83 s on an IDLE machine**.
+    #:
+    #: The former 15 s call-site budget sat just above that idle floor and far
+    #: below the loaded worst case, which is why #2084's CI run failed here
+    #: deterministically rather than flakily — a budget defect, not a signal
+    #: defect. The row remains the correct signal: it is what the caller needs
+    #: (#1847), and it becomes visible only ~1.2 s after the refetch response,
+    #: so waiting on that response instead would save nothing while moving the
+    #: observable off the product's rendered state.
+    BUCKET_ROW_AFTER_REFETCH_TIMEOUT = 60_000
+
     @action("Navigate to Artifacts")
     def navigate_to_artifacts(self) -> None:
         """Navigate to the Artifacts landing page and wait for it to load.
@@ -2192,7 +2214,9 @@ class ArtifactsPage(BasePage):
         logger.info("Bucket %r is at list index %d of %d", bucket_name, index, len(names))
         return index
 
-    def wait_for_bucket_in_list(self, bucket_name: str, timeout: int = 15000) -> None:
+    def wait_for_bucket_in_list(
+        self, bucket_name: str, timeout: int = BUCKET_ROW_AFTER_REFETCH_TIMEOUT
+    ) -> None:
         """Wait for a bucket to appear in the left-panel bucket list.
 
         Waits on the CONDITION that the bucket's own dynamic
@@ -2213,13 +2237,57 @@ class ArtifactsPage(BasePage):
         itself (:attr:`BUCKET_ROW`) has no such gating and is the correct
         condition.
 
+        **This method owns its own budget (#2084).** Callers should not pass a
+        ``timeout``: the wait is not a generic SPA-navigation wait, it is a
+        wait on the unpaginated ``GET /artifacts/s3/`` refetch plus the
+        full-list render that follows it. See
+        :attr:`BUCKET_ROW_AFTER_REFETCH_TIMEOUT` for the measurements — the
+        15 s ``NAVIGATION_TIMEOUT`` the ELITEA-1808 spec used to pass sat just
+        above the idle floor (10.75-11.29 s on DEV) and far below the loaded
+        worst case (12.4-43.8 s, ELITEA-1866 / #2066), so CI run 34331579791
+        failed here deterministically. The SIGNAL was never wrong; only the
+        budget was.
+
+        **Diagnostics on the failure path** (same shape as
+        :meth:`navigate_to_artifacts`, PR #2080): a ``page.on("response", ...)``
+        listener records the statuses seen for
+        :attr:`BUCKET_LIST_URL_FRAGMENT` so a timeout reads "no bucket row
+        'x' after 60000 ms; statuses observed for /artifacts/s3/: [503, 503]"
+        instead of a bare locator timeout. The listener is removed in a
+        ``finally`` so nothing leaks onto the shared page for later tests, and
+        it changes only what the failure *says* — never *when* this method
+        succeeds or fails.
+
         Args:
             bucket_name: Exact name of the bucket to wait for.
-            timeout: Maximum wait time in milliseconds.
+            timeout: Maximum wait time in milliseconds. Defaults to
+                :attr:`BUCKET_ROW_AFTER_REFETCH_TIMEOUT`; override only with a
+                measurement that justifies it.
         """
-        self.page.locator(self.BUCKET_ROW.format(bucket_name)).wait_for(
-            state="visible", timeout=timeout
-        )
+        observed_statuses: list[int] = []
+
+        def _record_bucket_list_status(response: Response) -> None:
+            if self.BUCKET_LIST_URL_FRAGMENT in response.url:
+                observed_statuses.append(response.status)
+
+        self.page.on("response", _record_bucket_list_status)
+        try:
+            self.page.locator(self.BUCKET_ROW.format(bucket_name)).wait_for(
+                state="visible", timeout=timeout
+            )
+        except PlaywrightTimeoutError as err:
+            seen = (
+                ", ".join(str(status) for status in observed_statuses)
+                if observed_statuses
+                else "none — no bucket-list request completed during the wait"
+            )
+            raise PlaywrightTimeoutError(
+                f"No bucket row '{bucket_name}' visible in the left panel "
+                f"within {timeout} ms. Statuses observed for "
+                f"{self.BUCKET_LIST_URL_FRAGMENT}: {seen}."
+            ) from err
+        finally:
+            self.page.remove_listener("response", _record_bucket_list_status)
         logger.info("Bucket '%s' visible in the bucket list", bucket_name)
 
     def wait_for_bucket_removed_from_list(
