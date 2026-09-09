@@ -1094,6 +1094,19 @@ missing key, a payload that stops being a mapping, a result that never renders. 
 does not catch:** a change in *where* the payload renders — but that surfaces loudly as
 "No result payload found", which is the correct failure, not a silent pass.
 
+**SHIPPED AS (implementer, 2026-09-09 — amends the "page-object method" line
+above):** the parser lives in **`automation/utils/toolkit_result_payload.py`**
+(`parse_tool_result_payload`), not on `ToolkitTestSettingsPage`. Same logic,
+same regexes, same JSON-then-`literal_eval` order; only the *home* differs.
+Reason: the function is pure and browser-free, so a `utils/` module is directly
+importable by a unit test with no `page`, and the four shapes the analyst
+verified by hand are now **pinned in CI** by
+`automation/tests/unit/test_toolkit_result_payload.py` (plus a fifth: a result
+with no payload at all raises loudly and echoes the raw text). Repo precedent
+for the shape: `utils/toolkit_output.py` + `tests/unit/test_toolkit_chat_error_oracle.py`.
+The spec's expected value is the module constant `EMPTY_LIST_FILES_RESULT`.
+No locator changed; no page object changed.
+
 **Rejected alternatives, recorded so they are not re-proposed:**
 - *Whitespace/quote-normalizing string compare* — survives this drift but not the next
   one (key reordering, added indentation inside `rows`), and keeps asserting on
@@ -1180,6 +1193,23 @@ self.page.get_by_test_id("artifacts-buckets-heading").wait_for(state="visible", 
 Why the response and not a bucket row: it is correct for a genuinely-empty project too,
 where no row will ever appear — and it is immune to defect #2073's false empty state
 (below), which makes the empty-state element useless as a settle signal.
+
+**SHIPPED AS (implementer, 2026-09-09):** exactly this, scoped to
+`ArtifactsPage.navigate_to_artifacts()` only — `expect_response` **wraps** the
+`super().navigate("/artifacts")` call (it cannot be applied after the fact),
+then `expect(self.buckets_heading).to_be_visible(...)` (the class-level
+`LocatorDescriptor`, not the inline `get_by_test_id` `wait_for_page_load` uses).
+The two budgets are class constants: `BUCKET_LIST_RESPONSE_TIMEOUT = 60_000`
+and `BUCKETS_HEADING_TIMEOUT = 15_000`. `ArtifactsPage.wait_for_page_load()` and
+`BasePage.wait_for_network()` are **untouched** — `wait_for_page_load` has ~14
+direct spec callers passing their own budgets (`COLD_PAGE_LOAD_TIMEOUT`,
+`NAVIGATION_TIMEOUT`), and the wider sweep was out of scope for this card.
+
+Measured after the change (2026-09-09, same machine, same dev server): Step 32
+took **18.3 s** — it now completes where the old 15 s budget could not — and the
+pre-test bucket cleanup, which had timed out on both of the red run's calls, ran
+to completion in 35.4 s and actually deleted the stale `new-bucket`. Whole spec:
+**115.71 s green, 0 reruns** (vs 194.97 s red).
 
 **Blast radius — a lead/implementer call, flagged not decided here.**
 `ArtifactsPage.wait_for_page_load()` is shared; the precedent (settings-w09,
