@@ -963,10 +963,12 @@ Pipelines exactly as for Skills.
 `PipelinesListPage.table_view_button`/`card_view_button` (testids
 `pipeline-table-view`/`pipeline-card-view`, wired in `Pipelines.jsx` on the
 shared `ViewToggle.jsx` component — same component Agents/MCPs/etc. use with
-their own testid overrides) both resolve correctly live and are **on
-`automation/testids` but NOT yet on `main`** (fresh `git fetch origin` this
-session: `git grep` hit on `origin/automation/testids` only, at
-`src/pages/Pipelines/Pipelines.jsx:274-275`).
+their own testid overrides) both resolve correctly live and are **on `main` ✓
+AND on `automation/testids` ✓** (re-verified with a fresh `git fetch origin`,
+2026-09-09: `git grep pipeline-table-view origin/main -- src/` hits
+`src/pages/Pipelines/Pipelines.jsx:274`). *Corrected — this entry previously
+read "NOT yet on `main`", true when written 2026-08-08; the promotion has since
+happened.*
 
 - **Default view is Card list view** — confirmed live: fresh `/pipelines/all`
   load renders the Card list view button `[pressed]` (`aria-pressed="true"`),
@@ -995,6 +997,40 @@ session: `git grep` hit on `origin/automation/testids` only, at
   `data-testid` for Pipelines — `DataTable.jsx` only passes
   `columnTestIdPrefix` for `isMCPs`, `undefined` otherwise. The
   `entity-card-name`-absence + URL-param combo above is sufficient without it.
+- ⚠️ **`entity-card-name`-absence ALONE is NOT a layout proof — it is satisfied by
+  an EMPTY LIST too (confirmed live, 2026-09-09, `[FIX]` card `#2118`, CI run
+  34331579791).** `CardList.jsx:40-44` short-circuits **both** branches before
+  the view choice:
+  ```js
+  const showEmptyOrError = !rest.isLoading && (isError || isEmptyList);
+  const showTable = !showEmptyOrError && shouldRenderTable;
+  const showCards = !showEmptyOrError && !shouldRenderTable;
+  ```
+  So on a project with zero pipelines, *table view renders no table at all* —
+  it renders the `EmptyStatePage` ("No pipelines yet"), and `entity-card-name`
+  reads `0` for the wrong reason. Live-measured on a search-filtered empty list:
+  card view `cards:0 empty-state-title:1`, table view `cards:0
+  empty-state-title:1 hasColumnHeaders:false`. Two consequences:
+  - **Always pair the absence with `empty-state-title` (`data-testid` on
+    `EmptyStatePage.jsx:49`, generic, shared, **on-main ✓**).** On a POPULATED
+    pipelines dashboard its page-wide count is `0` in both views (the right
+    panel's "No folders created yet" / "No tags to display." are plain
+    `Typography`, not `EmptyStatePage`) — so `empty_state_title.count() == 0`
+    is an unambiguous "something actually rendered" guard.
+  - **Any dashboard-content case MUST establish its own ≥1-entity precondition**
+    (`pipeline_id` fixture), never inherit whatever the ambient project holds.
+    Project 399 (localhost) has 14 pipelines; the DEV CI matrix project
+    (`prompt_lib/573`, "Private") has **zero of its own** — so a card-reading
+    assertion is green locally and red in CI with the product identical on both.
+    Two tests in `test_pipeline_management.py` were hit by this in one CI job:
+    `test_view_toggle_table_and_card` (Step 7 `assert []`) and
+    `test_search_placeholder_and_dashboard_grid_filters_and_clears`
+    (`StopIteration` on a `next()` over an empty "other pipelines" list).
+- ⏱ **Timing trap for any post-navigate count assertion**: during the dashboard's
+  loading window (~4 s locally, ~10 s in CI) **both** `entity-card-name` and
+  `empty-state-title` read `0`. Lead with a waiting, positive assertion
+  (`get_card_names(timeout=10000)` — the helper's 5 s default is what expired in
+  CI), then do the absence checks.
 - Full gap analysis + exact patch: `test-specs/pipelines/lextend_pipeline-dashboard-view-toggle-default-and-layout_ELITEA-2024.md`.
 
 ## Three-dot Actions menu — full live-confirmed testid map, both groups (confirmed live, 2026-08-08, ELITEA-2049)
