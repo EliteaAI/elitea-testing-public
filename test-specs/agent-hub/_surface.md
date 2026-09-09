@@ -444,3 +444,58 @@ covering the whole family should re-check whether ELITEA-2350/2351 belong in
 one parameterized family AFS (project name as the only variable) rather than
 two near-identical specs — this dispatch analysed ELITEA-2350 alone, not as
 a cluster, so no family-AFS merge was performed here.
+
+## Category filter rail — 12 chips since 2026-09-07, and why you must NOT pin the count (ELITEA-2367 / card #2079, confirmed live 2026-09-09)
+
+- **The rail renders 12 chips on BOTH tabs**, not 11. `EliteaAI/EliteaUI@18170f71`
+  ("feat: [EL-6238] show entity count on Catalog page and highlight the new ones",
+  #927, 2026-09-07, on `main`) added a **third Featured entry, "New"** —
+  `NEW_CATEGORY` in `agentHub.constants.js` + `skillHub.constants.js`, injected by each
+  hub's `buildAllCategories()`, with `CatalogBody.jsx`'s `FEATURED_COUNT` bumped 2 → 3.
+  Live: Agents tab 12 agent chips / 0 skill chips; Skills tab 12 skill chips / 0 agent
+  chips. Not a duplicate, not a defect — no bug filed.
+- **The rail is TWO different kinds of thing, and a single count conflates them:**
+  - **Featured (Trending, My Liked, New) + the trailing "Other"** — *frontend constants*.
+    Change only when the UI team ships a feature. Safe (and useful) to pin by testid.
+  - **The middle Categories** — *backend data* from
+    `GET /api/v2/elitea_core/agent_categories/prompt_lib/{PUBLIC_PROJECT_ID}`
+    (live: 9 rows `{name, is_default}`, **including "Other"**, which
+    `buildAllCategories()` strips from the sorted middle and re-appends last).
+    An admin can change these at any time with no code change. **Never pin them.**
+  - So `rendered == 3 + len(api categories)`. Hardcoding either `11` or `12` is the same
+    mistake; two specs already paid for it (cards #2079, #2099).
+- **Use the response as the oracle** (`.agents/testing.md` § Fidelity policy): wrap
+  `navigate()` in `page.expect_response("**/elitea_core/agent_categories/prompt_lib/**")`
+  — RTK-Query caches per page session, so a fresh `goto` fires it exactly once — and
+  derive the expected label set. `page.expect_response` is passive; **never** `page.route`
+  here (terminal substitution).
+- ⚠️ **`to_have_count` matches HIDDEN elements**, so a count+membership check alone would
+  pass on a collapsed rail. Add head+tail visibility (`…-trending` and `…-other`) to make
+  a layout-integrity assertion actually have teeth.
+- The rail's categories fetch **settles a beat after** the content grid — use auto-retrying
+  `expect(...).to_have_count(...)`, never a one-shot `.count()` (race already documented in
+  `test_catalog_default_agents_tab.py` Step 5).
+- Existing constants cover all of this; **no new locators or testids are needed**:
+  `AgentHubPage.AGENT_CATEGORY_FILTER_CHIP_PREFIX`, `.SKILL_CATEGORY_FILTER_CHIP_PREFIX`,
+  `.CATEGORY_FILTER_CHIP` (templated, slugified label).
+
+## Catalog testid provenance — the closure grep LIES about the chip prefixes (2026-09-09)
+
+`catalog-agent-category-filter-chip` / `catalog-skill-category-filter-chip` are **on
+`origin/main`**, but `.agents/workflow.md` § Closure record's stage-2 filter reports them
+as absent on both refs. The wiring is `chipTestIdPrefix="…"` (`AgentsTab.jsx:246`,
+`SkillsTab.jsx:247`) → `data-testid={`${chipTestIdPrefix}-${slugifyCategory(category)}`}`
+(`CategoryRail.jsx:26`); in `chipTestIdPrefix=`, `testid` is followed by `Prefix=`, not
+`[:=]`, so the filter drops it. Third shape in the family #553 patched twice. Canon card
+**#2100**. On this surface, **read the stage-1 hits, don't count them**. The fully-resolved
+per-category testids are runtime-composed and invisible to a bare grep by construction.
+
+## ⚠️ Never `fetch()` an /api path from `browser_evaluate` on localhost (2026-09-09)
+
+It goes out unauthenticated, gets 302'd to `https://dev.elitea.ai/forward-auth/auth_oidc/login`,
+and is **cross-origin** from `http://localhost:5173` — producing a CORS error + `net::ERR_FAILED`
+in the console. That is 2 *analyst-injected* console errors which look exactly like a product
+defect on a case whose Step 5 asserts console cleanliness (cost a false alarm here). Same
+localhost topology as the `/socket.io/` note in `.agents/testing.md`. **Read the body off the
+captured request instead** — `browser_network_requests` → `browser_network_request … part=response-body`
+— and re-verify console cleanliness on a pass with no injected requests.
