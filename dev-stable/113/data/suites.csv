@@ -1,0 +1,223 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"skipped","Wed Sep 09 07:53:07 UTC 2026","Wed Sep 09 07:53:07 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[bitbucket]","Add toolkit to chat, send a message, verify the tool really ran.
+
+        AFS: ``test-specs/toolkits/lfix_toolkit_chat_error_oracle_ELITEA-1140.md``
+        (repair brief for card #1817).
+
+        Step 5's oracle reads the toolkit's own ``tool_output`` off the
+        ``agent_tool_end`` Socket.IO frame, because Elitea publishes no
+        structural marker for a failed tool execution — success and failure
+        share DOM, testids, event sequence and ``finish_reason``, and the
+        chat message is LLM prose wrapped around arbitrary user data. The
+        free-text guards this replaced scanned that prose for ``""error""``,
+        which matched this repository's own branch names (a genuine success,
+        GHA run 32931571484) while missing every real 401 (which the model
+        narrates as *""authentication error""*, and which still satisfies
+        ``chat_response_keywords``). No negative substring scan survives on
+        any channel — the ``""thinking""`` scan went with them, for the same
+        reason and because it proved nothing Step 4 had not already waited
+        for. See ``utils/toolkit_output``.
+
+        A toolkit whose success shape has never been captured SKIPS at Tier 2
+        rather than continuing: without it a failed call is indistinguishable
+        from a successful one at every remaining tier, so continuing would
+        report GREEN on a broken toolkit.
+
+        No substitution: the frames are **passively observed**: nothing is
+        routed, fulfilled, injected or fabricated, and every asserted value is
+        produced end to end by the real system.
+        "
+"passed","Wed Sep 09 07:46:52 UTC 2026","Wed Sep 09 07:47:11 UTC 2026","19763","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_settings_not_visible_by_default","TC5: Voice settings are NOT displayed in Chat by default.
+
+        Regression test for bug #5235: Read-out control was inappropriately
+        visible in default Chat window state.
+
+        Expected:
+            Voice settings controls should only appear when Read-out and
+            Voice mode features are explicitly activated.
+
+        Related:
+            - Bug: https://github.com/EliteaAI/elitea_issues/issues/5235
+        "
+"passed","Wed Sep 09 07:46:25 UTC 2026","Wed Sep 09 07:46:51 UTC 2026","25985","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_preview_personalization","TC4: Voice Personalization Controls in Settings Page.
+        TC-1914
+        "
+"passed","Wed Sep 09 07:46:14 UTC 2026","Wed Sep 09 07:46:24 UTC 2026","10128","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantViewModes","","","test_expand_collapse_fullview","Widget can expand to full view and collapse back.
+
+        Covers: 2.3.1, 2.3.2, 2.3.3
+        "
+"failed","Wed Sep 09 07:52:46 UTC 2026","Wed Sep 09 07:53:06 UTC 2026","19420","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[jira]","Add toolkit to chat, send a message, verify the tool really ran.
+
+        AFS: ``test-specs/toolkits/lfix_toolkit_chat_error_oracle_ELITEA-1140.md``
+        (repair brief for card #1817).
+
+        Step 5's oracle reads the toolkit's own ``tool_output`` off the
+        ``agent_tool_end`` Socket.IO frame, because Elitea publishes no
+        structural marker for a failed tool execution — success and failure
+        share DOM, testids, event sequence and ``finish_reason``, and the
+        chat message is LLM prose wrapped around arbitrary user data. The
+        free-text guards this replaced scanned that prose for ``""error""``,
+        which matched this repository's own branch names (a genuine success,
+        GHA run 32931571484) while missing every real 401 (which the model
+        narrates as *""authentication error""*, and which still satisfies
+        ``chat_response_keywords``). No negative substring scan survives on
+        any channel — the ``""thinking""`` scan went with them, for the same
+        reason and because it proved nothing Step 4 had not already waited
+        for. See ``utils/toolkit_output``.
+
+        A toolkit whose success shape has never been captured SKIPS at Tier 2
+        rather than continuing: without it a failed call is indistinguishable
+        from a successful one at every remaining tier, so continuing would
+        report GREEN on a broken toolkit.
+
+        No substitution: the frames are **passively observed**: nothing is
+        routed, fulfilled, injected or fabricated, and every asserted value is
+        produced end to end by the real system.
+        "
+"broken","Wed Sep 09 07:53:07 UTC 2026","Wed Sep 09 07:53:07 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[confluence]","Add toolkit to chat, send a message, verify the tool really ran.
+
+        AFS: ``test-specs/toolkits/lfix_toolkit_chat_error_oracle_ELITEA-1140.md``
+        (repair brief for card #1817).
+
+        Step 5's oracle reads the toolkit's own ``tool_output`` off the
+        ``agent_tool_end`` Socket.IO frame, because Elitea publishes no
+        structural marker for a failed tool execution — success and failure
+        share DOM, testids, event sequence and ``finish_reason``, and the
+        chat message is LLM prose wrapped around arbitrary user data. The
+        free-text guards this replaced scanned that prose for ``""error""``,
+        which matched this repository's own branch names (a genuine success,
+        GHA run 32931571484) while missing every real 401 (which the model
+        narrates as *""authentication error""*, and which still satisfies
+        ``chat_response_keywords``). No negative substring scan survives on
+        any channel — the ``""thinking""`` scan went with them, for the same
+        reason and because it proved nothing Step 4 had not already waited
+        for. See ``utils/toolkit_output``.
+
+        A toolkit whose success shape has never been captured SKIPS at Tier 2
+        rather than continuing: without it a failed call is indistinguishable
+        from a successful one at every remaining tier, so continuing would
+        report GREEN on a broken toolkit.
+
+        No substitution: the frames are **passively observed**: nothing is
+        routed, fulfilled, injected or fabricated, and every asserted value is
+        produced end to end by the real system.
+        "
+"passed","Wed Sep 09 07:48:41 UTC 2026","Wed Sep 09 07:48:56 UTC 2026","15900","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[confluence]","Create a credential through the UI form for any toolkit type."
+"passed","Wed Sep 09 07:44:53 UTC 2026","Wed Sep 09 07:45:14 UTC 2026","20777","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantMessaging","","","test_send_message_and_receive_response","User can send a message and receive AI response.
+
+        Covers: 3.2.1-3.2.7, 3.2.9
+        "
+"passed","Wed Sep 09 07:47:30 UTC 2026","Wed Sep 09 07:48:12 UTC 2026","42521","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestAgentCredentialIndicators","","","test_agent_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Agent."
+"passed","Wed Sep 09 07:44:17 UTC 2026","Wed Sep 09 07:44:36 UTC 2026","18379","tests.ui.toolkits","test_credential_required_fields_validation","TestCredentialRequiredFieldsValidation","","","test_create_credential_required_fields_validation","Save reflects required-field state; Display Name clearing is a known defect."
+"broken","Wed Sep 09 07:50:33 UTC 2026","Wed Sep 09 07:50:50 UTC 2026","17037","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[github]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Wed Sep 09 07:48:15 UTC 2026","Wed Sep 09 07:48:23 UTC 2026","7686","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[github]","Create a credential through the UI form for any toolkit type."
+"skipped","Wed Sep 09 07:49:26 UTC 2026","Wed Sep 09 07:49:26 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[bitbucket]","Create a toolkit through the UI form for any toolkit type."
+"broken","Wed Sep 09 07:51:43 UTC 2026","Wed Sep 09 07:52:01 UTC 2026","17307","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[jira]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Wed Sep 09 07:44:28 UTC 2026","Wed Sep 09 07:45:01 UTC 2026","33078","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_selection_from_chat","TC1: Voice Selection via TTS Controls in Chat.
+        TC-1918, TC-1915
+        "
+"passed","Wed Sep 09 07:45:01 UTC 2026","Wed Sep 09 07:45:36 UTC 2026","34920","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_speed_and_volume_controls","TC2: Speed and Volume Slider Adjustments.
+        TC-1917
+        "
+"passed","Wed Sep 09 07:49:27 UTC 2026","Wed Sep 09 07:49:41 UTC 2026","14501","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[confluence]","Create a toolkit through the UI form for any toolkit type."
+"skipped","Wed Sep 09 07:53:06 UTC 2026","Wed Sep 09 07:53:06 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[gitlab]","Add toolkit to chat, send a message, verify the tool really ran.
+
+        AFS: ``test-specs/toolkits/lfix_toolkit_chat_error_oracle_ELITEA-1140.md``
+        (repair brief for card #1817).
+
+        Step 5's oracle reads the toolkit's own ``tool_output`` off the
+        ``agent_tool_end`` Socket.IO frame, because Elitea publishes no
+        structural marker for a failed tool execution — success and failure
+        share DOM, testids, event sequence and ``finish_reason``, and the
+        chat message is LLM prose wrapped around arbitrary user data. The
+        free-text guards this replaced scanned that prose for ``""error""``,
+        which matched this repository's own branch names (a genuine success,
+        GHA run 32931571484) while missing every real 401 (which the model
+        narrates as *""authentication error""*, and which still satisfies
+        ``chat_response_keywords``). No negative substring scan survives on
+        any channel — the ``""thinking""`` scan went with them, for the same
+        reason and because it proved nothing Step 4 had not already waited
+        for. See ``utils/toolkit_output``.
+
+        A toolkit whose success shape has never been captured SKIPS at Tier 2
+        rather than continuing: without it a failed call is indistinguishable
+        from a successful one at every remaining tier, so continuing would
+        report GREEN on a broken toolkit.
+
+        No substitution: the frames are **passively observed**: nothing is
+        routed, fulfilled, injected or fabricated, and every asserted value is
+        produced end to end by the real system.
+        "
+"passed","Wed Sep 09 07:48:23 UTC 2026","Wed Sep 09 07:48:40 UTC 2026","16693","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[jira]","Create a credential through the UI form for any toolkit type."
+"passed","Wed Sep 09 07:48:57 UTC 2026","Wed Sep 09 07:49:12 UTC 2026","15060","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[github]","Create a toolkit through the UI form for any toolkit type."
+"passed","Wed Sep 09 07:45:36 UTC 2026","Wed Sep 09 07:46:25 UTC 2026","48064","tests.ui.voice","test_voice_configuration","TestVoiceConfiguration","","","test_voice_settings_sync","TC3: Settings Synchronization from Personalization to Chat.
+        TC-1916
+        Personalization settings are baseline defaults that apply to Chat.
+        Chat changes are temporary/session-only and do NOT sync back to Personalization.
+        "
+"passed","Wed Sep 09 07:46:25 UTC 2026","Wed Sep 09 07:46:58 UTC 2026","33079","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestToolkitCredentialIndicators","","","test_toolkit_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Toolkit."
+"passed","Wed Sep 09 07:45:39 UTC 2026","Wed Sep 09 07:46:13 UTC 2026","34447","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantHistory","","","test_history_restore_and_continue","User can restore a previous session and continue messaging.
+
+        Covers: 6.1.1, 6.2.1, 6.2.3
+        "
+"skipped","Wed Sep 09 07:52:03 UTC 2026","Wed Sep 09 07:52:03 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[gitlab]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Wed Sep 09 07:44:18 UTC 2026","Wed Sep 09 07:44:29 UTC 2026","11571","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantLauncher","","","test_launcher_visible_and_opens_widget","Launcher is visible and opens Support Assistant widget.
+
+        Covers: 2.1.1, 2.2.1, 2.2.2
+        "
+"skipped","Wed Sep 09 07:48:40 UTC 2026","Wed Sep 09 07:48:40 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[gitlab]","Create a credential through the UI form for any toolkit type."
+"passed","Wed Sep 09 07:45:15 UTC 2026","Wed Sep 09 07:45:39 UTC 2026","23849","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantNewSession","","","test_new_chat_creates_fresh_session","New Chat button starts a fresh support session.
+
+        Covers: 3.5.1, 3.5.2
+
+        Also covers ELITEA-1799's Expected Final State clause 3 (""previous
+        session preserved in history, not lost"") via a soft assertion —
+        known defect #607, stays red once the account's active conversation
+        exceeds the ~100-message-group threshold.
+        "
+"skipped","Wed Sep 09 07:48:40 UTC 2026","Wed Sep 09 07:48:40 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateCredential","","","test_create_credential[bitbucket]","Create a credential through the UI form for any toolkit type."
+"failed","Wed Sep 09 07:44:36 UTC 2026","Wed Sep 09 07:46:23 UTC 2026","106822","tests.ui.toolkits","test_toolkit_creation_create_bucket_verify_list_files","TestToolkitCreationCreateBucketVerifyListFiles","","","Create an Artifact toolkit (creates a bucket as a side effect), run List files, verify the bucket in Artifacts","Create my-artifact-toolkit/new-bucket via the Save path, verify
+        List files, verify the new bucket in Artifacts — with mandatory
+        pre/post cleanup for the case's own literal test data.
+        "
+"skipped","Wed Sep 09 07:49:26 UTC 2026","Wed Sep 09 07:49:26 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[gitlab]","Create a toolkit through the UI form for any toolkit type."
+"broken","Wed Sep 09 07:52:03 UTC 2026","Wed Sep 09 07:52:03 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[confluence]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Wed Sep 09 07:46:24 UTC 2026","Wed Sep 09 07:46:36 UTC 2026","11643","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantAttachments","","","test_attach_button_present_and_opens_picker","Attach button opens file picker dialog.
+
+        Covers: 7.1.1, 7.1.2
+        "
+"passed","Wed Sep 09 07:49:13 UTC 2026","Wed Sep 09 07:49:25 UTC 2026","12128","tests.ui.toolkits","test_toolkit_parameterized","TestCreateToolkit","","","test_create_toolkit[jira]","Create a toolkit through the UI form for any toolkit type."
+"skipped","Wed Sep 09 07:52:03 UTC 2026","Wed Sep 09 07:52:03 UTC 2026","0","tests.ui.toolkits","test_toolkit_parameterized","TestToolkitTestSettings","","","test_toolkit_test_settings[bitbucket]","Run a tool via the Test Settings panel on the toolkit detail page."
+"passed","Wed Sep 09 07:44:30 UTC 2026","Wed Sep 09 07:44:53 UTC 2026","23032","tests.ui.support_assistant","test_support_assistant_smoke","TestSupportAssistantLauncher","","","test_widget_state_persists_after_close_reopen","Conversation state persists when closing and reopening widget.
+
+        Covers: 2.2.3
+        "
+"passed","Wed Sep 09 07:52:06 UTC 2026","Wed Sep 09 07:52:45 UTC 2026","39130","tests.ui.toolkits","test_toolkit_parameterized","TestChatWithToolkit","","","test_chat_with_toolkit[github]","Add toolkit to chat, send a message, verify the tool really ran.
+
+        AFS: ``test-specs/toolkits/lfix_toolkit_chat_error_oracle_ELITEA-1140.md``
+        (repair brief for card #1817).
+
+        Step 5's oracle reads the toolkit's own ``tool_output`` off the
+        ``agent_tool_end`` Socket.IO frame, because Elitea publishes no
+        structural marker for a failed tool execution — success and failure
+        share DOM, testids, event sequence and ``finish_reason``, and the
+        chat message is LLM prose wrapped around arbitrary user data. The
+        free-text guards this replaced scanned that prose for ``""error""``,
+        which matched this repository's own branch names (a genuine success,
+        GHA run 32931571484) while missing every real 401 (which the model
+        narrates as *""authentication error""*, and which still satisfies
+        ``chat_response_keywords``). No negative substring scan survives on
+        any channel — the ``""thinking""`` scan went with them, for the same
+        reason and because it proved nothing Step 4 had not already waited
+        for. See ``utils/toolkit_output``.
+
+        A toolkit whose success shape has never been captured SKIPS at Tier 2
+        rather than continuing: without it a failed call is indistinguishable
+        from a successful one at every remaining tier, so continuing would
+        report GREEN on a broken toolkit.
+
+        No substitution: the frames are **passively observed**: nothing is
+        routed, fulfilled, injected or fabricated, and every asserted value is
+        produced end to end by the real system.
+        "
+"passed","Wed Sep 09 07:46:59 UTC 2026","Wed Sep 09 07:47:29 UTC 2026","30316","tests.ui.toolkits","test_toolkit_indicators_for_credentials","TestPipelineCredentialIndicators","","","test_pipeline_credential_indicators_e2e","E2E test: verify all indicators and fix invalid credentials on Pipeline."
