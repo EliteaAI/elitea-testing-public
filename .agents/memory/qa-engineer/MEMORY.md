@@ -73,3 +73,4 @@
 - [Dev-only sanctioned-RED](sanctioned_red_on_a_dev_only_warning_is_environment_dependent.md) — verify statically; recorder vs assertion decides mask-or-not
 - [DEV model catalog turnover — gpt-5.2 removed](dev_model_catalog_turnover_gpt52_removed.md) — default_model_name is stale; imports fall back to items[0]
 - [Changing a page-object default is a blast-radius review](changing_a_page_object_default_is_a_blast_radius_review.md) — grep every call site before ruling a default change 'scoped'
+- [Model display-name literals rot](model_display_name_literals_rot.md) — dead catalog entry; read the case, often DELETE the step not swap it
