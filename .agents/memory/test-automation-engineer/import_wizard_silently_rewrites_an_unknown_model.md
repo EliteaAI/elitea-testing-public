@@ -29,10 +29,20 @@ Derive the fixture model at run time from the catalog the wizard itself reads �
 
 **Pick `items[1]`, never `items[0]`.** `items[0]` IS the fallback value, so
 expecting it makes the assertion pass whether carry-through worked or not — a
-tautology that silently destroys the coverage. Guard `len(items) >= 2` (and that
-the chosen model's `display_name` differs from `items[0]`'s); a project too small
-to distinguish the two is a legitimate environment `blocked`, not something to
-weaken around.
+tautology that silently destroys the coverage.
+
+Guard that choice on **both** fields, and this is the part I got wrong first
+time round: `len(items) >= 2`, **`chosen["name"] != items[0]["name"]`** (the
+field the PRODUCT compares), and `display_name` distinctness (the field the TEST
+reads). With `include_shared=true` the catalog can hold two entries sharing a
+`name` across projects — the product anticipates it, synthesising a composite
+`id: ${project_id}_${name}` (`src/api/configurations.js:439-442`). A project too
+small or too colliding to distinguish the two is a legitimate environment
+`blocked`, not something to weaken around.
+
+**Transferable rule: guard on the field the product compares, not only the field
+the test reads.** A guard placed one level away from the mechanism that enforces
+the property looks equivalent and is not.
 
 ## Two field names, not interchangeable
 

@@ -518,15 +518,33 @@ positive proof of carry-through. This is the whole point of the repair.
 
 ### Environment guard (a legitimate `blocked`, not papered over)
 
-`_pick_fixture_model()` asserts, with an explanatory message:
+`_pick_fixture_model()` asserts three things, each with an explanatory
+message:
 
 1. `len(models) >= 2` — a 1-model project **cannot** distinguish carry-through
    from the fallback;
-2. the chosen model's rendered display differs from `items[0]`'s — the same
-   property, at the level the assertion actually reads.
+2. `chosen["name"] != items[0]["name"]` — a guard on the field the **product**
+   compares (`getDefaultModel` matches `m.name === model_name`). With
+   `include_shared=true` the catalog can hold two entries sharing a `name`
+   across projects — the product anticipates exactly that, which is why the UI
+   synthesises a composite `id: ${project_id}_${name}`
+   (`src/api/configurations.js:439-442`). If the two names collided, the
+   fallback would store the very value a working carry-through stores;
+3. `chosen_display != items[0]`'s display — a guard on the field the **test**
+   reads (the rendered selector text).
 
-Either failing is an environment limitation to route to a human, not a product
-defect and not something to weaken around.
+Both (2) and (3) exist because the two fields are not the same axis, and the
+whole justification for choosing `items[1]` is that it is distinguishable from
+the fallback. **Guard on the field the product compares, not only the field the
+test reads** — a display-only guard sits one level away from the mechanism that
+actually enforces the property. (Neither the reviewer nor the lead could
+construct a credible *silent* false green from a name collision — name-keyed
+resolution returns the first match, so the realistic outcomes are a loud guard
+failure or a loud permanent red — but the property is now guarded where it is
+enforced.)
+
+Any of the three failing is an environment limitation to route to a human, not
+a product defect and not something to weaken around.
 
 ### Expected-result changes: none.
 

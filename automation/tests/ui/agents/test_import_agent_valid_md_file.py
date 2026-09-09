@@ -106,6 +106,16 @@ def _pick_fixture_model(credential_api) -> tuple[str, str]:
       because the wizard matches ``m.name === model_name``;
     * the Model selector renders **``display_name``** (falling back to
       ``name``) — ``LLMModelSelector.jsx:110,199``.
+
+    That split is why the distinguishability of ``items[1]`` from the
+    fallback is guarded on BOTH fields — **guard on the field the product
+    compares, not only the field the test reads.** With
+    ``include_shared=true`` the catalog can hold two entries sharing a
+    ``name`` across projects (the product anticipates exactly this: the UI
+    synthesises a composite ``id: ${project_id}_${name}`` —
+    ``src/api/configurations.js:439-442``), so a display-only guard would
+    not notice a case where the fallback stores the very value a working
+    carry-through stores.
     """
     catalog = credential_api.list_models(include_shared=True)
     models = catalog.get("items", [])
@@ -122,6 +132,15 @@ def _pick_fixture_model(credential_api) -> tuple[str, str]:
     chosen_display = chosen.get("display_name") or chosen["name"]
     fallback_display = models[0].get("display_name") or models[0]["name"]
 
+    # Guard 1 — on the field the PRODUCT compares (`m.name === model_name`).
+    assert chosen["name"] != models[0]["name"], (
+        "The chosen catalog model shares its API name with the wizard's "
+        f"items[0] fallback ({chosen['name']!r}) — the fallback would store "
+        "the same value a working carry-through does. Environment "
+        "limitation, not a product defect."
+    )
+
+    # Guard 2 — on the field the TEST reads (the rendered selector text).
     assert chosen_display != fallback_display, (
         "The chosen catalog model renders identically to the wizard's "
         f"items[0] fallback ({chosen_display!r}) — the Model assertion could "
