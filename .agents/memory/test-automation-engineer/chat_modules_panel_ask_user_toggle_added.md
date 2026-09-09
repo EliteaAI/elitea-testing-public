@@ -1,43 +1,59 @@
 ---
-name: Chat Modules panel — "Ask User" 8th toggle added
-description: Modules panel now renders 8 toggle switches (not 7) — new "Ask User"/ask_user between Python Sandbox and Swarm Mode
+name: Chat Modules panel — the 10 module toggles and their tool keys
+description: Modules panel renders 10 switches; EL-6540 renamed 3 titles — current names, order, keys and render gates
 type: feedback
+aliases: [modules panel, internal tools, modules-toggle, EL-6540]
+tags: [area/chat, type/handles]
+created: 2026-08-07
+updated: 2026-09-09
 ---
 
-Live-confirmed 2026-08-07 (ELITEA-2464 work, localhost:5173 / `automation/testids`):
-the Chat `+` → Modules panel now shows **8** toggle switches, not the 7 that
-ELITEA-2162's original analysis (2026-08-03) and both cases' text describe.
+Live-confirmed **2026-09-09** on localhost:5173 (`automation/testids`, 0 behind
+`main`) and independently on `dev.elitea.ai` — the Chat `+` → Modules panel renders
+**10** `role="switch"` elements. `document.querySelectorAll('[role="switch"]').length`
+== 10 with the panel open. Titles come from
+`src/[fsd]/shared/lib/constants/internalTools.constants.js`.
 
-New entry: **"Ask User"** (`data-testid="modules-toggle-ask_user"`, tool key
-`ask_user`), positioned between "Python Sandbox" (`pyodide`) and "Swarm Mode"
-(`swarm`) in DOM order:
+Render order — `tool_key` — title (testid is `modules-toggle-{tool_key}`):
 
-1. `image_generation` — Image creation
+1. `image_generation` — **Image Creation**
 2. `data_analysis` — Data Analysis
-3. `internal_mcp` — Agents & Pipeline Builder
-4. `planner` — Planner
-5. `pyodide` — Python Sandbox
-6. **`ask_user` — Ask User (NEW)**
-7. `swarm` — Swarm Mode
-8. `lazy_tools_mode` — Smart Tool Selection
+3. `internal_mcp` — **Agent & Pipeline Builder**
+4. `skill_builder` — **Skill Builder**
+5. `project_context_builder` — **Project Context Builder**
+6. `ask_user` — Ask User
+7. `planner` — Planner
+8. `pyodide` — Python Sandbox
+9. `swarm` — Swarm Mode
+10. `lazy_tools_mode` — **Smart Tools Selection**
 
-`ChatPage.MODULE_TOGGLE_ORDER` in `automation/pages/chat_page.py` now has this
-8th entry (additive insert in live DOM position). Any assertion elsewhere that
-hardcodes "7 modules" (case text, docs, a future AFS) is now stale — check
-`MODULE_TOGGLE_ORDER`'s live length before trusting a written "7". Filed as
-clarification: EliteaAI/elitea-testing-public#1293.
+## Renames — EliteaAI/EliteaUI@79fd2a55 (EL-6540, merged 2026-09-08)
 
-Also confirmed: `ChatPage.get_open_plus_menu_item_count()` is scoped to the
-`-menuitem` testid SUFFIX (`PLUS_MENU_ITEM_SUFFIX`) and does **not** match
-`chat-attach-menuitem-button` (ends `-menuitem-button`, a different naming
-convention for that one control) — it returns 5 for the plus-menu's 6 visible
-top-level items (Attach Files is the odd one out), not 6. Don't assume it
-counts every visible plus-menu item; verify each item's testid suffix before
-trusting the helper's count.
+| Old | New |
+|---|---|
+| `Image creation` | `Image Creation` |
+| `Agents & Pipeline Builder` | `Agent & Pipeline Builder` |
+| `Smart Tool Selection` | `Smart Tools Selection` |
 
-Also confirmed: the toast's `data-severity` attribute lives on the
-`toast-alert` testid (the MUI `Alert` root), NOT on `toast-message` (a plain
-text `Box` child with no severity attribute of its own). Use
-`ChatPage.get_toast_alert(severity)` / `TOAST_ALERT_SEVERITY` for a severity
-assertion — asserting severity via `toast_message` silently asserts nothing
-(the attribute isn't there).
+`Skill Builder` and `Project Context Builder` were added earlier and were simply
+never in our list. All three renames plus the two additions landed in
+`ChatInternalTool` via card #2111 / ELITEA-0501 (2026-09-09). Anything still writing
+`Agents & Pipeline Builder` or `Smart Tool Selection` is stale — as of 2026-09-09 that
+includes the AFS files `test-specs/chat-interface/l2_chat-search-and-modules-panel_ELITEA-2162.md`
+and `l2_agent-hub-participant-readonly-canvas-llm-override_ELITEA-2075.md`.
+
+## Render gates — do NOT assume all 10 always render
+
+- `internal_mcp`, `skill_builder`, `project_context_builder` share ONE gate,
+  `useIsMcpVisible()` = `mcp_exposure_enabled !== false && mcp_in_menu_enabled !== false`
+  (`GET /api/v2/elitea_core/platform_settings/prompt_lib`; both `true` on DEV).
+  They appear or vanish **as a group of three**.
+- `image_generation` has an independent **per-project** toolkit gate
+  (`ImageGenServiceProvider_ImageGen`) — the only member that can vanish alone.
+- The rest are unconditional.
+
+The switches DO carry `modules-toggle-{tool_key}` testids; `ChatPage` still locates
+them by accessible name (`get_by_role("switch", name=...)`), which is why a title
+rename breaks the test at all. Migrating to the testids is filed as a follow-up.
+
+Related: [[ui_display_string_constants_need_a_source_pointer]]
