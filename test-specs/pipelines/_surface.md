@@ -48,6 +48,18 @@ the menu as closed.
 <div id="menu-" …> subtree intercepts pointer events`. `AgentDetailPage.close_version_selector()`
 (PR #2058) is the reference implementation.
 
+**Resolved during ELITEA-2002 implementation (2026-09-09, `#2077`):** the pipelines side is now
+implemented too — `PipelineDetailPage.close_versions_menu()` (confirmed close: Escape on
+`VERSION_OPTION_ANY.first`, then `aria-expanded="false"` **AND** zero options, raising on
+give-up) and `PipelineDetailPage.open_version_selector()` (idempotent + `_EXPANDED`
+post-condition). Both fixed **in place** — all three pipeline call sites drive this one dropdown,
+and both new args are defaulted, so no spec changed. Matched control pair on **dev.elitea.ai**,
+same command minutes apart: pristine `automation/base` reproduced the backdrop signature
+(`test_pipeline_create_version.py:146` → `select_version_by_name` → `open_version_selector`,
+1 failed in 36.04 s); the repair ran `2 passed` twice over BOTH caller specs (42.89 s / 41.43 s),
+including `test_pipeline_delete_version` which the nightly failed 3/3 on this same mechanism.
+Use these two methods on any new pipelines spec — never a bare `page.keyboard.press("Escape")`.
+
 
 ## Pipeline EXECUTION waits — `wait_for_embedded_chat_response()` cannot fail, and the run's own status is the honest signal (confirmed live, 2026-09-09, ELITEA-2448 repair / `#2076`)
 
