@@ -84,6 +84,26 @@ Three MINOR, isolated product defects were found live during this run
    blanket "any 404" filter, so an unrelated 404 from a genuinely
    different resource still surfaces as a real failure.
 
+Environment scope of the #611 signature -- RED on ``localhost:5173`` and
+GREEN on ``dev.elitea.ai`` are BOTH correct outcomes for this spec. #611's
+entire signature is React *development-build* diagnostics ("Received `true`
+for a non-boolean attribute", "React does not recognize the `ownerState`
+prop"), which live in ``react-dom.development.js``; React compiles those
+warnings OUT of its production bundle. EliteaUI ships a production build --
+``"build": "vite build"`` in ``package.json``, and ``vite.config.js`` has no
+``NODE_ENV``/``mode`` override, so ``vite build`` defaults to
+``mode=production``; ``.github/workflows/build_and_release.yml:86`` releases
+that artifact. So a green run on DEV does NOT mean #611 was fixed, and a red
+run on the localhost vite dev server is NOT a regression. Nothing is weakened
+where the warnings are structurally absent: the #611 handling is an
+absence-tolerant *recorder* -- zero #611 messages produce no signal -- not a
+presence assertion, and every one of the case's own step assertions runs
+identically on both environments. One link in this chain is INFERRED, not
+statically verified: that the DEV *deployment* actually serves that released
+production artifact rather than a dev-mode container. That is inferred from
+the release workflow above; it has not been confirmed against the served
+bundle.
+
 Spec: test-specs/agents/l2_publish-draft-version-status-changes-unpublish-available_ELITEA-1892.md
 """
 
