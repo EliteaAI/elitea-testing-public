@@ -69,6 +69,42 @@ All from `automation/` (cwd matters — `pytest.ini`, `conftest.py`, `.env.test`
     (real bug, not staleness), or a defect not in the enumerated, linked set.
     Record which set-members actually fired across the 3 gate runs in the
     closure record — don't just write "sanctioned RED".
+  - **A sanctioned-RED signature can be ENVIRONMENT-SCOPED — check before you
+    classify (2026-09-09, ELITEA-1892/#2082).** The closed set above is not
+    environment-independent, and reading a green gate as "the defect is fixed"
+    or a red one as "a regression" are both mistakes. **`#611`'s entire
+    signature is React *development-build* diagnostics** (`Received \`true\` for
+    a non-boolean attribute`, `React does not recognize the \`ownerState\`
+    prop`), which live in `react-dom.development.js`. EliteaUI ships a
+    production build (`"build": "vite build"` in `package.json`; `vite.config.js`
+    only *consumes* `mode` and sets no `NODE_ENV`/`mode` override, so `vite build`
+    defaults to `mode=production`; `.github/workflows/build_and_release.yml:86`
+    releases that artifact), and React compiles those warnings OUT of the
+    production bundle. ⇒ **ELITEA-1892 is RED on `localhost:5173` (vite dev
+    server) and GREEN on `dev.elitea.ai`, and BOTH are correct.** A DEV gate on
+    this spec is therefore a legitimate `automated` green, NOT `blocked-on-#611`
+    — which is the opposite of what the `expect.soft` bullet above would tell
+    you if applied mechanically. `#611`/`#614` stay OPEN on their own localhost
+    evidence; nothing is weakened, because the spec's `#611` handling is an
+    absence-tolerant *recorder* (zero matching messages produce no signal), not
+    a presence assertion, and every one of the case's own step assertions runs
+    identically on both environments. One link is INFERRED, not verified: that
+    the DEV deployment serves that released production artifact rather than a
+    dev-mode container. **The general rule: before classifying any gate result
+    against a closed set, ask whether each member can physically occur on the
+    environment you gated on.**
+  - **Corollary — some specs CANNOT be gated on localhost at all
+    (2026-09-09, ELITEA-1892/#2082).** The publish wizard's AI gate
+    (`POST .../publish_validate/...` and `.../publish_skill_validate/...`)
+    returns `400 {"error":"ai_validation_failed","msg":"AI validation failed:
+    User token not found. Please create user_token"}` for the `VITE_DEV_TOKEN`
+    identity localhost authenticates as; only a real Keycloak *session* gets a
+    200. So a local run of a publish-wizard spec fails with a **different**
+    signature and a local green proves nothing. Gate those against
+    `https://dev.elitea.ai` (`APP_PREFIX=/app`) — and note `.env.test` beats
+    shell env (`config.py` orders dotenv first), so `ELITEA_URL=… pytest`
+    silently runs localhost anyway; the env file itself must be swapped and
+    restored. Tracked as a question card for a durable fix.
   - **Analysis-time entry (2026-07-23, #557/ELITEA-1965):** the exception
     applies whether the defect is discovered during **automation** or during
     **analysis itself** — the (a)/(b)/(c) criteria above don't restrict *when*
