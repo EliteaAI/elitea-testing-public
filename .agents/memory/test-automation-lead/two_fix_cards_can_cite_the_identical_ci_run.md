@@ -125,9 +125,9 @@ Run `34331579791` was carded in **two full passes**: 09:32–09:42 (#2074–#208
 | ELITEA-1899 | #2051 | #2081, #2113 | none |
 | ELITEA-2448 | #2076 | #2114 | none |
 | ELITEA-2367 | #2079 | **#2115** | none |
-| ELITEA-1740 | #2074 | #2116 | not yet worked |
+| ELITEA-1740 | #2074 | #2116 | none |
 
-**Four sessions, zero code.** Now carded as a process defect: **#2135** (`question`) —
+**Five sessions, zero code** (all four pairs now worked; #2116 closed out 2026-09-09 evening). Now carded as a process defect: **#2135** (`question`) —
 recommends dedup on *test node id* plus a `main`-vs-`automation/base` divergence check
 at intake, because the second half of this loop is permanent: the nightly runs `main`,
 `automation/base` is 399 commits ahead, so every merged-but-unpromoted repair re-cards
@@ -135,3 +135,22 @@ on EVERY subsequent nightly, not just on a double-filed one.
 
 Second-order lesson: a duplicate session is not wasted budget — see
 `a_duplicate_card_is_where_you_pay_the_originals_evidence_gap.md`.
+
+## All four pairs now worked — the tally is closed (2026-09-09 late)
+
+#2116 (ELITEA-1740) was the last unworked duplicate and confirmed the pattern
+without deviation: same run id, same node id, same assertion, **zero code**.
+
+The half of this that a node-id dedup would NOT fix, measured on #2116:
+`47e8a475b` (the repair, PR #2088) is **not** an ancestor of `origin/main`,
+`origin/main..origin/automation/base` = **400**, and no open PR targets `main`
+with it — escalation rung **3 (nothing staged)**. The nightly runs `main`, so
+this card re-files on every subsequent nightly regardless of double-filing.
+Both halves of #2135 are load-bearing; shipping only the cheap dedup half
+suppresses the twin but not the recurrence.
+
+Reinforced on #2116: **derive the testid set yourself.** #2074's record listed 8;
+resolving all 17 page-object methods the spec calls across three page objects
+gave **13** on the executed path. The sibling's list was short by 5 second-hop
+handles — the third time in this note's history that copying would have shipped
+an under-specified promotability row.
