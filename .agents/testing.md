@@ -1133,3 +1133,22 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   status-code filter, and never widened to swallow the 400s (that is masking, per the #1753 note).
   Local runs of pipeline-execution specs should expect this class; it is the local topology, not a
   product regression.
+- **DEV-only `net::ERR_ABORTED` on `BasePage.navigate()` — a CANCELLED goto, not a slow one; tracked as
+  #2124 (2026-09-09, ELITEA-1901/#2083)**: re-opening a segment-less list route (`/app/agents/all`)
+  **after** the app has settled on a project-scoped detail route (`/app/399/agents/all/<id>?...`) makes
+  `page.goto()` fail with `net::ERR_ABORTED` at `automation/pages/base_page.py:358`. Allure status
+  **`broken`**, not `failed`.
+  Measured on `dev.elitea.ai`: **4 of 8** invocations of `test_import_agent_valid_md_file` failed this
+  way — and a **matched control on pristine `origin/automation/base` hit the identical abort 3/3**, so
+  it is pre-existing and independent of any diff. Not reproducible on localhost.
+  Mechanism (hypothesis): the SPA's own client-side redirect back to the project-scoped route cancels
+  the in-flight `goto`.
+  ⚠️ **`ERR_ABORTED` means *cancelled*, not *slow* — raising the timeout cannot help and must not be
+  attempted as a fix.** The durable fix (#2124) is to navigate to the project-scoped route the app
+  actually settles on, or to treat `ERR_ABORTED` as a retryable `goto` outcome — the #1847 family
+  ("wait on what the caller needs"). `navigate()` lives on `BasePage`, so **any** spec that re-opens a
+  list page after a project-scoped detail page is exposed; suspect this before blaming a spec's own
+  assertions, because the failure surfaces at a *precondition* and names the wrong subsystem (the
+  #2074/#2076 pattern).
+  It is a raw uncaught error upstream of every assertion, so it is **never** a member of a
+  sanctioned-RED closed set: the response is **re-run / re-gate, never accept 2-of-3**.
