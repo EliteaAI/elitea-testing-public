@@ -248,8 +248,27 @@ class SkillsListPage(BasePage):
 
     @action("Navigate to skills list")
     def navigate(self):
-        """Navigate to the skills dashboard and wait until ready."""
-        super().navigate("/skills/all")
+        """Navigate to the skills dashboard and wait until ready.
+
+        Fails fast on a non-OK top-level navigation response (e.g. a
+        gateway/proxy 500 served in front of the app during a DEV-wide
+        wobble — CI run 34331579791 / issue #2074) rather than letting
+        ``wait_for_page_load()`` time out slowly against a page that was
+        never the Skills grid to begin with, and rather than letting a
+        later assertion (e.g. ``skill_exists_in_list()``) fail with a
+        message that misleadingly blames the Skills feature for an
+        infra-level failure. A ``None`` response (some same-document
+        navigations legitimately return one) is treated as "no
+        information" and does not raise.
+        """
+        response = super().navigate("/skills/all")
+        if response is not None and not response.ok:
+            message = (
+                f"Navigation to /skills/all returned HTTP {response.status} — "
+                "the app served an error page, not the Skills list."
+            )
+            logger.error(message)
+            raise AssertionError(message)
         self.wait_for_page_load()
         logger.info("Navigated to skills dashboard and page loaded")
 

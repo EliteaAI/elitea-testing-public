@@ -268,3 +268,33 @@ None.
   "skill-b"]), ("translation", ["skill-c"]), ("output", ["skill-a"])]`
   against the same 3 pre-created skills — cheaper than the case's literal
   per-step structure since all 3 filters share the same setup/teardown.
+
+## Adjustment (2026-09-09)
+
+- **Trigger**: `test_skill_tag_filter.py::TestSkillTagFilter::test_filter_skills_by_tag`
+  went red in CI run **34331579791** (DEV Stable #114) at
+  `test_skill_tag_filter.py:184` — `assert list_page.skill_exists_in_list(skill_a_name)`.
+- **Triage class**: **transient DEV infra 500**, not a product or test
+  defect. The allure failure screenshot
+  (`ELITEA-1740-ci-run114-step1-500-error-page.png`) shows navigation to
+  `/skills/all` landed on a full-page branded "500 Internal Server Error"
+  page served in front of the app — that markup does not exist anywhere
+  in EliteaUI's source (`git grep "Something went wrong on our end"
+  origin/main -- src/` → 0 hits), i.e. a gateway/proxy error page during a
+  DEV-wide wobble in that window.
+- **Reproduction**: the test itself is correct and reproduces GREEN 3/3
+  locally against the same DEV backend (57.5s / 55.9s / 55.0s,
+  `reruns.json == {}`).
+- **Repair (issue #2074)**: a diagnosability hardening, not a behavior
+  change — `BasePage.navigate()` now returns the `Response` it previously
+  discarded, and `SkillsListPage.navigate()` fails fast with an
+  `AssertionError` naming the real cause (`Navigation to /skills/all
+  returned HTTP <status> — the app served an error page, not the Skills
+  list.`) when that response is non-OK, before `wait_for_page_load()`
+  would otherwise burn its full timeout and fail with a misleading
+  Skills-feature-blaming message. A `None` response (legitimate for some
+  same-document navigations) is treated as "no information", never a
+  failure.
+- **Expected-result changes: none.** No assertion, comparison, or count in
+  `test_skill_tag_filter.py` changed. The 500 still turns the run red —
+  this only makes the red state the truth about what happened.

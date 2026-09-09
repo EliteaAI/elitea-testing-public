@@ -6,7 +6,7 @@ wait patterns, screenshot helpers, and navigation methods.
 
 import logging
 from playwright.sync_api import Error as PlaywrightError
-from playwright.sync_api import Locator, Page, expect
+from playwright.sync_api import Locator, Page, Response, expect
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from config import settings
@@ -333,7 +333,7 @@ class BasePage:
         logger.info("Toggled navigation sidebar: collapsed=%s", expected)
         return expected == "true"
 
-    def navigate(self, path: str) -> None:
+    def navigate(self, path: str) -> Response | None:
         """Navigate to *path* relative to ``app_base_url``.
 
         Args:
@@ -342,11 +342,20 @@ class BasePage:
                 (set via ``APP_PREFIX`` in ``.env.test``: ``/app`` on deployed
                 envs, ``""`` on localhost), so page objects use bare paths like
                 ``/skills/all`` on all targets.
+
+        Returns:
+            The ``Response`` for this navigation's main-frame request, or
+            ``None`` when Playwright's ``goto()`` itself returns ``None``
+            (legitimate for some same-document navigations — callers must
+            treat that as "no information", never as a failure). Not stashed
+            on ``self``: returning it ties the check to the navigation that
+            produced it, rather than to a value a later UI-click navigation
+            could leave stale.
         """
         base = settings.app_base_url
         url = f"{base}{path}" if not path.startswith("http") else path
         logger.info("Navigating to %s", url)
-        self.page.goto(url, wait_until="domcontentloaded")
+        response = self.page.goto(url, wait_until="domcontentloaded")
         try:
             self.page.wait_for_load_state("networkidle", timeout=30000)
         except Exception:
@@ -367,6 +376,8 @@ class BasePage:
 
         # Dismiss any popups that may have appeared (NPS survey, banners)
         self.dismiss_popups()
+
+        return response
 
     def reload_and_wait(self, timeout: int = 15000) -> None:
         """Reload the page and wait for it to be ready.
