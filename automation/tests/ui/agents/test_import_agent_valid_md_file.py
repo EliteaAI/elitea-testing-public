@@ -22,6 +22,20 @@ every successful import — filtered out of the zero-console-errors assertion
 rather than asserted against (mirrors ELITEA-1902's
 ``_KNOWN_NONBLOCKING_CONSOLE_SUBSTRING`` pattern).
 
+Model derived from the live catalog (repair 2026-09-09, board #2083 —
+triage class D, environment/data): the fixture's ``model:`` value and the
+expected Model-selector display name are read at run time from the project's
+own model catalog (``GET /configurations/models/{project_id}``), never
+hardcoded. The spec previously planted ``settings.default_model_name``
+("gpt-5.2") and expected "GPT-5.2"; the DEV LLM catalog no longer offers
+that model, so the import wizard took its documented fallback and configured
+``items[0]`` instead — a SILENT substitution (no toast, no error;
+EliteaAI/EliteaUI ``importWizardModels.helpers.js:4-13``). The product is
+correct; the fixture data was stale. The derived model is deliberately
+``items[1]``, NOT ``items[0]``: ``items[0]`` is exactly what the fallback
+produces, so expecting it would let a genuinely broken carry-through pass.
+See AFS § Adjustment.
+
 Environment independence (repair 2026-08-27, board #1813): Step 1 asserts
 that the dashboard LOADED, never that it holds content. It previously
 required at least one pre-existing agent card — an assumption the TMS case
@@ -37,7 +51,6 @@ import uuid
 
 import allure
 import pytest
-from config import settings
 from pages.agent_detail_page import AgentDetailPage
 from pages.agents_list_page import AgentsListPage
 from playwright.sync_api import expect
@@ -62,13 +75,61 @@ INSTR_MARKER = "ELITEA_1901_INSTR_MARKER"
 # ``_KNOWN_NONBLOCKING_CONSOLE_SUBSTRING`` pattern.
 _KNOWN_NONBLOCKING_CONSOLE_SUBSTRING = "validateDOMNesting"
 
-# Live-confirmed rendered display name for settings.default_model_name
-# ("gpt-5.2") on the Model Selector's closed state (AFS Test Data section —
-# confirmed via the real Import button -> preview -> confirm -> detail page
-# flow). Not a general slug->display transformation (other models render
-# differently, e.g. "GPT-5 mini"), so kept as an explicit literal rather than
-# derived from settings.default_model_name.upper().
-EXPECTED_MODEL_DISPLAY_NAME = "GPT-5.2"
+# The fixture's model is derived from the project's LIVE catalog at run time
+# (see _pick_fixture_model below), never hardcoded — a literal goes stale the
+# moment the platform rotates its LLM offering, and the import wizard swallows
+# an unknown model name silently (board #2083, AFS § Adjustment).
+#
+# items[1] is chosen ON PURPOSE. The wizard's fallback for an unrecognised
+# model is items[0] (EliteaAI/EliteaUI
+# src/[fsd]/entities/import-wizard/lib/helpers/importWizardModels.helpers.js:12
+# — `modelsList[0]?.name || ''`), so asserting items[0] would be satisfied by
+# the fallback itself and could no longer distinguish a working carry-through
+# from a broken one.
+_FIXTURE_MODEL_CATALOG_INDEX = 1
+
+
+def _pick_fixture_model(credential_api) -> tuple[str, str]:
+    """Return ``(api_name, rendered_display_name)`` for the model to plant in
+    the import fixture, derived from the project's LIVE catalog.
+
+    The catalog read is the oracle, not a substitution: it is the exact
+    endpoint the import wizard itself consumes
+    (``GET /configurations/models/{project_id}?include_shared=true`` —
+    ``IWModalContent.jsx`` -> ``rematchModels``), so the values below are
+    produced by the system, and the agent's resulting configuration is still
+    produced entirely by the product.
+
+    Two field names, deliberately different:
+
+    * the fixture frontmatter's ``model:`` key takes the API **``name``**,
+      because the wizard matches ``m.name === model_name``;
+    * the Model selector renders **``display_name``** (falling back to
+      ``name``) — ``LLMModelSelector.jsx:110,199``.
+    """
+    catalog = credential_api.list_models(include_shared=True)
+    models = catalog.get("items", [])
+
+    assert len(models) >= 2, (
+        "Import carry-through cannot be distinguished from the product's "
+        "items[0] fallback with fewer than 2 models in the project catalog "
+        f"(got {len(models)}). This is an environment limitation, not a "
+        "product defect — the case needs a project offering at least two "
+        "models."
+    )
+
+    chosen = models[_FIXTURE_MODEL_CATALOG_INDEX]
+    chosen_display = chosen.get("display_name") or chosen["name"]
+    fallback_display = models[0].get("display_name") or models[0]["name"]
+
+    assert chosen_display != fallback_display, (
+        "The chosen catalog model renders identically to the wizard's "
+        f"items[0] fallback ({chosen_display!r}) — the Model assertion could "
+        "not tell a working carry-through from the fallback. Environment "
+        "limitation, not a product defect."
+    )
+
+    return chosen["name"], chosen_display
 
 
 class TestImportAgentValidMdFile:
@@ -80,10 +141,21 @@ class TestImportAgentValidMdFile:
     )
     @pytest.mark.p1
     @pytest.mark.regression
-    def test_import_agent_valid_md_file(self, page, agent_api, tmp_path):
+    def test_import_agent_valid_md_file(
+        self, page, agent_api, credential_api, tmp_path,
+    ):
         """Import a hand-authored (not app-exported) ``.md`` file and verify
         the resulting Agent's Name/Description/Instructions/Model all match
         the source file verbatim.
+
+        The fixture's ``model:`` value is derived at run time from the
+        project's live model catalog (``credential_api.list_models()`` —
+        the same ``GET /configurations/models/{project_id}`` the import
+        wizard itself reads), never hardcoded: an unknown model name is
+        silently replaced by the wizard's ``items[0]`` fallback, so a stale
+        literal turns this assertion into a false red (board #2083). The
+        catalog is used as an ORACLE only — the imported agent's Model is
+        still produced entirely by the product.
 
         Steps (AFS
         test-specs/agents/l2_import-valid-agent-md-file-correct-config_ELITEA-1901.md):
@@ -105,6 +177,12 @@ class TestImportAgentValidMdFile:
         6. Open the imported agent; verify Name, Description, Instructions,
            and Model all match the source file verbatim.
         """
+        fixture_model_name, expected_model_display = _pick_fixture_model(credential_api)
+        logger.info(
+            "Fixture model derived from live catalog — name=%r display=%r",
+            fixture_model_name, expected_model_display,
+        )
+
         unique_suffix = uuid.uuid4().hex[:8]
         agent_name = f"el-1901-import-{unique_suffix}"
         agent_description = (
@@ -128,7 +206,7 @@ class TestImportAgentValidMdFile:
             "---\n"
             f"name: {agent_name}\n"
             f"description: {agent_description}\n"
-            f"model: {settings.default_model_name}\n"
+            f"model: {fixture_model_name}\n"
             "---\n"
             f"{agent_instructions}\n"
         )
@@ -287,11 +365,12 @@ class TestImportAgentValidMdFile:
                 # Axis 2 addition — Model is part of an Agent's config just
                 # as much as Name/Description/Instructions (AFS Axis 2).
                 selected_model = detail_page.get_selected_model_name()
-                assert selected_model == EXPECTED_MODEL_DISPLAY_NAME, (
+                assert selected_model == expected_model_display, (
                     "Imported agent's Model selector should reflect the "
-                    f"fixture's model ({settings.default_model_name!r}), "
-                    f"expected {EXPECTED_MODEL_DISPLAY_NAME!r}, got: "
-                    f"{selected_model!r}"
+                    f"fixture's model ({fixture_model_name!r}), expected "
+                    f"{expected_model_display!r}, got: {selected_model!r} — "
+                    "a mismatch here means the import wizard did not carry "
+                    "the file's model through (its silent items[0] fallback)"
                 )
 
                 # Axis 2 addition — zero (unfiltered) console errors across
