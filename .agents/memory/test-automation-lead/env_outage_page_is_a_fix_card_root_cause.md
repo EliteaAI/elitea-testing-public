@@ -88,4 +88,45 @@ plausible prose from a log tail. Read `statusDetails.message` and the per-step
 statuses before forming any hypothesis from the card's own description; a wrong
 step name sends triage at the wrong page object.
 
+## Proving the 500 page is INFRA, not our ErrorBoundary — one grep (added 2026-09-09, #2074 / ELITEA-1740)
+
+The screenshot shows a branded Elitea *"500 Internal Server Error / Something went wrong
+on our end"* page with **"Go to Elitea" / "Go Back"** buttons. It looks like our app, so the
+natural next thought is "an app error boundary caught a failed XHR" -- which would point
+triage at a feature. It does not. One command settles it:
+
+```bash
+cd ../EliteaUI && git grep -n "Something went wrong on our end" origin/main -- src/   # 0 hits
+```
+
+No hit anywhere in `src/`, no `public/500.html` -> that markup is served by a layer **in front
+of** the app (gateway/proxy/CDN) when the origin errors. So the whole platform was unreachable
+for that request, not one endpoint. Positive proof in seconds, and it upgrades "probably an
+outage" to a fact you can put in a closure record.
+
+Two supporting reads on the same card, both cheap:
+- **The 3 skills had been created successfully seconds earlier** -- the backend was provably
+  healthy right up to the navigation, which kills every "the feature is broken" hypothesis.
+- **8 of 10 suite jobs failed in that run** (sibling cards #2076-#2084, unrelated features).
+  One card in isolation reads as a feature bug; the run-level view reads as an outage.
+
+## An assertion-shaped CI red carries NO determinism signal
+
+`automation/pytest.ini`'s `--only-rerun` list covers 5xx / connection / `TimeoutError` /
+`WebSocket` / `Failed to load resource` -- **not `AssertionError`**. So an assertion failure
+gets **zero** automatic reruns, and "it only failed once" says nothing at all about whether it
+is deterministic. Check that list before reasoning about flakiness from a CI red's rerun count.
+
+## When the outage is real but the message lied, the repair is DIAGNOSTICS
+
+#2074's red said *"skill-a-... should be visible in the grid after creation"* -- the wrong
+subsystem entirely -- because `BasePage.navigate()` discarded `page.goto()`'s `Response` and
+`wait_for_page_load()` waited only on a URL regex + networkidle, so a top-level 500 sailed
+through and surfaced ~64s later at an unrelated assertion. A transient-infra classification is
+**not** automatically "no work": returning that `Response` and failing fast on a non-`None`,
+non-OK status makes the same failure red *sooner and truthfully*. That passes the masking test
+precisely because the 500 still turns the run red. Use a `Response.status` integer check, never
+a text match on the error page -- that page is not our DOM, carries no testids, and matching its
+text would be a locator-policy violation. Suite-wide rollout tracked as #2089.
+
 Related: [[dev_only_red_check_the_screenshot_first]] · [[sibling_fix_cards_can_have_different_root_causes]] · [[harvest_gha_allure_artifacts_before_dispatching]] · [[fix_card_body_can_carry_a_policy_violating_instruction]]
