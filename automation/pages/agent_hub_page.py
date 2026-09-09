@@ -25,8 +25,10 @@ URL: /elitea-catalog
 
 import logging
 import re
+from contextlib import contextmanager
 
 from playwright.sync_api import Page, expect
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from utils.actions import action
 
 from .base_page import BasePage
@@ -35,6 +37,28 @@ from .locator_descriptor import LocatorDescriptor
 logger = logging.getLogger("elitea.pages.agent_hub")
 
 _CATEGORY_SLUG_RE = re.compile(r"[^a-z0-9]+")
+
+#: Budget (ms) for awaiting one of the Catalog's own bulk
+#: ``/public_applications/prompt_lib/...`` responses.
+#:
+#: **The invariant this constant exists to encode (FIX card #2078): a
+#: network-response wait NESTED INSIDE** :meth:`BasePage.navigate`
+#: **must never be tighter than that method's own ceiling.**
+#: ``BasePage.navigate()`` does ``goto(wait_until="domcontentloaded")`` and
+#: then allows the navigation up to **30s** of ``networkidle`` wait, whose
+#: timeout it SWALLOWS (``base_page.py``) — so a response awaited *around*
+#: that call while capped at the callers' 15s navigation timeout could
+#: expire while the navigation it wraps was still legitimately in flight.
+#:
+#: The awaited bulk fetch is the heaviest request this page makes
+#: (``...&limit=1000&offset=0``, ~2.5-3.0s of raw backend time vs ~0.35s for
+#: the ``limit=20`` variants) and is gated behind ``agent_categories``
+#: resolving first: 9.0-10.6s end-to-end on a healthy backend, and
+#: deterministically past 15s on the degraded backend of CI run
+#: 34331579791. Endpoint, params, method and payload are unchanged — only
+#: our budget was wrong. 45s > 30s keeps it above the enclosing ceiling by
+#: construction rather than by a margin that happens to hold today.
+CATALOG_RESPONSE_TIMEOUT = 45_000
 
 
 def _slugify_category(category: str) -> str:
@@ -289,6 +313,55 @@ class AgentHubPage(BasePage):
 
     def __init__(self, page: Page):
         super().__init__(page)
+
+    @contextmanager
+    def _expect_applications_response(self, predicate, timeout: int, description: str):
+        """Await a ``/public_applications/`` response, re-raising a timeout of
+        that WAIT with the responses actually observed on this endpoint family
+        (FIX card #2078).
+
+        Playwright's own ``expect_response`` timeout message names only the
+        predicate's source location, so a slow or absent bulk fetch reads as a
+        bare "Timeout Nms exceeded" that says nothing about what the app did.
+        This repo has two ledger entries (#2074, #2076) where exactly that
+        shape named the WRONG subsystem and cost a full session; recording the
+        endpoint family's traffic makes the two real cases distinguishable at a
+        glance -- ``observed: ['none']`` (the request never fired, or the page
+        never got that far) versus ``observed: ['200 ...my_liked=true...']``
+        (the sibling calls landed; the bulk fetch alone was too slow).
+
+        Only the WAIT's own timeout is re-raised with this context. An
+        exception raised by the wrapped body -- the navigation, the click, the
+        typing -- propagates untouched, so this can never re-label a failure
+        that did not come from the response wait.
+
+        Args:
+            predicate: Response predicate, as passed to ``expect_response``.
+            timeout: Response budget in ms -- see :data:`CATALOG_RESPONSE_TIMEOUT`.
+            description: Short name of the awaited response, used in the
+                re-raised message (e.g. ``"bulk all-applications"``).
+        """
+        seen: list[str] = []
+
+        def _record(response):
+            if "/public_applications/" in response.url:
+                seen.append(f"{response.status} {response.url}")
+
+        body_completed = False
+        self.page.on("response", _record)
+        try:
+            with self.page.expect_response(predicate, timeout=timeout) as response_info:
+                yield response_info
+                body_completed = True
+        except PlaywrightTimeoutError as err:
+            if not body_completed:
+                raise
+            raise PlaywrightTimeoutError(
+                f"Timed out after {timeout}ms waiting for the Catalog {description} response. "
+                f"/public_applications/ responses observed meanwhile: {seen or ['none']}"
+            ) from err
+        finally:
+            self.page.remove_listener("response", _record)
 
     @action("Navigate to Agent Hub (Catalog)")
     def navigate(self):
@@ -623,7 +696,9 @@ class AgentHubPage(BasePage):
     # --- Like/unlike (ELITEA-2354) ---
 
     @action("Navigate to Agent Hub and capture the initial applications snapshot")
-    def navigate_and_capture_applications(self, timeout: int = 15000) -> list[dict]:
+    def navigate_and_capture_applications(
+        self, timeout: int = 15000, *, response_timeout: int = CATALOG_RESPONSE_TIMEOUT
+    ) -> list[dict]:
         """Navigate to the Catalog page (same target as :meth:`navigate`) and
         additionally capture the initial bulk "all applications" response body
         (``GET /public_applications/prompt_lib/...`` — source:
@@ -637,6 +712,17 @@ class AgentHubPage(BasePage):
         reading the network payload directly is more robust than parsing card
         DOM text for the agent name (``AgentCard.jsx``'s name ``Typography``
         carries no testid).
+
+        Args:
+            timeout: Budget for :meth:`wait_for_page_load`'s element wait --
+                the UI-readiness half.
+            response_timeout: SEPARATE budget for the bulk fetch itself, kept
+                deliberately above ``BasePage.navigate()``'s own 30s
+                ``networkidle`` ceiling. These two must not share one number:
+                a response awaited AROUND ``navigate()`` while capped at the
+                callers' 15s navigation timeout expires while the navigation
+                it wraps is still legitimately in flight (FIX card #2078) --
+                see :data:`CATALOG_RESPONSE_TIMEOUT`.
         """
 
         def _is_all_applications_response(response):
@@ -647,7 +733,9 @@ class AgentHubPage(BasePage):
                 and "my_liked" not in response.url
             )
 
-        with self.page.expect_response(_is_all_applications_response, timeout=timeout) as response_info:
+        with self._expect_applications_response(
+            _is_all_applications_response, response_timeout, "bulk all-applications"
+        ) as response_info:
             super().navigate("/elitea-catalog")
         self.wait_for_page_load(timeout=timeout)
         return response_info.value.json().get("rows", [])
@@ -822,7 +910,9 @@ class AgentHubPage(BasePage):
         return response_info.value
 
     @action("Reload Agent Hub and capture the refreshed My Liked response")
-    def reload_and_capture_my_liked(self, timeout: int = 15000) -> dict:
+    def reload_and_capture_my_liked(
+        self, timeout: int = 15000, *, response_timeout: int = CATALOG_RESPONSE_TIMEOUT
+    ) -> dict:
         """Reload the Catalog page and capture the My-Liked-specific bulk
         response (``GET /public_applications/prompt_lib/...my_liked=true...``
         — the same query-param signature :meth:`navigate_and_capture_applications`
@@ -831,6 +921,18 @@ class AgentHubPage(BasePage):
         re-fetches cross-tab like state from the backend rather than merely
         re-rendering stale client cache, which is the actual product claim
         under test (Tab A has no live subscription to Tab B's mutation).
+
+        Args:
+            timeout: Budget for :meth:`wait_for_page_load`'s element wait --
+                the UI-readiness half.
+            response_timeout: SEPARATE budget for the network half -- BOTH the
+                awaited My-Liked response AND the ``reload()`` that triggers
+                it, since here the reload IS the enclosing navigation (unlike
+                ``BasePage.navigate()`` it does not swallow its own
+                ``networkidle`` timeout, so capping it at the callers' 15s
+                would simply move the same premature failure one line up).
+                Same invariant as :meth:`navigate_and_capture_applications`
+                (FIX card #2078) -- see :data:`CATALOG_RESPONSE_TIMEOUT`.
 
         Returns the parsed JSON response body (contains ``rows``).
         """
@@ -842,14 +944,16 @@ class AgentHubPage(BasePage):
                 and "my_liked" in response.url
             )
 
-        with self.page.expect_response(_is_my_liked_response, timeout=timeout) as response_info:
-            self.page.reload(wait_until="networkidle", timeout=timeout)
+        with self._expect_applications_response(
+            _is_my_liked_response, response_timeout, "My Liked"
+        ) as response_info:
+            self.page.reload(wait_until="networkidle", timeout=response_timeout)
         self.wait_for_page_load(timeout=timeout)
         logger.info("Agent Hub reloaded; My Liked response re-fetched")
         return response_info.value.json()
 
     @action("Search Catalog by agent name")
-    def search(self, query: str, timeout: int = 15000):
+    def search(self, query: str, timeout: int = 15000, *, response_timeout: int = CATALOG_RESPONSE_TIMEOUT):
         """Type *query* into the Catalog search box and wait for the
         debounced (300ms — source: ``AgentsTab.jsx``'s
         ``useDebounceValue(query, 300)``) search request to resolve
@@ -859,18 +963,29 @@ class AgentHubPage(BasePage):
         TextField's React ``onChange`` (``.claude/rules/mui-patterns.md``) —
         ``fill()`` sets the DOM value directly and would leave the debounced
         ``query`` React state empty, never firing a search request at all.
+
+        Args:
+            timeout: Budget for the search field's own element wait and the
+                trailing settle — the UI half, driven by the caller's
+                ``UI_ELEMENT_TIMEOUT``.
+            response_timeout: SEPARATE budget for the debounced search
+                response. Split out from *timeout* per the same invariant as
+                :meth:`navigate_and_capture_applications` (FIX card #2078) —
+                a UI-element budget must never cap a backend fetch; see
+                :data:`CATALOG_RESPONSE_TIMEOUT`.
         """
         self.search_input.wait_for(state="visible", timeout=timeout)
-        with self.page.expect_response(
+        with self._expect_applications_response(
             lambda r: "/public_applications/prompt_lib/" in r.url and r.request.method == "GET",
-            timeout=timeout,
+            response_timeout,
+            "debounced search",
         ):
             self.search_input.click()
             self.search_input.press_sequentially(query, delay=50)
         self.wait_for_network(timeout=timeout)
 
     @action("Clear Catalog search field")
-    def clear_search(self, timeout: int = 15000):
+    def clear_search(self, timeout: int = 15000, *, response_timeout: int = CATALOG_RESPONSE_TIMEOUT):
         """Clear the Catalog search field and wait for the debounced
         empty-query BULK request (the one that actually drives the main
         content grid) to resolve (ELITEA-2363).
@@ -894,6 +1009,17 @@ class AgentHubPage(BasePage):
         the bulk request — and therefore the re-rendered content grid — was
         still in flight, a race that left the main card grid still showing
         the pre-clear filtered set for a beat after this method returned).
+
+        Args:
+            timeout: Budget for the search field's own element wait and the
+                trailing settle — the UI half, driven by the caller's
+                ``UI_ELEMENT_TIMEOUT``.
+            response_timeout: SEPARATE budget for the re-fired BULK response.
+                Split out from *timeout* per the same invariant as
+                :meth:`navigate_and_capture_applications` (FIX card #2078) —
+                clearing re-fires the SAME heavy ``limit=1000`` fetch the
+                initial mount does, so a UI-element budget must never cap it;
+                see :data:`CATALOG_RESPONSE_TIMEOUT`.
         """
 
         def _is_bulk_applications_response(response):
@@ -905,7 +1031,9 @@ class AgentHubPage(BasePage):
             )
 
         self.search_input.wait_for(state="visible", timeout=timeout)
-        with self.page.expect_response(_is_bulk_applications_response, timeout=timeout):
+        with self._expect_applications_response(
+            _is_bulk_applications_response, response_timeout, "bulk all-applications (search cleared)"
+        ):
             self.search_input.click()
             self.search_input.press("ControlOrMeta+a")
             self.search_input.press("Backspace")
