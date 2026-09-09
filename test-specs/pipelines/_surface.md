@@ -2,8 +2,52 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-09-09 (ELITEA-2448 repair
-> pass — pipeline-execution wait: how to know a run finished).
+> place, don't append duplicate entries. Last updated: 2026-09-09 (ELITEA-2002 repair
+> pass — VERSION dropdown close discipline; prior entry: ELITEA-2448 pipeline-execution wait).
+
+## VERSION dropdown — a bare page-level `Escape` does NOT reliably close it; press Escape ON AN OPTION and CONFIRM (confirmed live, 2026-09-09, ELITEA-2002 repair / `#2077`)
+
+Applies to **every** surface that renders `ApplicationVersionSelect.jsx:230`
+(`testId="agent-version-selector-trigger"`) — Pipelines, Agents, Skills. It is one component:
+`SingleSelect.jsx:662` adds `${dataTestId}-combobox` via `SelectDisplayProps`, and
+`SingleSelectDropdown.jsx:40` mounts `<SimpleSearchBar onKeyDown={e => e.stopPropagation()} />`.
+`SimpleSearchBar.jsx` autofocuses (`autoFocus = true` + a 100 ms `setTimeout` re-focus) and maps
+Escape to *clear the search box* **before** calling that external handler — so an Escape fired
+while focus sits in the search field is consumed and never reaches MUI's `Modal`.
+
+Observed on the **pipeline** detail page (`/pipelines/all/9421`), Playwright MCP:
+
+| Focus | Action | `aria-expanded` | options | backdrops |
+|---|---|---|---|---|
+| menu Paper (`MuiPopover-paper`, `tabindex=-1`) | page-level Escape | `false` | 0 | 0 |
+| the search `input` | page-level Escape | **`true`** | 1 | 1 |
+| the search `input` | page-level Escape AGAIN | **`true`** | 1 | 1 |
+| — | `Locator.press("Escape")` on an option | `false` | 0 | 0 (URL unchanged, no version selected) |
+
+Where focus lands after opening is a race between MUI's own Menu focus management and
+`SimpleSearchBar`'s delayed re-focus — it landed on the Paper in this probe and in the search
+field on CI, which is why the failure is intermittent rather than absolute.
+
+**Handles (all on EliteaUI `main`, verified 2026-09-09 — nothing to add):**
+
+```
+VERSION_OPTION_ANY                = [data-testid^="version-option-"]
+                                    :not([data-testid="version-option-pin-icon"])
+                                    :not([data-testid^="version-option-set-default-"])
+VERSION_SELECTOR_COMBOBOX          = [data-testid="agent-version-selector-trigger-combobox"]
+  ..._EXPANDED  / ..._COLLAPSED    = same + [aria-expanded="true"] / ["false"]
+```
+
+**Waiting rule.** `aria-expanded="false"` alone is a LEADING indicator — it flips at the start
+of the `Grow` exit transition while `MuiBackdrop-root` keeps intercepting pointer events for
+~200-300 ms. Require `aria-expanded="false"` **AND** zero `VERSION_OPTION_ANY` before treating
+the menu as closed.
+
+**Symptom when you get this wrong:** the failure surfaces in a *later, unrelated* step as
+`Locator.click: Timeout … <div class="MuiBackdrop-root MuiBackdrop-invisible …> from
+<div id="menu-" …> subtree intercepts pointer events`. `AgentDetailPage.close_version_selector()`
+(PR #2058) is the reference implementation.
+
 
 ## Pipeline EXECUTION waits — `wait_for_embedded_chat_response()` cannot fail, and the run's own status is the honest signal (confirmed live, 2026-09-09, ELITEA-2448 repair / `#2076`)
 

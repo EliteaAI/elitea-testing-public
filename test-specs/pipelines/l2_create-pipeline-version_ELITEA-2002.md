@@ -194,3 +194,125 @@ None.
 - Seed via `PipelineAPI.create_pipeline()` (zero-node) per the Preconditions note — do not reuse
   `create_pipeline_with_nodes()` or a shared/pooled pipeline (parallel test runs would corrupt
   each other's version list).
+
+## Adjustment — 2026-09-09 (repair triage for `#2077`, nightly run 34331579791)
+
+**Triage class: A — UI drift.** Same mechanism, same shared component and same testid as the
+already-repaired Agent-side half (`#2052` / PR #2058); this is the pipelines half that PR
+explicitly routed out of scope (`AgentDetailPage.close_versions_menu` docstring names it, and
+so does PR #2058 § "Out of scope — for routing, not fixed here").
+
+**Expected-result changes: NONE.** Nothing in § Test Steps, § Expected Results or § Coverage
+Map changes. The case still verifies exactly what it verified before; only *how* the test
+closes the VERSION dropdown and re-opens it changes.
+
+### What the nightly actually did, per attempt (settled from allure, not inferred)
+
+`caplog`/allure attachments accumulate the previous attempt's ERROR line across reruns, which
+is why the reported traceback (Step 1) and the reported error text (Step 5's backdrop) came
+from *different* attempts. Per-attempt truth, from
+`allure-results-dev-stable-user3-114` (the pipelines shard):
+
+| Attempt | UTC | Duration | Failed at | Cause |
+|---|---|---|---|---|
+| 1 | 09:12:07 | 21.6 s | **Step 5** — `select_version_by_name("base")` → `open_version_selector()` → `version_selector.click()` | `MuiBackdrop-root … from <div id="menu-"> subtree intercepts pointer events` — the VERSION dropdown Step 4 opened was never actually closed. **This is the defect.** |
+| 2 | 09:12:44 | 16.8 s | Step 1 — `wait_for_detail_page_load()` (`input#name` never gets a value) | Branded full-page **500 Internal Server Error** gateway page (screenshot) — the platform outage that produced this run's sibling `[FIX]` cards (`#2074` et al.). Not this test. |
+| 3 | 09:13:10 | 16.8 s | Step 1, identical | Same gateway 500 — attempt-2 and attempt-3 screenshots are **byte-identical** (`md5 4d92c1a87bb2df2e8e71fb4f5e4418a0`). |
+
+Attempts 2–3 are class **D / environment**, not drift: by 09:17:51 the same shard was healthy
+again (`test_delete_pipeline_version` failed 3/3 on the *backdrop* signature, not on a 500).
+Nothing is owed for them beyond noting that `PipelineDetailPage.navigate()` swallows a
+top-level non-OK status and surfaces it 15 s later as a wrong-subsystem `input#name` timeout —
+which is exactly the suite-wide gap tracked as `#2089`, out of scope here.
+
+### The mechanism, re-verified live on the PIPELINE surface (not transferred from the Agent case)
+
+`ApplicationVersionSelect.jsx:230` is the single call site of the VERSION selector
+(`testId="agent-version-selector-trigger"`), shared by Agents, Skills and Pipelines, and it
+renders through `SingleSelect.jsx:662`
+(`SelectDisplayProps={{ 'data-testid': `${dataTestId}-combobox` }}`) with the searchable
+dropdown from `SingleSelectDropdown.jsx:40` (`<SimpleSearchBar onKeyDown={e => e.stopPropagation()} />`,
+`SimpleSearchBar.jsx:13,30,41` — `autoFocus = true`, a 100 ms `setTimeout` re-focus, and an
+Escape handler that clears the search box *before* calling the external `onKeyDown`).
+
+Observed live on `http://localhost:5173/pipelines/all/9421` (2026-09-09, Playwright MCP), on
+the pipeline detail page itself:
+
+| State | Action | `aria-expanded` | options | backdrops |
+|---|---|---|---|---|
+| focus on the menu Paper | page-level Escape | `false` | 0 | 0 |
+| focus in the **search field** | page-level Escape | **`true`** | 1 | 1 |
+| same stuck state | page-level Escape **again** | **`true`** | 1 | 1 |
+| same stuck state | Escape **on an option** (`Locator.press()`) | `false` | 0 | 0 — URL unchanged, trigger still reads `base` (no version selected) |
+
+So a bare `page.keyboard.press("Escape")` is a coin-flip on focus, and retrying it fixes
+nothing; pressing on an option is deterministic because `Locator.press()` focuses the element
+first, so the keydown originates inside the `MenuList` and reaches MUI's `Modal`.
+
+### Reproduction on DEV (the environment the nightly runs)
+
+```
+cd automation && AUTOMATION_DIR=$PWD DEV_ELITEA_URL=https://dev.elitea.ai \
+  DEV_APP_PREFIX=/app PYTHONPATH=/tmp/devenv_harness HEADLESS=true \
+  ../.venv/bin/pytest -p devenv "tests/ui/pipelines/test_pipeline_create_version.py::test_create_pipeline_version_save_list_switch_preserves_canvas_state" \
+  -v -p no:cacheprovider --reruns=0 --log-cli-level=INFO
+```
+Target proven by the run's own INFO lines (`Authenticating via API against https://dev.elitea.ai`
+· `redirected to https://dev.elitea.ai/app/` · `Navigating to https://dev.elitea.ai/app/pipelines/all/10404?viewMode=owner`).
+Result: **1 failed in 37.03s**, `test_pipeline_create_version.py:146` (Step 5) →
+`pipeline_detail_page.py:2168` `select_version_by_name` → `:2099` `open_version_selector` →
+`Locator.click: Timeout 10000ms exceeded … MuiBackdrop-root … intercepts pointer events`.
+Byte-identical to nightly attempt 1.
+
+### Promotion-gap pre-check (class F ruled out)
+
+After `git fetch origin` in `../EliteaUI`:
+
+```
+agent-version-selector-trigger      main:YES  testids:YES
+version-option                      main:YES  testids:YES
+origin/main:src/[fsd]/shared/ui/select/SingleSelect.jsx:662:  SelectDisplayProps={dataTestId ? { 'data-testid': `${dataTestId}-combobox` } : undefined}
+```
+
+Every handle the repair needs is on EliteaUI `main`. **No new testid is required.** (This
+supersedes the stale note in `pipeline_detail_page.py`'s `version_selector` comment block,
+which recorded `-combobox` as "`automation/testids` only, not yet on `main` as of 2026-08-07" —
+it has been on `main` since PR #2058's window.)
+
+### The adjustment (page-object only — no spec file changes)
+
+All three call sites of `PipelineDetailPage.close_versions_menu()` drive the **same** VERSION
+dropdown, so unlike `AgentDetailPage` (whose method is shared with the skill card's `Menu`,
+forcing PR #2058 to add a new method) this class can be fixed **in place**:
+
+1. **New class constants**, ported verbatim from `AgentDetailPage` with a cross-reference
+   comment (matching the existing `VERSION_OPTION` precedent at `pipeline_detail_page.py:235`):
+   - `VERSION_OPTION_ANY = '[data-testid^="version-option-"]:not([data-testid="version-option-pin-icon"]):not([data-testid^="version-option-set-default-"])'`
+     — both exclusions verified applicable here (the pipeline dropdown renders the pin icon).
+   - `VERSION_SELECTOR_COMBOBOX{,_EXPANDED,_COLLAPSED}` on
+     `agent-version-selector-trigger-combobox` with an `[aria-expanded="…"]` state filter —
+     the testid-keyed + state-attribute shape `.agents/testing.md` § Locator policy prescribes.
+2. **`close_versions_menu()` gains a confirmed close** (signature becomes
+   `(timeout: int = 5000, attempts: int = 3)`, both defaulted, so no caller changes):
+   press Escape on `VERSION_OPTION_ANY.first` while the trigger still reports
+   `aria-expanded="true"`; fall back to the page-level press only when zero options render;
+   then require **both** `_COLLAPSED` attached **and** `expect(options).to_have_count(0)` before
+   returning. The count term is not redundant — `aria-expanded` flips at the *start* of the MUI
+   `Grow` exit transition while the backdrop survives it. On give-up, raise naming the live
+   `aria-expanded` value and the remaining option count, so a genuine "this menu cannot be
+   dismissed" defect fails *here* instead of as an unrelated click timeout downstream.
+3. **`open_version_selector()` gains idempotence + a post-condition**
+   (`timeout: int = 10000`, defaulted): click the trigger only while `_EXPANDED` is absent, then
+   wait for `_EXPANDED`. Clicking an already-open dropdown cannot succeed by construction — the
+   invisible backdrop intercepts it, which *is* the observed failure.
+
+Nothing in the spec file changes; no assertion, count, threshold, comparison or step is touched.
+
+### Shared-file regression protocol
+
+`PipelineDetailPage.close_versions_menu()` — 3 call sites, all the VERSION dropdown:
+`test_pipeline_create_version.py:140` (this case), `test_pipeline_delete_version.py:93` and
+`:156`. `open_version_selector()` — `test_pipeline_create_version.py:133`,
+`test_pipeline_delete_version.py:86,149`, plus internally in `select_version_by_name:2168`.
+Both specs must be re-run after the change. `AgentDetailPage` / `SkillDetailPage` have their own
+same-named methods and are untouched.
