@@ -1151,6 +1151,11 @@ class PipelineAPI:
 class CredentialAPI:
     """Manage credentials via the Elitea API.
 
+    This is the client for the ``/configurations/`` API root as a whole —
+    besides credentials proper it also exposes the root's sibling read
+    endpoints the UI depends on (``/configurations/types/``,
+    ``/configurations/models/``).
+
     Uses Keycloak session cookies (from browser auth state) like
     :class:`ConversationAPI`.
 
@@ -1250,6 +1255,38 @@ class CredentialAPI:
         resp = self._session.get(url)
         _raise_for_status(resp)
         return resp.json().get("rows", [])
+
+    def list_models(self, include_shared: bool = True) -> dict:
+        """Return the project's LLM model catalog.
+
+        Reads ``GET /configurations/models/{project_id}`` — the SAME endpoint
+        the UI calls (``src/api/configurations.js:436`` ``listModels``), so it
+        is the honest oracle for "which models does this project offer, and in
+        what order". The import wizard consumes exactly this response
+        (``IWModalContent.jsx`` -> ``rematchModels``), which is why a test that
+        plants a model name in an import fixture must derive it from here
+        rather than hardcoding a literal: an unknown name is silently replaced
+        with ``items[0]`` (``importWizardModels.helpers.js:4-13``).
+
+        Args:
+            include_shared: Include models shared from other projects
+                (the UI always passes ``true`` for the LLM selector).
+
+        The endpoint's optional ``section`` parameter (e.g. ``"embedding"``)
+        is intentionally not exposed — the UI omits it for the LLM selector,
+        which yields the LLM catalog. Add it when a case needs it.
+
+        Returns:
+            Dict with ``total``, ``items`` (each carrying ``name``,
+            ``display_name``, ``project_id``, ``shared``, ...) and the
+            project's ``default_model_name``.
+        """
+        url = f"{self.base_url}/configurations/models/{self.project_id}"
+        params = {"include_shared": include_shared}
+        logger.debug("LIST models %s params=%s", url, params)
+        resp = self._session.get(url, params=params)
+        _raise_for_status(resp)
+        return resp.json()
 
     def create_github_credential(
         self, display_name: str, base_url: str, token: str, elitea_title: Optional[str] = None

@@ -6,7 +6,9 @@
 - **Priority**: l2 (source case frontmatter: high)
 - **Environment Explored**: local (`http://localhost:5173`, EliteaUI `automation/testids`
   branch → DEV backend), project `Private` / `${ELITEA_PROJECT_ID}`=399, model:
-  GPT-5.2 (`gpt-5.2` — `automation/config.py: default_model_name`)
+  GPT-5.2 (`gpt-5.2` — `automation/config.py: default_model_name`) **— historical
+  record of the 2026-08 analysis run only; `gpt-5.2` has since left the DEV
+  catalog and the fixture model is now derived live (§ Adjustment, 2026-09-09)**
 - **User set**: `${TEST_USER}` (on localhost, `auth_state` fixture skips login via
   `VITE_DEV_TOKEN`)
 - **Analyst**: qa-engineer (Sage), analyst slot
@@ -24,6 +26,11 @@
   state correctly. Step 1's observables are replaced with data-independent
   ones; see § Environment Independence. Nothing else in this AFS changes, and
   the case's own coverage is **not** weakened (see that section for why).
+- **Adjustment (2026-09-09, board #2083 — class D, environment/data)**: the
+  fixture's `model:` value and the expected Model-selector display name are no
+  longer hardcoded — they are derived at run time from the project's own live
+  model catalog. The DEV LLM catalog no longer contains `gpt-5.2`. **No
+  expected-result changes**; see § Adjustment (2026-09-09).
 
 ## Dedup / Board Search Confirmation
 
@@ -155,7 +162,7 @@ an agent **this test imported**, which is the correct place for it.
   ---
   name: el-1901-import-<unique_suffix>
   description: Externally-authored agent for ELITEA-1901 import verification. <MARKER_DESC> must appear verbatim.
-  model: gpt-5.2
+  model: <catalog items[1].name — derived live, e.g. eu.anthropic.claude-sonnet-4-6>
   ---
   You are el-1901-import-<unique_suffix>, a hand-authored test agent for ELITEA-1901.
   This exact instruction sentence <MARKER_INSTR> must appear verbatim in the
@@ -181,11 +188,17 @@ an agent **this test imported**, which is the correct place for it.
     instructions)" should be read as: `name`/`description`/`model` are
     frontmatter keys, `instructions` is the file's plain-text body — not four
     frontmatter keys.
-- `model: gpt-5.2` resolves to the platform default model
+- ~~`model: gpt-5.2` resolves to the platform default model
   (`automation/config.py: default_model_name`); confirmed on the imported
   Agent's Model Selector (`model-selector-name` → "GPT-5.2"). Any other
   configured model string would work equally — `gpt-5.2` was chosen because
-  it's already the suite's cheap-default convention.
+  it's already the suite's cheap-default convention.~~
+  **SUPERSEDED 2026-09-09 (board #2083) — the struck sentence is FALSE.** "Any
+  other configured model string" does **not** work equally: only a model
+  present in the *project's own live catalog* is carried through. Anything else
+  is silently replaced by the catalog's first entry. `gpt-5.2` is no longer in
+  the DEV catalog at all. The fixture's `model:` value is now derived at run
+  time — see § Adjustment (2026-09-09).
 - Agent name: unique per run (`el-1901-import-{uuid4().hex[:8]}` — mirrors the
   ELITEA-1794/1795/1894/1902 convention) to avoid collisions with the ~19
   pre-existing agents already in the shared project.
@@ -289,7 +302,9 @@ an agent **this test imported**, which is the correct place for it.
 ### Axis 2 — Analyst additions
 
 - Step 7 also asserts the imported agent's **Model** (`model-selector-name`)
-  resolves to the fixture's `model: gpt-5.2` value — *added: the case title
+  resolves to the fixture's `model:` value — *which model that is is derived
+  live from the project catalog, not hardcoded (§ Adjustment, 2026-09-09)* —
+  *added: the case title
   says "correct config", and Model is part of an Agent's config just as much as
   Name/Description/Instructions; the fixture already plants a model value, so
   this check is free and closes a config-field gap the case's literal step
@@ -438,3 +453,130 @@ None.
   `set_files()`, and for `agent-import-complete-dialog` visibility after
   clicking confirm — never a fixed sleep (mirrors this repo's existing import
   tests).
+
+## Adjustment (2026-09-09, board #2083 — `[FIX][ELITEA-1901]`)
+
+**Triage class: D (environment / data). The product is CORRECT; the test's
+fixture data was stale.** Triage was performed by the lead before this repair
+was dispatched; it is recorded here, not re-litigated.
+
+### Evidence
+
+- **The DEV LLM catalog no longer contains `gpt-5.2`.** Verified live against
+  the same endpoint the import wizard itself calls —
+  `GET {ELITEA_API_BASE}/configurations/models/{project_id}?include_shared=true`
+  (`EliteaAI/EliteaUI src/api/configurations.js:436` `listModels`, consumed by
+  `IWModalContent.jsx:28-31`): projects 399 / 471 / 400 return 8 / 13 / 8
+  models respectively, and **none** contains `gpt-5.2`.
+- **The wizard's documented fallback is silent.** `EliteaAI/EliteaUI
+  src/[fsd]/entities/import-wizard/lib/helpers/importWizardModels.helpers.js:4-13`:
+
+  ```js
+  const modelExists = modelsList.find(m => model_name && m.name === model_name);
+  if (modelExists) return { [nameField]: model_name };
+  else            return { [nameField]: modelsList[0]?.name || '' };   // ← line 12
+  ```
+
+  An unrecognised `model:` value is replaced by `items[0]` with **no toast and
+  no error**. On DEV `items[0]` is `eu.anthropic.claude-sonnet-4-5-…` →
+  "Anthropic Claude 4.5 Sonnet", which is exactly what CI observed instead of
+  the expected "GPT-5.2".
+- Reproduced 3/3 on localhost and 3/3 on `dev.elitea.ai`, byte-identical
+  signature — deterministic, not flake.
+
+### What changed in the test
+
+The stale hardcoded pair (`model: {settings.default_model_name}` in the fixture
+frontmatter, and the `EXPECTED_MODEL_DISPLAY_NAME = "GPT-5.2"` literal) is
+replaced by values derived at run time from the project's own catalog:
+
+- `automation/api/client.py` — new **`CredentialAPI.list_models(include_shared=True)`**
+  (`GET /configurations/models/{project_id}`; `CredentialAPI` is this repo's
+  client for the `/configurations/` root, alongside the existing
+  `list_credential_types`). Purely additive; no existing method changed.
+- The spec's suite-local `_pick_fixture_model()` reads that catalog and returns
+  the pair the test needs.
+
+**Two different field names, and they are not interchangeable:**
+
+| Consumer | Field | Example (project 399, 2026-09-09) |
+|---|---|---|
+| fixture frontmatter `model:` | API **`name`** (`getDefaultModel` matches `m.name === model_name`) | `eu.anthropic.claude-sonnet-4-6` |
+| Model selector rendering | **`display_name`**, falling back to `name` (`LLMModelSelector.jsx:110,199`) | `Anthropic Claude 4.6 Sonnet` |
+
+The old literal only ever worked because `gpt-5.2` / `GPT-5.2` happened to be
+near-identical; for most models the two strings differ substantially.
+
+### Why `items[1]`, never `items[0]`
+
+`items[0]` is *precisely* what the product's fallback produces. Expecting it
+would mean the assertion is satisfied whether the import carried the file's
+model through or silently discarded it — converting the check into a
+tautology and destroying the coverage this Axis-2 assertion exists for.
+`items[1]` is a value the fallback cannot produce, so a green result is
+positive proof of carry-through. This is the whole point of the repair.
+
+### Environment guard (a legitimate `blocked`, not papered over)
+
+`_pick_fixture_model()` asserts three things, each with an explanatory
+message:
+
+1. `len(models) >= 2` — a 1-model project **cannot** distinguish carry-through
+   from the fallback;
+2. `chosen["name"] != items[0]["name"]` — a guard on the field the **product**
+   compares (`getDefaultModel` matches `m.name === model_name`). With
+   `include_shared=true` the catalog can hold two entries sharing a `name`
+   across projects — the product anticipates exactly that, which is why the UI
+   synthesises a composite `id: ${project_id}_${name}`
+   (`src/api/configurations.js:439-442`). If the two names collided, the
+   fallback would store the very value a working carry-through stores;
+3. `chosen_display != items[0]`'s display — a guard on the field the **test**
+   reads (the rendered selector text).
+
+Both (2) and (3) exist because the two fields are not the same axis, and the
+whole justification for choosing `items[1]` is that it is distinguishable from
+the fallback. **Guard on the field the product compares, not only the field the
+test reads** — a display-only guard sits one level away from the mechanism that
+actually enforces the property. (Neither the reviewer nor the lead could
+construct a credible *silent* false green from a name collision — name-keyed
+resolution returns the first match, so the realistic outcomes are a loud guard
+failure or a loud permanent red — but the property is now guarded where it is
+enforced.)
+
+Any of the three failing is an environment limitation to route to a human, not
+a product defect and not something to weaken around.
+
+### Expected-result changes: none.
+
+Step 6's Model check remains an **exact `==`** on the rendered display name.
+Nothing is relaxed to a substring, lowered, conditioned, or dropped. What
+changed is only *which* model the fixture plants and *where* the expected
+string comes from. Everything else is preserved verbatim: the
+`allure.step("Step N — …")` structure, the `p1` / `regression` / `ui` /
+`agents` / `new_verified` markers, the `@allure.issue` TMS link, the
+`DESC_MARKER` / `INSTR_MARKER` assertions, the console-error assertion with its
+`_KNOWN_NONBLOCKING_CONSOLE_SUBSTRING` filter, and the `finally:` cleanup.
+
+### Fidelity
+
+The catalog read is the **oracle** pattern `.agents/testing.md` § Fidelity
+policy prescribes for a nondeterministic/rotating producer: the test asserts
+the UI against the system's own response instead of a value the test authored.
+Nothing is mocked, injected, or short-circuited — the imported agent's Model
+configuration is still produced entirely by the product, reached through the
+same Import button a real user clicks.
+
+### Verification
+
+Green on `http://localhost:5173`, 2 consecutive standalone invocations
+(22.80 s / 22.02 s), `reports/reruns.json == {}` each. Derived values on the
+run: `name='eu.anthropic.claude-sonnet-4-6'`,
+`display='Anthropic Claude 4.6 Sonnet'` — distinct from `items[0]`
+("Anthropic Claude 4.5 Sonnet"), so the fallback would have failed the
+assertion loudly.
+
+### Out of scope
+
+`automation/config.py`'s `default_model_name` is also stale (54 usages). That
+is a suite-wide decision carded separately as **#2117**; this repair does not
+touch it and no longer depends on it.
