@@ -114,3 +114,24 @@ human as owner.
 the spec actually calls, one hop into the page object, produced **19**. Copying
 the sibling would have shipped an under-specified promotability row — the
 #35/#36/#37 failure mode wearing a different hat.
+
+## Occurrence log — this is now a PATTERN, not an incident (updated 2026-09-09 evening)
+
+Run `34331579791` was carded in **two full passes**: 09:32–09:42 (#2074–#2084) and
+15:36–15:48 (#2111–#2123). Confirmed duplicate pairs worked so far:
+
+| Case | survivor | duplicate | code changed by the duplicate |
+|---|---|---|---|
+| ELITEA-1899 | #2051 | #2081, #2113 | none |
+| ELITEA-2448 | #2076 | #2114 | none |
+| ELITEA-2367 | #2079 | **#2115** | none |
+| ELITEA-1740 | #2074 | #2116 | not yet worked |
+
+**Four sessions, zero code.** Now carded as a process defect: **#2135** (`question`) —
+recommends dedup on *test node id* plus a `main`-vs-`automation/base` divergence check
+at intake, because the second half of this loop is permanent: the nightly runs `main`,
+`automation/base` is 399 commits ahead, so every merged-but-unpromoted repair re-cards
+on EVERY subsequent nightly, not just on a double-filed one.
+
+Second-order lesson: a duplicate session is not wasted budget — see
+`a_duplicate_card_is_where_you_pay_the_originals_evidence_gap.md`.

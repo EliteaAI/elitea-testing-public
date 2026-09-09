@@ -152,3 +152,4 @@
 - [Display-string rename blast radius](display_string_rename_blast_radius.md) — grep the OLD string suite-wide first
 - [A sibling's "read #N first" can invent a dependency](a_sibling_note_can_invent_a_dependency_the_case_text_dissolves.md) — read the TMS case before accepting a parked-question blocker; a transit value needs no literal at all
 - [A mid-flight lead ruling is an AFS amendment](a_mid_flight_lead_ruling_is_an_afs_amendment.md) — order both in one dispatch; check the shipped diff against the AFS's DEFERRAL sections, greps can't see doc drift
+- [A duplicate card is where you pay the original's evidence gap](a_duplicate_card_is_where_you_pay_the_originals_evidence_gap.md) — confirm the dupe in 2 calls, then run the env the survivor never ran (DEV recipe + env-restore trap inside)
