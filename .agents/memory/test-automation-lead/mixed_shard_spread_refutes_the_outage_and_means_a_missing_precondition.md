@@ -19,11 +19,10 @@ discriminator is the **failing job's own pass/fail spread**, before any dispatch
 - **Mixed spread** (e.g. `46 passed, 6 failed`) → **refuted.** The app was
   serving fine for 46 tests; this red is per-test and needs its own cause.
 
-Worked case #2118 / ELITEA-2024: run 34331579791 produced siblings #2076–#2084
-and a genuine gateway-500 signature elsewhere, but `pipelines_2` was 46/6. Its
-allure screenshot showed **"No pipelines yet"** — the project held zero
-pipelines. The card's headline ("card elements not rendering") named the wrong
-subsystem; the view toggle worked perfectly.
+Worked case #2118 / ELITEA-2024: run 34331579791 produced siblings #2076–#2084 and
+a genuine gateway-500 elsewhere, but `pipelines_2` was 46/6. Its allure screenshot
+showed **"No pipelines yet"** — zero pipelines in the project. The card's headline
+("card elements not rendering") named the wrong subsystem.
 
 ## The per-test cause to suspect first: ambient data
 
@@ -57,10 +56,24 @@ So the repair is never just "make the red green":
 Ask of every absence assertion: **could this pass because the thing that should
 contain the absent item never rendered either?**
 
+## Confirmed twice — expect siblings in the SAME spec file
+
+Run 34331579791 produced this class twice in one file: #2118/ELITEA-2024 and
+#2119/ELITEA-2023, two days apart. The second cost ~20 min, not a session, because
+the first had merged a precedent commit there to copy — **name that commit in the
+dispatch**. Two refinements from the second:
+
+- **A filter case has TWO preconditions.** The matching object *and* a provable
+  non-matching one. Check what the backend queries — here `query` matches
+  **description as well as name**, so a clean-name control with a dirty description
+  silently rejoins the filtered set.
+- **Restore assertions want `len(restored) > len(filtered)`**, never
+  `== baseline_count` — equality to an ambient number is the same bug again.
+
 ## Cost
 
-~10 minutes of orchestrator triage (job spread + one allure screenshot) replaced
-a speculative product-bug hunt, and turned a one-line "make it green" into a
-repair that closed a defect nobody had noticed.
+~10 min of triage (job spread + one allure screenshot) replaced a speculative
+product-bug hunt, and turned "make it green" into a repair that closed a defect
+nobody had noticed.
 
 Related: [[env_outage_page_is_a_fix_card_root_cause]] · [[gate_on_the_environment_the_repair_is_FOR]] · [[dev_only_red_check_the_screenshot_first]]

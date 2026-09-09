@@ -1,6 +1,6 @@
 ---
 name: Repair of a transient failure needs a negative control, not a green gate
-description: For a [Fix] card whose failure does not reproduce, demand a negative control in the implementer dispatch — green runs prove nothing
+description: Classify the fault first — a non-reproducing failure needs a negative control; a deterministic one is proved by inspection instead
 type: feedback
 ---
 
@@ -31,6 +31,25 @@ Condition injected: one required field left empty at Save time.
 - **C, new shape, keystrokes suppressed:** fails at **Step 4, naming the field**.
 
 That is the delivery. The 3× green is hygiene.
+
+## First classify the fault — TRANSIENT or DETERMINISTIC. The control requirement follows.
+
+This note's rule is scoped to a failure that **does not reproduce**. Applying it to
+a deterministic logic fault costs a session for nothing, and sometimes demands a
+control that is *impossible to build honestly*.
+
+The discriminator is one question: **can the failure be derived by inspection?**
+
+Counter-example — #2119 / ELITEA-2023 (2026-09-10). `next(... list_pipelines() ...)`
+raised `StopIteration` because the CI project held no second pipeline: `next()` over
+an empty generator raises unconditionally, so there is nothing probabilistic to
+reproduce, and the trigger (an *empty* project) could only be injected locally by
+emptying a **shared** one — a hazard, not a control. Causation was proved by
+inspection, and immunity the same way (the shipped method reads **zero** ambient
+state). Both went into the closure record with the reason no control was run.
+
+**Deterministic ⇒ prove it by inspection and say so. Transient ⇒ demand the control.**
+Never let "we always run a control" turn into a session spent emptying shared state.
 
 ## Say what the control does NOT prove
 

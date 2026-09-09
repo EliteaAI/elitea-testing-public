@@ -120,7 +120,7 @@
 - [Cherry-pick ports a DELTA, not a file state](cherry_pick_ports_a_delta_not_a_file_state.md) — silently drops doc sections
 - [CI-red? check base for an existing fix first](ci_red_check_base_for_an_existing_fix_first.md) — a symptom matching an older OPEN issue = promotion gap
 - [Verify a silent unblock, don't guess](human_status_move_without_comment_verify_dont_guess.md) — re-run each blocker's own check before acting on Approved
-- [Repair of a transient needs a negative control](repair_of_a_transient_needs_a_negative_control.md) — green gate proves nothing; demand it in the dispatch
+- [Classify the fault before demanding a negative control](repair_of_a_transient_needs_a_negative_control.md) — transient needs one; deterministic is proved by inspection
 - [DEV repro: use localhost, never edit shared .env.test](dev_repro_use_localhost_not_shared_env_test.md) — localhost:5173 already hits the same DEV backend
 - [Name the failure mode for write-heavy areas](name_the_failure_mode_in_the_dispatch_for_write_heavy_areas.md) — the risk is a spec that PASSES while leaving damage; say it in the dispatch
 - [Durable rules go in canon, not the dispatch prompt](put_durable_rules_in_canon_not_in_the_dispatch_prompt.md) — the workflow has no notes arg; .agents/*.md reaches every slot of every wave
