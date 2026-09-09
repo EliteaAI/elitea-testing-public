@@ -140,7 +140,11 @@ def _is_populated(state: dict) -> bool:
     """
     return bool(
         isinstance(state.get("custom_text"), str) and state["custom_text"] != ""
+        # `bool` subclasses `int`, so `isinstance(True, int)` is True -- a boolean
+        # would otherwise satisfy the numeric precondition (and Step 10's shape
+        # assertions, since `JSON.stringify(true)` renders unquoted).
         and isinstance(state.get("custom_num"), (int, float))
+        and not isinstance(state.get("custom_num"), bool)
         and isinstance(state.get("custom_list"), list) and state["custom_list"]
         and isinstance(state.get("custom_json"), dict) and state["custom_json"]
     )
@@ -302,8 +306,14 @@ def test_run_details_multiple_state_variables_different_types(page, pipeline_wit
             f"Panel should render the value the run produced "
             f"({backend_state['custom_num']!r}), got {custom_num_after!r}"
         )
-        assert isinstance(parsed_num, (int, float)), (
-            f"'custom_num' (number) After value should parse as a JSON number, got {custom_num_after!r}"
+        # `bool` subclasses `int`, so `isinstance(True, int)` is True. Without the
+        # explicit bool exclusion a JSON `true` would satisfy the case's "shows
+        # numeric values" -- it also renders unquoted, so the check below passes
+        # too. Do NOT "simplify" this clause back out.
+        assert isinstance(parsed_num, (int, float)) and not isinstance(parsed_num, bool), (
+            f"'custom_num' (number) After value should parse as a JSON number, got "
+            f"{custom_num_after!r} -- a JSON boolean is NOT a numeric value, even though "
+            f"Python's bool subclasses int and JSON.stringify renders it unquoted"
         )
         assert not (custom_num_after.startswith('"') and custom_num_after.endswith('"')), (
             f"'custom_num' After value should NOT be quoted like 'custom_text', got {custom_num_after!r}"
