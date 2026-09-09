@@ -29,3 +29,12 @@ Related: `.agents/testing.md` § "LLM trigger-side flake" entries — display-na
 literals are a recurring rot source here (see also the EL-6540 rename,
 ELITEA-0501 / #2111, and `config.default_model_name = "gpt-5.2"` still dead at
 `automation/config.py:235` under #2117).
+
+**Fix-round addendum (2026-09-09).** A repair brief is a work order the reviewer
+triangulates against. If the lead changes scope **mid-flight** — here, ordering an
+assertion the brief had listed as "optional, not included" — the brief becomes false
+about the diff you ship, and the reviewer blocks on exactly that. **Amend the brief in
+the same commit as the code.** The skill's Phase-2 amend-in-PR rule covers drift you
+*discover*; this is drift the *dispatch injects*, and it needs the same treatment.
+Cost of missing it: a full docs-only fix round.
+
