@@ -69,3 +69,4 @@
 - [Sanctioned-RED re-anchoring drops a cross-check](sanctioned_red_reanchoring_silently_drops_a_crosscheck.md) — tick OLD hard asserts one by one; re-anchoring is the silent leak
 - [Soft wait helpers cannot fail](soft_wait_helpers_cannot_fail_and_hide_the_real_failure.md) — a step lasting exactly its timeout is a swallowed wait
 - [Pipeline run-START latency](pipeline_run_start_latency_dominates_execution_time.md) — 4.5 s…89 s to start; budget start and completion separately
+- [publish_validate AI gate latency + localhost wall](publish_validate_ai_gate_latency_and_localhost_401.md) — 15-47s LLM gate; localhost 400s it
