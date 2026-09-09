@@ -156,3 +156,5 @@
 - [Gate on the environment the repair is FOR](gate_on_the_environment_the_repair_is_FOR.md) — an env-specific guard gated only on localhost leaves its central risk unverified (#2074/#2116); deployed-env cold-start goto timeout is its own flake
 - [Board rate limit is complexity-based](board_rate_limit_is_complexity_based_use_issue_scoped_query.md) — `project item-list --limit 900` fails while counters read 5000/5000; find the card via `issue.projectItems` (board #9 field/option ids inside)
 - [Mixed shard spread refutes the outage](mixed_shard_spread_refutes_the_outage_and_means_a_missing_precondition.md) — 46/6 = per-test; suspect ambient data + a vacuous sibling
+- [Entailment test: correction vs masking](entailment_test_separates_correction_from_masking.md) — prove the removed assertion is unfalsifiable on any path reaching its replacement; deleting a content premise WITHOUT a dominating guard is masking
+- [The wire is the oracle](the_wire_is_the_oracle_for_a_nondeterministic_producer.md) — read the run's own state off Socket.IO and assert the UI against it; it settles "display defect or producer failure?" in one instrument
