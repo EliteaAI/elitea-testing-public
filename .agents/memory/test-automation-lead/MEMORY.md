@@ -139,3 +139,4 @@
 - [A repair's re-anchoring drops a cross-check](sanctioned_red_repair_must_name_the_link_it_reanchors.md) — the defect fix won't restore it
 - [A prior factory commit is not a human ruling](a_prior_factory_commit_is_not_a_human_ruling.md) — factory commits as the operator; verify before citing precedent
 - [A FIX card can have no work in it](a_fix_card_can_have_no_work_in_it.md) — sanctioned-RED CI reds are correct; verify 4 things, change no code
+- [A CI traceback names the SYMPTOM; the second error line often names the CAUSE](the_second_error_line_in_a_ci_log_is_often_the_real_cause.md) — an intermittent line is a race, not noise; two lines can be two repairs
