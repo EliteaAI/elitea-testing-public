@@ -26,6 +26,11 @@ from .pipeline_form_page import PipelineFormPage
 
 logger = logging.getLogger("elitea.pages.pipeline_detail")
 
+# Short budget for a best-effort readback made INSIDE an error handler, so a
+# detached element can never make the diagnostic outlive (and mask) the real
+# failure it is describing.
+DIAGNOSTIC_READBACK_TIMEOUT = 1000
+
 
 class PipelineDetailPage(PipelineFormPage):
     """Pipeline detail/edit page.
@@ -7970,10 +7975,13 @@ class PipelineDetailPage(PipelineFormPage):
         """Click the run node's label (above the Flow canvas) to open the
         Run Details panel.
 
-        The run node becomes clickable only after the pipeline execution's
-        WebSocket-driven state reaches a terminal status — callers must wait
-        for the embedded chat response (``wait_for_embedded_chat_response``)
-        before calling this.
+        The run node is clickable from run-START, not only at a terminal
+        status: ``RunStateNode.jsx`` wires ``onClick={onOpen}``
+        unconditionally, so the panel opens while the run is still
+        ``In progress`` and its status badge then updates in place. Callers
+        should therefore wait via :meth:`wait_for_run_node_on_canvas` (the
+        run-STARTED signal) before calling this, and use
+        :meth:`wait_for_run_details_status` for completion.
 
         Args:
             timeout: Maximum wait time for the run node label to appear.
@@ -8043,10 +8051,21 @@ class PipelineDetailPage(PipelineFormPage):
                 "data-status", expected, timeout=timeout
             )
         except AssertionError as err:
+            # Defensive readback: if the badge is detached/gone by now, the
+            # diagnostic must NOT raise its own timeout on top of the real
+            # failure and surface the wrong message.
+            try:
+                actual = repr(
+                    self.run_details_status_badge.get_attribute(
+                        "data-status", timeout=DIAGNOSTIC_READBACK_TIMEOUT
+                    )
+                    or ""
+                )
+            except Exception:  # broad on purpose: diagnostics never displace the real error
+                actual = "<unavailable: status badge could not be read>"
             raise AssertionError(
                 f"The pipeline run did not complete — Run Details status is still "
-                f"{self.get_run_details_status()!r} after {timeout} ms "
-                f"(expected {expected!r})."
+                f"{actual} after {timeout} ms (expected {expected!r})."
             ) from err
         logger.info("Run Details status reached %r", expected)
 
