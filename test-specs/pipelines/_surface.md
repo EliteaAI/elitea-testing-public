@@ -958,7 +958,7 @@ Pipelines exactly as for Skills.
   out of the dropdown listbox for Pipelines.
 - Full case detail: `test-specs/pipelines/l2_pipeline-tags-add-and-filter_ELITEA-2013.md`.
 
-## Dashboard view toggle (Card vs Table) — `entity-card-name` count + `?view=` URL param are the layout-format proof, no new testid needed (confirmed live, 2026-08-08, ELITEA-2024)
+## Dashboard view toggle (Card vs Table) — the layout-format proof is `entity-card-name` count + `?view=` URL param **+ an `empty-state-title` absence guard, on a self-established ≥1-pipeline precondition**; no new testid needed (confirmed live, 2026-08-08, ELITEA-2024; corrected 2026-09-09, `#2118`)
 
 `PipelinesListPage.table_view_button`/`card_view_button` (testids
 `pipeline-table-view`/`pipeline-card-view`, wired in `Pipelines.jsx` on the
@@ -1032,6 +1032,22 @@ happened.*
   (`get_card_names(timeout=10000)` — the helper's 5 s default is what expired in
   CI), then do the absence checks.
 - Full gap analysis + exact patch: `test-specs/pipelines/lextend_pipeline-dashboard-view-toggle-default-and-layout_ELITEA-2024.md`.
+- **Resolved/added during ELITEA-2024 implementation (2026-09-09, `#2118`, PR into
+  `automation/base`):** `PipelinesListPage.empty_state_title`
+  (`LocatorDescriptor(testid="empty-state-title")`) now exists as a class field —
+  reuse it rather than adding another. Both halves of the trap above were
+  reproduced with the merged code on a search-filtered empty list (no data
+  mutated), and each guard was observed firing:
+  - populated + table view → `entity-card-name: 0`, `empty-state-title: 0` (both
+    assertions pass);
+  - empty list + table view → `entity-card-name: 0`, `empty-state-title: 1` — the
+    card-count assertion still passes **vacuously**, the `empty-state-title`
+    guard raises;
+  - the Step-1 precondition assertion (`fixture name in get_card_names(10000)`)
+    passes on the populated dashboard and raises with the precondition named on
+    the empty one — so this class of failure now reports at Step 1, not Step 7.
+  ⚠️ `search()` filtering is the cheap non-destructive route to the empty-list
+  state for any future probe of this kind — do NOT delete pipelines to reach it.
 
 ## Three-dot Actions menu — full live-confirmed testid map, both groups (confirmed live, 2026-08-08, ELITEA-2049)
 

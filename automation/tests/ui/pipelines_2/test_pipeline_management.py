@@ -86,7 +86,7 @@ class TestPipelineDashboard:
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/elitea-platform/pipelines/ELITEA-0855_pipeline-dashboard-view-and-search.md", "onetest-ai Test Case link")
     @allure.issue("https://github.com/EliteaAI/onetest-ai-tm-Elitea/blob/main/tests/automated-full-regression-ui/pipelines/ELITEA-2024_pipeline-dashboard-view-toggle-card-vs-table.md", "onetest-ai Test Case link")
     @pytest.mark.p1
-    def test_view_toggle_table_and_card(self, page):
+    def test_view_toggle_table_and_card(self, page, pipeline_id, pipeline_api):
         """Dashboard should support switching between table and card views.
 
         Extended for ELITEA-2024 (AFS:
@@ -94,10 +94,37 @@ class TestPipelineDashboard:
         with default-state (Step 3) and actual-rendered-layout (Steps 5 & 7)
         assertions — the original ELITEA-0855 coverage (button visibility +
         button aria-pressed state) is unchanged.
+
+        REPAIR 2026-09-09 (board #2118, CI run 34331579791): the test used to
+        ASSUME the ambient project held at least one pipeline. The CI matrix
+        project holds none, so Step 7 failed and — worse — Step 5 passed
+        vacuously, because CardList.jsx's ``showEmptyOrError`` short-circuits
+        BOTH the table and the card branch, making "zero cards" true of an
+        empty state that mounted no table at all. The test now establishes the
+        case's declared precondition itself and asserts it at Step 1.
+
+        Fidelity — transit substitution (AFS § Fidelity Declaration): the
+        precondition pipeline is created through the API (``pipeline_id``
+        fixture) instead of through the UI create form, purely so the
+        dashboard has content to lay out. Every value this test asserts on —
+        the toggles' ``aria-pressed`` state, the ``view`` URL parameter, and
+        which layout component the dashboard mounts — is produced by the live
+        application in response to real clicks. The case does not specify how
+        the pipeline gets there.
         """
-        with allure.step("Step 1 — Navigate to pipelines dashboard"):
+        with allure.step("Step 1 — Navigate to pipelines dashboard with a known pipeline present"):
+            pipeline_name = pipeline_api.get_pipeline(pipeline_id).get("name", "")
             list_page = PipelinesListPage(page)
             list_page.navigate()
+            # Waiting, POSITIVE assertion — during the dashboard's loading
+            # window both entity-card-name and empty-state-title read 0, so a
+            # bare count here would be as vacuous as the Step 5 bug this
+            # repair closes. 10 s, not get_card_names()'s 5 s default: 5 s is
+            # exactly what expired in CI.
+            assert pipeline_name in list_page.get_card_names(timeout=UI_ELEMENT_TIMEOUT), (
+                f"Precondition: pipeline {pipeline_name!r} should be on the dashboard "
+                "before the view toggle is exercised"
+            )
 
         with allure.step("Step 2 — Verify view toggle buttons exist"):
             assert list_page.table_view_button.is_visible(), "Table view button should exist"
@@ -119,6 +146,10 @@ class TestPipelineDashboard:
 
         with allure.step("Step 5 — Verify layout actually changed to table format"):
             assert "view=table" in page.url, f"Expected ?view=table in URL, got {page.url!r}"
+            assert list_page.empty_state_title.count() == 0, (
+                "Dashboard must not be showing the empty state — a zero card count "
+                "would then prove nothing about the table layout"
+            )
             assert list_page.entity_card_name.count() == 0, (
                 "No card elements (entity-card-name) should render while in table view"
             )
@@ -131,8 +162,9 @@ class TestPipelineDashboard:
 
         with allure.step("Step 7 — Verify layout returned to card grid format"):
             assert "view=cards" in page.url, f"Expected ?view=cards in URL, got {page.url!r}"
-            assert list_page.get_card_names(), (
-                "Card elements (entity-card-name) should render again after switching to card view"
+            assert pipeline_name in list_page.get_card_names(timeout=UI_ELEMENT_TIMEOUT), (
+                f"Pipeline {pipeline_name!r} should render as a card again after "
+                "switching back to card view"
             )
 
 
