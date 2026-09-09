@@ -77,3 +77,40 @@ files sanctioned-RED tests as `[FIX]` cards) and #2096 (the card template's
 policy). Per `.agents/profile.md` § Bug filing, a real duplicate found BEFORE
 filing means **comment the new occurrence on the existing issue**, not a new
 card. Added the four-card tally + the same-run-id evidence to #2064 instead.
+
+## Confirmed systemic — it happened again the same day, on a DIFFERENT case (#2114)
+
+Run `34331579791` was also filed **twice for ELITEA-2448**: #2076 (the card that
+produced the real repair, closure-recorded 11:45Z) and **#2114** (dispatched
+18:47Z, `duplicate`, zero code changed). So one run id produced duplicate pairs
+for **two unrelated tests** — the double-filing is a property of the RUN, not of
+any one test or of sanctioned-RED status. Treat a `[FIX]` card citing a run id a
+sibling already cites as a duplicate until proven otherwise.
+
+This note front-ran the whole of #2114: two `gh` calls before any git or gate
+work. It is the cheapest triage in the file — keep it first.
+
+## The variant that is WORSE than #2081's — check where the repair is staged
+
+#2081's repair had an OPEN promotion PR (#2056) merely awaiting a human merge.
+#2114's had **nothing staged at all**. Distinguish them explicitly, because the
+report a human needs is different (merge the PR vs. promote from scratch):
+
+```bash
+git merge-base --is-ancestor <repair-sha> origin/main && echo "ON MAIN" || echo "NOT on main"
+git branch -r --contains <repair-sha>          # base + unrelated siblings only == nothing staged
+env -u GITHUB_TOKEN gh pr list --repo <repo> --state open --base main --limit 30   --json number,title,headRefName
+```
+
+On #2114 the repair had merged to `automation/base` **seven hours** before the
+duplicate card was dispatched, and would have re-filed again on the next
+nightly. Do NOT open the promotion PR to stop the loop — promotion is
+human-triggered only (`.agents/workflow.md` § Promotion). Report it and name the
+human as owner.
+
+## Derive the testid set yourself — the sibling's list is usually short
+
+#2076's closure record listed 11 testids. Resolving the 20 page-object methods
+the spec actually calls, one hop into the page object, produced **19**. Copying
+the sibling would have shipped an under-specified promotability row — the
+#35/#36/#37 failure mode wearing a different hat.

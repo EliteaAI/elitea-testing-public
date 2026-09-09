@@ -79,3 +79,18 @@ object at all.
 Related: [[main_and_base_can_carry_different_variants_of_one_spec]] (the reverse
 direction — a `main`-only repair overwritten at promotion) ·
 [[promoted_test_fixes_branch_from_main]]
+
+## Third worked case, 2026-09-09: #2114 (ELITEA-2448) — nothing staged at all
+
+`git log --oneline origin/main..origin/automation/base -- <spec>` returned the
+repair commit `3f26bef61` (PR #2091), merged to `base` at 11:41Z the same day.
+`main` still held the pre-repair `wait_for_embedded_chat_response()` + hard
+`expect(run_node_label).to_be_visible()` — and that assert's message is
+*verbatim* the CI failure string, which is the single strongest one-command proof
+of an unpromoted repair.
+
+Unlike #2081 (staged promotion PR #2056 awaiting a human merge), here the "cheap
+outcome" check came back empty: no open PR had base `main`. So the escalation
+ladder has three rungs, not two — **(1) already promoted → nothing to do ·
+(2) promotion PR open → report, do not open a second · (3) nothing staged →
+report the gap, name the human, still do not open it.**
