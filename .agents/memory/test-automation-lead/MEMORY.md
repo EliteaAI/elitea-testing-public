@@ -155,3 +155,4 @@
 - [A duplicate card is where you pay the original's evidence gap](a_duplicate_card_is_where_you_pay_the_originals_evidence_gap.md) — confirm the dupe in 2 calls, then run the env the survivor never ran (DEV recipe + env-restore trap inside)
 - [Gate on the environment the repair is FOR](gate_on_the_environment_the_repair_is_FOR.md) — an env-specific guard gated only on localhost leaves its central risk unverified (#2074/#2116); deployed-env cold-start goto timeout is its own flake
 - [Board rate limit is complexity-based](board_rate_limit_is_complexity_based_use_issue_scoped_query.md) — `project item-list --limit 900` fails while counters read 5000/5000; find the card via `issue.projectItems` (board #9 field/option ids inside)
+- [Mixed shard spread refutes the outage](mixed_shard_spread_refutes_the_outage_and_means_a_missing_precondition.md) — 46/6 = per-test; suspect ambient data + a vacuous sibling
