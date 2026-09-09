@@ -11,6 +11,111 @@
 - **Analyst**: qa-engineer (analyst slot), batch `pipelines-remaining-w7`
 - **Status**: extend-existing
 
+## Repair amendment — 2026-09-09 (FIX card #2063, red on DEV)
+
+> **Everything below this section that describes a Run History *panel* with an `X`
+> close button is SUPERSEDED by this amendment.** The product changed; the case's
+> observable did not. Sections § Test Steps step 4, § Concrete Handles (close-button
+> row), § Network Behavior and § Coverage Map row 7 are re-stated here and this
+> version wins.
+
+**Environment explored for the repair:** BOTH `https://dev.elitea.ai/app` (the card's
+declared environment, harness-driven) and `http://localhost:5173` — behaviour is
+**identical on both**; the earlier "passes on localhost" premise is stale.
+
+**What changed in the product.** `EliteaAI/EliteaUI` commit `90e20a03`
+(*feat: [EL-6537] Integrate Agent and Pipeline Run History into Breadcrumb
+Navigation*, on `main` 2026-09-07, and an ancestor of `origin/automation/testids`)
+turned the inline Run History panel into a **dedicated route**:
+
+- `src/pages/Pipelines/Components/ConfigurationTab.jsx:359` now wires
+  `onShowHistory={applicationId ? goToRunHistory : undefined}` — clicking
+  `pipeline-history-tab` **navigates** to `/pipelines/:tab/:agentId/history`
+  (`src/routes.js:29`) instead of flipping a local `showHistory` state.
+- That route renders `src/[fsd]/pages/shared/RunHistoryPage.jsx`, which does **not**
+  pass an `onClose` prop to `RunHistoryContainer`.
+- `RunHistoryContainer.jsx:164` renders the close button only inside
+  `{onClose && (...)}` — so `run-history-close-button` **never mounts** on the
+  Agent or Pipeline surface any more (the testid still exists in the source; it is
+  unreachable). No caller anywhere in `src/` passes `onClose`.
+
+**The replacement affordance** is the breadcrumb header the new page renders:
+`Pipelines / <pipeline name> / Run History` — clicking the `<pipeline name>` crumb
+returns to the pipeline detail view. Verified live on localhost 2026-09-09:
+
+| Observation | Value (live) |
+|---|---|
+| URL on pipeline detail | `…/pipelines/all/10369?viewMode=owner&name=…` |
+| URL after clicking `pipeline-history-tab` | `…/pipelines/all/10369/history?viewMode=owner&name=…` |
+| `run-history-close-button` count on that view | **0** (DEV and localhost) |
+| `chat-message-input` / `pipeline-history-tab` count while History is open | **0 / 0** (different route) |
+| breadcrumb link crumbs (`breadcrumb-item`) | `['Pipelines', '<pipeline name>']` |
+| breadcrumb current (`breadcrumb-current`) | `'Run History'` |
+| URL after clicking the last `breadcrumb-item` | back to `…/pipelines/all/10369?viewMode=owner&name=…` |
+| after return | `chat-message-input` visible, `pipeline-history-tab` visible, `run-history-list-item` count = **0** |
+| conversation requests fired by the return | **none** (`/conversation(s)/prompt_lib` zero hits) |
+| console errors across the whole flow | **none** |
+
+### Amended step 4 (the case's step 7 — "Close run history panel / Panel closes")
+
+Click the **last `breadcrumb-item`** (the pipeline-name crumb; the trail is
+`Pipelines / <name> / Run History`, only the last entry is `breadcrumb-current`).
+**Expected:** the Run History view is left — `run-history-list-item` count returns to
+0 — and the pipeline detail view is restored (`chat-message-input` and
+`pipeline-history-tab` visible again), with no `conversation(s)/prompt_lib` re-fetch.
+
+### Amended § Concrete Handles rows
+
+| Element | Recommended Locator | PROVENANCE | Fallback |
+|---|---|---|---|
+| ~~Run History panel close (X)~~ | **REMOVED — no longer rendered** (`RunHistoryContainer.jsx:164` `{onClose && …}`, no caller passes `onClose`) | testid string still on `origin/main`, but unreachable at runtime | n/a |
+| Breadcrumb link crumbs (return affordance) | class constant `'[data-testid="breadcrumb-item"]'`, positional `.last` (= the pipeline-name crumb) | **on-main ✓** (`git fetch origin` + `git grep` 2026-09-09: `breadcrumb-item` YES on `origin/main` and `origin/automation/testids`) — `BreadcrumbItem.jsx:30` | none — testid only |
+| Breadcrumb current crumb (Run-History-view marker) | class constant `'[data-testid="breadcrumb-current"]'` (text `Run History`) | **on-main ✓** — `BreadcrumbItem.jsx:17` | none — testid only |
+
+No new testid is needed for this repair.
+
+### Amended § Network Behavior
+
+- Opening Run History now also **auto-selects the newest run** (`RunHistoryContainer.jsx:93-96`,
+  added by `84025881` *fix: [EL-6391] select the latest run when Run History opens*,
+  2026-08-26). Live capture on DEV, immediately after the list rendered:
+  `GET /elitea_core/conversations/prompt_lib/399?source=pipeline&…`,
+  `GET /elitea_core/conversation/prompt_lib/399/9947`,
+  `GET /elitea_core/message_traces/prompt_lib/399/9947?...` — i.e. the conversation
+  **detail** GET fires on OPEN, before any row is clicked.
+- Consequence for `select_run_history_item(0)`: row 0 already carries
+  `data-selected="true"` before the click, and **clicking it fires zero requests**
+  (verified live). The endpoint itself is unchanged
+  (`/elitea_core/conversation/prompt_lib/{projectId}/{conversationId}` GET,
+  `runHistoryApi.js:42`), so the page object's `expect_response` *predicate* is still
+  correct — but the *event* it waits for is no longer caused by the click. It only
+  passes when the auto-select's own GET happens to land inside the expectation
+  window. Wait on selection state + rendered message content instead.
+- Returning via the breadcrumb re-fires only the pipeline-detail view-population
+  requests (`toolkits`, `index_types`) — **no** `conversation(s)/prompt_lib` refetch.
+  The original durable claim survives verbatim.
+
+### Amended § Coverage Map row 7
+
+| Case element | Expected result | Covered by | Asserted where | Disposition |
+|---|---|---|---|---|
+| 7 Close run history panel | Panel closes | **amended step 4** — leave the Run History route via the pipeline-name breadcrumb crumb | new test's own step | asserted (new) |
+
+The case text says only *"Close run history panel"* / *"Panel closes"* — it never
+names an `X` button, so the observable is unchanged and this is **not** case-text
+drift on step 7. Step 2's wording (*"Run history panel opens"*) is now a page rather
+than a panel — cosmetic drift, observable preserved; optional TMS clarification, not
+blocking.
+
+### Observation (not asserted, not filed)
+
+Returning from Run History leaves the embedded chat **empty** (`chat-message-item`
+count 0) — the live conversation is not restored by plain back-navigation; the
+product offers an explicit *restore conversation* affordance in the row menu
+(`run-history-menu-menu-button` → `handleRestoreConversation`). Under the old inline
+panel the in-memory conversation survived a close. Reads as intended-by-design for a
+route change; the case asserts nothing about it, so no assertion is added.
+
 ## Covering Spec (dedup / extension proof)
 
 - **Covering spec**: `automation/tests/ui/pipelines/test_pipeline_run_history_view_executions.py`
