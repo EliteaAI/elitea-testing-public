@@ -142,3 +142,4 @@
 - [A CI traceback names the SYMPTOM; the second error line often names the CAUSE](the_second_error_line_in_a_ci_log_is_often_the_real_cause.md) — an intermittent line is a race, not noise; two lines can be two repairs
 - [Backticks in `gh --body` run](gh_body_backticks_are_executed.md) — use `--body-file`; read the comment back
 - [Serialization drift](serialization_drift_fix_class.md) — assert parsed structure; walk steps BEHIND the break
+- [Sibling [FIX] cards from one CI run](sibling_fix_cards_do_not_share_a_root_cause.md) — check the job's own pass/fail spread before inheriting a verdict
