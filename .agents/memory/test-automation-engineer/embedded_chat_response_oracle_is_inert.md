@@ -2,10 +2,10 @@
 name: Embedded-chat "agent responded" assertions are inert by default
 description: wait_for_chat_response() warns instead of raising and get_last_chat_response_text() falls back to raw <li> text — so `response_text != ""` passes on the loading placeholder
 type: feedback
-aliases: [inert response assertion, wait_for_chat_response does not raise, skill-test-last-response oracle, embedded chat agent responded]
+aliases: [inert response assertion, wait_for_chat_response does not raise, skill-test-last-response oracle, embedded chat agent responded, wait_for_embedded_chat_response, pipeline run completion wait]
 tags: [area/chat, type/masking-trap]
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-09-09
 ---
 
 ## The trap
@@ -52,6 +52,27 @@ Match by **containment**, not equality: the `<li>` also carries header metadata
 (`'TBTest Bottoelitea-1886-…less than a minute agoHow do I create a new agent?'`).
 `AgentDetailPage` has **no** indexed body-text reader — `ChatPage.get_message_text_at()`
 has no counterpart there.
+
+## Confirmed sibling — `PipelineDetailPage.wait_for_embedded_chat_response()`
+
+Same inertness, **different mechanism and oracle** (ELITEA-2448 / #2076,
+2026-09-09). It logs `WARNING Embedded chat response did not stabilise within
+timeout` and returns. On a pipeline that emits no chat answer it burns its whole
+budget every run: its `[aria-label="Delete"]` wait takes **all remaining budget**
+inside a bare `try/except: pass` and that action bar never appears; and the
+placeholder **rotates every 2.0 s**, defeating `stable_duration_ms=3000`.
+Measured: Step 4 = **90.36/90.38 s ≡ the full 90 000 ms timeout** on runs that
+*passed*, so the CI red surfaced as a misleading "element(s) not found".
+After the repair: **33.66 s**.
+
+The honest oracle is **not** a chat element (there is no answer) — it is the run's
+own state: `wait_for_run_node_on_canvas()` (STARTED) then
+`wait_for_run_details_status("Completed")` off
+`pipeline-run-details-status-badge`'s `data-status`, which updates in place while
+the panel is open. ⚠️ Open the panel **once** (the MUI Dialog then intercepts a
+second run-node click); `pipeline-run-node-label` means STARTED, not finished.
+**Do not "fix" the helper — 20 caller files depend on it.** Detail:
+`test-specs/pipelines/_surface.md` § "Pipeline EXECUTION waits".
 
 ## Where else to look
 
