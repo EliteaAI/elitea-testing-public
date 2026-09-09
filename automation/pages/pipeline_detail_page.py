@@ -7984,6 +7984,72 @@ class PipelineDetailPage(PipelineFormPage):
         self.run_details_panel.wait_for(state="visible", timeout=timeout)
         logger.info("Run Details panel opened")
 
+    def wait_for_run_node_on_canvas(self, timeout: int = 150000) -> None:
+        """Wait until a run node appears above the Flow canvas — i.e. the
+        backend has BEGUN executing the run.
+
+        This is a run-STARTED signal, never a run-FINISHED one: the run node
+        is created on the ``AgentStart``/``StartTask`` socket event and stays
+        visible for the whole ``In progress`` phase
+        (``RunStateNode.jsx``). Use :meth:`wait_for_run_details_status` for
+        completion.
+
+        The default budget is deliberately generous: DEV run-START latency was
+        measured live between 4.5 s and 89.3 s on the same pipeline within one
+        hour, while node execution itself is stable (~31 s). See
+        `test-specs/pipelines/_surface.md` § "Pipeline EXECUTION waits".
+
+        Args:
+            timeout: Maximum wait, in ms, for the run node to appear.
+
+        Raises:
+            AssertionError: the run never started within *timeout*, with a
+                message naming that real cause rather than a bare
+                "element not found".
+        """
+        logger.info("Waiting for the run node to appear on the canvas (run started)")
+        try:
+            self.run_node_label.first.wait_for(state="visible", timeout=timeout)
+        except PlaywrightTimeoutError as err:
+            raise AssertionError(
+                f"The pipeline run never started — no run node appeared on the canvas "
+                f"within {timeout} ms after sending the chat message "
+                f"(the backend did not begin executing the run)."
+            ) from err
+        logger.info("Run node visible — the run has started")
+
+    def wait_for_run_details_status(self, expected: str, timeout: int = 90000) -> None:
+        """Wait until the ALREADY-OPEN Run Details panel's status badge reaches
+        *expected*, read from the app's own ``data-status`` state attribute.
+
+        The badge updates IN PLACE while the panel stays open (``In progress``
+        -> ``Completed``), so the panel may — and should — be opened while the
+        run is still executing: opening it exactly once avoids the MUI Dialog
+        intercepting a second click on the run node.
+
+        Args:
+            expected: Target ``data-status`` value, e.g. ``"Completed"``.
+            timeout: Maximum wait, in ms, for the status to reach *expected*.
+
+        Raises:
+            AssertionError: the status never reached *expected*, with a message
+                naming the run's actual status.
+        """
+        from playwright.sync_api import expect
+
+        logger.info("Waiting for Run Details status to reach %r", expected)
+        try:
+            expect(self.run_details_status_badge).to_have_attribute(
+                "data-status", expected, timeout=timeout
+            )
+        except AssertionError as err:
+            raise AssertionError(
+                f"The pipeline run did not complete — Run Details status is still "
+                f"{self.get_run_details_status()!r} after {timeout} ms "
+                f"(expected {expected!r})."
+            ) from err
+        logger.info("Run Details status reached %r", expected)
+
     def close_run_details_panel(self, timeout: int = 5000):
         """Click the Run Details panel's close icon button.
 
