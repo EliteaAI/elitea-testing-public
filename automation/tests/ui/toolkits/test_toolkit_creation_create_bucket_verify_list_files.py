@@ -753,9 +753,18 @@ class TestToolkitCreationCreateBucketVerifyListFiles:
                 # substring-matched against one serialization (#2066): the
                 # product moved from a Python ``repr`` to pretty-printed JSON
                 # while the observable — the just-created bucket is empty —
-                # stayed correct. Structural equality on the whole payload is
-                # strictly stronger than the substring match it replaces, and
-                # survives drift in either direction
+                # stayed correct. The parsed comparison is stronger than the
+                # substring pin on every axis that matters — position (the old
+                # pin matched anywhere in ``result_text``, wrapper prose
+                # included; this is anchored to the payload after the LAST
+                # marker), extra or renamed keys (whole-payload equality, not a
+                # fragment), and a payload that stops rendering at all (a loud
+                # AssertionError, never a silent miss) — and it survives drift
+                # in either direction. The one axis it no longer discriminates
+                # is int-vs-bool/float: Python dict equality compares values,
+                # not types, so ``{"total": False}`` and ``{"total": 0.0}``
+                # would both compare equal to ``{"total": 0}``. The product
+                # will not emit either for a row count
                 # (``utils/toolkit_result_payload``, pinned by
                 # ``tests/unit/test_toolkit_result_payload.py``).
                 payload = parse_tool_result_payload(result_text)

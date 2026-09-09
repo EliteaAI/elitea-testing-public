@@ -19,11 +19,22 @@ that path used to be skipped). The **observable did not change** — the
 just-created bucket is still empty — only its serialization did, so the
 substring pin went red on a correct product (issue #2066).
 
-Parsing the payload and comparing the parsed *structure* is
-**strictly stronger** than the substring match it replaces (structural equality
-on the whole payload vs. a substring match on one rendering of it) and it
+Parsing the payload and comparing the parsed *structure* is **stronger than
+the substring match it replaces on every axis that matters**: *position* (the
+old pin matched anywhere in ``result_text``, chat-wrapper prose included; this
+is anchored to the payload after the LAST marker), *extra or renamed keys*
+(whole-payload equality rather than a fragment), and *a payload that stops
+rendering at all* (a loud ``AssertionError`` instead of a silent miss). It also
 survives a serialization change in **either** direction: JSON first, Python
 ``repr`` as the fallback, so the pre-drift form still parses.
+
+It is **not** *strictly* stronger, and the difference is worth naming rather
+than glossing: Python dict equality compares values, not types, so
+``{"total": False, "rows": []}`` and ``{"total": 0.0, "rows": []}`` both compare
+equal to ``{"total": 0, "rows": []}``, where a byte-for-byte substring pin
+discriminated them. A row count will not be emitted as a bool or a float, so no
+coverage that matters is lost — but the accurate claim is "stronger where it
+counts", not "strictly stronger".
 
 Two properties of the live DOM shape this module (both captured live
 2026-09-09, AFS § Adjustment 2026-09-09 § 2):

@@ -20,7 +20,8 @@ import re
 import time
 import urllib.parse
 
-from playwright.sync_api import Download, Locator, Page, expect
+from playwright.sync_api import Download, Locator, Page, Response, expect
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from utils.actions import action
 
 from .base_page import BasePage
@@ -1223,6 +1224,11 @@ class ArtifactsPage(BasePage):
     #: whenever the backend was anything but fast (ELITEA-1866 / #2066).
     BUCKET_LIST_RESPONSE_TIMEOUT = 60_000
 
+    #: URL fragment identifying the Artifacts landing's bucket-list request.
+    #: Shared by the wait predicate and the diagnostics listener below so the
+    #: failure message can name the endpoint it was actually waiting on.
+    BUCKET_LIST_URL_FRAGMENT = "/artifacts/s3/"
+
     #: Budget for the left-panel ``Buckets`` heading once the list response has
     #: landed. Static chrome — it renders immediately after.
     BUCKETS_HEADING_TIMEOUT = 15_000
@@ -1254,13 +1260,51 @@ class ArtifactsPage(BasePage):
         list loads, so it is useless as a settle signal).
 
         :meth:`wait_for_page_load` itself is unchanged for its own callers.
+
+        **Diagnostics on the failure path (PR #2080 review, finding 3).** The
+        wait predicate deliberately still requires ``status == 200``, so a
+        ``502``/``503`` from the bucket list — observed live under load — burns
+        the whole 60 s budget and Playwright's own message names neither the
+        endpoint nor the status. A ``page.on("response", ...)`` listener records
+        the statuses seen for :attr:`BUCKET_LIST_URL_FRAGMENT` and the timeout
+        is re-raised with them, so the failure reads "no 200 from
+        ``/artifacts/s3/`` in 60000 ms; statuses observed: [503, 503]" instead
+        of ``waiting for event "response"``. The listener is removed in a
+        ``finally`` so nothing leaks onto the shared page for later tests.
+
+        Rejected alternative: matching on URL only and asserting the status
+        inside the block. It would fail faster, but it latches the FIRST
+        response for that URL — a redirect or an auth retry preceding a healthy
+        200 would fail a run that is actually fine. Diagnostics must not change
+        *when* this method succeeds or fails, only what the failure says.
         """
-        with self.page.expect_response(
-            lambda response: "/artifacts/s3/" in response.url
-            and response.status == 200,
-            timeout=self.BUCKET_LIST_RESPONSE_TIMEOUT,
-        ):
-            super().navigate("/artifacts")
+        observed_statuses: list[int] = []
+
+        def _record_bucket_list_status(response: Response) -> None:
+            if self.BUCKET_LIST_URL_FRAGMENT in response.url:
+                observed_statuses.append(response.status)
+
+        self.page.on("response", _record_bucket_list_status)
+        try:
+            with self.page.expect_response(
+                lambda response: self.BUCKET_LIST_URL_FRAGMENT in response.url
+                and response.status == 200,
+                timeout=self.BUCKET_LIST_RESPONSE_TIMEOUT,
+            ):
+                super().navigate("/artifacts")
+        except PlaywrightTimeoutError as err:
+            seen = (
+                ", ".join(str(status) for status in observed_statuses)
+                if observed_statuses
+                else "none — the request never completed"
+            )
+            raise PlaywrightTimeoutError(
+                f"No 200 response from {self.BUCKET_LIST_URL_FRAGMENT} within "
+                f"{self.BUCKET_LIST_RESPONSE_TIMEOUT} ms while navigating to "
+                f"/artifacts. Statuses observed for that endpoint: {seen}."
+            ) from err
+        finally:
+            self.page.remove_listener("response", _record_bucket_list_status)
         expect(self.buckets_heading).to_be_visible(
             timeout=self.BUCKETS_HEADING_TIMEOUT,
         )
