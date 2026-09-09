@@ -290,6 +290,33 @@ for Agents in `test-specs/agents/_surface.md` / `l2_run-history-select-past-run-
   durable claim (and what the implemented test asserts): closing does **not** re-fetch
   the conversations list. Full detail:
   `lextend_pipeline-run-history-panel-close_ELITEA-2070.md`.
+- **SUPERSEDED 2026-09-09 — Run History is a ROUTE now, and the `X` button is gone
+  (resolved during ELITEA-2070 repair implementation, FIX card #2063).** Every bullet
+  above describing an in-place *panel* with a working close (`X`) button is stale.
+  `EliteaAI/EliteaUI@90e20a03` (*feat: [EL-6537] Integrate Agent and Pipeline Run
+  History into Breadcrumb Navigation*, on `main` 2026-09-07) moved Run History onto
+  `/pipelines/:tab/:id/history` (`routes.js:29`); that route renders
+  `RunHistoryPage.jsx`, which passes **no `onClose`**, and `RunHistoryContainer.jsx:164`
+  gates the close button on `{onClose && (...)}` — so `run-history-close-button` never
+  mounts on the Agent or Pipeline surface (the testid string survives in source but is
+  unreachable at runtime; the `LocatorDescriptor` for it was DELETED from
+  `PipelineDetailPage`). The return affordance is the breadcrumb trail the route
+  renders — `Pipelines / <pipeline name> / Run History`, where only the last crumb is
+  `breadcrumb-current` (`BreadcrumbItem.jsx:17`) and the others are `breadcrumb-item`
+  (`BreadcrumbItem.jsx:30`); clicking the **last `breadcrumb-item`** (the pipeline-name
+  crumb) returns to pipeline detail. New class constants on `PipelineDetailPage`:
+  `BREADCRUMB_ITEM_SELECTOR` / `BREADCRUMB_CURRENT_SELECTOR`. The durable
+  no-conversations-re-fetch claim SURVIVES verbatim (re-verified live on both
+  `localhost:5173` and `https://dev.elitea.ai/app`, 2026-09-09).
+- **Run History auto-selects row 0 on open (2026-09-09, same repair).**
+  `EliteaAI/EliteaUI@84025881` (*fix: [EL-6391]*, 2026-08-26) makes
+  `RunHistoryContainer.jsx:93-96` select the newest run when the view opens, firing the
+  conversation-detail GET itself. Two consequences for automation: clicking row 0 fires
+  **zero** requests (so an `expect_response` wrapper around that click is a race — it
+  only passes if the auto-select's own response lands inside the window; replaced with a
+  `data-selected="true"` + `chat-message-item` state wait in
+  `select_run_history_item()`), and asserting `data-selected="true"` on row 0 after
+  clicking it proves nothing (tautological — it was already selected).
 - **Case-text drift flagged by ELITEA-2070**: the case's step 6 names a "status" element
   in the execution-detail view that doesn't exist as a distinct UI element — only
   message + response content renders (an errored run's response is distinguishable by
