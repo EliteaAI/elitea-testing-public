@@ -255,6 +255,135 @@ whoever next automates a case that does need to assert Agent Tags directly.
   options; automated test can wait on this before interacting with the Category select to avoid an
   empty-options race.
 
+## Repair note — 2026-09-09 (board #2082, CI run 34331579791)
+
+**Failure being repaired.** `test_publish_draft_version_then_unpublish_reverts_to_draft` failed
+3/3 attempts in `UI Tests DEV Stable [main] [all]`, job `dev-stable - agents`, shard `user5`, at
+Step 4:
+
+```
+playwright._impl._errors.TimeoutError: Timeout 30000ms exceeded while waiting for event "response"
+  pages/agent_detail_page.py  click_publish_continue()
+    with self.page.expect_response(lambda r: "publish_validate" in r.url and r.request.method == "POST", timeout=timeout)
+```
+
+The allure screenshot for all three attempts shows the wizard correctly advanced past Preparation
+and sitting on the **Validation** step with the spinner and *"Reviewing your agent version to
+ensure it meets publication rules."* — i.e. the Continue click registered, the `publish_validate`
+POST was in flight, and it simply had not resolved inside the 30 s budget. Not the gateway-500 DEV
+outage that produced the sibling `[FIX]` cards of the same run: the `agents` shard shows passes
+immediately before (`test_agent_name_character_limit`, 09:06:29–09:06:38) and after
+(`test_agent_remove_variable`, 09:09:18–09:09:54), so there is no contiguous outage block here.
+
+**Verdict: the wait budget is structurally too small. `VALIDATE_TIMEOUT = 30_000` is BELOW the
+endpoint's healthy p95.**
+
+### Measured latency of `POST .../publish_validate/prompt_lib/{project}/{versionId}` on DEV
+
+Measured 2026-09-09 18:30–18:50 against `https://dev.elitea.ai`, on a disposable agent seeded
+exactly as this spec's Precondition seeds it (substantive Instructions + one Tag, via
+`AgentAPI.create_agent_full()`), as the real `TEST_USER` Keycloak session. Every call returned
+**200 `status: WARN`** (0 critical issues) — the honest happy path this spec depends on. Two
+independent instruments, no substitution of any kind:
+
+*(a) direct POST, real user cookies, real endpoint, body `{"version_name": "v1-release",
+"category": "Quality Assurance"}` — the body `usePublishVersion.hooks.js` builds:*
+
+```
+batch A (n=8)                    batch B (n=10)
+sample 1:   30.49s  HTTP 200     sample  9:   25.17s  HTTP 200
+sample 2:   28.92s  HTTP 200     sample 10:   21.95s  HTTP 200
+sample 3:   27.33s  HTTP 200     sample 11:   26.32s  HTTP 200
+sample 4:   16.44s  HTTP 200     sample 12:   28.57s  HTTP 200
+sample 5:   19.61s  HTTP 200     sample 13:   33.19s  HTTP 200
+sample 6:   23.47s  HTTP 200     sample 14:   17.66s  HTTP 200
+sample 7:   27.64s  HTTP 200     sample 15:   16.85s  HTTP 200
+sample 8:   32.10s  HTTP 200     sample 16:   29.17s  HTTP 200
+                                 sample 17:   22.16s  HTTP 200
+                                 sample 18:   16.02s  HTTP 200
+n=18  min=16.02  median=25.75  mean=24.61  p95=32.10  max=33.19   >30s: 3/18
+```
+
+*(b) end-to-end through the REAL wizard, driven by this repo's own `AgentDetailPage` page object
+(open wizard -> fill Preparation -> click Continue -> `expect_response`, 300 s ceiling):*
+
+```
+UI sample 1:   15.46s  HTTP 200      -> confirm-button visible after 0.018s
+UI sample 2:   28.88s  HTTP 200      -> confirm-button visible after 0.023s
+UI sample 3:   32.35s  HTTP 200      -> confirm-button visible after 0.019s
+UI sample 4:   22.99s  HTTP 200      -> confirm-button visible after 0.013s
+UI sample 5:   36.88s  HTTP 200      -> confirm-button visible after 0.018s
+UI sample 6:   33.76s  HTTP 200      -> confirm-button visible after 0.014s
+n=6  min=15.46  median=30.62  max=36.88   >30s: 3/6
+```
+
+**Combined (n=24): min 15.46 s · median 26.82 s · p95 33.76 s · max 36.88 s · 6/24 (25%) over 30 s.**
+
+**It never hangs.** 24/24 samples resolved, all `200`, worst 36.88 s. So the disposition is
+"raise the budget to match measured reality" (a *correction*), not "the endpoint is broken" and
+not a mask — nothing about what the test verifies changes.
+
+**Why 3/3 rather than ~1-in-60.** `pytest.ini` carries `--reruns=2 --reruns-delay=5` with
+`--only-rerun="TimeoutError"`, so the three CI attempts were one invocation's original + 2 reruns
+seconds apart — three *correlated* draws against the same backend state, not independent trials.
+A 25 % baseline failure rate plus a momentarily degraded window explains 3/3 without strain.
+
+### Prescribed repair (implementer)
+
+1. **`automation/tests/ui/agents/test_agent_publish_unpublish_version.py:105`** —
+   `VALIDATE_TIMEOUT = 30_000` -> **`VALIDATE_TIMEOUT = 90_000`**, comment updated to cite the
+   measured distribution (median ~27 s, p95 ~34 s, max ~37 s on DEV, 2026-09-09).
+   *Is 60 s (the `test_agent_version_selector_order.py:71` precedent) enough?* It would have
+   passed all 24 samples — but only 1.63x the observed max on a quiet box, and the sibling
+   `publish_skill_validate` endpoint measured **46.23 s** the same evening (1.30x). For an
+   LLM-backed gate that is thin. 90 s is ~2.4x the observed agent max and ~1.9x the observed
+   skill max, and is the same shape as the already-canonised
+   `PIPELINE_RUN_START_TIMEOUT = 150_000` (`.agents/testing.md`, #2076) for a comparably
+   nondeterministic backend start. **A larger budget costs nothing on a green run** —
+   `expect_response` returns the instant the response arrives; the number is only paid on a
+   genuine failure.
+2. **Split the two waits — `pages/agent_detail_page.py:4329` `click_publish_continue()`.**
+   Today one `timeout` serves both the AI response wait *and*
+   `publish_confirm_button.wait_for(state="visible", timeout=timeout)`. Measured above: the
+   button renders in **0.013–0.023 s** (6/6) once the response lands. Conflating a 15–37 s
+   network/LLM wait with a ~20 ms React re-render means either the AI wait is too short or the
+   render wait is absurdly long, and the failure message cannot tell you which one blew.
+   Prescription: keep `timeout` as the **response** budget (backwards-compatible for all
+   existing callers) and add `render_timeout: int = 10_000` for the button wait.
+   Reviewer note: on the 422/FAIL path the confirm button still renders (disabled), so 10 s is
+   safe for the blocker specs too; on a 400 path it never renders and the shorter budget just
+   fails faster with the same verdict.
+
+### Localhost cannot gate this spec today — the local 3x gate must run against DEV
+
+`ELITEA_URL=http://localhost:5173` proxies `/api` to the DEV backend, but the localhost app
+authenticates with `Authorization: Bearer <VITE_DEV_TOKEN>`, and that identity has no platform
+`user_token`. Captured live from the real wizard on localhost:
+
+```
+REQUEST  POST http://localhost:5173/api/v2/elitea_core/publish_validate/prompt_lib/399/10961
+         Authorization: Bearer <214 chars>
+RESPONSE 400 {"error": "ai_validation_failed",
+              "msg": "AI validation failed: User token not found. Please create user_token"}
+total publish_validate responses seen after 15s: 3  [400, 400, 400]
+```
+
+(The same 400 with `ELITEA_API_TOKEN`; only the Keycloak *session* identity gets a 200.)
+Consequences, both verified:
+
+- `usePublishVersion.hooks.js`'s `callWithAIRetry` (`MAX_AI_RETRIES = 2`) fires **three**
+  sequential `publish_validate` POSTs on one Continue click when the backend answers
+  `400 ai_validation_failed`. `expect_response` resolves on the FIRST of them, so the retry never
+  extends the response wait — but it is worth knowing when reading a network trace.
+- A local run of this spec today fails with a *different* signature — not the CI one:
+  `playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 30000ms exceeded ... waiting
+  for get_by_test_id("agent-publish-confirm-button") to be visible` (the wizard bounced back to
+  Preparation, so the button never rendered). Confirmed by one local invocation, 2026-09-09.
+
+So a green localhost run proves nothing for this spec, and a red one is not evidence of the CI
+defect. **Gate the repair against `https://dev.elitea.ai` (`ELITEA_URL`/`APP_PREFIX=/app`),
+never localhost.** Reported to the lead as its own suite-health finding.
+
 ## Known Defects Found During Exploration
 
 - **[MINOR]** Publish-wizard Stepper's custom step-icon (`CheckedIcon`/`SvgCheckedIcon`,
