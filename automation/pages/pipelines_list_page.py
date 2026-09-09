@@ -80,6 +80,21 @@ class PipelinesListPage(BasePage):
         description="Pipeline card outer container — scopes per-card queries",
     )
 
+    # Shared EmptyStatePage entity testid
+    # (src/[fsd]/entities/empty-state-page/ui/EmptyStatePage.jsx) — rendered
+    # by CardList.jsx's ``showEmptyOrError`` branch, which short-circuits BOTH
+    # the table and the card branch. An absence assertion on it is what
+    # separates "a table mounted and therefore renders no cards" from "the
+    # list was empty so nothing mounted at all" (ELITEA-2024 repair, board
+    # #2118). Live-verified: page-wide count is 0 on a populated Pipelines
+    # dashboard in either view, 1 ("No pipelines yet") on an empty list.
+    empty_state_title = LocatorDescriptor(
+        testid="empty-state-title",
+        description=(
+            "Generic EmptyStatePage title — absent whenever the list has content"
+        ),
+    )
+
     # "Clear all" button in the page-header Tags filter panel
     # (Categories.jsx) — only rendered while a tag filter is active. Same
     # shared component/testid as SkillsListPage.tags_panel_clear_all
