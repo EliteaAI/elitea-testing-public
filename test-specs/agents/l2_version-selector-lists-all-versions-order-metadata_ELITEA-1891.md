@@ -293,3 +293,80 @@ did not block execution — the live behavior was fully observed and is asserted
   `AgentDetailPage.VERSION_OPTION_ANY` constant already excludes it (alongside the nested
   `version-option-pin-icon`); any new consumer must reuse that constant rather than re-deriving the
   prefix selector.
+
+---
+
+## Adjustment — 2026-09-09 (issue #2052, triage class A: UI drift)
+
+**Trigger.** The covering spec went red on the nightly `UI Tests DEV Stable`
+(GHA run 34244735426, shard `dev-stable-user3-110`) at the `re-pin v1-early-draft` precondition, with
+`Locator.click: Timeout 10000ms exceeded` on `agent-version-selector-trigger`:
+the VERSION dropdown left open by the preceding precondition was still open, and MUI's invisible
+`MuiBackdrop-root` (`id="menu-"`) intercepted every click for the full 10 s.
+
+**What drifted.** EliteaAI/EliteaUI@cf648e9a (PR #857) gave the VERSION dropdown
+a search field. `SingleSelectDropdown.jsx` mounts it as
+`<SimpleSearchBar onKeyDown={e => e.stopPropagation()} />`, and `SimpleSearchBar`
+autofocuses itself and maps Escape to "clear the search box" before calling that
+external handler. So whenever focus sits in that search field, the page-level
+Escape the spec used to close the dropdown is **consumed and stopped** — the MUI
+`Modal` never sees it and the menu stays open. Confirmed live 2026-09-08: from
+that state two consecutive page-level Escapes left `aria-expanded="true"` with
+every option still rendered; one Escape pressed **on an option** closed it, URL
+unchanged.
+
+**Expected-result changes: NONE.** Every assertion, step, count and comparison in
+this AFS is unchanged (the version sort order, the pin decoupling, the metadata
+shape). The mechanism the spec uses to dismiss the dropdown
+changed (and see the second change recorded below): `close_versions_menu()` (bare, unconfirmed Escape — still correct for the
+skill card's Versions menu, which has no search field) →
+`AgentDetailPage.close_version_selector()`, which presses Escape on an option and
+then **confirms** closure via the trigger's own `aria-expanded="false"`
+(`agent-version-selector-trigger-combobox`, a pre-existing testid present on
+EliteaUI `main`), raising with the live `aria-expanded` value if it cannot.
+
+**Second change in the same diff — `open_version_selector()`, and its blast radius.**
+The dismissal mechanism is not the only thing that moved.
+`AgentDetailPage.open_version_selector()` also changed, in three ways: it gained a
+`timeout` parameter, a post-condition wait on the trigger's `aria-expanded="true"`
+(a **new raise point** — previously it returned with nothing checked), and it now
+clicks the trigger only while the dropdown is collapsed, because clicking it while
+open cannot succeed (MUI's invisible backdrop intercepts the pointer event — the
+very failure this repair addresses).
+
+That method is **shared, with five `AgentDetailPage` callers**:
+`select_version_by_name()` (`pages/agent_detail_page.py:4146`),
+`test_agent_publish_unpublish_version.py:538`, `test_agent_save_as_version.py:189`,
+and `test_agent_version_selector_order.py:290` + `:336`. (Counted with
+`grep -rn "open_version_selector()"`: the **three** `tests/ui/skills/` call sites in
+two files — `test_skill_fork_non_base_version.py:167`, `test_skill_version_set_default.py:80`
+and `:129` — are `SkillDetailPage`, which has its own `open_version_selector` at
+`pages/skill_detail_page.py:1167`; and the **three** `tests/ui/pipelines/` call sites in
+two files — `test_pipeline_create_version.py:133`, `test_pipeline_delete_version.py:86`
+and `:149` — are `PipelineDetailPage`, own definition at `pages/pipeline_detail_page.py:2060`.
+Both classes are genuinely untouched by this diff.)
+
+The one worth naming: the `select_version_by_name()` call site sits **inside its
+retry loop but outside the loop's `try:`**, so the new raise is *not* retried by
+that loop — it aborts the whole call. This does not change the abort *behaviour*,
+only the message: before the change, the same conditions failed one or two lines
+later at `option.wait_for(state="visible")` (or at the intercepted `.click()`),
+equally unretried. It is recorded here because the raise point moved, and because
+a reader tracing a `select_version_by_name` failure should know the loop cannot
+absorb it.
+
+The close post-condition is likewise two-part, not one: `aria-expanded="false"`
+**and** zero `version-option-*` nodes remaining — and the method has **no early
+return**, so that conjunction gates every exit whatever state the dropdown was in
+on entry. (Review round 2: an earlier `if collapsed.count() > 0: return` entry guard
+turned a `to_have_count` timeout on one attempt into a silent success on the next,
+making the raise unreachable on precisely the state the count term exists to detect.
+The loop now presses Escape only while `aria-expanded` is still `"true"`, and simply
+waits out the closing window otherwise — pressing into a detaching subtree is its own
+hazard.) `aria-expanded` tracks React
+`open` state and flips before `MuiBackdrop-root` unmounts at the end of the `Grow`
+exit transition, so on its own it is a leading indicator; the options unmount with
+the Menu subtree, so their absence is what proves the backdrop is gone.
+
+**Handles.** No new testid. `agent-version-selector-trigger-combobox` is
+`SingleSelect.jsx:663`'s `SelectDisplayProps` testid — PROVENANCE: `on-main ✓`.
