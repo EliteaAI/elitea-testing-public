@@ -104,3 +104,4 @@
 - [Self-check greps see committed work only](selfcheck_greps_run_on_committed_work_only.md) — commit first; empty diff prints a false 0 hits
 - [Run a spec against DEV](run_a_spec_against_dev_via_env_test_symlink_swap.md) — .env.test beats shell env; swap the symlink
 - [React dev warnings on DEV](react_dev_only_warnings_do_not_fire_on_deployed_builds.md) — dev-only warning sanctioned-REDs go GREEN on DEV
+- [Stash push by path can pop a stranger stash](stash_push_by_path_fails_silently_and_pop_takes_someone_elses.md) — never chain push and pop
