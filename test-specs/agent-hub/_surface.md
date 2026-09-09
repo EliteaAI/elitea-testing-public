@@ -347,7 +347,15 @@ NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
   Documentation, Project Management, Quality Assurance, Other — dynamic, from
   the backend tag list). **Confirmed live, 2026-08-05: this exact 11-item
   list matches the ELITEA-2350 case text verbatim** — no drift here, unlike
-  the header text. **ZERO `data-testid`/`testId` anywhere in
+  the header text.
+  > ⚠️ **SUPERSEDED on both counts — see § "Category filter rail — 12 chips since
+  > 2026-09-07" below.** (a) The rail has rendered **12** chips since
+  > `EliteaAI/EliteaUI@18170f71` added the third Featured entry "New" (2026-09-07), so
+  > the 11-item list above is a snapshot, not an invariant — and no spec may pin *any*
+  > count. (b) The chips **do** carry testids now (`chipTestIdPrefix` threaded exactly
+  > as the "recommended shape" below predicted); the ZERO-testid finding is historical.
+  >
+  > **ZERO `data-testid`/`testId` anywhere in
   `CategoryRail.jsx`** (confirmed via full-file read +
   `git grep -c "data-testid\|testId"` = 0 on both `origin/main` and
   `origin/automation/testids`) — this is a real, not-yet-added testid gap.
@@ -478,6 +486,20 @@ a cluster, so no family-AFS merge was performed here.
 - Existing constants cover all of this; **no new locators or testids are needed**:
   `AgentHubPage.AGENT_CATEGORY_FILTER_CHIP_PREFIX`, `.SKILL_CATEGORY_FILTER_CHIP_PREFIX`,
   `.CATEGORY_FILTER_CHIP` (templated, slugified label).
+- **Shipped during ELITEA-2367 implementation (card #2079) — reuse these, don't re-derive
+  them.** No new locators or testids were added; the derivation above is now encapsulated on
+  `AgentHubPage`:
+  `navigate_and_capture_category_names()` (navigate + passively capture the categories
+  response, returns the backend names), `expected_category_filter_labels(api_names)`
+  (mirrors `buildAllCategories()`: Featured ∪ backend names ∪ "Other"),
+  `get_category_filter_chip_labels()` (rendered chip labels, DOM order),
+  `get_category_filter_chip(label)` (single chip Locator, for a web-first
+  `to_be_visible()`), plus the constants `FEATURED_CATEGORY_LABELS`,
+  `OTHER_CATEGORY_LABEL`, `AGENT_CATEGORIES_URL_FRAGMENT`.
+  Note `expected_category_filter_labels` unions `"Other"` **unconditionally** rather than
+  relying on the backend still returning it: `buildAllCategories()` re-appends it either
+  way, so a backend that stopped listing "Other" would otherwise produce a false red.
+  The Skills-tab sibling (card #2099) needs its own skill-scoped oracle + counterparts.
 
 ## Catalog testid provenance — the closure grep LIES about the chip prefixes (2026-09-09)
 

@@ -279,6 +279,31 @@ assertion almost verbatim. Nothing is fabricated, injected or replaced; the test
   class-level `LocatorDescriptor` fields and `[data-testid=` template constants. **No new
   locators, no new testids, and no `get_by_role`/text handles are introduced.**
 
+### Implementation note (2026-09-09, implementer slot — card #2079)
+
+Shipped exactly the A/B/C/D shape above, with one derivation detail worth recording as the
+SHIPPED truth (not a scope change — the assertions, their strength and their scope are
+unchanged):
+
+- `expected_labels` unions the trailing `"Other"` **unconditionally**, i.e.
+  `set(FEATURED_LABELS) | api_names | {"Other"}`, not `set(FEATURED_LABELS) | api_names`.
+  Reason: `buildAllCategories()` (`agentHub.helpers.js`) *filters* `OTHER_CATEGORY` out of
+  the backend names, sorts the rest, and re-appends `"Other"` last — so the rail renders it
+  whether or not the API lists it. Live the API happens to return it (hence the AFS's
+  observed 9-name set), which makes the two forms identical **today**; the unconditional
+  union is simply the one that cannot produce a false red if the backend stops listing it.
+  This mirrors the product's own composition function rather than a live snapshot of it.
+- Encapsulated on `AgentHubPage` (no new locators, no new testids):
+  `navigate_and_capture_category_names()`, `expected_category_filter_labels()`,
+  `get_category_filter_chip_labels()`, `get_category_filter_chip()`, plus constants
+  `FEATURED_CATEGORY_LABELS` / `OTHER_CATEGORY_LABEL` / `AGENT_CATEGORIES_URL_FRAGMENT`,
+  each carrying the source pointer this AFS asks for (`agentHub.constants.js`,
+  `buildAllCategories()`, `CatalogBody.jsx`'s `FEATURED_COUNT`).
+- Oracle is `page.expect_response` around the navigation, as specified. No `page.route`,
+  `route.fulfill`, `monkeypatch` or `evaluate` anywhere in the diff (grep pasted in the Run
+  Report). All four assertions run through existing class-level testid constants.
+- Steps 1-5, 7 and 8 of the spec are untouched — the drift was confined to Step 6's rail block.
+
 ### `FEATURED_LABELS` — why pinning these three is legitimate
 
 They are not product data; they are `TRENDING_CATEGORY` / `MY_LIKED_CATEGORY` /

@@ -191,6 +191,41 @@ class AgentHubPage(BasePage):
     # content, which the testid-only locator policy forbids (see AFS Declared Improvisation).
     SKILL_CATEGORY_FILTER_CHIP_PREFIX = '[data-testid^="catalog-skill-category-filter-chip-"]'
 
+    # --- Filter-rail composition: FRONTEND CONSTANTS vs BACKEND DATA (ELITEA-2367,
+    # FIX card #2079) ---
+    #
+    # The rail is assembled by ``AgentHubHelpers.buildAllCategories()``
+    # (``[fsd]/features/agent-hub/lib/helpers/agentHub.helpers.js``) out of two
+    # sources that change for completely different reasons:
+    #
+    #   * the Featured head and the trailing "Other" are FRONTEND CONSTANTS
+    #     (``TRENDING_CATEGORY``/``MY_LIKED_CATEGORY``/``NEW_CATEGORY``/
+    #     ``OTHER_CATEGORY`` in ``agentHub.constants.js``; the head is sliced by
+    #     ``CatalogBody.jsx``'s ``FEATURED_COUNT``) -- they move only when the UI
+    #     team deliberately ships a feature, so pinning them here is correct and a
+    #     red is the informative signal;
+    #   * the middle categories are BACKEND DATA (``GET
+    #     /elitea_core/agent_categories/prompt_lib/{PUBLIC_PROJECT_ID}``) -- an admin
+    #     can add/remove/rename one with no code change, so they must NEVER be
+    #     pinned. They are read from the page's own response instead
+    #     (:meth:`navigate_and_capture_category_names`).
+    #
+    # This split is why the count is derived and not hardcoded: the previous
+    # ``== 11`` pinned both halves with one number and went red on the legitimate
+    # third Featured chip "New" (EliteaAI/EliteaUI@18170f71, EL-6238). Bumping it to
+    # 12 would have re-armed the same tripwire on the data half.
+    FEATURED_CATEGORY_LABELS = ("Trending", "My Liked", "New")
+
+    #: Trailing frontend constant -- ``buildAllCategories()`` strips "Other" from the
+    #: sorted middle and re-appends it last, so it is the rail's deterministic END
+    #: whether or not the backend happens to return it as a category.
+    OTHER_CATEGORY_LABEL = "Other"
+
+    #: URL fragment identifying the Catalog's own category-list request, the oracle
+    #: for the rail's data half (``agentCategoriesApi.js``; consumed by
+    #: ``useAgentHubData.hooks.js`` as ``categoriesData.categories[].name``).
+    AGENT_CATEGORIES_URL_FRAGMENT = "/elitea_core/agent_categories/prompt_lib/"
+
     # Like button (heart icon + count) on an agent card, ELITEA-2354 —
     # dynamic per application id, same idiom as CATEGORY_FILTER_CHIP/
     # CATEGORY_HEADING above. Root component is the SHARED `Like.jsx`
@@ -525,6 +560,90 @@ class AgentHubPage(BasePage):
             return True
         except Exception:
             return False
+
+    def get_category_filter_chip(self, category_label: str):
+        """Return the Locator for the category filter-rail chip labelled
+        *category_label* (ELITEA-2367), addressed by its own testid through
+        :data:`CATEGORY_FILTER_CHIP`.
+
+        The unscoped-getter counterpart of :meth:`is_category_filter_chip_visible`
+        /:meth:`click_category_filter_chip`, for callers that need to make their own
+        web-first assertion against the chip (e.g. ``expect(...).to_be_visible()``)
+        rather than a boolean probe.
+
+        Args:
+            category_label: Human display label (e.g. "My Liked") -- slugified
+                internally the same way EliteaUI does client-side (CategoryRail.jsx).
+        """
+        return self.page.locator(self.CATEGORY_FILTER_CHIP.format(_slugify_category(category_label)))
+
+    def get_category_filter_chip_labels(self) -> list[str]:
+        """Return the visible label of every currently-rendered agent category
+        filter-rail chip (ELITEA-2367), in DOM order.
+
+        ``CategoryRail.jsx`` renders each chip as ``<Chip label={category}>``, so the
+        chip's own text IS the category display label -- which makes a set comparison
+        against the categories the page fetched (see
+        :meth:`expected_category_filter_labels`) name the delta in product terms
+        ("missing: ['New']") instead of in slugs.
+        """
+        chips = self.page.locator(self.AGENT_CATEGORY_FILTER_CHIP_PREFIX)
+        return [(chips.nth(i).text_content() or "").strip() for i in range(chips.count())]
+
+    @classmethod
+    def expected_category_filter_labels(cls, api_category_names) -> set[str]:
+        """Return the set of chip labels the filter rail should render, given the
+        category names the page's OWN categories response returned (ELITEA-2367).
+
+        Mirrors ``AgentHubHelpers.buildAllCategories()`` exactly: the three
+        :data:`FEATURED_CATEGORY_LABELS`, plus the backend's category names, plus the
+        trailing :data:`OTHER_CATEGORY_LABEL` -- which the helper re-appends
+        unconditionally, so it belongs in the expected set whether or not the backend
+        returned it. Order is not modelled (the assertion is a set); see the
+        class-level constants block for why the two halves are treated differently.
+
+        Args:
+            api_category_names: The ``name`` of each entry in the categories
+                response's ``categories`` array.
+        """
+        return set(cls.FEATURED_CATEGORY_LABELS) | set(api_category_names) | {cls.OTHER_CATEGORY_LABEL}
+
+    @action("Navigate to Agent Hub and capture the agent categories response")
+    def navigate_and_capture_category_names(
+        self, timeout: int = 15000, *, response_timeout: int = CATALOG_RESPONSE_TIMEOUT
+    ) -> list[str]:
+        """Navigate to the Catalog page (same target as :meth:`navigate`) and
+        additionally capture the ``name`` of every category in the page's own
+        ``GET /elitea_core/agent_categories/prompt_lib/{PUBLIC_PROJECT_ID}`` response
+        (ELITEA-2367, FIX card #2079).
+
+        This is the ORACLE for the filter rail's data half: RTK-Query caches the
+        query per page session, so a fresh navigation fires it exactly once. The
+        response is only OBSERVED -- nothing is routed, fulfilled or injected, so
+        every asserted value is still produced by the system
+        (``.agents/testing.md`` § Fidelity policy, "capture the real response and
+        assert the UI against it").
+
+        Args:
+            timeout: Budget for :meth:`wait_for_page_load`'s element wait -- the
+                UI-readiness half.
+            response_timeout: SEPARATE budget for the categories fetch itself, for
+                the same reason :meth:`navigate_and_capture_applications` keeps the
+                two apart (FIX #2078): this response is awaited AROUND
+                ``navigate()``, so its clock covers the whole navigation.
+        """
+
+        def _is_categories_response(response):
+            return (
+                self.AGENT_CATEGORIES_URL_FRAGMENT in response.url
+                and response.request.method == "GET"
+                and response.status == 200
+            )
+
+        with self.page.expect_response(_is_categories_response, timeout=response_timeout) as response_info:
+            super().navigate("/elitea-catalog")
+        self.wait_for_page_load(timeout=timeout)
+        return [category["name"] for category in response_info.value.json().get("categories", [])]
 
     def get_visible_category_heading_texts(self) -> list[str]:
         """Return the text of every currently-rendered content-list category
