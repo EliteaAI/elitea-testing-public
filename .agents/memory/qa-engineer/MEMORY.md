@@ -67,3 +67,5 @@
 - [Elitea AI-provider form traps](elitea_ai_provider_form_secret_and_delete_traps.md) — secret/delete DIV-wrapper testids, goto wipes fills, VS undeletable
 - [A teardown id captured after the assertions is not a guard](a_teardown_id_read_after_the_assertions_is_not_a_guard.md) — guard ordering binds the ID READ, not just a flag
 - [Sanctioned-RED re-anchoring drops a cross-check](sanctioned_red_reanchoring_silently_drops_a_crosscheck.md) — tick OLD hard asserts one by one; re-anchoring is the silent leak
+- [Soft wait helpers cannot fail](soft_wait_helpers_cannot_fail_and_hide_the_real_failure.md) — a step lasting exactly its timeout is a swallowed wait
+- [Pipeline run-START latency](pipeline_run_start_latency_dominates_execution_time.md) — 4.5 s…89 s to start; budget start and completion separately

@@ -2,8 +2,75 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-08-26 (ELITEA-2008
-> failure triage, EL-6128 trigger-restriction drift).
+> place, don't append duplicate entries. Last updated: 2026-09-09 (ELITEA-2448 repair
+> pass — pipeline-execution wait: how to know a run finished).
+
+## Pipeline EXECUTION waits — `wait_for_embedded_chat_response()` cannot fail, and the run's own status is the honest signal (confirmed live, 2026-09-09, ELITEA-2448 repair / `#2076`)
+
+**Read this before writing or repairing any spec that runs a pipeline from the
+embedded chat.** Three separately-verified facts, measured at 250 ms sampling
+across three live executions of a `Code 1 (entry) -> END` pipeline.
+
+**1. `PipelineDetailPage.wait_for_embedded_chat_response()` is a SOFT wait — it
+logs `WARNING Embedded chat response did not stabilise within timeout` and
+returns normally** (`pipeline_detail_page.py:7336-7396`). A spec that "waits"
+with it has no wait at all; whatever assertion follows inherits the race. Two
+mechanisms make it burn its whole budget on a pipeline that emits no chat answer:
+  - its Delete-button wait uses **all remaining budget** inside `try/except:
+    pass`, and that action bar never appears for such a pipeline (verified at
+    130 s and 165 s post-send, hover included — the answer `<li>` holds only
+    `chat-answer-thought-accordion` + `chat-answer-tool-chip`);
+  - the pre-answer placeholder phrase **rotates every 2.0 s** (`Waking the
+    agent…` → `Packing its tools…` → `Wiring integrations…` → `Fetching keys &
+    creds…` → `Installing skills…` → `Learning your playbook…` → `Safety checks
+    on…` → `Quick sandbox test…`), so the helper's `stable_duration_ms=3000`
+    stability check can never be satisfied while it is showing.
+  **Corollary for triage:** a failure screenshot frozen on `Fetching keys &
+  creds…` means *the run had not started yet* — it is a carousel frame, not a
+  hang signature. **Do not change the helper** — 20 caller files depend on it;
+  give the individual spec its own wait.
+
+**2. `pipeline-run-node-label` means the run STARTED, not that it finished.**
+The run node is created on the `AgentStart`/`StartTask` socket event
+(`parseRunsByEvent.helpers.js:69-81`) and stays visible through `In progress`
+(`RunStateNode.jsx:93`). Using its visibility as a completion proxy is the bug
+`#2076` was made of.
+
+**3. The honest completion observable — `pipeline-run-details-status-badge`'s
+`data-status`, and it updates LIVE while the panel is open.** Verified: panel
+opened mid-run, badge read `In progress`, then flipped in place to `Completed`
+(`RunStatus.jsx:15-16` renders `data-testid` + `data-status={status}`). With the
+panel opened during the run, the post-completion panel content is fully
+correct — timeline step 0 `data-status="completed"` / `aria-label="pyodide"`,
+`Timeline step:pyodide` section text, and the state row's After JSON. All of
+these testids are on EliteaUI **`main`** (verified 2026-09-09 after
+`git fetch origin`), so the pattern is safe for deployed-env CI.
+⚠️ **Open the Run Details panel exactly ONCE.** While it is open the MUI Dialog
+overlays the canvas and intercepts pointer events, so a second click on
+`pipeline-run-node-label` retries until timeout
+(`MuiDialog-container … subtree intercepts pointer events`).
+
+**Timings measured on DEV (same pipeline, within one hour) — budget accordingly:**
+
+| Run | send → run node appears | run node → `Completed` | send → `Completed` |
+|---|---|---|---|
+| 1 (fresh page) | 4.5 s | 31.0 s | 35.5 s |
+| 2 (2nd message, same page) | never (abandoned at 100 s) | — | — |
+| 3 (fresh page load) | 89.3 s | 31.7 s | 121.0 s |
+
+Node execution is stable at ~31 s (pyodide). **The variance is entirely
+backend run-START latency (4.5 s … 89 s+).** A 90 s budget for
+send→anything is not enough; ELITEA-2448 now uses
+`PIPELINE_RUN_START_TIMEOUT = 150_000` for start + `PIPELINE_EXECUTION_TIMEOUT
+= 90_000` for start→`Completed`. A run that never starts is upstream of every
+assertion a case makes — same family as the ledger's LLM/HITL trigger-side
+flakes: **re-run, never accept 2-of-3.**
+
+**Product-side observation, NOT filed (needs an LLM-node control run):** for a
+Code-node-only pipeline the embedded-chat answer bubble never finalises — no
+answer body (`skill-test-last-response` never renders), no action bar even on
+hover, long after the run reads `Completed`. May be correct-by-design (nothing
+to say) or a UI finalisation gap.
 
 ## Entry-point Trigger restriction — EL-6128 GREYS OUT instead of HIDING; and `select-option-selected-icon` poisons `select-option-*` enumeration (confirmed live, 2026-08-26, ELITEA-2008 triage)
 

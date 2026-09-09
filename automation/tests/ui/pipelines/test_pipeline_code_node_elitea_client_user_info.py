@@ -31,6 +31,23 @@ Reused known-defect exclusion:
 Zero new testids -- every element this case touches already has one from
 ELITEA-2009 (Code node config) and ELITEA-2450/2451/2452 (Run Details
 panel).
+
+Repair 2026-09-09 (`EliteaAI/elitea-testing-public#2076`, CI run
+34331579791): Step 4's wait was replaced. It previously used
+`wait_for_embedded_chat_response()`, which is a SOFT wait -- it logs a
+WARNING on timeout and returns -- and which for this Code-node-only
+pipeline can neither succeed (no chat answer is ever emitted) nor fail, so
+it burned its full 90 s budget on every run and left only a 10 s window to
+assert the run had started. Step 4 now waits on the system's OWN state: the
+chat accepted the message, a run node appeared on the canvas (run STARTED,
+budget `PIPELINE_RUN_START_TIMEOUT` -- DEV run-start latency measured 4.5 s
+.. 89.3 s), then the Run Details status badge's `data-status` reaching
+"Completed" (run FINISHED). `pipeline-run-node-label` is a run-STARTED
+signal only; conflating it with completion is the defect #2076 was made
+of. The panel is opened exactly ONCE (Step 4), because the open MUI Dialog
+intercepts a second click on the run node. No substitution is used: every
+value asserted is produced by the running pipeline. No assertion was
+dropped or weakened by this repair.
 """
 
 import json
@@ -49,8 +66,13 @@ logger = logging.getLogger(__name__)
 pytestmark = [pytest.mark.ui, pytest.mark.pipelines, pytest.mark.p3, pytest.mark.regression, pytest.mark.new_verified]
 
 UI_ELEMENT_TIMEOUT = 10_000
+# send -> the run node appears on the canvas (the backend STARTED the run).
+# DEV run-start latency was measured live between 4.5 s and 89.3 s on the same
+# pipeline within one hour, so this budget is deliberately generous.
+PIPELINE_RUN_START_TIMEOUT = 150_000
+# run started -> Run Details status reaches "Completed"; node execution itself
+# is stable at ~31 s (pyodide sandbox).
 PIPELINE_EXECUTION_TIMEOUT = 90_000
-STABLE_DURATION_MS = 3_000
 
 _CHAT_MESSAGE = "hello"
 
@@ -123,21 +145,34 @@ def test_code_node_elitea_client_user_info(page, pipeline_code_node_elitea_clien
         )
         expect(pipeline_page.code_node_structured_output_toggle).to_be_checked(timeout=UI_ELEMENT_TIMEOUT)
 
-    with allure.step("Step 4 — Execute the pipeline via the embedded chat"):
+    with allure.step("Step 4 — Execute the pipeline via the embedded chat and wait for the run to complete"):
         initial_count = pipeline_page.get_embedded_chat_message_count()
         pipeline_page.send_message_in_embedded_chat(_CHAT_MESSAGE, timeout=UI_ELEMENT_TIMEOUT)
-        pipeline_page.wait_for_embedded_chat_response(
-            initial_count=initial_count,
-            stable_duration_ms=STABLE_DURATION_MS,
-            timeout=PIPELINE_EXECUTION_TIMEOUT,
-        )
-        expect(pipeline_page.run_node_label).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
+
+        # (a) the chat ACCEPTED the message -- a condition wait that raises,
+        # so the explicit count assertion below is deterministic rather than
+        # racy. (`wait_for_embedded_chat_response()` is deliberately NOT used
+        # here: it is a soft wait that only logs a WARNING on timeout, and this
+        # pipeline emits no chat answer at all, so it can neither succeed nor
+        # fail -- it just burns its whole budget. See the AFS § Repair
+        # Amendment and `test-specs/pipelines/_surface.md`.)
+        pipeline_page.wait_for_embedded_chat_message_count(initial_count + 1, timeout=UI_ELEMENT_TIMEOUT)
         assert pipeline_page.get_embedded_chat_message_count() > initial_count, (
             "Embedded chat should show at least one new message after the run completes"
         )
 
-    with allure.step("Step 5 — Verify Code node executes without errors in Run Details"):
+        # (b) the run STARTED -- the run node appears on the canvas.
+        pipeline_page.wait_for_run_node_on_canvas(timeout=PIPELINE_RUN_START_TIMEOUT)
+
+        # (c) the run COMPLETED -- open the Run Details panel ONCE (the badge
+        # updates in place while the panel is open) and wait on the run's own
+        # `data-status`. Step 5 must NOT re-open the panel: the open MUI Dialog
+        # overlays the canvas and intercepts a second run-node click.
         pipeline_page.open_run_details_panel(timeout=UI_ELEMENT_TIMEOUT)
+        pipeline_page.wait_for_run_details_status("Completed", timeout=PIPELINE_EXECUTION_TIMEOUT)
+
+    with allure.step("Step 5 — Verify Code node executes without errors in Run Details"):
+        # The panel is ALREADY open from Step 4 (c) -- do not re-open it.
         expect(pipeline_page.run_details_panel).to_be_visible()
         assert pipeline_page.get_run_details_status() == "Completed", (
             f"Run should complete before assessing state -- got {pipeline_page.get_run_details_status()!r}"
