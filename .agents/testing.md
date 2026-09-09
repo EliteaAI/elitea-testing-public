@@ -1049,3 +1049,51 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   ⚠️ Note `--only-rerun` in `pytest.ini` does NOT include `AssertionError`, so this class gets
   **zero automatic reruns** — a single CI occurrence tells you nothing about determinism, and the
   correct response is to re-run locally before believing any red of this shape.
+- **Pipeline run-START latency dominates execution time — and it is a PRECONDITION, never a
+  signature (2026-09-09, ELITEA-2448/#2076, PR #2091)**: the same CI run 34331579791 that produced
+  the gateway-500 entry above also produced `[FIX]` card #2076, and **that one is not the outage**.
+  In the `pipelines` job only 3 of ~30 tests failed and the tests immediately before and after this
+  one passed; the failure's aria snapshot shows the app rendered normally. Do not let a sibling
+  card's root cause transfer by association — check the job's own pass/fail spread first.
+  Measured live on `Code 1 (entry) -> END`, three runs:
+
+  | Run | send → run node appears | run node → `Completed` | total |
+  |---|---|---|---|
+  | 1 (fresh page) | 4.5 s | 31.0 s | 35.5 s |
+  | 2 (2nd message, same page) | **never** (abandoned at 100 s) | — | — |
+  | 3 (fresh page load) | **89.3 s** | 31.7 s | **121.0 s** |
+
+  Node execution is stable (~31 s, pyodide); **all** the variance is backend run-START. Run 3 alone
+  would have failed the pre-repair spec on a perfectly healthy box, with no outage required.
+  A run that never starts is **upstream of every assertion the case makes**, so it can never be a
+  member of a sanctioned-RED set: the response is **re-run, never accept 2-of-3**. The repair now
+  budgets `PIPELINE_RUN_START_TIMEOUT = 150_000` for the start and keeps 90 000 ms for execution.
+  ⚠️ The pre-repair failure surfaced as `Locator expected to be visible … get_by_test_id(
+  "pipeline-run-node-label")` — i.e. it **named the wrong subsystem**, exactly like the #2074 entry
+  above. The decisive evidence was in the aria snapshot (answer frozen on a placeholder, token
+  counters `0%`/`0`/`0`), not in the assertion message. **Read the snapshot/screenshot first.**
+  ⚠️ `pipeline-run-node-label` is a run-**STARTED** signal ONLY — created on the `AgentStart`/
+  `StartTask` socket event and live throughout `In progress` (`RunStateNode.jsx` renders a
+  `CircularProgress` for it). Using it as a completion proxy IS the #2076 defect. Completion is
+  `pipeline-run-details-status-badge`'s `data-status` (`RunStatus.jsx:15-16`), which flips
+  `In progress` → `Completed` **in place**, so the panel may be opened mid-run. Full pattern +
+  the MUI-dialog re-click trap: `test-specs/pipelines/_surface.md` § "Pipeline EXECUTION waits".
+- **socket.io — a SECOND and THIRD URL-bearing occurrence, same endpoint, new statuses
+  (2026-09-09, ELITEA-2448/#2076)**: the 500-flavor entry above (settings-w03) captured
+  `/socket.io/?EIO=4&transport=polling` and set the standing ask *"next occurrence: check whether
+  its URL is also `/socket.io/`; two matching URLs is enough to filter that ONE endpoint"*.
+  A local run of `test_pipeline_code_node_elitea_client_user_info` failed its console-error axis on
+  **`502 Bad Gateway`** and **`503 Service Unavailable`**, both at
+  `https://dev.elitea.ai/socket.io/?EIO=4&transport=polling` — the **same endpoint**, different
+  statuses.
+  ⚠️ **This does NOT yet authorise the filter, and the reason matters.** The occurrence is
+  **confounded by the localhost setup**: the vite dev server proxies `/api`, but the app opens
+  socket.io **directly against `dev.elitea.ai`**, so from origin `http://localhost:5173` it is a
+  cross-origin request and the console also carries
+  `blocked by CORS policy: No 'Access-Control-Allow-Origin' header`. In CI the app is same-origin on
+  `dev.elitea.ai`, so the CORS half cannot occur there. Treat this as *evidence the endpoint is
+  genuinely flaky*, not as a clean match to the CI-side signature.
+  A filter on this URL is a **suite-wide** decision and belongs on its own card — never a
+  status-code filter, and never widened to swallow the 400s (that is masking, per the #1753 note).
+  Local runs of pipeline-execution specs should expect this class; it is the local topology, not a
+  product regression.
