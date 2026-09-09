@@ -12,6 +12,11 @@ from playwright.sync_api import Page, expect
 
 from pages.agent_hub_page import AgentHubPage
 
+#: Budget for the filter rail to settle. The rail's categories fetch lands a beat
+#: after the content grid, so the chip-count assertion must be the auto-retrying
+#: web-first form rather than a one-shot ``.count()`` (ELITEA-2367, FIX card #2079).
+FILTER_RAIL_TIMEOUT = 10_000
+
 
 class TestCatalogEmptyState:
     """Agent Hub empty state verification when search matches zero agents."""
@@ -39,6 +44,13 @@ class TestCatalogEmptyState:
         6. Verify layout consistency: heading, search, tabs, filter rail visible
         7. Verify zero agent cards present
         8. Verify zero console errors during empty state
+
+        Step 6's filter-rail expectation is DERIVED, not hardcoded: the expected chip
+        set comes from the categories response the page itself fetches on load
+        (observed via ``page.expect_response``, never routed or fulfilled -- nothing
+        is substituted). See ``AgentHubPage.expected_category_filter_labels`` for why
+        the rail's frontend-constant half and backend-data half must be treated
+        differently, and FIX card #2079 for the drift that motivated it.
         """
 
         agent_hub = AgentHubPage(page)
@@ -50,7 +62,9 @@ class TestCatalogEmptyState:
 
         # Step 1: Navigate to Catalog
         with allure.step("Step 1 — Navigate to Agent Hub"):
-            agent_hub.navigate()
+            # Capture the page's OWN categories response on the way in — it is the
+            # oracle for Step 6's filter-rail assertion (read-only observation).
+            api_category_names = agent_hub.navigate_and_capture_category_names()
 
         # Step 2: Verify page heading visible
         with allure.step("Step 2 — Verify page heading 'Welcome to ELITEA Catalog!'"):
@@ -89,11 +103,40 @@ class TestCatalogEmptyState:
             expect(agent_hub.agents_tab).to_be_visible()
             expect(agent_hub.skills_tab).to_be_visible()
 
-            # Category filter rail still visible — exactly 11 filter chips (2 FEATURED + 9 CATEGORIES)
-            # Using the page object method to get all visible filter chips
+            # Category filter rail intact. The expected chip set is DERIVED from the
+            # categories response captured in Step 1, never hardcoded: the rail mixes
+            # frontend constants (the Featured head + the trailing "Other") with
+            # backend data (the middle categories, which an admin can change with no
+            # code change). A hardcoded total pins both halves with one number — that
+            # is what went red on the legitimate third Featured chip "New"
+            # (EliteaAI/EliteaUI@18170f71 / EL-6238), and bumping it would only re-arm
+            # the same tripwire on the data half.
+            expected_labels = AgentHubPage.expected_category_filter_labels(api_category_names)
             filter_chips = agent_hub.get_visible_category_filter_chips()
-            chip_count = filter_chips.count()
-            assert chip_count == 11, f"Expected 11 filter chips visible (2 Featured + 9 Categories), found {chip_count}"
+
+            # A — exact count. Auto-retrying expect(), not a one-shot .count(): the
+            # rail's categories fetch settles a beat after the content grid. Catches a
+            # duplicated or dropped chip, which set equality alone cannot.
+            expect(filter_chips).to_have_count(len(expected_labels), timeout=FILTER_RAIL_TIMEOUT)
+
+            # B — set membership, delta named BOTH ways so the next drift is triaged
+            # from the failure message instead of from a session of archaeology.
+            rendered_labels = set(agent_hub.get_category_filter_chip_labels())
+            assert rendered_labels == expected_labels, (
+                "Filter-rail chips do not match the categories the page itself fetched — "
+                f"missing: {sorted(expected_labels - rendered_labels)}, "
+                f"unexpected: {sorted(rendered_labels - expected_labels)}"
+            )
+
+            # C/D — head and tail VISIBILITY. Load-bearing, not decoration: Playwright's
+            # to_have_count matches *attached* elements including hidden ones, so A and B
+            # alone would pass on a collapsed or display:none rail — precisely what case
+            # Step 5 ("layout remains consistent with no broken UI elements") forbids.
+            # C — the three Featured chips at the head of the rail.
+            for featured_label in AgentHubPage.FEATURED_CATEGORY_LABELS:
+                expect(agent_hub.get_category_filter_chip(featured_label)).to_be_visible()
+            # D — "Other", the rail's deterministic tail.
+            expect(agent_hub.get_category_filter_chip(AgentHubPage.OTHER_CATEGORY_LABEL)).to_be_visible()
 
         # Step 7: Verify zero agent cards present in the DOM
         with allure.step("Step 7 — Verify zero agent cards in the DOM"):
