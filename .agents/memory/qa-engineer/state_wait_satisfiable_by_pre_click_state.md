@@ -43,3 +43,23 @@ The method then returns immediately and the caller reads stale content.
 `RunHistoryContainer.jsx:93-95` auto-selects row 0 on open (EliteaAI/EliteaUI@84025881),
 which is what made the index-0 `expect_response` a race in the first place. The honest
 fix keeps the response wait for rows that are **not** already selected.
+
+## A probe that does not reproduce is not a refutation (PR #2068, fix round 1)
+
+The live probe clicked a non-selected row and saw `data-selected=true` with **0**
+message items — so the stale-message half did not appear. That is not evidence the
+wait was safe; it is evidence the outcome is **ordering-dependent**, which is the
+definition of a race:
+
+- *messages not yet rendered at click time* → `.first.wait_for` genuinely waits → safe;
+- *messages already rendered* (the previous row's) → satisfied instantly by stale nodes → unsafe.
+
+The second ordering is reachable whenever the caller spends round trips between opening
+and clicking (ELITEA-2011's Step 5 iterates every row's text first). Ask which orderings
+exist before reading a green probe as an all-clear.
+
+**Residual after the conditional fix:** `expect_response` returning means the response
+*arrived*, not that React *committed* it — so a caller reading content immediately after
+can still catch a stale frame. That gap is pre-existing (the original docstring called it
+a "transient" read) and is only closed by an auto-retrying assertion
+(`expect(...).to_contain_text(...)`) at the call site, not by any page-object wait.
