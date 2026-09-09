@@ -148,3 +148,4 @@
 - [Count-drift is rarely fixed by bumping the number](hardcoded_count_drift_is_rarely_fixed_by_bumping_the_number.md)
 - [Env-scoped sanctioned-RED](env_scoped_sanctioned_red.md) — ask if each closed-set defect CAN occur on the env you gated on
 - [Some specs cannot be gated on localhost](some_specs_cannot_be_gated_on_localhost.md) — publish wizard 400s locally; gate on DEV
+- [Merging is judged by the counterfactual](merging_is_judged_by_the_counterfactual_not_by_gate_color.md) — a pre-existing flake never justifies holding an unrelated verified fix
