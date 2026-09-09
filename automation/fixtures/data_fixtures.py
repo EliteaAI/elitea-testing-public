@@ -491,9 +491,11 @@ nodes:
         value: []
       system:
         type: fixed
-        value: 'You populate structured state variables. Always return values for
-          custom_text (a short string), custom_num (a number), custom_list (a list
-          of 3 short strings), and custom_json (a small JSON object with 2 keys).'
+        value: 'You populate structured state variables. Answer with a single JSON
+          object and nothing else - no prose, no bullet lists, no markdown headings.
+          The object must contain exactly these keys: custom_text (a short non-empty
+          string), custom_num (a number), custom_list (a list of 3 short strings),
+          custom_json (an object with 2 keys).'
       task:
         type: fstring
         value: '{input}'
@@ -523,6 +525,17 @@ def pipeline_with_typed_state_vars_id(pipeline_api: PipelineAPI, request):
     variables in a ``structured_output: true`` node's ``output`` mapping is a
     CONFIRMED product defect (``EliteaAI/elitea-testing-public#1274``) that
     makes the run fail with a raw backend error instead of populating state.
+
+    The ``system`` prompt names the required answer FORM ("a single JSON
+    object and nothing else"), not merely the values, because the state write
+    only happens when the LLM's last call answers with a parseable JSON
+    object; a prose/markdown answer writes NOTHING while the run still
+    reports ``Completed`` (``EliteaAI/elitea-testing-public#2153``). Measured
+    live on DEV 2026-09-10: 24/32 populated with the older value-only prompt
+    vs 9/9 with this one. That is a MITIGATION, not a guarantee (n=9) — the
+    consuming spec still guards the population explicitly and fails naming
+    #2153 if it does not happen. This steers the real producer; it does not
+    substitute it.
 
     Yields:
         int: Numeric pipeline ID.
