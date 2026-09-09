@@ -71,3 +71,4 @@
 - [Pipeline run-START latency](pipeline_run_start_latency_dominates_execution_time.md) — 4.5 s…89 s to start; budget start and completion separately
 - [publish_validate AI gate latency + localhost wall](publish_validate_ai_gate_latency_and_localhost_401.md) — 15-47s LLM gate; localhost 400s it
 - [Dev-only sanctioned-RED](sanctioned_red_on_a_dev_only_warning_is_environment_dependent.md) — verify statically; recorder vs assertion decides mask-or-not
+- [DEV model catalog turnover — gpt-5.2 removed](dev_model_catalog_turnover_gpt52_removed.md) — default_model_name is stale; imports fall back to items[0]
