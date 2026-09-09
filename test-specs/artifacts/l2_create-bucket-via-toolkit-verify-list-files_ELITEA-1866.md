@@ -987,3 +987,287 @@ changes what the case verifies.
 
 **ready-for-automation (repair)** — class A drift, fully characterised, all replacement
 handles on `main`, no new testids required, no product defects found, nothing masked.
+
+---
+
+## Adjustment 2026-09-09 — tool-result serialization drift (issue #2066, GHA red at line 744)
+
+**Triage class: A (product render drift)** for the failing assertion, **plus a class-D
+robustness finding** on the Artifacts navigation path (§ Teardown / Step 32 below) and
+**one new product defect** ([#2073](https://github.com/EliteaAI/elitea-testing-public/issues/2073)).
+
+Analyst live walk 2026-09-09, `http://localhost:5173`, project `Private` / 399,
+`EliteaAI/EliteaUI@automation/testids` `6d285a00` (merged with `origin/main` `04c22cdd`).
+Case Steps 20–39 were re-executed against the real system; nothing was simulated,
+stubbed or injected.
+
+### 1. What drifted — Step 31's tool-result serialization
+
+The **observable is unchanged and still correct**: running `List files` against the
+just-created bucket returns an EMPTY result. What changed is only how that result is
+**serialized into the DOM**.
+
+| | Payload as it reaches the assertion |
+|---|---|
+| **Before** (pinned by the test, line 744) | `{'total': 0, 'rows': []}` — Python `repr`, single quotes, compact |
+| **Now** (live 2026-09-09) | `{   "total": 0,   "rows": [] }` — pretty-printed JSON |
+
+**Mechanism** (source-confirmed, not inferred):
+`EliteaUI/src/[fsd]/features/toolkits/lib/helpers/toolkits.helpers.js` →
+`prettifyToolkitMessage` (line 247). A tool message that is *exactly* a JSON object
+(`/^(\{[\s\S]*\})$/`) is `JSON.parse`d and re-emitted as a fenced block —
+``return `\`\`\`json\n${JSON.stringify(parsed, null, 2)}\n\`\`\``;`` (line 266). A
+Python-repr string is not valid JSON, so it used to fall through the `catch` and render
+raw. It now takes the pretty-print path, i.e. **the tool result reaching the UI is now
+valid JSON**. The helper is old; the moving part is upstream serialization.
+
+### 2. Live ground truth (verbatim capture, 2026-09-09)
+
+Captured from the result message item — `[data-testid="chat-message-list"] li.MuiListItem-root`,
+the exact locator `ToolkitTestSettingsPage.wait_for_tool_result()` reads:
+
+```
+textContent  (what wait_for_tool_result returns — NOTE: NO newlines)
+"EliteatoMessageless than a minute agoThought for less than a secondmy-artifact-toolkit: list_files✅ list_files (0.192s) {   \"total\": 0,   \"rows\": [] }"
+
+innerText    (what a human sees on screen)
+"Elitea\nto\nMessage\nless than a minute ago\nThought for less than a second\nmy-artifact-toolkit: list_files\n\n✅ list_files (0.192s)\n\n {\n   \"total\": 0,\n   \"rows\": []\n }"
+
+the <pre> element only
+  .textContent -> " {   \"total\": 0,   \"rows\": [] }"
+  .innerText   -> " {\n   \"total\": 0,\n   \"rows\": []\n }"
+```
+
+**Why the two disagree, and why it matters to the repair:** the payload renders inside a
+`<pre>`/`<code>` fenced block whose syntax highlighter emits one element per line with **no
+newline text nodes**, so `text_content()` collapses the block — each line's two-space
+indent survives as the run of spaces you see (`{   "total"`). The assertion never sees the
+newlines. Any repair that assumes a `\n`-formatted payload in `result_text` is wrong.
+
+Evidence: ![Step 31 — List files returns an empty result, rendered as pretty-printed JSON](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/ELITEA-1866-step31-list-files-result.png)
+(local: `ELITEA-1866-step31-list-files-result.png`)
+
+### 3. Replacement observable for Step 31 — RECOMMENDED
+
+**Parse the payload out of the result text and assert on the parsed structure.** This is
+the only option that survives a serialization change in *either* direction, and it is
+**strictly stronger** than the assertion it replaces (structural equality vs. a substring
+match), so it needs no expected-result sign-off.
+
+Shape (page-object method — the regexes are module/class constants, the spec calls the
+method; no locator changes, no new testid):
+
+```python
+# ToolkitTestSettingsPage — new method, e.g. parse_tool_result_payload(result_text)
+_RESULT_MARKER_RE = re.compile(r"[✅❌]")          # same markers wait_for_tool_result polls on
+_RESULT_PAYLOAD_RE = re.compile(r"(\{.*\})\s*$", re.S)
+
+tail = _RESULT_MARKER_RE.split(result_text)[-1]    # drop the chat wrapper + any prose braces
+m = _RESULT_PAYLOAD_RE.search(tail)
+assert m, f"No result payload found after the ✅/❌ marker in: {result_text!r}"
+try:
+    payload = json.loads(m.group(1))               # pretty-printed JSON (live today)
+except ValueError:
+    payload = ast.literal_eval(m.group(1))         # Python-repr (the pre-drift form)
+```
+
+Then Step 31 asserts:
+
+```python
+assert "list_files" in result_text                 # UNCHANGED
+assert payload == {"total": 0, "rows": []}, (      # was: "{'total': 0, 'rows': []}" in result_text
+    f"Expected an empty result for the just-created bucket, got: {payload!r}"
+)
+```
+
+**Verified by the analyst against all four shapes** (`../.venv/bin/python`, 2026-09-09):
+
+| Input | Parsed | `== {"total": 0, "rows": []}` |
+|---|---|---|
+| live pretty-JSON (verbatim capture above) | `{'total': 0, 'rows': []}` | **True** |
+| pre-drift Python-repr | `{'total': 0, 'rows': []}` | **True** |
+| prose braces before the ✅ marker | `{'total': 0, 'rows': []}` | **True** (marker split drops them) |
+| non-empty result `{"total": 1, "rows": [{"name": "a.txt"}]}` | `{'total': 1, 'rows': [{'name': 'a.txt'}]}` | **False** ✓ correctly fails |
+
+**What it catches:** a non-empty bucket (`total > 0` or `rows` populated), a renamed or
+missing key, a payload that stops being a mapping, a result that never renders. **What it
+does not catch:** a change in *where* the payload renders — but that surfaces loudly as
+"No result payload found", which is the correct failure, not a silent pass.
+
+**Rejected alternatives, recorded so they are not re-proposed:**
+- *Whitespace/quote-normalizing string compare* — survives this drift but not the next
+  one (key reordering, added indentation inside `rows`), and keeps asserting on
+  presentation instead of data.
+- *Read the `<pre>` element directly* — the fenced block carries **no testid** and lives
+  in the shared markdown renderer, so it is not testid-addressable, and it disappears
+  entirely if serialization ever reverts to Python-repr (`prettifyToolkitMessage`'s
+  `catch` path). Fails the "either direction" requirement.
+- *`assert payload["total"] == 0 and payload["rows"] == []`* — tolerant of a future added
+  key, but that is a **relaxation** of the current full-payload pin and therefore needs
+  explicit sign-off under the preserve-the-nature rail. Not recommended; use `==`.
+
+### 4. Steps 32–39 — re-executed live, NO observable drift
+
+Every step after the failure point was walked live (they never executed in the red run).
+All handles and all expected results hold:
+
+| Step | Handle | Live result 2026-09-09 |
+|---|---|---|
+| 32 | `page.goto("/artifacts")` | reaches the page — **but see § 5, the wait is the problem** |
+| 33 | `artifacts-search-buckets-button` → `artifacts-bucket-search-input` | ✓ opens |
+| 34 | `artifacts-bucket-search-input` | value `"new"` ✓ |
+| 35 | `artifacts-bucket-row-*` | **3** rows (`dup-bucket-1867new-bucket`, `new-bucket`, `new-bucketautotest-buck1-800755`) — `>= 1` ✓ |
+| 36 | `artifacts-bucket-row-new-bucket` | count **1** ✓ (exact-testid match — the substring colliders above do not inflate it) |
+| 37 | click the row | URL → `http://localhost:5173/artifacts?bucket=new-bucket` ✓ |
+| 38 | `artifacts-breadcrumb-bucket-label` | `"new-bucket"` ✓ |
+| 39 | `artifacts-empty-state` / `artifacts-upload-files-empty-state-button` | `"No files in this bucket"` / `"Upload files"` ✓ |
+
+Evidence: ![Steps 38-39 — new-bucket selected, empty-bucket state](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/ELITEA-1866-step39-empty-bucket-state.png)
+(local: `ELITEA-1866-step39-empty-bucket-state.png`)
+
+**Verdict: Steps 32–39 need no assertion changes.** The repair to line 744 will not die
+at Step 39.
+
+### 5. Teardown / Step 32 — REAL drift, not a knock-on of the failed mid-test state
+
+The run logged `Bucket cleanup for 'new-bucket' failed (continuing): Navigate to Artifacts
+— Timeout 15000ms exceeded` **twice**. Confirmed from the run's own allure attachment
+(`reports/allure-results/929e3607-…-attachment.txt`, both hits at
+`test_toolkit_creation_create_bucket_verify_list_files.py:209`): the two calls are the
+**pre-test** cleanup (line 272) and the **post-test** cleanup (line 832). The pre-test call
+runs against a pristine page state before any test step — **so this is not a knock-on of
+the mid-test failure; it fails on a clean start too.**
+
+**Mechanism — the #1847 `networkidle` class, third confirmed site.**
+`ArtifactsPage.navigate_to_artifacts()` → `wait_for_page_load(15000)` →
+`BasePage.wait_for_network(15000)` → `page.wait_for_load_state("networkidle", 15000)`.
+`networkidle` needs 500 ms of zero connections; the app holds a persistent
+`/socket.io/` poll open, and the Artifacts landing fires a single **unpaginated**
+bucket-list request that this project cannot answer inside 15 s.
+
+Measured live, project 399 (**1217 buckets**):
+
+| Observation | Value |
+|---|---|
+| `GET /artifacts/s3/?project_id=399&format=json` (backend healthy) | **43.8 s**, 200 OK |
+| time from `goto('/artifacts')` to the first `artifacts-bucket-row-*` (healthy) | **12.4 s** / **15.2 s** (two loads) |
+| same, backend under load | 502 / 503, list never rendered inside 80 s |
+| `wait_for_page_load` budget | **15 000 ms** |
+
+So the 15 s budget sits **at or below the observed floor** — it fails deterministically
+whenever the backend is anything but fast, which is why it fired on both cleanup calls.
+
+**This is a live landmine for Step 32.** Step 32 calls the *same*
+`artifacts_page.navigate_to_artifacts()` **unguarded** (cleanup swallows exceptions;
+Step 32 does not). A repair that fixes only line 744 will hand the next red to Step 32.
+
+**Recommended fix (class D — robustness only, no assertion touched):** apply #1847's own
+prescription — wait on what the caller actually needs, not on network silence. In
+`ArtifactsPage.navigate_to_artifacts()`, wrap the navigation in an explicit wait for the
+bucket-list response and drop the `networkidle` wait from that path:
+
+```python
+BUCKET_LIST_TIMEOUT = 60_000   # measured 12.4-43.8s live; 15_000 is below the floor
+
+with self.page.expect_response(
+    lambda r: "/artifacts/s3/" in r.url and r.status == 200,
+    timeout=BUCKET_LIST_TIMEOUT,
+):
+    super().navigate("/artifacts")
+self.page.get_by_test_id("artifacts-buckets-heading").wait_for(state="visible", timeout=...)
+```
+
+Why the response and not a bucket row: it is correct for a genuinely-empty project too,
+where no row will ever appear — and it is immune to defect #2073's false empty state
+(below), which makes the empty-state element useless as a settle signal.
+
+**Blast radius — a lead/implementer call, flagged not decided here.**
+`ArtifactsPage.wait_for_page_load()` is shared; the precedent (settings-w09,
+`AdminUsersPage.ensure_team_project_selected`) is that removing a `networkidle` wait made
+the suite both *more stable and ~56 s faster*, but the change should be scoped to
+`navigate_to_artifacts()` unless the lead wants the wider sweep.
+
+**Does it accumulate `new-bucket` rows in the shared env? No — but it does leave one
+behind, permanently.** Bucket names are unique per project, so the failure leaves exactly
+**one** stale `new-bucket`, not a growing pile; each subsequent run re-uses or re-creates
+that same name. A stale `artifacts-bucket-row-new-bucket` **was present in project 399 at
+the start of this analysis** (left by the red run) and is still there — the pre-test
+cleanup that should remove it is the very call that times out. Confirmed harmless to the
+case's own steps: the stale bucket is EMPTY, so Steps 36–39 pass against it unchanged, and
+Step 36's `count_bucket_rows("new-bucket")` matches the **exact** testid, so the
+substring-colliding neighbours (`dup-bucket-1867new-bucket`,
+`new-bucketautotest-buck1-800755`) do not inflate it. The wider 1217-bucket accumulation
+is the pre-existing, still-OPEN [#636](https://github.com/EliteaAI/elitea-testing-public/issues/636).
+
+### 6. New product defect found during this walk — #2073 (non-blocking)
+
+[#2073](https://github.com/EliteaAI/elitea-testing-public/issues/2073) — while the bucket
+list is loading, the Artifacts **main panel** renders the terminal empty state
+**"No buckets created yet"** with a "+ Create" CTA and `Buckets: 0  Size: 0B`, while the
+**left panel** simultaneously renders skeleton loaders. Sampled DOM timeline from a fresh
+`goto('/artifacts')`:
+
+```
+ms=0       empty-state-title="No buckets created yet" | role=progressbar: false | bucket rows=0
+ms=12428   empty-state-title=null                     | role=progressbar: false | bucket rows=1217
+```
+
+![Left panel skeletons vs main panel "No buckets created yet"](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/ELITEA-1866-artifacts-false-empty-state-during-load.png)
+(local: `ELITEA-1866-artifacts-false-empty-state-during-load.png`)
+
+Filed as a **sibling** of #1773 (same pattern, different surface), not a duplicate.
+It does **not** block this case — Steps 32–39 all pass once the list resolves — but it is
+why the empty state must not be used as the navigation settle signal in § 5.
+
+### 7. Preserve-the-nature disposition
+
+| Case step | Observable (FROZEN) | How it is reached/identified (CHANGED) |
+|---|---|---|
+| 31 | The result references `list_files` **AND** the result for the just-created bucket is EMPTY | substring match on a Python-repr string → parse the payload (JSON, then Python-repr fallback) and compare the parsed structure to `{"total": 0, "rows": []}` |
+| 32 | *(no observable — pure navigation)* | `networkidle`(15 s) → explicit wait on the `GET /artifacts/s3/` response (60 s) |
+| 33–39 | unchanged | unchanged |
+
+**Expected-result changes: NONE.** Step 31 verifies exactly what it verified before —
+`list_files` is referenced and the result is empty. The comparison moves from a substring
+match on one serialization to structural equality on the parsed payload, which is
+**strictly stronger**; nothing is dropped, relaxed, made conditional, or lowered. No
+`expect.soft()`, no skip, no weakened assertion. Step 32's change is a wait, not an
+assertion.
+
+### 8. Handles Reference (PROVENANCE verified 2026-09-09, `cd ../EliteaUI && git fetch origin` first)
+
+`origin/main` @ `04c22cdd` · `origin/automation/testids` @ `6d285a00`.
+
+| Element | testid | Change | PROVENANCE |
+|---|---|---|---|
+| Result message list | `chat-message-list` | **unchanged** — the drift is inside the message, not in the handle | **on-main ✓** |
+| Test surface — run button | `toolkit-test-run-tool-button` | unchanged | **on-main ✓** |
+| Test surface — empty-state tool select | `toolkit-test-empty-tool-select` | unchanged | **on-main ✓** |
+| Tool dropdown option | `select-option-list_files` | unchanged | **on-main ✓** |
+| Tool params | `toolkit-test-param-{bucket_name,folder,recursive,include,skip}` | unchanged, all 5 present live | **on-main ✓** |
+| Buckets heading | `artifacts-buckets-heading` | unchanged | **on-main ✓** |
+| Bucket search icon | `artifacts-search-buckets-button` | unchanged | **on-main ✓** |
+| Bucket search input | `artifacts-bucket-search-input` | unchanged | **on-main ✓** |
+| Bucket row (dynamic) | `artifacts-bucket-row-{name}` | unchanged | **on-main ✓** |
+| Bucket breadcrumb | `artifacts-breadcrumb-bucket-label` | unchanged | **on-main ✓** |
+| Empty-bucket state | `artifacts-empty-state` | unchanged | **on-main ✓** |
+| Upload-files empty-state button | `artifacts-upload-files-empty-state-button` | unchanged | **on-main ✓** |
+
+**No `testid needed:` rows. No `add-data-testid` work. No new locators of any kind — the
+repair is a text-parsing change plus a wait change. No promotion gap:** every handle is on
+`main`, so the repaired test is green locally and on the deployed DEV env that filed #2066.
+
+### 9. TMS case-text drift
+
+**None from this adjustment.** Case step 31's expected result is *"Result is displayed"* —
+the payload-shape pin is this suite's own Axis-2 strengthening (§ Coverage Map), not case
+text, so no `onetest-ai-tm-Elitea` edit is owed for the serialization change.
+`automation_test_id` is unchanged.
+
+### Status after adjustment
+
+**ready-for-automation (repair)** — class A drift on Step 31 fully characterised with
+verbatim live evidence and a bidirectionally-verified replacement; class D robustness fix
+specced for Step 32 / teardown; Steps 32–39 re-verified live with no observable drift; one
+new non-blocking product defect filed (#2073); every handle already on `main`; nothing
+weakened, nothing masked.
