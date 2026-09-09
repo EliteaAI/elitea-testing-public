@@ -450,3 +450,97 @@ None.
   be changed to wrap a response-wait because ELITEA-1832 relies on it firing ZERO network
   requests on a duplicate-file path, and a response-wait would time out on that legitimate
   no-request outcome.
+
+---
+
+## Repair amendment — 2026-09-09 (CI red, board card #2084, analyst re-execution on DEV)
+
+**Status of this amendment: `ready-for-automation`** (repair scope only — the case's
+observables are UNCHANGED; nothing below weakens what ELITEA-1808 verifies).
+
+**Why:** CI run 34331579791 (`dev-stable - artifacts`, branch `main` @ `5359201`) failed
+this spec terminally at **Test Step 7**:
+
+```
+tests/ui/artifacts/test_artifacts_create_bucket_upload_file.py:215: in ...
+    artifacts_page.wait_for_bucket_in_list(
+pages/artifacts_page.py:1189: in wait_for_bucket_in_list
+E   playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 15000ms exceeded.
+E     - waiting for locator("[data-testid=\"artifacts-bucket-row-autotest-test-create-bucket-via-form-and-391160\"]") to be visible
+```
+
+The bucket-creation POST returned 200 (Step 6 asserted it) and the bucket exists — the row
+simply had not rendered inside the 15 000 ms this spec passes as `NAVIGATION_TIMEOUT`.
+(The `Navigate to Artifacts — Timeout 15000ms exceeded` line also present in that job's log
+belongs to one of the two earlier rerun attempts, on `main`'s pre-#2080 `navigate_to_artifacts`.)
+
+### Measured on DEV, 2026-09-09 (idle local machine → `dev.elitea.ai`, project 399)
+
+| Measurement | Value |
+|---|---|
+| Buckets in project 399 | **1221** (1176 of them leaked `autotest-*`, 96%) |
+| `GET /artifacts/s3/?project_id=399&format=json` (the panel's list, **unpaginated**) | **9.56 – 11.60 s**, 238 KB (8 samples) |
+| Save click → creation POST 200 | 0.37 – 0.39 s |
+| POST 200 → list-refetch response | **9.56 / 10.11 / 9.63 s** |
+| POST 200 → new bucket ROW visible (Step 7's condition) | **10.75 / 11.29 / 10.83 s** |
+| Rendered bucket rows in the DOM | **1219 – 1222** (no pagination, no virtualisation) |
+| `navigate_to_artifacts()` (Step 1, `automation/base` version) | 17.78 s |
+
+Under load the same request was measured at **12.4 – 43.8 s** (ELITEA-1866/#2066, recorded
+in `ArtifactsPage.BUCKET_LIST_RESPONSE_TIMEOUT`'s docstring). So Step 7's 15 s budget sits
+just above the *idle* time and well below the loaded worst case — it is a **budget defect**,
+deterministic under CI load, not flake.
+
+### Step 7 — the signal is CORRECT; only the budget changes
+
+Considered and **rejected**: switching Step 7 to wait on the `/artifacts/s3/` refetch
+*response* instead of the row (an "#1847-style" swap). Rejected on the evidence — the row
+becomes visible only ~1.2 s AFTER that response lands, so the swap saves nothing; it would
+move the case's own observable off the product's rendered state; and it introduces a
+listener-attach race against an invalidation-triggered refetch. #1847's rule ("wait on what
+the caller needs, not on network silence") is already satisfied here: the row IS what the
+caller needs, and unlike `networkidle` it is a signal that always settles.
+
+**Required change (implementer):** `ArtifactsPage.wait_for_bucket_in_list()` must own its
+budget instead of accepting a spec-level 15 s. Give it a class constant sized on the request
+it actually waits for — the same one `BUCKET_LIST_RESPONSE_TIMEOUT = 60_000` already covers,
+plus the ~1.2 s render observed above — and default the parameter to it; the spec's Step 7
+call site then passes **no** `timeout=`. Recommended (mirrors #2080's own diagnostics
+pattern on `navigate_to_artifacts`): a `page.on("response", ...)` listener scoped in
+`try/finally` that records the statuses seen for `/artifacts/s3/`, so a future timeout reads
+"no bucket row after N ms; bucket-list statuses observed: [503, 503]" instead of a bare
+locator timeout.
+
+**Paging / virtualisation — RULED OUT as a cause.** `SimpleBucketList.jsx` maps every bucket
+(`sortedBuckets.map(...)`), there is no windowing library anywhere under
+`src/pages/Artifacts/`, and the DOM was measured holding 1219–1222 rows. A new bucket can
+never be pushed off the rendered list, and Playwright's `visible` state does not require the
+element to be in the viewport. Ordering is alphabetical, not recency (see #2126) — a new
+bucket landed at DOM index 1203 of 1220 and was still found normally.
+
+### Cleanup — supersedes § Cleanup item 1
+
+`ArtifactAPI.delete_bucket()`'s 404 (**#636**) is **not a product defect**: it calls a route
+that does not exist (`DELETE .../artifacts/buckets/default/{pid}/{bucket}`, and the
+`p--{pid}.{bucket}` fallback). The product's own form works and was verified live today —
+`DELETE /api/v2/artifacts/buckets/default/399?name={bucket}` → `200 {"message": "Deleted"}`,
+bucket confirmed gone on re-list. Root cause posted on #636. Until that harness fix lands,
+this spec keeps leaking 3 buckets per CI run (one per attempt incl. reruns), which is what
+grew the list to 1221 and made this timeout inevitable. Once fixed, the "known defect #636"
+caveat in the spec's teardown and in § Cleanup item 1 must be removed.
+
+### Defects (this repair pass)
+
+| Issue | Kind | Note |
+|---|---|---|
+| [#2126](https://github.com/EliteaAI/elitea-testing-public/issues/2126) | product `bug`, NEW | Bucket panel never sorts "most recent first" — `sortBucketsByRecent` reads `created_at`/`updated_at`, the API returns only `creationDate` (comparator is always `NaN`). Does not affect this case's automation. |
+| [#636](https://github.com/EliteaAI/elitea-testing-public/issues/636) | **re-classified** | Harness defect, not a backend one — root cause + verified fix commented, not re-filed. |
+| [#2073](https://github.com/EliteaAI/elitea-testing-public/issues/2073) | existing product `bug` | Measurements added as a comment (empty state shown while the list is in flight); not re-filed. |
+
+### Sibling call sites (out of this card's scope, same latent defect)
+
+12 further `wait_for_bucket_in_list()` / `wait_for_bucket_removed_from_list()` call sites in
+`tests/ui/artifacts/` (and one in `tests/ui/toolkits/`) pass a 15 s `NAVIGATION_TIMEOUT` —
+and `test_artifacts_delete_all_and_dismissal.py:339` passes a 10 s `UI_ELEMENT_TIMEOUT` —
+to the same post-refetch wait. They are the same defect waiting for the next unlucky run;
+worth a follow-up card once the page-object default lands.
