@@ -4326,7 +4326,9 @@ class AgentDetailPage(AgentFormPage):
         return self.publish_continue_button.is_enabled()
 
     @action("Continue from Publish wizard Preparation step")
-    def click_publish_continue(self, timeout: int = 15000) -> int:
+    def click_publish_continue(
+        self, timeout: int = 15000, render_timeout: int = 10000
+    ) -> int:
         """Click "Continue" and wait for the ``publish_validate`` response.
 
         Waits for ``POST .../publish_validate/prompt_lib/{project}/{versionId}``
@@ -4336,8 +4338,34 @@ class AgentDetailPage(AgentFormPage):
         enabled), ``422`` when Critical issues remain (button stays
         disabled).
 
+        **The two waits here are deliberately budgeted separately** (issue
+        #2082). They are three orders of magnitude apart:
+
+        * the ``publish_validate`` response is **AI-backed** — measured live
+          on https://dev.elitea.ai 2026-09-09, n=24: 15.46 s .. 36.88 s
+          (median 26.82 s, p95 33.76 s);
+        * the Validation step's "Publish" button rendering afterwards is a
+          pure client-side React tick — measured 0.013 s .. 0.023 s, 6/6.
+
+        Serving both from one budget has two costs. A failure message can no
+        longer tell you WHICH wait blew, and raising the response budget to
+        the ~90 s the AI gate actually needs would silently turn a genuine
+        render failure into a 90 s hang. So ``timeout`` stays the response
+        budget (unchanged default — every existing caller keeps its current
+        behaviour) and ``render_timeout`` covers the button.
+
+        ``render_timeout`` is safe to keep short on BOTH validation
+        outcomes: on the 422/FAIL path the "Publish" button still renders
+        (only ``disabled``, since ``canPublish = status !== 'FAIL'``), so
+        the validation-blocker specs still find it; on a 400 path it never
+        renders at all and the shorter budget simply reaches the same
+        verdict faster.
+
         Args:
-            timeout: Maximum wait time in milliseconds.
+            timeout: Maximum wait time in milliseconds for the AI-backed
+                ``publish_validate`` response.
+            render_timeout: Maximum wait time in milliseconds for the
+                Validation step's "Publish" button to become visible.
 
         Returns:
             HTTP status code of the ``publish_validate`` response.
@@ -4357,7 +4385,11 @@ class AgentDetailPage(AgentFormPage):
         # regardless of the Critical-issue outcome (only its enabled state
         # differs — canPublish = status !== 'FAIL'), so waiting for
         # visibility here is safe for both the 200 and 422 cases.
-        self.publish_confirm_button.wait_for(state="visible", timeout=timeout)
+        # Budgeted by `render_timeout`, NOT the AI response budget — see the
+        # docstring (issue #2082).
+        self.publish_confirm_button.wait_for(
+            state="visible", timeout=render_timeout
+        )
         logger.info("publish_validate responded status=%d", status)
         return status
 
