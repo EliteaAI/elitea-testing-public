@@ -18,9 +18,18 @@ Conversation A then survives as its own Run History row alongside the
 now-active conversation B.
 
 ``TestPipelineRunHistoryPanelClose`` extends the above with the one gap
-ELITEA-2011 never covered — closing the panel via its ``X`` button (case
-step 7) — reusing the same fixture and page-object methods; it does not
-modify ``TestPipelineRunHistoryViewExecutions``'s test body.
+ELITEA-2011 never covered — leaving the Run History view (case step 7,
+"Close run history panel" / "Panel closes") — reusing the same fixture and
+page-object methods; it does not modify
+``TestPipelineRunHistoryViewExecutions``'s test body.
+
+Repaired 2026-09-09 (FIX card #2063) for EliteaAI/EliteaUI@90e20a03
+(*feat: [EL-6537] Integrate Agent and Pipeline Run History into Breadcrumb
+Navigation*): Run History is now a dedicated route and its ``X`` close
+button no longer mounts anywhere (``RunHistoryContainer.jsx:164`` gates it
+on an ``onClose`` prop that ``RunHistoryPage.jsx`` does not pass). The
+case's observable is unchanged — the return affordance is now the
+pipeline-name breadcrumb crumb.
 
 Specs:
   test-specs/pipelines/l2_pipeline-run-history-panel-view-executions_ELITEA-2011.md
@@ -203,7 +212,7 @@ class TestPipelineRunHistoryViewExecutions:
 
 
 class TestPipelineRunHistoryPanelClose:
-    """Run History panel close (X) button (ELITEA-2070, p1).
+    """Leaving the Run History view (ELITEA-2070, p1).
 
     Extension of ELITEA-2011's covering test above: steps 1-6 of the case
     (open a pipeline with a prior execution, open Run History, list
@@ -212,10 +221,17 @@ class TestPipelineRunHistoryPanelClose:
     ``PipelineDetailPage``/``RunHistoryContainer`` stack — see AFS
     ``test-specs/pipelines/lextend_pipeline-run-history-panel-close_ELITEA-2070.md``
     § Coverage Map. This test's own new observable is case step 7 only:
-    closing the panel via its ``X`` button restores the Configuration form +
-    embedded chat, with zero network requests during the close itself
-    (purely client-side ``onClose`` state flip, confirmed via source read of
-    ``RunHistoryContainer.jsx``).
+    "Close run history panel" / "Panel closes".
+
+    **Repaired 2026-09-09 (FIX card #2063), AFS § "Repair amendment".**
+    EliteaAI/EliteaUI@90e20a03 (*feat: [EL-6537]*) turned Run History into a
+    dedicated route (``/pipelines/:tab/:id/history``) whose page passes no
+    ``onClose``, so the ``X`` button gated by ``{onClose && (...)}`` at
+    ``RunHistoryContainer.jsx:164`` never mounts. The case text names no
+    ``X`` button — only "Close run history panel" — so the observable is
+    unchanged: leave the view via the pipeline-name breadcrumb crumb and
+    assert the Run History rows are gone and the Configuration form +
+    embedded chat are restored, with no conversations re-fetch.
     """
 
     @allure.issue(
@@ -226,9 +242,15 @@ class TestPipelineRunHistoryPanelClose:
     @pytest.mark.p1
     @pytest.mark.regression
     def test_run_history_panel_closes_and_restores_chat(self, page: Page, pipeline_with_llm_id):
-        """Closing the Run History panel (after selecting an entry) removes
-        the panel from the DOM and restores the Configuration form +
-        embedded chat, with zero network requests fired by the close itself."""
+        """Leaving the Run History view via the pipeline-name breadcrumb
+        (after selecting an entry) removes its execution rows from the DOM
+        and restores the Configuration form + embedded chat, without
+        re-fetching the conversations list.
+
+        No substitution of the system under test is performed: every
+        asserted value (row count, rendered message text, restored controls,
+        observed requests) is produced by the live application.
+        """
         message = f"close-run-history-{uuid.uuid4().hex[:6]}"
 
         # AFS Axis 2: "Zero console errors during the whole flow."
@@ -280,10 +302,13 @@ class TestPipelineRunHistoryPanelClose:
             "Step 3 — Click the one execution entry; its details (message + "
             "response) render in the right-hand panel"
         ):
+            # No `is_run_history_item_selected(NEWEST_RUN_INDEX)` assertion:
+            # since EliteaAI/EliteaUI@84025881 (*fix: [EL-6391] select the
+            # latest run when Run History opens*) row 0 is auto-selected on
+            # open, so asserting `data-selected="true"` on it proves nothing
+            # about the click. The real observable — this execution's own
+            # message rendered in the detail pane — is asserted below.
             detail_page.select_run_history_item(NEWEST_RUN_INDEX, timeout=UI_ELEMENT_TIMEOUT)
-            assert detail_page.is_run_history_item_selected(
-                NEWEST_RUN_INDEX, timeout=UI_ELEMENT_TIMEOUT
-            ), "The clicked row should carry data-selected=\"true\""
             history_text = detail_page.get_run_history_chat_messages_text()
             assert message in history_text, (
                 f"Run History panel should display the sent message ({message!r}) "
@@ -291,39 +316,42 @@ class TestPipelineRunHistoryPanelClose:
             )
 
         with allure.step(
-            "Step 4 — Click the close (X) button; the Run History panel is "
-            "removed and the Configuration form + embedded chat is restored, "
-            "with no Run-History-specific network activity re-fired by the "
-            "close itself"
+            "Step 4 — Leave the Run History view via the pipeline-name "
+            "breadcrumb crumb; its execution rows are gone and the "
+            "Configuration form + embedded chat is restored, with no "
+            "Run-History-specific network activity re-fired by the return"
         ):
             api_requests.clear()
             detail_page.close_run_history(timeout=UI_ELEMENT_TIMEOUT)
-            # AFS § Network Behavior (amended per this session's live run):
-            # RunHistoryContainer's onClose prop (RunHistoryContainer.jsx:74-91)
-            # is itself a pure client-side state flip with no fetch call — but
-            # closing also unmounts the panel and remounts the Configuration
-            # form, which independently re-fires ITS OWN view-population
-            # requests (tools/toolkits/tags/applications/index_types) as a
-            # normal consequence of remounting, unrelated to Run History.
-            # The precise, durable claim is scoped to Run-History's OWN
-            # endpoints: closing must not re-fetch the conversations list
-            # (`conversation(s)/prompt_lib`) — confirmed zero hits live.
+            # AFS § Network Behavior (amended 2026-09-09 for EL-6537):
+            # returning to the pipeline detail view re-mounts the
+            # Configuration form, which independently re-fires ITS OWN
+            # view-population requests (tools/toolkits/tags/applications/
+            # index_types) as a normal consequence of mounting, unrelated to
+            # Run History. The precise, durable claim is scoped to Run
+            # History's OWN endpoints: the return must not re-fetch the
+            # conversations list (`conversation(s)/prompt_lib`) — confirmed
+            # zero hits live on both localhost and DEV, before and after the
+            # route redesign.
             conversation_requests = [u for u in api_requests if "conversation" in u]
             assert not conversation_requests, (
-                f"Closing the Run History panel should not re-fetch the "
+                f"Returning from the Run History view should not re-fetch the "
                 f"conversations list (that data is being discarded, not "
                 f"re-read), got: {conversation_requests}"
             )
             assert detail_page.chat_input.is_visible(), (
-                "Embedded chat input should be visible again after closing Run History"
+                "Embedded chat input should be visible again after leaving Run History"
             )
             assert detail_page.history_tab.is_visible(), (
                 "The 'view run history' icon button should be visible again after "
-                "closing the panel (Configuration form + embedded chat restored)"
+                "leaving the Run History view (Configuration form + embedded chat "
+                "restored)"
             )
+            # The case's own "Panel closes" observable: the Run History
+            # rows are gone from the DOM once the view is left.
             assert detail_page.get_run_history_item_count() == 0, (
                 "Run History list items should no longer be present in the DOM "
-                "once the panel is closed"
+                "once the Run History view has been left"
             )
 
         with allure.step("Verify no console errors across the full flow"):

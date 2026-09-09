@@ -72,18 +72,18 @@ class PipelineDetailPage(PipelineFormPage):
         '[data-testid="run-history-list-item"][data-selected="true"]'
     )
 
-    # Run History panel close (X) button (ELITEA-2070). Same shared
-    # `RunHistoryContainer.jsx` IconButton the Agent surface also renders
-    # (no `pipeline-`/`agent-` prefix — same reasoning as
-    # `RUN_HISTORY_LIST_ITEM_SELECTOR` above: the component is shared, the
-    # testid is shared). Added via `add-data-testid`,
-    # EliteaAI/EliteaUI@ccbfc54a — no testid existed before this case;
-    # neither ELITEA-2011 (Pipeline) nor ELITEA-1877 (Agent) requested it
-    # since neither of those cases' own steps clicked it.
-    run_history_close_button = LocatorDescriptor(
-        testid="run-history-close-button",
-        description="Close (X) button in the Run History panel header",
-    )
+    # Breadcrumb trail rendered by the dedicated Run History ROUTE
+    # (`/pipelines/:tab/:id/history`, `routes.js:29` — introduced by
+    # EliteaAI/EliteaUI@90e20a03, *feat: [EL-6537] Integrate Agent and
+    # Pipeline Run History into Breadcrumb Navigation*). On that route the
+    # trail is `Pipelines / <pipeline name> / Run History`: every crumb but
+    # the last renders `breadcrumb-item` (`BreadcrumbItem.jsx:30`) and the
+    # last renders `breadcrumb-current` (`BreadcrumbItem.jsx:17`). Clicking
+    # the LAST `breadcrumb-item` (the pipeline-name crumb) is the only
+    # affordance that leaves the Run History view — the old panel `X`
+    # button no longer mounts anywhere (see `close_run_history`).
+    BREADCRUMB_ITEM_SELECTOR = '[data-testid="breadcrumb-item"]'
+    BREADCRUMB_CURRENT_SELECTOR = '[data-testid="breadcrumb-current"]'
 
     copy_id_button = LocatorDescriptor(
         testid="copy-id",
@@ -7748,27 +7748,41 @@ class PipelineDetailPage(PipelineFormPage):
     # almost verbatim — same shared `RunHistoryContainer`/`RunHistoryList
     # Item.jsx`/`RunHistoryChat.jsx` components, `source=pipeline` instead
     # of `source=agent` on the underlying conversations-list request (AFS
-    # § Network Behavior). `RunHistoryContainer` REPLACES the whole
-    # Configuration form + embedded chat grid — it is not a tab and not an
-    # overlay — so "opened" is confirmed by waiting for at least one
-    # `run-history-list-item` row to render (the list fetch is a real
-    # network round trip; poll rather than a fixed timeout).
+    # § Network Behavior). Since EliteaAI/EliteaUI@90e20a03 (EL-6537) Run
+    # History is a dedicated ROUTE (`/pipelines/:tab/:id/history`), not an
+    # in-place panel swap: `ConfigurationTab.jsx` wires `onShowHistory` to
+    # `goToRunHistory`, so opening NAVIGATES away from the Configuration
+    # form + embedded chat (both unmount) and closing means navigating back
+    # via the breadcrumb trail. "Opened" is still confirmed by waiting for
+    # at least one `run-history-list-item` row to render (the list fetch is
+    # a real network round trip; poll rather than a fixed timeout).
 
     @action("Open Run History panel")
     def open_run_history(self, timeout: int = 10000):
-        """Click the Run History button and wait for the panel to replace
-        the Configuration form + embedded chat.
+        """Click the Run History button and wait for the Run History view
+        to render its list of past executions.
+
+        Since EliteaAI/EliteaUI@90e20a03 (*feat: [EL-6537]*) this NAVIGATES
+        to the dedicated `/pipelines/:tab/:id/history` route rather than
+        flipping a local `showHistory` state — the Configuration form and
+        the embedded chat unmount because the route changed, not because a
+        panel replaced them. The breadcrumb trail
+        (`Pipelines / <name> / Run History`) is the route's own marker, so
+        it is awaited first, then the first execution row.
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        logger.info("Opening Run History panel")
+        logger.info("Opening Run History view")
         self.history_tab.wait_for(state="visible", timeout=timeout)
         self.history_tab.click()
+        self.page.locator(self.BREADCRUMB_CURRENT_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
         self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).first.wait_for(
             state="visible", timeout=timeout
         )
-        logger.info("Run History panel opened")
+        logger.info("Run History view opened")
 
     def get_run_history_item_count(self) -> int:
         """Return the number of rows currently listed in the Run History panel.
@@ -7793,21 +7807,35 @@ class PipelineDetailPage(PipelineFormPage):
     @action("Select Run History item")
     def select_run_history_item(self, index: int, timeout: int = 10000):
         """Click the Run History row at *index* (0 = most recent — default
-        sort is Date descending) and wait for its conversation detail to load.
+        sort is Date descending) and wait for its conversation detail to
+        render.
+
+        Completion is confirmed by the product's own rendered state — the
+        row carrying ``data-selected="true"`` plus at least one
+        ``chat-message-item`` in the detail pane — rather than by awaiting
+        the conversation-detail GET. Since EliteaAI/EliteaUI@84025881
+        (*fix: [EL-6391] select the latest run when Run History opens*) the
+        container auto-selects row 0 on open and fires that GET itself, so
+        clicking row 0 fires NO request at all (verified live 2026-09-09):
+        an ``expect_response`` wrapper then only passes when the
+        auto-select's own response happens to land inside its window. Both
+        observables here are still produced by the system; nothing is
+        stubbed, injected or fabricated.
 
         Args:
             index: Zero-based row index in the currently-rendered list.
             timeout: Maximum wait time in milliseconds.
         """
+        from playwright.sync_api import expect
+
         logger.info("Selecting Run History item at index %d", index)
         row = self.page.locator(self.RUN_HISTORY_LIST_ITEM_SELECTOR).nth(index)
         row.wait_for(state="visible", timeout=timeout)
-        with self.page.expect_response(
-            lambda r: "/elitea_core/conversation/prompt_lib/" in r.url
-            and r.request.method == "GET",
-            timeout=timeout,
-        ):
-            row.click()
+        row.click()
+        expect(row).to_have_attribute("data-selected", "true", timeout=timeout)
+        self.page.locator(self.CHAT_MESSAGE_ITEM_SELECTOR).first.wait_for(
+            state="visible", timeout=timeout
+        )
         logger.info("Run History item %d selected", index)
 
     def is_run_history_item_selected(self, index: int, timeout: int = 5000) -> bool:
@@ -7836,9 +7864,10 @@ class PipelineDetailPage(PipelineFormPage):
         is open (the main embedded chat is unmounted).
 
         Waits (bounded by *timeout*) for at least one message item to render
-        before reading — ``select_run_history_item()`` only awaits the
-        conversation-detail GET response, which can resolve slightly ahead
-        of React committing the message list, producing a transient "" read.
+        before reading. ``select_run_history_item()`` already waits on the
+        same signal, so this is a defensive re-wait for callers that reach
+        the detail pane by another route (e.g. the auto-selected newest run
+        on open, EliteaAI/EliteaUI@84025881).
 
         Args:
             timeout: Maximum wait time in milliseconds for the first message
@@ -7857,22 +7886,36 @@ class PipelineDetailPage(PipelineFormPage):
 
     @action("Close Run History panel")
     def close_run_history(self, timeout: int = 10000):
-        """Click the Run History panel's close (X) button and wait for the
-        Configuration form + embedded chat to be restored.
+        """Leave the Run History view via the breadcrumb trail and wait for
+        the pipeline detail view (Configuration form + embedded chat) to be
+        restored.
 
-        ``onClose`` is a purely client-side ``showHistory`` state flip
-        (``ConfigurationTab.jsx`` — no network round trip), so completion is
-        confirmed by polling for ``chat_input`` to become visible again
-        rather than waiting on any request.
+        **There is no close (``X``) button any more.** EliteaAI/EliteaUI@90e20a03
+        (*feat: [EL-6537] Integrate Agent and Pipeline Run History into
+        Breadcrumb Navigation*) moved Run History onto its own route, whose
+        page (``RunHistoryPage.jsx``) passes no ``onClose`` prop;
+        ``RunHistoryContainer.jsx:164`` renders the close button only inside
+        ``{onClose && (...)}``, and no caller in ``src/`` passes it — so
+        ``run-history-close-button`` never mounts on the Agent or Pipeline
+        surface (the testid string survives in source but is unreachable at
+        runtime). The replacement affordance is the breadcrumb header the
+        route renders: ``Pipelines / <pipeline name> / Run History``, where
+        only the last crumb is ``breadcrumb-current``. Clicking the LAST
+        ``breadcrumb-item`` — the pipeline-name crumb — navigates back.
+
+        Completion is a route change, so it is confirmed by polling for both
+        ``chat_input`` and ``history_tab`` to be visible again.
 
         Args:
             timeout: Maximum wait time in milliseconds.
         """
-        logger.info("Closing Run History panel")
-        self.run_history_close_button.wait_for(state="visible", timeout=timeout)
-        self.run_history_close_button.click()
+        logger.info("Leaving Run History view via the pipeline-name breadcrumb")
+        crumb = self.page.locator(self.BREADCRUMB_ITEM_SELECTOR).last
+        crumb.wait_for(state="visible", timeout=timeout)
+        crumb.click()
         self.chat_input.wait_for(state="visible", timeout=timeout)
-        logger.info("Run History panel closed")
+        self.history_tab.wait_for(state="visible", timeout=timeout)
+        logger.info("Run History view closed (returned to pipeline detail)")
 
     # ------------------------------------------------------------------
     # Run Details panel (RunStateNode/RunStateDialog — ELITEA-2450)

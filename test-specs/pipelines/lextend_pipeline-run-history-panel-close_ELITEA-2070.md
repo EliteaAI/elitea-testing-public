@@ -103,7 +103,21 @@ No new testid is needed for this repair.
 
 The case text says only *"Close run history panel"* / *"Panel closes"* — it never
 names an `X` button, so the observable is unchanged and this is **not** case-text
-drift on step 7. Step 2's wording (*"Run history panel opens"*) is now a page rather
+drift on step 7.
+
+### Implementer note — 2026-09-09 (repair shipped, FIX card #2063)
+
+- Step 3's `is_run_history_item_selected(NEWEST_RUN_INDEX)` assertion was **removed**
+  from the test: post-`84025881` row 0 is auto-selected on open, so asserting
+  `data-selected="true"` on it after clicking it is tautological. The step's real
+  observable (the run's own message rendered in the detail pane) is unchanged.
+- `select_run_history_item()`'s `expect_response` wrapper was replaced by a state wait
+  (`data-selected="true"` on the clicked row + first `chat-message-item` visible), per
+  the amended § Network Behavior above. Both values are still produced by the system.
+- `PipelineDetailPage.run_history_close_button` (`LocatorDescriptor`) was **deleted** —
+  the testid is unreachable at runtime and it had exactly one caller.
+- Verified green on BOTH environments, whole file (both this test and ELITEA-2011's):
+  localhost 2/2, DEV (`https://dev.elitea.ai/app`) 2/2, zero reruns each. Step 2's wording (*"Run history panel opens"*) is now a page rather
 than a panel — cosmetic drift, observable preserved; optional TMS clarification, not
 blocking.
 
