@@ -509,10 +509,15 @@ class PipelinesListPage(BasePage):
         ``McpListPage.search()`` / ``CredentialsListPage.search()`` — same
         shared component (ELITEA-2023 AFS § Extension target).
 
-        Filtering here is client-side against an already-fetched pipeline
-        list (no new XHR observed firing on Enter — ELITEA-2023 AFS §
-        Network Behavior), so this waits for network-idle plus a short
-        settle instead of a response predicate.
+        ⚠️ Filtering is SERVER-side — corrected 2026-09-10 (ELITEA-2023 AFS
+        § Network Behavior; the earlier "client-side, no new XHR" note here
+        was wrong). ``useLoadApplications`` feeds redux ``search.query``
+        straight into the applications query, so Enter fires
+        ``GET .../applications/prompt_lib/<id>?...&query=<q>...``. This still
+        waits on network-idle plus a short settle rather than that response
+        predicate: swapping it in is `#1847`'s prescribed fix and is strictly
+        better, but ``search()`` has three callers and the change is out of
+        scope for the `#2119` CI-red repair. Raise it separately.
 
         Args:
             query: Text to search for.

@@ -5,7 +5,7 @@ type: feedback
 aliases: [empty list vacuous assertion, ambient project data, dashboard precondition, green locally red in CI, empty-state-title, showEmptyOrError]
 tags: [area/ui-tests, type/assertion-quality]
 created: 2026-09-09
-updated: 2026-09-09
+updated: 2026-09-10
 ---
 
 ## The failure shape
@@ -56,5 +56,32 @@ Reach the empty-list state with a **no-match search filter**. It is free, fully
 reversible, and mutates nothing — never delete real entities to manufacture an
 empty state. Then run the assertion and watch it raise. A guard nobody has seen
 fail is unverified.
+
+## The BOTH-SIDES corollary — a filter case needs a matching AND a non-matching precondition (2026-09-10, ELITEA-2023 / `#2119`)
+
+Second occurrence, same CI run, sibling test in the same file. This one had
+*half* a precondition: it created its matching ("YAML") pipeline via the API and
+then **harvested** the non-matching one out of ambient data with
+`next(row for row in pipeline_api.list_pipelines()["rows"] if "yaml" not in row["name"].lower())`.
+Empty generator on the CI project -> `StopIteration` **before the browser was
+even involved**, three steps before anything about search was asserted.
+
+- A **search/filter** case has two preconditions, not one: something that must be
+  IN the filtered result and something that must be OUT of it. Both are the test's
+  to create.
+- **"Non-matching" must hold in every field the backend queries, not just the
+  name.** Elitea's applications `query` matches **description as well as name**, so
+  a control entity with a clean name and a "YAML" description is legitimately
+  returned and blows up the absence assertion. Check the query semantics before
+  choosing the control's data.
+- **Don't strengthen the filter assertion into a universal** (`all(name contains
+  term)`) for the same reason — on any project with ambient data that is a
+  false-red generator. Assert the two specific names you created.
+- **Restore assertion:** `len(restored) > len(filtered)` rather than
+  `restored == baseline`. Strict equality flakes on a shared project (`#1082`);
+  `restored ⊋ filtered` holds by construction, because your control entity is in
+  one and not the other.
+
+Related: [[test_owns_its_preconditions]]
 
 Related: [[list_swap_transient_empty_state]] · [[absence_guards_must_watch_the_real_mechanism]]
