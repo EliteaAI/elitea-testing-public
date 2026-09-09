@@ -137,3 +137,5 @@
 - [A [FIX] card's cause can be an env OUTAGE PAGE](env_outage_page_is_a_fix_card_root_cause.md) — bound it on the shard timeline; contiguous block = class D
 - [`assert '' != ''` = ABSENCE](an_empty_string_on_both_sides_of_an_assert_means_absence.md) — read the reader, not the subject
 - [A repair's re-anchoring drops a cross-check](sanctioned_red_repair_must_name_the_link_it_reanchors.md) — the defect fix won't restore it
+- [A prior factory commit is not a human ruling](a_prior_factory_commit_is_not_a_human_ruling.md) — factory commits as the operator; verify before citing precedent
+- [A FIX card can have no work in it](a_fix_card_can_have_no_work_in_it.md) — sanctioned-RED CI reds are correct; verify 4 things, change no code

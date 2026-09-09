@@ -57,7 +57,7 @@ recording sanctioned-RED two contradictory ways.**
 | Shape | Cases |
 |---|---|
 | `ready`/`automated` + `automation_known_defect` (this entry) | 5 — ELITEA-2212, 2213, 2214, 2421, 2427 |
-| `draft`/`manual` + `sanctioned_red` ([[sanctioned_red_is_never_back_written_automated]]) | 3 — ELITEA-2243, 2289, 2291 |
+| `draft`/`manual` + `sanctioned_red` ([[sanctioned_red_is_never_back_written_automated]]) | 5 — ELITEA-2243, 2289, 2291, 1899, 2022 |
 
 **On ELITEA-1899 I used the `draft`/`manual` shape**, because `.agents/testing.md`
 § Merge gate says "never `automated`" without a carve-out, and
@@ -72,4 +72,19 @@ the `[Automate][ELITEA-<id>]` dedup rule. Full survey + recommendation posted on
 existing open `question` card **#613**. Do not pick a shape from this entry alone
 until #613 is answered — read both entries and #613.
 
-Related: [[sanctioned_red_is_never_back_written_automated]] · [[../../../.agents/testing.md]]
+### The re-intake hazard is real, and MEASURED (2026-09-09, ELITEA-2022/#2062)
+
+`draft` + `tags: automated:UI:regression` re-satisfies the intake selector AND drops the
+case out of `already_automated_when` (needs automated + ready + non-empty test id). What
+saves it is the dedup, which greps issue titles for the **bare case id**, not the
+`[Automate]` prefix — so a `[FIX][ELITEA-2022]` card is enough of a match. Verified live.
+
+⚠️ That dedup runs `--limit 200` against a repo with 2000+ issues. The guard holds only
+while some card naming the case is in the newest 200. **A `draft`-shaped sanctioned-RED
+case whose cards age out becomes silently re-intakeable.** The `ready`/`automated` shape
+has no such failure mode — a real argument for it, now posted on #613.
+
+⚠️ Do NOT cite `88c2f49` (ELITEA-1899) here as an operator ruling — it is a prior FACTORY
+session committing under the operator's identity. See [[a_prior_factory_commit_is_not_a_human_ruling]].
+
+Related: [[sanctioned_red_is_never_back_written_automated]] · [[a_prior_factory_commit_is_not_a_human_ruling]] · [[../../../.agents/testing.md]]
