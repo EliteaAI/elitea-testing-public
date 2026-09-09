@@ -544,3 +544,26 @@ caveat in the spec's teardown and in § Cleanup item 1 must be removed.
 and `test_artifacts_delete_all_and_dismissal.py:339` passes a 10 s `UI_ELEMENT_TIMEOUT` —
 to the same post-refetch wait. They are the same defect waiting for the next unlucky run;
 worth a follow-up card once the page-object default lands.
+
+### Implementer verification of the repair — 2026-09-09 (#2084, branch `tests/2084-elitea-1808-bucket-list-timeout`)
+
+Shipped exactly as specified above: `ArtifactsPage.BUCKET_ROW_AFTER_REFETCH_TIMEOUT = 60_000`
+is now `wait_for_bucket_in_list()`'s parameter default, the spec's Step 7 passes **no**
+`timeout=`, and the `page.on("response", ...)` diagnostics listener (try/finally, removed in
+`finally`) names the `/artifacts/s3/` statuses on the failure path. No locators added,
+no observable changed.
+
+3 consecutive runs against **`dev.elitea.ai`** (`APP_PREFIX=/app`, project 399), `reruns.json`
+empty each time: **PASS 51.96 s / 45.09 s / 45.04 s**. Step 7's own allure duration was
+**11.40 / 10.67 / 11.40 s** — inside the analyst's idle band (10.75-11.29 s) and at **71-76%
+of the old 15 s budget**, i.e. the pre-repair call site had only ~3.6 s of headroom on an
+*idle* machine against a request measured at 12.4-43.8 s under load.
+
+⚠️ **This does NOT prove the CI red is fixed.** The analyst ran the *unmodified* spec against
+DEV and it also passed (49.02 s); the failure is load-driven and does not reproduce on an idle
+local box. These runs establish **"does not regress"** and that the new budget is not itself a
+source of slowness — nothing stronger. Only a loaded CI run can confirm the repair.
+
+Residue: the 3 buckets these runs created were deleted via the verified
+`DELETE /api/v2/artifacts/buckets/default/399?name={bucket}` form (200 `{"message":"Deleted"}`
+each); project 399 re-listed at **1221** buckets, the analyst's pre-run baseline.
