@@ -4233,3 +4233,43 @@ retry can never toggle an opening menu shut via MUI's Modal backdrop, and return
 (`select present / enabled / expanded / options`) instead of an opaque locator wait. Anything
 else driving this select — after a reload or not — should reuse that method rather than
 clicking directly.
+
+### Run state — the WIRE is the oracle, the chat answer is not
+
+**Added during ELITEA-2453 implementation (2026-09-10, card #2120), confirmed live on DEV.**
+
+To assert what the Run Details panel should show for a run whose values come from
+an LLM, read the run's own state off the Socket.IO wire and compare against it —
+`.agents/testing.md` § Fidelity policy's prescribed treatment of a
+nondeterministic producer. Capture with
+`PipelineDetailPage.capture_websocket_frames()` (entered BEFORE any navigation):
+
+```python
+edges = [f for f in frames
+         if f.get("type") == "agent_on_transitional_edge"
+         and (f.get("response_metadata") or {}).get("next_step") == "END"]
+state = (edges[-1].get("response_metadata") or {}).get("state") or {}
+```
+
+This is exactly the object the panel renders for the selected (last) timeline step
+(`parseRunsByEvent.helpers.js:263-278` → `StateItemView.jsx`). Compare **parsed**
+values, never raw strings: `JSON.stringify` emits no separator spaces
+(`["a","b"]`) where Python's `json.dumps` does.
+
+⚠️ **The JSON block visible in the chat answer is NOT the state.** A
+`structured_output: true` node makes at least TWO LLM calls — the answer call and
+the structured-extraction call — and they routinely disagree. Observed in a
+passing run: chat showed `custom_json: {"key1": "value1", "key2": "value2"}` while
+the state written was `{"status": "active", "count": 5}`. (This is also what the
+two timeline entries per single-node run are; a third appears when the platform
+re-asks.)
+
+⚠️ **A `Completed` run is not evidence that state was written.** When the answer
+call replies in prose, the extraction writes NOTHING — run status `Completed`, the
+chat claims success, no console error, no `socket_validation_error` frame, and the
+declared defaults (`""` / absent / `[]` / `{}`) survive. Filed as
+`EliteaAI/elitea-testing-public#2153`, measured at ~25% of runs (8 of 32) and
+**bursty** — it can hide for 9 consecutive runs. Any spec depending on populated
+state needs an explicit, bounded, loudly-failing precondition guard; a system
+prompt that names the required answer FORM ("a single JSON object and nothing
+else") is a strong mitigation but not a guarantee (9/9 at n=9).

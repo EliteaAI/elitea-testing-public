@@ -338,11 +338,22 @@ deliberately avoiding the one combination that's a confirmed product defect
   actual text content is nondeterministic; assert JSON-string quoting
   (`value.startswith('"') and value.endswith('"')`) and non-emptiness, matching
   the caution already established in ELITEA-2452 for `messages` content.
+
+  **AMENDED 2026-09-10 (repair, card #2120)** — the *non-emptiness* half is
+  REMOVED, and the shape half is no longer the whole assertion. Non-emptiness is
+  an LLM-content premise the case never had (§ REPAIR AMENDMENT R3, and § 5 for
+  why removing it is a correction rather than masking). Population is now an
+  explicit precondition guard instead (R2), and each step additionally asserts
+  parsed equality against the run's own backend state.
 - **Assert `custom_num`/`custom_list`/`custom_json`'s After values by parsing as
   JSON and checking `type()`** (`int`/`float`, `list`, `dict` respectively) rather
   than exact literal values — the LLM's specific number/list-length/JSON-keys are
   also not a stable contract, only "each renders as ITS type's JSON shape,
   distinct from the others" is.
+
+  **AMENDED 2026-09-10 (repair, card #2120)** — `len(...) > 0` on `custom_list`
+  and `custom_json` is REMOVED for the same reason; the `type()` checks stay and
+  are now paired with parsed equality against the run's own state (R3).
 - **"Displayed uppercase" (case step 5) is CSS `text-transform`, not DOM text** —
   see step 5's Coverage Map clarification. Assert via testid presence (raw
   lowercase name) or `to_have_css("text-transform", "uppercase")`; never
