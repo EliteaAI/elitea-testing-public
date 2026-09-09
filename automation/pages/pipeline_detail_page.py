@@ -133,10 +133,14 @@ class PipelineDetailPage(PipelineFormPage):
     # — but it's constructed at RENDER TIME from a template literal, so the
     # concatenated string never appears literally in source and a plain
     # `git grep` for it returns zero hits by construction, not because it
-    # doesn't exist. It's also ref-specific: present on `automation/testids`
-    # only (that `SelectDisplayProps` line isn't yet on `main` as of
-    # 2026-08-07) — a "needs-adding to main" / "on-automation/testids only"
-    # PROVENANCE case, not a non-existent testid.
+    # doesn't exist.
+    # PROVENANCE, re-verified 2026-09-09 (ELITEA-2002 repair, `#2077`) after
+    # `git fetch origin` in `../EliteaUI`: the `-combobox` testid IS on
+    # EliteaUI `main` —
+    # `origin/main:src/[fsd]/shared/ui/select/SingleSelect.jsx:662`. This
+    # supersedes the note previously here recording it as
+    # `automation/testids`-only "as of 2026-08-07"; it reached `main` within
+    # PR #2058's window. Nothing to add.
     # This field deliberately still uses the NO-suffix testid
     # (`agent-version-selector-trigger`) for a reason unrelated to
     # existence: it's confirmed on BOTH `main` and `automation/testids`,
@@ -233,6 +237,44 @@ class PipelineDetailPage(PipelineFormPage):
     # keyed by version name — same `version-option-{}` template shared by
     # every version selector consumer; see also AgentDetailPage.VERSION_OPTION.
     VERSION_OPTION = '[data-testid="version-option-{}"]'
+
+    # ANY version option, regardless of name — the handle
+    # :meth:`close_versions_menu` aims Escape at, and the one whose absence
+    # proves the Menu subtree (and with it MUI's invisible backdrop) has
+    # actually unmounted. Two exclusions, both load-bearing on the PIPELINE
+    # dropdown specifically (verified live 2026-09-09, `/pipelines/all/9421`):
+    # `version-option-pin-icon` sits on a nested <svg> INSIDE an option, not
+    # on the option MenuItem, and `version-option-set-default-*` are the
+    # per-option action items — counting either would keep the "zero options
+    # remaining" term permanently unsatisfiable. Ported verbatim from
+    # AgentDetailPage.VERSION_OPTION_ANY (PR #2058, issue #2052) — same
+    # `ApplicationVersionSelect.jsx:230` component, same testids.
+    VERSION_OPTION_ANY = (
+        '[data-testid^="version-option-"]'
+        ':not([data-testid="version-option-pin-icon"])'
+        ':not([data-testid^="version-option-set-default-"])'
+    )
+
+    # Open/closed STATE of the VERSION dropdown, read off the trigger's own
+    # `aria-expanded`. MUI's `Select` puts the combobox role — and with it
+    # `aria-expanded` — on its inner display node, which `SingleSelect.jsx`
+    # tags as `{testId}-combobox`
+    # (`SelectDisplayProps={dataTestId ? { 'data-testid': `${dataTestId}-combobox` } : undefined}`,
+    # `origin/main:src/[fsd]/shared/ui/select/SingleSelect.jsx:662` — a
+    # pre-existing testid, present on EliteaUI `main`, not added here; see
+    # the PROVENANCE note on `version_selector` above). The attribute is
+    # always present and flips "true" <-> "false", so it is a true two-state
+    # oracle rather than a presence check: a testid-keyed selector with a
+    # state-attribute filter, the shape `.agents/testing.md` § Locator policy
+    # prescribes for state. Mirrors
+    # AgentDetailPage.VERSION_SELECTOR_COMBOBOX{,_EXPANDED,_COLLAPSED}.
+    VERSION_SELECTOR_COMBOBOX = '[data-testid="agent-version-selector-trigger-combobox"]'
+    VERSION_SELECTOR_COMBOBOX_EXPANDED = (
+        '[data-testid="agent-version-selector-trigger-combobox"][aria-expanded="true"]'
+    )
+    VERSION_SELECTOR_COMBOBOX_COLLAPSED = (
+        '[data-testid="agent-version-selector-trigger-combobox"][aria-expanded="false"]'
+    )
 
     # Three-way convergence predicate for "the page now shows version <name>,
     # fully loaded" — the SINGLE shared source used by both
@@ -2094,9 +2136,43 @@ class PipelineDetailPage(PipelineFormPage):
         self.open_save_as_version_dialog(timeout=timeout)
         self.confirm_new_version(version_name, timeout=timeout)
 
-    def open_version_selector(self):
-        """Click the VERSION dropdown trigger to open the options list."""
-        self.version_selector.click()
+    def open_version_selector(self, timeout: int = 10000):
+        """Ensure the VERSION dropdown is OPEN, and confirm that it is.
+
+        LOCATOR: clicks the ``agent-version-selector-trigger``
+        ``LocatorDescriptor`` field, then waits on
+        :attr:`VERSION_SELECTOR_COMBOBOX_EXPANDED` — the trigger's own
+        ``aria-expanded="true"``.
+
+        Two deliberate properties, both from the ELITEA-2063 repair
+        (issue #2077; the pipelines half of the Agent-side #2052 fix, PR
+        #2058):
+
+        * **Post-condition, not fire-and-forget.** The click used to return
+          with nothing checked, so "the dropdown did not open" surfaced
+          later as an unrelated missing-option timeout. Now it fails here,
+          naming the dropdown.
+        * **Idempotent.** The trigger is clicked only while the dropdown is
+          collapsed. Clicking it while the menu is already open cannot work
+          by construction: MUI renders an invisible full-viewport
+          ``MuiBackdrop-root`` over the page which intercepts the pointer
+          event, so Playwright retries the click until it times out
+          (``"<div class=MuiBackdrop-root …> from <div id=menu- …> subtree
+          intercepts pointer events"``) — the exact signature of the GHA
+          run 34331579791 failure. Re-using an already-open menu is the
+          correct behaviour for a method whose contract is "the dropdown is
+          open when I return", and it hides nothing:
+          :meth:`close_versions_menu` — the method that closes THIS
+          dropdown — now raises when it cannot close it.
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dropdown to
+                report itself expanded.
+        """
+        expanded = self.page.locator(self.VERSION_SELECTOR_COMBOBOX_EXPANDED)
+        if expanded.count() == 0:
+            self.version_selector.click()
+        expanded.wait_for(state="attached", timeout=timeout)
 
     def is_version_option_visible(self, version_name: str, timeout: int = 5000) -> bool:
         """Check whether a version is present in the open VERSION dropdown.
@@ -2115,9 +2191,127 @@ class PipelineDetailPage(PipelineFormPage):
         except Exception:
             return False
 
-    def close_versions_menu(self):
-        """Close the open VERSION dropdown by pressing Escape."""
-        self.page.keyboard.press("Escape")
+    def close_versions_menu(self, timeout: int = 5000, attempts: int = 3):
+        """Close the pipeline's VERSION dropdown and CONFIRM that it closed.
+
+        LOCATOR: presses Escape on the first :attr:`VERSION_OPTION_ANY`
+        option, then waits on BOTH
+        :attr:`VERSION_SELECTOR_COMBOBOX_COLLAPSED` (the trigger's own
+        ``aria-expanded="false"``) **and** zero :attr:`VERSION_OPTION_ANY`
+        options remaining. The second term is not redundant:
+        ``aria-expanded`` tracks React ``open`` state and flips BEFORE the
+        ``MuiBackdrop-root`` unmounts at the end of the ``Grow`` exit
+        transition, so on its own it is a leading indicator that leaves a
+        ~200-300 ms window in which the backdrop still intercepts clicks.
+        The options unmount with the Menu subtree, so their absence is what
+        proves the backdrop is actually gone.
+
+        This method used to be a bare ``page.keyboard.press("Escape")`` with
+        nothing checked afterwards. That is issue #2077 / ELITEA-2063 — the
+        pipelines half of the Agent-side #2052 defect, repaired here with
+        the shape PR #2058 proved on
+        :meth:`AgentDetailPage.close_version_selector`. The VERSION dropdown
+        (``ApplicationVersionSelect.jsx:230``, ``testId=
+        "agent-version-selector-trigger"``, shared by Pipelines / Agents /
+        Skills) renders a search field:
+        ``src/[fsd]/shared/ui/select/SingleSelectDropdown.jsx:40`` mounts it
+        as ``<SimpleSearchBar onKeyDown={e => e.stopPropagation()} />``, and
+        ``SimpleSearchBar`` autofocuses itself (``autoFocus = true`` plus a
+        100 ms ``setTimeout`` re-focus) while its own handler turns Escape
+        into "clear the search box" **before** calling that external
+        ``onKeyDown``. So whenever focus sits in that search field the
+        keydown is consumed and stopped: MUI's ``Modal`` never sees it and
+        the menu stays open indefinitely. Verified live 2026-09-09 on the
+        PIPELINE detail page (`/pipelines/all/9421`) — from that state two
+        consecutive page-level Escapes left ``aria-expanded="true"`` with
+        every option still rendered, so *retrying* a page-level Escape fixes
+        nothing.
+
+        Pressing Escape on an OPTION does work: ``Locator.press()`` focuses
+        the element first, so the keydown originates on the ``MenuItem``
+        inside the ``MenuList`` and reaches the ``Modal``'s handler
+        (verified live in the same session, from the stuck state above —
+        one press, menu closed, URL unchanged, no version selected). It is
+        also what a real user does: keyboard focus is in the option list,
+        not in a search box they never clicked.
+
+        Failing to close is reported, never absorbed — and that holds on
+        every path, because there is no early return: a successful exit
+        always requires BOTH terms of the conjunction, whatever state the
+        dropdown was in on entry. After *attempts* cycles this raises with
+        the trigger's live ``aria-expanded`` value and the number of options
+        still rendered, so a genuine "this menu can no longer be dismissed"
+        product defect fails loudly here instead of resurfacing as an
+        intercepted-click timeout in whatever the next step happens to be —
+        which is exactly how it reached the nightly (GHA run 34331579791).
+
+        All three call sites of this method drive this same VERSION dropdown
+        (``test_pipeline_create_version.py:140``,
+        ``test_pipeline_delete_version.py:93,156``), so the fix lands in
+        place; both new arguments are defaulted and no caller changes.
+
+        Args:
+            timeout: Maximum wait time in milliseconds, per attempt, for the
+                dropdown to report itself collapsed.
+            attempts: Number of Escape cycles before giving up.
+
+        Raises:
+            AssertionError: if the VERSION dropdown is still expanded after
+                *attempts* cycles.
+        """
+        from playwright.sync_api import expect
+
+        collapsed = self.page.locator(self.VERSION_SELECTOR_COMBOBOX_COLLAPSED)
+        options = self.page.locator(self.VERSION_OPTION_ANY)
+
+        for attempt in range(1, attempts + 1):
+            # Press ONLY while the dropdown still reports itself expanded.
+            # There is deliberately no early `return` here: every path out of
+            # this method goes through BOTH waits below, so the exit
+            # condition is always the full conjunction and can never be
+            # satisfied by `aria-expanded` alone.
+            if collapsed.count() == 0:
+                if options.count() > 0:
+                    options.first.press("Escape")
+                else:
+                    # No option rendered to aim at (an empty or fully
+                    # filtered list). Fall back to the page-level press
+                    # rather than skip the close: it is the weaker signal,
+                    # but the waits below are what decide whether it worked.
+                    self.page.keyboard.press("Escape")
+            # `aria-expanded` already "false" => the menu is closing or
+            # closed. Do NOT press again: the option we would aim at is in a
+            # detaching subtree, and `Locator.press()` on it either races the
+            # unmount or blocks re-resolving a node on its way out. The
+            # correct action in that window is to WAIT it out, which is what
+            # the `to_have_count(0)` term below does.
+
+            try:
+                collapsed.wait_for(state="attached", timeout=timeout)
+                expect(options).to_have_count(0, timeout=timeout)
+                return
+            except (PlaywrightTimeoutError, AssertionError):
+                # `expect(...).to_have_count()` raises AssertionError on
+                # timeout, `wait_for` raises PlaywrightTimeoutError; nothing
+                # else in this block raises either.
+                logger.warning(
+                    "close_versions_menu: VERSION dropdown still open after "
+                    "Escape (attempt %d/%d) — retrying",
+                    attempt, attempts,
+                )
+
+        trigger_state = self.page.locator(
+            self.VERSION_SELECTOR_COMBOBOX
+        ).get_attribute("aria-expanded")
+        raise AssertionError(
+            f"close_versions_menu: the VERSION dropdown did not close after "
+            f"{attempts} Escape attempts — its trigger still reports "
+            f"aria-expanded={trigger_state!r} with {options.count()} "
+            f"option(s) still rendered. While it stays open MUI's invisible "
+            f"backdrop intercepts every pointer event on the page, so this "
+            f"is reported here rather than left to surface as an unrelated "
+            f"click timeout (issue #2077 / ELITEA-2063)."
+        )
 
     @action("Select a version by name from the VERSION dropdown")
     def select_version_by_name(
