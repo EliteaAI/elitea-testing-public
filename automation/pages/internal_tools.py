@@ -14,17 +14,34 @@ class ChatInternalTool(str, Enum):
     These tools appear in the Modules panel accessed via the plus menu
     → "Modules" in the chat input area.
 
-    Each value represents the exact display text in the UI.
+    Each value represents the exact display text in the UI, and the members are
+    declared in the order the panel renders them.
+
+    Titles are sourced from EliteaUI
+    ``src/[fsd]/shared/lib/constants/internalTools.constants.js``; several were
+    renamed by EliteaAI/EliteaUI@79fd2a55 ("[EL-6540] Standardize Module Order
+    and Descriptions", merged 2026-09-08).
     """
 
-    # Image generation from text prompts
-    IMAGE_CREATION = "Image creation"
+    # Image generation from text prompts.
+    # Gated per-project on the ImageGenServiceProvider_ImageGen toolkit — the
+    # only member here that can be absent while the other nine render.
+    IMAGE_CREATION = "Image Creation"
 
     # Data analysis and visualization
     DATA_ANALYSIS = "Data Analysis"
 
-    # Agents & Pipeline Builder (replaces Elitea MCP Tools)
-    AGENTS_PIPELINE_BUILDER = "Agents & Pipeline Builder"
+    # Agent & Pipeline Builder (replaces Elitea MCP Tools)
+    AGENT_PIPELINE_BUILDER = "Agent & Pipeline Builder"
+
+    # Builder for reusable skills
+    SKILL_BUILDER = "Skill Builder"
+
+    # Builder for the project-context knowledge base
+    PROJECT_CONTEXT_BUILDER = "Project Context Builder"
+
+    # Interactive user input request
+    ASK_USER = "Ask User"
 
     # Task planning and breakdown
     PLANNER = "Planner"
@@ -32,14 +49,11 @@ class ChatInternalTool(str, Enum):
     # Python code execution environment
     PYTHON_SANDBOX = "Python Sandbox"
 
-    # Interactive user input request
-    ASK_USER = "Ask User"
-
     # Multi-agent collaboration mode
     SWARM_MODE = "Swarm Mode"
 
     # Automatic tool selection based on context
-    SMART_TOOLS = "Smart Tool Selection"
+    SMART_TOOLS = "Smart Tools Selection"
 
 
 # Canonical list of all Chat internal tools (for validation)
