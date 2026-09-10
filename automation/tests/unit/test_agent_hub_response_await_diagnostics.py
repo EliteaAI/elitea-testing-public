@@ -17,7 +17,7 @@ Two defects sat one method apart in ``pages/agent_hub_page.py``:
 
 The repair generalised the #2078 helper to take the endpoint family as a
 parameter. These tests drive the real helper and the real method against a fake
-Page, and pin three things a future refactor could silently undo:
+Page, and pin five things a future refactor could silently undo:
 
 * the four existing ``/public_applications/`` call sites keep a byte-identical
   message (:func:`test_applications_diagnostic_message_is_unchanged`) — the pin
@@ -30,7 +30,26 @@ Page, and pin three things a future refactor could silently undo:
   every timeout and actively mislead;
 * a non-200 (or contract-breaking) categories response fails fast, quoting the
   real status and URL, instead of degrading into an empty category set — which
-  would re-report a backend fault as a filter-rail chip-set delta.
+  would re-report a backend fault as a filter-rail chip-set delta;
+* a **redirect hop does not win the wait** — a 30x fires a ``response`` event
+  carrying the REQUESTED url, so without the exclusion it would be reported as a
+  backend fault (reviewer round 1; the live path is the forward-auth re-fetch in
+  ``EliteaUI/src/api/eliteaApi.js``);
+* an exception from the **wrapped body** propagates untouched — the
+  ``body_completed`` flag, which is what stops the helper re-labelling a
+  navigation/click failure as a response timeout.
+
+⚠️ **What ``_FakePage`` does NOT model — do not read a green run here as coverage
+of these.** It runs the body to completion and *then* replays its traffic,
+taking the first predicate match. Real ``expect_response`` resolves on the first
+match **as it arrives, concurrently with the body**. So this fake cannot
+represent: true traffic ordering or timing; a redirect hop racing the retried
+200 *during* the body (the Critical above is only pinned here at the level of
+"a 3xx never satisfies the predicate" — the concurrent shape was verified live
+against ``dev.elitea.ai`` with a throwaway probe, not here); or the body raising
+while the wait is still pending. The listener registration/removal window IS
+exercised as written, because the fake dispatches from inside
+``expect_response``.
 """
 
 from contextlib import contextmanager
@@ -149,9 +168,14 @@ def test_categories_timeout_names_its_own_endpoint_family(no_navigation):
     assert "/public_applications/" not in message
 
 
-def test_categories_non_200_fails_fast_naming_status_and_url(no_navigation):
-    """A non-200 categories response resolves the wait (the predicate must NOT
-    filter on status) and raises immediately, quoting status and URL."""
+def test_categories_non_200_is_matched_and_named_with_status_and_url(no_navigation):
+    """A non-200 categories response SATISFIES the predicate (which must not filter
+    on status) and is reported as a verdict quoting status and URL.
+
+    Named for what is actually pinned: that the response was *matched* rather than
+    left to the timeout path. The latency win this buys (45.05s -> 7.37s, measured
+    on DEV) is not observable in a fake — only the route taken is.
+    """
     page = _FakePage([_FakeResponse(CATEGORIES_URL, status=404, status_text="Not Found", body={"error": "nope"})])
     hub = AgentHubPage(page)
 
@@ -161,7 +185,8 @@ def test_categories_non_200_fails_fast_naming_status_and_url(no_navigation):
     message = str(excinfo.value)
     assert "HTTP 404 Not Found" in message
     assert CATEGORIES_URL in message
-    # It must NOT arrive via the timeout path — that is the 45s blind wait #2169 removed.
+    # Route check, not a timing check: the verdict came from the predicate matching,
+    # not from the wait expiring (which is what a status-filtered predicate produces).
     assert "Timed out after" not in message
 
 
@@ -179,3 +204,60 @@ def test_categories_200_without_categories_list_is_named_not_degraded(no_navigat
         hub.navigate_and_capture_category_names(response_timeout=45000)
 
     assert "carries no 'categories' list" in str(excinfo.value)
+
+
+def test_redirect_hop_does_not_satisfy_the_categories_predicate(no_navigation):
+    """A 30x on the categories URL must NOT be taken as the answer.
+
+    ``page.on("response")`` and ``expect_response`` both fire for redirect hops, and
+    a 30x carries the REQUESTED url — so without the exclusion this would be reported
+    as ``HTTP 302 Found ... backend/app fault``. The live path is real: EliteaUI's
+    ``fetchBaseQuery.fetchFn`` handles ``response.redirected`` and, on a forward-auth
+    session-expiry redirect, opens an auth popup and re-fetches the original request.
+    The retried 200 is the answer; the 302 is transport.
+
+    Pinned here only as "a 3xx never satisfies the predicate" — with no 200 in the
+    traffic the wait must expire rather than return a verdict. The concurrent
+    redirect-then-200 shape is not representable in ``_FakePage`` (see module
+    docstring) and was verified live instead.
+    """
+    page = _FakePage([_FakeResponse(CATEGORIES_URL, status=302, status_text="Found")])
+    hub = AgentHubPage(page)
+
+    with pytest.raises(PlaywrightTimeoutError) as excinfo:
+        hub.navigate_and_capture_category_names(response_timeout=45000)
+
+    message = str(excinfo.value)
+    assert "302" not in message.split("observed meanwhile")[0], "the 3xx must not become the verdict"
+    # Nothing diagnostic is lost: the recorder has no status filter, so the hop is
+    # still visible in the observed-traffic list.
+    assert f"302 {CATEGORIES_URL}" in message
+
+
+def test_body_exception_propagates_untouched():
+    """An exception from the WRAPPED BODY must never be re-labelled as a response
+    timeout — that is what the helper's ``body_completed`` flag exists for, and it is
+    the one contract whose loss would make every navigation failure lie.
+
+    The load-bearing half is the SECOND case. A ``ValueError`` could never be
+    re-labelled anyway (the handler only catches ``PlaywrightTimeoutError``), so on
+    its own it pins nothing. The case that actually exercises the flag is a
+    ``PlaywrightTimeoutError`` raised BY the body — a navigation timeout — which
+    without the flag would be rewritten as "Timed out ... waiting for the Catalog
+    ... response", naming the wrong subsystem. Verified red-green: deleting the
+    ``if not body_completed: raise`` guard fails this test.
+    """
+    page = _FakePage([])  # no traffic: the wait itself would time out if reached
+    hub = AgentHubPage(page)
+
+    with pytest.raises(ValueError, match="navigation blew up"):
+        with hub._expect_applications_response(lambda _r: True, 45000, "bulk all-applications"):
+            raise ValueError("navigation blew up")
+    assert page.listeners == [], "the response listener must be removed in the finally block"
+
+    with pytest.raises(PlaywrightTimeoutError) as excinfo:
+        with hub._expect_applications_response(lambda _r: True, 45000, "bulk all-applications"):
+            raise PlaywrightTimeoutError("Page.goto: Timeout 15000ms exceeded")
+    assert str(excinfo.value) == "Page.goto: Timeout 15000ms exceeded"
+    assert "observed meanwhile" not in str(excinfo.value), "a body failure must not be re-labelled"
+    assert page.listeners == []

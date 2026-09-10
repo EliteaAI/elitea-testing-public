@@ -518,13 +518,34 @@ a cluster, so no family-AFS merge was performed here.
   observed meanwhile: [...]"* instead of Playwright's bare `Timeout Nms exceeded`, which named
   the wrong subsystem in #2074/#2076. (b) Its predicate no longer filters on `status == 200`
   (the sibling `/public_applications/` predicates never did): a failed fetch used to simply
-  never match, so the wait burned the full 45 s `CATALOG_RESPONSE_TIMEOUT` and then reported a
-  blind timeout about a request that had already come back. **Measured on `dev.elitea.ai` with
-  the fetch forced to 404: 45.05 s + "Timeout 45000ms exceeded" before, 7.37 s + "HTTP 404 Not
-  Found for <url>" after.** A non-200, a non-JSON body, or a 200 with no `categories` list now
-  raises immediately naming status + URL — never degrading into an empty category set, which
-  would re-report a backend fault as a filter-rail chip-set delta. Pinned by
-  `tests/unit/test_agent_hub_response_await_diagnostics.py`.
+  never match, so the wait burned the full 45 s `CATALOG_RESPONSE_TIMEOUT` before reporting
+  anything. **What (b) buys is LATENCY, not naming** — with (a)'s recorder in place a
+  status-filtered predicate would already have named the fault under *"observed meanwhile:
+  ['404 …']"*. Measured on `dev.elitea.ai` with the fetch forced to 404: **45.05 s + "Timeout
+  45000ms exceeded" before, 7.37 s + "HTTP 404 Not Found for <url>" after.** A non-200, a
+  non-JSON body, or a 200 with no `categories` list now raises immediately naming status + URL
+  — never degrading into an empty category set, which would re-report a backend fault as a
+  filter-rail chip-set delta.
+- ⚠️ **An unfiltered response predicate matches REDIRECT HOPS — exclude them explicitly**
+  (#2169 reviewer round 1). `page.on("response")` and `expect_response` both fire for a 30x,
+  and the 30x carries the **requested** URL, so `not (300 <= response.status < 400)` is
+  load-bearing here rather than defensive: `EliteaUI/src/api/eliteaApi.js`'s
+  `fetchBaseQuery.fetchFn` handles `if (response.redirected)` and, on a forward-auth
+  session-expiry redirect, opens an auth popup and **re-fetches the original request** — the
+  retried 200 is the answer, the 302 is transport. Verified live on DEV with a 302 forced on
+  the categories URL: **before, the hop won the wait and reported `HTTP 302 Found … backend/app
+  fault`** (the exact wrong-subsystem harm this card exists to remove); after, it is skipped and
+  the real 200 (9 categories) is used. Nothing diagnostic is lost — the recorder has no status
+  filter, so the hop still shows under "observed meanwhile".
+- ❌ **NOT a shape on this endpoint: #1971** (project-id-less request during a project
+  transition). `useAgentHubData.hooks.js:43` calls
+  `useGetAgentCategoriesQuery({ projectId: PUBLIC_PROJECT_ID })` with a **constant**, so that
+  race cannot fire here — don't cite it in this endpoint's failure modes (an earlier draft of
+  this note and of the code comment did).
+- Pinned by `tests/unit/test_agent_hub_response_await_diagnostics.py` (6 tests). Read its
+  docstring before trusting it: its `_FakePage` replays traffic **after** the body instead of
+  concurrently, so traffic ordering, a redirect racing its retry, and a body raising mid-wait
+  are **not** covered there — those were verified live.
 
 ## Catalog testid provenance — the closure grep LIES about the chip prefixes (2026-09-09)
 

@@ -666,7 +666,9 @@ class AgentHubPage(BasePage):
         that never lands times out with the ``agent_categories`` traffic actually
         observed (:meth:`_expect_endpoint_response`), and a fetch that lands
         non-200 -- or without a ``categories`` list -- raises immediately, quoting
-        the real status and URL.
+        the real status and URL. Redirect hops are NOT terminal responses and are
+        excluded from the predicate; see its comment for the live re-auth path that
+        makes that load-bearing.
 
         Args:
             timeout: Budget for :meth:`wait_for_page_load`'s element wait -- the
@@ -685,15 +687,39 @@ class AgentHubPage(BasePage):
         """
 
         def _is_categories_response(response):
-            # Deliberately NOT filtered on status (FIX card #2169), matching the
-            # sibling /public_applications/ predicates. A status filter makes a FAILED
-            # categories fetch simply never match, so the wait burns its full 45s
-            # budget and then reports a blind timeout about a request that had already
-            # come back -- naming the wrong subsystem, the #2074/#2076 anti-pattern.
-            # Both non-200 shapes are documented live on this app: #1971 (project-id-
-            # less request during a project transition) and #2074 (gateway 5xx on DEV).
-            # Match whatever comes back; judge it below.
-            return self.AGENT_CATEGORIES_URL_FRAGMENT in response.url and response.request.method == "GET"
+            # Matches a TERMINAL response for this endpoint -- any status except a
+            # redirect hop (FIX card #2169, reviewer round 1).
+            #
+            # Why no `status == 200` filter: with one, a failed fetch simply never
+            # matches, so the wait burns its full 45s budget before reporting anything.
+            # What that buys is LATENCY, not naming -- measured on dev.elitea.ai with
+            # the fetch forced to 404, 45.05s -> 7.37s. (Naming was already fixed by
+            # routing this await through _expect_endpoint_response, whose recorder has
+            # no status filter and would list the 404 under "observed meanwhile"; the
+            # message below is simply a direct verdict instead of a timeout plus a
+            # list.) The live shape this protects against is #2074, a full-page
+            # gateway 5xx on DEV.
+            #
+            # Why 3xx IS excluded: `page.on("response")` and `expect_response` both
+            # fire for redirect hops, and a 30x carries the REQUESTED url -- so a
+            # redirect on this endpoint would satisfy the fragment+method test and be
+            # reported as a backend fault. That is not hypothetical here:
+            # EliteaUI/src/api/eliteaApi.js's `fetchBaseQuery.fetchFn` handles
+            # `if (response.redirected)` and, on a forward-auth session-expiry
+            # redirect, opens an auth popup and RE-FETCHES the original request
+            # (`const retryResponse = await fetch(retryRequest || input, init)`). The
+            # retried 200 is the real answer; the 302 is transport, not a verdict.
+            # Nothing diagnostic is lost -- the recorder logs the 3xx regardless.
+            #
+            # NOT a shape on this endpoint: #1971 (project-id-less request during a
+            # project transition). `useAgentHubData.hooks.js:43` calls
+            # `useGetAgentCategoriesQuery({ projectId: PUBLIC_PROJECT_ID })` with a
+            # CONSTANT, so that race cannot fire here.
+            return (
+                self.AGENT_CATEGORIES_URL_FRAGMENT in response.url
+                and response.request.method == "GET"
+                and not (300 <= response.status < 400)
+            )
 
         with self._expect_endpoint_response(
             _is_categories_response,
@@ -715,15 +741,24 @@ class AgentHubPage(BasePage):
                 f"The Catalog's agent-categories fetch returned HTTP {response.status} "
                 f"{response.status_text} for {response.url}. The filter rail's expected chip set "
                 "cannot be derived from a failed response -- this is a backend/app fault, NOT a "
-                "chip-set drift. Known shapes: #1971 (project-id-less request during a project "
-                "transition), #2074 (full-page gateway 5xx on DEV)."
+                "chip-set drift. Known shape: #2074 (full-page gateway 5xx on DEV). Redirect "
+                "hops are excluded by the predicate, so this IS a terminal response."
             )
         try:
             body = response.json()
         except Exception as err:
+            # `text()` is itself a body read, so it fails the same way when the body is
+            # UNAVAILABLE (aborted request, navigation-cancelled response) rather than
+            # merely malformed. Letting it raise from inside this handler would replace
+            # the one message whose whole job is naming things with a raw chained
+            # traceback, so the preview degrades instead of throwing.
+            try:
+                preview = repr(response.text()[:200])
+            except Exception:  # noqa: BLE001 - diagnostics must not out-fail the diagnosis
+                preview = "<body unavailable>"
             raise AssertionError(
                 f"The Catalog's agent-categories fetch returned HTTP {response.status} for "
-                f"{response.url} but a body that is not JSON: {response.text()[:200]!r}"
+                f"{response.url} but a body that is not JSON: {preview}"
             ) from err
         if not isinstance(body, dict) or not isinstance(body.get("categories"), list):
             got = sorted(body) if isinstance(body, dict) else type(body).__name__
