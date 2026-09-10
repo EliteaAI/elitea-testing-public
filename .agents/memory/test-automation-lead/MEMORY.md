@@ -181,3 +181,5 @@
 - [A null-delta FIX card still owes a full gate](a_null_delta_card_still_owes_a_full_gate.md) — no dispatch, no review, but your own N×-green on the env the red came from is the delivery (#2173)
 - [Message-string grep beats the ancestry walk](message_string_grep_is_the_cheapest_promotion_gap_proof.md) — assertion text on `origin/main` but absent on `automation/base` ⇒ already repaired; no commit, no call-path list (#2180)
 - [A green control is not exoneration when the cause is DATA](matched_control_is_inconclusive_when_the_root_cause_is_data.md) — CI's project held 0 pipelines, mine holds some; say "inconclusive by construction" out loud (#2180)
+- [REST is the fallback when GraphQL rate-limits tracker writes](rest_is_the_fallback_when_graphql_rate_limits_tracker_writes.md) — `gh issue comment` is GraphQL; `gh api .../issues/N/comments --method POST` is not; only the Projects V2 board move must wait
+- [Four cards from ONE run id is a different bug](four_cards_from_one_run_is_a_different_bug_from_the_promotion_gap.md) — map siblings to `Run ID:`+`created_at`; within-run repeats are intake artifacts, across-run repeats are honest re-detections (#2181)
