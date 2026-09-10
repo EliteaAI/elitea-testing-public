@@ -75,9 +75,17 @@ None required — this case only reads/filters the existing agent list; it does 
 
 | Element | Recommended Locator | Fallback | Provenance (verified 2026-08-06, fresh `git fetch origin`) |
 |---|---|---|---|
-| Catalog page heading | `AgentHubPage.page_heading` (`catalog-page-heading`) | none | **on-automation/testids only** — NOT on `origin/main` (see § Metadata provenance-correction note; `EliteaCatalog.jsx` on `main` has no `data-testid` on this `Typography` at all) |
-| Catalog search input | `AgentHubPage.search_input` (`catalog-search-input`) | none | **on-automation/testids only** — NOT on `origin/main` (`git show origin/main:'src/[fsd]/pages/elitea-catalog/EliteaCatalog.jsx'` confirms the `TextField` there has no `inputProps`/`data-testid` at all) |
-| Agent card (by name) | `AgentHubPage.get_agent_card(name)` (`AGENT_CARD_PREFIX`, `catalog-agent-card-{id}`) | none | **on-automation/testids only** — NOT on `origin/main` (`git grep -- "catalog-agent-card-" origin/main -- src/` returns zero hits; present on `origin/automation/testids` in `AgentCard.jsx:41`) |
+| Catalog page heading | `AgentHubPage.page_heading` (`catalog-page-heading`) | none | **on-main ✓** (re-verified 2026-09-10, fresh `git fetch origin`) |
+| Catalog search input | `AgentHubPage.search_input` (`catalog-search-input`) | none | **on-main ✓** (re-verified 2026-09-10, fresh `git fetch origin`) |
+| Agent card (by id) | `AgentHubPage.AGENT_CARD_PREFIX` (`catalog-agent-card-{id}`) | none | **on-main ✓** (re-verified 2026-09-10, fresh `git fetch origin`) |
+| No-results title | `catalog-no-results-title` (in `SEARCH_RESULTS_SETTLED`) | none | **on-main ✓** (re-verified 2026-09-10, fresh `git fetch origin`) |
+
+> ⚠️ **The three "on-automation/testids only" rows above were CORRECTED on 2026-09-10.** The
+> 2026-08-06 analysis recorded all three as absent from `origin/main`; a fresh fetch today shows
+> **all four present on `origin/main`** — the UI team promoted them in the interim. The stale rows
+> are the reason this file previously carried a provenance-correction note about ELITEA-2354; that
+> note is now itself stale and is superseded by this block. **This case is NOT a promotion gap
+> (triage class F ruled out).** Verification command + output are pasted in § Adjustment below.
 
 No testid needed for this case — every element it touches already carries one on `automation/testids` (which is what the local dev server under test runs), so the implementer needs no `add-data-testid` work. The three rows above are all pre-existing handles from ELITEA-2075/2350, re-used here, not new asks; the PROVENANCE column corrects the "on-main" claim inherited (incorrectly) from the ELITEA-2354 sibling AFS.
 
@@ -164,3 +172,219 @@ None — all 6 case steps were reached and observed live.
   - `wait_for_agent_card_count(expected_count, timeout)` / `wait_for_agent_card_count_not(unexpected_count, timeout)` — retrying `expect(locator).to_have_count(...)`/`.not_to_have_count(...)` assertions, used after `search()` (step 5, wait for the count to move away from the baseline before reading filtered names) and after `clear_search()` (step 6, wait for the count to return to exactly the baseline before reading restored names) — network-settling alone doesn't guarantee the React commit has landed by the time the DOM is read.
   - `wait_for_any_agent_card(timeout)` — used in **step 1** after `navigate_and_capture_applications()` (reused from ELITEA-2354, waits on the bulk response) and before reading the baseline names. The page heading is static and renders before the data-dependent card grid does, so a bare navigate-then-read races the same way. **Important, and NOT a wait for the DOM count to equal the bulk response's raw row count** — each category section (`AgentCategorySection.jsx`) only renders its first `INITIAL_CARD_DISPLAY_COUNT` items initially, with the rest behind "Show more"; the bulk response routinely lists far more rows (confirmed live: 46 rows) than are ever rendered in the grid at once (confirmed live: 23 cards). Waiting for "at least one card visible" is the correct render-completion signal here, not an exact count.
 - **Step 4's network-count assertion — filter-then-count-1 is NOT enough.** The correct assertion counts ALL requests captured to the search endpoint during the typing window FIRST (assert the total is exactly 1), THEN checks that one request's `query` param — not filtering to `query=="story"` and counting the survivors. Filter-then-count would still show exactly 1 survivor even if the debounce were broken and fired once per keystroke (5 requests for "story", 4 with partial queries filtered out, 1 with the final value) — a real regression that the filter-first shape cannot catch.
+
+---
+
+## Adjustment — 2026-09-10 (repair triage for CI run 34436416962 / card #2179)
+
+**Triage class: D — shared-mutable-data pollution.** NOT UI drift (A), NOT a product bug (B/C),
+NOT a promotion gap (F — all four testids re-verified on `origin/main` today), NOT missing-testid
+(E — no new testid is needed for this repair). Analyst: qa-engineer, ELITEA-2363, 2026-09-10.
+
+### The failure
+
+CI attempts 1 and 3 of run 34436416962 failed byte-identically at Step 6
+(`test_...py:141`, `assert restored_cards == baseline_cards`) with exactly two deltas in a
+27-element list:
+
+1. **Content** — `multi-skill-agent-2600-1f1c00TB0` → `...TB1`
+2. **Order** — `Quality Engineering Sidekick4` moved index 3 → 5, `Pytest: Quality Agent4` took index 3
+
+### Root cause — ONE event, not two
+
+Both deltas trace to a single cause: **a like landed on a catalog agent during the test window.**
+
+**Why the like count is in the string at all.** `get_visible_agent_card_names()` returns each card's
+whole `text_content()`. `AgentCard.jsx` renders, inside one `<Card>`: the name `Typography`, the
+`AuthorContainer` avatar (initials fallback), and `AgentHubLike` → `Like.jsx:70`
+`<Typography variant="bodySmall">{likes || 0}</Typography>`. So `text_content()` concatenates
+`name + authorInitials + likeCount` with no separator. Confirmed live this session (localhost,
+DEV backend):
+
+```
+whole: "Business Analyst9"   heading: "Business Analyst"   like: "9"
+whole: "Reflexion5"          heading: "Reflexion"          like: "5"
+```
+
+`...1f1c00TB0` is therefore `multi-skill-agent-2600-1f1c00` + author initials `TB` + like count `0`.
+The delta is the **like count going 0 → 1**. The helper's own docstring asserts this is
+*"harmless … since no like state changes during this case"* — **that premise is exactly what CI
+falsified**, and it is a premise this spec has no way to guarantee.
+
+**Why the order moved too.** The order is NOT unstable. Measured against the live DEV backend,
+6 identical requests each:
+
+| Query | Runs | Same ORDER? |
+|---|---|---|
+| bulk `…/public_applications/prompt_lib/?query=&statuses=published&agents_type=classic&limit=1000` (**no `sort_by`**) | 5 | **5/5 identical** |
+| Trending `…&trend_start_period=2000-01-01T00:00:00&sort_by=likes&sort_order=desc&limit=20` | 6 | **6/6 identical**, including inside every like-count tie group (ties observed at 4×2, 3×3, 2×4, 1×8) |
+
+`useAgentHubData.hooks.js` passes **no** `sort_by`/`sort_order` on the bulk fetch and the frontend
+never sorts (`bucketAppsByCategory` preserves `result.rows` order); **only `fetchTrendingApplications`
+sends `sort_by: 'likes', sort_order: 'desc'`**, and `CatalogBody.jsx` renders Trending first
+(`allCategories.slice(0, FEATURED_COUNT)`, Trending at index 0). So: **for a fixed dataset the order
+is fully deterministic; when a like count changes, the Trending section legitimately re-ranks.** In
+CI, `Pytest: Quality Agent` was at 4 likes and sorted ahead of `Quality Engineering Sidekick` (also
+4); today it sits at 3 and sorts below. Product behaving correctly.
+
+**Who does the liking — in this very suite.** `test_agent_hub_like_agent_list_view.py` Step 2 calls
+`find_zero_like_application()` and asserts the target *"should start with 0 likes"*, then likes it
+(**0 → 1** — precisely the observed `TB0` → `TB1`). Its cleanup-unlike is **soft-asserted**
+(`like_count_restored` → `soft_failures`), so restoration is explicitly not guaranteed.
+`test_agent_hub_like_agent_from_modal.py` and `test_agent_hub_unlike_agent_list_view.py` mutate the
+same shared counter. This is the `#1082` shared-mutable-state family — but note the important
+difference: **ELITEA-2363 is a read-only case and should be immune.** It is vulnerable only because
+it baked a volatile counter into its identity string. The fix therefore belongs in **this spec**, not
+in suite health.
+
+### Reproduction
+
+**Not reproducible on demand — intermittent by construction** (it needs a like to land inside the
+~15 s window). Local, `http://localhost:5173`, DEV backend, clean process each time:
+
+```
+run 1: 1 passed in 16.11s   reruns.json {}
+run 2: 1 passed in 14.57s   reruns.json {}
+run 3: 1 passed in 15.01s   reruns.json {}
+run 4: 1 passed in 13.47s   reruns.json {}
+```
+
+4/4 green with no reruns. A green local run does **not** refute the CI red here — it only confirms
+no sibling spec liked anything during those four windows. The CI failure is fully explained above
+and reproduced *by mechanism* (the like-count-in-text artifact is demonstrated live), which is the
+correct standard for this class.
+
+### The honest observable — measured against the TMS case, not convenience
+
+TMS ELITEA-2363 Step 6 reads: *"Clear the search field and verify all agents return to the list"* →
+*"Action completes without error and produces the expected UI state."* The Expected Final State is
+*"Clear the search field and verify all agents return to the list."*
+
+**"All agents return to the list" is a statement about membership.** The case never mentions like
+counts, author initials, or ordering. This AFS's own § Automation Hints already specified
+*"comparing the restored card-name **set** (or count) back to the step-1 baseline **set**/count"* —
+the shipped implementation used ordered list equality on contaminated strings, which is **stricter
+than both the case and this AFS**, and strict in precisely the two dimensions the product is free to
+vary.
+
+| Delta the current assertion catches | Part of what ELITEA-2363 verifies? | Disposition |
+|---|---|---|
+| An agent missing from the restored list | **YES** — this IS the case | **KEEP — must still fail** |
+| An extra agent in the restored list | **YES** | **KEEP — must still fail** |
+| A card's like count changed | **NO** — never mentioned; volatile shared data | **REMOVE** — never was the observable |
+| A card's author initials changed | **NO** | **REMOVE** — never was the observable |
+| Trending re-ranked after a like | **NO** — no ordering requirement in the case | **DROP — see sign-off below** |
+
+### Required changes (implementer work order)
+
+**1. Identity must be the card ID, not the card's rendered text.** Add to `AgentHubPage`:
+
+```python
+def get_visible_agent_card_ids(self) -> list[str]:
+    """Return the application id of every currently-rendered agent card,
+    read from the card's own `catalog-agent-card-{id}` testid (ELITEA-2363
+    repair, #2179).
+
+    Identity for the search/clear round-trip MUST come from this method, never
+    from card text: `AgentCard.jsx` renders the name, the author-initials
+    avatar and `AgentHubLike`'s live like count inside one `<Card>`, so
+    `text_content()` yields `name + initials + likeCount`. Sibling specs in
+    this same suite (test_agent_hub_like_agent_list_view.py et al.) mutate
+    that like count by design, which took this case RED in CI run
+    34436416962.
+    """
+```
+
+Read `data-testid` off `self.page.locator(self.AGENT_CARD_PREFIX)` and strip the
+`catalog-agent-card-` prefix. **No new testid is required** — `catalog-agent-card-{id}` already
+exists and is on `main`.
+
+**2. Compare as a SORTED LIST (multiset), never a `set`.** Measured live today: the grid renders
+**27 cards but only 24 unique ids** — three agents appear twice, once in Trending and once in their
+own category section (`dupes: ["31", "16", "127"]`). A `set()` would silently collapse 27 → 24 and
+stop detecting a genuinely dropped duplicate. Step 6 becomes:
+
+```python
+restored_ids = agent_hub.get_visible_agent_card_ids()
+assert sorted(restored_ids) == sorted(baseline_ids), (
+    "Every agent present before searching should be present again after clearing "
+    f"(baseline {len(baseline_ids)} cards, restored {len(restored_ids)})"
+)
+```
+
+Membership **and** multiplicity preserved; only position dropped.
+
+**3. Step 6's terminal wait must key on identity, not on a count.** `wait_for_agent_card_count(
+len(baseline_cards))` is *currently* terminal — the restore is monotonic, measured live at
+**6 → 12 → 27** over ~3.2 s (three discrete commits, matching the three parallel fetches) — so it is
+**not** vacuous today, unlike the `clear_search()` settle retired by #2168. But it is not terminal
+*by construction*: it keys on a number that shared mutable data can invalidate. If an agent is
+published or unpublished mid-run the true target is 28, and `to_have_count(27)` either never resolves
+(10 s timeout) or resolves **transiently while passing through 27**, handing the next line a
+half-restored grid. Replace with an auto-retrying assertion on the identity multiset itself
+(poll `get_visible_agent_card_ids()` until `sorted(...) == sorted(baseline_ids)` or timeout, then
+assert once), so the wait and the assertion are the same condition and the read is terminal by
+definition. **Do not change `wait_for_agent_card_count`'s own semantics** — two other specs use it
+(`test_catalog_default_agents_tab.py:81`,
+`test_agent_hub_my_liked_filter_shows_only_liked_agents.py:178`).
+
+**4. Rename `get_visible_agent_card_names()` → `get_visible_agent_card_texts()` and fix its
+docstring.** The current name is a lie (it returns name+initials+likes) and the docstring states the
+false premise that took this case red. It is used **only by this spec** (grep confirmed), so the
+rename is safe. Keep it for Step 5's substring check only, and have the docstring say explicitly:
+*never use this for identity comparison — use `get_visible_agent_card_ids()`.*
+
+**5. Step 1 captures `baseline_ids` alongside (or instead of) the text baseline.**
+
+### What must NOT change
+
+- **Step 4's network assertion** — count ALL requests to the endpoint first, *then* check the single
+  survivor's `query` param. The filter-then-count-1 shape cannot catch a broken debounce (§ line 166).
+- **Step 5** — `len(filtered) < len(baseline)`, every visible card contains `"story"`
+  case-insensitively, and `"User Story Creator"` is present. All three stay exactly as they are.
+- **Step 7** — the zero-console-errors assertion. Confirmed clean again live today (0 errors).
+- **Step 6 still compares the FULL restored set to the FULL baseline.** Membership and multiplicity
+  are preserved. Do **not** substitute a bare count check, a `len()` comparison, a subset check, or
+  "not empty".
+- No `pytest.skip`, no `expect.soft`, no `test.fail()`, no weakened assert. There is no product
+  defect here to mask.
+
+### ⚠️ Requires explicit human sign-off (preserve-the-nature rail)
+
+**Dropping the positional/ordering claim from Step 6** is a comparison change
+(`restored == baseline` → `sorted(restored) == sorted(baseline)`), which
+`.agents/role-overrides.md` § Step 3 puts in the "requires explicit human sign-off" column.
+
+The argument for it: the TMS case specifies membership only; the AFS's own Automation Hints already
+said "set"; order is a deterministic function of live like counts (proved 5/5 and 6/6 above), so an
+ordering assertion here cannot distinguish "the product scrambled the order" from "somebody liked an
+agent" — it produces false reds with **zero** diagnostic value. No other assertion in this case
+covers ordering, and no coverage of a specified behaviour is lost.
+
+The counter-argument, stated fairly: this is still strictly less than the test asserted yesterday.
+**The implementer must carry this verbatim under "Expected-result changes" in the PR body and must
+not merge without a human accepting it.** Removing the like-count and author-initials contamination
+(changes 1/2/4) is *not* in this category — those were never part of the case's observable and need
+no sign-off.
+
+### Residual risk — bounded, stated, not engineered around
+
+The Trending section renders its first `INITIAL_CARD_DISPLAY_COUNT` cards (6 observed) out of a
+`limit=20` likes-desc window. A like landing on an agent **near that boundary** could push it into or
+out of the rendered set, genuinely changing membership and failing even the id-multiset comparison.
+
+Today that is not reachable by the known polluter: `find_zero_like_application()` targets a **0-like**
+agent and takes it to 1, while the Trending cut-off currently sits at 3–4 likes. If this ever does
+fire, the correct response is to route it as a `question` (scope Step 6 to the non-Trending sections,
+or freeze the identity source) — **never** to weaken the comparison further.
+
+### Findings
+
+- **No `bug` card.** Ordering is deterministic for fixed data and re-ranks correctly when likes
+  change; the product is behaving as coded. No product defect was observed. Zero console errors.
+- **One `question` card is owed** (suite health, not a blocker for this repair): sibling agent_hub
+  specs mutate a shared, cross-session like counter with **soft-asserted** cleanup, so any spec that
+  reads like-sensitive state is exposed. Related to the `#1082` / rotating-test-identity pointer in
+  `.agents/testing.md` § Suite-health pointer. ⚠️ **Dedup not completed** — `gh issue list` returned
+  `API rate limit already exceeded` this session, so the lead/implementer must run the § Bug filing
+  dedup pass before filing.

@@ -133,7 +133,25 @@ slot), ELITEA-2364, 2026-08-10.
   had to be called again post-reload before re-reading the section. Any test
   that reloads mid-flow while relying on a category filter must re-select it.
 
-## ⚠️ PROVENANCE CORRECTION (2026-08-06, ELITEA-2363) — prior "on-main ✓" claims for this surface's core testids are WRONG as of today
+## ✅ RESOLVED (2026-09-10) — this surface's core testids ARE on `main` now (was: 2026-08-06 provenance correction)
+
+**Re-verified 2026-09-10 (ELITEA-2363 repair, card #2179), fresh `git fetch origin`:**
+
+```
+catalog-page-heading           main:YES   testids:YES
+catalog-search-input           main:YES   testids:YES
+catalog-agent-card-            main:YES   testids:YES
+catalog-no-results-title       main:YES   testids:YES
+catalog-agent-card-name        main:no    testids:no    (does not exist anywhere)
+```
+
+The 2026-08-06 finding below was TRUE when written; the UI team promoted these to `main` in the
+interim. **The standing instruction still holds — re-verify with a fresh fetch before citing any
+testid as "on-main"** — but the specific claim "these three are NOT on main" is now FALSE and must
+not be propagated. Original entry kept for history:
+
+### (historical, 2026-08-06) prior "on-main ✓" claims were wrong at that time
+
 
 A fresh `git fetch origin` + `git grep` against `origin/main` (this session) shows
 **`catalog-page-heading`, `catalog-search-input`, and `catalog-agent-card-{id}` do
@@ -630,3 +648,72 @@ adds **only** inside `if (process.env.NODE_ENV !== "production")`
 (production), so the middleware is absent from the store on every deployed env. Same class as
 `#611`/ELITEA-1892 (`.agents/testing.md` § Merge gate). **Gate this spec on DEV expecting GREEN;
 on localhost expecting the single #1215 signature.** #1215 stays OPEN on its localhost evidence.
+
+
+## Agent-card `text_content()` is `name + authorInitials + likeCount` — NEVER use it as identity (2026-09-10, ELITEA-2363 / card #2179)
+
+`AgentCard.jsx` renders three things inside one `<Card data-testid="catalog-agent-card-{id}">`: the
+name `Typography` (**no testid of its own**), the `AuthorContainer` avatar (initials fallback), and
+`AgentHubLike` → `Like.jsx:70` `<Typography variant="bodySmall">{likes || 0}</Typography>`. So the
+card's `text_content()` concatenates all three with no separator. Confirmed live:
+
+```
+whole: "Business Analyst9"   heading: "Business Analyst"   like: "9"
+whole: "Reflexion5"          heading: "Reflexion"          like: "5"
+```
+
+This took ELITEA-2363 RED in CI run 34436416962 (`...1f1c00TB0` → `...TB1` — a like count going
+0→1, read as a changed agent "name"). **Identity comes from the card's own `catalog-agent-card-{id}`
+testid, never from its text.** Note the name `Typography` has no testid — if a case genuinely needs
+the rendered name in isolation, that is `add-data-testid` work, not a text-parse.
+
+⚠️ **27 rendered cards, 24 unique ids — three agents render TWICE** (once in Trending, once in their
+own category section; observed dupe ids `31`, `16`, `127`). So compare card identity as a **sorted
+list / multiset, never a `set()`** — a `set()` silently collapses 27 → 24 and stops detecting a
+genuinely dropped duplicate.
+
+## Catalog ordering IS deterministic — only Trending is likes-sorted (2026-09-10, ELITEA-2363)
+
+Measured against the live DEV backend, identical requests back-to-back:
+
+| Query | Runs | Same ORDER? |
+|---|---|---|
+| bulk `?query=&statuses=published&agents_type=classic&limit=1000` (**no `sort_by`**) | 5 | **5/5 identical** |
+| Trending `…&trend_start_period=2000-01-01T00:00:00&sort_by=likes&sort_order=desc&limit=20` | 6 | **6/6 identical**, including inside every tie group |
+
+`useAgentHubData.hooks.js` sends **no** `sort_by` on the bulk fetch and the frontend never sorts
+(`bucketAppsByCategory` preserves `result.rows` order); **only `fetchTrendingApplications` sorts**,
+and `CatalogBody.jsx` renders Trending first (`allCategories.slice(0, FEATURED_COUNT)`, Trending at
+index 0). ⇒ **for fixed data the grid order is stable; a like landing anywhere legitimately re-ranks
+the Trending section.** Do not file an "unstable ordering" bug — verify the like counts first.
+
+Corollary: Trending renders its first `INITIAL_CARD_DISPLAY_COUNT` (6 observed) of a `limit=20`
+likes-desc window, so a like near that boundary can change the *rendered set*, not just its order.
+Cut-off currently sits at 3–4 likes.
+
+## Catalog restore-after-clear commits in 3 discrete steps (2026-09-10, ELITEA-2363)
+
+Sampling the card count every 50 ms after clearing a `"story"` filter (baseline 27, filtered 6):
+
+```
+t=0ms     6 cards
+t=1937ms  12 cards
+t=3179ms  27 cards   (final)
+```
+
+Monotonic, three commits (the three parallel fetches: bulk / Trending / My-Liked). So a
+`to_have_count(baseline)` wait is **terminal today** — it is NOT the vacuous-settle class #2168
+retired on `clear_search()`. But it keys on a number shared mutable data can invalidate: if an agent
+is published/unpublished mid-run the true target shifts and the wait either times out or resolves
+transiently *while passing through* the old count. Prefer polling the identity multiset itself, so
+the wait and the assertion are the same condition.
+
+## Sibling agent_hub specs mutate the shared like counter, with SOFT-ASSERTED cleanup (2026-09-10)
+
+`test_agent_hub_like_agent_list_view.py` Step 2 calls `find_zero_like_application()`, asserts the
+target *"should start with 0 likes"*, then likes it (**0 → 1**). Its cleanup-unlike failure is routed
+to `soft_failures`, i.e. **restoration is explicitly not guaranteed**.
+`test_agent_hub_like_agent_from_modal.py` and `test_agent_hub_unlike_agent_list_view.py` mutate the
+same counter. Any spec on this surface that reads like-sensitive state (a count, a card's text, a
+Trending position) is exposed — `#1082` family, see `.agents/testing.md` § Suite-health pointer.
+Read-only specs should key on ids, which are immune.
