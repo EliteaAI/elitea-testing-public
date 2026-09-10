@@ -23,8 +23,28 @@ pytest-native `soft_failures`/`pytest.fail()` mechanism (same idiom as
 `test_secret_create_inline_checkmark_x_cancel.py`'s #1203 handling — a raw
 console-message list isn't `expect.soft()`-bindable) so this stays a
 tracked, visible RED until the fix ships, without masking a genuinely new
-console error (still hard-fails). Sanctioned-RED per `.agents/testing.md`
-§ Merge gate.
+console error (still hard-fails).
+
+#1215 IS ENVIRONMENT-SCOPED — this spec is sanctioned-RED on
+`localhost:5173` (vite DEV server) and GREEN on any deployed env
+(`dev.elitea.ai`), and BOTH are correct. Verified in source, not inferred:
+the message comes from Redux Toolkit's
+`createSerializableStateInvariantMiddleware`, which
+`buildGetDefaultMiddleware` adds ONLY inside
+`if (process.env.NODE_ENV !== "production")`
+(`@reduxjs/toolkit@^2.6.1`, `redux-toolkit.legacy-esm.js:467-480`), and
+EliteaUI ships `"build": "vite build"` (mode=production) — so the
+middleware is absent from the store on every deployed env and #1215
+physically cannot fire there. A DEV gate on this spec is therefore a
+legitimate green, NOT `blocked-on-#1215`; a localhost gate expects the
+single #1215 signature with every functional assertion passing. Same
+precedent as ELITEA-1892 / #2082 (`.agents/testing.md` § Merge gate,
+"A sanctioned-RED signature can be ENVIRONMENT-SCOPED"). Nothing is
+weakened by this scoping: the #1215 handling is an absence-tolerant
+RECORDER (zero matching messages append nothing to `soft_failures`), and
+the unexpected-console-error hard assert is untouched, so a genuinely new
+error still fails on either environment. #1215 stays OPEN on its own
+localhost evidence.
 
 Testid gaps filled this implementation (`add-data-testid`, pushed to
 `automation/testids`, EliteaAI/EliteaUI@e079c0d0): `catalog-agent-like-
@@ -43,7 +63,7 @@ import logging
 import allure
 import pytest
 from pages.agent_hub_page import AgentHubPage
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 logger = logging.getLogger("elitea.tests.agents")
 
@@ -196,9 +216,15 @@ class TestAgentHubLikeAgentListView:
                 # is not guaranteed to be among them, so re-locate via search
                 # (confirmed live during analysis — AFS § Test Steps, step 6).
                 agent_hub.search(agent_name, timeout=UI_ELEMENT_TIMEOUT)
-                assert agent_hub.get_agent_card(agent_name).first.is_visible(), (
-                    f"Agent card {agent_name!r} should be visible via search after refresh"
-                )
+                # Retrying web-first assertion, not a one-shot `.is_visible()`
+                # (FIX card #2166): `Locator.is_visible(timeout=)` is deprecated
+                # and the argument is IGNORED by Playwright, so the one-shot form
+                # never retried. Asserts exactly the same thing — the searched-for
+                # card is visible — only with a retry budget.
+                expect(
+                    agent_hub.get_agent_card(agent_name).first,
+                    f"Agent card {agent_name!r} should be visible via search after refresh",
+                ).to_be_visible(timeout=UI_ELEMENT_TIMEOUT)
                 agent_hub.wait_for_like_count(application_id, 1, timeout=UI_ELEMENT_TIMEOUT)
                 assert agent_hub.is_agent_liked(application_id, timeout=UI_ELEMENT_TIMEOUT), (
                     f"Agent {agent_name!r} (id={application_id}) should still show data-liked='true' after refresh"
