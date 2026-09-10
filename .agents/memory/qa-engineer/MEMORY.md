@@ -82,3 +82,4 @@
 - [Testid value diverges while name matches](testid_value_can_diverge_while_name_matches.md) — name-based provenance greps lie; diff the value expression
 - [Breadcrumb replaced back-arrow on detail routes](breadcrumb_replaced_back_button_on_detail_routes.md) — back-button never mounts since EL-6460; use breadcrumb-item
 - [Union-over-terminal-renders settle](a_union_over_terminal_renders_is_a_sound_settle.md) — verify the loading branch has no testid
+- [Reviewing a removed wait](reviewing_a_removed_wait_ask_if_the_callers_read_retries.md) — judge the caller retrying read + terminality, not the missing wait
