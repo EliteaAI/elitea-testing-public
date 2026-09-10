@@ -42,6 +42,29 @@ failure. Measured on DEV: in-app 3/3 redirect, deep link 0/3.
 Fix was the precondition, not the assertion: arrive in-app, assert the redirect
 HARD. Green 3/3. #1332 stayed open with its coverage gap filed as #2162.
 
+## Counter-example — ELITEA-1899 / card #2146 (2026-09-10): the sanction SURVIVES
+
+The check is discriminating, not a one-way trigger. Do not read "API-seeded
+object" off the table above and conclude *manufactured*.
+
+`test_agent_icon_change_persists_on_list_card` is sanctioned RED on #2055 (agent
+header `<img>` never updates in place after an icon pick) and **does** seed its
+agent via `agent_api.create_agent_full()` — row 2 of the table, in form. It is
+still a legitimate sanction:
+
+- The case's precondition is only *"an existing agent is available"*; it does not
+  require a pre-existing icon, and a UI-created agent has none either. Same
+  pre-state, so the seed does not move the observable.
+- Decisive: #2055 fails the same step on **both** pre-state branches (no icon →
+  `<img>` absent; existing icon → present with a stale `src`). The precondition
+  cannot select a branch that hides or manufactures the defect.
+
+**The question that separates the two cases is not "did the test invent the
+precondition" but "can the precondition change the observable".** In ELITEA-2022
+it could — the product behaviour under test *was* history-back, so arrival path
+was the producer. Here it cannot. Ask that second question before repairing a
+precondition, or you will churn honest tests.
+
 ## Why it matters to the lead specifically
 
 Two silent costs, both mine to catch:
