@@ -45,8 +45,16 @@ class ToolkitConfig:
     settings_fn: str                   # factory function name for toolkit settings dict
 
     # UI form fields (for UI creation test)
-    ui_card_text: str                  # Text to click on the toolkit card
-    ui_form_fields: dict               # field_label -> value mapping for UI form fill
+    ui_card_text: str                  # Card's display text — the TYPE-PICKER SEARCH term
+    # SCHEMA KEY -> value for the UI creation form's type-specific fields.
+    # Keyed by the backend schema property key (the key the form's
+    # `toolkit-field-{key}-input` testid is built from), NOT by the field's
+    # visible UI label — re-keyed for #2123/ELITEA-1141, which routed the
+    # creation test off a raw accessible-name textbox handle (which silently
+    # skipped any field it could not see) onto
+    # `ToolkitCreationPage.fill_field(key, value)`. Keys captured live
+    # 2026-09-10 off the rendered forms, not inferred.
+    ui_form_fields: dict
 
     # Test Settings panel
     test_tool_name: str                # tool to select in Test Settings, e.g. "List branches"
@@ -86,8 +94,10 @@ TOOLKIT_CONFIGS = {
         ),
         settings_fn="github_toolkit_settings",
         ui_card_text="GitHub",
+        # `repository` is REQUIRED; `active_branch`/`base_branch` render
+        # pre-filled with "main" and are deliberately left alone.
         ui_form_fields={
-            "Repository": "EliteaAI/elitea-testing",
+            "repository": "EliteaAI/elitea-testing",
         },
         test_tool_name="List branches",
         test_tool_result_indicator="list_branches_in_repo",
@@ -114,6 +124,8 @@ TOOLKIT_CONFIGS = {
         ),
         settings_fn="jira_toolkit_settings",
         ui_card_text="Jira",
+        # The Jira creation form renders no schema-driven text field at all
+        # (confirmed live 2026-09-10: zero `toolkit-field-*` testids).
         ui_form_fields={},
         test_tool_name="List projects",
         test_tool_result_indicator="list_projects",
@@ -139,7 +151,7 @@ TOOLKIT_CONFIGS = {
         settings_fn="gitlab_toolkit_settings",
         ui_card_text="GitLab",
         ui_form_fields={
-            "Repository": settings.gitlab_repository or "REPO_DEFAULT",
+            "repository": settings.gitlab_repository or "REPO_DEFAULT",
         },
         test_tool_name="List branches",
         test_tool_result_indicator="list_branches_in_repo",
@@ -169,8 +181,8 @@ TOOLKIT_CONFIGS = {
         settings_fn="bitbucket_toolkit_settings",
         ui_card_text="Bitbucket",
         ui_form_fields={
-            "Project": settings.bitbucket_project or "PROJECT_DEFAULT",
-            "Repository": settings.bitbucket_repository or "REPO_DEFAULT",
+            "project": settings.bitbucket_project or "PROJECT_DEFAULT",
+            "repository": settings.bitbucket_repository or "REPO_DEFAULT",
         },
         test_tool_name="List branches",
         test_tool_result_indicator="list_branches_in_repo",
@@ -205,8 +217,11 @@ TOOLKIT_CONFIGS = {
         ),
         settings_fn="confluence_toolkit_settings",
         ui_card_text="Confluence",
+        # `space_key` is REQUIRED. The remaining rendered fields (`limit`,
+        # `labels`, `max_pages`, `number_of_retries`, `min_retry_seconds`,
+        # `max_retry_seconds`) come pre-filled and are left alone.
         ui_form_fields={
-            "Space": settings.confluence_space,
+            "space_key": settings.confluence_space,
         },
         test_tool_name="List pages",
         test_tool_result_indicator="list_pages_with_label",

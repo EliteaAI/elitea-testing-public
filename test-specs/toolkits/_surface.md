@@ -59,6 +59,31 @@ Every credential-bearing form also renders a **second** credential select,
 `toolkit-credential-select-pgvector` (section `vectorstorage`), plus an Embedding Model
 select. `page.locator('[role="combobox"]').first` can land on the wrong one.
 
+### Name field is capped at 32 characters — and it truncates SILENTLY
+
+**Resolved/added during #2123 (ELITEA-1141) implementation, 2026-09-10.**
+
+`Toolkit Name` carries `inputProps={{ maxLength: MAX_NAME_LENGTH }}`
+(`src/[fsd]/features/toolkits/ui/form/NameDescriptionInput.jsx`), and
+`MAX_NAME_LENGTH = 32` (`src/common/constants.js:66`). The browser drops the
+overflow with **no error, no toast, no field error** — the only visible signal is a
+character counter that appears once you are already at the cap.
+
+The failure mode this creates is nastier than a red: a spec that types a >32-char
+name and then looks the object up **by that name** never finds it, so its
+`created_id` stays `None`, its teardown skips, and it **still reports PASS**. That
+is exactly what `test_create_toolkit` did — `AutoTest {display} Toolkit {ts}` is
+34-38 chars for github / gitlab / bitbucket / confluence, so those params leaked a
+toolkit on **every** run, passing ones included.
+
+Rules for any spec on this form:
+- keep generated names ≤ 32 chars (`AT {display} {ts}` fits every type);
+- assert the value landed — `expect(name_input).to_have_value(name)` is what turns
+  the silent truncation into a loud, immediate failure;
+- prefer the **id from the create response** over a name lookup for teardown.
+
+`Description` is capped at `MAX_DESCRIPTION_LENGTH = 2304` — not a practical limit.
+
 ### Save-button semantics (the trap this surface is famous for)
 
 `CreateToolkitToolTabBar.jsx`:
@@ -112,6 +137,21 @@ navigate to  /toolkits/all/{id}    then  /toolkits/all/{id}?name=<url-encoded na
 - A `GET /elitea_core/toolkit_validator/prompt_lib/{project}/{id}` fires **after**
   navigation and has been seen returning both 200 and 400 on localhost — it is not part
   of the create observable.
+
+### Which credential a created toolkit is linked to (create-response shape)
+
+**Resolved/added during #2123 (ELITEA-1141) implementation, 2026-09-10** — captured
+off the real 201 body for github, jira and confluence, not inferred.
+
+```
+body["settings"]["{toolkit_type}_configuration"]["elitea_title"]   # e.g. "github_1789003516095"
+body["settings"]["{toolkit_type}_configuration"]["private"]        # True
+body["settings"]["pgvector_configuration"]                         # None unless a vector store was chosen
+```
+
+So the case-level observable *"toolkit linked to credential"* is assertable at the API
+level straight off the create response, against `managed_credential["elitea_title"]` —
+no extra GET, and no reliance on the UI's own rendering of the select.
 
 ## API notes
 
