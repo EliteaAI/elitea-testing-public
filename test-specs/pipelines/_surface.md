@@ -2,8 +2,57 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-09-09 (ELITEA-2002 repair
+> place, don't append duplicate entries. Last updated: 2026-09-10 (card #2139 — delete-redirect arrival-path rule; prior: ELITEA-2002 repair
 > pass — VERSION dropdown close discipline; prior entry: ELITEA-2448 pipeline-execution wait).
+
+## Delete-pipeline REDIRECT depends on HOW you reached the detail page (confirmed live on DEV, 2026-09-10, card #2139 / `#1332`)
+
+The post-delete redirect is `navigate(-1)` — React Router "go back one history entry"
+(`src/pages/Applications/Components/Applications/DeleteApplicationButton.jsx:29`, fired from the
+success toast's `onCloseToast`). It is **not** a navigate-to-route. So whether it works is decided
+entirely by the arrival path, and a test that picks the wrong one manufactures a product "bug":
+
+| Arrival at `/pipelines/all/{id}` | Redirect to the dashboard after delete? | Runs on `dev.elitea.ai` |
+|---|---|---|
+| Dashboard → click the pipeline card (in-app) | ✅ yes | 3/3 |
+| Create via UI → Save → land on detail → delete there | ✅ yes | 1/1 |
+| `page.goto()` / `PipelineDetailPage.navigate(pid)` (deep link, empty history) | ❌ **no — stranded on the deleted pipeline's stale detail route** | 3/3 (this is `#1332`) |
+
+**Rule for any spec asserting a post-delete redirect: reach the detail page IN-APP**
+(`PipelinesListPage.navigate()` → `open_pipeline_by_name(name)` → `wait_for_detail_page_load()`).
+Seeding the entity itself via `pipeline_api.create_pipeline()` is fine — it is the *navigation*, not
+the creation, that matters. The same `useDeleteApplication` hook backs **Agents** too
+(`isFromPipeline` only switches the label), so expect identical behaviour there.
+
+**Timing:** the redirect fires on the success toast's close, not on the DELETE response.
+Measured on DEV, *after* `delete_pipeline_via_menu()` had already returned: **0.0 s / 7.1 s / 6.6 s**
+(`TOAST_DURATION_DEFAULTS.success = 3000` ms is the default but is env-configurable and DEV runs
+slower). **Budget ≥ 20 s** for a `wait_for_url` on this — an 8 s budget is a flake generator.
+
+**Related trap:** a fresh context whose FIRST navigation is a deep pipeline-detail URL hit the
+DEV `page.goto` hang (`#2124`/`#2137`) 5 times in this session. In-app arrival avoids it entirely.
+
+**Resolved/added during ELITEA-2022 implementation (2026-09-10, card #2139):** asserting the
+redirect is only half the job — the post-delete ABSENCE check has to change with it, and three
+things bite, all confirmed live on `dev.elitea.ai`:
+
+1. **`pipeline_exists_in_list()` samples, it does not wait.** It returns True the instant it sees
+   the name and only waits for it to APPEAR. The redirect is a history-back, so the dashboard
+   repaints its CACHED list (deleted card still on it) and drops the card only when the refetch
+   lands. The old manual `list_page.navigate()` hid this by forcing a `goto` + networkidle.
+   Symptom: Step 5 fails in **0.03 s** with the card still listed.
+2. **The delete success toast carries the pipeline NAME** — *"The `<name>` pipeline has been
+   successfully deleted."* — and is still on screen. So any page-wide `text="<name>"` match
+   (which is what `pipeline_exists_in_list()` uses) can never separate "gone from the list" from
+   "named in the toast". Scope absence checks to the LIST.
+3. **A mid-refetch grid renders skeletons and ZERO `entity-card-name` nodes**, so a bare
+   `to_have_count(0)` on the card handle passes VACUOUSLY — the negative-direction twin of the
+   ELITEA-2024 / board #2118 trap.
+
+Use `PipelinesListPage.wait_for_pipeline_absent(name, timeout)` (added by this card, testid-only,
+additive): wait the card out -> require the grid to have actually rendered
+(`entity_card_name.first.or_(empty_state_title)` visible) -> re-assert absence. Measured 1.0-1.3 s.
+Timing after an in-app delete on DEV: redirect 0.1-1.7 s, absence 1.0-1.3 s.
 
 ## VERSION dropdown — a bare page-level `Escape` does NOT reliably close it; press Escape ON AN OPTION and CONFIRM (confirmed live, 2026-09-09, ELITEA-2002 repair / `#2077`)
 
@@ -1144,7 +1193,7 @@ the auto-redirect after delete DOES fire correctly when the detail page was reac
 in-app SPA navigation (dashboard → "+ Pipeline" → Save → detail page), unlike ELITEA-2022's own
 test (`test_delete_pipeline_via_ui_menu`, sanctioned-RED #1332) whose setup reaches the detail page
 via a direct `page.goto()` (no prior in-app history entry) — the redirect defect is specifically a
-browser-history no-op, not a general product break. **Confirmed via source read:** the shared
+browser-history no-op, not a general product break. **(superseded 2026-09-10, card #2139 — see § top)** **Confirmed via source read:** the shared
 `IWModalEntityCard.jsx`/`IWModalEntityCardWrapper.jsx` preview-dialog fields (Type/Description/
 Chat-starters/Step-limit) carry NO `data-testid` at this call site (the wrapper's `subtitleTestId`
 prop is unwired here) — full config-equivalence verification was done on the imported pipeline's
@@ -1155,7 +1204,7 @@ page-object surface: `PipelinesListPage.import_pipeline()`/`confirm_pipeline_imp
 export_pipeline_via_menu_and_download()` (testid-based, `page.expect_download()` — distinct from
 the pre-existing raw-handle `export_pipeline_via_menu()`, left unmodified for its own caller).
 
-## Delete pipeline via three-dot menu — auto-redirect confirmed correct; existing merged spec masks the redirect assertion by navigating manually (confirmed live, 2026-08-08, ELITEA-2022)
+## Delete pipeline via three-dot menu — auto-redirect confirmed correct; existing merged spec masks the redirect assertion by navigating manually (confirmed live, 2026-08-08, ELITEA-2022) (superseded 2026-09-10, card #2139 — see § top)
 
 `test_delete_pipeline_via_ui_menu` (`test_pipeline_management.py:391`, merged to
 `origin/automation/base`) already drives the full delete flow correctly (three-dot
