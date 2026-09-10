@@ -374,20 +374,30 @@ class AgentHubPage(BasePage):
         super().__init__(page)
 
     @contextmanager
-    def _expect_applications_response(self, predicate, timeout: int, description: str):
-        """Await a ``/public_applications/`` response, re-raising a timeout of
-        that WAIT with the responses actually observed on this endpoint family
-        (FIX card #2078).
+    def _expect_endpoint_response(self, predicate, timeout: int, description: str, *, url_fragment: str):
+        """Await a response on ONE endpoint family, re-raising a timeout of that
+        WAIT with the responses actually observed on that family (FIX cards
+        #2078, #2169).
 
         Playwright's own ``expect_response`` timeout message names only the
-        predicate's source location, so a slow or absent bulk fetch reads as a
-        bare "Timeout Nms exceeded" that says nothing about what the app did.
-        This repo has two ledger entries (#2074, #2076) where exactly that
-        shape named the WRONG subsystem and cost a full session; recording the
+        predicate's source location, so a slow or absent fetch reads as a bare
+        "Timeout Nms exceeded" that says nothing about what the app did. This
+        repo has two ledger entries (#2074, #2076) where exactly that shape
+        named the WRONG subsystem and cost a full session; recording the
         endpoint family's traffic makes the two real cases distinguishable at a
         glance -- ``observed: ['none']`` (the request never fired, or the page
         never got that far) versus ``observed: ['200 ...my_liked=true...']``
-        (the sibling calls landed; the bulk fetch alone was too slow).
+        (the sibling calls landed; the awaited one alone was too slow).
+
+        **The recorded family is the CALLER's, not a hardcoded one (#2169).**
+        A listener keyed on an endpoint family the caller is not waiting on
+        would report ``observed: ['none']`` on every timeout and actively
+        mislead -- the exact failure mode this helper exists to prevent. So
+        *url_fragment* is required at every call site:
+        :meth:`_expect_applications_response` supplies the
+        ``/public_applications/`` one, and
+        :meth:`navigate_and_capture_category_names` its own
+        :data:`AGENT_CATEGORIES_URL_FRAGMENT`.
 
         Only the WAIT's own timeout is re-raised with this context. An
         exception raised by the wrapped body -- the navigation, the click, the
@@ -399,11 +409,13 @@ class AgentHubPage(BasePage):
             timeout: Response budget in ms -- see :data:`CATALOG_RESPONSE_TIMEOUT`.
             description: Short name of the awaited response, used in the
                 re-raised message (e.g. ``"bulk all-applications"``).
+            url_fragment: Substring identifying the endpoint family whose
+                traffic is recorded for the diagnostic.
         """
         seen: list[str] = []
 
         def _record(response):
-            if "/public_applications/" in response.url:
+            if url_fragment in response.url:
                 seen.append(f"{response.status} {response.url}")
 
         body_completed = False
@@ -417,10 +429,21 @@ class AgentHubPage(BasePage):
                 raise
             raise PlaywrightTimeoutError(
                 f"Timed out after {timeout}ms waiting for the Catalog {description} response. "
-                f"/public_applications/ responses observed meanwhile: {seen or ['none']}"
+                f"{url_fragment} responses observed meanwhile: {seen or ['none']}"
             ) from err
         finally:
             self.page.remove_listener("response", _record)
+
+    def _expect_applications_response(self, predicate, timeout: int, description: str):
+        """``/public_applications/`` flavour of :meth:`_expect_endpoint_response`.
+
+        Kept as the four Catalog application-fetch call sites' entry point (FIX
+        card #2078) so generalising the helper for #2169 left their behaviour and
+        their re-raised message byte-identical.
+        """
+        return self._expect_endpoint_response(
+            predicate, timeout, description, url_fragment="/public_applications/"
+        )
 
     @action("Navigate to Agent Hub (Catalog)")
     def navigate(self):
@@ -639,6 +662,14 @@ class AgentHubPage(BasePage):
         (``.agents/testing.md`` § Fidelity policy, "capture the real response and
         assert the UI against it").
 
+        Two failure modes are named rather than swallowed (FIX card #2169): a fetch
+        that never lands times out with the ``agent_categories`` traffic actually
+        observed (:meth:`_expect_endpoint_response`), and a fetch that lands
+        non-200 -- or without a ``categories`` list -- raises immediately, quoting
+        the real status and URL. Redirect hops are NOT terminal responses and are
+        excluded from the predicate; see its comment for the live re-auth path that
+        makes that load-bearing.
+
         Args:
             timeout: Budget for :meth:`wait_for_page_load`'s element wait -- the
                 UI-readiness half.
@@ -646,19 +677,100 @@ class AgentHubPage(BasePage):
                 the same reason :meth:`navigate_and_capture_applications` keeps the
                 two apart (FIX #2078): this response is awaited AROUND
                 ``navigate()``, so its clock covers the whole navigation.
+
+        Raises:
+            AssertionError: The categories fetch landed, but not as a 200 carrying a
+                ``categories`` list -- see the fast-fail block below.
+            PlaywrightTimeoutError: No categories response arrived within
+                *response_timeout*, re-raised with the endpoint family's observed
+                traffic.
         """
 
         def _is_categories_response(response):
+            # Matches a TERMINAL response for this endpoint -- any status except a
+            # redirect hop (FIX card #2169, reviewer round 1).
+            #
+            # Why no `status == 200` filter: with one, a failed fetch simply never
+            # matches, so the wait burns its full 45s budget before reporting anything.
+            # What that buys is LATENCY, not naming -- measured on dev.elitea.ai with
+            # the fetch forced to 404, 45.05s -> 7.37s. (Naming was already fixed by
+            # routing this await through _expect_endpoint_response, whose recorder has
+            # no status filter and would list the 404 under "observed meanwhile"; the
+            # message below is simply a direct verdict instead of a timeout plus a
+            # list.) The live shape this protects against is #2074, a full-page
+            # gateway 5xx on DEV.
+            #
+            # Why 3xx IS excluded: `page.on("response")` and `expect_response` both
+            # fire for redirect hops, and a 30x carries the REQUESTED url -- so a
+            # redirect on this endpoint would satisfy the fragment+method test and be
+            # reported as a backend fault. That is not hypothetical here:
+            # EliteaUI/src/api/eliteaApi.js's `fetchBaseQuery.fetchFn` handles
+            # `if (response.redirected)` and, on a forward-auth session-expiry
+            # redirect, opens an auth popup and RE-FETCHES the original request
+            # (`const retryResponse = await fetch(retryRequest || input, init)`). The
+            # retried 200 is the real answer; the 302 is transport, not a verdict.
+            # Nothing diagnostic is lost -- the recorder logs the 3xx regardless.
+            #
+            # NOT a shape on this endpoint: #1971 (project-id-less request during a
+            # project transition). `useAgentHubData.hooks.js:43` calls
+            # `useGetAgentCategoriesQuery({ projectId: PUBLIC_PROJECT_ID })` with a
+            # CONSTANT, so that race cannot fire here.
             return (
                 self.AGENT_CATEGORIES_URL_FRAGMENT in response.url
                 and response.request.method == "GET"
-                and response.status == 200
+                and not (300 <= response.status < 400)
             )
 
-        with self.page.expect_response(_is_categories_response, timeout=response_timeout) as response_info:
+        with self._expect_endpoint_response(
+            _is_categories_response,
+            response_timeout,
+            "agent-categories",
+            url_fragment=self.AGENT_CATEGORIES_URL_FRAGMENT,
+        ) as response_info:
             super().navigate("/elitea-catalog")
+
+        # Judged BEFORE wait_for_page_load, so a backend fault surfaces in about its
+        # own round-trip instead of behind the UI-readiness wait. Judged EXPLICITLY,
+        # because the caller derives the filter rail's expected chip set from this
+        # payload: degrading a failed or malformed response into "no categories"
+        # would silently shrink that set and re-report a backend fault as a chip-set
+        # delta -- a misleading red on the wrong subsystem.
+        response = response_info.value
+        if not response.ok:
+            raise AssertionError(
+                f"The Catalog's agent-categories fetch returned HTTP {response.status} "
+                f"{response.status_text} for {response.url}. The filter rail's expected chip set "
+                "cannot be derived from a failed response -- this is a backend/app fault, NOT a "
+                "chip-set drift. Known shape: #2074 (full-page gateway 5xx on DEV). Redirect "
+                "hops are excluded by the predicate, so this IS a terminal response."
+            )
+        try:
+            body = response.json()
+        except Exception as err:
+            # `text()` is itself a body read, so it fails the same way when the body is
+            # UNAVAILABLE (aborted request, navigation-cancelled response) rather than
+            # merely malformed. Letting it raise from inside this handler would replace
+            # the one message whose whole job is naming things with a raw chained
+            # traceback, so the preview degrades instead of throwing.
+            try:
+                preview = repr(response.text()[:200])
+            except Exception:  # noqa: BLE001 - diagnostics must not out-fail the diagnosis
+                preview = "<body unavailable>"
+            raise AssertionError(
+                f"The Catalog's agent-categories fetch returned HTTP {response.status} for "
+                f"{response.url} but a body that is not JSON: {preview}"
+            ) from err
+        if not isinstance(body, dict) or not isinstance(body.get("categories"), list):
+            got = sorted(body) if isinstance(body, dict) else type(body).__name__
+            raise AssertionError(
+                f"The Catalog's agent-categories response from {response.url} carries no "
+                f"'categories' list (got {got}). Treating that as an empty category set would "
+                "silently shrink the filter rail's expected chips, so it is named instead: "
+                "either the response contract changed or the backend is faulting."
+            )
+
         self.wait_for_page_load(timeout=timeout)
-        return [category["name"] for category in response_info.value.json().get("categories", [])]
+        return [category["name"] for category in body["categories"]]
 
     def get_visible_category_heading_texts(self) -> list[str]:
         """Return the text of every currently-rendered content-list category
