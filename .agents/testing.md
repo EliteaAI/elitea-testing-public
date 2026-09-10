@@ -1464,3 +1464,37 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   `settings.app_base_url`, not the wall clock, when that worry arises — see the `.env.test` symlink entry).
   Unchanged discipline: raw uncaught error at a **precondition**, never a member of a sanctioned-RED
   closed set — re-gate, never accept 2-of-3, never raise the timeout.
+- **A `[FIX]` card can be a pure PROMOTION GAP — and the 30-second proof is an ancestry check, not a
+  repro (2026-09-10, ELITEA-1866/#2173)**: DEV Stable run #116 (`34436416962`) took
+  `test_toolkit_creation_create_bucket_verify_list_files.py` red with
+  `AssertionError: Expected an empty result for the just-created bucket, got: '…✅ list_files (0.694s)
+  {   "total": 0,   "rows": [] }'` — i.e. `assert "{'total': 0, 'rows': []}" in result_text` failed
+  **while the payload it was checking for was present and correct**, just pretty-printed JSON instead
+  of a Python `repr`. That exact drift was repaired by `556d39ed` / PR #2080 (parse the payload,
+  compare structurally) **eight hours before** the run — but the repair lives on `automation/base`
+  and **CI runs `main`**:
+  ```
+  git merge-base --is-ancestor 556d39edf 48a1d6a          -> NO   (48a1d6a = the commit CI ran)
+  git merge-base --is-ancestor 556d39edf origin/automation/base -> YES
+  git rev-list --count origin/main..origin/automation/base -> 454
+  ```
+  **Do this ancestry check FIRST on any `[FIX]` card**, before reading logs or attempting a repro: it
+  costs one command and it decided the whole disposition here (null code delta). The corollary is
+  uncomfortable and worth stating — **every repair merged into `automation/base` becomes a future
+  `[FIX]` card against `main`**, so FIX-intake signal quality degrades monotonically with the size of
+  the `main..automation/base` gap. Tracked as #2157 (no already-fixed-on-base check at intake).
+  ⚠️ **The card's own prose named the wrong subsystem** ("the test assertion logic is comparing
+  against the wrong element or the UI is rendering the response in an unexpected format… needs
+  investigation"). The assertion was fine and already fixed; nothing needed investigating in the
+  product. Same lesson as the #2074/#2076 entries: the intake summary is a hypothesis, not evidence.
+- **#2124 / #2156 DEV `Page.goto` hazard — a second clean 3/3 on the toolkits spec that produced the
+  4-of-7 burst (2026-09-10, ELITEA-1866/#2173)**: the entry above for `#2149` recorded 3 passed /
+  4 broken attempts on `test_toolkit_creation_create_bucket_verify_list_files.py` against
+  `https://dev.elitea.ai`. A re-gate of the **identical artifact** (spec unchanged since `556d39ed`)
+  ~6 h later was **3/3 passed with `reruns.json == {}` on every run** — 161.36 / 99.44 / 93.28 s,
+  **zero** `broken` attempts. Same spec, same machine, same target, same day, 57% of attempts lost
+  vs 0%. Third same-spec swing in this ledger (after ELITEA-2022/#2171 and ELITEA-2453/#2172), so
+  treat it as settled: **an observed hazard rate is a property of the window you sampled, never of
+  the spec, the surface or the suite.** Do not quote one session's rate as a trend, and do not read a
+  fast clean DEV gate as evidence you gated the wrong target — check `settings.app_base_url` for that
+  worry, not the wall clock.
