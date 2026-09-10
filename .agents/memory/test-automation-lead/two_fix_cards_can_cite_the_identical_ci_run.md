@@ -11,14 +11,20 @@ updated: 2026-09-10
 ## The pattern
 
 The failure-intake pipeline re-files `[FIX]` cards for a failure that is already
-carded and often already fixed. Confirmed repeatedly: as of 2026-09-10, **6
-sessions, zero code changed**. Running tally + evidence lives on **#2135**
+carded and often already fixed. Confirmed repeatedly: as of 2026-09-10, **7
+sessions, zero code changed** (#2137 = ELITEA-0679, a straight re-file of #2112:
+same run, same commit, same two node ids). Running tally + evidence lives on **#2135**
 (`question`, the process card) — add occurrences there, not here.
 
 Two independent causes, both permanent until #2135 ships:
 
 1. **Intake re-files** — the same run gets carded in multiple passes, and a
    workflow **re-run** cards again independently.
+   *A third timing shape, from #2137:* the repair can be **on `main` already** and the
+   card still lands, because the CI **run** predates it. Settle it with
+   `git merge-base --is-ancestor <fix-sha> <ci-commit>` — one call, and it converts
+   "is this fixed?" into a fact. On #2137: `NOT IN`, fix at 22:28, CI commit at 11:50.
+
 2. **CI runs `main`; repairs land on `automation/base`.** `origin/main..origin/automation/base`
    is ~410 commits. Every merged-but-unpromoted repair re-cards on **every**
    subsequent nightly. Node-id dedup alone will not stop this half.

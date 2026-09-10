@@ -152,14 +152,14 @@
 - [Display-string rename blast radius](display_string_rename_blast_radius.md) — grep the OLD string suite-wide first
 - [A sibling's "read #N first" can invent a dependency](a_sibling_note_can_invent_a_dependency_the_case_text_dissolves.md) — read the TMS case before accepting a parked-question blocker; a transit value needs no literal at all
 - [A mid-flight lead ruling is an AFS amendment](a_mid_flight_lead_ruling_is_an_afs_amendment.md) — order both in one dispatch; check the shipped diff against the AFS's DEFERRAL sections, greps can't see doc drift
-- [A duplicate card is where you pay the original's evidence gap](a_duplicate_card_is_where_you_pay_the_originals_evidence_gap.md) — confirm the dupe in 2 calls, then run the env the survivor never ran (DEV recipe + env-restore trap inside)
+- [A duplicate card is where you pay the original's evidence gap](a_duplicate_card_is_where_you_pay_the_originals_evidence_gap.md) — confirm the dupe in 2 calls, then run the env the survivor never ran (DEV recipe + env-restore trap inside) · **confirmed twice** (#2115, #2137); one counterexample retires a deterministic failure — no 3x gate is owed on a dupe
 - [Gate on the environment the repair is FOR](gate_on_the_environment_the_repair_is_FOR.md) — an env-specific guard gated only on localhost leaves its central risk unverified (#2074/#2116); deployed-env cold-start goto timeout is its own flake
 - [Board rate limit is complexity-based](board_rate_limit_is_complexity_based_use_issue_scoped_query.md) — `project item-list --limit 900` fails while counters read 5000/5000; find the card via `issue.projectItems` (board #9 field/option ids inside)
 - [Mixed shard spread refutes the outage](mixed_shard_spread_refutes_the_outage_and_means_a_missing_precondition.md) — 46/6 = per-test; suspect ambient data + a vacuous sibling
 - [Entailment test: correction vs masking](entailment_test_separates_correction_from_masking.md) — prove the removed assertion is unfalsifiable on any path reaching its replacement; deleting a content premise WITHOUT a dominating guard is masking
 - [The wire is the oracle](the_wire_is_the_oracle_for_a_nondeterministic_producer.md) — read the run's own state off Socket.IO and assert the UI against it; it settles "display defect or producer failure?" in one instrument
-- [DEV goto waiter never resolves](dev_goto_lifecycle_waiter_never_resolves.md) — local DEV runs die in setup; deterministic, not cold start; commit+wait_for_load_state shim inside
+- [DEV goto waiter never resolves](dev_goto_lifecycle_waiter_never_resolves.md) — **BURSTY, not deterministic** (5 clean DEV greens with no shim, #2137); also fires in `BasePage.navigate()`, not just setup; try the plain DEV run FIRST, shim only when it bursts
 - [Dedup question cards first](dedup_question_cards_before_filing.md) — grep memory + open questions; #2157 dup'd #2135
-- [FIX cards: dedup on node id first](two_fix_cards_can_cite_the_identical_ci_run.md) — 6 sessions, zero code so far
+- [FIX cards: dedup on node id first](two_fix_cards_can_cite_the_identical_ci_run.md) — 7 sessions, zero code so far; `git merge-base --is-ancestor <fix-sha> <ci-commit>` settles "already fixed?" in one call
 - [Identical step duration across pass and fail is a fixed budget](identical_step_duration_across_pass_and_fail_is_a_fixed_budget.md) — a sleep, not a wait; false RED on success
 - [Name a precedent as a hypothesis, not a conclusion](name_a_precedent_as_a_hypothesis_not_a_conclusion.md) — a perfect-looking precedent gave me a wrong root cause

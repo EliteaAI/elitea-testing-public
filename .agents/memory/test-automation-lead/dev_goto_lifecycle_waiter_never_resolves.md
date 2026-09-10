@@ -1,6 +1,6 @@
 ---
 name: DEV local runs die in page.goto(domcontentloaded) — the page loads, the waiter does not
-description: Deterministic, not a cold start — goto(wait_until=commit) + explicit wait_for_load_state in a throwaway -p plugin unblocks the whole DEV gate
+description: BURSTY, not deterministic (5 clean DEV greens with no shim, 2026-09-10 #2137) and it fires in BasePage.navigate() too, not just session setup — try the plain DEV run FIRST, reach for the commit+wait_for_load_state shim only when it bursts
 type: feedback
 aliases: [dev goto timeout, domcontentloaded hang, cannot run tests against dev, dev.elitea.ai local run blocked, devenv plugin, navigation shim]
 tags: [area/ci, area/environment, type/harness]
@@ -21,6 +21,51 @@ E   playwright._impl._errors.TimeoutError: Page.goto: Timeout 15000ms exceeded.
 
 Both tests ERROR at setup, `--reruns=2` burns every attempt, and the message names
 navigation rather than the cause (the #2074/#2076 "wrong subsystem" family).
+
+## Correction (2026-09-10, #2137): it is BURSTY — try the plain run first
+
+The section below said "deterministic". **That is true of a burst, not of the class.**
+Same day, three DEV invocations of `tests/ui/chat/test_image_creation.py` (2 params)
+with **no shim at all**, just the env-file swap:
+
+| Run | Result | Wall |
+|---|---|---|
+| 1 | 1 failed, 1 passed, 2 rerun — `minimal_prompt` hung **3 attempts in a row** | 251.66 s |
+| 2 | **2 passed**, `reruns.json == {}` | 185.38 s |
+| 3 | 2 passed, 1 rerun (hung once, retry passed) | 168.21 s |
+
+**9 attempts: 5 clean end-to-end greens on DEV, 4 hangs.** Run 1's
+`detailed_description` navigated fine seconds before `minimal_prompt` hung three
+consecutive times on the same route. So the hazard arrives in bursts and a whole
+invocation can pass clean.
+
+**Operational rule, in cost order:** run DEV plainly first (env-file swap, ~3 min for
+a 2-test file). If you get a clean run, you have your fact and the shim was never
+needed. Build the `-p` plugin below only when the hangs actually burst and eat the
+invocation — it is the cure for a blocked gate, not a prerequisite for touching DEV.
+Corollary: **a clean DEV run does not disprove #2156**, and a hang mid-suite does not
+mean the shim is now mandatory.
+
+## It also fires INSIDE the test body — a second call site
+
+The traceback below pins it to session setup (`_browser_cookies`, `/`, 15 000 ms).
+Three of my four hangs were in **`ChatPage.navigate_to_chat` -> `BasePage.navigate()`**
+at the 30 000 ms budget, on an already project-scoped deep link with no 302:
+
+```
+Page.goto: Timeout 30000ms exceeded — "https://dev.elitea.ai/app/chat/10118", waiting until "domcontentloaded"
+Page.goto: Timeout 30000ms exceeded — "https://dev.elitea.ai/app/chat/10119", waiting until "domcontentloaded"
+Page.goto: Timeout 30000ms exceeded — "https://dev.elitea.ai/app/chat/10120", waiting until "domcontentloaded"
+Page.goto: Timeout 15000ms exceeded — "https://dev.elitea.ai/",              waiting until "domcontentloaded"   # the classic
+```
+
+Consequences: a fix scoped to the API fixture would have cured **1 of my 4**
+occurrences — the durable fix belongs in `BasePage.navigate()` (which is also
+#2124's and #2089's territory, so design the three together). And because these are
+raw uncaught errors at a **precondition**, they are never a member of a
+sanctioned-RED closed set: the response is re-run/re-gate, never accept 2-of-3.
+Allure status is `broken` and the pytest tail shows NOTHING once a retry passes —
+evidence lives only in `reports/allure-results/*-result.json`, grep by `fullName`.
 
 ## It is NOT a cold start, and NOT DEV being down
 

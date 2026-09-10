@@ -45,6 +45,30 @@ HEADLESS=true ../.venv/bin/pytest "$NODE" -v -p no:cacheprovider
 
 Never print the file. Assert the restore in the output — that line IS the receipt.
 
+## Second confirmation (2026-09-10, #2137 / ELITEA-0679) — same play, same payoff
+
+#2112 repaired the dead `select_model("GPT-5.2")` literal and gated **3x on localhost**,
+justifying DEV equivalence in prose ("localhost talks to the same DEV backend, and the
+localhost identity is the weaker one"). Sound reasoning — but still an argument. The
+red it repaired came from the **DEV Stable nightly**, and the card's own Work Scope
+named DEV as the verification environment.
+
+On the duplicate I ran the two specs **3x against `https://dev.elitea.ai`**: 9 attempts,
+**5 clean end-to-end greens**, and the card's reported signature (`Locator.wait_for:
+Timeout 10000ms exceeded` on *Select model*) **0 times**. Zero lines of code, and the
+argument became a measurement.
+
+Two transferable details:
+
+- **One counterexample retires a deterministic failure.** CI recorded 3/3 identical
+  failures, so a single clean run is logically sufficient; I ran three for margin, not
+  for proof. Don't reflexively spend a full 3x gate re-certifying someone else's merge —
+  nothing is merging on a duplicate card, so § Merge gate does not even apply.
+- **Budget for the environment's own noise.** 4 of the 9 attempts hung in
+  [[dev_goto_lifecycle_waiter_never_resolves]] — a precondition failure, upstream of
+  every assertion, never a sanctioned-RED member. Classify those OUT before reading the
+  result, or a DEV verification looks like a red when it is a clean green.
+
 ## The menu, in value order
 
 1. **Run the environment the original could not / did not** (above). Highest value:
