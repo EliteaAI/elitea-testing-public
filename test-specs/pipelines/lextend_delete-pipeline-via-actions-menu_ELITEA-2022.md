@@ -182,7 +182,8 @@ the new assertion at the marked point; steps 1–5 already pass unmodified.)
    transition (`browser_console_messages(level="error")` → 0 errors) (case
    Step 6).
 7. Verify the deleted pipeline no longer appears in the dashboard list
-   (existing covering-spec behavior via `pipeline_exists_in_list()`) (case
+   (via `PipelinesListPage.wait_for_pipeline_absent()` — see the Edit-3 amendment
+   below; the covering spec's old `pipeline_exists_in_list()` call is gone) (case
    Step 7). Confirmed live: `ToDelete_Pipeline_2022` absent from the grid
    after a 1.5s settle, no manual reload needed.
 
@@ -213,7 +214,7 @@ unchanged and also green.
 | 4 Click "Delete" option from the menu | Delete confirmation dialog opens | step 4 | covering spec's existing `Dialog.wait_for()` | asserted (existing) |
 | 5 Confirm deletion in the confirmation dialog | Deletion is submitted | step 5 | covering spec's existing `Dialog.type_to_confirm()` + `Dialog.click_button()` | asserted (existing) |
 | 6 Verify redirect to Pipelines dashboard (URL: /app/pipelines/all) | Browser navigates to the Pipelines dashboard | step 6 | **NEW** — `page.wait_for_url(...)` on the dashboard route post-delete, **before any manual navigation**, reached via the case-faithful in-app arrival (AFS step 2) | **gap — needs new HARD assertion** (was mis-specced as sanctioned-RED 2026-08; corrected 2026-09-10) |
-| 7 Verify "ToDelete_Pipeline" no longer appears in the pipeline list | The deleted pipeline is not visible in the dashboard list | step 7 | covering spec's existing `pipeline_exists_in_list()` assertion | asserted (existing) |
+| 7 Verify "ToDelete_Pipeline" no longer appears in the pipeline list | The deleted pipeline is not visible in the dashboard list | step 7 | `PipelinesListPage.wait_for_pipeline_absent()` — waiting, list-scoped absence check | asserted |
 
 **Axis 2 — Analyst additions**
 

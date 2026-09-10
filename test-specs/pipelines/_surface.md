@@ -1245,7 +1245,7 @@ the auto-redirect after delete DOES fire correctly when the detail page was reac
 in-app SPA navigation (dashboard → "+ Pipeline" → Save → detail page), unlike ELITEA-2022's own
 test (`test_delete_pipeline_via_ui_menu`, sanctioned-RED #1332) whose setup reaches the detail page
 via a direct `page.goto()` (no prior in-app history entry) — the redirect defect is specifically a
-browser-history no-op, not a general product break. **Confirmed via source read:** the shared
+browser-history no-op, not a general product break. **(superseded 2026-09-10, card #2139 — see § top)** **Confirmed via source read:** the shared
 `IWModalEntityCard.jsx`/`IWModalEntityCardWrapper.jsx` preview-dialog fields (Type/Description/
 Chat-starters/Step-limit) carry NO `data-testid` at this call site (the wrapper's `subtitleTestId`
 prop is unwired here) — full config-equivalence verification was done on the imported pipeline's
@@ -1256,7 +1256,7 @@ page-object surface: `PipelinesListPage.import_pipeline()`/`confirm_pipeline_imp
 export_pipeline_via_menu_and_download()` (testid-based, `page.expect_download()` — distinct from
 the pre-existing raw-handle `export_pipeline_via_menu()`, left unmodified for its own caller).
 
-## Delete pipeline via three-dot menu — auto-redirect confirmed correct; existing merged spec masks the redirect assertion by navigating manually (confirmed live, 2026-08-08, ELITEA-2022)
+## Delete pipeline via three-dot menu — auto-redirect confirmed correct; existing merged spec masks the redirect assertion by navigating manually (confirmed live, 2026-08-08, ELITEA-2022) (superseded 2026-09-10, card #2139 — see § top)
 
 `test_delete_pipeline_via_ui_menu` (`test_pipeline_management.py:391`, merged to
 `origin/automation/base`) already drives the full delete flow correctly (three-dot
