@@ -161,3 +161,5 @@
 - [DEV goto waiter never resolves](dev_goto_lifecycle_waiter_never_resolves.md) — local DEV runs die in setup; deterministic, not cold start; commit+wait_for_load_state shim inside
 - [Dedup question cards first](dedup_question_cards_before_filing.md) — grep memory + open questions; #2157 dup'd #2135
 - [FIX cards: dedup on node id first](two_fix_cards_can_cite_the_identical_ci_run.md) — 6 sessions, zero code so far
+- [Identical step duration across pass and fail is a fixed budget](identical_step_duration_across_pass_and_fail_is_a_fixed_budget.md) — a sleep, not a wait; false RED on success
+- [Name a precedent as a hypothesis, not a conclusion](name_a_precedent_as_a_hypothesis_not_a_conclusion.md) — a perfect-looking precedent gave me a wrong root cause
