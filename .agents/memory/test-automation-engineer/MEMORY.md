@@ -107,3 +107,5 @@
 - [Stash push by path can pop a stranger stash](stash_push_by_path_fails_silently_and_pop_takes_someone_elses.md) — never chain push and pop
 - [Dead literal in a [FIX] card](dead_literal_repair_delete_dont_substitute.md) — read the case first: if it says "the default", DELETE the step, do not substitute
 - [Ambient data makes absence assertions vacuous](ambient_data_precondition_makes_absence_assertions_vacuous.md) — establish the >=1-entity precondition; pair "zero items" with an empty-state guard
+- [Name-lookup teardown leaks on truncation](name_based_teardown_lookup_leaks_when_the_field_truncates.md) — take the id from the create response; a clipped name passes while leaking
+- [Prove a repair with a routing plugin](prove_a_repair_with_a_routing_plugin_over_the_real_spec.md) — delay/abort one request over the REAL spec; always run the blocked-request control
