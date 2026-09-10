@@ -166,3 +166,5 @@
 - [A sanctioned RED can be manufactured by its own precondition](a_sanctioned_red_can_be_manufactured_by_its_own_precondition.md) — ask if the CASE asks for the failing condition
 - [.env.test is a symlink — `sed -i` no-ops](env_test_is_a_symlink_so_sed_i_silently_no_ops.md) — your "DEV gate" then certifies localhost with 3 cheerful greens; assert `settings.app_base_url`, restore in a `trap`
 - [DEV-only locator red = an overwritten PROMOTED testid](dev_only_locator_red_can_be_an_overwritten_promoted_testid.md) — diff the VALUE expression across refs first
+- [EL-6460 breadcrumb drift](el6460_breadcrumb_drift_class.md) — a red `back-button` is UI drift, NOT an outage/promotion gap; fixed repair shape, no new testid
+- [APPROVED + vacuous guard still earns a fix round](an_approved_review_with_a_vacuous_guard_still_earns_a_fix_round.md) — absence assertions must prove the container rendered FIRST
