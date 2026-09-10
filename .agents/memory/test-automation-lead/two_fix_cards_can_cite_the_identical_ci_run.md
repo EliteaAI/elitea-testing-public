@@ -27,13 +27,18 @@ invisible to it (0 of 6 visible at the API default page size).
    #2074 → #2116 → #2143 for one node id. Each pass **rewords the description**
    ("…skill 'skill-a-…'" → "…when filtering by tag"), so nothing in the title or body
    text is stable across passes — only the footer `Run ID:` and the node id are.
+   **NEW RECORD 2026-09-10 (#2184, ELITEA-1901): FOUR cards off ONE run.** #2165, #2184,
+   #2193 and #2214 all cite run `34436416962` for the same node id — one failure filed four
+   times — and the node id has **8 open cards** in total (#2083, #2147, #2165, #2184, #2193,
+   #2202, #2205, #2214) for a single unpromoted repair. So intake dedups neither *across* runs
+   nor *within* one. Three of the eight were already re-certified to `Ready` before I opened mine.
    *A third timing shape, from #2137:* the repair can be **on `main` already** and the
    card still lands, because the CI **run** predates it. Settle it with
    `git merge-base --is-ancestor <fix-sha> <ci-commit>` — one call, and it converts
    "is this fixed?" into a fact. On #2137: `NOT IN`, fix at 22:28, CI commit at 11:50.
 
 2. **CI runs `main`; repairs land on `automation/base`.** `origin/main..origin/automation/base`
-   is ~410 commits. Every merged-but-unpromoted repair re-cards on **every**
+   is **467** commits (2026-09-10) and growing. Every merged-but-unpromoted repair re-cards on **every**
    subsequent nightly. Node-id dedup alone will not stop this half.
 
 ## Do this FIRST — before any git, gate, or dispatch work
@@ -122,5 +127,10 @@ carried-forward jobs**, so a job that never re-ran got carded twice. Therefore:
 **Check job metadata (`gh api .../actions/jobs/<id>`) before calling two cards "a re-run" —
 the timestamps are the tell.**
 
-Tally now **10 sessions, zero code changed** (#2164 = ELITEA-1899, the **sixth** card
-off one node id). Occurrences go on #2135; the root cause is on #2157.
+Tally now **11 sessions, zero code changed** (#2184 = ELITEA-1901, the **eighth** open card
+off one node id — new record, beating #2164's six). Occurrences go on #2135; the root cause
+is on #2157.
+
+**Cheapest prior of all, cheaper than the greps: check the board.** A `[FIX]` card whose
+TMS id already has a sibling in `Ready` is almost certainly this. On #2184, *three* siblings
+sat in `Ready` the whole time — one board query would have called it before any git command.

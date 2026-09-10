@@ -161,7 +161,7 @@
 - [The wire is the oracle](the_wire_is_the_oracle_for_a_nondeterministic_producer.md) — read the run's own state off Socket.IO and assert the UI against it; it settles "display defect or producer failure?" in one instrument
 - [DEV goto waiter never resolves](dev_goto_lifecycle_waiter_never_resolves.md) — **BURSTY, not deterministic** (5 clean DEV greens with no shim, #2137); also fires in `BasePage.navigate()`, not just setup; try the plain DEV run FIRST, shim only when it bursts
 - [Dedup question cards first](dedup_question_cards_before_filing.md) — grep memory + open questions; #2157 dup'd #2135
-- [FIX cards: dedup on node id first](two_fix_cards_can_cite_the_identical_ci_run.md) — 8 sessions, 0 code; one run carded 3x
+- [FIX cards: dedup on node id first](two_fix_cards_can_cite_the_identical_ci_run.md) — 11 sessions 0 code; 1 run→4 cards
 - [Identical step duration across pass and fail is a fixed budget](identical_step_duration_across_pass_and_fail_is_a_fixed_budget.md) — a sleep, not a wait; false RED on success
 - [Name a precedent as a hypothesis, not a conclusion](name_a_precedent_as_a_hypothesis_not_a_conclusion.md) — a perfect-looking precedent gave me a wrong root cause
 - [A sanctioned RED can be manufactured by its own precondition](a_sanctioned_red_can_be_manufactured_by_its_own_precondition.md) — ask if the CASE asks for the failing condition
