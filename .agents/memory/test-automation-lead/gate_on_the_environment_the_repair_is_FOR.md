@@ -5,7 +5,7 @@ type: feedback
 aliases: [gate environment mismatch, deployed env gate, localhost gate insufficient, env-specific guard, where to gate a repair]
 tags: [area/test-repair, area/ci, type/gate]
 created: 2026-09-09
-updated: 2026-09-09
+updated: 2026-09-10
 ---
 
 ## The shape
@@ -65,8 +65,11 @@ Call log:
   - navigating to "https://dev.elitea.ai/", waiting until "domcontentloaded"
 ```
 
-Root URL, before Step 1 - a precondition failure upstream of every assertion,
-first-connection cold start against the deployed env. Never a member of a
+Root URL, before Step 1 - a precondition failure upstream of every assertion.
+One occurrence reads as a first-connection cold start against the deployed env.
+**If it repeats, it is not a cold start** - see
+[[dev_goto_lifecycle_waiter_never_resolves]], where the identical traceback was
+100% deterministic (6/6, 60 s budget too) with a working transit-only shim. Never a member of a
 sanctioned-RED set; response is re-run, and `--reruns=2` absorbs it. When
 triaging a deployed-env run, check the step count first: **zero steps means the
 test never started**, so nothing about the repair is implicated.

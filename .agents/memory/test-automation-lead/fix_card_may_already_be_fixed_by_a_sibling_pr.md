@@ -5,7 +5,7 @@ type: feedback
 aliases: [already fixed, sibling PR covers this card, matched control, negative control, fix card triage]
 tags: [area/orchestration, type/triage]
 created: 2026-08-28
-updated: 2026-08-28
+updated: 2026-09-10
 ---
 
 ## The situation
@@ -18,6 +18,25 @@ changed the shared `PipelineDetailPage.confirm_new_version()`.
 
 Dispatching an analyst before checking this burns a full pipeline pass on a
 green test.
+
+## Step 0 — the branch check, cheaper than both (2026-09-10, #2121)
+
+Repairs land on `automation/base`; CI's DEV/STAGE workflows run **`main`**, which
+receives them only via a human-triggered batch promotion. So **any repair merged
+between a CI run and the next promotion regenerates its own card, with a
+byte-identical signature**. One command settles it:
+
+```bash
+git log origin/main               --oneline -- <failing spec path>
+git log origin/automation/base    --oneline -- <same path>   # a repair main lacks => card is stale
+git rev-list --left-right --count origin/main...origin/automation/base
+```
+
+Worked case: #2121 (ELITEA-2070) cited DEV-stable run #114 on `main@5359201`
+(12:50 +0400); the repair `1850761e` merged to `automation/base` at 12:52 +0400 and
+`origin/automation/base` was 409 ahead / 0 behind. The card could not have tested the
+fix. Correct delivery: verify on the card's own environment, closure record, `Ready` —
+no code.
 
 ## Step 1 — timing. Could the failure even have seen the fix?
 

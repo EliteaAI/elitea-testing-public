@@ -158,3 +158,4 @@
 - [Mixed shard spread refutes the outage](mixed_shard_spread_refutes_the_outage_and_means_a_missing_precondition.md) — 46/6 = per-test; suspect ambient data + a vacuous sibling
 - [Entailment test: correction vs masking](entailment_test_separates_correction_from_masking.md) — prove the removed assertion is unfalsifiable on any path reaching its replacement; deleting a content premise WITHOUT a dominating guard is masking
 - [The wire is the oracle](the_wire_is_the_oracle_for_a_nondeterministic_producer.md) — read the run's own state off Socket.IO and assert the UI against it; it settles "display defect or producer failure?" in one instrument
+- [DEV goto waiter never resolves](dev_goto_lifecycle_waiter_never_resolves.md) — local DEV runs die in setup; deterministic, not cold start; commit+wait_for_load_state shim inside
