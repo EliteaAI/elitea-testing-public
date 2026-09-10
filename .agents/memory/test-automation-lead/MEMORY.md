@@ -163,3 +163,4 @@
 - [FIX cards: dedup on node id first](two_fix_cards_can_cite_the_identical_ci_run.md) — 7 sessions, zero code so far; `git merge-base --is-ancestor <fix-sha> <ci-commit>` settles "already fixed?" in one call
 - [Identical step duration across pass and fail is a fixed budget](identical_step_duration_across_pass_and_fail_is_a_fixed_budget.md) — a sleep, not a wait; false RED on success
 - [Name a precedent as a hypothesis, not a conclusion](name_a_precedent_as_a_hypothesis_not_a_conclusion.md) — a perfect-looking precedent gave me a wrong root cause
+- [A sanctioned RED can be manufactured by its own precondition](a_sanctioned_red_can_be_manufactured_by_its_own_precondition.md) — ask if the CASE asks for the failing condition
