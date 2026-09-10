@@ -168,3 +168,5 @@
 - [DEV-only locator red = an overwritten PROMOTED testid](dev_only_locator_red_can_be_an_overwritten_promoted_testid.md) — diff the VALUE expression across refs first
 - [EL-6460 breadcrumb drift](el6460_breadcrumb_drift_class.md) — a red `back-button` is UI drift, NOT an outage/promotion gap; fixed repair shape, no new testid
 - [APPROVED + vacuous guard still earns a fix round](an_approved_review_with_a_vacuous_guard_still_earns_a_fix_round.md) — absence assertions must prove the container rendered FIRST
+- [DEV gate discipline for FIX cards](dev_gate_discipline_for_fix_cards.md) — .env.test is a symlink; green≠clean; the #2124 goto hazard is never your signature
+- [Intake card boilerplate can contradict project canon](intake_card_boilerplate_can_contradict_project_canon.md) — [FIX] cards say "use regular locators"; void it in every dispatch
