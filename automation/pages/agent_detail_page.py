@@ -677,7 +677,39 @@ class AgentDetailPage(AgentFormPage):
     )
 
     # --- Navigation ---
-    back_button = LocatorDescriptor(testid="back-button")
+    #
+    # Breadcrumb trail (detail route only) — added by the ELITEA-1869
+    # adjustment. EliteaAI/EliteaUI@f1d4ea47 (EL-6460) made
+    # `BreadcrumbsOrTitle` render
+    # `hasBreadcrumbTrail ? <Breadcrumbs/> : (<BackButton/> + title)`, and
+    # BREADCRUMB_REGISTRY declares `ApplicationsDetail` with a parent, so on
+    # /agents/:tab/:agentId the trail is ALWAYS non-empty and the BackButton
+    # branch is unreachable no matter how the user arrived. `back_button`
+    # below therefore stays bound for an ABSENCE assertion, which keeps that
+    # finding test-enforced instead of documentation-only (.agents/testing.md
+    # § Locator policy, #511 extension). Same shape as `McpFormPage` after
+    # ELITEA-1961 / CLARIFICATION #1731.
+    breadcrumbs_nav = LocatorDescriptor(
+        testid="breadcrumbs",
+        description="Breadcrumb <nav> on the agent detail page "
+                    "(absent on the agents list page)",
+    )
+    breadcrumb_parent_link = LocatorDescriptor(
+        testid="breadcrumb-item",
+        description="Parent crumb link ('Agents') in the breadcrumb trail — "
+                    "exactly one renders on /agents/:tab/:agentId",
+    )
+    detail_title = LocatorDescriptor(
+        testid="agent-detail-title",
+        description="Current (last) crumb of the breadcrumb trail — the "
+                    'agent name, carrying aria-current="page"',
+    )
+    back_button = LocatorDescriptor(
+        testid="back-button",
+        description="Legacy shared app-shell back arrow — NEVER rendered on "
+                    "/agents/all/:id since EliteaAI/EliteaUI@f1d4ea47; bound "
+                    "for the ELITEA-1869 absence assertion",
+    )
 
     # --- Icon picker (ELITEA-1899 testid-only rework — added via
     # add-data-testid to EntityIcon.jsx/ApplicationEditForm.jsx/
@@ -4928,5 +4960,34 @@ class AgentDetailPage(AgentFormPage):
             timeout: Maximum wait time in milliseconds.
         """
         logger.info("Clicking back button")
-        self.back_button.click()
+        # `timeout` propagates to the click too: passing it only to
+        # `wait_for_network` left the click on the 10 000 ms context default,
+        # so a 15 000 ms caller argument produced a misleading "Timeout
+        # 10000ms" signature (ELITEA-1869 AFS § Robustness fixes 2).
+        self.back_button.click(timeout=timeout)
         self.wait_for_network(timeout=timeout)
+
+    @action("Click the parent breadcrumb link")
+    def click_breadcrumb_parent(self, timeout: int = 10000) -> None:
+        """Click the "Agents" ancestor crumb — the detail page's go-back control.
+
+        This is the product's own in-page navigation control, deliberately NOT
+        ``page.go_back()``: the two are different flows with different
+        contracts. The navigation is client-side (react-router ``<Link>``), so
+        no document load and no network idle is awaited here — callers wait on
+        what they actually need (the list re-fetch / the first card).
+
+        Count-then-index, never a bare ``.first`` on an unguarded collection:
+        ``applyBreadcrumbLabels`` drops any non-current ancestor whose label is
+        empty, so asserting the count makes "exactly one ancestor crumb"
+        an enforced invariant instead of a silent assumption
+        (ELITEA-1869 AFS § Test Steps 3b).
+
+        Args:
+            timeout: Maximum wait time in milliseconds — applied to the count
+                assertion, the visibility wait AND the click.
+        """
+        logger.info("Clicking the parent breadcrumb link")
+        expect(self.breadcrumb_parent_link).to_have_count(1, timeout=timeout)
+        self.breadcrumb_parent_link.first.wait_for(state="visible", timeout=timeout)
+        self.breadcrumb_parent_link.first.click(timeout=timeout)

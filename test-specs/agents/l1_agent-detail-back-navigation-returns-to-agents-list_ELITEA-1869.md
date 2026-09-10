@@ -473,6 +473,47 @@ None.
 
 ---
 
+## Implementation notes — shipped truth (implementer, 2026-09-10)
+
+Amended per `test-automation-implementation` Rule 11 after the repair was built
+and gated green on DEV. Three points where the shipped code is more specific
+than § Automation Hints — none changes what is asserted:
+
+1. **A third `LocatorDescriptor` was added**, not just the two in the Hints
+   snippet: `AgentDetailPage.detail_title = LocatorDescriptor(
+   testid="agent-detail-title")`. It is the current-crumb handle the § Concrete
+   Handles table already lists, and Step 3b asserts its text + its
+   `aria-current="page"` through it. Locator-policy compliant (class-level
+   field, testid on `main`).
+2. **The "trail reads `Agents/<name>`" assertion is a web-first `expect` on the
+   nav field**, not a `get_breadcrumb_text()` getter as on `McpFormPage`:
+   `expect(detail_page.breadcrumbs_nav).to_have_text(re.compile(rf"^Agents\s*/\s*{re.escape(name)}$"))`.
+   Auto-retrying (so it cannot read a half-mounted trail) and tolerant of MUI's
+   separator whitespace, while still a full-string match. No new page-object
+   method was needed.
+3. **The console side-channel was migrated to
+   `utils.console_errors.collect_console_errors(page)`** from the spec's
+   hand-rolled URL-less `page.on("console", …)` listener. Not requested by this
+   AFS — it is the standing opportunistic-migration ask in `.agents/testing.md`
+   § Unconfirmed ("only migrated specs can produce this evidence"), and this
+   spec was being touched anyway. Capture-only: nothing is filtered, no
+   `exclude_known_defect_urls` call is made, so the assertion is strictly the
+   same one, now carrying the failing resource's URL when it fires.
+
+Also applied verbatim from § Robustness fixes 2: `click_back_button()` now
+passes `timeout` to `.click()` as well as to `wait_for_network()`. The method
+and the `AgentPage` facade are **kept** (no caller remains after this repair,
+but `back_button` stays bound for Step 3a's absence assertion, and
+`SkillDetailPage` still mirrors the shape pending its own `[FIX]` card).
+
+**DEV gate observed:** 3 invocations, 3 green (63.88 s / 46.13 s / 49.42 s).
+2 of those 3 carried one `--reruns` attempt each, both the documented
+`#2124`/`#2156` DEV hazard — `Page.goto: Timeout 15000ms exceeded … navigating
+to "https://dev.elitea.ai/"`, allure status `broken`, 0.0 s, in session setup,
+upstream of every assertion. The spec's own signature never appeared.
+
+---
+
 ## Proposed TMS case-text change (do NOT apply here — orchestrator applies at back-write)
 
 The case text is what is stale, not the product (reverse-masking guard). The
