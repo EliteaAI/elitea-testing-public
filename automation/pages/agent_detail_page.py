@@ -13,7 +13,8 @@ import logging
 import re
 import time
 from urllib.parse import urlparse
-from playwright.sync_api import Page, Locator, Download
+from playwright.sync_api import Page, Locator, Download, expect
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from .base_page import BasePage
 from .agent_form_page import AgentFormPage
@@ -101,6 +102,25 @@ class AgentDetailPage(AgentFormPage):
         '[data-testid^="version-option-"]'
         ':not([data-testid="version-option-pin-icon"])'
         ':not([data-testid^="version-option-set-default-"])'
+    )
+
+    # Open/closed STATE of the VERSION dropdown, read off the trigger's own
+    # `aria-expanded` (issue #2052). MUI's `Select` puts the combobox role —
+    # and with it `aria-expanded` — on its inner display node, which
+    # `SingleSelect.jsx` tags as `{testId}-combobox`
+    # (`SelectDisplayProps={{ 'data-testid': `${dataTestId}-combobox` }}`,
+    # EliteaAI/EliteaUI `src/[fsd]/shared/ui/select/SingleSelect.jsx:663`) —
+    # a pre-existing testid, present on EliteaUI `main`, not added here.
+    # The attribute is always present and flips "true" <-> "false" (verified
+    # live 2026-09-08), so it is a true two-state oracle rather than a
+    # presence check: a testid-keyed selector with a state-attribute filter,
+    # the shape `.agents/testing.md` § Locator policy prescribes for state.
+    VERSION_SELECTOR_COMBOBOX = '[data-testid="agent-version-selector-trigger-combobox"]'
+    VERSION_SELECTOR_COMBOBOX_EXPANDED = (
+        '[data-testid="agent-version-selector-trigger-combobox"][aria-expanded="true"]'
+    )
+    VERSION_SELECTOR_COMBOBOX_COLLAPSED = (
+        '[data-testid="agent-version-selector-trigger-combobox"][aria-expanded="false"]'
     )
 
     # Three-way convergence predicate for "the page now shows version <name>,
@@ -841,9 +861,44 @@ class AgentDetailPage(AgentFormPage):
         """
         return (self.version_selector_trigger.text_content() or "").strip()
 
-    def open_version_selector(self):
-        """Click the VERSION dropdown trigger to open the options list."""
-        self.version_selector_trigger.click()
+    def open_version_selector(self, timeout: int = 10000):
+        """Ensure the VERSION dropdown is OPEN, and confirm that it is.
+
+        LOCATOR: clicks the ``agent-version-selector-trigger``
+        ``LocatorDescriptor`` field, then waits on
+        :attr:`VERSION_SELECTOR_COMBOBOX_EXPANDED` — the trigger's own
+        ``aria-expanded="true"``.
+
+        Two deliberate properties, both from issue #2052:
+
+        * **Post-condition, not fire-and-forget.** The click used to return
+          with nothing checked, so "the dropdown did not open" surfaced later
+          as an unrelated missing-option timeout. Now it fails here, naming
+          the dropdown.
+        * **Idempotent.** The trigger is clicked only while the dropdown is
+          collapsed. Clicking it while the menu is already open cannot work
+          by construction: MUI renders an invisible full-viewport
+          ``MuiBackdrop-root`` over the page, which intercepts the pointer
+          event, so Playwright retries the click until it times out
+          (``"<div class=MuiBackdrop-root …> from <div id=menu- …> subtree
+          intercepts pointer events"`` — the exact signature of the GHA run
+          34244735426 failures). Re-using an already-open menu is the
+          correct behaviour for a method whose contract is "the dropdown is
+          open when I return", and it hides nothing: the only way the menu
+          can still be open is a caller that never asked for it to be
+          closed, because :meth:`close_version_selector` — the method that
+          closes THIS dropdown — now raises when it cannot close it.
+          (:meth:`close_versions_menu` is a different menu and still raises
+          nothing; see its docstring.)
+
+        Args:
+            timeout: Maximum wait time in milliseconds for the dropdown to
+                report itself expanded.
+        """
+        expanded = self.page.locator(self.VERSION_SELECTOR_COMBOBOX_EXPANDED)
+        if expanded.count() == 0:
+            self.version_selector_trigger.click()
+        expanded.wait_for(state="attached", timeout=timeout)
 
     def is_version_option_visible(self, version_name: str, timeout: int = 5000) -> bool:
         """Check whether a version is present in the open VERSION dropdown.
@@ -2515,8 +2570,156 @@ class AgentDetailPage(AgentFormPage):
         ]
 
     def close_versions_menu(self):
-        """Close the open Versions menu by pressing Escape."""
+        """Close the open Versions menu by pressing Escape.
+
+        This is the SKILL CARD's "Versions" menu
+        (:meth:`open_skill_version_selector` /
+        :meth:`get_versions_menu_item_names`), NOT the agent's own VERSION
+        dropdown in the toolbar — that one is
+        :meth:`close_version_selector`, which has to confirm the close
+        (issue #2052). Left as a bare Escape deliberately: the skill menu
+        is a different component with no search field (``SkillVersionSelector``
+        is a raw MUI ``<Menu>``/``<MenuItem>`` — no ``SingleSelect``, no
+        ``withSearch``), so it has neither the swallowed-Escape failure mode
+        nor a shared oracle with the VERSION dropdown.
+
+        **That claim is scoped to THIS class.** It is not a statement about
+        every ``close_versions_menu`` in the suite:
+        ``PipelineDetailPage.close_versions_menu()`` drives the *same*
+        ``withSearch`` VERSION dropdown under the *same*
+        ``agent-version-selector-trigger`` testid with the *same* bare
+        Escape, across 3 call sites, and therefore *does* carry the #2052
+        failure mode. It is deliberately out of scope for this repair and
+        tracked separately (the pipelines half of #2039).
+        """
         self.page.keyboard.press("Escape")
+
+    def close_version_selector(self, timeout: int = 5000, attempts: int = 3):
+        """Close the agent's VERSION dropdown and CONFIRM that it closed.
+
+        LOCATOR: presses Escape on the first :attr:`VERSION_OPTION_ANY`
+        option, then waits on BOTH :attr:`VERSION_SELECTOR_COMBOBOX_COLLAPSED`
+        (the trigger's own ``aria-expanded="false"``) **and** zero
+        :attr:`VERSION_OPTION_ANY` options remaining. The second term is not
+        redundant: ``aria-expanded`` tracks React `open` state and flips
+        BEFORE the ``MuiBackdrop-root`` unmounts at the end of the ``Grow``
+        exit transition, so on its own it is a leading indicator that leaves
+        a ~200-300 ms window in which the backdrop still intercepts clicks.
+        The options unmount with the Menu subtree, so their absence is what
+        proves the backdrop is actually gone.
+
+        Callers used to close this dropdown with :meth:`close_versions_menu`
+        — a bare ``page.keyboard.press("Escape")`` with nothing checked
+        afterwards. That is issue #2052: since EliteaAI/EliteaUI@cf648e9a
+        (PR #857) the VERSION dropdown renders a search field, and
+        ``src/[fsd]/shared/ui/select/SingleSelectDropdown.jsx`` mounts it as
+        ``<SimpleSearchBar onKeyDown={e => e.stopPropagation()} />``.
+        ``SimpleSearchBar`` autofocuses itself (``autoFocus = true`` plus a
+        100 ms ``setTimeout`` re-focus) and its own handler turns Escape
+        into "clear the search box" **before** calling that external
+        ``onKeyDown``. So whenever focus sits in that search field the
+        keydown is consumed and stopped: the MUI ``Modal`` never sees it and
+        the menu stays open indefinitely. Verified live 2026-09-08 on
+        localhost — from that state two consecutive page-level Escapes left
+        ``aria-expanded="true"`` with every option still rendered, so
+        *retrying* a page-level Escape fixes nothing.
+
+        Pressing Escape on an OPTION does work: ``Locator.press()`` focuses
+        the element first, so the keydown originates on the ``MenuItem``
+        inside the ``MenuList`` and reaches the ``Modal``'s handler
+        (verified live in the same session, from the stuck state above —
+        one press, menu closed, URL unchanged, no version selected). It is
+        also what a real user does: keyboard focus is in the option list,
+        not in a search box they never clicked.
+
+        Failing to close is reported, never absorbed — and that holds on
+        every path, because there is no early return: a successful exit
+        always requires BOTH terms of the conjunction, whatever state the
+        dropdown was in on entry. After *attempts* cycles this raises with
+        the trigger's live ``aria-expanded`` value and the number of options
+        still rendered (both of which genuinely participate in the verdict),
+        so a genuine "this menu can no longer be dismissed" product defect
+        fails loudly here instead of resurfacing as an intercepted-click
+        timeout in whatever the next step happens to be — which is exactly how it reached the
+        nightly (GHA run 34244735426, issue #2052).
+
+        Args:
+            timeout: Maximum wait time in milliseconds, per attempt, for the
+                dropdown to report itself collapsed.
+            attempts: Number of Escape cycles before giving up.
+
+        Raises:
+            AssertionError: if the VERSION dropdown is still expanded after
+                *attempts* cycles.
+        """
+        collapsed = self.page.locator(self.VERSION_SELECTOR_COMBOBOX_COLLAPSED)
+        options = self.page.locator(self.VERSION_OPTION_ANY)
+
+        for attempt in range(1, attempts + 1):
+            # Press ONLY while the dropdown still reports itself expanded.
+            # There is deliberately no early `return` here: every path out of
+            # this method goes through BOTH waits below, so the exit condition
+            # is always the full conjunction and can never be satisfied by
+            # `aria-expanded` alone (issue #2052 review round 2 — an earlier
+            # `if collapsed.count() > 0: return` guard turned a `to_have_count`
+            # timeout on attempt N into a silent success on attempt N+1, which
+            # made the raise below unreachable on exactly the state the count
+            # term exists to detect).
+            if collapsed.count() == 0:
+                if options.count() > 0:
+                    options.first.press("Escape")
+                else:
+                    # No option rendered to aim at (an empty or fully filtered
+                    # list). Fall back to the page-level press rather than skip
+                    # the close: it is the weaker signal, but the waits below
+                    # are what decide whether it actually worked.
+                    self.page.keyboard.press("Escape")
+            # `aria-expanded` already "false" => the menu is closing or closed.
+            # Do NOT press again: the option we would aim at is in a detaching
+            # subtree, and `Locator.press()` on it either races the unmount or
+            # blocks re-resolving a node that is on its way out. The correct
+            # action in that window is to WAIT it out, which is what the
+            # `to_have_count(0)` term below does.
+
+            try:
+                collapsed.wait_for(state="attached", timeout=timeout)
+                # `aria-expanded` is a LEADING indicator: MUI 7.3.11's
+                # `Select/SelectInput.js` binds it to React `open` state, which
+                # flips at the START of the Menu's `Grow` exit transition —
+                # `MuiBackdrop-root` survives that transition (~200-300ms) and
+                # keeps intercepting pointer events after the attribute already
+                # reads "false". The option nodes unmount WITH the Menu
+                # subtree (verified live: after a close, options / backdrops /
+                # `.MuiMenu-root` all read 0 — the menu is not `keepMounted`),
+                # so requiring zero options is what actually proves the
+                # backdrop is gone. Conjunction, never a replacement: if a
+                # search filter has already emptied the list this term is
+                # trivially true, and the `aria-expanded` wait above is still
+                # what holds the line.
+                expect(options).to_have_count(0, timeout=timeout)
+                return
+            except (PlaywrightTimeoutError, AssertionError):
+                # `expect(...).to_have_count()` raises AssertionError on
+                # timeout, `wait_for` raises PlaywrightTimeoutError; nothing
+                # else in this block raises either.
+                logger.warning(
+                    "close_version_selector: VERSION dropdown still open "
+                    "after Escape (attempt %d/%d) — retrying",
+                    attempt, attempts,
+                )
+
+        trigger_state = self.page.locator(
+            self.VERSION_SELECTOR_COMBOBOX
+        ).get_attribute("aria-expanded")
+        raise AssertionError(
+            f"close_version_selector: the VERSION dropdown did not close "
+            f"after {attempts} Escape attempts — its trigger still reports "
+            f"aria-expanded={trigger_state!r} with {options.count()} "
+            f"option(s) still rendered. While it stays open MUI's invisible "
+            f"backdrop intercepts every pointer event on the page, so this "
+            f"is reported here rather than left to surface as an unrelated "
+            f"click timeout (issue #2052)."
+        )
 
     def is_remove_skill_button_visible(self, skill_name: str, timeout: int = 5000) -> bool:
         """Point-in-time check: is the "remove skill" icon button currently
@@ -3767,8 +3970,13 @@ class AgentDetailPage(AgentFormPage):
     def close_actions_menu(self, timeout: int = 5000):
         """Close the open actions (three-dot) menu by pressing Escape.
 
-        Mirrors :meth:`close_versions_menu`'s Escape-press pattern for the
-        VERSION-options menu. Needed between two separate
+        Mirrors the bare Escape-press pattern of
+        :meth:`close_versions_menu` (the SKILL CARD's Versions menu). It is
+        NOT the VERSION dropdown's close — that is
+        :meth:`close_version_selector`, which must confirm the close
+        (issue #2052); this actions menu has no search field and does
+        confirm its own close via the ``wait_for`` below. Needed between two
+        separate
         :meth:`open_actions_menu` calls in the same test (e.g. checking the
         VERSION group's menuitem before *and* after Publish/Unpublish).
         """

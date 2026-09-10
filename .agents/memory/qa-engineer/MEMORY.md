@@ -47,3 +47,4 @@
 - [JS el.click() on a disabled button is a silent no-op](js_click_on_disabled_button_is_a_silent_noop.md) — cannot-fail click + vacuous URL guard = red 2 steps downstream
 - [Run the suite against dev.elitea.ai without editing .env.test](retarget_suite_at_dev_without_editing_env_test.md) — throwaway -p plugin; shell exports cannot win
 - [Sanctioned-RED re-anchoring drops a cross-check](sanctioned_red_reanchoring_silently_drops_a_crosscheck.md) — tick OLD hard asserts one by one; re-anchoring is the silent leak
+- [Model display-name literals rot](model_display_name_literals_rot.md) — dead catalog entry; read the case, often DELETE the step not swap it
