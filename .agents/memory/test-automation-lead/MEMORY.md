@@ -179,3 +179,5 @@
 - [A cross-RUN repeat FIX card is not a duplicate filing](a_cross_run_fix_card_is_not_a_duplicate_filing.md) — same run id = intake artifact (dedup fixes it); different run id = true red re-detected, recurs nightly until promotion
 - [Ancestry check = 1st move on a FIX card](ancestry_check_is_the_first_move_on_a_fix_card.md) — scope to the CALL PATH via `-S"<symbol>"`; spec-only lies (#2175)
 - [A null-delta FIX card still owes a full gate](a_null_delta_card_still_owes_a_full_gate.md) — no dispatch, no review, but your own N×-green on the env the red came from is the delivery (#2173)
+- [Message-string grep beats the ancestry walk](message_string_grep_is_the_cheapest_promotion_gap_proof.md) — assertion text on `origin/main` but absent on `automation/base` ⇒ already repaired; no commit, no call-path list (#2180)
+- [A green control is not exoneration when the cause is DATA](matched_control_is_inconclusive_when_the_root_cause_is_data.md) — CI's project held 0 pipelines, mine holds some; say "inconclusive by construction" out loud (#2180)
