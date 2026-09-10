@@ -8,6 +8,53 @@
 - **User set**: `${TEST_USER}` (localhost `auth_state` bypass via `VITE_DEV_TOKEN`)
 - **Analyst**: qa-engineer (Sage), batch `pipelines-remaining-w2`
 - **Status**: extend-existing
+- **Amended**: 2026-09-10 (analyst re-run, board card #2139) — see
+  § AMENDMENT 2026-09-10 immediately below. The 2026-08 implementation-time
+  amendment that made Step 6 a sanctioned-RED soft assertion is **withdrawn**:
+  it was caused by an unfaithful precondition in the test, not by the case.
+- **Environment re-verified**: `https://dev.elitea.ai` (`APP_PREFIX=/app`),
+  project `Private` id 399, EliteaUI `main` @ `0678b8b8`.
+
+## AMENDMENT 2026-09-10 — the RED was manufactured by the test's own precondition
+
+**What changed:** nothing in the product, and nothing in the case. What changed
+is the analysis. The 2026-08 implementation-time amendment concluded that case
+Step 6 (auto-redirect to the Pipelines dashboard after delete) is a product
+defect (`EliteaAI/elitea-testing-public#1332`) and specced it as a sanctioned-RED
+soft assertion. That conclusion was reached against a precondition the case never
+describes — `pipeline_api.create_pipeline()` followed by
+`detail_page.navigate(pid)`, i.e. a `page.goto()` deep link with no prior in-app
+history entry. Because the product's redirect is `navigate(-1)` (go back one
+history entry), **that precondition is the direct and sole cause of the failure.**
+It is a wrong-interface precondition per `.agents/testing.md` § Fidelity policy —
+a substitution that was assumed to be transit-only ("test isolation, not testing
+creation") but is in fact **observable-changing**: it manufactures the exact
+condition the case's own Step 6 observable cannot survive.
+
+**Live re-verification on `https://dev.elitea.ai`, 2026-09-10** (three arrival
+paths, same delete action, same three-dot menu, same type-to-confirm dialog):
+
+| Path | How the detail page was reached | `history.length` | Redirect to `/app/pipelines/all`? | Runs |
+|---|---|---|---|---|
+| **C — case-literal** | Dashboard → sidebar `+` → fill Name+Description → **Save** → app lands on the detail page → delete right there (case Steps 1→2→3, no navigation step in between) | 4 | ✅ **YES**, immediate | 1/1 |
+| **A — in-app arrival** | Dashboard → click the pipeline card → detail page → delete | 3–6 | ✅ **YES**, 0.0 s / 7.1 s / 6.6 s after the delete settled | **3/3** |
+| **B — deep link** (the current test's precondition) | `page.goto('/app/pipelines/all/{id}?viewMode=owner')` in a page with empty history → delete | 2–3 | ❌ **NO** — stranded on the deleted pipeline's stale detail route for the full 15 s observation | **3/3** |
+
+All nine observations: `DELETE` succeeded, **0 console errors**, and in every
+in-app run the pipeline was independently confirmed absent from the dashboard
+list. Evidence: [Path C](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/ELITEA-2022-2139-pathC-case-literal-redirected-to-dashboard.png)
+· [Path A](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/ELITEA-2022-2139-pathA-in-app-card-click-redirected-to-dashboard.png)
+· [Path B — stranded](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/ELITEA-2022-2139-pathB-deep-link-stranded-on-deleted-detail.png).
+
+**Consequence for this AFS:** case Step 6 is a **hard assertion**, not a
+sanctioned RED. The case's arrival at the detail page is in-app, so the redirect
+is producible by the system and must be asserted as such.
+
+**Consequence for `#1332`:** it stays **OPEN and valid**. The deep-link dead-end
+is a genuine user-facing bug (bookmarks, shared links, restored tabs) and it
+reproduces 3/3 on DEV. It simply is not what ELITEA-2022 tests. Deep-link
+coverage is a **separate decision for the lead** — see § Deep-link coverage
+(#1332) below. Do not treat this amendment as evidence that `#1332` is fixed.
 
 ## Extension target
 
@@ -57,10 +104,20 @@ creation). Confirmed live this session anyway (see Test Steps step 1) purely
 to validate the case's own precondition text is accurate — no drift found.
 
 ## Preconditions
-- User is logged in (`auth_state` on localhost).
-- A pipeline exists and is saved (created via `pipeline_api.create_pipeline()`
-  in the extended test, matching the covering spec's existing pattern —
-  no new fixture needed).
+- User is logged in (`auth_state` on localhost; Keycloak on deployed envs).
+- A pipeline exists and is saved — the case states this as a **precondition**
+  ("A pipeline named 'ToDelete_Pipeline' exists and is saved"), so seeding it via
+  `pipeline_api.create_pipeline()` remains a legitimate, declared **transit**
+  substitution: it is not the case's observable and it does not touch the arrival
+  path. Keep it.
+- **The user is on the Pipelines dashboard and opens the pipeline from there.**
+  This is not optional colour — it is load-bearing for case Step 6. The case has
+  **no navigation step between Step 2 (Save) and Step 3 (open the three-dot
+  menu)**, so the user it describes arrives at the detail page *through the app*
+  (either by saving a freshly created pipeline, or by opening it from the
+  dashboard). Reaching it by `page.goto()` is a **different scenario** the case
+  does not describe, and it is the one and only reason Step 6 fails
+  (`navigate(-1)` has nowhere to go). See § AMENDMENT 2026-09-10.
 
 ## Test Data
 - Reuses the covering spec's own pattern: a pipeline named
@@ -79,7 +136,14 @@ the new assertion at the marked point; steps 1–5 already pass unmodified.)
    description filled, Save clicked → pipeline id `8222` created, redirected
    to `/pipelines/all/8222?...`). **Verify**: pipeline exists (case Steps 1–2,
    already satisfied by either creation path).
-2. Navigate to the pipeline detail page (existing covering-spec behavior).
+2. **[AMENDED 2026-09-10 — this is the change that removes the RED]** Reach the
+   pipeline detail page **through the app**: open the Pipelines dashboard
+   (`PipelinesListPage.navigate()`), then click the pipeline's card
+   (`PipelinesListPage.open_pipeline_by_name(name)`), then
+   `PipelineDetailPage.wait_for_detail_page_load()`. **Do NOT use
+   `detail_page.navigate(pid)`** — that is a `page.goto()` deep link, which is
+   the unfaithful precondition this amendment removes. Verified live 3/3 on DEV
+   with an API-seeded pipeline + this exact arrival.
 3. Open the three-dot Actions menu, next to the VERSION controls
    (`PipelineDetailPage.open_actions_menu()`, testid `agent-actions-menu-button`
    — confirmed live: `page.getByTestId('agent-actions-menu-button')` resolves
@@ -105,7 +169,7 @@ the new assertion at the marked point; steps 1–5 already pass unmodified.)
    /api/v2/elitea_core/application/prompt_lib/{project}/{pipeline_id}` fires
    and returns `204 No Content` (confirmed live via network capture) (case
    Step 5).
-6. **[GAP — new assertion, not currently in the covering spec]** Immediately
+6. **[GAP — new assertion; HARD, per § AMENDMENT 2026-09-10]** Immediately
    after the delete confirms (no manual navigation), assert
    `page.url` resolves to the Pipelines dashboard route (`/pipelines/all` on
    localhost — `APP_PREFIX` is empty there; `/app/pipelines/all` on deployed
@@ -129,11 +193,13 @@ the new assertion at the marked point; steps 1–5 already pass unmodified.)
   console errors. This is the assertion the covering spec is currently
   missing.
 
-**AMENDED (implementation time):** this expected result is asserted, but is
-currently **sanctioned RED** — see § Known Defects Found During Exploration.
-The redirect does not fire under this test's own (realistic, established)
-setup; filed as `EliteaAI/elitea-testing-public#1332`. Step 7 (pipeline
-absence) is independently confirmed and stays green.
+**~~AMENDED (implementation time, 2026-08): sanctioned RED via #1332.~~
+WITHDRAWN 2026-09-10** — see § AMENDMENT 2026-09-10. The redirect DOES fire
+under the case's own arrival path (3/3 on DEV, in-app card click; 1/1
+case-literal create→save→delete). It failed only under the *test's* `page.goto()`
+deep-link precondition, which the case never describes. Step 6 is a **hard
+assertion** and the spec is expected **GREEN**. Step 7 (pipeline absence) is
+unchanged and also green.
 
 ## Coverage Map
 
@@ -146,7 +212,7 @@ absence) is independently confirmed and stays green.
 | 3 Open the three-dot menu (next to version controls) | Three-dot menu opens | step 3 | covering spec's existing `open_actions_menu()` call | asserted (existing) |
 | 4 Click "Delete" option from the menu | Delete confirmation dialog opens | step 4 | covering spec's existing `Dialog.wait_for()` | asserted (existing) |
 | 5 Confirm deletion in the confirmation dialog | Deletion is submitted | step 5 | covering spec's existing `Dialog.type_to_confirm()` + `Dialog.click_button()` | asserted (existing) |
-| 6 Verify redirect to Pipelines dashboard (URL: /app/pipelines/all) | Browser navigates to the Pipelines dashboard | step 6 | **NEW** — assert `page.url` matches the dashboard route immediately post-delete, before any manual navigation | **gap — needs new assertion** |
+| 6 Verify redirect to Pipelines dashboard (URL: /app/pipelines/all) | Browser navigates to the Pipelines dashboard | step 6 | **NEW** — `page.wait_for_url(...)` on the dashboard route post-delete, **before any manual navigation**, reached via the case-faithful in-app arrival (AFS step 2) | **gap — needs new HARD assertion** (was mis-specced as sanctioned-RED 2026-08; corrected 2026-09-10) |
 | 7 Verify "ToDelete_Pipeline" no longer appears in the pipeline list | The deleted pipeline is not visible in the dashboard list | step 7 | covering spec's existing `pipeline_exists_in_list()` assertion | asserted (existing) |
 
 **Axis 2 — Analyst additions**
@@ -195,42 +261,34 @@ extension; only a new assertion line in the test.
 
 ## Known Defects Found During Exploration
 
-**AMENDED during implementation (ELITEA-2022, batch `pipelines-remaining-w2`
-— `test-automation-engineer`).** The analyst's live check (single manual
-session) observed the auto-redirect working, but the exact automated setup
-(pipeline created via API, then `detail_page.navigate(pid)` — a `page.goto()`
-with no prior in-app browser-history entry) reproduces a **genuine,
-deterministic product defect**: the redirect never fires.
+**None that affect this case.** (Superseded section — the 2026-08
+implementation-time entry claiming case Step 6 was blocked by
+`EliteaAI/elitea-testing-public#1332` is withdrawn; see § AMENDMENT 2026-09-10.
+The redirect works under the case's own arrival path.)
 
-- **Root cause (source-confirmed):** `useDeleteApplication` (EliteaUI
-  `src/pages/Applications/Components/Applications/DeleteApplicationButton.jsx`)
-  wires the redirect to the success toast's `onCloseToast` → `navigate(-1)`
-  (React Router "go back one history entry"). When the detail page was reached
-  via direct navigation, there is no prior entry to go back to, so
-  `navigate(-1)` is a no-op and the app is left on the deleted pipeline's
-  stale detail route indefinitely.
-- **Confirmed live via Playwright MCP** (polled `location.href` every 1s for
-  8s post-delete, on a probe pipeline reached identically to the covering
-  test's own setup): URL never changed from
-  `/pipelines/all/{id}?viewMode=owner&name=...`; DELETE returned `204`; 0
-  console errors — a silent dead-end, not a visible error.
-  ```
-  DELETE /api/v2/elitea_core/application/prompt_lib/399/8227 => 204 No Content
-  t=1s..8s: location.href stays at .../pipelines/all/8227?viewMode=owner&name=...
-  ```
-- **Filed:** `EliteaAI/elitea-testing-public#1332`.
-- **Classification:** isolated (per `.agents/testing.md` § Merge gate's
-  analysis-time exception) — the DELETE itself succeeds cleanly and the
-  pipeline is genuinely gone server-side; only the redirect assertion (case
-  Step 6) is affected. Step 7 (pipeline absent from the dashboard list) is
-  independently verifiable by reaching the dashboard explicitly, and stays a
-  hard assertion.
-- **Case-text note:** the case's Step 6 expected result ("Browser navigates to
-  the Pipelines dashboard") is NOT case-text drift — it is the correct,
-  intended behavior per the product code's own design intent (a redirect
-  after delete). The defect is that the implementation (`navigate(-1)`) fails
-  to deliver it under this reachable, realistic condition. No case-text
-  amendment needed.
+### Deep-link coverage (#1332) — a SEPARATE decision, deliberately not silently dropped
+
+`EliteaAI/elitea-testing-public#1332` is a **real, open, reproducible product
+bug** and nothing here weakens it. Re-confirmed on `https://dev.elitea.ai`
+2026-09-10, **3/3 deterministic**: opening a pipeline's detail page by direct URL
+(empty history) and deleting it leaves the user stranded on the deleted
+pipeline's stale detail route indefinitely — DELETE `204`, toast shown and
+dismissed, 0 console errors, no redirect within 15 s
+([screenshot](https://github.com/EliteaAI/elitea-testing-public/releases/download/evidence/ELITEA-2022-2139-pathB-deep-link-stranded-on-deleted-detail.png)).
+Real users hit it via bookmarks, shared links and browser-restored tabs.
+
+**But it is not what ELITEA-2022 tests.** Removing the deep-link precondition
+from this spec therefore removes the only automated observation of `#1332`.
+Stating that explicitly so the loss is a decision, not an accident:
+
+| Option | Shape | Cost |
+|---|---|---|
+| **(i) Accept the gap** (default unless the lead says otherwise) | ELITEA-2022 goes green on the case-faithful path; `#1332` stays OPEN, tracked manually. | Zero. No automated guard against a `#1332` regression/fix. |
+| **(ii) Add a dedicated deep-link spec** | A NEW, separate test (its own AFS/case) asserting the deep-link redirect, carried as sanctioned RED with `# Known defect: #1332` + `soft_failures`, per `.agents/testing.md` § Merge gate. | One permanently-red spec in the gate until `#1332` ships a fix; needs a closed-set entry in the closure record. |
+
+**The implementer must NOT build option (ii) off this AFS.** It is coverage
+beyond the case (Axis 2) and a merge-gate commitment — the lead decides, and if
+chosen it gets its own card and AFS.
 
 ## Blocked Steps
 None. (Automation proceeds per the analysis-time sanctioned-RED exception —
@@ -238,43 +296,88 @@ Step 6's assertion is soft-tagged with the known defect; all other steps
 automate and verify cleanly.)
 
 ## Automation Hints
+
 - Framework: Playwright + pytest (confirmed, matches covering spec).
-- Extend `test_delete_pipeline_via_ui_menu` in-place with the Step 4/5
-  assertions (implemented shape — differs from the original plan below: the
-  redirect check is a bounded `page.wait_for_url(...)` wrapped in
-  `soft_failures` + `# Known defect: #1332`, since the naive immediate
-  `page.url` check this AFS originally proposed doesn't hold — see the
-  amendment above. Step 5 reaches the dashboard explicitly when the redirect
-  didn't happen, so its own assertion isn't masked by the known defect):
-  ```python
-  with allure.step("Step 3 — Delete pipeline via three-dot menu"):
-      detail_page.delete_pipeline_via_menu(timeout=NAVIGATION_TIMEOUT)
+- **Spec to edit:** `automation/tests/ui/pipelines_2/test_pipeline_management.py`
+  → `TestDeletePipeline::test_delete_pipeline_via_ui_menu` (note: the file moved
+  to `tests/ui/pipelines_2/` since the 2026-08 pass; the `tests/ui/pipelines/`
+  path in § Extension target above is stale).
+- **The whole change is three edits. Nothing else moves.**
 
-  soft_failures = []
-  with allure.step("Step 4 — Verify automatic redirect to Pipelines dashboard. "
-                    "KNOWN DEFECT — sanctioned RED (#1332)"):
-      try:
-          page.wait_for_url(
-              lambda url: urlparse(url).path.rstrip("/").endswith("/pipelines/all"),
-              timeout=8000,
-          )
-      except PlaywrightTimeoutError:
-          soft_failures.append(f"Known defect #1332: ... got {page.url!r}")
+**Edit 1 — Step 2: reach the detail page IN-APP (this is the fix).**
+```python
+with allure.step("Step 2 — Open the pipeline from the Pipelines dashboard"):
+    list_page = PipelinesListPage(page)
+    list_page.navigate()
+    list_page.open_pipeline_by_name(PIPELINE_NAME)   # in-app arrival — the case's own path
+    detail_page = PipelineDetailPage(page)
+    detail_page.wait_for_detail_page_load()
+```
+Replaces `detail_page = PipelineDetailPage(page); detail_page.navigate(pid)`.
+`detail_page.navigate(pid)` is a `page.goto()` deep link — the unfaithful
+precondition. Verified live 3/3 on DEV with an API-seeded pipeline + this exact
+arrival. Bonus: it also sidesteps the DEV `page.goto` hang class
+(`#2124`/`#2137`), which this analyst hit twice while probing the deep-link path.
 
-  with allure.step("Step 5 — Verify pipeline removed from dashboard"):
-      list_page = PipelinesListPage(page)
-      if not urlparse(page.url).path.rstrip("/").endswith("/pipelines/all"):
-          list_page.navigate()  # #1332 open — reach the dashboard explicitly
-      assert not list_page.pipeline_exists_in_list("autotest_delete_ui_pipe", timeout=3000), (
-          "Pipeline 'autotest_delete_ui_pipe' should be gone after UI deletion"
-      )
+**Edit 2 — Step 4: the redirect assertion becomes HARD.** Delete
+`soft_failures`, the `try/except PlaywrightTimeoutError`, the trailing
+`pytest.fail(...)` block, and the `# Known defect: #1332` framing.
+```python
+with allure.step("Step 4 — Verify the app auto-redirects to the Pipelines dashboard"):
+    page.wait_for_url(
+        lambda url: urlparse(url).path.rstrip("/").endswith("/pipelines/all"),
+        timeout=REDIRECT_TIMEOUT,
+    )
+```
+⚠️ **`timeout=8000` is NOT enough — raise it.** Measured on DEV across three
+in-app runs the redirect landed at **0.0 s / 7.1 s / 6.6 s** *after*
+`delete_pipeline_via_menu()` had already returned. The redirect is coupled to the
+success toast's close (`onCloseToast` → `navigate(-1)`;
+`TOAST_DURATION_DEFAULTS.success = 3000` ms in `src/common/constants.js`, but
+env-configurable and empirically slower on DEV). Use **≥ 20 000 ms**. Letting a
+7-second reality run against an 8-second budget is a flake generator.
 
-  if soft_failures:
-      pytest.fail("Soft assertion(s) failed (sanctioned RED — known defect #1332):\n"
-                  + "\n".join(soft_failures))
-  ```
+**Edit 3 — Step 5: drop the conditional fallback navigation.** The redirect is
+now asserted, so the test is provably on the dashboard when it gets here.
+```python
+with allure.step("Step 5 — Verify the pipeline is gone from the dashboard"):
+    assert not list_page.pipeline_exists_in_list(PIPELINE_NAME, timeout=3000), (
+        f"Pipeline {PIPELINE_NAME!r} should be gone after UI deletion"
+    )
+```
+Remove the `if not urlparse(page.url)...: list_page.navigate()` guard — it exists
+only to work around the manufactured `#1332` condition. Keeping it would let a
+future genuine redirect regression pass silently, which is the exact masking this
+extension was written to remove.
+
+**Docstring.** Rewrite the `Known product defect (step 4, sanctioned RED)`
+paragraph out entirely. Replace with a one-line declaration of the surviving
+transit substitution, per `.agents/role-overrides.md` § Implementer slot:
+*"Precondition seeded via `pipeline_api.create_pipeline()` (transit only — the
+case lists the pipeline's existence as a precondition); the detail page is then
+reached in-app from the dashboard, because the case's Step 6 redirect observable
+depends on the arrival path (`navigate(-1)`) — see
+`test-specs/pipelines/lextend_delete-pipeline-via-actions-menu_ELITEA-2022.md`
+§ AMENDMENT 2026-09-10."*
+
+**Cleanup unchanged.** Keep the `finally: pipeline_api.delete_pipeline(pid)`
+no-op safety net.
+
+**Also needs updating (orchestrator/implementer, not silently):**
+- `PipelineDetailPage.delete_pipeline_via_menu()`'s docstring
+  (`pages/pipeline_detail_page.py:2658-2671`) tells the next reader that the
+  redirect is `#1332`-affected "which is exactly how this method's callers reach
+  it". After this change that is no longer true of *this* caller. Amend the
+  docstring to say the redirect fires on in-app arrival and no-ops on deep-link
+  arrival (`#1332`), and that callers choose their arrival path deliberately.
+- The TMS case's `sanctioned_red: "#1332"` frontmatter key
+  (`ELITEA-2022_delete-pipeline.md`) should be **removed** on back-write — the
+  case is no longer sanctioned RED. Orchestrator's job, not the implementer's.
+
+**Expected outcome:** GREEN, deterministically. Gate it as a normal 3x-green
+spec, not as a sanctioned-RED exception.
+
 - `settings.app_base_url` / `APP_PREFIX` handling: on localhost `APP_PREFIX`
-  is empty, so the URL ends `/pipelines/all`; on a deployed env it would be
-  `/app/pipelines/all`. Use a suffix-match assertion (`.endswith(...)` or
-  regex) rather than an exact string, consistent with the rest of the suite's
-  env-agnostic URL assertions.
+  is empty, so the URL ends `/pipelines/all`; on a deployed env it is
+  `/app/pipelines/all`. Keep the suffix-match assertion (`.endswith(...)`)
+  rather than an exact string, consistent with the rest of the suite.

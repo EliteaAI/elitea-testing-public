@@ -2,8 +2,35 @@
 
 > Handle cache from live sessions against `http://localhost:5173`. Verify a handle as
 > you use it — this is a cache, not a source of truth. One writer at a time; update in
-> place, don't append duplicate entries. Last updated: 2026-09-09 (ELITEA-2002 repair
+> place, don't append duplicate entries. Last updated: 2026-09-10 (card #2139 — delete-redirect arrival-path rule; prior: ELITEA-2002 repair
 > pass — VERSION dropdown close discipline; prior entry: ELITEA-2448 pipeline-execution wait).
+
+## Delete-pipeline REDIRECT depends on HOW you reached the detail page (confirmed live on DEV, 2026-09-10, card #2139 / `#1332`)
+
+The post-delete redirect is `navigate(-1)` — React Router "go back one history entry"
+(`src/pages/Applications/Components/Applications/DeleteApplicationButton.jsx:29`, fired from the
+success toast's `onCloseToast`). It is **not** a navigate-to-route. So whether it works is decided
+entirely by the arrival path, and a test that picks the wrong one manufactures a product "bug":
+
+| Arrival at `/pipelines/all/{id}` | Redirect to the dashboard after delete? | Runs on `dev.elitea.ai` |
+|---|---|---|
+| Dashboard → click the pipeline card (in-app) | ✅ yes | 3/3 |
+| Create via UI → Save → land on detail → delete there | ✅ yes | 1/1 |
+| `page.goto()` / `PipelineDetailPage.navigate(pid)` (deep link, empty history) | ❌ **no — stranded on the deleted pipeline's stale detail route** | 3/3 (this is `#1332`) |
+
+**Rule for any spec asserting a post-delete redirect: reach the detail page IN-APP**
+(`PipelinesListPage.navigate()` → `open_pipeline_by_name(name)` → `wait_for_detail_page_load()`).
+Seeding the entity itself via `pipeline_api.create_pipeline()` is fine — it is the *navigation*, not
+the creation, that matters. The same `useDeleteApplication` hook backs **Agents** too
+(`isFromPipeline` only switches the label), so expect identical behaviour there.
+
+**Timing:** the redirect fires on the success toast's close, not on the DELETE response.
+Measured on DEV, *after* `delete_pipeline_via_menu()` had already returned: **0.0 s / 7.1 s / 6.6 s**
+(`TOAST_DURATION_DEFAULTS.success = 3000` ms is the default but is env-configurable and DEV runs
+slower). **Budget ≥ 20 s** for a `wait_for_url` on this — an 8 s budget is a flake generator.
+
+**Related trap:** a fresh context whose FIRST navigation is a deep pipeline-detail URL hit the
+DEV `page.goto` hang (`#2124`/`#2137`) 5 times in this session. In-app arrival avoids it entirely.
 
 ## VERSION dropdown — a bare page-level `Escape` does NOT reliably close it; press Escape ON AN OPTION and CONFIRM (confirmed live, 2026-09-09, ELITEA-2002 repair / `#2077`)
 

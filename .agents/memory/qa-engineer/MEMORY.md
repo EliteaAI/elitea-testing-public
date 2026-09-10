@@ -77,3 +77,4 @@
 - [LLM-content assertions are a premise the case never had](an_assertion_on_llm_chosen_content_is_a_premise_the_case_never_had.md) — use the producer's own output as oracle
 - [Both Save AND Cancel greyed means a request is in flight](both_save_and_cancel_greyed_means_isloading.md) — read the PAIR when triaging a greyed Save
 - [networkidle is not a save signal on Elitea](networkidle_is_not_a_save_signal_on_elitea.md) — measured 0.05 s; sleep+assert is a hard budget, not a wait
+- [Transit substitution can change the observable](transit_substitution_can_change_the_observable.md) — check arrival path before filing a defect
