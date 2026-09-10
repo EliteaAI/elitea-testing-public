@@ -1,0 +1,26 @@
+{
+  "runs": {
+    "20260910125902": [
+      {
+        "id": "ELITEA-2367",
+        "automation_test_id": "tests.ui.agent_hub.test_empty_state.TestCatalogEmptyState.test_empty_state_when_search_matches_no_agents",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Filter chip count mismatch: expected 11 (2 Featured + 9 Categories), found 12",
+        "reasoning": "The test explicitly asserts 'Expected 11 filter chips visible (2 Featured + 9 Categories), found 12'. This is a deterministic assertion failure \u2014 the UI is rendering one more filter chip than the test expects. This is most likely caused by a new category being added to the agent hub catalog on the DEV environment, making the hardcoded expected count of 9 categories stale. The test logic or the expected count needs to be updated to reflect the current state of the product. All other 11 tests passed, confirming this is not an infrastructure or flakiness issue."
+      }
+    ],
+    "20260910142224": [
+      {
+        "id": "ELITEA-2367",
+        "automation_test_id": "tests.ui.agent_hub.test_empty_state.TestCatalogEmptyState.test_empty_state_when_search_matches_no_agents",
+        "resolution": "already_in_progress",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Filter chip count mismatch: expected 11 (2 Featured + 9 Categories), found 12",
+        "reasoning": "The test explicitly asserts 'Expected 11 filter chips visible (2 Featured + 9 Categories), found 12'. This is a deterministic assertion failure \u2014 the UI is rendering one more filter chip than the test expects. This is most likely caused by a new category being added to the agent hub catalog on the DEV environment, making the hardcoded expected count of 9 categories stale. The test logic or the expected count needs to be updated to reflect the current state of the product. All other 11 tests passed, confirming this is not an infrastructure or flakiness issue."
+      }
+    ]
+  }
+}
