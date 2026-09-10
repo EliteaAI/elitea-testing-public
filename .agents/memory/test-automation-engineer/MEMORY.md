@@ -109,3 +109,5 @@
 - [Ambient data makes absence assertions vacuous](ambient_data_precondition_makes_absence_assertions_vacuous.md) — establish the >=1-entity precondition; pair "zero items" with an empty-state guard
 - [Name-lookup teardown leaks on truncation](name_based_teardown_lookup_leaks_when_the_field_truncates.md) — take the id from the create response; a clipped name passes while leaking
 - [Prove a repair with a routing plugin](prove_a_repair_with_a_routing_plugin_over_the_real_spec.md) — delay/abort one request over the REAL spec; always run the blocked-request control
+- [Post-delete redirect is navigate(-1)](pipeline_delete_redirect_depends_on_arrival_path.md) — a goto precondition manufactures the redirect "bug"
+- [Removing a manual navigate exposes the absence check](removing_a_manual_navigate_exposes_the_absence_check.md) — re-derive every assertion after a deleted settle

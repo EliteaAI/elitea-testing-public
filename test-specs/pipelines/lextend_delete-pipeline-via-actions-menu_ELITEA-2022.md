@@ -291,9 +291,9 @@ beyond the case (Axis 2) and a merge-gate commitment — the lead decides, and i
 chosen it gets its own card and AFS.
 
 ## Blocked Steps
-None. (Automation proceeds per the analysis-time sanctioned-RED exception —
-Step 6's assertion is soft-tagged with the known defect; all other steps
-automate and verify cleanly.)
+None. **(Stale sentence removed 2026-09-10, board #2139: this section still
+described Step 6 as a soft-tagged sanctioned RED, which § AMENDMENT 2026-09-10
+withdrew. Step 6 is a HARD assertion and the spec is expected green.)**
 
 ## Automation Hints
 
@@ -339,16 +339,50 @@ env-configurable and empirically slower on DEV). Use **≥ 20 000 ms**. Letting 
 
 **Edit 3 — Step 5: drop the conditional fallback navigation.** The redirect is
 now asserted, so the test is provably on the dashboard when it gets here.
-```python
-with allure.step("Step 5 — Verify the pipeline is gone from the dashboard"):
-    assert not list_page.pipeline_exists_in_list(PIPELINE_NAME, timeout=3000), (
-        f"Pipeline {PIPELINE_NAME!r} should be gone after UI deletion"
-    )
-```
 Remove the `if not urlparse(page.url)...: list_page.navigate()` guard — it exists
 only to work around the manufactured `#1332` condition. Keeping it would let a
 future genuine redirect regression pass silently, which is the exact masking this
 extension was written to remove.
+
+**AMENDED at implementation time (2026-09-10, board #2139) — the absence check
+must WAIT and must not be page-wide.** This AFS originally specced Step 5 as
+`assert not list_page.pipeline_exists_in_list(PIPELINE_NAME, timeout=3000)`.
+Run live on `https://dev.elitea.ai` that shape fails for two reasons, both
+caused by removing the manual `list_page.navigate()` this same edit removes:
+
+1. **It samples instead of waits.** `pipeline_exists_in_list()` returns True
+   the moment it sees the name and only waits for it to APPEAR. The redirect is
+   a history-back, so the dashboard repaints its CACHED list — still holding the
+   deleted card — and drops it only when the refetch lands. The old code hid
+   this because its `list_page.navigate()` did a full `goto` + networkidle,
+   which absorbed the refetch. Measured failure: Step 5 failed in **0.03 s**.
+2. **It is page-wide, and the delete success toast carries the name.** The toast
+   reads *"The `<name>` pipeline has been successfully deleted."* and is still on
+   screen at this point, so a page-wide `text="…"` match can never distinguish
+   "gone from the list" from "named in the toast". Evidenced by the failure
+   screenshot (`automation/screenshots/test_delete_pipeline_via_ui_menu_FAIL_20260910_070532.png`)
+   — grid mid-refetch showing loading skeletons, toast showing the name.
+
+That screenshot also shows the third hazard: while the grid renders skeletons it
+has **no `entity-card-name` nodes at all**, so a bare `to_have_count(0)` on the
+card handle passes VACUOUSLY — the same trap the ELITEA-2024 repair (board
+#2118) documents for the positive direction.
+
+Shipped shape — a new, additive page-object method
+`PipelinesListPage.wait_for_pipeline_absent(name, timeout)`:
+
+```python
+card = self.entity_card_name.filter(has_text=name)
+expect(card).to_have_count(0, timeout=timeout)                      # wait the card OUT
+expect(self.entity_card_name.first.or_(self.empty_state_title)).to_be_visible(
+    timeout=timeout)                                                # grid actually RENDERED
+expect(card).to_have_count(0, timeout=timeout)                      # re-assert on it
+```
+
+Testid-only throughout (`entity-card-name`, `empty-state-title` — both existing
+`LocatorDescriptor` fields, both on EliteaUI `main`), scoped to the LIST, which
+is exactly the case's Step 7 observable ("no longer appears in the pipeline
+list"). Measured green: Step 5 = 1.01-1.33 s.
 
 **Docstring.** Rewrite the `Known product defect (step 4, sanctioned RED)`
 paragraph out entirely. Replace with a one-line declaration of the surviving
