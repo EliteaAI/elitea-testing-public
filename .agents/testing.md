@@ -1255,3 +1255,43 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   bursts recorded the same day; noted because those two were multi-spec runs and this shows the hazard
   is not a function of suite size. The `reruns.json` written per invocation is the cheapest tell that
   an invocation was not actually clean — a bare `1 passed` line hides it completely.
+- **UI-drift class — EL-6460 replaced the detail-page back arrow with a breadcrumb, and it will keep
+  taking specs red one surface at a time (2026-09-10, ELITEA-1869/#2145, PR #2178)**: EliteaAI/EliteaUI@f1d4ea47
+  (*feat: [EL-6460] Add Breadcrumb Navigation to Agent, Pipeline, and Skill Details Pages (#884)*) made
+  `src/[fsd]/shared/ui/breadcrumbs/BreadcrumbsOrTitle.jsx` a binary switch —
+  `hasBreadcrumbTrail ? <Breadcrumbs/> : (<BackButton/> + title)`. `useHasBreadcrumbTrail()` is **purely
+  pathname-based**, so on **every route declared in `BREADCRUMB_REGISTRY`** the `<BackButton/>` branch is
+  **unreachable no matter how the user arrived**, and `data-testid="back-button"` never mounts.
+  Registry today covers toolkit, MCP, **agent**, **skill** and **pipeline** detail routes plus their
+  sub-routes — so any spec binding `back-button` on those pages fails deterministically 3/3, which is
+  what makes it *look* like an outage or a promotion gap. It is neither: `back-button` is still on
+  `main` — present in source, unreachable at runtime on that route.
+  **The repaired shape (copy it, don't re-derive):** bind the ancestor crumb as
+  `LocatorDescriptor(testid="breadcrumb-item")` — a generic testid on a `src/[fsd]/shared/` component,
+  which is the policy-compliant form, so **no new testid is needed** — and keep `back_button` bound for a
+  first-class **absence assertion** (`to_have_count(0)`) so a future restoration of the arrow turns the
+  spec red instead of the drift rotting in a comment.
+  ⚠️ **Ordering is load-bearing:** assert the breadcrumb container **visible FIRST**, `back-button`
+  count 0 **LAST**. `to_have_count(0)` is satisfied by a header that has not rendered yet, so on its own
+  it passes for the wrong reason — and that assertion is the only thing keeping the drift test-enforced.
+  Precedents in-repo: `mcp_form_page.py` + `test_mcp_back_navigation.py` (ELITEA-1961, clarification
+  #1731) and `test_agent_back_navigation.py` (this card). Skills sibling still open as #2176.
+  Two more things this card surfaced, both worth carrying: the landing URL now inherits the detail
+  page's `?name=<entity>` search param (`Breadcrumbs.jsx:46` passes the current location's `search` into
+  the crumb's `to`) — live-verified **inert**, the list request goes out with `query=` empty — so a
+  `url.endswith("...?viewMode=owner")` assertion breaks even after the control is fixed; assert path and
+  params separately. And `AgentDetailPage.click_back_button` passed `timeout` only to
+  `wait_for_network()`, leaving `.click()` on the 10 000 ms context default — **a 15 000 ms caller
+  argument reported `Timeout 10000ms`**, which actively misdirects triage. `skill_detail_page.py:620`
+  still has that twin bug (#2176).
+- **#2124 / #2156 DEV `Page.goto` hazard — another burst datapoint, and the cost of gating honestly
+  (2026-09-10, ELITEA-1869/#2145)**: the lead's first 3× DEV merge gate lost run 3 to
+  `TimeoutError: Page.goto: Timeout 15000ms exceeded … navigating to "https://dev.elitea.ai/"` in session
+  setup (`_browser_cookies`), reruns exhausted, allure `broken`. Re-gated from scratch — 3 consecutive
+  green (44.07 s / 47.29 s / 35.30 s, `reruns.json` `{count:1}` / `{}` / `{}`). Counting attempts rather
+  than invocations: across the implementer's 6 and the lead's 8, **the spec's own signature appeared 0
+  times in 14 attempts** — every single non-green was this hazard. Consistent with the same day's 4-of-9
+  and 7-of-9 entries above; the burst is not a function of suite size (this was a **single**-node-id gate).
+  The discipline that matters: it is a raw uncaught error at a **precondition**, upstream of every
+  assertion, so it can never be a member of a sanctioned-RED closed set — **re-gate, never accept
+  2-of-3**, and never raise the timeout.
