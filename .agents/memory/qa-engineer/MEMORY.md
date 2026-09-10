@@ -78,3 +78,4 @@
 - [Both Save AND Cancel greyed means a request is in flight](both_save_and_cancel_greyed_means_isloading.md) — read the PAIR when triaging a greyed Save
 - [networkidle is not a save signal on Elitea](networkidle_is_not_a_save_signal_on_elitea.md) — measured 0.05 s; sleep+assert is a hard budget, not a wait
 - [Transit substitution can change the observable](transit_substitution_can_change_the_observable.md) — check arrival path before filing a defect
+- [Absence assertion must prove the container rendered](an_absence_assertion_must_prove_the_container_rendered.md) — to_have_count(0) passes vacuously on a skeleton grid

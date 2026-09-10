@@ -42,4 +42,4 @@ stranded 3/3. The bug is real, but it was not this case's.
 - A whole spec is sanctioned RED for one step, and that step is about navigation/history/focus/
   session state — i.e. anything the arrival path can carry.
 
-Related: [[verify_handles_against_main_not_working_tree]]
+Related: [[verify_handles_against_main_not_working_tree]] · [[an_absence_assertion_must_prove_the_container_rendered]]

@@ -8,7 +8,7 @@ URL: /pipelines/all
 import logging
 import re
 
-from playwright.sync_api import Locator, Page, Response
+from playwright.sync_api import Locator, Page, Response, expect
 
 from .base_page import BasePage
 from .locator_descriptor import LocatorDescriptor
@@ -341,6 +341,52 @@ class PipelinesListPage(BasePage):
             return True
         except Exception:
             return False
+
+    def wait_for_pipeline_absent(self, name: str, timeout: int = 15000) -> None:
+        """Wait until the grid has RENDERED and no card on it shows *name*.
+
+        The WAITING counterpart to ``pipeline_exists_in_list()``, and the
+        correct absence check after a delete, for two reasons that a single
+        sampled count cannot handle:
+
+        1. **Absence is arrived at, not started from.** After an in-app
+           delete the app history-backs to the dashboard, which repaints its
+           CACHED list — briefly still showing the deleted card — and drops it
+           only once the list refetch lands.
+        2. **A mid-refetch grid renders skeletons and no ``entity-card-name``
+           nodes at all**, so a bare count-0 assertion passes vacuously
+           against a list that has not rendered yet. This is the trap the
+           ELITEA-2024 repair (board #2118) documents for the positive
+           direction; it bites the negative direction just as hard.
+           Live-observed on dev.elitea.ai 2026-09-10 (board #2139).
+
+        So: wait the card out, then require the grid to have actually settled
+        (content, or the empty state), then re-assert absence against it.
+
+        LOCATOR: the ``entity_card_name`` collection locator filtered by
+        visible text — the same handle ``open_pipeline_by_name()`` clicks —
+        plus ``empty_state_title`` for the legitimately-empty case. Unlike
+        ``pipeline_exists_in_list()``'s page-wide ``text="…"`` match this is
+        scoped to the LIST, so the post-delete success toast (which names the
+        deleted pipeline) cannot satisfy or defeat it.
+
+        Args:
+            name: Pipeline name that must no longer be on a card.
+            timeout: Maximum wait time in milliseconds, applied per stage.
+
+        Raises:
+            AssertionError: if a card carrying *name* is still rendered, or
+                the grid never finishes rendering, within *timeout*.
+        """
+        card = self.entity_card_name.filter(has_text=name)
+        expect(card).to_have_count(0, timeout=timeout)
+        # Grid settled = at least one card, or the empty-state title. `.or_()`
+        # keeps this a single strict match either way.
+        expect(self.entity_card_name.first.or_(self.empty_state_title)).to_be_visible(
+            timeout=timeout
+        )
+        expect(card).to_have_count(0, timeout=timeout)
+        logger.info("Pipeline card no longer on the rendered dashboard grid: %s", name)
 
     def get_card_names(self, timeout: int = 5000) -> list[str]:
         """Return the exact name text of every currently visible pipeline card.
