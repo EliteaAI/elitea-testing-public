@@ -1196,3 +1196,23 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   Corollary for the analyst slot: a substitution justified as *transit* stops being transit the moment
   it can change the observable. "Faster, equally valid way to reach the precondition" was the exact
   wording in the original AFS, and it was wrong for this case.
+- **DEV `Page.goto` hazard (#2124 / #2156) — heaviest burst measured so far: 7 of 9 attempts, and it
+  is what a DEV re-verification looks like when you DON'T classify it out (2026-09-10, ELITEA-2453/#2140)**:
+  re-certifying the already-merged ELITEA-2453 repair against `https://dev.elitea.ai` took 4 pytest
+  invocations = **9 attempts**, and the raw tally reads like a disaster: 2 passed, 7 non-green. Read by
+  cause it is the opposite — **all 7 are `Page.goto` timeouts** (`15000ms` in session setup's
+  `_browser_cookies`, `30000ms` in `BasePage.navigate()`), allure status **`broken`**, and **zero** are
+  assertion failures. The spec's own signature (`'custom_text' After value should be non-empty`) and the
+  #2153 no-op-write failure appeared **0 times in 9 attempts**. One invocation was a fully clean green
+  with `reruns.json == {}` (77.95 s).
+  Two things worth carrying forward:
+  - **The burst rate is higher than this ledger's prior entry** (4 of 9, 2026-09-10 #2137). Same day,
+    same hazard, nearly double the rate — so "bursty" understates it: a burst can eat 78% of attempts.
+    Budget ~2-4x the nominal wall clock for any DEV verification, and never size a DEV gate assuming
+    one invocation per result.
+  - **`broken` vs `failed` is the whole triage.** Every one of the 7 is a raw uncaught error at a
+    **precondition**, upstream of every assertion, so none can be a member of a sanctioned-RED closed
+    set — the response is re-run, never accept 2-of-3 (§ Merge gate). Counting invocation exit codes
+    instead of attempt causes would have reported this repair as failing DEV when it demonstrably
+    passes there. Classify by `statusDetails.message` in `reports/allure-results/*-result.json`,
+    grep by `fullName`; the pytest tail hides every rerun's traceback and shows only the last one.
