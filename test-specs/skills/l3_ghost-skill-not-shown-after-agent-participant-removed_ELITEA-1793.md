@@ -1,5 +1,270 @@
 # Test Case: Ghost skill not shown after Agent participant removed (Chat `~` mention)
 
+## Adjustment 2026-09-10 — CI red on DEV (board #2142, re-file of unworked #2044)
+
+**Triage class: A — UI drift.** Specifically a **main-side testid VALUE-expression
+rewrite**, not a locator that our side got wrong, not a product bug, not data
+pollution, and **not** a plain promotion gap. Root cause is already filed and OPEN
+as **#2013**; this analysis adds the live cross-environment evidence it lacked.
+**No new bug filed** (`.agents/profile.md` § Bug filing — same object, same
+trigger, same expected/actual ⇒ real duplicate ⇒ comment, never re-file).
+
+**Status of this amendment: `blocked`** — the remaining decision is a human's.
+See § Blocked Steps.
+
+### What actually diverged (verified live on BOTH environments)
+
+`ParticipantNormalCard.jsx` renders a different value behind the *same* testid
+name on the two refs. Rendered `data-testid` attribute values, read out of the
+live DOM (not inferred):
+
+| Environment | Serves | Rendered attribute (verbatim) |
+|---|---|---|
+| `http://localhost:5173` | `EliteaAI/EliteaUI@origin/automation/testids` | `chat-participant-row-application_9249_399` |
+| `https://dev.elitea.ai` | `EliteaAI/EliteaUI@origin/main` | `chat-participant-row-9249` |
+
+Source of the divergence (`cd ../EliteaUI && git fetch origin` run immediately
+before, 2026-09-10):
+
+```
+origin/main        ...ExpandedParticipants/ParticipantNormalCard.jsx:65
+  data-testid={`chat-participant-row-${participant.id ?? participant.entity_meta?.id}`}
+origin/automation/testids ...ParticipantNormalCard.jsx:66
+  data-testid={`chat-participant-row-${getChatParticipantUniqueId(participant)}`}
+```
+
+`participant.id` is undefined for chat participants, so main falls through to
+`entity_meta.id` — the bare agent id. `getChatParticipantUniqueId()` exists
+identically on both refs; only this **call site** differs.
+
+### Chronology — the composite form WAS on `main` and `main` lost it
+
+This corrects the initial read that our form was simply never promoted. It was
+promoted, then overwritten:
+
+1. Composite form present on `main` in `ParticipantItem.jsx` (verified at
+   `b4d00fcc^`).
+2. UI-team commit **`b4d00fcc`** — `fix: [EL-6405] Participants Panel OpenAPI
+   Toolkit Missing Orange Warning Frame for OAuth Login` (EliteaAI/EliteaUI#887,
+   2026-09-01) — extracted `ParticipantItem.jsx` → `ParticipantNormalCard.jsx`
+   and rewrote the testid's value expression in passing. The commit is a
+   warning-frame bug fix; the testid change is collateral, not a deliberate
+   rename. `UserMenu.jsx`'s composite form was left untouched, so EliteaUI
+   `main` is now **internally inconsistent** with itself.
+3. Our merge **`a7793de5`** (2026-09-04) re-added the composite form on top of
+   main's new structure — the resolution `.agents/workflow.md` § Divergence rule
+   bullet 1 mandates. `automation/testids` is therefore *correct*; `main` is the
+   degraded ref.
+4. `sync-base-branches`' testid-loss guard could not see it: it diffs testid
+   **names**, and the name never changed (#2013).
+
+### The product is healthy — only the handle is wrong (proven, not inferred)
+
+Driven live on `https://dev.elitea.ai`, resolving the row by the **bare-id**
+handle DEV actually renders, then running this case's Step 5 verbatim:
+
+```
+ROWS AS DEV RENDERS THEM: [{'t': 'chat-participant-row-9249', 'x': 'Participant Name'}]
+BARE-ID ROW RESOLVED    : [data-testid="chat-participant-row-9249"]
+REMOVE BUTTON REVEALED  : chat-participant-remove-button (testid-scoped under the row)
+STEP-5 OBSERVABLE  switch_agent_button_gone: True | participants_badge_gone: True
+1 passed in 48.47s
+```
+
+Hover-reveal, the "Remove agent?" confirm dialog, and both of Step 5's asserted
+observables all behave correctly on DEV. Steps 1–4 also pass on DEV in the real
+spec run. **Nothing about the removal flow is broken.**
+
+### Run results
+
+| Environment | Result | Attempt causes (from `reports/allure-results/*-result.json`) |
+|---|---|---|
+| localhost, invocation 1 | 3/3 attempts failed at **Step 2** | `add_agent_participant` — plus-menu Agents submenu stuck on `Loading...` (screenshot). **Transient, NOT this card's signature** — see § Known Noise below |
+| localhost, invocation 2 | **PASSED 7/7**, 101.55s, `reruns.json == {}` | all seven steps green, including Step 6 |
+| DEV, 3 attempts | **FAILED** — the CI signature | attempts 1 & 3: Step 5, `chat-participant-row-application_10636_399` / `_10637_399` not visible (byte-shape-identical to CI run `34331579791`). Attempt 2: `Page.goto` 30 s timeout at Step 1 — the tracked **#2124/#2156** DEV hazard, allure `broken`, a precondition upstream of every assertion ⇒ **classified OUT**, never the signature |
+
+So the signature is deterministic on DEV (2/2 non-noise attempts) and absent on
+localhost.
+
+### Blast radius — 3 page-object methods, 4 merged specs (wider than this card)
+
+`PARTICIPANT_ROW` has six `.format(unique_id)` call sites in
+`automation/pages/chat_page.py`, splitting cleanly by which component renders the
+row:
+
+| Method | `unique_id` shape | Renderer | On DEV |
+|---|---|---|---|
+| `hover_agent_participant_row` (:7377) | `application_{id}_{project}` | `ParticipantNormalCard.jsx` | **BROKEN** |
+| `get_agent_participant_row` (:7434) | `{entity_type}_{id}_{project}` | `ParticipantNormalCard.jsx` | **BROKEN** |
+| `remove_agent_participant` (:7481) | `{entity_type}_{id}_{project}` | `ParticipantNormalCard.jsx` | **BROKEN** |
+| `hover_participant_user_row` (:7569) | `user_{user_id}_` | `UserMenu.jsx` | OK |
+| (:7664) | `user_{user_id}_` | `UserMenu.jsx` | OK |
+| (:7722) | `user_{user_id}_` | `UserMenu.jsx` | OK |
+
+`UserMenu.jsx` is **byte-identical** across `origin/main` and
+`origin/automation/testids` (`git diff` empty), so every user-row caller is
+unaffected. `PARTICIPANT_ROW_PREFIX` (`[data-testid^="chat-participant-row-"]`)
+also still resolves on both refs.
+
+Merged specs reaching a BROKEN method:
+
+| Spec | Entity-row method(s) called | Exposed on DEV |
+|---|---|---|
+| `tests/ui/skills/test_ghost_skill_after_agent_removed.py` | `remove_agent_participant` | **YES** (this card) |
+| `tests/ui/chat/test_chat_agent_starters_add_remove.py` | all three | **YES** |
+| `tests/ui/chat/test_team_users_mention_and_remove_participants.py` | `remove_agent_participant` | **YES** |
+| `tests/ui/chat/test_chat_interface.py` | `get_agent_participant_row` | **YES** |
+| `tests/ui/chat/test_owner_has_no_remove_control_in_users_dropdown.py` | user rows only | no |
+| `tests/ui/chat/test_participants_dropdown_click_name_inserts_mention.py` | user rows only | no |
+
+Corroboration: CI run `34331579791`'s `chat` job also failed. (That run is
+partly confounded by the DEV gateway-500 outage behind #2074/#2076, so this is
+supporting, not decisive, evidence.)
+
+### Repair options — and why the choice is NOT the analyst's
+
+**Option A — restore the composite expression on EliteaUI `main`.** One line plus
+its import; a human cherry-picks from `automation/testids` (or the UI team fixes
+it). **Zero test-side change; this AFS and the spec stay exactly as they are.**
+Canon-aligned per `.agents/workflow.md` § Divergence rule bullet 1 — *"Main
+refactored the code around our testid ⇒ take main's structure, then RE-ADD our
+testid on top. Testids are additive and orthogonal to a refactor; losing one here
+is a defect, not an acceptable merge outcome."* It is also what #2013 itself
+recommends. Preserves collision-safety and restores EliteaUI's internal
+consistency with `UserMenu.jsx`. Cost: the four specs stay red on DEV until the
+promotion lands and deploys.
+
+**Option B — adopt main's bare form as the new canon.** Change the three
+entity-row methods to key off `agent_id` alone, **and** drop our re-add on
+`automation/testids` so both environments agree. Green on DEV within one PR pair.
+Costs: (a) both agents *and* pipelines render through `ParticipantNormalCard`, so
+a conversation holding agent id `N` and pipeline id `N` would emit two identical
+row testids — and this suite already has pipeline-participant callers
+(`entity_type="pipeline"`), so the collision is reachable, not hypothetical;
+(b) `participant.id ??` is a latent trap — the moment the backend starts
+populating `participant.id`, every entity-row testid silently changes again;
+(c) it freezes EliteaUI's internal inconsistency (`UserMenu.jsx` composite vs
+entity rows bare) permanently.
+
+**Options considered and eliminated on evidence:**
+
+- *`PARTICIPANT_ROW_PREFIX` + `.filter(has_text=<agent name>)`* — resolves on both
+  refs and is testid-anchored, but **eliminated by observation**: on DEV the row's
+  own text rendered as the `'Participant Name'` last-resort fallback
+  (`useParticipantItem.hooks.js:89` — `originalDetails?.name || entity_meta?.name
+  || participantName || 'Participant Name'`), so a name filter is unreliable
+  there. It also reintroduces a text dependency.
+- *Dual selector matching both shapes* (`[data-testid="…application_N_P"],
+  [data-testid="…N"]`) — technically testid-only and green on both, but it
+  hard-codes "main is wrong" into six call sites and would silently outlive the
+  fix. It also settles the canon question by routing around it, which
+  `.agents/role-overrides.md` § Declared-improvisation **ceiling** forbids.
+- *Environment-conditional template* — bakes the divergence into the suite.
+  Rejected outright.
+
+**My recommendation: Option A**, because Option B trades away a real,
+reachable collision guarantee. But A and B are opposite answers to *which handle
+the whole suite treats as canonical*, they span four merged specs, and A needs a
+change to a file on a ref this team does not own. That is a canon-level decision
+about the project's locator contract, above the declared-improvisation ceiling
+(which covers *how*, never *what is being verified* or the contract it rests on).
+Routing it instead of picking it.
+
+### Expected-result changes
+
+**None.** Step 5's observable is unchanged and was re-confirmed live on DEV
+(Switch Agent button disappears; participants badge disappears entirely at 0
+participants). No assertion is deleted, weakened, made conditional, or lowered.
+Whichever option a human picks, only *how* the row is identified moves.
+
+### Side finding — defect #51 no longer reproduces
+
+The original analysis classified this case `defect-found` against **#51** (ghost
+skill retained in the `~` mention list after participant removal, 2/2 repro).
+Step 6 now **passes** on localhost, and Steps 1–4 pass on DEV. The product
+behaviour #51 describes was not observed in any attempt on either environment.
+**#51 is still OPEN** and is not closed here (agents never close issues) — flagged
+for a human sweep as probably fixed.
+
+### Known noise observed during this analysis
+
+- **localhost, plus-menu Agents submenu stuck on `Loading...`** — invocation 1
+  failed 3/3 *within that one invocation* at Step 2 (`add_agent_participant`,
+  legacy raw-handle method), the submenu showing the typed name and `Loading...`.
+  Invocation 2 passed 7/7 clean. A live MCP walk confirmed the submenu opens on
+  click, `li[role="menuitem"]` still resolves, and server-side search
+  (`query=`, `limit=20`, `sort_by=created_at desc`) filters correctly — including
+  on a 25-char hyphenated exact name. So **not drift**: a burst-scoped stall in
+  the same family as the ledger's session-strain entries. Note the shape:
+  3/3 *inside one invocation* is NOT the same evidence as 3/3 *across*
+  invocations, and reading it as deterministic would have sent this card after
+  the wrong subsystem.
+  Contributing factor worth a suite-health look (not filed here — out of this
+  card's scope): `add_agent_participant` types the name with `delay=50`, firing
+  one uncancelled request **per keystroke** (23 chars ⇒ ~46 requests). The
+  testid-based `add_agent_participant_by_id(project_id, agent_id)` (ELITEA-2089)
+  avoids the burst entirely and is already available.
+- **DEV `Page.goto` hazard #2124/#2156** — 1 of 3 attempts on the real spec, plus
+  1 rerun during the first probe. Classified out per `.agents/testing.md`.
+
+### Handles Reference — verified PROVENANCE (fresh fetch 2026-09-10)
+
+`cd ../EliteaUI && git fetch origin` run immediately before these greps.
+Templated testids are checked by the **literal fragment the template
+contributes** (`git grep -F`), never by an instantiated value.
+
+| Handle (as page object holds it) | Grep target | `origin/main` | `origin/automation/testids` | Verdict |
+|---|---|---|---|---|
+| `plus-menu-button` | literal | YES | YES | on-main ✓ |
+| `agents-menuitem` | literal | YES | YES | on-main ✓ |
+| `AGENT_MENU_ITEM` → `agents-menu-item-agent-{p}-{id}` | `-menu-item-${item.key}` | YES | YES | on-main ✓ |
+| `PARTICIPANTS_BADGE` → `chat-participants-badge-{section}` | `chat-participants-badge-${` | YES | YES | on-main ✓ |
+| `PARTICIPANTS_BADGE_BUTTON` → `chat-participants-badge-button` | literal | YES | YES | on-main ✓ |
+| `participants_popper` → `chat-participants-popper` | literal | YES | YES | on-main ✓ |
+| `PARTICIPANT_REMOVE_BUTTON` → `chat-participant-remove-button` | literal | YES | YES | on-main ✓ |
+| `chat-message-input` | literal | YES | YES | on-main ✓ |
+| `mention_skill_list` → `skill-mention-list` | literal | YES | YES | on-main ✓ |
+| `MENTION_SKILL_ITEM` → `skill-mention-item-{name}` | `skill-mention-item-${` | YES | YES | on-main ✓ |
+| `skill-mention-list-empty` | literal | YES | YES | on-main ✓ |
+| `switch_participant_button` → `chat-switch-participant-button` | literal | YES | YES | on-main ✓ |
+| **`PARTICIPANT_ROW` → `chat-participant-row-{uniqueId}`** | `chat-participant-row-${` | **YES — but a DIFFERENT value expression** | YES (composite) | ⚠️ **name on-main ✓, VALUE diverged — the whole defect** |
+| `PARTICIPANT_ROW_PREFIX` → `[data-testid^="chat-participant-row-"]` | prefix | YES | YES | on-main ✓ (prefix-match is shape-agnostic) |
+
+**Every testid this case touches is present on `main` by name. Exactly one has a
+divergent value expression, and no new testid needs adding** — so
+`needs-adding` is empty and `add-data-testid` has no work here.
+
+### Blocked Steps
+
+**Step 5 (remove the agent participant) cannot resolve its row on `dev.elitea.ai`,
+and the fix is a human decision, not an implementation detail.**
+
+What needs deciding — exactly one of:
+
+- **(A)** Restore `getChatParticipantUniqueId(participant)` as the
+  `chat-participant-row-*` value expression on **EliteaAI/EliteaUI `main`**
+  (human cherry-pick from `automation/testids`, or a UI-team fix), leaving this
+  suite untouched. *Recommended.*
+- **(B)** Ratify main's `participant.id ?? participant.entity_meta?.id` as canon,
+  which requires BOTH changing the three entity-row methods in
+  `automation/pages/chat_page.py` AND dropping our re-add on
+  `automation/testids` so localhost and DEV agree.
+
+Why it is routed rather than decided here: the choice sets which handle the
+project treats as canonical for every chat participant row, it reaches four
+merged specs beyond this card, option A touches a ref this team has push-but-not-
+ownership on, and option B knowingly forfeits a reachable collision guarantee.
+`.agents/role-overrides.md` § Declared-improvisation ceiling puts that above what
+a declaration may authorise.
+
+**Owner:** human, via a `question` card. **Root cause already tracked:** #2013
+(OPEN, `bug`) — this analysis commented its live evidence there rather than
+filing a duplicate.
+
+**Not blocked on:** anything in this repo. The spec, the page object, and this
+AFS are all internally consistent and green on localhost; no test-side defect was
+found.
+
 ## Rework Note (issue #35 — framework-alignment audit)
 
 This AFS is **amended in place** (Phase-2 "amend-in-PR" convention) to close a
@@ -52,7 +317,11 @@ per the amend-in-PR convention:
 - **Environment Explored**: local (`http://localhost:5173`, EliteaUI `automation/testids` branch → DEV backend), project `Private` / `${ELITEA_PROJECT_ID}`=399, model: Anthropic Claude 4.5 Sonnet
 - **User set**: `${TEST_USER}` (on localhost, `auth_state` fixture skips login via `VITE_DEV_TOKEN`)
 - **Analyst**: qa-engineer (Sage), analyst slot
-- **Status**: **defect-found** — see Known Defects. All 6 case steps were executed
+- **Status**: **blocked** (amended 2026-09-10, board #2142 — see § Adjustment
+  2026-09-10 and § Blocked Steps). *Original 2026-07-15 status was*
+  **defect-found** *— see Known Defects; that defect (#51) no longer reproduces.*
+  Original note follows:
+- **Original status**: **defect-found** — see Known Defects. All 6 case steps were executed
   end-to-end; steps 1–4 (add participant, confirm `~mention` shows the skill,
   dismiss, remove participant) behave exactly as expected. Steps 5–6 (re-check
   `~mention` after removal) **fail**: the removed agent's skill remains
@@ -299,8 +568,14 @@ immediately before each `git grep <ref>` below, 2026-07-15).
   blocking rather than isolated defect per the profile's distinction).
 
 ## Blocked Steps
-None — the case was executed end-to-end; the defect above does not block
-completion, it IS the case's finding.
+
+**Superseded 2026-09-10 — see § Adjustment 2026-09-10 § Blocked Steps** (the
+authoritative list). Step 5 is blocked on `dev.elitea.ai` pending a human
+decision between repair options A and B; nothing in this repo is at fault.
+
+*Original 2026-07-15 note, kept for history:* "None — the case was executed
+end-to-end; the defect above does not block completion, it IS the case's
+finding."
 
 ## Cleanup
 
