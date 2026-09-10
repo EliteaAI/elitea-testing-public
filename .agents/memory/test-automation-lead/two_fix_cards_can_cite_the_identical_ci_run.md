@@ -16,7 +16,10 @@ sessions, zero code changed** (#2143 = ELITEA-1740, the **third** card off one r
 after #2074 which fixed it and #2116 which was already a duplicate). Running tally +
 evidence lives on **#2135** (`question`, the process card) — add occurrences there, not here.
 
-Two independent causes, both permanent until #2135 ships:
+Two independent causes, both permanent until #2135 ships. **The MECHANISM is now
+measured, not suspected** — see [[fix_card_refiling_loop_root_cause]]: the intake's
+dedup lookup is unpaginated with a tokenized `[FIX]` term, so old cards are simply
+invisible to it (0 of 6 visible at the API default page size).
 
 1. **Intake re-files** — the same run gets carded in multiple passes, and a
    workflow **re-run** cards again independently. **"Multiple" is unbounded, not two:**
@@ -119,4 +122,5 @@ carried-forward jobs**, so a job that never re-ran got carded twice. Therefore:
 **Check job metadata (`gh api .../actions/jobs/<id>`) before calling two cards "a re-run" —
 the timestamps are the tell.**
 
-Tally now **9 sessions, zero code changed**. Occurrences go on #2135.
+Tally now **10 sessions, zero code changed** (#2164 = ELITEA-1899, the **sixth** card
+off one node id). Occurrences go on #2135; the root cause is on #2157.
