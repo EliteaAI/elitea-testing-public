@@ -141,6 +141,21 @@ class AgentHubPage(BasePage):
     # to select by name, same idiom as AgentDetailPage.MODEL_SELECTOR_OPTION_ANY_SELECTOR.
     AGENT_CARD_PREFIX = '[data-testid^="catalog-agent-card-"]'
 
+    #: The two mutually-exclusive TERMINAL renders of the Catalog content grid
+    #: (FIX card #2166). ``CatalogBody.jsx`` renders exactly one of three things
+    #: in its left column: anonymous loading skeleton ``<Box>``es (NO testid at
+    #: all), the category sections (agent cards), or ``NoResultsMessage`` — so a
+    #: union of the two testid'd branches is satisfied only once the grid has
+    #: COMMITTED for the current query, and can never be satisfied early by the
+    #: loading state. Used by :meth:`search` as its post-response render settle.
+    #: AGENTS-tab scoped, deliberately: :meth:`search` already awaits the
+    #: agents-only ``/public_applications/prompt_lib/`` response, so both this
+    #: union and that predicate describe the same tab. A future Skills-tab
+    #: search needs its own union over ``SKILL_CARD_PREFIX``.
+    SEARCH_RESULTS_SETTLED = (
+        '[data-testid^="catalog-agent-card-"], [data-testid="catalog-no-results-title"]'
+    )
+
     # Skill card — the Skills-tab analog of AGENT_CARD_PREFIX above (ELITEA-2370).
     # Dynamic per skill id, same prefix-match idiom. testid added directly to the
     # SkillCard root Card element rendered by the Catalog's Skills tab
@@ -1093,10 +1108,31 @@ class AgentHubPage(BasePage):
         ``fill()`` sets the DOM value directly and would leave the debounced
         ``query`` React state empty, never firing a search request at all.
 
+        THE RESPONSE IS NOT THE RENDER (FIX card #2166). ``useAgentHubData``'s
+        ``searchAndCategorize()`` calls ``resetSearchByTag()`` -> ``clearCache()``
+        BEFORE ``await fetchApplications(...)`` and dispatches
+        ``setApplicationsData`` only in the response's continuation — so
+        Playwright's ``expect_response`` above resolves while the grid is
+        EMPTY (measured live on ``dev.elitea.ai``, 2026-09-10: **802 ms**
+        between the search response landing and the first card becoming
+        visible on a cold post-reload search). This method therefore ends on
+        an explicit wait for the grid's terminal render
+        (:data:`SEARCH_RESULTS_SETTLED`), so a caller may read the grid on the
+        very next line.
+
+        That wait REPLACES a trailing ``wait_for_network()``
+        (``wait_for_load_state("networkidle")``), which was both fragile and
+        useless — the #1847 class. It was the CI failure in
+        `UI Tests DEV Stable` run #116 (3/3 attempts, ``Timeout 10000ms
+        exceeded``), and measurement showed it settled nothing anyway: 0.00 s
+        on DEV, where socket.io upgrades to a real WebSocket. Per #1847 the
+        fix is to wait on what the caller actually needs, never to raise a
+        timeout.
+
         Args:
             timeout: Budget for the search field's own element wait and the
-                trailing settle — the UI half, driven by the caller's
-                ``UI_ELEMENT_TIMEOUT``.
+                post-response render settle — the UI half, driven by the
+                caller's ``UI_ELEMENT_TIMEOUT``.
             response_timeout: SEPARATE budget for the debounced search
                 response, so a UI-element budget never caps a backend fetch
                 (FIX card #2078). This method wraps NO navigation, so the
@@ -1114,7 +1150,7 @@ class AgentHubPage(BasePage):
         ):
             self.search_input.click()
             self.search_input.press_sequentially(query, delay=50)
-        self.wait_for_network(timeout=timeout)
+        self.page.locator(self.SEARCH_RESULTS_SETTLED).first.wait_for(state="visible", timeout=timeout)
 
     @action("Clear Catalog search field")
     def clear_search(self, timeout: int = 15000, *, response_timeout: int = CATALOG_RESPONSE_TIMEOUT):

@@ -113,3 +113,5 @@
 - [Removing a manual navigate exposes the absence check](removing_a_manual_navigate_exposes_the_absence_check.md) — re-derive every assertion after a deleted settle
 - [Swapping the test target to DEV](env_test_is_a_symlink_dev_swap_recipe.md) — .env.test is a symlink; sed -i fails silently, prove with settings.app_base_url
 - [DEV Page.goto flake is a precondition](dev_page_goto_flake_is_a_precondition.md) — re-run, never accept 2-of-3; junit hides it, read reruns.json
+- [Sanctioned RED can be DEV-build-only](sanctioned_red_can_be_dev_build_only.md) — dev-only middleware: RED on localhost, GREEN on deployed, both correct
+- [A settle can be fragile AND vacuous](a_settle_can_be_fragile_and_vacuous_at_once.md) — networkidle 0.00s; wait on what the caller reads next, not on silence

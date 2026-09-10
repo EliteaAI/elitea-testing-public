@@ -81,3 +81,4 @@
 - [Absence assertion must prove the container rendered](an_absence_assertion_must_prove_the_container_rendered.md) — to_have_count(0) passes vacuously on a skeleton grid
 - [Testid value diverges while name matches](testid_value_can_diverge_while_name_matches.md) — name-based provenance greps lie; diff the value expression
 - [Breadcrumb replaced back-arrow on detail routes](breadcrumb_replaced_back_button_on_detail_routes.md) — back-button never mounts since EL-6460; use breadcrumb-item
+- [Union-over-terminal-renders settle](a_union_over_terminal_renders_is_a_sound_settle.md) — verify the loading branch has no testid

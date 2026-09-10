@@ -553,6 +553,14 @@ Playwright, so passing a timeout there does NOT make it retry.
   handshake requests total). It resolves instantly and settles nothing, while still being able to
   time out under CI conditions — the worst of both. The `?EIO=4&transport=polling` capture in
   `.agents/testing.md` is a **localhost**-topology observation and does not describe DEV.
+- **Shipped during the #2166 repair (2026-09-10) — reuse it, don't re-derive it.**
+  `AgentHubPage.SEARCH_RESULTS_SETTLED` holds that union and `AgentHubPage.search()`
+  now ends on `…SETTLED).first.wait_for(state="visible", timeout=timeout)` in place of
+  the removed `wait_for_network()`. It is **AGENTS-tab scoped** by design (it pairs with
+  `search()`'s agents-only `/public_applications/prompt_lib/` response predicate); a
+  future Skills-tab search needs its own union over `SKILL_CARD_PREFIX`.
+  `clear_search()` still carries the byte-identical unguarded `wait_for_network()` — off
+  #2166's path, left as a declared follow-up.
 - Search fires **exactly ONE** `/public_applications/prompt_lib/` GET
   (`?query=<term>&statuses=published&agents_type=classic&limit=100&offset=0`) — no Trending /
   My-Liked calls accompany it, so a bare `"/public_applications/prompt_lib/" in url and GET`
