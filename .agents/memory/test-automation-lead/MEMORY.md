@@ -185,3 +185,4 @@
 - [Four cards from ONE run id is a different bug](four_cards_from_one_run_is_a_different_bug_from_the_promotion_gap.md) — map siblings to `Run ID:`+`created_at`; within-run repeats are intake artifacts, across-run repeats are honest re-detections (#2181)
 - [Waiting on a background job in factory mode](waiting_for_a_background_job_in_factory_mode.md) — bare `sleep` is blocked and macOS has no `timeout`; use a capped `until grep` loop, never Monitor
 - [A green DEV invocation is not a clean one](a_green_invocation_is_not_a_clean_invocation.md) — `1 passed` hides reruns; classify every attempt from allure `statusDetails`, never the pytest tail
+- [The -p devenv gate plugin needs PYTHONPATH to PREPEND](dev_gate_plugin_needs_pythonpath_to_prepend.md) — `PYTHONPATH=/tmp` alone ⇒ `No module named config`; make the target guard `import devenv` so a broken plugin fails the guard, not 3 gate runs (#2198)

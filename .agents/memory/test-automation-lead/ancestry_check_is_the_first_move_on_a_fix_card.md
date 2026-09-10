@@ -2,11 +2,29 @@
 name: The ancestry check is the FIRST move on a [FIX] card — before logs, before repro
 description: One git command decides whether a CI red is real work or a promotion gap; running it first saved a whole session on #2173
 type: feedback
-aliases: [is-ancestor, promotion gap proof, fix card triage order, which artifact did CI run, 30-second proof, call path ancestry, spec-only false negative, which file holds the repair]
+aliases: [is-ancestor, message string grep, failure message only on main, promotion gap proof, fix card triage order, which artifact did CI run, 30-second proof, call path ancestry, spec-only false negative, which file holds the repair]
 tags: [area/triage, area/promotion, type/process]
 created: 2026-09-10
 updated: 2026-09-10
 ---
+
+## Run it THIRD, not first — the cheap checks come before it
+
+This note used to read as "the ancestry check is move #1". Two cheaper checks decide the same
+disposition without needing `<repair-sha>` — which is the half that goes wrong (see CALL PATH below):
+
+1. **Board scan for the ELITEA-id** — an existing card for the same case is near-proof of a
+   duplicate ([[board_scan_for_the_elitea_id_is_the_cheapest_first_move]]).
+2. **Message-string grep** — the failing assertion text present on `origin/main` and absent on
+   `automation/base` *is* the promotion gap, because the repair rewrote the message
+   ([[message_string_grep_is_the_cheapest_promotion_gap_proof]]). It cannot produce the #2175
+   false negative: it never asks which file the repair lives in.
+3. **Ancestry check (below)** — now demoted to *naming* the repair for the closure record, which is
+   still required, just not on the critical path to the disposition.
+4. The job log — only to confirm the signature matches.
+
+Worked end-to-end on #2198 (ELITEA-2022, the **6th** card for one case): steps 1-2 settled it in two
+commands; step 3 only supplied `09219bb8f` / PR #2161 for the record.
 
 ## The command, and why it goes first
 

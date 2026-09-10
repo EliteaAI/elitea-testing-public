@@ -57,3 +57,21 @@ gap measured twice so the growth is visible, and (c) options. Recommend **re-poi
 nightly at `automation/base`** (restores honest daily signal at ~zero cost) **plus** a named
 owner for promotion cadence. An "already-fixed-on-base ⇒ skip intake" rule is a *silencer*:
 it stops the churn but leaves `main` red and the coverage claim false. Say so explicitly.
+
+## Measured ceiling so far: SIX cards for one case (#2198, 2026-09-10)
+
+ELITEA-2022 has produced #2062, #2139, #2171, #2181, #2198, #2216. **Exactly one (#2139) was real
+work**; the other five are the same unpromoted repair re-detected by five nightlies. Gap at the
+time: 473 commits `origin/main..origin/automation/base`.
+
+Two refinements to the "recurs nightly forever" framing already in this note:
+
+- **It is a generator, not a backlog.** The count does not converge — quoting "5 duplicates" as a
+  backlog size is wrong; it is a *rate* of roughly one card per repaired case per nightly.
+- **The fan-out is super-linear, not linear.** Repairs in **shared page objects** generate a card
+  for *every calling spec* (cf. `close_versions_menu`, 3 call sites). So the noise scales as
+  gap-size x fan-out. This is the argument that makes promotion urgent rather than tidy.
+
+Cheapest mitigations, in order: dedup on the **ELITEA-id** alone (would have caught 4 of the 6),
+then the **message-string grep** ([[ancestry_check_is_the_first_move_on_a_fix_card]]). Both are far
+cheaper than the sessions they save. Durable fix is promotion; raised on #2157.
