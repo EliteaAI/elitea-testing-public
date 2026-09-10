@@ -5,7 +5,7 @@ type: feedback
 aliases: [project item-list rate limit, board rate limited, API rate limit exceeded for user ID, gh project graphql limit, find card id]
 tags: [area/tracker, type/trap]
 created: 2026-09-09
-updated: 2026-09-09
+updated: 2026-09-10
 ---
 
 ## The symptom that misleads
@@ -62,3 +62,40 @@ Field id `PVTSSF_lADOECVEvc4BdCqszhXnG_g` · project id `PVT_kwDOECVEvc4BdCqs`.
 
 A card left unmoved reads as a failed attempt. Treating this error as "wait an
 hour" burns the session for nothing when the fix is one narrower query.
+
+## ⚠️ CORRECTION 2026-09-10 (#2193) — there is ALSO a hard endpoint block, and waiting IS the only move
+
+The rule above ("complexity-based; ask for less and it sails through") is **true but
+incomplete**, and taking it as the whole story cost me a wrong first diagnosis today.
+
+On #2193 the 900-item board dump failed as usual — but so did the issue-scoped query, and so
+did the cheapest GraphQL call that exists:
+
+```
+$ env -u GITHUB_TOKEN gh api graphql -f query='query { viewer { login } }'
+{"errors":[{"type":"RATE_LIMIT","code":"graphql_rate_limit",
+            "message":"API rate limit already exceeded for user ID 15179789."}]}
+
+$ env -u GITHUB_TOKEN gh api rate_limit --jq .resources.graphql
+{"limit":5000,"remaining":5000,"reset":1789070540,"used":0}
+```
+
+`viewer { login }` has no complexity to reduce. **So there are two distinct failures wearing
+the same error message**, and they need opposite responses:
+
+| Symptom | Which one | Response |
+|---|---|---|
+| Big query fails, small query succeeds | complexity/points | **ask for less** — issue-scoped query, works instantly |
+| *Every* query fails, incl. `viewer{login}` | hard endpoint block | **wait** — `reset` is real, a genuine ~60 min |
+
+**Tell them apart with one probe: `query { viewer { login } }`.** Do it before deciding, and
+never quote `remaining: 5000` as evidence you are not limited — that counter is silent about
+both failures.
+
+When it is the hard block: REST carries everything except the board move
+([[rest_is_the_fallback_when_graphql_rate_limits_tracker_writes]]) — comments, labels, issue
+reads all go through `gh api repos/.../issues/...`. Only `updateProjectV2ItemFieldValue` has no
+REST equivalent, so the card move is the one thing that must wait out the window. In factory
+mode that means waiting **in-turn**, in capped slices
+([[waiting_for_a_background_job_in_factory_mode]]) — parking the card `Blocked` for a rate
+limit would be wrong: nothing is blocked, the clock just has to run.
