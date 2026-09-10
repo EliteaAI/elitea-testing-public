@@ -1450,3 +1450,17 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   does — so a DEV gate that comes back fast and clean is a *normal* outcome, not a suspicious one.
   Unchanged discipline: it is a raw uncaught error at a **precondition**, never a member of a
   sanctioned-RED closed set — re-gate, never accept 2-of-3, never raise the timeout.
+- **#2124 / #2156 DEV `Page.goto` hazard — the same-spec swing, 7-of-9 → 0-of-3 in 4.5 hours
+  (2026-09-10, ELITEA-2453/#2172)**: the entry above pins "bursty, not rising" using two *different*
+  specs. This is the same point on **one** spec, which is the sharper form. The 7-of-9 burst recorded
+  under #2140 was `test_run_details_multiple_state_variables_different_types` on `dev.elitea.ai` at
+  ~03:50Z. Re-gating the **identical merged artifact** (`716777790`, file untouched since) at 12:23Z —
+  same machine, same target, same node id — was **3/3 passed, `reruns.json == {}` on every run, zero
+  `broken` attempts**, 9 allure steps each, 37.76 / 39.15 / 39.21 s. **Zero occurrences in 3 attempts.**
+  So the hazard rate swings from 78% to 0% of attempts on the same spec within one day. **Never quote a
+  session's observed rate as a property of the spec, the surface, or the suite** — it is a property of
+  the window you sampled. Corollary for triage: a spec with a bad burst in its history is *not* a spec
+  to distrust, and a fast clean DEV gate is not evidence you gated the wrong thing (check
+  `settings.app_base_url`, not the wall clock, when that worry arises — see the `.env.test` symlink entry).
+  Unchanged discipline: raw uncaught error at a **precondition**, never a member of a sanctioned-RED
+  closed set — re-gate, never accept 2-of-3, never raise the timeout.
