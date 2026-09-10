@@ -965,6 +965,7 @@ nodes:
                     'title': title[:256],
                     'body': chr(10).join(lines),
                     'status': 'Todo' if has_mapping_errors else 'Approved',
+                    'label': 'aqa:mapping' if mapping_only else 'aqa:maintenance',
                     'tests': [t.get('automation_test_id', '') for t in tests]
                 })
 
@@ -1018,7 +1019,7 @@ nodes:
       value: |
         import json
 
-        out = {'issue_title': '', 'issue_body': '', 'issue_status': 'skip'}
+        out = {'issue_title': '', 'issue_body': '', 'issue_status': 'skip', 'issue_label': 'aqa:maintenance'}
 
         try:
             groups_raw = alita_state.get('issue_groups', '[]')
@@ -1033,10 +1034,11 @@ nodes:
                     out = {
                         'issue_title': title,
                         'issue_body': body,
-                        'issue_status': group.get('status', 'Promoted')
+                        'issue_status': group.get('status', 'Promoted'),
+                        'issue_label': group.get('label', 'aqa:maintenance')
                     }
         except Exception as e:
-            out = {'issue_title': '', 'issue_body': str(e), 'issue_status': 'skip'}
+            out = {'issue_title': '', 'issue_body': str(e), 'issue_status': 'skip', 'issue_label': 'aqa:maintenance'}
 
         out
     input:
@@ -1046,6 +1048,7 @@ nodes:
       - issue_title
       - issue_body
       - issue_status
+      - issue_label
     structured_output: true
     transition: RouteByStatus
 
@@ -1111,7 +1114,7 @@ nodes:
     output:
       - issue_result
     structured_output: true
-    transition: StoreIssueAndNext
+    transition: ExtractIssueNumber
 
   - id: CreateIssuePromoted
     type: toolkit
@@ -1143,6 +1146,54 @@ nodes:
     output:
       - issue_result
     structured_output: true
+    transition: ExtractIssueNumber
+
+  - id: ExtractIssueNumber
+    type: code
+    code:
+      type: fixed
+      value: |
+        import re
+
+        out = {'issue_number': '0'}
+
+        try:
+            issue_result_raw = alita_state.get('issue_result', '') or ''
+            if issue_result_raw:
+                match = re.search(r"issue with number ['\"]?(\d+)['\"]?", str(issue_result_raw), re.IGNORECASE)
+                if match:
+                    out = {'issue_number': match.group(1)}
+        except:
+            pass
+
+        out
+    input:
+      - issue_result
+    output:
+      - issue_number
+    structured_output: true
+    transition: ApplyIssueLabel
+
+  - id: ApplyIssueLabel
+    type: toolkit
+    toolkit_name: GitHub_Tools
+    tool: update_issue
+    input:
+      - issue_number
+      - issue_label
+    input_mapping:
+      issue_id:
+        type: variable
+        value: issue_number
+      labels:
+        type: template
+        value: '["{{ issue_label }}"]'
+      repo_name:
+        type: fixed
+        value: EliteaAI/elitea-testing-public
+    output:
+      - label_result
+    structured_output: true
     transition: StoreIssueAndNext
 
   - id: StoreIssueAndNext
@@ -1151,12 +1202,11 @@ nodes:
       type: fixed
       value: |
         import json
-        import re
 
         out = {'created_issues': '[]', 'current_group_index': '0'}
 
         try:
-            issue_result_raw = alita_state.get('issue_result', '') or ''
+            issue_number = alita_state.get('issue_number', '0')
             created_raw = alita_state.get('created_issues', '[]')
             idx = int(alita_state.get('current_group_index', '0'))
             groups_raw = alita_state.get('issue_groups', '[]')
@@ -1167,12 +1217,10 @@ nodes:
 
             groups = json.loads(groups_raw, strict=False) if isinstance(groups_raw, str) else groups_raw
 
-            # Extract issue URL from result
+            # Build issue URL from extracted number
             issue_url = ''
-            if issue_result_raw:
-                match = re.search(r"issue with number ['\"]?(\d+)['\"]?", str(issue_result_raw), re.IGNORECASE)
-                if match:
-                    issue_url = f"https://github.com/EliteaAI/elitea-testing-public/issues/{match.group(1)}"
+            if issue_number and issue_number != '0':
+                issue_url = f"https://github.com/EliteaAI/elitea-testing-public/issues/{issue_number}"
 
             # Store the created issue with its tests
             if idx < len(groups):
@@ -1190,7 +1238,7 @@ nodes:
 
         out
     input:
-      - issue_result
+      - issue_number
       - created_issues
       - current_group_index
       - issue_groups
@@ -1275,14 +1323,19 @@ nodes:
       value: |
         import json
 
-        out = {'branch_name': '', 'final_file_path': '', 'branch_exists': 'false'}
+        run_id = alita_state.get('run_id', '') or 'unknown'
+        maintenance_file_path = alita_state.get('maintenance_file_path', '') or f'automation/maintenance/run_{run_id}.json'
+        target_branch = f"maintenance/run-{run_id}"
+
+        # Default output - use original file path and create new branch
+        out = {
+            'branch_name': target_branch,
+            'final_file_path': maintenance_file_path,
+            'branch_exists': 'false'
+        }
 
         try:
-            run_id = alita_state.get('run_id', '') or 'unknown'
             branches_raw = alita_state.get('branches_list', '') or ''
-            maintenance_file_path = alita_state.get('maintenance_file_path', '') or ''
-
-            target_branch = f"maintenance/run-{run_id}"
 
             # Check if branch exists in the list
             branch_exists = False
@@ -1311,12 +1364,6 @@ nodes:
                     'branch_name': target_branch,
                     'final_file_path': final_file_path,
                     'branch_exists': 'true'
-                }
-            else:
-                out = {
-                    'branch_name': target_branch,
-                    'final_file_path': maintenance_file_path,
-                    'branch_exists': 'false'
                 }
         except:
             pass
