@@ -1355,3 +1355,50 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   invocation exit codes would have read this clean DEV certification as noise, and counting
   non-green attempts would have read it as a red. Classify by `statusDetails.message` in
   `reports/allure-results/*-result.json`, grep by `fullName`.
+- **`networkidle` (#1847) — third site fixed, and the first proven VACUOUS as well as fragile; plus the
+  mechanism is NARROWER than #1847 states (2026-09-10, ELITEA-2354/#2166, PR #2187)**: `AgentHubPage.search()`
+  awaited the debounced `/public_applications/prompt_lib/` GET correctly and then ran a trailing
+  `wait_for_network()`, which timed out **3/3 attempts** in CI run #116 (`Timeout 10000ms exceeded`).
+  Two things this card settles that the earlier #1847 entries got half-right:
+  - **The socket.io *polling* transport is a LOCALHOST topology artifact, not the universal mechanism.**
+    Live-probed on `dev.elitea.ai`: same-origin the transport **upgrades to a real WebSocket**,
+    `socketio_requests_in_6s_idle_window = 0`, and `networkidle` resolves in **0.00 s**. The CI signature
+    did **not** reproduce locally-against-DEV. The class still holds (Playwright marks `networkidle`
+    DISCOURAGED; the CI 3/3 stands on its own — likely a proxy declining the upgrade and/or that run's
+    degraded DEV), but do not cite "persistent polling" as the reason on a deployed env.
+  - **A settle can be fragile AND vacuous at the same time — and the vacuity is the bigger bug.**
+    `useAgentHubData.searchAndCategorize()` calls `clearCache()` **synchronously before**
+    `await fetchApplications(...)` and dispatches `setApplicationsData` only in the response continuation,
+    so React commits the skeleton before the request is even issued: the grid is **empty for ~800 ms after
+    `expect_response` resolves**. The caller's next line was a one-shot
+    `assert ....is_visible()` — which **never retried**, because `Locator.is_visible(timeout=)` is
+    deprecated and the argument is *ignored*. So the site measured 0.00 s while the state the caller read
+    was genuinely absent. When triaging a `networkidle` site, ask both questions: *can this time out?* and
+    *was it ever waiting for the thing the caller reads next?*
+  **The fix, and the shape to copy** (second time it removed the flake at zero cost): wait on a **union over
+  the component's TERMINAL renders**, as an UPPER_CASE class constant —
+  `SEARCH_RESULTS_SETTLED = '[data-testid^="catalog-agent-card-"], [data-testid="catalog-no-results-title"]'`
+  — **after verifying at source that the loading branch carries no testid in the union** (`CatalogBody.jsx`'s
+  loading render is anonymous skeleton `<Box>`es; if a refactor ever gives them a testid the union resolves
+  early and is worse than what it replaced). Also check **stale-state reachability**: a union matching the
+  PREVIOUS query's output can satisfy immediately — here it is closed *structurally*, not just by caller
+  inspection. Scope the union: it pairs with the agents-only response predicate, so a Skills-tab search needs
+  its own. No timeout was raised. Lead's gate: **3/3 green on `dev.elitea.ai`** (25.83/24.53/25.18 s,
+  `reruns.json == {}` each). Canon-addition proposal for the shape: #2196. Sibling site left open on #1847:
+  `clear_search()` carries the byte-identical settle (fragile-not-insufficient — its caller settles properly).
+- **A "sanctioned RED" can be DEV-BUILD-ONLY — the ELITEA-1892/#2082 precedent has a second instance
+  (2026-09-10, ELITEA-2354/#2166)**: `test_agent_hub_like_agent_list_view.py` was documented as an
+  unconditional sanctioned-RED against product defect #1215 (Redux "non-serializable value" console error on
+  like click). It is **environment-scoped**, and this one is verified in *source*, not inferred: the message
+  comes from Redux Toolkit's `createSerializableStateInvariantMiddleware`, which `buildGetDefaultMiddleware`
+  adds **only** inside `if (process.env.NODE_ENV !== "production")`
+  (`redux-toolkit.legacy-esm.js:467-480`), and EliteaUI ships `"build": "vite build"` with no `--mode` flag
+  and no `NODE_ENV`/`mode` override in `vite.config.js` ⇒ the middleware is not in the store on any deployed
+  env. ⇒ **RED on `localhost:5173`, GREEN on `dev.elitea.ai`, and both are correct.** Unlike #1892 the
+  residual "is DEV really serving the production artifact?" inference is closed **empirically** here: the
+  spec's #1215 recorder fired zero times across 6 DEV invocations while localhost was deterministically RED.
+  #1215 stays OPEN; nothing is weakened (the handling is an absence-tolerant recorder and the
+  unexpected-console-error hard assert is untouched). **The general rule stands and is now twice-proven:
+  before classifying any gate result against a closed defect set, ask whether each member can physically
+  occur on the environment you gated on** — and a spec docstring claiming an unconditional sanctioned-RED is
+  a claim to CHECK, not to trust.
