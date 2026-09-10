@@ -69,6 +69,24 @@ state:
   maintenance_file_path:
     type: str
     value: ''
+  full_file_path:
+    type: str
+    value: ''
+  final_maintenance_json:
+    type: str
+    value: ''
+  existing_file_content:
+    type: str
+    value: ''
+  previous_run_content:
+    type: str
+    value: ''
+  file_exists:
+    type: str
+    value: 'false'
+  delete_result:
+    type: str
+    value: ''
   issue_title:
     type: str
     value: ''
@@ -123,7 +141,8 @@ nodes:
             'head_branch': 'main',
             'commit_sha': '',
             'commit_message': '',
-            'actor': ''
+            'actor': '',
+            'maintenance_file_path': 'unknown.json'
         }
 
         try:
@@ -179,8 +198,11 @@ nodes:
             if not isinstance(repo_obj, dict):
                 repo_obj = {}
 
+            run_id_str = str(run_id_val) if run_id_val else 'unknown'
+            maintenance_file = f"{workflow_name_short}_{run_id_str}.json"
+
             out = {
-                'run_id': str(run_id_val) if run_id_val else 'unknown',
+                'run_id': run_id_str,
                 'repo': repo_obj.get('full_name', 'EliteaAI/elitea-testing-public') if should_process else '',
                 'conclusion': conclusion if should_process else 'skipped',
                 'workflow_name': workflow_name_full,
@@ -190,7 +212,8 @@ nodes:
                 'head_branch': workflow_run.get('head_branch', 'main') or 'main',
                 'commit_sha': head_sha[:7] if head_sha else '',
                 'commit_message': commit_msg[:100] if commit_msg else '',
-                'actor': actor_login
+                'actor': actor_login,
+                'maintenance_file_path': maintenance_file
             }
         except:
             pass
@@ -210,6 +233,7 @@ nodes:
       - commit_sha
       - commit_message
       - actor
+      - maintenance_file_path
     structured_output: true
     transition: CheckFailure
 
@@ -511,6 +535,42 @@ nodes:
     output:
       - existing_issues
     structured_output: true
+    transition: BuildFullFilePath
+
+  - id: BuildFullFilePath
+    type: code
+    code:
+      type: fixed
+      value: |
+        file_name = alita_state.get('maintenance_file_path', 'unknown.json') or 'unknown.json'
+        out = {'full_file_path': f"automation/maintenance/{file_name}"}
+        out
+    input:
+      - maintenance_file_path
+    output:
+      - full_file_path
+    structured_output: true
+    transition: ReadPreviousRunFile
+
+  - id: ReadPreviousRunFile
+    type: toolkit
+    toolkit_name: GitHub_Tools
+    tool: read_file
+    input:
+      - full_file_path
+    input_mapping:
+      file_path:
+        type: variable
+        value: full_file_path
+      branch:
+        type: fixed
+        value: automation/maintenance
+      repo_name:
+        type: fixed
+        value: EliteaAI/elitea-testing-public
+    output:
+      - previous_run_content
+    structured_output: true
     transition: ClassifyTests
 
   - id: ClassifyTests
@@ -526,6 +586,7 @@ nodes:
         try:
             tests_raw = alita_state.get('tests_with_ids', '[]')
             issues_raw = alita_state.get('existing_issues', '[]')
+            previous_run_raw = alita_state.get('previous_run_content', '') or ''
 
             try:
                 tests = json.loads(tests_raw, strict=False) if isinstance(tests_raw, str) else tests_raw
@@ -539,6 +600,30 @@ nodes:
             except:
                 issues = []
 
+            # Parse previous run data - get latest timestamp's tests
+            prev_tests_by_auto_id = {}
+            prev_str = str(previous_run_raw).lower()
+            has_previous = previous_run_raw and 'not found' not in prev_str and 'error' not in prev_str and 'failed' not in prev_str
+
+            if has_previous:
+                try:
+                    prev_data = json.loads(previous_run_raw, strict=False) if isinstance(previous_run_raw, str) else previous_run_raw
+                    if isinstance(prev_data, dict):
+                        runs = prev_data.get('runs', {})
+                        if isinstance(runs, dict) and runs:
+                            # Get latest timestamp
+                            latest_ts = max(runs.keys())
+                            latest_tests = runs.get(latest_ts, [])
+                            if isinstance(latest_tests, list):
+                                for t in latest_tests:
+                                    if isinstance(t, dict):
+                                        aid = t.get('automation_test_id', '')
+                                        if aid:
+                                            prev_tests_by_auto_id[aid] = t
+                except:
+                    pass
+
+            # Build active issues map from GitHub search
             active_ids = {}
             if isinstance(issues, dict):
                 issues = issues.get('items', [])
@@ -570,6 +655,7 @@ nodes:
                 if not isinstance(auto_id, str):
                     auto_id = str(auto_id) if auto_id else ''
 
+                # 1. No TMS mapping
                 if elitea_id is None:
                     classified.append({
                         'id': None,
@@ -579,10 +665,46 @@ nodes:
                         'failure_type': 'TMS Mapping Missing',
                         'failure_summary': 'Test not registered in TMS index - add automation_test_id to case file'
                     })
+                # 2. Has open GitHub issue
                 elif elitea_id in active_ids:
-                    classified.append({'id': elitea_id, 'automation_test_id': auto_id, 'resolution': 'already_in_progress', 'tracking_issue': active_ids[elitea_id]})
+                    classified.append({
+                        'id': elitea_id,
+                        'automation_test_id': auto_id,
+                        'resolution': 'already_in_progress',
+                        'tracking_issue': active_ids[elitea_id]
+                    })
+                # 3. Check previous run
+                elif auto_id in prev_tests_by_auto_id:
+                    prev = prev_tests_by_auto_id[auto_id]
+                    prev_resolution = prev.get('resolution', '')
+
+                    if prev_resolution == 'to_rerun':
+                        # Was marked for rerun - reprocess this time
+                        classified.append({
+                            'id': elitea_id,
+                            'automation_test_id': auto_id,
+                            'resolution': 'pending_analysis',
+                            'tracking_issue': None
+                        })
+                    else:
+                        # Copy all details from previous run - already processed
+                        classified.append({
+                            'id': elitea_id,
+                            'automation_test_id': auto_id,
+                            'resolution': 'already_in_progress',
+                            'tracking_issue': prev.get('tracking_issue'),
+                            'failure_type': prev.get('failure_type', ''),
+                            'failure_summary': prev.get('failure_summary', ''),
+                            'reasoning': prev.get('reasoning', 'From previous run')
+                        })
+                # 4. New test - needs analysis
                 else:
-                    classified.append({'id': elitea_id, 'automation_test_id': auto_id, 'resolution': 'pending_analysis', 'tracking_issue': None})
+                    classified.append({
+                        'id': elitea_id,
+                        'automation_test_id': auto_id,
+                        'resolution': 'pending_analysis',
+                        'tracking_issue': None
+                    })
 
             out = {'classified_tests': json.dumps(classified)}
         except:
@@ -592,6 +714,7 @@ nodes:
     input:
       - tests_with_ids
       - existing_issues
+      - previous_run_content
     output:
       - classified_tests
     structured_output: true
@@ -775,12 +898,10 @@ nodes:
       value: |
         import json
 
-        out = {'maintenance_json': '{"tests": []}', 'maintenance_file_path': 'automation/maintenance/unknown.json'}
+        out = {'maintenance_json': '{"tests": []}'}
 
         try:
             classified_raw = alita_state.get('classified_tests', '[]')
-            workflow_name_short = alita_state.get('workflow_name_short', 'unknown') or 'unknown'
-            run_id = alita_state.get('run_id', '') or 'unknown'
 
             try:
                 classified = json.loads(classified_raw, strict=False) if isinstance(classified_raw, str) else classified_raw
@@ -790,20 +911,15 @@ nodes:
                 classified = []
 
             maintenance = {'tests': classified}
-            file_path = f"automation/maintenance/{workflow_name_short}_{run_id}.json"
-
-            out = {'maintenance_json': json.dumps(maintenance, indent=2), 'maintenance_file_path': file_path}
+            out = {'maintenance_json': json.dumps(maintenance, indent=2)}
         except:
             pass
 
         out
     input:
       - classified_tests
-      - workflow_name_short
-      - run_id
     output:
       - maintenance_json
-      - maintenance_file_path
     structured_output: true
     transition: GroupByPattern
 
@@ -1257,6 +1373,9 @@ nodes:
 
         out = {'maintenance_json': '{"tests": []}'}
 
+        # Default - pass through existing maintenance_json
+        out = {'maintenance_json': alita_state.get('maintenance_json', '{"tests": []}')}
+
         try:
             maintenance_raw = alita_state.get('maintenance_json', '{}')
             created_raw = alita_state.get('created_issues', '[]')
@@ -1296,144 +1415,164 @@ nodes:
     output:
       - maintenance_json
     structured_output: true
-    transition: CheckBranchExists
+    transition: ReadExistingFile
 
-  - id: CheckBranchExists
+  - id: ReadExistingFile
     type: toolkit
     toolkit_name: GitHub_Tools
-    tool: list_branches_in_repo
+    tool: read_file
     input:
-      - run_id
+      - full_file_path
     input_mapping:
+      file_path:
+        type: variable
+        value: full_file_path
+      branch:
+        type: fixed
+        value: automation/maintenance
       repo_name:
         type: fixed
         value: EliteaAI/elitea-testing-public
-      max_count:
-        type: fixed
-        value: 100
     output:
-      - branches_list
+      - existing_file_content
     structured_output: true
-    transition: DetermineBranchAndFile
+    transition: MergeRunData
 
-  - id: DetermineBranchAndFile
+  - id: MergeRunData
     type: code
     code:
       type: fixed
       value: |
         import json
+        from datetime import datetime
 
-        run_id = alita_state.get('run_id', '') or 'unknown'
-        maintenance_file_path = alita_state.get('maintenance_file_path', '') or f'automation/maintenance/run_{run_id}.json'
-        target_branch = f"maintenance/run-{run_id}"
+        timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+        default_content = json.dumps({'runs': {timestamp: []}}, indent=2)
 
-        # Default output - use original file path and create new branch
-        out = {
-            'branch_name': target_branch,
-            'final_file_path': maintenance_file_path,
-            'branch_exists': 'false'
-        }
+        # Default output in case of any failure - always has valid structure
+        out = {'final_maintenance_json': default_content}
 
         try:
-            branches_raw = alita_state.get('branches_list', '') or ''
+            maintenance_json_raw = alita_state.get('maintenance_json', '{}') or '{}'
+            existing_content = alita_state.get('existing_file_content', '') or ''
 
-            # Check if branch exists in the list
-            branch_exists = False
-            if branches_raw:
-                # branches_list is a list of dicts with 'name' key
-                branches = branches_raw if isinstance(branches_raw, list) else []
-                if isinstance(branches_raw, str):
-                    try:
-                        branches = json.loads(branches_raw, strict=False)
-                    except:
-                        branches = []
-                for b in branches:
-                    if isinstance(b, dict) and b.get('name') == target_branch:
-                        branch_exists = True
-                        break
+            # Parse current run's test data
+            current_data = {}
+            try:
+                current_data = json.loads(maintenance_json_raw, strict=False) if isinstance(maintenance_json_raw, str) else maintenance_json_raw
+                if not isinstance(current_data, dict):
+                    current_data = {}
+            except:
+                current_data = {}
 
-            if branch_exists:
-                # Branch exists - create file with _rerun suffix
-                if maintenance_file_path.endswith('.json'):
-                    base_path = maintenance_file_path[:-5]
-                    final_file_path = f"{base_path}_rerun.json"
-                else:
-                    final_file_path = f"{maintenance_file_path}_rerun"
+            current_tests = current_data.get('tests', [])
+            if not isinstance(current_tests, list):
+                current_tests = []
 
-                out = {
-                    'branch_name': target_branch,
-                    'final_file_path': final_file_path,
-                    'branch_exists': 'true'
-                }
-        except:
+            # Parse existing file content (if exists)
+            existing_runs = {}
+            existing_str = str(existing_content).lower()
+            file_exists = existing_content and 'not found' not in existing_str and 'error' not in existing_str and 'failed' not in existing_str
+
+            if file_exists:
+                try:
+                    existing_data = json.loads(existing_content, strict=False) if isinstance(existing_content, str) else existing_content
+                    if isinstance(existing_data, dict):
+                        existing_runs = existing_data.get('runs', {})
+                        if not isinstance(existing_runs, dict):
+                            existing_runs = {}
+                except:
+                    existing_runs = {}
+
+            # Add current run with timestamp key - tests directly as value
+            existing_runs[timestamp] = current_tests
+
+            # Build final merged JSON
+            merged_data = {'runs': existing_runs}
+            final_json = json.dumps(merged_data, indent=2)
+
+            # Only update out if we have valid content
+            if final_json and final_json != '{}':
+                out = {'final_maintenance_json': final_json, 'file_exists': 'true' if file_exists else 'false'}
+        except Exception:
+            # Keep default output on any error
             pass
+
+        # Construct full file path for commit
+        file_name = alita_state.get('maintenance_file_path', 'unknown.json') or 'unknown.json'
+        out['full_file_path'] = f"automation/maintenance/{file_name}"
 
         out
     input:
-      - run_id
-      - branches_list
+      - maintenance_json
+      - existing_file_content
       - maintenance_file_path
     output:
-      - branch_name
-      - final_file_path
-      - branch_exists
+      - final_maintenance_json
+      - full_file_path
+      - file_exists
     structured_output: true
-    transition: RouteBranchCreation
+    transition: RouteFileCommit
 
-  - id: RouteBranchCreation
+  - id: RouteFileCommit
     type: router
     input:
-      - branch_exists
+      - file_exists
     condition: |
-      {% if branch_exists == 'true' %}
-      CommitMaintenanceFile
+      {% if file_exists == 'true' %}
+      DeleteMaintenanceFile
       {% else %}
-      CreateMaintenanceBranch
+      CreateMaintenanceFile
       {% endif %}
     routes:
-      - CommitMaintenanceFile
-      - CreateMaintenanceBranch
-    default_output: CreateMaintenanceBranch
+      - DeleteMaintenanceFile
+      - CreateMaintenanceFile
+    default_output: CreateMaintenanceFile
 
-  - id: CreateMaintenanceBranch
+  - id: DeleteMaintenanceFile
     type: toolkit
     toolkit_name: GitHub_Tools
-    tool: create_branch
+    tool: delete_file
     input:
-      - branch_name
+      - full_file_path
     input_mapping:
-      proposed_branch_name:
+      file_path:
         type: variable
-        value: branch_name
+        value: full_file_path
+      branch:
+        type: fixed
+        value: automation/maintenance
       repo_name:
         type: fixed
         value: EliteaAI/elitea-testing-public
     output:
-      - branch_result
+      - delete_result
     structured_output: true
-    transition: CommitMaintenanceFile
+    transition: CreateMaintenanceFile
 
-  - id: CommitMaintenanceFile
+  - id: CreateMaintenanceFile
     type: toolkit
     toolkit_name: GitHub_Tools
     tool: create_file
     input:
-      - final_file_path
-      - maintenance_json
-      - branch_name
+      - full_file_path
+      - final_maintenance_json
     input_mapping:
       file_path:
         type: variable
-        value: final_file_path
+        value: full_file_path
       file_contents:
         type: variable
-        value: maintenance_json
+        value: final_maintenance_json
       branch:
-        type: variable
-        value: branch_name
+        type: fixed
+        value: automation/maintenance
       repo_name:
         type: fixed
         value: EliteaAI/elitea-testing-public
+      commit_message:
+        type: fixed
+        value: "Update maintenance file with new run data"
     output:
       - commit_result
     structured_output: true
@@ -1450,11 +1589,11 @@ nodes:
 
         try:
             run_id = alita_state.get('run_id', '') or 'unknown'
-            branch_name = alita_state.get('branch_name', '') or f"maintenance/run-{run_id}"
-            final_file_path = alita_state.get('final_file_path', '') or 'unknown'
+            maintenance_file_path = alita_state.get('maintenance_file_path', '') or 'unknown'
             created_raw = alita_state.get('created_issues', '[]')
 
-            file_url = f"https://github.com/EliteaAI/elitea-testing-public/blob/{branch_name}/{final_file_path}"
+            branch_name = 'automation/maintenance'
+            file_url = f"https://github.com/EliteaAI/elitea-testing-public/blob/{branch_name}/automation/maintenance/{maintenance_file_path}"
 
             created = json.loads(created_raw, strict=False) if isinstance(created_raw, str) else created_raw
             if not isinstance(created, list):
@@ -1483,7 +1622,7 @@ nodes:
                 "",
                 "### Maintenance File",
                 f"- Branch: `{branch_name}`",
-                f"- File: [{final_file_path}]({file_url})",
+                f"- File: [{maintenance_file_path}]({file_url})",
                 "",
                 f"Run ID: {run_id}"
             ])
@@ -1495,8 +1634,7 @@ nodes:
         out
     input:
       - run_id
-      - branch_name
-      - final_file_path
+      - maintenance_file_path
       - created_issues
     output:
       - skip_reason
