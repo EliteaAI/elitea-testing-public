@@ -1436,3 +1436,17 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   before classifying any gate result against a closed defect set, ask whether each member can physically
   occur on the environment you gated on** — and a spec docstring claiming an unconditional sanctioned-RED is
   a claim to CHECK, not to trust.
+- **#2124 / #2156 DEV `Page.goto` hazard — a CLEAN 3/3 counter-datapoint on the same spec, hours later
+  (2026-09-10, ELITEA-2022/#2171)**: the entries above record bursts of 4-of-9, 7-of-9 and 2-of-3 on
+  `dev.elitea.ai`, and #2139's own gate of `TestDeletePipeline` hit the hazard in **all three**
+  invocations. Re-gating the *same* repaired spec later the same day — single node-id,
+  `test_delete_pipeline_via_ui_menu`, via the out-of-repo `-p devenv` harness — was **3/3 passed with
+  `reruns.json == {}` every run** (24.27 / 24.07 / 23.31 s, 5 allure steps recorded each). **Zero
+  occurrences in 3 attempts.**
+  Two things this pins down. (1) **"Bursty" is the right word, not "rising"** — the same spec, same
+  machine, same target, same day spans 3-of-3 and 0-of-3, so a single session's rate is not a trend and
+  must not be quoted as one. (2) **Budget by attempts, not by fear**: #2139's 94.91/155.90/67.99 s gate
+  and this 24 s one differ mostly by how many attempts the hazard ate, not by how much work the spec
+  does — so a DEV gate that comes back fast and clean is a *normal* outcome, not a suspicious one.
+  Unchanged discipline: it is a raw uncaught error at a **precondition**, never a member of a
+  sanctioned-RED closed set — re-gate, never accept 2-of-3, never raise the timeout.
