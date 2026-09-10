@@ -11,15 +11,19 @@ updated: 2026-09-10
 ## The pattern
 
 The failure-intake pipeline re-files `[FIX]` cards for a failure that is already
-carded and often already fixed. Confirmed repeatedly: as of 2026-09-10, **7
-sessions, zero code changed** (#2137 = ELITEA-0679, a straight re-file of #2112:
-same run, same commit, same two node ids). Running tally + evidence lives on **#2135**
-(`question`, the process card) — add occurrences there, not here.
+carded and often already fixed. Confirmed repeatedly: as of 2026-09-10, **8
+sessions, zero code changed** (#2143 = ELITEA-1740, the **third** card off one run —
+after #2074 which fixed it and #2116 which was already a duplicate). Running tally +
+evidence lives on **#2135** (`question`, the process card) — add occurrences there, not here.
 
 Two independent causes, both permanent until #2135 ships:
 
 1. **Intake re-files** — the same run gets carded in multiple passes, and a
-   workflow **re-run** cards again independently.
+   workflow **re-run** cards again independently. **"Multiple" is unbounded, not two:**
+   run `34331579791` was carded in **three** passes (09:32, 15:36, ~20:00), producing
+   #2074 → #2116 → #2143 for one node id. Each pass **rewords the description**
+   ("…skill 'skill-a-…'" → "…when filtering by tag"), so nothing in the title or body
+   text is stable across passes — only the footer `Run ID:` and the node id are.
    *A third timing shape, from #2137:* the repair can be **on `main` already** and the
    card still lands, because the CI **run** predates it. Settle it with
    `git merge-base --is-ancestor <fix-sha> <ci-commit>` — one call, and it converts
