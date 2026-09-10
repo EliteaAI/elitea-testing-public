@@ -5,7 +5,7 @@ type: feedback
 aliases: [duplicate card value, zero-work session, re-certification, DEV verification on a duplicate, what to add on a dupe]
 tags: [area/triage, area/test-repair, type/gate]
 created: 2026-09-09
-updated: 2026-09-09
+updated: 2026-09-10
 ---
 
 ## The trap
@@ -69,10 +69,32 @@ Two transferable details:
   every assertion, never a sanctioned-RED member. Classify those OUT before reading the
   result, or a DEV verification looks like a red when it is a clean green.
 
+## Third confirmation (2026-09-10, #2140 / ELITEA-2453) — when menu item 1 is ALREADY spent
+
+#2120 had *already* run DEV 3/3, so the highest-value item was gone. The gap that was left is
+one worth looking for every time: **it gated the pre-merge BRANCH, not the squash-merged
+artifact.** #2154 squashed to `716777790` with the AFS amendment in a separate commit — exactly
+the shape where a pre-merge green stops certifying what shipped. Re-running the merged
+`automation/base` artifact on DEV is a new fact, and it is cheap.
+
+**Add to the menu as item 1b: certify the MERGED artifact when the original gated a branch.**
+
+The other half of this pass: 4 invocations = 9 attempts, and the raw tally (2 passed, 7 not)
+reads like a failure. By cause it is 7x `Page.goto` (`broken`, a precondition) and **0**
+assertion failures — the card's own signature appeared 0 of 9 times. **Read attempt CAUSES
+from `reports/allure-results/*-result.json`, never invocation exit codes**, or a passing
+repair reports as a DEV red. See [[dev_goto_lifecycle_waiter_never_resolves]].
+
+Also worth the two `gh` calls before filing anything: the promotion-gap finding I was about to
+file as a new `question` was **already** card #2157, which had even predicted this recurrence.
+Commenting the occurrence there beat splitting the evidence.
+
 ## The menu, in value order
 
 1. **Run the environment the original could not / did not** (above). Highest value:
    it can *disagree*, and then the duplicate has caught a real miss.
+1b. **Certify the MERGED artifact** when the original gated a pre-merge branch (squash +
+   side commits mean the branch green is not the shipped green).
 2. **Re-derive the promotability row.** It is the row most often copied rather than
    verified, and the documented grep still has false-negative shapes (#2100 —
    `chipTestIdPrefix=` reported `main:no` when the truth is `main:YES`).

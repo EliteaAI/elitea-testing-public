@@ -34,7 +34,13 @@ with **no shim at all**, just the env-file swap:
 | 2 | **2 passed**, `reruns.json == {}` | 185.38 s |
 | 3 | 2 passed, 1 rerun (hung once, retry passed) | 168.21 s |
 
-**9 attempts: 5 clean end-to-end greens on DEV, 4 hangs.** Run 1's
+**9 attempts: 5 clean end-to-end greens on DEV, 4 hangs.**
+
+**Burst ceiling measured 2026-09-10 (#2140, ELITEA-2453): 7 of 9 attempts hung** — same day,
+same hazard, nearly double the rate, on a single-test spec. So size a DEV verification at
+2-4x nominal wall clock and never assume one invocation per result. Both greens still landed
+(one with `reruns.json == {}`), and **0 of 9 attempts showed an assertion failure** — which is
+the only reading that matters: `broken` != `failed`. Run 1's
 `detailed_description` navigated fine seconds before `minimal_prompt` hung three
 consecutive times on the same route. So the hazard arrives in bursts and a whole
 invocation can pass clean.
