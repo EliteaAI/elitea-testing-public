@@ -717,3 +717,34 @@ to `soft_failures`, i.e. **restoration is explicitly not guaranteed**.
 same counter. Any spec on this surface that reads like-sensitive state (a count, a card's text, a
 Trending position) is exposed — `#1082` family, see `.agents/testing.md` § Suite-health pointer.
 Read-only specs should key on ids, which are immune.
+
+## Awaiting the Catalog grid by card IDENTITY — the shipped shape (2026-09-10)
+
+**Resolved/added during ELITEA-2363 implementation (#2179):** the "poll the identity multiset"
+guidance above is implemented in `AgentHubPage.wait_for_agent_card_ids(expected_ids)` — no Python
+poll loop and no `wait_for_timeout` was needed, because two of Playwright's own auto-retrying
+count assertions express it:
+
+1. a comma-joined CSS union of `AGENT_CARD_BY_ID.format(id)` over the baseline's DISTINCT ids,
+   asserted `to_have_count(len(expected_ids))` — the identity half; a half-restored grid cannot
+   satisfy it, and it cannot resolve on a transient pass-through of the old count;
+2. `AGENT_CARD_PREFIX` asserted `to_have_count(len(expected_ids))` — catches an EXTRA card whose id
+   is outside the baseline set, which (1) structurally cannot see.
+
+Then read `get_visible_agent_card_ids()` once and assert `sorted(restored) == sorted(baseline)`, so
+the message names the missing/unexpected ids. **Compare sorted, never `set()`** — 27 cards / 24
+distinct ids on this grid (Trending duplicates a card that also sits in its own category), so a set
+collapses real information.
+
+Card constants now on `AgentHubPage`: `AGENT_CARD_BY_ID = '[data-testid="catalog-agent-card-{}"]'`
+and `AGENT_CARD_TESTID_STEM = "catalog-agent-card-"` (a separate literal, deliberately not
+f-string-composed into the selectors, so `[data-testid=` stays greppable for the coverage tooling).
+`get_visible_agent_card_names()` was renamed `get_visible_agent_card_texts()` — the old name lied
+(it returns name + author initials + live like count).
+
+**Pre-existing red on this surface, unrelated to the above (2026-09-10, matched control run):**
+`test_catalog_default_agents_tab.py` fails at Step 8 with
+`AssertionError: Locator expected to have count '11'` (hardcoded skill-category-chip count) on
+pristine `automation/base` as well as with the ELITEA-2363 diff — byte-identical message, 19.32 s
+vs 19.50 s. Same fragility class as the bug ELITEA-2363 just repaired: a hardcoded expectation over
+live shared catalog data. Do not attribute it to a diff without running the control.

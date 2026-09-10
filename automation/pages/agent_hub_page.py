@@ -141,6 +141,20 @@ class AgentHubPage(BasePage):
     # to select by name, same idiom as AgentDetailPage.MODEL_SELECTOR_OPTION_ANY_SELECTOR.
     AGENT_CARD_PREFIX = '[data-testid^="catalog-agent-card-"]'
 
+    # Agent card — per-application-id template (ELITEA-2363 repair, #2179), the
+    # exact-match companion to AGENT_CARD_PREFIX above. Used to express a
+    # baseline card SET as a locator (a comma-joined CSS union of these) so the
+    # restored grid can be awaited on card IDENTITY rather than on a raw count —
+    # see wait_for_agent_card_ids().
+    AGENT_CARD_BY_ID = '[data-testid="catalog-agent-card-{}"]'
+
+    # The literal testid stem of the two constants above, kept as its own
+    # class-level literal (rather than f-string-composed into them) so the
+    # `[data-testid=` strings stay greppable for the coverage tooling
+    # (.agents/testing.md § Locator policy). Used to strip the stem off a card's
+    # own data-testid when reading its application id.
+    AGENT_CARD_TESTID_STEM = "catalog-agent-card-"
+
     #: The two mutually-exclusive TERMINAL renders of the Catalog content grid
     #: (FIX card #2166). ``CatalogBody.jsx`` renders exactly one of three things
     #: in its left column: anonymous loading skeleton ``<Box>``es (NO testid at
@@ -1296,8 +1310,9 @@ class AgentHubPage(BasePage):
         live on ``dev.elitea.ai``, 2026-09-10: 27-card baseline -> 6-card
         filtered -> 375.84 ms from the clear response landing to the grid
         being back at 27). **Callers MUST therefore read the restored grid
-        through an auto-retrying assertion** — :meth:`wait_for_agent_card_count`
-        with the pre-search baseline count — never a one-shot read on the
+        through an auto-retrying assertion** — :meth:`wait_for_agent_card_ids`
+        with the pre-search baseline IDS (or, where only a count is meaningful,
+        :meth:`wait_for_agent_card_count`) — never a one-shot read on the
         next line.
 
         No trailing settle is attempted here, deliberately, because no
@@ -1324,9 +1339,12 @@ class AgentHubPage(BasePage):
           progressively, so the count leaves the filtered value (6) within a
           few ms while still short of the restored value (27).
 
-        The caller's ``to_have_count(baseline)`` is the only terminal
-        signal — and it is non-vacuous by construction, because the case
-        asserts ``filtered < baseline`` before clearing.
+        The caller's own baseline-keyed wait is the only terminal signal —
+        and it is non-vacuous by construction, because the case asserts
+        ``filtered < baseline`` before clearing. Prefer the identity form
+        (:meth:`wait_for_agent_card_ids`): it is terminal by construction
+        rather than by today's data, since a half-restored grid can never
+        satisfy it (#2179).
 
         Args:
             timeout: Budget for the search field's own element wait — the UI
@@ -1363,8 +1381,8 @@ class AgentHubPage(BasePage):
         """Wait (Playwright auto-retrying assertion) for at least one agent
         card to be rendered (ELITEA-2363) — the render-completion signal to
         use after :meth:`navigate_and_capture_applications`'s network-level
-        wait, before reading :meth:`get_visible_agent_card_names` for a
-        baseline.
+        wait, before reading :meth:`get_visible_agent_card_ids` (identity) or
+        :meth:`get_visible_agent_card_texts` for a baseline.
 
         Deliberately NOT a wait for the DOM card count to equal the fetch
         response's raw row count: each category section only displays its
@@ -1496,23 +1514,86 @@ class AgentHubPage(BasePage):
         """
         expect(self.page.locator(self.AGENT_CARD_PREFIX)).not_to_have_count(unexpected_count, timeout=timeout)
 
-    def get_visible_agent_card_names(self) -> list[str]:
-        """Return the text content of every currently-rendered agent card
+    def get_visible_agent_card_texts(self) -> list[str]:
+        """Return the WHOLE text content of every currently-rendered agent card
         (ELITEA-2363), read via ``AGENT_CARD_PREFIX`` (this class's existing
         dynamic-testid prefix, ELITEA-2075/2354 — the same handle
         :meth:`get_agent_card`/:meth:`get_agent_card_count` already use).
 
-        Used to assert the search-filtered set structurally (fewer cards,
-        every name contains the query substring) and the clear-restores-all
-        invariant (exact set equality against the pre-search baseline)
-        without hardcoding a card count — the Catalog's agent list is live,
-        mutable, shared product data (AFS § Test Data).
+        ⚠️ **NEVER use this for identity comparison — use
+        :meth:`get_visible_agent_card_ids`.** The returned string is not a
+        name: ``AgentCard.jsx`` renders the name ``Typography``, the
+        ``AuthorContainer`` initials avatar and ``AgentHubLike`` (``Like.jsx``'s
+        ``<Typography>{likes || 0}</Typography>``) inside ONE ``<Card>``, and
+        the agent name carries no dedicated testid of its own — so
+        ``text_content()`` concatenates ``name + authorInitials + likeCount``
+        with no separator (e.g. ``"Business Analyst9"``). The like count is
+        live, shared, cross-session mutable data that sibling specs in this very
+        suite change by design (``test_agent_hub_like_agent_list_view.py`` takes
+        a 0-like agent to 1), which took ELITEA-2363 RED in CI run 34436416962
+        (``multi-skill-agent-2600-1f1c00TB0`` -> ``...TB1``). This method was
+        named ``get_visible_agent_card_names()`` until the #2179 repair; the old
+        name asserted a "name" it never returned.
 
-        Note: each card's ``text_content()`` also includes its like-count
-        digit (``AgentHubLike``/``Like.jsx``, no separator) since the agent
-        name ``Typography`` itself carries no dedicated testid — harmless for
-        substring/set-equality comparisons, since no like state changes
-        during this case.
+        Legitimate use is a SUBSTRING check against the rendered card
+        (ELITEA-2363 Step 5: every filtered card's text contains the query
+        term), where the trailing like digit and initials are inert.
         """
         cards = self.page.locator(self.AGENT_CARD_PREFIX)
         return [(cards.nth(i).text_content() or "").strip() for i in range(cards.count())]
+
+    def get_visible_agent_card_ids(self) -> list[str]:
+        """Return the application id of every currently-rendered agent card, in
+        DOM order, read from the card's own ``catalog-agent-card-{id}`` testid
+        (ELITEA-2363 repair, #2179).
+
+        This is the identity source for any before/after comparison of the
+        Catalog grid — the id is stable product data, unlike the card's rendered
+        text (see :meth:`get_visible_agent_card_texts` for what that contains
+        and why it is not identity).
+
+        ⚠️ **The result is a MULTISET, not a set — compare it sorted, never via
+        ``set()``.** The grid legitimately renders the same agent twice, once in
+        Trending and once in its own category section (measured live 2026-09-10:
+        27 cards, 24 distinct ids, dupes ``["31", "16", "127"]``). Collapsing to
+        a set would silently stop detecting a dropped duplicate render.
+        """
+        cards = self.page.locator(self.AGENT_CARD_PREFIX)
+        return [
+            (cards.nth(i).get_attribute("data-testid") or "").removeprefix(self.AGENT_CARD_TESTID_STEM)
+            for i in range(cards.count())
+        ]
+
+    def wait_for_agent_card_ids(self, expected_ids: list[str], timeout: int = 10000) -> None:
+        """Wait (Playwright auto-retrying assertions) for the rendered agent-card
+        grid to hold exactly *expected_ids* — keyed on card IDENTITY, not on a
+        raw count (ELITEA-2363 repair, #2179).
+
+        Two retrying assertions, both required, neither sufficient alone:
+
+        1. The number of rendered cards whose id is one of *expected_ids* equals
+           ``len(expected_ids)`` — catches a card that never came back, a card
+           that came back as something else, and a duplicated re-render.
+        2. The TOTAL number of rendered cards equals ``len(expected_ids)`` —
+           catches an EXTRA card whose id is outside the expected set, which (1)
+           cannot see.
+
+        Why not :meth:`wait_for_agent_card_count` alone (what this replaces for
+        the clear-restores-all step): a bare count is terminal only by accident.
+        The restore is progressive — measured live at 6 -> 12 -> 27 cards over
+        ~3.2 s, three discrete commits matching the three parallel fetches — so
+        ``to_have_count(27)`` does resolve correctly TODAY, but it keys on a
+        number that shared mutable data can invalidate. If an agent is published
+        mid-run the true target is 28 and the wait either times out or resolves
+        transiently while the grid passes THROUGH 27, handing the caller a
+        half-restored grid. Assertion (1) cannot be satisfied by a half-restored
+        grid at all. :meth:`wait_for_agent_card_count`'s own semantics are
+        deliberately left untouched — two other specs use it.
+
+        Caller contract: this is the settle, not the verdict. Read
+        :meth:`get_visible_agent_card_ids` afterwards and assert the sorted
+        multiset explicitly, so the failure message names the actual diff.
+        """
+        expected_union = ", ".join(self.AGENT_CARD_BY_ID.format(app_id) for app_id in sorted(set(expected_ids)))
+        expect(self.page.locator(expected_union)).to_have_count(len(expected_ids), timeout=timeout)
+        expect(self.page.locator(self.AGENT_CARD_PREFIX)).to_have_count(len(expected_ids), timeout=timeout)
