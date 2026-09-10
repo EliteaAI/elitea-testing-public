@@ -13,6 +13,7 @@
 - [Closure-record discipline](closure_record_discipline.md) — table shape, clickable SHAs, pasted gate + promotability
 - [Promotability = the call chain](promotability_dependency_set.md) — derive deps from code at check time, never the AFS
 - [Testid presence greps](testid_presence_grep_technique.md) — bare string, always -i, [:=] not =; component-scope reused names
+- [[FIX] cards come from ONE attempt](fix_card_is_generated_from_ONE_attempt_diff_the_attempts_first.md) — check `run_attempt` and diff the attempts before triaging; a suite that passes in another attempt of the same run is an outage, and the passing attempts name the real failures
 - [Evidence, not narration](evidence_must_be_pasted_artifact.md) — verify every claim against a retrievable artifact
 - [Merge-gate traps](merge_gate_operational_traps.md) — flake resets count, stale gh diff, per-step allure, sanctioned-RED sets
 - [Manual gate file discovery](manual_gate_must_discover_touched_files_via_diff_not_memory.md) — `git diff --name-only` the trunk, never reconstruct touched files from memory of unit summaries
