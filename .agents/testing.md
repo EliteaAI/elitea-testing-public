@@ -1384,8 +1384,42 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   PREVIOUS query's output can satisfy immediately — here it is closed *structurally*, not just by caller
   inspection. Scope the union: it pairs with the agents-only response predicate, so a Skills-tab search needs
   its own. No timeout was raised. Lead's gate: **3/3 green on `dev.elitea.ai`** (25.83/24.53/25.18 s,
-  `reruns.json == {}` each). Canon-addition proposal for the shape: #2196. Sibling site left open on #1847:
-  `clear_search()` carries the byte-identical settle (fragile-not-insufficient — its caller settles properly).
+  `reruns.json == {}` each). Canon-addition proposal for the shape: #2196. ~~Sibling site left open on #1847:
+  `clear_search()` carries the byte-identical settle~~ — **CLOSED 2026-09-10 by #2168/PR #2200; see the next
+  entry, which also corrects the assumption that the union shape transplants to it.**
+- **`networkidle` (#1847) — fourth site closed, and the union shape does NOT transplant: a terminal-render
+  union is DIRECTION-SPECIFIC (2026-09-10, ELITEA-2363/#2168, PR #2200)**: `AgentHubPage.clear_search()` was
+  the sibling site the entry above left open. Do **not** reach for `SEARCH_RESULTS_SETTLED` when closing a
+  site like this. After a **clear** (filtered -> unfiltered) that union's `catalog-agent-card-*` branch is
+  **already matched by the pre-clear filtered cards**, so it has nothing to wait for. Measured live on
+  `dev.elitea.ai` (27-card baseline -> 6 filtered -> clear):
+
+  | Candidate wait | Resolves after the clear response | Grid at that instant | Verdict |
+  |---|---|---|---|
+  | `SEARCH_RESULTS_SETTLED` union | **4.72 ms** | 12 of 27 — mid-restore | **vacuous** |
+  | `not_to_have_count(6)` (count changed) | ~ms | leaves 6 at once, far short of 27 | **non-terminal** |
+  | caller's `to_have_count(27)` | **375.84 ms** | restored | the only terminal signal |
+
+  Category sections commit progressively, which is why a count-CHANGE wait is non-terminal; and the only
+  terminal condition needs the caller's baseline count, which the page object does not have. ⇒ the settle was
+  **removed with no replacement**, and the method's docstring now carries the contract (*returns on the
+  response; the grid re-renders ~376 ms later; callers MUST read it through an auto-retrying assertion*). The
+  sole caller already did (`wait_for_agent_card_count(baseline)`), so **nothing verified changed** and the
+  spec file is byte-identical. Lead's gate: **3/3 green on `dev.elitea.ai`** (28.09/24.89/24.95 s,
+  `reruns.json == {}` each) — and **faster than the pre-fix certification of the same spec** (41.09/50.11/29.73 s),
+  the third time in this ledger that deleting a `networkidle` wait also bought wall clock.
+  **Two transferable rules.** (1) *Check stale-state reachability from the class constant's own definition,
+  not only from a measurement* — the vacuity here is provable by reading `SEARCH_RESULTS_SETTLED`'s two
+  branches against the transition's starting state. (2) *A vacuous settle is worse than none*: it measures
+  ~0 ms while the caller reads the state the transition was leaving. Reviewer-side companion, for judging a
+  **removed** wait: does the caller's next read retry, is its condition terminal and monotonically converged
+  to, and does a miss fail loudly? Canon-addition proposal filed as a comment on #2196 (same card as the
+  union shape, deliberately — the two halves belong together).
+  ⚠️ Still open on this spec's path, both outside `AgentHubPage`: `BasePage.navigate()`'s
+  `wait_for_load_state("networkidle", timeout=30000)` (`base_page.py:360`) — wrapped in `try/except`, so it
+  cannot fail the test, but it is a silent up-to-30 s ceiling shared by **every** page object; and
+  `agent_hub_page.py:1094`'s `page.reload(wait_until="networkidle", …)` in `reload_and_capture_my_liked`
+  (ELITEA-2365 only, unguarded, so it CAN fail).
 - **A "sanctioned RED" can be DEV-BUILD-ONLY — the ELITEA-1892/#2082 precedent has a second instance
   (2026-09-10, ELITEA-2354/#2166)**: `test_agent_hub_like_agent_list_view.py` was documented as an
   unconditional sanctioned-RED against product defect #1215 (Redux "non-serializable value" console error on
