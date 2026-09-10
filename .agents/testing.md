@@ -1538,3 +1538,47 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   reading logs. Corollary, and it is the uncomfortable half: because these repairs are **shared page
   objects**, ONE unpromoted fix generates a `[FIX]` card for **every** spec that calls it — so the
   promotion gap (#2157) inflates FIX intake super-linearly, not one card per repair.
+- **The CHEAPEST promotion-gap proof is grepping the failure MESSAGE STRING — cheaper than the ancestry
+  check, and it needs no repair commit (2026-09-10, ELITEA-2024/#2180)**: `#2173` established *"do the
+  ancestry check FIRST on any `[FIX]` card"* and `#2175` widened it to the whole call path. This card
+  sharpens the front of that procedure. DEV Stable run #116 (`34436416962`) reported
+  `test_view_toggle_table_and_card` failing on
+  `'Card elements (entity-card-name) should render again after switching to card view'`. Two greps
+  settled the whole card before any log was opened:
+  ```
+  git grep -n "should render again after switching to card view" origin/main -- automation/
+    origin/main:automation/tests/ui/pipelines_2/test_pipeline_management.py:135
+  git grep -n "should render again after switching to card view" origin/automation/base -- automation/
+    (absent)
+  ```
+  **An assertion message that exists only on `main` IS the promotion gap** — it says the repair already
+  landed on base and rewrote that message, without needing to know which commit did it or which files
+  are on the call path (the #2175 trap). Only *after* that do you identify the repair, to name it:
+  `6855dc3f4` / PR #2148, board **#2118** — the SAME case, SAME test, SAME assertion, from the PREVIOUS
+  nightly (run #114), merged to base 2026-09-10 00:17, ~2 h *after* the commit CI ran (48a1d6a,
+  2026-09-09 22:28) and never promoted to `main` (gap: 461 commits).
+  **Even cheaper prior, worth checking before the greps:** a `[FIX]` card whose ELITEA-id already has a
+  card in `Ready` is almost certainly a promotion-gap duplicate. #2118 was sitting in `Ready` the whole
+  time. This is #2157's intake-dedup gap firing again — and note the shape it takes here: because CI
+  runs `main` nightly and the repair only ever lands on base, this exact duplicate is **guaranteed to
+  recur on every subsequent nightly** until a human promotes.
+  Disposition: **null code delta**, re-certified rather than re-repaired — 3/3 green on
+  `https://dev.elitea.ai` (22.49 / 21.20 / 22.00 s, `reruns.json == {}` each, zero `broken` attempts,
+  and zero occurrences of the #2124/#2156 `Page.goto` hazard in 3 attempts — another datapoint for the
+  "bursty, not rising" reading).
+- **⚠️ When the repair's root cause is a DATA precondition, a local matched control CANNOT reproduce the
+  CI red — and a passing control must not be read as "the CI red wasn't real" (2026-09-10,
+  ELITEA-2024/#2180)**: the `#1082` / `#2175` discipline says run the pristine-`main` control before
+  assigning blame. Run here, it PASSED — `origin/main`'s pre-repair spec, swapped in as the only changed
+  file, went green against `dev.elitea.ai` in 22.61 s with `reruns.json == {}`. That is the *expected*
+  outcome and it proves nothing about the CI failure, because #2118's root cause was **the CI matrix
+  project holding zero pipelines** while the local `.env.test` points at `ELITEA_PROJECT_ID=399`, which
+  holds pipelines. Main's Step 7 (`assert list_page.get_card_names()`) is a pure function of ambient
+  project data, so it is green here and red there by construction; the repair's whole point is that it
+  establishes the precondition itself via the `pipeline_id` fixture. CI's project id is a repo **secret**
+  (`ELITEA_PROJECT_ID_DEV` in `test-ui-dev-stable.yml`), so the difference cannot be closed locally.
+  **The rule: before running a matched control, ask what the root cause DEPENDS ON.** If it depends on
+  environment-scoped *data* (project contents, seeded entities, org settings) rather than on code, the
+  control is inconclusive-by-construction — say so explicitly rather than letting a green control read
+  as exoneration. Same family as the environment-scoped-sanctioned-RED entries (#1892/#2082,
+  ELITEA-2354/#2166): *can this failure physically occur on the environment you are testing on?*
