@@ -175,3 +175,4 @@
 - [Promotability grep misses `<part>TestIdPrefix="x"`](promotability_grep_misses_testidprefix_props.md) — a false "not on main" parks a promotable case; when a row reads no/no for a testid a PASSING test uses, read the hits
 - [A promotion-gap card is rarely alone](promotion_gap_card_cluster_grows_beyond_one_duplicate.md) — grep the CI-run id, group by ELITEA-id, recommend bundling (4 cards on #2171)
 - [A fast clean DEV gate is normal](dev_gate_can_be_fast_and_clean_dont_distrust_it.md) — goto hazard spanned 3-of-3 and 0-of-3 on one spec in one day
+- [A cross-RUN repeat FIX card is not a duplicate filing](a_cross_run_fix_card_is_not_a_duplicate_filing.md) — same run id = intake artifact (dedup fixes it); different run id = true red re-detected, recurs nightly until promotion

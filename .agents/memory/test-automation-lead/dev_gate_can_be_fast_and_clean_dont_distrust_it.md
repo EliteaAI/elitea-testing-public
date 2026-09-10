@@ -24,3 +24,16 @@ Two calibrations:
 
 Procedure lives in [[dev_gate_discipline_for_fix_cards]]; recorded in `.agents/testing.md`
 under the #2124 entries.
+
+## Sharper datapoint — the swing on ONE spec (2026-09-10, ELITEA-2453 / #2172)
+
+The original evidence spanned two *different* specs. Same-spec is the stronger form:
+`test_run_details_multiple_state_variables_different_types` on `dev.elitea.ai` burned
+**7 of 9** attempts to the `Page.goto` hazard at ~03:50Z, then **0 of 3** at 12:23Z —
+same machine, same target, same node id, identical merged artifact, 4.5 h apart
+(37.76 / 39.15 / 39.21 s, `reruns.json == {}` each).
+
+**78% -> 0% in one day.** So an observed hazard rate is a property of the *window you
+sampled*, never of the spec, surface or suite. A spec with an ugly burst in its history
+is not a spec to distrust — and when a clean gate feels "too fast to be DEV", check
+`settings.app_base_url`, not the wall clock.
