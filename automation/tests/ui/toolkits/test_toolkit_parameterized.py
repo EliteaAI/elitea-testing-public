@@ -24,7 +24,9 @@ from config import settings
 from pages.base_page import BasePage
 from pages.chat_page import ChatPage
 from pages.credential_create_page import CredentialCreatePage
+from pages.toolkit_creation_page import ToolkitCreationPage
 from pages.toolkit_test_settings_page import ToolkitTestSettingsPage
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
 from toolkit_configs import TOOLKIT_CONFIGS, ToolkitConfig
 from toolkit_factories import CREDENTIAL_FACTORIES, TOOLKIT_SETTINGS_FACTORIES
@@ -44,6 +46,26 @@ pytestmark = [pytest.mark.ui, pytest.mark.toolkits, pytest.mark.new_verified]
 UI_ELEMENT_TIMEOUT = 10_000
 NAVIGATION_TIMEOUT = 15_000
 FORM_SAVE_TIMEOUT = 15_000
+# Budget for the toolkit-create POST to resolve (#2123). NOT a "longer timeout
+# to turn a red green": before this repair there was NO wait at all — Step 7 was
+# `wait_for_timeout(3000)` and Step 8 read the URL instantly, so a save that took
+# 3.1 s was reported as "the form did not navigate" (CI run 34331579791). This is
+# the budget for the FIRST real wait on that request. If a save genuinely exceeds
+# it, `expect_response` raises at the click and names the missing POST — the
+# correct, truthful failure.
+TOOLKIT_SAVE_TIMEOUT = 30_000
+# The Toolkit Name field is capped by the PRODUCT at 32 characters
+# (`MAX_NAME_LENGTH`, EliteaUI src/common/constants.js:66, applied as
+# `inputProps={{ maxLength }}` in NameDescriptionInput.jsx). The browser
+# TRUNCATES silently at that boundary — no error, no toast. Discovered while
+# repairing #2123: the former `f"AutoTest {display} Toolkit {ts}"` was 34-38
+# chars for github / gitlab / bitbucket / confluence, so the toolkit was stored
+# under a truncated name while the test's API lookup searched for the full one.
+# The lookup therefore never matched, `created_id` stayed None and cleanup
+# silently skipped — a toolkit leaked on EVERY run of those params, including
+# the ones that reported PASS. Names must fit; the Step-3 value assertion is the
+# guard that keeps them fitting.
+TOOLKIT_NAME_MAX_LEN = 32
 AI_RESPONSE_TIMEOUT = 30_000
 # Increased from 60s to 120s to handle external API variability (e.g., Confluence)
 TOOLKIT_EXECUTION_TIMEOUT = 120_000
@@ -300,63 +322,192 @@ class TestCreateToolkit:
         self, page, toolkit_config: ToolkitConfig,
         managed_credential: dict, toolkit_api: ToolkitAPI,
     ):
-        """Create a toolkit through the UI form for any toolkit type."""
+        """Create a toolkit through the UI form for any toolkit type.
+
+        Repaired under #2123 (ELITEA-1141). The CI red this test produced on
+        2026-09-09 (GHA run 34331579791) was a FALSE RED on a *successful* save:
+        the toolkit was created, but Step 7 budgeted a fixed 3 s for the backend
+        POST and Step 8 then read the URL with no wait at all, so a slow-but-fine
+        save was reported as "the toolkit creation flow does not navigate away".
+        Because the assert raised before the id lookup ran, teardown deleted
+        nothing and both failing params LEAKED a toolkit into the CI project.
+
+        A second, wider leak surfaced during the repair: the generated toolkit
+        name exceeded the product's 32-character cap (see
+        :data:`TOOLKIT_NAME_MAX_LEN`), so the toolkit was stored under a
+        truncated name the API lookup could never match — every github / gitlab
+        / bitbucket / confluence run leaked, PASSING runs included.
+
+        The oracle is now the create request itself (a real 201 carrying the new
+        toolkit's id), the navigation to that id's detail page, and an API
+        read-back — all produced by the system. No substitution of any kind is
+        performed here (`.agents/testing.md` § Fidelity policy).
+        """
         cfg = toolkit_config
-        tk_name = f"AutoTest {cfg.display_name} Toolkit {_ts()}"
+        tk_name = f"AT {cfg.display_name} {_ts()}"
+        assert len(tk_name) <= TOOLKIT_NAME_MAX_LEN, (
+            f"Generated toolkit name {tk_name!r} is {len(tk_name)} chars — the "
+            f"product truncates at {TOOLKIT_NAME_MAX_LEN}, which would make the "
+            f"API read-back and the teardown lookup miss it"
+        )
         cred_name = managed_credential["name"]
         created_id = None
+        toolkit_form = ToolkitCreationPage(page)
 
         try:
             with allure.step("Step 1 — Navigate to toolkit creation page"):
-                page.goto(
-                    f"{settings.app_base_url}/toolkits/create",
-                    wait_until="domcontentloaded",
-                )
-                page.wait_for_load_state("networkidle", timeout=30000)
-                page.wait_for_timeout(1000)
+                toolkit_form.navigate("/toolkits/create")
 
-            with allure.step(f"Step 2 — Click toolkit type card: {cfg.ui_card_text}"):
-                card = page.get_by_text(cfg.ui_card_text).first
-                card.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-                card.click()
-                page.wait_for_load_state("networkidle", timeout=NAVIGATION_TIMEOUT)
-                page.wait_for_timeout(1000)
+            with allure.step(f"Step 2 — Select toolkit type card: {cfg.ui_card_text}"):
+                # By TESTID (`toolkit-type-card-{type}`), never by card text:
+                # the picker renders 71 cards and the former text-matching
+                # first-match lookup could land on any of them — and on a
+                # non-interactive wrapper <div> at that
+                # (ToolkitCreationPage.TOOLKIT_TYPE_CARD).
+                toolkit_form.select_toolkit_type(
+                    cfg.ui_card_text, cfg.toolkit_type, timeout=NAVIGATION_TIMEOUT
+                )
 
             with allure.step("Step 3 — Fill Toolkit Name"):
-                name_field = page.get_by_role("textbox", name="Toolkit Name")
-                name_field.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-                name_field.click()
-                name_field.type(tk_name)
-                page.wait_for_timeout(300)
+                toolkit_form.fill_name(tk_name)
+                # Assert the value LANDED — the sibling test_create_credential's
+                # Step 3 rationale (#1897): without this, a transient that wipes
+                # or re-initialises the field only surfaces much later, with the
+                # wrong subsystem named.
+                expect(toolkit_form.name_input).to_have_value(
+                    tk_name, timeout=UI_ELEMENT_TIMEOUT
+                )
 
             with allure.step("Step 4 — Fill Description"):
-                desc_field = page.get_by_role("textbox", name="Description")
-                desc_field.click()
-                desc_field.type(f"Test {cfg.display_name} toolkit for automation")
-                page.wait_for_timeout(300)
+                description = f"Test {cfg.display_name} toolkit for automation"
+                toolkit_form.fill_description(description)
+                expect(toolkit_form.description_input).to_have_value(
+                    description, timeout=UI_ELEMENT_TIMEOUT
+                )
 
-            with allure.step("Step 5 — Select credential from dropdown"):
-                _select_credential_dropdown(page, cfg, cred_name)
+            with allure.step("Step 5 — Verify the fixture's credential is selected"):
+                # The form AUTO-SELECTS the newest saved credential of this type
+                # ~0.8-1.0 s after it renders (the backend lists credentials
+                # `created_at desc`; `managed_credential` created ours moments
+                # ago, so it is that one). The former helper never opened this
+                # dropdown either — its 307-324 ms in every CI param was purely
+                # its own `wait_for_timeout(300)` — but it also never ASSERTED
+                # what was selected, so a toolkit built on the wrong credential
+                # passed silently. This is the case's "Toolkit linked to
+                # credential" expected result, at the UI level.
+                #
+                # KNOWN DEFECT #2158 — re-clicking the option that is ALREADY
+                # selected toggles the credential OFF in formik state while the
+                # select keeps displaying it and shows no error; Save then fires
+                # no request at all. So this step ASSERTS and never interacts.
+                expect(toolkit_form.get_credential_select(cfg.toolkit_type)).to_contain_text(
+                    cred_name, timeout=UI_ELEMENT_TIMEOUT
+                )
 
             with allure.step("Step 6 — Fill type-specific fields"):
-                _fill_toolkit_form_fields(page, cfg)
+                _fill_toolkit_form_fields(toolkit_form, cfg)
 
-            with allure.step("Step 7 — Click Save button"):
-                save_btn = page.get_by_role("button", name="Save")
-                save_btn.wait_for(state="visible", timeout=UI_ELEMENT_TIMEOUT)
-                save_btn.evaluate("el => el.click()")
-                page.wait_for_load_state("networkidle", timeout=FORM_SAVE_TIMEOUT)
-                page.wait_for_timeout(3000)
+            with allure.step("Step 7 — Click Save and wait for the toolkit to be created"):
+                # `shouldDisableSave = isLoading || !formik.dirty`
+                # (CreateToolkitToolTabBar.jsx) — Save is enabled the moment the
+                # credential auto-selects, with every required field still empty
+                # (measured live, #2123). This asserts the button is CLICKABLE,
+                # NOT that the form is valid. The real oracle is the 201 below.
+                expect(toolkit_form.save_button).to_be_enabled(timeout=UI_ELEMENT_TIMEOUT)
 
-            with allure.step("Step 8 — Verify navigation away from create form"):
-                assert "/toolkits/create" not in page.url
+                # `wait_for_load_state("networkidle")` is NOT a save signal on
+                # this app — a persistent /socket.io/ poll means it returned in
+                # ~0.05 s in every measured run (#2123, the #1847 family). The
+                # former `wait_for_timeout(3000)` that followed it was therefore
+                # a hard 3-second budget for a backend POST. Wait on the POST.
+                #
+                # A REAL Playwright click, never `evaluate("el => el.click()")`:
+                # a JS click on a disabled button is a silent no-op — no request,
+                # no navigation, no exception — which is what destroyed the
+                # evidence in the sibling #1897.
+                try:
+                    with page.expect_response(
+                        lambda r: "/elitea_core/tools/prompt_lib/" in r.url
+                        and r.request.method == "POST",
+                        timeout=TOOLKIT_SAVE_TIMEOUT,
+                    ) as create_response:
+                        toolkit_form.save_button.click()
+                except PlaywrightTimeoutError as err:
+                    # Re-raised as an AssertionError so the red NAMES what is
+                    # missing instead of reading "Timeout 30000ms exceeded while
+                    # waiting for event 'response'" — a genuine non-save is the
+                    # failure this test exists to catch, and it must say so.
+                    # (Side effect, per `.agents/testing.md`: this makes the
+                    # allure status `failed` rather than `broken`; nothing keys
+                    # on that — conftest keys on `report.outcome` — and it also
+                    # takes the failure out of pytest.ini's `--only-rerun
+                    # TimeoutError` bucket, which is correct: a save that never
+                    # fires is deterministic, not a flake to retry.)
+                    raise AssertionError(
+                        f"No create request (POST .../elitea_core/tools/prompt_lib/...) "
+                        f"was observed within {TOOLKIT_SAVE_TIMEOUT} ms of clicking "
+                        f"Save — the toolkit was not created. URL: {page.url}"
+                    ) from err
+                response = create_response.value
 
-                toolkits = toolkit_api.list_toolkits()
-                rows = toolkits if isinstance(toolkits, list) else toolkits.get("rows", [])
-                for t in rows:
-                    if t.get("name") == tk_name:
-                        created_id = t["id"]
-                        break
+                # TEARDOWN GUARD (`.agents/testing.md` § Teardown-guard ordering):
+                # the id is captured the instant the toolkit is known to exist,
+                # BEFORE any assertion that can raise. The former code set it at
+                # the very END of Step 8, after an assert that DID raise — which
+                # is exactly how run 34331579791 leaked two toolkits.
+                created_body = response.json() if response.status == 201 else None
+                if created_body:
+                    created_id = created_body.get("id")
+
+                assert response.status == 201, (
+                    f"Toolkit create POST returned {response.status}, expected 201 — "
+                    f"the toolkit was not created"
+                )
+                assert created_id is not None, (
+                    f"The create response carried no toolkit id: "
+                    f"{sorted(created_body or {})}"
+                )
+
+            with allure.step("Step 8 — Verify navigation to the new toolkit's detail page"):
+                # Observed destination (four live runs, all three params):
+                # /toolkits/all/{id}, to which the app then appends
+                # ?name=<toolkit name>. The former guard
+                # (`"/toolkits/create" not in page.url`) only said "not on the
+                # create form" — it never stated where the app actually goes, and
+                # it passed on ANY other URL.
+                page.wait_for_url(
+                    re.compile(rf"/toolkits/all/{created_id}(\?.*)?$"),
+                    timeout=NAVIGATION_TIMEOUT,
+                )
+
+            with allure.step("Step 9 — Verify the toolkit exists via API and is linked to the credential"):
+                # `list_all_toolkits()` paginates; the former `list_toolkits()`
+                # read ONE page, so on a busy project a freshly-created toolkit
+                # could be absent from it. And the former lookup ASSERTED NOTHING
+                # — if the toolkit was never created the test still passed and
+                # cleanup silently skipped.
+                rows = toolkit_api.list_all_toolkits()
+                match = next((t for t in rows if t.get("name") == tk_name), None)
+                assert match is not None, (
+                    f"Toolkit '{tk_name}' not found via API among {len(rows)} toolkits"
+                )
+                assert match["id"] == created_id, (
+                    f"API returned toolkit id {match['id']} for '{tk_name}', but the "
+                    f"create response said {created_id}"
+                )
+
+                # The case's second expected result — "Toolkit linked to
+                # credential" — closed at the API level. Key shape captured live
+                # 2026-09-10 off the real 201 body for github / jira / confluence
+                # (`settings["{type}_configuration"]["elitea_title"]`), never
+                # inferred.
+                config_key = f"{cfg.toolkit_type}_configuration"
+                linked = (created_body.get("settings") or {}).get(config_key) or {}
+                assert linked.get("elitea_title") == managed_credential["elitea_title"], (
+                    f"Created toolkit's {config_key} is {linked.get('elitea_title')!r}, "
+                    f"expected the fixture credential "
+                    f"{managed_credential['elitea_title']!r}"
+                )
 
         finally:
             if created_id:
@@ -787,62 +938,41 @@ def _fill_credential_auth_fields(
     # Add more types as needed...
 
 
-def _select_credential_dropdown(page, cfg: ToolkitConfig, cred_name: str):
-    """Open the credential dropdown on the toolkit form and select by name."""
-    # Check if credential is already selected (UI auto-selects when only one exists)
-    already_selected = page.locator(f'text="{cred_name}"')
-    if already_selected.count() > 0 and already_selected.first.is_visible():
-        # Credential already selected, no need to open dropdown
-        page.wait_for_timeout(300)
-        return
+def _fill_toolkit_form_fields(toolkit_form: ToolkitCreationPage, cfg: ToolkitConfig):
+    """Fill the type-specific schema-driven fields on the toolkit creation form.
 
-    # The dropdown label varies by type — find the "Configuration" text
-    # Common patterns: "Github configuration", "Jira Configuration", etc.
-    config_label_patterns = [
-        f"{cfg.display_name} configuration",
-        f"{cfg.display_name} Configuration",
-        f"{cfg.display_name.lower()} configuration",
-        f"{cfg.display_name.lower()}_configuration",
-        "Configuration",
-        "configuration",
-    ]
-    dropdown_clicked = False
-    for label in config_label_patterns:
-        dropdown = page.get_by_text(label, exact=False).first
-        if dropdown.count() > 0 and dropdown.is_visible():
-            dropdown.click()
-            page.wait_for_timeout(500)
-            dropdown_clicked = True
-            break
+    Keyed by SCHEMA KEY (``cfg.ui_form_fields``), so each field is reached
+    through its own ``toolkit-field-{key}-input`` testid via
+    :meth:`ToolkitCreationPage.fill_field`. Re-keyed under #2123: the former
+    body located fields by their visible UI label (a raw accessible-name
+    textbox handle) and then guarded on ``if field.is_visible()`` /
+    ``if not existing`` — so a field it could not see, or one it decided was
+    already filled, was **silently skipped**. A required field left empty puts this form into a state that is
+    hard to diagnose two steps later: Save stays *enabled*
+    (``shouldDisableSave = isLoading || !formik.dirty`` — validity is
+    deliberately not part of it), the click fires **no request at all**, and
+    nothing visible reports an error.
 
-    if not dropdown_clicked:
-        # Fallback: look for any dropdown/combobox on the form
-        combobox = page.locator('[role="combobox"]').first
-        if combobox.count() > 0 and combobox.is_visible():
-            combobox.click()
-            page.wait_for_timeout(500)
+    Each fill is asserted, so a value that does not land fails here rather than
+    surfacing at the save with the wrong subsystem named.
 
-    # Select credential from popper — MUI uses menuitem or option
-    cred_option = page.get_by_role("menuitem", name=cred_name)
-    if cred_option.count() == 0 or not cred_option.is_visible():
-        # Fallback to option role
-        cred_option = page.get_by_role("option", name=cred_name)
-    cred_option.wait_for(state="visible", timeout=10000)
-    cred_option.click()
-    page.wait_for_timeout(500)
-    page.wait_for_load_state("networkidle", timeout=15000)
-
-
-def _fill_toolkit_form_fields(page, cfg: ToolkitConfig):
-    """Fill type-specific form fields on the toolkit creation form."""
-    for field_label, value in cfg.ui_form_fields.items():
-        field = page.get_by_role("textbox", name=field_label)
-        if field.is_visible():
-            existing = field.input_value()
-            if not existing:
-                field.click()
-                field.type(value)
-                page.wait_for_timeout(300)
+    Args:
+        toolkit_form: The creation-form page object, already on the form.
+        cfg: The toolkit type's configuration.
+    """
+    for field_key, value in cfg.ui_form_fields.items():
+        if not value:
+            # A config gap, not a product verdict — skip loudly naming the key
+            # rather than falling through into a save that cannot succeed
+            # (#1897's rule, applied to the toolkit form).
+            pytest.skip(
+                f"No configured value for the {cfg.display_name} toolkit form's "
+                f"'{field_key}' field — set it in .env.test"
+            )
+        toolkit_form.fill_field(field_key, value)
+        expect(toolkit_form.get_field_locator(field_key)).to_have_value(
+            value, timeout=UI_ELEMENT_TIMEOUT
+        )
 
 
 def _fill_test_settings_param(page, field_label: str, value: str):

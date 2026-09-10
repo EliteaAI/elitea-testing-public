@@ -298,6 +298,69 @@ credential name, a UI-text assertion would not catch it. R5 forbids it.
 
 ---
 
+## Finding 5 — SECOND leak, found at implementation time: the name is truncated at 32
+
+**Added by the implementer, 2026-09-10 (#2123). This one leaks on PASSING runs too, so
+it is wider than the failure the card was opened for.**
+
+The repair's new Step-3 assertion — `expect(name_input).to_have_value(tk_name)` — failed
+on the very first `[github]` run:
+
+```
+E   AssertionError: Locator expected to have Value 'AutoTest GitHub Toolkit 1789003922'
+E   Actual value: AutoTest GitHub Toolkit 17890039
+E     locator resolved to <input … maxlength="32" data-testid="toolkit-form-name-input" …/>
+```
+
+`Toolkit Name` carries `inputProps={{ maxLength: MAX_NAME_LENGTH }}`
+(`NameDescriptionInput.jsx`) and `MAX_NAME_LENGTH = 32`
+(`EliteaUI src/common/constants.js:66`). The browser drops the overflow **silently** —
+no error, no toast, no field error.
+
+`tk_name` was `f"AutoTest {display} Toolkit {ts}"`, i.e. **34 / 34 / 37 / 38 characters**
+for github / gitlab / bitbucket / confluence (jira is exactly 32 and fit). So for those
+params the toolkit was stored under a truncated name, the old Step-8 lookup searched for
+the **full** name, never matched, left `created_id is None` — and, because that lookup
+asserted nothing (§ Finding 3a), the test **reported PASS while leaking a toolkit**.
+Confirmed against control run A below: the leaked object's stored name was
+`AutoTest GitHub Toolkit 17890038` — 32 chars, visibly truncated.
+
+**Repair (in scope — the test cannot go green without it):** the generated name is now
+`f"AT {cfg.display_name} {_ts()}"` (24 chars at worst), guarded by
+`TOOLKIT_NAME_MAX_LEN = 32` and an explicit precondition assert that names the cap. The
+Step-3 value assertion is what keeps it honest: any future name that overflows fails
+loudly at Step 3 instead of leaking quietly. Nothing about the case's observable is
+weakened — this is test data being made able to survive a real product constraint.
+
+Recorded for the next spec on this surface in `test-specs/toolkits/_surface.md`
+§ "Name field is capped at 32 characters".
+
+---
+
+## Implementer control results (2026-09-10, localhost, real pytest invocations)
+
+Executed through a throwaway pytest plugin (`/tmp/impl2123/ctrl_plugin.py`, never
+committed) that routes only the create POST — so the REAL spec code ran in all three:
+
+| control | code | create POST | outcome |
+|---|---|---|---|
+| **A** | **pre-repair** (`automation/base`) | real, **201**, response held 8 s | **FAIL at Step 8** — `assert '/toolkits/create' not in 'http://localhost:5173/toolkits/create/github'`, and toolkit **3631 leaked** (deleted by hand afterwards) |
+| **B** | repaired | real, **201**, response held 8 s | **PASS**, 25.6 s — the exact condition that broke A |
+| **C** | repaired | **aborted** (genuine non-save) | **FAIL at Step 7** — `AssertionError: No create request (POST .../elitea_core/tools/prompt_lib/...) was observed within 30000 ms of clicking Save — the toolkit was not created.` |
+
+A is the CI signature reproduced against the real spec; B is the proof the repair fixes
+it; C is the proof the repair did not buy green by going blind.
+
+**Implementation note on C:** `expect_response`'s native timeout reads only
+`Timeout 30000ms exceeded while waiting for event "response"`, which names neither the
+request nor the step's meaning. It is re-raised as an `AssertionError` naming the missing
+POST and the current URL. Side effects, both benign and deliberate: the allure status
+becomes `failed` rather than `broken` (nothing keys on it — `conftest.py` keys on
+`report.outcome`), and the failure leaves `pytest.ini`'s `--only-rerun "TimeoutError"`
+bucket, which is correct — a save that never fires is deterministic, not a flake.
+
+---
+
 ## Correlation with ELITEA-1141
 
 | case step | case expected result | test today | disposition |
@@ -461,6 +524,19 @@ live). Use the prefix+contains form above rather than the full JSON: it is a lit
 `data-testid` selector (policy-compliant), and it does not depend on key order or on the
 `private` flag. **Guard it with the currently-selected check so #2158 cannot fire.**
 
+> **IMPLEMENTED — assertion only; the dropdown fallback was deliberately NOT wired
+> (implementer, #2123, declared).** The assertion never failed: auto-select picked the
+> fixture's credential in 3/3 Phase-2 probe runs and in every gate run across all three
+> params, which is what the mechanism predicts (the backend sorts `created_at desc` and
+> `managed_credential` creates ours milliseconds before the form opens). Wiring an
+> unexercised recovery path here would have cost the two extra handles
+> (`CREDENTIAL_SELECT_COMBOBOX`, `CREDENTIAL_OPTION_BY_TITLE`) as dead references —
+> which canon ruling #511 explicitly rejects, since a testid wired into a page object
+> but never called on the executed path is not "referenced" — and its only exercise
+> would be the one interaction defect **#2158** makes dangerous. If a future run does
+> see the wrong credential auto-selected, that red is truthful (the case's "Toolkit
+> linked to credential" really is violated) and the fallback is the AFS-sanctioned fix.
+
 ### R6 — `_fill_toolkit_form_fields`: key by schema key, assert what landed *(blocker)*
 
 Today:
@@ -516,6 +592,13 @@ exact key holding the credential (`configuration.elitea_title` on the github sec
 the form's schema) **must be confirmed against a live response at implementation time**;
 I observed the key's presence but did not dump its shape. Do not guess it. If the shape
 turns out awkward, leave R5 as the coverage and record it here.
+
+> **IMPLEMENTED — key confirmed live 2026-09-10 (implementer, #2123), not guessed.**
+> Dumped off the real 201 body for github, jira AND confluence:
+> `settings["{toolkit_type}_configuration"]["elitea_title"]`, e.g.
+> `{"github_configuration": {"private": true, "elitea_title": "github_1789003516095"}, …}`.
+> The spec asserts it equals `managed_credential["elitea_title"]`. Shape also recorded in
+> `test-specs/toolkits/_surface.md`.
 
 ### What must NOT change
 
@@ -602,6 +685,7 @@ the URL, the API list, the credential label — is produced by the system.
 | "Click Test Settings" → connection passes | | `TestToolkitTestSettings` (sibling class) | — | out of scope for this test |
 | "Navigate to Credentials, create GitHub credential" | | `TestCreateCredential` (sibling, repaired under #1897) | — | out of scope for this test |
 | Cleanup | toolkit removed | `finally:` + **R2** (id captured from the 201) | teardown | **restored** — today the id is set after an assert that can raise, so failures leak |
+| Cleanup (2nd path) | toolkit removed | **Finding 5** — name kept inside the product's 32-char cap, asserted at Step 3 | Step 3 + teardown | **restored** — today the name is silently truncated, so the lookup never matches and github / gitlab / bitbucket / confluence leak on **passing** runs too |
 
 ### Axis 2 — asserted beyond the case
 

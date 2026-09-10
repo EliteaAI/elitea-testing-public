@@ -77,6 +77,29 @@ class ToolkitCreationPage(BasePage):
         "(NameDescriptionInput.jsx), not artifact-specific",
     )
 
+    description_input = LocatorDescriptor(
+        testid="toolkit-form-description-input",
+        description="Toolkit Description field — generic across ALL toolkit "
+        "types (NameDescriptionInput.jsx), the sibling of :attr:`name_input`. "
+        "Added for #2123/ELITEA-1141, which routes the parameterized "
+        "toolkit-creation test off its raw accessible-name textbox handle.",
+    )
+
+    # Dynamic testid template — the "<Type> Configuration" credential select's
+    # DISPLAY element, keyed by the toolkit's schema type key (e.g. "github").
+    # CredentialsSelect.jsx -> Select.SingleSelect. Note the same form also
+    # renders a second, unrelated `toolkit-credential-select-pgvector` (the
+    # vector-store credential) — always format with the toolkit's own type key
+    # rather than matching the prefix (confirmed live, #2123 Phase 2: github /
+    # jira / confluence forms each render exactly two of these).
+    #
+    # ⚠️ KNOWN DEFECT #2158 — clicking the option that is ALREADY selected in
+    # this select toggles the credential OFF in formik state while the select
+    # keeps DISPLAYING it and shows no error; Save then fires no request at all.
+    # Read this locator to ASSERT what is selected; never re-click a selected
+    # option.
+    CREDENTIAL_SELECT = '[data-testid="toolkit-credential-select-{}"]'
+
     # Dynamic testid template — a schema-driven field, keyed by its schema
     # property key (e.g. "bucket"). ToolBaseProperty.jsx — the SAME
     # mechanism every schema-driven toolkit field uses.
@@ -322,6 +345,40 @@ class ToolkitCreationPage(BasePage):
         self.name_input.click()
         self.name_input.press_sequentially(name, delay=30)
         logger.info("Filled toolkit name field with '%s'", name)
+
+    @action("Fill Toolkit Description field")
+    def fill_description(self, description: str) -> None:
+        """Type into the Toolkit Description field.
+
+        Same MUI/formik ``click()`` + ``press_sequentially()`` pattern as
+        :meth:`fill_name` — the two fields are rendered by the same
+        ``NameDescriptionInput.jsx`` component.
+
+        Args:
+            description: Description text to type.
+        """
+        self.description_input.click()
+        self.description_input.press_sequentially(description, delay=30)
+        logger.info("Filled toolkit description field with '%s'", description)
+
+    def get_credential_select(self, type_key: str):
+        """Return the Locator for the "<Type> Configuration" credential select.
+
+        Thin wrapper around :attr:`CREDENTIAL_SELECT` so callers never
+        construct the dynamic-testid locator inline — same rationale as
+        :meth:`get_type_card`.
+
+        The form AUTO-SELECTS the newest saved credential of this type
+        roughly 0.8-1.0 s after it renders (the backend lists credentials
+        ``created_at desc`` and ``CredentialsSelect.jsx`` applies
+        ``savedCredentialsMenuData[0]``), so the honest use of this locator
+        is to ASSERT what landed — see :attr:`CREDENTIAL_SELECT`'s note on
+        defect #2158 before considering an interaction instead.
+
+        Args:
+            type_key: The toolkit type's schema key (e.g. ``"github"``).
+        """
+        return self.page.locator(self.CREDENTIAL_SELECT.format(type_key))
 
     @action("Fill a schema-driven toolkit field")
     def fill_field(self, field_key: str, value: str, *, force: bool = False) -> None:
