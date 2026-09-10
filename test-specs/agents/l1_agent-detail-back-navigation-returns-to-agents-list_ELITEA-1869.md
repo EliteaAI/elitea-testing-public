@@ -156,9 +156,17 @@ This AFS mirrors both shapes rather than inventing one.
 - At least one agent exists in the current project. **Confirmed live on DEV**:
   project 399 renders a full first page of 20 agent cards; no agent needs to be
   created. Reuse an existing agent — **do not** use the `agent_id` fixture
-  (`fixtures/data_fixtures.py`), which unconditionally calls
-  `agent_api.create_agent(...)` and walks into open defect
-  [#524](https://github.com/EliteaAI/elitea-testing-public/issues/524).
+  (`fixtures/data_fixtures.py`). Read-only against pre-existing data is this
+  project's default when the observable allows it (`.agents/testing.md`
+  § Test data strategy), and here it plainly does: the case only needs *an*
+  agent to open. *(Secondary note, stated as the record actually stands: the
+  fixture calls `agent_api.create_agent(...)`, and the
+  **`AgentAPI.create_agent()` path was never re-verified after #524's
+  2026-07-16 UI-path fix** — `…_ELITEA-1897.md:100` confirms the fix for the UI
+  create-form only and says so explicitly, while `…_ELITEA-1888.md:31,56` still
+  treats [#524](https://github.com/EliteaAI/elitea-testing-public/issues/524)
+  as open against that fixture path. That is a reason not to take an
+  unnecessary dependency, not a claimed blocker.)*
   *(The currently-merged test takes `agent_id`; the repair should drop it —
   see § Automation Hints.)*
 - A deployment banner (`Release 2.0.5 — Deployment`, z-index 2400) intercepts
@@ -265,7 +273,7 @@ navigate → detail → breadcrumb-back flow, on every DEV run.
 | Case element | Expected result | Covered by (AFS step) | Asserted where | Disposition |
 |---|---|---|---|---|
 | Precondition: user logged in | Session active | `auth_state` fixture | n/a (fixture-level) | asserted |
-| Precondition: at least one agent exists | Agents list non-empty | pre-existing project state (20 cards) | Step 1 `assert agents_before` | asserted (existing data reused; `agent_id`/#524 avoided) |
+| Precondition: at least one agent exists | Agents list non-empty | pre-existing project state (20 cards) | Step 1 `assert agents_before` | asserted (existing data reused; the unused `agent_id` fixture dropped) |
 | Step 1: navigate to Agents page | Dashboard loads, list displays | Step 1 | `agents-page-header` visible + non-empty `entity-card-name` list | asserted |
 | Step 2: click into any agent card | Detail page opens | Step 2 | URL matches `/agents/all/<id>`, `agent-information-section` visible | asserted |
 | Step 3: click the go-back control in the detail page header | Navigation is triggered back to the previous page | Steps 3a–3d | `back-button` count 0; `breadcrumb-item` count 1 + text "Agents"; click awaits the list re-fetch `200` | asserted — **control changed, observable unchanged** (case text needs the wording update in § Proposed TMS case-text change) |
@@ -437,10 +445,15 @@ None.
   for the lead, and `SkillDetailPage` still mirrors the same shape pending its
   own `[FIX]` card.
 - **Test-file changes** (`tests/ui/agents/test_agent_back_navigation.py`):
-  - **Drop the `agent_id` fixture parameter.** It is unused by the test body
-    (the test clicks the first card, not `agent_id`) and every invocation pays
-    an `agent_api.create_agent(...)` that walks into open defect #524. Removing
-    it is a precondition/robustness change, not an assertion change.
+  - **Drop the `agent_id` fixture parameter.** The primary reason stands on
+    its own: it is **unused by the test body** — the test clicks
+    `agents_before[0]`, never the created agent — so the fixture is a pure
+    per-invocation cost, and dropping it is the read-only-by-default posture
+    `.agents/testing.md` § Test data strategy asks for. Secondary: that
+    fixture's `AgentAPI.create_agent()` path was never re-verified after
+    #524's 2026-07-16 UI-path fix (see § Preconditions for the two conflicting
+    records). Either way this is a precondition/robustness change, not an
+    assertion change.
   - Step 2: prefer `AgentsListPage.open_first_agent()` over
     `select_agent(agents_before[0])` — testid-compliant, and immune to the
     duplicate-name hazard (`Echo Agent` ×3 in project 399).
@@ -500,13 +513,34 @@ than § Automation Hints — none changes what is asserted:
    `exclude_known_defect_urls` call is made, so the assertion is strictly the
    same one, now carrying the failing resource's URL when it fires.
 
+4. **Fix round 1 (reviewer findings, orchestrator-ordered).** Two changes to
+   the executed path, neither altering what is asserted:
+   - **Step 3a asserts `breadcrumbs_nav` visible BEFORE `back_button` count 0.**
+     As first shipped, the absence assertion ran before anything proved the
+     header had committed, so it could pass for the wrong reason — vacuously —
+     which is fatal for the one assertion that keeps this drift test-enforced.
+     The order now matches the MCP precedent
+     (`test_mcp_back_navigation.py` Step 3: trail visible first, `back_button`
+     count 0 last). Both assertions are kept; 3b no longer repeats the
+     visibility check. § Test Steps 3a/3b keep their numbering — the guard
+     lives inside 3a.
+   - **The expected agent name is whitespace-normalized before comparison**
+     (`" ".join(name.split())`). `get_agent_card_names()` only `.strip()`s, so
+     internal whitespace survives, while `to_have_text` normalizes the actual
+     value — and this test reads whatever agent happens to sit first in the
+     project list, so a name with a double space or newline would fail Step 3b
+     spuriously. Both the trail regex and the `detail_title` comparison use the
+     normalized value and stay **exact full-string matches** — neither was
+     weakened to a substring/contains match.
+
 Also applied verbatim from § Robustness fixes 2: `click_back_button()` now
 passes `timeout` to `.click()` as well as to `wait_for_network()`. The method
 and the `AgentPage` facade are **kept** (no caller remains after this repair,
 but `back_button` stays bound for Step 3a's absence assertion, and
 `SkillDetailPage` still mirrors the shape pending its own `[FIX]` card).
 
-**DEV gate observed:** 3 invocations, 3 green (63.88 s / 46.13 s / 49.42 s).
+**DEV gate observed (initial build):** 3 invocations, 3 green
+(63.88 s / 46.13 s / 49.42 s).
 2 of those 3 carried one `--reruns` attempt each, both the documented
 `#2124`/`#2156` DEV hazard — `Page.goto: Timeout 15000ms exceeded … navigating
 to "https://dev.elitea.ai/"`, allure status `broken`, 0.0 s, in session setup,

@@ -49,8 +49,12 @@ def test_back_button_from_agent_detail_returns_to_intact_agents_list(page):
     Read-only: reuses whichever agent already sits first in the project's
     Agents list, creates nothing and cleans nothing up. The ``agent_id``
     fixture is deliberately NOT used — the test clicks the first card, never
-    that agent, and every invocation would pay an ``agent_api.create_agent``
-    that walks into open defect #524.
+    the created agent, so the fixture was pure per-invocation cost, and
+    read-only against pre-existing data is this project's default where the
+    observable allows it (``.agents/testing.md`` § Test data strategy).
+    (Secondary: that fixture's ``AgentAPI.create_agent()`` path was never
+    re-verified after #524's 2026-07-16 UI-path fix — a reason not to take an
+    unnecessary dependency, not a claimed blocker.)
 
     The arrival at the detail page is an in-app card click, never a
     ``page.goto`` deep link: for a back-navigation case the arrival path is
@@ -74,6 +78,14 @@ def test_back_button_from_agent_detail_returns_to_intact_agents_list(page):
 
     with allure.step("Step 2 — Click into an existing agent card to open its detail page"):
         target_agent_name = agents_before[0]
+        # `get_agent_card_names` only .strip()s, so internal whitespace survives,
+        # while Playwright's `to_have_text` normalizes runs of whitespace on the
+        # actual value. This test deliberately takes whatever agent sits first in
+        # the project list, so an agent named with a double space or a newline
+        # would fail Step 3b spuriously. Normalize the EXPECTED value to match
+        # Playwright's normalization — the comparisons below stay exact
+        # (full-string), never a substring/contains match.
+        expected_agent_name = " ".join(target_agent_name.split())
         list_page.open_first_agent(timeout=NAVIGATION_TIMEOUT)
         detail_page.wait_for_page_load(timeout=NAVIGATION_TIMEOUT)
         assert "/agents/all/" in page.url, (
@@ -82,9 +94,19 @@ def test_back_button_from_agent_detail_returns_to_intact_agents_list(page):
         )
 
     with allure.step(
-        "Step 3a — The legacy back-arrow control is not rendered on the "
-        "agent detail route (EliteaAI/EliteaUI@f1d4ea47)"
+        "Step 3a — Once the header has committed, the legacy back-arrow control "
+        "is not rendered on the agent detail route (EliteaAI/EliteaUI@f1d4ea47)"
     ):
+        # ORDERING IS LOAD-BEARING, do not reorder these two lines.
+        # `to_have_count(0)` is satisfied by a header that has not rendered yet,
+        # so on its own it can pass for the wrong reason — and this is the one
+        # assertion that keeps the EL-6460 drift test-enforced instead of
+        # comment-rot. Proving the replacement header committed FIRST makes the
+        # absence a statement about the shipped header, not about timing.
+        # Same order as the MCP precedent, tests/ui/toolkits/
+        # test_mcp_back_navigation.py Step 3 (breadcrumbs visible first,
+        # back_button count 0 last).
+        expect(detail_page.breadcrumbs_nav).to_be_visible()
         # First-class, deliberate absence assertion: if the UI team restores
         # the arrow, this test goes red and the TMS case text gets revisited.
         expect(detail_page.back_button).to_have_count(0)
@@ -92,16 +114,18 @@ def test_back_button_from_agent_detail_returns_to_intact_agents_list(page):
     with allure.step(
         "Step 3b — The breadcrumb trail is the replacement go-back affordance"
     ):
-        expect(detail_page.breadcrumbs_nav).to_be_visible()
+        # Visibility of the trail was established in Step 3a (it is the guard
+        # that makes 3a's absence assertion meaningful); this step describes
+        # its shape.
         expect(detail_page.breadcrumbs_nav).to_have_text(
-            re.compile(rf"^Agents\s*/\s*{re.escape(target_agent_name)}$")
+            re.compile(rf"^Agents\s*/\s*{re.escape(expected_agent_name)}$")
         )
         # Count-then-text, not a bare `.first`: exactly one ancestor crumb
         # renders here today, and asserting the count makes that an enforced
         # invariant rather than a silent assumption.
         expect(detail_page.breadcrumb_parent_link).to_have_count(1)
         expect(detail_page.breadcrumb_parent_link).to_have_text("Agents")
-        expect(detail_page.detail_title).to_have_text(target_agent_name)
+        expect(detail_page.detail_title).to_have_text(expected_agent_name)
         expect(detail_page.detail_title).to_have_attribute("aria-current", "page")
 
     with allure.step(
