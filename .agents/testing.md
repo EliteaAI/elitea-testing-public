@@ -1152,3 +1152,47 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   #2074/#2076 pattern).
   It is a raw uncaught error upstream of every assertion, so it is **never** a member of a
   sanctioned-RED closed set: the response is **re-run / re-gate, never accept 2-of-3**.
+- **#2124 `Page.goto` flake on DEV — measured RATE, plus a matched control that clears the diff
+  (2026-09-10, ELITEA-2022/#2139, PR #2161)**: the lead's 3-invocation pre-merge gate of
+  `test_pipeline_management.py::TestDeletePipeline` (2 node-ids) against `dev.elitea.ai` was
+  **3/3 green**, but **every one of the three invocations** contained at least one `Page.goto`
+  timeout absorbed by `--reruns=2`:
+
+  | Gate run | Wall clock | Flaked test | Where |
+  |---|---|---|---|
+  | 1 | 94.91 s | `test_delete_pipeline_via_api` (**untouched**) | `goto https://dev.elitea.ai/`, 15 s |
+  | 2 | 155.90 s | `test_delete_pipeline_via_ui_menu` (×2 reruns) | `list_page.navigate()` → `base_page.py:358` `goto` |
+  | 3 | 67.99 s | `test_delete_pipeline_via_api` (**untouched**) | same as run 1 |
+
+  **The matched control is free here and it is the point**: `test_delete_pipeline_via_api` shares the
+  class but not one line of the diff, and it carried the flake in 2 of the 3 runs. So this is the
+  pre-existing #2124/#2137 DEV `goto` class, not anything PR #2161 introduced — no separate control
+  invocation was needed, the sibling *was* the control. Apply the same reading before blaming a diff:
+  look for an untouched neighbour in the same invocation first.
+  Allure status is **`broken`**, and the message is `playwright._impl._errors.TimeoutError: Page.goto:
+  Timeout 15000ms exceeded ... waiting until "domcontentloaded"`. It fires on a *plain list-page
+  navigation*, not only on the project-scoped-detail-then-list sequence #2124 describes — so #2124's
+  reproduction recipe is narrower than the real exposure. Note also that the reruns make junit record
+  PASS: evidence lives only in `reports/allure-results/*-result.json` and `reports/reruns.json`.
+  It is a raw uncaught error at a **precondition**, upstream of every assertion, so it is never a
+  member of a sanctioned-RED closed set — **re-run / re-gate, never accept 2-of-3**. Raising the
+  timeout is not the fix (see #2124: `ERR_ABORTED`/hang means cancelled or wedged, not slow).
+- **A "sanctioned RED" is only sanctioned if the CASE asks for the condition that makes it red
+  (2026-09-10, ELITEA-2022/#2139)**: `test_delete_pipeline_via_ui_menu` sat RED in CI for weeks as a
+  declared sanctioned-RED against product bug #1332 (delete-pipeline redirect `navigate(-1)` no-ops
+  on deep-link arrival). Both halves of the sanction were true — the defect is real, the failure was
+  deterministic and single-cause — and it was still **wrong**, because the test's own precondition
+  manufactured the condition: it reached the detail page with `page.goto()` (empty history) while
+  TMS case ELITEA-2022 has the user create → save → delete **without leaving the page**. Since the
+  product redirect is history-back, arrival path *is* the observable's producer. Measured on DEV:
+  in-app arrival redirects **3/3**, case-literal create→save→delete **1/1**, deep link strands **3/3**.
+  **The generalisable check, cheap to run, for every sanctioned RED before you accept it:** ask
+  *"does the TMS case ask for the condition under which this fails?"* If the failing condition is
+  something the **test** introduced for convenience (a `goto` instead of an in-app click, an API seed
+  standing in for a UI action, a fresh context instead of a continued session), the RED is
+  manufactured — it is a wrong-interface precondition under § Fidelity policy, and the disposition is
+  to fix the precondition, not to sanction the failure. A sanctioned RED that nobody re-examines
+  becomes permanent false signal AND a recurring [FIX] intake card every CI run.
+  Corollary for the analyst slot: a substitution justified as *transit* stops being transit the moment
+  it can change the observable. "Faster, equally valid way to reach the precondition" was the exact
+  wording in the original AFS, and it was wrong for this case.
