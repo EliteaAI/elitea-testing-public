@@ -26,7 +26,7 @@ on:
       ref:
         description: 'Git branch/tag/SHA'
         type: string
-        default: 'aqa_main_release_2.0.5'
+        default: 'aqa_main_release_2.0.6'
       publish_to_tms:
         description: 'Publish results to OneTest TMS'
         type: boolean
