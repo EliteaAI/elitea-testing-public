@@ -1178,10 +1178,48 @@ class AgentHubPage(BasePage):
         still in flight, a race that left the main card grid still showing
         the pre-clear filtered set for a beat after this method returned).
 
+        CONTRACT — THIS METHOD ENDS ON THE RESPONSE, NOT ON A RENDER
+        (FIX card #2168). It returns once the bulk empty-query response has
+        resolved; the content grid re-renders **~376 ms later** (measured
+        live on ``dev.elitea.ai``, 2026-09-10: 27-card baseline -> 6-card
+        filtered -> 375.84 ms from the clear response landing to the grid
+        being back at 27). **Callers MUST therefore read the restored grid
+        through an auto-retrying assertion** — :meth:`wait_for_agent_card_count`
+        with the pre-search baseline count — never a one-shot read on the
+        next line.
+
+        No trailing settle is attempted here, deliberately, because no
+        TERMINAL signal for "the clear landed" is expressible without the
+        caller's baseline count:
+
+        * This method used to end on ``wait_for_network()``
+          (``wait_for_load_state("networkidle")``) — the #1847 class. Its
+          byte-identical twin in :meth:`search` took a sibling spec RED 3/3
+          in ``UI Tests DEV Stable`` run #116 (``Timeout 10000ms exceeded``).
+          Per #1847 the fix is to wait on what the caller actually needs,
+          never to raise a timeout.
+        * :data:`SEARCH_RESULTS_SETTLED` — :meth:`search`'s render settle —
+          must NOT be copied here: it is **VACUOUS after a clear**. Its
+          ``catalog-agent-card-*`` branch is already matched by the
+          *pre-clear filtered* cards, so it has nothing to wait for.
+          Measured on the same run: satisfied **4.72 ms** after the response,
+          with the grid mid-restore at 12 of 27 cards — a wait that measures
+          ~zero while the state the caller reads is genuinely not there yet
+          (``.agents/testing.md``, #2166: "a settle can be fragile AND
+          vacuous at the same time").
+        * A count-CHANGE wait (``not_to_have_count(pre_clear_count)``) is
+          equally non-terminal: the grid's category sections commit
+          progressively, so the count leaves the filtered value (6) within a
+          few ms while still short of the restored value (27).
+
+        The caller's ``to_have_count(baseline)`` is the only terminal
+        signal — and it is non-vacuous by construction, because the case
+        asserts ``filtered < baseline`` before clearing.
+
         Args:
-            timeout: Budget for the search field's own element wait and the
-                trailing settle — the UI half, driven by the caller's
-                ``UI_ELEMENT_TIMEOUT``.
+            timeout: Budget for the search field's own element wait — the UI
+                half, driven by the caller's ``UI_ELEMENT_TIMEOUT``. No
+                trailing settle consumes it (see CONTRACT above).
             response_timeout: SEPARATE budget for the re-fired BULK response
                 — clearing re-fires the SAME heavy ``limit=1000`` fetch the
                 initial mount does, so a UI-element budget must never cap it
@@ -1208,7 +1246,6 @@ class AgentHubPage(BasePage):
             self.search_input.click()
             self.search_input.press("ControlOrMeta+a")
             self.search_input.press("Backspace")
-        self.wait_for_network(timeout=timeout)
 
     def wait_for_any_agent_card(self, timeout: int = 10000) -> None:
         """Wait (Playwright auto-retrying assertion) for at least one agent

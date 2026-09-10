@@ -559,8 +559,25 @@ Playwright, so passing a timeout there does NOT make it retry.
   the removed `wait_for_network()`. It is **AGENTS-tab scoped** by design (it pairs with
   `search()`'s agents-only `/public_applications/prompt_lib/` response predicate); a
   future Skills-tab search needs its own union over `SKILL_CARD_PREFIX`.
-  `clear_search()` still carries the byte-identical unguarded `wait_for_network()` — off
-  #2166's path, left as a declared follow-up.
+- **`clear_search()`'s twin settle is RESOLVED (2026-09-10, #2168) — and NOT by copying
+  `SEARCH_RESULTS_SETTLED`.** `clear_search()`'s trailing `wait_for_network()` is removed and
+  replaced by **nothing**: the method now ends on the bulk empty-query response, and the
+  CALLER reads the restored grid through the auto-retrying
+  `wait_for_agent_card_count(baseline)`. Measured live on `dev.elitea.ai`, 27-card
+  baseline -> 6-card filtered -> clear:
+  - **375.84 ms** from the clear response landing to the grid being back at 27 cards — so a
+    one-shot read on the next line after `clear_search()` IS a race (same class as `search()`'s
+    802 ms), and the auto-retrying caller-side count assertion is what closes it.
+  - **`SEARCH_RESULTS_SETTLED` is VACUOUS after a clear** — satisfied **4.72 ms** after the
+    response, with the grid mid-restore at 12 of 27 cards. Its `catalog-agent-card-*` branch is
+    already matched by the *pre-clear filtered* cards, so it has nothing to wait for. The union
+    is a valid terminal signal for `search()` (query -> different result set) and NOT for
+    `clear_search()`; do not transplant it.
+  - A count-CHANGE wait (`not_to_have_count(pre_clear_count)`) is equally non-terminal — the
+    category sections commit progressively, so the count leaves 6 within a few ms while still
+    short of 27. **No terminal signal for "the clear landed" is expressible inside the page
+    object**, because only the caller knows the baseline count. Hence: no settle, contract
+    documented on the method.
 - Search fires **exactly ONE** `/public_applications/prompt_lib/` GET
   (`?query=<term>&statuses=published&agents_type=classic&limit=100&offset=0`) — no Trending /
   My-Liked calls accompany it, so a bare `"/public_applications/prompt_lib/" in url and GET`
