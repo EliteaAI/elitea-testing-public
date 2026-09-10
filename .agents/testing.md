@@ -1335,3 +1335,23 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   greens that certify nothing (the documented cost: a full 3-run "DEV gate" thrown away). Echo
   `settings.app_base_url` again **after** the restore too — that is the only proof the workspace is
   back on `http://localhost:5173`.
+- **#2124 / #2156 DEV `Page.goto` hazard — measured on the spec it was DISCOVERED from, and the
+  first entry where per-attempt causes are tabulated alongside a 3/3 green (2026-09-10,
+  ELITEA-1901/#2165)**: a 3× DEV gate of
+  `test_import_agent_valid_md_file.py::TestImportAgentValidMdFile::test_import_agent_valid_md_file`
+  against `https://dev.elitea.ai` was **3/3 passed** (49.62 s / 31.96 s / 63.13 s) while **3 of the
+  6 attempts** were `broken` with a byte-identical
+  `Page.goto: net::ERR_ABORTED at https://dev.elitea.ai/app/agents/all`. Two of the three
+  invocations were impure; `--reruns=2` absorbed every one, so the pytest tail and junit both say
+  PASS (`reruns.json` `{count:1}` / `{}` / `{count:2}`).
+  Two details that speed up triage of this class:
+  - **The failing attempts are SHORT — 8.41 / 10.12 / 11.54 s — not long.** `ERR_ABORTED` is a
+    *cancelled* goto, so it fails fast. A short `broken` attempt is the tell; a timeout is a
+    different hazard. Raising a timeout cannot help (#2124).
+  - **It fires on a plain list navigation** (`/app/agents/all` via `BasePage.navigate()`), matching
+    the ELITEA-2022/#2139 note that #2124's project-scoped-detail-then-list recipe is narrower than
+    the real exposure.
+  The case's own signature (`expected 'GPT-5.2'`) appeared **0 of 6 attempts** — so counting
+  invocation exit codes would have read this clean DEV certification as noise, and counting
+  non-green attempts would have read it as a red. Classify by `statusDetails.message` in
+  `reports/allure-results/*-result.json`, grep by `fullName`.
