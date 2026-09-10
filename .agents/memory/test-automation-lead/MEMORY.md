@@ -171,3 +171,5 @@
 - [DEV gate discipline for FIX cards](dev_gate_discipline_for_fix_cards.md) — .env.test is a symlink; green≠clean; the #2124 goto hazard is never your signature
 - [Intake card boilerplate can contradict project canon](intake_card_boilerplate_can_contradict_project_canon.md) — [FIX] cards say "use regular locators"; void it in every dispatch
 - [A promotion-gap FIX card can still hide real work](a_promotion_gap_fix_card_can_still_hide_real_work.md) — before closing a duplicate, check for a sibling failure in the SAME job and a deferred `left open` site in the SAME spec
+- [A shared diagnostic helper covers CALL SITES, not endpoints](a_shared_diagnostic_helper_can_skip_the_endpoint_you_depend_on.md) — #2078's wrapper reached 4 `/public_applications/` sites and skipped the `/agent_categories/` await a different spec's oracle depends on; read the whole CI JOB, not your card's test
+- [Promotability grep misses `<part>TestIdPrefix="x"`](promotability_grep_misses_testidprefix_props.md) — a false "not on main" parks a promotable case; when a row reads no/no for a testid a PASSING test uses, read the hits
