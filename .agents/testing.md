@@ -1498,3 +1498,43 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   the spec, the surface or the suite.** Do not quote one session's rate as a trend, and do not read a
   fast clean DEV gate as evidence you gated the wrong target — check `settings.app_base_url` for that
   worry, not the wall clock.
+- **The promotion-gap ancestry check must cover the whole CALL PATH, not just the spec file — a
+  spec-only check gives a confident FALSE NEGATIVE (2026-09-10, ELITEA-2003/#2175)**: the entry above
+  (`#2173`) establishes *"do the ancestry check FIRST on any `[FIX]` card"*. This card is the same
+  disposition reached the hard way, because the check was scoped too narrowly and **said the opposite
+  of the truth**. DEV Stable run #116 took `test_pipeline_delete_version.py` red 3/3 (both
+  `--reruns=2` exhausted) with
+  `<div class="MuiBackdrop-root MuiBackdrop-invisible MuiModal-backdrop"> from <div id="menu-" …
+  MuiPopover-root MuiMenu-root MuiModal-root> subtree intercepts pointer events`, a `Locator.click`
+  timeout at Step 3's `open_delete_version_dialog` → `actions_menu_button.click()`. The spec file is
+  **byte-identical on `origin/main` and `origin/automation/base`** (both last touched by `042ffb168`),
+  so a spec-scoped `git log origin/main..origin/automation/base -- <spec>` returns EMPTY and reads as
+  *"no repair on base — this is real work"*. It was a promotion gap the whole time: the repair lives
+  one file away, in the **page object**.
+  ```
+  git log origin/main..origin/automation/base --oneline -- automation/pages/pipeline_detail_page.py
+  45f3e2ad8 fix(#2077): (ELITEA-2063) confirm the pipeline VERSION dropdown actually closed (#2094)
+  git merge-base --is-ancestor 45f3e2ad8 48a1d6a               -> NO   (48a1d6a = the commit CI ran)
+  git merge-base --is-ancestor 45f3e2ad8 origin/automation/base -> YES
+  ```
+  `close_versions_menu()` used to be a bare page-level Escape with nothing checked; Step 1 called it,
+  it silently failed to close, and the invisible backdrop then ate Step 3's click 10 s later — which
+  is why the failure **names the wrong subsystem** (the three-dot menu, two steps downstream of the
+  actual cause). `45f3e2ad8`'s own commit body already named this mechanism *and* the prior nightly it
+  broke (GHA `34331579791`, run #114); this card is run #116 catching the sibling spec through the
+  same dropdown.
+  **Matched control, run both ways on `dev.elitea.ai` minutes apart, one file swapped:**
+
+  | Page object under test | Result |
+  |---|---|
+  | `automation/base` (repaired) | **3/3 PASSED** — 25.46 / 24.01 / 24.44 s, `reruns.json == {}` each |
+  | `origin/main` (pre-repair), spec + everything else identical | **FAILED**, 1 failed + 2 reruns in 84.74 s, byte-identical CI signature |
+
+  **The rule, generalised: scope the ancestry check to every file on the failing CALL PATH** — the
+  spec, its page objects, shared helpers, `utils/`, `conftest`/fixtures — not the file the node id
+  names. The cheapest form needs no path list at all: take a symbol straight out of the traceback and
+  ask which commits on base touch it —
+  `git log origin/main..origin/automation/base --oneline -S"close_versions_menu"`. Do that *before*
+  reading logs. Corollary, and it is the uncomfortable half: because these repairs are **shared page
+  objects**, ONE unpromoted fix generates a `[FIX]` card for **every** spec that calls it — so the
+  promotion gap (#2157) inflates FIX intake super-linearly, not one card per repair.
