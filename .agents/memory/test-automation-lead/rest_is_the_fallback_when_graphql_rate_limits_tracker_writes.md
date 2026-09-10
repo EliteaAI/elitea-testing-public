@@ -61,3 +61,44 @@ and without it the post-reset move needs an extra lookup.
 
 Grab it up front, in the same query that reads the card:
 `projectItems(first:5){nodes{ id project{number} fieldValueByName(name:"Status"){...} }}`
+
+---
+
+## Third hit the SAME day — 2026-09-10, working #2183 (ELITEA-1899)
+
+Started ~16:22Z, still refusing at **16:45Z**. Tripped by exactly what the note above warns
+against: a `gh project item-list --limit 3000` followed by a
+`gh api graphql --paginate --slurp` board walk. Two calls. The prior successful
+`--limit 900` call is what lures you into escalating.
+
+**Confirmations of the existing entries** — `gh api rate_limit` again reported
+`graphql 0/5000 used, remaining 5000` while every GraphQL call was refused, and
+`gh project item-list` again mis-reported it as **`unknown owner type`**.
+
+**Simpler REST comment recipe than the python-JSON one above** — `gh api` accepts a file
+directly, so no temp JSON and no shell-quoting dance:
+
+```bash
+env -u GITHUB_TOKEN gh api -X POST repos/OWNER/REPO/issues/N/comments \
+  -F body=@/tmp/comment.md --jq '.html_url'
+```
+
+**Labels are REST too** (`gh issue edit --add-label` is GraphQL and blocked):
+
+```bash
+env -u GITHUB_TOKEN gh api -X POST repos/OWNER/REPO/issues/N/labels \
+  -f "labels[]=duplicate" --jq '[.[].name]|join(",")'
+```
+
+**PR mergeability is REST too** (`gh pr view` is GraphQL):
+`gh api repos/OWNER/REPO/pulls/N --jq '{mergeable,mergeable_state}'`.
+
+⚠️ **`gh issue view` and `gh issue comment` are GraphQL and blocked; `gh api repos/.../issues/N`
+is REST and is not.** With those three substitutions the ONLY blocked deliverable is the
+board move — same conclusion as the first two hits, now three-for-three.
+
+**Do not burn the wait on retries.** The limit is time-based here (unlike the
+complexity-based ProjectsV2 one in
+`board_rate_limit_is_complexity_based_use_issue_scoped_query.md`) — narrowing the query does
+NOT help once it is tripped, because even a 1-node `repository{issue{projectItems}}` query is
+refused. Spend the window on gate runs and comments; retry the board move on a wide interval.
