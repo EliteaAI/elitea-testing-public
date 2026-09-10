@@ -509,6 +509,22 @@ a cluster, so no family-AFS merge was performed here.
   relying on the backend still returning it: `buildAllCategories()` re-appends it either
   way, so a backend that stopped listing "Other" would otherwise produce a false red.
   The Skills-tab sibling (card #2099) needs its own skill-scoped oracle + counterparts.
+- **Added during FIX #2169 (2026-09-10) — the categories await now FAILS LOUDLY, two ways.**
+  (a) Its timeout is wrapped in the #2078 diagnostic helper, generalised to take the endpoint
+  family as a parameter (`_expect_endpoint_response(..., url_fragment=...)`;
+  `_expect_applications_response` is now a thin `/public_applications/` wrapper, unchanged for
+  its four call sites) — so a fetch that never lands reports *"Timed out after Nms waiting for
+  the Catalog agent-categories response. /elitea_core/agent_categories/prompt_lib/ responses
+  observed meanwhile: [...]"* instead of Playwright's bare `Timeout Nms exceeded`, which named
+  the wrong subsystem in #2074/#2076. (b) Its predicate no longer filters on `status == 200`
+  (the sibling `/public_applications/` predicates never did): a failed fetch used to simply
+  never match, so the wait burned the full 45 s `CATALOG_RESPONSE_TIMEOUT` and then reported a
+  blind timeout about a request that had already come back. **Measured on `dev.elitea.ai` with
+  the fetch forced to 404: 45.05 s + "Timeout 45000ms exceeded" before, 7.37 s + "HTTP 404 Not
+  Found for <url>" after.** A non-200, a non-JSON body, or a 200 with no `categories` list now
+  raises immediately naming status + URL — never degrading into an empty category set, which
+  would re-report a backend fault as a filter-rail chip-set delta. Pinned by
+  `tests/unit/test_agent_hub_response_await_diagnostics.py`.
 
 ## Catalog testid provenance — the closure grep LIES about the chip prefixes (2026-09-09)
 
