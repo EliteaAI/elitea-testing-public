@@ -100,3 +100,23 @@ double-filing + the `main`-vs-`base` check), #2064 (sanctioned-RED filed as
 project's testid-only policy). Comment the occurrence on the existing card.
 
 Related: [[dedup_question_cards_before_filing]] · [[fix_card_may_already_be_fixed_by_a_sibling_pr]] · [[a_duplicate_card_is_where_you_pay_the_originals_evidence_gap]] · [[a_fix_card_can_have_no_work_in_it]]
+
+## 2026-09-10 (#2149) — the key is node-id, and NO same-run key works
+
+#2149 was the **third** card for the ELITEA-1866 drift (after #2066 and #2122), and it
+sharpened the dedup key beyond what this note previously said. #2122 and #2149 were filed
+from the **same physical job execution**:
+
+| Card | Job id | `run_attempt` | `started_at` | `completed_at` |
+|---|---|---|---|---|
+| #2122 | `102528863865` | 5 | `2026-09-09T08:53:17Z` | `2026-09-09T09:11:10Z` |
+| #2149 | `102618110880` | **6** | `2026-09-09T08:53:17Z` | `2026-09-09T09:11:10Z` |
+
+Identical instants, identical failure string. GitHub mints a **fresh job id per attempt for
+carried-forward jobs**, so a job that never re-ran got carded twice. Therefore:
+`(run_id, job_id)` ❌ · `(run_id, run_attempt)` ❌ · `(run_id, node_id)` ✅ · node-id +
+"already fixed on `automation/base`?" ✅ (also catches the cross-run #2066 pair).
+**Check job metadata (`gh api .../actions/jobs/<id>`) before calling two cards "a re-run" —
+the timestamps are the tell.**
+
+Tally now **9 sessions, zero code changed**. Occurrences go on #2135.
