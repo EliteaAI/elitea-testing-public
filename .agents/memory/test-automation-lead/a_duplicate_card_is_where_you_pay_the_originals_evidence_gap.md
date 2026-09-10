@@ -89,6 +89,32 @@ Also worth the two `gh` calls before filing anything: the promotion-gap finding 
 file as a new `question` was **already** card #2157, which had even predicted this recurrence.
 Commenting the occurrence there beat splitting the evidence.
 
+## Fourth confirmation (2026-09-10, #2144 / ELITEA-2448) — the DEV green certifies the PROMOTED UI
+
+#2076 gated 3x with a **localhost UI pointed at the DEV backend** while the card's Work Scope
+named `dev.elitea.ai`. Ran the squash-merged artifact 3x on real DEV: 104.40 / 64.50 / 67.63 s,
+all green.
+
+**The new, transferable fact — promote this above menu item 2:** `dev.elitea.ai` serves the
+EliteaUI build from **`main`**. So a green there proves the repair is compatible with the
+*promoted* UI and leans on zero unpromoted testids. That is strictly stronger than the closure
+record's testid grep, which proves only *presence* and has two known blind spots — false-absent
+on runtime-composed testids (#2100) and main-side **value** divergence (#2142). When a repair's
+oracle is an attribute value, also read main's source directly: here `RunStatus.jsx:16` is
+`data-status={status}`, a raw pass-through, so no divergence is possible. The grep cannot make
+that call; one `git show origin/main:<file>` can.
+
+**Dedup shape #3 — classification, not wording or run id.** #2076 and #2144 share run id *and*
+node id (the key the #2143 pass recommended). What varied was intake's own failure-pattern
+label: `assertion-failure` -> `element-not-found`, description reworded, so titles diverge after
+the `[FIX][ELITEA-2448]` stem. With the ELITEA-1866 cross-run triple (differing run ids) on the
+other side, **only the ELITEA id survives every observed shape.**
+
+**Name the generator, not just the symptom.** The gap is now 428 commits and grew 8 in one day.
+Intake dedup stops the re-file; the promotion backlog *creates* it. Every repair merged to
+`automation/base` today is a guaranteed re-file tomorrow. Say that in the closure record with a
+number — it is the only part a human can act on.
+
 ## The menu, in value order
 
 1. **Run the environment the original could not / did not** (above). Highest value:
