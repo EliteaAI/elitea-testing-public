@@ -1295,3 +1295,43 @@ without step wrapping is `CHANGES_REQUESTED` at review.
   The discipline that matters: it is a raw uncaught error at a **precondition**, upstream of every
   assertion, so it can never be a member of a sanctioned-RED closed set — **re-gate, never accept
   2-of-3**, and never raise the timeout.
+- **#2124 / #2156 DEV `Page.goto` hazard — 4-of-7 burst on a *toolkits* spec, and the first entry where
+  the gate was GREEN 3/3 anyway (2026-09-10, ELITEA-1866/#2149)**: a 3-invocation DEV gate of
+  `test_toolkit_creation_create_bucket_verify_list_files.py` (single node-id) was **3/3 passed**
+  (136.24 s / 161.45 s / 185.38 s) — but runs 2 and 3 each burned both `--reruns=2` attempts, so the
+  raw attempt tally is **3 passed / 4 broken**. Every one of the 4 is byte-identical:
+  `playwright._impl._errors.TimeoutError: Page.goto: Timeout 15000ms exceeded … navigating to
+  "https://dev.elitea.ai/", waiting until "domcontentloaded"`, allure status **`broken`**, duration
+  **0.0 s**, **zero steps recorded** — i.e. it dies in session setup (`_browser_cookies`) before the
+  test body starts. **The case's own signature appeared 0 times in 7 attempts.**
+  Two things worth carrying:
+  - **A green invocation is not a clean invocation.** `1 passed, 2 rerun` reads as success in the
+    pytest tail and as PASS in junit; only `reports/reruns.json` (non-empty) and
+    `reports/allure-results/*-result.json` (`"status": "broken"`, 0 steps) show that 2 of 3 attempts
+    died. Read `reruns.json` after **every** DEV invocation before calling a gate clean — it is one
+    `cat` and it is the only cheap tell.
+  - **New site, same hazard.** Prior entries recorded this on pipelines, agents and skills specs; this
+    is the first on `tests/ui/toolkits/`, and it fires at the bare-origin `goto` in session setup
+    rather than at a page object's `navigate()`. The exposure is `BasePage`/session-wide, not
+    per-surface — do not treat a spec's clean history as evidence it is immune.
+  Unchanged discipline: it is a raw uncaught error at a **precondition**, upstream of every assertion,
+  so it can never be a member of a sanctioned-RED closed set — **re-run / re-gate, never accept
+  2-of-3**, and never raise the timeout (`#2124`: cancelled or wedged, not slow).
+- **⚠️ `.env.test` DEV swap — the symlink trap has a safe recipe; use a detached script with a restore
+  `trap`, not bare shell steps (2026-09-10, ELITEA-1866/#2149)**: the `sed -i ''` warning above says
+  *what not to do*; this is the shape that works, and it closes a second hazard the earlier entry does
+  not mention — **an agent session that dies mid-gate leaves the whole four-sibling workspace pointed
+  at DEV**, because the master env file is shared by every clone. Put the swap, all N pytest
+  invocations, and the restore inside ONE detached script whose `trap … EXIT INT TERM` restores from a
+  backup, so the restore survives a killed session, a failed run, or an abandoned turn:
+  ```bash
+  REAL=$(python3 -c "import os;print(os.path.realpath('.env.test'))")   # resolve the SYMLINK
+  cp "$REAL" "$BAK"; trap 'cp "$BAK" "$REAL"' EXIT INT TERM             # restore is unconditional
+  # …python re.sub the ELITEA_URL / APP_PREFIX lines in "$REAL"…
+  TARGET=$(../.venv/bin/python -c "from config import settings; print(settings.app_base_url)")
+  [ "$TARGET" = "https://dev.elitea.ai/app" ] || exit 2                 # REFUSE to run otherwise
+  ```
+  The `exit 2` guard is the load-bearing half: without it a failed swap yields cheerful localhost
+  greens that certify nothing (the documented cost: a full 3-run "DEV gate" thrown away). Echo
+  `settings.app_base_url` again **after** the restore too — that is the only proof the workspace is
+  back on `http://localhost:5173`.
