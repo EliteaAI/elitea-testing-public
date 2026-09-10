@@ -1,6 +1,6 @@
 # REST is the fallback when the GraphQL rate limit blocks tracker writes
 
-**Learned:** 2026-09-10 (working #2181, ELITEA-2022)
+**Learned:** 2026-09-10 (working #2181, ELITEA-2022) · **re-hit same day** (#2182, ELITEA-2453) — measured window **~55 min**, 15:29→16:22Z
 
 ## What happened
 
@@ -11,8 +11,13 @@ gh: API rate limit already exceeded for user ID 15179789.
 {"errors":[{"type":"RATE_LIMIT","code":"graphql_rate_limit",...}]}
 ```
 
-It hit after ~4 GraphQL calls, and it blocked `gh issue comment` — which is **not**
-obviously a GraphQL command, but is one under the hood.
+It hit after ~4 GraphQL calls, and it blocked `gh issue comment` **and `gh issue view`** —
+neither is obviously a GraphQL command, but both are under the hood.
+
+⚠️ **`gh project item-list` reports it as `unknown owner type`** — a completely misleading
+message that reads like a bad `--owner` argument. Before debugging the owner, run
+`gh api graphql -f query='query{viewer{login}}'`; if that returns the RATE_LIMIT error,
+the owner was never the problem.
 
 ## The two things worth knowing
 
@@ -39,6 +44,12 @@ obviously a GraphQL command, but is one under the hood.
 GraphQL-only, so the **board move** is the one deliverable that must wait for the reset.
 Everything else — comments, issue reads (`gh api repos/.../issues/N`), issue search
 (`search/issues`), PR reads, Actions API — can proceed over REST.
+
+## Unrelated trap in the same command — `--limit`
+
+`gh project item-list 9 --owner EliteaAI` silently truncates. Board #9 holds **1018**
+items, so `--limit 900` returned a full-looking list that simply did not contain my own
+card. **Always `--limit 3000`** and assert the card you expect is in the result.
 
 ## The operational lesson
 
