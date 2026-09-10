@@ -108,3 +108,21 @@ Commenting the occurrence there beat splitting the evidence.
 Confirm the duplicate in the first two calls, then ask: **what does the survivor's
 closure record ASSERT but not SHOW?** Deliver exactly that, and say in the record
 that it is what this pass adds. Never re-do the survivor's work to re-do it.
+
+## Third occurrence — #2141, same case again (2026-09-10)
+
+ELITEA-2367 has now generated **three** cards off one repair: #2079 (the delivery),
+#2115, #2141. The pattern is stable and so is the value-add: #2079 gated on localhost,
+#2115 added a single DEV run, #2141 added the **3× DEV gate on the squash-merged
+`automation/base` artifact** (32.15 / 127.34 / 51.69 s, 3/3 green; the only non-green
+attempts were two #2124 `Page.goto` reruns, allure `broken`, at a precondition).
+
+The recurrence itself is the finding, and it is not the survivor's fault: the repair
+is merged to `automation/base` and CI runs `main`, so **every** nightly re-files it
+until a human promotes. Say that in the closure record with the naming of the owner —
+and log the occurrence on #2157 rather than filing a fourth card.
+
+Cheapest possible confirmation, two calls:
+`git log --oneline origin/main -- <path>` vs `origin/automation/base` — if the repair
+sha is absent from `main`, you are done reasoning.
+

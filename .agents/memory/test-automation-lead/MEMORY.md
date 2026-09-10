@@ -164,3 +164,4 @@
 - [Identical step duration across pass and fail is a fixed budget](identical_step_duration_across_pass_and_fail_is_a_fixed_budget.md) — a sleep, not a wait; false RED on success
 - [Name a precedent as a hypothesis, not a conclusion](name_a_precedent_as_a_hypothesis_not_a_conclusion.md) — a perfect-looking precedent gave me a wrong root cause
 - [A sanctioned RED can be manufactured by its own precondition](a_sanctioned_red_can_be_manufactured_by_its_own_precondition.md) — ask if the CASE asks for the failing condition
+- [.env.test is a symlink — `sed -i` no-ops](env_test_is_a_symlink_so_sed_i_silently_no_ops.md) — your "DEV gate" then certifies localhost with 3 cheerful greens; assert `settings.app_base_url`, restore in a `trap`
