@@ -1,6 +1,6 @@
 ---
 name: A status-filtered expect_response predicate turns a failed fetch into a blind timeout
-description: Never put `status == 200` in an expect_response predicate — match the request, then judge the response.
+description: Don't filter an expect_response predicate on `status == 200` — but DO exclude 3xx, or redirect hops win the wait.
 type: feedback
 aliases: [expect_response predicate, status 200 predicate, blind timeout, categories await, agent_categories oracle]
 tags: [area/playwright, type/anti-pattern]
@@ -28,12 +28,35 @@ Measured on `dev.elitea.ai` (ELITEA-2367 / FIX #2169), categories fetch forced t
 | status-filtered predicate | **45.05 s** | `Timeout 45000ms exceeded while waiting for event "response"` |
 | unfiltered + explicit judgement | **7.37 s** | `HTTP 404 Not Found for https://…/agent_categories/prompt_lib/1` |
 
+## The correction that makes it safe — exclude 3xx (learned the same day, in review)
+
+"Match anything, judge after" is **half a rule**. `page.on("response")` and
+`expect_response` also fire for **redirect hops**, and a 30x carries the *requested*
+URL — so an unfiltered predicate happily takes the hop, sees `ok == False`, and reports
+a backend fault. Verified live on DEV (302 forced on the endpoint): the hop won the wait
+and raised `HTTP 302 Found … backend/app fault` — the wrong-subsystem harm the change was
+made to remove, reintroduced by the fix for it.
+
+It is not theoretical on this app: `EliteaUI/src/api/eliteaApi.js`'s
+`fetchBaseQuery.fetchFn` handles `if (response.redirected)` and, on a forward-auth
+session-expiry redirect, opens an auth popup and **re-fetches the original request**. The
+retried 200 is the answer; the 302 is transport. A status-filtered predicate survived
+re-auth by accident; an unfiltered one breaks on it.
+
+⚠️ Also seen in that probe: a redirect-chain terminal response (`request.redirected_from`
+set) can match on the same URL with an **unreadable body** — so any `response.text()` in a
+diagnostic path needs its own try/except, or the handler whose job is naming things dies
+with a raw traceback instead.
+
 ## The shape
 
-**Match on identity (URL + method); judge status and body after the wait.**
+**Match on identity (URL + method), EXCLUDE redirect hops, judge status and body after.**
 
 ```python
-with self._expect_endpoint_response(pred, timeout, "agent-categories", url_fragment=FRAGMENT) as info:
+def _is_terminal(response):
+    return FRAGMENT in response.url and response.request.method == "GET" and not (300 <= response.status < 400)
+
+with self._expect_endpoint_response(_is_terminal, timeout, "agent-categories", url_fragment=FRAGMENT) as info:
     super().navigate("/elitea-catalog")
 response = info.value
 if not response.ok:
