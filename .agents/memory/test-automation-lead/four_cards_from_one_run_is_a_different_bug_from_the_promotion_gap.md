@@ -26,8 +26,13 @@ into two with different fixes:
 ## Why it generalises
 
 It was not case-specific. The same run filed ~3 cards for *every* failing test —
-ELITEA-2024 as #2180/#2197/#2215, ELITEA-1899 as #2183/#2192/#2213, ELITEA-2453 as
-#2182/#2199/#2217, ELITEA-2363 as #2168/#2188/#2209. **~3× inflation across the run.**
+ELITEA-2024 as #2170/#2180/#2197/#2215, ELITEA-1899 as #2183/#2192/#2213, ELITEA-2453 as
+#2182/#2199/#2217, ELITEA-2363 as #2168/#2188/#2209. **~3-4x inflation across the run.**
+
+**Confirmed by direct count 2026-09-10 (working #2197):** ELITEA-2024's cluster is
+**FOUR** from run `34436416962` (#2170 as well), on top of #2118 (run 34331579791,
+delivered the repair) and #2138 — **six cards, one case, zero code delta after the
+first.** The prediction above was made before #2197 was worked and held exactly.
 
 Find them in one call:
 `gh api "search/issues?q=repo:OWNER/REPO+<run-id>+in:body&per_page=30"`
