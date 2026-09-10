@@ -1216,3 +1216,42 @@ without step wrapping is `CHANGES_REQUESTED` at review.
     instead of attempt causes would have reported this repair as failing DEV when it demonstrably
     passes there. Classify by `statusDetails.message` in `reports/allure-results/*-result.json`,
     grep by `fullName`; the pytest tail hides every rerun's traceback and shows only the last one.
+- **⚠️ `sed -i '' ` CANNOT swap `.env.test` — it is a SYMLINK, and the failure is silent-by-omission
+  (2026-09-10, ELITEA-2367/#2141)**: several entries above tell you to gate certain specs against
+  `https://dev.elitea.ai` and warn that a shell `ELITEA_URL=… pytest` runs localhost anyway (dotenv
+  wins), so "the env file itself must be swapped and restored". That instruction has a trap.
+  `automation/.env.test` is a symlink to the master file in the parent workspace, and BSD sed refuses
+  it: `sed: …/.env.test: in-place editing only works for regular files`. The sed exits non-zero, the
+  file is untouched, and if the swap is one step of a script the pytest runs proceed happily **against
+  localhost** — producing three cheerful greens that certify nothing. Measured cost: a full 3-run
+  "DEV gate" that had to be thrown away and redone (the tell was wall clock — 11 s/run against
+  localhost vs 32-127 s against DEV, plus the `=== TARGET ===` echo still reading `localhost:5173`).
+  **Do this instead** — resolve the link and edit the real file, then assert the resolved value before
+  running anything:
+  ```bash
+  REAL=$(python3 -c "import os;print(os.path.realpath('automation/.env.test'))")
+  python3 - "$REAL" <<'PY'
+  import sys, re
+  p = sys.argv[1]; s = open(p).read()
+  s = re.sub(r'(?m)^ELITEA_URL=.*$', 'ELITEA_URL=https://dev.elitea.ai', s)
+  s = re.sub(r'(?m)^APP_PREFIX=.*$',  'APP_PREFIX=/app', s)
+  open(p, 'w').write(s)
+  PY
+  # NON-OPTIONAL — the swap is not verified until config.py agrees:
+  (cd automation && ../.venv/bin/python -c "from config import settings; print(settings.app_base_url)")
+  # must print https://dev.elitea.ai/app
+  ```
+  Always restore from a backup of `$REAL` in a shell `trap … EXIT INT TERM`, never a plain trailing
+  line: the master env file is shared by every sibling clone, and a session that dies mid-gate would
+  otherwise leave the whole workspace pointed at DEV.
+  General form of the lesson: **a target-environment swap is not done until the framework's own
+  resolver says so.** Echo `settings.app_base_url`, not the file you think you wrote.
+- **DEV `Page.goto` hazard (#2124 / #2156) — one more rate datapoint, on a single-test gate
+  (2026-09-10, ELITEA-2367/#2141)**: a 3-invocation DEV certification of one spec was 3/3 green, but
+  invocation 2 burned both `--reruns=2` attempts on
+  `TimeoutError: Page.goto: Timeout 30000ms exceeded … navigating to
+  "https://dev.elitea.ai/app/elitea-catalog"` (allure `broken`) — 2 of 5 attempts, and the wall clock
+  read 32.15 s / **127.34 s** / 51.69 s for identical work. Consistent with the 4-of-9 and 7-of-9
+  bursts recorded the same day; noted because those two were multi-spec runs and this shows the hazard
+  is not a function of suite size. The `reruns.json` written per invocation is the cheapest tell that
+  an invocation was not actually clean — a bare `1 passed` line hides it completely.
