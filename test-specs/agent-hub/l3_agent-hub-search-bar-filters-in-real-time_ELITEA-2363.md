@@ -144,6 +144,22 @@ None — all 6 case steps were reached and observed live.
           self.search_input.press("Backspace")
       self.wait_for_network(timeout=timeout)
   ```
+  **Superseded twice since — read `automation/pages/agent_hub_page.py` for the current shape,
+  not this snippet:**
+  - **FIX #2078** replaced the bare `self.page.expect_response(…, timeout=timeout)` with
+    `self._expect_applications_response(…, response_timeout, …)`, decoupling the bulk-response
+    budget (`CATALOG_RESPONSE_TIMEOUT = 45_000`) from the caller's UI-element timeout.
+  - **FIX #2168 (2026-09-10) removed the trailing `self.wait_for_network(timeout=timeout)`
+    entirely** — the #1847 `networkidle` class, whose byte-identical twin in `search()` took a
+    sibling spec RED 3/3 in CI run #116. It is replaced by **nothing**: the method's contract is
+    now "returns on the bulk response; the grid re-renders ~376 ms later (measured on DEV), so
+    callers MUST read it through an auto-retrying assertion" — which step 6 already does via
+    `wait_for_agent_card_count(len(baseline_cards))`. Deliberately NOT replaced by `search()`'s
+    `SEARCH_RESULTS_SETTLED` union, which is **vacuous after a clear** (satisfied 4.72 ms after
+    the response, grid mid-restore at 12 of 27 cards — its `catalog-agent-card-*` branch already
+    matches the pre-clear filtered cards). No terminal settle is expressible inside the page
+    object, since only the caller knows the baseline count. Full analysis:
+    `test-specs/agent-hub/_surface.md` § the `clear_search()` bullet.
 - **Two more waits the fixed `clear_search()` alone didn't cover, both added to `AgentHubPage`:**
   - `wait_for_agent_card_count(expected_count, timeout)` / `wait_for_agent_card_count_not(unexpected_count, timeout)` — retrying `expect(locator).to_have_count(...)`/`.not_to_have_count(...)` assertions, used after `search()` (step 5, wait for the count to move away from the baseline before reading filtered names) and after `clear_search()` (step 6, wait for the count to return to exactly the baseline before reading restored names) — network-settling alone doesn't guarantee the React commit has landed by the time the DOM is read.
   - `wait_for_any_agent_card(timeout)` — used in **step 1** after `navigate_and_capture_applications()` (reused from ELITEA-2354, waits on the bulk response) and before reading the baseline names. The page heading is static and renders before the data-dependent card grid does, so a bare navigate-then-read races the same way. **Important, and NOT a wait for the DOM count to equal the bulk response's raw row count** — each category section (`AgentCategorySection.jsx`) only renders its first `INITIAL_CARD_DISPLAY_COUNT` items initially, with the rest behind "Show more"; the bulk response routinely lists far more rows (confirmed live: 46 rows) than are ever rendered in the grid at once (confirmed live: 23 cards). Waiting for "at least one card visible" is the correct render-completion signal here, not an exact count.
