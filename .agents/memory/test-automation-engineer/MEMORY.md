@@ -111,3 +111,5 @@
 - [Prove a repair with a routing plugin](prove_a_repair_with_a_routing_plugin_over_the_real_spec.md) — delay/abort one request over the REAL spec; always run the blocked-request control
 - [Post-delete redirect is navigate(-1)](pipeline_delete_redirect_depends_on_arrival_path.md) — a goto precondition manufactures the redirect "bug"
 - [Removing a manual navigate exposes the absence check](removing_a_manual_navigate_exposes_the_absence_check.md) — re-derive every assertion after a deleted settle
+- [Swapping the test target to DEV](env_test_is_a_symlink_dev_swap_recipe.md) — .env.test is a symlink; sed -i fails silently, prove with settings.app_base_url
+- [DEV Page.goto flake is a precondition](dev_page_goto_flake_is_a_precondition.md) — re-run, never accept 2-of-3; junit hides it, read reruns.json
