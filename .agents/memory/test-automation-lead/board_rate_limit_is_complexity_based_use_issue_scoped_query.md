@@ -99,3 +99,20 @@ REST equivalent, so the card move is the one thing that must wait out the window
 mode that means waiting **in-turn**, in capped slices
 ([[waiting_for_a_background_job_in_factory_mode]]) — parking the card `Blocked` for a rate
 limit would be wrong: nothing is blocked, the clock just has to run.
+
+### The `reset` timestamp is an UPPER BOUND — probe, never sleep to the clock
+
+On #2193 the block advertised `reset: 1789070540` (~60 min out). GraphQL actually recovered
+**~29 minutes early**, on a 30-second probe loop. Had I slept to the advertised reset I would
+have burned half an hour of session for nothing.
+
+So the wait shape is a **probe loop, not a timer** — and in factory mode it stays in-turn and
+capped ([[waiting_for_a_background_job_in_factory_mode]]):
+
+```bash
+i=0; until env -u GITHUB_TOKEN gh api graphql -f query='query { viewer { login } }' >/dev/null 2>&1 \
+        || [ $i -ge 17 ]; do sleep 30; i=$((i+1)); done      # 17 x 30s = 510s, one slice
+```
+
+Repeat the slice across Bash calls until the probe succeeds. Do every REST-able thing (comments,
+labels, reads) *before* starting to wait, so the only thing the window costs is the board move.
