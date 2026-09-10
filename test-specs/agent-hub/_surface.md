@@ -177,7 +177,16 @@ NEEDING RE-VERIFICATION against a fresh fetch, not trusted as-is.
   object method is needed though: `clear_search()` (select-all+Backspace,
   network-response-aware) — didn't exist before this dispatch.
 
-## "No results" empty state — NO testids, confirmed live (ELITEA-2367)
+## "No results" empty state — ⚠️ STALE HEADING: the testids EXIST now (updated 2026-09-10, #2166)
+> **Correction (2026-09-10, verified with a fresh `git fetch origin` in `../EliteaUI`):**
+> `catalog-no-results-title` and `catalog-no-results-description` were ADDED since this entry
+> was written and are on **`origin/main`** as well as `automation/testids`
+> (`NoResultsMessage.jsx:22,29`). The "use `get_by_text(...)` as a fallback" workaround below
+> is **obsolete and non-compliant** — use `AgentHubPage.no_results_title` /
+> `no_results_description`, which are already testid-bound `LocatorDescriptor` fields.
+> The original entry is kept below for history only.
+
+## (historical) "No results" empty state — NO testids, confirmed live (ELITEA-2367)
 - **"No agents found" / "Try adjusting your search terms" messages** (`Category.NoResultsMessage.jsx`, renders via `AgentsTab.jsx`'s `noResultsTitle`/`noResultsDescription` props when `results === []`). **Both messages are SPAN elements with MuiTypography classes only; neither carries a testid** — confirmed via live DOM inspection 2026-08-10 (ELITEA-2367 exploration).
 - Elements: `<span class="MuiTypography-root MuiTypography-headingMedium ...">No agents found</span>` + `<span class="MuiTypography-root MuiTypography-bodyMedium ...">Try adjusting your search terms</span>`, both children of `<div class="MuiBox-root css-cxi1bf">`.
 - **Layout consistency confirmed:** when search matches zero agents, the empty-state messages render in place of the agent-card grid, while the page heading, search input, tabs, and category filter rail all remain visible and functional (not hidden/disabled/collapsed).
@@ -521,3 +530,41 @@ defect on a case whose Step 5 asserts console cleanliness (cost a false alarm he
 localhost topology as the `/socket.io/` note in `.agents/testing.md`. **Read the body off the
 captured request instead** — `browser_network_requests` → `browser_network_request … part=response-body`
 — and re-verify console cleanliness on a pass with no injected requests.
+
+
+## Catalog search SETTLE — the response is NOT the render (confirmed live on DEV 2026-09-10, #2166 / ELITEA-2354)
+
+`useAgentHubData.hooks.js`'s `searchAndCategorize()` calls `resetSearchByTag()` -> `clearCache()`
+**before** `await fetchApplications(...)`, and dispatches `setApplicationsData` only in the
+response's continuation. So Playwright's `expect_response` resolves while the grid is **EMPTY** —
+measured on `dev.elitea.ai`: **802 ms** between the search response landing and the first card
+becoming visible on a cold (post-reload) search. **A one-shot `.is_visible()` immediately after
+`AgentHubPage.search()` is a race** — and `Locator.is_visible(timeout=)` is deprecated/ignored by
+Playwright, so passing a timeout there does NOT make it retry.
+
+- **The settle signal to use** is the union of `CatalogBody.jsx`'s two TERMINAL renders:
+  `'[data-testid^="catalog-agent-card-"], [data-testid="catalog-no-results-title"]'`.
+  The third render (loading) is anonymous skeleton `<Box>`es with **no testid at all**, so the
+  union can never be satisfied by the loading state. Covers zero-result searches too
+  (measured 0.031 s to the no-results title).
+- **`wait_for_network()` / `networkidle` is NOT a settle here** — measured **0.00 s** on DEV
+  (idle page, after search, and after a zero-result search), because same-origin on
+  `dev.elitea.ai` socket.io **upgrades to a WebSocket** (0 requests in a 6 s idle window; 8
+  handshake requests total). It resolves instantly and settles nothing, while still being able to
+  time out under CI conditions — the worst of both. The `?EIO=4&transport=polling` capture in
+  `.agents/testing.md` is a **localhost**-topology observation and does not describe DEV.
+- Search fires **exactly ONE** `/public_applications/prompt_lib/` GET
+  (`?query=<term>&statuses=published&agents_type=classic&limit=100&offset=0`) — no Trending /
+  My-Liked calls accompany it, so a bare `"/public_applications/prompt_lib/" in url and GET`
+  predicate is unambiguous for search (it is NOT for page mount / clear, which fire 3).
+
+## #1215 is a DEV-BUILD-ONLY signature (confirmed 2026-09-10, #2166)
+
+`test_agent_hub_like_agent_list_view.py` (ELITEA-2354) is **sanctioned-RED on `localhost:5173`
+and GREEN on `dev.elitea.ai`, and both are correct.** #1215's console error comes from
+Redux Toolkit's `createSerializableStateInvariantMiddleware`, which `buildGetDefaultMiddleware`
+adds **only** inside `if (process.env.NODE_ENV !== "production")`
+(`@reduxjs/toolkit@^2.6.1`, `redux-toolkit.legacy-esm.js:467-480`). EliteaUI ships `vite build`
+(production), so the middleware is absent from the store on every deployed env. Same class as
+`#611`/ELITEA-1892 (`.agents/testing.md` § Merge gate). **Gate this spec on DEV expecting GREEN;
+on localhost expecting the single #1215 signature.** #1215 stays OPEN on its localhost evidence.

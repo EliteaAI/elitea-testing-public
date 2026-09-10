@@ -104,3 +104,224 @@ None — all 6 case steps were reached and observed live.
 - Selector policy: testid-only + `data-*` state attribute, no fallback (`.agents/testing.md` § Locator policy). The `data-liked` addition follows the exact same precedent as ELITEA-2352's `data-selected` chip attribute.
 - Cleanup is MANDATORY (see § Cleanup) — the test must unlike the agent it liked before ending, verified via the same `is_agent_liked()`/`get_like_count()` helpers returning to the pre-test baseline.
 - Marker suggestion: `@pytest.mark.p2` (medium priority → l3), `@pytest.mark.regression`, `@pytest.mark.agents` (matches ELITEA-2350/2352's marker set for this same page).
+
+---
+
+## Repair — #2166 (networkidle / #1847), 2026-09-10
+
+**Analyst**: qa-engineer (analyst slot) · **Verdict**: `ready-for-repair`
+**Triage class**: **D — test-synchronisation defect** (`adjust-automated-test` § Step 2).
+**NOT** class A (no UI drift), **NOT** class B/C (no product bug), **NOT** class F
+(every testid the spec uses is on `origin/main` — table below).
+
+### What CI actually ran (verify before you read the traceback)
+
+The failure is on **`origin/main`'s** `AgentHubPage.search()`, not on HEAD's:
+
+```
+origin/main:automation/pages/agent_hub_page.py
+  777:    def search(self, query: str, timeout: int = 15000):        # no response_timeout
+  789:        with self.page.expect_response(..., timeout=timeout)    # 10s, shared budget
+  795:        self.wait_for_network(timeout=timeout)   <-- the failing line, matches the traceback
+```
+`_expect_applications_response` (FIX #2078) does not exist on `main` (`grep -c` → 0; HEAD → 5),
+so **the "Timeout 15000ms exceeded while waiting for event `response`" side-note in the captured
+log is already fixed on `automation/base`** and is not part of this repair. The trailing
+`wait_for_network()` **survives on HEAD at line 1117** — the defect is live and will re-red in CI
+on the next promotion.
+
+Blast radius of run #116: 7 of 10 jobs failed, but the intake card lists **exactly one** failing
+test in the `agent_hub` job — so this is spec-specific, not the run-#114 gateway-outage class.
+
+### Root cause — confirmed live, and the hypothesis is only PARTLY confirmed
+
+`search()` awaits the debounced `GET /public_applications/prompt_lib/?query=…` correctly, then
+runs a **trailing, redundant `self.wait_for_network(timeout=timeout)`** =
+`wait_for_load_state("networkidle")`. That wait is **both unreliable and useless**, and the live
+DEV probe (2026-09-10, `https://dev.elitea.ai/app/elitea-catalog`, `${TEST_USER}`) shows why:
+
+```
+socketio_requests_in_6s_idle_window : 0          <-- upgrades to a real WebSocket on DEV
+socketio_total_since_nav            : 8          (handshake only)
+networkidle_on_idle_page            : ok, 0.00s
+trailing_networkidle_after_search   : ok, 0.00s  <-- the settle does NOTHING
+zero_result_trailing_networkidle    : ok, 0.00s
+
+search_response_url    : .../public_applications/prompt_lib/?query=Business+Analyst&statuses=published&agents_type=classic&limit=100&offset=0
+search_response_status : 200
+public_app_gets_during_search : 1                <-- exactly ONE GET; the predicate is correct
+
+# SEARCH #2 (cold, after reload) — THE RACE, reproduced:
+s2_oneshot_union_right_after_response      : false   <-- grid is EMPTY when search() returns
+s2_oneshot_named_card_right_after_response : false
+s2_response_to_union_visible_s             : 0.802   <-- 800ms of uncovered render window
+s2_named_card_visible_after_union_settle   : true
+```
+
+- **The #1847 *class* is confirmed** — `networkidle` is not a valid settle signal for this app and
+  Playwright marks it DISCOURAGED. **The specific socket.io-polling *mechanism* is NOT confirmed
+  on DEV**: same-origin on `dev.elitea.ai` the transport upgrades to a WebSocket, so `networkidle`
+  resolves in 0.00 s from this machine and the CI signature does **not** reproduce locally-against-DEV
+  (3/3 green, below). The documented `?EIO=4&transport=polling` capture in `.agents/testing.md` is a
+  **localhost**-topology observation. Stated plainly rather than claimed: the most likely CI mechanism
+  is that a GHA-side proxy declines the WebSocket upgrade (leaving socket.io on a continuous long-poll)
+  and/or run #116's degraded DEV left requests in flight — but **the CI 3/3 evidence stands on its own
+  and the repair does not depend on which**: a wait that resolves in 0.00 s here provides no value and
+  only risk.
+- **The second, latent defect this probe found is the one that actually matters.**
+  `useAgentHubData.hooks.js:190-215` (`searchAndCategorize`) calls `resetSearchByTag()` →
+  `clearCache()` **before** `await fetchApplications(...)`, then dispatches `setApplicationsData`
+  in the response's `.then()` continuation. Playwright's `expect_response` resolves at the **HTTP
+  response**, i.e. *before* that dispatch and before React commits — so when `search()` returns the
+  grid is **empty** (measured: 802 ms). The caller's one-shot `.is_visible()` on the next line was
+  never protected by anything: `wait_for_network()` returned in 0.00 s. So line 1117 is
+  simultaneously **fragile** (can time out → the CI red) and **insufficient** (does not settle the
+  render → a latent false red at every caller).
+
+### The repair — exact spec for the implementer
+
+**File**: `automation/pages/agent_hub_page.py` · **Method**: `search()` (line ~1117).
+Only *how it reaches* changes; **no assertion in any spec is touched**
+(`adjust-automated-test` § Step 3 rail). Expected-result changes: **none**.
+
+**1. Add a class-level constant** (next to `AGENT_CARD_PREFIX`, line ~142):
+
+```python
+#: The two mutually-exclusive TERMINAL renders of the Catalog content grid.
+#: `CatalogBody.jsx` renders exactly one of three things in its left column:
+#: anonymous loading skeletons (NO testid), the category sections (agent
+#: cards), or `NoResultsMessage` — so a union of the two testid'd branches is
+#: satisfied only once the grid has COMMITTED for the current query, and can
+#: never be satisfied by the loading state.
+SEARCH_RESULTS_SETTLED = (
+    '[data-testid^="catalog-agent-card-"], [data-testid="catalog-no-results-title"]'
+)
+```
+
+**2. Replace the trailing settle** — delete `self.wait_for_network(timeout=timeout)` and use:
+
+```python
+self.page.locator(self.SEARCH_RESULTS_SETTLED).first.wait_for(state="visible", timeout=timeout)
+```
+
+**3. Docstring**: replace the `timeout` arg's "and the trailing settle" wording with
+"…and the post-response render settle (`SEARCH_RESULTS_SETTLED`)", and record the
+`networkidle`/#1847 removal + the `clearCache()`-then-commit mechanism above.
+
+Locator policy: the added line references an UPPER_CASE class constant whose class-level
+definition is a `[data-testid=` string — compliant one-hop form (`.agents/testing.md`
+§ Locator policy). **No new testid is needed.** Fidelity: a *timing* wait on a
+product-rendered element; nothing is substituted, no observable is weakened.
+**No timeout is raised** anywhere (the ledger forbids it, and 10 s already covers the
+measured 0.802 s by >12x).
+
+### Per-caller sufficiency analysis (`grep -rn '\.search(' tests pages`)
+
+`AgentHubPage.search()` has exactly **4** call sites (other `.search(` hits are `re.search`
+or other page objects' own `search`):
+
+| # | Caller | Next statement | Sufficient? |
+|---|---|---|---|
+| 1 | `tests/ui/agent_hub/test_agent_hub_like_agent_list_view.py:198` (ELITEA-2354, this card) | `assert get_agent_card(name).first.is_visible()` — **one-shot** | ✅ **Yes, and this is the caller the repair rescues.** Today the 802 ms window is unprotected; the union settle closes it. Search runs on a freshly `page.reload()`-ed page, so no stale card can satisfy the union. |
+| 2 | `tests/ui/agent_hub/test_agent_hub_unlike_agent_list_view.py:236` (ELITEA-2355) | `assert get_agent_card(name).first.is_visible()` — **one-shot**, then two retrying `wait_for_*` | ✅ Yes — identical shape, also post-`reload()`. Same rescue. |
+| 3 | `tests/ui/agent_hub/test_agent_hub_search_bar_filters_in_real_time.py:87` (ELITEA-2363) | `assert search_input.input_value() == SEARCH_TERM` (the input, not the grid); the grid assertion at :131 is 2 steps later | ✅ Yes — never depended on the settle; the union only makes its later grid reads deterministic. |
+| 4-5 | `tests/ui/skills/test_agent_with_skills_publishing_flow.py:293, :326` | `:293` → `get_agent_card(...).first.is_visible(timeout=…)`; `:326` → `open_agent_by_name(...)` | ✅ Yes. ⚠️ Note for the implementer: `Locator.is_visible(timeout=)` is **deprecated and ignored** by Playwright — `:293` is a one-shot despite the argument, so it depends on the settle exactly like #1 and #2. Both call sites `navigate()` first, so no stale grid. |
+
+**Residual window, declared:** if `clearCache()`'s render had not yet committed when the response
+lands, a **stale** card could satisfy the union. Not reachable by any current caller — all four
+search a freshly navigated/reloaded grid — and probe search #2 shows the empty-grid render *had*
+committed (union false at the response). Recorded so a future caller that searches a
+populated grid knows to add its own query-specific assertion rather than trusting the settle alone.
+
+**Recommended (optional, same PR) hardening at the callers**: convert the one-shot
+`assert …is_visible()` at #1 :199, #2 :237 and #4 :294 to the retrying
+`expect(...).to_be_visible()`. This preserves exactly what is verified (the card is visible) and
+only changes how it waits — the "free to change" side of the rail. The lead may take it or leave it;
+the `search()` fix alone is sufficient for the measured race.
+
+### Same-path `wait_for_network()` sweep (scoped to THIS test's executed path)
+
+| Site | On this path? | Verdict |
+|---|---|---|
+| `AgentHubPage.search()` :1117 | ✅ yes (Step 6) | **THE defect — repaired above.** |
+| `BasePage.navigate()` :360 (`networkidle`, 30 s) | ✅ yes (Step 1, via `navigate_and_capture_applications`) | **Leave it.** Already wrapped in `try/except` with an explicit "pages with persistent WebSocket connections never reach networkidle — continuing" comment (:361-365). It cannot fail the test; worst case it costs 30 s. Broader cleanup is #1847's own scope, not this card's. |
+| `AgentHubPage.clear_search()` :1175 | ❌ no (ELITEA-2363's path only) | **Byte-identical unguarded shape.** Its own caller already settles properly (`wait_for_agent_card_count()`), so it is fragile-not-insufficient. **Recommended** to fix in the same PR (same one-line union settle, same file); flagged rather than mandated because it is off this card's path. |
+
+No repo-wide sweep of the other ~140 `wait_for_network` call sites is proposed — that is #1847.
+
+### Testid provenance (fresh `git fetch origin` in `../EliteaUI`, 2026-09-10)
+
+```
+catalog-agent-card               main:YES  testids:YES
+catalog-no-results-title         main:YES  testids:YES
+catalog-search-input             main:YES  testids:YES
+catalog-agent-like-button        main:YES  testids:YES
+```
+All `on-main ✓`. **Nothing to add, nothing to promote** — class F ruled out.
+*(This supersedes `test-specs/agent-hub/_surface.md`'s stale "No results empty state — NO testids"
+entry: `catalog-no-results-title` / `-description` were added since and are on `main`.)*
+
+### Case observable re-verified on DEV — unchanged
+
+3 clean invocations of the unmodified spec against `https://dev.elitea.ai`
+(`APP_PREFIX=/app`, symlink-safe env swap + restore trap):
+
+```
+DEV RUN 1: 1 passed in 27.82s   reruns.json {}   allure: passed
+DEV RUN 2: 1 passed in 26.32s   reruns.json {}   allure: passed
+DEV RUN 3: 1 passed in 25.54s   reruns.json {}   allure: passed
+```
+Like → `POST …/social/like/…` **201**, `data-liked="true"`, count 0→1, **both persist across
+`page.reload()` + re-search**, cleanup unlike → 204 → count back to 0. The case's expected
+results are exactly as originally specced. **The networkidle signature did not reproduce
+from this machine against DEV** (consistent with the 0.00 s measurement above) — reported as
+`not-reproducible locally`; the CI 3/3 evidence is the deterministic record.
+
+### #1215 is ENVIRONMENT-SCOPED — the gate expectation differs per environment
+
+Same spec, same session, same day:
+
+| Environment | Result |
+|---|---|
+| `https://dev.elitea.ai` (production build) | **GREEN 3/3**, `reruns.json == {}` |
+| `http://localhost:5173` (vite dev server) | **RED** — `Known defect …#1215: non-serializable Redux console error(s) on like click: 1 occurrence(s)`, all functional assertions passed |
+
+**Root cause of the asymmetry, verified in source, not inferred:** the message
+("A non-serializable value was detected in an action, in the path: `payload.updateFn`") comes
+from `createSerializableStateInvariantMiddleware`, and `@reduxjs/toolkit@^2.6.1`'s
+`buildGetDefaultMiddleware` adds it **only** inside
+`if (process.env.NODE_ENV !== "production")` (`redux-toolkit.legacy-esm.js:467-480`).
+EliteaUI ships `"build": "vite build"` → `mode=production` → **the middleware is not in the store
+at all on any deployed env**, so #1215 physically cannot fire there.
+
+This is the exact **ELITEA-1892 / #2082** precedent (`.agents/testing.md` § Merge gate,
+"A sanctioned-RED signature can be ENVIRONMENT-SCOPED"). #1215 is **not fixed** and stays
+**OPEN** on its own localhost evidence; nothing is weakened, because the spec's #1215 handling is
+an absence-tolerant *recorder* (zero matching messages append nothing to `soft_failures`), while
+every functional assertion runs identically on both environments. The unexpected-console-error
+hard assert is untouched, so a genuinely new error still fails on either environment.
+
+> ⚠️ **This corrects the spec's own module docstring and this AFS's original § Known Defects
+> line**, both of which imply an unconditional sanctioned-RED. **The docstring should say
+> "sanctioned-RED on localhost (vite dev build); GREEN on any deployed env".** One link is
+> INFERRED, not verified, exactly as in #2082: that the DEV deployment serves the released
+> production artifact rather than a dev-mode container — the 3/3 green is consistent with it.
+
+### Expected gate outcome after the repair
+
+| Gate environment | Expected |
+|---|---|
+| **`https://dev.elitea.ai`** (what #2166 is about — CI DEV Stable) | **GREEN 3/3.** No sanctioned-RED. Any red is a real finding. |
+| `http://localhost:5173` | **Sanctioned-RED 3/3**, single signature, `# Known defect: #1215`, all functional assertions passing. Record it as such in the closure record. |
+
+Gate this repair on **DEV** — that is where the card's failure lives and where the repaired wait
+must be proven. Budget 2-4x nominal wall clock and read `reports/reruns.json` after every
+invocation: the `#2124`/`#2156` DEV `Page.goto` hazard is *not* this case's signature
+(allure `broken`, 0 steps, at a precondition) and must be re-run, never accepted 2-of-3.
+
+### Defects filed / escalations
+
+**None.** No new product defect surfaced. No blocker requiring a human decision. The
+declared items above (the residual stale-grid window; the `clear_search()` sibling; the
+docstring correction for #1215's environment scope) are recorded here rather than escalated,
+because none of them changes *what* the test verifies.
