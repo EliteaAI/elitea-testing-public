@@ -241,3 +241,42 @@ locally-downloaded `.zip` file (`download_path.unlink(missing_ok=True)`).
 
 ## Blocked Steps
 None.
+
+## Adjustment (2026-09-11, board #2261 — `[FIX][ELITEA-1902]`)
+
+**Triage class: D (timing race in the test, not drift, not a product bug, not
+a promotion gap).** Triage was performed by the lead before this repair was
+dispatched (spec + `AgentFormPage.get_name()` byte-identical on `origin/main`
+and `origin/automation/base`; the allure failure screenshot shows the imported
+agent's Name populated and the nested agent attached under TOOLS).
+
+### Evidence
+
+- CI "UI Tests DEV Stable" runs #126 and #127 (3 attempts each) against
+  `https://dev.elitea.ai` failed Step 8 at
+  `assert detail_page.get_name() == main_agent_name` with
+  `assert '' == 'el-1902-main-30397ab3'`, 1.4 s after the step started.
+- Mechanism: `AgentsListPage.confirm_import_complete()` returns after
+  `wait_for_url(/agents/all/\d+)` + a `networkidle` wait (#1847 class, unreliable
+  on DEV); `AgentDetailPage.verify_on_detail_page()` checks only the URL;
+  `AgentFormPage.get_name()` is a one-shot `input_value()`. On DEV the MUI form
+  shell renders before the agent GET returns, so the read lands on the empty
+  input. `pytest.ini`'s `--only-rerun` excludes `AssertionError`, so CI gives
+  this zero reruns.
+
+### What the repair does
+
+- New **additive** `AgentFormPage.expect_name(expected, timeout, message)` —
+  `expect(self.name_input).to_have_value(expected, timeout=…)`, Playwright's
+  auto-retrying assertion on the SAME testid-anchored `agent-name-input` field.
+  `get_name()` is untouched (30 caller files; some read an empty create-form).
+- The spec's four one-shot `get_name() == …` sites (imported main, imported
+  nested, source main, source nested) now call `expect_name(…,
+  timeout=NAVIGATION_TIMEOUT)` with their original assertion messages.
+- No new testids, no sleeps, no `networkidle` change, no raw selectors.
+
+### Expected-result changes
+
+**None.** Every observable is unchanged and still produced by the system; the
+equality is the same, the read is bounded-retrying instead of racing, and a
+mismatch fails loudly with expected + actual values.
