@@ -185,26 +185,10 @@ on:
         required: false
       TEST_USER_TOKEN_ADMIN:
         required: false
-      # Indexed passwords for parallel suite execution
-      TEST_USER_PASSWORD_1:
-        required: false
-      TEST_USER_PASSWORD_2:
-        required: false
-      TEST_USER_PASSWORD_3:
-        required: false
-      TEST_USER_PASSWORD_4:
-        required: false
-      TEST_USER_PASSWORD_5:
-        required: false
-      TEST_USER_PASSWORD_6:
-        required: false
-      TEST_USER_PASSWORD_7:
-        required: false
-      TEST_USER_PASSWORD_8:
-        required: false
-      TEST_USER_PASSWORD_9:
-        required: false
-      TEST_USER_PASSWORD_ADMIN:
+      # Password template for parallel suite execution
+      # The actual password is constructed as: TEMPLATE + SUFFIX (e.g., "SecretBase" + "1" = "SecretBase1")
+      # For ADMIN suffix, uses "Admin" instead of "ADMIN" (e.g., "SecretBaseAdmin")
+      TEST_USER_PASSWORD_TEMPLATE:
         required: false
       # Team project ID for multi-user tests (bucket permissions, etc.)
       ELITEA_TEAM_PROJECT_ID:
@@ -494,6 +478,28 @@ jobs:
           tar -xzf allure.tgz -C /opt
           echo "/opt/allure-2.27.0/bin" >> $GITHUB_PATH
 
+      - name: Construct and mask user passwords
+        id: passwords
+        run: |
+          # Construct password from template + suffix
+          # For ADMIN suffix, use "Admin" (capitalized) instead of "ADMIN"
+          SUFFIX="${{ matrix.suffix }}"
+          if [ "$SUFFIX" = "ADMIN" ]; then
+            PASSWORD_SUFFIX="Admin"
+          else
+            PASSWORD_SUFFIX="$SUFFIX"
+          fi
+
+          # Primary user password
+          PASSWORD="${{ secrets.TEST_USER_PASSWORD_TEMPLATE }}${PASSWORD_SUFFIX}"
+          echo "::add-mask::$PASSWORD"
+          echo "TEST_USER_PASSWORD=$PASSWORD" >> $GITHUB_ENV
+
+          # Secondary user (User B) password - always uses suffix 9
+          PASSWORD_B="${{ secrets.TEST_USER_PASSWORD_TEMPLATE }}9"
+          echo "::add-mask::$PASSWORD_B"
+          echo "TEST_USER_B_PASSWORD=$PASSWORD_B" >> $GITHUB_ENV
+
       - name: Run UI tests
         working-directory: automation
         env:
@@ -506,13 +512,13 @@ jobs:
           ELITEA_PROJECT_ID: ${{ secrets[format('TEST_USER_PROJECT_{0}', matrix.suffix)] }}
           ELITEA_API_TOKEN: ${{ secrets[format('TEST_USER_TOKEN_{0}', matrix.suffix)] }}
           # Username follows pattern: autotest_user_[suffix_lowercase] (e.g., autotest_user_1, autotest_user_admin)
-          # Secrets use uppercase suffix (e.g., TEST_USER_PASSWORD_1, TEST_USER_PASSWORD_ADMIN)
+          # Password is constructed from template in the "Construct and mask user passwords" step
           TEST_USER_EMAIL: autotest_user_${{ matrix.suffix == 'ADMIN' && 'admin' || matrix.suffix }}
-          TEST_USER_PASSWORD: ${{ secrets[format('TEST_USER_PASSWORD_{0}', matrix.suffix)] }}
+          # TEST_USER_PASSWORD is set via GITHUB_ENV in the password masking step
           # Secondary user (User B) for multi-user tests - uses user 9 for all parallel jobs
           # Note: Job 9 will have same user for primary and secondary, but no multi-user tests there yet
           TEST_USER_B_EMAIL: autotest_user_9
-          TEST_USER_B_PASSWORD: ${{ secrets.TEST_USER_PASSWORD_9 }}
+          # TEST_USER_B_PASSWORD is set via GITHUB_ENV in the password masking step
           # Team project ID for multi-user permission tests
           ELITEA_TEAM_PROJECT_ID: ${{ secrets.ELITEA_TEAM_PROJECT_ID }}
           GIT_HUB_TOKEN: ${{ secrets.GIT_HUB_TOKEN }}
