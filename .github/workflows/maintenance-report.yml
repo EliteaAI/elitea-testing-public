@@ -124,10 +124,10 @@ jobs:
                   print(f"No valid data for group {group_name}")
                   continue
 
-              # Collect all unique test IDs
+              # Collect all unique test IDs (filter out None)
               all_test_ids = set()
               for run_tests in runs_data.values():
-                  all_test_ids.update(run_tests.keys())
+                  all_test_ids.update(k for k in run_tests.keys() if k is not None)
 
               all_test_ids = sorted(all_test_ids)
 
