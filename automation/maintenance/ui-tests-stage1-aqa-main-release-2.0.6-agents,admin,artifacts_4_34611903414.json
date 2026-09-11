@@ -1,0 +1,87 @@
+{
+  "runs": {
+    "20260911151315": [
+      {
+        "id": null,
+        "automation_test_id": "tests.ui.artifacts.test_artifacts_multi_file.TestArtifactMultiFileDownload.test_agent_creates_files_at_root_and_in_subfolder",
+        "resolution": "id_mapping_error",
+        "tracking_issue": "ISSUES_4",
+        "failure_type": "TMS Mapping Missing",
+        "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+      },
+      {
+        "id": "ELITEA-1874",
+        "automation_test_id": "tests.ui.agents.test_agent_embedded_chat_send_message.TestAgentEmbeddedChatSendMessage.test_send_message_via_enter_and_verify_non_empty_response",
+        "resolution": "to_rerun",
+        "tracking_issue": "ISSUES_4",
+        "failure_type": "api-error",
+        "failure_summary": "Agent chat returned 'Temporary server error, please try again' instead of expected PONG response",
+        "reasoning": "The failure is 'Temporary server error, please try again' from the backend LLM service \u2014 not a product logic bug. The same 'Temporary server error' pattern appears across multiple unrelated agent chat tests in this run (github toolkit tests, embedded chat), strongly indicating a transient backend/LLM service outage during this CI run. Recommend rerun."
+      },
+      {
+        "id": "ELITEA-1899",
+        "automation_test_id": "tests.ui.agents.test_agent_icon_management.TestAgentIconManagement.test_agent_icon_change_persists_on_list_card",
+        "resolution": "to_fix",
+        "tracking_issue": "ISSUES_4",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Selecting a different icon option does not change the header icon src",
+        "reasoning": "Clear UI assertion failure: 'Selecting a different icon option should change the header icon src'. This is not a server error or timeout \u2014 the icon change action completed but the icon src did not update as expected. This is a product behavior regression that should be investigated. No server error pattern is present for this test."
+      },
+      {
+        "id": "ELITEA-1892",
+        "automation_test_id": "tests.ui.agents.test_agent_publish_unpublish_version.TestAgentPublishUnpublishVersion.test_publish_draft_version_then_unpublish_reverts_to_draft",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2082"
+      },
+      {
+        "id": "ELITEA-1891",
+        "automation_test_id": "tests.ui.agents.test_agent_version_selector_order.TestAgentVersionSelectorOrder.test_version_selector_lists_versions_in_correct_order",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2272"
+      },
+      {
+        "id": null,
+        "automation_test_id": "tests.ui.agents.test_agent_with_github_toolkit.TestAddToolkitToAgent.test_add_toolkit_to_agent",
+        "resolution": "id_mapping_error",
+        "tracking_issue": "ISSUES_4",
+        "failure_type": "TMS Mapping Missing",
+        "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+      },
+      {
+        "id": null,
+        "automation_test_id": "tests.ui.agents.test_agent_with_github_toolkit.TestChatWithAgentToolkit.test_agent_chat_with_github_toolkit",
+        "resolution": "id_mapping_error",
+        "tracking_issue": "ISSUES_4",
+        "failure_type": "TMS Mapping Missing",
+        "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+      },
+      {
+        "id": "ELITEA-1999",
+        "automation_test_id": "tests.ui.agents.test_build_with_ai_skill_from_agent.TestBuildWithAISkillFromAgent.test_build_with_ai_skill_auto_attaches_and_redirects_to_agent",
+        "resolution": "to_rerun",
+        "tracking_issue": "ISSUES_4",
+        "failure_type": "api-error",
+        "failure_summary": "generate-draft API returned HTTP 500",
+        "reasoning": "The failure is 'Expected the generate-draft request to succeed, got 500'. An HTTP 500 from the generate-draft endpoint is a transient server-side error, consistent with the broader backend instability observed across this CI run (multiple tests hitting 'Temporary server error'). Recommend rerun to confirm if this is persistent."
+      },
+      {
+        "id": "ELITEA-1901",
+        "automation_test_id": "tests.ui.agents.test_import_agent_valid_md_file.TestImportAgentValidMdFile.test_import_agent_valid_md_file",
+        "resolution": "to_fix",
+        "tracking_issue": "ISSUES_4",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Imported agent model selector shows wrong model: expected 'Anthropic Claude 4.5 Haiku' but got 'Anthropic Claude 4.5 Sonnet'",
+        "reasoning": "Clear product regression: the import process is not preserving the model specified in the fixture ('anthropic.claude-haiku-4.5-20250514'). The agent is being imported with Claude Sonnet instead of Claude Haiku. This is a deterministic assertion failure unrelated to server errors or timeouts, indicating a real bug in the import model-mapping logic."
+      },
+      {
+        "id": "ELITEA-1902",
+        "automation_test_id": "tests.ui.agents.test_import_agent_zip_nested_agent_dependencies.TestImportAgentZipNestedAgentDependencies.test_import_agent_zip_nested_agent_dependencies",
+        "resolution": "to_fix",
+        "tracking_issue": "ISSUES_4",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Imported main agent's name does not match the exported agent's name",
+        "reasoning": "Clear product regression: 'Imported main agent's name should match the exported main Agent's name'. This is a deterministic assertion failure in the zip-based nested agent import flow, unrelated to server errors or timeouts. Likely related to the same import regression affecting test_import_agent_valid_md_file. Should be investigated together."
+      }
+    ]
+  }
+}
