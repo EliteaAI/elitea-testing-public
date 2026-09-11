@@ -1,0 +1,197 @@
+{
+  "runs": {
+    "20260911105407": [
+      {
+        "id": "ELITEA-2063",
+        "automation_test_id": "tests.ui.pipelines.test_pipeline_create_version.test_create_pipeline_version_save_list_switch_preserves_canvas_state",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2077"
+      },
+      {
+        "id": "ELITEA-2003",
+        "automation_test_id": "tests.ui.pipelines.test_pipeline_delete_version.test_delete_pipeline_version_falls_back_to_base",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2175"
+      },
+      {
+        "id": "ELITEA-1866",
+        "automation_test_id": "tests.ui.toolkits.test_toolkit_creation_create_bucket_verify_list_files.TestToolkitCreationCreateBucketVerifyListFiles.test_create_artifact_toolkit_creates_bucket_verify_list_files",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Toolkit bucket creation: expected empty bucket result but got non-empty response; also timeout navigating to Artifacts during cleanup",
+        "reasoning": "Clear assertion failure: 'Expected an empty result for the just-created bucket, got: ...' with actual content returned. The test also hits a navigation timeout during cleanup. This is a consistent single-attempt failure (no retries shown), indicating a real product behavior change where the bucket is not empty after creation or the assertion logic is checking the wrong state."
+      },
+      {
+        "id": null,
+        "automation_test_id": "tests.ui.toolkits.test_toolkit_indicators_for_credentials.TestAgentCredentialIndicators.test_agent_credential_indicators_e2e",
+        "resolution": "id_mapping_error",
+        "tracking_issue": "",
+        "failure_type": "TMS Mapping Missing",
+        "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+      },
+      {
+        "id": null,
+        "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[jira]",
+        "resolution": "id_mapping_error",
+        "tracking_issue": "",
+        "failure_type": "TMS Mapping Missing",
+        "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+      },
+      {
+        "id": null,
+        "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestCreateToolkit.test_create_toolkit[confluence]",
+        "resolution": "id_mapping_error",
+        "tracking_issue": "",
+        "failure_type": "TMS Mapping Missing",
+        "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+      },
+      {
+        "id": null,
+        "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestToolkitTestSettings.test_toolkit_test_settings[github]",
+        "resolution": "id_mapping_error",
+        "tracking_issue": "",
+        "failure_type": "TMS Mapping Missing",
+        "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+      },
+      {
+        "id": null,
+        "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestToolkitTestSettings.test_toolkit_test_settings[jira]",
+        "resolution": "id_mapping_error",
+        "tracking_issue": "",
+        "failure_type": "TMS Mapping Missing",
+        "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+      },
+      {
+        "id": null,
+        "automation_test_id": "tests.ui.toolkits.test_toolkit_parameterized.TestChatWithToolkit.test_chat_with_toolkit[jira]",
+        "resolution": "id_mapping_error",
+        "tracking_issue": "",
+        "failure_type": "TMS Mapping Missing",
+        "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+      },
+      {
+        "id": "ELITEA-0501",
+        "automation_test_id": "tests.ui.chat.test_chat_interface.TestConversationUIElements.test_internal_tools_panel_shows_all_tools",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2111"
+      },
+      {
+        "id": "ELITEA-2024",
+        "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestPipelineDashboard.test_view_toggle_table_and_card",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Card view elements (entity-card-name) not rendering after switching from table to card view",
+        "reasoning": "Clear assertion failure: 'Card elements (entity-card-name) should render again after switching to card view'. Single attempt failure with no retries, indicating a consistent product bug where the card view toggle does not properly re-render card elements."
+      },
+      {
+        "id": "ELITEA-2022",
+        "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestDeletePipeline.test_delete_pipeline_via_ui_menu",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Soft assertion failure related to known defect #1332 (redirect after delete)",
+        "reasoning": "Failure message: 'Failed: Soft assertion(s) failed (sanctioned RED \u2014 known defect #1332, redirect)'. The test explicitly references a known defect but is still failing. This needs investigation to determine if the defect is still open or if behavior has regressed further."
+      },
+      {
+        "id": "ELITEA-2023",
+        "automation_test_id": "tests.ui.pipelines_2.test_pipeline_management.TestSearchPipeline.test_search_placeholder_and_dashboard_grid_filters_and_clears",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2119"
+      },
+      {
+        "id": "ELITEA-2453",
+        "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_details_multiple_state_variables.test_run_details_multiple_state_variables_different_types",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Run details 'custom_text' After value is empty after pipeline execution",
+        "reasoning": "Clear assertion failure: \"'custom_text' After value should be non-empty\". Single attempt failure with no retries, indicating a consistent product bug where the run details panel does not populate the After value for custom_text state variables."
+      },
+      {
+        "id": "ELITEA-2070",
+        "automation_test_id": "tests.ui.pipelines_2.test_pipeline_run_history_view_executions.TestPipelineRunHistoryPanelClose.test_run_history_panel_closes_and_restores_chat",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2121"
+      },
+      {
+        "id": "ELITEA-2354",
+        "automation_test_id": "tests.ui.agent_hub.test_agent_hub_like_agent_list_view.TestAgentHubLikeAgentListView.test_agent_hub_like_agent_from_list_view",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2166"
+      },
+      {
+        "id": "ELITEA-2363",
+        "automation_test_id": "tests.ui.agent_hub.test_agent_hub_search_bar_filters_in_real_time.TestAgentHubSearchBarFiltersInRealTime.test_agent_hub_search_bar_filters_in_real_time",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "timeout",
+        "failure_summary": "Timeout waiting for Agent Hub navigation response event (15000ms) across all 3 retries",
+        "reasoning": "All 3 retries fail with 'Timeout 15000ms exceeded while waiting for event \"response\"' on 'Navigate to Agent Hub and capture the initial applications snapshot'. Consistent failure across retries points to a real product/backend issue with Agent Hub loading rather than transient flakiness."
+      },
+      {
+        "id": "ELITEA-2367",
+        "automation_test_id": "tests.ui.agent_hub.test_empty_state.TestCatalogEmptyState.test_empty_state_when_search_matches_no_agents",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Agent Hub filter chip count mismatch: expected 11 (2 Featured + 9 Categories), found 12",
+        "reasoning": "Clear assertion failure: 'Expected 11 filter chips visible (2 Featured + 9 Categories), found 12'. This indicates a new category was added to the Agent Hub without updating the test expectation, or a product change introduced an extra filter chip. Needs investigation to confirm whether the product changed or the test expectation needs updating."
+      },
+      {
+        "id": "ELITEA-1793",
+        "automation_test_id": "tests.ui.skills.test_ghost_skill_after_agent_removed.TestGhostSkillAfterAgentRemoved.test_ghost_skill_not_shown_after_agent_participant_removed",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2142"
+      },
+      {
+        "id": "ELITEA-1869",
+        "automation_test_id": "tests.ui.agents.test_agent_back_navigation.test_back_button_from_agent_detail_returns_to_intact_agents_list",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2145"
+      },
+      {
+        "id": "ELITEA-1899",
+        "automation_test_id": "tests.ui.agents.test_agent_icon_management.TestAgentIconManagement.test_agent_icon_change_persists_on_list_card",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Agent icon change does not update the header icon src after selecting a different icon",
+        "reasoning": "Clear assertion failure: 'Selecting a different icon option should change the header icon src'. Single attempt failure with no retries, indicating a consistent product bug where the icon picker selection does not reflect in the header icon."
+      },
+      {
+        "id": "ELITEA-1901",
+        "automation_test_id": "tests.ui.agents.test_import_agent_valid_md_file.TestImportAgentValidMdFile.test_import_agent_valid_md_file",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Imported agent model selector shows wrong model: expected 'GPT-5.2' but got 'Anthropic Claude 4.5 Sonnet'",
+        "reasoning": "Clear assertion failure: \"Imported agent's Model selector should reflect the fixture's model ('gpt-5.2'), expected 'GPT-5.2', got: 'Anthropic Claude 4.5 Sonnet'\". This is a definitive product regression where the import process is not preserving the model selection from the exported agent file."
+      },
+      {
+        "id": "ELITEA-1902",
+        "automation_test_id": "tests.ui.agents.test_import_agent_zip_nested_agent_dependencies.TestImportAgentZipNestedAgentDependencies.test_import_agent_zip_nested_agent_dependencies",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Imported main agent's name does not match the exported main agent's name after ZIP import",
+        "reasoning": "Clear assertion failure: 'Imported main agent's name should match the exported main Agent's name'. Single attempt failure with no retries, indicating a consistent product regression where the ZIP import with nested agent dependencies does not correctly restore the main agent's name."
+      },
+      {
+        "id": "ELITEA-1808",
+        "automation_test_id": "tests.ui.artifacts.test_artifacts_create_bucket_upload_file.TestArtifactCreateBucketAndUploadFile.test_create_bucket_via_form_and_upload_file_via_bucket_menu",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2084"
+      },
+      {
+        "id": null,
+        "automation_test_id": "tests.ui.admin.test_guardrails_live_reload.TestSensitiveToolLiveReload.test_sensitive_tool_live_reload_case_insensitive",
+        "resolution": "id_mapping_error",
+        "tracking_issue": "",
+        "failure_type": "TMS Mapping Missing",
+        "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+      }
+    ]
+  }
+}
