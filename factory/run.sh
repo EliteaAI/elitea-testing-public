@@ -132,9 +132,19 @@ has_conversation() {
 board_read_failed() {
   local err="$STATE/board-error-$LOOP.txt" why reset=""
   why=$(head -1 "$err" 2>/dev/null | cut -c1-160)
-  if printf '%s' "$why" | grep -qi "rate limit"; then
-    reset=$(gh api rate_limit --jq '.resources.graphql.reset' 2>/dev/null || true)
-    [ -n "$reset" ] && reset=" (GraphQL pool resets at $(date -r "$reset" +%H:%M 2>/dev/null || echo "$reset"))"
+  # Two texts mean "GraphQL pool empty": the literal one, and gh's disguise
+  # "unknown owner type" (item-list resolves the owner with a GraphQL call
+  # first; when that fails the real error is lost). Probe the pool itself —
+  # the GraphQL rateLimit field answers even at 0 remaining, while the REST
+  # /rate_limit endpoint does NOT track GraphQL (reports 5000 while empty).
+  if printf '%s' "$why" | grep -qiE "rate limit|unknown owner type"; then
+    reset=$(gh api graphql -f query='{ rateLimit { remaining resetAt } }' \
+              --jq 'select(.data.rateLimit.remaining == 0) | .data.rateLimit.resetAt' 2>/dev/null || true)
+    if [ -n "$reset" ]; then
+      local s; s=$(date -u -j -f '%Y-%m-%dT%H:%M:%SZ' "$reset" '+%s' 2>/dev/null || date -d "$reset" '+%s' 2>/dev/null || true)
+      [ -n "$s" ] && reset=$(date -r "$s" '+%H:%M' 2>/dev/null || date -d "@$s" '+%H:%M' 2>/dev/null || echo "$reset")
+      reset=" — GraphQL pool is EMPTY (0/5000), refills by $reset"
+    fi
   fi
   echo "[$LOOP $(date +%H:%M:%S)] board read failed — $1: ${why:-no error text}${reset} — treating it as empty this pass" >&2
 }
