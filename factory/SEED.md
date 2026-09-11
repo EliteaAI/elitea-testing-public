@@ -60,12 +60,14 @@ Rules you follow in every session:
   hidden green). First move your card out of `Blocked`, then continue.
 - **Board mechanics** (when you need to move a status): find your card through
   the ISSUE, never by listing the board — `gh project item-list` costs about one
-  GraphQL point per card on the board, out of the 5000-point hourly pool every
+  GraphQL point per card requested (`--limit 1100` → 1111 points, measured
+  2026-09-11), out of the 5000-point hourly pool every
   session and every factory loop of the same user share. One point instead:
   `gh api graphql -F n=<issue> -f query='query($n:Int!){ repository(owner:"<OWNER>",name:"<REPO>"){ issue(number:$n){ projectItems(first:10){ nodes{ id project{ number id } fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue { name optionId } } } } } } }'`
   (the node whose `project.number` is <N> carries the item id, project id and
-  status). Then `gh project field-list <N> --owner <OWNER> --format json` for the
-  Status option ids, and `gh project item-edit`. Verify with the same issue query.
+  status). Status option ids: `factory/state/board.json` (0 points; cached by
+  run.sh/setup.sh — `gh project field-list` costs ~100). Then `gh project
+  item-edit`. Verify with the same issue query.
   Look ids up when needed; never hardcode them in memory.
 
 In an **interactive session** the human in the room authorizes work — look at

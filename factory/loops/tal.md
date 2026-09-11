@@ -19,19 +19,22 @@ delivery): REMOVE the label when you start — your re-delivery must re-enter
 the audit queue unlabeled.
 
 Mechanics — **never list the board to find your card.** `gh project item-list`
-costs about one GraphQL point per card on the board, out of the 5000-point
+costs about one GraphQL point per card REQUESTED (measured 2026-09-11:
+`--limit 1100` → 1111 points, `--limit 30` → 30), out of the 5000-point
 hourly pool that every session AND every loop read of the same GitHub user
 shares; two scans per session on a 1000-card board blind the whole factory for
 the rest of the hour (live, 2026-09-11). Ask the ISSUE for its card — one point:
     gh api graphql -F n=<issue> -f query='query($n:Int!){ repository(owner:"<owner>",name:"<repo>"){ issue(number:$n){ projectItems(first:10){ nodes{ id project{ number id } fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue { name optionId } } } } } } }'
 Take the node whose `project.number` is <board>: it gives the item id, the
-project id and the current status. Option ids: `gh project field-list <board>
---owner <owner> --format json` (cheap, once per session). Move:
+project id and the current status. Option ids: read `factory/state/board.json`
+(0 points — run.sh and setup.sh cache them; a status missing there means run
+`./factory/setup.sh`). `gh project field-list` costs ~100 points — don't. Move:
 `gh project item-edit --id <item> --project-id <project> --field-id <status field>
 --single-select-option-id <option>`. Verify with the SAME issue query, never with
-a list. Need several cards at once (siblings sharing a case id)? A FILTERED list is
-one point: `gh project item-list <board> --owner <owner> --format json --limit 50
---query '<text or status:"…">'` — only the unfiltered dump is expensive.
+a list. Need several cards at once (siblings sharing a case id)? A FILTERED list
+costs about one point per `--limit` whatever the filter matches, so keep the
+limit small: `gh project item-list <board> --owner <owner> --format json
+--limit 20 --query '<text or status:"…">'` (free text matches titles; verified).
 Keep a work log in issue comments
 (🔧 started / 📝 update / 🚫 blocked / ✅ done).
 
