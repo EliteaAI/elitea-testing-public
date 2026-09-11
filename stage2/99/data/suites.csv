@@ -1,0 +1,62 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Fri Sep 11 13:11:36 UTC 2026","Fri Sep 11 13:11:55 UTC 2026","19067","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'bucket one'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"skipped","Fri Sep 11 13:10:18 UTC 2026","Fri Sep 11 13:10:18 UTC 2026","0","tests.ui.admin","test_notification_text_content","TestNotificationTextContent","","","test_notification_text_content_renders_correctly","All 4 known notification types render their exact expected templates;
+        no row (of any type) shows raw JSON, broken HTML, or ""undefined"" text."
+"passed","Fri Sep 11 13:11:15 UTC 2026","Fri Sep 11 13:11:35 UTC 2026","19497","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'bucket_one'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"skipped","Fri Sep 11 13:10:18 UTC 2026","Fri Sep 11 13:10:18 UTC 2026","0","tests.ui.admin","test_guardrails_live_reload","TestSensitiveToolLiveReload","","","test_sensitive_tool_live_reload_case_insensitive","Verify sensitive tool triggers authorization dialog immediately after config change."
+"skipped","Fri Sep 11 13:10:18 UTC 2026","Fri Sep 11 13:10:18 UTC 2026","0","tests.ui.admin","test_guardrails_live_reload","TestBlockedToolkitLiveReload","","","test_blocked_toolkit_live_reload_case_insensitive","Verify blocked toolkit takes effect immediately with case-insensitive matching."
+"passed","Fri Sep 11 13:10:31 UTC 2026","Fri Sep 11 13:10:52 UTC 2026","21019","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: '1bucket'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"skipped","Fri Sep 11 13:10:18 UTC 2026","Fri Sep 11 13:10:18 UTC 2026","0","tests.ui.admin","test_personal_token_create_and_verify","TestPersonalTokenCreateAndVerify","","","test_expired_token_shows_expired_icon_and_label","ELITEA-2284 (steps 2-3) — an existing expired token's Expiration
+        cell shows the gray/expired state icon and the exact 'Expired'
+        label. Read-only: uses existing live project data, no token created
+        or deleted. (ELITEA-2284 steps 4-5 — active token, green icon, 'in X
+        days' — are already asserted by
+        test_create_personal_token_and_verify_in_table's Step 12 above; not
+        repeated here.)"
+"skipped","Fri Sep 11 13:10:18 UTC 2026","Fri Sep 11 13:10:18 UTC 2026","0","tests.ui.admin","test_guardrails_live_reload","TestBlockedToolLiveReload","","","test_blocked_tool_live_reload_case_insensitive","Verify blocked tool takes effect immediately with case-insensitive matching."
+"passed","Fri Sep 11 13:10:25 UTC 2026","Fri Sep 11 13:12:43 UTC 2026","138972","tests.ui.agents","test_agent_add_variables_persist_after_reload","TestAgentAddVariablesPersistAfterReload","","","test_add_two_variables_and_verify_they_persist_after_reload","Adding two {{variable}} references to Instructions, entering their
+        values, and saving persists both name+value pairs after a
+        full-navigation reload — asserted via both the DOM and the Save PUT
+        response body."
+"passed","Fri Sep 11 13:11:56 UTC 2026","Fri Sep 11 13:12:04 UTC 2026","8343","tests.ui.artifacts","test_artifacts_create_bucket_upload_file","TestArtifactCreateBucketAndUploadFile","","","Create a bucket via the '+ Artifact Bucket' form and upload a file via the bucket-row dot-menu","Create a bucket via the form, upload a file via the bucket-menu.
+
+        The bucket is the test's own mutation (created via the UI, deleted
+        in teardown) — the minimal state this observable inherently
+        requires (workflow skill Hard Rule 10): the case's own subject IS
+        bucket creation, so there is no pre-existing stable bucket to
+        assert against read-only.
+        "
+"passed","Fri Sep 11 13:10:53 UTC 2026","Fri Sep 11 13:11:14 UTC 2026","21129","tests.ui.artifacts","test_artifacts_bucket_name_validation_invalid_formats","TestArtifactBucketNameValidationInvalidFormats","","","Invalid bucket name format is rejected: 'new-bucket$'","Run once per Test Data row — ``case_id`` ties a failure back to
+        its originating case (ELITEA-1811 or ELITEA-1814) so one row's
+        regression never masks its healthy siblings.
+        "
+"skipped","Fri Sep 11 13:10:16 UTC 2026","Fri Sep 11 13:10:16 UTC 2026","0","tests.ui.admin","test_analytics_default_load","TestAnalyticsDefaultLoad","","","test_analytics_page_default_load","Header, date filter bar (4 presets, ""Last 24h"" active by default,
+        From/To 1 day apart), 7-tab bar with Overview selected, and the page
+        settling out of its loading state all render as specified."
+"skipped","Fri Sep 11 13:10:18 UTC 2026","Fri Sep 11 13:10:18 UTC 2026","0","tests.ui.admin","test_personal_token_create_and_verify","TestPersonalTokenCreateAndVerify","","","test_invalid_token_name_shows_error_and_keeps_generate_disabled","ELITEA-2286 — a token name containing any character outside
+        [a-zA-Z0-9_-] (special characters or a space) shows the validation
+        error and keeps Generate disabled; replacing it with a conforming name
+        clears the error and re-enables Generate. Read-only against the
+        create-token FORM: never clicks Generate, creates no token, needs no
+        cleanup. (The empty-name-disables-Generate and
+        fresh-valid-name-enables-Generate observables are already asserted by
+        test_create_personal_token_and_verify_in_table's Step 2/Step 3 — not
+        repeated here.)"
+"passed","Fri Sep 11 13:12:05 UTC 2026","Fri Sep 11 13:12:17 UTC 2026","12002","tests.ui.artifacts","test_artifacts_delete_subfolder_checkbox","TestArtifactDeleteSubfolderCheckbox","","","Selecting a subfolder via checkbox and confirming toolbar delete removes the folder and its contents; other items unaffected","Deleting a subfolder via checkbox removes it and its contents only.
+
+        Bucket is mutated exactly once at setup (seeded with 5 keys — the
+        minimal fresh state this observable inherently requires, since the
+        case's own purpose is destructive: deleting part of the bucket's
+        contents; workflow skill Hard Rule 10) — every assertion afterward
+        reads that state (plus the one delete mutation the case itself
+        drives) without further seeding.
+        "
