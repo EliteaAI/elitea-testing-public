@@ -199,7 +199,8 @@ nodes:
                 repo_obj = {}
 
             run_id_str = str(run_id_val) if run_id_val else 'unknown'
-            maintenance_file = f"{workflow_name_short}_{run_id_str}.json"
+            run_num_str = str(workflow_run.get('run_number', '') or 'unknown')
+            maintenance_file = f"{workflow_name_short}_{run_num_str}_{run_id_str}.json"
 
             out = {
                 'run_id': run_id_str,

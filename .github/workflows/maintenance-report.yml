@@ -1,0 +1,175 @@
+name: Generate Maintenance Report
+
+on:
+  push:
+    branches:
+      - automation/maintenance
+    paths:
+      - 'automation/maintenance/test-ui-dev-stable_*.json'
+
+  workflow_dispatch:
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout automation/maintenance branch
+        uses: actions/checkout@v4
+        with:
+          ref: automation/maintenance
+          fetch-depth: 0
+
+      - name: Generate maintenance report
+        run: |
+          python3 << 'PYEOF'
+          import json
+          import os
+          import glob
+          from pathlib import Path
+
+          MAINTENANCE_DIR = "automation/maintenance"
+          OUTPUT_FILE = f"{MAINTENANCE_DIR}/test-ui-dev-stable.md"
+
+          # Color mapping for resolutions
+          RESOLUTION_COLORS = {
+              'to_fix': '🔴',
+              'to_rerun': '🟡',
+              'already_in_progress': '🟠',
+              'id_mapping_error': '🟣',
+              'pending_analysis': '⚪',
+          }
+
+          def get_resolution_icon(resolution):
+              return RESOLUTION_COLORS.get(resolution, '⚫')
+
+          # Collect all maintenance files
+          files = sorted(glob.glob(f"{MAINTENANCE_DIR}/test-ui-dev-stable_*.json"))
+
+          if not files:
+              print("No maintenance files found")
+              with open(OUTPUT_FILE, 'w') as f:
+                  f.write("# Test Maintenance Report\n\nNo maintenance data available.\n")
+              exit(0)
+
+          # Parse run_number from filename: test-ui-dev-stable_[RUN_NUM]_[RUN_ID].json
+          # Also support old format: test-ui-dev-stable_[RUN_ID].json
+          runs_data = {}  # run_number -> {test_id -> resolution}
+          run_numbers_order = []
+
+          for filepath in files:
+              filename = os.path.basename(filepath)
+              # Extract run number from filename
+              parts = filename.replace('test-ui-dev-stable_', '').replace('.json', '').split('_')
+
+              if len(parts) >= 2:
+                  run_num = parts[0]
+              else:
+                  # Old format - use run_id as identifier
+                  run_num = parts[0][:8]  # First 8 chars of run_id
+
+              try:
+                  with open(filepath, 'r') as f:
+                      data = json.load(f)
+              except:
+                  continue
+
+              runs = data.get('runs', {})
+              if not runs:
+                  continue
+
+              # Get the latest run timestamp
+              latest_ts = max(runs.keys())
+              tests = runs.get(latest_ts, [])
+
+              if run_num not in runs_data:
+                  runs_data[run_num] = {}
+                  run_numbers_order.append(run_num)
+
+              for test in tests:
+                  test_id = test.get('id', 'UNKNOWN')
+                  resolution = test.get('resolution', 'unknown')
+                  runs_data[run_num][test_id] = resolution
+
+          # Collect all unique test IDs
+          all_test_ids = set()
+          for run_tests in runs_data.values():
+              all_test_ids.update(run_tests.keys())
+
+          all_test_ids = sorted(all_test_ids)
+
+          # Generate markdown report
+          lines = [
+              "# Test Maintenance Report",
+              "",
+              "## Legend",
+              "",
+              "| Icon | Resolution |",
+              "|------|------------|",
+              "| 🔴 | to_fix |",
+              "| 🟡 | to_rerun |",
+              "| 🟠 | already_in_progress |",
+              "| 🟣 | id_mapping_error |",
+              "| ⚪ | pending_analysis |",
+              "| 🟢 | passed (no failure) |",
+              "",
+              "## Test Results Matrix",
+              "",
+          ]
+
+          # Build header
+          header = "| Test Case |"
+          separator = "|-----------|"
+          for run_num in run_numbers_order:
+              header += f" #{run_num} |"
+              separator += "--------|"
+
+          lines.append(header)
+          lines.append(separator)
+
+          # Build rows
+          for test_id in all_test_ids:
+              row = f"| {test_id} |"
+              for run_num in run_numbers_order:
+                  resolution = runs_data[run_num].get(test_id)
+                  if resolution:
+                      icon = get_resolution_icon(resolution)
+                      row += f" {icon} |"
+                  else:
+                      row += " 🟢 |"
+              lines.append(row)
+
+          # Summary stats
+          lines.extend([
+              "",
+              "## Summary",
+              "",
+              f"- **Total Runs:** {len(run_numbers_order)}",
+              f"- **Total Test Cases:** {len(all_test_ids)}",
+              "",
+              f"*Generated automatically from maintenance files*",
+          ])
+
+          # Write output
+          os.makedirs(MAINTENANCE_DIR, exist_ok=True)
+          with open(OUTPUT_FILE, 'w') as f:
+              f.write('\n'.join(lines))
+
+          print(f"Report generated: {OUTPUT_FILE}")
+          print(f"Runs: {run_numbers_order}")
+          print(f"Test cases: {len(all_test_ids)}")
+          PYEOF
+
+      - name: Commit and push report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add automation/maintenance/test-ui-dev-stable.md
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update maintenance report"
+            git push origin automation/maintenance
+          fi
