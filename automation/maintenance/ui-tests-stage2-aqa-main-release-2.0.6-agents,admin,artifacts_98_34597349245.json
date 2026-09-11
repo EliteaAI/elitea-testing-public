@@ -1,0 +1,93 @@
+{
+  "runs": {
+    "20260911123902": [
+      {
+        "id": "ELITEA-2284",
+        "automation_test_id": "tests.ui.admin.test_personal_token_create_and_verify.TestPersonalTokenCreateAndVerify.test_expired_token_shows_expired_icon_and_label",
+        "resolution": "to_fix",
+        "tracking_issue": "ISSUES_98",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Expired token does not show expected expired icon/label \u2014 locator count assertion failed (expected 1, got 0)",
+        "reasoning": "The test explicitly fails with 'AssertionError: Locator expected to have count 1', meaning the expired token UI indicator is not rendered as expected. This is a clear product behavior assertion failure unrelated to the 403 infrastructure issues seen in the same job. The test ran successfully through setup and reached the assertion stage before failing."
+      },
+      {
+        "id": null,
+        "automation_test_id": "tests.ui.artifacts.test_artifacts_multi_file.TestArtifactMultiFileDownload.test_agent_creates_files_at_root_and_in_subfolder",
+        "resolution": "id_mapping_error",
+        "tracking_issue": "ISSUES_98",
+        "failure_type": "TMS Mapping Missing",
+        "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+      },
+      {
+        "id": "ELITEA-1869",
+        "automation_test_id": "tests.ui.agents.test_agent_back_navigation.test_back_button_from_agent_detail_returns_to_intact_agents_list",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2145"
+      },
+      {
+        "id": "ELITEA-1874",
+        "automation_test_id": "tests.ui.agents.test_agent_embedded_chat_send_message.TestAgentEmbeddedChatSendMessage.test_send_message_via_enter_and_verify_non_empty_response",
+        "resolution": "to_rerun",
+        "tracking_issue": "ISSUES_98",
+        "failure_type": "api-error",
+        "failure_summary": "Agent embedded chat returned 'Temporary server error' instead of expected PONG response",
+        "reasoning": "The failure is 'Response should contain PONG, got: Temporary server error, please try again'. This is a transient backend server error (not a 4xx auth issue, but a runtime server error). Multiple other agent tests in the same run also received 'Temporary server error' responses (test_add_toolkit_to_agent, test_agent_chat_with_github_toolkit), indicating backend instability during this run rather than a product regression specific to this test."
+      },
+      {
+        "id": "ELITEA-1899",
+        "automation_test_id": "tests.ui.agents.test_agent_icon_management.TestAgentIconManagement.test_agent_icon_change_persists_on_list_card",
+        "resolution": "to_fix",
+        "tracking_issue": "ISSUES_98",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Agent icon change does not persist \u2014 header icon src unchanged after selecting different icon option",
+        "reasoning": "The failure is 'AssertionError: Selecting a different icon option should change the header icon src'. This is a specific UI state assertion failure not related to server errors or timeouts. The icon change functionality appears broken \u2014 the icon src is not updating when a new icon is selected. This is a distinct product behavior failure that warrants investigation."
+      },
+      {
+        "id": "ELITEA-1892",
+        "automation_test_id": "tests.ui.agents.test_agent_publish_unpublish_version.TestAgentPublishUnpublishVersion.test_publish_draft_version_then_unpublish_reverts_to_draft",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2082"
+      },
+      {
+        "id": "ELITEA-1891",
+        "automation_test_id": "tests.ui.agents.test_agent_version_selector_order.TestAgentVersionSelectorOrder.test_version_selector_lists_versions_in_correct_order",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2272"
+      },
+      {
+        "id": null,
+        "automation_test_id": "tests.ui.agents.test_agent_with_github_toolkit.TestAddToolkitToAgent.test_add_toolkit_to_agent",
+        "resolution": "id_mapping_error",
+        "tracking_issue": "ISSUES_98",
+        "failure_type": "TMS Mapping Missing",
+        "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+      },
+      {
+        "id": null,
+        "automation_test_id": "tests.ui.agents.test_agent_with_github_toolkit.TestChatWithAgentToolkit.test_agent_chat_with_github_toolkit",
+        "resolution": "id_mapping_error",
+        "tracking_issue": "ISSUES_98",
+        "failure_type": "TMS Mapping Missing",
+        "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+      },
+      {
+        "id": "ELITEA-1999",
+        "automation_test_id": "tests.ui.agents.test_build_with_ai_skill_from_agent.TestBuildWithAISkillFromAgent.test_build_with_ai_skill_auto_attaches_and_redirects_to_agent",
+        "resolution": "to_fix",
+        "tracking_issue": "ISSUES_98",
+        "failure_type": "api-error",
+        "failure_summary": "Build-with-AI skill generation request returned HTTP 500",
+        "reasoning": "The failure is 'AssertionError: Expected the generate-draft request to succeed, got 500'. This is a deterministic backend 500 error on the generate-draft endpoint, not a transient 'Temporary server error' in the chat UI. It indicates a specific API endpoint regression that should be investigated independently of the general backend instability seen in chat tests."
+      },
+      {
+        "id": "ELITEA-1901",
+        "automation_test_id": "tests.ui.agents.test_import_agent_valid_md_file.TestImportAgentValidMdFile.test_import_agent_valid_md_file",
+        "resolution": "to_fix",
+        "tracking_issue": "ISSUES_98",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Imported agent model selector shows wrong model \u2014 expected 'GPT-5.2' but got 'Anthropic Claude 4.5 Sonnet'",
+        "reasoning": "The failure is 'Imported agent's Model selector should reflect the fixture's model (gpt-5.2), expected GPT-5.2, got: Anthropic Claude 4.5 Sonnet'. This is a clear product behavior regression: the import process is not preserving the model specified in the MD fixture file, defaulting to a different model instead. This is unrelated to server errors or timeouts and warrants investigation."
+      }
+    ]
+  }
+}
