@@ -183,9 +183,11 @@ nodes:
             workflow_name_cleared = workflow_name_full.lower().replace(' ', '-').replace('_', '-').replace('[', '').replace(']', '')
 
             # Check if workflow name contains allowed patterns
-            allowed_patterns = ['dev-stable', 'stage1', 'stage2', 'stage3', 'next']
-            name_lower = workflow_name_full.lower()
-            matches_pattern = any(p in name_lower for p in allowed_patterns)
+            # Normalize name for matching: remove spaces and hyphens
+            name_normalized = workflow_name_full.lower().replace(' ', '').replace('-', '')
+            # Patterns also normalized (no separators)
+            allowed_patterns = ['devstable', 'stage1', 'stage2', 'stage3', 'next']
+            matches_pattern = any(p in name_normalized for p in allowed_patterns)
 
             should_process = (
                 action == 'completed' and
