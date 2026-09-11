@@ -1,0 +1,15 @@
+{
+  "runs": {
+    "20260911010703": [
+      {
+        "id": "ELITEA-1828",
+        "automation_test_id": "tests.ui.artifacts.test_artifacts_upload_duplicate_detected_modal.TestArtifactUploadDuplicateDetectedModal.test_duplicate_detected_opens_resolve_duplicates_modal",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Network request assertion too broad \u2014 Google Analytics scroll event intercepted as false positive during duplicate detection check",
+        "reasoning": "The test asserts that no network requests fire during client-side duplicate detection, but it captured a Google Analytics POST to google-analytics.com/g/collect with event type 'scroll' (90% scroll). This is a third-party analytics/telemetry request unrelated to duplicate detection logic. The test's network interception filter is not excluding analytics/third-party URLs, causing a false positive assertion failure. The actual duplicate detection behavior may be correct. The test assertion needs to be scoped to only monitor requests to the application's own API endpoints, excluding GA and other third-party telemetry. Additionally, the teardown shows a 404 when trying to delete the test bucket, suggesting the bucket was never created (test failed early) or was already cleaned up \u2014 consistent with the test failing before completing setup. This needs investigation to fix the test assertion filter."
+      }
+    ]
+  }
+}
