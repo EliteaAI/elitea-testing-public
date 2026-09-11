@@ -1,0 +1,207 @@
+name: Generate Maintenance Report
+
+on:
+  push:
+    branches:
+      - automation/maintenance
+    paths:
+      - 'automation/maintenance/*.json'
+
+  workflow_dispatch:
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout automation/maintenance branch
+        uses: actions/checkout@v4
+        with:
+          ref: automation/maintenance
+          fetch-depth: 0
+
+      - name: Generate maintenance reports
+        run: |
+          python3 << 'PYEOF'
+          import json
+          import os
+          import glob
+          import re
+          from collections import defaultdict
+
+          MAINTENANCE_DIR = "automation/maintenance"
+          MAX_RUNS = 10
+
+          # Color mapping for resolutions
+          RESOLUTION_COLORS = {
+              'to_fix': '🔴',
+              'to_rerun': '🟡',
+              'already_in_progress': '🟠',
+              'id_mapping_error': '🟣',
+              'pending_analysis': '⚪',
+          }
+
+          def get_resolution_icon(resolution):
+              return RESOLUTION_COLORS.get(resolution, '⚫')
+
+          def extract_group_and_run(filename):
+              """
+              Extract group name and run number from filename.
+              Format: [CLEARED_NAME]_[RUN_NUM]_[RUN_ID].json
+              Group is everything before the first numeric segment that looks like run_number.
+              """
+              base = filename.replace('.json', '')
+              # Find pattern: name_runnum_runid where runnum and runid are numeric
+              # Match: (group)_(run_number)_(run_id)
+              match = re.match(r'^(.+?)_(\d+)_(\d+)$', base)
+              if match:
+                  return match.group(1), int(match.group(2)), match.group(3)
+
+              # Fallback for old format: name_runid
+              match = re.match(r'^(.+?)_(\d+)$', base)
+              if match:
+                  return match.group(1), 0, match.group(2)
+
+              return base, 0, 'unknown'
+
+          # Collect all maintenance JSON files
+          files = glob.glob(f"{MAINTENANCE_DIR}/*.json")
+
+          if not files:
+              print("No maintenance files found")
+              exit(0)
+
+          # Group files by cleared name
+          groups = defaultdict(list)  # group_name -> [(run_number, run_id, filepath), ...]
+
+          for filepath in files:
+              filename = os.path.basename(filepath)
+              group_name, run_number, run_id = extract_group_and_run(filename)
+              groups[group_name].append((run_number, run_id, filepath))
+
+          print(f"Found {len(groups)} groups: {list(groups.keys())}")
+
+          # Generate report for each group
+          for group_name, files_info in groups.items():
+              # Sort by run_number descending, take latest 10
+              files_info.sort(key=lambda x: x[0], reverse=True)
+              files_info = files_info[:MAX_RUNS]
+              # Reverse to show oldest to newest (left to right)
+              files_info.reverse()
+
+              # Collect data from files
+              runs_data = {}  # run_number -> {test_id -> resolution}
+              run_numbers_order = []
+
+              for run_number, run_id, filepath in files_info:
+                  try:
+                      with open(filepath, 'r') as f:
+                          data = json.load(f)
+                  except Exception as e:
+                      print(f"Error reading {filepath}: {e}")
+                      continue
+
+                  runs = data.get('runs', {})
+                  if not runs:
+                      continue
+
+                  # Get the latest run timestamp
+                  latest_ts = max(runs.keys())
+                  tests = runs.get(latest_ts, [])
+
+                  run_key = str(run_number) if run_number > 0 else run_id[:8]
+
+                  if run_key not in runs_data:
+                      runs_data[run_key] = {}
+                      run_numbers_order.append(run_key)
+
+                  for test in tests:
+                      test_id = test.get('id') or test.get('automation_test_id') or 'UNKNOWN'
+                      resolution = test.get('resolution', 'unknown')
+                      runs_data[run_key][test_id] = resolution
+
+              if not runs_data:
+                  print(f"No valid data for group {group_name}")
+                  continue
+
+              # Collect all unique test IDs
+              all_test_ids = set()
+              for run_tests in runs_data.values():
+                  all_test_ids.update(run_tests.keys())
+
+              all_test_ids = sorted(all_test_ids)
+
+              # Generate markdown report
+              lines = [
+                  f"# Maintenance Report: {group_name}",
+                  "",
+                  "## Legend",
+                  "",
+                  "| Icon | Resolution |",
+                  "|------|------------|",
+                  "| 🔴 | to_fix |",
+                  "| 🟡 | to_rerun |",
+                  "| 🟠 | already_in_progress |",
+                  "| 🟣 | id_mapping_error |",
+                  "| ⚪ | pending_analysis |",
+                  "| 🟢 | passed (no failure) |",
+                  "",
+                  "## Test Results Matrix",
+                  "",
+              ]
+
+              # Build header
+              header = "| Test Case |"
+              separator = "|-----------|"
+              for run_num in run_numbers_order:
+                  header += f" #{run_num} |"
+                  separator += "--------|"
+
+              lines.append(header)
+              lines.append(separator)
+
+              # Build rows
+              for test_id in all_test_ids:
+                  row = f"| {test_id} |"
+                  for run_num in run_numbers_order:
+                      resolution = runs_data[run_num].get(test_id)
+                      if resolution:
+                          icon = get_resolution_icon(resolution)
+                          row += f" {icon} |"
+                      else:
+                          row += " 🟢 |"
+                  lines.append(row)
+
+              # Summary stats
+              lines.extend([
+                  "",
+                  "## Summary",
+                  "",
+                  f"- **Runs Shown:** {len(run_numbers_order)} (max {MAX_RUNS})",
+                  f"- **Total Test Cases:** {len(all_test_ids)}",
+                  "",
+                  f"*Generated automatically from maintenance files*",
+              ])
+
+              # Write output
+              output_file = f"{MAINTENANCE_DIR}/{group_name}.md"
+              with open(output_file, 'w') as f:
+                  f.write('\n'.join(lines))
+
+              print(f"Generated: {output_file} ({len(run_numbers_order)} runs, {len(all_test_ids)} tests)")
+
+          PYEOF
+
+      - name: Commit and push reports
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add automation/maintenance/*.md
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update maintenance reports"
+            git push origin automation/maintenance
+          fi

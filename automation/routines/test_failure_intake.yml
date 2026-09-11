@@ -177,9 +177,21 @@ nodes:
             actor_login = actor_obj.get('login', '') if isinstance(actor_obj, dict) else ''
             conclusion = workflow_run.get('conclusion', '') or ''
 
+            # Get workflow name and create cleared version
+            workflow_name_full = workflow_run.get('name', 'unknown') or 'unknown'
+            # Clear name: replace ' ' and '_' with '-', remove '[' and ']', lowercase
+            workflow_name_cleared = workflow_name_full.lower().replace(' ', '-').replace('_', '-').replace('[', '').replace(']', '')
+
+            # Check if workflow name contains allowed patterns
+            # Normalize name for matching: remove spaces and hyphens
+            name_normalized = workflow_name_full.lower().replace(' ', '').replace('-', '')
+            # Patterns also normalized (no separators)
+            allowed_patterns = ['devstable', 'stage1', 'stage2', 'stage3', 'next']
+            matches_pattern = any(p in name_normalized for p in allowed_patterns)
+
             should_process = (
                 action == 'completed' and
-                'test-ui-dev-stable.yml' in workflow_path and
+                matches_pattern and
                 actor_login == 'breilian' and
                 conclusion == 'failure'
             )
@@ -188,7 +200,6 @@ nodes:
             if not isinstance(head_commit, dict):
                 head_commit = {}
 
-            workflow_name_full = workflow_run.get('name', 'unknown') or 'unknown'
             workflow_name_short = workflow_path.replace('.github/workflows/', '').replace('.yml', '') if workflow_path else 'unknown'
 
             run_id_val = workflow_run.get('id', 'unknown')
@@ -199,7 +210,9 @@ nodes:
                 repo_obj = {}
 
             run_id_str = str(run_id_val) if run_id_val else 'unknown'
-            maintenance_file = f"{workflow_name_short}_{run_id_str}.json"
+            run_num_str = str(workflow_run.get('run_number', '') or 'unknown')
+            # Filename: [CLEARED_NAME]_[RUN_NUM]_[RUN_ID].json
+            maintenance_file = f"{workflow_name_cleared}_{run_num_str}_{run_id_str}.json"
 
             out = {
                 'run_id': run_id_str,
@@ -359,12 +372,14 @@ nodes:
             elif isinstance(logs, str):
                 log_content = logs
 
-            # Pattern 1: "FAILED tests/ui/..." - most reliable, pytest summary format
-            failed_pattern1 = re.compile(r'FAILED\s+((?:automation/)?tests/[^\s]+::[^\s]+)')
+            # Pattern 1: "FAILED tests/ui/..." - pytest summary format (captures up to space or dash)
+            failed_pattern1 = re.compile(r'FAILED\s+((?:automation/)?tests/[^\s]+::[^\s]+?)(?:\s+-\s+|\s+$|\s+\[)')
             # Pattern 2: "tests/ui/... FAILED" - alternate format
             failed_pattern2 = re.compile(r'((?:automation/)?tests/[^\s]+::[^\s]+)\s+FAILED')
             # Pattern 3: Handle function-level tests (no class) - "FAILED tests/.../test_file.py::test_func"
             failed_pattern3 = re.compile(r'FAILED\s+((?:automation/)?tests/[^\s]+\.py::[a-z_][a-z0-9_]*)\s', re.IGNORECASE)
+            # Pattern 4: Broader - "FAILED tests/..." with any suffix (greedy up to common terminators)
+            failed_pattern4 = re.compile(r'FAILED\s+(tests/[^\s]+\.py::[A-Za-z_][A-Za-z0-9_]*::[a-z_][a-z0-9_]*(?:\[[^\]]+\])?)')
 
             for match in failed_pattern1.finditer(log_content):
                 test_path = match.group(1).replace('automation/', '')
@@ -387,9 +402,12 @@ nodes:
                     seen_tests.add(dotted)
                     failed_tests.append({'automation_test_id': dotted, 'raw_path': test_path})
 
-            # NOTE: Removed pattern4 ([FAIL] backwards search) - it caused false positives
-            # by capturing PASSED tests that appeared near [FAIL] screenshot markers.
-            # Pattern 1-3 reliably capture all actual failures from pytest output.
+            for match in failed_pattern4.finditer(log_content):
+                test_path = match.group(1).replace('automation/', '')
+                dotted = test_path.replace('.py::', '.').replace('::', '.').replace('/', '.')
+                if dotted not in seen_tests:
+                    seen_tests.add(dotted)
+                    failed_tests.append({'automation_test_id': dotted, 'raw_path': test_path})
 
             out = {'failed_jobs': failed_jobs_str, 'failed_tests': json.dumps(failed_tests)}
         except:
