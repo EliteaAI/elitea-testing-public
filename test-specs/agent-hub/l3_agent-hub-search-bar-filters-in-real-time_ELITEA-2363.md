@@ -388,3 +388,45 @@ or freeze the identity source) — **never** to weaken the comparison further.
   `.agents/testing.md` § Suite-health pointer. ⚠️ **Dedup not completed** — `gh issue list` returned
   `API rate limit already exceeded` this session, so the lead/implementer must run the § Bug filing
   dedup pass before filing.
+
+### Implementation note — 2026-09-10 (implementer, #2179, PR pending)
+
+Shipped exactly the work order above. One shape detail worth recording, because the reviewer's
+triangulation reads the code against this AFS:
+
+**Change 3 ("the terminal wait must key on identity") is implemented with Playwright's own
+auto-retrying assertions, not a Python poll loop.** `AgentHubPage.wait_for_agent_card_ids(
+expected_ids)` asserts two retrying conditions, then the spec asserts the sorted multiset once:
+
+1. `expect(locator(<comma-joined union of AGENT_CARD_BY_ID.format(id) for the baseline's distinct
+   ids>)).to_have_count(len(expected_ids))` — the identity half. A half-restored grid (measured
+   live at 6 -> 12 -> 27) can never satisfy it, and it cannot resolve on a transient pass-through.
+2. `expect(locator(AGENT_CARD_PREFIX)).to_have_count(len(expected_ids))` — catches an EXTRA card
+   whose id is *outside* the baseline set, which (1) structurally cannot see.
+
+Both are the framework's native condition waits, so no sleep and no `wait_for_timeout` poll was
+introduced (`.agents/conventions.md` § Hard don'ts). The one-shot `sorted(restored) ==
+sorted(baseline)` assertion still follows, so the failure message names the actual missing/unexpected
+ids rather than a bare count mismatch.
+
+`AGENT_CARD_BY_ID = '[data-testid="catalog-agent-card-{}"]'` and `AGENT_CARD_TESTID_STEM =
+"catalog-agent-card-"` were added as class-level constants (the dynamic-testid shape required by
+`.agents/testing.md` § Locator policy). The stem is a separate literal rather than being f-string-
+composed into the selector constants, so the `[data-testid=` strings stay greppable for the
+presence-based coverage tooling. **No new testid was added to EliteaUI** — `catalog-agent-card-{id}`
+already exists and is on `main`.
+
+`get_visible_agent_card_names()` -> `get_visible_agent_card_texts()`: rename landed, single caller
+(this spec) updated, plus two stale docstring cross-references in `agent_hub_page.py`
+(`wait_for_any_agent_card`, `clear_search`). `wait_for_agent_card_count`'s own semantics are
+untouched, as instructed.
+
+Local verification: `1 passed in 16.15s`, `reports/reruns.json == {}`.
+
+**Blast-radius finding, pre-existing and NOT caused by this repair.**
+`tests/ui/agent_hub/test_catalog_default_agents_tab.py` (the other `wait_for_agent_card_count`
+caller) fails on this machine at Step 8 with `AssertionError: Locator expected to have count '11'`
+— a hardcoded skill-category-chip count. Matched control run per the `#1082` discipline: with the
+diff `1 failed in 19.50s`, on pristine `automation/base` `1 failed in 19.32s`, byte-identical
+message. Same fragility CLASS this repair removes here (a hardcoded expectation over live shared
+catalog data), different spec — routed to the lead as a finding, not fixed in this PR.

@@ -10,8 +10,23 @@ original unfiltered set. Zero console errors throughout.
 Spec: test-specs/agent-hub/l3_agent-hub-search-bar-filters-in-real-time_ELITEA-2363.md
 
 Reuses `AgentHubPage` as-is for navigation/heading/agent-card lookup and the
-debounce-aware `search()` method (ELITEA-2075/2354); adds `clear_search()`
-and `get_visible_agent_card_names()` to the same page object for this case.
+debounce-aware `search()` method (ELITEA-2075/2354); adds `clear_search()`,
+`get_visible_agent_card_texts()`, `get_visible_agent_card_ids()` and
+`wait_for_agent_card_ids()` to the same page object for this case.
+
+REPAIR, 2026-09-10 (#2179, AFS § Adjustment — 2026-09-10). Step 6 took this spec
+RED in CI run 34436416962 because it compared cards by their rendered TEXT, and a
+card's text carries its live like count (`AgentCard.jsx` renders name + author
+initials + `AgentHubLike` inside one `<Card>`, no separator). A like landing on a
+catalog agent mid-run — which sibling specs in this same suite do by design —
+changed one card's string AND legitimately re-ranked the likes-desc-sorted
+Trending section. Identity now comes from the card's own `catalog-agent-card-{id}`
+testid and is compared as a sorted MULTISET (the grid renders three agents twice —
+Trending plus their own category — so a `set()` would stop detecting a dropped
+duplicate). Membership and multiplicity are still asserted in full against the
+complete step-1 baseline; only position is dropped, which the TMS case never
+claimed. No substitution of any kind is used: every value asserted here is read
+off the live product.
 
 No new testid needed — `catalog-page-heading`, `catalog-search-input`, and
 `catalog-agent-card-{id}` already exist on `automation/testids` (this test's
@@ -71,7 +86,13 @@ class TestAgentHubSearchBarFiltersInRealTime:
                 assert applications, "Expected the bulk applications fetch to return at least one row"
                 assert agent_hub.page_heading.is_visible(), "Catalog page heading should be visible"
                 agent_hub.wait_for_any_agent_card(timeout=UI_ELEMENT_TIMEOUT)
-                baseline_cards = agent_hub.get_visible_agent_card_names()
+                # Two baselines, deliberately: IDS are the identity of the
+                # rendered set (Step 6's restore comparison), TEXTS are only
+                # used for Step 5's substring check. They must never be
+                # swapped — a card's text carries its live like count, which
+                # shared suite data mutates (#2179).
+                baseline_ids = agent_hub.get_visible_agent_card_ids()
+                baseline_cards = agent_hub.get_visible_agent_card_texts()
                 assert baseline_cards, "Expected at least one agent card rendered before searching"
 
             with allure.step("Step 2 — Click into the search bar at the top"):
@@ -118,7 +139,7 @@ class TestAgentHubSearchBarFiltersInRealTime:
                 f"Step 5 — Verify only matching agents are displayed (e.g., {EXPECTED_EXAMPLE_AGENT!r})"
             ):
                 agent_hub.wait_for_agent_card_count_not(len(baseline_cards), timeout=UI_ELEMENT_TIMEOUT)
-                filtered_cards = agent_hub.get_visible_agent_card_names()
+                filtered_cards = agent_hub.get_visible_agent_card_texts()
                 assert len(filtered_cards) < len(baseline_cards), (
                     f"Expected fewer cards after filtering on {SEARCH_TERM!r} than the "
                     f"{len(baseline_cards)}-card baseline, got {len(filtered_cards)}"
@@ -136,10 +157,25 @@ class TestAgentHubSearchBarFiltersInRealTime:
             with allure.step("Step 6 — Clear the search field and verify all agents return to the list"):
                 agent_hub.clear_search(timeout=UI_ELEMENT_TIMEOUT)
                 assert agent_hub.search_input.input_value() == "", "Search field should be empty after clearing"
-                agent_hub.wait_for_agent_card_count(len(baseline_cards), timeout=UI_ELEMENT_TIMEOUT)
-                restored_cards = agent_hub.get_visible_agent_card_names()
-                assert restored_cards == baseline_cards, (
-                    "Restored card set after clearing should exactly match the step-1 baseline"
+                # The wait polls the identity multiset itself (not a raw card
+                # count), so it is terminal by construction: a half-restored
+                # grid can never satisfy it, and shared data publishing a new
+                # agent mid-run cannot make it resolve on a transient state.
+                agent_hub.wait_for_agent_card_ids(baseline_ids, timeout=UI_ELEMENT_TIMEOUT)
+                restored_ids = agent_hub.get_visible_agent_card_ids()
+                # SORTED LIST, never set(): the grid renders three agents twice
+                # (Trending + their own category section), so a set would
+                # collapse 27 cards to 24 ids and stop detecting a dropped
+                # duplicate render. Membership AND multiplicity are asserted;
+                # position is not — ELITEA-2363 makes a membership claim only
+                # ("verify all agents return to the list"), and the Trending
+                # section's order is a function of live like counts, which no
+                # test can demand be frozen (#2179, AFS § Adjustment).
+                assert sorted(restored_ids) == sorted(baseline_ids), (
+                    "Every agent present before searching should be present again after clearing "
+                    f"(baseline {len(baseline_ids)} cards, restored {len(restored_ids)}); "
+                    f"missing={sorted(set(baseline_ids) - set(restored_ids))!r} "
+                    f"unexpected={sorted(set(restored_ids) - set(baseline_ids))!r}"
                 )
 
             with allure.step("Step 7 — Verify zero console errors during typing, filtering, and clearing"):
