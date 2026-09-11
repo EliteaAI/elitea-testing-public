@@ -149,7 +149,7 @@ cards_in() { # status → issue numbers, in BOARD ORDER (top of column first)
     sleep 5
     out=$(gh project item-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" \
        --query "status:\"$1\" $QUERY" --format json --limit 50 2>"$err") \
-      || { board_read_failed "queue read: $1"; return 0; }
+      || { board_read_failed "queue read: $1"; : > "$STATE/read-failed-$LOOP"; return 0; }
   fi
   # BOARD ORDER, not numeric: the Projects API returns items in the board's
   # manual top-to-bottom order (verified 2026-07-23 — dragging a card up moves
@@ -506,14 +506,19 @@ from memory without reading the latest comments is a protocol violation."
   # move (Done/Blocked), for a verdict-only loop it's a label its own QUERY
   # excludes — the card may legitimately stay in its column forever. Status
   # is used for messaging; queue membership decides.
+  rm -f "$STATE/read-failed-$LOOP"
   st="$(status_of "$issue")"
-  if [ "$st" = "unknown" ]; then
+  in_queue=0
+  { cards_in "$STATUS_READY"; [ -n "${STATUS_ACTIVE:-}" ] && cards_in "$STATUS_ACTIVE"; } \
+    | grep -qx "$issue" && in_queue=1
+  if [ "$st" = "unknown" ] || [ -f "$STATE/read-failed-$LOOP" ]; then
     # Board unreadable right now: neither success nor failure — deferring the
     # outcome must not clear attempts (false success) or burn one (false
-    # stall). The card is re-evaluated from fresh reads next pass.
+    # stall). The card is re-evaluated from fresh reads next pass. This
+    # covers a failed QUEUE read too: an empty read is not "left the queue"
+    # (a rate-limited pass once read an In Progress card as done — live).
     echo "[$LOOP] #$issue: board unreadable — outcome deferred to next pass."
-  elif ! { cards_in "$STATUS_READY" | grep -qx "$issue" \
-         || cards_in "$STATUS_ACTIVE" | grep -qx "$issue"; }; then
+  elif [ "$in_queue" = 0 ]; then
     clear_attempts "$issue"
     clear_claim "$issue"
     case "$st" in
