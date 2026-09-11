@@ -186,3 +186,4 @@
 - [Waiting on a background job in factory mode](waiting_for_a_background_job_in_factory_mode.md) — bare `sleep` is blocked and macOS has no `timeout`; use a capped `until grep` loop, never Monitor
 - [A green DEV invocation is not a clean one](a_green_invocation_is_not_a_clean_invocation.md) — `1 passed` hides reruns; classify every attempt from allure `statusDetails`, never the pytest tail
 - [The -p devenv gate plugin needs PYTHONPATH to PREPEND](dev_gate_plugin_needs_pythonpath_to_prepend.md) — `PYTHONPATH=/tmp` alone ⇒ `No module named config`; make the target guard `import devenv` so a broken plugin fails the guard, not 3 gate runs (#2198)
+- [Factory wait without sleep/timeout on macOS](factory_wait_without_sleep_or_timeout_on_macos.md) — bare sleep is blocked, `timeout` missing; use a bounded for-loop grep-and-break in one ≤540 s call
