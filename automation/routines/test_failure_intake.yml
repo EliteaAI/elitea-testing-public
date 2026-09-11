@@ -177,9 +177,19 @@ nodes:
             actor_login = actor_obj.get('login', '') if isinstance(actor_obj, dict) else ''
             conclusion = workflow_run.get('conclusion', '') or ''
 
+            # Get workflow name and create cleared version
+            workflow_name_full = workflow_run.get('name', 'unknown') or 'unknown'
+            # Clear name: replace ' ' and '_' with '-', remove '[' and ']', lowercase
+            workflow_name_cleared = workflow_name_full.lower().replace(' ', '-').replace('_', '-').replace('[', '').replace(']', '')
+
+            # Check if workflow name contains allowed patterns
+            allowed_patterns = ['dev-stable', 'stage1', 'stage2', 'stage3', 'next']
+            name_lower = workflow_name_full.lower()
+            matches_pattern = any(p in name_lower for p in allowed_patterns)
+
             should_process = (
                 action == 'completed' and
-                'test-ui-dev-stable.yml' in workflow_path and
+                matches_pattern and
                 actor_login == 'breilian' and
                 conclusion == 'failure'
             )
@@ -188,7 +198,6 @@ nodes:
             if not isinstance(head_commit, dict):
                 head_commit = {}
 
-            workflow_name_full = workflow_run.get('name', 'unknown') or 'unknown'
             workflow_name_short = workflow_path.replace('.github/workflows/', '').replace('.yml', '') if workflow_path else 'unknown'
 
             run_id_val = workflow_run.get('id', 'unknown')
@@ -200,7 +209,8 @@ nodes:
 
             run_id_str = str(run_id_val) if run_id_val else 'unknown'
             run_num_str = str(workflow_run.get('run_number', '') or 'unknown')
-            maintenance_file = f"{workflow_name_short}_{run_num_str}_{run_id_str}.json"
+            # Filename: [CLEARED_NAME]_[RUN_NUM]_[RUN_ID].json
+            maintenance_file = f"{workflow_name_cleared}_{run_num_str}_{run_id_str}.json"
 
             out = {
                 'run_id': run_id_str,
