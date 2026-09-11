@@ -1488,9 +1488,16 @@ nodes:
                 current_tests = []
 
             # Parse existing file content (if exists)
+            # Check for API error responses only - not content words like "assertion-failure"
             existing_runs = {}
-            existing_str = str(existing_content).lower()
-            file_exists = existing_content and 'not found' not in existing_str and 'error' not in existing_str and 'failed' not in existing_str
+            existing_str = str(existing_content).strip()
+            is_error_response = (
+                not existing_content or
+                existing_str.startswith('File') and 'not found' in existing_str.lower() or
+                existing_str.startswith('Error') or
+                existing_str.startswith('Failed to')
+            )
+            file_exists = not is_error_response and existing_str.startswith('{')
 
             if file_exists:
                 try:
