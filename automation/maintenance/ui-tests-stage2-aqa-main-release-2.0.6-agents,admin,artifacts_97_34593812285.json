@@ -1,0 +1,96 @@
+{
+  "runs": {
+    "20260911120015": [
+      {
+        "id": null,
+        "automation_test_id": "tests.ui.artifacts.test_artifacts_multi_file.TestArtifactMultiFileDownload.test_agent_creates_files_at_root_and_in_subfolder",
+        "resolution": "id_mapping_error",
+        "tracking_issue": "",
+        "failure_type": "TMS Mapping Missing",
+        "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+      },
+      {
+        "id": "ELITEA-2284",
+        "automation_test_id": "tests.ui.admin.test_personal_token_create_and_verify.TestPersonalTokenCreateAndVerify.test_expired_token_shows_expired_icon_and_label",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Expired token icon/label not found - locator count assertion failed (expected 1, got 0)",
+        "reasoning": "Clear assertion failure: 'AssertionError: Locator expected to have count 1' - the expired token UI element (icon/label) is not rendered as expected. This is a specific product behavior failure, not infrastructure. No server errors or timeouts involved. Warrants investigation."
+      },
+      {
+        "id": "ELITEA-1869",
+        "automation_test_id": "tests.ui.agents.test_agent_back_navigation.test_back_button_from_agent_detail_returns_to_intact_agents_list",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2145"
+      },
+      {
+        "id": "ELITEA-1874",
+        "automation_test_id": "tests.ui.agents.test_agent_embedded_chat_send_message.TestAgentEmbeddedChatSendMessage.test_send_message_via_enter_and_verify_non_empty_response",
+        "resolution": "to_rerun",
+        "tracking_issue": "",
+        "failure_type": "api-error",
+        "failure_summary": "Agent chat returned 'Temporary server error' instead of expected PONG response",
+        "reasoning": "The agent backend returned 'Temporary server error, please try again' instead of the expected 'PONG' response. This is a transient backend error, not a product bug in the UI. Multiple other agent tests also received 'Temporary server error' in the same run, confirming backend instability at the time of the run."
+      },
+      {
+        "id": "ELITEA-1899",
+        "automation_test_id": "tests.ui.agents.test_agent_icon_management.TestAgentIconManagement.test_agent_icon_change_persists_on_list_card",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Agent icon change does not update the header icon src after selection",
+        "reasoning": "Clear assertion failure: 'Selecting a different icon option should change the header icon src'. This is a specific UI behavior assertion that failed without any server errors or timeouts. The test ran to completion and the icon change did not persist/reflect as expected - a genuine product bug."
+      },
+      {
+        "id": "ELITEA-1892",
+        "automation_test_id": "tests.ui.agents.test_agent_publish_unpublish_version.TestAgentPublishUnpublishVersion.test_publish_draft_version_then_unpublish_reverts_to_draft",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2082"
+      },
+      {
+        "id": "ELITEA-1891",
+        "automation_test_id": "tests.ui.agents.test_agent_version_selector_order.TestAgentVersionSelectorOrder.test_version_selector_lists_versions_in_correct_order",
+        "resolution": "to_rerun",
+        "tracking_issue": "",
+        "failure_type": "timeout",
+        "failure_summary": "Timeout waiting for version selector element (Locator.wait_for: 60000ms exceeded)",
+        "reasoning": "Failed with 'Locator.wait_for: Timeout 60000ms exceeded' across all 3 retry attempts. The timeout is on a UI element wait, likely caused by backend slowness/instability observed across the entire agents run (multiple tests getting server errors and timeouts). Not a deterministic product bug."
+      },
+      {
+        "id": null,
+        "automation_test_id": "tests.ui.agents.test_agent_with_github_toolkit.TestAddToolkitToAgent.test_add_toolkit_to_agent",
+        "resolution": "id_mapping_error",
+        "tracking_issue": "",
+        "failure_type": "TMS Mapping Missing",
+        "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+      },
+      {
+        "id": null,
+        "automation_test_id": "tests.ui.agents.test_agent_with_github_toolkit.TestChatWithAgentToolkit.test_agent_chat_with_github_toolkit",
+        "resolution": "id_mapping_error",
+        "tracking_issue": "",
+        "failure_type": "TMS Mapping Missing",
+        "failure_summary": "Test not registered in TMS index - add automation_test_id to case file"
+      },
+      {
+        "id": "ELITEA-1999",
+        "automation_test_id": "tests.ui.agents.test_build_with_ai_skill_from_agent.TestBuildWithAISkillFromAgent.test_build_with_ai_skill_auto_attaches_and_redirects_to_agent",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "api-error",
+        "failure_summary": "Build-with-AI generate-draft API returned HTTP 500",
+        "reasoning": "The failure is 'Expected the generate-draft request to succeed, got 500'. An HTTP 500 from the generate-draft endpoint is a backend error that could indicate a real product/API bug rather than transient infrastructure. Unlike the 'Temporary server error' chat responses which are clearly transient, a 500 on a specific generate-draft API call warrants investigation as a potential regression."
+      },
+      {
+        "id": "ELITEA-1901",
+        "automation_test_id": "tests.ui.agents.test_import_agent_valid_md_file.TestImportAgentValidMdFile.test_import_agent_valid_md_file",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Imported agent model selector shows wrong model - expected 'GPT-5.2' but got 'Anthropic Claude 4.5 Sonnet'",
+        "reasoning": "Clear assertion failure: 'Imported agent's Model selector should reflect the fixture's model (gpt-5.2), expected GPT-5.2, got: Anthropic Claude 4.5 Sonnet'. The import functionality is not preserving the model specified in the MD file fixture. This is a specific, deterministic product behavior failure unrelated to server errors or timeouts."
+      }
+    ]
+  }
+}
