@@ -149,16 +149,35 @@ board_read_failed() {
   echo "[$LOOP $(date +%H:%M:%S)] board read failed — $1: ${why:-no error text}${reset} — treating it as empty this pass" >&2
 }
 
+# The queue read, lean: issue numbers only. `gh project item-list --limit 50`
+# fetches every field of every item and costs ~1 GraphQL point per item
+# REQUESTED (measured 2026-09-11: 51 per read) — two reads per pass at
+# POLL=5m is ~1200 points/hour, a quarter of the user's pool, for an idle
+# loop. This query asks for numbers only and costs 1. The owner may be an
+# org or a user; the first kind that answers is cached in state/ (this runs
+# in a command substitution, so a shell variable would not survive the call).
+board_query() { # <status> → raw JSON on stdout, non-zero when the read failed
+  local kind out q="status:\"$1\" $QUERY" known
+  known=$(cat "$STATE/owner-kind" 2>/dev/null || true)
+  for kind in ${known:-organization user}; do
+    if out=$(gh api graphql -F o="$PROJECT_OWNER" -F p="$PROJECT_NUMBER" -F q="$q" \
+          -f query="query(\$o:String!,\$p:Int!,\$q:String!){ $kind(login:\$o){ projectV2(number:\$p){ items(first:50, query:\$q){ nodes{ content{ ... on Issue { number } } } } } } }" \
+          2>"$STATE/board-error-$LOOP.txt"); then
+      [ "$known" = "$kind" ] || echo "$kind" > "$STATE/owner-kind"
+      printf '%s' "$out"; return 0
+    fi
+  done
+  return 1
+}
+
 cards_in() { # status → issue numbers, in BOARD ORDER (top of column first)
   # Board reads WILL fail transiently over a multi-day run (rate limits,
   # network). A failed read is an empty queue THIS PASS — the next POLL tick
   # retries — never a reason to die (a loop died silently on this once).
-  local out err="$STATE/board-error-$LOOP.txt"
-  if ! out=$(gh project item-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" \
-       --query "status:\"$1\" $QUERY" --format json --limit 50 2>"$err"); then
+  local out
+  if ! out=$(board_query "$1"); then
     sleep 5
-    out=$(gh project item-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" \
-       --query "status:\"$1\" $QUERY" --format json --limit 50 2>"$err") \
+    out=$(board_query "$1") \
       || { board_read_failed "queue read: $1"; : > "$STATE/read-failed-$LOOP"; return 0; }
   fi
   # BOARD ORDER, not numeric: the Projects API returns items in the board's
@@ -169,7 +188,7 @@ cards_in() { # status → issue numbers, in BOARD ORDER (top of column first)
   # with no documented API contract — applying an explicit sort to the board
   # view disables drag ranking, after which pickup follows whatever order the
   # API then yields. If you need auditable priority, add a field and sort on it.
-  printf '%s' "$out" | jq -r '.items[] | select(.content.type == "Issue") | .content.number'
+  printf '%s' "$out" | jq -r '.data[] | .projectV2.items.nodes[] | .content.number // empty'
 }
 
 # The queue: Approved cards (fresh work AND dragged-back resumes — the drag is
