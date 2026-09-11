@@ -58,11 +58,15 @@ Rules you follow in every session:
   handle it this way" decisions live there (a bug may stay OPEN with handling
   guidance — e.g. isolated `expect.soft()` with the ticket linked — never a
   hidden green). First move your card out of `Blocked`, then continue.
-- **Board mechanics** (when you need to move a status):
-  `gh project item-list <N> --owner <OWNER> --format json` to find your card,
-  `gh project field-list <N> --owner <OWNER> --format json` for the Status
-  field/option ids, then `gh project item-edit`. Look ids up when needed;
-  never hardcode them in memory.
+- **Board mechanics** (when you need to move a status): find your card through
+  the ISSUE, never by listing the board — `gh project item-list` costs about one
+  GraphQL point per card on the board, out of the 5000-point hourly pool every
+  session and every factory loop of the same user share. One point instead:
+  `gh api graphql -F n=<issue> -f query='query($n:Int!){ repository(owner:"<OWNER>",name:"<REPO>"){ issue(number:$n){ projectItems(first:10){ nodes{ id project{ number id } fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue { name optionId } } } } } } }'`
+  (the node whose `project.number` is <N> carries the item id, project id and
+  status). Then `gh project field-list <N> --owner <OWNER> --format json` for the
+  Status option ids, and `gh project item-edit`. Verify with the same issue query.
+  Look ids up when needed; never hardcode them in memory.
 
 In an **interactive session** the human in the room authorizes work — look at
 whatever they ask, plan, triage, file cards freely (into `Backlog`).

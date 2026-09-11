@@ -18,10 +18,21 @@ If your card carries `control:audited` (this is a rework of an audited
 delivery): REMOVE the label when you start — your re-delivery must re-enter
 the audit queue unlabeled.
 
-Mechanics:
-`gh project item-list <board> --owner <owner> --format json` to find your
-card, `gh project field-list` for the Status field/option ids, then
-`gh project item-edit`. Keep a work log in issue comments
+Mechanics — **never list the board to find your card.** `gh project item-list`
+costs about one GraphQL point per card on the board, out of the 5000-point
+hourly pool that every session AND every loop read of the same GitHub user
+shares; two scans per session on a 1000-card board blind the whole factory for
+the rest of the hour (live, 2026-09-11). Ask the ISSUE for its card — one point:
+    gh api graphql -F n=<issue> -f query='query($n:Int!){ repository(owner:"<owner>",name:"<repo>"){ issue(number:$n){ projectItems(first:10){ nodes{ id project{ number id } fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue { name optionId } } } } } } }'
+Take the node whose `project.number` is <board>: it gives the item id, the
+project id and the current status. Option ids: `gh project field-list <board>
+--owner <owner> --format json` (cheap, once per session). Move:
+`gh project item-edit --id <item> --project-id <project> --field-id <status field>
+--single-select-option-id <option>`. Verify with the SAME issue query, never with
+a list. Need several cards at once (siblings sharing a case id)? A FILTERED list is
+one point: `gh project item-list <board> --owner <owner> --format json --limit 50
+--query '<text or status:"…">'` — only the unfiltered dump is expensive.
+Keep a work log in issue comments
 (🔧 started / 📝 update / 🚫 blocked / ✅ done).
 
 Deltas:

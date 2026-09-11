@@ -19,8 +19,10 @@ Your session must END with the card carrying a verdict label **and** the termina
 need to move the card between columns; the label is the whole handoff.
 
 - Move the card to `In Progress` when you start (board hygiene), then stamp the
-  labels on exit. `env -u GITHUB_TOKEN gh project item-list/field-list/item-edit`
-  for the mechanics — look up ids each time, never hardcode.
+  labels on exit. Find your card through the issue's `projectItems` GraphQL query
+  (`tal.md` § Mechanics — never `gh project item-list` the whole board, it costs
+  about a point per card out of the shared hourly pool), `field-list` for the
+  option ids, `item-edit` to move — look up ids each time, never hardcode.
 - Stamp exactly one verdict: `repro:confirmed` | `repro:local-only` |
   `repro:not-reproducible`, **plus** `repro:triaged`. Keep a work log in comments.
 - Ensure the labels exist once (idempotent), e.g.

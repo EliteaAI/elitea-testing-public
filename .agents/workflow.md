@@ -241,10 +241,19 @@ real environment — not per test.
 Board #9 discipline lives in `.agents/profile.md` § Issue tracker — status machine,
 human-only `Approved`, `question`/`bug` labels, work-log comments, and the
 **identity rule**: every tracker/board write is prefixed `env -u GITHUB_TOKEN` so it
-runs as the keyring account, never the shared `GITHUB_TOKEN`. Board mechanics:
-`env -u GITHUB_TOKEN gh project item-list 9 --owner EliteaAI --format json`,
-`… gh project field-list …`, `… gh project item-edit` — look up ids each time,
-never hardcode.
+runs as the keyring account, never the shared `GITHUB_TOKEN`. Board mechanics —
+**find your card through the issue, never by listing the board**: an unfiltered
+`gh project item-list 9` costs about one GraphQL point per card (1000+ today) out of
+the 5000-point hourly pool that every session and every factory loop of this user
+share; two scans per session blind the factory for the rest of the hour (2026-09-11).
+One point instead:
+`env -u GITHUB_TOKEN gh api graphql -F n=<issue> -f query='query($n:Int!){ repository(owner:"EliteaAI",name:"elitea-testing-public"){ issue(number:$n){ projectItems(first:10){ nodes{ id project{ number id } fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue { name optionId } } } } } } }'`
+(the node with `project.number == 9` carries the item id, project id and status).
+Then `… gh project field-list 9 --owner EliteaAI --format json` for the option ids
+and `… gh project item-edit` to move; verify with the same issue query. Several
+cards at once: a FILTERED list is one point (`… item-list 9 --owner EliteaAI
+--format json --limit 50 --query 'ELITEA-1899'`). Look up ids each time, never
+hardcode.
 Interactive session → the human in the room authorizes work; factory mode → work only
 the one issue the dispatch names.
 
