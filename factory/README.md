@@ -191,6 +191,20 @@ mode.
 Each loop sets its own cadence via `POLL` (`30s`/`5m`/`1h`): with it, an empty
 queue means "sleep, check again" at zero token cost; without it, the run ends.
 
+**A verdict-only loop (agent never moves cards) must set `STATUS_ACTIVE=""`**
+in its `.env`. The `In Progress` query exists as a retry path for a loop's
+OWN mid-flight work; a verdict-only loop has none — its retry state is its
+own trigger column (still there, still unlabeled). A control loop audited a
+mid-delivery card through this query before claim-gating existed; the claim
+gate now blocks that too, but the empty override remains the honest
+statement: this loop owns nothing mid-flight.
+
+**A loop whose tasks ARE bug issues** (a reproduce loop triggered by its own
+column) must override `CHILD_LABELS="question"` in its `.env` — otherwise the
+child-issue guard refuses every bug card and the queue reads empty (live
+finding). The global guard still protects every other loop; the override is
+per-loop, like everything else in a loop env.
+
 **Queue disjointness is your job — and an empty `QUERY` is a catch-all.**
 `QUERY` terms are ANDed onto every queue read; Tal with `QUERY=""` takes every
 card in his trigger column, including ones meant for a specialized loop. Pair
@@ -199,6 +213,18 @@ each specialized filter with its negation on the catch-all: sage
 a live board). A loop can also react to a **different column entirely** —
 `STATUS_READY="Repro"` in its `.env` overrides the trigger per loop (any
 config.env value can be overridden per loop; the env is sourced after it).
+
+**`In Progress` is claim-gated, not query-gated.** Every dispatch first
+writes `state/claim-<issue>` naming the loop; a card in the shared
+`In Progress` column is claimable ONLY by the loop the claim names — a
+transcript proves who EVER worked a card, the claim says who is mid-flight
+NOW. Last writer wins (dispatching from a trigger column takes ownership, so
+re-routed cards transfer cleanly), and the claim is cleared when the card
+leaves the loop's queue. An `In Progress` card with NO claim — dragged there
+by hand, or mid-flight when you upgraded to claim-gating — is left alone
+with a log line: drag it back to a trigger column to (re)start it. Query
+disjointness therefore only has to hold across TRIGGER columns; the negation
+pairing above routes fresh cards, it no longer protects mid-flight ones.
 
 **Exclusive loops**: `EXCLUSIVE=1` makes a loop wait until every other loop's
 current session finishes, then hold a lock while each of its own sessions
@@ -214,6 +240,39 @@ a later Tal automation conversation on one issue never mix. Two loops sharing
 one agent share conversations per issue, which is exactly why their queues
 must not overlap.
 
+## Updating the scripts
+
+**Stop the fleet before copying a new `run.sh` over it.** Bash reads scripts
+lazily from disk: overwrite a running one and the live processes can execute
+old and new code spliced at arbitrary offsets — undefined behavior that looks
+like impossible bugs. Sequence: Ctrl-C → check `ps` for surviving `claude`
+processes → copy → relaunch. Also check for orphaned bundle hooks spinning at
+100% CPU after a stop (`pkill -f "hooks/sdlc-skills/session-start"`) — a
+session killed mid-startup can leave its SessionStart hook busy-looping
+(bundle bug, observed live; harmless except to your battery).
+
+The one safe way to update a *running* loop's script is an atomic rename:
+write the new file beside the old one and `mv` it over. The running bash
+keeps reading its old inode to the end, and the next launch gets the new
+file. A `cp` over the file is what splices; `mv` never does.
+
+## When the board goes quiet: the GraphQL rate limit
+
+`board read failed — queue read: Approved: … API rate limit exceeded …
+(GraphQL pool resets at 20:31)` for pass after pass is not a broken loop.
+Every board read is a GraphQL call, and GitHub gives each *user* one pool of
+5000 points per hour, shared by every token that user holds: the loop's
+keyring login AND every `gh` call the agents make inside their sessions
+(`gh issue list --limit 300` dedup sweeps are the heavy ones). When it is
+exhausted, every read fails until the hourly reset and the loop idles at its
+`POLL` cadence naming the reset time; nothing is lost and nothing needs a
+restart. A card whose post-session status read fails is *deferred* — not
+counted as a stalled attempt, not counted as done — and re-read next pass.
+Two things follow: loops and agents sharing one GitHub account across several
+machines share one pool; and a loop can be given its own identity with
+`export GH_TOKEN=…` in its `.env` (its comments and the escalation write are
+then attributed to that identity).
+
 ## Cardless loops — missions on a cadence, no card needed
 
 Not everything is card-driven. `CARDLESS=1` in a loop's `.env` skips the
@@ -224,11 +283,30 @@ no claims, no attempts, no outcome reads. First use: intake
 open AND closed issues; a human still approves every card by dragging).
 Whatever a cardless mission files lands on the board like anything else.
 
-One persistent conversation per cardless loop (id derived from the loop
-name), so the agent remembers previous ticks — but its real dedup is always
-against the board, so long-term memory decay is harmless. Renaming the loop
-file starts a fresh conversation; nothing else changes. Cardless loops honor
-the exclusive gate like everyone else, and join `--all`.
+Every cardless tick runs in a fresh conversation (random id, echoed in the
+loop banner so the transcript stays findable). Memory was never load-bearing
+here — dedup is always against the board, never against memory — so a
+persistent conversation only accumulated token cost and stale context across
+months of ticks; each tick now starts clean and its transcript expires under
+`cleanupPeriodDays`. Cardless loops honor the exclusive gate like everyone
+else, and join `--all`.
+
+## Example loops
+
+Every `loops/EXAMPLE-*` pair is a working loop from the reference project,
+renamed so `--all` skips it. Copy one, drop the prefix, adapt the repo names
+and skills it mentions. Each shows one pattern:
+
+| Example | Pattern it shows |
+|---|---|
+| `intake` | cardless: scan the TMS source, file cards, never work them |
+| `sage` | the simplest card-driven loop on its own trigger column (`Reproduce`), with the `CHILD_LABELS` override a bug-working loop needs |
+| `reproduce` | dequeue by LABEL, not by card move: the agent stamps a verdict + terminal label, the loop's `QUERY` excludes it |
+| `control` | verdict-only audit of `Ready` deliveries: `STATUS_ACTIVE=""`, own `SID_SCOPE` so it never resumes the deliverer's conversation |
+| `track-app-issues` | poll an upstream bug tracker and un-park `Blocked` cards when the fix ships (draft) |
+| `syncbranch` | cardless + `EXCLUSIVE`: sync long-lived branches while nothing else is mid-session |
+| `docs-compaction` | cardless + `EXCLUSIVE`, weekly: propose a dedup PR, never merge it |
+| `memory-guard` | cardless + `EXCLUSIVE`, nightly: archive per-role memory over the hook's context budget |
 
 ## What each piece is
 

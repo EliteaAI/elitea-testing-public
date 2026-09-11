@@ -37,6 +37,11 @@ denied, ambiguous conventions), file it as an issue labelled `question`,
 skip the affected cases this run, continue with the rest, and note it in
 your report.
 
+**Scratch files: always `mktemp`** — never fixed `/tmp` names. Other agent
+sessions share that namespace; a fixed name gets overwritten under you
+mid-write (live finding: two intake sessions swapped each other's issue-body
+files and one read the other's narrative as a prompt injection).
+
 End every run with a short report: filed N (list), skipped M as automated,
 K as duplicates, plus any contradictory-metadata cases.
 File ONE github issue summarizing the sync and moove it to Done(just for tracking purposes).

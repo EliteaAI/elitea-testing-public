@@ -369,6 +369,11 @@ trap 'release_gate' EXIT
 run_session() { # extra claude args…
   local cap=()
   [ -n "${MAX_TURNS:-}" ] && cap=(--max-turns "$MAX_TURNS")
+  # --setting-sources project,local: an unattended session runs on the repo's
+  # settings only — a user-level settings.json (personal hooks, permissions,
+  # plugins) must not change what the factory does on this machine vs the next.
+  # --no-chrome: the Chrome-extension bridge has no browser to attach to
+  # headless; its probe only adds startup noise. Both flags need a 2026 CLI.
   set +e
   claude --setting-sources project,local --no-chrome --agent "$AGENT" --permission-mode "$PERMISSION_MODE" \
          ${cap[@]+"${cap[@]}"} "$@" -p "$prompt" 2>&1 | tee "$STATE/last-$LOOP.log"
