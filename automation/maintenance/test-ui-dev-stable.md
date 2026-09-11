@@ -1,4 +1,4 @@
-# Test Maintenance Report
+# Maintenance Report: test-ui-dev-stable
 
 ## Legend
 
@@ -21,7 +21,7 @@
 
 ## Summary
 
-- **Total Runs:** 4
+- **Runs Shown:** 4 (max 10)
 - **Total Test Cases:** 3
 
 *Generated automatically from maintenance files*
