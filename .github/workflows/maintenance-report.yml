@@ -116,7 +116,7 @@ jobs:
                       run_numbers_order.append(run_key)
 
                   for test in tests:
-                      test_id = test.get('id', 'UNKNOWN')
+                      test_id = test.get('id') or test.get('automation_test_id') or 'UNKNOWN'
                       resolution = test.get('resolution', 'unknown')
                       runs_data[run_key][test_id] = resolution
 
@@ -124,10 +124,10 @@ jobs:
                   print(f"No valid data for group {group_name}")
                   continue
 
-              # Collect all unique test IDs (filter out None)
+              # Collect all unique test IDs
               all_test_ids = set()
               for run_tests in runs_data.values():
-                  all_test_ids.update(k for k in run_tests.keys() if k is not None)
+                  all_test_ids.update(run_tests.keys())
 
               all_test_ids = sorted(all_test_ids)
 
