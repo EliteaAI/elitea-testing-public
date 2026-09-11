@@ -1,0 +1,21 @@
+{
+  "runs": {
+    "20260911100954": [
+      {
+        "id": "ELITEA-2367",
+        "automation_test_id": "tests.ui.agent_hub.test_empty_state.TestCatalogEmptyState.test_empty_state_when_search_matches_no_agents",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Filter chip count mismatch: expected 11 (2 Featured + 9 Categories), found 12",
+        "reasoning": "Clear assertion failure with a specific count mismatch. The test hardcodes an expectation of 11 filter chips (2 Featured + 9 Categories) but the UI now shows 12. This strongly suggests a new category was added to the Agent Hub without updating the test assertion. This is a real product change that requires either a test update (if the new category is intentional) or a product bug investigation."
+      },
+      {
+        "id": "ELITEA-1793",
+        "automation_test_id": "tests.ui.skills.test_ghost_skill_after_agent_removed.TestGhostSkillAfterAgentRemoved.test_ghost_skill_not_shown_after_agent_participant_removed",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2142"
+      }
+    ]
+  }
+}
