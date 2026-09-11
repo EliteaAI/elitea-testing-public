@@ -1,0 +1,6 @@
+ERROR    elitea.steps:actions.py:49 Step failed: Remove agent participant from chat — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("chat-participants-popper").locator("[data-testid=\"chat-participant-row-application_1937_574\"]") to be visible
+ERROR    elitea.steps:actions.py:49 Step failed: Remove agent participant from chat — Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for get_by_test_id("chat-participants-popper").locator("[data-testid=\"chat-participant-row-application_1938_574\"]") to be visible

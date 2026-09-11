@@ -1,0 +1,30 @@
+[CLEANUP] Running guardrails cleanup BEFORE tests
+[CLEANUP] Starting guardrails cleanup...
+[CLEANUP] Navigated to guardrails page
+[CLEANUP] Cleaning up blocked toolkits
+[CLEANUP] Currently blocked toolkits: []
+[CLEANUP] Checking toolkit 'jira': blocked=False
+[CLEANUP] Checking toolkit 'JIRA': blocked=False
+[CLEANUP] Checking toolkit 'Jira': blocked=False
+[CLEANUP] Cleaning up blocked tools
+[CLEANUP] Removing empty toolkit containers
+[CLEANUP] Removed empty toolkit containers
+[CLEANUP] Nothing was blocked, no changes needed
+[CLEANUP] Reloading page for stable state
+[CLEANUP] Cleaning up sensitive tools
+[CLEANUP] Removing empty toolkit blocks from Sensitive Action Tools
+[CLEANUP] Removing empty sensitive toolkit blocks - using dynamic discovery
+[CLEANUP] Found 3 potential toolkit labels in Sensitive Actions section
+[CLEANUP] Discovered toolkit: 'confluence'
+[CLEANUP] Discovered toolkit: 'github'
+[CLEANUP] Total unique toolkits discovered: 2
+[CLEANUP] Processing toolkit block: confluence
+[CLEANUP] Toolkit 'confluence' has 2 tool chips
+[CLEANUP] Toolkit 'confluence' has tools, keeping block
+[CLEANUP] Processing toolkit block: github
+[CLEANUP] Toolkit 'github' has 1 tool chips
+[CLEANUP] Toolkit 'github' has tools, keeping block
+[CLEANUP] Total removed: 0 empty blocks
+[CLEANUP] Removed empty sensitive toolkit blocks
+[CLEANUP] Checking if save is needed for sensitive section
+[CLEANUP] No changes to save in sensitive section
