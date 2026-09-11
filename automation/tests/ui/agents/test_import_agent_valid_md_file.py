@@ -62,13 +62,9 @@ INSTR_MARKER = "ELITEA_1901_INSTR_MARKER"
 # ``_KNOWN_NONBLOCKING_CONSOLE_SUBSTRING`` pattern.
 _KNOWN_NONBLOCKING_CONSOLE_SUBSTRING = "validateDOMNesting"
 
-# Live-confirmed rendered display name for settings.default_model_name
-# ("gpt-5.2") on the Model Selector's closed state (AFS Test Data section —
-# confirmed via the real Import button -> preview -> confirm -> detail page
-# flow). Not a general slug->display transformation (other models render
-# differently, e.g. "GPT-5 mini"), so kept as an explicit literal rather than
-# derived from settings.default_model_name.upper().
-EXPECTED_MODEL_DISPLAY_NAME = "GPT-5.2"
+# Model configuration - uses Claude 4.5 Haiku for all environments
+TEST_MODEL_NAME = settings.default_model_name
+EXPECTED_MODEL_DISPLAY_NAME = "Anthropic Claude 4.5 Haiku"
 
 
 class TestImportAgentValidMdFile:
@@ -128,7 +124,7 @@ class TestImportAgentValidMdFile:
             "---\n"
             f"name: {agent_name}\n"
             f"description: {agent_description}\n"
-            f"model: {settings.default_model_name}\n"
+            f"model: {TEST_MODEL_NAME}\n"
             "---\n"
             f"{agent_instructions}\n"
         )
@@ -289,7 +285,7 @@ class TestImportAgentValidMdFile:
                 selected_model = detail_page.get_selected_model_name()
                 assert selected_model == EXPECTED_MODEL_DISPLAY_NAME, (
                     "Imported agent's Model selector should reflect the "
-                    f"fixture's model ({settings.default_model_name!r}), "
+                    f"fixture's model ({TEST_MODEL_NAME!r}), "
                     f"expected {EXPECTED_MODEL_DISPLAY_NAME!r}, got: "
                     f"{selected_model!r}"
                 )
