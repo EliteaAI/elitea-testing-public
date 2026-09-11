@@ -42,7 +42,6 @@ from pathlib import Path
 import allure
 import pytest
 import yaml
-
 from pages.agent_detail_page import AgentDetailPage
 from pages.agent_form_page import AgentFormPage
 from pages.agents_list_page import AgentsListPage
@@ -348,9 +347,16 @@ class TestImportAgentZipNestedAgentDependencies:
 
                 detail_page = AgentDetailPage(page)
                 detail_page.verify_on_detail_page(expected_agent_id=imported_main_agent_id)
-                assert detail_page.get_name() == main_agent_name, (
-                    "Imported main agent's name should match the exported "
-                    "main Agent's name"
+                # Retrying read (#2261): the form shell renders before the
+                # agent GET returns, so a one-shot get_name() could land on
+                # the empty input on DEV.
+                detail_page.expect_name(
+                    main_agent_name,
+                    timeout=NAVIGATION_TIMEOUT,
+                    message=(
+                        "Imported main agent's name should match the exported "
+                        "main Agent's name"
+                    ),
                 )
                 assert detail_page.is_toolkit_attached(
                     nested_agent_name, timeout=NAVIGATION_TIMEOUT
@@ -386,9 +392,13 @@ class TestImportAgentZipNestedAgentDependencies:
                     f"imported={imported_nested_agent_id}, "
                     f"source={source_nested_agent_id}"
                 )
-                assert nested_detail_page.get_name() == nested_agent_name, (
-                    "Imported nested agent's name should match the source "
-                    "verbatim"
+                nested_detail_page.expect_name(
+                    nested_agent_name,
+                    timeout=NAVIGATION_TIMEOUT,
+                    message=(
+                        "Imported nested agent's name should match the source "
+                        "verbatim"
+                    ),
                 )
                 imported_nested_instructions = nested_detail_page.get_instructions()
                 assert NESTED_MARKER in imported_nested_instructions, (
@@ -405,15 +415,23 @@ class TestImportAgentZipNestedAgentDependencies:
                 # source main + nested agents remain unaffected.
                 source_main_detail_page = AgentDetailPage(page)
                 source_main_detail_page.navigate(source_main_agent_id)
-                assert source_main_detail_page.get_name() == main_agent_name, (
-                    "Source main agent should remain unchanged and "
-                    "independently addressable after the import"
+                source_main_detail_page.expect_name(
+                    main_agent_name,
+                    timeout=NAVIGATION_TIMEOUT,
+                    message=(
+                        "Source main agent should remain unchanged and "
+                        "independently addressable after the import"
+                    ),
                 )
                 source_nested_detail_page = AgentDetailPage(page)
                 source_nested_detail_page.navigate(source_nested_agent_id)
-                assert source_nested_detail_page.get_name() == nested_agent_name, (
-                    "Source nested agent should remain unchanged and "
-                    "independently addressable after the import"
+                source_nested_detail_page.expect_name(
+                    nested_agent_name,
+                    timeout=NAVIGATION_TIMEOUT,
+                    message=(
+                        "Source nested agent should remain unchanged and "
+                        "independently addressable after the import"
+                    ),
                 )
 
                 real_console_errors = [
