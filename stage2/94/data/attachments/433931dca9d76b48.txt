@@ -1,6 +1,0 @@
-ERROR    elitea.steps:actions.py:49 Step failed: Select LLM model — Locator.wait_for: Timeout 5000ms exceeded.
-Call log:
-  - waiting for locator("[data-testid^=\"model-selector-option-\"]").filter(has_text="GPT-5 mini").first to be visible
-ERROR    elitea.steps:actions.py:49 Step failed: Select LLM model — Locator.wait_for: Timeout 5000ms exceeded.
-Call log:
-  - waiting for locator("[data-testid^=\"model-selector-option-\"]").filter(has_text="GPT-5 mini").first to be visible
