@@ -87,6 +87,9 @@ state:
   delete_result:
     type: str
     value: ''
+  is_dev_stable:
+    type: str
+    value: 'false'
   issue_title:
     type: str
     value: ''
@@ -214,6 +217,9 @@ nodes:
             # Filename: [CLEARED_NAME]_[RUN_NUM]_[RUN_ID].json
             maintenance_file = f"{workflow_name_cleared}_{run_num_str}_{run_id_str}.json"
 
+            # Check if this is dev-stable workflow (for real issue creation)
+            is_dev_stable = 'devstable' in name_normalized
+
             out = {
                 'run_id': run_id_str,
                 'repo': repo_obj.get('full_name', 'EliteaAI/elitea-testing-public') if should_process else '',
@@ -226,7 +232,8 @@ nodes:
                 'commit_sha': head_sha[:7] if head_sha else '',
                 'commit_message': commit_msg[:100] if commit_msg else '',
                 'actor': actor_login,
-                'maintenance_file_path': maintenance_file
+                'maintenance_file_path': maintenance_file,
+                'is_dev_stable': 'true' if is_dev_stable else 'false'
             }
         except:
             pass
@@ -247,6 +254,7 @@ nodes:
       - commit_message
       - actor
       - maintenance_file_path
+      - is_dev_stable
     structured_output: true
     transition: CheckFailure
 
@@ -1190,9 +1198,12 @@ nodes:
     type: router
     input:
       - issue_status
+      - is_dev_stable
     condition: |
       {% if issue_status == 'skip' %}
       SkipAndNext
+      {% elif is_dev_stable != 'true' %}
+      MockIssueForNonDevStable
       {% elif issue_status == 'Todo' %}
       CreateIssueTodo
       {% else %}
@@ -1200,6 +1211,7 @@ nodes:
       {% endif %}
     routes:
       - SkipAndNext
+      - MockIssueForNonDevStable
       - CreateIssueTodo
       - CreateIssuePromoted
     default_output: CreateIssuePromoted
@@ -1214,6 +1226,56 @@ nodes:
     input:
       - current_group_index
     output:
+      - current_group_index
+    structured_output: true
+    transition: CheckMoreGroups
+
+  - id: MockIssueForNonDevStable
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+
+        out = {'created_issues': '[]', 'current_group_index': '0'}
+
+        try:
+            run_number = alita_state.get('run_number', '0') or '0'
+            created_raw = alita_state.get('created_issues', '[]')
+            idx = int(alita_state.get('current_group_index', '0'))
+            groups_raw = alita_state.get('issue_groups', '[]')
+
+            created = json.loads(created_raw, strict=False) if isinstance(created_raw, str) else created_raw
+            if not isinstance(created, list):
+                created = []
+
+            groups = json.loads(groups_raw, strict=False) if isinstance(groups_raw, str) else groups_raw
+
+            # Use mock issue ID for non-dev-stable runs
+            mock_issue_id = f"ISSUES_{run_number}"
+
+            # Store the mock issue with its tests
+            if idx < len(groups):
+                group = groups[idx]
+                created.append({
+                    'issue_url': mock_issue_id,
+                    'tests': group.get('tests', []),
+                    'title': group.get('title', '')
+                })
+
+            # Increment index for next iteration
+            out = {'created_issues': json.dumps(created), 'current_group_index': str(idx + 1)}
+        except:
+            pass
+
+        out
+    input:
+      - run_number
+      - created_issues
+      - current_group_index
+      - issue_groups
+    output:
+      - created_issues
       - current_group_index
     structured_output: true
     transition: CheckMoreGroups
