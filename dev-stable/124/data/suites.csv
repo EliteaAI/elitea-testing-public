@@ -1,41 +1,9 @@
 "Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
-"passed","Fri Sep 11 08:06:15 UTC 2026","Fri Sep 11 08:06:25 UTC 2026","9954","tests.ui.agent_hub","test_agent_hub_search_bar_filters_in_real_time","TestAgentHubSearchBarFiltersInRealTime","","","test_agent_hub_search_bar_filters_in_real_time","Typing a partial term into the Catalog search bar filters the
-        agent list in real time via a single debounced request; clearing
-        the typed text restores the exact original unfiltered set."
-"passed","Fri Sep 11 08:13:24 UTC 2026","Fri Sep 11 08:13:49 UTC 2026","24474","tests.ui.skills","test_skill_export_import","TestSkillExportImport","","","test_export_and_import_skill_base_version","Export a skill's base version, import the file, verify the round trip.
-
-        Steps (see AFS for full detail):
-        1. Navigate to create-skill form; Save starts disabled.
-        2. Fill name/description/tags/instructions; Save enables.
-        3. Save; note the source skill ID.
-        4. Export the base version via the overflow menu; verify .md download.
-        5. Read the exported file; verify frontmatter + instructions body.
-        6. Navigate to Skills list; click Import; verify file chooser.
-        7. Upload the exported file; verify the Import parameters dialog.
-        8. Confirm import; verify navigation + success toast + new unique ID.
-        9. Verify imported skill's version/name/description/tags/instructions.
-        10. Edit + save the imported skill; verify a clean save.
-        "
-"passed","Fri Sep 11 08:15:29 UTC 2026","Fri Sep 11 08:16:13 UTC 2026","43849","tests.ui.skills","test_skill_tag_filter","TestSkillTagFilter","","","test_filter_skills_by_tag","Create 3 skills with shared/unique tags; verify tag-filter narrowing.
-
-        Steps (see AFS for full detail):
-        1. Capture baseline grid state; create Skill A (formatting, output),
-           Skill B (formatting, english), Skill C (translation); verify all
-           3 plus any pre-existing skills are visible with their own tags.
-        2. Filter by `formatting` (shared tag) — verify exactly Skill A and
-           Skill B are shown, Skill C is excluded.
-        3. Clear the filter, then filter by `translation` (unique tag) —
-           verify exactly Skill C is shown.
-        4. Clear the filter, then filter by `output` (unique tag) — verify
-           exactly Skill A is shown.
-        5. Clear the filter — verify the grid is restored to the baseline
-           plus the 3 new skills.
-        "
-"passed","Fri Sep 11 08:05:32 UTC 2026","Fri Sep 11 08:05:39 UTC 2026","6565","tests.ui.agent_hub","test_agent_hub_filter_single_category","TestAgentHubFilterSingleCategory","","","test_agent_hub_filter_by_single_category","Clicking a single category filter-rail chip selects that chip and
-        filters the Agent Hub content to that category's agents only."
-"passed","Fri Sep 11 08:06:09 UTC 2026","Fri Sep 11 08:06:15 UTC 2026","6210","tests.ui.agent_hub","test_agent_hub_page_loads_private_project","TestAgentHubPageLoadsPrivateProject","","","test_agent_hub_page_loads_private_project","Agent Hub (Catalog) page loads without error for a Private-project
-        user: heading, search bar, full category filter rail, and agent
-        cards are all visible, with zero console errors."
+"passed","Fri Sep 11 09:47:20 UTC 2026","Fri Sep 11 09:47:27 UTC 2026","6549","tests.ui.agent_hub","test_agent_hub_open_agent_detail_modal","TestAgentHubOpenAgentDetailModal","","","test_agent_hub_open_agent_detail_modal","Clicking a Catalog agent card opens the preview modal as an overlay,
+        displaying icon, name, owner, liked status, overflow menu, close
+        button, description, CHAT STARTERS section, Welcome Message section,
+        and the Start Chat button — read-only, zero console errors, zero
+        4xx/5xx."
 "passed","Fri Sep 11 08:10:46 UTC 2026","Fri Sep 11 08:11:45 UTC 2026","59329","tests.ui.skills","test_import_agent_recreates_skills_with_new_ids","TestImportAgentRecreatesSkillsWithNewIds","","","test_import_agent_recreates_skills_with_new_ids","Export an Agent with an attached Skill, import it, verify a new
         Skill entity (new unique ID) is created and correctly linked.
 
@@ -62,6 +30,8 @@
            import (Axis 2 additions — import must be purely additive).
         8. Edit + save the imported Agent; verify a clean save.
         "
+"passed","Fri Sep 11 08:14:28 UTC 2026","Fri Sep 11 08:14:41 UTC 2026","13040","tests.ui.skills","test_skill_pin_unpin","TestSkillPinUnpin","","","test_skill_pin_moves_to_top_and_unpin_reverts","Pinning a skill (via the detail-page menu) moves it to the top of
+        the list; unpinning (same menu) reverts it."
 "passed","Fri Sep 11 08:14:23 UTC 2026","Fri Sep 11 08:14:28 UTC 2026","5498","tests.ui.skills","test_skill_export_import","TestSkillImportMissingFrontmatter","","","test_import_skill_missing_frontmatter_shows_validation_error","Upload a .md file missing the required `name` frontmatter key.
 
         Steps (see AFS for full detail):
@@ -72,51 +42,27 @@
         4. Verify no Skill was created (API IDs unchanged) and no
            `skill_import` network request fired at all.
         "
-"passed","Fri Sep 11 08:12:45 UTC 2026","Fri Sep 11 08:13:13 UTC 2026","27608","tests.ui.skills","test_skill_agent_version_selector","TestAttachSkillToAgentWithVersionSelector","","","test_attach_skill_to_agent_with_version_selector","Create a skill + agent, attach the skill, and verify the version
-        selector shows the default version, opens a real Versions menu, and
-        persists across a full page reload.
+"passed","Fri Sep 11 09:46:47 UTC 2026","Fri Sep 11 09:46:53 UTC 2026","6371","tests.ui.agent_hub","test_agent_hub_filter_multiple_categories","TestAgentHubFilterMultipleCategories","","","test_agent_hub_filter_by_multiple_categories","Clicking multiple category filter-rail chips accumulates filters:
+        both chips remain selected and agents from both categories display
+        simultaneously in separate labeled sections."
+"broken","Fri Sep 11 08:09:57 UTC 2026","Fri Sep 11 08:10:45 UTC 2026","48328","tests.ui.skills","test_ghost_skill_after_agent_removed","TestGhostSkillAfterAgentRemoved","","","test_ghost_skill_not_shown_after_agent_participant_removed","Create a skill, attach it to an agent, add the agent as a chat
+        participant, confirm '~mention' shows the skill, dismiss, remove the
+        participant, and confirm the skill no longer appears in '~mention'
+        afterward.
 
-        Steps (AFS test-specs/skills/l3_attach-skill-to-agent-with-version-selector_ELITEA-1789.md):
-        1. Create a Skill with a saved `base` version.
-        2. Create an Agent.
-        3. Locate the Skills attachment section (expanded by default).
-        4-5. Attach the Skill; verify the counter updates and the card renders.
-        6. Verify the attached Skill card shows a version selector, and that
-           clicking it (via a correctly-scoped `.version-text` locator, NOT a
-           role-based one) opens a real ""Versions"" menu — hard-asserted
-           functional flow per the AFS (known defect #46 is a handle-quality/
-           accessibility gap, not a flaky functional failure).
-        7. Confirm the default version (`base`) is shown pre-selected, both
-           on the card and as the sole entry in the opened Versions menu.
-        8. Confirm persistence via a full page reload (no explicit
-           agent-level Save is available — attach is auto-saved via API).
+        Steps (AFS test-specs/skills/l3_ghost-skill-not-shown-after-agent-participant-removed_ELITEA-1793.md):
+        1. Create Skill, create Agent, attach the skill to the agent.
+        2. Open Chat, add the agent as a participant.
+        3. Type '~' — the ""Mention skill"" popper lists the attached skill.
+        4. Dismiss the popper with Escape without selecting anything.
+        5. Remove the agent from the chat's participants.
+        6. Type '~' again — the removed agent's skill should NOT be listed.
+        7. Control check: a fresh conversation that never had a participant
+           shows the correct ""No skills attached to this agent"" empty state.
         "
-"passed","Fri Sep 11 08:05:00 UTC 2026","Fri Sep 11 08:05:12 UTC 2026","11270","tests.ui.agent_hub","test_agent_hub_close_agent_detail_modal","TestAgentHubCloseAgentDetailModal","","","test_agent_hub_close_agent_detail_modal","Clicking the X button in the agent detail modal closes the modal,
-        and the user remains on the Catalog list view — read-only, zero
-        console errors, zero 4xx/5xx."
-"failed","Fri Sep 11 08:06:42 UTC 2026","Fri Sep 11 08:06:49 UTC 2026","7059","tests.ui.agent_hub","test_empty_state","TestCatalogEmptyState","","","Empty state displays when search matches no agents","Verify that when a search term matches zero agents, the 'No agents found' and 'Try adjusting your search terms' messages display. Page heading, search input, tabs, and filter rail remain visible and functional. No agent cards present."
-"passed","Fri Sep 11 08:13:13 UTC 2026","Fri Sep 11 08:13:24 UTC 2026","11172","tests.ui.skills","test_skill_copy_link","TestSkillCopyLink","","","test_copy_link_copies_valid_url_to_correct_skill_and_version","The VERSION-group ""Share"" action copies a URL containing the
-        version id as a distinct path segment (contrasted against the
-        SKILL-group ""Share"" action, which omits it); navigating to that URL
-        — even via a fresh tab — opens the correct Skill at the correct
-        named version, with no ""not found"" error."
 "passed","Fri Sep 11 08:16:55 UTC 2026","Fri Sep 11 08:17:25 UTC 2026","30846","tests.ui.skills","test_skill_test_panel_version_instructions","TestSkillTestPanelVersionInstructions","","","test_test_panel_uses_selected_skill_version_instructions","Switching the VERSION selector changes which version's instructions
         the test panel's AI response reflects — v1 (""Always say V1"") vs
         base (""Always say BASE"") for the identical prompt."
-"passed","Fri Sep 11 08:06:35 UTC 2026","Fri Sep 11 08:06:41 UTC 2026","6324","tests.ui.agent_hub","test_agent_hub_trending_category","TestAgentHubTrendingCategory","","","test_agent_hub_trending_category_displays_agents","Verify Trending category filter shows agents when selected.
-
-        Steps:
-        1. Navigate to Agent Hub (Catalog)
-        2. Click the Trending category filter chip
-        3. Verify the filter is highlighted/active
-        4. Verify agents are displayed under Trending section
-        5. Verify the section header ""Trending"" is visible
-        "
-"passed","Fri Sep 11 08:06:02 UTC 2026","Fri Sep 11 08:06:08 UTC 2026","6692","tests.ui.agent_hub","test_agent_hub_open_agent_detail_modal","TestAgentHubOpenAgentDetailModal","","","test_agent_hub_open_agent_detail_modal","Clicking a Catalog agent card opens the preview modal as an overlay,
-        displaying icon, name, owner, liked status, overflow menu, close
-        button, description, CHAT STARTERS section, Welcome Message section,
-        and the Start Chat button — read-only, zero console errors, zero
-        4xx/5xx."
 "passed","Fri Sep 11 08:05:55 UTC 2026","Fri Sep 11 08:07:41 UTC 2026","105890","tests.ui.skills","test_agent_max_five_skills_limit","TestAgentMaxFiveSkillsLimit","","","test_max_five_skills_attach_limit","Create 6 Skills + an Agent, attach 5 of the Skills one at a time,
         verify the add-skill control disables at 5/5 with a tooltip (rather
         than a literal 6th-click rejection), and verify persistence via a
@@ -139,44 +85,12 @@
         10. Confirm persistence via a full page reload (attach is
            auto-saved via API; no explicit agent-level Save is available).
         "
-"passed","Fri Sep 11 08:17:26 UTC 2026","Fri Sep 11 08:17:36 UTC 2026","9813","tests.ui.skills","test_skill_version_set_default","TestSkillVersionSetDefault","","","test_version_dropdown_set_default_shows_control_and_confirmation","Version dropdown shows a pin/set-as-default control per row;
-        confirming sets the named version as default and shows a
-        confirmation toast plus a persistent pin-icon/reorder indicator."
-"passed","Fri Sep 11 08:11:45 UTC 2026","Fri Sep 11 08:12:45 UTC 2026","59156","tests.ui.skills","test_remove_attached_skill_from_agent","TestRemoveAttachedSkillFromAgent","","","test_remove_attached_skill_from_agent","Create two Skills + an Agent, attach both, remove Skill B via the
-        hover-revealed remove control + confirmation dialog, and verify Skill
-        A remains attached while Skill B survives standalone.
-
-        Steps (AFS test-specs/skills/l3_remove-attached-skill-from-agent_ELITEA-1792.md):
-        1. Create Skill A and Skill B via UI.
-        2. Create an Agent.
-        3. Attach both Skills to the Agent (precondition for this case).
-        4. Locate the hover-revealed ""remove skill"" control for Skill B.
-        5. Click it; confirm the ""Remove skill?"" dialog; Skill B is removed
-           from the UI list while Skill A remains.
-        6. Confirm persistence via a full page reload (detach auto-saves via
-           API; no explicit agent-level Save is available for this action).
-        7. Reopen the Agent (same reload satisfies this — no separate
-           close/reopen gesture exists in the live flow); only Skill A is
-           attached.
-        8. Navigate directly to Skill B's detail page and to the Skills list;
-           Skill B still exists standalone (detached, not deleted).
-        "
-"passed","Fri Sep 11 08:13:49 UTC 2026","Fri Sep 11 08:14:22 UTC 2026","32576","tests.ui.skills","test_skill_export_import","TestSkillExportImportNonBaseVersion","","","test_import_skill_non_base_version","Export a skill's ver_1 version, import the file, verify the round trip.
-
-        Steps (see AFS for full detail):
-        1. Create a Skill with base version; note the source skill ID.
-        2. Edit instructions, click ""Save As Version"" → create `ver_1`.
-        3. With `ver_1` selected, export via the overflow menu; verify
-           the downloaded filename embeds the version name.
-        4. Read the exported file; verify frontmatter (incl. `elitea_version`)
-           and instructions body.
-        5. Navigate to Skills list; import the exported file; verify the
-           Import parameters dialog previews the ver_1 content.
-        6. Confirm import; verify navigation + unique new skill ID.
-        7. Verify imported skill's version is `base` and fields match the
-           exported ver_1 content.
-        8. Edit + save the imported skill; verify a clean save.
-        "
+"passed","Fri Sep 11 09:47:45 UTC 2026","Fri Sep 11 09:47:56 UTC 2026","10551","tests.ui.agent_hub","test_agent_hub_start_conversation_creates_new_chat","TestAgentHubStartConversationCreatesNewChat","","","test_agent_hub_start_conversation_creates_new_chat","Starting a conversation from a Catalog agent's detail modal creates a
+        new chat and redirects the user to the Chat interface with the
+        blank-conversation welcome message displayed."
+"passed","Fri Sep 11 09:46:27 UTC 2026","Fri Sep 11 09:46:34 UTC 2026","6570","tests.ui.agent_hub","test_agent_hub_close_agent_detail_modal","TestAgentHubCloseAgentDetailModal","","","test_agent_hub_close_agent_detail_modal","Clicking the X button in the agent detail modal closes the modal,
+        and the user remains on the Catalog list view — read-only, zero
+        console errors, zero 4xx/5xx."
 "passed","Fri Sep 11 08:05:00 UTC 2026","Fri Sep 11 08:05:54 UTC 2026","54331","tests.ui.skills","test_agent_instructions_tilde_mention","TestTildeMentionListsOnlyAttachedSkills","","","test_tilde_mention_in_instructions_lists_only_attached_skills","Attach 2 of 3 distinct Skills to an Agent, then verify the ""~""
         mention panel in the Instructions field is scoped to only the
         attached 2 — the 3rd (unattached) Skill never appears, including
@@ -196,38 +110,104 @@
         6. Select-all + delete, retype ""~"" — same 2-item scoped list
            reappears; Skill C still absent (re-evaluated live).
         "
-"passed","Fri Sep 11 08:15:17 UTC 2026","Fri Sep 11 08:15:28 UTC 2026","11457","tests.ui.skills","test_skill_search","TestSkillSearch","","","test_search_skills_by_name","Search the Skills grid by partial name, exact name, a
-        non-existent name, then clear — verifying the grid's exact visible
-        set at each step (not just presence/absence of one name), so a
-        regression that only breaks the grid while leaving the separate
-        suggestions popover working would be caught.
-        "
-"broken","Fri Sep 11 08:09:57 UTC 2026","Fri Sep 11 08:10:45 UTC 2026","48328","tests.ui.skills","test_ghost_skill_after_agent_removed","TestGhostSkillAfterAgentRemoved","","","test_ghost_skill_not_shown_after_agent_participant_removed","Create a skill, attach it to an agent, add the agent as a chat
-        participant, confirm '~mention' shows the skill, dismiss, remove the
-        participant, and confirm the skill no longer appears in '~mention'
-        afterward.
+"passed","Fri Sep 11 08:11:45 UTC 2026","Fri Sep 11 08:12:45 UTC 2026","59156","tests.ui.skills","test_remove_attached_skill_from_agent","TestRemoveAttachedSkillFromAgent","","","test_remove_attached_skill_from_agent","Create two Skills + an Agent, attach both, remove Skill B via the
+        hover-revealed remove control + confirmation dialog, and verify Skill
+        A remains attached while Skill B survives standalone.
 
-        Steps (AFS test-specs/skills/l3_ghost-skill-not-shown-after-agent-participant-removed_ELITEA-1793.md):
-        1. Create Skill, create Agent, attach the skill to the agent.
-        2. Open Chat, add the agent as a participant.
-        3. Type '~' — the ""Mention skill"" popper lists the attached skill.
-        4. Dismiss the popper with Escape without selecting anything.
-        5. Remove the agent from the chat's participants.
-        6. Type '~' again — the removed agent's skill should NOT be listed.
-        7. Control check: a fresh conversation that never had a participant
-           shows the correct ""No skills attached to this agent"" empty state.
+        Steps (AFS test-specs/skills/l3_remove-attached-skill-from-agent_ELITEA-1792.md):
+        1. Create Skill A and Skill B via UI.
+        2. Create an Agent.
+        3. Attach both Skills to the Agent (precondition for this case).
+        4. Locate the hover-revealed ""remove skill"" control for Skill B.
+        5. Click it; confirm the ""Remove skill?"" dialog; Skill B is removed
+           from the UI list while Skill A remains.
+        6. Confirm persistence via a full page reload (detach auto-saves via
+           API; no explicit agent-level Save is available for this action).
+        7. Reopen the Agent (same reload satisfies this — no separate
+           close/reopen gesture exists in the live flow); only Skill A is
+           attached.
+        8. Navigate directly to Skill B's detail page and to the Skills list;
+           Skill B still exists standalone (detached, not deleted).
         "
-"passed","Fri Sep 11 08:05:25 UTC 2026","Fri Sep 11 08:05:32 UTC 2026","6530","tests.ui.agent_hub","test_agent_hub_filter_multiple_categories","TestAgentHubFilterMultipleCategories","","","test_agent_hub_filter_by_multiple_categories","Clicking multiple category filter-rail chips accumulates filters:
-        both chips remain selected and agents from both categories display
-        simultaneously in separate labeled sections."
-"passed","Fri Sep 11 08:05:51 UTC 2026","Fri Sep 11 08:06:01 UTC 2026","10574","tests.ui.agent_hub","test_agent_hub_like_agent_list_view","TestAgentHubLikeAgentListView","","","test_agent_hub_like_agent_from_list_view","Liking an unliked agent card increments its count, fills the heart
-        icon, and persists across a full page refresh; unliking (cleanup)
-        restores the original baseline."
-"passed","Fri Sep 11 08:16:36 UTC 2026","Fri Sep 11 08:16:54 UTC 2026","18189","tests.ui.skills","test_skill_test_panel_response_actions","TestSkillTestPanelResponseActions","","","test_test_panel_response_actions_enabled","Read aloud and Copy to clipboard are enabled and clickable on a
-        completed test-panel response."
-"passed","Fri Sep 11 08:05:12 UTC 2026","Fri Sep 11 08:05:25 UTC 2026","12527","tests.ui.agent_hub","test_agent_hub_copy_link_from_modal","TestAgentHubCopyLinkFromModal","","","test_copy_link_from_modal_navigates_to_agent","Copy a link from the agent detail modal's Share action, navigate to it
+"passed","Fri Sep 11 08:15:29 UTC 2026","Fri Sep 11 08:16:13 UTC 2026","43849","tests.ui.skills","test_skill_tag_filter","TestSkillTagFilter","","","test_filter_skills_by_tag","Create 3 skills with shared/unique tags; verify tag-filter narrowing.
+
+        Steps (see AFS for full detail):
+        1. Capture baseline grid state; create Skill A (formatting, output),
+           Skill B (formatting, english), Skill C (translation); verify all
+           3 plus any pre-existing skills are visible with their own tags.
+        2. Filter by `formatting` (shared tag) — verify exactly Skill A and
+           Skill B are shown, Skill C is excluded.
+        3. Clear the filter, then filter by `translation` (unique tag) —
+           verify exactly Skill C is shown.
+        4. Clear the filter, then filter by `output` (unique tag) — verify
+           exactly Skill A is shown.
+        5. Clear the filter — verify the grid is restored to the baseline
+           plus the 3 new skills.
+        "
+"failed","Fri Sep 11 09:48:04 UTC 2026","Fri Sep 11 09:48:10 UTC 2026","6762","tests.ui.agent_hub","test_empty_state","TestCatalogEmptyState","","","Empty state displays when search matches no agents","Verify that when a search term matches zero agents, the 'No agents found' and 'Try adjusting your search terms' messages display. Page heading, search input, tabs, and filter rail remain visible and functional. No agent cards present."
+"passed","Fri Sep 11 09:47:56 UTC 2026","Fri Sep 11 09:48:03 UTC 2026","6554","tests.ui.agent_hub","test_agent_hub_trending_category","TestAgentHubTrendingCategory","","","test_agent_hub_trending_category_displays_agents","Verify Trending category filter shows agents when selected.
+
+        Steps:
+        1. Navigate to Agent Hub (Catalog)
+        2. Click the Trending category filter chip
+        3. Verify the filter is highlighted/active
+        4. Verify agents are displayed under Trending section
+        5. Verify the section header ""Trending"" is visible
+        "
+"passed","Fri Sep 11 08:13:24 UTC 2026","Fri Sep 11 08:13:49 UTC 2026","24474","tests.ui.skills","test_skill_export_import","TestSkillExportImport","","","test_export_and_import_skill_base_version","Export a skill's base version, import the file, verify the round trip.
+
+        Steps (see AFS for full detail):
+        1. Navigate to create-skill form; Save starts disabled.
+        2. Fill name/description/tags/instructions; Save enables.
+        3. Save; note the source skill ID.
+        4. Export the base version via the overflow menu; verify .md download.
+        5. Read the exported file; verify frontmatter + instructions body.
+        6. Navigate to Skills list; click Import; verify file chooser.
+        7. Upload the exported file; verify the Import parameters dialog.
+        8. Confirm import; verify navigation + success toast + new unique ID.
+        9. Verify imported skill's version/name/description/tags/instructions.
+        10. Edit + save the imported skill; verify a clean save.
+        "
+"passed","Fri Sep 11 08:13:13 UTC 2026","Fri Sep 11 08:13:24 UTC 2026","11172","tests.ui.skills","test_skill_copy_link","TestSkillCopyLink","","","test_copy_link_copies_valid_url_to_correct_skill_and_version","The VERSION-group ""Share"" action copies a URL containing the
+        version id as a distinct path segment (contrasted against the
+        SKILL-group ""Share"" action, which omits it); navigating to that URL
+        — even via a fresh tab — opens the correct Skill at the correct
+        named version, with no ""not found"" error."
+"passed","Fri Sep 11 09:47:34 UTC 2026","Fri Sep 11 09:47:45 UTC 2026","11101","tests.ui.agent_hub","test_agent_hub_search_bar_filters_in_real_time","TestAgentHubSearchBarFiltersInRealTime","","","test_agent_hub_search_bar_filters_in_real_time","Typing a partial term into the Catalog search bar filters the
+        agent list in real time via a single debounced request; clearing
+        the typed text restores the exact original unfiltered set."
+"passed","Fri Sep 11 08:12:45 UTC 2026","Fri Sep 11 08:13:13 UTC 2026","27608","tests.ui.skills","test_skill_agent_version_selector","TestAttachSkillToAgentWithVersionSelector","","","test_attach_skill_to_agent_with_version_selector","Create a skill + agent, attach the skill, and verify the version
+        selector shows the default version, opens a real Versions menu, and
+        persists across a full page reload.
+
+        Steps (AFS test-specs/skills/l3_attach-skill-to-agent-with-version-selector_ELITEA-1789.md):
+        1. Create a Skill with a saved `base` version.
+        2. Create an Agent.
+        3. Locate the Skills attachment section (expanded by default).
+        4-5. Attach the Skill; verify the counter updates and the card renders.
+        6. Verify the attached Skill card shows a version selector, and that
+           clicking it (via a correctly-scoped `.version-text` locator, NOT a
+           role-based one) opens a real ""Versions"" menu — hard-asserted
+           functional flow per the AFS (known defect #46 is a handle-quality/
+           accessibility gap, not a flaky functional failure).
+        7. Confirm the default version (`base`) is shown pre-selected, both
+           on the card and as the sole entry in the opened Versions menu.
+        8. Confirm persistence via a full page reload (no explicit
+           agent-level Save is available — attach is auto-saved via API).
+        "
+"passed","Fri Sep 11 09:47:27 UTC 2026","Fri Sep 11 09:47:33 UTC 2026","6120","tests.ui.agent_hub","test_agent_hub_page_loads_private_project","TestAgentHubPageLoadsPrivateProject","","","test_agent_hub_page_loads_private_project","Agent Hub (Catalog) page loads without error for a Private-project
+        user: heading, search bar, full category filter rail, and agent
+        cards are all visible, with zero console errors."
+"passed","Fri Sep 11 09:46:34 UTC 2026","Fri Sep 11 09:46:46 UTC 2026","12351","tests.ui.agent_hub","test_agent_hub_copy_link_from_modal","TestAgentHubCopyLinkFromModal","","","test_copy_link_from_modal_navigates_to_agent","Copy a link from the agent detail modal's Share action, navigate to it
         in a new page context, and verify the modal auto-opens showing the same
         agent's details (name, description, starters, welcome message)."
+"passed","Fri Sep 11 08:16:36 UTC 2026","Fri Sep 11 08:16:54 UTC 2026","18189","tests.ui.skills","test_skill_test_panel_response_actions","TestSkillTestPanelResponseActions","","","test_test_panel_response_actions_enabled","Read aloud and Copy to clipboard are enabled and clickable on a
+        completed test-panel response."
+"passed","Fri Sep 11 09:46:54 UTC 2026","Fri Sep 11 09:47:00 UTC 2026","5848","tests.ui.agent_hub","test_agent_hub_filter_single_category","TestAgentHubFilterSingleCategory","","","test_agent_hub_filter_by_single_category","Clicking a single category filter-rail chip selects that chip and
+        filters the Agent Hub content to that category's agents only."
+"passed","Fri Sep 11 08:16:13 UTC 2026","Fri Sep 11 08:16:36 UTC 2026","22481","tests.ui.skills","test_skill_test_panel_no_new_conversation","TestSkillTestPanelNoNewConversation","","","test_test_panel_does_not_create_new_chat_conversation","Running a test prompt via the SkillTestPanel must not create a
+        new Chat conversation — verified via network capture, Chat sidebar
+        DOM count, and the Conversations API ground truth."
 "passed","Fri Sep 11 08:07:41 UTC 2026","Fri Sep 11 08:08:09 UTC 2026","27933","tests.ui.skills","test_export_agent_with_attached_skills","TestExportAgentWithAttachedSkills","","","test_export_agent_with_attached_skills","Create a Skill + an Agent, attach the Skill, export the Agent via
         the actions overflow menu, and verify the downloaded file's raw
         content embeds the Skill's full content verbatim.
@@ -247,14 +227,34 @@
            version, and full instructions (including the marker) embedded
            verbatim in the `skills:` list.
         "
-"passed","Fri Sep 11 08:06:26 UTC 2026","Fri Sep 11 08:06:34 UTC 2026","8771","tests.ui.agent_hub","test_agent_hub_start_conversation_creates_new_chat","TestAgentHubStartConversationCreatesNewChat","","","test_agent_hub_start_conversation_creates_new_chat","Starting a conversation from a Catalog agent's detail modal creates a
-        new chat and redirects the user to the Chat interface with the
-        blank-conversation welcome message displayed."
-"passed","Fri Sep 11 08:14:28 UTC 2026","Fri Sep 11 08:14:41 UTC 2026","13040","tests.ui.skills","test_skill_pin_unpin","TestSkillPinUnpin","","","test_skill_pin_moves_to_top_and_unpin_reverts","Pinning a skill (via the detail-page menu) moves it to the top of
-        the list; unpinning (same menu) reverts it."
-"passed","Fri Sep 11 08:05:40 UTC 2026","Fri Sep 11 08:05:50 UTC 2026","10437","tests.ui.agent_hub","test_agent_hub_like_agent_from_modal","TestAgentHubLikeAgentFromModal","","","test_agent_hub_like_agent_from_modal","Like an agent from the expanded detail modal: toggle state, increment
+"passed","Fri Sep 11 09:47:09 UTC 2026","Fri Sep 11 09:47:20 UTC 2026","10815","tests.ui.agent_hub","test_agent_hub_like_agent_list_view","TestAgentHubLikeAgentListView","","","test_agent_hub_like_agent_from_list_view","Liking an unliked agent card increments its count, fills the heart
+        icon, and persists across a full page refresh; unliking (cleanup)
+        restores the original baseline."
+"passed","Fri Sep 11 08:17:26 UTC 2026","Fri Sep 11 08:17:36 UTC 2026","9813","tests.ui.skills","test_skill_version_set_default","TestSkillVersionSetDefault","","","test_version_dropdown_set_default_shows_control_and_confirmation","Version dropdown shows a pin/set-as-default control per row;
+        confirming sets the named version as default and shows a
+        confirmation toast plus a persistent pin-icon/reorder indicator."
+"passed","Fri Sep 11 08:13:49 UTC 2026","Fri Sep 11 08:14:22 UTC 2026","32576","tests.ui.skills","test_skill_export_import","TestSkillExportImportNonBaseVersion","","","test_import_skill_non_base_version","Export a skill's ver_1 version, import the file, verify the round trip.
+
+        Steps (see AFS for full detail):
+        1. Create a Skill with base version; note the source skill ID.
+        2. Edit instructions, click ""Save As Version"" → create `ver_1`.
+        3. With `ver_1` selected, export via the overflow menu; verify
+           the downloaded filename embeds the version name.
+        4. Read the exported file; verify frontmatter (incl. `elitea_version`)
+           and instructions body.
+        5. Navigate to Skills list; import the exported file; verify the
+           Import parameters dialog previews the ver_1 content.
+        6. Confirm import; verify navigation + unique new skill ID.
+        7. Verify imported skill's version is `base` and fields match the
+           exported ver_1 content.
+        8. Edit + save the imported skill; verify a clean save.
+        "
+"passed","Fri Sep 11 08:15:17 UTC 2026","Fri Sep 11 08:15:28 UTC 2026","11457","tests.ui.skills","test_skill_search","TestSkillSearch","","","test_search_skills_by_name","Search the Skills grid by partial name, exact name, a
+        non-existent name, then clear — verifying the grid's exact visible
+        set at each step (not just presence/absence of one name), so a
+        regression that only breaks the grid while leaving the separate
+        suggestions popover working would be caught.
+        "
+"passed","Fri Sep 11 09:47:01 UTC 2026","Fri Sep 11 09:47:09 UTC 2026","8086","tests.ui.agent_hub","test_agent_hub_like_agent_from_modal","TestAgentHubLikeAgentFromModal","","","test_agent_hub_like_agent_from_modal","Like an agent from the expanded detail modal: toggle state, increment
         count, and verify persistence across modal close/reopen and in the
         card list."
-"passed","Fri Sep 11 08:16:13 UTC 2026","Fri Sep 11 08:16:36 UTC 2026","22481","tests.ui.skills","test_skill_test_panel_no_new_conversation","TestSkillTestPanelNoNewConversation","","","test_test_panel_does_not_create_new_chat_conversation","Running a test prompt via the SkillTestPanel must not create a
-        new Chat conversation — verified via network capture, Chat sidebar
-        DOM count, and the Conversations API ground truth."
