@@ -372,12 +372,14 @@ nodes:
             elif isinstance(logs, str):
                 log_content = logs
 
-            # Pattern 1: "FAILED tests/ui/..." - most reliable, pytest summary format
-            failed_pattern1 = re.compile(r'FAILED\s+((?:automation/)?tests/[^\s]+::[^\s]+)')
+            # Pattern 1: "FAILED tests/ui/..." - pytest summary format (captures up to space or dash)
+            failed_pattern1 = re.compile(r'FAILED\s+((?:automation/)?tests/[^\s]+::[^\s]+?)(?:\s+-\s+|\s+$|\s+\[)')
             # Pattern 2: "tests/ui/... FAILED" - alternate format
             failed_pattern2 = re.compile(r'((?:automation/)?tests/[^\s]+::[^\s]+)\s+FAILED')
             # Pattern 3: Handle function-level tests (no class) - "FAILED tests/.../test_file.py::test_func"
             failed_pattern3 = re.compile(r'FAILED\s+((?:automation/)?tests/[^\s]+\.py::[a-z_][a-z0-9_]*)\s', re.IGNORECASE)
+            # Pattern 4: Broader - "FAILED tests/..." with any suffix (greedy up to common terminators)
+            failed_pattern4 = re.compile(r'FAILED\s+(tests/[^\s]+\.py::[A-Za-z_][A-Za-z0-9_]*::[a-z_][a-z0-9_]*(?:\[[^\]]+\])?)')
 
             for match in failed_pattern1.finditer(log_content):
                 test_path = match.group(1).replace('automation/', '')
@@ -400,9 +402,12 @@ nodes:
                     seen_tests.add(dotted)
                     failed_tests.append({'automation_test_id': dotted, 'raw_path': test_path})
 
-            # NOTE: Removed pattern4 ([FAIL] backwards search) - it caused false positives
-            # by capturing PASSED tests that appeared near [FAIL] screenshot markers.
-            # Pattern 1-3 reliably capture all actual failures from pytest output.
+            for match in failed_pattern4.finditer(log_content):
+                test_path = match.group(1).replace('automation/', '')
+                dotted = test_path.replace('.py::', '.').replace('::', '.').replace('/', '.')
+                if dotted not in seen_tests:
+                    seen_tests.add(dotted)
+                    failed_tests.append({'automation_test_id': dotted, 'raw_path': test_path})
 
             out = {'failed_jobs': failed_jobs_str, 'failed_tests': json.dumps(failed_tests)}
         except:
