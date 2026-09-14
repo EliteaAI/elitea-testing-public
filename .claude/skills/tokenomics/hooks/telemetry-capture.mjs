@@ -1463,7 +1463,7 @@ export async function renderLiveReport(repo, sessionId, env = process.env) {
  */
 export function syncTelemetry(repo, env = process.env) {
   if (env.TOKENOMICS_NO_SYNC === '1') return false;
-  // The submodule ROOT — shared across bundles; this bundle's data lives in
+  // The submodule ROOT — shared across factories; this factory's data lives in
   // its automation/ subfolder, but commit/push covers whatever anyone wrote.
   const dir = join(repo, '.agents', 'telemetry');
   if (!existsSync(join(dir, '.git'))) return false;   // not a submodule — nothing to sync

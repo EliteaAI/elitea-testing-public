@@ -27,7 +27,7 @@ The installer also sets up **where telemetry lives**: `.agents/telemetry`
 becomes a git **submodule of the same repo**, checked out on its own `telemetry`
 branch. Step by step, what that means:
 
-1. Hooks write usage files into this bundle's subfolder there —
+1. Hooks write usage files into this factory's subfolder there —
    `.agents/telemetry/automation/`.
 2. Capture moments commit + push them — **to the `telemetry` branch, never main**.
    Your working tree stays clean; gates and branch switches never see them.
@@ -38,8 +38,8 @@ branch. Step by step, what that means:
 5. Didn't init it at all? Nothing breaks — main is unaffected, telemetry is
    just off on that machine.
 
-The submodule is **shared, one subfolder per bundle**: `automation/` belongs to
-the test-automation bundle; when manual-qa or another bundle wants durable
+The submodule is **shared, one subfolder per factory**: `automation/` belongs to
+the test-automation factory; when manual-qa or another factory wants durable
 telemetry later, it adds its own subfolder and rides the same branch and the
 same sync — no second submodule, no second machinery.
 
@@ -53,7 +53,7 @@ node .claude/skills/tokenomics/scripts/work-scope.mjs open --session <id> \
   --intent automation --batch my-batch --cases EL-1,EL-2,EL-3
 
 # when a case's outcome becomes true:
-node .claude/skills/tokenomics/scripts/work-scope.mjs outcome --session <id> EL-1=automated
+node .claude/skills/tokenomics/scripts/work-scope.mjs outcome --session <id> EL-1=delivered
 
 # at batch close:
 node .claude/skills/tokenomics/scripts/work-scope.mjs close --session <id>
@@ -112,7 +112,7 @@ spend — so a day of bug-hunting stops inflating "cost per automated case".
 
 Two homes, one rule each:
 
-**The telemetry submodule** (`.agents/telemetry/`, this bundle's data in
+**The telemetry submodule** (`.agents/telemetry/`, this factory's data in
 `automation/`) — ledger, scopes, config, live logs, mid-run gate verdicts,
 workflow returns, the live report.
 **You never commit any of it by hand.** Hooks commit + push it to the

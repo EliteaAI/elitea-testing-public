@@ -19,7 +19,7 @@
 // IDENTITY IS PROJECT-LOCAL, NEVER BUNDLED. The segment header comes from a
 // hand-authored .agents/telemetry/automation/factory-profile.json (template:
 // ../templates/factory-profile.template.json — scout's seeding Step 6.7 copies
-// it). The bundle ships plumbing only; no organisation identifiers.
+// it). The factory ships plumbing only; no organisation identifiers.
 //
 // DOLLAR HONESTY. Every figure is carried from cost.json (measured values
 // only). Fields the pipeline cannot measure are null and named in the §7
@@ -135,7 +135,7 @@ export function buildRunRow(cost, profile = {}) {
       `Telemetry cohort: reconstructed from .agents/automation/${cost.batch}/cost.json (v${cost.v}); batch slug '${cost.batch}'.`,
       effortDays != null ? `effort_days derived from scoping SP (${caseSp} SP × 1h ÷ 8) — conventional-effort estimate, not a human report.` : 'effort_days unavailable — no scoping verdicts for this batch (run the intake sizing pass).',
       'cache_read_share_pct computed from the token quad at public list ratios (in 1x / out 5x / write 1.25x / read 0.1x).',
-      'scenarios_executed = cases the pipeline analysed live and gated (analyst execution + N-consecutive gate runs; re-runs not multiplied).',
+      'scenarios_executed = cases the pipeline analysed live and gated (live execution evidence + N-consecutive gate runs; re-runs not multiplied).',
     ].join(' '),
   };
 }

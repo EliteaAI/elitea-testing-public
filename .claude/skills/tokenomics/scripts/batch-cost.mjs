@@ -593,7 +593,9 @@ export function buildBatchCost(slug, receipt, allLines, { dir = null, scopes = [
   const attributed = cases.filter((c) => c.direct.dispatches > 0);
   const outcomes = {};
   for (const c of cases) if (c.outcome) outcomes[c.outcome] = (outcomes[c.outcome] ?? 0) + 1;
-  const delivered = num(outcomes.automated) + num(outcomes['merged-sanctioned-red']);
+  // v2 vocabulary 'delivered'/'defect-found' + pre-v2 names for old receipts.
+  const delivered = num(outcomes.delivered) + num(outcomes['defect-found'])
+    + num(outcomes.automated) + num(outcomes['merged-sanctioned-red']);
   const ohCost = num(overhead.lead.costUsd) + num(overhead.stage.costUsd);
   const ohPriced = typeof overhead.lead.costUsd === 'number' || typeof overhead.stage.costUsd === 'number';
 
@@ -696,7 +698,7 @@ export function buildBatchCost(slug, receipt, allLines, { dir = null, scopes = [
     },
     averages: {
       totalPerDelivered: delivered > 0 && typeof totals.costUsd === 'number'
-        ? { costUsd: round2(totals.costUsd / delivered), note: 'whole batch incl. overhead ÷ delivered (automated + merged-sanctioned-red)' } : null,
+        ? { costUsd: round2(totals.costUsd / delivered), note: 'whole batch incl. overhead ÷ delivered (delivered/defect-found; legacy automated/merged-sanctioned-red)' } : null,
       directPerCase: pricedDirect && attributed.length
         ? { costUsd: round2(attributed.reduce((a, c) => a + num(c.direct.costUsd), 0) / attributed.length), note: 'avg direct spend of an attributed case — excludes batch overhead' } : null,
     },

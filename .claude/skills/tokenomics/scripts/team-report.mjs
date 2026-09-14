@@ -23,7 +23,10 @@ import { join, basename, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { updateBatchCosts } from './batch-cost.mjs';
 
-const DELIVERED = 'automated'; // the one receipts outcome that produced a spec
+// Outcomes that mean "a spec was produced". v2 vocabulary is 'delivered'
+// ('defect-found' = held on a ticketed product defect, still a delivered spec);
+// 'automated'/'merged-sanctioned-red' are the pre-v2 names kept for old receipts.
+const DELIVERED_OUTCOMES = ['delivered', 'defect-found', 'automated', 'merged-sanctioned-red'];
 
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 function safeParse(s) { try { return JSON.parse(s); } catch { return null; } }
@@ -150,7 +153,7 @@ export function loadCases(receiptDirs) {
   }
   const outcomes = {};
   for (const o of latest.values()) outcomes[o] = (outcomes[o] ?? 0) + 1;
-  return { examined: latest.size, delivered: outcomes[DELIVERED] ?? 0, outcomes, reports: reports.length };
+  return { examined: latest.size, delivered: DELIVERED_OUTCOMES.reduce((n, o) => n + (outcomes[o] ?? 0), 0), outcomes, reports: reports.length };
 }
 
 // --- Aggregation -------------------------------------------------------------
@@ -385,7 +388,7 @@ export function renderBatchMarkdown(c) {
   out.push(`- Findings reported: ${c.cases.reduce((n, x) => n + x.findings, 0)}  ·  fix rounds: ${c.cases.reduce((n, x) => n + x.direct.fixRounds, 0)}`, '');
   out.push('## What it cost', '');
   const ts = c.totals.tokensSplit;
-  out.push(`- Total: ${usd(c.totals.costUsd)}  ·  ${hours(c.totals.activeMin)} active  ·  ${c.totals.dispatches} dispatches`);
+  out.push(`- Total: ${usd(c.totals.costUsd)}  ·  ${hours(c.totals.activeMin)} active (cases ${c.cases.reduce((n, x) => n + num(x.direct.activeMin), 0)}m · lead ${num(c.overhead?.lead?.activeMin)}m · stages ${num(c.overhead?.stages?.activeMin)}m)  ·  ${c.totals.dispatches} dispatches`);
   if (ts) {
     if (c.totals.tokensAttribution) out.push(`- ⚠️ **TOKEN TOTALS ARE A FLOOR** — attribution ${c.totals.tokensAttribution}: ${c.totals.unattributedUnits} unit(s) reported no usage (gateway pass-through gap); the real bill is higher.`);
     out.push(`- Tokens: total ${c.totals.tokens.toLocaleString()}  ·  **real work ${realWork(ts).toLocaleString()}** (in ${ts.input.toLocaleString()} / out ${ts.output.toLocaleString()})  ·  cache ${kTok(ts.cacheRead)} read / ${kTok(ts.cacheWrite)} write  ·  **cache hit rate ${pct(cacheHitRate(ts))}**  ·  see batch-tokenomics for the full breakdown`);
@@ -439,7 +442,7 @@ export function renderBatchMarkdown(c) {
 
 // ---- shared page chrome — ported from manual-qa's tokenomics page ----------
 // Same design system (kpi cards / panels / stacked bars / legends, the same
-// light-dark palette) so the two bundles' reports read as one family.
+// light-dark palette) so the two factories' reports read as one family.
 const escHtml = (s) => String(s ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 const fmtInt = (n) => (n == null ? '—' : Math.round(n).toLocaleString('en-US'));
 const PAGE_CSS = `
@@ -527,7 +530,7 @@ export function renderBatchHtml(c) {
   const bars = c.cases.map((x) => `
     <div class="row"><div class="lbl" title="${esc(x.outcome)}">${esc(x.id)}<span class="oc oc-${esc(x.outcome)}">${esc(x.outcome ?? '')}</span></div>
     <div class="track"><div class="bar" style="width:${Math.max(1, (val(x) / max) * 100)}%"></div></div>
-    <div class="num">${fmtV(val(x))}<span class="sub"> · ${x.sizing ? `size ${esc(x.sizing.size)}${x.sizing.flag ? ' ⚠' : ''} · ` : ''}${x.loaded?.costUsd != null ? `loaded $${x.loaded.costUsd.toFixed(2)} · ` : ''}${x.direct.activeMin}m · ${x.direct.fixRounds ? `${x.direct.fixRounds} fix` : 'no fix'}${x.findings ? ` · ${x.findings} finding${x.findings > 1 ? 's' : ''}` : ''}</span></div></div>`).join('');
+    <div class="num">${fmtV(val(x))}<span class="sub"> · ${x.sizing ? `size ${esc(x.sizing.size)}${x.sizing.flag ? ' ⚠' : ''} · ` : ''}${x.loaded?.costUsd != null ? `loaded $${x.loaded.costUsd.toFixed(2)} · ` : ''}${x.direct.activeMin}m${x.loaded?.activeMin != null ? ` (loaded ${x.loaded.activeMin}m)` : ''} · ${x.direct.fixRounds ? `${x.direct.fixRounds} fix` : 'no fix'}${x.findings ? ` · ${x.findings} finding${x.findings > 1 ? 's' : ''}` : ''}</span></div></div>`).join('');
   const st = (s, f) => (s ? `avg ${f(s.avg)} · median ${f(s.median)} · min ${f(s.min)} · max ${f(s.max)}` : 'n/a');
   const oc = Object.entries(c.outcomes).map(([k, n]) => `<span class="oc oc-${esc(k)}">${esc(k)} ${n}</span>`).join(' ');
   const ts = c.totals.tokensSplit;
@@ -556,7 +559,7 @@ export function renderBatchHtml(c) {
       statCell('Turns', fmtInt(c.totals.turns)),
       statCell('Tool calls', c.totals.toolCalls != null ? `${fmtInt(c.totals.toolCalls)} <span class="stat-sub">(${c.totals.toolErrors} err${okPct ? `, ${okPct}` : ''})</span>` : '—'),
       statCell('Dispatches', fmtInt(c.totals.dispatches)),
-      statCell('Active time', `${hours(c.totals.activeMin)}`),
+      statCell(`Active time <span class="stat-sub">(cases ${c.cases.reduce((n, x) => n + num(x.direct.activeMin), 0)}m · lead ${num(c.overhead?.lead?.activeMin)}m · stages ${num(c.overhead?.stages?.activeMin)}m)</span>`, `${hours(c.totals.activeMin)}`),
     ], c.totals.skills?.length ? `skills: ${esc(c.totals.skills.join(', '))}` : null),
   ].join('');
   return `<!doctype html><meta charset="utf-8"><title>Batch cost — ${esc(c.batch)}</title><style>${PAGE_CSS}</style>
@@ -837,7 +840,7 @@ export function main(argv = process.argv.slice(2)) {
     }
     const perCase = batchCosts
       .flatMap((c) => c.cases.map((x) => ({ batch: c.batch, id: x.id, outcome: x.outcome, direct: x.direct, loaded: x.loaded })));
-    const isDelivered = (o) => o === 'automated' || o === 'merged-sanctioned-red';
+    const isDelivered = (o) => DELIVERED_OUTCOMES.includes(o);
     perCase.sort((a, z) => (isDelivered(z.outcome) - isDelivered(a.outcome)) || ((z.loaded?.costUsd ?? 0) - (a.loaded?.costUsd ?? 0)));
     if (perCase.length) {
       rep.perCase = perCase;

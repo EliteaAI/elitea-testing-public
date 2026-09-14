@@ -22,7 +22,7 @@
 //
 // DELIBERATELY GENERIC — nothing here is automation-specific:
 //   * `intent` is an open string ('automation', 'manual-testing', 'other', …),
-//     so the manual-qa bundle can adopt the identical record.
+//     so the manual-qa factory can adopt the identical record.
 //   * case ids are opaque ('ELITEA-2312', 'TC-101' — any shape).
 //   * `outcomes` vocabulary is open ('automated'/'blocked' here,
 //     'PASS'/'FAIL' for a manual run) — consumers filter by intent.

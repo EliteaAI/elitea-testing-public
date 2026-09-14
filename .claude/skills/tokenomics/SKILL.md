@@ -1,6 +1,6 @@
 ---
 name: tokenomics
-description: Optional always-on usage telemetry for agent teams — hooks capture every session's tokens, cost, time, activity and named case ids into a git-committed ledger (.agents/telemetry/automation/), covering Claude Code, Copilot CLI AND the VS Code Copilot sidebar, so the data survives transcript expiry and accumulates across the whole team; a report joins it with the pipeline's own report.json receipts to answer how much automating each batch of cases cost. Use when the user wants continuous/team-wide usage tracking, "enable telemetry", cost-per-case over time, a team usage report, or a local OTel sink/doctor; for a one-off deep audit of live transcripts use efficiency-audit instead.
+description: Optional always-on usage telemetry for agent teams — hooks capture every session's tokens, cost, time, activity and named case ids into a git-committed ledger (.agents/telemetry/automation/), covering Claude Code, Copilot CLI AND the VS Code Copilot sidebar, so the data survives transcript expiry and accumulates across the whole team; a report joins it with the pipeline's own report.json receipts to answer how much automating each batch of cases cost. Use when the user wants continuous/team-wide usage tracking, "enable telemetry", cost-per-case over time, a team usage report, a local OTel sink/doctor, or hyperfactory dataset work — "are we ready to submit tokenomics", build/refresh the submission, the §7 checklist, anonymize the dataset; for a one-off deep audit of live transcripts use efficiency-audit instead.
 license: Apache-2.0
 compatibility: "Requires Node 18+. Captures on Claude Code (SessionEnd hook + start-time sweep), GitHub Copilot CLI (sessionEnd + sessionStart sweeps; older CLIs start-only), and the VS Code Copilot sidebar (folderOpen auto-task); other hosts run the capture script's --sweep manually, from CI, or via the optional git post-commit hook. Per-host detail: § How capture works on each host."
 metadata:
@@ -66,19 +66,34 @@ node .claude/skills/tokenomics/scripts/install-hooks.mjs --pull  # merge the tea
 node .claude/skills/tokenomics/scripts/team-report.mjs
 node .claude/skills/tokenomics/scripts/team-report.mjs ~/work/repoA ~/work/repoB --since 2026-08-01 --json
 node .claude/skills/tokenomics/scripts/team-report.mjs --html --out team.html # shareable self-contained page
-node .claude/skills/tokenomics/scripts/team-report.mjs --role qa-engineer   # sessions involving that agent
+node .claude/skills/tokenomics/scripts/team-report.mjs --role test-automation-engineer   # sessions involving that agent
 
 # 5. Per-batch cost — what a batch delivered and what it cost, per case
 node .claude/skills/tokenomics/scripts/team-report.mjs --batch <slug>            # markdown
 node .claude/skills/tokenomics/scripts/team-report.mjs --batch <slug> --html --out batch.html
 node .claude/skills/tokenomics/scripts/team-report.mjs --batches                 # every batch with a receipt
 
-# 6. Cross-factory export (optional) — one dataset row per batch
+# 6. Hyperfactory dataset export — one submission row per batch
 #    identity comes from .agents/telemetry/automation/factory-profile.json (copy
-#    templates/factory-profile.template.json there and fill it in once)
-node .claude/skills/tokenomics/scripts/build-tokenomics-export.mjs --batch <slug>
+#    templates/factory-profile.template.json there and fill it in once);
+#    every `work-scope.mjs close` ALSO auto-appends the batch's row to
+#    .agents/telemetry/automation/export/runs.json and prints the §7 checks
+node .claude/skills/tokenomics/scripts/build-tokenomics-export.mjs --batch <slug>        # build/refresh one row + print its checks
+node .claude/skills/tokenomics/scripts/build-tokenomics-export.mjs --submission          # datasets/<factory-id>/{runs.json,submission.md} + § 7 checklist status
+node .claude/skills/tokenomics/scripts/build-tokenomics-export.mjs --submission --anon   # same, identifiers anonymized (T-WI-###) for the public PR
 node .claude/skills/tokenomics/scripts/build-tokenomics-export.mjs --compare a/cost.json b/cost.json
 ```
+
+**Submission readiness — the §7 gate.** "Are we ready to submit?" has a
+mechanical answer: run `--submission` and read **§ 7 checklist status** in the
+generated `submission.md` — **ready = zero ❌** (⚠ defaulted fields are
+honest but worth setting), plus the one human field the spec keeps manual:
+`measured_savings` notes. Typical ❌ and their one-step fixes: `factory_id` /
+`env_setup` → fill `factory-profile.json`; `effort_days` / `size_tshirt` /
+`scenario_complexity` → run the intake sizing pass (automation-scoping
+§ verdict pass) over the batch's cases — post-hoc is fine, then re-run
+`--batch <slug>`. Nothing requires re-running the automation itself. Ship per
+the spec's §8: `--anon`, then a fork-PR adding `datasets/<factory-id>/`.
 
 **Per-batch cost.json (written at close).** `work-scope.mjs close` writes
 `.agents/automation/<slug>/cost.json` — a pure recompute joining ledger lines
@@ -90,8 +105,8 @@ the tree: `work-scope.mjs status`, `team-report.mjs --batch`, and the live
 page under `telemetry/reports/` all recompute on the fly.
 What each cost.json carries:
 
-- **Per-case rows**: `direct` (measured — the case's own analyst/implement/
-  review/fix/merge dispatches, a cluster split evenly across its ids, incl.
+- **Per-case rows**: `direct` (measured — the case's own triage/build/
+  review/fix/merge dispatches (legacy sessions: analyst), a cluster split evenly across its ids, incl.
   tool calls/errors) and `loaded` (direct + an even share of batch overhead —
   an **allocation, labelled as such**, for cross-batch comparison).
 - **Overhead shown once**, never smeared — with a **by-stage split** (lead /
@@ -134,7 +149,7 @@ work begins**, updated **when outcomes become true**, committed like the ledger:
 ```bash
 node .claude/skills/tokenomics/scripts/work-scope.mjs open \
   --session <id> --intent automation --batch <slug> --cases ELITEA-1,ELITEA-2
-node .claude/skills/tokenomics/scripts/work-scope.mjs outcome --session <id> ELITEA-1=automated
+node .claude/skills/tokenomics/scripts/work-scope.mjs outcome --session <id> ELITEA-1=delivered
 node .claude/skills/tokenomics/scripts/work-scope.mjs close --session <id>
 # close ALSO renders <batch dir>/batch-report.md (cost.json recompute) and
 # prints receipt-vs-records DRIFT while the lead can still fix report.json.
@@ -142,13 +157,13 @@ node .claude/skills/tokenomics/scripts/work-scope.mjs close --session <id>
 ```
 
 **`intent` is an open string — label honestly, don't collapse into "other".**
-Suggested vocabulary (not enforced; a project or another bundle may add its
+Suggested vocabulary (not enforced; a project or another factory may add its
 own): `automation`, `manual-testing`, `investigation`, `framework`,
 `onboarding`, `docs`, `other`. Only **`automation`** feeds the cost-per-case
 figures — every other label simply reports its own spend, so a session that
 was really a bug hunt stops inflating "$ per automated case". Ids are opaque
 (any TMS shape) and the `outcomes` vocabulary is open too — the manual-qa
-bundle can adopt the identical record.
+factory can adopt the identical record.
 
 **Enforcement (both hosts, wired by `install-hooks.mjs`):** the same three
 moments on each. Session start injects one line carrying the session id + the
@@ -274,7 +289,7 @@ compute nothing. Two homes:
 **The telemetry submodule.** `install-hooks.mjs` sets `.agents/telemetry`
 up as a submodule **of the same repository**, checked out on its own `telemetry`
 branch (`.gitmodules` url `./`, `ignore = all`). It is **shared, one subfolder
-per bundle** — this bundle writes `automation/`; another bundle that wants
+per factory** — this factory writes `automation/`; another factory that wants
 durable telemetry later adds its own subfolder and rides the same branch and
 sync, no second submodule. In `automation/`: the ledger
 (`usage-<user>.jsonl` — one file per user, so parallel work never conflicts),
@@ -324,10 +339,10 @@ batch's `cases/` snapshots and `run.json`, and any browser scratch
 the submodule's state (uninitialized clone, unpushed commits, detached HEAD).
 
 **Scope note:** the capture/scope contract here belongs to the
-**test-automation bundle**; manual-qa meters its benchmark runs with its own
-hooks and other bundles do their own thing — the paths never collide, so they
+**test-automation factory**; manual-qa meters its benchmark runs with its own
+hooks and other factories do their own thing — the paths never collide, so they
 coexist in one repo without conflict. The telemetry *submodule* itself is the
-shared piece: per-bundle subfolders, one branch, one sync.
+shared piece: per-factory subfolders, one branch, one sync.
 
 ## Config — `.agents/telemetry/automation/config.json`
 
@@ -372,7 +387,8 @@ local submodule, so the report sees everyone, not just this machine.
 
 **Cases come from receipts, not guesswork:** it reads the pipeline's own
 `.agents/automation/*/report.json` (`cases[]` with `id` + `outcome`, latest
-outcome per case wins, delivered = `automated`) and derives **$ and active
+outcome per case wins, delivered = `delivered`/`defect-found` — legacy
+`automated`/`merged-sanctioned-red` accepted for old receipts) and derives **$ and active
 minutes per delivered case**. Analysis/review/fix rounds live in those receipts
 and in the batch's board — the ledger adds who paid for them and how long they
 took. Sessions with no real dollar are counted and labelled tokens-only; they

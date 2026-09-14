@@ -38,7 +38,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const MARKER_TTL_DAYS = 7;
 /**
  * SUGGESTED intents, not a validated enum — `intent` stays an open string so a
- * project (or another bundle: manual-qa) can label work its own way. The
+ * project (or another factory: manual-qa) can label work its own way. The
  * suggestion exists so sessions don't all collapse into "other", which tells
  * you nothing about where the money went. Only `automation` feeds the
  * cost-per-case figures; every other label simply reports its own spend.

@@ -294,8 +294,8 @@ Machine-written usage data: what each AI session cost, which cases it worked
 on. Hooks write here; commits go to the \`telemetry\` branch of THIS repo —
 never to main.
 
-One subfolder per bundle — \`automation/\` is the test-automation bundle's;
-other bundles add their own and ride the same branch and sync.
+One subfolder per factory — \`automation/\` is the test-automation factory's;
+other factories add their own and ride the same branch and sync.
 
 - Don't edit by hand. Don't commit this folder to main.
 - See the team picture:  \`git -C .agents/telemetry pull\`  → then run team-report
@@ -303,7 +303,7 @@ other bundles add their own and ride the same branch and sync.
 `;
 
 // Transient files never worth committing even to the telemetry branch.
-// Generic on purpose: any bundle's subfolder gets the same transient handling.
+// Generic on purpose: any factory's subfolder gets the same transient handling.
 const TELEMETRY_INNER_GITIGNORE = `*/live/
 */scopes/.pending-*
 */scopes/.nagged-*
@@ -327,8 +327,8 @@ const TELEMETRY_INNER_GITIGNORE = `*/live/
  * re-runs and initializes it (moving any interim files back in).
  */
 export function installTelemetrySubmodule(repo, { remove = false } = {}) {
-  // The submodule sits at the telemetry ROOT — shared across bundles, one
-  // branch, one sync. Each bundle keeps to its own subfolder (ours:
+  // The submodule sits at the telemetry ROOT — shared across factories, one
+  // branch, one sync. Each factory keeps to its own subfolder (ours:
   // automation/), so others join later with zero extra machinery.
   const dir = join(repo, '.agents', 'telemetry');
   const git = (args, opts = {}) =>
@@ -422,7 +422,7 @@ export function installTelemetrySubmodule(repo, { remove = false } = {}) {
 }
 
 /**
- * Layout migration: the flat era wrote this bundle's files at the telemetry
+ * Layout migration: the flat era wrote this factory's files at the telemetry
  * ROOT (usage-*.jsonl, scopes/, live/, config.json, factory-profile.json);
  * the shared-submodule era puts them under automation/. Readers look ONLY in
  * automation/, so un-migrated history silently vanishes from every report —
@@ -469,7 +469,7 @@ export function migrateTelemetryLayout(repo) {
  * fetch, merge (per-user files → conflict-free), push the merge back.
  */
 export function pullTelemetry(repo) {
-  const dir = join(repo, '.agents', 'telemetry'); // submodule root — all bundles
+  const dir = join(repo, '.agents', 'telemetry'); // submodule root — all factories
   if (!existsSync(join(dir, '.git'))) return { status: 'no-submodule' };
   const git = (args, timeout = 20000) =>
     execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout });
@@ -762,7 +762,7 @@ export async function main(argv = process.argv.slice(2)) {
   }
   const sub = installTelemetrySubmodule(repo, { remove });
   if (sub.status === 'installed') {
-    process.stderr.write('\ntokenomics: telemetry set up as a submodule (.agents/telemetry → branch \'telemetry\', same repo; this bundle writes automation/)\n'
+    process.stderr.write('\ntokenomics: telemetry set up as a submodule (.agents/telemetry → branch \'telemetry\', same repo; this factory writes automation/)\n'
       + '\n  what this means, once:\n'
       + '  • hooks write usage data there; it commits to its OWN branch — your working tree never gets dirty\n'
       + '  • one commit to make now (adds .gitmodules + the pointer):\n'

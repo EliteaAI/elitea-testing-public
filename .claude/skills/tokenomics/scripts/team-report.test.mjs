@@ -155,7 +155,7 @@ test('main: end-to-end over a repo root with --out', () => {
 
 // The team page mirrors the markdown's discipline: real dollars only,
 // tokens-only flagged, receipts join shown when present. Self-contained HTML —
-// same rhythm as the manual-qa bundle's tokenomics HTML report.
+// same rhythm as the manual-qa factory's tokenomics HTML report.
 test('main: --html renders the self-contained team page', () => {
   const repo = seedRepo();
   const out = join(tmp(), 'report.html');
