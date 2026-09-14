@@ -111,12 +111,12 @@ jobs:
           MAINTENANCE_SECRET: ${{ secrets.MAINTENANCE_SECRET }}
         run: |
           # Build JSON payload
-          PAYLOAD=$(cat <<'EOF'
+          PAYLOAD=$(cat <<EOF
           {
             "action": "completed",
             "workflow_run": {
               "id": ${{ github.run_id }},
-              "name": "${{ github.workflow }}",
+              "name": "${{ github.run_name }}",
               "path": ".github/workflows/test-ui-dev-stable.yml",
               "html_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
               "run_number": ${{ github.run_number }},
