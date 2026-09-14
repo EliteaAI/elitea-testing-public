@@ -1,0 +1,60 @@
+{
+  "runs": {
+    "20260914085135": [
+      {
+        "id": "ELITEA-1869",
+        "automation_test_id": "tests.ui.agents.test_agent_back_navigation.test_back_button_from_agent_detail_returns_to_intact_agents_list",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2145"
+      },
+      {
+        "id": "ELITEA-1899",
+        "automation_test_id": "tests.ui.agents.test_agent_icon_management.TestAgentIconManagement.test_agent_icon_change_persists_on_list_card",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Icon change does not update header icon src after selection",
+        "reasoning": "Clear assertion failure: 'Selecting a different icon option should change the header icon src'. The test ran once and failed immediately (no retries passed), indicating a deterministic UI behavior regression rather than a flaky/infra issue."
+      },
+      {
+        "id": "ELITEA-1892",
+        "automation_test_id": "tests.ui.agents.test_agent_publish_unpublish_version.TestAgentPublishUnpublishVersion.test_publish_draft_version_then_unpublish_reverts_to_draft",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2082"
+      },
+      {
+        "id": "ELITEA-1891",
+        "automation_test_id": "tests.ui.agents.test_agent_version_selector_order.TestAgentVersionSelectorOrder.test_version_selector_lists_versions_in_correct_order",
+        "resolution": "already_in_progress",
+        "tracking_issue": "https://github.com/EliteaAI/elitea-testing-public/issues/2272"
+      },
+      {
+        "id": "ELITEA-1999",
+        "automation_test_id": "tests.ui.agents.test_build_with_ai_skill_from_agent.TestBuildWithAISkillFromAgent.test_build_with_ai_skill_auto_attaches_and_redirects_to_agent",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "api-error",
+        "failure_summary": "generate-draft API endpoint returned 500",
+        "reasoning": "Explicit assertion: 'Expected the generate-draft request to succeed, got 500'. A 500 from the generate-draft endpoint is a backend error that needs investigation. This is consistent with the commit touching agent_hub_page constants which may affect the Build With AI flow."
+      },
+      {
+        "id": "ELITEA-1901",
+        "automation_test_id": "tests.ui.agents.test_import_agent_valid_md_file.TestImportAgentValidMdFile.test_import_agent_valid_md_file",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Imported agent model defaults to wrong model instead of fixture model (gpt-5.2 expected, Anthropic Claude 4.5 Sonnet got)",
+        "reasoning": "Clear assertion failure: expected model 'GPT-5.2' after import but got 'Anthropic Claude 4.5 Sonnet'. This indicates the import functionality is not preserving the model field from the MD file, which is a real product regression."
+      },
+      {
+        "id": "ELITEA-1902",
+        "automation_test_id": "tests.ui.agents.test_import_agent_zip_nested_agent_dependencies.TestImportAgentZipNestedAgentDependencies.test_import_agent_zip_nested_agent_dependencies",
+        "resolution": "to_fix",
+        "tracking_issue": "",
+        "failure_type": "assertion-failure",
+        "failure_summary": "Imported main agent name does not match exported agent name",
+        "reasoning": "Clear assertion failure: 'Imported main agent's name should match the exported main Agent's name'. Combined with the MD import test also failing on import fidelity, this strongly suggests a regression in the agent import feature affecting both name and model preservation."
+      }
+    ]
+  }
+}
