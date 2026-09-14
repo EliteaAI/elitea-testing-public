@@ -1,6 +1,6 @@
 # Tokenomics — team usage report
 
-Generated: 2026-09-14T12:23:46.066Z
+Generated: 2026-09-14T12:43:34.769Z
 
 ## Totals
 
@@ -9,7 +9,7 @@ Generated: 2026-09-14T12:23:46.066Z
 - Tokens (incl. sub-agents): total 9,582,240,167  ·  in 1,990,571, out 37,612,978, cache-read 9,297,855,036, cache-write 244,781,582
 - Real work: 39,603,549 tokens (in+out)  ·  cache hit rate: 97.4%
 - Time: 387.1h active  ·  1634.2h wall  ·  10949 turns  ·  10613 tool calls (283 err)
-- Case ids named in sessions: 291 distinct (sessions-per-case in the --json `byCase`; top: ELITEA-1140, ELITEA-2037, ELITEA-1866, ELITEA-2211, ELITEA-2367)
+- Case ids named in sessions: 469 distinct (sessions-per-case in the --json `byCase`; top: ELITEA-1140, ELITEA-2037, ELITEA-1866, ELITEA-2211, ELITEA-2367)
 
 ## Cases (from the pipeline's own receipts)
 

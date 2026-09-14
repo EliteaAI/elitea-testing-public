@@ -1,6 +1,6 @@
 # Batch cost — agent-hub-2351w1
 
-Generated: 2026-09-14T12:23:40.036Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.139Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-26 → 2026-08-11 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -38,7 +38,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2351, ELIT
 
 # Batch cost — agent-hub-2351w2
 
-Generated: 2026-09-14T12:23:40.038Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.140Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-26 → 2026-08-11 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -77,7 +77,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2353, ELIT
 
 # Batch cost — agent-hub-2351w3
 
-Generated: 2026-09-14T12:23:40.039Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.141Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-26 → 2026-08-11 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -114,7 +114,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2366, ELIT
 
 # Batch cost — agent-hub-2369
 
-Generated: 2026-09-14T12:23:40.039Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.141Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -145,7 +145,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2369
 
 # Batch cost — agent-hub-start-conversation-no-starters
 
-Generated: 2026-09-14T12:23:40.040Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.142Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -176,7 +176,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2368
 
 # Batch cost — agents-batch1-1277
 
-Generated: 2026-09-14T12:23:40.040Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.142Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-23 → 2026-08-08 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -217,7 +217,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-1873, ELIT
 
 # Batch cost — approved-next50/wave-01-heads_artifacts-upload-dup_pipe-hitl-node
 
-Generated: 2026-09-14T12:23:40.041Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.144Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-18 → 2026-08-03 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -258,7 +258,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-1920, ELIT
 
 # Batch cost — approved-next50/wave-02-05-merged
 
-Generated: 2026-09-14T12:23:40.041Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.144Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-20 → 2026-08-05 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -327,7 +327,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-1851, ELIT
 
 # Batch cost — approved-top10
 
-Generated: 2026-09-14T12:23:40.041Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.145Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-18 → 2026-08-03 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -367,7 +367,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-1934, ELIT
 
 # Batch cost — artifacts-w01
 
-Generated: 2026-09-14T12:23:40.054Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.156Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-20 → 2026-08-22 (gate-runs)_
 
@@ -424,7 +424,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-1806
 
 # Batch cost — artifacts-w02
 
-Generated: 2026-09-14T12:23:40.064Z  ·  sessions: 2 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.166Z  ·  sessions: 2 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-20 → 2026-08-22 (gate-runs)_
 
@@ -478,7 +478,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — artifacts-w03
 
-Generated: 2026-09-14T12:23:40.075Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.178Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-20 → 2026-08-22 (gate-runs)_
 
@@ -531,7 +531,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — artifacts-w04
 
-Generated: 2026-09-14T12:23:40.086Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.189Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-22 → 2026-08-24 (gate-runs)_
 
@@ -586,7 +586,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — artifacts-w05
 
-Generated: 2026-09-14T12:23:40.098Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.200Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-22 → 2026-08-24 (gate-runs)_
 
@@ -641,7 +641,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — artifacts-w06
 
-Generated: 2026-09-14T12:23:40.110Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.212Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-08 → 2026-08-24 (receipt-time (14-day look-back))_
 
@@ -685,7 +685,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — artifacts-w07
 
-Generated: 2026-09-14T12:23:40.123Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.224Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-13 → 2026-08-29 (receipt-time (14-day look-back))_
 
@@ -728,7 +728,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — chat-remaining-w01
 
-Generated: 2026-09-14T12:23:40.147Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.248Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
 
 _window 2026-07-30 → 2026-08-15 (receipt-time (14-day look-back))_
 
@@ -778,7 +778,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — chat-remaining-w02
 
-Generated: 2026-09-14T12:23:40.171Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.271Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
 
 _window 2026-07-30 → 2026-08-15 (receipt-time (14-day look-back))_
 
@@ -827,7 +827,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — chat-remaining-w03
 
-Generated: 2026-09-14T12:23:40.196Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.295Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
 
 _window 2026-07-30 → 2026-08-15 (receipt-time (14-day look-back))_
 
@@ -881,7 +881,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — chat-remaining-w04
 
-Generated: 2026-09-14T12:23:40.220Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.318Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
 
 _window 2026-07-31 → 2026-08-16 (receipt-time (14-day look-back))_
 
@@ -935,7 +935,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2456
 
 # Batch cost — chat-remaining-w05
 
-Generated: 2026-09-14T12:23:40.245Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.341Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
 
 _window 2026-07-31 → 2026-08-16 (receipt-time (14-day look-back))_
 
@@ -985,7 +985,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — chat-remaining-w06
 
-Generated: 2026-09-14T12:23:40.268Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.365Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
 
 _window 2026-07-31 → 2026-08-16 (receipt-time (14-day look-back))_
 
@@ -1043,7 +1043,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2126
 
 # Batch cost — chat-remaining-w07
 
-Generated: 2026-09-14T12:23:40.292Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.389Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
 
 _window 2026-07-31 → 2026-08-16 (receipt-time (14-day look-back))_
 
@@ -1100,7 +1100,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — chat-remaining-w08
 
-Generated: 2026-09-14T12:23:40.315Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.412Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
 
 _window 2026-07-31 → 2026-08-16 (receipt-time (14-day look-back))_
 
@@ -1151,7 +1151,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — chat-remaining-w09
 
-Generated: 2026-09-14T12:23:40.339Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.436Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
 
 _window 2026-07-31 → 2026-08-16 (receipt-time (14-day look-back))_
 
@@ -1204,7 +1204,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — chat-remaining-w10
 
-Generated: 2026-09-14T12:23:40.363Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.459Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
 
 _window 2026-07-31 → 2026-08-16 (receipt-time (14-day look-back))_
 
@@ -1255,7 +1255,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — chat-remaining-w11
 
-Generated: 2026-09-14T12:23:40.387Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.483Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
 
 _window 2026-07-31 → 2026-08-16 (receipt-time (14-day look-back))_
 
@@ -1308,7 +1308,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2191, ELIT
 
 # Batch cost — chat-remaining-w12
 
-Generated: 2026-09-14T12:23:40.412Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.505Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
 
 _window 2026-08-01 → 2026-08-17 (receipt-time (14-day look-back))_
 
@@ -1363,7 +1363,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — chat-remaining-w13
 
-Generated: 2026-09-14T12:23:40.436Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.528Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
 
 _window 2026-08-04 → 2026-08-20 (receipt-time (14-day look-back))_
 
@@ -1413,7 +1413,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — chat-remaining-w14
 
-Generated: 2026-09-14T12:23:40.460Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.550Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
 
 _window 2026-08-04 → 2026-08-20 (receipt-time (14-day look-back))_
 
@@ -1465,7 +1465,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — chat-remaining-w15
 
-Generated: 2026-09-14T12:23:40.483Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.573Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
 
 _window 2026-08-04 → 2026-08-20 (receipt-time (14-day look-back))_
 
@@ -1517,7 +1517,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — chat-remaining-w16
 
-Generated: 2026-09-14T12:23:40.507Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.595Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-sonnet-5
 
 _window 2026-08-05 → 2026-08-21 (receipt-time (14-day look-back))_
 
@@ -1569,7 +1569,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — credentials-w01
 
-Generated: 2026-09-14T12:23:40.510Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.598Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-21 → 2026-08-23 (gate-runs)_
 
@@ -1624,7 +1624,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — credentials-w02
 
-Generated: 2026-09-14T12:23:40.514Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.602Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-22 → 2026-08-24 (gate-runs)_
 
@@ -1673,7 +1673,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — credentials-w03
 
-Generated: 2026-09-14T12:23:40.519Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.607Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-11 → 2026-08-27 (receipt-time (14-day look-back))_
 
@@ -1716,7 +1716,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — elitea-2002
 
-Generated: 2026-09-14T12:23:40.520Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.609Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-23 → 2026-08-08 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -1747,7 +1747,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2002
 
 # Batch cost — elitea-2020-create-pipeline-minimal
 
-Generated: 2026-09-14T12:23:40.520Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.610Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-23 → 2026-08-08 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -1778,7 +1778,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2020
 
 # Batch cost — elitea-2023-pipeline-dashboard-search
 
-Generated: 2026-09-14T12:23:40.520Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.610Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-23 → 2026-08-08 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -1809,7 +1809,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2023
 
 # Batch cost — elitea-2026-pipeline-yaml-editor-view
 
-Generated: 2026-09-14T12:23:40.521Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.610Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-23 → 2026-08-08 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -1840,7 +1840,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2026
 
 # Batch cost — elitea-2037
 
-Generated: 2026-09-14T12:23:40.521Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.610Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-20 → 2026-08-05 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -1871,7 +1871,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2037
 
 # Batch cost — elitea-2040
 
-Generated: 2026-09-14T12:23:40.521Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.611Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-20 → 2026-08-05 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -1902,7 +1902,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2040
 
 # Batch cost — elitea-2042-pipeline-state-panel
 
-Generated: 2026-09-14T12:23:40.521Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.611Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-20 → 2026-08-05 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -1933,7 +1933,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2042
 
 # Batch cost — elitea-2068
 
-Generated: 2026-09-14T12:23:40.522Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.611Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-20 → 2026-08-05 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -1964,7 +1964,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2068
 
 # Batch cost — elitea-2094
 
-Generated: 2026-09-14T12:23:40.523Z  ·  sessions: 2 (claude)  ·  sources: ccusage-metered  ·  models: claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.613Z  ·  sessions: 2 (claude)  ·  sources: ccusage-metered  ·  models: claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
 
 _window 2026-08-11 → 2026-08-27 (receipt-time (14-day look-back))_
 
@@ -2007,7 +2007,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — elitea-2227
 
-Generated: 2026-09-14T12:23:40.524Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.614Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-20 → 2026-08-05 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2038,7 +2038,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2227
 
 # Batch cost — elitea-2257-notification-text-content
 
-Generated: 2026-09-14T12:23:40.524Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.614Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-20 → 2026-08-05 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2069,7 +2069,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2257
 
 # Batch cost — elitea-2259-notifications-read-unread
 
-Generated: 2026-09-14T12:23:40.524Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.614Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2100,7 +2100,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2259
 
 # Batch cost — elitea-2277-personal-tokens
 
-Generated: 2026-09-14T12:23:40.525Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.615Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2131,7 +2131,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2277
 
 # Batch cost — elitea-2280-personal-token-create
 
-Generated: 2026-09-14T12:23:40.525Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.615Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2162,7 +2162,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2280
 
 # Batch cost — elitea-2284
 
-Generated: 2026-09-14T12:23:40.525Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.616Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2193,7 +2193,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2284
 
 # Batch cost — elitea-2286-token-name-validation
 
-Generated: 2026-09-14T12:23:40.526Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.616Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2224,7 +2224,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2286
 
 # Batch cost — elitea-2292-users-page-layout
 
-Generated: 2026-09-14T12:23:40.526Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.616Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2254,7 +2254,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2292
 
 # Batch cost — elitea-2304-batch-edit-roles
 
-Generated: 2026-09-14T12:23:40.526Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.616Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2285,7 +2285,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2304
 
 # Batch cost — elitea-2307
 
-Generated: 2026-09-14T12:23:40.526Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.617Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2316,7 +2316,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2307
 
 # Batch cost — elitea-2310
 
-Generated: 2026-09-14T12:23:40.527Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.617Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2347,7 +2347,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2310
 
 # Batch cost — elitea-2312
 
-Generated: 2026-09-14T12:23:40.527Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.617Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2378,7 +2378,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2312
 
 # Batch cost — elitea-2313
 
-Generated: 2026-09-14T12:23:40.527Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.618Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2409,7 +2409,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2313
 
 # Batch cost — elitea-2320
 
-Generated: 2026-09-14T12:23:40.528Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.618Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2440,7 +2440,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2320
 
 # Batch cost — elitea-2321
 
-Generated: 2026-09-14T12:23:40.528Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.618Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2471,7 +2471,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2321
 
 # Batch cost — elitea-2336-secrets-inline-create
 
-Generated: 2026-09-14T12:23:40.528Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.619Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2502,7 +2502,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2336
 
 # Batch cost — elitea-2337-secret-name-validation
 
-Generated: 2026-09-14T12:23:40.528Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.619Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2533,7 +2533,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2337
 
 # Batch cost — elitea-2338-delete-secret
 
-Generated: 2026-09-14T12:23:40.529Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.620Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2564,7 +2564,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2338
 
 # Batch cost — elitea-2343-secret-eye-icon-reveal
 
-Generated: 2026-09-14T12:23:40.529Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.620Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2595,7 +2595,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2343
 
 # Batch cost — elitea-2344-hide-secret
 
-Generated: 2026-09-14T12:23:40.530Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.621Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2626,7 +2626,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2344
 
 # Batch cost — elitea-2350-agent-hub-private-project
 
-Generated: 2026-09-14T12:23:40.530Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.621Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2657,7 +2657,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2350
 
 # Batch cost — elitea-2352-agent-hub-filter-single-category
 
-Generated: 2026-09-14T12:23:40.531Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.621Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2688,7 +2688,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2352
 
 # Batch cost — ELITEA-2354-agent-hub-like
 
-Generated: 2026-09-14T12:23:40.531Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.621Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2719,7 +2719,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2354
 
 # Batch cost — elitea-2356-agent-hub-detail-modal
 
-Generated: 2026-09-14T12:23:40.531Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.622Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2750,7 +2750,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2356
 
 # Batch cost — elitea-2365-my-liked-reload
 
-Generated: 2026-09-14T12:23:40.531Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.622Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2781,7 +2781,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2365
 
 # Batch cost — elitea-2374-context-mgmt-toggle
 
-Generated: 2026-09-14T12:23:40.532Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.622Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2812,7 +2812,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2374
 
 # Batch cost — elitea-2377-summarization-toggle
 
-Generated: 2026-09-14T12:23:40.532Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.623Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2843,7 +2843,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2377
 
 # Batch cost — elitea-2391-max-context-tokens
 
-Generated: 2026-09-14T12:23:40.532Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.623Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2874,7 +2874,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2391
 
 # Batch cost — elitea-2392-ai-configuration-page
 
-Generated: 2026-09-14T12:23:40.532Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.623Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2905,7 +2905,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2392
 
 # Batch cost — elitea-2397-set-llm-model-tiers
 
-Generated: 2026-09-14T12:23:40.533Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.624Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2936,7 +2936,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2397
 
 # Batch cost — elitea-2435-skill-pin-unpin
 
-Generated: 2026-09-14T12:23:40.533Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.624Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2967,7 +2967,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2435
 
 # Batch cost — elitea-2437-version-dropdown-set-default
 
-Generated: 2026-09-14T12:23:40.533Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.624Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -2997,7 +2997,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2437
 
 # Batch cost — elitea-2438-skill-import-frontmatter
 
-Generated: 2026-09-14T12:23:40.534Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.624Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -3028,7 +3028,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2438
 
 # Batch cost — elitea-2440-test-panel-version-instructions
 
-Generated: 2026-09-14T12:23:40.534Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.625Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -3059,7 +3059,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2440
 
 # Batch cost — elitea-2450
 
-Generated: 2026-09-14T12:23:40.534Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.625Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -3090,7 +3090,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2450
 
 # Batch cost — elitea-2452
 
-Generated: 2026-09-14T12:23:40.534Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.626Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -3121,7 +3121,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2452
 
 # Batch cost — elitea-2453
 
-Generated: 2026-09-14T12:23:40.535Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.626Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -3152,7 +3152,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2453
 
 # Batch cost — elitea-2455-chat-participants
 
-Generated: 2026-09-14T12:23:40.536Z  ·  sessions: 2 (claude)  ·  sources: ccusage-metered  ·  models: claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.628Z  ·  sessions: 2 (claude)  ·  sources: ccusage-metered  ·  models: claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
 
 _window 2026-08-11 → 2026-08-27 (receipt-time (14-day look-back))_
 
@@ -3195,7 +3195,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — elitea-2459-chat-folder-rename-tooltip
 
-Generated: 2026-09-14T12:23:40.537Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.628Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-23 → 2026-08-08 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -3226,7 +3226,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2459
 
 # Batch cost — elitea-2464-chat-modules-panel
 
-Generated: 2026-09-14T12:23:40.537Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.628Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-23 → 2026-08-08 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -3257,7 +3257,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2464
 
 # Batch cost — help-center-remaining
 
-Generated: 2026-09-14T12:23:40.538Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.629Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-30 → 2026-08-15 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -3297,7 +3297,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2220, ELIT
 
 # Batch cost — mcp-w01
 
-Generated: 2026-09-14T12:23:40.545Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.635Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-23 → 2026-08-25 (gate-runs)_
 
@@ -3351,7 +3351,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — mcp-w02
 
-Generated: 2026-09-14T12:23:40.551Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.642Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-23 → 2026-08-25 (gate-runs)_
 
@@ -3405,7 +3405,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — mcp-w03
 
-Generated: 2026-09-14T12:23:40.558Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.649Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-23 → 2026-08-25 (gate-runs)_
 
@@ -3457,7 +3457,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — mcp-w04
 
-Generated: 2026-09-14T12:23:40.564Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.655Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-23 → 2026-08-25 (gate-runs)_
 
@@ -3508,7 +3508,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — mcp-w05
 
-Generated: 2026-09-14T12:23:40.572Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.662Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-23 → 2026-08-25 (gate-runs)_
 
@@ -3555,7 +3555,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — onboarding-w2
 
-Generated: 2026-09-14T12:23:40.575Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.664Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-23 → 2026-08-25 (gate-runs)_
 
@@ -3605,7 +3605,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — onboarding-w3
 
-Generated: 2026-09-14T12:23:40.578Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.667Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-23 → 2026-08-25 (gate-runs)_
 
@@ -3653,7 +3653,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — onboarding-w4
 
-Generated: 2026-09-14T12:23:40.581Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.670Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-23 → 2026-08-25 (gate-runs)_
 
@@ -3701,7 +3701,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — pipeline-decision-node-2034
 
-Generated: 2026-09-14T12:23:40.581Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.670Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-20 → 2026-08-05 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -3732,7 +3732,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2034
 
 # Batch cost — pipeline-router-node-2033
 
-Generated: 2026-09-14T12:23:40.581Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.671Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-20 → 2026-08-05 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -3763,7 +3763,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2033
 
 # Batch cost — pipelines-remaining-w1
 
-Generated: 2026-09-14T12:23:40.582Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.671Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-24 → 2026-08-09 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -3801,7 +3801,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2009, ELIT
 
 # Batch cost — pipelines-remaining-w2
 
-Generated: 2026-09-14T12:23:40.582Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.671Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-24 → 2026-08-09 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -3841,7 +3841,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2003, ELIT
 
 # Batch cost — pipelines-remaining-w3
 
-Generated: 2026-09-14T12:23:40.583Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.671Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-24 → 2026-08-09 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -3876,7 +3876,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2027, ELIT
 
 # Batch cost — pipelines-remaining-w4
 
-Generated: 2026-09-14T12:23:40.583Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.672Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-25 → 2026-08-10 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -3912,7 +3912,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2019, ELIT
 
 # Batch cost — pipelines-remaining-w5
 
-Generated: 2026-09-14T12:23:40.584Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.673Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-25 → 2026-08-10 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -3949,7 +3949,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2017, ELIT
 
 # Batch cost — pipelines-remaining-w6
 
-Generated: 2026-09-14T12:23:40.585Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.674Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-25 → 2026-08-10 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -3987,7 +3987,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2043, ELIT
 
 # Batch cost — pipelines-remaining-w7
 
-Generated: 2026-09-14T12:23:40.585Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.674Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-25 → 2026-08-10 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -4028,7 +4028,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2011, ELIT
 
 # Batch cost — settings-project-params
 
-Generated: 2026-09-14T12:23:40.586Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.675Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-21 → 2026-08-06 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -4059,7 +4059,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2272
 
 # Batch cost — settings-w01
 
-Generated: 2026-09-14T12:23:40.604Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.692Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
 
 _window 2026-08-25 → 2026-08-27 (gate-runs)_
 
@@ -4117,7 +4117,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2254
 
 # Batch cost — settings-w02
 
-Generated: 2026-09-14T12:23:40.624Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.710Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
 
 _window 2026-08-25 → 2026-08-27 (gate-runs)_
 
@@ -4174,7 +4174,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2265
 
 # Batch cost — settings-w03
 
-Generated: 2026-09-14T12:23:40.643Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.727Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
 
 _window 2026-08-25 → 2026-08-27 (gate-runs)_
 
@@ -4230,7 +4230,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — settings-w04
 
-Generated: 2026-09-14T12:23:40.662Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.745Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
 
 _window 2026-08-26 → 2026-08-28 (gate-runs)_
 
@@ -4286,7 +4286,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — settings-w05
 
-Generated: 2026-09-14T12:23:40.681Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.763Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
 
 _window 2026-08-26 → 2026-08-28 (gate-runs)_
 
@@ -4346,7 +4346,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — settings-w06
 
-Generated: 2026-09-14T12:23:40.700Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.780Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
 
 _window 2026-08-27 → 2026-08-29 (gate-runs)_
 
@@ -4407,7 +4407,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — settings-w07
 
-Generated: 2026-09-14T12:23:40.719Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.798Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
 
 _window 2026-08-27 → 2026-08-29 (gate-runs)_
 
@@ -4459,7 +4459,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — settings-w08
 
-Generated: 2026-09-14T12:23:40.738Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.816Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
 
 _window 2026-08-27 → 2026-08-29 (gate-runs)_
 
@@ -4524,7 +4524,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2380
 
 # Batch cost — settings-w09
 
-Generated: 2026-09-14T12:23:40.755Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.834Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
 
 _window 2026-08-28 → 2026-08-30 (gate-runs)_
 
@@ -4587,7 +4587,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2306
 
 # Batch cost — settings-w10
 
-Generated: 2026-09-14T12:23:40.773Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.851Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
 
 _window 2026-08-28 → 2026-08-30 (gate-runs)_
 
@@ -4648,7 +4648,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2417, ELIT
 
 # Batch cost — settings-w12
 
-Generated: 2026-09-14T12:23:40.791Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
+Generated: 2026-09-14T12:43:29.869Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5, claude-sonnet-5
 
 _window 2026-08-29 → 2026-08-31 (gate-runs)_
 
@@ -4699,7 +4699,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2246
 
 # Batch cost — skills-buildwithai-fidelity-rework
 
-Generated: 2026-09-14T12:23:40.792Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.870Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-30 → 2026-08-15 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -4737,7 +4737,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-1989, ELIT
 
 # Batch cost — skills-remaining-w1
 
-Generated: 2026-09-14T12:23:40.793Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.871Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-29 → 2026-08-14 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -4775,7 +4775,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2428, ELIT
 
 # Batch cost — skills-remaining-w2
 
-Generated: 2026-09-14T12:23:40.793Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.871Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-29 → 2026-08-14 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -4813,7 +4813,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2439, ELIT
 
 # Batch cost — skills-remaining-w3
 
-Generated: 2026-09-14T12:23:40.794Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.872Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-29 → 2026-08-14 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -4851,7 +4851,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2595, ELIT
 
 # Batch cost — skills-remaining-w4
 
-Generated: 2026-09-14T12:23:40.794Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.872Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-29 → 2026-08-14 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -4888,7 +4888,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-2607, ELIT
 
 # Batch cost — skills-remaining-w5
 
-Generated: 2026-09-14T12:23:40.795Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.872Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-29 → 2026-08-14 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
@@ -4927,7 +4927,7 @@ Unattributed (no dispatch named them in any captured session): ELITEA-1986, ELIT
 
 # Batch cost — support-assistant-w01
 
-Generated: 2026-09-14T12:23:40.797Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.875Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-21 → 2026-08-23 (gate-runs)_
 
@@ -4977,7 +4977,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — support-assistant-w02
 
-Generated: 2026-09-14T12:23:40.800Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
+Generated: 2026-09-14T12:43:29.878Z  ·  sessions: 1 (claude)  ·  sources: ccusage-metered  ·  models: <synthetic>, claude-haiku-4-5-20251001, claude-opus-5
 
 _window 2026-08-21 → 2026-08-23 (gate-runs)_
 
@@ -5030,7 +5030,7 @@ _Cases analysed/built as one cluster share its measured dispatches — their row
 
 # Batch cost — target-summary-tokens-range-2378
 
-Generated: 2026-09-14T12:23:40.800Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
+Generated: 2026-09-14T12:43:29.879Z  ·  sessions: 0 (none)  ·  sources: tokens only  ·  models: —
 
 > ⚠ **NO CAPTURED SESSION in its window 2026-07-22 → 2026-08-07 (receipt-time (14-day look-back)) — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0**
 
