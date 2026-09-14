@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-14T12:03:18.074Z",
+  "generated": "2026-09-14T12:11:49.806Z",
   "window": null,
   "sessions": 132,
   "people": 1,
@@ -364,7 +364,9 @@
       },
       "activeMin": 12611,
       "toolCalls": 9984,
-      "toolErrors": 263
+      "toolErrors": 263,
+      "costUsd": 1517.869409399999,
+      "priced": true
     },
     "test-automation-engineer": {
       "units": 567,
@@ -376,7 +378,9 @@
       },
       "activeMin": 5885,
       "toolCalls": 23511,
-      "toolErrors": 868
+      "toolErrors": 868,
+      "costUsd": 2175.226119250001,
+      "priced": true
     },
     "qa-engineer": {
       "units": 499,
@@ -388,7 +392,9 @@
       },
       "activeMin": 3871,
       "toolCalls": 17985,
-      "toolErrors": 503
+      "toolErrors": 503,
+      "costUsd": 1679.277817549999,
+      "priced": true
     },
     "scout": {
       "units": 5,
@@ -400,7 +406,9 @@
       },
       "activeMin": 657,
       "toolCalls": 572,
-      "toolErrors": 19
+      "toolErrors": 19,
+      "costUsd": 104.62318600000002,
+      "priced": true
     },
     "general-purpose": {
       "units": 6,
@@ -412,7 +420,9 @@
       },
       "activeMin": 25,
       "toolCalls": 163,
-      "toolErrors": 3
+      "toolErrors": 3,
+      "costUsd": 15.089039500000002,
+      "priced": true
     },
     "Explore": {
       "units": 4,
@@ -424,7 +434,9 @@
       },
       "activeMin": 20,
       "toolCalls": 144,
-      "toolErrors": 0
+      "toolErrors": 0,
+      "costUsd": 6.809648999999999,
+      "priced": true
     },
     "claude-code-guide": {
       "units": 1,
@@ -436,7 +448,9 @@
       },
       "activeMin": 3,
       "toolCalls": 19,
-      "toolErrors": 0
+      "toolErrors": 0,
+      "costUsd": 0.25618705,
+      "priced": true
     },
     "(interactive session)": {
       "units": 4,
@@ -448,7 +462,9 @@
       },
       "activeMin": 154,
       "toolCalls": 57,
-      "toolErrors": 1
+      "toolErrors": 1,
+      "costUsd": 6.79075375,
+      "priced": true
     }
   },
   "byWeek": {

@@ -1,6 +1,6 @@
 # Tokenomics — team usage report
 
-Generated: 2026-09-14T12:01:49.839Z
+Generated: 2026-09-14T12:11:44.994Z
 
 ## Totals
 
@@ -781,14 +781,14 @@ Generated: 2026-09-14T12:01:49.839Z
 
 | role | cost | units | tokens (in/out) | active | tools (err) |
 |---|---|---|---|---|---|
-| test-automation-engineer | (session-grain) | 567 | 59,262/16,182,984 | 98.1h | 23511 (868) |
-| qa-engineer | (session-grain) | 499 | 36,723/13,214,828 | 64.5h | 17985 (503) |
-| test-automation-lead | (session-grain) | 123 | 20,521/7,225,450 | 210.2h | 9984 (263) |
-| scout | (session-grain) | 5 | 1,094/581,407 | 10.9h | 572 (19) |
-| (interactive session) | (session-grain) | 4 | 1,872,363/222,359 | 2.6h | 57 (1) |
-| general-purpose | (session-grain) | 6 | 316/92,792 | 0.4h | 163 (3) |
-| Explore | (session-grain) | 4 | 130/86,268 | 0.3h | 144 (0) |
-| claude-code-guide | (session-grain) | 1 | 162/6,890 | 0.1h | 19 (0) |
+| test-automation-engineer | $2175.23 | 567 | 59,262/16,182,984 | 98.1h | 23511 (868) |
+| qa-engineer | $1679.28 | 499 | 36,723/13,214,828 | 64.5h | 17985 (503) |
+| test-automation-lead | $1517.87 | 123 | 20,521/7,225,450 | 210.2h | 9984 (263) |
+| scout | $104.62 | 5 | 1,094/581,407 | 10.9h | 572 (19) |
+| (interactive session) | $6.79 | 4 | 1,872,363/222,359 | 2.6h | 57 (1) |
+| general-purpose | $15.09 | 6 | 316/92,792 | 0.4h | 163 (3) |
+| Explore | $6.81 | 4 | 130/86,268 | 0.3h | 144 (0) |
+| claude-code-guide | $0.26 | 1 | 162/6,890 | 0.1h | 19 (0) |
 
 ## By week
 
@@ -802,4 +802,4 @@ Generated: 2026-09-14T12:01:49.839Z
 | 2026-W37 | $1024.92 | 78 | 15,964/6,419,250 | 63.9h | 3773 (121) |
 | 2026-W38 | $31.76 | 6 | 382/172,133 | 1.3h | 130 (8) |
 
-_Dollars are session-grain (one figure per session, real sources only), so the role table reports tokens/time — sub-agent roles included. Fork/resume caveat: a forked session replays its parent's records; its ledger line can double-count the replayed tokens._
+_Role dollars: each dispatch's own metered figure (Claude); a parent role's figure is its sessions minus their dispatches. Roles with no metered dispatch (Copilot) show tokens/time only. Fork/resume caveat: a forked session replays its parent's records; its ledger line can double-count the replayed tokens._
