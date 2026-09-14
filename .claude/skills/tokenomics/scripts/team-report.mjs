@@ -188,7 +188,7 @@ export function buildReport(lines, cases) {
   const byRole = new Map(); // tokens/time grain — dollars are session-grain and stay in totals
   const sources = new Map();
   const roleBucket = (role) => {
-    if (!byRole.has(role)) byRole.set(role, { units: 0, tokens: emptyTok(), activeMin: 0, toolCalls: 0, toolErrors: 0 });
+    if (!byRole.has(role)) byRole.set(role, { units: 0, tokens: emptyTok(), activeMin: 0, toolCalls: 0, toolErrors: 0, costUsd: 0, priced: false });
     return byRole.get(role);
   };
   for (const l of lines) {
@@ -203,11 +203,16 @@ export function buildReport(lines, cases) {
     pb.units++; addTok(pb.tokens, l.tokens);
     pb.activeMin += Math.max(0, num(l.activeMin) - (l.subagents ?? []).reduce((n, s) => n + num(s.activeMin), 0));
     pb.toolCalls += num(l.toolCalls); pb.toolErrors += num(l.toolErrors);
+    // Dollars per role: each dispatch carries its own metered figure (Claude);
+    // the parent's own thread is the session figure minus its dispatches.
+    let subUsd = 0;
     for (const s of l.subagents ?? []) {
       const sb = roleBucket(s.role || 'unknown');
       sb.units += num(s.n) || 1; addTok(sb.tokens, s.tokens);
       sb.activeMin += num(s.activeMin); sb.toolCalls += num(s.toolCalls); sb.toolErrors += num(s.toolErrors);
+      if (typeof s.costUsd === 'number') { sb.costUsd += s.costUsd; sb.priced = true; subUsd += s.costUsd; }
     }
+    if (typeof l.costUsd === 'number') { pb.costUsd += Math.max(0, l.costUsd - subUsd); pb.priced = true; }
   }
   // Case ids mined from session names/branches/dispatch labels — which cases
   // each session TOUCHED (sessions per case, never dollars split per case: a
@@ -326,7 +331,7 @@ export function renderMarkdown(rep, { window, label } = {}) {
   table('By person', Object.entries(rep.byPerson).sort((a, z) => (z[1].costUsd || 0) - (a[1].costUsd || 0)));
   table('By role', Object.entries(rep.byRole).sort((a, z) => z[1].tokens.output - a[1].tokens.output), 'units');
   table('By week', Object.entries(rep.byWeek).sort(([a], [z]) => a.localeCompare(z)));
-  out.push('_Dollars are session-grain (one figure per session, real sources only), so the role table reports tokens/time — sub-agent roles included. Fork/resume caveat: a forked session replays its parent\'s records; its ledger line can double-count the replayed tokens._');
+  out.push('_Role dollars: each dispatch\'s own metered figure (Claude); a parent role\'s figure is its sessions minus their dispatches. Roles with no metered dispatch (Copilot) show tokens/time only. Fork/resume caveat: a forked session replays its parent\'s records; its ledger line can double-count the replayed tokens._');
   return out.join('\n');
 }
 

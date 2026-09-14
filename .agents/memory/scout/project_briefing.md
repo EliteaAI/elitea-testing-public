@@ -114,3 +114,8 @@ both, so your profile is his single source of project truth.
   the primary id surface. Verify each still applies after any `init --update`.
 - `.agents/automation/**` is ignored EXCEPT report.json / gate-runs.jsonl / cost.json /
   batch-report.* / batch-tokenomics.* — those are the receipts every report joins on.
+- Follow-up patches (same day): `batchWindow` reuses the window recorded in a committed
+  `cost.json` when it is older than the fresh git/mtime guess (retro-commits and fresh clones
+  stamp "today"); `team-report.mjs` by-role now shows real dollars (dispatch-metered; parent
+  role = session − dispatches; sums to the ledger total). `CASE_ID_MAX = 50` in capture caps
+  a session's mined ids — campaign sessions hit it; batch join still sees `subagents[].cases`.

@@ -273,11 +273,22 @@ export function batchWindow(slug, receipt, { scopes = [], dir = null, repo = nul
     if (at.length) out = { start: Math.min(...at), end: Math.max(...at), source: 'gate-runs' };
   }
   if (!out && dir) {
+    // Receipt time is a heuristic and only gets WORSE with age: a retro-commit
+    // stamps today, a fresh clone stamps mtime = clone time. So take the
+    // EARLIEST evidence available — the file's first git add, its mtime, and
+    // the window a previous recompute already recorded in cost.json (which
+    // travels with the repo, so the originating machine's mtime survives).
     const p = join(dir, 'report.json');
-    let end = null;
-    try { const t = execFileSync('git', ['log', '-1', '--format=%ct', '--', p], { cwd: repo ?? dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 15000 }).trim(); if (t) end = Number(t) * 1000; } catch { /* untracked or no git */ }
-    if (!end) { try { end = statSync(p).mtimeMs; } catch { /* no receipt */ } }
-    if (end) out = { start: end - WINDOW_LOOKBACK_MS, end, source: 'receipt-time (14-day look-back)' };
+    const ends = [];
+    try { const t = execFileSync('git', ['log', '--diff-filter=A', '--format=%ct', '--', p], { cwd: repo ?? dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 15000 }).trim().split('\n').filter(Boolean).pop(); if (t) ends.push(Number(t) * 1000); } catch { /* untracked or no git */ }
+    try { ends.push(statSync(p).mtimeMs); } catch { /* no receipt */ }
+    if (ends.length) out = { start: Math.min(...ends) - WINDOW_LOOKBACK_MS - WINDOW_MARGIN_MS, end: Math.min(...ends) + WINDOW_MARGIN_MS, source: 'receipt-time (14-day look-back)' };
+    try {
+      const rec = JSON.parse(readFileSync(join(dir, 'cost.json'), 'utf8'))?.sources?.window;
+      const rEnd = Date.parse(rec?.end ?? ''); const rStart = Date.parse(rec?.start ?? '');
+      if (Number.isFinite(rEnd) && Number.isFinite(rStart) && (!out || rEnd < out.end)) out = { start: rStart, end: rEnd, source: rec.source ?? 'recorded' };
+    } catch { /* no prior cost.json */ }
+    windowCache.set(key, out); return out; // margins already applied on this path
   }
   if (out) out = { ...out, start: out.start - WINDOW_MARGIN_MS, end: out.end + WINDOW_MARGIN_MS };
   windowCache.set(key, out);

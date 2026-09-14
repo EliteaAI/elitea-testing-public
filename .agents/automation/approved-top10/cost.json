@@ -1,11 +1,11 @@
 {
  "v": 1,
  "batch": "approved-top10",
- "generatedAt": "2026-09-14T12:03:19.732Z",
+ "generatedAt": "2026-09-14T12:11:51.638Z",
  "sources": {
   "window": {
-   "start": "2026-07-18T06:09:21.000Z",
-   "end": "2026-08-03T06:09:21.000Z",
+   "start": "2026-07-18T02:23:24.000Z",
+   "end": "2026-08-03T02:23:24.000Z",
    "source": "receipt-time (14-day look-back)"
   },
   "sessions": 0,
