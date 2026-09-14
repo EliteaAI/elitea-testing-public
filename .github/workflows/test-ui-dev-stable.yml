@@ -35,6 +35,10 @@ on:
         description: 'Suffix for TMS report name'
         type: string
         default: ''
+      enable_results_processing:
+        description: 'Send results for processing'
+        type: boolean
+        default: false
 
 jobs:
   test:
@@ -94,3 +98,56 @@ jobs:
       JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
       CONFLUENCE_BASE_URL: ${{ secrets.CONFLUENCE_BASE_URL }}
       CONFLUENCE_SPACE: ${{ secrets.CONFLUENCE_SPACE }}
+
+  notify:
+    name: Notify intake pipeline
+    needs: test
+    if: always() && (github.event_name == 'schedule' || inputs.enable_results_processing == true)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send webhook to intake pipeline
+        env:
+          MAINTENANCE_URL: ${{ secrets.MAINTENANCE_URL }}
+          MAINTENANCE_SECRET: ${{ secrets.MAINTENANCE_SECRET }}
+        run: |
+          # Build run name (github.run_name not available in called workflow context)
+          SUITES="${{ github.event_name == 'schedule' && 'smoke,artifacts' || inputs.custom_suites || inputs.suite || 'all' }}"
+          RUN_NAME="UI Tests DEV Stable [${{ github.ref_name }}] [${SUITES}]"
+
+          # Build JSON payload using jq for proper escaping
+          PAYLOAD=$(jq -cn \
+            --arg action "completed" \
+            --argjson run_id ${{ github.run_id }} \
+            --arg name "$RUN_NAME" \
+            --arg path ".github/workflows/test-ui-dev-stable.yml" \
+            --arg html_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --argjson run_number ${{ github.run_number }} \
+            --arg head_branch "${{ github.ref_name }}" \
+            --arg head_sha "${{ github.sha }}" \
+            --arg conclusion "${{ needs.test.result }}" \
+            --arg actor "${{ github.actor }}" \
+            --arg repo "${{ github.repository }}" \
+            '{
+              action: $action,
+              workflow_run: {
+                id: $run_id,
+                name: $name,
+                path: $path,
+                html_url: $html_url,
+                run_number: $run_number,
+                head_branch: $head_branch,
+                head_sha: $head_sha,
+                conclusion: $conclusion,
+                actor: { login: $actor }
+              },
+              repository: { full_name: $repo }
+            }')
+
+          # Compute HMAC-SHA256 signature
+          SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$MAINTENANCE_SECRET" | sed 's/^.* //')
+
+          # Send webhook with signature header (fail on non-2xx response)
+          curl -fsSL -X POST "$MAINTENANCE_URL" \
+            -H "Content-Type: text/plain" \
+            -H "X-Hub-Signature-256: sha256=$SIGNATURE" \
+            -d "$PAYLOAD"

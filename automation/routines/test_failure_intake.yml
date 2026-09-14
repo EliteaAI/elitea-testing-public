@@ -195,13 +195,10 @@ nodes:
             should_process = (
                 action == 'completed' and
                 matches_pattern and
-                actor_login == 'breilian' and
-                conclusion == 'failure'
+                conclusion in ('failure', 'success')
             )
 
             head_commit = workflow_run.get('head_commit') or {}
-            if not isinstance(head_commit, dict):
-                head_commit = {}
 
             workflow_name_short = workflow_path.replace('.github/workflows/', '').replace('.yml', '') if workflow_path else 'unknown'
 
@@ -265,11 +262,14 @@ nodes:
     condition: |
       {% if conclusion == 'failure' %}
       FetchWorkflowDetails
+      {% elif conclusion == 'success' %}
+      HandleSuccessRun
       {% else %}
       SkipNonFailure
       {% endif %}
     routes:
       - FetchWorkflowDetails
+      - HandleSuccessRun
       - SkipNonFailure
     default_output: SkipNonFailure
 
@@ -292,6 +292,32 @@ nodes:
       - skip_reason
     structured_output: true
     transition: END
+
+  - id: HandleSuccessRun
+    type: code
+    code:
+      type: fixed
+      value: |
+        import json
+
+        # For success runs, create empty tests array and skip to file commit
+        out = {
+            'classified_tests': '[]',
+            'maintenance_json': '{"tests": []}',
+            'issue_groups': '[]',
+            'total_groups': '0',
+            'created_issues': '[]'
+        }
+        out
+    input: []
+    output:
+      - classified_tests
+      - maintenance_json
+      - issue_groups
+      - total_groups
+      - created_issues
+    structured_output: true
+    transition: BuildFullFilePath
 
   - id: FetchWorkflowDetails
     type: toolkit
@@ -1089,14 +1115,39 @@ nodes:
                     "",
                     "### Instructions",
                     "",
-                    "1. **Do NOT trigger workflows** - Work locally only, do not run GitHub Actions",
-                    "2. **Fix on DEV environment** - Use dev.elitea.ai for verification",
-                    "3. **Use regular locators** - When fixing tests, use standard Playwright locators (role, text, label) instead of data-testid attributes",
+                    "1. **Branch from main** - Create fix branch from `main`: `git checkout main && git pull && git checkout -b AI_AQA/fix-<test-name>`",
+                    "2. **Commit prefix** - All commits MUST start with `AI_AQA:` (e.g., `AI_AQA: fix agent import test assertion`)",
+                    "3. **Create PR to main** - Submit PR targeting `main` branch",
+                    "4. **Auto-merge if test-only** - If fix is test code only (no backend/UI changes required), merge the PR to `main`",
+                    "5. **Do NOT trigger workflows** - Work locally only, do not run GitHub Actions",
+                    "6. **Fix on DEV environment** - Use dev.elitea.ai for verification",
+                    "7. **Use regular locators** - Use standard Playwright locators (role, text, label) instead of data-testid attributes",
                     "",
-                    "Run tests locally:",
+                    "### Workflow",
+                    "",
                     "```bash",
+                    "# 1. Start from main",
+                    "git checkout main && git pull origin main",
+                    "git checkout -b AI_AQA/fix-<test-name>",
+                    "",
+                    "# 2. Run failing test to confirm",
                     "cd automation",
                     "HEADLESS=true ../.venv/bin/pytest tests/ui/path/to/test.py::TestClass::test_method -v",
+                    "",
+                    "# 3. Apply fix and verify",
+                    "# ... make changes ...",
+                    "HEADLESS=true ../.venv/bin/pytest tests/ui/path/to/test.py::TestClass::test_method -v",
+                    "",
+                    "# 4. Commit and push",
+                    "git add -A",
+                    "git commit -m 'AI_AQA: fix <description>'",
+                    "git push -u origin AI_AQA/fix-<test-name>",
+                    "",
+                    "# 5. Create PR to main",
+                    "gh pr create --base main --title 'AI_AQA: fix <test>' --body 'Fixes #<issue-number>'",
+                    "",
+                    "# 6. If test-only fix (no backend/UI changes), merge to main",
+                    "gh pr merge --squash",
                     "```",
                     "",
                     "---",
