@@ -107,7 +107,7 @@ jobs:
     steps:
       - name: Send webhook to intake pipeline
         run: |
-          curl -X POST "${{ vars.MAINTENANCE_URL }}" \
+          curl -X POST "${{ secrets.MAINTENANCE_URL }}" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.MAINTENANCE_SECRET }}" \
             -d '{
