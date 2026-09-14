@@ -1,0 +1,5 @@
+WARNING  elitea.api_auth:api_auth.py:123 Missing elitea-staging_auth_session cookie
+ERROR    elitea.steps:actions.py:49 Step failed: Save skill and wait for navigation — Timeout 15000ms exceeded.
+=========================== logs ===========================
+waiting for navigation to "**/skills/all/**" until 'load'
+============================================================

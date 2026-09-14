@@ -1,3 +1,0 @@
-"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
-"passed","Mon Sep 14 12:40:25 UTC 2026","Mon Sep 14 12:40:29 UTC 2026","4281","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_main_content_visible","The main content area should render after navigation."
-"passed","Mon Sep 14 12:40:20 UTC 2026","Mon Sep 14 12:40:24 UTC 2026","4345","tests.ui.smoke","test_ui_smoke","TestHomePage","","","test_page_loads","The home page should load without errors."
