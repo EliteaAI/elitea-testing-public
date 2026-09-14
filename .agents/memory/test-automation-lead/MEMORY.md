@@ -13,6 +13,7 @@
 - [Shared-tree git discipline](shared_tree_git_discipline.md) — one tree, many sessions; destructive git eats memory; worktrees stay banned
 - [Closure-record discipline](closure_record_discipline.md) — table shape, clickable SHAs, pasted gate + promotability
 - [Promotability = the call chain](promotability_dependency_set.md) — derive deps from code at check time, never the AFS
+- [Cherry-pick promotion conflicts on grown shared files](promotion_gap_cherry_pick_to_main_conflicts_on_grown_shared_files.md) — `client.py` et al. conflict BOTH ways; diff the repair commit for what belongs; back-merge = base's copy (main ⊂ base); dispatch both
 - [Testid presence greps](testid_presence_grep_technique.md) — bare string, always -i, [:=] not =; component-scope reused names
 - [[FIX] cards come from ONE attempt](fix_card_is_generated_from_ONE_attempt_diff_the_attempts_first.md) — check `run_attempt` and diff the attempts before triaging; a suite that passes in another attempt of the same run is an outage, and the passing attempts name the real failures
 - [Evidence, not narration](evidence_must_be_pasted_artifact.md) — verify every claim against a retrievable artifact
