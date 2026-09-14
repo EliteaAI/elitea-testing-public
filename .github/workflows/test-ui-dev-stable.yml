@@ -110,11 +110,15 @@ jobs:
           MAINTENANCE_URL: ${{ secrets.MAINTENANCE_URL }}
           MAINTENANCE_SECRET: ${{ secrets.MAINTENANCE_SECRET }}
         run: |
+          # Build run name (github.run_name not available in called workflow context)
+          SUITES="${{ github.event_name == 'schedule' && 'smoke,artifacts' || inputs.custom_suites || inputs.suite || 'all' }}"
+          RUN_NAME="UI Tests DEV Stable [${{ github.ref_name }}] [${SUITES}]"
+
           # Build JSON payload using jq for proper escaping
           PAYLOAD=$(jq -cn \
             --arg action "completed" \
             --argjson run_id ${{ github.run_id }} \
-            --arg name "${{ github.run_name }}" \
+            --arg name "$RUN_NAME" \
             --arg path ".github/workflows/test-ui-dev-stable.yml" \
             --arg html_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --argjson run_number ${{ github.run_number }} \
