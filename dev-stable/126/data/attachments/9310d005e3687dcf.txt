@@ -1,4 +1,0 @@
-WARNING  elitea.tests.chat:test_open_existing_conversation_from_this_week_section.py:108 Created conversation appeared in 'today' group instead of 'this_week'
-WARNING  elitea.tests.chat:test_open_existing_conversation_from_this_week_section.py:307 PARTICIPANTS panel check: Locator.wait_for: Timeout 5000ms exceeded.
-Call log:
-  - waiting for get_by_text("PARTICIPANTS").first
