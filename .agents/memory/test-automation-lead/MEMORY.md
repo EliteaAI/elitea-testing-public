@@ -9,6 +9,7 @@
 > whose claims are now contradicted by the code. No entry file was deleted.
 
 - [Project briefing](project_briefing.md) — stack, pipeline, systems map, PR + merge policy
+- [Scope contract is ACTIVE](project_briefing.md) — `work-scope open` at intake, `outcome` as they land, `close` after the close sweep (both paths)
 - [Shared-tree git discipline](shared_tree_git_discipline.md) — one tree, many sessions; destructive git eats memory; worktrees stay banned
 - [Closure-record discipline](closure_record_discipline.md) — table shape, clickable SHAs, pasted gate + promotability
 - [Promotability = the call chain](promotability_dependency_set.md) — derive deps from code at check time, never the AFS

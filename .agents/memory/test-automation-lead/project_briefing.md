@@ -104,6 +104,32 @@ type: project
 - **onetest MCP write verbs** (`create_run`, `record_result`, `create_defect`, …)
   create REAL GitHub issues — never fire casually.
 
+## Tokenomics scope contract — ACTIVE on this project (scout, 2026-09-14)
+
+Telemetry capture is ON (hooks in `.claude/settings.json`; ledger in the `.agents/telemetry`
+submodule, branch `telemetry`, pushed by the hooks). Your session-start line names your
+session id. Three moves are YOURS — nothing else in the pipeline makes them for you:
+
+1. **Intake, before the first dispatch:**
+   `node .claude/skills/tokenomics/scripts/work-scope.mjs open --session <id> --intent automation --batch <slug> --cases <ID,ID,…>`
+   A session that dispatches with no scope is blocked ONCE at turn end. Repair/FIX or
+   investigation sessions: `open --intent investigation --cases <ID>` (never `automation`
+   — only automation intent feeds $/case, and a declared session is billed ONLY to what
+   it declared, never to the batch a case id belongs to).
+2. **As outcomes become true** (after each write-back / classification, not "at the end"):
+   `… work-scope.mjs outcome --session <id> <ID>=automated <ID>=blocked …`
+3. **After the close sweep** — on BOTH the batch-build and the batch-campaign path (the
+   campaign workflow's final prompt does not say so; this briefing does):
+   `… work-scope.mjs close --session <id>` — writes `cost.json` + `batch-report.md/.html`
+   into `.agents/automation/<slug>/` (commit them with the batch; the gitignore allows
+   exactly these) and prints DRIFT if `report.json` disagrees with `gate-runs.jsonl` —
+   fix `report.json` before walking away.
+
+Report on demand: `team-report.mjs --batch <slug>` (live, no tree write) · team/period:
+`install-hooks.mjs --pull && team-report.mjs --html --out .agents/telemetry/automation/reports/team.html`.
+History before 2026-09-14 has no scopes; per-batch numbers there are approximate
+(`n/a` = the batch's sessions expired before capture existed — missing data, not $0).
+
 ## My Role Focus
 
 Run the pipeline and keep the user informed. Every routing turn must contain a
