@@ -35,6 +35,10 @@ on:
         description: 'Suffix for TMS report name'
         type: string
         default: ''
+      enable_results_processing:
+        description: 'Send results for processing'
+        type: boolean
+        default: false
 
 jobs:
   test:
@@ -94,3 +98,34 @@ jobs:
       JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
       CONFLUENCE_BASE_URL: ${{ secrets.CONFLUENCE_BASE_URL }}
       CONFLUENCE_SPACE: ${{ secrets.CONFLUENCE_SPACE }}
+
+  notify:
+    name: Notify intake pipeline
+    needs: test
+    if: always() && (github.event_name == 'schedule' || inputs.enable_results_processing == true)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send webhook to intake pipeline
+        run: |
+          curl -X POST "${{ vars.MAINTENANCE_URL }}" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.MAINTENANCE_SECRET }}" \
+            -d '{
+              "action": "completed",
+              "workflow_run": {
+                "id": ${{ github.run_id }},
+                "name": "${{ github.workflow }}",
+                "path": ".github/workflows/test-ui-dev-stable.yml",
+                "html_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+                "run_number": ${{ github.run_number }},
+                "head_branch": "${{ github.ref_name }}",
+                "head_sha": "${{ github.sha }}",
+                "conclusion": "${{ needs.test.result }}",
+                "actor": {
+                  "login": "${{ github.actor }}"
+                }
+              },
+              "repository": {
+                "full_name": "${{ github.repository }}"
+              }
+            }'
