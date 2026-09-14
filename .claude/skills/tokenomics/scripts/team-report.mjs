@@ -378,9 +378,21 @@ const rwCell = (tokQuad, scalarFallback) =>
     ? `${realWork(tokQuad).toLocaleString()} (in ${kTok(tokQuad.input)} / out ${kTok(tokQuad.output)})`
     : `${(scalarFallback ?? 0).toLocaleString()} (incl. cache)`;
 
+/** Where the batch's time window came from, and — for an unpriced batch — WHY
+ *  nothing joined: the join only admits sessions inside that window, so an
+ *  empty result means the batch's sessions were never captured (transcripts
+ *  expired before capture was enabled, or never swept), not that it was free. */
+export function batchWindowNote(c) {
+  const w = c.sources?.window;
+  const span = w ? `window ${String(w.start).slice(0, 10)} → ${String(w.end).slice(0, 10)} (${w.source})` : 'no time window known';
+  return c.sources?.sessions ? span : `NO CAPTURED SESSION in its ${span} — its sessions were never captured (transcripts expired before capture was enabled, or never swept); this is missing data, not $0`;
+}
+
 export function renderBatchMarkdown(c) {
   const out = [`# Batch cost — ${c.batch}`, '',
     `Generated: ${c.generatedAt}  ·  sessions: ${c.sources.sessions} (${c.sources.hosts.join(', ') || 'none'})  ·  sources: ${c.sources.costSources.join(', ') || 'tokens only'}  ·  models: ${c.sources.models.join(', ') || '—'}`, ''];
+  if (!c.sources.sessions) out.push(`> ⚠ **${batchWindowNote(c)}**`, '');
+  else out.push(`_${batchWindowNote(c)}_`, '');
   if (c.sources.liveSessions) out.push(`> ⏳ **LIVE / PROVISIONAL** — ${c.sources.liveSessions} session(s) still running. Finished dispatches are counted; their lead thread is not measured yet, so these totals are a **floor**. Re-run after the session ends.`, '');
   if (c.sources.sharedSessions) out.push(`_${c.sources.sharedSessions} session(s) also served other batches — their session-level figures are split evenly${c.sources.foreignDispatchesExcluded ? `; ${c.sources.foreignDispatchesExcluded} other-batch dispatch(es) excluded` : ''}._`, '');
   const oc = Object.entries(c.outcomes).sort((a, z) => z[1] - a[1]).map(([k, n]) => `${k} ${n}`).join('  ·  ');
@@ -526,6 +538,27 @@ const quadLegend = (tok) => {
 // Self-contained batch DELIVERY page — no external assets, light/dark aware.
 // KPI cards up top (delivery / cost / tokens / activity — every headline number
 // incl. the raw token total), then per-case bars with overhead drawn once.
+/** Many batches → ONE page: an index (priced first, then the unpriced with
+ *  their reason) linking into each batch's own section. Concatenating the
+ *  standalone pages produced 123 doctypes/styles and opened on whatever
+ *  sorted first alphabetically — usually an unpriced batch (field, 2026-09-14). */
+export function renderBatchesIndexHtml(results, htmlR = renderBatchHtml) {
+  const esc = escHtml;
+  const sorted = [...results].sort((a, b) => (num(b.totals.costUsd) - num(a.totals.costUsd)) || String(a.batch).localeCompare(String(b.batch)));
+  const anchor = (c) => `b-${String(c.batch).replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
+  const priced = sorted.filter((c) => c.totals.costUsd != null); const unpriced = sorted.filter((c) => c.totals.costUsd == null);
+  const row = (c) => `<tr><td><a href="#${anchor(c)}">${esc(c.batch)}</a></td><td>${c.cases.length}</td><td>${c.delivered}</td><td>${c.totals.costUsd != null ? usd(c.totals.costUsd) : 'n/a'}</td><td>${c.averages?.totalPerDelivered ? usd(c.averages.totalPerDelivered.costUsd) : 'n/a'}</td><td>${hours(c.totals.activeMin)}</td><td>${esc(c.gate?.verdict ?? '—')}</td><td class="muted">${esc(c.sources?.window ? `${String(c.sources.window.start).slice(0, 10)} → ${String(c.sources.window.end).slice(0, 10)} · ${c.sources.window.source}` : '—')}</td></tr>`;
+  const sum = priced.reduce((n, c) => n + num(c.totals.costUsd), 0);
+  const body = sorted.map((c) => `<section id="${anchor(c)}" class="batch-page"><p class="meta"><a href="#top">↑ index</a></p>${htmlR(c).replace(/^<!doctype html>[\s\S]*?<\/style>\s*/i, '')}</section>`).join('\n');
+  return `<!doctype html><meta charset="utf-8"><title>Batch costs — ${results.length} batches</title><style>${PAGE_CSS}
+  .index td,.index th{padding:.25rem .5rem;text-align:left;font-size:.85rem;border-bottom:1px solid var(--gridline)} .index{border-collapse:collapse;width:100%} .muted{color:var(--text-muted)} .batch-page{margin-top:2.5rem;border-top:2px solid var(--gridline);padding-top:1rem}</style>
+  <h1 id="top">Batch costs — ${results.length} batches</h1>
+  <p class="meta">${priced.length} priced (sum ${usd(sum)}) · ${unpriced.length} with no captured session (missing data, not $0 — each section says why)</p>
+  <table class="index"><thead><tr><th>batch</th><th>cases</th><th>delivered</th><th>total</th><th>per delivered</th><th>active</th><th>gate</th><th>window · source</th></tr></thead>
+  <tbody>${priced.map(row).join('')}${unpriced.length ? `<tr><td colspan="8" class="muted">— no captured session in window —</td></tr>${unpriced.map(row).join('')}` : ''}</tbody></table>
+  ${body}`;
+}
+
 export function renderBatchHtml(c) {
   const esc = escHtml;
   const priced = !!c.stats.directCostUsd;
@@ -569,7 +602,8 @@ export function renderBatchHtml(c) {
   ].join('');
   return `<!doctype html><meta charset="utf-8"><title>Batch cost — ${esc(c.batch)}</title><style>${PAGE_CSS}</style>
   <h1>Batch cost — ${esc(c.batch)}</h1>
-  <p class="meta">Delivery view · generated ${esc(c.generatedAt)} · ${c.sources.sessions} session(s) on ${esc(c.sources.hosts.join(', '))} · sources: ${esc(c.sources.costSources.join(', ') || 'tokens only')} · models: ${esc(c.sources.models.join(', ') || '—')}</p>
+  <p class="meta">Delivery view · generated ${esc(c.generatedAt)} · ${c.sources.sessions} session(s) on ${esc(c.sources.hosts.join(', '))} · sources: ${esc(c.sources.costSources.join(', ') || 'tokens only')} · models: ${esc(c.sources.models.join(', ') || '—')}${c.sources.sessions ? ` · ${esc(batchWindowNote(c))}` : ''}</p>
+  ${c.sources.sessions ? '' : `<p class="callout-warn">⚠ ${esc(batchWindowNote(c))}</p>`}
   <section class="kpi-row">${cards}</section>
   ${c.sources.liveSessions ? `<p class="callout-warn">⏳ LIVE / PROVISIONAL — ${c.sources.liveSessions} session(s) still running. Finished dispatches are counted; their lead thread is not measured yet, so these totals are a floor.</p>` : ''}
   ${c.sources.sharedSessions ? `<p class="note">${c.sources.sharedSessions} session(s) also served other batches — session-level figures split evenly${c.sources.foreignDispatchesExcluded ? `; ${c.sources.foreignDispatchesExcluded} other-batch dispatch(es) excluded` : ''}.</p>` : ''}
@@ -810,7 +844,7 @@ export function main(argv = process.argv.slice(2)) {
     const output = flags.get('json')
       ? JSON.stringify(results.length === 1 ? results[0] : results, null, 2)
       : flags.get('html')
-        ? results.map(htmlR).join('\n')
+        ? (results.length === 1 ? htmlR(results[0]) : renderBatchesIndexHtml(results, htmlR))
         : results.map(mdR).join('\n\n---\n\n');
     if (flags.get('out')) writeFileSync(flags.get('out'), `${output}\n`);
     else process.stdout.write(`${output}\n`);
