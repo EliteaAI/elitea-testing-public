@@ -91,3 +91,26 @@ can dispatch the pipeline without flying blind. The framework + TMS adapter +
 automation PR policy are the fields Tal depends on most — fill them or flag them
 explicitly as gaps. There is no separate PM or tech-lead on this team; Tal owns
 both, so your profile is his single source of project truth.
+
+## Tokenomics telemetry (installed 2026-09-14 by scout)
+- **Capture is ON** — hooks in `.claude/settings.json` (+ `.github/hooks/tokenomics.json`);
+  ledger lives in the `.agents/telemetry` submodule (same repo, branch `telemetry`,
+  `ignore = all`, hooks commit+push it themselves). Reports: `telemetry/automation/reports/`.
+  Regenerate anywhere: `install-hooks.mjs --pull && team-report.mjs --html --out …`.
+- **Installer trap on this repo:** `.git` is 11 GB on OneDrive → `submodule add` hits the
+  installer's 20 s git timeout and leaves a half-state (`.agents/telemetry/.git` gitfile +
+  skeleton `.git/modules/…`); re-running reports `already`. Fix by hand: clear both, then
+  `git submodule add --force --depth 1 -b telemetry -- ./ .agents/telemetry` is WRONG (depth-1
+  fetches `main`) — clone, then `fetch --depth 1 origin telemetry && checkout -B telemetry
+  FETCH_HEAD`, re-seed, then `submodule add` on the EXISTING dir registers it without cloning.
+- **Per-batch numbers for history are approximate, and honestly so:** sessions before
+  2026-07-24 are gone (30-day transcript retention); Workflow-driven batches whose ids only
+  crossed `tool_result` records score `n/a` (miner reads prompts/labels/branches only).
+  Team-level totals/by-week/by-role are sound. From now on the scope contract (Tal's
+  `work-scope open --batch --cases`) is what makes per-batch cost right.
+- **Local bundle patch to upstream:** `batch-cost.mjs` scope-first + time-windowed join
+  (commit 4e1dee366). Open bundle asks: SessionEnd auto-close of terminal-batch scopes with
+  drift replay at next start (spec in the 2026-09-14 scout session); mine Workflow returns as
+  the primary id surface. Verify each still applies after any `init --update`.
+- `.agents/automation/**` is ignored EXCEPT report.json / gate-runs.jsonl / cost.json /
+  batch-report.* / batch-tokenomics.* — those are the receipts every report joins on.

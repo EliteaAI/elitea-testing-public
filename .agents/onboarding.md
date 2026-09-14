@@ -147,3 +147,12 @@ role-overrides}.md`, the three role `project_briefing.md` memories (+ suspend-ba
 the `test-automation-lead` promotability lessons), `add-data-testid`,
 `factory/loops/{control,tal}.md`, `batch-promote` (then `promote-automation-batch`,
 retired into it 2026-07-31).
+
+## 2026-09-14 — tokenomics telemetry enabled (scout, targeted refresh)
+- Explored: hook wiring, 131 on-disk transcripts, 123 batch receipts, tokenomics skill internals.
+- Generated/changed: telemetry submodule (`telemetry` branch) + ledger of 132 sessions
+  ($5,505.94 metered, 2026-07-24 → 09-14); reports under `.agents/telemetry/automation/reports/`;
+  `.gitignore` narrowed so batch records commit; `batch-cost.mjs` join patched (scope-first,
+  time-windowed); commit 4e1dee366 on `automation/base`.
+- Gaps: pre-2026-07-24 spend unrecoverable; Workflow-run history batches `n/a`; auto-close of
+  scopes not implemented (bundle change requested); no scheduled report regeneration yet.
