@@ -214,6 +214,30 @@ EliteaAI/elitea-testing-public#1877 (no pinned-first tier).
   handle cache not a frozen catalog.
 - `model-selector-option-{name}` dynamic testid (added ELITEA-1881) covers ALL 11
   entries, OpenAI included — no new testid work needed for OpenAI-model cases.
+- **Resolved/confirmed during ELITEA-1901 repair (board #2083, 2026-09-09) — the
+  catalog DID turn over, exactly as the caution above predicted.** Same endpoint,
+  same project 399: `total: 8`, and **every OpenAI entry is gone** — no `gpt-5.2`,
+  no `gpt-5-mini`, no `gpt-5.4`/`gpt-5.4-mini`. Live counts that day: project 399 =
+  8, 471 = 13, 400 = 8; `gpt-5.2` in none of them. `items[0]` is still
+  `eu.anthropic.claude-sonnet-4-5-20250929-v1:0` "Anthropic Claude 4.5 Sonnet";
+  `items[1]` is `eu.anthropic.claude-sonnet-4-6` "Anthropic Claude 4.6 Sonnet".
+  **Treat any hardcoded model literal in a spec as a time bomb** — `.env`'s
+  `default_model_name` (`gpt-5.2`, 54 usages) is stale suite-wide, carded as #2117.
+- **The import wizard silently rewrites an unknown model — no toast, no error.**
+  `EliteaAI/EliteaUI src/[fsd]/entities/import-wizard/lib/helpers/importWizardModels.helpers.js:4-13`
+  (`getDefaultModel`): if the imported file's `model_name` is not in the catalog, it
+  is replaced with `modelsList[0]?.name || ''`. So an import spec that plants a stale
+  model gets a **green-looking wizard and a wrong agent**. Two consequences for any
+  future import/model case:
+  - derive the fixture model from the live catalog
+    (`credential_api.list_models(include_shared=True)` — added on `CredentialAPI`,
+    the `/configurations/` root client, during this repair);
+  - pick **`items[1]`, never `items[0]`** — `items[0]` IS the fallback value, so
+    asserting it cannot distinguish a working carry-through from a broken one.
+- **Two field names, not interchangeable**: the frontmatter/API `model` key takes
+  `items[i]["name"]`; `model-selector-name` renders `display_name` (falling back to
+  `name`) — `LLMModelSelector.jsx:110,199`. For most models the two strings differ a
+  lot; `gpt-5.2`/"GPT-5.2" was a near-identical coincidence that hid this for months.
 
 ## LLM Model Settings dialog (gear icon, ELITEA-1880 run, 2026-08-02)
 - Trigger: gear-icon button next to `model-selector-button`/`model-selector-name`, `aria-label="model settings menu"`.
