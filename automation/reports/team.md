@@ -1,6 +1,6 @@
 # Tokenomics — team usage report
 
-Generated: 2026-09-14T12:11:44.994Z
+Generated: 2026-09-14T12:23:46.066Z
 
 ## Totals
 
@@ -770,6 +770,75 @@ Generated: 2026-09-14T12:11:44.994Z
 | ELITEA-1997 | skills-remaining-w5 | already-covered | n/a | n/a | 0m |
 | ELITEA-1998 | skills-remaining-w5 | already-covered | n/a | n/a | 0m |
 | ELITEA-2000 | skills-remaining-w5 | already-covered | n/a | n/a | 0m |
+
+## Outside batches — by case id (no receipt claimed these sessions)
+
+- 122 session(s)  ·  $2059.16  ·  136.8h active — FIX/repair cards, investigations, framework work, and batches whose sessions predate capture. Per id: each session split evenly across the ids it named (allocation, mined ids).
+
+| case id | sessions | cost (allocated) | active |
+|---|---|---|---|
+| ELITEA-1866 | 4 | $108.24 | 351m |
+| ELITEA-1140 | 5 | $88.12 | 351m |
+| ELITEA-2211 | 3 | $73.73 | 255m |
+| ELITEA-2008 | 4 | $61.64 | 307m |
+| ELITEA-1891 | 2 | $53.21 | 246m |
+| ELITEA-2367 | 4 | $52.45 | 198m |
+| N8-N11 | 1 | $44.87 | 209m |
+| ELITEA-2037 | 3 | $43.32 | 258m |
+| ELITEA-2051 | 2 | $43.15 | 181m |
+| ELITEA-2453 | 1 | $40.72 | 170m |
+| ELITEA-1892 | 2 | $37.47 | 154m |
+| ELITEA-2022 | 2 | $36.75 | 153m |
+| ELITEA-1955 | 2 | $36.16 | 146m |
+| ELITEA-1901 | 2 | $35.78 | 117m |
+| ELITEA-2024 | 2 | $33.53 | 91m |
+| ELITEA-2363 | 3 | $32.26 | 127m |
+| ELITEA-2354 | 3 | $31.95 | 120m |
+| ELITEA-2213 | 3 | $30.81 | 130m |
+| FAIL-2 | 3 | $29.82 | 121m |
+| ELITEA-1790 | 1 | $29.61 | 96m |
+| ELITEA-2448 | 1 | $29.56 | 88m |
+| ELITEA-2063 | 2 | $26.05 | 104m |
+| ELITEA-0679 | 1 | $25.97 | 90m |
+| ELITEA-1890 | 2 | $24.54 | 106m |
+| ELITEA-1886 | 1 | $24.39 | 107m |
+| ELITEA-2369 | 1 | $24.39 | 107m |
+| EL-6128 | 2 | $23.72 | 116m |
+| EL-6351 | 3 | $23.54 | 83m |
+| ELITEA-2212 | 2 | $22.34 | 90m |
+| ELITEA-1899 | 2 | $22.16 | 54m |
+| ELITEA-2016 | 1 | $21.96 | 144m |
+| ELITEA-1793 | 2 | $20.81 | 78m |
+| ELITEA-2002 | 2 | $20.11 | 67m |
+| ELITEA-1141 | 1 | $18.53 | 74m |
+| ELITEA-0500 | 1 | $16.27 | 64m |
+| ELITEA-1142 | 1 | $16.27 | 64m |
+| ELITEA-0143 | 1 | $15.04 | 52m |
+| ELITEA-2010 | 1 | $15.04 | 52m |
+| ELITEA-1902 | 1 | $14.06 | 42m |
+| ELITEA-1740 | 1 | $13.94 | 55m |
+| ELITEA-2210 | 1 | $12.23 | 41m |
+| ELITEA-2215 | 1 | $12.23 | 41m |
+| ELITEA-2474 | 1 | $12.23 | 41m |
+| ELITEA-1910 | 1 | $11.78 | 76m |
+| ELITEA-1915 | 1 | $11.78 | 76m |
+| ELITEA-1980 | 1 | $11.43 | 45m |
+| ELITEA-2392 | 1 | $11.43 | 45m |
+| ELITEA-2612 | 1 | $11.43 | 45m |
+| EL-6238 | 1 | $10.63 | 34m |
+| ELITEA-1888 | 1 | $9.34 | 36m |
+| ELITEA-2023 | 1 | $9.29 | 26m |
+| ELITEA-2003 | 1 | $9.26 | 34m |
+| EL-6400 | 1 | $8.69 | 29m |
+| PUT-200 | 1 | $8.69 | 29m |
+| ELITEA-1869 | 2 | $8.66 | 33m |
+| ELITEA-2214 | 1 | $8.48 | 39m |
+| EL-6540 | 1 | $8.33 | 20m |
+| ELITEA-0501 | 1 | $8.33 | 20m |
+| ELITEA-0855 | 1 | $8.19 | 21m |
+| ELITEA-2020 | 1 | $8.19 | 21m |
+| … 15 more ids | | | |
+| (no case id named) | 63 | $408.59 | 1706m |
 
 ## By person
 

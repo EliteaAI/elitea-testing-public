@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-14T12:11:49.806Z",
+  "generated": "2026-09-14T12:23:51.451Z",
   "window": null,
   "sessions": 132,
   "people": 1,
@@ -18889,6 +18889,545 @@
       "min": 0,
       "max": 142,
       "n": 390
+    }
+  },
+  "outside": {
+    "sessions": 122,
+    "costUsd": 2059.1564780999993,
+    "activeMin": 8207,
+    "note": "sessions no batch receipt claimed; per-id figures split each session evenly across the ids it named (allocation)",
+    "byCase": [
+      {
+        "id": "ELITEA-1866",
+        "sessions": 4,
+        "costUsd": 108.24,
+        "activeMin": 351,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1140",
+        "sessions": 5,
+        "costUsd": 88.12,
+        "activeMin": 351,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2211",
+        "sessions": 3,
+        "costUsd": 73.73,
+        "activeMin": 255,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2008",
+        "sessions": 4,
+        "costUsd": 61.64,
+        "activeMin": 307,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1891",
+        "sessions": 2,
+        "costUsd": 53.21,
+        "activeMin": 246,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2367",
+        "sessions": 4,
+        "costUsd": 52.45,
+        "activeMin": 198,
+        "priced": true
+      },
+      {
+        "id": "N8-N11",
+        "sessions": 1,
+        "costUsd": 44.87,
+        "activeMin": 209,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2037",
+        "sessions": 3,
+        "costUsd": 43.32,
+        "activeMin": 258,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2051",
+        "sessions": 2,
+        "costUsd": 43.15,
+        "activeMin": 181,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2453",
+        "sessions": 1,
+        "costUsd": 40.72,
+        "activeMin": 170,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1892",
+        "sessions": 2,
+        "costUsd": 37.47,
+        "activeMin": 154,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2022",
+        "sessions": 2,
+        "costUsd": 36.75,
+        "activeMin": 153,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1955",
+        "sessions": 2,
+        "costUsd": 36.16,
+        "activeMin": 146,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1901",
+        "sessions": 2,
+        "costUsd": 35.78,
+        "activeMin": 117,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2024",
+        "sessions": 2,
+        "costUsd": 33.53,
+        "activeMin": 91,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2363",
+        "sessions": 3,
+        "costUsd": 32.26,
+        "activeMin": 127,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2354",
+        "sessions": 3,
+        "costUsd": 31.95,
+        "activeMin": 120,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2213",
+        "sessions": 3,
+        "costUsd": 30.81,
+        "activeMin": 130,
+        "priced": true
+      },
+      {
+        "id": "FAIL-2",
+        "sessions": 3,
+        "costUsd": 29.82,
+        "activeMin": 121,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1790",
+        "sessions": 1,
+        "costUsd": 29.61,
+        "activeMin": 96,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2448",
+        "sessions": 1,
+        "costUsd": 29.56,
+        "activeMin": 88,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2063",
+        "sessions": 2,
+        "costUsd": 26.05,
+        "activeMin": 104,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-0679",
+        "sessions": 1,
+        "costUsd": 25.97,
+        "activeMin": 90,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1890",
+        "sessions": 2,
+        "costUsd": 24.54,
+        "activeMin": 106,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1886",
+        "sessions": 1,
+        "costUsd": 24.39,
+        "activeMin": 107,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2369",
+        "sessions": 1,
+        "costUsd": 24.39,
+        "activeMin": 107,
+        "priced": true
+      },
+      {
+        "id": "EL-6128",
+        "sessions": 2,
+        "costUsd": 23.72,
+        "activeMin": 116,
+        "priced": true
+      },
+      {
+        "id": "EL-6351",
+        "sessions": 3,
+        "costUsd": 23.54,
+        "activeMin": 83,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2212",
+        "sessions": 2,
+        "costUsd": 22.34,
+        "activeMin": 90,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1899",
+        "sessions": 2,
+        "costUsd": 22.16,
+        "activeMin": 54,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2016",
+        "sessions": 1,
+        "costUsd": 21.96,
+        "activeMin": 144,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1793",
+        "sessions": 2,
+        "costUsd": 20.81,
+        "activeMin": 78,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2002",
+        "sessions": 2,
+        "costUsd": 20.11,
+        "activeMin": 67,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1141",
+        "sessions": 1,
+        "costUsd": 18.53,
+        "activeMin": 74,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-0500",
+        "sessions": 1,
+        "costUsd": 16.27,
+        "activeMin": 64,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1142",
+        "sessions": 1,
+        "costUsd": 16.27,
+        "activeMin": 64,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-0143",
+        "sessions": 1,
+        "costUsd": 15.04,
+        "activeMin": 52,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2010",
+        "sessions": 1,
+        "costUsd": 15.04,
+        "activeMin": 52,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1902",
+        "sessions": 1,
+        "costUsd": 14.06,
+        "activeMin": 42,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1740",
+        "sessions": 1,
+        "costUsd": 13.94,
+        "activeMin": 55,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2210",
+        "sessions": 1,
+        "costUsd": 12.23,
+        "activeMin": 41,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2215",
+        "sessions": 1,
+        "costUsd": 12.23,
+        "activeMin": 41,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2474",
+        "sessions": 1,
+        "costUsd": 12.23,
+        "activeMin": 41,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1910",
+        "sessions": 1,
+        "costUsd": 11.78,
+        "activeMin": 76,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1915",
+        "sessions": 1,
+        "costUsd": 11.78,
+        "activeMin": 76,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1980",
+        "sessions": 1,
+        "costUsd": 11.43,
+        "activeMin": 45,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2392",
+        "sessions": 1,
+        "costUsd": 11.43,
+        "activeMin": 45,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2612",
+        "sessions": 1,
+        "costUsd": 11.43,
+        "activeMin": 45,
+        "priced": true
+      },
+      {
+        "id": "EL-6238",
+        "sessions": 1,
+        "costUsd": 10.63,
+        "activeMin": 34,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1888",
+        "sessions": 1,
+        "costUsd": 9.34,
+        "activeMin": 36,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2023",
+        "sessions": 1,
+        "costUsd": 9.29,
+        "activeMin": 26,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2003",
+        "sessions": 1,
+        "costUsd": 9.26,
+        "activeMin": 34,
+        "priced": true
+      },
+      {
+        "id": "EL-6400",
+        "sessions": 1,
+        "costUsd": 8.69,
+        "activeMin": 29,
+        "priced": true
+      },
+      {
+        "id": "PUT-200",
+        "sessions": 1,
+        "costUsd": 8.69,
+        "activeMin": 29,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1869",
+        "sessions": 2,
+        "costUsd": 8.66,
+        "activeMin": 33,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2214",
+        "sessions": 1,
+        "costUsd": 8.48,
+        "activeMin": 39,
+        "priced": true
+      },
+      {
+        "id": "EL-6540",
+        "sessions": 1,
+        "costUsd": 8.33,
+        "activeMin": 20,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-0501",
+        "sessions": 1,
+        "costUsd": 8.33,
+        "activeMin": 20,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-0855",
+        "sessions": 1,
+        "costUsd": 8.19,
+        "activeMin": 21,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2020",
+        "sessions": 1,
+        "costUsd": 8.19,
+        "activeMin": 21,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1999",
+        "sessions": 1,
+        "costUsd": 7.65,
+        "activeMin": 24,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1802",
+        "sessions": 1,
+        "costUsd": 7.16,
+        "activeMin": 31,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2421",
+        "sessions": 1,
+        "costUsd": 7.16,
+        "activeMin": 31,
+        "priced": true
+      },
+      {
+        "id": "EL-6460",
+        "sessions": 1,
+        "costUsd": 7.11,
+        "activeMin": 24,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1961",
+        "sessions": 1,
+        "costUsd": 7.11,
+        "activeMin": 24,
+        "priced": true
+      },
+      {
+        "id": "EL-6391",
+        "sessions": 1,
+        "costUsd": 6.45,
+        "activeMin": 29,
+        "priced": true
+      },
+      {
+        "id": "EL-6537",
+        "sessions": 1,
+        "costUsd": 6.45,
+        "activeMin": 29,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2011",
+        "sessions": 1,
+        "costUsd": 6.45,
+        "activeMin": 29,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2070",
+        "sessions": 1,
+        "costUsd": 6.45,
+        "activeMin": 29,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1808",
+        "sessions": 1,
+        "costUsd": 6.35,
+        "activeMin": 22,
+        "priced": true
+      },
+      {
+        "id": "POST-200",
+        "sessions": 1,
+        "costUsd": 6.35,
+        "activeMin": 22,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-2065",
+        "sessions": 1,
+        "costUsd": 6.19,
+        "activeMin": 16,
+        "priced": true
+      },
+      {
+        "id": "EL-6612",
+        "sessions": 1,
+        "costUsd": 3.66,
+        "activeMin": 10,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1732",
+        "sessions": 1,
+        "costUsd": 1.55,
+        "activeMin": 9,
+        "priced": true
+      },
+      {
+        "id": "ELITEA-1898",
+        "sessions": 1,
+        "costUsd": 1.55,
+        "activeMin": 9,
+        "priced": true
+      }
+    ],
+    "noCase": {
+      "sessions": 63,
+      "costUsd": 408.59,
+      "activeMin": 1706,
+      "priced": true
     }
   }
 }
