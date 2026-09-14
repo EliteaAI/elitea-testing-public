@@ -36,6 +36,11 @@ logger = logging.getLogger("elitea.pages.agent_hub")
 
 _CATEGORY_SLUG_RE = re.compile(r"[^a-z0-9]+")
 
+#: Budget (ms) for awaiting the Catalog's categories response.
+#: Set to 45s to accommodate the bulk fetch operation (heavier than limit=20 variants).
+#: See commit e63fca80e for full rationale.
+CATALOG_RESPONSE_TIMEOUT = 45_000
+
 
 def _slugify_category(category: str) -> str:
     """Slugify a category display label the same way EliteaUI does client-side
